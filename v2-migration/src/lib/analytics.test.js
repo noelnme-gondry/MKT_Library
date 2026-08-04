@@ -1,34 +1,56 @@
-import { describe, expect, it } from "vitest";
-import { sanitizeProductEventParams } from "./analytics";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { productAnalysisType, productEventKey, sanitizeProductEventParams, trackProductEvent, trackProductEventOnce } from "./analytics";
 
-describe("product analytics privacy boundary", () => {
-  it("keeps only approved aggregate parameters", () => {
+afterEach(() => {
+  delete globalThis.window;
+});
+
+describe("privacy-safe product analytics", () => {
+  it("keeps only the aggregate allowlist", () => {
     expect(sanitizeProductEventParams({
+      tool_id: "5-3",
+      row_count: 42,
+      state: "parse_error",
+      file_name: "private-client.csv",
+      raw_value: "sensitive campaign",
+    })).toEqual({ tool_id: "5-3", row_count: 42, state: "parse_error" });
+  });
+
+  it("normalizes marketing-response subroutes into one funnel tool id", () => {
+    expect(sanitizeProductEventParams({ tool_id: "5-18-mmm", source: "route" })).toEqual({
       tool_id: "5-18",
-      row_count: 120,
-      analysis_type: "mmm",
-      source_tool_id: "5-2",
-      data_continuity: "same_csv",
-      rank: 1,
-      file_name: "sensitive.csv",
-      industry_name: "고객사 내부 업종명",
-      channel_name: "Meta KR",
-      raw_value: 12345,
-    })).toEqual({
-      tool_id: "5-18",
-      row_count: 120,
-      analysis_type: "mmm",
-      source_tool_id: "5-2",
-      data_continuity: "same_csv",
-      rank: 1,
+      source: "route",
     });
   });
 
-  it("drops retired preset parameters at the analytics boundary", () => {
-    expect(sanitizeProductEventParams({
-      preset_id: "mobile-game",
-      preset_scale: "growth",
-      source: "start",
-    })).toEqual({ source: "start" });
+  it("uses the same PVM analysis type for performance and content routes", () => {
+    expect(productAnalysisType("5-21")).toBe("pvm");
+    expect(productAnalysisType("9-3")).toBe("pvm");
+  });
+
+  it("sends an event once per local hash without exposing the key", () => {
+    const gtag = vi.fn();
+    globalThis.window = { gtag };
+    const key = productEventKey("private-client.csv", "Campaign A", 42);
+
+    expect(trackProductEventOnce("analysis_completed", key, {
+      tool_id: "5-3",
+      source: "csv",
+      row_count: 42,
+      file_name: "private-client.csv",
+    })).toBe(true);
+    expect(trackProductEventOnce("analysis_completed", key, { tool_id: "5-3" })).toBe(false);
+    expect(gtag).toHaveBeenCalledTimes(1);
+    expect(gtag).toHaveBeenCalledWith("event", "analysis_completed", {
+      tool_id: "5-3",
+      source: "csv",
+      row_count: 42,
+    });
+    expect(JSON.stringify(gtag.mock.calls)).not.toContain("private-client.csv");
+    expect(JSON.stringify(gtag.mock.calls)).not.toContain(key);
+  });
+
+  it("reports whether GA is available", () => {
+    expect(trackProductEvent("analysis_started", { tool_id: "5-2" })).toBe(false);
   });
 });

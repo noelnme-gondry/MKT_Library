@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useAppStore } from "@/store/useDataStore";
+import React, { useState, useEffect, useMemo } from "react";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
@@ -22,7 +22,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { buildDashboardRecommendations } from "@/utils/dashboardRecommendations";
 import DashboardRecommendedViews from "@/components/dashboard/DashboardRecommendedViews";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { downloadCsv, downloadText } from "@/utils/download";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
 import AnalysisPathway from "@/components/data-import/AnalysisPathway";
@@ -80,7 +80,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const analysisEventRef = useRef(null);
   const [workerState, setWorkerState] = useState({ key: "", result: null });
 
   const hasData = csvData && csvData.raw.length > 0;
@@ -152,19 +151,22 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     requestAnimationFrame(() => document.getElementById("dashboard-tabpanel")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  // 완료는 현재 탭과 무관하다. viz 탭의 ResultActionCard와 같은 키를 써서 카드가
+  // 마운트돼도 중복되지 않고 scorecard 등 다른 탭에서도 완료가 빠지지 않는다.
   useEffect(() => {
-    if (!showResults) return;
-    const signature = `${toolId}|${csvData?.fileName || ""}|${csvData?.raw?.length || 0}`;
-    if (analysisEventRef.current === signature) return;
-    analysisEventRef.current = signature;
-    trackProductEvent("analysis_completed", {
+    if (!showResults || !verdict) return;
+    const analysisType = isContent ? "content_dashboard" : "dashboard";
+    const resultState = verdict.insufficient ? "insufficient" : "ready";
+    const eventKey = analysisResultEventKey(toolId, analysisType, computeAnalyzeSig(csvData), workerKey, locale);
+    trackProductEventOnce("analysis_completed", eventKey, {
       tool_id: toolId,
-      source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+      source: isDemo ? "demo" : csvData?.importSource || "csv",
       row_count: csvData?.raw?.length || 0,
-      result_state: verdict?.insufficient ? "insufficient" : "ready",
+      analysis_type: analysisType,
+      result_state: resultState,
       locale,
     });
-  }, [showResults, toolId, csvData?.fileName, csvData?.raw?.length, verdict?.insufficient, locale]);
+  }, [csvData, isContent, isDemo, locale, showResults, toolId, verdict, workerKey]);
 
   return (
     <div className={`section active dashboard-shell${showResults ? " has-results" : ""}`}>
@@ -287,6 +289,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 )}
                 <ResultActionCard
                 toolId={toolId}
+                analysisKey={workerKey}
+                analysisType={isContent ? "content_dashboard" : "dashboard"}
+                resultState={verdict.insufficient ? "insufficient" : "ready"}
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}

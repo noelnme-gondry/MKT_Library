@@ -4,10 +4,13 @@
 // takes a `toolId` prop (Dashboard mounts it with "5-2") and reads csvData +
 // TOOL_REQUIRED/OPTIONAL_FIELDS to render the dropzone (no data) or the mapping
 // grid + required-columns table (data present). Both branches must mount.
-import { describe, it, expect, beforeEach } from "vitest";
-import { act, render } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
+
+vi.mock("papaparse", () => ({ default: { parse: vi.fn() } }));
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -36,7 +39,11 @@ function seedWithData() {
 }
 
 describe("CsvUploader render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete window.gtag;
+    seedNoData();
+  });
   it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
     // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드 — 빈 드롭존 대신 즉시 매핑그리드/결과.
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
@@ -54,6 +61,24 @@ describe("CsvUploader render smoke", () => {
     expect(document.querySelector("[data-mapping-target]")?.getAttribute("aria-label")).toContain("표준 필드");
     expect(document.querySelector(".csv-preview-table")).toBeTruthy();
   });
+
+  it("tracks one typed analysis start for repeated confirmation of the same input", () => {
+    seedWithData();
+    window.gtag = vi.fn();
+    render(<CsvUploader toolId="5-2" />);
+    const analyze = screen.getByRole("button", { name: "데이터 분석하기" });
+
+    fireEvent.click(analyze);
+    fireEvent.click(analyze);
+
+    const starts = window.gtag.mock.calls.filter((call) => call[1] === "analysis_started");
+    expect(starts).toEqual([["event", "analysis_started", expect.objectContaining({
+      tool_id: "5-2",
+      analysis_type: "dashboard",
+      row_count: 20,
+      locale: "ko",
+    })]]);
+  });
   it("keeps one live status node across upload branch transition", () => {
     useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
     const { container } = render(<CsvUploader toolId="5-2" />);
@@ -61,5 +86,71 @@ describe("CsvUploader render smoke", () => {
     expect(statusBefore).toBeTruthy();
     act(() => seedWithData());
     expect(container.querySelector('[role="status"]')).toBe(statusBefore);
+  });
+
+  it("tracks an empty import failure without sending the filename or values", async () => {
+    useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
+    window.gtag = vi.fn();
+    Papa.parse.mockImplementation((_file, options) => options.complete({ data: [], meta: { fields: [] } }));
+    const { container } = render(<CsvUploader toolId="5-2" />);
+    const file = new File(["secret-value"], "private-client.csv", { type: "text/csv" });
+
+    fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
+
+    await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "data_import_failed", {
+      tool_id: "5-2",
+      source: "csv",
+      state: "empty_file",
+      locale: "ko",
+    }));
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("private-client.csv");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("secret-value");
+  });
+
+  it("ignores a cancelled worker callback instead of reporting a late failure", async () => {
+    useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
+    window.gtag = vi.fn();
+    let parseOptions;
+    Papa.parse.mockImplementation((_file, options) => { parseOptions = options; });
+    const { container } = render(<CsvUploader toolId="5-2" />);
+
+    fireEvent.change(container.querySelector('input[type="file"]'), {
+      target: { files: [new File(["late-secret"], "cancelled-private.csv", { type: "text/csv" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
+    await act(async () => parseOptions.complete({ data: [], meta: { fields: [] } }));
+
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "data_import_failed")).toHaveLength(0);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("tracks a required-field blocker once with aggregate counts only", async () => {
+    const slice = {
+      raw: [{ SecretColumn: "private-value" }],
+      headers: ["SecretColumn"],
+      mapping: { SecretColumn: "__ignore__" },
+      fileName: "blocked-private.csv",
+      importSource: "csv",
+    };
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+      demoDisabled: true,
+    });
+    window.gtag = vi.fn();
+    render(<CsvUploader toolId="5-2" />);
+
+    await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "analysis_blocked", expect.objectContaining({
+      tool_id: "5-2",
+      source: "csv",
+      row_count: 1,
+      state: "missing_required",
+      locale: "ko",
+    })));
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_blocked")).toHaveLength(1);
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("blocked-private.csv");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("SecretColumn");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("private-value");
   });
 });

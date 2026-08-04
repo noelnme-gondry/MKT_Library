@@ -6,8 +6,9 @@
 // valid attribute×outcome CSV (1 row = 1 content piece; numeric attribute
 // columns + an outcome column). Deterministic signal so the fit succeeds and the
 // forest plot + table render. NO Math.random (harness §3).
-import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
 
@@ -89,6 +90,38 @@ describe("ContentElementAnalyzer render smoke", () => {
     const { container } = render(<ContentElementAnalyzer />);
     expect(document.body.querySelector("*")).toBeTruthy();
     expect(container.querySelector("#s-content-mapping")).toBeTruthy();
+  });
+
+  it("tracks only aggregate CSV import outcomes", async () => {
+    useAppStore.setState({ demoDisabled: true });
+    window.gtag = vi.fn();
+    const queued = [];
+    vi.spyOn(Papa, "parse").mockImplementation((file, options) => {
+      queued.push({ file, options });
+      return undefined;
+    });
+    let view = render(<ContentElementAnalyzer />);
+    const upload = () => view.container.querySelector('input[type="file"]');
+
+    fireEvent.change(upload(), { target: { files: [new File(["private_hook,secret_ctr"], "confidential-content.csv", { type: "text/csv" })] } });
+    await act(async () => queued[0].options.complete({
+      data: [{ private_hook: "classified", secret_ctr: "9.99" }],
+      errors: [],
+      meta: { fields: ["private_hook", "secret_ctr"] },
+    }));
+
+    view.unmount();
+    seedNoData();
+    useAppStore.setState({ demoDisabled: true });
+    view = render(<ContentElementAnalyzer />);
+    fireEvent.change(upload(), { target: { files: [new File(["broken"], "broken-secret.csv", { type: "text/csv" })] } });
+    await act(async () => queued[1].options.error(new Error("parse")));
+
+    const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "9-1", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "9-1", state: "parse_error" })]);
+    expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-content|private_hook|classified|secret_ctr|9\.99/);
+    delete window.gtag;
   });
 
   it("mounts without throwing with a valid attribute×outcome CSV", () => {

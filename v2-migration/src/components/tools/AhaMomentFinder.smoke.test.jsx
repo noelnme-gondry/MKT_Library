@@ -16,8 +16,9 @@
 //   • invite_d7          → role "feature", action "invite", window 7
 // Deterministic — NO Math.random (harness §3). mapping is a pass-through mirror
 // of the real upload shape but is unused by this component's engine.
-import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
 
@@ -88,6 +89,36 @@ describe("AhaMomentFinder render smoke", () => {
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<AhaMomentFinder />)).not.toThrow();
     expect(document.body.querySelector("*")).toBeTruthy();
+  });
+
+  it("tracks only aggregate CSV import outcomes", async () => {
+    window.gtag = vi.fn();
+    const queued = [];
+    vi.spyOn(Papa, "parse").mockImplementation((file, options) => {
+      queued.push({ file, options });
+      return undefined;
+    });
+    let view = render(<AhaMomentFinder />);
+    const upload = () => view.container.querySelector('input[type="file"]');
+
+    fireEvent.change(upload(), { target: { files: [new File(["private_action,secret_value"], "confidential-users.csv", { type: "text/csv" })] } });
+    await act(async () => queued[0].options.complete({
+      data: [{ private_action: "classified", secret_value: "999" }],
+      errors: [],
+      meta: { fields: ["private_action", "secret_value"] },
+    }));
+
+    view.unmount();
+    seedNoData();
+    view = render(<AhaMomentFinder />);
+    fireEvent.change(upload(), { target: { files: [new File([""], "empty-secret.csv", { type: "text/csv" })] } });
+    await act(async () => queued[1].options.complete({ data: [], errors: [], meta: { fields: [] } }));
+
+    const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-20", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "5-20", state: "empty_file" })]);
+    expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-users|private_action|classified|secret_value|999/);
+    delete window.gtag;
   });
 
   it("mounts without throwing with a valid event CSV (target + actions)", () => {

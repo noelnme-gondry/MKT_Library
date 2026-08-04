@@ -4,8 +4,9 @@
 // throwing in the no-data state and with each method's demo data loaded
 // (suppression + pre/post on/off), across method tab switches. Golden covers the
 // pure math (incrPrePostMath / incrMath); this catches render-throw (§7).
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import Incrementality from "@/components/tools/Incrementality";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
@@ -30,6 +31,42 @@ describe("Incrementality render smoke", () => {
 
   it("mounts in no-data state", () => {
     expect(() => render(<Incrementality />)).not.toThrow();
+  });
+
+  it("tracks only aggregate CSV import outcomes", async () => {
+    useAppStore.setState({ demoDisabled: true });
+    window.gtag = vi.fn();
+    const queued = [];
+    vi.spyOn(Papa, "parse").mockImplementation((file, options) => {
+      queued.push({ file, options });
+      return undefined;
+    });
+    let view = render(<Incrementality />);
+    const upload = () => view.container.querySelector('input[type="file"]');
+
+    fireEvent.change(upload(), { target: { files: [new File(["private_group,secret_metric"], "confidential-holdout.csv", { type: "text/csv" })] } });
+    await act(async () => queued[0].options.complete({
+      data: [{ private_group: "classified", secret_metric: "777" }],
+      errors: [],
+      meta: { fields: ["private_group", "secret_metric"] },
+    }));
+
+    view.unmount();
+    seed(EMPTY);
+    useAppStore.setState({ demoDisabled: true });
+    view = render(<Incrementality />);
+    fireEvent.change(upload(), { target: { files: [new File(["broken"], "broken-secret.csv", { type: "text/csv" })] } });
+    await act(async () => queued[1].options.complete({
+      data: [{ private_group: "classified", secret_metric: "777" }],
+      errors: [{ type: "Quotes", code: "MissingQuotes", row: 0 }],
+      meta: { fields: ["private_group", "secret_metric"] },
+    }));
+
+    const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-23", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "5-23", state: "parse_error" })]);
+    expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-holdout|private_group|classified|secret_metric|777/);
+    delete window.gtag;
   });
 
   it("exposes keyboard-operable method tabs", () => {

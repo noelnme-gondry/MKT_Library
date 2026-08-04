@@ -12,7 +12,9 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
+import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
@@ -113,13 +115,30 @@ export default function Incrementality({ locale = "ko" } = {}) {
 
   const handleFile = (file) => {
     if (!file) return;
+    trackProductEvent("data_import_start", { tool_id: "5-23", source: "csv", locale });
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
-        if (!res.data || !res.data.length) return;
-        const mapping = {}; (res.meta.fields || []).forEach((h) => { mapping[h] = h; });
-        setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping, fileName: file.name });
+        const rows = Array.isArray(res.data) ? res.data : [];
+        const headers = res.meta?.fields || [];
+        if (!rows.length) {
+          trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: "empty_file", locale });
+          return;
+        }
+        const hasFatalParseError = (res.errors || []).some((error) =>
+          error?.type === "Quotes"
+          || error?.type === "Delimiter"
+          || error?.type === "Abort"
+          || error?.code === "TooManyFields");
+        if (hasFatalParseError) {
+          trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: "parse_error", locale });
+          return;
+        }
+        const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
+        setCsvData({ raw: rows, headers, mapping, fileName: file.name });
+        trackProductEvent("data_import_success", { tool_id: "5-23", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
+      error: () => trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: "parse_error", locale }),
     });
   };
   const loadDemo = () => {
@@ -470,9 +489,27 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           ),
         }
     : null;
+  const blockedState = !hasExplicitWindow
+    ? "missing_analysis_window"
+    : !isWindowOrderValid
+      ? "invalid_analysis_window"
+      : !card
+        ? "insufficient_data"
+        : null;
 
   return (
     <section className="block" id="s-incr-result">
+      {blockedState && (
+        <AnalysisBlockedTelemetry
+          toolId="5-23"
+          source={csvData?.fileName?.startsWith("demo_") ? "demo" : csvData?.importSource || "csv"}
+          state={blockedState}
+          signature={`suppression|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}|${csvData?.raw?.length || 0}`}
+          rowCount={csvData?.raw?.length || 0}
+          analysisType="incrementality"
+          locale={locale}
+        />
+      )}
       <h2 className="section-title"><span className="ix">§1</span>{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
 
       {series && (
@@ -505,6 +542,10 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         <ResultActionCard
           toolId="5-23"
           locale={locale}
+          analysisKey={`suppression|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}`}
+          analysisType="incrementality"
+          resultState="ready"
+          trackAnalysisStart
           tone={card.tone}
           title={tr("결론 — 광고가 만든 순증분", "Conclusion — net incremental from ads")}
           headline={card.headline}
@@ -843,9 +884,29 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           ),
         }
     : null;
+  const blockedState = !effCutoff
+    ? "missing_cutoff"
+    : hasInvalidSelectedRows
+      ? "invalid_rows"
+      : isDiDBlocked
+        ? "identification_failed"
+        : !r
+          ? "insufficient_periods"
+          : null;
 
   return (
     <>
+      {blockedState && (
+        <AnalysisBlockedTelemetry
+          toolId="5-23"
+          source={csvData?.fileName?.startsWith("demo_") ? "demo" : csvData?.importSource || "csv"}
+          state={blockedState}
+          signature={`prepost|${direction}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${useDiD ? 1 : 0}|${csvData?.raw?.length || 0}`}
+          rowCount={csvData?.raw?.length || 0}
+          analysisType="incrementality"
+          locale={locale}
+        />
+      )}
       <section className="block" style={{ marginBottom: "12px" }}>
         <h2 className="section-title"><span className="ix">§1</span>{tr("비교 설정", "Comparison settings")}</h2>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -899,6 +960,10 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
             <ResultActionCard
               toolId="5-23"
               locale={locale}
+              analysisKey={`prepost|${direction}|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${groupCols.indexOf(groupCol)}|${groupVals.indexOf(selectedControl)}|${groupVals.indexOf(selectedTreatment)}|${useDiD ? 1 : 0}`}
+              analysisType="incrementality"
+              resultState="ready"
+              trackAnalysisStart
               tone={card.tone}
               title={lost ? tr(confirmedLoss ? "결론 — 종료와 연관된 손실 후보" : "결론 — 종료 후 관측 변화", confirmedLoss ? "Conclusion — loss candidate after shutdown" : "Conclusion — observed post-shutdown change") : tr(confirmedGain ? "결론 — 신규 실행과 연관된 증가 후보" : "결론 — 신규 실행 후 관측 변화", confirmedGain ? "Conclusion — increase candidate after launch" : "Conclusion — observed post-launch change")}
               headline={card.headline}

@@ -11,15 +11,16 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
-import { useAppStore } from "@/store/useDataStore";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { REG_STATS } from "@/utils/regMath";
 import { CHART_THEME } from "@/utils/chartUtils";
 import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 const MUTED = "var(--text-muted)";
 const MIN_BINARY_SUPPORT = 5;
@@ -229,17 +230,33 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [features, setFeatures] = useState([]);
   const [analyzedSig, setAnalyzedSig] = useState(null);
   const [mappingOpen, setMappingOpen] = useState(true);
-  const analysisEventRef = useRef(null);
   const [seededKey, setSeededKey] = useState(null);
 
   const handleFile = (file) => {
     if (!file) return;
+    trackProductEvent("data_import_start", { tool_id: "9-1", source: "csv", locale });
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
-        if (!res.data || !res.data.length) return;
-        setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping: {}, fileName: file.name });
+        const rows = Array.isArray(res.data) ? res.data : [];
+        const headers = res.meta?.fields || [];
+        if (!rows.length) {
+          trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "empty_file", locale });
+          return;
+        }
+        const hasFatalParseError = (res.errors || []).some((error) =>
+          error?.type === "Quotes"
+          || error?.type === "Delimiter"
+          || error?.type === "Abort"
+          || error?.code === "TooManyFields");
+        if (hasFatalParseError) {
+          trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale });
+          return;
+        }
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name });
+        trackProductEvent("data_import_success", { tool_id: "9-1", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
+      error: () => trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale }),
     });
   };
   const handleLoadDemo = () => { setDemoPending(true); setCsvData(buildDemoCsv(C.demoGroup, locale)); };
@@ -278,9 +295,16 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
   const analyzed = analyzedSig != null && analyzedSig === analyzeSig(outcome, features, fileName);
   const runElementAnalysis = () => {
-    trackProductEvent("analysis_started", { tool_id: "9-1", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "content_elements" });
+    const nextSig = analyzeSig(outcome, features, fileName);
+    trackProductEventOnce("analysis_started", analysisResultEventKey("9-1", "content_elements", computeAnalyzeSig(csvData), nextSig, locale), {
+      tool_id: "9-1",
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "content_elements",
+      locale,
+    });
     requestAd(() => {
-      setAnalyzedSig(analyzeSig(outcome, features, fileName));
+      setAnalyzedSig(nextSig);
       setMappingOpen(false);
     });
   };
@@ -373,18 +397,16 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   }, [analyzed, hasData, csvData, outcome, features]);
 
   useEffect(() => {
-    if (!analyzed) return;
-    const signature = analyzedSig;
-    if (analysisEventRef.current === signature) return;
-    analysisEventRef.current = signature;
-    trackProductEvent("analysis_completed", {
+    if (!analyzed || !fit?.error) return;
+    trackProductEventOnce("analysis_completed", analysisResultEventKey("9-1", "content_elements", computeAnalyzeSig(csvData), analyzedSig, locale), {
       tool_id: "9-1",
-      source: isDemo ? "demo" : "csv",
+      source: isDemo ? "demo" : csvData?.importSource || "csv",
       row_count: csvData?.raw?.length || 0,
       analysis_type: "content_elements",
-      result_state: fit && !fit.error ? "ready" : "insufficient",
+      result_state: "insufficient",
+      locale,
     });
-  }, [analyzed, analyzedSig, fit, isDemo, csvData?.raw?.length]);
+  }, [analyzed, analyzedSig, csvData, fit?.error, isDemo, locale]);
 
   // ── Forest plot ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -563,6 +585,16 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
         {!canAnalyze ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>
+            <AnalysisBlockedTelemetry
+              toolId="9-1"
+              source={isDemo ? "demo" : csvData?.importSource || "csv"}
+              state="missing_required"
+              signature={`${fileName}|${outcome || ""}|${features.length}`}
+              rowCount={csvData?.raw?.length || 0}
+              missingCount={(outcome ? 0 : 1) + (features.length ? 0 : 1)}
+              analysisType="content_elements"
+              locale={locale}
+            />
             <strong>{T.needBoth}</strong>
           </div>
         ) : analyzed ? (
@@ -583,6 +615,15 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       {analyzed && fit && fit.error && (
         <section className="block">
           <div className="required-banner">
+            <AnalysisBlockedTelemetry
+              toolId="9-1"
+              source={isDemo ? "demo" : csvData?.importSource || "csv"}
+              state="estimation_failed"
+              signature={`${fileName}|${analyzedSig}|${fit.error}`}
+              rowCount={csvData?.raw?.length || 0}
+              analysisType="content_elements"
+              locale={locale}
+            />
             <strong>{T.cantEstimate}</strong>
             <p style={{ margin: ".35rem 0 0", fontSize: "12.5px" }}>
               {fit.error === "no-variance" && T.errNoVariance}
@@ -602,6 +643,9 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <ResultActionCard
               toolId="9-1"
               locale={locale}
+              analysisKey={analyzedSig}
+              analysisType="content_elements"
+              resultState="ready"
               tone={topSig ? "good" : "neutral"}
               title={T.heroQ}
               decisionReview={Boolean(decisionPrefill)}

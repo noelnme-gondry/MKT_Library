@@ -335,6 +335,7 @@ describe("MarketingResponse render smoke", () => {
 
   it("keeps only the latest CSV parse and ignores callbacks after unmount", async () => {
     seedWithData();
+    window.gtag = vi.fn();
     const queued = [];
     vi.spyOn(Papa, "parse").mockImplementation((file, options) => {
       queued.push({ file, options });
@@ -390,6 +391,17 @@ describe("MarketingResponse render smoke", () => {
       });
     });
     expect(useAppStore.getState().csvData.fileName).toBe("b.csv");
+
+    const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
+    expect(eventCalls.filter(([, name]) => name === "data_import_start")).toHaveLength(4);
+    expect(eventCalls.filter(([, name]) => name === "data_import_success")).toEqual([
+      ["event", "data_import_success", expect.objectContaining({ tool_id: "5-18", source: "csv", row_count: 1, column_count: 2 })],
+    ]);
+    expect(eventCalls.filter(([, name]) => name === "data_import_failed")).toEqual([
+      ["event", "data_import_failed", expect.objectContaining({ tool_id: "5-18", source: "csv", state: "parse_error" })],
+    ]);
+    expect(JSON.stringify(eventCalls)).not.toMatch(/a\.csv|b\.csv|broken\.csv|late\.csv|Regs|g_spend/);
+    delete window.gtag;
   });
 
   it("classifies only empty or structurally broken CSV parses as failures", () => {

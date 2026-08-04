@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
-import { useAppStore } from "@/store/useDataStore";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
 import { downloadChartAsPNG, CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
@@ -13,10 +13,11 @@ import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
+import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 import { resolveAhaCopy } from "@/utils/contentDomain";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
@@ -421,6 +422,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [isParsing, setIsParsing] = useState(false);
   const handleAhaFile = (file) => {
     if (!file) return;
+    trackProductEvent("data_import_start", { tool_id: C.guideToolId, source: "csv", locale });
     setIsParsing(true);
     // worker:true → 파싱을 워커 스레드에서 수행해 큰 파일(10~20만행) 업로드 시 메인 스레드
     // 멈춤 방지(§7 성능). complete는 메인에서 콜백.
@@ -430,10 +432,28 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       worker: true,
       complete: (res) => {
         setIsParsing(false);
-        if (!res.data || !res.data.length) return;
-        setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping: {}, fileName: file.name });
+        const rows = Array.isArray(res.data) ? res.data : [];
+        const headers = res.meta?.fields || [];
+        if (!rows.length) {
+          trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "empty_file", locale });
+          return;
+        }
+        const hasFatalParseError = (res.errors || []).some((error) =>
+          error?.type === "Quotes"
+          || error?.type === "Delimiter"
+          || error?.type === "Abort"
+          || error?.code === "TooManyFields");
+        if (hasFatalParseError) {
+          trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "parse_error", locale });
+          return;
+        }
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name });
+        trackProductEvent("data_import_success", { tool_id: C.guideToolId, source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
-      error: () => setIsParsing(false),
+      error: () => {
+        setIsParsing(false);
+        trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "parse_error", locale });
+      },
     });
   };
   // Demo: load sample event data + auto-confirm the analyze gate (see reseed below).
@@ -458,7 +478,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [activeSeg, setActiveSeg] = useState(null);
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
   const [analyzedSig, setAnalyzedSig] = useState(null);
-  const analysisEventRef = useRef(null);
 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
@@ -502,8 +521,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
   const analyzed = analyzedSig != null && analyzedSig === ahaAnalyzeSig(colMap, fileName);
   const runAhaAnalysis = () => {
-    trackProductEvent("analysis_started", { tool_id: C.guideToolId, source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "aha" });
-    requestAd(() => setAnalyzedSig(ahaAnalyzeSig(colMap, fileName)));
+    const nextSig = ahaAnalyzeSig(colMap, fileName);
+    const nextAnalysisKey = `${nextSig}|${activeSeg?.col || ""}|${activeSeg?.value || ""}`;
+    trackProductEventOnce("analysis_started", analysisResultEventKey(C.guideToolId, "aha", computeAnalyzeSig(csvData), nextAnalysisKey, locale), {
+      tool_id: C.guideToolId,
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "aha",
+      locale,
+    });
+    requestAd(() => setAnalyzedSig(nextSig));
   };
 
   // 세그먼트 차원(성별·플랫폼 등)별 값 목록 — 분석 후에만 raw 1패스 순회(매핑 편집 중엔
@@ -990,19 +1017,23 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   }, [hasData, analyzed, kSweep, drillResult, locale, tr]);
 
   const analysisResultState = cache.results?.length > 0 ? "ready" : "insufficient";
+  const targetCol = cache.targetCol;
+  const missing = [];
+  if (!targetCol) missing.push(C.missingTarget);
+  if (!actionCount) missing.push(C.missingFeature);
+  const showResults = missing.length === 0 && analyzed && cache.results.length > 0;
+  const ahaAnalysisKey = `${analyzedSig}|${activeSeg?.col || ""}|${activeSeg?.value || ""}`;
   useEffect(() => {
-    if (!analyzed) return;
-    const signature = `${analyzedSig}|${activeSeg?.col || ""}|${activeSeg?.value || ""}`;
-    if (analysisEventRef.current === signature) return;
-    analysisEventRef.current = signature;
-    trackProductEvent("analysis_completed", {
+    if (!analyzed || !analysisData || showResults) return;
+    trackProductEventOnce("analysis_completed", analysisResultEventKey(C.guideToolId, "aha", computeAnalyzeSig(csvData), ahaAnalysisKey, locale), {
       tool_id: C.guideToolId,
-      source: isDemo ? "demo" : "csv",
+      source: isDemo ? "demo" : csvData?.importSource || "csv",
       row_count: csvData?.raw?.length || 0,
       analysis_type: "aha",
-      result_state: analysisResultState,
+      result_state: "insufficient",
+      locale,
     });
-  }, [analyzed, analyzedSig, activeSeg, analysisResultState, C.guideToolId, isDemo, csvData?.raw?.length]);
+  }, [C.guideToolId, ahaAnalysisKey, analysisData, analyzed, csvData, isDemo, locale, showResults]);
 
   if (!hasData) {
     return (
@@ -1039,13 +1070,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       </div>
     );
   }
-
-  const targetCol = cache.targetCol;
-  const missing = [];
-  if (!targetCol) missing.push(C.missingTarget);
-  if (!actionCount) missing.push(C.missingFeature);
-
-  const showResults = missing.length === 0 && analyzed && cache.results.length > 0;
 
   return (
     <div className="tab-pane active" id="tab-aha">
@@ -1123,6 +1147,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         </details>
         {missing.length > 0 ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>
+            <AnalysisBlockedTelemetry
+              toolId={C.guideToolId}
+              source={isDemo ? "demo" : csvData?.importSource || "csv"}
+              state="missing_required"
+              signature={`${fileName}|${missing.join("|")}`}
+              rowCount={csvData?.raw?.length || 0}
+              missingCount={missing.length}
+              analysisType="aha"
+              locale={locale}
+            />
             <strong>⚠ {tr("필수 역할이 비어 있습니다", "Required roles are not mapped")}</strong>
             <p style={{ margin: ".25rem 0 0" }}>
               {missing.map((m) => (
@@ -1132,6 +1166,15 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         ) : analyzed && cache.invalidReason ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>
+            <AnalysisBlockedTelemetry
+              toolId={C.guideToolId}
+              source={isDemo ? "demo" : csvData?.importSource || "csv"}
+              state="invalid_target"
+              signature={`${fileName}|${analyzedSig}|${cache.invalidReason}`}
+              rowCount={csvData?.raw?.length || 0}
+              analysisType="aha"
+              locale={locale}
+            />
             <strong>⚠ {tr("타깃 열을 분석할 수 없습니다", "The target column cannot be analyzed")}</strong>
             <p>{cache.invalidReason === "constant_target"
               ? tr("타깃 열에 0과 1이 모두 있어야 합니다. 전원이 미도달 또는 전원 도달이면 행동 후보를 비교할 기준이 없습니다.", "The target column must contain both 0 and 1. If everyone has the same outcome, there is no basis for comparing behavior candidates.")
@@ -1162,6 +1205,9 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <ResultActionCard
               toolId={domain === "content" ? "9-2" : "5-20"}
               locale={locale}
+              analysisKey={ahaAnalysisKey}
+              analysisType="aha"
+              resultState={analysisResultState}
               decisionReview={Boolean(decisionPrefill)}
               decisionPrefill={decisionPrefill}
               tone={strongCandidateCount > 0 ? "good" : topAction ? "neutral" : "bad"}

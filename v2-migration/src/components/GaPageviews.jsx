@@ -31,7 +31,7 @@ export default function GaPageviews() {
     const toolId = resolvePathToId(pathname);
     if (!toolId || !/^(5|9)-/.test(toolId) || lastToolPath.current === pathname) return;
     lastToolPath.current = pathname;
-    trackProductEvent("tool_view", { tool_id: toolId, source: "route" });
+    trackProductEvent("tool_view", { tool_id: toolId, source: "route", locale: pathname.startsWith("/en/") ? "en" : "ko" });
   }, [pathname]);
   return null;
 }
