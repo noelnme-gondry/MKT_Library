@@ -30,6 +30,10 @@ export const CONNECTED_TOOLS = {
     title: { ko: "증분 분석", en: "Incrementality analysis" },
     question: { ko: "광고가 실제로 추가로 만든 성과는 얼마일까?", en: "How much outcome did marketing truly add?" },
   },
+  "5-24": {
+    title: { ko: "브랜드 캠페인 증분 분석", en: "Brand campaign incrementality" },
+    question: { ko: "브랜딩이 브랜드 검색·직접 유입을 실제로 더 만들었을까?", en: "Did branding actually add brand search or direct traffic?" },
+  },
   "5-18": {
     title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
     question: { ko: "지금 필요한 것은 추세·잠식·기여·예측 중 무엇일까?", en: "Do I need trend, cannibalization, contribution, or forecast next?" },
@@ -71,7 +75,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "04 · PROVE", en: "04 · PROVE" },
     title: { ko: "효과 검증", en: "Prove" },
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
-    tools: ["5-4", "5-23"],
+    tools: ["5-4", "5-23", "5-24"],
   },
   {
     id: "learn",
@@ -89,7 +93,8 @@ export const NEXT_TOOL_IDS = {
   "5-3": ["5-22", "5-18", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
   "5-4": ["5-23", "5-18", "5-2"],
-  "5-23": ["5-4", "5-18", "5-2"],
+  "5-23": ["5-4", "5-24", "5-2"],
+  "5-24": ["5-23", "5-4", "5-2"],
   "5-18": ["5-3", "5-23", "5-20"],
   "5-20": ["5-18", "5-4", "5-2"],
   "9-1": ["9-6", "5-4", "5-20"],

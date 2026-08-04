@@ -19,7 +19,7 @@ describe("connected tool workflow", () => {
     const publishedToolIds = ROUTES
       .filter((route) => /^(5|9)-/.test(route.id) && !route.legacy && isRoutePublished(route))
       .map((route) => route.id);
-    expect(new Set(journeyIds).size).toBe(10);
+    expect(new Set(journeyIds).size).toBe(11);
     expect([...journeyIds].sort()).toEqual([...toolIds].sort());
     expect([...toolIds].sort()).toEqual([...publishedToolIds].sort());
     expect([...toolIds].sort()).toEqual([...EN_READY_TOOL_IDS].sort());
@@ -27,7 +27,7 @@ describe("connected tool workflow", () => {
 
   it("uses the same visible tool numbers in the journey and sidebar", () => {
     expect(TOOL_JOURNEY.flatMap((stage) => stage.tools).map(displayItemNumberShort)).toEqual([
-      "2-1", "2-2", "2-3", "2-4", "5-1", "3-1", "3-2", "4-1", "4-2", "5-2",
+      "2-1", "2-2", "2-3", "2-4", "5-1", "3-1", "3-2", "3-3", "4-1", "4-2", "5-2",
     ]);
   });
 
@@ -87,7 +87,7 @@ describe("connected tool workflow", () => {
     const creative = getJourneyContext("9-6", "ko");
     expect(creative.previous.map((tool) => tool.id)).toEqual(["5-21"]);
     expect(creative.alternatives.map((tool) => tool.id)).toEqual(["5-22", "5-3"]);
-    expect(creative.next.map((tool) => tool.id)).toEqual(["5-4", "5-23"]);
+    expect(creative.next.map((tool) => tool.id)).toEqual(["5-4", "5-23", "5-24"]);
 
     const learning = getJourneyContext("5-18", "en");
     expect(learning.isCycleRestart).toBe(true);

@@ -204,6 +204,14 @@ export const IA = [
         seoDescriptionEn:
           "Measure true incremental lift with holdout tests, on/off comparisons, or DiD pre/post analysis — not just correlation. Free, CSV-based.",
       },
+      {
+        id: "5-24",
+        title: "브랜드 캠페인 증분 분석 (ITS·대조군 연결)",
+        titleEn: "Brand Campaign Incrementality (ITS · Control Routing)",
+        seoTitleEn: "Did Brand Marketing Create Lift? Free ITS Analysis",
+        seoDescriptionEn:
+          "Estimate whether a brand campaign added search, direct traffic, or signups with interrupted time series, then route to a stronger holdout design when available.",
+      },
     ],
   },
   {

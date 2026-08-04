@@ -17,6 +17,7 @@ export const ANALYSIS_CONTRACTS = {
   // MMM은 12~51주를 탐색용으로 열어 두되, 예산 의사결정에 쓸 만한 상태는 52주부터다.
   "5-18": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
   "5-23": { minRows: 2, minPeriods: 0, priority: 7 },
+  "5-24": { minRows: 28, minPeriods: 28, priority: 8 },
 };
 
 function missingFields(required = [], mapped = new Set()) {
