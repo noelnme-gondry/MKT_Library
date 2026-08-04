@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { BRAND_ITS_CONTRACT, parseCampaignFlag, prepareBrandItsSeries, runBrandInterruptedTimeSeries } from "./brandIncrementalityMath";
 
-const innovations = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8];
+function seededInnovations(length, seed = 20260805) {
+  let state = seed >>> 0;
+  return Array.from({ length }, () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return ((state / 4294967296) - 0.5) * 12;
+  });
+}
 
 function series({ pre = 24, post = 10, lift = 0, rho = 0, intervalDays = 1 } = {}) {
+  const innovations = seededInnovations(pre + post);
   let previousError = 0;
   return Array.from({ length: pre + post }, (_, index) => {
     const innovation = innovations[index % innovations.length];
@@ -15,6 +22,7 @@ function series({ pre = 24, post = 10, lift = 0, rho = 0, intervalDays = 1 } = {
 }
 
 function monthlySeries({ pre = 12, post = 3, lift = 0 } = {}) {
+  const innovations = seededInnovations(pre + post);
   return Array.from({ length: pre + post }, (_, index) => ({
     date: new Date(Date.UTC(2024, index, 1)).toISOString().slice(0, 10),
     outcome: 100 + index * 3 + innovations[index % innovations.length] + (index >= pre ? lift : 0),
@@ -23,7 +31,7 @@ function monthlySeries({ pre = 12, post = 3, lift = 0 } = {}) {
 }
 
 describe("brand campaign ITS", () => {
-  it("uses a finite HAC interval for a known lift rather than a zero-noise point interval", () => {
+  it("uses a finite AR(1) interval for a known lift rather than a zero-noise point interval", () => {
     const result = runBrandInterruptedTimeSeries({ rows: series({ lift: 35, rho: 0.35 }) });
     expect(result.ok).toBe(true);
     expect(result.campaignStartDate).toBe("2025-01-25");
@@ -31,16 +39,17 @@ describe("brand campaign ITS", () => {
     expect(result.counterfactualTotal).toBeGreaterThan(1500);
     expect(result.standardError).toBeGreaterThan(0);
     expect(result.ci95[1] - result.ci95[0]).toBeGreaterThan(0);
-    expect(result.confidenceMethod).toBe("newey_west_hac");
+    expect(result.confidenceMethod).toBe("ar1_prais_winsten");
   });
 
-  it("uses an AR(1)-adaptive HAC bandwidth and flags short pre-periods", () => {
+  it("uses AR(1) as the primary interval and retains corrected HAC only as a reference diagnostic", () => {
     const result = runBrandInterruptedTimeSeries({ rows: series({ lift: 20, rho: 0.8 }) });
     expect(result.ok).toBe(true);
-    expect(result.diagnostics.residualAr1).toBeGreaterThan(0.5);
-    expect(result.diagnostics.hacLag).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(24));
-    expect(result.diagnostics).toMatchObject({ hacBandwidthMethod: "andrews_ar1_bartlett", smallSampleHac: true, hacReliablePrePeriods: 50 });
+    expect(result.diagnostics.residualAr1).toBeGreaterThan(0);
+    expect(result.diagnostics.hacLag).toBeGreaterThanOrEqual(BRAND_ITS_CONTRACT.hacLag(24));
+    expect(result.diagnostics).toMatchObject({ hacBandwidthMethod: "andrews_ar1_bartlett", ar1EvidenceTier: "exploratory" });
     expect(result.diagnostics.hacFiniteSampleScale).toBeCloseTo(24 / 22, 12);
+    expect(result.diagnostics.hacReferenceStandardError).toBeGreaterThan(0);
     expect(result.standardError).toBeGreaterThan(0);
   });
 
@@ -50,9 +59,27 @@ describe("brand campaign ITS", () => {
     expect(BRAND_ITS_CONTRACT.hacLag(n, 0.5)).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(n, 0));
   });
 
-  it("does not shrink the HAC-to-iid SE ratio as controlled AR(1) persistence rises", () => {
+  it("uses the Andrews univariate Bartlett plug-in rather than the old (1-rho)^4 expression", () => {
+    const n = 150;
+    const rho = 0.85;
+    const alpha = (4 * rho ** 2) / (1 - rho ** 2) ** 2;
+    const expected = Math.min(n - 2, Math.max(Math.floor(4 * (n / 100) ** (2 / 9)), Math.floor(1.1447 * (alpha * n) ** (1 / 3))));
+    expect(BRAND_ITS_CONTRACT.hacLag(n, rho)).toBe(expected);
+  });
+
+  it("uses the stationary AR(1) covariance exactly for the future residual-sum variance", () => {
+    const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 150, post: 10, rho: 0.8 }) });
+    expect(result.ok).toBe(true);
+    const rho = result.diagnostics.residualAr1;
+    const periods = result.postPeriods;
+    let multiplier = periods;
+    for (let offset = 1; offset < periods; offset += 1) multiplier += 2 * (periods - offset) * rho ** offset;
+    expect(result.diagnostics.ar1FutureVariance).toBeCloseTo(result.diagnostics.ar1ResidualVariance * multiplier, 10);
+  });
+
+  it("widens the primary AR(1) interval as controlled persistence rises", () => {
     const ratios = [0, 0.45, 0.8].map((rho) => {
-      const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 150, post: 10, rho }) });
+      const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 300, post: 10, rho }) });
       expect(result.ok).toBe(true);
       return result.standardError / result.iidStandardError;
     });
