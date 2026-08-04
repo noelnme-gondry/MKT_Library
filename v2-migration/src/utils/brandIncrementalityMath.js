@@ -16,10 +16,10 @@ export const BRAND_ITS_CONTRACT = Object.freeze({
     month: Object.freeze({ pre: 12, post: 3 }),
   }),
   confidence: 0.95,
-  // HAC long-run variance is weakly identified in short histories. We keep the
-  // data contract usable, but surface this limit and never let it read as a
-  // causal confirmation in the UI.
-  hacReliablePrePeriods: 50,
+  // These tiers are display guardrails, not a claim that any one sample size
+  // makes observational ITS causal or automatically well-calibrated.
+  ar1ExploratoryPrePeriods: 50,
+  ar1ReferencePrePeriods: 150,
   // Newey–West / Andrews AR(1) plug-in bandwidth for the Bartlett kernel.
   // The legacy n-only rule is retained as a lower bound when AR(1) cannot be
   // estimated. Clamp protects the residual autocovariance calculation.
@@ -27,7 +27,9 @@ export const BRAND_ITS_CONTRACT = Object.freeze({
     const maxLag = Math.max(1, n - 2);
     const legacyLag = Math.max(1, Math.floor(4 * (n / 100) ** (2 / 9)));
     const rho = Math.min(0.98, Math.max(-0.98, Math.abs(Number(residualAr1) || 0)));
-    const alpha = rho > 0 ? (4 * rho ** 2) / (1 - rho) ** 4 : 0;
+    // Andrews (1991), Bartlett AR(1) plug-in. For one series the multivariate
+    // expression reduces to 4*rho^2 / (1-rho^2)^2.
+    const alpha = rho > 0 ? (4 * rho ** 2) / (1 - rho ** 2) ** 2 : 0;
     const andrewsLag = alpha > 0 ? Math.floor(1.1447 * (alpha * n) ** (1 / 3)) : 0;
     return Math.min(maxLag, Math.max(legacyLag, andrewsLag));
   },
@@ -114,6 +116,10 @@ function matrix2Multiply(left, right) {
   ];
 }
 
+function matrix2VectorMultiply(matrix, vector) {
+  return [matrix[0][0] * vector[0] + matrix[0][1] * vector[1], matrix[1][0] * vector[0] + matrix[1][1] * vector[1]];
+}
+
 function quadraticForm(matrix, vector) {
   return vector[0] * (matrix[0][0] * vector[0] + matrix[0][1] * vector[1])
     + vector[1] * (matrix[1][0] * vector[0] + matrix[1][1] * vector[1]);
@@ -130,6 +136,68 @@ function estimateResidualAr1(residuals) {
   if (!(denominator > 0)) return null;
   const rho = numerator / denominator;
   return Number.isFinite(rho) ? Math.max(-0.98, Math.min(0.98, rho)) : null;
+}
+
+function ar1EvidenceTier(prePeriods) {
+  if (prePeriods < BRAND_ITS_CONTRACT.ar1ExploratoryPrePeriods) return "exploratory";
+  if (prePeriods < BRAND_ITS_CONTRACT.ar1ReferencePrePeriods) return "assumption_sensitive";
+  return "reference";
+}
+
+// Prais–Winsten GLS with a plug-in AR(1) coefficient. It intentionally keeps
+// the counterfactual at the unconditional trend mean: conditioning it on the
+// final pre-period residual would turn a transient pre-period shock into an
+// assumed campaign-period baseline.
+function ar1PraisWinstenUncertainty(pre, postSeries) {
+  const n = pre.length;
+  const initialTrend = fitPreTrend(pre);
+  if (!initialTrend) return null;
+  const initialResiduals = pre.map((point) => point.value - (initialTrend.intercept + initialTrend.slope * point.time));
+  const residualAr1 = estimateResidualAr1(initialResiduals);
+  if (residualAr1 == null) return null;
+  const rho = residualAr1;
+  const firstScale = Math.sqrt(1 - rho ** 2);
+  const xtx = [[0, 0], [0, 0]];
+  const xty = [0, 0];
+  const transformed = pre.map((point, index) => {
+    const previous = pre[index - 1];
+    const scale = index === 0 ? firstScale : 1;
+    const y = index === 0 ? point.value * scale : point.value - rho * previous.value;
+    const x = index === 0 ? [scale, point.time * scale] : [1 - rho, point.time - rho * previous.time];
+    xtx[0][0] += x[0] * x[0]; xtx[0][1] += x[0] * x[1]; xtx[1][0] += x[1] * x[0]; xtx[1][1] += x[1] * x[1];
+    xty[0] += x[0] * y; xty[1] += x[1] * y;
+    return { x, y };
+  });
+  const bread = matrix2Inverse(xtx);
+  if (!bread) return null;
+  const [intercept, slope] = matrix2VectorMultiply(bread, xty);
+  const transformedRss = transformed.reduce((sum, row) => sum + (row.y - intercept * row.x[0] - slope * row.x[1]) ** 2, 0);
+  const df = n - 3;
+  const innovationVariance = transformedRss / df;
+  if (!(df > 0) || !Number.isFinite(innovationVariance) || innovationVariance <= 0) return null;
+  const coefficientCovariance = bread.map((row) => row.map((value) => value * innovationVariance));
+  const postCount = postSeries.length;
+  const postX = [postCount, postSeries.reduce((sum, point) => sum + point.time, 0)];
+  const coefficientVariance = quadraticForm(coefficientCovariance, postX);
+  const residualVariance = innovationVariance / (1 - rho ** 2);
+  let residualSumMultiplier = postCount;
+  for (let offset = 1; offset < postCount; offset += 1) residualSumMultiplier += 2 * (postCount - offset) * rho ** offset;
+  const futureVariance = residualVariance * residualSumMultiplier;
+  const variance = coefficientVariance + futureVariance;
+  if (!Number.isFinite(variance) || variance <= 0) return null;
+  return {
+    intercept,
+    slope,
+    residualAr1,
+    df,
+    innovationVariance,
+    residualVariance,
+    coefficientCovariance,
+    coefficientVariance,
+    futureVariance,
+    variance,
+    evidenceTier: ar1EvidenceTier(n),
+  };
 }
 
 // Newey–West sandwich covariance for the pre-period trend coefficients. The
@@ -185,7 +253,6 @@ function neweyWestUncertainty(pre, trend, postSeries) {
     variance,
     iidVariance,
     finiteSampleScale,
-    isSmallSample: n < BRAND_ITS_CONTRACT.hacReliablePrePeriods,
   };
 }
 
@@ -214,9 +281,12 @@ export function runBrandInterruptedTimeSeries(input = {}) {
       diagnostics: { ...cadence, invalidRows: prepared.invalidRows },
     };
   }
-  const trend = fitPreTrend(pre);
-  if (!trend) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "pretrend_not_estimable", prePeriods: pre.length, postPeriods: post.length };
-  if (trend.isDegenerate) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "zero_pretrend_variance", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
+  const initialTrend = fitPreTrend(pre);
+  if (!initialTrend) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "pretrend_not_estimable", prePeriods: pre.length, postPeriods: post.length };
+  if (initialTrend.isDegenerate) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "zero_pretrend_variance", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
+  const ar1Uncertainty = ar1PraisWinstenUncertainty(pre, post);
+  if (!ar1Uncertainty) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "ar1_variance_not_estimable", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
+  const trend = { ...initialTrend, intercept: ar1Uncertainty.intercept, slope: ar1Uncertainty.slope };
   const series = points.map((point) => {
     const time = dayIndex(point.date, points[0].date);
     const counterfactual = trend.intercept + trend.slope * time;
@@ -226,10 +296,9 @@ export function runBrandInterruptedTimeSeries(input = {}) {
   const actualTotal = postSeries.reduce((sum, point) => sum + point.value, 0);
   const counterfactualTotal = postSeries.reduce((sum, point) => sum + point.counterfactual, 0);
   const incrementalTotal = actualTotal - counterfactualTotal;
-  const uncertainty = neweyWestUncertainty(pre, trend, postSeries);
-  if (!uncertainty) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "hac_variance_not_estimable", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
-  const standardError = Math.sqrt(uncertainty.variance);
-  const df = pre.length - 2;
+  const hacReference = neweyWestUncertainty(pre, initialTrend, postSeries);
+  const standardError = Math.sqrt(ar1Uncertainty.variance);
+  const df = ar1Uncertainty.df;
   const tScore = incrementalTotal / standardError;
   const pValue = studentTp(Math.abs(tScore), df);
   const margin = studentTcrit(BRAND_ITS_CONTRACT.confidence, df) * standardError;
@@ -246,20 +315,25 @@ export function runBrandInterruptedTimeSeries(input = {}) {
     incrementalRate: counterfactualTotal !== 0 ? incrementalTotal / Math.abs(counterfactualTotal) : null,
     ci95: [incrementalTotal - margin, incrementalTotal + margin],
     standardError,
-    iidStandardError: Math.sqrt(Math.max(0, uncertainty.iidVariance)),
+    iidStandardError: Math.sqrt(Math.max(0, initialTrend.residualVariance * (postSeries.length + (postSeries.length ** 2) / pre.length + ((postSeries.reduce((sum, point) => sum + point.time, 0) - postSeries.length * initialTrend.meanX) ** 2) / initialTrend.ssX))),
     tScore,
     pValue,
-    confidenceMethod: "newey_west_hac",
+    confidenceMethod: "ar1_prais_winsten",
     trend: { ...trend, slopePerDay: trend.slope },
     diagnostics: {
       ...cadence,
       hasDateGaps: cadence.hasPeriodGaps,
-      hacLag: uncertainty.lag,
+      ar1EvidenceTier: ar1Uncertainty.evidenceTier,
+      ar1InnovationVariance: ar1Uncertainty.innovationVariance,
+      ar1ResidualVariance: ar1Uncertainty.residualVariance,
+      ar1CoefficientVariance: ar1Uncertainty.coefficientVariance,
+      ar1FutureVariance: ar1Uncertainty.futureVariance,
+      ar1ModelDf: ar1Uncertainty.df,
+      residualAr1: ar1Uncertainty.residualAr1,
+      hacLag: hacReference?.lag ?? null,
       hacBandwidthMethod: "andrews_ar1_bartlett",
-      residualAr1: uncertainty.residualAr1,
-      hacFiniteSampleScale: uncertainty.finiteSampleScale,
-      smallSampleHac: uncertainty.isSmallSample,
-      hacReliablePrePeriods: BRAND_ITS_CONTRACT.hacReliablePrePeriods,
+      hacReferenceStandardError: hacReference ? Math.sqrt(hacReference.variance) : null,
+      hacFiniteSampleScale: hacReference?.finiteSampleScale ?? null,
       invalidRows: prepared.invalidRows,
     },
   };

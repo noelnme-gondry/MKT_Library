@@ -11,7 +11,8 @@ import { cleanup } from "@testing-library/react";
 // Stub instance methods components call, plus the static `register`.
 vi.mock("chart.js/auto", () => ({
   default: class Chart {
-    constructor() {}
+    static constructorCount = 0;
+    constructor() { Chart.constructorCount += 1; }
     update() {}
     destroy() {}
     resize() {}

@@ -51,33 +51,46 @@ export default function ModelDiagnosticsPanel({ scope, fit, X, labels = [], loca
     if (diagnostics.hc3.changedInference.length) return tx(locale, "일반 표준오차와 HC3 강건 표준오차의 결론이 일부 다릅니다.", "Classical and HC3-robust standard errors change some inference.");
     return tx(locale, "현재 진단에서 뚜렷한 경고 신호는 없습니다. 그래도 관측 연관을 인과로 읽지는 마세요.", "No strong warning signal appears in these diagnostics. Do not read observational association as causation.");
   }, [diagnostics, locale, vif]);
-  if (!available || !diagnostics || !vif) return null;
-
-  const baseOpts = chartCommonOpts();
-  const scatterOpts = {
-    ...baseOpts,
-    plugins: { ...baseOpts.plugins, legend: { ...baseOpts.plugins.legend, display: false } },
-    scales: {
-      x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "적합값", "Fitted value"), color: CHART_THEME.muted } },
-      y: { ...baseOpts.scales.y, title: { display: true, text: tx(locale, "잔차", "Residual"), color: CHART_THEME.muted }, beginAtZero: false },
-    },
-  };
-  const qqOpts = {
-    ...baseOpts,
-    plugins: { ...baseOpts.plugins, legend: { ...baseOpts.plugins.legend, display: false } },
-    scales: {
-      x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "정규분포 분위수", "Normal quantile"), color: CHART_THEME.muted } },
-      y: { ...baseOpts.scales.y, title: { display: true, text: tx(locale, "표준화 잔차", "Standardized residual"), color: CHART_THEME.muted }, beginAtZero: false },
-    },
-  };
-  const cookOpts = {
-    ...baseOpts,
-    plugins: { ...baseOpts.plugins, legend: { ...baseOpts.plugins.legend, display: false } },
-    scales: {
-      x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "관측치", "Observation"), color: CHART_THEME.muted } },
-      y: { ...baseOpts.scales.y, title: { display: true, text: "Cook's D", color: CHART_THEME.muted }, beginAtZero: true },
-    },
-  };
+  const chartConfigs = useMemo(() => {
+    if (!diagnostics) return null;
+    const baseOpts = chartCommonOpts();
+    const noLegend = { ...baseOpts.plugins, legend: { ...baseOpts.plugins.legend, display: false } };
+    const scatterOpts = {
+      ...baseOpts,
+      plugins: noLegend,
+      scales: {
+        x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "적합값", "Fitted value"), color: CHART_THEME.muted } },
+        y: { ...baseOpts.scales.y, title: { display: true, text: tx(locale, "잔차", "Residual"), color: CHART_THEME.muted }, beginAtZero: false },
+      },
+    };
+    const qqOpts = {
+      ...baseOpts,
+      plugins: noLegend,
+      scales: {
+        x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "정규분포 분위수", "Normal quantile"), color: CHART_THEME.muted } },
+        y: { ...baseOpts.scales.y, title: { display: true, text: tx(locale, "외부 studentized 잔차", "Externally studentized residual"), color: CHART_THEME.muted }, beginAtZero: false },
+      },
+    };
+    const scaleLocationOpts = {
+      ...scatterOpts,
+      scales: { ...scatterOpts.scales, y: { ...scatterOpts.scales.y, title: { display: true, text: "√|studentized residual|", color: CHART_THEME.muted }, beginAtZero: true } },
+    };
+    const cookOpts = {
+      ...baseOpts,
+      plugins: noLegend,
+      scales: {
+        x: { ...baseOpts.scales.x, title: { display: true, text: tx(locale, "관측치", "Observation"), color: CHART_THEME.muted } },
+        y: { ...baseOpts.scales.y, title: { display: true, text: "Cook's D", color: CHART_THEME.muted }, beginAtZero: true },
+      },
+    };
+    return {
+      residual: { data: { datasets: [{ data: diagnostics.residVsFitted.x.map((x, index) => ({ x, y: diagnostics.residVsFitted.y[index] })), pointRadius: 3, backgroundColor: CHART_THEME.primary }] }, options: scatterOpts },
+      qq: { data: { datasets: [{ data: diagnostics.qq.theoretical.map((x, index) => ({ x, y: diagnostics.qq.sample[index] })), pointRadius: 3, backgroundColor: CHART_THEME.secondary }] }, options: qqOpts },
+      scaleLocation: { data: { datasets: [{ data: diagnostics.scaleLocation.x.map((x, index) => ({ x, y: diagnostics.scaleLocation.y[index] })), pointRadius: 3, backgroundColor: CHART_THEME.tertiary }] }, options: scaleLocationOpts },
+      cooks: { data: { labels: diagnostics.cooksD.map((_, index) => String(index + 1)), datasets: [{ data: diagnostics.cooksD, backgroundColor: diagnostics.cooksD.map((value) => Number.isFinite(value) && value > DIAG_THRESHOLDS.cooksDMultiplier / X.length ? CHART_THEME.accent : CHART_THEME.primary) }] }, options: cookOpts },
+    };
+  }, [diagnostics, locale, X.length]);
+  if (!available || !diagnostics || !vif || !chartConfigs) return null;
   const metricRows = [
     {
       metric: "Breusch–Godfrey",
@@ -125,10 +138,10 @@ export default function ModelDiagnosticsPanel({ scope, fit, X, labels = [], loca
       </div>
       <p style={{ margin: "7px 0 14px", fontSize: "13px", lineHeight: 1.55 }}>{summary}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "잔차 vs 적합값", "Residuals vs fitted")}</strong><DiagnosticChart data={{ datasets: [{ data: diagnostics.residVsFitted.x.map((x, i) => ({ x, y: diagnostics.residVsFitted.y[i] })), pointRadius: 3, backgroundColor: CHART_THEME.primary }] }} options={scatterOpts} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Q-Q 플롯 (시각 점검)", "Q-Q plot (visual check)")}</strong><DiagnosticChart data={{ datasets: [{ data: diagnostics.qq.theoretical.map((x, i) => ({ x, y: diagnostics.qq.sample[i] })), pointRadius: 3, backgroundColor: CHART_THEME.secondary }] }} options={qqOpts} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Scale–Location", "Scale–Location")}</strong><DiagnosticChart data={{ datasets: [{ data: diagnostics.scaleLocation.x.map((x, i) => ({ x, y: diagnostics.scaleLocation.y[i] })), pointRadius: 3, backgroundColor: CHART_THEME.tertiary }] }} options={{ ...scatterOpts, scales: { ...scatterOpts.scales, y: { ...scatterOpts.scales.y, title: { display: true, text: "√|standardized residual|", color: CHART_THEME.muted }, beginAtZero: true } } }} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "영향점 (Cook's D)", "Influence (Cook's D)")}</strong><DiagnosticChart type="bar" data={{ labels: diagnostics.cooksD.map((_, index) => String(index + 1)), datasets: [{ data: diagnostics.cooksD, backgroundColor: diagnostics.cooksD.map((value) => Number.isFinite(value) && value > DIAG_THRESHOLDS.cooksDMultiplier / X.length ? CHART_THEME.accent : CHART_THEME.primary) }] }} options={cookOpts} /></div>
+        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "잔차 vs 적합값", "Residuals vs fitted")}</strong><DiagnosticChart {...chartConfigs.residual} /></div>
+        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Q-Q 플롯 (시각 점검)", "Q-Q plot (visual check)")}</strong><DiagnosticChart {...chartConfigs.qq} /></div>
+        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Scale–Location", "Scale–Location")}</strong><DiagnosticChart {...chartConfigs.scaleLocation} /></div>
+        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "영향점 (Cook's D)", "Influence (Cook's D)")}</strong><DiagnosticChart type="bar" {...chartConfigs.cooks} /></div>
       </div>
       <div style={{ marginTop: "14px" }}>
         <DataTable
