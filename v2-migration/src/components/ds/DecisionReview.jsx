@@ -4,10 +4,10 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
-import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
+import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { useAppStore } from "@/store/useDataStore";
-import { downloadCsv } from "@/utils/download";
+import { downloadCalendar, downloadCsv } from "@/utils/download";
 
 function nextWeekDate() {
   const date = new Date();
@@ -72,6 +72,15 @@ const COPY = {
     persistence: "이 기기에 결정 요약 저장",
     persistenceHint: "직접 입력하거나 결과에서 자동으로 채운 채널·캠페인·소재·행동·분석 요소명과 요약 수치는 기록에 남을 수 있습니다. 공용 기기에서는 켜지 마세요. 끄면 저장본은 제거되고 현재 세션 기록은 유지됩니다.",
     persistenceError: "브라우저 저장소를 사용할 수 없어 저장을 켜지 못했습니다. CSV로 내보내 보관해 주세요.",
+    saved: (date) => `결정 저장됨 · 다음 검토 ${date}`,
+    persistencePrompt: "다음 주에도 이 결정을 다시 보시겠어요?",
+    persistencePromptHint: "지금은 새로고침하거나 페이지를 닫으면 기록이 사라집니다.",
+    keepOnDevice: "이 기기에 저장",
+    exportNow: "CSV로 내보내기",
+    keepSession: "이번만 세션 유지",
+    addCalendar: "검토일을 캘린더에 추가",
+    calendarShort: "캘린더",
+    promptPrivacy: "채널·캠페인·소재명과 요약 수치가 기록에 남을 수 있습니다. 공용 기기에서는 저장을 켜지 마세요. 캘린더 파일에는 결정 내용이 포함되지 않습니다.",
     sourceConclusion: "현재 분석 결론",
     sourcePeriod: "분석 기간",
     action: "무엇을 바꿀까요?",
@@ -134,6 +143,15 @@ const COPY = {
     persistence: "Keep decision summaries on this device",
     persistenceHint: "Channel, campaign, creative, action, or analysis-element names and summary figures you enter—or accept from a result prefill—may remain in the record. Do not enable this on a shared device. Turning it off removes the stored copy while keeping this session's records.",
     persistenceError: "Browser storage is unavailable, so retention could not be enabled. Export a CSV to keep these records.",
+    saved: (date) => `Decision saved · next review ${date}`,
+    persistencePrompt: "Do you want to return to this decision next week?",
+    persistencePromptHint: "For now, this record disappears when you reload or close the page.",
+    keepOnDevice: "Save on this device",
+    exportNow: "Export CSV",
+    keepSession: "Keep for this session",
+    addCalendar: "Add review date to calendar",
+    calendarShort: "Calendar",
+    promptPrivacy: "Channel, campaign, creative names, and summary figures may remain in the record. Do not enable storage on a shared device. The calendar file does not contain decision details.",
     sourceConclusion: "Current analysis conclusion",
     sourcePeriod: "Analysis period",
     action: "What will change?",
@@ -195,6 +213,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [savedDecision, setSavedDecision] = useState(null);
+  const [isPersistencePromptOpen, setIsPersistencePromptOpen] = useState(false);
   const detailsRef = useRef(null);
   const actionInputRef = useRef(null);
   const importRef = useRef(null);
@@ -203,6 +223,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const allRecords = useAppStore((state) => state.decisionRecords);
   const records = allRecords.filter((record) => record.toolId === toolId);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
+  const isPersistencePromptSeen = useAppStore((state) => state.decisionPersistencePromptSeen);
+  const markPersistencePromptSeen = useAppStore((state) => state.markDecisionPersistencePromptSeen);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
   const addDecisionRecord = useAppStore((state) => state.addDecisionRecord);
   const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
@@ -259,9 +281,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       setMessage(t.error);
       return;
     }
-    addDecisionRecord({
+    const savedRecord = {
       toolId,
       locale,
+      createdAt: new Date().toISOString(),
       conclusion: draft.conclusion.trim(),
       action: draft.action.trim(),
       hypothesis: draft.hypothesis.trim(),
@@ -281,7 +304,13 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       sourcePeriod: draft.sourcePeriod.trim(),
       actual: "",
       learning: "",
-    });
+    };
+    addDecisionRecord(savedRecord);
+    setSavedDecision(savedRecord);
+    if (!isPersistenceEnabled && !isPersistencePromptSeen) {
+      markPersistencePromptSeen();
+      setIsPersistencePromptOpen(true);
+    }
     setDraft(createDraft(decisionPrefill));
     setIsDraftDirty(false);
     appliedPrefillKey.current = `${toolId}:${decisionPrefillKey}`;
@@ -296,6 +325,29 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     if (!records.length) return;
     downloadCsv(serializeDecisionReviewCsv(records), `decision_review_${toolId || "tool"}`);
     trackProductEvent("decision_record_exported", { tool_id: toolId, source: "decision_review", placement: "result_action_card", locale });
+  };
+
+  const enablePersistenceFromPrompt = () => {
+    const didUpdate = setDecisionPersistenceEnabled(true);
+    if (didUpdate === false) {
+      setMessage(t.persistenceError);
+      return;
+    }
+    setIsPersistencePromptOpen(false);
+    trackProductEvent("decision_persistence_changed", { state: "enabled", source: "post_save_prompt", locale });
+  };
+
+  const exportCalendar = (record = savedDecision || records[0]) => {
+    const calendar = serializeDecisionReviewIcs(record, locale);
+    if (!calendar) return;
+    downloadCalendar(calendar, `decision_review_${toolId || "tool"}`);
+    trackProductEvent("decision_review_reminder_exported", {
+      tool_id: toolId,
+      source: "post_save_prompt",
+      placement: "result_action_card",
+      download_type: "ics",
+      locale,
+    });
   };
 
   const importRecords = async (event) => {
@@ -419,6 +471,23 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn primary decision-review__add" onClick={addRecord}>{t.add}</button>
         </div>
 
+        {isPersistencePromptOpen && savedDecision && (
+          <section className="decision-review__save-prompt" aria-labelledby={`${detailsId}-save-title`}>
+            <div>
+              <small>{t.saved(formatReviewDate(savedDecision.reviewDate, locale))}</small>
+              <strong id={`${detailsId}-save-title`}>{t.persistencePrompt}</strong>
+              <p>{t.persistencePromptHint}</p>
+            </div>
+            <div className="decision-review__save-prompt-actions">
+              <button type="button" className="btn primary small" onClick={enablePersistenceFromPrompt}>{t.keepOnDevice}</button>
+              <button type="button" className="btn small" onClick={() => { exportRecords(); setIsPersistencePromptOpen(false); }}>{t.exportNow}</button>
+              <button type="button" className="btn small" onClick={() => exportCalendar()}>{t.addCalendar}</button>
+              <button type="button" className="btn ghost small" onClick={() => setIsPersistencePromptOpen(false)}>{t.keepSession}</button>
+            </div>
+            <p className="decision-review__save-prompt-privacy">{t.promptPrivacy}</p>
+          </section>
+        )}
+
         <div className="decision-review__actions">
           <button type="button" className="btn small" onClick={exportRecords} disabled={!records.length}>{t.export}</button>
           <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
@@ -479,6 +548,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                     <span className="sr-only">{t.learning} — {record.action}</span>
                     <input value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} placeholder={t.learningPlaceholder} />
                   </label>
+                  <button type="button" aria-label={`${record.action} — ${t.addCalendar}`} className="btn text" disabled={!record.reviewDate} onClick={() => exportCalendar(record)}>{t.calendarShort}</button>
                   <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text decision-review__remove" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>
                 </div>
               </article>

@@ -11,9 +11,11 @@ describe("privacy-safe product analytics", () => {
       tool_id: "5-3",
       row_count: 42,
       state: "parse_error",
+      days_since_decision: "4-9d",
+      created_at: "2026-08-01T00:00:00.000Z",
       file_name: "private-client.csv",
       raw_value: "sensitive campaign",
-    })).toEqual({ tool_id: "5-3", row_count: 42, state: "parse_error" });
+    })).toEqual({ tool_id: "5-3", row_count: 42, state: "parse_error", days_since_decision: "4-9d" });
   });
 
   it("normalizes marketing-response subroutes into one funnel tool id", () => {

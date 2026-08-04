@@ -14,7 +14,12 @@ describe("DecisionReview", () => {
 
   beforeEach(() => {
     window.localStorage.removeItem("mkt_view_config");
-    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+    useAppStore.setState({
+      decisionRecords: [],
+      decisionPersistenceEnabled: false,
+      decisionPersistencePromptSeen: false,
+      decisionSessionRecordIds: new Set(),
+    });
   });
 
   it("records a concrete action and lets the user enter its outcome", () => {
@@ -34,10 +39,23 @@ describe("DecisionReview", () => {
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
 
     expect(screen.getByText("Meta 예산 20% 감액")).toBeTruthy();
+    expect(screen.getByText("다음 주에도 이 결정을 다시 보시겠어요?")).toBeTruthy();
+    expect(screen.getByText(/새로고침하거나 페이지를 닫으면 기록이 사라집니다/)).toBeTruthy();
     expect(screen.getByText("CPA")).toBeTruthy();
     expect(useAppStore.getState().decisionRecords[0].targetDirection).toBe("lower");
     fireEvent.change(screen.getByPlaceholderText("예: CPA 4,980원"), { target: { value: "CPA 4,980원" } });
     expect(screen.getByText("검토 완료")).toBeTruthy();
+  });
+
+  it("asks for storage consent after save and persists only after acceptance", () => {
+    const { container } = render(<DecisionReview toolId="5-3" decisionPrefill={{ action: "예산 검토", reviewDate: "2026-08-11" }} />);
+    openDecisionReview(container);
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    expect(useAppStore.getState().decisionPersistenceEnabled).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "이 기기에 저장" }));
+    expect(useAppStore.getState().decisionPersistenceEnabled).toBe(true);
+    expect(window.localStorage.getItem("mkt_view_config")).toContain("예산 검토");
   });
 
   it("renders a fully English decision loop", () => {

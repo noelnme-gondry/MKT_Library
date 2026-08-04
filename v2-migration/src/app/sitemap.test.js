@@ -3,7 +3,7 @@ import sitemap from "./sitemap";
 import { SITE_URL } from "@/lib/routeMap";
 
 describe("sitemap", () => {
-  it("emits unique canonical URLs with valid modification dates", () => {
+  it("emits unique canonical URLs and only truthful modification dates", () => {
     const entries = sitemap();
     const urls = entries.map((entry) => entry.url);
     const now = Date.now() + 24 * 60 * 60 * 1000;
@@ -12,10 +12,15 @@ describe("sitemap", () => {
     expect(new Set(urls).size).toBe(urls.length);
     for (const entry of entries) {
       expect(entry.url.startsWith(SITE_URL)).toBe(true);
-      expect(entry.lastModified).toBeInstanceOf(Date);
-      expect(Number.isNaN(entry.lastModified.getTime())).toBe(false);
-      expect(entry.lastModified.getTime()).toBeLessThan(now);
+      if (entry.lastModified) {
+        expect(entry.lastModified).toBeInstanceOf(Date);
+        expect(Number.isNaN(entry.lastModified.getTime())).toBe(false);
+        expect(entry.lastModified.getTime()).toBeLessThan(now);
+      }
     }
+
+    expect(entries.find((entry) => entry.url === `${SITE_URL}/privacy`)).not.toHaveProperty("lastModified");
+    expect(entries.find((entry) => entry.url.includes("/blog/")).lastModified).toBeInstanceOf(Date);
   });
 
   it("contains both localized tool routes", () => {

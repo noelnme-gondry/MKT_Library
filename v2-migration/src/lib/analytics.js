@@ -6,7 +6,7 @@ const ALLOWED_PARAMS = new Set([
   "conflict_count", "missing_required_count", "tab_name", "download_type", "analysis_type",
   "result_state", "locale", "placement", "content_slug", "content_type",
   "source_tool_id", "data_continuity", "rank",
-  "section_id", "state",
+  "section_id", "state", "days_since_decision",
 ]);
 
 // 한 화면에서 Strict Mode 재실행·도구 재마운트가 일어나도 같은 퍼널 사건을

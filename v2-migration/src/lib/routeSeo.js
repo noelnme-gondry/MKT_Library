@@ -5,7 +5,7 @@ export const ROUTE_SEO = {
       description: "MMP 연동, 이벤트 택소노미, Google UAC·Meta 운영, 소재 제작, 코호트와 리텐션 분석을 단계별 체크리스트로 정리한 무료 실무 가이드입니다.",
     },
     en: {
-      title: "Performance Marketing Playbooks | Tracking, Campaigns & Measurement",
+      title: "Performance Marketing Playbooks",
       description: "Step-by-step playbooks for MMP tracking, event taxonomy, Google and Meta campaign operations, creative, cohorts, and retention analysis.",
     },
   },
@@ -15,7 +15,7 @@ export const ROUTE_SEO = {
       description: "캠페인 CSV 또는 Google Sheets를 가져오면 데이터 구조를 브라우저에서 진단하고 대시보드, PVM, 예산 배분, MMM 등 가능한 분석을 추천합니다.",
     },
     en: {
-      title: "Free Marketing CSV Analyzer | Find the Right Analysis",
+      title: "Free Marketing CSV Analyzer",
       description: "Import a campaign CSV or Google Sheet to profile its structure in your browser and find the dashboard, PVM, budget, MMM, or experiment analysis it supports.",
     },
   },
@@ -55,7 +55,7 @@ export const ROUTE_SEO = {
       description: "추세·광고 잠식·MMM 채널 기여·회귀 예측을 한 CSV로 분석해 다음 예산과 검증할 가설을 정합니다.",
     },
     en: {
-      title: "Marketing Response | MMM, Cannibalization & Forecasting",
+      title: "Marketing Response Analysis",
       description: "Analyze trend, ad cannibalization, MMM channel contribution, and regression forecasts from one dataset to plan the next budget test.",
     },
   },
@@ -65,7 +65,7 @@ export const ROUTE_SEO = {
   },
   "5-18-cannibal": {
     ko: { title: "광고 카니발라이제이션 진단 | 유료·오가닉 잠식", description: "유료 성과가 늘 때 오가닉·브랜드 성과가 줄었는지 네 가지 신호로 점검하고 홀드아웃이 필요한 채널을 좁힙니다." },
-    en: { title: "Ad Cannibalization Diagnosis | Paid vs Organic", description: "Check four signals that paid outcomes may be replacing organic or branded demand, then prioritize channels for holdout validation." },
+    en: { title: "Ad Cannibalization Diagnosis", description: "Check four signals that paid outcomes may be replacing organic or branded demand, then prioritize channels for holdout validation." },
   },
   "5-18-mmm": {
     ko: { title: "MMM 기여도 분석", description: "채널·기본 수요·이벤트의 성과 기여를 마케팅 믹스 모델로 분해합니다." },
@@ -81,7 +81,7 @@ export const ROUTE_SEO = {
       description: "채널별 한계 CPA·ROAS와 지출 여력을 바탕으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션하는 무료 마케팅 예산 배분 도구입니다.",
     },
     en: {
-      title: "Budget Allocation Simulator | Scale Up or Pull Back",
+      title: "Marketing Budget Allocation",
       description: "Use marginal CPA, ROAS, and channel headroom to simulate where the next marketing budget should increase or decrease.",
     },
   },

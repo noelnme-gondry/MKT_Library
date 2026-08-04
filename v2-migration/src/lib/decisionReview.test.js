@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DECISION_REVIEW_SAFE_FIELDS,
   assessDecisionOutcome,
+  decisionReviewAgeBucket,
   decisionMetricDirection,
   decisionNumericComparison,
   getDecisionReviewBucket,
@@ -9,6 +10,7 @@ import {
   normalizeDecisionReviewRows,
   sanitizeDecisionReviewRecords,
   serializeDecisionReviewCsv,
+  serializeDecisionReviewIcs,
   summarizeDecisionOutcomes,
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
@@ -87,6 +89,29 @@ describe("decision review CSV contract", () => {
     expect(getDecisionReviewBucket({ reviewDate: "" }, "2026-08-01")).toBe("unscheduled");
     expect(getDecisionReviewBucket({ reviewDate: "2026-08-02", actual: "CPA 4,980" }, "2026-08-01")).toBe("reviewed");
     expect(toLocalDecisionDate(new Date(2026, 7, 1, 0, 30))).toBe("2026-08-01");
+  });
+
+  it("buckets return timing without exposing raw timestamps to analytics", () => {
+    const createdAt = "2026-08-01T00:00:00.000Z";
+    expect(decisionReviewAgeBucket({ createdAt }, { now: new Date("2026-08-01T03:00:00.000Z"), isSameSession: true })).toBe("same_session");
+    expect(decisionReviewAgeBucket({ createdAt }, { now: new Date("2026-08-03T00:00:00.000Z") })).toBe("1-3d");
+    expect(decisionReviewAgeBucket({ createdAt }, { now: new Date("2026-08-07T00:00:00.000Z") })).toBe("4-9d");
+    expect(decisionReviewAgeBucket({ createdAt }, { now: new Date("2026-08-12T00:00:00.000Z") })).toBe("10d+");
+    expect(decisionReviewAgeBucket({})).toBe("unknown");
+  });
+
+  it("exports a privacy-safe all-day calendar reminder", () => {
+    const ics = serializeDecisionReviewIcs({
+      id: "decision_7",
+      reviewDate: "2026-08-11",
+      action: "Sensitive campaign name",
+      hypothesis: "Private operating note",
+    });
+    expect(ics).toContain("DTSTART;VALUE=DATE:20260811\r\n");
+    expect(ics).toContain("DTEND;VALUE=DATE:20260812\r\n");
+    expect(ics).toContain("URL:https://growthoptplaybook.com/weekly-review");
+    expect(ics).not.toContain("Sensitive campaign name");
+    expect(ics).not.toContain("Private operating note");
   });
 
   it("restores the exported record id for idempotent imports", () => {

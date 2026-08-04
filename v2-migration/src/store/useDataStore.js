@@ -415,7 +415,10 @@ export const useAppStore = create(persist((set, get) => ({
   // 경우에만 persistPartialize가 allowlist 요약을 localStorage에 포함한다. 원본 CSV,
   // 매핑, 필터, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다.
   decisionPersistenceEnabled: false,
+  decisionPersistencePromptSeen: false,
+  decisionSessionRecordIds: new Set(),
   decisionRecords: [],
+  markDecisionPersistencePromptSeen: () => set({ decisionPersistencePromptSeen: true }),
   setDecisionPersistenceEnabled: (enabled) => {
     const shouldEnable = enabled === true;
     if (shouldEnable && !canUseDecisionStorage()) return false;
@@ -428,7 +431,10 @@ export const useAppStore = create(persist((set, get) => ({
     if (!normalized) return {};
     const isUniqueId = normalized.id && !state.decisionRecords.some((record) => record.id === normalized.id);
     const id = isUniqueId ? normalized.id : nextDecisionRecordId(state.decisionRecords);
+    const decisionSessionRecordIds = new Set(state.decisionSessionRecordIds);
+    decisionSessionRecordIds.add(id);
     return {
+      decisionSessionRecordIds,
       decisionRecords: [{
         ...normalized,
         id,
@@ -463,8 +469,9 @@ export const useAppStore = create(persist((set, get) => ({
   })),
   removeDecisionRecord: (id) => set((state) => ({
     decisionRecords: state.decisionRecords.filter((record) => record.id !== id),
+    decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds].filter((recordId) => recordId !== id)),
   })),
-  clearDecisionRecords: () => set({ decisionRecords: [] }),
+  clearDecisionRecords: () => set({ decisionRecords: [], decisionSessionRecordIds: new Set() }),
 
   // 구조화된 분석 연결 상태. 모두 세션 메모리 전용이며 persistPartialize에 포함하지
   // 않는다. 원본 행 대신 집계 결과·설정만 보관한다.
