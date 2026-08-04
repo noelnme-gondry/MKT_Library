@@ -62,10 +62,10 @@ describe("MmmColumnMapper interaction", () => {
     const role = screen.getByRole("combobox", { name: "very_long_channel_spend_header role" });
     const chip = role.closest(".mmm-mapper-chip");
     expect(chip).toBeTruthy();
-    expect(chip.style.flexWrap).toBe("wrap");
-    expect(chip.style.width).toBe("fit-content");
-    expect(chip.style.maxWidth).toBe("100%");
-    expect(chip.style.minWidth).toBe("0px");
+    expect(chip.classList.contains("mmm-mapper-chip--mapped")).toBe(true);
+    expect(chip.querySelector(".mmm-mapper-chip__controls")).toBeTruthy();
+    expect(chip.querySelector(".mmm-mapper-chip__role")).toBeTruthy();
+    expect(Array.from(role.options).find((option) => option.value === "channel")?.text).toBe("Channel spend");
 
     const clear = screen.getByRole("button", { name: "Clear very_long_channel_spend_header mapping" });
     expect(clear.classList.contains("mmm-mapper-chip__clear")).toBe(true);

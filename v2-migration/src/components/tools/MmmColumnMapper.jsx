@@ -1372,22 +1372,6 @@ const ZONES = [
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
-const MAPPER_CHIP_LAYOUT_STYLE = {
-  display: "inline-flex",
-  alignItems: "center",
-  flexWrap: "wrap",
-  width: "fit-content",
-  maxWidth: "100%",
-  minWidth: "0px",
-  boxSizing: "border-box",
-};
-
-const MAPPER_CHIP_LABEL_STYLE = {
-  maxWidth: "100%",
-  minWidth: "0px",
-  overflowWrap: "anywhere",
-};
-
 const MAPPER_CLEAR_BUTTON_STYLE = {
   display: "inline-grid",
   placeItems: "center",
@@ -1403,6 +1387,21 @@ const MAPPER_CLEAR_BUTTON_STYLE = {
   color: "var(--text-muted)",
   touchAction: "manipulation",
 };
+
+// 역할 영역의 설명은 Zone 제목에서 충분히 제공한다. select에는 조작에 필요한
+// 짧은 역할명만 보여, 채널의 보조 control이 같은 폭을 두고 경쟁하지 않게 한다.
+function roleSelectLabel(role, locale) {
+  const labels = {
+    week: ["주차", "Week"], date: ["날짜", "Date"], reg: ["가입 Regs", "Regs"],
+    paid: ["Paid 가입 Regs", "Paid regs"], react: ["재활성 React", "Reactivation"],
+    traffic: ["총유입 Traffic", "Total traffic"], purchasers: ["구매자", "Purchasers"],
+    revenue: ["매출", "Revenue"], channel: ["채널 spend", "Channel spend"],
+    external: ["업계 수요 지수", "Industry demand"], dummy: ["더미/이벤트", "Dummy/event"],
+    step: ["구조변화 step", "Structural step"], platform: ["세그먼트/플랫폼", "Segment/platform"],
+    geo: ["GEO", "GEO"], reach: ["Reach", "Reach"], frequency: ["Frequency", "Frequency"],
+  };
+  return labels[role]?.[locale === "en" ? 1 : 0] || role;
+}
 
 export default function MmmColumnMapper({ headers, rows, colMap, onChange, locale = "ko", allowNoSpend = false }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
@@ -1465,46 +1464,49 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
 
   const Chip = ({ col, withKind, withPlat }) => {
     const def = cm[col] || {};
+    const isUnassigned = (def.role || "ignore") === "ignore";
     return (
       <span
-        className="reg-chip mmm-mapper-chip"
+        className={`reg-chip mmm-mapper-chip ${isUnassigned ? "mmm-mapper-chip--unassigned" : "mmm-mapper-chip--mapped"}`}
         draggable
         onDragStart={(event) => beginDrag(event, col)}
         onDragEnd={() => { setDragCol(null); setDragOverRole(null); }}
         onClick={(event) => { event.stopPropagation(); setSelectedCol(col); }}
-        style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "4px 9px", margin: "2px", borderRadius: "6px", background: selectedCol === col ? "color-mix(in srgb, var(--primary) 14%, var(--bg-2))" : "var(--bg-2)", border: selectedCol === col ? "1px solid var(--primary)" : "1px solid var(--border)", boxShadow: selectedCol === col ? "0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)" : "none", fontSize: "12px", cursor: "grab", userSelect: "none", WebkitUserSelect: "none" }}
+        style={{ background: selectedCol === col ? "color-mix(in srgb, var(--primary) 14%, var(--bg-2))" : "var(--bg-2)", border: selectedCol === col ? "1px solid var(--primary)" : "1px solid var(--border)", boxShadow: selectedCol === col ? "0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)" : "none" }}
       >
-        <strong style={MAPPER_CHIP_LABEL_STYLE}>{col}</strong>
-        <select
-          value={def.role || "ignore"}
-          aria-label={tr(`${col} 역할`, `${col} role`)}
-          title={tr("드래그 대신 역할을 직접 선택", "Choose a role instead of dragging")}
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) => setRole(col, event.target.value)}
-          style={{ maxWidth: "128px", minWidth: "0px", fontSize: "10.5px" }}
-        >
-          <option value="ignore">{tr("미지정", "Unassigned")}</option>
-          {ZONES.map(([role, koLabel, enLabel]) => <option key={role} value={role}>{tr(koLabel.replace(/^\S+\s*/, ""), enLabel.replace(/^\S+\s*/, ""))}</option>)}
-        </select>
-        {withKind && (
-          <select value={def.kind || "perf"} aria-label={tr(`${col} 채널 유형`, `${col} channel type`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "kind", e.target.value)} style={{ maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}>
-            <option value="perf">perf spend</option>
-            <option value="brand">brand spend</option>
+        <strong className="mmm-mapper-chip__label" title={col}>{col}</strong>
+        <span className="mmm-mapper-chip__controls">
+          <select
+            className="mmm-mapper-chip__role"
+            value={def.role || "ignore"}
+            aria-label={tr(`${col} 역할`, `${col} role`)}
+            title={tr("드래그 대신 역할을 직접 선택", "Choose a role instead of dragging")}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => setRole(col, event.target.value)}
+          >
+            <option value="ignore">{tr("미지정", "Unassigned")}</option>
+            {ZONES.map(([role]) => <option key={role} value={role}>{roleSelectLabel(role, locale)}</option>)}
           </select>
-        )}
-        {withPlat && (
-          <select value={def.plat || "common"} aria-label={tr(`${col} 플랫폼`, `${col} platform`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "plat", e.target.value)} style={{ maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}>
-            <option value="common">{tr("공통", "Common")}</option>
-            <option value="android">Android</option>
-            <option value="ios">iOS</option>
-          </select>
-        )}
-        {def.role === "step" && (
-          <select value={def.stepMode || "state"} aria-label={tr(`${col} 구조변화 방식`, `${col} structural-step mode`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "stepMode", e.target.value)} style={{ maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}>
-            <option value="state">{tr("상태열 (입력값 유지)", "State series (keep input)")}</option>
-            <option value="boundary">{tr("경계 pulse→이후 1", "Boundary pulse → post=1")}</option>
-          </select>
-        )}
+          {withKind && (
+            <select className="mmm-mapper-chip__kind" value={def.kind || "perf"} aria-label={tr(`${col} 채널 유형`, `${col} channel type`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "kind", e.target.value)}>
+              <option value="perf">perf spend</option>
+              <option value="brand">brand spend</option>
+            </select>
+          )}
+          {withPlat && (
+            <select className="mmm-mapper-chip__platform" value={def.plat || "common"} aria-label={tr(`${col} 플랫폼`, `${col} platform`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "plat", e.target.value)}>
+              <option value="common">{tr("공통", "Common")}</option>
+              <option value="android">Android</option>
+              <option value="ios">iOS</option>
+            </select>
+          )}
+          {def.role === "step" && (
+            <select className="mmm-mapper-chip__step" value={def.stepMode || "state"} aria-label={tr(`${col} 구조변화 방식`, `${col} structural-step mode`)} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "stepMode", e.target.value)}>
+              <option value="state">{tr("상태열 (입력값 유지)", "State series (keep input)")}</option>
+              <option value="boundary">{tr("경계 pulse→이후 1", "Boundary pulse → post=1")}</option>
+            </select>
+          )}
+        </span>
         <button type="button" className="mmm-mapper-chip__clear" onClick={(event) => { event.stopPropagation(); placeColumn(col, "ignore"); }} aria-label={tr(`${col} 매핑 해제`, `Clear ${col} mapping`)} style={MAPPER_CLEAR_BUTTON_STYLE}>✕</button>
       </span>
     );
@@ -1518,9 +1520,10 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       onDragLeave={() => setDragOverRole((current) => current === role ? null : current)}
       onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), role); }}
       onClick={() => placeColumn(selectedCol, role)}
-      style={{ border: dragOverRole === role ? "2px solid var(--primary)" : "1px dashed var(--border)", borderRadius: "8px", padding: "10px", minHeight: "58px", background: dragOverRole === role ? "color-mix(in srgb, var(--primary) 8%, var(--bg-1))" : selectedCol ? "color-mix(in srgb, var(--primary) 3%, var(--bg-1))" : "transparent", cursor: selectedCol ? "pointer" : "default", transition: "border-color 120ms ease, background 120ms ease" }}
+      className="mmm-mapper-zone"
+      style={{ border: dragOverRole === role ? "2px solid var(--primary)" : "1px dashed var(--border)", background: dragOverRole === role ? "color-mix(in srgb, var(--primary) 8%, var(--bg-1))" : selectedCol ? "color-mix(in srgb, var(--primary) 3%, var(--bg-1))" : "transparent", cursor: selectedCol ? "pointer" : "default" }}
     >
-      <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{label}</div>
+      <div className="mmm-mapper-zone__label">{label}</div>
       <div>
         {inRole(role).length
           ? inRole(role).map((c) => <Chip key={c} col={c} withKind={withKind} withPlat={withPlat} />)
@@ -1581,7 +1584,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
           {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+      <div className="mmm-mapper-zones" style={{ display: "grid", gap: "10px", alignItems: "start" }}>
         {visibleZones.map(([role, koLabel, enLabel, withKind, withPlat]) => (
           <Zone key={role} role={role} label={tr(koLabel, enLabel)} withKind={withKind} withPlat={withPlat} />
         ))}
