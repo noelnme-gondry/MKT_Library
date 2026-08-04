@@ -23,6 +23,7 @@ const EMPTY = Object.freeze({
   qq: { theoretical: [], sample: [] },
   residVsFitted: { x: [], y: [] },
   scaleLocation: { x: [], y: [] },
+  studentizedResiduals: [],
   normalityVerdict: "unknown",
   hc3: { valid: false, changedInference: [] },
 });
@@ -99,10 +100,19 @@ export function computeOlsDiagnostics(fit, X) {
     const result = MMR_STATS.breuschGodfrey(fit.resid, X, 1);
     if (result && Number.isFinite(result.pValue)) bg = { ...result, lag: 1, verdict: result.pValue < DIAG_THRESHOLDS.bgAlpha ? "warn" : "ok" };
   }
-  const sd = usableVariance ? Math.sqrt(fit.sigma2) : null;
-  const standardResid = sd ? fit.resid.map((value) => value / sd) : [];
-  const sample = standardResid.slice().sort((a, b) => a - b);
-  const theoretical = sample.map((_, index) => inverseStandardNormal((index + 1 - 0.375) / (n + 0.25)));
+  // Externally studentized residuals use the variance estimated after deleting
+  // each observation. They account for leverage, unlike residual / sigma.
+  const rss = Number.isFinite(fit.RSS) ? fit.RSS : fit.sigma2 * fit.df;
+  const studentizedResiduals = Number.isFinite(rss) && fit.df > 1
+    ? fit.resid.map((value, index) => {
+      const h = leverages[index];
+      const remaining = 1 - h;
+      const deletedVariance = remaining > Number.EPSILON ? (rss - value ** 2 / remaining) / (fit.df - 1) : null;
+      return Number.isFinite(deletedVariance) && deletedVariance > 0 ? value / Math.sqrt(deletedVariance * remaining) : null;
+    })
+    : Array(n).fill(null);
+  const sample = studentizedResiduals.filter(Number.isFinite).sort((a, b) => a - b);
+  const theoretical = sample.map((_, index) => inverseStandardNormal((index + 1 - 0.375) / (sample.length + 0.25)));
   return {
     dw,
     dwVerdict,
@@ -114,7 +124,8 @@ export function computeOlsDiagnostics(fit, X) {
     // are not required for OLS coefficient estimation.
     qq: { theoretical, sample },
     residVsFitted: { x: fit.yhat.slice(), y: fit.resid.slice() },
-    scaleLocation: { x: fit.yhat.slice(), y: standardResid.map((value) => Math.sqrt(Math.abs(value))) },
+    scaleLocation: { x: fit.yhat.slice(), y: studentizedResiduals.map((value) => Number.isFinite(value) ? Math.sqrt(Math.abs(value)) : null) },
+    studentizedResiduals,
     normalityVerdict: "unknown",
     hc3: { valid: fit.hc3Valid === true, changedInference: inferenceChanges(fit) },
   };
