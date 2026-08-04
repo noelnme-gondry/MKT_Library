@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { parseGoogleSheetUrl, sheetValuesToTable, resolveSheetRange } from "@/utils/googleSheets";
 import { forgetSheetSource, listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
@@ -98,7 +98,7 @@ export async function fetchSheetTable(apiKey, url) {
 // initialOpen/onCancel: CsvUploader.jsx가 데이터 연동 후 상태에서 "시트 변경" 버튼으로
 // 이 폼을 다시 열 때 사용(그때는 취소 시 pill 버튼이 아니라 부모의 3버튼 뷰로 돌아가야
 // 하므로 onCancel로 위임 — 기본 사용처(빈 드롭존)는 그냥 내부 open 상태로 닫힘).
-export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initialOpen = false, locale = "ko", toolId = "" }) {
+export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImportStart, initialOpen = false, locale = "ko", toolId = "" }) {
   const T = COPY[locale] || COPY.ko;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
   const [open, setOpen] = useState(initialOpen);
@@ -106,6 +106,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
   const [loading, setLoading] = useState(false);
   const [recentSources, setRecentSources] = useState([]);
   const inputRef = useRef(null);
+  const inputId = useId();
 
   const refreshRecentSources = () => listSheetSources(toolId).then(setRecentSources).catch(() => {});
   useEffect(() => { refreshRecentSources(); }, [toolId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -114,26 +115,29 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
   if (!apiKey) return null;
 
   const loadSheet = async (sheetUrl) => {
+    onImportStart?.();
     const parsed = parseGoogleSheetUrl(sheetUrl);
     if (!parsed) {
-      onError?.(T.errInvalidUrl);
+      onError?.(T.errInvalidUrl, "sheet_invalid_url");
       return;
     }
-    onError?.("");
+    onError?.("", null);
     setLoading(true);
     try {
       const result = await fetchSheetTable(apiKey, sheetUrl);
       if (result.error) {
-        onError?.(sheetErrorMessage(result.error, locale));
+        onError?.(sheetErrorMessage(result.error, locale), `sheet_${result.error}`);
       } else {
         await onLoaded?.(result);
-        await rememberSheetSource({ toolId, url: sheetUrl, label: result.fileName });
+        // 가져오기는 이미 성공했다. 최근 연결 목록 저장 실패를 데이터 가져오기 실패로
+        // 오인하지 않도록 브라우저 기록은 best-effort로 분리한다.
+        await rememberSheetSource({ toolId, url: sheetUrl, label: result.fileName }).catch(() => {});
         refreshRecentSources();
         setOpen(false);
         setUrl("");
       }
     } catch {
-      onError?.(sheetErrorMessage("fetch", locale));
+      onError?.(sheetErrorMessage("fetch", locale), "sheet_fetch");
     } finally {
       setLoading(false);
     }
@@ -183,10 +187,11 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
       onSubmit={handleSubmit}
       style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}
     >
-      <label style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlLabel}</label>
+      <label htmlFor={inputId} style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlLabel}</label>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
         <input
           ref={inputRef}
+          id={inputId}
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -211,7 +216,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
           disabled={loading}
           onClick={() => {
             setUrl("");
-            onError?.("");
+            onError?.("", null);
             if (onCancel) onCancel();
             else setOpen(false);
           }}

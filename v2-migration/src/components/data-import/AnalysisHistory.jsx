@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearAnalysisRuns, deleteAnalysisRun, listAnalysisRuns, saveAnalysisRun } from "@/lib/data-import/localHistory";
+import { productEventKey, trackProductEventOnce } from "@/lib/analytics";
 
 function matchesLocale(run, locale) {
   if (run.locale) return run.locale === locale;
@@ -13,6 +14,7 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
   const [runs, setRuns] = useState([]);
   const summarySignature = useMemo(() => JSON.stringify(summary), [summary]);
   const lastSavedSignature = useRef("");
+  const historyRef = useRef(null);
   const load = useCallback(() => listAnalysisRuns(toolId)
     .then((items) => items.filter((run) => matchesLocale(run, locale)))
     .then(setRuns)
@@ -29,8 +31,27 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
       signature: localizedSignature,
     }).then(load).catch(() => {});
   }, [toolId, locale, summarySignature, load]);
-  if (runs.length === 0) return null;
   const previous = runs[1];
+  useEffect(() => {
+    if (!previous?.id || !historyRef.current || typeof IntersectionObserver !== "function") return undefined;
+    const target = historyRef.current;
+    const eventKey = productEventKey(toolId, previous.id, locale);
+    const observer = new IntersectionObserver((entries) => {
+      const isVisible = entries.some((entry) => entry.target === target && entry.isIntersecting && entry.intersectionRatio > 0);
+      if (!isVisible) return;
+      const sent = trackProductEventOnce("analysis_history_viewed", eventKey, {
+        tool_id: toolId,
+        source: "local_history",
+        result_state: "previous_available",
+        data_continuity: "summary_only",
+        locale,
+      });
+      if (sent) observer.disconnect();
+    }, { threshold: [0, 0.1] });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [locale, previous?.id, toolId]);
+  if (runs.length === 0) return null;
   const remove = (id) => deleteAnalysisRun(id).then(load).catch(() => {});
   const clear = () => clearAnalysisRuns(toolId).then(() => setRuns([])).catch(() => {});
   const dateLocale = locale === "en" ? "en-US" : "ko-KR";
@@ -54,7 +75,7 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
         count: `${runs.length}개 저장`,
       };
   return (
-    <section className="analysis-history">
+    <section ref={historyRef} className="analysis-history">
       <header>
         <div>
           <span>DECISION LOG</span>

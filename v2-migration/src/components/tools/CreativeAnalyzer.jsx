@@ -794,7 +794,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                   reason={tr("소재 성과·속성 컬럼을 먼저 맞춘 뒤 업로드하세요", "Align creative performance and attribute columns before uploading")}
                   source="creative_empty_state"
                 />
-                <CsvUploader toolId={C.uploaderToolId} locale={locale} />
+                <CsvUploader toolId={C.uploaderToolId} analyticsToolId="9-6" locale={locale} />
               </div>
             </div>
           </div>
@@ -956,6 +956,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <ResultActionCard
         toolId="9-6"
+        analysisType="creative"
+        resultState={metrics.length ? "ready" : "insufficient"}
         locale={locale}
         decisionReview={hasDecisionTarget}
         decisionPrefill={hasDecisionTarget ? {
@@ -1061,7 +1063,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             reason={tr("현재 매핑을 원본 팀과 공유할 템플릿", "Template to share the expected mapping with your source team")}
             source="creative_mapping_panel"
           />
-          <CsvUploader toolId={C.uploaderToolId} locale={locale} />
+          <CsvUploader toolId={C.uploaderToolId} analyticsToolId="9-6" locale={locale} />
         </div>
       </details>
 

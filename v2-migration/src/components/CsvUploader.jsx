@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
-import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
+import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -17,8 +17,9 @@ import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClie
 import { mapRowsToStandard } from "@/utils/mappedRows";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
+import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
@@ -211,8 +212,14 @@ function buildImportInsights(headers, raw, toolId) {
   return { ...contract, selections: contract.mapping, signature: detectDatasetSignature(headers, raw) };
 }
 
-export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = null }) {
+function xlsxFailureState(error) {
+  const code = String(error?.code || "");
+  return /^xlsx_[a-z_]+$/.test(code) ? code : "xlsx_parse_failed";
+}
+
+export default function CsvUploader({ toolId, analyticsToolId = toolId, locale = "ko", afterFileSummary = null }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
+  const eventToolId = analyticsToolId || toolId;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
@@ -249,6 +256,12 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
   const [pendingWideImport, setPendingWideImport] = useState(null);
   const preparationRequestRef = useRef(0);
   const importTaskRef = useRef(0);
+  const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
+    tool_id: eventToolId,
+    source,
+    state,
+    locale,
+  });
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -279,6 +292,7 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
   const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null, fileModifiedAt = null }) => {
     if (!headers.length || !raw.length) {
       setErrorMsg(T.emptyCsv);
+      trackImportFailure(source, "empty_file");
       return;
     }
     const requestId = ++preparationRequestRef.current;
@@ -311,8 +325,8 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
     });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
-    trackProductEvent("data_import_success", { tool_id: toolId, source, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
-    trackProductEvent("data_profile_completed", { tool_id: toolId, source, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
+    trackProductEvent("data_import_success", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length, locale });
+    trackProductEvent("data_profile_completed", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length, locale });
     setPreviewOpen(true);
   };
 
@@ -323,13 +337,14 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
     const taskId = ++importTaskRef.current;
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
-    trackProductEvent("data_import_start", { tool_id: toolId, source });
+    trackProductEvent("data_import_start", { tool_id: eventToolId, source, locale });
     if (isWorkbook) {
       try {
         const sheets = await parseXlsxFile(file);
         if (taskId !== importTaskRef.current) return;
         if (!sheets.length) {
           setErrorMsg(T.emptyCsv);
+          trackImportFailure(source, "empty_file");
         } else if (sheets.length === 1) {
           await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name, fileModifiedAt: file.lastModified });
         } else {
@@ -337,11 +352,13 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
           setSelectedWorkbookSheet(sheets[0].name);
         }
       } catch (error) {
+        if (taskId !== importTaskRef.current) return;
         setErrorMsg(error?.code
           ? xlsxImportErrorMessage(error.code, locale)
           : `${T.parseError}${error.message}`);
+        trackImportFailure(source, xlsxFailureState(error));
       } finally {
-        setIsImporting(false);
+        if (taskId === importTaskRef.current) setIsImporting(false);
       }
       return;
     }
@@ -349,25 +366,32 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
       worker: true,
       skipEmptyLines: true,
       complete: async (results) => {
+        if (taskId !== importTaskRef.current) return;
         try {
           if (!results.data || results.data.length === 0) {
             setErrorMsg(T.emptyCsv);
+            trackImportFailure(source, "empty_file");
             return;
           }
           const { headers, raw } = tableToRecords(results.data);
           if (!headers.length || !raw.length) {
             setErrorMsg(T.emptyCsv);
+            trackImportFailure(source, "empty_file");
             return;
           }
           if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source, fileModifiedAt: file.lastModified });
         } catch (error) {
+          if (taskId !== importTaskRef.current) return;
           setErrorMsg(`${T.parseError}${error.message}`);
+          trackImportFailure(source, "parse_error");
         } finally {
-          setIsImporting(false);
+          if (taskId === importTaskRef.current) setIsImporting(false);
         }
       },
       error: (err) => {
+        if (taskId !== importTaskRef.current) return;
         setErrorMsg(T.parseError + err.message);
+        trackImportFailure(source, "parse_error");
         setIsImporting(false);
       },
     });
@@ -383,6 +407,7 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
       setPendingWorkbook(null);
     } catch (error) {
       setErrorMsg(`${T.parseError}${error.message}`);
+      trackImportFailure(pendingWorkbook.source, "parse_error");
     } finally {
       setIsImporting(false);
     }
@@ -404,6 +429,7 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
       });
     } catch (error) {
       setErrorMsg(`${T.parseError}${error.message}`);
+      trackImportFailure(pendingWideImport.source, "transform_error");
     } finally {
       setIsImporting(false);
     }
@@ -433,6 +459,11 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
     setSheetChangeOpen(false);
   };
 
+  const handleSheetError = (message, state = null) => {
+    setErrorMsg(message);
+    if (message && state) trackImportFailure("google_sheets", state);
+  };
+
   // "🔄 최신 데이터 불러오기" — 저장해둔 sheetUrl로 재조회, URL 재입력 없음. 매핑은
   // 새 헤더 기준으로 다시 자동매핑(시트에 컬럼이 추가/삭제됐을 수 있어 기존 매핑을
   // 그대로 끌고 가면 어긋날 수 있음 — 새 CSV 재업로드와 동일 취급이 제일 안전).
@@ -442,15 +473,18 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
     if (!apiKey) return;
     setErrorMsg("");
     setRefreshingSheet(true);
+    trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale });
     try {
       const result = await fetchSheetTable(apiKey, csvData.sheetUrl);
       if (result.error) {
         setErrorMsg(sheetErrorMessage(result.error, locale));
+        trackImportFailure("google_sheets", `sheet_${result.error}`);
       } else {
         await handleSheetLoaded(result);
       }
     } catch {
       setErrorMsg(sheetErrorMessage("fetch", locale));
+      trackImportFailure("google_sheets", "sheet_fetch");
     } finally {
       setRefreshingSheet(false);
     }
@@ -645,7 +679,13 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
         </button>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
-        <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} toolId={sheetSourceScope} />
+        <GoogleSheetConnect
+          onLoaded={handleSheetLoaded}
+          onImportStart={() => trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale })}
+          onError={handleSheetError}
+          locale={locale}
+          toolId={sheetSourceScope}
+        />
           </>
         )}
         {errorMsg && <div role="alert" className="csv-upload-error">{errorMsg}</div>}
@@ -674,6 +714,16 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
   const needsReview = mappingAssessments.filter((assessment) => assessment.state === "review" || assessment.state === "must_confirm").length;
   const mappingBlocked = mappingConflicts.length > 0 || hasRequiredMustConfirm;
   const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked);
+  const analysisSource = isDemo ? "demo" : isSheetSourced ? "google_sheets" : csvData?.importSource || "csv";
+  const blockedState = missing.length > 0
+    ? "missing_required"
+    : mappingConflicts.length > 0
+      ? "mapping_conflict"
+      : hasRequiredMustConfirm
+        ? "mapping_confirmation"
+        : dataEligibility?.status === "blocked"
+          ? dataEligibility?.blockers?.[0]?.code || "data_eligibility"
+          : null;
   const analysisStatus = deriveAnalysisStatus({
     hasData: !!hasFile,
     hasRequiredMapping: missing.length === 0 && !analysisBlocked,
@@ -682,9 +732,10 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
   const confirmAnalysis = () => {
     if (analysisBlocked) return;
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
-    const event = { tool_id: toolId, source: isSheetSourced ? "google_sheets" : "csv", mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length };
+    const analysisType = productAnalysisType(eventToolId);
+    const event = { tool_id: eventToolId, source: analysisSource, row_count: csvData?.raw?.length || 0, analysis_type: analysisType, mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length, locale };
     trackProductEvent("mapping_confirmed", event);
-    trackProductEvent("analysis_started", event);
+    trackProductEventOnce("analysis_started", analysisResultEventKey(eventToolId, analysisType, computeAnalyzeSig(csvData), "", locale), event);
     saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
     requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
   };
@@ -749,7 +800,8 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
             <GoogleSheetConnect
               initialOpen
               onLoaded={handleSheetLoaded}
-              onError={setErrorMsg}
+              onImportStart={() => trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale })}
+              onError={handleSheetError}
               onCancel={() => setSheetChangeOpen(false)}
               locale={locale}
               toolId={sheetSourceScope}
@@ -783,6 +835,20 @@ export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = 
         </div>
       )}
       {errorMsg && <div role="alert" className="csv-upload-error csv-upload-error--loaded">{errorMsg}</div>}
+
+      {blockedState && (
+        <AnalysisBlockedTelemetry
+          toolId={eventToolId}
+          source={analysisSource}
+          state={blockedState}
+          signature={computeAnalyzeSig(csvData)}
+          rowCount={csvData?.raw?.length || 0}
+          mappedCount={mappedCount}
+          conflictCount={mappingConflicts.length}
+          missingCount={missing.length}
+          locale={locale}
+        />
+      )}
 
       {missing.length > 0 ? (
         <div className="required-banner">

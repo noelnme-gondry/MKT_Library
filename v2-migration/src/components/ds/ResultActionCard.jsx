@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DecisionReview from "@/components/ds/DecisionReview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 import { computeAnalyzeSig, findMeta, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
@@ -25,6 +25,8 @@ import { localizedTool } from "@/lib/toolConnections";
 //   children : 카드 하단 추가 콘텐츠(선택)
 //   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
 //   toolId : 지정하면 실제 결과 카드가 화면에 도달한 순간만 익명 제품 이벤트를 남긴다.
+//   analysisKey / analysisType / resultState : 같은 실행의 완료·노출을 정확히 1회 기록한다.
+//   trackAnalysisStart : 별도 실행 버튼 없이 유효 설정에서 즉시 계산되는 도구만 사용한다.
 //   decisionReview : 결과 → 실행 → 다음 검토의 CSV 기반 기록 루프를 표시한다.
 //   decisionPrefill : 도구가 명시적으로 만든 안전한 결론·행동·기준값 제안. 원본 행 금지.
 const TONE = {
@@ -57,6 +59,10 @@ export default function ResultActionCard({
   collapsePointsAfter = null,
   locale = "ko",
   toolId = null,
+  analysisKey = null,
+  analysisType = null,
+  resultState = "ready",
+  trackAnalysisStart = false,
   decisionReview = true,
   decisionPrefill = null,
   analysisBasis = true,
@@ -65,13 +71,19 @@ export default function ResultActionCard({
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
-  const hasTrackedResultView = useRef(false);
+  const trackedVisibleResultKey = useRef(null);
+  const cardRef = useRef(null);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const publishFinding = useAppStore((state) => state.publishFinding);
   const addReportBlock = useAppStore((state) => state.addReportBlock);
   const [reportAdded, setReportAdded] = useState(false);
   const inputSignature = computeAnalyzeSig(csvData);
+  const resolvedAnalysisType = analysisType || productAnalysisType(toolId);
+  const dataSource = String(csvData?.fileName || "").startsWith("demo_")
+    ? "demo"
+    : csvData?.importSource || (csvData?.raw?.length ? "csv" : "manual");
+  const resultTelemetryKey = analysisResultEventKey(toolId, resolvedAnalysisType, inputSignature, analysisKey || "", locale);
   const resultScope = useMemo(() => ({
     dateStart: dashboardFilter?.dateStart || undefined,
     dateEnd: dashboardFilter?.dateEnd || undefined,
@@ -110,10 +122,48 @@ export default function ResultActionCard({
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
-    if (!toolId || hasTrackedResultView.current) return;
-    hasTrackedResultView.current = true;
-    trackProductEvent("analysis_result_viewed", { tool_id: toolId, source: "result", placement: "result_action_card", locale });
-  }, [locale, toolId]);
+    if (!toolId) return;
+    if (trackAnalysisStart) {
+      trackProductEventOnce("analysis_started", resultTelemetryKey, {
+        tool_id: toolId,
+        source: dataSource,
+        row_count: csvData?.raw?.length || 0,
+        analysis_type: resolvedAnalysisType,
+        locale,
+      });
+    }
+    trackProductEventOnce("analysis_completed", resultTelemetryKey, {
+      tool_id: toolId,
+      source: dataSource,
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: resolvedAnalysisType,
+      result_state: resultState,
+      placement: "result_action_card",
+      locale,
+    });
+  }, [csvData?.raw?.length, dataSource, locale, resolvedAnalysisType, resultState, resultTelemetryKey, toolId, trackAnalysisStart]);
+  useEffect(() => {
+    if (!toolId || !cardRef.current || typeof IntersectionObserver !== "function") return undefined;
+    const target = cardRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      const isVisible = entries.some((entry) => entry.target === target && entry.isIntersecting && entry.intersectionRatio > 0);
+      if (!isVisible || trackedVisibleResultKey.current === resultTelemetryKey) return;
+
+      const sent = trackProductEventOnce("analysis_result_viewed", resultTelemetryKey, {
+        tool_id: toolId,
+        source: dataSource,
+        analysis_type: resolvedAnalysisType,
+        result_state: resultState,
+        placement: "result_action_card",
+        locale,
+      });
+      if (!sent) return;
+      trackedVisibleResultKey.current = resultTelemetryKey;
+      observer.disconnect();
+    }, { threshold: [0, 0.1] });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [dataSource, locale, resolvedAnalysisType, resultState, resultTelemetryKey, toolId]);
   useEffect(() => {
     if (generatedFinding) publishFinding(generatedFinding);
   }, [generatedFinding, publishFinding]);
@@ -124,7 +174,7 @@ export default function ResultActionCard({
     trackProductEvent("weekly_report_block_added", { tool_id: toolId, locale });
   };
   return (
-    <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
+    <section ref={cardRef} className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">
         <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
         <div className="result-action-card__copy">

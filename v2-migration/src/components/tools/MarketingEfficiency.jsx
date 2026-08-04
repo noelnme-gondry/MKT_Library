@@ -458,6 +458,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         <h2 className="section-title"><span className="ix">§0</span>{tr("한눈에 보기", "At a glance")}</h2>
         <ResultActionCard
           toolId="5-22"
+          analysisType="saturation"
+          resultState={okRows.length ? "ready" : "insufficient"}
           locale={locale}
           decisionReview={Boolean(okRows.length)}
           decisionPrefill={decisionTarget ? {

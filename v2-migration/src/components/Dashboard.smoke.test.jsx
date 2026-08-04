@@ -5,8 +5,8 @@
 // uploader; with data it mounts the filter bar, tabs, and the ACTIVE tab child
 // (VizTab/ScorecardTab/…). We mount each of the 8 tabs on a valid efficiency CSV
 // so a throw in any tab surfaces here. mapping = { originalHeader: standardKey }.
-import { describe, it, expect, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
 import { buildDemoCsv } from "@/utils/demoData";
@@ -19,6 +19,8 @@ function seedNoData() {
     dashboardTab: "viz",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    dashboardFilter: { dateStart: null, dateEnd: null, platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set() },
+    dashWindowDays: 7,
     analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
     decisionRecords: [],
   });
@@ -62,7 +64,10 @@ function seedWithData() {
 const TABS = ["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"];
 
 describe("Dashboard render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    delete window.gtag;
+    seedNoData();
+  });
 
   it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
     expect(() => render(<Dashboard />)).not.toThrow();
@@ -187,6 +192,30 @@ describe("Dashboard render smoke", () => {
     const { container } = render(<Dashboard />);
     expect(container.querySelector(".result-action-card")).toBeNull();
     expect(container.querySelector(".seasonality-heading")).toBeTruthy();
+  });
+
+  it("tracks one ready completion even when analysis opens on a non-visualization tab", () => {
+    window.gtag = vi.fn();
+    seedWithData();
+    useAppStore.setState({ dashboardTab: "scorecard" });
+    const { container } = render(<Dashboard />);
+
+    expect(container.querySelector(".result-action-card")).toBeNull();
+    expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
+      tool_id: "5-2",
+      source: "csv",
+      analysis_type: "dashboard",
+      result_state: "ready",
+      locale: "ko",
+    }));
+
+    act(() => useAppStore.setState({
+      dashboardFilter: { ...useAppStore.getState().dashboardFilter, channels: new Set(["Google"]) },
+    }));
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed")).toHaveLength(2);
+
+    act(() => useAppStore.setState({ dashboardTab: "viz" }));
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed")).toHaveLength(2);
   });
 
   it("with-data renders every tab in English without Korean UI copy", () => {

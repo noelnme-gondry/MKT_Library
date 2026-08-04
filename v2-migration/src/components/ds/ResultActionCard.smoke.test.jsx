@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import ResultActionCard from "./ResultActionCard";
 import { useAppStore } from "@/store/useDataStore";
 
 describe("ResultActionCard decision-first hierarchy", () => {
-  beforeEach(() => useAppStore.setState({
-    csvData: { raw: [], headers: [], mapping: {}, fileName: "" },
-    decisionRecords: [],
-    decisionPersistenceEnabled: false,
-  }));
+  beforeEach(() => {
+    delete window.gtag;
+    delete window.IntersectionObserver;
+    useAppStore.setState({
+      csvData: { raw: [], headers: [], mapping: {}, fileName: "" },
+      decisionRecords: [],
+      decisionPersistenceEnabled: false,
+    });
+  });
 
   it("renders key figures before supporting prose", () => {
     const { container } = render(
@@ -147,5 +151,76 @@ describe("ResultActionCard decision-first hierarchy", () => {
       />,
     );
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Different tool suggestion");
+  });
+
+  it("tracks completion once and result viewing only after real visibility", () => {
+    const observers = [];
+    class VisibilityObserver {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(target) { this.target = target; }
+      disconnect() {}
+    }
+    window.IntersectionObserver = VisibilityObserver;
+    window.gtag = vi.fn();
+    useAppStore.setState({ csvData: {
+      raw: [{ SecretCampaign: "never-send-this" }],
+      headers: ["SecretCampaign"],
+      mapping: {},
+      fileName: "private-client.csv",
+      importSource: "csv",
+    } });
+
+    const card = (props = {}) => (
+      <ResultActionCard
+        toolId="5-3"
+        analysisKey="telemetry-result-unique-20260804"
+        analysisType="budget_allocation"
+        resultState="ready"
+        headline="Result"
+        analysisBasis={false}
+        decisionReview={false}
+        {...props}
+      />
+    );
+    const view = render(card());
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", {
+      tool_id: "5-3",
+      source: "csv",
+      row_count: 1,
+      analysis_type: "budget_allocation",
+      result_state: "ready",
+      placement: "result_action_card",
+      locale: "ko",
+    });
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_result_viewed")).toHaveLength(0);
+
+    observers[0].callback([{ target: observers[0].target, isIntersecting: true, intersectionRatio: 0.2 }]);
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_result_viewed")).toHaveLength(1);
+
+    view.unmount();
+    const secondView = render(card());
+    const completionCalls = window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed");
+    expect(completionCalls).toHaveLength(1);
+
+    secondView.unmount();
+    useAppStore.setState({ csvData: {
+      raw: [{ SecretCampaign: "another-private-value" }],
+      headers: ["SecretCampaign"],
+      mapping: {},
+      fileName: "different-private-client.csv",
+      importSource: "csv",
+    } });
+    render(card());
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed")).toHaveLength(2);
+    render(card({ locale: "en" }));
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed")).toHaveLength(3);
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("private-client.csv");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("different-private-client.csv");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("never-send-this");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("another-private-value");
   });
 });

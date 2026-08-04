@@ -3,15 +3,16 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
-import { useAppStore } from "@/store/useDataStore";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianLikeRun, mmmBayesianHealth, mmmBayesianWeeklyDecomp, mmmBayesianForecast, mmmForecastApplySelectedBlend, mmmForecastCombineNestedParts, mmmForecastScenarioEligibility, mmmForecastRestoreSeasonality, mmmTrendExistence, mmmElasticities, mmmCannibalization, mmmChannelCoverage, mmmIRF, mmmAdstock, mmmAudit, mmmMacroFacts, mmmDataQualityAudit, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
 import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayesianRun as mmmClassicBayesianRun, mmmClassicControlSelection, mmmClassicBuildGroupContributionPriors, mmmResolveAbsorb as mmmClassicResolveAbsorb } from "@/utils/mmmMathPr416";
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
-import { trackProductEvent } from "@/lib/analytics";
+import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { createForecastReviewSnapshot, findForecastActualMatches, forecastReviewDate } from "@/lib/forecastReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
 import { STATISTICAL_STATUS } from "@/lib/analysis-router/statisticalStatus";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
@@ -242,7 +243,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     result: null,
   });
   const [regimeWorkerFallbackSignature, setRegimeWorkerFallbackSignature] = useState(null);
-  const analysisEventRef = useRef(null);
   const analysisTransitionRef = useRef(0);
   const mmmUploadRequestRef = useRef(0);
   const forecastWorkerRequestRef = useRef(0);
@@ -279,16 +279,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       setFcEventPolicy(fcEventPolicyDraft);
     });
   }, [deferMmmUpdate, isForecastSettingsDirty, preparedForecastHorizon, fcEventPolicyDraft]);
-  // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
-  // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
-  // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
-  const runMmmAnalyze = (sig) => {
-    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: stage === "hub" ? "mapping" : stage });
-    deferMmmUpdate(() => {
-      setMmmAnalyzedSig(sig);
-      setMmmAnalyzedRaw(csvData.raw);
-    });
-  };
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
   const [platformFilter, setPlatformFilter] = useState("all"); // all | android | ios
 
@@ -379,6 +369,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (!file) return;
     const requestSequence = ++mmmUploadRequestRef.current;
     setMmmUploadError(null);
+    trackProductEvent("data_import_start", { tool_id: "5-18", source: "csv", locale });
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -388,13 +379,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         const failure = mmmCsvParseFailure(res);
         if (failure) {
           setMmmUploadError(failure);
+          trackProductEvent("data_import_failed", { tool_id: "5-18", source: "csv", state: failure === "empty" ? "empty_file" : "parse_error", locale });
           return;
         }
         setMmmUploadError(null);
-        setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping: {}, fileName: file.name });
+        const headers = res.meta?.fields || [];
+        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name });
+        trackProductEvent("data_import_success", { tool_id: "5-18", source: "csv", row_count: res.data.length, column_count: headers.length, locale });
       },
       error: () => {
-        if (requestSequence === mmmUploadRequestRef.current) setMmmUploadError("read");
+        if (requestSequence !== mmmUploadRequestRef.current) return;
+        setMmmUploadError("read");
+        trackProductEvent("data_import_failed", { tool_id: "5-18", source: "csv", state: "parse_error", locale });
       },
     });
   };
@@ -457,6 +453,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (segmentSel && platformFilter !== "all" && !segmentSel.values.some((v) => v.value === platformFilter)) return "all";
     return platformFilter;
   }, [segmentSel, platformFilter]);
+
+  // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
+  // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
+  // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
+  const runMmmAnalyze = (sig) => {
+    const analysisType = stage === "hub" ? "mapping" : stage;
+    const analysisKey = `${sig}|${target}|${effPlatformFilter}|${stage}`;
+    trackProductEventOnce("analysis_started", analysisResultEventKey("5-18", analysisType, computeAnalyzeSig(csvData), analysisKey, locale), {
+      tool_id: "5-18",
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: analysisType,
+      locale,
+    });
+    deferMmmUpdate(() => {
+      setMmmAnalyzedSig(sig);
+      setMmmAnalyzedRaw(csvData.raw);
+    });
+  };
 
   // Chart refs
   const cvRef = useRef(null);
@@ -1441,20 +1456,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       locale,
     });
   }, [forecastActualMatches, locale]);
-
-  useEffect(() => {
-    if (!mmmAnalyzed) return;
-    const signature = `${mmmAnalyzedSig}|${target}|${effPlatformFilter}`;
-    if (analysisEventRef.current === signature) return;
-    analysisEventRef.current = signature;
-    trackProductEvent("analysis_completed", {
-      tool_id: "5-18",
-      source: isDemo ? "demo" : "csv",
-      row_count: csvData?.raw?.length || 0,
-      analysis_type: "mmm",
-      result_state: mmm?.empty ? "insufficient" : "ready",
-    });
-  }, [mmmAnalyzed, mmmAnalyzedSig, target, effPlatformFilter, mmm?.empty, isDemo, csvData?.raw?.length]);
 
   const decomp = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return null;
@@ -3472,6 +3473,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           locale={locale}
           allowNoSpend={stage === "lab"}
         />
+        {(!mappingReady || currencyMissing) && (
+          <AnalysisBlockedTelemetry
+            toolId="5-18"
+            source={isDemo ? "demo" : csvData?.importSource || "csv"}
+            state={!mappingReady ? "missing_required" : "missing_currency"}
+            signature={`${csvSig}|${stage}|${missing.length}|${currencyMissing ? 1 : 0}`}
+            rowCount={csvData?.raw?.length || 0}
+            missingCount={missing.length + (currencyMissing ? 1 : 0)}
+            analysisType={stage === "hub" ? "mapping" : stage}
+            locale={locale}
+          />
+        )}
         {mappingReady && (
           <div data-mmm-analysis-gate style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: canAnalyze ? "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))" : "linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03))", border: `1px solid ${canAnalyze ? "rgba(122,162,247,0.3)" : "rgba(245,158,11,0.4)"}`, borderRadius: "10px", padding: "14px 16px" }}>
             <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>
@@ -3896,6 +3909,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           <ResultActionCard
             toolId="5-18"
             locale={locale}
+            analysisKey={`${mmmAnalyzedSig}|${target}|${effPlatformFilter}|${stage}`}
+            analysisType={stage === "hub" ? "mapping" : stage}
+            resultState={mmm?.empty ? "insufficient" : "ready"}
             tone={summary.tone}
             title={tx(`${stageKo} 요약`, `${stageKo} summary`)}
             headline={summary.headline}
