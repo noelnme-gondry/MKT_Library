@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ResultActionCard from "./ResultActionCard";
 import { useAppStore } from "@/store/useDataStore";
 
@@ -153,7 +153,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Different tool suggestion");
   });
 
-  it("tracks completion once and result viewing only after real visibility", () => {
+  it("tracks completion once and result viewing only after real visibility", async () => {
     const observers = [];
     class VisibilityObserver {
       constructor(callback) {
@@ -198,6 +198,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     });
     expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_result_viewed")).toHaveLength(0);
 
+    await waitFor(() => expect(observers.length).toBeGreaterThan(0));
     observers[0].callback([{ target: observers[0].target, isIntersecting: true, intersectionRatio: 0.2 }]);
     expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_result_viewed")).toHaveLength(1);
 
