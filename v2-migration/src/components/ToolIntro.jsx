@@ -24,6 +24,10 @@ const INTRO = {
     ko: ["증분 분석", "광고가 없었어도 생겼을 성과를 빼고, 실제로 추가 만든 효과를 추정합니다."],
     en: ["Incrementality analysis", "Subtract what would have happened anyway to estimate the outcomes advertising truly added."],
   },
+  "5-24": {
+    ko: ["브랜드 캠페인 증분 분석", "브랜드 검색·직접 유입·가입의 변화에서 캠페인이 실제로 추가한 성과를 추정합니다."],
+    en: ["Brand campaign incrementality", "Estimate the outcomes a brand campaign added in brand search, direct traffic, and signups."],
+  },
   "9-1": {
     ko: ["콘텐츠 요소 분석", "후킹·형식·길이·메시지 중 어떤 요소가 성과와 연결되는지 통제변수와 함께 봅니다."],
     en: ["Content element analysis", "Estimate how hooks, formats, length, and message angles relate to results while controlling for other factors."],

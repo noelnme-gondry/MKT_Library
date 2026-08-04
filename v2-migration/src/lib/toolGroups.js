@@ -10,6 +10,7 @@ export const TOOL_GROUP = {
   "5-18": "response", "5-18-paid-organic": "response", "5-18-trend": "response", "5-18-cannibal": "response", "5-18-mmm": "response", "5-18-forecast": "response",
   "5-20": "aha",
   "5-23": "incrementality",
+  "5-24": "brand_incrementality",
   "9-1": "content_attr",
   "9-2": "content_aha",
   "9-3": "content_traffic",

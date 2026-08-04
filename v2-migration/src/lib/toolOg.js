@@ -14,6 +14,7 @@ export const TOOL_OG_CONFIG = {
   "5-4": { accent: "#facc15", glyph: "PROVE", metrics: { ko: ["표본수", "LIFT", "검정력"], en: ["SAMPLE", "LIFT", "POWER"] } },
   "5-20": { accent: "#c084fc", glyph: "LEARN", metrics: { ko: ["행동", "리프트", "지지도"], en: ["ACTION", "LIFT", "SUPPORT"] } },
   "5-23": { accent: "#4ade80", glyph: "INCREMENT", metrics: { ko: ["통제군", "증분", "신뢰구간"], en: ["HOLDOUT", "INCREMENT", "INTERVAL"] } },
+  "5-24": { accent: "#f472b6", glyph: "BRAND LIFT", metrics: { ko: ["브랜드 검색", "ITS", "증가분"], en: ["BRAND SEARCH", "ITS", "LIFT"] } },
   "9-1": { accent: "#38bdf8", glyph: "ELEMENTS", metrics: { ko: ["요소", "효과", "신뢰구간"], en: ["ELEMENT", "EFFECT", "INTERVAL"] } },
   "9-6": { accent: "#f97316", glyph: "CREATIVE", metrics: { ko: ["교체", "피로", "다음 제작"], en: ["REPLACE", "FATIGUE", "NEXT BRIEF"] } },
 };

@@ -58,14 +58,15 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
     expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
     expect(document.body.textContent).toContain("다음 주 결과 검토");
-    expect(document.querySelectorAll(".dc-question-card")).toHaveLength(3);
-    expect(document.querySelectorAll("a.dc-question-card")).toHaveLength(3);
+    expect(document.querySelectorAll(".dc-question-card")).toHaveLength(4);
+    expect(document.querySelectorAll("a.dc-question-card")).toHaveLength(4);
     expect([...document.querySelectorAll("a.dc-question-card")].map((link) => link.getAttribute("href"))).toEqual([
       "/dashboard",
       "/tools/budget-allocation",
       "/content/freshness",
+      "/tools/brand-campaign-incrementality",
     ]);
-    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
+    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(11);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
@@ -130,7 +131,7 @@ describe("LandingPage render smoke", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my CSV", "Quick calculations", "Find the cause"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Find the cause.Choose one next move.");
-    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
+    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(11);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
     expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
     expect(container.querySelector('a.dc-action-route[href="/en/calculator"]')).toBeTruthy();
@@ -142,6 +143,7 @@ describe("LandingPage render smoke", () => {
       "/en/dashboard",
       "/en/tools/budget-allocation",
       "/en/content/freshness",
+      "/en/tools/brand-campaign-incrementality",
     ]);
     expect(container.textContent).not.toContain("Explore example data");
   });

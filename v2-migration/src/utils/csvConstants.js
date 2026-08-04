@@ -116,6 +116,30 @@ export const STANDARD_FIELDS = {
                 group: "단일 지표",
                 oneOfGroup: "outcome",
               },
+              brand_search: {
+                label: "브랜드 검색량",
+                aliases: ["brand_search", "branded_search", "brand search", "브랜드검색", "브랜드 검색", "브랜드키워드", "branded queries"],
+                type: "number",
+                required: false,
+                group: "단일 지표",
+                oneOfGroup: "brand_outcome",
+              },
+              direct_traffic: {
+                label: "직접 유입",
+                aliases: ["direct_traffic", "direct traffic", "direct_sessions", "direct sessions", "직접유입", "직접 유입", "다이렉트유입"],
+                type: "number",
+                required: false,
+                group: "단일 지표",
+                oneOfGroup: "brand_outcome",
+              },
+              campaign_on: {
+                label: "브랜드 캠페인 집행 여부",
+                aliases: ["campaign_on", "campaign active", "campaign_status", "brand_campaign_on", "브랜드캠페인", "브랜딩집행", "집행여부", "집행 여부", "캠페인온오프"],
+                type: "enum",
+                required: false,
+                group: "디멘션",
+                valueVocabulary: ["0", "1", "on", "off", "active", "inactive", "true", "false", "집행", "중단", "진행", "종료", "켜짐", "꺼짐"],
+              },
               revenue_d0: {
                 label: "매출 D0",
                 aliases: ["rev_d0", "revenue0", "매출_d0"],
@@ -1024,6 +1048,11 @@ export const TOOL_REQUIRED_FIELDS = {
                 "channel",
                 { oneOf: ["installs", "actions"] },
               ],
+              "5-24": [
+                "date",
+                "campaign_on",
+                { oneOf: ["brand_search", "direct_traffic", "installs", "actions"] },
+              ],
               // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
               // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
               // 5-21과 동일, 화면 라벨만 콘텐츠 도메인(유입경로/카테고리/콘텐츠).
@@ -1051,6 +1080,11 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              "5-24": [
+                { key: "cost", unlocks: "캠페인 투자 규모와 증분 성과를 함께 기록" },
+                { key: "country", unlocks: "향후 지역 대조군 설계" },
+                { key: "channel", unlocks: "브랜드 캠페인 매체 구분" },
+              ],
               "5-4": [
                 { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },
                 { key: "arm_id", unlocks: "다변형 대량검정 (Variant A/B/C…)" },

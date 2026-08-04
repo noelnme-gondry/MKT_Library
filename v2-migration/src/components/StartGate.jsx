@@ -38,6 +38,9 @@ const COPY = {
     diagnoseLabel: "성과 문제 진단",
     diagnoseDesc: "세 가지 질문으로 원인 후보와 먼저 확인할 분석을 찾습니다.",
     diagnoseCta: "성과 문제 진단",
+    brandTitle: "브랜딩 성과 측정",
+    brandDesc: "대조군·일별 시계열·전후 데이터 중 준비된 수준에 맞춰 증분 측정 방식을 고릅니다.",
+    brandCta: "브랜드 증분 분석",
   },
   en: {
     eyebrow: "Analyze my data",
@@ -54,6 +57,9 @@ const COPY = {
     diagnoseLabel: "Diagnose performance",
     diagnoseDesc: "Use three questions to find likely causes and the first analysis to check.",
     diagnoseCta: "Diagnose performance",
+    brandTitle: "Measure brand-campaign lift",
+    brandDesc: "Choose an incrementality design based on whether you have a control group, dated series, or only before/after data.",
+    brandCta: "Analyze brand lift",
   },
 };
 
@@ -137,6 +143,9 @@ export default function StartGate({ locale = "ko" }) {
             onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "after_upload_entry", locale })}
           >
             <span>ROOT CAUSE</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
+          </Link>
+          <Link href={locale === "en" ? "/en/tools/brand-campaign-incrementality" : "/tools/brand-campaign-incrementality"}>
+            <span>BRAND LIFT</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
           </Link>
         </div>
         <button type="button" onClick={goDemo} className="start-demo-link">

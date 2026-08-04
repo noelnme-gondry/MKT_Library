@@ -6,7 +6,7 @@ const COPY = {
   en: { ready: "Ready", caution: "Use with caution", blocked: "Needs more data", exploratory: "Exploratory MMM", decision: "Decision-ready MMM", open: "Open analysis", title: "Best analyses for this data", more: "See other analysis options", rows: "rows", periods: "periods", recommended: "Recommended", clear: "Required structure detected.", detail: "Decision details", effort: "Estimated on-screen work", provisional: "Based on the first automatic mapping. Choose a viable analysis now, or correct only the required mappings below." },
 };
 
-const TOOL_TIME = { "5-18": "5–10", "5-23": "3–6" };
+const TOOL_TIME = { "5-18": "5–10", "5-23": "3–6", "5-24": "5–8" };
 
 const OUTCOME = {
   "5-2": { ko: "이번 주 성과·예산 속도·이상 신호", en: "Weekly performance, pacing, and anomalies" },
@@ -16,6 +16,7 @@ const OUTCOME = {
   "5-4": { ko: "A/B 차이·신뢰구간·다음 판정", en: "A/B difference, interval, and next decision" },
   "5-18": { ko: "채널 기여·회귀·미래 예산 시나리오", en: "Channel contribution, regression, and forecast" },
   "5-23": { ko: "광고가 실제로 추가 만든 순증분", en: "Outcomes advertising truly added" },
+  "5-24": { ko: "브랜드 캠페인이 추가 만든 검색·직접유입·가입", en: "Brand-campaign lift in search, direct traffic, or signups" },
 };
 
 function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = false }) {
