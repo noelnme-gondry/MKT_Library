@@ -30,6 +30,9 @@ const HEADER_COPY = {
     decisionInboxAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
     dataContext: "현재 데이터",
     utilities: "기타 설정",
+    analystMode: "분석가 모드",
+    analystModeOn: "분석가 모드 켜짐",
+    analystModeOff: "분석가 모드 꺼짐",
   },
   en: {
     breadcrumbAria: "Breadcrumb",
@@ -49,6 +52,9 @@ const HEADER_COPY = {
     decisionInboxAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
     dataContext: "Current data",
     utilities: "More settings",
+    analystMode: "Analyst mode",
+    analystModeOn: "Analyst mode on",
+    analystModeOff: "Analyst mode off",
   },
 };
 
@@ -58,6 +64,8 @@ export default function Header({ locale = "ko" }) {
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
+  const analystMode = useAppStore((state) => state.analystMode);
+  const setAnalystMode = useAppStore((state) => state.setAnalystMode);
   // 현재 활성 그룹(효율/소재/실험/응답/aha)의 csvData — 전역 헤더에서 파일명 노출 +
   // 어느 도구에서든 동일하게 초기화 가능하게(§ 그룹 스코프 csvData 미러).
   const csvData = useAppStore((state) => state.csvData);
@@ -184,6 +192,17 @@ export default function Header({ locale = "ko" }) {
 
       <div className="topbar-actions">
         <div className="topbar-actions__primary">
+          <button
+            className={`btn ghost header-analyst-mode${analystMode ? " is-active" : ""}`}
+            type="button"
+            aria-pressed={analystMode}
+            title={analystMode ? T.analystModeOn : T.analystModeOff}
+            onClick={() => setAnalystMode(!analystMode)}
+          >
+            <span aria-hidden="true">⌁</span>
+            <span>{T.analystMode}</span>
+            {analystMode && <em aria-label={T.analystModeOn}>ON</em>}
+          </button>
           <Link
             href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
             className="btn ghost header-decision-inbox"
@@ -219,6 +238,9 @@ export default function Header({ locale = "ko" }) {
             </summary>
             <div className="header-utility-menu__panel">
               <ProjectSettingsMenu locale={locale} />
+              <button className="btn ghost header-analyst-mode-menu" type="button" aria-pressed={analystMode} onClick={() => { setAnalystMode(!analystMode); closeUtilityMenu(); }}>
+                {analystMode ? "✓ " : ""}{T.analystMode}
+              </button>
               {hasCsv && (
                 <button className="btn ghost header-csv-change" type="button" title={T.csvChangeTitle} onClick={() => { resetCsv(); closeUtilityMenu(); }}>
                   {T.csvChangeBtn}

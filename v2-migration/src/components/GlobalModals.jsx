@@ -6,8 +6,8 @@ import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 
 const COPY = {
-  ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "일치하는 페이지가 없습니다", pages: "빠른 이동" },
-  en: { placeholder: "Search tasks, tools, and guides", move: "move", run: "open", close: "close", empty: "No matching pages", pages: "Quick navigation" },
+  ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "일치하는 페이지가 없습니다", pages: "빠른 이동", analystGroup: "작업 환경", analystOn: "분석가 모드 켜기", analystOff: "분석가 모드 끄기" },
+  en: { placeholder: "Search tasks, tools, and guides", move: "move", run: "open", close: "close", empty: "No matching pages", pages: "Quick navigation", analystGroup: "Workspace", analystOn: "Turn on Analyst mode", analystOff: "Turn off Analyst mode" },
 };
 
 export default function GlobalModals({ locale = "ko" }) {
@@ -15,6 +15,8 @@ export default function GlobalModals({ locale = "ko" }) {
   const router = useRouter();
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
+  const analystMode = useAppStore((state) => state.analystMode);
+  const setAnalystMode = useAppStore((state) => state.setAnalystMode);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef(null);
@@ -36,14 +38,27 @@ export default function GlobalModals({ locale = "ko" }) {
       { key: "blog", title: locale === "en" ? "Performance marketing blog" : "퍼포먼스 마케팅 블로그", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/blog" : "/blog", kind: locale === "en" ? "Blog" : "블로그" },
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
       { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
+      {
+        key: analystMode ? "analyst-mode-off" : "analyst-mode-on",
+        title: analystMode ? T.analystOff : T.analystOn,
+        group: T.analystGroup,
+        kind: locale === "en" ? "Setting" : "설정",
+        action: () => setAnalystMode(!analystMode),
+      },
     ]);
-  }, [locale]);
+  }, [locale, analystMode, setAnalystMode, T.analystGroup, T.analystOff, T.analystOn]);
   const results = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return entries;
     return entries.filter((entry) => `${entry.title} ${entry.group} ${entry.kind}`.toLocaleLowerCase().includes(normalized)).slice(0, 16);
   }, [entries, query]);
-  const open = (entry) => { if (!entry) return; router.push(entry.href); setCmdkOpen(false); setQuery(""); };
+  const open = (entry) => {
+    if (!entry) return;
+    if (entry.action) entry.action();
+    else router.push(entry.href);
+    setCmdkOpen(false);
+    setQuery("");
+  };
 
   useEffect(() => {
     const onGlobalKey = (event) => {

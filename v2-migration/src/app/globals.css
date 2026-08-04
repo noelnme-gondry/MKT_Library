@@ -5530,6 +5530,7 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .header-cmdk { width: auto; padding-inline: 10px !important; }
   .header-cmdk__label--desktop, .header-cmdk .kbd, .header-cmdk__search-icon { display: none; }
   .header-cmdk__label--mobile, .header-cmdk__menu-icon { display: inline; }
+  .header-analyst-mode > span:nth-child(2) { display: none; }
   .project-settings__label { display: none; }
   .project-settings__mobile-icon { display: inline; }
   .metric-config-order-btn { min-width: 44px; min-height: 44px; }
@@ -7287,6 +7288,17 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .app:not(.is-home) .header-decision-inbox {
   border-color: color-mix(in srgb, var(--primary) 25%, transparent);
   background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.header-analyst-mode { gap: 6px; }
+.header-analyst-mode.is-active {
+  color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent) !important;
+  background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+.header-analyst-mode em {
+  font: 700 9px/1 var(--font-mono);
+  font-style: normal;
+  letter-spacing: .06em;
 }
 .header-utility-menu { position: relative; }
 .header-utility-menu > summary { list-style: none; }
