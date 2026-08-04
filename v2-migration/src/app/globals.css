@@ -7814,6 +7814,63 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .map-csv-col { border-color: var(--operator-line); border-radius: 6px; background: var(--surface-container-low); }
 .mapping-grid [data-mapping-target] { min-width: 0; }
 .mapping-grid [data-mapping-status] { color: var(--text-secondary); }
+.mmm-mapper-zone {
+  min-width: 0;
+  min-height: 68px;
+  padding: 10px;
+  border-radius: 8px;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.mmm-mapper-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mmm-mapper-zone__label { margin-bottom: 6px; color: var(--text-secondary); font-size: 11.5px; line-height: 1.35; }
+.mmm-mapper-chip {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.mmm-mapper-chip--mapped {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-areas: "label clear" "controls controls";
+  gap: 7px 9px;
+  width: 100%;
+  margin: 3px 0;
+  padding: 8px 9px;
+  border-radius: 6px;
+}
+.mmm-mapper-chip--unassigned {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-areas: "label clear" "controls controls";
+  gap: 6px 8px;
+  width: min(100%, 360px);
+  margin: 2px;
+  padding: 7px 9px;
+  border-radius: 6px;
+}
+.mmm-mapper-chip__label {
+  grid-area: label;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+}
+.mmm-mapper-chip__controls { display: flex; grid-area: controls; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.mmm-mapper-chip__controls select { min-width: 0; margin: 0; font-size: 11px; }
+.mmm-mapper-chip__role { flex: 1 1 132px; max-width: 168px; }
+.mmm-mapper-chip__kind { flex: 1 1 112px; max-width: 132px; }
+.mmm-mapper-chip__platform { flex: 1 1 88px; max-width: 104px; }
+.mmm-mapper-chip__step { flex: 1 1 182px; max-width: 240px; }
+.mmm-mapper-chip__clear { grid-area: clear; align-self: center; justify-self: end; }
+@media (max-width: 720px) {
+  .mmm-mapper-zones { grid-template-columns: minmax(0, 1fr); }
+}
 .csv-preview-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--operator-line); }
 .csv-preview-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
 .csv-preview-title-group { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
