@@ -18,6 +18,7 @@ function seedNoData() {
     csvData: EMPTY_CSV,
     decisionRecords: [],
     isCmdkOpen: false,
+    analystMode: false,
   });
 }
 
@@ -83,6 +84,16 @@ describe("Header render smoke", () => {
     expect(document.querySelector(".header-utility-menu > summary")?.getAttribute("aria-label")).toBe("More settings");
     expect(screen.getByRole("link", { name: "Decision inbox" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "All tools" })).toBeTruthy();
+  });
+  it("toggles the persisted analyst-mode setting and exposes its active state", () => {
+    render(<Header />);
+    const toggle = document.querySelector(".topbar-actions__primary .header-analyst-mode");
+    expect(toggle).toBeTruthy();
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(toggle);
+    expect(useAppStore.getState().analystMode).toBe(true);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.textContent).toContain("ON");
   });
   it("closes the utility menu on Escape and outside pointer input", () => {
     render(<Header />);

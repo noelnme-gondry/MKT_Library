@@ -47,7 +47,8 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
       isDarkMode: true,
     };
     const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
-    expect(Object.keys(persisted).sort()).toEqual(["customCharts", "customMetrics", "decisionPersistenceEnabled", "viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "viewConfig"]);
+    expect(persisted.analystMode).toBe(false);
     expect(persisted.decisionPersistenceEnabled).toBe(false);
     expect(persisted.decisionRecords).toBeUndefined();
     expect(persisted.viewConfig).toBe(fakeState.viewConfig);
@@ -64,12 +65,18 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
 
   it("persistMigrate — 현재 스키마는 안전한 결정 요약만 통과", () => {
     const persisted = { viewConfig: { s1: { hidden: ["a"], order: [] } }, customMetrics: {}, customCharts: {} };
-    expect(persistMigrate(persisted, 2)).toEqual({ ...persisted, decisionPersistenceEnabled: false });
+    expect(persistMigrate(persisted, 2)).toEqual({ ...persisted, analystMode: false, decisionPersistenceEnabled: false });
   });
 
   it("구 스키마와 opt-out 상태에서는 결정 기록을 영속 payload에서 제거", () => {
     const persisted = { decisionPersistenceEnabled: true, decisionRecords: [{ action: "A", raw: [{ secret: 1 }] }] };
-    expect(persistMigrate(persisted, 1)).toEqual({ decisionPersistenceEnabled: false });
+    expect(persistMigrate(persisted, 1)).toEqual({ analystMode: false, decisionPersistenceEnabled: false });
+  });
+
+  it("analystMode는 설정으로만 영속되고 구 payload는 기본 off", () => {
+    expect(persistPartialize({ viewConfig: {}, customMetrics: {}, customCharts: {}, analystMode: true })).toMatchObject({ analystMode: true });
+    expect(persistMigrate({ analystMode: true }, 2).analystMode).toBe(false);
+    expect(persistMigrate({ analystMode: true }, 3).analystMode).toBe(true);
   });
 
   it("명시적 opt-in 때도 allowlist 결정 요약만 저장", () => {

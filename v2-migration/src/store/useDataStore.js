@@ -14,7 +14,7 @@ import { STANDARD_FIELDS } from "@/utils/csvConstants";
 export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
-const APP_PERSIST_VERSION = 2;
+const APP_PERSIST_VERSION = 3;
 let decisionFallbackSequence = 0;
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
@@ -342,6 +342,8 @@ export const persistPartialize = (state) => {
     viewConfig: state.viewConfig,
     customMetrics: state.customMetrics,
     customCharts: state.customCharts,
+    // 분석가 모드는 표시 설정만 저장한다. 원본 CSV·매핑·필터는 포함하지 않는다.
+    analystMode: state.analystMode === true,
     decisionPersistenceEnabled: state.decisionPersistenceEnabled === true,
   };
   if (state.decisionPersistenceEnabled === true) {
@@ -358,7 +360,10 @@ const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => 
 // payload에 우연히 같은 키가 있어도 동의로 간주하지 않고 제거한다.
 export function persistMigrate(persistedState, version) {
   const state = persistedState && typeof persistedState === "object" ? { ...persistedState } : {};
-  if (version < APP_PERSIST_VERSION || state.decisionPersistenceEnabled !== true) {
+  // v3 전 payload에는 분석가 모드가 없었다. 기존 마케터 UX를 보존하기 위해 off가 기본이다.
+  state.analystMode = version >= 3 && state.analystMode === true;
+  // v3 adds only analystMode. v2's explicitly opted-in decision summaries remain valid.
+  if (version < 2 || state.decisionPersistenceEnabled !== true) {
     delete state.decisionRecords;
     return { ...state, decisionPersistenceEnabled: false };
   }
@@ -395,6 +400,11 @@ export const useAppStore = create(persist((set, get) => ({
   // Theme State — 라이트모드 기본값 (매 새로고침 리셋 방지)
   isDarkMode: false,
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+
+  // 분석가 모드 — 진단·재현 레이어의 전역 표시 설정. CSV나 매핑과 달리 민감 데이터가
+  // 아닌 UI 환경설정이므로 persist allowlist에만 포함한다.
+  analystMode: false,
+  setAnalystMode: (on) => set({ analystMode: !!on }),
 
   // Command Palette State (CMDK)
   isCmdkOpen: false,
