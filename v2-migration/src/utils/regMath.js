@@ -253,6 +253,7 @@ export const REG_STATS = (() => {
       hc3Ci,
       hc3Valid,
       maxLeverage,
+      leverages, // additive: hat diagonal for analyst diagnostics (existing callers unchanged)
     };
   }
   function r2of(X, y) {

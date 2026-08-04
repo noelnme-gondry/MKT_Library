@@ -18,6 +18,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -217,6 +218,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const demoDisabled = useAppStore((s) => s.demoDisabled);
+  const analystMode = useAppStore((s) => s.analystMode);
   const requestAd = useAppStore((s) => s.requestAd);
   const fileRef = useRef(null);
   const chartRef = useRef(null);
@@ -393,6 +395,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     return {
       rows, n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length, excludedRows: csvData.raw.length - n,
       R2: res.R2, adjR2: res.adjR2, intercept: res.beta[0], outcome,
+      // Additive UI payload only: diagnostics inspect the exact displayed OLS fit.
+      olsFit: res, X, terms: ["(Intercept)", ...supportedFeatures],
     };
   }, [analyzed, hasData, csvData, outcome, features]);
 
@@ -693,6 +697,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               )}
             />
           </section>
+
+          {analystMode && <ModelDiagnosticsPanel scope="9-1:ols" fit={fit.olsFit} X={fit.X} labels={fit.terms} locale={locale} />}
 
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">

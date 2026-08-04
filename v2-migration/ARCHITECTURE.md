@@ -86,6 +86,7 @@ v2-migration/
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 끝(골든 커버) |
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
+| (분석가 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 OLS 적합을 바꾸지 않고 잔차·영향점·VIF·HC3 민감도를 계산. capability 선언된 OLS 화면만 `ModelDiagnosticsPanel`을 렌더(현재 9-1). |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 컬럼 프로파일·정규화·도구 범위 기반 매핑 후보/충돌, 기존 `autoMapHeaders` 호환 래퍼 |
 | (분석 Router) | `lib/analysis-router/evaluateEligibility.js` | 도구별 필수 개념·행수·기간 계약으로 가능/주의/불가 판정 및 추천 우선순위 |
 | (지표 정의) | `metrics/metricRegistry.js` (BASE_FIELDS·DERIVED_METRICS·getMetricRegistry·computeMetrics) | ★ 파생지표 SSOT(ctr·cpc·roas… + 프리셋 profit·profitMargin 서술자). `calculateKPIs`가 소비. 커스텀 지표 병합 지점. 스펙: `../docs/custom-metrics-data-config-spec.md` |
@@ -95,7 +96,7 @@ v2-migration/
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`** · **`viewConfig`**(지표 표시/순서, scope별). `requestAd(cb)`는 전면광고 제거 후에도 호출부 호환을 위해 콜백을 즉시 실행하는 no-op 래퍼다.
-- **persist(Phase B/C)**: `persist` 미들웨어로 **`viewConfig`+`customMetrics`만** localStorage 저장(`partialize=persistPartialize`, name `mkt_view_config`). 원본 CSV·필터 Set은 **절대 저장 X**(§2.2). 서버/테스트엔 `noopStorage` 폴백. `customMetrics`={scope→조립정의[]}·`customCharts`={scope→차트정의[]}, add/remove 액션.
+- **persist(Phase B/C)**: `persist` 미들웨어로 설정(`viewConfig`·`customMetrics`·`customCharts`·`analystMode`)만 localStorage 저장(`partialize=persistPartialize`, name `mkt_view_config`). 원본 CSV·매핑·필터 Set은 **절대 저장 X**(§2.2). 서버/테스트엔 `noopStorage` 폴백. `analystMode`는 기본 off이며 capability 선언된 진단 레이어만 제어한다.
 - **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머진 격리. **소비자는 `s.csvData`만 읽으면 끝**(미러라 무변경).
 - **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) 또는 공개 시트 읽기(`GoogleSheetConnect.jsx`, Google Sheets API에서 브라우저로 직접 조회) → `csvData` + `canonicalData`(정규화된 공통 레코드, 신규 소비자용) → **`dashboardAggregator.js:getMappedRows(csvData)`** (기존 엔진 호환 raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. 시트·CSV 모두 앱 서버를 경유하지 않으며 `importInsights`·`canonicalData`·원본 행은 영속화하지 않는다. `NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY`는 공개 브라우저 키이므로 배포 도메인 HTTP 리퍼러와 Sheets API로 제한한다.
 - **함정**: 효율 CSV 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV, 분해 안 하는 도구(5-22·5-3)에선 (그룹×날짜) **sum 후 점 생성**(satBuildPoints·buildByChannel).

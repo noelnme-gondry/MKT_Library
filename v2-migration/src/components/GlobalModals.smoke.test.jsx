@@ -36,7 +36,7 @@ describe("GlobalModals complete tool menu", () => {
   beforeEach(() => {
     pushMock.mockClear();
     HTMLElement.prototype.scrollIntoView = vi.fn();
-    useAppStore.setState({ isCmdkOpen: false });
+    useAppStore.setState({ isCmdkOpen: false, analystMode: false });
   });
 
   it("opens an accessible dialog, traps focus, closes on Escape, and restores focus", async () => {
@@ -92,5 +92,13 @@ describe("GlobalModals complete tool menu", () => {
     expect(dialog).toBeTruthy();
     fireEvent.click(screen.getByRole("option", { name: /Budget Allocation Simulator/ }));
     expect(pushMock).toHaveBeenCalledWith("/en/tools/budget-allocation");
+  });
+
+  it("switches analyst mode as a command without navigating", () => {
+    renderToolMenu();
+    fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
+    fireEvent.click(screen.getByRole("option", { name: /분석가 모드 켜기/ }));
+    expect(useAppStore.getState().analystMode).toBe(true);
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
