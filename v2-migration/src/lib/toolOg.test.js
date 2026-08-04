@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getToolFeatureList, getToolOgData, getToolOgImageUrl, TOOL_OG_CONFIG } from "./toolOg";
 
-const TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-20", "5-21", "5-22", "5-23", "9-1", "9-6"];
+const TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-20", "5-21", "5-22", "5-23", "5-24", "9-1", "9-6"];
 
 describe("tool-specific social cards", () => {
   it.each(TOOL_IDS)("%s has distinct KO and EN card copy", (toolId) => {

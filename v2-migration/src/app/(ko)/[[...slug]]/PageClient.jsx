@@ -31,13 +31,14 @@ const PaidOrganicTrend = dyn(() => import("@/components/tools/PaidOrganicTrend")
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
+const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCampaignIncrementality"));
 // Content Analytics (콘텐츠 도메인 — 엔진 재사용, 라벨만 신규)
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -93,6 +94,7 @@ export default function PageClient({ params }) {
             {routeId === "5-18-forecast" && <MarketingResponse initialStage="lab" isolated />}
             {routeId === "5-20" && <AhaMomentFinder />}
             {routeId === "5-23" && <Incrementality />}
+            {routeId === "5-24" && <BrandCampaignIncrementality />}
 
             {routeId === "9-1" && <ContentElementAnalyzer />}
             {routeId === "9-2" && <KillerContentFinder />}

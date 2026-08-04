@@ -24,6 +24,7 @@ const CANON_FIELDS = [
 const ROLE_MAPPING_TEMPLATE_FIELDS = {
   "5-20": ["user_id", "target", "invite_d1", "invite_d7", "share_d7"],
   "5-23": ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"],
+  "5-24": ["date", "brand_search", "campaign_on"],
   "9-1": ["content_id", "outcome", "has_hook", "text_overlay", "video_length"],
 };
 

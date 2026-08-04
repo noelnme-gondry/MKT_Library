@@ -119,6 +119,16 @@ export const ROUTE_SEO = {
       description: "Use holdout or pre/post data to estimate the outcomes advertising added beyond what would have happened anyway.",
     },
   },
+  "5-24": {
+    ko: {
+      title: "브랜드 캠페인 증분 분석 | ITS·홀드아웃 연결",
+      description: "브랜드 검색, 직접 유입, 가입의 시계열로 브랜드 캠페인 전후 증가분을 추정하고, 데이터 준비 수준에 맞는 ITS·홀드아웃 분석으로 연결합니다.",
+    },
+    en: {
+      title: "Brand Campaign Incrementality | ITS",
+      description: "Estimate brand-campaign lift in brand search, direct traffic, or signups, then route to ITS or holdout analysis based on the data you have.",
+    },
+  },
   "9-1": {
     ko: {
       title: "콘텐츠 요소 분석",

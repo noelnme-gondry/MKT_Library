@@ -36,6 +36,7 @@ export const ITEM_TITLE_EN = {
   "5-3": "Budget Allocation Simulator",
   "5-4": "Experiment Analysis (A/B Test)",
   "5-23": "Incrementality Analysis",
+  "5-24": "Brand Campaign Incrementality",
   "5-18": "Marketing Response Analysis (MMM)",
   "5-20": "Find Your Aha-Moment",
   "9-1": "Content Element Analysis",
