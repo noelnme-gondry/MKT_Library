@@ -394,6 +394,7 @@ export function runBrandInterruptedTimeSeries(input = {}) {
     profileIncrementalTotal: profileEffect?.estimate ?? null,
     profileCounterfactualTotal: profileEffect?.counterfactualTotal ?? null,
     profileInterval: profileEffect?.interval ?? null,
+    profileTrend: ar1Profile ? { intercept: ar1Profile.mle.intercept, slope: ar1Profile.mle.slope } : null,
     ci95: [incrementalTotal - margin, incrementalTotal + margin],
     standardError,
     iidStandardError: Math.sqrt(Math.max(0, initialTrend.residualVariance * (postSeries.length + (postSeries.length ** 2) / pre.length + ((postSeries.reduce((sum, point) => sum + point.time, 0) - postSeries.length * initialTrend.meanX) ** 2) / initialTrend.ssX))),
