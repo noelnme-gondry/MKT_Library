@@ -373,6 +373,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - `supabase/SETUP.md` — 접근 키 발급 / `supabase/schema.sql` — `access_keys` 테이블+RPC
 - `content/supabase-config.json` — URL+anon key(커밋됨, RLS 보호) / `content/pages/*.json` — SOP 콘텐츠
 - `docs/backlog.md` — 진행 중 백로그 + MMM 스펙(§B) / `docs/*.md` — 기능별 설계 스펙
+- `docs/analyst-mode-spec.md` — 분석가 모드 확장 스펙(W0 토글·W1 모델진단·W2 데이터 프로파일링·W3 재현성·W4 워크벤치). 설계안·구현 전. 착수 전 §2 자산 인벤토리 실측 확인
 - `.claude/agents/mkt-engineer.md` — 본 CLAUDE.md의 압축판(에이전트용, 같이 동기화)
 
 ---
