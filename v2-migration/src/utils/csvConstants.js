@@ -948,6 +948,10 @@ export const STANDARD_FIELDS = {
             };
 
 export const TOOL_REQUIRED_FIELDS = {
+              // /start는 첫 업로드에서 효율 CSV의 기본 역할만 판별한다. 필드 스코프가
+              // 비어 있으면 전체 STANDARD_FIELDS(브랜드 on/off 포함)로 폴백해 숫자열을
+              // 잘못 잡을 수 있으므로, 시작 화면도 명시적인 계약을 가진다.
+              "start-gate": ["date", "cost", { oneOf: ["installs", "actions"] }],
               "5-4": [
                 "numerator",
                 "denominator",
@@ -1080,6 +1084,14 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              "start-gate": [
+                { key: "channel", unlocks: "채널별 성과와 다음 분석 추천" },
+                { key: "campaign_name", unlocks: "캠페인별 성과와 다음 분석 추천" },
+                { key: "platform", unlocks: "OS별 성과 확인" },
+                { key: "country", unlocks: "국가별 성과 확인" },
+                { key: "source", unlocks: "유료·오가닉 분리" },
+                { key: "revenue_d7", unlocks: "ROAS·LTV 분석 추천" },
+              ],
               "5-24": [
                 { key: "cost", unlocks: "캠페인 투자 규모와 증분 성과를 함께 기록" },
                 { key: "country", unlocks: "향후 지역 대조군 설계" },

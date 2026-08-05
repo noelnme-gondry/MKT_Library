@@ -32,6 +32,8 @@ const ROLE_MAPPING_TEMPLATE_FIELDS = {
 const canonHeader = (key) => (key === "creative_id" ? "creative_name" : key);
 
 export function getToolTemplateFields(toolId) {
+  // 시작 화면은 넓은 자동매핑 스코프와 별개로, 첫 업로드용 최소 효율 예시를 유지한다.
+  if (ROLE_MAPPING_TEMPLATE_FIELDS[toolId]) return [...ROLE_MAPPING_TEMPLATE_FIELDS[toolId]];
   const required = [];
   for (const field of TOOL_REQUIRED_FIELDS[toolId] || []) {
     if (typeof field === "string") required.push(field);
@@ -41,7 +43,6 @@ export function getToolTemplateFields(toolId) {
   const used = [...new Set([
     ...required,
     ...optional,
-    ...(ROLE_MAPPING_TEMPLATE_FIELDS[toolId] || []),
   ])];
   return [
     ...CANON_FIELDS.filter((field) => used.includes(field)),

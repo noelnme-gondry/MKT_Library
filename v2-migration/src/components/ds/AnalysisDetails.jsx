@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import EvidenceHint from "@/components/ds/EvidenceHint";
 
 // 결과 숫자 옆에 기술 메타데이터를 항상 펼쳐 두지 않기 위한 공통 상세 패널.
 // 결론·상태는 결과 카드에 남기고, 단위·표본수·불확실성·provenance는 details 안에 둔다.
@@ -65,7 +66,7 @@ export default function AnalysisDetails({
       hasValue(sample.value) ? `${sample.label || tr("사용 행", "Rows used")}: ${displayValue(sample.value)}` : "",
       cleanWarnings[0],
     ].filter(hasValue).join(" · ");
-    return <span className="result-evidence-hint data-confidence-hint" role="img" tabIndex={0} aria-label={tr("신뢰도와 방법", "Reliability and method")} data-tooltip={tooltip}>ⓘ</span>;
+    return <EvidenceHint label={tr("신뢰도와 방법", "Reliability and method")} detail={tooltip} />;
   }
 
   return (

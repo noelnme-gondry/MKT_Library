@@ -1697,7 +1697,7 @@ describe("MarketingResponse render smoke", () => {
         id: "forecast_1", toolId: "5-18", locale: "ko", action: "첫 예측 주 실제값 확인", metric: "가입", baseline: "50명/주",
         targetDirection: "neutral", comparisonKind: "forecast_actual", forecastPeriod: latest.week, forecastTarget: "Regs",
         forecastPlatform: "all", forecastValue: "50", forecastLower: "40", forecastUpper: "60", forecastSourceThrough: "2026-07-27",
-        reviewDate: "2026-08-10", actual: "", learning: "", status: "pending", conclusion: "", hypothesis: "", reviewQuestion: "", sourcePeriod: "", createdAt: "", updatedAt: "",
+        reviewDate: "2026-08-05", actual: "", learning: "", status: "pending", conclusion: "", hypothesis: "", reviewQuestion: "", sourcePeriod: "", createdAt: "", updatedAt: "",
       }],
     });
     window.gtag = vi.fn();

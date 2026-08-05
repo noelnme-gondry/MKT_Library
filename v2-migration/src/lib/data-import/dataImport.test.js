@@ -67,6 +67,17 @@ describe("data import foundation", () => {
     });
   });
 
+  it("prefers an exact standard field name over an equally named alias", () => {
+    const result = scoreMappingCandidates({
+      headers: ["cost"],
+      rows: [{ cost: "100" }, { cost: "120" }],
+      allowedKeys: ["cost", "spend"],
+      fields: STANDARD_FIELDS,
+    });
+    expect(result.selections.cost).toBe("cost");
+    expect(result.assessments.find((item) => item.header === "cost")).toMatchObject({ state: "confirmed" });
+  });
+
   it("separates confirmed, review, must-confirm, and conflicting mappings", () => {
     const candidates = {
       일자: [{ field: "date", confidence: 0.94, reasons: ["header + type"] }],

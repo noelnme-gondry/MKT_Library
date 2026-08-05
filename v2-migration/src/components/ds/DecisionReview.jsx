@@ -7,6 +7,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { latestDecisionDataDate } from "@/lib/decisionComparableActual";
+import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
 
@@ -104,7 +105,7 @@ const COPY = {
     baseline: "현재 기준값 (선택)",
     baselineDate: "기준값 데이터 기준일",
     comparisonWindow: "비교 기간 (일)",
-    comparisonHint: "검토일 이후 같은 길이의 데이터가 모두 들어와야 실제값 후보를 만듭니다.",
+    comparisonHint: "기준일 다음 날부터 같은 길이의 데이터가 모두 들어오면 검토일에 실제값 후보를 만듭니다.",
     reviewQuestion: "검토일에 답할 질문",
     reviewQuestionPlaceholder: "예: CPA가 목표 이하로 회복됐는가?",
     reviewDate: "검토 예정일",
@@ -178,7 +179,7 @@ const COPY = {
     baseline: "Current baseline (optional)",
     baselineDate: "Baseline data through",
     comparisonWindow: "Comparison window (days)",
-    comparisonHint: "An actual candidate appears only after the full same-length window following the review date is available.",
+    comparisonHint: "On the review date, an actual candidate appears after the full same-length window following the baseline is available.",
     reviewQuestion: "Question to answer on review day",
     reviewQuestionPlaceholder: "e.g. Did CPA return below target?",
     reviewDate: "Review date",
@@ -219,6 +220,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const instanceId = useId();
   const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
   const csvData = useAppStore((state) => state.csvData);
+  const activeDataGroup = useAppStore((state) => state.activeDataGroup);
+  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const latestDataDate = useMemo(() => latestDecisionDataDate(csvData?.canonicalData), [csvData?.canonicalData]);
   const draftDefaults = useMemo(() => ({ baselineDate: latestDataDate, comparisonWindowDays: 7 }), [latestDataDate]);
   const [draft, setDraft] = useState(() => createDraft(decisionPrefill, draftDefaults));
@@ -313,6 +316,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       baseline: draft.baseline.trim(),
       baselineDate: draft.baselineDate,
       comparisonWindowDays: draft.comparisonWindowDays,
+      comparisonScope: createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter }),
       reviewQuestion: draft.reviewQuestion.trim(),
       reviewDate: draft.reviewDate,
       sourcePeriod: draft.sourcePeriod.trim(),

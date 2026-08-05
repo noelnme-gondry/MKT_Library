@@ -78,6 +78,7 @@ export function findForecastActualMatches(records = [], panel = null, platform =
     if (!Number.isFinite(actualValue)) return [];
     return [{
       recordId: record.id,
+      reviewDate: record.reviewDate,
       action: record.action,
       period: normalizeForecastPeriod(record.forecastPeriod),
       target: record.forecastTarget,

@@ -5,6 +5,7 @@ import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 import { buildRecentPeriodComparison } from "@/lib/analysis-results/periodComparison";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
+import EvidenceHint from "@/components/ds/EvidenceHint";
 
 const qualityCache = new WeakMap();
 const comparisonCache = new WeakMap();
@@ -117,7 +118,7 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
       comparisonText,
       qualityText,
     ].filter(Boolean).join(" · ");
-    return <span className="result-evidence-hint data-confidence-hint" role="img" tabIndex={0} aria-label={`${T.basis}: ${label}`} data-tooltip={tooltip}>ⓘ</span>;
+    return <EvidenceHint label={`${T.basis}: ${label}`} detail={tooltip} />;
   }
 
   return (

@@ -37,4 +37,19 @@ describe("buildMappingContract", () => {
     };
     expect(buildMappingContract(input)).toEqual(buildMappingContract(input));
   });
+
+  it("keeps numeric start-gate columns inside the efficiency contract", () => {
+    const result = buildMappingContract({
+      toolId: "start-gate",
+      headers: ["date", "channel", "cost", "installs"],
+      rows: [
+        { date: "2026-06-17", channel: "Meta", cost: "850000", installs: "120" },
+        { date: "2026-06-18", channel: "Google", cost: "910000", installs: "101" },
+      ],
+    });
+
+    expect(result.mapping).toMatchObject({ date: "date", channel: "channel", cost: "cost", installs: "installs" });
+    expect(Object.values(result.mapping)).not.toContain("campaign_on");
+    expect(result.confidence).toBe("confirmed");
+  });
 });
