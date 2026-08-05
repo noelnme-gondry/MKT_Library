@@ -5359,6 +5359,11 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .analysis-recommendations__head > span { color: var(--primary); font: 700 9px var(--font-mono); letter-spacing: .12em; }
 .analysis-recommendations__head h2 { margin: 7px 0 17px; color: var(--text-primary); font: 650 clamp(23px,3vw,32px) var(--font-display); letter-spacing: -.045em; }
 .analysis-recommendations__head p { max-width: 690px; margin: -8px 0 17px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.analysis-recommendations__primary { max-width: 650px; }
+.analysis-recommendations__primary .eligibility-card { min-height: 0; }
+.analysis-recommendations__ready { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
+.analysis-recommendations__ready > h3 { margin: 0; color: var(--text-primary); font: 650 15px var(--font-display); letter-spacing: -.025em; }
+.analysis-recommendations__ready > p { margin: 5px 0 12px; color: var(--text-muted); font-size: 11px; }
 .analysis-recommendations__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
 .eligibility-card { display: flex; flex-direction: column; min-height: 285px; padding: 17px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .eligibility-card.ready { border-top: 3px solid var(--success); }
@@ -5372,6 +5377,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .eligibility-card__facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
 .eligibility-card__facts span { padding: 4px 6px; border-radius: 4px; color: var(--text-muted); background: var(--surface-container-low); font: 500 8px var(--font-mono); }
 .eligibility-card__reason { margin: 10px 0 15px; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.eligibility-card__reason b { display: block; margin-bottom: 3px; color: var(--text-secondary); font: 650 8px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 .eligibility-card .btn { justify-content: space-between; width: 100%; margin-top: auto; }
 .analysis-recommendations__more { margin-top: 12px; border-top: 1px solid var(--border-subtle); }
 .analysis-recommendations__more > summary { padding: 13px 2px; color: var(--text-secondary); font-size: 12px; font-weight: 650; cursor: pointer; }

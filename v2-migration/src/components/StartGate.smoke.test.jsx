@@ -86,6 +86,6 @@ describe("StartGate render smoke", () => {
     });
     render(<StartGate />);
     expect(document.querySelector(".analysis-recommendations")).toBeTruthy();
-    expect(screen.getByText(/업로드 직후 자동 매핑 기준/)).toBeTruthy();
+    expect(screen.getByText(/자동 매핑을 마쳤습니다/)).toBeTruthy();
   });
 });

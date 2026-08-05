@@ -623,8 +623,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   // 도구는 기존 필수 컬럼 게이트를 그대로 사용한다.
   const dataEligibility = useMemo(() => {
     if (!ANALYSIS_CONTRACTS[toolId] || !csvData.canonicalData) return null;
-    return evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData });
-  }, [toolId, csvData.mapping, csvData.canonicalData]);
+    return evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, locale });
+  }, [toolId, csvData.mapping, csvData.canonicalData, locale]);
 
   if (!hasFile) {
     return (

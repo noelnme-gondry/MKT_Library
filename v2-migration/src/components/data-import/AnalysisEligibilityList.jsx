@@ -2,8 +2,8 @@
 import { formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 
 const COPY = {
-  ko: { ready: "바로 가능", caution: "주의해서 가능", blocked: "추가 데이터 필요", exploratory: "탐색용 MMM", decision: "의사결정용 MMM", open: "분석 시작", title: "이 데이터로 먼저 볼 분석", more: "다른 분석 가능성 보기", rows: "행", periods: "기간", recommended: "추천", clear: "필수 구조가 확인됐습니다.", detail: "판정 세부 정보", effort: "화면 작업 예상", provisional: "업로드 직후 자동 매핑 기준입니다. 가능한 분석을 먼저 고르거나, 아래에서 필수 매핑만 바로잡으세요." },
-  en: { ready: "Ready", caution: "Use with caution", blocked: "Needs more data", exploratory: "Exploratory MMM", decision: "Decision-ready MMM", open: "Open analysis", title: "Best analyses for this data", more: "See other analysis options", rows: "rows", periods: "periods", recommended: "Recommended", clear: "Required structure detected.", detail: "Decision details", effort: "Estimated on-screen work", provisional: "Based on the first automatic mapping. Choose a viable analysis now, or correct only the required mappings below." },
+  ko: { ready: "바로 가능", caution: "주의해서 가능", blocked: "추가 데이터 필요", exploratory: "탐색용 MMM", decision: "의사결정용 MMM", open: "분석 시작", title: "이 데이터로 먼저 확인할 분석", readyTitle: "바로 실행 가능한 분석", readyDeck: "아래 분석은 현재 매핑으로 바로 열 수 있습니다.", more: "추가 데이터가 있으면 가능한 분석", rows: "행", periods: "기간", recommended: "먼저 보기", reason: "추천 이유", clear: "현재 데이터 구조로 바로 시작할 수 있습니다.", detail: "판정 세부 정보", effort: "화면 작업 예상", provisional: "자동 매핑을 마쳤습니다. 먼저 볼 분석과 바로 실행 가능한 분석을 나눠 보여드립니다." },
+  en: { ready: "Ready", caution: "Use with caution", blocked: "Needs more data", exploratory: "Exploratory MMM", decision: "Decision-ready MMM", open: "Open analysis", title: "First analysis to check", readyTitle: "Analyses you can run now", readyDeck: "These analyses can open with your current mapping.", more: "Analyses unlocked by more data", rows: "rows", periods: "periods", recommended: "Start here", reason: "Why this", clear: "Your current data structure can start this analysis.", detail: "Decision details", effort: "Estimated on-screen work", provisional: "Automatic mapping is complete. We separate the first analysis from other analyses you can run right away." },
 };
 
 const TOOL_TIME = { "5-18": "5–10", "5-23": "3–6", "5-24": "5–8" };
@@ -39,6 +39,7 @@ function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = fal
     <p className="eligibility-card__outcome"><b>{locale === "en" ? "Answer" : "얻게 되는 답"}</b>{outcome}</p>
     <div className="eligibility-card__facts"><span>{result.rowCount.toLocaleString()} {T.rows}</span><span>{result.periodCount.toLocaleString()} {T.periods}</span><span>{T.effort} {TOOL_TIME[result.toolId] || "2–5"}{locale === "en" ? " min" : "분"}</span></div>
     <p className="eligibility-card__reason">
+      {!isBlocked && <b>{T.reason}</b>}
       {reason}
       {!isBlocked && detail && <span className="data-confidence-hint" role="img" tabIndex={0} aria-label={T.detail} data-tooltip={detail}>ⓘ</span>}
     </p>
@@ -49,16 +50,15 @@ function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = fal
 export default function AnalysisEligibilityList({ results = [], getTitle, onOpen, locale = "ko", provisional = false }) {
   const T = COPY[locale] || COPY.ko;
   const available = results.filter((result) => result.status !== "blocked");
-  const recommended = (available.length ? available : results).slice(0, 3);
-  const recommendedIds = new Set(recommended.map((result) => result.toolId));
-  const remaining = results.filter((result) => !recommendedIds.has(result.toolId));
+  const primary = available[0] || results[0] || null;
+  const readyToOpen = primary ? available.filter((result) => result.toolId !== primary.toolId) : [];
+  const blocked = results.filter((result) => result.status === "blocked");
   return (
     <section className="analysis-recommendations">
       <div className="analysis-recommendations__head"><span>DATA ROUTER</span><h2>{T.title}</h2>{provisional && <p>{T.provisional}</p>}</div>
-      <div className="analysis-recommendations__grid">
-        {recommended.map((result) => <EligibilityCard key={result.toolId} result={result} getTitle={getTitle} onOpen={onOpen} locale={locale} isRecommended />)}
-      </div>
-      {remaining.length > 0 && <details className="analysis-recommendations__more"><summary>{T.more} <span>{remaining.length}</span></summary><div className="analysis-recommendations__grid">{remaining.map((result) => <EligibilityCard key={result.toolId} result={result} getTitle={getTitle} onOpen={onOpen} locale={locale} />)}</div></details>}
+      {primary && <div className="analysis-recommendations__primary"><EligibilityCard result={primary} getTitle={getTitle} onOpen={onOpen} locale={locale} isRecommended /></div>}
+      {readyToOpen.length > 0 && <section className="analysis-recommendations__ready" aria-labelledby="ready-analyses-title"><h3 id="ready-analyses-title">{T.readyTitle}</h3><p>{T.readyDeck}</p><div className="analysis-recommendations__grid">{readyToOpen.map((result) => <EligibilityCard key={result.toolId} result={result} getTitle={getTitle} onOpen={onOpen} locale={locale} />)}</div></section>}
+      {blocked.length > 0 && <details className="analysis-recommendations__more"><summary>{T.more} <span>{blocked.length}</span></summary><div className="analysis-recommendations__grid">{blocked.map((result) => <EligibilityCard key={result.toolId} result={result} getTitle={getTitle} onOpen={onOpen} locale={locale} />)}</div></details>}
     </section>
   );
 }

@@ -1,6 +1,8 @@
 import { profileColumns } from "./profileColumns";
 
-const clamp = (value) => Math.max(0, Math.min(1, value));
+// 소수 덧셈(0.82 + 0.08)이 0.899999...가 되는 경우를 막는다. 확정 기준은
+// 사람이 읽는 0.90이므로, 계산도 그 단위에서 안정적으로 비교한다.
+const clamp = (value) => Math.round(Math.max(0, Math.min(1, value)) * 1000) / 1000;
 const compact = (value) => String(value || "").toLowerCase().trim().replace(/[\s_-]/g, "");
 const AUTO_CONFIRM_THRESHOLD = 0.9;
 const REVIEW_THRESHOLD = 0.6;
@@ -9,14 +11,17 @@ const AMBIGUITY_MARGIN = 0.12;
 function headerScore(header, key, aliases = []) {
   const normalized = compact(header);
   if (normalized === compact(key)) return { score: 0.82, reason: "표준 필드명 일치" };
-  if (aliases.some((alias) => normalized === compact(alias))) return { score: 0.78, reason: "컬럼 별칭 일치" };
+  // 검증된 별칭은 표준 필드명과 같은 강도의 의미 신호다. 특히 국가·플랫폼처럼
+  // 값이 텍스트인 열은 기존 0.78 + 0.08 = 0.86 때문에 불필요하게 재확인됐다.
+  if (aliases.some((alias) => normalized === compact(alias))) return { score: 0.82, reason: "컬럼 별칭 일치" };
   if (aliases.some((alias) => normalized.includes(compact(alias)) || compact(alias).includes(normalized))) return { score: 0.42, reason: "컬럼명 유사" };
   return { score: 0, reason: null };
 }
 
 // 값 어휘 매칭 — 헤더명이 아니라 컬럼 "값"으로 판별하는 필드용(예: source=organic/paid).
 // 컬럼의 고유 non-empty 값 중 어휘(vocab)에 드는 비율이 높으면 강한 점수를 준다.
-// channel의 "source" 헤더 별칭(0.78)을 이기도록 매칭 시 0.9를 준다(값이 organic/paid면 source 우선).
+// channel의 "source" 헤더 별칭과 동률이 되지 않도록, 값이 organic/paid면
+// source가 확실히 우선하도록 0.96을 준다.
 function vocabScore(distinctValues, vocabulary) {
   if (!vocabulary?.length || !distinctValues?.length) return { score: 0, reason: null };
   const vocab = vocabulary.map(compact).filter(Boolean);
@@ -25,7 +30,7 @@ function vocabScore(distinctValues, vocabulary) {
     return v && vocab.some((term) => v === term || v.includes(term) || term.includes(v));
   }).length;
   const rate = hit / distinctValues.length;
-  if (rate >= 0.6) return { score: 0.9, reason: "값이 소스 어휘(오가닉/페이드 등)와 일치" };
+  if (rate >= 0.6) return { score: 0.96, reason: "값이 소스 어휘(오가닉/페이드 등)와 일치" };
   return { score: 0, reason: null };
 }
 
