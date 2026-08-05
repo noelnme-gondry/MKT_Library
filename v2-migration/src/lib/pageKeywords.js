@@ -1,5 +1,5 @@
 // 도구/SOP 페이지별 SEO keywords 메타 (네이버는 구글보다 meta keywords·description
-// 텍스트 매칭에 민감 — CLAUDE.md §1). 하드코딩 전체 표 대신 "그룹(SOP)/항목(분석 도구)"
+// 텍스트 매칭에 민감 — AGENTS.md §1). 하드코딩 전체 표 대신 "그룹(SOP)/항목(분석 도구)"
 // 최소 단위로만 매핑하고, generateMetadata가 전역 브랜드 키워드와 합쳐 최종 keywords를
 // 조립한다(§12.19 자동생성 원칙 — 표류 방지).
 //

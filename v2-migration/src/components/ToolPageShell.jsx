@@ -4,7 +4,7 @@ import React, { useId } from "react";
 /**
  * ToolPageShell — 5-x 분석 도구 공용 레이아웃 래퍼.
  *
- * 레거시 index.html의 `pageShell()` 중 5-x 분기(§4.1, CLAUDE.md)를 그대로
+ * 레거시 index.html의 `pageShell()` 중 5-x 분기를 그대로
  * 미러링: page-sticky-bar(제목+칩+옵션 stickyFilter) + summary 콜아웃 +
  * children(본문) + 우측 플로팅 TOC. 기존 page-sticky 클래스는 호환용으로
  * 유지하고, tool-instrument-header 계약으로 모든 도구의 제목·상태·범위를
@@ -29,7 +29,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
-            (index.html pageShell 5-x 분기, CLAUDE.md §4.1) */}
+            (index.html pageShell 5-x 분기 이관) */}
         <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
           <div className="page-sticky-row1">
             <div className="tool-instrument-header__heading">
