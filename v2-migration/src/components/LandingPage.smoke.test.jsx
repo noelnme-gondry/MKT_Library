@@ -48,11 +48,12 @@ describe("LandingPage render smoke", () => {
     expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과 원인을 찾고,다음 하나를 정하세요.");
-    expect(document.querySelector(".dc-hero__copy > p")).toBeNull();
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("무료 도구 모음");
+    expect([...document.querySelectorAll(".dc-hero__trust li")].map((item) => item.textContent)).toEqual(["무료", "가입 없음", "브라우저에서만 처리"]);
     expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelector(".dc-hero__utility-actions button")).toBeNull();
+    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("예시 데이터로 30초 체험");
     expect(document.querySelectorAll(".dc-loop-card")).toHaveLength(3);
     expect(document.querySelectorAll("a.dc-loop-card")).toHaveLength(3);
     expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
@@ -85,6 +86,19 @@ describe("LandingPage render smoke", () => {
       tool_id: "5-2",
       source: "landing",
       placement: "decision_instrument",
+      locale: "ko",
+    });
+    delete window.gtag;
+  });
+  it("starts the clearly labeled hero example without requiring a CSV", () => {
+    window.gtag = vi.fn();
+    const { container } = render(<LandingPage />);
+    fireEvent.click(container.querySelector(".dc-hero__utility-actions button"));
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
+    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
+      tool_id: "5-2",
+      source: "landing",
+      placement: "hero_example",
       locale: "ko",
     });
     delete window.gtag;
@@ -145,6 +159,6 @@ describe("LandingPage render smoke", () => {
       "/en/content/freshness",
       "/en/tools/brand-campaign-incrementality",
     ]);
-    expect(container.textContent).not.toContain("Explore example data");
+    expect(container.textContent).toContain("Try example data in 30 seconds");
   });
 });

@@ -22,6 +22,7 @@ const CANON_FIELDS = [
 // 자유 역할 매핑 도구는 STANDARD_FIELDS 계약이 아니라 업로드 화면에서 직접
 // outcome/feature를 고른다. 분석 가능한 최소 형태를 예시 헤더로 명시한다.
 const ROLE_MAPPING_TEMPLATE_FIELDS = {
+  "start-gate": ["date", "channel", "cost", "installs"],
   "5-20": ["user_id", "target", "invite_d1", "invite_d7", "share_d7"],
   "5-23": ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"],
   "5-24": ["date", "brand_search", "campaign_on"],
