@@ -1,14 +1,14 @@
 ---
-title: "CPI vs CPA vs CPM vs CPC — Mix Them Up and Budget Leaks"
-description: "What each of CPM, CPC, CPI, and CPA actually measures, and which one to optimize toward depending on your goal."
+title: "What CPM and CPC Mean: Read Impression and Click Costs First"
+description: "Learn what CPM and CPC measure, and where to look when impression or click costs rise."
 date: "2026-07-15"
 slug: "cpi-cpa-cpm-difference"
-keywords: "CPI vs CPA, CPM CPC, CPI CPA CPM CPC, ad metric difference, CPM meaning, CPC meaning, CPI meaning, CPA meaning, marketing cost metrics"
+keywords: "what is CPM, what is CPC, CPM vs CPC, impression cost, click cost, CPM calculation, CPC calculation, advertising impression cost, advertising click cost"
 tags: ["Metrics Basics", "Marketing Metrics"]
 draft: false
 ---
 
-CPM, CPC, CPI, CPA. All four are "how much it costs," but they **measure different things**. Mix them up and you'll misjudge cheap versus expensive — and a wrong judgment sends budget the wrong way. Let's sort them out.
+CPM and CPC sit at the front of the advertising funnel: impressions and clicks. Reading them well helps separate an expensive auction from weak response. For the full CPI, CPA, and ROAS chain—and which optimization metric to choose—start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article focuses on CPM and CPC definitions and front-of-funnel diagnosis.
 
 ## Each cost attaches to a different funnel stage
 
@@ -46,7 +46,7 @@ Set the goal first, then pick the matching metric.
 - App installs → **CPI**
 - Revenue / signups → **CPA** (or [ROAS](/blog/roas-improvement))
 
-One trap: optimize on an early metric (CPI) alone and you can pull in a flood of users who "installed cheap but never buy" — the algorithm optimizes exactly the goal you hand it. When you can, push the optimization signal down toward the **money-making action (CPA)**.
+One trap: optimize on an early metric (CPI) alone and you can pull in a flood of users who "installed cheap but never buy" — the algorithm optimizes exactly the goal you hand it. When you can, push the optimization signal down toward the **money-making action (CPA)**. See the [full metric chain](/blog/performance-marketing-metrics) for how to choose the metric by business stage.
 
 ## Let's be honest
 

@@ -19,7 +19,7 @@ const KO_ANSWERS = {
   "cannibalization-organic-paid": "유료 광고가 오가닉 성과를 늘렸는지, 기존 수요를 가져왔는지는 귀속 데이터만으로 확정하기 어렵습니다. 홀드아웃·지역 실험·추세 비교처럼 반사실을 만드는 방법이 필요합니다.",
   "cohort-analysis-guide": "코호트 분석은 같은 시작 시점의 사용자를 묶어 시간이 지나도 얼마나 남는지 보는 방법입니다. 전체 평균 대신 코호트 크기와 관찰 기간을 함께 보아야 최근 코호트를 오해하지 않습니다.",
   "correlation-vs-causation": "두 지표가 함께 움직인다는 사실만으로 한쪽이 다른 쪽의 원인이라고 말할 수는 없습니다. 의사결정에는 대조군이나 무작위 실험처럼 다른 설명을 줄이는 설계가 필요합니다.",
-  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC는 각각 설치·전환·노출·클릭 한 단위당 비용입니다. 어느 지표를 최적화할지는 현재 사업 단계에서 실제로 만들고 싶은 결과에 맞춰 정해야 합니다.",
+  "cpi-cpa-cpm-difference": "CPM은 노출 1,000회당 비용이고 CPC는 클릭당 비용입니다. 앞단 비용이 바뀌면 광고 반응과 경매 단가를 분리해 보고, CPI·CPA·ROAS의 전체 최적화 기준은 지표 사슬에서 확인하세요.",
   "event-taxonomy-guide": "이벤트 택소노미는 같은 사용자 행동을 GA4·MMP·광고 매체가 일관된 이름과 속성으로 읽게 하는 약속입니다. 이름보다 먼저 이벤트 정의, 발생 조건, 소유자, 검증 방법을 고정하세요.",
   "funnel-dropoff-analysis": "퍼널 이탈은 가장 낮은 전환율 하나를 고르는 일이 아니라, 단계별 모수와 사용자 의도를 함께 확인하는 진단입니다. 병목 가설을 정한 뒤 한 번에 하나의 개선안을 실험하세요.",
   "ga4-data-traps": "GA4 수치는 처리 시간, 시간대, 식별자, 보고서 범위가 다르면 다른 값이 나올 수 있습니다. 오류로 단정하기 전에 비교 중인 보고서의 날짜·측정 기준·필터를 맞추세요.",
@@ -34,6 +34,7 @@ const KO_ANSWERS = {
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표는 비용·전환·매출·리텐션을 목표에 맞춰 연결해 읽어야 합니다. CPA나 ROAS 하나만으로는 성장의 질이나 장기 가치를 판단하기 어렵습니다.",
   "postback-integration-guide": "포스트백 연동 문제는 이벤트 정의, 식별자 전달, 전송 조건, 매체 수신 상태를 순서대로 확인하면 좁힐 수 있습니다. 0건은 곧바로 성과 0을 뜻하지 않으므로 각 구간의 로그를 분리해 점검하세요.",
   "retargeting-reengagement-guide": "리타겟팅은 신규 획득과 다른 사용자 상태와 목표를 다루므로 같은 캠페인 안에서 섞어 읽으면 효율을 오해하기 쉽습니다. 제외 기준과 증분 효과를 함께 관리해야 합니다.",
+  "roas-improvement": "ROAS 하락은 평균 수치만으로 예산을 줄일 문제가 아닙니다. 데이터 성숙도와 채널별 효율·전환 이후 매출 흐름을 나눈 뒤, 다음 예산의 한계 효율을 작은 단계로 검증하세요.",
 };
 
 const EN_ANSWERS = {
@@ -55,7 +56,7 @@ const EN_ANSWERS = {
   "cannibalization-organic-paid": "Attribution data alone cannot prove whether paid ads created demand or captured existing organic demand. Use a counterfactual approach such as holdouts, geo tests, or trend comparisons.",
   "cohort-analysis-guide": "Cohort analysis groups users by a common starting point to see how many remain over time. Read cohort size and observation window alongside the average to avoid misreading recent cohorts.",
   "correlation-vs-causation": "Two metrics moving together does not show that one caused the other. A decision needs a design—such as a control group or randomization—that rules out competing explanations.",
-  "cpi-cpa-cpm-difference": "CPI, CPA, CPM, and CPC are costs per install, conversion, impression, and click. Choose the optimization metric that represents the outcome the business needs at its current stage.",
+  "cpi-cpa-cpm-difference": "CPM is cost per thousand impressions and CPC is cost per click. When front-of-funnel cost changes, separate auction price from response, then use the metric chain for the full CPI, CPA, and ROAS choice.",
   "event-taxonomy-guide": "An event taxonomy is the agreement that lets GA4, an MMP, and ad platforms read the same user behavior with consistent names and properties. Define the event, trigger, owner, and validation method before naming it.",
   "funnel-dropoff-analysis": "Funnel analysis is not simply choosing the lowest conversion rate. Compare step-level denominators and user intent, then test one improvement hypothesis at a time.",
   "ga4-data-traps": "GA4 reports can differ when processing time, time zone, identity, or report scope differs. Align dates, measurement rules, and filters before treating a difference as an error.",
@@ -70,6 +71,7 @@ const EN_ANSWERS = {
   "performance-marketing-metrics": "Performance metrics need to connect cost, conversion, revenue, and retention to the business goal. CPA or ROAS alone cannot describe growth quality or long-term value.",
   "postback-integration-guide": "Troubleshoot postbacks in order: event definition, identifier transfer, send condition, and platform receipt. Zero received events do not automatically mean zero performance, so isolate each stage with logs.",
   "retargeting-reengagement-guide": "Retargeting addresses a different user state and goal from acquisition, so combining them can distort efficiency. Manage exclusion rules and incremental effect alongside attributed results.",
+  "roas-improvement": "A ROAS decline is not a reason to cut budget from the average alone. Separate data maturity, channel efficiency, and post-conversion revenue, then validate the next unit of spend in small steps.",
 };
 
 const CONDITION_GROUP_BY_SLUG = {
@@ -84,6 +86,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "performance-marketing-metrics": "measurement", "budget-marginal-efficiency": "economics", "ltv-cac-ratio": "economics",
   "audience-broad-vs-narrow": "creative", "hook-3-seconds-framework": "creative", "retargeting-reengagement-guide": "creative",
   "ai-era-marketer": "editorial", "performance-marketer-skills": "editorial",
+  "roas-improvement": "economics",
 };
 
 const CONDITIONS = {

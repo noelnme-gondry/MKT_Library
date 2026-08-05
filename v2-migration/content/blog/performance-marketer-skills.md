@@ -28,6 +28,8 @@ draft: false
 
 **여기서 익힐 것:** 매체 광고 관리자 1개는 손에 익히기, 소재 만들고 테스트해보기, 타겟 설정 감각.
 
+매체 운영의 기본 문서를 하나씩 붙여 보면 더 빨리 감이 옵니다. [Meta Advantage+ App 운영](/blog/meta-advantage-plus-guide), [ASO 기본기](/blog/aso-basics-guide), [리타겟팅·재참여 분리](/blog/retargeting-reengagement-guide), [소재 규격과 세이프존](/blog/ad-creative-specs-guide)은 모두 이 1층의 서로 다른 실전 과제입니다.
+
 ## 2층. 데이터 다루기 — 숫자를 직접 꺼내는 것
 
 대시보드가 보여주는 숫자만 보는 사람과, 원자료에서 직접 뽑아 검산하는 사람의 차이는 생각보다 커요.

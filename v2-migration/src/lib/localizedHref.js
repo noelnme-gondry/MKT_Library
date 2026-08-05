@@ -36,6 +36,7 @@ export const EN_BLOG_SLUGS = new Set([
   "performance-marketing-metrics",
   "postback-integration-guide",
   "retargeting-reengagement-guide",
+  "roas-improvement",
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([

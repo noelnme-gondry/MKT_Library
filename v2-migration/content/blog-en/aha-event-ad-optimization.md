@@ -19,13 +19,13 @@ An install CPA can fall while the business still feels unchanged. Installs and s
 
 That does not always mean the campaign failed. It can mean you gave the platform a goal that was too easy. When you optimize for installs, automation gets very good at finding people likely to install. It does not automatically find people who will experience your product's value and stay.
 
-The practical move is to find the early action between install and purchase that separates high-quality users from everyone else. That action is an **Aha Event**.
+The practical move is to find the early action between install and purchase that separates high-quality users from everyone else. That action is an **Aha Event**. The process for finding candidates in data is covered in [Aha Moment analysis](/blog/aha-moment-retention).
 
 ## Not every install is the same
 
 Two users can both count as one install. One leaves after ten seconds; the other uses a core feature and returns later in the week. To the ad platform, both are an install. To the business, they are completely different outcomes.
 
-If install CPA is low while Aha Event reach and D7 retention are low too, you may be buying cheap churn. A campaign with a slightly higher install CPA can be better when more users reach the Aha Event and retain.
+If install CPA is low while Aha Event reach and D7 retention are low too, you may be buying cheap churn. A campaign with a slightly higher install CPA can be better when more users reach the Aha Event and retain. Read [cohort retention](/blog/cohort-analysis-guide) alongside the average so recent users are not over-read.
 
 ## Why purchase optimization is not always enough
 
@@ -60,7 +60,7 @@ For example, if the Aha Event is “create a project and invite a teammate,” t
 
 An Aha Event is a powerful clue, not automatic proof of causation. Highly motivated users may both complete the action and retain longer.
 
-Find a candidate, nudge the action in onboarding or messaging, compare D7 retention and revenue against a control, then scale only events that produce a confirmed lift. The process is **discover → nudge → compare → validate**.
+Find a candidate, nudge the action in onboarding or messaging, compare D7 retention and revenue against a control, then scale only events that produce a confirmed lift. See [incrementality measurement](/blog/incrementality-measurement) for how to make that control comparison credible. The process is **discover → nudge → compare → validate**.
 
 ## Metrics to add beside install CPA
 

@@ -115,6 +115,8 @@ The classic fatigue signature is **rising frequency plus falling CTR**. It is co
 
 There is no universal rule such as “refresh at frequency three.” The useful benchmark is your own history: at what frequency and after how many days did past creatives begin to decline?
 
+If a replacement looks necessary, do not immediately flood the account with new assets. First set the hypothesis, decision budget, and winner rule as described in the [creative-testing guide](/blog/ad-creative-testing), so the next drop can be compared against a clear change.
+
 ## If conversion rate falls, look outside the ad first
 
 When clicks hold but conversion rate drops, changing creative is unlikely to solve the problem. Check landing-page speed and errors, onboarding or checkout drop-off, price or inventory changes, login and payment flows, and whether the ad promise matches the first landing-page screen.
