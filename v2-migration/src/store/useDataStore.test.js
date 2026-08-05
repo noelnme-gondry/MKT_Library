@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useAppStore, persistPartialize, persistMigrate } from "./useDataStore.js";
+import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP } from "./useDataStore.js";
 
 describe("useDataStore · viewConfig 액션", () => {
   beforeEach(() => useAppStore.setState({ viewConfig: {} }));
@@ -196,6 +196,27 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     });
     useAppStore.getState().setCurrentRouteId("weekly-review");
     expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "response", csvData: responseSlice });
+  });
+
+  // TOOL_GROUP에 있는데 csvGroups에 슬라이스가 없으면 미러가 undefined가 되고,
+  // csvData.headers 같은 직접 접근이 렌더 throw로 도구를 통째로 죽인다(5-24 사고).
+  it("모든 TOOL_GROUP 그룹은 초기 csvGroups 슬라이스를 가진다", () => {
+    const groups = new Set(Object.values(TOOL_GROUP));
+    const slices = useAppStore.getState().csvGroups;
+    expect([...groups].filter((group) => !slices[group])).toEqual([]);
+  });
+
+  it("슬라이스 없는 그룹으로 이동해도 csvData 미러는 빈 객체", () => {
+    const restore = useAppStore.getState().csvGroups;
+    try {
+      useAppStore.setState({ csvGroups: { ...restore, aha: undefined } });
+      useAppStore.getState().setCurrentRouteId("5-20");
+      expect(useAppStore.getState().csvData).toMatchObject({ raw: [], headers: [], mapping: {} });
+    } finally {
+      // 스토어는 파일 내 테스트가 공유하는 싱글턴 — 지운 슬라이스를 되돌리지 않으면
+      // 뒤 테스트가 실행 순서에 따라 깨진다(flaky).
+      useAppStore.setState({ csvGroups: restore });
+    }
   });
 
   // /start는 도구가 아니지만 efficiency 슬라이스에 쓴다. 읽는 그룹(activeDataGroup)과
