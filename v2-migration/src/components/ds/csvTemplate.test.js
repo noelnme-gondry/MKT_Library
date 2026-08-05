@@ -19,6 +19,8 @@ describe("tool mapping templates", () => {
   });
 
   it("covers creative and experiment contracts beyond the efficiency schema", () => {
+    expect(getToolTemplateFields("start-gate")).toEqual(["date", "channel", "cost", "installs"]);
+    expect(buildToolTemplateCsv("start-gate")).toContain("date,channel,cost,installs");
     expect(getToolTemplateFields("5-6")).toEqual(expect.arrayContaining([
       "creative_id",
       "impressions",

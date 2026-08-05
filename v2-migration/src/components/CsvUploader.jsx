@@ -5,6 +5,7 @@ import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
+import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
@@ -126,6 +127,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
     workbookSelectLabel: "시트",
     workbookImportBtn: "선택한 시트 불러오기",
+    starterTemplateBtn: "⬇ 기본 CSV 템플릿 받기",
   },
   en: {
     emptyCsv: "This file is empty or invalid.",
@@ -204,6 +206,7 @@ const CSV_COPY = {
     workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
     workbookSelectLabel: "Worksheet",
     workbookImportBtn: "Import selected worksheet",
+    starterTemplateBtn: "⬇ Download starter CSV template",
   },
 };
 
@@ -678,6 +681,11 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           <div className="csv-drop-sub">{T.dropSub}</div>
         </button>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
+        {toolId === "start-gate" && hasToolTemplate(toolId) && (
+          <div className="csv-upload-quick-actions">
+            <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>
+          </div>
+        )}
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
         <GoogleSheetConnect
           onLoaded={handleSheetLoaded}

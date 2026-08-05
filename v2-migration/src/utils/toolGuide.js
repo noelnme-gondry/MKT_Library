@@ -12,6 +12,23 @@
 // }
 
 export const TOOL_GUIDE = {
+  "start-gate": {
+    when: "캠페인 성과 CSV를 올리면 현재 컬럼으로 바로 쓸 수 있는 분석과 가장 먼저 볼 질문을 추천합니다.",
+    grain: "1행 = 하루 × 채널(또는 캠페인) 성과 — 가능한 경우 채널별로 나눠 주세요",
+    needs: [
+      { col: "date", label: "날짜", why: "기간 비교와 추세를 확인하는 기준", required: true },
+      { col: "cost", label: "광고비", why: "효율과 예산 분석의 기준", required: true },
+      { col: "installs 또는 actions", label: "설치 또는 가입", why: "성과·효율 계산의 기준", required: true },
+      { col: "channel", label: "채널", why: "채널별로 어디를 먼저 볼지 추천", required: false },
+      { col: "impressions·clicks·revenue_d7", label: "노출·클릭·매출", why: "퍼널·ROAS·가치 분석까지 확장", required: false },
+    ],
+    prep: [
+      "첫 줄에 컬럼 이름(헤더)을 넣고, 날짜는 한 가지 형식으로 통일해 주세요.",
+      "비용과 성과가 같은 기간·같은 단위인지 먼저 확인해 주세요.",
+      "컬럼이 더 많아도 괜찮습니다. 업로드 뒤 가능한 분석을 데이터 기준으로 추천합니다.",
+    ],
+    example: "date,channel,cost,installs\n2024-01-01,Google UAC,850000,720\n2024-01-01,Meta AAP,610000,540\n2024-01-02,Google UAC,880000,735",
+  },
   "5-2": {
     when: "운영한 캠페인 데이터를 올려 스코어카드·페이싱·이상탐지·LTV·코호트·퍼널을 한눈에 봅니다.",
     grain: "1행 = 하루 × (채널/캠페인/소재 등) 단위 실적",
@@ -254,6 +271,23 @@ export const TOOL_GUIDE = {
 // EN 번역본 — EN_READY_TOOL_IDS(routeMap.js)에 맞춰 번역된 id만 추가.
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
+  "start-gate": {
+    when: "Upload campaign-performance CSV data to see which analyses your current columns support and what to check first.",
+    grain: "1 row = 1 day × channel (or campaign) performance — split channels when possible",
+    needs: [
+      { col: "date", label: "Date", why: "Reference point for period comparisons and trends", required: true },
+      { col: "cost", label: "Ad spend", why: "Basis for efficiency and budget analysis", required: true },
+      { col: "installs or actions", label: "Installs or signups", why: "Basis for performance and efficiency calculations", required: true },
+      { col: "channel", label: "Channel", why: "Lets us recommend where to look first", required: false },
+      { col: "impressions · clicks · revenue_d7", label: "Impressions, clicks, revenue", why: "Unlocks funnel, ROAS, and value analysis", required: false },
+    ],
+    prep: [
+      "Use the first row for column names and keep dates in one format.",
+      "Check that spend and outcomes cover the same period and unit.",
+      "Extra columns are welcome. After upload, we recommend analyses based on the data you have.",
+    ],
+    example: "date,channel,cost,installs\n2024-01-01,Google UAC,850000,720\n2024-01-01,Meta AAP,610000,540\n2024-01-02,Google UAC,880000,735",
+  },
   "5-2": {
     when: "Upload your campaign data to see scorecards, pacing, anomaly detection, LTV, cohorts, and funnels at a glance.",
     grain: "1 row = 1 day × (channel/campaign/creative etc.) performance",

@@ -15,6 +15,8 @@ const COPY = {
     eyebrow: "퍼포먼스 마케팅 의사결정",
     title: "성과 원인을 찾고,",
     titleAccent: "다음 하나를 정하세요.",
+    deck: "CSV만 올리면 성과·예산·소재·실험을 브라우저 안에서 분석하는 무료 도구 모음.",
+    trustBadges: ["무료", "가입 없음", "브라우저에서만 처리"],
     actionAria: "바로 시작할 작업",
     dataCta: "내 CSV로 분석",
     dataActionHint: "성과·예산·소재를 내 데이터로 확인",
@@ -22,6 +24,7 @@ const COPY = {
     calculatorActionHint: "목표 CPA·ROAS·표본수 계산",
     diagnoseCta: "성과 원인 찾기",
     diagnoseActionHint: "CSV 없이 확인 순서 찾기",
+    demoCta: "예시 데이터로 30초 체험",
     dataGuideCta: "CSV 컬럼 준비 방법",
     privacy: "가입 없음 · 원본 데이터는 브라우저에서만 처리",
     instrumentAria: "이번 주 판단 미리보기",
@@ -33,7 +36,7 @@ const COPY = {
     nextAction: "다음 행동",
     action: "일반 키워드 예산 10% 감액",
     reviewCue: "7일 뒤 CPA 확인",
-    evidence: "예시 근거 보기",
+    evidence: "예시 데이터로 결과 열어보기",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
     loopDeck: "원본 CSV는 저장하지 않습니다. 결정 요약은 사용자가 직접 켠 경우에만 이 기기에 남깁니다.",
@@ -69,6 +72,8 @@ const COPY = {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
     title: "Find the cause.",
     titleAccent: "Choose one next move.",
+    deck: "Upload a CSV to analyze performance, budget, creative, and experiments — free, in your browser.",
+    trustBadges: ["Free", "No signup", "Processed in your browser"],
     actionAria: "Start a task",
     dataCta: "Analyze my CSV",
     dataActionHint: "Check performance, budget, and creative",
@@ -76,6 +81,7 @@ const COPY = {
     calculatorActionHint: "Calculate target CPA, ROAS, and sample size",
     diagnoseCta: "Find the cause",
     diagnoseActionHint: "Get a check order without a CSV",
+    demoCta: "Try example data in 30 seconds",
     dataGuideCta: "Prepare CSV columns",
     privacy: "No signup · source data stays in your browser",
     instrumentAria: "Preview of this week’s decision",
@@ -87,7 +93,7 @@ const COPY = {
     nextAction: "Next action",
     action: "Cut generic-keyword spend 10%",
     reviewCue: "Check CPA in 7 days",
-    evidence: "See example evidence",
+    evidence: "Open results with example data",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
     loopDeck: "Source CSV data is never stored. Decision summaries remain on this device only when you explicitly enable it.",
@@ -162,6 +168,10 @@ export default function LandingPage({ locale = "ko" }) {
             <span>{T.title}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
+          <p className="dc-hero__deck">{T.deck}</p>
+          <ul className="dc-hero__trust" aria-label={lang === "en" ? "Service principles" : "서비스 원칙"}>
+            {T.trustBadges.map((badge) => <li key={badge}>{badge}</li>)}
+          </ul>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
               className="dc-action-route dc-action-route--primary"
@@ -189,6 +199,9 @@ export default function LandingPage({ locale = "ko" }) {
             </Link>
           </nav>
           <div className="dc-hero__utility-actions">
+            <button type="button" className="dc-text-link dc-text-link--button" onClick={() => openSample("5-2", "hero_example")}>
+              {T.demoCta} →
+            </button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
               {T.dataGuideCta} →
             </Link>
