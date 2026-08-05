@@ -20,7 +20,9 @@ import { buildDemoCsv } from "@/utils/demoData";
 const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
 const OPS_GROUP_IDS = new Set(ANALYSIS_SECTION ? ANALYSIS_SECTION.groups : []);
 const DATA_GUIDE_GROUP = "08";
-const ROUTER_TOOL_IDS = Object.keys(ANALYSIS_CONTRACTS);
+// 증분 분석(5-23)은 대조군/전후/신규 켜기 중 어떤 설계인지 먼저 고르는 도구다.
+// 공통 캠페인 CSV만 보고 "가능"으로 추정하면 거짓 추천이 되므로, 전용 진입에서만 연다.
+const ROUTER_TOOL_IDS = Object.keys(ANALYSIS_CONTRACTS).filter((toolId) => toolId !== "5-23");
 
 const COPY = {
   ko: {
@@ -90,7 +92,7 @@ export default function StartGate({ locale = "ko" }) {
     router.push(locale === "en" ? "/en/dashboard" : "/dashboard");
   };
   const diagnosis = useMemo(() => buildRouterDiagnosis({ canonicalData: csvData.canonicalData, mapping: csvData.mapping, locale }), [csvData.mapping, csvData.canonicalData, locale]);
-  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis })), [csvData.mapping, csvData.canonicalData, diagnosis]);
+  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis, locale })), [csvData.mapping, csvData.canonicalData, diagnosis, locale]);
   const recommended = rankRecommendedAnalyses(eligibility);
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
   const getTitle = (id) => {

@@ -6,7 +6,7 @@ export const ANALYSIS_CONTRACTS = {
   "5-2": { minRows: 1, minPeriods: 1, priority: 1 },
   // PVM은 비교할 두 기간이 필요하다. 2주는 차단 기준, 각 채널의 8일 미만 관측은
   // 원인 순위가 흔들릴 수 있어 주의로만 낮춘다.
-  "5-21": { minRows: 8, minPeriods: 14, minEntityActivePeriods: 8, entityFields: ["channel"], spendKeys: ["spend"], resultKeys: ["installs", "actions"], priority: 2 },
+  "5-21": { minRows: 8, minPeriods: 14, minEntityActivePeriods: 8, entityFields: ["channel"], spendKeys: ["spend", "cost"], resultKeys: ["installs", "actions"], priority: 2 },
   // 응답곡선은 채널/캠페인별 지출 수준이 달라져야 한다. 수가 적거나 지출 변동이
   // 거의 없으면 절대 CPR 결과는 열되 한계효율 결론에는 주의 표시를 한다.
   "5-22": { minRows: 20, minPeriods: 8, minEntityActivePeriods: 6, minEntitySpendCv: 0.05, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 3 },
@@ -137,7 +137,29 @@ function qualityDetails(quality) {
   return quality.issues.map((issue) => messages[issue.code]).filter(Boolean);
 }
 
-export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagnosis }) {
+function defaultRecommendationReason({ toolId, periodCount, entityCoverage, locale }) {
+  const entityLabel = entityCoverage?.entityField === "campaign_name"
+    ? (locale === "en" ? "campaign" : "캠페인")
+    : (locale === "en" ? "channel" : "채널");
+  const periodLabel = locale === "en" ? `${periodCount} dated periods` : `${periodCount}일자`;
+  const reasons = {
+    "5-2": locale === "en"
+      ? `${periodLabel} of spend and outcome data are ready for a first performance, pacing, and anomaly check.`
+      : `${periodLabel}의 비용·성과 데이터가 있어 전체 흐름, 예산 속도, 이상 신호부터 확인할 수 있습니다.`,
+    "5-21": locale === "en"
+      ? `${periodLabel} of ${entityLabel}-level spend and outcome data can explain what changed between recent periods.`
+      : `${periodLabel}의 ${entityLabel}별 비용·성과 데이터가 있어 최근 성과 변화의 원인을 비교할 수 있습니다.`,
+    "5-22": locale === "en"
+      ? `${entityLabel}-level spend varies across ${periodLabel}, so you can check where efficiency is nearing its limit.`
+      : `${periodLabel} 동안 ${entityLabel}별 지출 변동이 있어 어디가 한계 효율에 가까운지 확인할 수 있습니다.`,
+    "5-3": locale === "en"
+      ? `${entityLabel}-level performance across ${periodLabel} is ready for increase/decrease budget scenarios.`
+      : `${periodLabel}의 ${entityLabel}별 성과가 있어 증액·감액 예산 시나리오를 비교할 수 있습니다.`,
+  };
+  return reasons[toolId] || null;
+}
+
+export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagnosis, locale = "ko" }) {
   const contract = ANALYSIS_CONTRACTS[toolId] || { minRows: 1, minPeriods: 0, priority: 99 };
   const records = canonicalData?.records || [];
   const mapped = new Set(Object.values(mapping).filter((field) => field && field !== "__ignore__"));
@@ -204,7 +226,9 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     quality,
     entityCoverage,
     recommendationScore: recommendation?.score || 0,
-    recommendationReason: recommendation?.reason || null,
+    recommendationReason: recommendation?.reason || (!isBlocked
+      ? defaultRecommendationReason({ toolId, periodCount: quality.periodCount, entityCoverage, locale })
+      : null),
   };
 }
 

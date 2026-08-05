@@ -17,7 +17,7 @@ export const STANDARD_FIELDS = {
               },
               platform: {
                 label: "플랫폼(OS)",
-                aliases: ["os", "platform_name", "플랫폼"],
+                aliases: ["os", "platform_name", "campaign_platform", "campaign_os", "mkt_platform", "플랫폼"],
                 type: "enum",
                 required: false,
                 group: "디멘션",
@@ -1044,7 +1044,7 @@ export const TOOL_REQUIRED_FIELDS = {
               ],
               "5-21": [
                 "date",
-                "spend",
+                { oneOf: ["spend", "cost"] },
                 "channel",
                 { oneOf: ["installs", "actions"] },
               ],

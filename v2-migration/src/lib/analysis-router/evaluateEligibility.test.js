@@ -87,6 +87,16 @@ describe("analysis eligibility", () => {
     expect(result.reasonDetails.join(" ")).toContain("운영 관측이 8기간 미만");
   });
 
+  it("accepts standard cost as the PVM spend input", () => {
+    const result = evaluateEligibility({
+      toolId: "5-21",
+      mapping: { Date: "date", Cost: "cost", Channel: "channel", Installs: "installs" },
+      canonicalData,
+    });
+    expect(result).toMatchObject({ status: "ready" });
+    expect(result.recommendationReason).toContain("최근 성과 변화의 원인");
+  });
+
   it("warns when saturation data has no meaningful spend variation", () => {
     const result = evaluateEligibility({
       toolId: "5-22",

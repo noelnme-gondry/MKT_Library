@@ -53,6 +53,20 @@ describe("data import foundation", () => {
     expect(result.conflicts).toEqual([{ field: "cost", headers: ["광고비", "소진액"] }]);
   });
 
+  it("confirms known campaign-export aliases without a manual review", () => {
+    const campaignRows = [{ dt: "2026-07-01", mkt_country: "IT", campaign_platform: "iOS" }];
+    const result = scoreMappingCandidates({
+      headers: ["dt", "mkt_country", "campaign_platform"],
+      rows: campaignRows,
+      allowedKeys: ["date", "country", "platform"],
+      fields: STANDARD_FIELDS,
+    });
+    expect(result.selections).toMatchObject({ dt: "date", mkt_country: "country", campaign_platform: "platform" });
+    expect(Object.fromEntries(result.assessments.map((item) => [item.header, item.state]))).toMatchObject({
+      dt: "confirmed", mkt_country: "confirmed", campaign_platform: "confirmed",
+    });
+  });
+
   it("separates confirmed, review, must-confirm, and conflicting mappings", () => {
     const candidates = {
       일자: [{ field: "date", confidence: 0.94, reasons: ["header + type"] }],
