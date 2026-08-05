@@ -5,9 +5,6 @@
 import { TOOL_GROUP } from "@/store/useDataStore";
 import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 
-// 효율&예산 4총사 — 같은 grain(TOOL_GROUP === "efficiency") 공유 도구.
-export const TEMPLATE_FAMILY = Object.keys(TOOL_GROUP).filter((id) => TOOL_GROUP[id] === "efficiency");
-
 // 통합 캔버니컬 컬럼 순서 — 차원 먼저, 지표는 퍼널·가치 순.
 const CANON_FIELDS = [
   "date", "week",
@@ -28,6 +25,12 @@ const ROLE_MAPPING_TEMPLATE_FIELDS = {
   "5-24": ["date", "brand_search", "campaign_on"],
   "9-1": ["content_id", "outcome", "has_hook", "text_overlay", "video_length"],
 };
+
+// 효율&예산 4총사 — 같은 grain(TOOL_GROUP === "efficiency") 공유 도구. 자체 예시
+// 템플릿을 가진 라우트(/start 등)는 "통합 템플릿" 버튼 대상이 아니므로 제외한다.
+// ROLE_MAPPING_TEMPLATE_FIELDS 뒤에 선언해야 TDZ를 피한다(§7 자기참조 함정).
+export const TEMPLATE_FAMILY = Object.keys(TOOL_GROUP)
+  .filter((id) => TOOL_GROUP[id] === "efficiency" && !ROLE_MAPPING_TEMPLATE_FIELDS[id]);
 
 const canonHeader = (key) => (key === "creative_id" ? "creative_name" : key);
 

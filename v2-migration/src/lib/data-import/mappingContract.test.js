@@ -52,4 +52,27 @@ describe("buildMappingContract", () => {
     expect(Object.values(result.mapping)).not.toContain("campaign_on");
     expect(result.confidence).toBe("confirmed");
   });
+
+  // /start의 매핑은 효율 슬라이스에 저장돼 사이드바로 진입한 도구가 이어 쓴다.
+  // 퍼널·코호트 컬럼이 스코프 밖이면 그 경로에서 영구 미매핑이 된다.
+  it("maps the efficiency family's funnel and cohort columns at start-gate", () => {
+    const headers = ["date", "channel", "cost", "installs", "impressions", "clicks", "revenue_d7", "ret_d7"];
+    const rows = Array.from({ length: 4 }, (_, index) => ({
+      date: `2026-06-1${index}`,
+      channel: index % 2 ? "Meta" : "Google",
+      cost: String(850000 + index),
+      installs: String(120 + index),
+      impressions: String(1200000 + index),
+      clicks: String(23000 + index),
+      revenue_d7: String(900000 + index),
+      ret_d7: "0.31",
+    }));
+
+    expect(buildMappingContract({ toolId: "start-gate", headers, rows }).mapping).toMatchObject({
+      impressions: "impressions",
+      clicks: "clicks",
+      revenue_d7: "revenue_d7",
+      ret_d7: "ret_d7",
+    });
+  });
 });
