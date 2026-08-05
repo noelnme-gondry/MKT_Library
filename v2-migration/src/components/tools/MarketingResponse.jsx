@@ -9,6 +9,7 @@ import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayes
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { createForecastReviewSnapshot, findForecastActualMatches, forecastReviewDate } from "@/lib/forecastReview";
+import { toLocalDecisionDate } from "@/lib/decisionReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
@@ -2636,6 +2637,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     return `${prefix}${number}${perWeek ? tx("명/주", "/wk") : tx("명", "")}`;
   }, [isRevenueTarget, sourceCurrency, displayCurrency, currencySym, tx]);
   const applyForecastActual = useCallback((match) => {
+    if (!match?.reviewDate || match.reviewDate > toLocalDecisionDate()) return;
     const actual = targetValueLabel(match.actualValue, { perWeek: true });
     updateDecisionRecord(match.recordId, { actual, status: "reviewed", reviewedAt: new Date().toISOString() });
     trackProductEvent("forecast_actual_applied", {
@@ -3965,7 +3967,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <div><dt>{tx("새 실제값", "New actual")}</dt><dd>{actual}</dd></div>
                     <div><dt>{tx("참고범위", "Reference range")}</dt><dd>{range}</dd></div>
                   </dl>
-                  <button type="button" className="btn primary" onClick={() => applyForecastActual(match)}>
+                  <button type="button" className="btn primary" disabled={!match.reviewDate || match.reviewDate > toLocalDecisionDate()} onClick={() => applyForecastActual(match)}>
                     {tx("이 실제값 반영", "Apply this actual")}
                   </button>
                 </article>

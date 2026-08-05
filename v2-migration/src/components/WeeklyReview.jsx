@@ -76,11 +76,13 @@ const COPY = {
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
     actualPlaceholder: "예: 4,980 또는 15.2%",
     dataCandidate: "새 데이터 비교 후보",
-    candidateReady: "검토일 이후 같은 길이 데이터가 준비되었습니다. 확인한 뒤 완료로 저장하세요.",
+    candidateReady: "기준일 다음 날부터 같은 길이 데이터가 준비되었습니다. 확인한 뒤 완료로 저장하세요.",
     candidateNotDue: "검토일 전에는 데이터를 실제 결과로 처리하지 않습니다.",
-    candidateWaiting: "검토일 이후 데이터가 아직 없습니다. 이전 CSV의 마지막 기간은 실제 결과로 쓰지 않습니다.",
+    candidateWaiting: "비교 기간의 데이터가 아직 없습니다. 이전 CSV의 마지막 기간은 실제 결과로 쓰지 않습니다.",
     candidateIncomplete: (days, total) => `같은 ${total}일 비교를 위해 ${days}일치 데이터가 더 필요합니다.`,
     candidateMissingBasis: "기준일 또는 지원 지표(CPA·CPI·ROAS)를 확인하면 같은 기간으로 자동 비교할 수 있습니다.",
+    candidateMissingScope: "이전 기록에는 데이터 범위가 저장되지 않아 자동 비교하지 않습니다. 같은 범위에서 새 검토를 저장하세요.",
+    candidateDatasetMismatch: "이 결정에 쓴 데이터와 현재 CSV가 달라 자동 비교하지 않습니다. 같은 데이터 범위를 열어 확인하세요.",
     candidatePeriod: "비교 기간",
     useCandidate: "이 값으로 검토하기",
     completeReview: "검토 완료로 저장",
@@ -157,11 +159,13 @@ const COPY = {
     unscoredHint: "Shows the change without calling it better or worse",
     actualPlaceholder: "e.g. 4,980 or 15.2%",
     dataCandidate: "New-data comparison candidate",
-    candidateReady: "An equally long post-review window is ready. Confirm it before marking this review complete.",
+    candidateReady: "An equally long window after the baseline is ready. Confirm it before marking this review complete.",
     candidateNotDue: "Data is not treated as an actual outcome before the review date.",
-    candidateWaiting: "There is no data after the review date yet. The end of an older CSV is never used as the actual outcome.",
+    candidateWaiting: "The comparison window is not in the current data yet. The end of an older CSV is never used as the actual outcome.",
     candidateIncomplete: (days, total) => `${days} of ${total} comparable days are available; wait for the full window.`,
     candidateMissingBasis: "Add a baseline date and a supported metric (CPA, CPI, or ROAS) to compare the same window automatically.",
+    candidateMissingScope: "This older record did not save its data scope, so it is not compared automatically. Save a new review from the same scope.",
+    candidateDatasetMismatch: "The CSV currently open is not the dataset used for this decision, so it is not compared automatically.",
     candidatePeriod: "Comparison period",
     useCandidate: "Review with this value",
     completeReview: "Mark review complete",
@@ -239,6 +243,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
   const csvData = useAppStore((state) => state.csvData);
+  const activeDataGroup = useAppStore((state) => state.activeDataGroup);
   const decisionSessionRecordIds = useAppStore((state) => state.decisionSessionRecordIds);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
@@ -261,8 +266,8 @@ export default function WeeklyReview({ locale = "ko" }) {
   const outcomeCounts = useMemo(() => summarizeDecisionOutcomes(sortedRecords), [sortedRecords]);
   const comparableCandidates = useMemo(() => new Map(records.map((record) => [
     record.id,
-    buildComparableDecisionActual(record, { canonicalData: csvData?.canonicalData, today: todayKey }),
-  ])), [csvData?.canonicalData, records, todayKey]);
+    buildComparableDecisionActual(record, { canonicalData: csvData?.canonicalData, today: todayKey, dataGroup: activeDataGroup }),
+  ])), [activeDataGroup, csvData?.canonicalData, records, todayKey]);
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
     const assessment = assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
@@ -296,7 +301,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
 
   const completeReview = (record, actual = record.actual, source = "weekly_review") => {
-    if (!record || record.reviewDate > todayKey || !String(actual || "").trim()) return;
+    if (!record || !record.reviewDate || record.reviewDate > todayKey || !String(actual || "").trim()) return;
     updateDecisionRecord(record.id, {
       actual: String(actual).trim(),
       status: "reviewed",
@@ -461,6 +466,10 @@ export default function WeeklyReview({ locale = "ko" }) {
                     ? t.candidateWaiting
                     : comparableCandidate.state === "incomplete_window"
                       ? t.candidateIncomplete(comparableCandidate.observedDays || 0, comparableCandidate.windowDays)
+                      : comparableCandidate.state === "missing_scope"
+                        ? t.candidateMissingScope
+                        : comparableCandidate.state === "dataset_mismatch"
+                          ? t.candidateDatasetMismatch
                       : t.candidateMissingBasis}</p>}
               </div>}
               <div className="weekly-review-record__fields">

@@ -389,13 +389,20 @@ export const useAppStore = create(persist((set, get) => ({
   // slice; aha/creative/experiment/response are isolated). The existing page.js
   // effect already calls this on every navigation (incl. browser back/forward),
   // so the mirror swap is automatic with no page.js structural change.
-  setCurrentRouteId: (id) => set((state) => ({
+  setCurrentRouteId: (id) => set((state) => {
+    // 주간 검토·가이드처럼 CSV를 소비하지 않는 경로가 효율 CSV로 강제 전환되면,
+    // 다른 도구에서 저장한 결정의 비교 기준이 바뀐다. 마지막 실제 도구 그룹을 유지한다.
+    const routeGroup = TOOL_GROUP[id];
+    const activeDataGroup = routeGroup || state.activeDataGroup || "efficiency";
+    return {
     currentRouteId: id,
-    csvData: state.csvGroups[groupForRoute(id)],
+    activeDataGroup,
+    csvData: state.csvGroups[activeDataGroup],
     // 같은 CSV grain은 같은 필터를 이어 쓰고, 다른 grain으로 이동하면 그 그룹의
     // 필터로 교체한다. 다른 데이터에 이전 채널/국가 필터가 남는 cross-grain 사고 방지.
-    dashboardFilter: state.dashboardFilterGroups[groupForRoute(id)] || EMPTY_DASHBOARD_FILTER(),
-  })),
+    dashboardFilter: state.dashboardFilterGroups[activeDataGroup] || EMPTY_DASHBOARD_FILTER(),
+  };
+  }),
 
   // Theme State — 라이트모드 기본값 (매 새로고침 리셋 방지)
   isDarkMode: false,
@@ -431,7 +438,8 @@ export const useAppStore = create(persist((set, get) => ({
 
   // 결정·검토 루프는 모든 도구가 공유하는 세션 상태다. 사용자가 아래 opt-in을 켠
   // 경우에만 persistPartialize가 allowlist 요약을 localStorage에 포함한다. 원본 CSV,
-  // 매핑, 필터, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다.
+  // 매핑, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다. 단, 사용자가
+  // 선택한 비교 범위(차원 필터)만 결정 검증을 위해 축약해 저장할 수 있다.
   decisionPersistenceEnabled: false,
   decisionPersistencePromptSeen: false,
   decisionSessionRecordIds: new Set(),
@@ -597,6 +605,7 @@ export const useAppStore = create(persist((set, get) => ({
     mapping: {},
     fileName: "",
   },
+  activeDataGroup: "efficiency",
   // Writes the ACTIVE group's slice AND updates the mirror to the SAME object
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
   // Also RESETS the group's analyze gate whenever the confirmed sig would change

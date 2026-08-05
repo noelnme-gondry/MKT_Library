@@ -22,6 +22,7 @@ describe("decision review CSV contract", () => {
     expect(percentage.isPercentPoint).toBe(true);
     expect(percentage.delta).toBeCloseTo(-3.2);
     expect(decisionNumericComparison({ baseline: "18.2%", actual: "4,980원" })).toBeNull();
+    expect(decisionNumericComparison({ baseline: "D7 ROAS 1.2", actual: "1.5 · D7 ROAS" })).toMatchObject({ baseline: 1.2, actual: 1.5 });
   });
 
   it("scores only a declared or conservative metric direction", () => {

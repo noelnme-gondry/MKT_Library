@@ -187,6 +187,16 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     useAppStore.getState().setCurrentRouteId("5-2");
     expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Google"]);
   });
+
+  it("주간 검토로 이동해도 마지막 실제 도구의 CSV 그룹을 유지", () => {
+    const responseSlice = { raw: [{ week: "2026-08-03" }], headers: ["week"], mapping: {}, fileName: "response.csv" };
+    useAppStore.setState({
+      activeDataGroup: "response",
+      csvGroups: { ...useAppStore.getState().csvGroups, response: responseSlice },
+    });
+    useAppStore.getState().setCurrentRouteId("weekly-review");
+    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "response", csvData: responseSlice });
+  });
 });
 
 describe("useDataStore · 구조화 세션 상태", () => {

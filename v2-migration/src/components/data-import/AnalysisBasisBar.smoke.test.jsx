@@ -39,4 +39,11 @@ describe("AnalysisBasisBar", () => {
 
     expect(screen.getByText(/Some rows have no date/)).toBeTruthy();
   });
+
+  it("keeps compact data-basis detail in the DOM for keyboard and screen-reader access", () => {
+    const { canonicalData, mappedRows } = dataWithDays();
+    render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
+
+    expect(screen.getByRole("tooltip").textContent).toMatch(/Data basis/);
+  });
 });

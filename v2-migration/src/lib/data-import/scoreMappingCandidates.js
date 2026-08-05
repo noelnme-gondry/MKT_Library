@@ -10,9 +10,10 @@ const AMBIGUITY_MARGIN = 0.12;
 
 function headerScore(header, key, aliases = []) {
   const normalized = compact(header);
-  if (normalized === compact(key)) return { score: 0.82, reason: "표준 필드명 일치" };
-  // 검증된 별칭은 표준 필드명과 같은 강도의 의미 신호다. 특히 국가·플랫폼처럼
-  // 값이 텍스트인 열은 기존 0.78 + 0.08 = 0.86 때문에 불필요하게 재확인됐다.
+  // 정확한 표준 필드명은 별칭보다 한 단계 우선한다. 예: 5-21의 `cost` 헤더는
+  // cost(표준명)와 spend(별칭)가 동점이면 안 된다.
+  if (normalized === compact(key)) return { score: 0.84, reason: "표준 필드명 일치", isExactFieldName: true };
+  // 검증된 별칭도 강한 의미 신호지만, 표준 필드명과의 동점은 만들지 않는다.
   if (aliases.some((alias) => normalized === compact(alias))) return { score: 0.82, reason: "컬럼 별칭 일치" };
   if (aliases.some((alias) => normalized.includes(compact(alias)) || compact(alias).includes(normalized))) return { score: 0.42, reason: "컬럼명 유사" };
   return { score: 0, reason: null };
@@ -22,12 +23,18 @@ function headerScore(header, key, aliases = []) {
 // 컬럼의 고유 non-empty 값 중 어휘(vocab)에 드는 비율이 높으면 강한 점수를 준다.
 // channel의 "source" 헤더 별칭과 동률이 되지 않도록, 값이 organic/paid면
 // source가 확실히 우선하도록 0.96을 준다.
-function vocabScore(distinctValues, vocabulary) {
+function vocabScore(distinctValues, vocabulary, profile) {
   if (!vocabulary?.length || !distinctValues?.length) return { score: 0, reason: null };
+  // 0/1처럼 숫자로만 된 열은 집행 여부인지 비용/성과인지 값만으로 확정할 수 없다.
+  // 특히 짧은 토큰의 부분일치는 850000 같은 일반 숫자도 "0"과 맞는다고 오판한다.
+  if (profile?.numericRate >= 0.8) return { score: 0, reason: null };
   const vocab = vocabulary.map(compact).filter(Boolean);
   const hit = distinctValues.filter((value) => {
     const v = compact(value);
-    return v && vocab.some((term) => v === term || v.includes(term) || term.includes(v));
+    return v && vocab.some((term) => {
+      if (term.length <= 2 || v.length <= 2) return v === term;
+      return v === term || v.includes(term) || term.includes(v);
+    });
   }).length;
   const rate = hit / distinctValues.length;
   if (rate >= 0.6) return { score: 0.96, reason: "값이 소스 어휘(오가닉/페이드 등)와 일치" };
@@ -72,13 +79,14 @@ export function scoreMappingCandidates({ headers = [], rows = [], allowedKeys, f
       // 그 값이 구글/메타면 channel이어야 한다 → 값이 organic/paid일 때만 매핑되게
       // 헤더/타입 점수를 무시하고 어휘 점수만 쓴다(값 아니면 auto-map 안 함).
       if (field.valueVocabulary) {
-        const fromVocab = vocabScore(distinctByHeader[header], field.valueVocabulary);
+        const fromVocab = vocabScore(distinctByHeader[header], field.valueVocabulary, profileByHeader[header]);
         return { field: key, confidence: clamp(fromVocab.score), reasons: [fromVocab.reason].filter(Boolean) };
       }
       return {
         field: key,
         confidence: clamp(fromHeader.score + fromType.score),
         reasons: [fromHeader.reason, fromType.reason].filter(Boolean),
+        isExactFieldName: Boolean(fromHeader.isExactFieldName),
       };
     }).filter((candidate) => candidate.confidence > 0).sort((a, b) => b.confidence - a.confidence);
     byHeader[header] = candidates;
@@ -115,7 +123,11 @@ export function assessMappingConfidence({ selections = {}, candidates = {}, init
     if (conflictHeaders.has(header)) return { header, field, state: "conflict", confidence: selected?.confidence ?? 0, reasons: selected?.reasons || [] };
     if (confirmedHeaders.has(header)) return { header, field, state: "manual", confidence: selected?.confidence ?? 1, reasons: selected?.reasons || [] };
     if (wasManuallyChanged || !selected) return { header, field, state: "manual", confidence: selected?.confidence ?? 1, reasons: selected?.reasons || [] };
-    const isAmbiguous = runnerUp && Math.abs(selected.confidence - runnerUp.confidence) < AMBIGUITY_MARGIN;
+    // 표준 필드명 정확일치는 별칭보다 우선하는 명시적 tie-break다. 그 외 근접 점수는
+    // 기존처럼 확인을 요구해 유사 별칭의 오매핑을 막는다.
+    const isAmbiguous = runnerUp
+      && !selected?.isExactFieldName
+      && Math.abs(selected.confidence - runnerUp.confidence) < AMBIGUITY_MARGIN;
     if (selected === top && selected.confidence >= AUTO_CONFIRM_THRESHOLD && !isAmbiguous) {
       return { header, field, state: "confirmed", confidence: selected.confidence, reasons: selected.reasons };
     }

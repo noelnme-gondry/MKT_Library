@@ -1,7 +1,9 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 5;
+import { normalizeDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+
+export const DECISION_REVIEW_SCHEMA_VERSION = 6;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -22,6 +24,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "baseline",
   "baselineDate",
   "comparisonWindowDays",
+  "comparisonScope",
   "reviewQuestion",
   "reviewDate",
   "sourcePeriod",
@@ -52,6 +55,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "baseline",
   "baseline_date",
   "comparison_window_days",
+  "comparison_scope",
   "review_question",
   "review_date",
   "source_period",
@@ -73,6 +77,7 @@ const FIELD_LIMITS = Object.freeze({
   hypothesis: 500,
   metric: 120,
   baseline: 160,
+  comparisonScope: 5000,
   reviewQuestion: 500,
   sourcePeriod: 160,
   actual: 500,
@@ -201,7 +206,9 @@ export function getDecisionReviewBucket(record = {}, today = toLocalDecisionDate
 }
 
 function firstNumericValue(value) {
-  const match = String(value ?? "").match(/[+-]?(?:\d[\d,\s]*)(?:\.\d+)?/);
+  // D7·D30 같은 코호트 창은 지표명이지 값이 아니다. 자동 후보는 값을 앞에
+  // 배치하지만, 사용자가 "D7 ROAS 1.2"로 입력해도 7을 읽지 않게 한다.
+  const match = String(value ?? "").replace(/\bD\d+\b/gi, "").match(/[+-]?(?:\d[\d,\s]*)(?:\.\d+)?/);
   if (!match) return null;
   const parsed = Number(match[0].replace(/[,\s]/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
@@ -314,6 +321,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     baseline: asText(field(row, "baseline"), FIELD_LIMITS.baseline),
     baselineDate: asDate(field(row, "baselineDate", "baseline_date")),
     comparisonWindowDays: asComparisonWindowDays(field(row, "comparisonWindowDays", "comparison_window_days")),
+    comparisonScope: normalizeDecisionComparisonScope(field(row, "comparisonScope", "comparison_scope")),
     reviewQuestion: asText(field(row, "reviewQuestion", "review_question"), FIELD_LIMITS.reviewQuestion),
     reviewDate: asDate(field(row, "reviewDate", "review_date")),
     sourcePeriod: asText(field(row, "sourcePeriod", "source_period"), FIELD_LIMITS.sourcePeriod),
@@ -361,6 +369,7 @@ export function serializeDecisionReviewCsv(records = []) {
     record.baseline,
     record.baselineDate,
     record.comparisonWindowDays,
+    record.comparisonScope,
     record.reviewQuestion,
     record.reviewDate,
     record.sourcePeriod,
