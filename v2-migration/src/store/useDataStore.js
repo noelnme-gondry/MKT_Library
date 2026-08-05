@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
-import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
+import { TOOL_GROUP, groupForRoute, buildGroupMap } from "@/lib/toolGroups";
 import { validateFinding } from "@/lib/assist/findingSchema";
 import {
   normalizeDecisionReviewRows,
@@ -586,20 +586,7 @@ export const useAppStore = create(persist((set, get) => ({
   // CSV Data State — group-scoped slices + an active-group mirror.
   // Consumers keep reading `s.csvData` unchanged; scoping happens by storing
   // per-group and swapping the mirror on route change (see setCurrentRouteId).
-  csvGroups: {
-    efficiency: EMPTY_SLICE(),
-    creative: EMPTY_SLICE(),
-    experiment: EMPTY_SLICE(),
-    response: EMPTY_SLICE(),
-    aha: EMPTY_SLICE(),
-    incrementality: EMPTY_SLICE(),
-    brand_incrementality: EMPTY_SLICE(),
-    content_attr: EMPTY_SLICE(),
-    content_aha: EMPTY_SLICE(),
-    content_traffic: EMPTY_SLICE(),
-    content_freshness: EMPTY_SLICE(),
-    content_dashboard: EMPTY_SLICE(),
-  },
+  csvGroups: buildGroupMap(EMPTY_SLICE),
   // Mirror of the ACTIVE group's slice. Initial currentRouteId is "home" →
   // "efficiency", so the initial mirror is the (empty) efficiency slice.
   csvData: {
@@ -705,19 +692,7 @@ export const useAppStore = create(persist((set, get) => ({
   // Keyed by TOOL_GROUP so the whole efficiency family shares ONE flag: Dashboard
   // (5-2) and every 5-x tool read the SAME gate via isGroupAnalyzed(routeId),
   // eliminating the per-component analyzedSig dupes (5-22 etc.).
-  analyzedByGroup: {
-    efficiency: null,
-    creative: null,
-    experiment: null,
-    response: null,
-    aha: null,
-    incrementality: null,
-    content_attr: null,
-    content_aha: null,
-    content_traffic: null,
-    content_freshness: null,
-    content_dashboard: null,
-  },
+  analyzedByGroup: buildGroupMap(() => null),
   // Confirm analysis for the route's group. Stores the CURRENT active-slice sig.
   // Call from CsvUploader's "분석하기/데이터 분석하기" (and "↻ 다시 분석") button.
   setGroupAnalyzed: (routeId) => set((state) => {
@@ -769,19 +744,7 @@ export const useAppStore = create(persist((set, get) => ({
   dashWindowDays: 7, // 7 | 14 | 28
   setDashWindowDays: (d) => set({ dashWindowDays: d }),
 
-  dashboardFilterGroups: {
-    efficiency: EMPTY_DASHBOARD_FILTER(),
-    creative: EMPTY_DASHBOARD_FILTER(),
-    experiment: EMPTY_DASHBOARD_FILTER(),
-    response: EMPTY_DASHBOARD_FILTER(),
-    aha: EMPTY_DASHBOARD_FILTER(),
-    incrementality: EMPTY_DASHBOARD_FILTER(),
-    content_attr: EMPTY_DASHBOARD_FILTER(),
-    content_aha: EMPTY_DASHBOARD_FILTER(),
-    content_traffic: EMPTY_DASHBOARD_FILTER(),
-    content_freshness: EMPTY_DASHBOARD_FILTER(),
-    content_dashboard: EMPTY_DASHBOARD_FILTER(),
-  },
+  dashboardFilterGroups: buildGroupMap(EMPTY_DASHBOARD_FILTER),
   dashboardFilter: EMPTY_DASHBOARD_FILTER(),
   setDashboardFilter: (filterUpdate) => set((state) => {
     const group = groupForRoute(state.currentRouteId);

@@ -25,4 +25,15 @@ export const TOOL_GROUP = {
 
 // Home and guide routes never consume csvData; the efficiency fallback keeps
 // the store mirror valid for those routes without creating an unused slice.
-export const groupForRoute = (id) => TOOL_GROUP[id] || "efficiency";
+export const FALLBACK_DATA_GROUP = "efficiency";
+export const groupForRoute = (id) => TOOL_GROUP[id] || FALLBACK_DATA_GROUP;
+
+// 존재하는 모든 데이터 그룹 = TOOL_GROUP 값의 집합. 스토어의 그룹별 맵
+// (csvGroups·analyzedByGroup·dashboardFilterGroups)은 이 목록에서 **파생**한다.
+// 손으로 나열하면 반드시 어긋난다 — 실제로 csvGroups엔 brand_incrementality가
+// 빠져 도구가 죽었고(PR #608), dashboardFilterGroups엔 아직 빠져 있었으며,
+// 세 맵 모두 어떤 라우트도 가리키지 않는 content_freshness를 들고 있었다.
+export const DATA_GROUPS = [...new Set([FALLBACK_DATA_GROUP, ...Object.values(TOOL_GROUP)])];
+
+// 그룹별 맵 빌더 — 값은 매번 새로 만든다(Set·객체 공유 방지).
+export const buildGroupMap = (makeValue) => Object.fromEntries(DATA_GROUPS.map((group) => [group, makeValue()]));

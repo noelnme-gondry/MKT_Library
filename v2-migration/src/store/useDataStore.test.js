@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP } from "./useDataStore.js";
+import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP, groupForRoute } from "./useDataStore.js";
+import { buildGroupMap } from "@/lib/toolGroups";
 
 describe("useDataStore · viewConfig 액션", () => {
   beforeEach(() => useAppStore.setState({ viewConfig: {} }));
@@ -200,12 +201,6 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
 
   // TOOL_GROUP에 있는데 csvGroups에 슬라이스가 없으면 미러가 undefined가 되고,
   // csvData.headers 같은 직접 접근이 렌더 throw로 도구를 통째로 죽인다(5-24 사고).
-  it("모든 TOOL_GROUP 그룹은 초기 csvGroups 슬라이스를 가진다", () => {
-    const groups = new Set(Object.values(TOOL_GROUP));
-    const slices = useAppStore.getState().csvGroups;
-    expect([...groups].filter((group) => !slices[group])).toEqual([]);
-  });
-
   it("슬라이스 없는 그룹으로 이동해도 csvData 미러는 빈 객체", () => {
     const restore = useAppStore.getState().csvGroups;
     try {
@@ -303,5 +298,31 @@ describe("useDataStore · 구조화 세션 상태", () => {
     expect(state.csvGroups.efficiency.mapping).toEqual({ 날짜: "date", 비용: "cost" });
     expect([...state.dashboardFilterGroups.efficiency.channels]).toEqual(["Google"]);
     expect(state.analyzedByGroup.efficiency).toBeNull();
+  });
+});
+
+// 그룹별 맵은 TOOL_GROUP에서 파생된다(buildGroupMap). 손으로 나열하면 어긋나고,
+// 누락 시 미러가 undefined가 되어 도구가 렌더 throw로 죽는다(5-24 사고, PR #608).
+// 다른 describe의 beforeEach가 맵을 덮어쓰므로 초기 상태는 여기서만 검사한다.
+describe("useDataStore · 그룹별 맵 파생 불변식", () => {
+  const expected = [...new Set([...Object.values(TOOL_GROUP), "efficiency"])].sort();
+
+  it("csvGroups·analyzedByGroup·dashboardFilterGroups 키가 TOOL_GROUP과 정확히 일치", () => {
+    for (const map of [buildGroupMap(() => ({})), useAppStore.getInitialState().csvGroups,
+      useAppStore.getInitialState().analyzedByGroup, useAppStore.getInitialState().dashboardFilterGroups]) {
+      expect(Object.keys(map).sort()).toEqual(expected);
+    }
+  });
+
+  it("값은 그룹마다 독립 객체 — 한 그룹 수정이 다른 그룹에 새지 않는다", () => {
+    const map = buildGroupMap(() => ({ channels: new Set() }));
+    expect(map.efficiency).not.toBe(map.creative);
+    map.efficiency.channels.add("Google");
+    expect([...map.creative.channels]).toEqual([]);
+  });
+
+  it("groupForRoute는 미등록 라우트를 efficiency로 폴백하고 그 그룹은 항상 존재한다", () => {
+    expect(groupForRoute("weekly-review")).toBe("efficiency");
+    expect(useAppStore.getInitialState().csvGroups.efficiency).toBeTruthy();
   });
 });
