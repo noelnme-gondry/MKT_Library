@@ -397,7 +397,9 @@ export const useAppStore = create(persist((set, get) => ({
     return {
     currentRouteId: id,
     activeDataGroup,
-    csvData: state.csvGroups[activeDataGroup],
+    // 슬라이스가 없는 그룹으로 이동해도 미러는 항상 객체여야 한다. undefined가 되면
+    // csvData.headers 같은 직접 접근이 렌더 throw로 도구를 통째로 죽인다(5-24 사고).
+    csvData: state.csvGroups[activeDataGroup] || EMPTY_SLICE(),
     // 같은 CSV grain은 같은 필터를 이어 쓰고, 다른 grain으로 이동하면 그 그룹의
     // 필터로 교체한다. 다른 데이터에 이전 채널/국가 필터가 남는 cross-grain 사고 방지.
     dashboardFilter: state.dashboardFilterGroups[activeDataGroup] || EMPTY_DASHBOARD_FILTER(),
@@ -591,6 +593,7 @@ export const useAppStore = create(persist((set, get) => ({
     response: EMPTY_SLICE(),
     aha: EMPTY_SLICE(),
     incrementality: EMPTY_SLICE(),
+    brand_incrementality: EMPTY_SLICE(),
     content_attr: EMPTY_SLICE(),
     content_aha: EMPTY_SLICE(),
     content_traffic: EMPTY_SLICE(),

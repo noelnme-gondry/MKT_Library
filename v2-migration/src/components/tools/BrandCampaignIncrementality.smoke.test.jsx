@@ -24,6 +24,16 @@ describe("BrandCampaignIncrementality render smoke", () => {
     expect(useAppStore.getState().csvData.raw).toEqual([]);
   });
 
+  // 위 beforeEach는 csvGroups 슬라이스를 직접 주입해 실제 진입 경로를 우회한다.
+  // 사용자는 setCurrentRouteId만 거치므로, 그 경로로도 미러가 살아 있어야 한다
+  // (슬라이스 누락 시 csvData=undefined → csvData.headers 렌더 throw).
+  it("mounts after a real route navigation without a pre-seeded slice", () => {
+    useAppStore.setState({ currentRouteId: "home", activeDataGroup: "efficiency", csvData: EMPTY });
+    useAppStore.getState().setCurrentRouteId("5-24");
+    expect(useAppStore.getState().csvData).toBeTruthy();
+    expect(() => render(<BrandCampaignIncrementality />)).not.toThrow();
+  });
+
   it("withholds a directional verdict for an exploratory profile interval", async () => {
     const { container } = render(<BrandCampaignIncrementality />);
     fireEvent.click(screen.getByRole("button", { name: "예시 데이터 보기" }));
