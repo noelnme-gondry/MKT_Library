@@ -3,6 +3,11 @@
 // an unrelated dataset.
 export const TOOL_GROUP = {
   "5-2": "efficiency", "5-21": "efficiency", "5-22": "efficiency", "5-3": "efficiency",
+  // /start는 도구가 아니지만 효율 슬라이스에 CSV를 "쓰는" 라우트다. 여기 없으면
+  // setCurrentRouteId가 activeDataGroup을 이전 도구 그룹으로 유지하는 반면
+  // setCsvData는 efficiency에 쓰기 때문에, 업로드 직후 재진입 시 미러가 빈
+  // 슬라이스를 가리켜 방금 올린 CSV가 사라진다(읽기·쓰기 그룹 불일치).
+  "start-gate": "efficiency",
   // 5-6 is a defensive alias: 9-6 is the published route, while the creative
   // uploader still uses 5-6 for its demo/guide contract.
   "5-6": "creative",

@@ -197,6 +197,20 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     useAppStore.getState().setCurrentRouteId("weekly-review");
     expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "response", csvData: responseSlice });
   });
+
+  // /start는 도구가 아니지만 efficiency 슬라이스에 쓴다. 읽는 그룹(activeDataGroup)과
+  // 쓰는 그룹(groupForRoute)이 갈리면 업로드 직후 재진입에서 미러가 비어 보인다.
+  it("시작 화면 업로드는 효율 슬라이스에 저장되고 재진입해도 유지", () => {
+    const uploaded = { raw: [{ date: "2026-08-01" }], headers: ["date"], mapping: { date: "date" }, fileName: "mine.csv" };
+    useAppStore.getState().setCurrentRouteId("5-20");
+    useAppStore.getState().setCurrentRouteId("start-gate");
+    useAppStore.getState().setCsvData(uploaded);
+
+    expect(useAppStore.getState().csvGroups.efficiency).toEqual(uploaded);
+    useAppStore.getState().setCurrentRouteId("weekly-review");
+    useAppStore.getState().setCurrentRouteId("start-gate");
+    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: uploaded });
+  });
 });
 
 describe("useDataStore · 구조화 세션 상태", () => {

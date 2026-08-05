@@ -1084,13 +1084,29 @@ export const TOOL_REQUIRED_FIELDS = {
               "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              // /start의 매핑은 효율 슬라이스에 그대로 저장돼 사이드바로 진입한
+              // 도구가 이어 쓴다(추천 카드로 들어갈 때만 prepareDatasetForTool이
+              // 재매핑). 그래서 스코프는 "효율 패밀리(5-2·5-21·5-22·5-3)가 쓰는
+              // 필드의 합집합"이어야 하고, 여기서 빠진 컬럼은 사이드바 경로에서
+              // 영구 미매핑이 된다. 브랜드·증분 전용 필드(campaign_on 등)는 계속
+              // 제외한다 — 첫 업로드에서 판별할 근거가 없다.
               "start-gate": [
+                { key: "snapshot_date", unlocks: "리텐션 Dn 마감 판정 — 데이터 추출 기준일" },
                 { key: "channel", unlocks: "채널별 성과와 다음 분석 추천" },
                 { key: "campaign_name", unlocks: "캠페인별 성과와 다음 분석 추천" },
+                { key: "campaign_id", unlocks: "캠페인 단위 성과 변동 분석" },
+                { key: "creative_id", unlocks: "소재별 성과 변동 분석" },
+                { key: "creative_url", unlocks: "소재 미리보기 연결" },
                 { key: "platform", unlocks: "OS별 성과 확인" },
                 { key: "country", unlocks: "국가별 성과 확인" },
                 { key: "source", unlocks: "유료·오가닉 분리" },
+                { key: "impressions", unlocks: "노출·CTR·CPM 계산" },
+                { key: "clicks", unlocks: "클릭·CTR·전환율(CVR) 계산" },
+                { key: "revenue_d0", unlocks: "당일 매출·ROAS" },
                 { key: "revenue_d7", unlocks: "ROAS·LTV 분석 추천" },
+                { key: "revenue_d14", unlocks: "D14 매출 코호트" },
+                { key: "pu_d7", unlocks: "결제건수 D7 코호트" },
+                { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
               ],
               "5-24": [
                 { key: "cost", unlocks: "캠페인 투자 규모와 증분 성과를 함께 기록" },
