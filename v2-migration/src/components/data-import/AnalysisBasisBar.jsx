@@ -83,7 +83,7 @@ function cachedPeriodComparison(mappedRows) {
   return comparisonCache.get(mappedRows);
 }
 
-export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, toolId, eligibility: providedEligibility = null, locale = "ko", showPeriodComparison = true, useMappedMetrics = true }) {
+export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, toolId, eligibility: providedEligibility = null, locale = "ko", showPeriodComparison = true, useMappedMetrics = true, variant = "bar" }) {
   const T = COPY[locale] || COPY.ko;
   const metricKeys = useMemo(() => (
     useMappedMetrics ? Object.values(mapping || {}).filter((key) => key && key !== "__ignore__") : []
@@ -105,6 +105,20 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
   const label = isUnfit ? T.unfit : isCaution ? T.caution : T.ready;
   const primaryMetric = comparison.metrics?.find((metric) => ["actions", "installs", "revenue", "clicks"].includes(metric.key)) || comparison.metrics?.[0];
   const issueCount = report.issues.length;
+
+  if (variant === "tooltip") {
+    const comparisonText = comparison.available && primaryMetric
+      ? `${T.compare} ${comparison.windowSize}${comparison.cadence === "days" ? T.days : T.periodsUnit}: ${METRIC_LABEL[primaryMetric.key]?.[locale === "en" ? 1 : 0] || primaryMetric.key} ${formatDelta(primaryMetric, locale)}`
+      : "";
+    const qualityText = issueCount ? `${T.details} ${issueCount}` : T.noIssues;
+    const tooltip = [
+      `${T.basis}: ${label}`,
+      `${number(report.rowCount, locale)} ${T.rows} · ${number(report.periodCount, locale)} ${T.periods}`,
+      comparisonText,
+      qualityText,
+    ].filter(Boolean).join(" · ");
+    return <span className="result-evidence-hint data-confidence-hint" role="img" tabIndex={0} aria-label={`${T.basis}: ${label}`} data-tooltip={tooltip}>ⓘ</span>;
+  }
 
   return (
     <section className={`analysis-basis-bar ${isUnfit ? "is-unfit" : isCaution ? "is-caution" : "is-ready"}`} aria-label={T.basis}>

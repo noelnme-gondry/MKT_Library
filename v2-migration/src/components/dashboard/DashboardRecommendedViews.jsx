@@ -10,19 +10,19 @@ export default function DashboardRecommendedViews({ recommendations = [], additi
       <div className="dashboard-recommendations__heading">
         <div>
           <span>START HERE</span>
-          <h2 id="dashboard-recommendations-title">{tr("이 데이터에서 먼저 볼 3가지", "Start with these 3 views")}</h2>
+          <h2 id="dashboard-recommendations-title">{tr("이어서 확인할 분석", "Recommended next analyses")}</h2>
         </div>
         <p>{label}</p>
       </div>
       <div className="dashboard-recommendations__grid">
         {recommendations.map((item) => (
-          <button key={item.tab} type="button" className="dashboard-recommendation" onClick={() => onSelect?.(item)}>
-            <span className="dashboard-recommendation__rank">0{item.rank}</span>
+          <button key={item.tab} type="button" className="dashboard-recommendation" onClick={() => onSelect?.(item)} aria-label={tr(`${item.rank}순위 ${item.title} 열기`, `Open priority ${item.rank}: ${item.title}`)}>
+            <span className="dashboard-recommendation__rank"><small>{tr("우선", "Priority")}</small>0{item.rank}</span>
             <span className="dashboard-recommendation__content">
               <span className="dashboard-recommendation__topline"><strong>{item.title}</strong><em>{item.confidenceLabel}</em></span>
               <span>{item.reason}</span>
             </span>
-            <ChevronRight size={16} aria-hidden="true" />
+            <span className="dashboard-recommendation__open">{tr("열기", "Open")} <ChevronRight size={15} aria-hidden="true" /></span>
           </button>
         ))}
       </div>

@@ -121,7 +121,7 @@ describe("Dashboard render smoke", () => {
     const { container } = render(<Dashboard />);
     const dataPanel = container.querySelector("#dashboard-tabpanel");
     const utilities = container.querySelector(".dashboard-support-tools");
-    expect(container.querySelector(".dashboard-data-jump a")?.getAttribute("href")).toBe("#dashboard-tabpanel");
+    expect(container.querySelector(".dashboard-next-actions__utility a")?.getAttribute("href")).toBe("#dashboard-tabpanel");
     expect(dataPanel).toBeTruthy();
     expect(utilities).toBeTruthy();
     expect(utilities.id).toBe("dashboard-support-tools");
@@ -133,10 +133,11 @@ describe("Dashboard render smoke", () => {
     seedWithData();
     const { container } = render(<Dashboard />);
     const conclusion = container.querySelector(".result-action-card");
-    const actions = container.querySelector(".dashboard-decision-strip");
+    const actions = container.querySelector(".dashboard-next-actions");
     const supportingViews = container.querySelector(".dashboard-recommendations");
     expect(conclusion).toBeTruthy();
     expect(actions).toBeTruthy();
+    expect(actions.hasAttribute("open")).toBe(false);
     expect(conclusion.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     if (supportingViews) {
       expect(actions.compareDocumentPosition(supportingViews) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

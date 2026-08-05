@@ -54,6 +54,7 @@ export default function ResultActionCard({
   download = null,
   controls = null,
   analysisDetails = null,
+  analysisMeta = null,
   children,
   style,
   collapsePointsAfter = null,
@@ -204,6 +205,22 @@ export default function ResultActionCard({
             {download}
           </div>
         )}
+        {(analysisMeta || (analysisBasis && toolId)) && (
+          <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Data and method information" : "데이터 기준과 신뢰도"}>
+            {analysisBasis && toolId && (
+              <AnalysisBasisBar
+                canonicalData={csvData?.canonicalData}
+                mappedRows={csvData?.mappedRows}
+                mapping={csvData?.mapping}
+                toolId={toolId}
+                locale={locale}
+                showPeriodComparison={toolId !== "5-2"}
+                variant="tooltip"
+              />
+            )}
+            {analysisMeta}
+          </aside>
+        )}
       </div>
 
       {stats.length > 0 && (
@@ -254,16 +271,6 @@ export default function ResultActionCard({
         />
       )}
 
-      {analysisBasis && toolId && (
-        <AnalysisBasisBar
-          canonicalData={csvData?.canonicalData}
-          mappedRows={csvData?.mappedRows}
-          mapping={csvData?.mapping}
-          toolId={toolId}
-          locale={locale}
-          showPeriodComparison={toolId !== "5-2"}
-        />
-      )}
       {analysisDetails}
       {children}
     </section>

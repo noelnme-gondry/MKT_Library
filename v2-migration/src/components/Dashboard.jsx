@@ -79,7 +79,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 분석 완료 후 접힌 "데이터 매핑 설정" details — native <details>는 열림/닫힘 상태를
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [workerState, setWorkerState] = useState({ key: "", result: null });
 
   const hasData = csvData && csvData.raw.length > 0;
@@ -140,10 +139,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const openMapping = () => {
     setMappingOpen(true);
     requestAnimationFrame(() => document.getElementById("dashboard-data-setup")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
-  const openSupportTools = () => {
-    setSupportOpen(true);
-    requestAnimationFrame(() => document.getElementById("dashboard-support-tools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
   const selectRecommendedView = (item) => {
     setDashboardTab(item.tab);
@@ -319,8 +314,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     `After the next ${dashWindowDays} days, did the same metric improve from this baseline?`,
                   ),
                 }}
-                analysisDetails={
+                analysisMeta={
                   <AnalysisDetails
+                    compact
                     locale={locale}
                     statusLabel={verdict.tone === "good" ? tr("개선", "Improving") : verdict.tone === "bad" ? tr("주의", "Watch") : tr("안정", "Stable")}
                     statusTone={verdict.tone}
@@ -373,24 +369,23 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 />
-                <div className="dashboard-briefing__followup">
-                  <nav className="dashboard-decision-strip dashboard-result-toolbar" aria-label={tr("다음 작업", "Next actions")}>
-                    <div className="dashboard-decision-strip__copy"><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
-                    <div className="dashboard-decision-strip__actions">
-                      <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
+                <details className="dashboard-next-actions">
+                  <summary>
+                    <span><small>NEXT STEP</small><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
+                    <b aria-hidden="true">⌄</b>
+                  </summary>
+                  <div className="dashboard-next-actions__body">
+                    <div className="dashboard-next-actions__utility">
                       <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
+                      <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
                     </div>
-                  </nav>
-                  <DashboardRecommendedViews
-                    {...dashboardRecommendations}
-                    locale={locale}
-                    onSelect={selectRecommendedView}
-                  />
-                  <div className="dashboard-data-jump dashboard-data-jump--quiet">
-                    <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
-                    <span>{tr("기록·다음 분석·이벤트 마커는 데이터 아래에 정리했습니다.", "History, next analyses, and event markers are organized below the data.")}</span>
+                    <DashboardRecommendedViews
+                      {...dashboardRecommendations}
+                      locale={locale}
+                      onSelect={selectRecommendedView}
+                    />
                   </div>
-                </div>
+                </details>
               </section>
             )}
 
@@ -414,7 +409,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               )}
             </div>
             {verdict && !verdict.insufficient && (
-              <details className="dashboard-support-tools" id="dashboard-support-tools" open={supportOpen} onToggle={(event) => setSupportOpen(event.target.open)}>
+              <details className="dashboard-support-tools" id="dashboard-support-tools">
                 <summary>
                   <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
                   <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>

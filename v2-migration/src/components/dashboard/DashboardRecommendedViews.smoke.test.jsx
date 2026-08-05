@@ -14,7 +14,7 @@ describe("DashboardRecommendedViews", () => {
     const onSelect = vi.fn();
     render(<DashboardRecommendedViews recommendations={recommendations} additional={[{ tab: "viz", title: "시각화" }]} label="행동 가능성 순서" onSelect={onSelect} />);
 
-    expect(screen.getByRole("heading", { name: "이 데이터에서 먼저 볼 3가지" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "이어서 확인할 분석" })).toBeTruthy();
     expect(screen.getByText("전환량이 변했습니다.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /퍼널 진단/ }));
     expect(onSelect).toHaveBeenCalledWith(recommendations[0]);
