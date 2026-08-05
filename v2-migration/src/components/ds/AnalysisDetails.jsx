@@ -44,6 +44,7 @@ export default function AnalysisDetails({
   filterSummary = "",
   metricDefinition = "",
   warnings = [],
+  compact = false,
 }) {
   const isEn = locale === "en";
   const tr = (ko, en) => (isEn ? en : ko);
@@ -55,6 +56,17 @@ export default function AnalysisDetails({
     : interval;
   const cleanWarnings = (warnings || []).filter(hasValue);
   const hasProvenance = [method, version, seed, cachePolicy, inputSignature, filterSummary, metricDefinition].some(hasValue);
+
+  if (compact) {
+    const tooltip = [
+      statusLabel,
+      metric,
+      scope,
+      hasValue(sample.value) ? `${sample.label || tr("사용 행", "Rows used")}: ${displayValue(sample.value)}` : "",
+      cleanWarnings[0],
+    ].filter(hasValue).join(" · ");
+    return <span className="result-evidence-hint data-confidence-hint" role="img" tabIndex={0} aria-label={tr("신뢰도와 방법", "Reliability and method")} data-tooltip={tooltip}>ⓘ</span>;
+  }
 
   return (
     <details className={`analysis-details analysis-details--${statusTone}`}>

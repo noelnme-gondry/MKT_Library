@@ -98,7 +98,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
-  it("places the review promise before the folded analysis basis", () => {
+  it("moves the folded data basis into the result header", () => {
     const mappedRows = [{ date: "2026-07-01", cost: "100", installs: "10" }];
     useAppStore.setState({ csvData: {
       raw: [{ Date: "2026-07-01", Cost: "100", Installs: "10" }],
@@ -118,11 +118,9 @@ describe("ResultActionCard decision-first hierarchy", () => {
         decisionPrefill={{ action: "Move 10% budget", metric: "CPA" }}
       />,
     );
-    const review = container.querySelector(".decision-review");
-    const basis = container.querySelector(".analysis-basis-bar");
-    expect(review).toBeTruthy();
-    expect(basis).toBeTruthy();
-    expect(review.compareDocumentPosition(basis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector(".decision-review")).toBeTruthy();
+    expect(container.querySelector(".analysis-basis-bar")).toBeFalsy();
+    expect(container.querySelector(".result-action-card__evidence .data-confidence-hint")).toBeTruthy();
   });
 
   it("refreshes an untouched seed but never discards an in-progress draft", () => {
