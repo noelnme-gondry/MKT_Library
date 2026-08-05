@@ -2637,7 +2637,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   }, [isRevenueTarget, sourceCurrency, displayCurrency, currencySym, tx]);
   const applyForecastActual = useCallback((match) => {
     const actual = targetValueLabel(match.actualValue, { perWeek: true });
-    updateDecisionRecord(match.recordId, { actual });
+    updateDecisionRecord(match.recordId, { actual, status: "reviewed", reviewedAt: new Date().toISOString() });
     trackProductEvent("forecast_actual_applied", {
       tool_id: "5-18",
       source: "forecast_review",

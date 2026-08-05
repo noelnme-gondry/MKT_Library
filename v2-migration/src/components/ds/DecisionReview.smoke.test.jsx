@@ -44,7 +44,7 @@ describe("DecisionReview", () => {
     expect(screen.getByText("CPA")).toBeTruthy();
     expect(useAppStore.getState().decisionRecords[0].targetDirection).toBe("lower");
     fireEvent.change(screen.getByPlaceholderText("예: CPA 4,980원"), { target: { value: "CPA 4,980원" } });
-    expect(screen.getByText("검토 완료")).toBeTruthy();
+    expect(screen.getByText("검토 예정")).toBeTruthy();
   });
 
   it("asks for storage consent after save and persists only after acceptance", () => {

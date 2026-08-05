@@ -121,7 +121,7 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     expect(record.id).not.toMatch(/^decision_\d+$/);
     expect(record.raw).toBeUndefined();
     useAppStore.getState().updateDecisionRecord(record.id, { actual: "CPA 4,980", csvData: { raw: [1] } });
-    expect(useAppStore.getState().decisionRecords[0].status).toBe("reviewed");
+    expect(useAppStore.getState().decisionRecords[0].status).toBe("pending");
     expect(useAppStore.getState().decisionRecords[0].csvData).toBeUndefined();
     useAppStore.getState().setDecisionPersistenceEnabled(true);
     useAppStore.getState().setDecisionPersistenceEnabled(false);
@@ -131,7 +131,7 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
   it("record_id가 있는 CSV를 반복 import하면 같은 결정을 갱신하고 중복하지 않음", () => {
     useAppStore.setState({ decisionRecords: [] });
     useAppStore.getState().importDecisionRecords([{ record_id: "decision_9", tool_id: "5-3", action: "예산 유지", actual: "" }]);
-    useAppStore.getState().importDecisionRecords([{ record_id: "decision_9", tool_id: "5-3", action: "예산 유지", actual: "CPA 4,900" }]);
+    useAppStore.getState().importDecisionRecords([{ record_id: "decision_9", tool_id: "5-3", action: "예산 유지", actual: "CPA 4,900", status: "reviewed" }]);
     expect(useAppStore.getState().decisionRecords).toHaveLength(1);
     expect(useAppStore.getState().decisionRecords[0]).toMatchObject({ id: "decision_9", actual: "CPA 4,900", status: "reviewed" });
   });

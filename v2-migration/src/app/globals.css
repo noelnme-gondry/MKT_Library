@@ -5091,6 +5091,16 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-record__fields label > span { display: block; margin-bottom: 4px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .04em; }
 .weekly-review-record__fields input { box-sizing: border-box; width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--surface-container-low); color: var(--text-primary); font: 500 11px var(--font-sans); }
 .weekly-review-record__fields input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
+.weekly-review-record__candidate { display: grid; grid-template-columns: auto auto minmax(0,1fr) auto; align-items: center; gap: 6px 9px; margin-top: 9px; padding: 9px 10px; border: 1px dashed color-mix(in srgb, var(--primary) 48%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--primary) 4%, var(--surface-container-low)); }
+.weekly-review-record__candidate > span { color: var(--primary); font: 750 8px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.weekly-review-record__candidate > strong { color: var(--text-primary); font: 650 11px var(--font-mono); }
+.weekly-review-record__candidate > small { color: var(--text-muted); font: 500 9px var(--font-mono); }
+.weekly-review-record__candidate > p { grid-column: 1 / -1; margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.weekly-review-record__candidate.not_due, .weekly-review-record__candidate.waiting_for_data, .weekly-review-record__candidate.incomplete_window { border-color: var(--border); background: var(--surface-container-low); }
+.weekly-review-record__candidate > .btn { margin: 0; color: var(--primary); }
+.weekly-review-record__complete { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.weekly-review-record__complete > .btn { margin: 0; }
+.weekly-review-record__complete small { color: var(--text-muted); font-size: 10px; }
 .weekly-review-record > .btn { margin-top: 7px; color: var(--text-muted); font-size: 10px; }
 .forecast-review-match { margin-bottom: 18px; overflow: hidden; border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 12px; background: var(--surface-container-lowest); }
 .forecast-review-match__head { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; padding: 15px 17px; border-bottom: 1px solid var(--border-subtle); }
