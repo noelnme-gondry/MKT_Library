@@ -90,7 +90,7 @@ describe("WeeklyReview", () => {
     expect(screen.queryByText("새 실제값을 기다리는 중")).toBeNull();
   });
 
-  it("tracks the inbox state and the first completed review without decision content", () => {
+  it("does not complete a future review merely by typing an actual", () => {
     useAppStore.setState({
       decisionRecords: [
         { id: "decision_1", toolId: "5-3", action: "민감한 캠페인 이름", reviewDate: "2099-01-01", actual: "", learning: "", status: "pending" },
@@ -104,13 +104,8 @@ describe("WeeklyReview", () => {
       locale: "ko",
     });
     fireEvent.change(screen.getByLabelText("실제 결과 — 민감한 캠페인 이름"), { target: { value: "CPA 12,000원" } });
-    expect(window.gtag).toHaveBeenCalledWith("event", "decision_review_completed", {
-      tool_id: "5-3",
-      source: "weekly_review",
-      result_state: "reviewed",
-      days_since_decision: "unknown",
-      locale: "ko",
-    });
+    expect(window.gtag).not.toHaveBeenCalledWith("event", "decision_review_completed", expect.anything());
+    expect(screen.getAllByText("예정").length).toBeGreaterThan(0);
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("민감한 캠페인 이름");
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("12,000");
   });

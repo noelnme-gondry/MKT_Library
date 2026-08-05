@@ -1,7 +1,7 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 4;
+export const DECISION_REVIEW_SCHEMA_VERSION = 5;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -20,12 +20,15 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "forecastUpper",
   "forecastSourceThrough",
   "baseline",
+  "baselineDate",
+  "comparisonWindowDays",
   "reviewQuestion",
   "reviewDate",
   "sourcePeriod",
   "actual",
   "learning",
   "status",
+  "reviewedAt",
   "createdAt",
   "updatedAt",
 ]);
@@ -47,12 +50,15 @@ export const DECISION_REVIEW_COLUMNS = [
   "forecast_upper",
   "forecast_source_through",
   "baseline",
+  "baseline_date",
+  "comparison_window_days",
   "review_question",
   "review_date",
   "source_period",
   "actual",
   "learning",
   "status",
+  "reviewed_at",
   "created_at",
   "updated_at",
   "record_id",
@@ -170,14 +176,24 @@ function field(row, camel, snake = camel) {
   return row?.[snake] ?? row?.[camel];
 }
 
-export function getDecisionReviewStatus({ actual, learning } = {}) {
-  return asText(actual) || asText(learning) ? "reviewed" : "pending";
+function asComparisonWindowDays(value) {
+  const parsed = Number(asText(value, 3));
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 60 ? String(parsed) : "7";
+}
+
+export function getDecisionReviewStatus({ status, reviewedAt, reviewed_at } = {}) {
+  const explicitStatus = asText(status, 12).toLowerCase();
+  return explicitStatus === "reviewed" || Boolean(asTimestamp(reviewedAt ?? reviewed_at)) ? "reviewed" : "pending";
 }
 
 export function getDecisionReviewBucket(record = {}, today = toLocalDecisionDate()) {
-  if (getDecisionReviewStatus(record) === "reviewed") return "reviewed";
   const reviewDate = asDate(record.reviewDate ?? record.review_date);
   const normalizedToday = asDate(today);
+  // 예전 자동 로직이 actual 입력만으로 남긴 status:"reviewed"는 검토일 전에는
+  // 완료로 보이지 않게 한다. reviewedAt은 사용자가 명시적으로 완료한 기록이다.
+  const hasExplicitReview = Boolean(asTimestamp(record.reviewedAt ?? record.reviewed_at));
+  if (reviewDate && normalizedToday && reviewDate > normalizedToday && !hasExplicitReview) return "upcoming";
+  if (getDecisionReviewStatus(record) === "reviewed") return "reviewed";
   if (!reviewDate || !normalizedToday) return "unscheduled";
   if (reviewDate < normalizedToday) return "overdue";
   if (reviewDate === normalizedToday) return "today";
@@ -275,6 +291,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   if (!action) return null;
   const actual = asText(field(row, "actual"), FIELD_LIMITS.actual);
   const learning = asText(field(row, "learning"), FIELD_LIMITS.learning);
+  const reviewedAt = asTimestamp(field(row, "reviewedAt", "reviewed_at"));
   const locale = asText(field(row, "locale"), FIELD_LIMITS.locale).toLowerCase() === "en" ? "en" : "ko";
   const comparisonKind = asText(field(row, "comparisonKind", "comparison_kind"), 24) === "forecast_actual" ? "forecast_actual" : "";
   const record = {
@@ -295,12 +312,15 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     forecastUpper: comparisonKind ? asFiniteNumberText(field(row, "forecastUpper", "forecast_upper")) : "",
     forecastSourceThrough: comparisonKind ? asDate(field(row, "forecastSourceThrough", "forecast_source_through")) : "",
     baseline: asText(field(row, "baseline"), FIELD_LIMITS.baseline),
+    baselineDate: asDate(field(row, "baselineDate", "baseline_date")),
+    comparisonWindowDays: asComparisonWindowDays(field(row, "comparisonWindowDays", "comparison_window_days")),
     reviewQuestion: asText(field(row, "reviewQuestion", "review_question"), FIELD_LIMITS.reviewQuestion),
     reviewDate: asDate(field(row, "reviewDate", "review_date")),
     sourcePeriod: asText(field(row, "sourcePeriod", "source_period"), FIELD_LIMITS.sourcePeriod),
     actual,
     learning,
-    status: getDecisionReviewStatus({ actual, learning }),
+    status: getDecisionReviewStatus({ status: field(row, "status"), reviewedAt }),
+    reviewedAt,
     createdAt: asTimestamp(field(row, "createdAt", "created_at")),
     updatedAt: asTimestamp(field(row, "updatedAt", "updated_at")),
   };
@@ -339,12 +359,15 @@ export function serializeDecisionReviewCsv(records = []) {
     record.forecastUpper,
     record.forecastSourceThrough,
     record.baseline,
+    record.baselineDate,
+    record.comparisonWindowDays,
     record.reviewQuestion,
     record.reviewDate,
     record.sourcePeriod,
     record.actual,
     record.learning,
     record.status,
+    record.reviewedAt,
     record.createdAt,
     record.updatedAt,
     record.id,

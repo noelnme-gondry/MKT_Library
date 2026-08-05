@@ -14,6 +14,7 @@ import {
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
 import { assessForecastActual } from "@/lib/forecastReview";
+import { buildComparableDecisionActual } from "@/lib/decisionComparableActual";
 import { localizedTool } from "@/lib/toolConnections";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
@@ -47,6 +48,8 @@ const COPY = {
     clearConfirm: "이 브라우저의 결정 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
     inboxSummary: "검토 현황",
     baseline: "기준",
+    baselineDate: "기준 데이터",
+    comparisonWindow: "비교 기간",
     reviewDate: "검토일",
     noMetric: "지표 미입력",
     briefTitle: "주간 운영 브리프",
@@ -72,6 +75,16 @@ const COPY = {
     higherHint: "높을수록 좋은 지표 기준",
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
     actualPlaceholder: "예: 4,980 또는 15.2%",
+    dataCandidate: "새 데이터 비교 후보",
+    candidateReady: "검토일 이후 같은 길이 데이터가 준비되었습니다. 확인한 뒤 완료로 저장하세요.",
+    candidateNotDue: "검토일 전에는 데이터를 실제 결과로 처리하지 않습니다.",
+    candidateWaiting: "검토일 이후 데이터가 아직 없습니다. 이전 CSV의 마지막 기간은 실제 결과로 쓰지 않습니다.",
+    candidateIncomplete: (days, total) => `같은 ${total}일 비교를 위해 ${days}일치 데이터가 더 필요합니다.`,
+    candidateMissingBasis: "기준일 또는 지원 지표(CPA·CPI·ROAS)를 확인하면 같은 기간으로 자동 비교할 수 있습니다.",
+    candidatePeriod: "비교 기간",
+    useCandidate: "이 값으로 검토하기",
+    completeReview: "검토 완료로 저장",
+    completeLocked: "검토일 전에는 완료할 수 없습니다.",
     outcome: "기준 대비 결과",
     forecastComparison: "예측 대조",
     forecastTicket: "예측 대조 약속",
@@ -116,6 +129,8 @@ const COPY = {
     clearConfirm: "Delete every decision record in this browser? This cannot be undone.",
     inboxSummary: "Review status",
     baseline: "Baseline",
+    baselineDate: "Baseline data through",
+    comparisonWindow: "Comparison window",
     reviewDate: "Review date",
     noMetric: "No metric set",
     briefTitle: "Weekly operating brief",
@@ -141,6 +156,16 @@ const COPY = {
     higherHint: "Scored as a higher-is-better metric",
     unscoredHint: "Shows the change without calling it better or worse",
     actualPlaceholder: "e.g. 4,980 or 15.2%",
+    dataCandidate: "New-data comparison candidate",
+    candidateReady: "An equally long post-review window is ready. Confirm it before marking this review complete.",
+    candidateNotDue: "Data is not treated as an actual outcome before the review date.",
+    candidateWaiting: "There is no data after the review date yet. The end of an older CSV is never used as the actual outcome.",
+    candidateIncomplete: (days, total) => `${days} of ${total} comparable days are available; wait for the full window.`,
+    candidateMissingBasis: "Add a baseline date and a supported metric (CPA, CPI, or ROAS) to compare the same window automatically.",
+    candidatePeriod: "Comparison period",
+    useCandidate: "Review with this value",
+    completeReview: "Mark review complete",
+    completeLocked: "This review cannot be completed before its review date.",
     outcome: "Outcome vs baseline",
     forecastComparison: "Forecast comparison",
     forecastTicket: "Forecast check-in",
@@ -213,6 +238,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
+  const csvData = useAppStore((state) => state.csvData);
   const decisionSessionRecordIds = useAppStore((state) => state.decisionSessionRecordIds);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
@@ -233,6 +259,10 @@ export default function WeeklyReview({ locale = "ko" }) {
     return counts;
   }, { overdue: 0, today: 0, upcoming: 0, unscheduled: 0, reviewed: 0 }), [sortedRecords, todayKey]);
   const outcomeCounts = useMemo(() => summarizeDecisionOutcomes(sortedRecords), [sortedRecords]);
+  const comparableCandidates = useMemo(() => new Map(records.map((record) => [
+    record.id,
+    buildComparableDecisionActual(record, { canonicalData: csvData?.canonicalData, today: todayKey }),
+  ])), [csvData?.canonicalData, records, todayKey]);
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
     const assessment = assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
@@ -263,20 +293,22 @@ export default function WeeklyReview({ locale = "ko" }) {
     setMessage(t.imported(imported.length));
   };
 
-  const updateRecord = (id, key, value) => {
-    const current = records.find((record) => record.id === id);
-    const wasReviewed = getDecisionReviewBucket(current, todayKey) === "reviewed";
-    const next = current ? { ...current, [key]: value } : null;
-    updateDecisionRecord(id, { [key]: value });
-    if (!wasReviewed && next && getDecisionReviewBucket(next, todayKey) === "reviewed") {
-      trackProductEvent("decision_review_completed", {
-        tool_id: next.toolId,
-        source: "weekly_review",
-        result_state: "reviewed",
-        days_since_decision: decisionReviewAgeBucket(next, { isSameSession: decisionSessionRecordIds.has(next.id) }),
-        locale,
-      });
-    }
+  const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
+
+  const completeReview = (record, actual = record.actual, source = "weekly_review") => {
+    if (!record || record.reviewDate > todayKey || !String(actual || "").trim()) return;
+    updateDecisionRecord(record.id, {
+      actual: String(actual).trim(),
+      status: "reviewed",
+      reviewedAt: new Date().toISOString(),
+    });
+    trackProductEvent("decision_review_completed", {
+      tool_id: record.toolId,
+      source,
+      result_state: "reviewed",
+      days_since_decision: decisionReviewAgeBucket(record, { isSameSession: decisionSessionRecordIds.has(record.id) }),
+      locale,
+    });
   };
 
   return (
@@ -366,7 +398,9 @@ export default function WeeklyReview({ locale = "ko" }) {
               ? t.withinRangeHint
               : forecastAssessment?.state === "outside_range"
                 ? t.outsideRangeHint
-                : t.pointOnlyHint;
+              : t.pointOnlyHint;
+            const comparableCandidate = comparableCandidates.get(record.id);
+            const isReviewDue = Boolean(record.reviewDate) && record.reviewDate <= todayKey;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
                 <span>{toolName(record.toolId, locale)}</span>
@@ -378,6 +412,7 @@ export default function WeeklyReview({ locale = "ko" }) {
               {record.reviewQuestion && <div className="weekly-review-record__question"><span>{t.reviewQuestion}</span><strong>{record.reviewQuestion}</strong></div>}
               <div className="weekly-review-record__baseline">
                 <span>{t.baseline}</span><strong>{record.metric || t.noMetric} · {record.baseline || "—"}</strong>
+                {record.baselineDate && <><span>{t.baselineDate}</span><strong>{record.baselineDate} · {record.comparisonWindowDays || 7}{locale === "en" ? " days" : "일"}</strong></>}
                 {record.sourcePeriod && <><span>{t.sourcePeriod}</span><strong>{record.sourcePeriod}</strong></>}
               </div>
               {isForecastReview && <div className="weekly-review-record__forecast-ticket">
@@ -413,11 +448,30 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <strong>{comparisonLabel(comparison, locale)}</strong>
                 <small>{outcomeHint}</small>
               </div>}
+              {!isForecastReview && status !== "reviewed" && comparableCandidate && <div className={`weekly-review-record__candidate ${comparableCandidate.state}`}>
+                <span>{t.dataCandidate}</span>
+                {comparableCandidate.state === "ready" ? <>
+                  <strong>{comparableCandidate.actual}</strong>
+                  <small>{t.candidatePeriod} · {comparableCandidate.comparisonStart}–{comparableCandidate.comparisonEnd}</small>
+                  <p>{t.candidateReady}</p>
+                  <button type="button" className="btn small" onClick={() => completeReview(record, comparableCandidate.actual, "comparable_data")}>{t.useCandidate}</button>
+                </> : <p>{comparableCandidate.state === "not_due"
+                  ? t.candidateNotDue
+                  : comparableCandidate.state === "waiting_for_data"
+                    ? t.candidateWaiting
+                    : comparableCandidate.state === "incomplete_window"
+                      ? t.candidateIncomplete(comparableCandidate.observedDays || 0, comparableCandidate.windowDays)
+                      : t.candidateMissingBasis}</p>}
+              </div>}
               <div className="weekly-review-record__fields">
                 <label><span>{t.reviewDate}</span><input type="date" value={record.reviewDate} onChange={(event) => updateRecord(record.id, "reviewDate", event.target.value)} /></label>
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
+              {status !== "reviewed" && <div className="weekly-review-record__complete">
+                <button type="button" className="btn small primary" disabled={!isReviewDue || !record.actual.trim()} onClick={() => completeReview(record)}>{t.completeReview}</button>
+                {!isReviewDue && <small>{t.completeLocked}</small>}
+              </div>}
               <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>
             </article>;
           })}

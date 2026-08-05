@@ -73,13 +73,14 @@ describe("decision review CSV contract", () => {
     const rows = normalizeDecisionReviewRows([
       { action: "", metric: "CPA" },
       { "\uFEFFtool_id": "5-2", action: "주간 예산 확인", reviewDate: "2026-08-03", actual: "", learning: "" },
-      { action: "소재 교체", actual: "CTR 1.8%", learning: "훅 테스트 지속" },
+      { action: "소재 교체", actual: "CTR 1.8%", learning: "훅 테스트 지속", status: "reviewed" },
     ], "9-6");
 
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ toolId: "5-2", reviewDate: "2026-08-03", status: "pending" });
     expect(rows[1]).toMatchObject({ toolId: "9-6", status: "reviewed" });
-    expect(getDecisionReviewStatus({ actual: "", learning: "" })).toBe("pending");
+    expect(getDecisionReviewStatus({ actual: "CPA 4,980" })).toBe("pending");
+    expect(getDecisionReviewStatus({ reviewedAt: "2026-08-01T00:00:00.000Z" })).toBe("reviewed");
   });
 
   it("classifies review dates without treating missing dates as upcoming", () => {
@@ -87,7 +88,9 @@ describe("decision review CSV contract", () => {
     expect(getDecisionReviewBucket({ reviewDate: "2026-08-01" }, "2026-08-01")).toBe("today");
     expect(getDecisionReviewBucket({ reviewDate: "2026-08-02" }, "2026-08-01")).toBe("upcoming");
     expect(getDecisionReviewBucket({ reviewDate: "" }, "2026-08-01")).toBe("unscheduled");
-    expect(getDecisionReviewBucket({ reviewDate: "2026-08-02", actual: "CPA 4,980" }, "2026-08-01")).toBe("reviewed");
+    expect(getDecisionReviewBucket({ reviewDate: "2026-08-02", actual: "CPA 4,980" }, "2026-08-01")).toBe("upcoming");
+    expect(getDecisionReviewBucket({ reviewDate: "2026-08-02", actual: "CPA 4,980", status: "reviewed" }, "2026-08-01")).toBe("upcoming");
+    expect(getDecisionReviewBucket({ reviewDate: "2026-08-02", status: "reviewed", reviewedAt: "2026-08-01T00:00:00.000Z" }, "2026-08-01")).toBe("reviewed");
     expect(toLocalDecisionDate(new Date(2026, 7, 1, 0, 30))).toBe("2026-08-01");
   });
 

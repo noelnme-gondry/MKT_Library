@@ -308,6 +308,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                       : tr("같은 기준으로 다음 비교기간의 변화를 다시 확인한다", "Recheck the next comparison window using the same definition"),
                   metric: verdict.stats.find((stat) => stat.emphasis === "primary")?.label || verdict.stats[0]?.label || "",
                   baseline: verdict.stats.find((stat) => stat.emphasis === "primary")?.value || verdict.stats[0]?.value || "",
+                  baselineDate: dashboardFilter.dateEnd || "",
+                  comparisonWindowDays: dashWindowDays,
                   sourcePeriod: tr(`최근 ${dashWindowDays}일 vs 직전 ${dashWindowDays}일`, `Last ${dashWindowDays} days vs. prior ${dashWindowDays} days`),
                   reviewQuestion: tr(
                     `다음 ${dashWindowDays}일에도 같은 지표가 현재 기준보다 개선됐는가?`,

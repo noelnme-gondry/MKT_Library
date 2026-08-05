@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
 import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
+import { latestDecisionDataDate } from "@/lib/decisionComparableActual";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
 
@@ -15,7 +16,7 @@ function nextWeekDate() {
   return toLocalDecisionDate(date);
 }
 
-function createDraft(prefill = {}) {
+function createDraft(prefill = {}, defaults = {}) {
   const source = prefill && typeof prefill === "object" && !Array.isArray(prefill) ? prefill : {};
   const text = (value) => typeof value === "string" ? value : String(value ?? "");
   return {
@@ -33,6 +34,8 @@ function createDraft(prefill = {}) {
     forecastUpper: text(source.forecastUpper),
     forecastSourceThrough: text(source.forecastSourceThrough),
     baseline: text(source.baseline),
+    baselineDate: /^\d{4}-\d{2}-\d{2}$/.test(text(source.baselineDate)) ? text(source.baselineDate) : (defaults.baselineDate || ""),
+    comparisonWindowDays: String(Number(source.comparisonWindowDays) || defaults.comparisonWindowDays || 7),
     reviewQuestion: text(source.reviewQuestion),
     sourcePeriod: text(source.sourcePeriod),
     reviewDate: /^\d{4}-\d{2}-\d{2}$/.test(text(source.reviewDate)) ? text(source.reviewDate) : nextWeekDate(),
@@ -99,6 +102,9 @@ const COPY = {
     forecastRange: "참고범위",
     forecastSourceThrough: "예측 기준 데이터",
     baseline: "현재 기준값 (선택)",
+    baselineDate: "기준값 데이터 기준일",
+    comparisonWindow: "비교 기간 (일)",
+    comparisonHint: "검토일 이후 같은 길이의 데이터가 모두 들어와야 실제값 후보를 만듭니다.",
     reviewQuestion: "검토일에 답할 질문",
     reviewQuestionPlaceholder: "예: CPA가 목표 이하로 회복됐는가?",
     reviewDate: "검토 예정일",
@@ -170,6 +176,9 @@ const COPY = {
     forecastRange: "Reference range",
     forecastSourceThrough: "Forecast data through",
     baseline: "Current baseline (optional)",
+    baselineDate: "Baseline data through",
+    comparisonWindow: "Comparison window (days)",
+    comparisonHint: "An actual candidate appears only after the full same-length window following the review date is available.",
     reviewQuestion: "Question to answer on review day",
     reviewQuestionPlaceholder: "e.g. Did CPA return below target?",
     reviewDate: "Review date",
@@ -209,7 +218,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const t = COPY[locale] || COPY.ko;
   const instanceId = useId();
   const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
-  const [draft, setDraft] = useState(() => createDraft(decisionPrefill));
+  const csvData = useAppStore((state) => state.csvData);
+  const latestDataDate = useMemo(() => latestDecisionDataDate(csvData?.canonicalData), [csvData?.canonicalData]);
+  const draftDefaults = useMemo(() => ({ baselineDate: latestDataDate, comparisonWindowDays: 7 }), [latestDataDate]);
+  const [draft, setDraft] = useState(() => createDraft(decisionPrefill, draftDefaults));
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -266,11 +278,11 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     const nextKey = `${toolId}:${decisionPrefillKey}`;
     const hasToolChanged = draftToolId.current !== toolId;
     if (nextKey === appliedPrefillKey.current || (!hasToolChanged && isDraftDirty)) return;
-    setDraft(createDraft(decisionPrefill));
+    setDraft(createDraft(decisionPrefill, draftDefaults));
     appliedPrefillKey.current = nextKey;
     draftToolId.current = toolId;
     if (hasToolChanged) setIsDraftDirty(false);
-  }, [decisionPrefill, decisionPrefillKey, isDraftDirty, toolId]);
+  }, [decisionPrefill, decisionPrefillKey, draftDefaults, isDraftDirty, toolId]);
 
   const updateDraft = (key, value) => {
     setIsDraftDirty(true);
@@ -299,6 +311,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       forecastUpper: draft.forecastUpper,
       forecastSourceThrough: draft.forecastSourceThrough,
       baseline: draft.baseline.trim(),
+      baselineDate: draft.baselineDate,
+      comparisonWindowDays: draft.comparisonWindowDays,
       reviewQuestion: draft.reviewQuestion.trim(),
       reviewDate: draft.reviewDate,
       sourcePeriod: draft.sourcePeriod.trim(),
@@ -311,7 +325,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       markPersistencePromptSeen();
       setIsPersistencePromptOpen(true);
     }
-    setDraft(createDraft(decisionPrefill));
+    setDraft(createDraft(decisionPrefill, draftDefaults));
     setIsDraftDirty(false);
     appliedPrefillKey.current = `${toolId}:${decisionPrefillKey}`;
     draftToolId.current = toolId;
@@ -459,6 +473,15 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <label className="decision-review__field">
             <span>{t.baseline}</span>
             <input value={draft.baseline} onChange={(event) => updateDraft("baseline", event.target.value)} placeholder="—" />
+          </label>
+          <label className="decision-review__field">
+            <span>{t.baselineDate}</span>
+            <input type="date" value={draft.baselineDate} onChange={(event) => updateDraft("baselineDate", event.target.value)} />
+          </label>
+          <label className="decision-review__field">
+            <span>{t.comparisonWindow}</span>
+            <input type="number" min="1" max="60" value={draft.comparisonWindowDays} onChange={(event) => updateDraft("comparisonWindowDays", event.target.value)} />
+            <small>{t.comparisonHint}</small>
           </label>
           <label className="decision-review__field">
             <span>{t.reviewDate}</span>
