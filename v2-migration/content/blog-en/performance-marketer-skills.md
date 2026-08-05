@@ -28,6 +28,8 @@ You can't learn this from a book — you have to actually run campaigns. You nee
 
 **What to build here:** get comfortable with at least one media ads manager, build and test creative yourself, develop a feel for targeting setup.
 
+The operating layer becomes more concrete with distinct playbooks: [Meta Advantage+ App operations](/blog/meta-advantage-plus-guide), [ASO basics](/blog/aso-basics-guide), [separating retargeting and re-engagement](/blog/retargeting-reengagement-guide), and [creative specs and safe zones](/blog/ad-creative-specs-guide).
+
 ## Layer 2. Working with Data — pulling the numbers yourself
 
 There's a bigger gap than you'd expect between someone who only looks at whatever a dashboard shows, and someone who pulls numbers straight from raw data and double-checks them.

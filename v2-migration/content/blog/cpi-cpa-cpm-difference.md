@@ -1,14 +1,14 @@
 ---
-title: "CPI·CPA·CPM·CPC 차이, 헷갈리면 예산 샌다"
-description: "CPM·CPC·CPI·CPA가 각각 뭘 재는 지표인지, 언제 어떤 걸 기준으로 봐야 하는지 정리했습니다."
+title: "CPM 뜻·CPC 뜻: 노출과 클릭 비용부터 읽는 법"
+description: "CPM과 CPC가 각각 무엇을 재고, 노출·클릭 비용이 높을 때 어디를 점검해야 하는지 정리했습니다."
 date: "2026-07-15"
 slug: "cpi-cpa-cpm-difference"
-keywords: "CPI CPA 차이, CPM CPC, CPI CPA CPM CPC, 광고 지표 차이, CPM 뜻, CPC 뜻, CPI 뜻, CPA 뜻, 마케팅 비용 지표"
+keywords: "CPM 뜻, CPC 뜻, CPM CPC 차이, 노출당 비용, 클릭당 비용, CPM 계산법, CPC 계산법, 광고 노출 비용, 광고 클릭 비용"
 tags: ["기초", "지표"]
 draft: false
 ---
 
-CPM, CPC, CPI, CPA. 다 "얼마 든다"는 지표인데 재는 대상이 달라요. 이걸 섞으면 "싸다/비싸다"를 잘못 판단해요. 하나씩 정리할게요.
+CPM과 CPC는 광고의 가장 앞단, 즉 노출과 클릭에 붙는 비용이에요. 이 둘을 읽을 줄 알아야 "광고가 비싸진 건지, 반응이 약해진 건지"를 구분할 수 있습니다. CPI·CPA·ROAS까지 포함한 전체 지표 사슬과 최적화 기준은 [퍼포먼스 마케팅 지표 가이드](/blog/performance-marketing-metrics)에서 먼저 보세요. 이 글은 CPM·CPC의 뜻과 앞단 진단에 집중합니다.
 
 ## 퍼널 단계별로 붙는 비용이에요
 
@@ -46,7 +46,7 @@ CPA가 높을 때:
 - 앱 설치 → CPI 기준
 - 매출·가입 → CPA(또는 [ROAS](/blog/roas-improvement)) 기준
 
-초반 지표(CPI)로 최적화하면 "싸게 깔았는데 아무도 안 사는" 유저를 대량으로 데려올 수 있어요. 가능하면 **돈 되는 행동(CPA) 기준**으로 내려가세요.
+초반 지표(CPI)로 최적화하면 "싸게 깔았는데 아무도 안 사는" 유저를 대량으로 데려올 수 있어요. 가능하면 **돈 되는 행동(CPA) 기준**으로 내려가세요. 어떤 지표를 사업 단계별로 선택할지는 [전체 지표 사슬](/blog/performance-marketing-metrics)에서 이어서 확인하세요.
 
 ## 정직하게
 

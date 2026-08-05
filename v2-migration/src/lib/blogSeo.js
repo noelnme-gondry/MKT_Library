@@ -18,7 +18,7 @@ const KO_TITLES = {
   "cannibalization-organic-paid": "광고 카니발라이제이션이란? 유료·오가닉 잠식 측정",
   "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 평균이 숨기는 이탈 읽는 법",
   "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
-  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 지표 계산과 선택 기준",
+  "cpi-cpa-cpm-difference": "CPM 뜻·CPC 뜻: 노출과 클릭 비용부터 읽는 법",
   "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP 전환 데이터 이름 규칙",
   "funnel-dropoff-analysis": "전환율(CVR) 개선: 퍼널 이탈 진단부터 A/B 검증까지",
   "ga4-data-traps": "GA4 데이터 오류처럼 보이는 숫자 차이: 집계 기준 7가지",
@@ -33,6 +33,7 @@ const KO_TITLES = {
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지",
   "postback-integration-guide": "포스트백 연동 가이드: SAN·S2S·설치 0 오류 해결",
   "retargeting-reengagement-guide": "리타겟팅·재참여 캠페인 운영: UA와 분리하는 이유",
+  "roas-improvement": "ROAS 개선 방법: 낮아졌을 때 예산보다 먼저 볼 4가지",
 };
 
 const EN_TITLES = {
@@ -56,7 +57,7 @@ const EN_TITLES = {
   "campaign-anomaly-detection": "Campaign Anomaly Detection: Find CPA and Conversion Drops",
   "cannibalization-organic-paid": "Ad Cannibalization: Measure Paid and Organic Overlap",
   "cohort-analysis-guide": "Cohort Analysis: Reading D1, D7, and D30 Retention Cohorts",
-  "cpi-cpa-cpm-difference": "CPI vs CPA vs CPM vs CPC: Ad Metric Math and Which to Choose",
+  "cpi-cpa-cpm-difference": "What CPM and CPC Mean: Read Impression and Click Costs First",
   "event-taxonomy-guide": "Event Taxonomy: Naming Rules for GA4 and MMP",
   "funnel-dropoff-analysis": "Conversion Rate: Diagnose Funnel Drop-off and Test Fixes",
   "google-uac-optimization": "Google UAC Optimization: What You Can Actually Control",
@@ -67,6 +68,7 @@ const EN_TITLES = {
   "meta-advantage-plus-guide": "Meta Advantage+ App Optimization: OS, Events, and Bidding",
   "postback-integration-guide": "Postback Integration: Fix SAN, S2S, and Zero Installs",
   "retargeting-reengagement-guide": "Retargeting & Re-engagement: Why to Split From Acquisition",
+  "roas-improvement": "How to Improve ROAS: Four Checks Before Cutting Budget",
   "ltv-cac-ratio": "LTV:CAC 3:1 and Safe? Most People Compute It Wrong",
 };
 

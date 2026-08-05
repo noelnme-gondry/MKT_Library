@@ -34,6 +34,7 @@ const BLOG_PRIMARY_TOOL = {
   "performance-marketing-metrics": "5-2",
   "postback-integration-guide": "5-2",
   "retargeting-reengagement-guide": "5-22",
+  "roas-improvement": "5-3",
 };
 
 const GLOSSARY_PRIMARY_TOOL = {
@@ -99,7 +100,7 @@ const BLOG_RELATED_GLOSSARY = {
   "cannibalization-organic-paid": ["cannibalization", "incrementality"],
   "cohort-analysis-guide": ["cohort", "retention", "ltv"],
   "correlation-vs-causation": ["multicollinearity", "incrementality"],
-  "cpi-cpa-cpm-difference": ["cpi", "cpa", "cpm"],
+  "cpi-cpa-cpm-difference": ["cpm", "cpc", "ctr"],
   "event-taxonomy-guide": ["funnel", "cohort"],
   "funnel-dropoff-analysis": ["funnel", "cvr"],
   "ga4-data-traps": ["probabilistic-attribution", "mmp"],
@@ -114,6 +115,7 @@ const BLOG_RELATED_GLOSSARY = {
   "performance-marketing-metrics": ["cpa", "cpi", "roas"],
   "postback-integration-guide": ["mmp", "deep-link"],
   "retargeting-reengagement-guide": ["cpm", "cvr"],
+  "roas-improvement": ["roas", "marginal-cpa", "response-curve"],
 };
 
 export function primaryToolForContent(slug, type = "blog") {

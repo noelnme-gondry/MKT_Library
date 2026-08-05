@@ -147,6 +147,25 @@ describe("editorial SEO registries", () => {
     }
   });
 
+  it("keeps the metric-intent split, ROAS route, and editorial link recovery intact", () => {
+    for (const locale of ["ko", "en"]) {
+      const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));
+      const prefix = locale === "en" ? "/en" : "";
+      const metricDefinitions = posts.get("cpi-cpa-cpm-difference");
+      expect(metricDefinitions.title.toLowerCase()).toContain("cpm");
+      expect(metricDefinitions.keywords.toLowerCase()).not.toContain("cpi cpa");
+      expect(metricDefinitions.html).toContain(`href="${prefix}/blog/performance-marketing-metrics"`);
+      expect(posts.get("roas-improvement")).toBeTruthy();
+      expect(posts.get("ad-performance-diagnosis").html).toContain(`href="${prefix}/blog/ad-creative-testing"`);
+      ["meta-advantage-plus-guide", "aso-basics-guide", "retargeting-reengagement-guide", "ad-creative-specs-guide"].forEach((slug) => {
+        expect(posts.get("performance-marketer-skills").html).toContain(`href="${prefix}/blog/${slug}"`);
+      });
+      ["aha-moment-retention", "cohort-analysis-guide", "incrementality-measurement"].forEach((slug) => {
+        expect(posts.get("aha-event-ad-optimization").html).toContain(`href="${prefix}/blog/${slug}"`);
+      });
+    }
+  });
+
   it("does not invent an English URL for unpublished draft content", () => {
     expect(localizedHref("/blog/adjust-vs-appsflyer", "en")).toBe("/blog/adjust-vs-appsflyer");
     expect(localizedHref("/blog/ad-performance-diagnosis", "en")).toBe("/en/blog/ad-performance-diagnosis");
