@@ -1,7 +1,8 @@
 # Performance Marketing Library — Agent Harness
 
-이 프로젝트 작업하는 모든 Claude 인스턴스가 따르는 규칙·아키텍처·작업 방식.
+이 프로젝트 작업하는 모든 에이전트 인스턴스(Claude·Codex 등)가 따르는 규칙·아키텍처·작업 방식.
 2026-06 압축본. 과거 PR별 상세 내러티브는 git 히스토리·PR·`docs/*.md` 보존.
+**루트 `AGENTS.md`는 본 파일의 심볼릭 링크다**(Codex는 `AGENTS.md`만 읽음) — 복사본으로 바꾸지 말 것, 갱신은 `CLAUDE.md` 한 곳만.
 
 ---
 
@@ -391,7 +392,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 
 ## 15. 하네스 자가 업데이트 (Self-Update Protocol) ⚙
 
-**규칙**: 태스크 완료 시점에 본 `CLAUDE.md` + `.claude/agents/mkt-engineer.md`를 새 패턴으로 갱신.
+**규칙**: 태스크 완료 시점에 본 `CLAUDE.md` + `.claude/agents/mkt-engineer.md`를 새 패턴으로 갱신. 루트 `AGENTS.md`는 본 파일 심볼릭 링크라 자동 반영(별도 편집·복사 금지).
 
 - **트리거**: PR 머지 성공 / 사용자 작업 전환·확인 / 검증된 새 anti-pattern 발견.
 - **기록 대상**: 새 함정(§7) · 새 recipe(§12) · 새 anti-pattern(§11) · 새 사용자 의사결정 패턴(§9) · 새 통계 표준(§8) · 새 절대 원칙(§2).
