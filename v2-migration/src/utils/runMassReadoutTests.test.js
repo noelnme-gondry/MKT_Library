@@ -135,3 +135,25 @@ describe("runMassReadoutTests (golden parity)", () => {
     expect(variant.probBWins).toBeCloseTo(direct.probBWins, 12);
   });
 });
+
+describe("powerCurve 고전환율 baseline (5242% 플랫 회귀)", () => {
+  it("T8 · baseline≥1/6(0.30)에서도 유한·단조감소·합리적 범위", () => {
+    // baseline≥16.7%에서 mdeForSampleSize가 NaN을 '표본부족'과 같은 방향으로 처리해
+    // MDE를 전 표본 5242.88%로 뭉개던 버그(플랫 직선). 유효 경계 캡으로 회귀 방지.
+    const curve = STATS.powerCurve({ baseline: 0.3, alpha: 0.05, power: 0.8, points: 12 });
+    const valid = curve.filter((p) => p.mdePct != null);
+    expect(valid.length).toBeGreaterThan(1);
+    const distinct = new Set(valid.map((p) => p.mdePct.toFixed(6)));
+    expect(distinct.size).toBeGreaterThan(1); // 전부 동일값(플랫)이면 버그 재발
+    expect(valid.every((p) => p.mdePct < 500)).toBe(true); // 5242% 발산값 아님
+    const monotone = valid.every((p, i) => i === 0 || p.mdePct <= valid[i - 1].mdePct + 1e-9);
+    expect(monotone).toBe(true);
+  });
+
+  it("T9 · mdeForSampleSize 고전환율 대표본은 유한·소수 MDE", () => {
+    const mde = STATS.mdeForSampleSize({ baseline: 0.3, n: 200000, alpha: 0.05, power: 0.8 });
+    expect(Number.isFinite(mde)).toBe(true);
+    expect(mde).toBeGreaterThan(0);
+    expect(mde).toBeLessThan(0.1); // 옛 버그값 52.43(=5243%)과 극명히 다름
+  });
+});

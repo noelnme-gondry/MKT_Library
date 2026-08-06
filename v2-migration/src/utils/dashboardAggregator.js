@@ -67,7 +67,11 @@ export function computeWeightedRetention(rows, day, basis) {
   // 잘못 표시된다.
   const vals = rows.map((r) => Number(r[rk])).filter((v) => isFinite(v) && v >= 0);
   if (!vals.length) return { rate: null, survivors: 0, denom: 0, isRate: null };
-  const isRate = Math.max(...vals) <= 1; // 컬럼 단위 판별
+  // 대용량 행에서 Math.max(...vals) 스프레드 인자 한계(V8 ~12.5만) → RangeError로
+  // 5-2 대시보드 KPI/스코어카드가 통째로 렌더 크래시했다. reduce로 동일 최대값을 구해 회피.
+  let maxVal = -Infinity;
+  for (const v of vals) if (v > maxVal) maxVal = v;
+  const isRate = maxVal <= 1; // 컬럼 단위 판별
   let num = 0,
     denom = 0,
     hasWholePct = false;

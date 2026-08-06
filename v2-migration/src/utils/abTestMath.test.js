@@ -95,3 +95,20 @@ describe("bayesianAB deterministic grid integration", () => {
     expect(STATS.massReadout([{ name: "A", n: 100, x: 10 }, { name: "B", n: 100, x: 12 }])).toEqual({ control: null, rows: [] });
   });
 });
+
+describe("twoPropZTest zero-control relative lift", () => {
+  it("대조군 전환 0 + 실험군 전환>0이면 상대 lift는 0(변화없음) 아닌 NaN(신규 전환)", () => {
+    // 옛 버그: liftRel=0 → 'z=7.16·p<0.0001·통계적 개선'과 같은 패널에서 '상대 Lift 0.00%' 모순.
+    const r = STATS.twoPropZTest(1000, 0, 1000, 50);
+    expect(r.pA).toBe(0);
+    expect(r.pB).toBeCloseTo(0.05, 12);
+    expect(Number.isNaN(r.liftRel)).toBe(true);
+    expect(r.pValue).toBeLessThan(0.001);
+    expect(r.liftAbs).toBeCloseTo(0.05, 12);
+  });
+
+  it("대조군·실험군 모두 0이면 상대 lift 0(변화없음) 유지", () => {
+    const r = STATS.twoPropZTest(1000, 0, 1000, 0);
+    expect(r.liftRel).toBe(0);
+  });
+});
