@@ -2009,6 +2009,48 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         toc={step3Toc}
         stickyFilter={step3StickyFilter}
       >
+      {/* 결과-먼저 스코어카드 (PRISM 뷰 P1) — computeAllocSummary 재사용, 지표 인지 */}
+      {summary && (() => {
+        const s = summary;
+        const spendPct = s.prev.cost > 0 ? Math.round(((s.next.cost - s.prev.cost) / s.prev.cost) * 100) : null;
+        const resDelta = Math.round(s.next.results - s.prev.results);
+        const improved = s.nextAvgCPR != null && s.prevAvgCPR != null && s.nextAvgCPR < s.prevAvgCPR;
+        const moved = Math.abs(s.next.cost - s.prev.cost);
+        const word = getMetricUnitLabel(effectiveMetric, locale);
+        const card = (label, value, sub, subColor) => (
+          <div style={{ background: "var(--bg-1)", borderRadius: "var(--radius)", padding: "12px 14px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{label}</div>
+            <div style={{ fontSize: "22px", fontWeight: 700, lineHeight: 1.25 }}>{value}</div>
+            <div style={{ fontSize: "11.5px", color: subColor || "var(--text-muted)" }}>{sub}</div>
+          </div>
+        );
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px", marginBottom: "1rem" }}>
+            {card(
+              tr("계획 지출", "Planned spend"),
+              fmtCurrency(s.next.cost, currency),
+              spendPct != null ? tr(`현재 대비 ${spendPct > 0 ? "+" : ""}${spendPct}%`, `${spendPct > 0 ? "+" : ""}${spendPct}% vs now`) : tr("현재 대비", "vs now"),
+            )}
+            {card(
+              tr(`예상 ${word}`, `Projected ${word}`),
+              formatNumberK(s.next.results),
+              `${resDelta >= 0 ? "+" : ""}${formatNumberK(resDelta)}${tr(" 건", "")}`,
+              resDelta >= 0 ? "var(--success)" : "var(--danger)",
+            )}
+            {card(
+              tr(`평균 ${metricLabel}`, `Avg ${metricLabel}`),
+              fmtCostMetric(s.nextAvgCPR, effectiveMetric, currency),
+              tr(`현재 ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`, `now ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`),
+              improved ? "var(--success)" : "var(--danger)",
+            )}
+            {card(
+              tr("재배분 규모", "Reallocation size"),
+              fmtCurrency(moved, currency),
+              tr("채널 간 이동액", "moved across channels"),
+            )}
+          </div>
+        );
+      })()}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <h3 style={{ margin: 0, fontSize: "16px" }}>{tr("Step 3: 시뮬레이션 및 예산 분배", "Step 3: Simulation & budget allocation")}</h3>
         <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("← 검증 단계로 돌아가기", "← Back to verification")}</button>
