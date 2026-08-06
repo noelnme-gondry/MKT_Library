@@ -184,6 +184,43 @@ export const CREATIVE_FATIGUE = {
       return keyCmp || String(a.date).localeCompare(String(b.date));
     });
   },
+  // (creative_id, date)로 impressions/clicks/spend/installs를 합산해 하루 1점 시계열을
+  // 만든다(채널 합산 — creative_id 단위 분석용). 같은 소재가 여러 채널에 걸치면 채널별
+  // 값이 시계열에 인터리브돼 평탄한 소재에도 톱니 하락(거짓 피로/ETA)이 생겼다.
+  // 단일 채널(=날짜당 1행)이면 합산이 no-op이라 기존 출력과 byte-identical.
+  // 반환: Map<creative_id, 날짜정렬된 daily rows[]>.
+  mergeCreativeDaily(rows) {
+    const byId = new Map();
+    for (const r of rows) {
+      if (!r.creative_id || !r.date) continue;
+      if (!byId.has(r.creative_id)) byId.set(r.creative_id, new Map());
+      const byDate = byId.get(r.creative_id);
+      if (!byDate.has(r.date)) {
+        byDate.set(r.date, {
+          creative_id: r.creative_id,
+          date: r.date,
+          channel: r.channel || null,
+          impressions: 0,
+          clicks: 0,
+          spend: 0,
+          installs: 0,
+        });
+      }
+      const d = byDate.get(r.date);
+      d.impressions += Math.max(0, Number(r.impressions) || 0);
+      d.clicks += Math.max(0, Number(r.clicks) || 0);
+      d.spend += Math.max(0, Number(r.spend ?? r.cost) || 0);
+      d.installs += Math.max(0, Number(r.installs) || 0);
+    }
+    const out = new Map();
+    for (const [id, byDate] of byId) {
+      out.set(
+        id,
+        [...byDate.values()].sort((a, b) => String(a.date).localeCompare(String(b.date))),
+      );
+    }
+    return out;
+  },
   quantile(values, q) {
     const sorted = values
       .filter((v) => Number.isFinite(v))
@@ -503,15 +540,10 @@ export const CREATIVE_FATIGUE = {
     return { etaDays: Math.round(eta), reason: "추세 외삽" };
   },
   buildAlerts(rows, cfg) {
-    const byId = new Map();
-    for (const r of rows) {
-      if (!r.creative_id || !r.date) continue;
-      if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
-      byId.get(r.creative_id).push(r);
-    }
+    // (소재,날짜) 합산 시계열 — 다채널 인터리브로 인한 거짓 피로 방지(mergeCreativeDaily).
+    const byId = this.mergeCreativeDaily(rows);
     const out = [];
-    for (const [id, series] of byId) {
-      const sorted = series.slice().sort((a, b) => a.date.localeCompare(b.date));
+    for (const [id, sorted] of byId) {
       const daily = this.buildDailySeries(sorted);
       const idx = this.compositeIndex(daily, cfg);
       const proj = this.projectThreshold(daily, cfg);
@@ -902,15 +934,11 @@ export const CREATIVE_STATS = {
     return out;
   },
   fatigueDetect(rows, metric = "ctr", CREATIVE_CONFIG) {
-    const byId = new Map();
-    for (const r of rows) {
-      if (!r.creative_id || !r.date) continue;
-      if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
-      byId.get(r.creative_id).push(r);
-    }
+    // (소재,날짜) 합산 시계열 — 다채널 인터리브로 인한 거짓 피로 방지. mergeCreativeDaily는
+    // CREATIVE_FATIGUE 소속이라 this(=CREATIVE_STATS) 아닌 모듈 const로 참조.
+    const byId = CREATIVE_FATIGUE.mergeCreativeDaily(rows);
     const out = [];
     for (const [id, series] of byId) {
-      series.sort((a, b) => a.date.localeCompare(b.date));
       const W = CREATIVE_CONFIG.fatigue.decayWindow;
       const vals = series.map((r) =>
         metric === "ctr"

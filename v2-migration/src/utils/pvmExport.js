@@ -17,19 +17,18 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney) {
     return `소재 단위 최하위 레벨입니다. 이 소재의 예산 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 CPA에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
   }
 
-  const subMix = level === "channel" ? e.cmpSumMix || 0 : e.creativeSumMix || 0;
-
+  // 이 단계의 믹스 효과(e.mix)는 하위 셀 mix 합과 항등(rollup 설계 — "상위=하위합" 보존).
+  // 따라서 '순수 이동 vs 하위합 믹스'는 서로 다른 효과가 아니라 같은 값이며, 과거엔 이를
+  // 두 효과인 것처럼 대비(배달 사고/최적화 작동 — 실제로는 도달 불가한 분기)해 오도했다.
+  // 실제로 구분되는 두 축인 믹스 효과와 단가(레이트) 효과의 합으로 정직하게 설명한다.
+  const label = level === "channel" ? "채널" : "캠페인";
   let diagnosis = "";
-  if (mixVal < 0 && subMix > 0) {
-    diagnosis = `이 ${level === "channel" ? "채널" : "캠페인"}의 예산 비중을 줄인 전략(순수 이동 효과: ${fmt(mixVal)})은 매우 훌륭했습니다. 하지만 내부 하위 세그먼트에서 단가가 비싼 항목으로 예산이 쏠리는 배달 사고(하위 세그먼트합 믹스: ${fmt(subMix)})가 발생해 성과를 저해하고 있습니다. 하위 레벨 탭을 확인하여 비효율 항목의 예산을 줄이거나 OFF 하세요.`;
-  } else if (mixVal > 0 && subMix < 0) {
-    diagnosis = `이 ${level === "channel" ? "채널" : "캠페인"}에 예산을 더 배분한 결정(순수 이동 효과: ${fmt(mixVal)})은 일시적으로 CPA 상승 요인이 되었으나, 내부 하위 세그먼트 단위에서 단가가 저렴한 효율적 항목 위주로 유입을 집중시키는 최적화(하위 세그먼트합 믹스: ${fmt(subMix)})가 잘 작동하고 있습니다. 향후 이 세그먼트 배분 비중을 재조정해 보세요.`;
-  } else if (mixVal < 0 && subMix < 0) {
-    diagnosis = `예산 배분 전략(순수 이동 효과: ${fmt(mixVal)})과 하위 세그먼트 유입 최적화(하위 세그먼트합 믹스: ${fmt(subMix)})가 양방향 모두에서 극히 효율적으로 작동했습니다. 전체 CPA가 개선되는 이상적인 상태이므로 현재의 운영 기조를 유지해 주시기 바랍니다.`;
-  } else if (mixVal > 0 && subMix > 0) {
-    diagnosis = `예산 배분 비중 변화(순수 이동 효과: ${fmt(mixVal)})와 하위 세그먼트 선택(하위 세그먼트합 믹스: ${fmt(subMix)}) 모두 비효율적으로 작동해 CPA 상승의 주원인이 되고 있습니다. 성과가 저조한 하위 항목들의 비중을 대폭 줄이거나 소재를 점검해야 합니다.`;
+  if (mixVal > 0 && rateVal > 0) {
+    diagnosis = `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 끌어올렸습니다. 하위 세그먼트 탭에서 어느 항목이 이 상승을 주도했는지 확인해 비중을 줄이거나 소재를 점검하세요.`;
+  } else if (mixVal < 0 && rateVal < 0) {
+    diagnosis = `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 낮췄습니다. 효율적인 상태이므로 현재 운영 기조를 유지하세요.`;
   } else {
-    diagnosis = `예산 이동 및 효율이 복합적인 영향을 미치고 있습니다. 순수 이동 효과: ${fmt(mixVal)}, 하위 세그먼트합 믹스: ${fmt(subMix)}, 단가 변동(레이트 효과): ${fmt(rateVal)}를 각각 분석해 개선 기회를 도출해 보세요.`;
+    diagnosis = `이 ${label}의 CPA 변화는 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)})이 서로 다른 방향으로 작용한 결과입니다. 하위 세그먼트 탭에서 각 효과를 주도한 항목을 확인하세요.`;
   }
   return diagnosis;
 }

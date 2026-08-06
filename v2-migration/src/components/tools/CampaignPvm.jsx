@@ -1246,7 +1246,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         {th("COST (P1→P2)", "cost")}
         {th(`${ml} (P1→P2)`, "cpa")}
         {th(C.shareHeader, "share", C.shareHeaderTitle)}
-        {th(tr("MIX (순수 이동)", "MIX (pure shift)"), "mix", tr("순수 이동 효과 (Macro Mix)", "Pure mix-shift effect (Macro Mix)"))}
+        {th(tr("MIX (비중 이동)", "MIX (share shift)"), "mix", tr("예산 비중 이동(믹스) 효과 — 이 단계 값은 하위 셀 믹스의 합과 동일(롤업)", "Budget-share (mix) shift effect — at this level it equals the sum of sub-cell mix effects (rollup)"))}
         {th(tr("RATE (순수 단가)", "RATE (pure unit price)"), "rate", tr("순수 단가 변동 (Rate)", "Pure unit-price change (Rate)"))}
         {th(tr("MIX (하위합)", "MIX (sub-total)"), "subMix", tr("하위 세그먼트 합산 믹스 효과", "Sum of mix effects across sub-segments"))}
         {th(tr("RATE (하위합)", "RATE (sub-total)"), "subRate", tr("하위 세그먼트 합산 레이트 효과", "Sum of rate effects across sub-segments"))}

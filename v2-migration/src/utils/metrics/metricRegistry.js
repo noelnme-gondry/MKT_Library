@@ -159,6 +159,14 @@ export function computeMetrics(agg, metrics) {
   const out = {};
   for (const m of metrics) {
     if (typeof m.compute !== "function") continue;
+    // dep 중 하나라도 null/undefined(=미매핑·미가용)면 계산하지 않고 null 전파. 코호트
+    // 매출/결제 컬럼 미매핑 시 revenue=0으로 뭉개 ROAS/ARPU가 "0.00%"로 오표시되던 것을
+    // 부재(null)로 전파해 표시층이 "—"로 렌더하게 한다(§8 거짓 숫자 금지). agg가 모두
+    // 숫자면 이 분기는 안 타 기존 소비처는 byte-identical.
+    if (Array.isArray(m.deps) && m.deps.some((d) => agg[d] === null || agg[d] === undefined)) {
+      out[m.id] = null;
+      continue;
+    }
     let v = null;
     try { v = m.compute(agg); } catch { v = null; } // 커스텀 수식 방어(거짓 숫자 대신 null)
     out[m.id] = v == null || (typeof v === "number" && !isFinite(v)) ? null : v;

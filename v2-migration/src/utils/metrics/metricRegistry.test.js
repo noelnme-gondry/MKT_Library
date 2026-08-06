@@ -111,3 +111,24 @@ describe("metricRegistry · METRIC_BY_ID 조회", () => {
     expect(METRIC_BY_ID.ctr.label).toBe("CTR");
   });
 });
+
+describe("calculateKPIs 미매핑 코호트 매출/결제 → null (0.00% 오표시 회귀)", () => {
+  const rows = [
+    { date: "2026-01-01", cost: "1000", installs: "100", revenue_d7: "3000" },
+    { date: "2026-01-02", cost: "1000", installs: "100", revenue_d7: "3000" },
+  ];
+  it("매핑된 코호트(D7)는 실값", () => {
+    const k = calculateKPIs(rows, 7, "installs");
+    expect(k.revenue).toBe(6000);
+    expect(k.roas).toBe(3);
+  });
+  it("매핑 안 된 코호트(D14)는 0 아닌 null → 표시층 '—'", () => {
+    const k = calculateKPIs(rows, 14, "installs");
+    expect(k.revenue).toBeNull();
+    expect(k.roas).toBeNull();
+    expect(k.arpu).toBeNull();
+    expect(k.purchases).toBeNull();
+    expect(k.purchaseRate).toBeNull();
+    expect(k.cpi).toBe(2000 / 200); // 매핑된 효율 지표는 정상
+  });
+});
