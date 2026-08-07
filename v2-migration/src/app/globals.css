@@ -2720,6 +2720,22 @@
         padding: 13px 16px;
         margin: 0 0 12px;
       }
+      /* PRISM P5 접힘 섹션: summary가 section-title 역할일 때 배지·정렬 유지 */
+      .alloc-fold-summary {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+      }
+      .alloc-fold-summary .ix {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        color: var(--primary);
+        background: rgba(173, 198, 255, 0.08);
+        padding: 0.125rem 0.5rem;
+        border-radius: var(--radius-default);
+        font-weight: 500;
+      }
       .alloc-diag-title {
         font-size: 13.5px;
         font-weight: 700;

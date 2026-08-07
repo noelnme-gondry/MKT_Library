@@ -2316,9 +2316,17 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         />
       )}
 
-      <section className="block" id="s-scatter">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}</h2>
-        <div className="alloc-card">
+      {/* §1 효율·추세선 분석 — PRISM 결과-먼저(P5): 진단 산점도는 기본 접힘, 펼칠 때 canvas resize(§7 0px). */}
+      <details
+        className="block alloc-fold"
+        id="s-scatter"
+        onToggle={(e) => { if (e.currentTarget.open) requestAnimationFrame(() => chartInstance.current?.resize()); }}
+      >
+        <summary className="section-title alloc-fold-summary" style={{ cursor: "pointer" }}>
+          <span className="ix">§1</span>{tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("추세선 모델·이상치·산점도 — 펼쳐서 검증", "Trendline model · outliers · scatter — expand to verify")}</span>
+        </summary>
+        <div className="alloc-card" style={{ marginTop: "12px" }}>
           {advancedPanel}
           {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
           {rankedChannels.length > 1 && (
@@ -2352,15 +2360,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
           </div>
         </div>
-      </section>
+      </details>
 
-      {/* §0 진단 카드 — 지금 어디가 문제인가 */}
+      {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
       {diagnosis && (
-        <div
-          className="alloc-diag-card"
+        <details
+          className="alloc-diag-card alloc-fold"
           style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}
         >
-          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "8px" }}>🔍 {tr("진단 — 지금 어디가 문제인가", "Diagnosis — what's the problem right now")}</div>
+          <summary style={{ fontWeight: 600, fontSize: "14px", cursor: "pointer" }}>🔍 {tr("진단 — 지금 어디가 문제인가", "Diagnosis — what's the problem right now")}</summary>
+          <div style={{ marginTop: "8px" }}>
           {diagnosis.insufficient ? (
             <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
               {tr(
@@ -2390,7 +2399,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               </div>
             ))
           )}
-        </div>
+          </div>
+        </details>
       )}
 
       {/* 총 합계 비교 카드 */}
@@ -2498,9 +2508,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         </div>
       </section>
 
-      {/* §5 배분 점검 스트립 */}
+      {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
       {verify && dailyBudget > 0 && items.length >= 2 && (
-        <div
+        <details
+          className="alloc-fold"
           style={{
             background: "var(--bg-1)",
             border: "1px solid var(--border)",
@@ -2512,11 +2523,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             lineHeight: 1.55,
           }}
         >
-          <div>
-            <strong>{verify.head}</strong> <span style={{ color: "var(--text-secondary)" }}>{verify.body}</span>
+          <summary style={{ cursor: "pointer" }}>
+            <strong>{verify.head}</strong> <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>{tr("배분 점검 — 펼쳐서 근거 보기", "Allocation check — expand for details")}</span>
+          </summary>
+          <div style={{ marginTop: "6px" }}>
+            <span style={{ color: "var(--text-secondary)" }}>{verify.body}</span>
+            {verify.note && <div style={{ marginTop: "4px", color: "var(--text-muted)", fontSize: "12px" }}>{verify.note}</div>}
           </div>
-          {verify.note && <div style={{ marginTop: "4px", color: "var(--text-muted)", fontSize: "12px" }}>{verify.note}</div>}
-        </div>
+        </details>
       )}
 
       {showTable && (() => {
