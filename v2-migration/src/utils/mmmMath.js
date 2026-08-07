@@ -6738,7 +6738,9 @@ export function mmmDataQualityAudit(panel) {
                 const train = _mmmBayesSlicePanel(panel, cut);
                 const run = mmmBayesianRun(train, cfg, targetName, false, {
                   ...options,
-                  enableBusinessContributionPrior: false,
+                  // T1: 정보 prior 활성화 시 backtest 폴드도 같은 모델로 적합해야
+                  // 표시 fit과 backtest WMAPE가 정합(기본 false → 골든 byte-동일).
+                  enableBusinessContributionPrior: options.enableBusinessContributionPrior === true,
                   skipTransformUncertainty: true,
                 });
                 if (!run) return null;
@@ -6784,9 +6786,12 @@ export function mmmDataQualityAudit(panel) {
                 mediaPenalty: 0,
                 mediaPenaltyCandidates: [0],
               };
+              // T1 정보 prior 활성화: 기본 false(=평면 OLS, 기존 골든 byte-동일).
+              // true면 지출점유 기반 약정보 prior를 매체 계수에 결합(_mmmBusinessContributionPriors).
+              const enableBusinessPrior = options.enableBusinessContributionPrior === true;
               const mapRun = mmmBayesianRun(panel, modelCfg, targetName, false, {
                 ...options,
-                enableBusinessContributionPrior: false,
+                enableBusinessContributionPrior: enableBusinessPrior,
               });
               if (!mapRun) return null;
               const rollingBacktest = withBacktest

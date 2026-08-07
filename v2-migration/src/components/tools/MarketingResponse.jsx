@@ -163,6 +163,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // hub | trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
   const [mmmMode, setMmmMode] = useState("classic"); // classic = standard Classic path, bayesian = posterior channel fit
+  // T1: Bayesian 모드 정보 prior(지출점유 기반 약정보) — 기본 활성. 끄면 평면 OLS(모델 차이 비교용).
+  const [bayesianUsePrior, setBayesianUsePrior] = useState(true);
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -540,7 +542,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
         `mode:${mmmMode}`,
-        mmmMode === "prism" ? `prism-option-3:${MMM_CLASSIC_CONFIG.version}:${MMM_PRISM_MODEL_CONFIG.version}` : mmmMode === "classic" ? `classic:${MMM_CLASSIC_CONFIG.version}` : "bayesian-posterior-channel-fit-v1",
+        mmmMode === "prism" ? `prism-option-3:${MMM_CLASSIC_CONFIG.version}:${MMM_PRISM_MODEL_CONFIG.version}` : mmmMode === "classic" ? `classic:${MMM_CLASSIC_CONFIG.version}` : `bayesian-posterior-channel-fit-v1:prior:${bayesianUsePrior ? 1 : 0}`,
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -1193,6 +1195,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         const bayesianRun = mmmBayesianLikeRun(panel, cfg, t, true, {
           mediaPriors,
           enableBaselineSelection: true,
+          // T1: 지출점유 기반 약정보 prior. 실험/국가 prior(mediaPriors)와 병합돼 계수를 수축.
+          enableBusinessContributionPrior: bayesianUsePrior,
         });
         if (!bayesianRun) throw new Error("Bayesian posterior estimate failed");
         const health = mmmBayesianHealth(bayesianRun);
@@ -1438,7 +1442,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
+  }, [hasData, csvData, target, mmmMode, bayesianUsePrior, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
 
   const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
   const forecastActualMatches = useMemo(() => {
@@ -3775,6 +3779,41 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             <button className={`ab-pill ${mmmMode === "bayesian" ? "active" : ""}`} onClick={() => {
               if (mmmMode !== "bayesian") deferMmmUpdate(() => setMmmMode("bayesian"));
             }}>{tx("Bayesian", "Bayesian")}</button>
+          </div>
+        )}
+        {/* T1: Bayesian 모드 정보 prior 토글 + 적합도 신뢰 칩 (모델 차이 비교) */}
+        {stage === "mmm" && mmm && !mmm.empty && mmmMode === "bayesian" && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label" title={tx(
+              "지출점유 기반 약정보 prior입니다. 관측이 약한 채널을 지출비중 쪽으로 수축하고, 데이터가 충분하면 likelihood가 지배합니다. 실험·국가 prior와 병합됩니다. 인과·증분 효과 보장이 아닙니다.",
+              "A spend-share weakly-informative prior. It shrinks weakly-observed channels toward their spend share; with enough data the likelihood dominates. It merges with experiment/country priors. Not causal or incremental proof.",
+            )}>{tx("정보 prior", "Informative prior")} ⓘ</span>
+            <button className={`ab-pill ${bayesianUsePrior ? "active" : ""}`} onClick={() => {
+              if (!bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(true));
+            }}>{tx("켜기", "On")}</button>
+            <button className={`ab-pill ${!bayesianUsePrior ? "active" : ""}`} onClick={() => {
+              if (bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(false));
+            }}>{tx("끄기 (평면 OLS)", "Off (flat OLS)")}</button>
+            {mmm.health && (() => {
+              const r2 = Number(mmm.health.r2);
+              const wmape = Number(mmm.health.wmape);
+              const cov = Number(mmm.health.coverage90);
+              const high = r2 >= 0.8 && wmape <= 15 && cov >= 0.8 && cov <= 0.98;
+              const low = r2 < 0.5 || wmape > 35 || cov < 0.7;
+              const level = high ? "high" : low ? "low" : "med";
+              const label = high ? tx("높음", "High") : low ? tx("낮음", "Low") : tx("보통", "Med");
+              const color = high ? "var(--success, #5ad19a)" : low ? "var(--danger, #f0917e)" : MUTED;
+              return (
+                <span
+                  className="ab-pill"
+                  style={{ cursor: "help", borderColor: color, color }}
+                  title={tx(
+                    `적합도 신뢰: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% 밴드 커버리지=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. 모델이 과거를 얼마나 잘 설명하는지일 뿐, 인과·증분 보장이 아닙니다(확정은 홀드아웃 5-15 전용).`,
+                    `Fit confidence: R²=${isFinite(r2) ? r2.toFixed(2) : "—"} · WMAPE=${isFinite(wmape) ? wmape.toFixed(1) + "%" : "—"} · 90% band coverage=${isFinite(cov) ? (cov * 100).toFixed(0) + "%" : "—"}. This reflects how well the model explains the past, not causal or incremental proof (confirm via holdout, 5-15).`,
+                  )}
+                >{tx("적합도", "Fit")}: {label}</span>
+              );
+            })()}
           </div>
         )}
         {mmm && !mmm.empty && (
