@@ -111,4 +111,12 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
     expect(datasets[0].data.map((point) => point.y)).toEqual([2, 2]);
   });
+
+  it("수동 시뮬레이션 모드에서 채널별 드래그 슬라이더(range)가 throw 없이 렌더 (P3b)", () => {
+    render(<BudgetAllocation />);
+    // 결과-먼저 착지(step3, 예산 자동 시드) → 수동 시뮬레이션 탭 → 채널별 슬라이더 노출.
+    fireEvent.click(screen.getByText(/캠페인별 수동 시뮬레이션/));
+    const sliders = document.querySelectorAll('input[type="range"]');
+    expect(sliders.length).toBeGreaterThan(0);
+  });
 });

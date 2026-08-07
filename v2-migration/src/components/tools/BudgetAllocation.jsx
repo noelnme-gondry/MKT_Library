@@ -2610,6 +2610,27 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                                 </button>
                               )}
                             </div>
+                            {/* PRISM 인라인 드래그 슬라이더(P3b) — 수동 모드에서 드래그로 이 채널 지출 조정.
+                                드래그=costDrafts(숫자 라이브 갱신), 놓을 때 commitCost(잠금→재배분). 매 프레임 재계산 회피. */}
+                            {simMode !== "auto" && (() => {
+                              const sMax = Math.max(dailyBudget || 0, it.cost || 0, 1);
+                              const sVal = Math.min(draftVal != null ? (allocParseNum(draftVal) || 0) : (it.cost || 0), sMax);
+                              return (
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={sMax}
+                                  step={Math.max(1, Math.round(sMax / 200))}
+                                  value={sVal}
+                                  aria-label={tr(`${it.channel} 지출 조정`, `${it.channel} spend`)}
+                                  onChange={(e) => setCostDrafts((prev) => ({ ...prev, [it.channel]: allocFmtNum(Number(e.target.value)) }))}
+                                  onMouseUp={() => commitCost(it.channel)}
+                                  onTouchEnd={() => commitCost(it.channel)}
+                                  onKeyUp={() => commitCost(it.channel)}
+                                  style={{ width: "100%", marginTop: "5px", accentColor: "var(--primary)", cursor: "pointer" }}
+                                />
+                              );
+                            })()}
                           </td>
                           <td>
                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
