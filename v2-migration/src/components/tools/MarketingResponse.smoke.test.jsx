@@ -1750,6 +1750,12 @@ describe("MarketingResponse render smoke", () => {
     expect(priorOff.classList.contains("active")).toBe(true);
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
+    // T2: 계산 상세 아코디언 열면 ① 변환 파라미터 Laplace 90% 구간 범례가 throw 없이 렌더.
+    const detailSummary = Array.from(container.querySelectorAll("summary")).find((summary) => summary.textContent.includes("계산 과정 자세히 보기"));
+    expect(detailSummary).toBeTruthy();
+    expect(() => fireEvent.click(detailSummary)).not.toThrow();
+    await flushRaf();
+    expect(document.body.textContent).toContain("90% 구간");
   });
 
   it("re-normalizes the RMS contribution share after excluding base demand and trend", async () => {

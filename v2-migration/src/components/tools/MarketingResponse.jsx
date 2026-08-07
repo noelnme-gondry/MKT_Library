@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianLikeRun, mmmBayesianHealth, mmmBayesianWeeklyDecomp, mmmBayesianForecast, mmmForecastApplySelectedBlend, mmmForecastCombineNestedParts, mmmForecastScenarioEligibility, mmmForecastRestoreSeasonality, mmmTrendExistence, mmmElasticities, mmmCannibalization, mmmChannelCoverage, mmmIRF, mmmAdstock, mmmAudit, mmmMacroFacts, mmmDataQualityAudit, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
+import { mmmNonlinearLaplace } from "@/utils/mmmNonlinearLaplace";
 import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayesianRun as mmmClassicBayesianRun, mmmClassicControlSelection, mmmClassicBuildGroupContributionPriors, mmmResolveAbsorb as mmmClassicResolveAbsorb } from "@/utils/mmmMathPr416";
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -5201,13 +5202,32 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("잔효 α", "Carryover α")}</th><th>{tx("반포화 지출점", "Half-saturation")}</th><th>{tx("포화 곡선", "Hill slope")}</th><th>{tx("변환 탐색", "Transform search")}</th><th>{tx("효과가 양수일 확률", "P(effect > 0)")}</th></tr></thead>
-                      <tbody>{Object.values(sat).map((s) => (
-                        <tr key={s.key}><td>{s.label}</td><td className="tnum">{s.params.alpha.toFixed(1)}</td><td className="tnum">{spendLabel(s.params.ec)}</td><td className="tnum">{s.params.slope.toFixed(1)}</td><td>{s.transformUncertainty?.priorLockedTransform
+                      <tbody>{Object.values(sat).map((s) => {
+                        // T2: 변환 파라미터(α·ec·slope) 90% Laplace 프로파일 구간(표시층, 골든 무관).
+                        const lap = mmmNonlinearLaplace(s.transformUncertainty?.models);
+                        const ciCell = (u, fmt) => (u && u.method !== "fixed" && u.sd > 0 ? (
+                          <small
+                            style={{ display: "block", color: MUTED, fontWeight: 400 }}
+                            title={tx(
+                              `90% 구간 (Laplace 프로파일 근사${u.gridLimited ? " · 그리드 한계로 관측 범위 제한" : ""}). 변환 파라미터 불확실성일 뿐 인과가 아닙니다.`,
+                              `90% interval (Laplace profile approximation${u.gridLimited ? " · grid-limited to observed range" : ""}). Transform-parameter uncertainty only, not causal.`,
+                            )}
+                          >{fmt(u.ci90[0])}–{fmt(u.ci90[1])}{u.gridLimited ? "*" : ""}</small>
+                        ) : null);
+                        return (
+                        <tr key={s.key}><td>{s.label}</td><td className="tnum">{s.params.alpha.toFixed(1)}{ciCell(lap?.alpha, (v) => v.toFixed(1))}</td><td className="tnum">{spendLabel(s.params.ec)}{ciCell(lap?.ec, (v) => spendLabel(v))}</td><td className="tnum">{s.params.slope.toFixed(1)}{ciCell(lap?.slope, (v) => v.toFixed(1))}</td><td>{s.transformUncertainty?.priorLockedTransform
                           ? tx("외부 근거가 타깃 대표 변환 단위로 정렬되어 고정", "Fixed because external evidence is aligned to the target representative-transform units")
                           : tx(`${s.transformUncertainty?.candidateCount || 1}개 후보 평가`, `${s.transformUncertainty?.candidateCount || 1} candidates evaluated`)}</td><td className="tnum" style={{ color: s.posteriorPositive >= 0.8 ? NEG : MUTED }}>{(s.posteriorPositive * 100).toFixed(0)}%</td></tr>
-                      ))}</tbody>
+                        );
+                      })}</tbody>
                     </table>
                   </div>
+                  <p className="muted" style={{ fontSize: "11px", marginTop: "-6px", marginBottom: "12px" }}>
+                    {tx(
+                      "각 파라미터 아래 값은 90% 구간입니다(변환 후보 프로파일 우도의 Laplace 곡률 근사). 변환 파라미터의 불확실성을 뜻할 뿐 인과 효과가 아닙니다. * = 그리드가 성기거나 최빈값이 경계라 관측 범위로 제한한 경우.",
+                      "The value under each parameter is a 90% interval (Laplace curvature of the transform-candidate profile likelihood). It reflects uncertainty in the transform parameter, not a causal effect. * = grid was sparse or the mode sat at an edge, so it is limited to the observed range.",
+                    )}
+                  </p>
                   <StatHead title={tx("② Empirical-Bayes 효과 신뢰도", "② Empirical-Bayes effect confidence")} hint={tx("잔차 분산은 plug-in 추정한 조건부 Gaussian 근사입니다. 한 번에 한 채널의 adstock α·반포화점·Hill 기울기만 바꾼 profile 후보를 다시 적합하고 BIC로 가중 평균합니다. 후보마다 결론이 다르면 확률은 낮아지고 구간은 넓어집니다. 모든 채널·분산을 함께 샘플링한 joint MCMC posterior는 아니며, 80% 이상도 holdout 전 인과·증분 확정이 아닙니다.", "This is a conditional Gaussian empirical-Bayes approximation with plug-in residual variance. Profile candidates change one channel's adstock α, half-saturation, and Hill slope at a time, refit the model, and receive BIC weights. Disagreement lowers probability and widens the interval. This is not a jointly sampled all-channel and variance MCMC posterior, and even ≥80% is not causal or incremental proof before holdout validation.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
