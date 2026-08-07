@@ -6,7 +6,7 @@
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 
@@ -71,13 +71,10 @@ describe("BudgetAllocation render smoke", () => {
     expect(document.body.textContent.length).toBeGreaterThan(0);
   });
 
-  it("places the Step 3 conclusion before the scatter plot", () => {
+  it("places the conclusion before the scatter plot (결과-먼저 착지)", () => {
     seedWithData();
     render(<BudgetAllocation />);
-
-    fireEvent.click(screen.getByRole("button", { name: /CPI/ }));
-    fireEvent.click(screen.getByRole("button", { name: "✓ 적용 (검증 진행)" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "검증 완료 및 예산 배분 →" })[0]);
+    // PRISM 뷰 P2: 위저드 네비 없이 렌더 즉시 결과(step 3). 스코어카드→결론카드→산점도 순.
 
     const resultCard = document.querySelector(".result-action-card");
     const scatter = document.getElementById("s-scatter");

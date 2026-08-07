@@ -387,7 +387,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   // 전역 분모 기준(설치/가입) — 효율 계열 도구(5-2/5-21/5-22/5-3)가 공유(§12.18).
   const denomBasis = useAppStore((state) => state.denomBasis);
-  const [step, setStep] = useState(1);
+  // 결과-먼저 착지(PRISM 뷰 P2): 데이터가 있으면 위저드(step 1)가 아니라 결과(step 3)로
+  // 바로 진입한다. objective 미선택은 basis 기본값으로 폴백(effectiveObjective/metric)이라
+  // allocation이 즉시 계산된다. 상세 설정(step 1)·곡선 검증(step 2)은 컨트롤 바·링크로 여전히 접근.
+  const [step, setStep] = useState(3);
   const [unitField, setUnitField] = useState("channel");
 
   const [simMode, setSimMode] = useState("auto"); // auto | manual
@@ -662,6 +665,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       setBudgetAutoDefaulted(true);
     }
   };
+
+  // 결과-먼저 착지(PRISM 뷰 P2): step 3로 바로 들어오면 step 전환 이벤트가 없어 예산 기본값이
+  // 안 채워져 allocation이 빈 결과가 된다. 데이터가 준비되면 1회 자동 채운다
+  // (applyBudgetDefault는 budgetAutoDefaulted·사용자 입력 가드가 있어 idempotent).
+  useEffect(() => {
+    // 조건부·1회(idempotent 가드)라 set-state-in-effect 허용 — 결과-먼저 착지 예산 시드 전용.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (hasData && step === 3) applyBudgetDefault();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasData, step, byChannel]);
 
   // 배분 결과 (mode C / B) — 제약(overrides/min/max) + recalcTick 포함
   const allocation = useMemo(() => {
@@ -1978,40 +1991,63 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-alloc">
+      {/* 헤더는 라우터가 주입하는 ToolIntro(단일 h1+설명+크로스링크)가 담당 — 셸 제목/요약은
+          중복이라 제거(결과-먼저: 컨트롤 바 바로 아래에 스코어카드·결론). 알고리즘 설명은
+          하단 §알고리즘 섹션(s-algo)에 유지. 셸은 sticky 컨트롤 바 + 칩만. */}
       <ToolPageShell
         locale={locale}
-        titleLevel={2}
-        title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
         chips={
           <span className="chip">
             <span className="dot"></span>{csvData?.fileName || ""}
           </span>
         }
-        summary={
-          <>
-            <p>
-              {tr(
-                "채널별 절대 성과(CPR/ROAS) 가중과 수확체감 모형을 반영하여 최적 예산 포트폴리오를 제안합니다.",
-                "Proposes an optimal budget portfolio using absolute per-channel performance (CPR/ROAS) weighting and a diminishing-returns model."
-              )}
-            </p>
-            <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
-              <summary>{tr("⚠️ 알고리즘 참고사항 펼치기", "⚠️ Expand algorithm notes")}</summary>
-              <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                {tr(
-                  "비용 대비 성과 산점도를 곡선 적합(Saturation)하여 한계효용 극대화 배분을 도출합니다. 데이터가 지나치게 적거나 채널별 지출액 변동성이 없으면 외삽이 불안정할 수 있으므로, 단순 CPR/ROAS 배분 비율과 비교하여 의사결정하시길 권장합니다.",
-                  "Fits a curve (saturation) to the cost-vs-performance scatter to derive a marginal-utility-maximizing allocation. If the data is too sparse or per-channel spend doesn't vary much, extrapolation can become unstable — we recommend comparing against a simple CPR/ROAS allocation ratio before deciding."
-                )}
-              </div>
-            </details>
-          </>
-        }
         toc={step3Toc}
         stickyFilter={step3StickyFilter}
       >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ margin: 0, fontSize: "16px" }}>{tr("Step 3: 시뮬레이션 및 예산 분배", "Step 3: Simulation & budget allocation")}</h3>
-        <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("← 검증 단계로 돌아가기", "← Back to verification")}</button>
+      {/* 결과-먼저 스코어카드 (PRISM 뷰 P1) — computeAllocSummary 재사용, 지표 인지 */}
+      {summary && (() => {
+        const s = summary;
+        const spendPct = s.prev.cost > 0 ? Math.round(((s.next.cost - s.prev.cost) / s.prev.cost) * 100) : null;
+        const resDelta = Math.round(s.next.results - s.prev.results);
+        const improved = s.nextAvgCPR != null && s.prevAvgCPR != null && s.nextAvgCPR < s.prevAvgCPR;
+        const moved = Math.abs(s.next.cost - s.prev.cost);
+        const word = getMetricUnitLabel(effectiveMetric, locale);
+        const card = (label, value, sub, subColor) => (
+          <div style={{ background: "var(--bg-1)", borderRadius: "var(--radius)", padding: "12px 14px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>{label}</div>
+            <div style={{ fontSize: "22px", fontWeight: 700, lineHeight: 1.25 }}>{value}</div>
+            <div style={{ fontSize: "11.5px", color: subColor || "var(--text-muted)" }}>{sub}</div>
+          </div>
+        );
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px", marginBottom: "1rem" }}>
+            {card(
+              tr("계획 지출", "Planned spend"),
+              fmtCurrency(s.next.cost, currency),
+              spendPct != null ? tr(`현재 대비 ${spendPct > 0 ? "+" : ""}${spendPct}%`, `${spendPct > 0 ? "+" : ""}${spendPct}% vs now`) : tr("현재 대비", "vs now"),
+            )}
+            {card(
+              tr(`예상 ${word}`, `Projected ${word}`),
+              formatNumberK(s.next.results),
+              `${resDelta >= 0 ? "+" : ""}${formatNumberK(resDelta)}${tr(" 건", "")}`,
+              resDelta >= 0 ? "var(--success)" : "var(--danger)",
+            )}
+            {card(
+              tr(`평균 ${metricLabel}`, `Avg ${metricLabel}`),
+              fmtCostMetric(s.nextAvgCPR, effectiveMetric, currency),
+              tr(`현재 ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`, `now ${fmtCostMetric(s.prevAvgCPR, effectiveMetric, currency)}`),
+              improved ? "var(--success)" : "var(--danger)",
+            )}
+            {card(
+              tr("재배분 규모", "Reallocation size"),
+              fmtCurrency(moved, currency),
+              tr("채널 간 이동액", "moved across channels"),
+            )}
+          </div>
+        );
+      })()}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "0.5rem" }}>
+        <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("곡선 검증·보정", "Verify / adjust curves")}</button>
       </div>
 
       {/* 결론·액션 카드 */}
