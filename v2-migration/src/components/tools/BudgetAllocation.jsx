@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
+import { allocResponseCurve } from "@/utils/allocResponseCurve";
 import { getMappedRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import CsvUploader from "@/components/CsvUploader";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
@@ -476,6 +477,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const scenarioChartInstance = useRef(null);
   const barChartRef = useRef(null);
   const barChartInstance = useRef(null);
+  const curveChartRef = useRef(null);
+  const curveChartInstance = useRef(null);
+  const [curveChannel, setCurveChannel] = useState(null); // §6 반응 곡선 선택 채널
 
   // 매핑된 표준 필드 감지
   const mappedKeys = useMemo(
@@ -746,6 +750,26 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       recentDays,
     });
   }, [allocation.items, effectiveMetric, historyByCh, recentDays]);
+
+  // §6 반응 곡선(PRISM P4): 선택 채널 없거나 사라지면 계획 지출 최대 채널로 폴백.
+  const curveCh = useMemo(() => {
+    const its = allocation.items;
+    if (!its.length) return null;
+    if (curveChannel && its.some((it) => it.channel === curveChannel)) return curveChannel;
+    return [...its].sort((a, b) => (b.cost || 0) - (a.cost || 0))[0].channel;
+  }, [allocation.items, curveChannel]);
+
+  // 선택 채널의 지출→결과 반응 곡선 + now/plan/knee/onset 마커(순수 헬퍼, 엔진 불변).
+  const responseCurve = useMemo(() => {
+    if (!curveCh) return null;
+    const wrapper = modelsMap.get(curveCh);
+    if (!wrapper || !wrapper.model) return null;
+    const it = allocation.items.find((x) => x.channel === curveCh);
+    const h = historyByCh[curveCh];
+    const now = h && isFinite(h.windowCost) && recentDays > 0 ? h.windowCost / recentDays : 0;
+    const plan = it ? it.cost || 0 : 0;
+    return { curve: allocResponseCurve(wrapper, { now, plan }), now, plan, channel: curveCh };
+  }, [curveCh, modelsMap, allocation.items, historyByCh, recentDays]);
 
   // §0 진단 — "지금 어디가 문제인가" (관측 최근 N일 효율 기준). index.html renderAllocDiagnosis 이식.
   const diagnosis = useMemo(() => {
@@ -1148,6 +1172,118 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       }
     };
   }, [step, simMode, scenarios, effectiveMetric, currency, locale, tr]);
+
+  // §6 채널 반응 곡선(PRISM P4) — 선택 채널의 지출→결과 곡선 + now/plan/knee/onset 마커.
+  useEffect(() => {
+    const rc = responseCurve && responseCurve.curve;
+    if (step !== 3 || !curveChartRef.current || !rc || !rc.points.length) {
+      if (curveChartInstance.current) {
+        curveChartInstance.current.destroy();
+        curveChartInstance.current = null;
+      }
+      return;
+    }
+    const ctx = curveChartRef.current.getContext("2d");
+    if (curveChartInstance.current) curveChartInstance.current.destroy();
+    const unitLabel = getMetricUnitLabel(effectiveMetric, locale);
+    const axisText = getCssVar("--text-muted") || "#6B7280";
+    const axisGrid = getCssVar("--border") || "rgba(255,255,255,0.08)";
+    const xMax = rc.xMax;
+    const colLine = getCssVar("--chart-primary") || "#8fb1ff";
+    const colMuted = getCssVar("--text-muted") || "#9aa4b2";
+    const colNow = getCssVar("--text-primary") || "#e6e9ef";
+    const colKnee = getCssVar("--chart-tertiary") || "#ffc56e";
+    const colOnset = getCssVar("--chart-accent") || "#ff8d7e";
+    const mk = rc.markers;
+    const markerSet = [
+      { key: "now", pt: mk.now, color: colNow, label: tr("현재", "Now") },
+      { key: "plan", pt: mk.plan, color: colLine, label: tr("계획", "Plan") },
+      { key: "knee", pt: mk.knee, color: colKnee, label: tr("효율 최적", "Optimal") },
+      { key: "onset", pt: mk.onset, color: colOnset, label: tr("과포화 시작", "Over-saturation") },
+    ].filter((m) => m.pt);
+    const fmtX = (v) => fmtCurrency(v, currency);
+    curveChartInstance.current = new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: tr("예상 결과 곡선", "Projected response curve"),
+            data: rc.points.map((p) => ({ x: p.x, y: p.y })),
+            borderColor: colLine,
+            backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.14)",
+            fill: true,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2,
+            order: 2,
+            // 관측 범위(xMax) 밖은 점선+연한 색 — "추정" 시각 고지(§8 정직).
+            segment: {
+              borderDash: (c) => (c.p1.parsed.x > xMax ? [5, 4] : undefined),
+              borderColor: (c) => (c.p1.parsed.x > xMax ? colMuted : colLine),
+            },
+          },
+          ...markerSet.map((m) => ({
+            type: "scatter",
+            label: m.label,
+            data: [{ x: m.pt.x, y: m.pt.y }],
+            borderColor: m.color,
+            backgroundColor: m.color,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointStyle: m.key === "now" ? "rectRot" : "circle",
+            order: 1,
+          })),
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        parsing: false,
+        interaction: { mode: "nearest", intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: axisText, usePointStyle: true, boxWidth: 8 },
+          },
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const ds = c.dataset.label;
+                const x = c.parsed.x;
+                const y = c.parsed.y;
+                return tr(
+                  `${ds} · 지출 ${fmtCurrency(x, currency)} → ${Math.round(y).toLocaleString()} ${unitLabel}`,
+                  `${ds} · Spend ${fmtCurrency(x, currency)} → ${Math.round(y).toLocaleString()} ${unitLabel}s`
+                );
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "linear",
+            title: { display: true, text: tr("일 지출", "Daily spend"), color: axisText },
+            ticks: { color: axisText, callback: (v) => fmtX(v) },
+            grid: { color: axisGrid },
+          },
+          y: {
+            title: { display: true, text: tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`), color: axisText },
+            ticks: { color: axisText },
+            grid: { color: axisGrid },
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+    requestAnimationFrame(() => curveChartInstance.current?.resize());
+    return () => {
+      if (curveChartInstance.current) {
+        curveChartInstance.current.destroy();
+        curveChartInstance.current = null;
+      }
+    };
+  }, [step, responseCurve, effectiveMetric, currency, locale, tr]);
 
   // §4 추천 배분 비중 — 단일 가로 스택 바 Chart.js(indexAxis:'y') 차트. index.html §4 alloc-bar 이식(CSS flexbox → canvas).
   // 채널별 weight(%) 세그먼트를 하나의 category("배분")에 쌓아 legacy와 동일한 "한 줄 막대 + 범례" 모양 유지.
@@ -2786,9 +2922,69 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         </section>
       )}
 
-      {/* §6 알고리즘 노트 (index.html s-algo 이식) */}
+      {/* §6 채널 반응 곡선 (PRISM P4) — 지출→결과 곡선 + now/plan/knee/onset 마커 */}
+      <section className="block" id="s-response">
+        <h2 className="section-title"><span className="ix">§6</span>{tr("채널 반응 곡선 (지출 → 결과)", "Channel response curve (spend → results)")}</h2>
+        {!responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
+          <p className="muted" style={{ fontSize: "12px", marginTop: "12px" }}>
+            {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(수확체감·과포화 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including the diminishing-returns and over-saturation points.")}
+          </p>
+        ) : (
+          <div className="alloc-card">
+            {/* 채널 선택 pill */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+              {allocation.items.map((it, i) => (
+                <button
+                  key={it.channel}
+                  type="button"
+                  className={`btn ${it.channel === curveCh ? "" : "secondary"}`}
+                  onClick={() => setCurveChannel(it.channel)}
+                  style={{ padding: "4px 10px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+                >
+                  <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: CHART_THEME.series[i % CHART_THEME.series.length] }}></span>
+                  {it.channel}
+                </button>
+              ))}
+            </div>
+            <div className="chart-container" style={{ height: "300px" }}>
+              <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
+            </div>
+            {/* 마커 평어 해석 (§8 정직: 없는 지점은 없다고 명시) */}
+            {(() => {
+              const c = responseCurve.curve;
+              const m = c.markers;
+              const roasM = isRoasMetric(effectiveMetric);
+              const resAt = (pt) => (pt ? `${formatNumberK(pt.y, 0)} ${unitLabel}${locale === "en" ? "s" : ""}` : "—");
+              return (
+                <div style={{ fontSize: "12px", marginTop: "10px", lineHeight: 1.6, color: "var(--text-1)" }}>
+                  <div>
+                    <strong>{tr("현재", "Now")}</strong> {fmtCurrency(responseCurve.now, currency)} → {resAt(m.now)}
+                    {" · "}
+                    <strong>{tr("계획", "Plan")}</strong> {fmtCurrency(responseCurve.plan, currency)} → {resAt(m.plan)}
+                  </div>
+                  <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                    {m.knee
+                      ? tr(`효율 최적 ≈ ${fmtCurrency(m.knee.x, currency)} — 이 지점부터 추가 지출당 결과 증가가 뚜렷이 둔화됩니다.`, `Optimal ≈ ${fmtCurrency(m.knee.x, currency)} — beyond here, results per extra unit of spend slow down sharply.`)
+                      : tr("효율 최적 지점: 관측 범위에서 뚜렷한 수확체감 꺾임이 없습니다.", "Optimal point: no clear diminishing-returns knee within the observed range.")}
+                  </div>
+                  <div style={{ color: "var(--text-muted)", marginTop: "2px" }}>
+                    {m.onset
+                      ? tr(`과포화 시작 ≈ ${fmtCurrency(m.onset.x, currency)} — 이 지점을 넘으면 추가 1${roasM ? "원" : "건"}의 ${roasM ? "매출 효율" : "획득 비용"}이 평균보다 나빠집니다.`, `Over-saturation ≈ ${fmtCurrency(m.onset.x, currency)} — past this point each extra unit performs worse than your average.`)
+                      : tr("과포화 지점: 관측+추정 범위 안에서는 아직 과포화에 도달하지 않았습니다.", "Over-saturation: not yet reached within the observed + estimated range.")}
+                  </div>
+                  <div style={{ color: "var(--text-muted)", marginTop: "4px", fontSize: "11px" }}>
+                    {tr(`관측 범위 ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · 점선 구간은 데이터 밖 추정(신뢰 낮음).`, `Observed range ${fmtCurrency(c.xMin, currency)}~${fmtCurrency(c.xMax, currency)} · the dashed segment is an out-of-data estimate (low confidence).`)}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+
+      {/* §7 알고리즘 노트 (index.html s-algo 이식) */}
       <section className="block" id="s-algo">
-        <h2 className="section-title"><span className="ix">§6</span>{tr("알고리즘 노트", "Algorithm notes")}</h2>
+        <h2 className="section-title"><span className="ix">§7</span>{tr("알고리즘 노트", "Algorithm notes")}</h2>
         <p>{tr(
           <>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</>,
           <>This page is a JS port of Campaign Allocator&apos;s (Streamlit) <strong>Mode A · efficiency-based recommended share</strong>. Core formula:</>

@@ -135,4 +135,20 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
       fireEvent.mouseUp(sliders[0]);
     }).not.toThrow();
   });
+
+  it("§6 채널 반응 곡선이 canvas로 렌더되고 채널 pill 전환이 throw 없이 동작 (P4)", () => {
+    render(<BudgetAllocation />);
+    // 결과-먼저 착지(step3, 예산 자동 시드) → §6 반응 곡선 canvas + 채널 pill 노출.
+    const section = document.querySelector("#s-response");
+    expect(section).toBeTruthy();
+    const canvas = document.getElementById("alloc-response-curve");
+    expect(canvas).toBeTruthy();
+    expect(canvas.tagName).toBe("CANVAS");
+    // 다른 채널 pill 클릭 → 곡선 재빌드 경로 throw 없음.
+    const pills = [...section.querySelectorAll("button")];
+    expect(pills.length).toBeGreaterThan(1);
+    expect(() => fireEvent.click(pills[1])).not.toThrow();
+    // 마커 해석 평어(현재/계획)가 노출.
+    expect(section.textContent).toMatch(/현재|계획/);
+  });
 });
