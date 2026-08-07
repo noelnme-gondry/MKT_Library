@@ -387,7 +387,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   // 전역 분모 기준(설치/가입) — 효율 계열 도구(5-2/5-21/5-22/5-3)가 공유(§12.18).
   const denomBasis = useAppStore((state) => state.denomBasis);
-  const [step, setStep] = useState(1);
+  // 결과-먼저 착지(PRISM 뷰 P2): 데이터가 있으면 위저드(step 1)가 아니라 결과(step 3)로
+  // 바로 진입한다. objective 미선택은 basis 기본값으로 폴백(effectiveObjective/metric)이라
+  // allocation이 즉시 계산된다. 상세 설정(step 1)·곡선 검증(step 2)은 컨트롤 바·링크로 여전히 접근.
+  const [step, setStep] = useState(3);
   const [unitField, setUnitField] = useState("channel");
 
   const [simMode, setSimMode] = useState("auto"); // auto | manual
@@ -662,6 +665,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       setBudgetAutoDefaulted(true);
     }
   };
+
+  // 결과-먼저 착지(PRISM 뷰 P2): step 3로 바로 들어오면 step 전환 이벤트가 없어 예산 기본값이
+  // 안 채워져 allocation이 빈 결과가 된다. 데이터가 준비되면 1회 자동 채운다
+  // (applyBudgetDefault는 budgetAutoDefaulted·사용자 입력 가드가 있어 idempotent).
+  useEffect(() => {
+    // 조건부·1회(idempotent 가드)라 set-state-in-effect 허용 — 결과-먼저 착지 예산 시드 전용.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (hasData && step === 3) applyBudgetDefault();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasData, step, byChannel]);
 
   // 배분 결과 (mode C / B) — 제약(overrides/min/max) + recalcTick 포함
   const allocation = useMemo(() => {
@@ -2051,9 +2064,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           </div>
         );
       })()}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h3 style={{ margin: 0, fontSize: "16px" }}>{tr("Step 3: 시뮬레이션 및 예산 분배", "Step 3: Simulation & budget allocation")}</h3>
-        <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("← 검증 단계로 돌아가기", "← Back to verification")}</button>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "0.5rem" }}>
+        <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("곡선 검증·보정", "Verify / adjust curves")}</button>
       </div>
 
       {/* 결론·액션 카드 */}

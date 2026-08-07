@@ -47,53 +47,30 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     window.confirm = () => true;
   });
 
-  it("walks Step1 -> Step2 -> Step3 without throwing, and Step2 sidebar + chart render", () => {
+  it("결과-먼저 착지 → 곡선 검증(Step2)로 이동 시 사이드바+scatter가 throw 없이 렌더", () => {
+    // PRISM 뷰 P2: 데이터가 있으면 렌더 즉시 결과(step 3)에 착지. 곡선 검증은 링크로 이동.
     expect(() => render(<BudgetAllocation />)).not.toThrow();
+    fireEvent.click(screen.getByText(/곡선 검증·보정/));
 
-    // Step 1: pick objective (Install · CPI) then apply
-    const installBtn = screen.getByText(/CPI ↓/);
-    fireEvent.click(installBtn);
-    const applyBtn = screen.getByText(/적용 \(검증 진행\)/);
-    expect(() => fireEvent.click(applyBtn)).not.toThrow();
-
-    // Step 2 should now show the sidebar + scatter canvas
     expect(screen.getByText(/추세선 검증/)).toBeTruthy();
     const canvas = document.getElementById("chart-alloc-scatter-verify");
     expect(canvas).toBeTruthy();
 
-    // Click a sidebar item (2nd unit if present) to exercise selection + re-render.
     const proceedBtns = screen.getAllByText(/검증 완료 및 예산 배분/);
     expect(() => fireEvent.click(proceedBtns[0])).not.toThrow();
-
-    // Whether it proceeded or not (confirm dialog), no throw should occur.
     expect(document.body.textContent.length).toBeGreaterThan(0);
   });
 
-  it("reaches Step 3 and renders the §4 bar chart canvas without throwing", () => {
-    render(<BudgetAllocation />);
-    fireEvent.click(screen.getByText(/CPI ↓/));
-    fireEvent.click(screen.getByText(/적용 \(검증 진행\)/));
-    // bulk-approve then proceed to skip confirm() dialog
-    const bulkBtn = screen.queryByText(/건강한 그룹 일괄 승인/);
-    if (bulkBtn && !bulkBtn.disabled) fireEvent.click(bulkBtn);
-    const proceedBtn = screen.getAllByText(/검증 완료 및 예산 배분|배분 모델 설정 이동/)[0];
-    expect(() => fireEvent.click(proceedBtn)).not.toThrow();
-
+  it("결과-먼저 착지에서 §4 배분 섹션이 throw 없이 렌더", () => {
+    expect(() => render(<BudgetAllocation />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
-    // Look for the bar section presence (may be pre-budget-entry state, that's fine - no throw is the bar)
     const barSection = document.querySelector("#s-bar");
     expect(barSection).toBeTruthy();
   });
 
   it("renders the §4 bar chart as a real <canvas> (Chart.js) once a budget is entered", () => {
+    // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
-    fireEvent.click(screen.getByText(/CPI ↓/));
-    fireEvent.click(screen.getByText(/적용 \(검증 진행\)/));
-    const bulkBtn = screen.queryByText(/건강한 그룹 일괄 승인/);
-    if (bulkBtn && !bulkBtn.disabled) fireEvent.click(bulkBtn);
-    fireEvent.click(screen.getAllByText(/검증 완료 및 예산 배분|배분 모델 설정 이동/)[0]);
-
-    // Step 3: type a budget into the total-budget field to trigger the bar chart render path.
     const budgetInput = document.querySelector('input[type="text"]');
     expect(budgetInput).toBeTruthy();
     expect(() => {
