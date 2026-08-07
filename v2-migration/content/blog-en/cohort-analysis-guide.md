@@ -1,5 +1,5 @@
 ---
-title: "Retention Cohort Analysis: Read D1, D7, and D30 Correctly"
+title: "Cohort Analysis: Reading D1, D7, and D30 Retention Cohorts"
 description: "Compare only mature cohorts when reading D1, D7, and D30 retention. Handle incomplete cohorts, retention definitions, sample size, and heatmaps correctly."
 date: "2026-07-15"
 slug: "cohort-analysis-guide"

@@ -1,6 +1,6 @@
 ---
-title: "LTV:CAC 3:1 and You're Safe? Most People Compute It Wrong"
-description: "More important than the 3:1 benchmark is whether the number was computed right. Denominator definition, revenue vs margin, channel split — three common mistakes, the math, and reading it with payback period."
+title: "LTV:CAC Ratio Explained: How to Calculate It Correctly"
+description: "More important than the 3:1 benchmark is whether the number is right. Denominator, revenue vs margin, channel split: three common mistakes."
 date: "2026-07-15"
 slug: "ltv-cac-ratio"
 keywords: "LTV, CAC, LTV CAC, how to calculate LTV, CAC calculation, customer lifetime value, customer acquisition cost, LTV CAC ratio, LTV CAC 3:1, payback period, unit economics"

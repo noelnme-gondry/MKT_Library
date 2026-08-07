@@ -1,6 +1,6 @@
 ---
-title: "Incrementality Measurement: Did the Ad Actually Create That Conversion?"
-description: "Dashboard ROAS should only be half-trusted. A breakdown of incrementality measurement and three holdout experiment designs for measuring what ads actually create."
+title: "Incrementality: Validate Ad Lift With Holdouts and DiD"
+description: "Dashboard ROAS should only be half-trusted. Incrementality measurement and three holdout designs for measuring what ads actually create."
 date: "2026-07-09"
 slug: "incrementality-measurement"
 keywords: "incrementality measurement, holdout experiment, difference-in-differences, DiD, iROAS, attribution, conversion lift, incrementality vs attribution, holdout group test, what is incrementality, measuring ad effectiveness, proving ad impact, what is a holdout test"

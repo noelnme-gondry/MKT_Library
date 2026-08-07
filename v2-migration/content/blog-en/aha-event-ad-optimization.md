@@ -1,5 +1,5 @@
 ---
-title: "Optimize Ads With an Aha Event, Not Just Install CPA"
+title: "Aha Event Ad Optimization: Connect CPA to Retention"
 description: "Use the early action that predicts retention to connect ad optimization, onboarding, and durable growth."
 date: "2026-07-28"
 slug: "aha-event-ad-optimization"

@@ -1,5 +1,5 @@
 ---
-title: "How to Find an Aha Moment from Early User Behavior"
+title: "How to Find the Aha Moment: Early Actions and Retention"
 description: "Find Aha Moment candidates by comparing action, timing, count, reach, Lift, and F1—then test whether the behavior causes retention before operationalizing it."
 date: "2026-07-15"
 slug: "aha-moment-retention"

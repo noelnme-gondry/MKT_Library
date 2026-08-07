@@ -1,5 +1,5 @@
 ---
-title: "What CPM and CPC Mean: Read Impression and Click Costs First"
+title: "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained"
 description: "Learn what CPM and CPC measure, and where to look when impression or click costs rise."
 date: "2026-07-15"
 slug: "cpi-cpa-cpm-difference"

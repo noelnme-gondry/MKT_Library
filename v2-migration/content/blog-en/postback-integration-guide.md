@@ -1,5 +1,5 @@
 ---
-title: "Postback Integration Guide: Diagnose Zero Installs, Events, Revenue, and Cost"
+title: "Postback Integration: Fix SAN, S2S, and Zero Installs"
 description: "Troubleshoot postback problems from the last verified point in the app-to-MMP-to-network path. Includes SAN vs. S2S context and a practical zero-data checklist."
 date: "2026-07-18"
 slug: "postback-integration-guide"

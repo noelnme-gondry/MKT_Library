@@ -1,5 +1,5 @@
 ---
-title: "Performance Marketing Metrics: From Your First 4 to CPA and ROAS Diagnosis"
+title: "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS"
 description: "Start with CTR, CVR, CPA, and ROAS, then connect CPM, CPC, CPI, and LTV:CAC into one chain to locate the actual performance problem."
 date: "2026-07-27"
 updated: "2026-07-27"

@@ -1,5 +1,5 @@
 ---
-title: "증분성 측정: 그 전환, 광고가 만든 걸까요?"
+title: "증분성 측정이란? 홀드아웃·DiD로 광고 효과 검증"
 description: "대시보드 ROAS는 반쯤만 믿어야 합니다. 광고가 진짜 만든 성과만 재는 증분성 측정과 홀드아웃 실험 3가지를 정리했어요."
 date: "2026-07-09"
 slug: "incrementality-measurement"

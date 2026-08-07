@@ -1,5 +1,12 @@
 ---
 # Blog post template (frontmatter contract)
+# WARNING: once published, the title is overridden by src/lib/blogSeo.js
+# (EN_TITLES). blog.js resolves `seo?.title || data.title`, so the title below
+# acts as a fallback only and never reaches the page or search results. Edit
+# blogSeo.js to change a published post's title.
+# The description is the opposite: the value below is used as-is (unless
+# blogSeo has a DESCRIPTION_OVERRIDES entry). Over 160 chars fails
+# contentRegistry.test.js.
 title: "Example article title"
 description: "A concise search-result summary of this article."
 date: "2026-08-01"

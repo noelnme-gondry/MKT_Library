@@ -1,5 +1,5 @@
 ---
-title: "Improve Conversion Rate: Diagnose Funnel Drop-off, Then Test the Fix"
+title: "Conversion Rate: Diagnose Funnel Drop-off and Test Fixes"
 description: "Find the highest-priority funnel drop-off, then check message match, friction, traffic quality, and offer strength before validating one change at a time."
 date: "2026-07-27"
 updated: "2026-07-27"

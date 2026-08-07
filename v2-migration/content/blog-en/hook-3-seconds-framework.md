@@ -1,5 +1,5 @@
 ---
-title: "The First 3 Seconds of an Ad Decide Everything"
+title: "The 3-Second Hook: Reduce Video Ad Drop-off"
 description: "Four proven hook patterns that stop the scroll in a video ad's first three seconds, plus a checklist for the opening frame."
 date: "2026-07-18"
 slug: "hook-3-seconds-framework"

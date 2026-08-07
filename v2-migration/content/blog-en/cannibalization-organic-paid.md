@@ -1,5 +1,5 @@
 ---
-title: "Is Paid Advertising Eating Your Free Traffic?"
+title: "Ad Cannibalization: Measure Paid and Organic Overlap"
 description: "Diagnose internal cannibalisation (US: internal cannibalization): when paid ads displace organic conversions, and separate correlation from causation."
 date: "2026-07-15"
 slug: "cannibalization-organic-paid"

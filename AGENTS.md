@@ -327,6 +327,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 `routeMap` **밖**의 fs 기반 MD 파이프라인. **글 발행 = `v2-migration/content/blog/<slug>.md` 추가**(frontmatter: `title`≤40·`description`≤80·`date`·`slug`·`keywords`·`tags`·`draft`·`ogImage`; `_TEMPLATE.md` 복사, `_`프리픽스·`draft:true`는 미발행). `src/lib/blog.js`는 **server 전용**(클라이언트 import 금지).
 - **여러 글 → 필라 통합 = 6곳 동시 갱신**: ① `content/blog(-en)`·`glossary(-en)` 파일 add/삭제(**EN 짝파일 필수** — 경로는 `blog-en`이지 `en/blog` 아님) ② `next.config.mjs redirects()`에 구 URL→필라 301(ko·en 각각) ③ **레지스트리 3종 정합**(`contentRegistry.test.js`가 강제): `contentToolRegistry`·`blogSeo`·`localizedHref` ④ 삭제글 참조 glossary `relatedPosts` 재지정. 내부 링크는 KR 상대경로만(렌더러가 EN 접두).
 - **SEO 연동**: `sitemap.js`·`rss.xml`이 `getAllPosts`로 직접 포함(블로그는 fs가 SSOT). SOP(JSON)는 MD 이관 안 함.
+- **제목·설명 SSOT는 `blogSeo.js`지 frontmatter가 아님**: `blog.js`가 `seo?.title || data.title`로 덮어써 h1·`<title>`·OG·JSON-LD·sitemap·RSS가 전부 레지스트리 값을 쓴다. **`.md`의 title을 고쳐도 화면은 안 바뀐다**(발행글 대부분이 이미 divergent) → 제목 수정은 `KO_TITLES`/`EN_TITLES`에서. 길이 한도는 테스트가 강제(KO 40자·EN 60자, 자동생성 description 포함). `updated`는 로케일별 날짜 Set → sitemap `lastmod`+`dateModified`이므로 KO만 고쳤으면 EN 날짜를 올리지 말 것.
 
 ### 12.25 세그먼트 나눠보기 필터 (매핑 role→토글)
 차원 컬럼(성별·플랫폼·국가) 지정 시 분석을 값별로 나눠 봄. **엔진·게이트 불변, 행 부분집합만 필터해 재계산**. `role=segment` + `guessRole` 화이트리스트로 자동 안착(그 외 문자열은 tray, 오탐 방지). 세그먼트=탐색 토글이라 **게이트 시그 밖**(재분석 불필요), 매핑 잔상은 유효성 검사로 방지. 일괄 매핑 버튼은 segment 제외(사용자 지정 보존).

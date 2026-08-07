@@ -1,6 +1,6 @@
 ---
-title: "Adjust vs AppsFlyer, MMP 뭘 써야 할까"
-description: "모바일 어트리뷰션 툴(MMP) 양대장 Adjust와 AppsFlyer의 차이 — 대시보드·데이터 접근성·SKAN 처리·가격 모델을 실무 관점에서 비교했습니다."
+title: "Adjust vs AppsFlyer 비교: 모바일 MMP 선택 기준"
+description: "Adjust와 AppsFlyer의 차이 — 대시보드·데이터 접근성·SKAN 처리·가격 모델을 실무 관점에서 비교했어요."
 date: "2026-07-18"
 slug: "adjust-vs-appsflyer"
 keywords: "Adjust vs AppsFlyer, Adjust AppsFlyer 차이, MMP 비교, 모바일 어트리뷰션 툴, 앱 마케팅 트래킹 툴, 어트리뷰션 파트너 선택"

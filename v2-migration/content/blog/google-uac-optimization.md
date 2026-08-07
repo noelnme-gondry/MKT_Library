@@ -1,5 +1,5 @@
 ---
-title: "Google UAC(앱 캠페인) 최적화, 뭘 건드릴 수 있나"
+title: "Google UAC 최적화 가이드: 입찰·에셋·이벤트 설정"
 description: "자동화된 Google App Campaign에서 마케터가 실제로 통제할 수 있는 레버(입찰·에셋·이벤트)를 정리했습니다."
 date: "2026-07-15"
 slug: "google-uac-optimization"

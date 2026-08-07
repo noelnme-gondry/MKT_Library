@@ -1,6 +1,6 @@
 ---
-title: "A/B Testing: Ruling Out Chance Before You Call the Winner"
-description: "A/B testing done right — from random assignment, sample size, and statistical significance, to the early-stopping (peeking) trap that catches nine out of ten people. A practical guide."
+title: "A/B Testing: Sample Size, Significance, and Decision Rules"
+description: "From random assignment, sample size, and statistical significance to the early-stopping (peeking) trap that catches nine out of ten people."
 date: "2026-07-09"
 slug: "ab-testing"
 keywords: "A/B testing, AB test, statistical significance, statistical power, sample size, early stopping, peeking, conversion rate optimization, CRO, landing page experiment, how to run an A/B test, minimum detectable effect, what is A/B testing, A/B test duration, A/B test sample size, statistical significance testing"
