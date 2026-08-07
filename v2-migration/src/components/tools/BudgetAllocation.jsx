@@ -132,6 +132,32 @@ function formatNumberK(n, decimals = 0) {
   });
 }
 
+/* 채널 적합 신뢰도(High/Med/Low) — R²(적합 품질) + 데이터 점 수 기반. Bayesian posterior가
+   아니라 "적합 품질·데이터 커버리지" 기준임을 라벨/툴팁으로 정직히 고지(§8). wrapper=fitChannel 결과. */
+function allocConfidence(wrapper) {
+  if (!wrapper || !wrapper.model) return null;
+  const r2 = Number(wrapper.r2);
+  const n = wrapper.kept ? wrapper.kept.length : 0;
+  if (!isFinite(r2) || n < 3) return { level: "low", ko: "낮음", en: "Low", r2, n };
+  if (r2 >= 0.7 && n >= 6) return { level: "high", ko: "높음", en: "High", r2, n };
+  if (r2 >= 0.4) return { level: "med", ko: "보통", en: "Med", r2, n };
+  return { level: "low", ko: "낮음", en: "Low", r2, n };
+}
+
+/* 한계 CPR — 현 배분 지출점에서 +10% 늘렸을 때 추가 1건당 비용(Δcost/Δresults). predictSafeCpr(CPR
+   공간) 재사용. 수확체감으로 추가 결과가 없으면 Infinity(한계효용 ≤ 0) → 표시층 "—". */
+function allocMarginalCpr(wrapper, cost) {
+  if (!wrapper || !(cost > 0)) return null;
+  const c2 = cost * 1.1;
+  const cpr1 = ALLOC_MATH.predictSafeCpr(wrapper, cost);
+  const cpr2 = ALLOC_MATH.predictSafeCpr(wrapper, c2);
+  if (!(cpr1 > 0) || !(cpr2 > 0)) return null;
+  const r1 = cost / cpr1;
+  const r2v = c2 / cpr2;
+  if (!(r2v > r1)) return Infinity;
+  return (c2 - cost) / (r2v - r1);
+}
+
 /* 채널별 (cost, CPR=cost/result) 포인트 맵. cost>0 & result>0만.
    이 도구는 creative/adgroup 분해를 하지 않으므로, CSV가 하위 grain이면 사용 grain(unit)×날짜로
    먼저 sum 후 점 1개 생성 (per-row 점 = creative 단위로 찍히는 버그 방지). */
@@ -196,6 +222,9 @@ function fitChannel(pts, adv) {
     xMin: Math.min(...xs),
     xMax: Math.max(...xs),
     poly2Shape: ALLOC_MATH.detectPoly2Shape(model),
+    // 적합도 R² — fitBest는 이미 model.r2를 붙이지만, 단일 trendType 오버라이드 경로의
+    // fit*는 r2가 없으므로 kept로 보강(신뢰 칩·P3용). 순수엔진 불변, wrapper에만 노출.
+    r2: model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(kept, model),
   };
 }
 export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
@@ -2478,6 +2507,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   <th style={{ minWidth: "150px" }}>Min ~ Max</th>
                   <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${unitLabel}`, `Projected ${unitLabel}s`)}</th>
                   <th style={{ minWidth: "90px", textAlign: "right" }}>{tr(`예상 ${roas ? "ROAS" : "CPR"}`, `Projected ${roas ? "ROAS" : "CPR"}`)}</th>
+                  <th style={{ minWidth: "96px", textAlign: "right" }} title={tr("현 지출점에서 지출을 조금 늘렸을 때 추가 1건당 비용(한계효율). 평균보다 나쁘면 증액을 신중히.", "Cost per additional conversion when spending a bit more at the current point (marginal efficiency). Worse than average → scale up cautiously.")}>{tr(`한계 ${roas ? "ROAS" : "CPR"}`, `Marginal ${roas ? "ROAS" : "CPR"}`)}</th>
                   <th style={{ minWidth: "60px", textAlign: "right" }}>{tr("비중", "Share")}</th>
                   <th style={{ minWidth: "90px", textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>{tr("이전 비용", "Prior cost")}</th>
                   <th style={{ minWidth: "80px", textAlign: "right", color: "var(--text-muted)" }}>{tr(`이전 ${unitLabel}`, `Prior ${unitLabel}s`)}</th>
@@ -2488,13 +2518,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <tbody>
                 {!(dailyBudget > 0) ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                    <td colSpan="11" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
                       {tr("총 예산을 입력하면 채널별 분배 결과가 계산됩니다.", "Enter a total budget to calculate the per-channel allocation.")}
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
+                    <td colSpan="11" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
                       {tr("배분 가능한 채널이 없습니다. 검증 단계(§2)에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step (§2).")}
                     </td>
                   </tr>
@@ -2513,12 +2543,21 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       const costErr = isOverrideMinErr || isOverrideMaxErr;
                       const draftVal = costDrafts[it.channel];
                       const costDisplay = draftVal != null ? draftVal : Math.round(it.cost).toLocaleString();
+                      const wrap = modelsMap.get(it.channel);
+                      const mCpr = allocMarginalCpr(wrap, it.cost);
+                      const conf = allocConfidence(wrap);
                       return (
                         <tr key={it.channel} className={isZero ? "alloc-row-zero" : ""}>
                           <td>
                             <div className="alloc-ch-name" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                               <span className="sw" style={{ display: "inline-block", width: "10px", height: "10px", borderRadius: "2px", background: CHART_THEME.series[i % CHART_THEME.series.length] }}></span>
                               {it.channel}
+                              {conf && (
+                                <span
+                                  title={tr(`적합 신뢰도 ${conf.ko} · R²=${(conf.r2 || 0).toFixed(2)} · 점 ${conf.n}개 (적합 품질·데이터 기반, 확률 아님)`, `Fit confidence ${conf.en} · R²=${(conf.r2 || 0).toFixed(2)} · ${conf.n} pts (fit quality/data, not probability)`)}
+                                  style={{ fontSize: "10px", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--bg-1)", color: conf.level === "med" ? "var(--text-muted)" : "#fff", border: conf.level === "med" ? "1px solid var(--border)" : "none" }}
+                                >{tr(conf.ko, conf.en)}</span>
+                              )}
                               {simMode === "auto" ? null : it.locked && (
                                 <button
                                   type="button"
@@ -2601,6 +2640,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                           <td className="tnum" style={{ textAlign: "right" }}>
                             {isZero ? <span style={{ color: "var(--text-muted)" }}>—</span> : fmtCostMetric(it.cpr, effectiveMetric, currency)}
                           </td>
+                          <td className="tnum" style={{ textAlign: "right" }}>
+                            {isZero || mCpr == null ? <span style={{ color: "var(--text-muted)" }}>—</span> : !isFinite(mCpr) ? <span style={{ color: "var(--text-muted)" }} title={tr("한계효용 ≤ 0 — 더 투입해도 효율↑ 없음", "marginal utility ≤ 0 — no gain from more spend")}>∞</span> : fmtCostMetric(mCpr, effectiveMetric, currency)}
+                          </td>
                           <td className="tnum" style={{ textAlign: "right" }}><strong>{(it.weight * 100).toFixed(1)}%</strong></td>
                           <td className="tnum" style={{ textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>{prev.daily > 0 ? fmtCurrency(prev.daily, currency) : "—"}</td>
                           <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prev.resDaily > 0 ? formatNumberK(prev.resDaily, 0) : "—"}</td>
@@ -2615,6 +2657,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       <td></td>
                       <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
                       <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                      <td></td>
                       <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
                       <td className="tnum" style={{ textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(prevTotalDaily, currency) : "—"}</td>
                       <td></td>
