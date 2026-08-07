@@ -1740,6 +1740,14 @@ describe("MarketingResponse render smoke", () => {
     await flushRaf();
     expect(bayesian.classList.contains("active")).toBe(true);
     expect(document.body.textContent).not.toContain("conditional posterior 채널 적합");
+    // T1: Bayesian 모드 → 정보 prior 토글 + 적합도 신뢰 칩 노출, 끄기(평면 OLS) 재적합 throw 없음.
+    expect(document.body.textContent).toContain("정보 prior");
+    expect(document.body.textContent).toContain("적합도");
+    const priorOff = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("끄기 (평면 OLS)"));
+    expect(priorOff).toBeTruthy();
+    expect(() => fireEvent.click(priorOff)).not.toThrow();
+    await flushRaf();
+    expect(priorOff.classList.contains("active")).toBe(true);
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
