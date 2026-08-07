@@ -1,6 +1,6 @@
 ---
 title: "iOS Measurement: ATT, SKAN, and Conversion Value Explained"
-description: "iOS performance may not be bad — it may just be invisible. ATT cuts user-level measurement and SKAN gives delayed aggregate signal. How to judge with conversion-value design and an incrementality lens."
+description: "iOS performance may not be bad, just invisible. ATT cuts user-level measurement and SKAN gives delayed aggregate signal. How to judge anyway."
 date: "2026-07-15"
 slug: "ios-att-skan-guide"
 keywords: "ATT, SKAN, SKAdNetwork, iOS performance measurement, iOS privacy, App Tracking Transparency, iOS14 marketing, app attribution, conversion value, privacy advertising"

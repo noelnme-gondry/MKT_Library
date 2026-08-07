@@ -1,6 +1,6 @@
 ---
 title: "Broad vs Narrow Targeting: How to Choose an Ad Audience"
-description: "Neither narrow targeting nor broad is always right. Here's the reach/CPM/conversion-rate/audience-exhaustion tradeoff, and why narrow targets break when you scale budget."
+description: "Neither narrow nor broad is always right. The reach, CPM, conversion-rate, and audience-exhaustion tradeoff, and why narrow breaks at scale."
 date: "2026-07-12"
 slug: "audience-broad-vs-narrow"
 keywords: "targeting strategy, broad targeting, narrow targeting, audience exhaustion, retargeting, lookalike audience, CPA, broad vs narrow targeting, when to use broad targeting, ad audience setup, audience expansion"

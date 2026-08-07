@@ -1,6 +1,6 @@
 ---
 title: "The AI-Era Performance Marketer: Skills That Still Matter"
-description: "Auto-bidding and AI are said to replace marketers, but what machines took over and what's still yours are different things. Here's what machines structurally can't do."
+description: "AI is said to replace marketers, but what machines took over and what is still yours are different things. Here is what they cannot do."
 date: "2026-07-13"
 slug: "ai-era-marketer"
 keywords: "AI in marketing, marketing automation, marketer skills, machine learning ads, future of performance marketing, auto-bidding, will AI replace marketers, skills for marketers in the AI era, AI marketing, how to use AI in marketing, marketer career outlook"

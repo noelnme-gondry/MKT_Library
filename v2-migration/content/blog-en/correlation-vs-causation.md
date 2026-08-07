@@ -1,6 +1,6 @@
 ---
 title: "Correlation vs Causation: Verify Lift With Experiments"
-description: "The difference between correlation and causation, explained through ice cream and drowning. Why confounders and reverse causation create illusions, and why an experiment is the only way to confirm causation."
+description: "The difference between correlation and causation, explained through ice cream and drowning, and why only an experiment can confirm a cause."
 date: "2026-07-09"
 slug: "correlation-vs-causation"
 keywords: "correlation, causation, correlation vs causation, confounder, reverse causation, spurious correlation, marketing analysis, experimentation, correlation does not imply causation, confounding variable example, correlation vs causation difference, causal analysis in marketing, data misinterpretation"

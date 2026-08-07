@@ -117,9 +117,12 @@ export function getBlogSeo(locale, slug, source = {}) {
   const isEnglish = locale === "en";
   return {
     title,
-    // 검색 메타는 제목을 중심으로 짧게 유지한다. 본문의 직접 답변은
-    // blogEditorial 레지스트리에서 별도로 관리해 메타·CTA와 역할을 분리한다.
-    description: DESCRIPTION_OVERRIDES[locale]?.[slug] || (isEnglish
+    // 우선순위: 레지스트리 override > 원고 설명 > 자동 문구.
+    // 자동 문구는 제목을 그대로 반복한 뒤 정보 없는 꼬리를 붙이는 형태라 SERP에서
+    // 클릭 이유를 못 준다(전 글이 같은 문장을 공유해 중복 스니펫이 되기도 한다).
+    // 원고가 직접 쓴 설명이 있으면 그쪽이 항상 낫기 때문에 폴백 순서를 그렇게 둔다.
+    // 자동 문구는 설명이 아예 없는 글에만 남는 최후 수단이다.
+    description: DESCRIPTION_OVERRIDES[locale]?.[slug] || source.description || (isEnglish
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",

@@ -178,6 +178,20 @@ describe("editorial SEO registries", () => {
     }
   });
 
+  // blogSeo.test.js는 스텁 설명으로 레지스트리만 보므로 원고 설명이 길어져도 못 잡는다.
+  // 여기서는 실제 발행글의 최종 description을 검사한다 — 검색결과에서 잘리지 않게
+  // 길이를 강제하고, 제목만 반복하는 자동 문구가 다시 전 글로 퍼지지 않게 막는다.
+  it.each([["ko", 80], ["en", 160]])("keeps every published description specific and within limits (%s)", (locale, limit) => {
+    const generic = locale === "en"
+      ? "A practical guide to the key checks, trade-offs, and next steps."
+      : "핵심 기준과 실무 확인 순서를 정리합니다.";
+    for (const post of getAllPosts(locale)) {
+      expect(post.description, `missing description for ${post.slug}`).toBeTruthy();
+      expect([...post.description].length, `description too long for ${locale}/${post.slug}`).toBeLessThanOrEqual(limit);
+      expect(post.description, `${locale}/${post.slug} fell back to the boilerplate description`).not.toContain(generic);
+    }
+  });
+
   it("consolidates Korean blog navigation into six parent categories", () => {
     expect(sorted(getAllTags("ko").map((tag) => tag.tag))).toEqual(sorted([
       "측정·분석", "예산·효율", "소재·크리에이티브", "매체·운영", "타겟·퍼널", "성장·커리어",

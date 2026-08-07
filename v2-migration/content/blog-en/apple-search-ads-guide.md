@@ -1,6 +1,6 @@
 ---
 title: "Apple Search Ads: Campaign Structure and Targeting"
-description: "Run ASA as one lumped campaign and only brand keywords spend. Here's why to split into brand, competitor, category, and discovery, plus match types and the discovery-to-promotion loop."
+description: "Run ASA as one lumped campaign and only brand keywords spend. Why to split into brand, competitor, category, and discovery, plus match types."
 date: "2026-07-15"
 slug: "apple-search-ads-guide"
 keywords: "Apple Search Ads, ASA, ASA setup, ASA campaign structure, App Store search ads, ASA keywords, iOS app ads, search ads for apps"

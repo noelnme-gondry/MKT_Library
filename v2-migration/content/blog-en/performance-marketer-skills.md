@@ -1,6 +1,6 @@
 ---
 title: "Performance Marketer Skills: What to Learn, In Order"
-description: "'What should I learn to become a performance marketer?' Here's the growth path — operations, data, decision-making, causal inference — and why tools should be learned by function, not name."
+description: "The growth path from operations to data, decision-making, and causal inference, and why tools should be learned by function, not by name."
 date: "2026-07-11"
 slug: "performance-marketer-skills"
 keywords: "performance marketer skills, marketing career path, data analysis, budget allocation, incrementality measurement, marketing tool stack, how to become a performance marketer, skills needed for performance marketing, learning performance marketing, marketer competencies"

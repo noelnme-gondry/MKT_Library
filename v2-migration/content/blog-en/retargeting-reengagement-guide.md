@@ -1,6 +1,6 @@
 ---
 title: "Retargeting & Re-engagement: Why to Split From Acquisition"
-description: "Why retargeting and re-engagement campaigns must be separated from new-user acquisition (UA), how to segment the audience, and why deferred deep links are essential."
+description: "Why retargeting must be separated from new-user acquisition (UA), how to segment the audience, and why deferred deep links are essential."
 date: "2026-07-18"
 slug: "retargeting-reengagement-guide"
 keywords: "retargeting, re-engagement, re-engagement campaign, reviving dormant users, retargeting audience, deferred deep link, lookalike seed, user segments"

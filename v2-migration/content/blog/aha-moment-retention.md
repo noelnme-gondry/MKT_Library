@@ -1,6 +1,6 @@
 ---
 title: "Aha Moment 찾는 법: 초기 행동과 리텐션 분석"
-description: "Aha Moment는 리텐션이 높은 사용자의 행동을 나열해서 찾지 않습니다. 행동·시점·횟수·도달률·Lift·F1을 함께 보고 실험으로 검증하세요."
+description: "Aha Moment는 리텐션 높은 유저의 행동을 나열해 찾는 게 아닙니다. 행동·시점·횟수·Lift·F1을 보고 실험으로 검증하세요."
 date: "2026-07-15"
 slug: "aha-moment-retention"
 keywords: "Aha Moment 찾는 법, 아하 모먼트, Aha Event, 리텐션 선행지표, 활성화 지표, 온보딩 최적화, 초기 행동 리텐션"

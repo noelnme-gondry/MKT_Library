@@ -1,6 +1,6 @@
 ---
 title: "Marketing Mix Modeling: Measure Channel Contribution"
-description: "Last-click credits whichever channel stood last in line — which is why brand search ROAS always looks heroic. How MMM back-calculates each channel's real contribution from aggregate data (regression, adstock, saturation), and where its limits are."
+description: "Last-click credits whichever channel stood last, which is why brand search always looks heroic. How MMM back-calculates real contribution."
 date: "2026-07-09"
 slug: "marketing-mix-modeling"
 keywords: "marketing mix modeling, MMM, adstock, saturation, contribution decomposition, cannibalization, multicollinearity, marketing forecasting, MMM vs attribution, post-iOS14 measurement"
