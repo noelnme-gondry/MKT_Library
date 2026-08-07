@@ -5745,6 +5745,9 @@ export function mmmDataQualityAudit(panel) {
                     priorLockedTransform: uncertainty.priorLockedTransform || false,
                     effectiveCandidateCount: uncertainty.effectiveCandidateCount,
                     topWeight: uncertainty.topWeight,
+                    // T2: 비선형 파라미터(α·ec·slope) Laplace 불확실성 산출용 프로파일 그리드.
+                    // 표시층 전용(mmmNonlinearLaplace) — 적합/골든에 영향 없음.
+                    models: uncertainty.models || [],
                   } : null,
                   responseAt,
                   marginalAt,
