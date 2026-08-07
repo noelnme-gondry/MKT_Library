@@ -151,4 +151,20 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     // 마커 해석 평어(현재/계획)가 노출.
     expect(section.textContent).toMatch(/현재|계획/);
   });
+
+  it("§1 진단 산점도가 <details>로 접혀 있고, 펼쳐도(toggle) throw 없이 canvas resize 경로가 동작 (P5)", () => {
+    render(<BudgetAllocation />);
+    const scatter = document.querySelector("#s-scatter");
+    expect(scatter).toBeTruthy();
+    // 접힘 섹션은 <details>, 기본 collapsed(open=false).
+    expect(scatter.tagName).toBe("DETAILS");
+    expect(scatter.open).toBe(false);
+    // 산점도 canvas는 접힌 상태로도 DOM에 존재.
+    expect(document.getElementById("chart-alloc-scatter")).toBeTruthy();
+    // 펼치기(toggle) → onToggle resize 경로 throw 없음.
+    expect(() => {
+      scatter.open = true;
+      scatter.dispatchEvent(new Event("toggle"));
+    }).not.toThrow();
+  });
 });
