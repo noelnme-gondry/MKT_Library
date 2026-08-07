@@ -4800,6 +4800,10 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 
 /* Tool and dashboard shells */
 .tool-context-header { margin: 0 0 16px; padding: 0 0 12px; border-bottom: 1px solid var(--border-subtle); }
+/* ToolIntro는 셸 밖 전체폭 형제라 has-toc의 우측 208px(position:fixed TOC) 여백을 못 받아
+   하단 보더가 TOC 아래로 뚫렸다 — 분석 데스크톱에서 우측 마진으로 폭을 줄여 셸 본문과 정렬.
+   (padding-right는 border-box 폭을 안 줄여 보더가 그대로 뚫리므로 margin-right 사용) */
+.app.is-analysis .tool-context-header { margin-right: 208px; }
 .tool-context-header__meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-muted); font: 650 9px var(--font-mono); letter-spacing: .11em; }
 .tool-context-header__meta em { color: var(--primary); font-style: normal; }
 .tool-context-header__title { max-width: 820px; margin: 7px 0 0; color: var(--text-primary); font: 650 clamp(19px,2vw,22px)/1.25 var(--font-display); letter-spacing: -.035em; }
@@ -5533,6 +5537,7 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
 @media (max-width: 1100px) {
   .tool-page-shell.has-toc .tool-page-shell__main, .dashboard-shell.has-results .dashboard-shell__main { padding-right: 0; }
   .tool-page-shell__toc { display: none; }
+  .app.is-analysis .tool-context-header { margin-right: 0; }
   .analysis-pathway__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .analysis-recommendations__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .content-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
