@@ -32,10 +32,12 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
             (index.html pageShell 5-x 분기 이관) */}
         <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
           <div className="page-sticky-row1">
-            <div className="tool-instrument-header__heading">
-              <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
-              <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</TitleTag>
-            </div>
+            {title && (
+              <div className="tool-instrument-header__heading">
+                <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
+                <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</TitleTag>
+              </div>
+            )}
             {chips && <div className="tool-instrument-header__status">{chips}</div>}
           </div>
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}

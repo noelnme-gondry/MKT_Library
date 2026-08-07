@@ -1991,33 +1991,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-alloc">
+      {/* 헤더는 라우터가 주입하는 ToolIntro(단일 h1+설명+크로스링크)가 담당 — 셸 제목/요약은
+          중복이라 제거(결과-먼저: 컨트롤 바 바로 아래에 스코어카드·결론). 알고리즘 설명은
+          하단 §알고리즘 섹션(s-algo)에 유지. 셸은 sticky 컨트롤 바 + 칩만. */}
       <ToolPageShell
         locale={locale}
-        titleLevel={2}
-        title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
         chips={
           <span className="chip">
             <span className="dot"></span>{csvData?.fileName || ""}
           </span>
-        }
-        summary={
-          <>
-            <p>
-              {tr(
-                "채널별 절대 성과(CPR/ROAS) 가중과 수확체감 모형을 반영하여 최적 예산 포트폴리오를 제안합니다.",
-                "Proposes an optimal budget portfolio using absolute per-channel performance (CPR/ROAS) weighting and a diminishing-returns model."
-              )}
-            </p>
-            <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
-              <summary>{tr("⚠️ 알고리즘 참고사항 펼치기", "⚠️ Expand algorithm notes")}</summary>
-              <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                {tr(
-                  "비용 대비 성과 산점도를 곡선 적합(Saturation)하여 한계효용 극대화 배분을 도출합니다. 데이터가 지나치게 적거나 채널별 지출액 변동성이 없으면 외삽이 불안정할 수 있으므로, 단순 CPR/ROAS 배분 비율과 비교하여 의사결정하시길 권장합니다.",
-                  "Fits a curve (saturation) to the cost-vs-performance scatter to derive a marginal-utility-maximizing allocation. If the data is too sparse or per-channel spend doesn't vary much, extrapolation can become unstable — we recommend comparing against a simple CPR/ROAS allocation ratio before deciding."
-                )}
-              </div>
-            </details>
-          </>
         }
         toc={step3Toc}
         stickyFilter={step3StickyFilter}
