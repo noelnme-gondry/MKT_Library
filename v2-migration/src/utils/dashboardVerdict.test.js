@@ -107,3 +107,22 @@ describe("buildDashboardVerdict", () => {
     expect(point.detail).not.toContain("+0건");
   });
 });
+
+describe("이익(profit) WoW 부호반전 회귀", () => {
+  it("직전 적자 → 최근 흑자 전환은 개선(양수·▲)으로 표기", () => {
+    // 옛 버그: pct=(cur-prev)/prev 가 prev<0(적자)에서 부호 반전 → 흑자전환이 ▼악화로 오도.
+    const raw = [];
+    for (let i = 0; i < 14; i++) {
+      const day = String(i + 1).padStart(2, "0");
+      const recent = i >= 7;
+      raw.push({ date: `2024-01-${day}`, cost: 1000, installs: 100, revenue_d7: recent ? 1500 : 500 });
+    }
+    const mapping = { date: "date", cost: "cost", installs: "installs", revenue_d7: "revenue_d7" };
+    const v = buildDashboardVerdict({ csvData: { raw, headers: Object.keys(mapping), mapping } });
+    const profit = v.metricRows.find((m) => m.key === "profit");
+    expect(profit).toBeTruthy();
+    expect(profit.prev).toBeLessThan(0); // 직전주 적자
+    expect(profit.recent).toBeGreaterThan(0); // 최근주 흑자
+    expect(profit.wow).toBeGreaterThan(0); // 개선 → 양수(▲)
+  });
+});

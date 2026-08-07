@@ -11,7 +11,8 @@ export function buildPvmQuickSummary({ csvData, dashboardFilter, denomBasis = "i
   if (!["date", "channel", resultField].every((field) => mapped.has(field)) || !(mapped.has("spend") || mapped.has("cost"))) return { available: false };
   const rows = getMonFilteredRows(csvData, dashboardFilter || {}).map((row) => ({ ...row, spend: row.spend ?? row.cost ?? 0, campaign_id: row.campaign_id ?? row.campaign_name, _t: new Date(`${row.date}T00:00:00Z`).getTime() })).filter((row) => !Number.isNaN(row._t));
   if (!rows.length) return { available: false };
-  const maxT = Math.max(...rows.map((row) => row._t));
+  // 대용량 행 스프레드 인자 한계 회피(computeWeightedRetention과 동일 함정 — reduce로 최대값).
+  const maxT = rows.reduce((m, row) => (row._t > m ? row._t : m), -Infinity);
   const current = rows.filter((row) => row._t >= maxT - 6 * DAY && row._t <= maxT);
   const prior = rows.filter((row) => row._t >= maxT - 13 * DAY && row._t < maxT - 6 * DAY);
   if (!current.length || !prior.length) return { available: false };

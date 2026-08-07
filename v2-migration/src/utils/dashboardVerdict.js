@@ -12,7 +12,9 @@ const SIG = 0.05; // 유의미한 변화 임계(±5%)
 
 function pct(cur, prev) {
   if (prev == null || prev === 0 || cur == null) return null;
-  return (cur - prev) / prev;
+  // 분모에 |prev| 사용: 직전값이 음수(이익 적자)일 때 (cur-prev)/prev는 부호가 뒤집혀
+  // 적자→흑자 전환이 ▼악화로 오도된다. 비음수 지표엔 영향 없음(|prev|=prev).
+  return (cur - prev) / Math.abs(prev);
 }
 function arrow(d) {
   return d == null ? "" : d > 0 ? "▲" : d < 0 ? "▼" : "—";

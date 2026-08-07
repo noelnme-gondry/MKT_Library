@@ -113,3 +113,20 @@ describe("computeWeightedRetention (golden)", () => {
     expect(kpi.revenue).toBe(40);
   });
 });
+
+describe("computeWeightedRetention 대용량 행 (RangeError 회귀)", () => {
+  it("T9 · 12.5만+ 행에서 스프레드 인자 한계 없이 집계", () => {
+    // Math.max(...vals) 스프레드는 V8에서 ~12.5만 인자 초과 시 RangeError로
+    // 5-2 대시보드를 통째로 크래시시켰다. reduce 최대값으로 회귀 방지.
+    const N = 130000;
+    const rows = new Array(N);
+    for (let i = 0; i < N; i++) rows[i] = { ret_d7: 0.3, installs: 100 };
+    let r;
+    expect(() => {
+      r = computeWeightedRetention(rows, 7, "installs");
+    }).not.toThrow();
+    expect(r.rate).toBeCloseTo(0.3, 12);
+    expect(r.isRate).toBe(true);
+    expect(r.denom).toBe(N * 100);
+  });
+});

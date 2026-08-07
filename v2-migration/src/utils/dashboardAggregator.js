@@ -67,7 +67,11 @@ export function computeWeightedRetention(rows, day, basis) {
   // 잘못 표시된다.
   const vals = rows.map((r) => Number(r[rk])).filter((v) => isFinite(v) && v >= 0);
   if (!vals.length) return { rate: null, survivors: 0, denom: 0, isRate: null };
-  const isRate = Math.max(...vals) <= 1; // 컬럼 단위 판별
+  // 대용량 행에서 Math.max(...vals) 스프레드 인자 한계(V8 ~12.5만) → RangeError로
+  // 5-2 대시보드 KPI/스코어카드가 통째로 렌더 크래시했다. reduce로 동일 최대값을 구해 회피.
+  let maxVal = -Infinity;
+  for (const v of vals) if (v > maxVal) maxVal = v;
+  const isRate = maxVal <= 1; // 컬럼 단위 판별
   let num = 0,
     denom = 0,
     hasWholePct = false;
@@ -143,8 +147,12 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
   const impressions = sum("impressions");
   const clicks = sum("clicks");
   const installs = sum("installs");
-  const revenue = sum(`revenue_d${cohort}`);
-  const purchases = sum(`pu_d${cohort}`);
+  // 코호트 매출/결제 컬럼이 아예 매핑 안 됐으면 0이 아니라 null(미가용). sum()은 결측
+  // 컬럼을 0으로 합산해 ROAS/ARPU가 "0.00%"로 붕괴돼 보였다(D14 버튼 등). 컬럼 존재
+  // (mapped row에 키 present) 여부로 판별 — 매핑됐는데 실제 0이면 0(정상), 미매핑이면 null.
+  const hasCol = (key) => filteredRows.some((r) => r[key] !== undefined);
+  const revenue = hasCol(`revenue_d${cohort}`) ? sum(`revenue_d${cohort}`) : null;
+  const purchases = hasCol(`pu_d${cohort}`) ? sum(`pu_d${cohort}`) : null;
   // 전역 분모 기준(§12.18): 설치=installs / 가입=actions. CPI/CPA·CVR·ARPU 분모 전환.
   const actions = sum("actions");
   const denom = denomBasis === "actions" ? actions : installs;

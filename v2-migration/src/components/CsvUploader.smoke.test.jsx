@@ -118,6 +118,9 @@ describe("CsvUploader render smoke", () => {
       target: { files: [new File(["late-secret"], "cancelled-private.csv", { type: "text/csv" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "가져오기 취소" }));
+    // CSV는 이제 파싱 전 file.arrayBuffer()로 인코딩을 복원하므로 Papa.parse가 마이크로태스크
+    // 뒤에 호출된다 — 콜백을 수동 발화하기 전 호출을 기다린다.
+    await waitFor(() => expect(Papa.parse).toHaveBeenCalled());
     await act(async () => parseOptions.complete({ data: [], meta: { fields: [] } }));
 
     expect(window.gtag.mock.calls.filter((call) => call[1] === "data_import_failed")).toHaveLength(0);

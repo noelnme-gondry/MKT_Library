@@ -130,7 +130,10 @@ export const STATS = (() => {
     const z = se > 0 ? (pB - pA) / se : 0;
     const pValue = 2 * (1 - normalCDF(Math.abs(z)));
     const liftAbs = pB - pA;
-    const liftRel = pA > 0 ? (pB - pA) / pA : 0;
+    // 대조군 전환율 0이면 상대 lift는 정의상 무한/미정 — 0(=변화없음)으로 표기하면
+    // z·p·CI가 유의를 보여도 "상대 Lift 0.00%"가 같은 패널에서 모순된다. 신규 전환(pB>0)은
+    // NaN으로 두어 표시층이 "—"/"신규 전환"으로 정직하게 렌더하게 한다.
+    const liftRel = pA > 0 ? (pB - pA) / pA : pB > 0 ? NaN : 0;
     const seDiff = Math.sqrt((pA * (1 - pA)) / nA + (pB * (1 - pB)) / nB);
     const ciLow95 = liftAbs - 1.96 * seDiff;
     const ciHigh95 = liftAbs + 1.96 * seDiff;
@@ -445,30 +448,27 @@ export const STATS = (() => {
     maxMde = 5,
   }) {
     if (!(baseline > 0) || baseline >= 1 || !(n > 0)) return NaN;
+    // p2 = baseline*(1+mde) < 1 이어야 표본식이 유효하다. baseline이 크면(≥1/6) mde가
+    // 유효 상한을 넘어 p2≥1 → NaN이 되는데, 옛 코드는 bracket이 hi를 발산시키고
+    // bisection이 NaN(=mde 과대)을 "표본 부족(=mde 과소)"과 같은 방향(lo=mid)으로 처리해
+    // MDE가 전 표본에서 5242.88%로 뭉개졌다(baseline≥16.7% 플랫 버그). mde를 유효 경계
+    // (mdeCap)로 캡하고, 그 안에서도 표본이 모자라면 정직하게 NaN을 반환한다.
+    const mdeCap = (1 - 1e-9) / baseline - 1;
+    if (!(mdeCap > 0)) return NaN;
     let lo = 1e-6,
-      hi = maxMde;
-    for (let i = 0; i < 30; i++) {
-      const nHi = sampleSizePerArm({
-        baseline,
-        mdeRelative: hi,
-        alpha,
-        power,
-        twoSided,
-      }).n;
-      if (isFinite(nHi) && nHi <= n) break;
-      hi *= 1.6;
-      if (hi > 50) break;
+      hi = Math.min(maxMde, mdeCap);
+    for (let i = 0; i < 40 && hi < mdeCap; i++) {
+      const nHi = sampleSizePerArm({ baseline, mdeRelative: hi, alpha, power, twoSided }).n;
+      if (Number.isFinite(nHi) && nHi <= n) break;
+      hi = Math.min(hi * 1.6, mdeCap);
     }
-    for (let i = 0; i < 50; i++) {
+    const nHiFinal = sampleSizePerArm({ baseline, mdeRelative: hi, alpha, power, twoSided }).n;
+    if (!Number.isFinite(nHiFinal) || nHiFinal > n) return NaN;
+    for (let i = 0; i < 60; i++) {
       const mid = (lo + hi) / 2;
-      const r = sampleSizePerArm({
-        baseline,
-        mdeRelative: mid,
-        alpha,
-        power,
-        twoSided,
-      });
-      if (!isFinite(r.n) || isNaN(r.n) || r.n > n) lo = mid;
+      const r = sampleSizePerArm({ baseline, mdeRelative: mid, alpha, power, twoSided });
+      // r.n > n(표본 부족 = mde 과소) → mde 키움. 그 외(과충분/무효) → mde 줄임.
+      if (Number.isFinite(r.n) && r.n > n) lo = mid;
       else hi = mid;
     }
     return hi;

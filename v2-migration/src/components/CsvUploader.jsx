@@ -10,6 +10,7 @@ import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/compon
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
+import { decodeCsvBuffer } from "@/lib/data-import/decodeCsv";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
 import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
@@ -365,7 +366,18 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       }
       return;
     }
-    Papa.parse(file, {
+    // 한국 Excel 기본 CSV 인코딩(CP949/EUC-KR) 자동 복원 — UTF-8로만 읽으면 한글 헤더가
+    // 치환문자로 깨진 채 파싱은 "성공"해 매핑이 전멸한다. 바이트를 먼저 디코딩해 텍스트로 파싱.
+    let parseInput = file;
+    try {
+      const buf = await file.arrayBuffer();
+      parseInput = decodeCsvBuffer(buf).text;
+    } catch {
+      parseInput = file; // arrayBuffer 미지원 등 → 기존 방식(파일 직접 파싱)으로 폴백
+    }
+    // 취소는 아래 complete 콜백의 taskId 가드가 처리한다(여기서 조기 반환하면 취소 후
+    // 늦게 도착하는 워커 콜백 무시 경로가 사라진다).
+    Papa.parse(parseInput, {
       worker: true,
       skipEmptyLines: true,
       complete: async (results) => {

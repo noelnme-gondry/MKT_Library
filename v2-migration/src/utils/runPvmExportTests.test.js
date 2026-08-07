@@ -15,34 +15,38 @@ describe("pvmGenerateDiagnosis", () => {
     expect(txt).toContain("레이트 효과");
   });
 
-  it("channel mix<0 subMix>0 → 배달 사고 문구", () => {
+  // rollup 설계상 mix ≡ subMix(하위합)라 옛 '배달사고/최적화 작동' 분기는 도달 불가·오도.
+  // 진단은 실제로 구분되는 믹스·레이트 두 축으로 서술한다(같은 값을 두 효과인 척 금지).
+  it("channel mix>0 rate>0 → 믹스·레이트 두 효과 정직 서술", () => {
     const txt = pvmGenerateDiagnosis(
-      { mix: -100, cmpSumMix: 50, rate: 0, contribution: -100 },
+      { mix: 100, cmpSumMix: 100, rate: 40, contribution: 140 },
       "channel",
       fmt,
     );
-    expect(txt).toContain("배달 사고");
     expect(txt).toContain("채널");
+    expect(txt).toContain("믹스 효과");
+    expect(txt).toContain("레이트 효과");
+    expect(txt).not.toContain("하위 세그먼트합 믹스"); // 같은 값을 두 효과인 척하던 오도 제거
+    expect(txt).not.toContain("배달 사고");
   });
 
-  it("campaign both>0 → 비효율 문구", () => {
+  it("campaign mix<0 rate<0 → 효율 개선, 유지 안내", () => {
     const txt = pvmGenerateDiagnosis(
-      { mix: 80, creativeSumMix: 30, rate: 0, contribution: 80 },
-      "campaign",
-      fmt,
-    );
-    expect(txt).toContain("비효율");
-    expect(txt).toContain("하위 세그먼트합 믹스");
-  });
-
-  it("campaign mix>0 subMix<0 → 캠페인 최적화 문구", () => {
-    const txt = pvmGenerateDiagnosis(
-      { mix: 80, creativeSumMix: -30, rate: 0, contribution: 50 },
+      { mix: -80, creativeSumMix: -80, rate: -20, contribution: -100 },
       "campaign",
       fmt,
     );
     expect(txt).toContain("캠페인");
-    expect(txt).toContain("최적화");
+    expect(txt).toContain("유지");
+  });
+
+  it("mix·rate 반대 방향 → 복합(서로 다른 방향) 서술", () => {
+    const txt = pvmGenerateDiagnosis(
+      { mix: 80, cmpSumMix: 80, rate: -30, contribution: 50 },
+      "channel",
+      fmt,
+    );
+    expect(txt).toContain("서로 다른 방향");
   });
 });
 
