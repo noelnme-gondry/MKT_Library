@@ -1,5 +1,5 @@
 ---
-title: "Meta Advantage+ App Campaigns: What You Can Control"
+title: "Meta Advantage+ App Optimization: OS, Events, and Bidding"
 description: "The parts a marketer can actually adjust in an automated Meta Advantage+ App (AAP) campaign — OS split, event priority, and bidding stages."
 date: "2026-07-18"
 slug: "meta-advantage-plus-guide"

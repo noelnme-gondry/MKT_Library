@@ -1,5 +1,5 @@
 ---
-title: "Before You Spend on Ads, Stop the Installs Leaking at the Store — ASO Basics"
+title: "ASO Strategy: Improve Store Conversion and Keywords"
 description: "An ASO strategy improves both store-page conversion and search visibility after an ad click. The order to fix app store optimization — from icons and screenshots to keywords."
 date: "2026-07-15"
 slug: "aso-basics-guide"

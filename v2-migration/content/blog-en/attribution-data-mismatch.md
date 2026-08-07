@@ -1,5 +1,5 @@
 ---
-title: "Ad Platform Says 120, GA Says 70 — Which Number Do You Trust?"
+title: "Attribution Data Mismatch: Media vs GA4 vs MMP"
 description: "Meta, GA4, MMP, and your order DB all report different conversion counts — because of attribution windows, view-through, credit date, and last-touch overlap."
 date: "2026-07-17"
 slug: "attribution-data-mismatch"

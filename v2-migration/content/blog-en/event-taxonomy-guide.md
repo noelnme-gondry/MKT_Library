@@ -1,5 +1,5 @@
 ---
-title: "Event Taxonomy Design: Keep GA4, MMPs, and Ad Platforms Aligned"
+title: "Event Taxonomy: Naming Rules for GA4 and MMP"
 description: "A practical event taxonomy guide for names, parameters, user properties, platform mapping, versioning, and developer QA."
 date: "2026-07-18"
 slug: "event-taxonomy-guide"

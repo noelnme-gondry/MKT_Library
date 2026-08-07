@@ -1,5 +1,5 @@
 ---
-title: "매체는 120건, GA는 70건 — 어떤 숫자를 믿어야 할까요"
+title: "어트리뷰션 데이터 불일치 원인: 매체·GA4·MMP 전환수 비교"
 description: "메타·GA4·MMP·결제 DB의 전환 수가 전부 다른 이유 — 어트리뷰션 윈도우, 뷰스루 포함 여부, 귀속 날짜, 라스트터치 중복 때문입니다."
 date: "2026-07-17"
 slug: "attribution-data-mismatch"

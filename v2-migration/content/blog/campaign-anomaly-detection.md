@@ -1,5 +1,5 @@
 ---
-title: "캠페인 성과 갑자기 튀는 날, 원인 찾는 법"
+title: "캠페인 이상 탐지: CPA 급등·전환 급감 원인 찾기"
 description: "CPA·전환이 특정 날 급변했을 때, 노이즈와 진짜 이상을 구분하고 원인을 추적하는 방법을 정리했습니다."
 date: "2026-07-15"
 slug: "campaign-anomaly-detection"

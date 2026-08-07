@@ -1,5 +1,5 @@
 ---
-title: "리타겟팅, 신규 획득이랑 같이 돌리면 왜 망하나"
+title: "리타겟팅·재참여 캠페인 운영: UA와 분리하는 이유"
 description: "리타겟팅·재참여 캠페인을 신규 획득(UA)과 분리해야 하는 이유, 오디언스 세분화, 디퍼드 딥링크가 왜 필수인지 정리했습니다."
 date: "2026-07-18"
 slug: "retargeting-reengagement-guide"

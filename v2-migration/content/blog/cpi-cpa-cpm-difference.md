@@ -1,5 +1,5 @@
 ---
-title: "CPM 뜻·CPC 뜻: 노출과 클릭 비용부터 읽는 법"
+title: "CPI·CPA·CPM·CPC 차이: 광고 비용 지표 읽는 법"
 description: "CPM과 CPC가 각각 무엇을 재고, 노출·클릭 비용이 높을 때 어디를 점검해야 하는지 정리했습니다."
 date: "2026-07-15"
 slug: "cpi-cpa-cpm-difference"

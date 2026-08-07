@@ -1,5 +1,5 @@
 ---
-title: "A/B Testing: Ruling Out Chance Before You Call the Winner"
+title: "A/B Testing: Sample Size, Significance, and Decision Rules"
 description: "A/B testing done right — from random assignment, sample size, and statistical significance, to the early-stopping (peeking) trap that catches nine out of ten people. A practical guide."
 date: "2026-07-09"
 slug: "ab-testing"

@@ -1,5 +1,5 @@
 ---
-title: "Meta Advantage+ App 캠페인, 뭘 통제할 수 있나"
+title: "Meta Advantage+ App 최적화: OS·이벤트·입찰 설정"
 description: "자동화된 Meta Advantage+ App(AAP) 캠페인에서 마케터가 실제로 조정 가능한 부분(OS 분리·이벤트 우선순위·입찰 단계)을 정리했습니다."
 date: "2026-07-18"
 slug: "meta-advantage-plus-guide"

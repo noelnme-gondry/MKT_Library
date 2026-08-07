@@ -1,5 +1,5 @@
 ---
-title: "Incrementality Measurement: Did the Ad Actually Create That Conversion?"
+title: "Incrementality: Validate Ad Lift With Holdouts and DiD"
 description: "Dashboard ROAS should only be half-trusted. A breakdown of incrementality measurement and three holdout experiment designs for measuring what ads actually create."
 date: "2026-07-09"
 slug: "incrementality-measurement"

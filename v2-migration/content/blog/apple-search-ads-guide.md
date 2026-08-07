@@ -1,5 +1,5 @@
 ---
-title: "Apple Search Ads, 캠페인 왜 4개로 쪼개나 — 구조부터"
+title: "Apple Search Ads(ASA) 캠페인 구조 설계 가이드"
 description: "ASA를 캠페인 하나로 뭉쳐 돌리면 브랜드 키워드만 돈을 쓰고 끝나요. 브랜드·경쟁사·카테고리·디스커버리로 나누는 이유와 매치 타입, 검색어 발굴→승격 루프까지 초기 세팅 순서를 정리했어요."
 date: "2026-07-15"
 slug: "apple-search-ads-guide"

@@ -1,5 +1,5 @@
 ---
-title: "설치 CPA보다 먼저 볼 것: Aha Event"
+title: "Aha Event로 광고 최적화하기: 설치 CPA와 리텐션 연결"
 description: "설치·가입과 구매 사이의 Aha Event를 찾아 광고 최적화와 리텐션을 연결하는 방법을 정리합니다."
 date: "2026-07-28"
 slug: "aha-event-ad-optimization"

@@ -1,5 +1,5 @@
 ---
-title: "iOS 성과가 반토막으로 '보이는' 이유 — ATT·SKAN 측정 정리"
+title: "iOS ATT·SKAN 측정 가이드: 성과가 반토막 보이는 이유"
 description: "iOS 성과, 진짜 나쁜 게 아니라 안 보이는 걸 수 있어요. ATT 거부로 유저 단위 측정이 끊기고 SKAN은 지연된 집계 신호만 줘요. 컨버전 밸류 설계와 집계·증분 관점으로 판단하는 법을 정리했어요."
 date: "2026-07-15"
 slug: "ios-att-skan-guide"

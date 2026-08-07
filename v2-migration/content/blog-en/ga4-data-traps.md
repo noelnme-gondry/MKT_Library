@@ -1,5 +1,5 @@
 ---
-title: "Why Your GA4 Numbers Look Wrong (They're Not Broken — Just Counted Differently)"
+title: "GA4 Numbers Don't Match: 7 Reasons They Differ"
 description: "GA4 sessions run lower than UA and yesterday's conversions keep changing — not bugs, but session definitions, processing lag, thresholds, and attribution."
 date: "2026-07-17"
 slug: "ga4-data-traps"

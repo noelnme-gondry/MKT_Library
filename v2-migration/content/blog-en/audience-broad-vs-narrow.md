@@ -1,5 +1,5 @@
 ---
-title: "Narrow or Broad Targeting — Which Should You Choose"
+title: "Broad vs Narrow Targeting: How to Choose an Ad Audience"
 description: "Neither narrow targeting nor broad is always right. Here's the reach/CPM/conversion-rate/audience-exhaustion tradeoff, and why narrow targets break when you scale budget."
 date: "2026-07-12"
 slug: "audience-broad-vs-narrow"

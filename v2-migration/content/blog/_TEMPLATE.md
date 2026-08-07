@@ -7,6 +7,10 @@
 # 위치: v2-migration/content/blog/<slug>.md
 #
 # 각 필드 설명:
+# ⚠ title·description은 발행 후 src/lib/blogSeo.js(KO_TITLES/EN_TITLES)가 덮어씁니다.
+#   blog.js가 `seo?.title || data.title`로 해석하므로, 레지스트리에 항목이 생기면
+#   아래 값은 폴백으로만 남고 화면·검색결과에는 안 나옵니다.
+#   → 발행글의 제목을 고칠 때는 이 파일이 아니라 blogSeo.js를 수정하세요.
 title: "예시 글 제목입니다"          # (필수) 글 제목. 40자 이내 권장 (검색 결과 잘림 방지)
 description: "이 글이 무엇을 다루는지 한 줄 요약. 검색 meta description으로 쓰임" # (필수) 80자 이내 권장
 date: "2026-07-09"                    # (필수) 발행일. ISO 형식 YYYY-MM-DD. 목록 정렬·pubDate에 사용

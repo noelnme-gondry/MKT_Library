@@ -1,5 +1,5 @@
 ---
-title: "When Campaign Performance Suddenly Spikes — Finding the Cause"
+title: "Campaign Anomaly Detection: Find CPA and Conversion Drops"
 description: "When CPA or conversions swing on a given day, how to separate noise from a real anomaly and trace the cause."
 date: "2026-07-15"
 slug: "campaign-anomaly-detection"

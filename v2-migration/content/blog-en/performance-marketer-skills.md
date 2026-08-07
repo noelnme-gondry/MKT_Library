@@ -1,5 +1,5 @@
 ---
-title: "Essential Performance Marketer Skills: Why Memorizing Tool Names Gets the Order Wrong"
+title: "Performance Marketer Skills: What to Learn, In Order"
 description: "'What should I learn to become a performance marketer?' Here's the growth path — operations, data, decision-making, causal inference — and why tools should be learned by function, not name."
 date: "2026-07-11"
 slug: "performance-marketer-skills"

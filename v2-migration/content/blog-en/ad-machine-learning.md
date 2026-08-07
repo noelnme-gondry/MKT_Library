@@ -1,5 +1,5 @@
 ---
-title: "Why Ad Machine Learning Breaks the More You Touch It"
+title: "Ad Machine Learning: Why CPA Spikes and How to Operate"
 description: "Misread the learning phase and your budget leaks. Why CPA bounces during learning, why touching it resets everything, and why you shouldn't trust the numbers at face value."
 date: "2026-07-13"
 slug: "ad-machine-learning"

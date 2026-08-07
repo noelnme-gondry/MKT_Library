@@ -1,5 +1,5 @@
 ---
-title: "Retargeting: Why Running It With New-User Acquisition Fails"
+title: "Retargeting & Re-engagement: Why to Split From Acquisition"
 description: "Why retargeting and re-engagement campaigns must be separated from new-user acquisition (UA), how to segment the audience, and why deferred deep links are essential."
 date: "2026-07-18"
 slug: "retargeting-reengagement-guide"

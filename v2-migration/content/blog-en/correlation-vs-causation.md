@@ -1,5 +1,5 @@
 ---
-title: "Correlation vs. Causation: Confuse Them and You Lose Money"
+title: "Correlation vs Causation: Verify Lift With Experiments"
 description: "The difference between correlation and causation, explained through ice cream and drowning. Why confounders and reverse causation create illusions, and why an experiment is the only way to confirm causation."
 date: "2026-07-09"
 slug: "correlation-vs-causation"

@@ -1,5 +1,5 @@
 ---
-title: "Google UAC (App Campaigns): What You Can Actually Control"
+title: "Google UAC Optimization: What You Can Actually Control"
 description: "The levers a marketer can genuinely adjust in an automated Google App Campaign — bids, assets, and events."
 date: "2026-07-15"
 slug: "google-uac-optimization"

@@ -1,5 +1,5 @@
 ---
-title: "Ad Creative Specs by Platform — Why One Version Won't Do"
+title: "Ad Creative Specs Guide: Platform Sizes and Safe Zones"
 description: "Ignore each platform's different image and video specs and UI safe zones, and creative gets rejected in review or has its core message cropped. Why spec management matters."
 date: "2026-07-18"
 slug: "ad-creative-specs-guide"
