@@ -2317,7 +2317,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </div>
             <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
               {simMode === "auto"
-                ? tr("총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다.", "Enter a total budget and it will be auto-allocated in the most efficient ratio per the model.")
+                ? tr("총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다. 특정 채널의 슬라이더를 드래그하거나 Cost를 입력하면 그 채널을 고정하고 나머지 예산을 자동 재배분합니다.", "Enter a total budget and it will be auto-allocated in the most efficient ratio per the model. Drag a channel's slider or type a Cost to pin that channel and auto-reallocate the remaining budget across the rest.")
                 : tr("총 예산을 입력한 뒤 표의 Cost를 직접 바꾸면 채널·캠페인별 수동 시나리오를 계산합니다. 입력한 행은 잠금됩니다.", "Enter a total budget, then edit Cost in the table to simulate a manual channel/campaign scenario. Edited rows are locked.")}
             </p>
           </div>
@@ -2558,15 +2558,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                                   style={{ fontSize: "10px", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--bg-1)", color: conf.level === "med" ? "var(--text-muted)" : "#fff", border: conf.level === "med" ? "1px solid var(--border)" : "none" }}
                                 >{tr(conf.ko, conf.en)}</span>
                               )}
-                              {simMode === "auto" ? null : it.locked && (
-                                <button
-                                  type="button"
-                                  onClick={() => unlockCost(it.channel)}
-                                  title={tr("잠금 해제 (자동 분배로 되돌리기)", "Unlock (revert to auto-allocation)")}
-                                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: "12px", padding: 0 }}
-                                >
-                                  🔒
-                                </button>
+                              {it.locked && (
+                                <span
+                                  title={tr("고정됨 — 나머지 예산은 이 채널을 제외하고 재배분됩니다", "Pinned — remaining budget is reallocated excluding this channel")}
+                                  style={{ fontSize: "10px", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: "var(--bg-1)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+                                >📌 {tr("고정", "Pinned")}</span>
                               )}
                             </div>
                           </td>
@@ -2578,8 +2574,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                                 autoComplete="off"
                                 className={`tnum ${it.locked ? "locked" : ""}`}
                                 value={costDisplay}
-                                disabled={simMode === "auto"}
-                                title={simMode === "auto" ? tr("총 예산 자동 분배 모드에서는 채널별 수동 오버라이드를 지원하지 않습니다", "Manual per-channel overrides aren't supported in auto-allocation mode") : undefined}
+                                title={tr("드래그하거나 값을 입력하면 이 채널을 고정합니다", "Drag or type to pin this channel")}
                                 onChange={(e) =>
                                   setCostDrafts((prev) => ({ ...prev, [it.channel]: e.target.value.replace(/[^\d,]/g, "") }))
                                 }
@@ -2594,12 +2589,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                                   padding: "3px 6px",
                                   border: `1px solid ${costErr ? "#e05656" : "var(--border)"}`,
                                   borderRadius: "4px",
-                                  background: simMode === "auto" ? "var(--bg-1)" : it.locked ? "rgba(173,198,255,0.08)" : "var(--bg-2)",
-                                  color: simMode === "auto" ? "var(--text-muted)" : "var(--text-1)",
-                                  cursor: simMode === "auto" ? "not-allowed" : "text",
+                                  background: it.locked ? "rgba(173,198,255,0.08)" : "var(--bg-2)",
+                                  color: "var(--text-1)",
+                                  cursor: "text",
                                 }}
                               />
-                              {simMode !== "auto" && it.locked && (
+                              {it.locked && (
                                 <button
                                   type="button"
                                   onClick={() => unlockCost(it.channel)}
@@ -2610,6 +2605,28 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                                 </button>
                               )}
                             </div>
+                            {/* PRISM 인라인 드래그 슬라이더(P3b) — 자동/수동 양쪽에서 드래그로 이 채널 지출 조정.
+                                드래그=costDrafts(숫자 라이브 갱신), 놓을 때 commitCost(고정 override→나머지 재배분).
+                                엔진(calculateAllocationModeC/B)이 override 채널을 pin하고 remaining을 재배분(수학 불변). */}
+                            {(() => {
+                              const sMax = Math.max(dailyBudget || 0, it.cost || 0, 1);
+                              const sVal = Math.min(draftVal != null ? (allocParseNum(draftVal) || 0) : (it.cost || 0), sMax);
+                              return (
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={sMax}
+                                  step={Math.max(1, Math.round(sMax / 200))}
+                                  value={sVal}
+                                  aria-label={tr(`${it.channel} 지출 조정`, `${it.channel} spend`)}
+                                  onChange={(e) => setCostDrafts((prev) => ({ ...prev, [it.channel]: allocFmtNum(Number(e.target.value)) }))}
+                                  onMouseUp={() => commitCost(it.channel)}
+                                  onTouchEnd={() => commitCost(it.channel)}
+                                  onKeyUp={() => commitCost(it.channel)}
+                                  style={{ width: "100%", marginTop: "5px", accentColor: "var(--primary)", cursor: "pointer" }}
+                                />
+                              );
+                            })()}
                           </td>
                           <td>
                             <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>

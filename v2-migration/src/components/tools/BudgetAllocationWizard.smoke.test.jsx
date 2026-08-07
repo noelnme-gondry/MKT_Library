@@ -111,4 +111,28 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
 
     expect(datasets[0].data.map((point) => point.y)).toEqual([2, 2]);
   });
+
+  it("수동 시뮬레이션 모드에서 채널별 드래그 슬라이더(range)가 throw 없이 렌더 (P3b)", () => {
+    render(<BudgetAllocation />);
+    // 결과-먼저 착지(step3, 예산 자동 시드) → 수동 시뮬레이션 탭 → 채널별 슬라이더 노출.
+    fireEvent.click(screen.getByText(/캠페인별 수동 시뮬레이션/));
+    const sliders = document.querySelectorAll('input[type="range"]');
+    expect(sliders.length).toBeGreaterThan(0);
+  });
+
+  it("자동 분배 모드(기본 착지)에서도 채널별 드래그 슬라이더가 렌더되고 드래그가 채널을 고정한다 (P3b 자동)", () => {
+    render(<BudgetAllocation />);
+    // 기본 landing = 자동 분배(simMode auto) + step3 + 예산 자동 시드 → 슬라이더 노출.
+    const sliders = document.querySelectorAll('input[type="range"]');
+    expect(sliders.length).toBeGreaterThan(0);
+    // Cost 입력은 자동 모드에서도 disabled가 아니어야 함(드래그/입력=고정 override).
+    const costInputs = document.querySelectorAll('input.tnum');
+    expect(costInputs.length).toBeGreaterThan(0);
+    expect([...costInputs].every((el) => !el.disabled)).toBe(true);
+    // 슬라이더 드래그 후 release → costDrafts 커밋(override) 경로가 throw 없이 동작.
+    expect(() => {
+      fireEvent.change(sliders[0], { target: { value: "50000" } });
+      fireEvent.mouseUp(sliders[0]);
+    }).not.toThrow();
+  });
 });
