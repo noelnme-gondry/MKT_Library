@@ -5129,6 +5129,12 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-record__candidate > p { grid-column: 1 / -1; margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
 .weekly-review-record__candidate.not_due, .weekly-review-record__candidate.waiting_for_data, .weekly-review-record__candidate.incomplete_window { border-color: var(--border); background: var(--surface-container-low); }
 .weekly-review-record__candidate > .btn { margin: 0; color: var(--primary); }
+.weekly-review-record__follow-up { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 9px; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-low); }
+.weekly-review-record__follow-up > span { color: var(--text-muted); font: 700 8px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.weekly-review-record__follow-up > strong { color: var(--text-secondary); font-size: 10px; }
+.weekly-review-record__follow-up > p { grid-column: 1 / -1; margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.weekly-review-record__follow-up.period_auto, .weekly-review-record__follow-up.forecast_auto { border-color: color-mix(in srgb, var(--primary) 42%, var(--border)); background: color-mix(in srgb, var(--primary) 4%, var(--surface-container-low)); }
+.weekly-review-record__follow-up.rerun_manual { border-style: dashed; }
 .weekly-review-record__source-link { display: inline-flex; margin-top: 10px; color: var(--primary); font-size: 10px; font-weight: 700; text-decoration: none; }
 .weekly-review-record__source-link:hover, .weekly-review-record__source-link:focus-visible { color: var(--text-primary); text-decoration: underline; outline: 0; }
 .weekly-review-record__complete { display: flex; align-items: center; gap: 8px; margin-top: 8px; }

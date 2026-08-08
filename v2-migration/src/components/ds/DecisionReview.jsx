@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
 import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
@@ -215,15 +216,23 @@ const COPY = {
   },
 };
 
-export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "" }) {
+export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "", sourcePath = "" }) {
   const t = COPY[locale] || COPY.ko;
   const instanceId = useId();
   const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
   const csvData = useAppStore((state) => state.csvData);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const activeDataGroup = useAppStore((state) => state.activeDataGroup);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const latestDataDate = useMemo(() => latestDecisionDataDate(csvData?.canonicalData), [csvData?.canonicalData]);
   const draftDefaults = useMemo(() => ({ baselineDate: latestDataDate, comparisonWindowDays: 7 }), [latestDataDate]);
+  const resolvedSourcePath = useMemo(() => {
+    if (sourcePath) return sourcePath;
+    const normalizedPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
+    const stage = searchParams?.get("stage");
+    return stage ? `${normalizedPath}?stage=${stage}` : normalizedPath;
+  }, [pathname, searchParams, sourcePath]);
   const [draft, setDraft] = useState(() => createDraft(decisionPrefill, draftDefaults));
   const [isDraftDirty, setIsDraftDirty] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -298,6 +307,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     }
     const savedRecord = {
       toolId,
+      sourcePath: resolvedSourcePath,
       locale,
       createdAt: new Date().toISOString(),
       conclusion: draft.conclusion.trim(),

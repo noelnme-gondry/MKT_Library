@@ -6,6 +6,7 @@ import Papa from "papaparse";
 import Chart from "chart.js/auto";
 
 import { useAppStore } from "@/store/useDataStore";
+import DecisionReview from "@/components/ds/DecisionReview";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
@@ -201,6 +202,25 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
             ? tx(locale, "AR(1) 계수 불확실성까지 반영해도 관찰상 증가 신호가 남습니다. 그래도 통제군 없는 인과 증명은 아닙니다.", "An observational lift signal remains after accounting for AR(1) parameter uncertainty. This is still not causal proof without a control.")
             : tx(locale, "AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.", "After accounting for AR(1) parameter uncertainty, lift cannot be distinguished from no change.")}</strong><p>{tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`)}</p></div></div>
       <div className="chart-container" style={{ height: "320px", marginTop: "16px" }}><canvas ref={chartRef} /></div>
+      {!isDemo && <DecisionReview
+        toolId="5-24"
+        locale={locale}
+        decisionPrefill={{
+          conclusion: !profileReady
+            ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
+            : hasProfileLiftSignal
+              ? tx(locale, `관찰상 추정 증가분 ${formatValue(profileEstimate, locale)} 신호가 남지만 통제군 없는 인과 증명은 아닙니다.`, `An observed estimated lift of ${formatValue(profileEstimate, locale)} remains, but this is not causal proof without a control.`)
+              : tx(locale, "현재 데이터에서는 증가를 변화 없음과 분리하기 어렵습니다.", "Current data cannot separate lift from no change."),
+          action: hasProfileLiftSignal
+            ? tx(locale, "다음 브랜드 캠페인에는 비집행 비교군을 남겨 증분 효과를 다시 검증한다", "Keep an unexposed comparison group for the next brand campaign and revalidate incrementality")
+            : tx(locale, "추가 사전 기간 또는 통제군을 확보한 뒤 브랜드 증분을 다시 추정한다", "Add pre-period history or a control, then re-estimate brand incrementality"),
+          metric: tx(locale, "추정 증가분", "Estimated incremental outcome"),
+          baseline: formatValue(profileEstimate, locale),
+          targetDirection: "neutral",
+          sourcePeriod: tx(locale, `사전 ${result.prePeriods}기간 · 집행 ${result.postPeriods}기간`, `${result.prePeriods} pre periods · ${result.postPeriods} campaign periods`),
+          reviewQuestion: tx(locale, "새 데이터와 비교군을 포함하면 브랜드 캠페인의 순증분을 더 신뢰성 있게 구분할 수 있는가?", "With new data and a comparison group, can the campaign's net increment be separated more reliably?"),
+        }}
+      />}
       <details style={{ marginTop: "14px" }}>
         <summary>{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</summary>
         <ul>

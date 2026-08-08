@@ -139,4 +139,28 @@ describe("WeeklyReview", () => {
     expect(screen.getByText("10원 · CPA")).toBeTruthy();
     expect(screen.getByRole("link", { name: /원본 도구 열기/ }).getAttribute("href")).toBe("/tools/brand-campaign-incrementality");
   });
+
+  it("returns a response decision to its saved analysis stage and labels a manual rerun honestly", () => {
+    useAppStore.setState({
+      decisionRecords: [
+        { id: "response_stage", toolId: "5-18", sourcePath: "/tools/marketing-response?stage=mmm", action: "MMM 재확인", metric: "최대 VIF", reviewDate: "2020-01-01", actual: "", learning: "", status: "pending" },
+      ],
+    });
+    render(<WeeklyReview />);
+    expect(screen.getByRole("link", { name: /원본 도구 열기/ }).getAttribute("href")).toBe("/tools/marketing-response?stage=mmm");
+    expect(screen.getByText("새 데이터 재분석 후 기록")).toBeTruthy();
+    expect(screen.getByText(/VIF·ASA·증분 추정처럼/)).toBeTruthy();
+  });
+
+  it("preserves the saved source stage and manual follow-up copy in English", () => {
+    useAppStore.setState({
+      decisionRecords: [
+        { id: "response_stage_en", toolId: "5-18", sourcePath: "/tools/marketing-response?stage=mmm", action: "Rerun MMM", metric: "Maximum VIF", reviewDate: "2020-01-01", actual: "", learning: "", status: "pending" },
+      ],
+    });
+    render(<WeeklyReview locale="en" />);
+    expect(screen.getByRole("link", { name: /Open source tool/ }).getAttribute("href")).toBe("/en/tools/marketing-response?stage=mmm");
+    expect(screen.getByText("Rerun with new data, then record")).toBeTruthy();
+    expect(screen.getByText(/VIF, ASA, and incrementality/)).toBeTruthy();
+  });
 });
