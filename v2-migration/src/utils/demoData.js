@@ -88,6 +88,70 @@ function buildEfficiency() {
   return { raw, headers, mapping, fileName: "demo_efficiency.csv" };
 }
 
+// ── collinearity (5-25) ────────────────────────────────────────────────────
+// Meta·TikTok 지출을 거의 같은 일정으로 움직이게 해 VIF 도구가 "진행 보류"
+// 신호를 실제로 보여 준다. Google·ASA는 다른 리듬으로 넣어 비교 근거도 남긴다.
+function buildCollinearity() {
+  const headers = ["date", "channel", "cost"];
+  const dates = generateDates(42, "2025-03-01");
+  const raw = [];
+  dates.forEach((date, index) => {
+    const shared = 420000 + (index % 7) * 28000 + Math.floor(index / 7) * 19000;
+    const independent = 290000 + ((index * 43) % 11) * 17000;
+    raw.push(
+      { date, channel: "Meta", cost: shared },
+      { date, channel: "TikTok", cost: Math.round(shared * 0.94 + (index % 3) * 1200) },
+      { date, channel: "Google UAC", cost: independent },
+      { date, channel: "Apple Search Ads", cost: 180000 + ((index * 29) % 13) * 14500 },
+    );
+  });
+  return { raw, headers, mapping: { date: "date", channel: "channel", cost: "cost" }, fileName: "demo_collinearity.csv" };
+}
+
+// ── ASA keyword finder (5-26) ──────────────────────────────────────────────
+// Search Match 승격·저소진 증액·과소진 감액·제외 검토가 모두 보이도록 구성.
+// 일일 예산은 현재 엔진의 검색어 단위 판정 예시값이며, 실데이터에서는 캠페인
+// 예산과 검색어 성과를 분리해 해석해야 한다.
+function buildAsaKeyword() {
+  const headers = ["date", "campaign_name", "adgroup_name", "search_term", "match_type", "cost", "clicks", "installs", "daily_budget", "target_cpa", "current_cpt"];
+  const dates = generateDates(14, "2025-04-01");
+  const configs = [
+    { term: "가계부", campaign: "ASA KR Discovery", match: "Search Match", cost: 420, clicks: 42, installs: 8, budget: 1000, targetCpa: 80, cpt: 10 },
+    { term: "무료 가계부", campaign: "ASA KR Generic", match: "Broad", cost: 1280, clicks: 64, installs: 5, budget: 1000, targetCpa: 150, cpt: 18 },
+    { term: "영수증 정리", campaign: "ASA KR Broad", match: "Broad", cost: 620, clicks: 50, installs: 3, budget: 1000, targetCpa: 120, cpt: 12 },
+  ];
+  const raw = dates.flatMap((date, day) => configs.map((config) => ({
+    date,
+    campaign_name: config.campaign,
+    adgroup_name: "Discovery",
+    search_term: config.term,
+    match_type: config.match,
+    cost: config.cost + (day % 3) * 12,
+    clicks: config.clicks + (day % 2),
+    installs: config.installs,
+    daily_budget: config.budget,
+    target_cpa: config.targetCpa,
+    current_cpt: config.cpt,
+  })));
+  return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_asa_keyword.csv" };
+}
+
+// ── brand incrementality (5-24) ────────────────────────────────────────────
+function buildBrandIncrementality() {
+  const headers = ["date", "brand_search", "campaign_on"];
+  const start = Date.UTC(2025, 0, 1);
+  const raw = Array.from({ length: 49 }, (_, index) => {
+    const date = new Date(start + index * 86400000).toISOString().slice(0, 10);
+    const weekdayPattern = [5, 2, -3, 1, 4, 8, 12][index % 7];
+    return {
+      date,
+      brand_search: Math.round(180 + index * 1.6 + weekdayPattern + (index >= 35 ? 42 : 0)),
+      campaign_on: index >= 35 ? "on" : "off",
+    };
+  });
+  return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_brand_incrementality.csv" };
+}
+
 // ── creative (5-6) ──────────────────────────────────────────────────────────
 // Concept Matrix(§8) 기본 축 = message_angle × format → 조합별 셀에 소재 ≥5개
 // (minNCell=5) 채우려면 소재를 조합 순회로 다수 생성 + 속성 컬럼 필수.
@@ -763,6 +827,9 @@ const BUILDERS = {
   response: buildResponse,
   aha: buildAha,
   incrementality: buildIncrSuppressionDemo,
+  brand_incrementality: buildBrandIncrementality,
+  collinearity: buildCollinearity,
+  asa_keyword: buildAsaKeyword,
   content_aha: buildContentAha,
   content_attr: buildContentAttr,
   content_traffic: buildContentTraffic,
@@ -770,12 +837,14 @@ const BUILDERS = {
   content_dashboard: buildContentDashboard,
 };
 
-// group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.
+// group name (TOOL_GROUP value) → demo csv. A missing builder is a product bug:
+// silently showing another tool's data creates a false "demo result".
 const DEMO_EN_VALUE_MAP = {
   "할인혜택": "Discount offer", "사회적증거": "Social proof", "기능강조": "Feature focus", "감성스토리": "Emotional story",
   "제작영상": "Produced video", "정적이미지": "Static image", "플레이어블": "Playable", "문제제기": "Problem",
   "호기심": "Curiosity", "혜택제시": "Benefit", "지금설치": "Install now", "무료체험": "Free trial", "한정할인": "Limited offer",
   "얼굴클로즈업": "Face close-up", "텍스트훅": "Text hook", "제품시연": "Product demo", "악화 추세 없음": "No worsening trend",
+  "무료 가계부": "Free budget planner", "가계부": "Budget planner", "영수증 정리": "Receipt organizer",
   "추세 외삽": "Trend extrapolation", "일": "d", "밖": "outside",
 };
 
@@ -789,6 +858,7 @@ function localizeDemoCsv(data, locale) {
 }
 
 export function buildDemoCsv(group, locale = "ko") {
-  const fn = BUILDERS[group] || BUILDERS.efficiency;
+  const fn = BUILDERS[group];
+  if (!fn) throw new Error(`No demo dataset registered for data group: ${group}`);
   return localizeDemoCsv(fn(), locale);
 }

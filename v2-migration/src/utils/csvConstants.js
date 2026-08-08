@@ -1166,10 +1166,11 @@ export const TOOL_OPTIONAL_FIELDS = {
               ],
               "5-25": [{ key: "campaign_name", unlocks: "채널 대신 캠페인 단위 공선성 점검" }],
               "5-26": [
+                { key: "country", unlocks: "국가별 캠페인 예산·통화 분리" },
                 { key: "campaign_name", unlocks: "캠페인별 조치 분리" },
                 { key: "adgroup_name", unlocks: "광고그룹별 조치 분리" },
                 { key: "match_type", unlocks: "Exact 승격 후보 판정" },
-                { key: "daily_budget", unlocks: "검색어별 예산 대비 소진률" },
+                { key: "daily_budget", unlocks: "캠페인 예산 대비 소진률" },
                 { key: "target_cpa", unlocks: "성과 기준 CPT 조정" },
                 { key: "target_cpt", unlocks: "CPT 권장값 기준" },
                 { key: "current_cpt", unlocks: "현재 CPT에서 증감액 계산" },

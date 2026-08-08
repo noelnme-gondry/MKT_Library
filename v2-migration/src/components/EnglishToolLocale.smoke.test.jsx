@@ -15,6 +15,9 @@ import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
 import ContentFreshness from "@/components/tools/ContentFreshness";
 import MarketingResponse from "@/components/tools/MarketingResponse";
+import MulticollinearityChecker from "@/components/tools/MulticollinearityChecker";
+import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
+import BrandCampaignIncrementality from "@/components/tools/BrandCampaignIncrementality";
 import CohortTab from "@/components/dashboard/CohortTab";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -69,6 +72,9 @@ const EN_DEMO_SURFACES = [
   ["Campaign PVM", "5-21", "efficiency", () => <CampaignPvm locale="en" />],
   ["Marketing efficiency", "5-22", "efficiency", () => <MarketingEfficiency locale="en" />],
   ["Incrementality", "5-23", "incrementality", () => <Incrementality locale="en" />],
+  ["Brand incrementality", "5-24", "brand_incrementality", () => <BrandCampaignIncrementality locale="en" />],
+  ["VIF multicollinearity", "5-25", "collinearity", () => <MulticollinearityChecker locale="en" />],
+  ["ASA keyword finder", "5-26", "asa_keyword", () => <AsaKeywordFinder locale="en" />],
   ["Aha moment", "5-20", "aha", () => <AhaMomentFinder locale="en" />],
   ["Creative analyzer", "9-6", "creative", () => <CreativeAnalyzer locale="en" />],
   ["Content element analyzer", "9-1", "content_attr", () => <ContentElementAnalyzer locale="en" />],

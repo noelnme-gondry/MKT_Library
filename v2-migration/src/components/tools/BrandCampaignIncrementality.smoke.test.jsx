@@ -34,10 +34,9 @@ describe("BrandCampaignIncrementality render smoke", () => {
     expect(() => render(<BrandCampaignIncrementality />)).not.toThrow();
   });
 
-  it("withholds a directional verdict for an exploratory profile interval", async () => {
+  it("shows the deterministic demo result immediately", async () => {
     const { container } = render(<BrandCampaignIncrementality />);
     fireEvent.click(screen.getByRole("button", { name: "예시 데이터 보기" }));
-    fireEvent.click(screen.getByRole("button", { name: /증분 추정하기/ }));
     await waitFor(() => expect(screen.getByText("95% AR(1) 프로파일 구간")).toBeTruthy());
     expect(container.textContent).toContain("증분 방향을 판정하지 않습니다");
     expect(container.textContent).not.toContain("관찰상 증가 신호가 남습니다");

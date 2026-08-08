@@ -44,43 +44,57 @@ function bidAction({ pace, isGood }) {
   return { code: "hold", pct: 0 };
 }
 
-// rows may contain one daily row per search term. targetCpa/targetCpt/global
-// values are compared only within the same currency and outcome definition.
+// rows may contain one daily row per search term. Daily budget is a campaign
+// constraint, so campaign pacing is calculated once and then paired with each
+// term's performance; it must never be repeated as a term-level budget.
 export function buildAsaKeywordRecommendations(rows = [], { globalDailyBudget = 0, globalTargetCpa = 0, globalTargetCpt = 0 } = {}) {
   const groups = new Map();
+  const budgetScopes = new Map();
   rows.forEach((row) => {
     const term = String(row.search_term || "").trim();
     if (!term) return;
+    const country = String(row.country || "").trim();
     const campaign = String(row.campaign_name || "").trim();
     const adgroup = String(row.adgroup_name || "").trim();
     const matchType = normalizeMatchType(row.match_type);
-    const key = [term, campaign, adgroup, matchType].join("\u001f");
-    const current = groups.get(key) || { term, campaign, adgroup, matchType, cost: 0, taps: 0, installs: 0, activeDates: new Set(), budgets: new Map(), targetCpa: 0, targetCpt: 0, currentCpt: 0 };
+    const scopeKey = [country, campaign || "__single_campaign__"].join("\u001f");
+    const key = [country, term, campaign, adgroup, matchType].join("\u001f");
+    const current = groups.get(key) || { country, term, campaign, adgroup, matchType, scopeKey, cost: 0, taps: 0, installs: 0, latestDate: "", targetCpa: 0, targetCpt: 0, currentCpt: 0 };
     current.cost += number(row.cost);
     current.taps += number(row.clicks);
     current.installs += number(row.installs || row.actions);
-    if (row.date) current.activeDates.add(String(row.date));
+    const date = String(row.date || "");
+    const isLatest = date >= current.latestDate;
+    if (isLatest) {
+      current.latestDate = date;
+      current.targetCpa = number(row.target_cpa);
+      current.targetCpt = number(row.target_cpt);
+      current.currentCpt = number(row.current_cpt);
+    }
+
+    const scope = budgetScopes.get(scopeKey) || { cost: 0, activeDates: new Set(), budgets: new Map() };
+    scope.cost += number(row.cost);
+    if (date) scope.activeDates.add(date);
     const dailyBudget = number(row.daily_budget);
-    if (dailyBudget > 0 && row.date) current.budgets.set(String(row.date), Math.max(current.budgets.get(String(row.date)) || 0, dailyBudget));
-    current.targetCpa = Math.max(current.targetCpa, number(row.target_cpa));
-    current.targetCpt = Math.max(current.targetCpt, number(row.target_cpt));
-    current.currentCpt = Math.max(current.currentCpt, number(row.current_cpt));
+    if (dailyBudget > 0 && date) scope.budgets.set(date, Math.max(scope.budgets.get(date) || 0, dailyBudget));
+    budgetScopes.set(scopeKey, scope);
     groups.set(key, current);
   });
 
   return [...groups.values()].map((group) => {
     const targetCpa = group.targetCpa || number(globalTargetCpa);
     const targetCpt = group.targetCpt || number(globalTargetCpt);
-    const dailyBudgetTotal = [...group.budgets.values()].reduce((sum, value) => sum + value, 0);
-    const expectedSpend = dailyBudgetTotal || number(globalDailyBudget) * group.activeDates.size;
-    const pace = expectedSpend > 0 ? group.cost / expectedSpend : null;
+    const scope = budgetScopes.get(group.scopeKey);
+    const dailyBudgetTotal = [...scope.budgets.values()].reduce((sum, value) => sum + value, 0);
+    const expectedSpend = dailyBudgetTotal || number(globalDailyBudget) * scope.activeDates.size;
+    const pace = expectedSpend > 0 ? scope.cost / expectedSpend : null;
     const cpt = group.taps > 0 ? group.cost / group.taps : null;
     const cpa = group.installs > 0 ? group.cost / group.installs : null;
     const isGood = quality({ cpa, targetCpa, cpt, targetCpt });
     const action = pace == null ? { code: "budget_needed", pct: 0 } : bidAction({ pace, isGood });
     const bidBase = group.currentCpt || targetCpt || cpt;
     const recommendedCpt = bidBase > 0 && action.pct ? bidBase * (1 + action.pct) : null;
-    const isExactCandidate = group.matchType !== "exact"
+    const isExactCandidate = (group.matchType === "broad" || group.matchType === "discovery")
       && group.installs >= ASA_RULES.minExactInstalls
       && group.taps >= ASA_RULES.minExactTaps
       && isGood === true;
