@@ -19,13 +19,13 @@ export async function generateMetadata({ params }) {
   const enTerm = getTermBySlug(slug, "en");
   const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": canonical };
   return {
-    title: `${term.term} 뜻 — 용어사전`,
+    title: term.seoTitle || `${term.term} 뜻 — 용어사전`,
     description: term.description,
     keywords: term.keywords || undefined,
     alternates: { canonical, languages },
     openGraph: withOpenGraphBase({
       type: "article",
-      title: `${term.term} 뜻`,
+      title: term.seoTitle || `${term.term} 뜻`,
       description: term.description,
       url: canonical,
       images: [`${SITE_URL}/og-card.png`],
