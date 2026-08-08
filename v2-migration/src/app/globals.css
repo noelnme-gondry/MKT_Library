@@ -8232,6 +8232,22 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .paid-organic-verdict.is-watch { border-left-color:var(--danger);background:linear-gradient(90deg,color-mix(in srgb,var(--danger) 7%,var(--surface-container-lowest)),var(--surface-container-lowest) 48%); }
 .paid-organic-verdict.is-growth { border-left-color:var(--success); }
 .paid-organic-verdict p { margin:8px 0 0;color:var(--text-secondary);font-size:11px;line-height:1.65; }
+.asa-tool__setup p,.diagnostic-tool__rules p { margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.65; }
+.asa-tool__inputs { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;max-width:720px; }
+.asa-tool__inputs label { display:grid;gap:6px;color:var(--text-muted);font-size:11px;font-weight:700; }
+.asa-tool__inputs input { width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-1);color:var(--text-primary);font:inherit; }
+.asa-tool__note { color:var(--text-muted)!important;font-size:11px!important; }
+.asa-tool__summary-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+.asa-tool__summary-grid > div { padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg-1); }
+.asa-tool__summary-grid span,.asa-tool__summary-grid p,.asa-tool__sub { display:block;color:var(--text-muted);font-size:10px;line-height:1.45; }
+.asa-tool__summary-grid strong { display:block;margin:4px 0;color:var(--text-primary);font-size:24px; }
+.asa-tool__summary-grid p { margin:0; }
+.asa-tool__section-head { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px; }
+.asa-tool__section-head p { max-width:690px;margin:5px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.6; }
+.asa-tool__download { flex:0 0 auto;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-1);color:var(--text-primary);font:inherit;font-size:11px;cursor:pointer; }
+.asa-tool__action { color:var(--text-primary);font-size:11px; }.asa-tool__action--raise { color:#16a34a; }.asa-tool__action--lower { color:#dc2626; }.asa-tool__action--target_needed,.asa-tool__action--budget_needed { color:#d97706; }
+.diagnostic-tool__verdict { border-left:4px solid var(--border); }.diagnostic-tool__verdict--ok { border-left-color:#16a34a; }.diagnostic-tool__verdict--warn { border-left-color:#d97706; }.diagnostic-tool__verdict--severe { border-left-color:#dc2626; }
+.diagnostic-tool__verdict strong { color:var(--text-primary);font-size:15px; }.diagnostic-tool__verdict p { margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.65; }
 .paid-organic-verdict__action { display:grid;gap:7px; }
 .paid-organic-verdict__action a { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;padding:10px 12px;border-radius:9px;background:var(--primary);color:var(--on-primary,#fff);font-size:10.5px;font-weight:750;text-decoration:none; }
 .paid-organic-verdict__action small { color:var(--text-muted);font-size:8.5px;line-height:1.45; }
@@ -8246,6 +8262,8 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .paid-organic-summary { grid-template-columns:1fr; }
   .paid-organic-chart { height:360px; }
   .paid-organic-verdict { grid-template-columns:1fr;gap:16px; }
+  .asa-tool__inputs,.asa-tool__summary-grid { grid-template-columns:1fr; }
+  .asa-tool__section-head { flex-direction:column; }
 }
 @media (prefers-reduced-motion:reduce) {
   .paid-organic-upload { transition:none; }

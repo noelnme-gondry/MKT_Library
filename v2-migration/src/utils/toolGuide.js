@@ -266,6 +266,31 @@ export const TOOL_GUIDE = {
     ],
     example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,자연 검색,126000,58000,2600,1740,104\n2024-01-08,소셜,216000,74000,2200,1020,31\n2024-01-15,뉴스레터,99000,41000,2870,1980,218",
   },
+  "5-25": {
+    when: "MMM을 실행하기 전에 채널별 지출이 너무 함께 움직여 채널 기여도를 분리하기 어려운지 VIF로 빠르게 점검합니다.",
+    grain: "1행 = 하루 × 채널(또는 캠페인) 지출",
+    needs: [
+      { col: "date", label: "날짜", why: "같은 날짜의 채널 지출을 비교하는 기준", required: true },
+      { col: "channel 또는 campaign_name", label: "채널/캠페인", why: "공선성 진단 대상", required: true },
+      { col: "cost", label: "광고비", why: "채널별 지출 움직임", required: true },
+    ],
+    prep: ["최소 2개 채널과 채널 수보다 3개 이상 많은 날짜가 필요합니다.", "VIF가 높으면 통계 옵션보다 채널을 따로 움직인 기간을 만드는 것이 우선입니다."],
+    example: "date,channel,cost\n2026-07-01,Search,850000\n2026-07-01,Social,610000\n2026-07-02,Search,720000\n2026-07-02,Social,780000",
+  },
+  "5-26": {
+    when: "Apple Search Ads 검색어 리포트에서 Exact 승격 후보를 찾고, 예산 대비 소진과 목표 CPA에 맞춰 CPT 증액·감액 우선순위를 정합니다.",
+    grain: "1행 = 하루 × 검색어 × 광고그룹(가능하면)",
+    needs: [
+      { col: "date", label: "날짜", why: "활성 일수와 예산 대비 소진 계산", required: true },
+      { col: "search_term", label: "검색어", why: "Exact 승격·제외 검토 단위", required: true },
+      { col: "cost", label: "소진", why: "CPA·소진률 계산", required: true },
+      { col: "clicks", label: "탭", why: "실제 CPT 계산", required: true },
+      { col: "installs 또는 actions", label: "설치/전환", why: "목표 CPA 달성 판정", required: true },
+      { col: "match_type·daily_budget·target_cpa·current_cpt", label: "매치·예산·목표·입찰", why: "Exact·소진률·CPT 권장값 정확도", required: false },
+    ],
+    prep: ["목표 CPA가 없으면 임의의 증액·감액은 추천하지 않습니다.", "일일 예산은 캠페인/광고그룹 단위라면 해당 단위로 내보내세요. 검색어 행마다 중복된 예산을 합산하지 않습니다."],
+    example: "date,campaign_name,adgroup_name,search_term,match_type,cost,clicks,installs,daily_budget,target_cpa,current_cpt\n2026-08-01,Generic,Discovery,가계부,Search Match,4000,250,42,12000,140,18\n2026-08-01,Generic,Broad,무료 가계부,Broad,15000,610,58,12000,140,22",
+  },
 };
 
 // EN 번역본 — EN_READY_TOOL_IDS(routeMap.js)에 맞춰 번역된 id만 추가.
@@ -521,6 +546,31 @@ export const TOOL_GUIDE_EN = {
       "With 2+ weeks of data, the scorecard (WoW) and anomaly detection work meaningfully.",
     ],
     example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,Organic search,126000,58000,2600,1740,104\n2024-01-08,Social,216000,74000,2200,1020,31\n2024-01-15,Newsletter,99000,41000,2870,1980,218",
+  },
+  "5-25": {
+    when: "Before MMM, quickly check VIF to see whether channel spend moved too tightly together to separate contribution.",
+    grain: "1 row = 1 day × channel (or campaign) spend",
+    needs: [
+      { col: "date", label: "Date", why: "Reference for comparing same-date channel spend", required: true },
+      { col: "channel or campaign_name", label: "Channel/campaign", why: "Collinearity diagnosis unit", required: true },
+      { col: "cost", label: "Ad spend", why: "Channel-spend movement", required: true },
+    ],
+    prep: ["Use at least two channels and at least three more dates than channels.", "If VIF is high, create independent channel variation before changing statistical settings."],
+    example: "date,channel,cost\n2026-07-01,Search,850000\n2026-07-01,Social,610000\n2026-07-02,Search,720000\n2026-07-02,Social,780000",
+  },
+  "5-26": {
+    when: "Find Exact-promotion candidates in an Apple Search Ads search-term report, then prioritize CPT increases or decreases using pacing and target CPA.",
+    grain: "1 row = 1 day × search term × ad group (when available)",
+    needs: [
+      { col: "date", label: "Date", why: "Active-day and pacing calculation", required: true },
+      { col: "search_term", label: "Search term", why: "Exact-promotion and negative-review unit", required: true },
+      { col: "cost", label: "Spend", why: "CPA and pacing calculation", required: true },
+      { col: "clicks", label: "Taps", why: "Actual CPT calculation", required: true },
+      { col: "installs or actions", label: "Installs/conversions", why: "Target CPA check", required: true },
+      { col: "match_type · daily_budget · target_cpa · current_cpt", label: "Match · budget · target · bid", why: "Exact, pacing, and CPT-recommendation precision", required: false },
+    ],
+    prep: ["Without a target CPA, the tool will not invent a bid increase/decrease.", "If daily budget is at campaign/ad-group level, export that dimension. The tool does not sum a repeated daily budget across search-term rows."],
+    example: "date,campaign_name,adgroup_name,search_term,match_type,cost,clicks,installs,daily_budget,target_cpa,current_cpt\n2026-08-01,Generic,Discovery,budget planner,Search Match,4000,250,42,12000,140,18\n2026-08-01,Generic,Broad,free budget app,Broad,15000,610,58,12000,140,22",
   },
 };
 

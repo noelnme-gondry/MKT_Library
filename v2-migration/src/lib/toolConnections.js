@@ -34,6 +34,14 @@ export const CONNECTED_TOOLS = {
     title: { ko: "브랜드 캠페인 증분 분석", en: "Brand campaign incrementality" },
     question: { ko: "브랜딩이 브랜드 검색·직접 유입을 실제로 더 만들었을까?", en: "Did branding actually add brand search or direct traffic?" },
   },
+  "5-25": {
+    title: { ko: "VIF 다중공선성 점검", en: "VIF multicollinearity check" },
+    question: { ko: "MMM으로 채널 기여도를 나눌 만큼 지출이 독립적으로 움직였을까?", en: "Did spend move independently enough to separate channel contribution in MMM?" },
+  },
+  "5-26": {
+    title: { ko: "ASA 키워드 발굴", en: "ASA keyword finder" },
+    question: { ko: "어떤 검색어를 Exact로 옮기고 CPT를 조정할까?", en: "Which terms should move to Exact and receive a CPT change?" },
+  },
   "5-18": {
     title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
     question: { ko: "지금 필요한 것은 추세·잠식·기여·예측 중 무엇일까?", en: "Do I need trend, cannibalization, contribution, or forecast next?" },
@@ -68,7 +76,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "03 · CHOOSE", en: "03 · CHOOSE" },
     title: { ko: "다음 조치 선택", en: "Choose" },
     description: { ko: "증액·감액·소재 교체의 우선순위를 정합니다.", en: "Prioritize budget moves and creative replacements." },
-    tools: ["5-22", "5-3", "9-6"],
+    tools: ["5-22", "5-3", "5-26", "9-6"],
   },
   {
     id: "prove",
@@ -82,20 +90,22 @@ export const TOOL_JOURNEY = [
     label: { ko: "05 · LEARN", en: "05 · LEARN" },
     title: { ko: "학습 축적", en: "Learn" },
     description: { ko: "채널·고객·콘텐츠의 장기 학습으로 연결합니다.", en: "Turn results into channel, customer, and content learning." },
-    tools: ["5-18", "5-20", "9-1"],
+    tools: ["5-18", "5-20", "5-25", "9-1"],
   },
 ];
 
 export const NEXT_TOOL_IDS = {
   "5-2": ["5-21", "5-22", "5-3"],
   "5-21": ["5-22", "5-3", "5-4"],
-  "5-22": ["5-3", "9-6", "5-4"],
+  "5-22": ["5-3", "5-26", "9-6"],
   "5-3": ["5-22", "5-18", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
   "5-4": ["5-23", "5-18", "5-2"],
   "5-23": ["5-4", "5-24", "5-2"],
   "5-24": ["5-23", "5-4", "5-2"],
-  "5-18": ["5-3", "5-23", "5-20"],
+  "5-18": ["5-3", "5-25", "5-20"],
+  "5-25": ["5-18", "5-4", "5-23"],
+  "5-26": ["5-22", "5-3", "5-23"],
   "5-20": ["5-18", "5-4", "5-2"],
   "9-1": ["9-6", "5-4", "5-20"],
 };
