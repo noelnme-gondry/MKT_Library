@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">데이터에 맞는 첫 마케팅 분석 고르기</title>
+  <desc id="desc">질문, 데이터 형태, 첫 분석, 다음 결정으로 이어지는 네 단계 흐름</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b1018"/><stop offset="1" stop-color="#152238"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#050a12" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <path d="M0 96H1200M0 192H1200M0 288H1200M0 384H1200M0 480H1200M0 576H1200M120 0V630M240 0V630M360 0V630M480 0V630M600 0V630M720 0V630M840 0V630M960 0V630M1080 0V630" stroke="#82aaff" stroke-opacity=".055"/>
+  <text x="72" y="78" fill="#82aaff" font-family="monospace" font-size="18" font-weight="700" letter-spacing="3">FIRST ANALYSIS ROUTER</text>
+  <text x="72" y="132" fill="#f4f7fb" font-family="Arial, sans-serif" font-size="38" font-weight="700">분석 이름보다 질문과 데이터부터</text>
+  <text x="72" y="171" fill="#9aaac0" font-family="Arial, sans-serif" font-size="19">지금 가진 자료가 답할 수 있는 가장 작은 질문을 고릅니다.</text>
+  <g filter="url(#shadow)" font-family="Arial, sans-serif">
+    <g transform="translate(72 234)"><rect width="232" height="226" rx="16" fill="#111b2a" stroke="#2c405e"/><circle cx="36" cy="38" r="18" fill="#316ee8"/><text x="36" y="44" text-anchor="middle" fill="white" font-size="15" font-weight="700">1</text><text x="26" y="88" fill="#82aaff" font-size="14" font-weight="700">질문</text><text x="26" y="124" fill="#f4f7fb" font-size="22" font-weight="700">무엇을 결정할까?</text><text x="26" y="161" fill="#9aaac0" font-size="16">이상 확인 · 원인 분해</text><text x="26" y="189" fill="#9aaac0" font-size="16">증액 · 순증 · 장기 반응</text></g>
+    <g transform="translate(340 234)"><rect width="232" height="226" rx="16" fill="#111b2a" stroke="#2c405e"/><circle cx="36" cy="38" r="18" fill="#316ee8"/><text x="36" y="44" text-anchor="middle" fill="white" font-size="15" font-weight="700">2</text><text x="26" y="88" fill="#82aaff" font-size="14" font-weight="700">데이터</text><text x="26" y="124" fill="#f4f7fb" font-size="22" font-weight="700">한 행은 무엇일까?</text><text x="26" y="161" fill="#9aaac0" font-size="16">일 × 채널 · 전후 기간</text><text x="26" y="189" fill="#9aaac0" font-size="16">대조군 · 주 × 채널</text></g>
+    <g transform="translate(608 234)"><rect width="232" height="226" rx="16" fill="#111b2a" stroke="#2c405e"/><circle cx="36" cy="38" r="18" fill="#11866e"/><text x="36" y="44" text-anchor="middle" fill="white" font-size="15" font-weight="700">3</text><text x="26" y="88" fill="#5dd9bd" font-size="14" font-weight="700">첫 분석</text><text x="26" y="124" fill="#f4f7fb" font-size="22" font-weight="700">조건이 맞는 것만</text><text x="26" y="161" fill="#9aaac0" font-size="16">대시보드 · 변동 분해</text><text x="26" y="189" fill="#9aaac0" font-size="16">포화도 · 증분 · VIF</text></g>
+    <g transform="translate(876 234)"><rect width="252" height="226" rx="16" fill="#182114" stroke="#7f682b"/><circle cx="36" cy="38" r="18" fill="#a76400"/><text x="36" y="44" text-anchor="middle" fill="white" font-size="15" font-weight="700">4</text><text x="26" y="88" fill="#f0bb59" font-size="14" font-weight="700">다음 결정</text><text x="26" y="124" fill="#f4f7fb" font-size="22" font-weight="700">바꿀 것 하나 선택</text><text x="26" y="161" fill="#b9c4d3" font-size="16">범위 좁히기 · 재배분</text><text x="26" y="189" fill="#b9c4d3" font-size="16">실험 설계 · 재측정</text></g>
+  </g>
+  <g fill="none" stroke="#82aaff" stroke-width="2"><path d="M306 347h30"/><path d="M574 347h30"/><path d="M842 347h30"/></g>
+  <g fill="#82aaff"><path d="m335 347-9-6v12z"/><path d="m603 347-9-6v12z"/><path d="m871 347-9-6v12z"/></g>
+  <rect x="72" y="510" width="1056" height="60" rx="12" fill="#101a28" stroke="#2c405e"/>
+  <text x="98" y="547" fill="#f4f7fb" font-family="Arial, sans-serif" font-size="18" font-weight="700">CSV가 있다면</text><text x="232" y="547" fill="#82aaff" font-family="Arial, sans-serif" font-size="18">컬럼 자동 매핑 → 가능한 분석 판정 → 첫 질문 추천</text>
+</svg>

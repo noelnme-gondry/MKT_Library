@@ -6,6 +6,24 @@ slug: "apple-search-ads-guide"
 keywords: "Apple Search Ads, ASA, ASA keyword discovery, ASA Exact promotion, ASA CPT, ASA bid, ASA search term report, ASA campaign structure, App Store search ads"
 tags: ["ASA", "UA"]
 draft: false
+primaryTool: "5-26"
+relatedGlossary: ["cpi", "cpa"]
+answer: "Promote non-Exact search terms only after they have enough taps and installs and meet target CPA. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target."
+conditions: "The 3-install, 8-tap, and ±10–15% CPT thresholds are this service's operating defaults, not Apple rules. Adjust them to account size and volatility, and verify current match behavior and bid limits in Apple Ads."
+reviewedAt: "2026-08-09"
+reviewer: "Growth Opt Playbook"
+sources:
+  - title: "Apple Ads: Understand keyword match types"
+    url: "https://ads.apple.com/app-store/help/keywords/0059-understand-keyword-match-types"
+  - title: "Apple Ads: Considerations for keyword bids"
+    url: "https://ads.apple.com/app-store/help/bids-and-budget/0076-considerations-for-keyword-bids"
+  - title: "Apple Ads: Manage budgets"
+    url: "https://ads.apple.com/app-store/help/bids-and-budget/0016-manage-budgets"
+faq:
+  - q: "Does ASA Exact match only an identical query?"
+    a: "No. Exact is the tightest match type, but Apple says close variants such as misspellings, plurals, reordered words, and translations may still match."
+  - q: "Should I always raise CPT when budget pacing is low?"
+    a: "No. It is a raise candidate only when pacing is low and target CPA is being met. If performance is poor, inspect the term, product page, market, and seasonality first."
 ---
 
 Run Apple Search Ads (ASA) as one lumped campaign, and a few days later the report may show brand terms taking most of the spend — people who may have searched for your app anyway. ASA sits at the top of App Store search and can reach **high-intent users**. To make that value repeatable, separate campaigns by purpose and run a loop for discovering terms, promoting Exact targets, and adjusting bids.
@@ -23,7 +41,7 @@ Mix purposes into one campaign and budget and bids tangle — cheap brand ends u
 
 ## Match types: discovery and control
 
-- **Exact**: shows only on the exact keyword. Strong control, for validated keywords.
+- **Exact**: the tightest control for validated keywords. Close variants such as misspellings, plurals, reordered words, and translations may still match.
 - **Broad**: expands to variants and related terms. This is your discovery mode.
 
 The operating loop sits between these match types. Explore with discovery and broad, find proven terms in the search-term report, **promote them to Exact**, and review poor performers for negative keywords. Running this discover → promote → block cycle is the backbone of ASA.
@@ -42,7 +60,7 @@ When a term passes, add it as an Exact target and review the original target and
 
 ## Raise CPT when pacing is low and performance is good
 
-If a campaign repeatedly spends far below its daily budget while CPA beats target, it may be missing auction opportunities. Before making a large budget change, raise **CPT in a small step** so you can isolate what changed.
+If a campaign repeatedly spends far below its daily budget while CPA beats target, it may be missing auction opportunities. Before making a large budget change, raise **CPT in a small step** so you can isolate what changed. The thresholds below are this service's operating heuristics, not official Apple bid rules.
 
 - Below 70% pacing while meeting target CPA: suggest CPT +10%.
 - Below 40% pacing while meeting target CPA: consider CPT +15%.

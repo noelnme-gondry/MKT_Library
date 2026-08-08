@@ -13,7 +13,8 @@
 
 export const TOOL_GUIDE = {
   "start-gate": {
-    when: "캠페인 성과 CSV를 올리면 현재 컬럼으로 바로 쓸 수 있는 분석과 가장 먼저 볼 질문을 추천합니다.",
+    when: "CSV를 올리면 최대 10개 분석의 조건을 확인해, 지금 가능한 분석과 가장 먼저 볼 질문을 추천합니다.",
+    outcomes: ["컬럼 자동 매핑", "가능한 분석만 판정", "가장 먼저 볼 질문 추천"],
     grain: "1행 = 하루 × 채널(또는 캠페인) 성과 — 가능한 경우 채널별로 나눠 주세요",
     needs: [
       { col: "date", label: "날짜", why: "기간 비교와 추세를 확인하는 기준", required: true },
@@ -297,7 +298,8 @@ export const TOOL_GUIDE = {
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
   "start-gate": {
-    when: "Upload campaign-performance CSV data to see which analyses your current columns support and what to check first.",
+    when: "Upload a CSV to check up to 10 analysis requirements, see what is runnable now, and get the first question to investigate.",
+    outcomes: ["Map columns automatically", "Check supported analyses", "Recommend the first question"],
     grain: "1 row = 1 day × channel (or campaign) performance — split channels when possible",
     needs: [
       { col: "date", label: "Date", why: "Reference point for period comparisons and trends", required: true },

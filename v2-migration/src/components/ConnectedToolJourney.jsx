@@ -16,6 +16,8 @@ const COPY = {
     open: "열기",
     startAnywhere: "원하는 단계에서 시작",
     template: "이 단계의 입력 형식",
+    details: "단계별 도구와 입력 형식 보기",
+    toolCount: (count) => `연결 도구 ${count}개`,
   },
   en: {
     eyebrow: "CONNECTED WORKFLOW",
@@ -24,6 +26,8 @@ const COPY = {
     open: "Open",
     startAnywhere: "Start at any stage",
     template: "Input format for this stage",
+    details: "View tools and input formats by stage",
+    toolCount: (count) => `${count} connected tools`,
   },
 };
 
@@ -38,9 +42,35 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
         <h2 id="connected-tool-journey-title">{T.title}</h2>
         <p>{T.deck}<br /><strong>{T.startAnywhere}</strong></p>
       </header>
-      <div className="connected-tool-journey__stages">
-        {TOOL_JOURNEY.map((stage) => (
-          <article className="connected-tool-stage" key={stage.id}>
+      <ol className="connected-tool-path">
+        {TOOL_JOURNEY.map((stage) => {
+          const firstTool = localizedTool(stage.tools[0], lang);
+          return (
+            <li key={stage.id}>
+              <Link
+                href={firstTool.href}
+                onClick={() => trackProductEvent("connected_workflow_pick", {
+                  tool_id: firstTool.id,
+                  source: "landing",
+                  placement: "connected_workflow_path",
+                  tab_name: stage.id,
+                  locale: lang,
+                })}
+              >
+                <span>{stage.label[lang]}</span>
+                <strong>{stage.title[lang]}</strong>
+                <p>{stage.description[lang]}</p>
+                <small>{T.toolCount(stage.tools.length)} <b aria-hidden="true">→</b></small>
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+      <details className="connected-tool-journey__details">
+        <summary>{T.details}</summary>
+        <div className="connected-tool-journey__stages">
+          {TOOL_JOURNEY.map((stage) => (
+            <article className="connected-tool-stage" key={stage.id}>
             <div className="connected-tool-stage__head">
               <span>{stage.label[lang]}</span>
               <h3>{stage.title[lang]}</h3>
@@ -79,9 +109,10 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
               reason={T.template}
               source={`journey_${stage.id}`}
             />
-          </article>
-        ))}
-      </div>
+            </article>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

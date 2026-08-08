@@ -21,4 +21,12 @@ describe("ConnectedToolJourney", () => {
     });
     delete window.gtag;
   });
+
+  it("keeps the detailed tool catalogue collapsed behind a compact decision path", () => {
+    const { container, getByText } = render(<ConnectedToolJourney locale="ko" />);
+    expect(container.querySelectorAll(".connected-tool-path > li")).toHaveLength(5);
+    expect(container.querySelector(".connected-tool-journey__details").open).toBe(false);
+    fireEvent.click(getByText("단계별 도구와 입력 형식 보기"));
+    expect(container.querySelector(".connected-tool-journey__details").open).toBe(true);
+  });
 });

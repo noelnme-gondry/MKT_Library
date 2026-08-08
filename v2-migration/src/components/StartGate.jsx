@@ -27,8 +27,8 @@ const ROUTER_TOOL_IDS = Object.keys(ANALYSIS_CONTRACTS).filter((toolId) => toolI
 const COPY = {
   ko: {
     eyebrow: "내 데이터 분석",
-    title: "CSV나 Google Sheets를 가져오세요",
-    deck: "업로드한 데이터 구조를 브라우저 안에서 확인한 뒤, 현재 컬럼으로 가능한 분석과 가장 먼저 볼 질문을 추천합니다.",
+    title: "데이터를 올리면, 첫 분석을 골라드립니다",
+    deck: "CSV나 Google Sheets의 컬럼과 기간을 브라우저에서 확인해 지금 실행 가능한 분석만 보여줍니다. 도구를 미리 고를 필요 없습니다.",
     demoLink: "예시 데이터로 둘러보기",
     open: "이 분석 시작 →",
     browseAll: "데이터 없이 전체 도구부터 둘러보기",
@@ -46,8 +46,8 @@ const COPY = {
   },
   en: {
     eyebrow: "Analyze my data",
-    title: "Bring a CSV or Google Sheet",
-    deck: "We inspect its structure in your browser, then recommend the analyses and first questions your current columns can support.",
+    title: "Upload data. Get the right first analysis.",
+    deck: "We inspect CSV or Google Sheets columns and date coverage in your browser, then show only the analyses you can run now. You do not need to choose a tool first.",
     demoLink: "Explore example data",
     open: "Start this →",
     browseAll: "Browse every tool without data",
