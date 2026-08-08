@@ -92,7 +92,13 @@ export default function StartGate({ locale = "ko" }) {
     router.push(locale === "en" ? "/en/dashboard" : "/dashboard");
   };
   const diagnosis = useMemo(() => buildRouterDiagnosis({ canonicalData: csvData.canonicalData, mapping: csvData.mapping, locale }), [csvData.mapping, csvData.canonicalData, locale]);
-  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis, locale })), [csvData.mapping, csvData.canonicalData, diagnosis, locale]);
+  // 시작 화면의 기본 매핑은 효율 CSV에 맞춰 좁혀져 있다. 검색어·소재처럼 다른
+  // grain의 파일도 여기서 놓치지 않도록, 후보 도구별로 원본 파일을 다시 매핑해
+  // 가능 여부를 판정한다. 실제 열기 경로도 같은 prepareDatasetForTool을 쓴다.
+  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => {
+    const prepared = prepareDatasetForTool({ raw: csvData.raw, headers: csvData.headers, toolId, source: csvData.fileName || "dataset" });
+    return evaluateEligibility({ toolId, mapping: prepared.mapping, canonicalData: prepared.canonicalData, diagnosis, locale });
+  }), [csvData.raw, csvData.headers, csvData.fileName, diagnosis, locale]);
   const recommended = rankRecommendedAnalyses(eligibility);
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
   const getTitle = (id) => {
