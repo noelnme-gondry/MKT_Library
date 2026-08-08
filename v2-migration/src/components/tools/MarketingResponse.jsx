@@ -5212,7 +5212,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               `90% 구간 (Laplace 프로파일 근사${u.gridLimited ? " · 그리드 한계로 관측 범위 제한" : ""}). 변환 파라미터 불확실성일 뿐 인과가 아닙니다.`,
                               `90% interval (Laplace profile approximation${u.gridLimited ? " · grid-limited to observed range" : ""}). Transform-parameter uncertainty only, not causal.`,
                             )}
-                          >{fmt(u.ci90[0])}–{fmt(u.ci90[1])}{u.gridLimited ? "*" : ""}</small>
+                          >{tx("프로파일 최빈 ", "Profile mode ")}{fmt(u.value)} · 90% {fmt(u.ci90[0])}–{fmt(u.ci90[1])}{u.gridLimited ? "*" : ""}</small>
                         ) : null);
                         return (
                         <tr key={s.key}><td>{s.label}</td><td className="tnum">{s.params.alpha.toFixed(1)}{ciCell(lap?.alpha, (v) => v.toFixed(1))}</td><td className="tnum">{spendLabel(s.params.ec)}{ciCell(lap?.ec, (v) => spendLabel(v))}</td><td className="tnum">{s.params.slope.toFixed(1)}{ciCell(lap?.slope, (v) => v.toFixed(1))}</td><td>{s.transformUncertainty?.priorLockedTransform
@@ -5224,8 +5224,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                   <p className="muted" style={{ fontSize: "11px", marginTop: "-6px", marginBottom: "12px" }}>
                     {tx(
-                      "각 파라미터 아래 값은 90% 구간입니다(변환 후보 프로파일 우도의 Laplace 곡률 근사). 변환 파라미터의 불확실성을 뜻할 뿐 인과 효과가 아닙니다. * = 그리드가 성기거나 최빈값이 경계라 관측 범위로 제한한 경우.",
-                      "The value under each parameter is a 90% interval (Laplace curvature of the transform-candidate profile likelihood). It reflects uncertainty in the transform parameter, not a causal effect. * = grid was sparse or the mode sat at an edge, so it is limited to the observed range.",
+                      "각 대표 변환값 아래에는 프로파일 최빈값과 90% 구간을 함께 표시합니다(Laplace 곡률 근사). 대표값과 프로파일 최빈값은 선택 기준이 달라 다를 수 있습니다. 변환 파라미터의 불확실성을 뜻할 뿐 인과 효과가 아닙니다. * = 그리드가 성기거나 최빈값이 경계라 관측 범위로 제한한 경우.",
+                      "Under each representative transform, the profile mode and its 90% interval are shown (Laplace curvature approximation). The representative value and profile mode can differ because they use different selection criteria. This is transform-parameter uncertainty, not a causal effect. * = grid was sparse or the mode sat at an edge, so it is limited to the observed range.",
                     )}
                   </p>
                   <StatHead title={tx("② Empirical-Bayes 효과 신뢰도", "② Empirical-Bayes effect confidence")} hint={tx("잔차 분산은 plug-in 추정한 조건부 Gaussian 근사입니다. 한 번에 한 채널의 adstock α·반포화점·Hill 기울기만 바꾼 profile 후보를 다시 적합하고 BIC로 가중 평균합니다. 후보마다 결론이 다르면 확률은 낮아지고 구간은 넓어집니다. 모든 채널·분산을 함께 샘플링한 joint MCMC posterior는 아니며, 80% 이상도 holdout 전 인과·증분 확정이 아닙니다.", "This is a conditional Gaussian empirical-Bayes approximation with plug-in residual variance. Profile candidates change one channel's adstock α, half-saturation, and Hill slope at a time, refit the model, and receive BIC weights. Disagreement lowers probability and widens the interval. This is not a jointly sampled all-channel and variance MCMC posterior, and even ≥80% is not causal or incremental proof before holdout validation.")} />
