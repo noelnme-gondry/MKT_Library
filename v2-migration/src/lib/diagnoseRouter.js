@@ -56,9 +56,12 @@ export function buildSymptomDiagnosis({ symptom, data, goal, locale = "ko" } = {
   if (!SYMPTOMS[symptom]) return null;
   const order = [...BASE_ORDER[symptom]];
   const boost = [];
+  // "순수 효과 검증"은 관측 추세를 먼저 보는 것보다 반사실 설계가 우선이다.
+  // 유료·오가닉 주간 데이터만 있어도 5-23에서 가능한 설계와 필요한 추가 데이터를
+  // 먼저 안내하므로, 5-18은 가설 탐색용 대안으로 남긴다.
+  if (data === "experiment" || goal === "proof") boost.push("5-23");
   if (data === "creative") boost.push("9-6");
   if (data === "organic") boost.push("5-18");
-  if (data === "experiment" || goal === "proof") boost.push("5-23");
   if (goal === "budget") boost.push("5-22", "5-3");
   const ranked = [...new Set([...boost, ...order])].filter((id) => TOOL_COPY[id]);
   const isEn = locale === "en";
