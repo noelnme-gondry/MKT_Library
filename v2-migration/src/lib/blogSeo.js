@@ -28,12 +28,14 @@ const KO_TITLES = {
   "ios-att-skan-guide": "iOS ATT·SKAN 측정 가이드: 성과가 반토막 보이는 이유",
   "ltv-cac-ratio": "LTV:CAC 비율 계산법: 3:1 기준과 흔한 오류 3가지",
   "marketing-mix-modeling": "마케팅 믹스 모델링(MMM)이란? 채널 기여도 측정법",
+  "multicollinearity-mmm-guide": "MMM 전 다중공선성 점검: VIF가 높을 때 채널 기여도 해석법",
   "meta-advantage-plus-guide": "Meta Advantage+ App 최적화: OS·이벤트·입찰 설정",
   "performance-marketer-skills": "퍼포먼스 마케터 필요 역량: 실무 스킬 쌓는 순서",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지",
   "postback-integration-guide": "포스트백 연동 가이드: SAN·S2S·설치 0 오류 해결",
   "retargeting-reengagement-guide": "리타겟팅·재참여 캠페인 운영: UA와 분리하는 이유",
   "roas-improvement": "ROAS 개선 방법: 낮아졌을 때 예산보다 먼저 볼 4가지",
+  "uplift-holdout-guide": "광고 업리프트 측정법: 홀드아웃 테스트로 순수 증가분 읽는 법",
 };
 
 const EN_TITLES = {
@@ -49,6 +51,7 @@ const EN_TITLES = {
   "ga4-data-traps": "GA4 Numbers Don't Match: 7 Reasons They Differ",
   "incrementality-measurement": "Incrementality: Validate Ad Lift With Holdouts and DiD",
   "marketing-mix-modeling": "Marketing Mix Modeling: Measure Channel Contribution",
+  "multicollinearity-mmm-guide": "Multicollinearity Before MMM: How to Read High VIF",
   "performance-marketer-skills": "Performance Marketer Skills: What to Learn, In Order",
   "performance-marketing-metrics": "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS",
   "aha-moment-retention": "How to Find the Aha Moment: Early Actions and Retention",
@@ -69,6 +72,7 @@ const EN_TITLES = {
   "postback-integration-guide": "Postback Integration: Fix SAN, S2S, and Zero Installs",
   "retargeting-reengagement-guide": "Retargeting & Re-engagement: Why to Split From Acquisition",
   "roas-improvement": "How to Improve ROAS: Four Checks Before Cutting Budget",
+  "uplift-holdout-guide": "Advertising Uplift: Measure Net Lift With a Holdout Test",
   "ltv-cac-ratio": "LTV:CAC Ratio Explained: How to Calculate It Correctly",
 };
 

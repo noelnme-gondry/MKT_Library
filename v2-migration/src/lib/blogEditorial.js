@@ -29,12 +29,14 @@ const KO_ANSWERS = {
   "ios-att-skan-guide": "ATT와 SKAdNetwork 환경에서는 iOS 성과가 과거처럼 사용자 단위로 완전하게 보이지 않을 수 있습니다. 관측 가능한 신호와 누락 가능성을 분리해 읽고, 지표 변화의 원인을 단정하지 마세요.",
   "ltv-cac-ratio": "LTV:CAC는 고객이 만드는 장기 가치와 획득 비용의 관계를 보는 지표입니다. 동일한 고객 범위·기간·비용 범위로 계산하지 않으면 3:1 같은 기준도 잘못된 결론이 될 수 있습니다.",
   "marketing-mix-modeling": "MMM은 시간에 따른 채널·기본 수요·외부 요인의 관계를 모델링해 기여도를 추정하는 방법입니다. 관측 데이터의 연관성만으로 인과를 확정하지 말고 실험과 함께 해석하세요.",
+  "multicollinearity-mmm-guide": "다중공선성이 높으면 MMM은 채널별 기여도를 안정적으로 나누기 어렵습니다. VIF와 함께 움직인 채널을 먼저 확인하고, 독립적인 예산 변동이나 실험으로 근거를 보완하세요.",
   "meta-advantage-plus-guide": "Meta Advantage+ App 캠페인에서 광고주가 통제할 수 있는 영역은 목표 이벤트, 예산, 소재, 측정 설정처럼 제한적입니다. 학습을 방해하는 잦은 편집보다 명확한 신호와 소재 실험이 중요합니다.",
   "performance-marketer-skills": "퍼포먼스 마케터에게 필요한 역량은 매체 기능 암기보다 문제 정의, 데이터 품질 확인, 실험 설계, 결과 해석입니다. 자동화가 늘수록 판단 근거를 설명하는 능력이 더 중요해집니다.",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표는 비용·전환·매출·리텐션을 목표에 맞춰 연결해 읽어야 합니다. CPA나 ROAS 하나만으로는 성장의 질이나 장기 가치를 판단하기 어렵습니다.",
   "postback-integration-guide": "포스트백 연동 문제는 이벤트 정의, 식별자 전달, 전송 조건, 매체 수신 상태를 순서대로 확인하면 좁힐 수 있습니다. 0건은 곧바로 성과 0을 뜻하지 않으므로 각 구간의 로그를 분리해 점검하세요.",
   "retargeting-reengagement-guide": "리타겟팅은 신규 획득과 다른 사용자 상태와 목표를 다루므로 같은 캠페인 안에서 섞어 읽으면 효율을 오해하기 쉽습니다. 제외 기준과 증분 효과를 함께 관리해야 합니다.",
   "roas-improvement": "ROAS 하락은 평균 수치만으로 예산을 줄일 문제가 아닙니다. 데이터 성숙도와 채널별 효율·전환 이후 매출 흐름을 나눈 뒤, 다음 예산의 한계 효율을 작은 단계로 검증하세요.",
+  "uplift-holdout-guide": "광고 업리프트는 노출 그룹과 광고를 보지 않은 홀드아웃 그룹의 차이로 광고가 실제로 추가한 성과를 추정합니다. 좋은 CPA만으로 증액하지 말고 절대 증가분과 불확실성을 함께 확인하세요.",
 };
 
 const EN_ANSWERS = {
@@ -66,18 +68,21 @@ const EN_ANSWERS = {
   "ios-att-skan-guide": "In the ATT and SKAdNetwork environment, iOS performance may not be visible at the same user level as before. Separate observable signals from possible missingness before assigning a cause to a change.",
   "ltv-cac-ratio": "LTV:CAC compares long-term customer value with acquisition cost. Even a familiar benchmark such as 3:1 is misleading unless customer scope, time window, and cost scope are aligned.",
   "marketing-mix-modeling": "MMM models the relationship of channels, base demand, and external factors over time to estimate contribution. Treat it as observational evidence and interpret it alongside experiments.",
+  "multicollinearity-mmm-guide": "High multicollinearity makes MMM unable to separate channel contribution reliably. Check VIF and linked channels first, then create independent budget movement or an experiment to strengthen the evidence.",
   "meta-advantage-plus-guide": "With Meta Advantage+ App campaigns, the main advertiser controls are the goal event, budget, creative, and measurement setup. Clear signals and creative experiments matter more than frequent edits that interrupt learning.",
   "performance-marketer-skills": "The core performance-marketing skills are problem definition, data-quality checks, experiment design, and interpretation—not memorizing platform controls. Automation makes the ability to explain a decision more valuable.",
   "performance-marketing-metrics": "Performance metrics need to connect cost, conversion, revenue, and retention to the business goal. CPA or ROAS alone cannot describe growth quality or long-term value.",
   "postback-integration-guide": "Troubleshoot postbacks in order: event definition, identifier transfer, send condition, and platform receipt. Zero received events do not automatically mean zero performance, so isolate each stage with logs.",
   "retargeting-reengagement-guide": "Retargeting addresses a different user state and goal from acquisition, so combining them can distort efficiency. Manage exclusion rules and incremental effect alongside attributed results.",
   "roas-improvement": "A ROAS decline is not a reason to cut budget from the average alone. Separate data maturity, channel efficiency, and post-conversion revenue, then validate the next unit of spend in small steps.",
+  "uplift-holdout-guide": "Advertising uplift estimates the outcome an ad truly added from the difference between exposed and holdout groups. Do not scale on CPA alone; check absolute lift and uncertainty as well.",
 };
 
 const CONDITION_GROUP_BY_SLUG = {
   "ab-testing": "experiment", "aha-event-ad-optimization": "causal", "aha-moment-retention": "causal",
   "cannibalization-organic-paid": "causal", "correlation-vs-causation": "causal", "incrementality-measurement": "causal",
   "marketing-mix-modeling": "causal", "ad-creative-specs-guide": "platform", "ad-creative-testing": "creative", "ad-machine-learning": "platform",
+  "multicollinearity-mmm-guide": "causal",
   "adjust-vs-appsflyer": "platform", "apple-search-ads-guide": "platform", "aso-basics-guide": "platform",
   "google-uac-optimization": "platform", "ios-att-skan-guide": "platform", "meta-advantage-plus-guide": "platform",
   "postback-integration-guide": "platform", "ad-performance-diagnosis": "measurement", "attribution-data-mismatch": "measurement",
@@ -87,6 +92,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "audience-broad-vs-narrow": "creative", "hook-3-seconds-framework": "creative", "retargeting-reengagement-guide": "creative",
   "ai-era-marketer": "editorial", "performance-marketer-skills": "editorial",
   "roas-improvement": "economics",
+  "uplift-holdout-guide": "causal",
 };
 
 const CONDITIONS = {
