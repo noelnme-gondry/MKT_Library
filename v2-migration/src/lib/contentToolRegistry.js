@@ -29,12 +29,14 @@ const BLOG_PRIMARY_TOOL = {
   "ios-att-skan-guide": "5-2",
   "ltv-cac-ratio": "5-2",
   "marketing-mix-modeling": "5-18",
+  "multicollinearity-mmm-guide": "5-25",
   "meta-advantage-plus-guide": "9-6",
   "performance-marketer-skills": "5-2",
   "performance-marketing-metrics": "5-2",
   "postback-integration-guide": "5-2",
   "retargeting-reengagement-guide": "5-22",
   "roas-improvement": "5-3",
+  "uplift-holdout-guide": "5-23",
 };
 
 const GLOSSARY_PRIMARY_TOOL = {
@@ -110,12 +112,14 @@ const BLOG_RELATED_GLOSSARY = {
   "ios-att-skan-guide": ["probabilistic-attribution", "mmp"],
   "ltv-cac-ratio": ["ltv", "cac", "roas"],
   "marketing-mix-modeling": ["adstock", "multicollinearity", "response-curve"],
+  "multicollinearity-mmm-guide": ["multicollinearity", "incrementality"],
   "meta-advantage-plus-guide": ["cpm", "cvr"],
   "performance-marketer-skills": ["cpa", "roas"],
   "performance-marketing-metrics": ["cpa", "cpi", "roas"],
   "postback-integration-guide": ["mmp", "deep-link"],
   "retargeting-reengagement-guide": ["cpm", "cvr"],
   "roas-improvement": ["roas", "marginal-cpa", "response-curve"],
+  "uplift-holdout-guide": ["uplift", "holdout-test", "incrementality"],
 };
 
 export function primaryToolForContent(slug, type = "blog") {

@@ -32,11 +32,13 @@ export const EN_BLOG_SLUGS = new Set([
   "ltv-cac-ratio",
   "marketing-mix-modeling",
   "meta-advantage-plus-guide",
+  "multicollinearity-mmm-guide",
   "performance-marketer-skills",
   "performance-marketing-metrics",
   "postback-integration-guide",
   "retargeting-reengagement-guide",
   "roas-improvement",
+  "uplift-holdout-guide",
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([
