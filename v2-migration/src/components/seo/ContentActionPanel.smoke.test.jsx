@@ -7,6 +7,8 @@ const TARGET_POSTS = [
   ["ad-performance-diagnosis", "5-21", "/tools/campaign-variance"],
   ["budget-marginal-efficiency", "5-3", "/tools/budget-allocation"],
   ["ad-creative-testing", "9-6", "/content/freshness"],
+  ["multicollinearity-mmm-guide", "5-25", "/tools/vif-multicollinearity"],
+  ["apple-search-ads-guide", "5-26", "/tools/asa-keyword-finder"],
 ];
 
 const ACTION_CASES = TARGET_POSTS.flatMap(([slug, toolId, path]) =>

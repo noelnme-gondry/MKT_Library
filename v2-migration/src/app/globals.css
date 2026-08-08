@@ -5074,6 +5074,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-page__ledger { display: grid; gap: 8px; margin-top: 18px; }
 .weekly-review-record { padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-lowest); }
 .weekly-review-record__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.weekly-review-record__source { color: var(--text-muted); text-decoration: none; }
+.weekly-review-record__source:hover, .weekly-review-record__source:focus-visible { color: var(--primary); text-decoration: underline; outline: 0; }
 .weekly-review-record__status { padding: 3px 6px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-muted); font-style: normal; }
 .weekly-review-record__status.due, .weekly-review-record__status.overdue { border-color: color-mix(in srgb, var(--danger) 48%, var(--border)); color: var(--danger); }
 .weekly-review-record__status.today { border-color: color-mix(in srgb, var(--warning) 52%, var(--border)); color: var(--warning); }
@@ -5127,6 +5129,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-record__candidate > p { grid-column: 1 / -1; margin: 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
 .weekly-review-record__candidate.not_due, .weekly-review-record__candidate.waiting_for_data, .weekly-review-record__candidate.incomplete_window { border-color: var(--border); background: var(--surface-container-low); }
 .weekly-review-record__candidate > .btn { margin: 0; color: var(--primary); }
+.weekly-review-record__source-link { display: inline-flex; margin-top: 10px; color: var(--primary); font-size: 10px; font-weight: 700; text-decoration: none; }
+.weekly-review-record__source-link:hover, .weekly-review-record__source-link:focus-visible { color: var(--text-primary); text-decoration: underline; outline: 0; }
 .weekly-review-record__complete { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .weekly-review-record__complete > .btn { margin: 0; }
 .weekly-review-record__complete small { color: var(--text-muted); font-size: 10px; }

@@ -50,6 +50,16 @@ describe("editorial SEO registries", () => {
     expect(getAllPosts("en").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
   });
 
+  it("keeps final search titles and descriptions unique within each locale", () => {
+    for (const locale of ["ko", "en"]) {
+      const posts = getAllPosts(locale);
+      for (const field of ["title", "description"]) {
+        const normalized = posts.map((post) => String(post[field] || "").trim().replace(/\s+/g, " ").toLocaleLowerCase(locale));
+        expect(new Set(normalized).size, `${locale} has duplicate final ${field} values`).toBe(posts.length);
+      }
+    }
+  });
+
   it("keeps direct answers and topic-specific applicability guidance complete", () => {
     for (const locale of ["ko", "en"]) {
       const posts = getAllPosts(locale);

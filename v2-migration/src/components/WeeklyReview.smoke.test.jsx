@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
+import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { useAppStore } from "@/store/useDataStore";
 
 describe("WeeklyReview", () => {
@@ -108,5 +109,34 @@ describe("WeeklyReview", () => {
     expect(screen.getAllByText("예정").length).toBeGreaterThan(0);
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("민감한 캠페인 이름");
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("12,000");
+  });
+
+  it("finds an actual from each record's data group and links back to the source tool", () => {
+    const baseGroups = useAppStore.getState().csvGroups;
+    const brandRows = Array.from({ length: 7 }, (_, index) => ({
+      date: `2020-01-${String(index + 2).padStart(2, "0")}`,
+      metrics: { cost: 100, actions: 10 },
+      dimensions: { channel: "Brand" },
+    }));
+    useAppStore.setState({
+      activeDataGroup: "efficiency",
+      csvData: { raw: [], headers: [], mapping: {}, fileName: "", canonicalData: { records: [] }, mappedRows: [] },
+      csvGroups: {
+        ...baseGroups,
+        brand_incrementality: {
+          raw: [], headers: [], mapping: {}, fileName: "brand.csv", canonicalData: { records: brandRows }, mappedRows: [],
+        },
+      },
+      decisionRecords: [{
+        id: "brand_decision", toolId: "5-24", action: "브랜드 예산 검토", metric: "CPA", baseline: "12원",
+        baselineDate: "2020-01-01", reviewDate: "2020-01-08", comparisonWindowDays: "7", actual: "", learning: "", status: "pending",
+        comparisonScope: createDecisionComparisonScope({ dataGroup: "brand_incrementality", filter: { channels: new Set(["Brand"]) } }),
+      }],
+    });
+
+    render(<WeeklyReview />);
+
+    expect(screen.getByText("10원 · CPA")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /원본 도구 열기/ }).getAttribute("href")).toBe("/tools/brand-campaign-incrementality");
   });
 });
