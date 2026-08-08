@@ -4,6 +4,7 @@ import {
   assessDecisionOutcome,
   decisionReviewAgeBucket,
   decisionMetricDirection,
+  decisionReviewFollowUpMode,
   decisionNumericComparison,
   getDecisionReviewBucket,
   getDecisionReviewStatus,
@@ -82,6 +83,23 @@ describe("decision review CSV contract", () => {
     expect(rows[1]).toMatchObject({ toolId: "9-6", status: "reviewed" });
     expect(getDecisionReviewStatus({ actual: "CPA 4,980" })).toBe("pending");
     expect(getDecisionReviewStatus({ reviewedAt: "2026-08-01T00:00:00.000Z" })).toBe("reviewed");
+  });
+
+  it("preserves only a valid internal source route and labels the later review method honestly", () => {
+    const [record] = normalizeDecisionReviewRows([{
+      tool_id: "5-18",
+      action: "MMM 결과 재확인",
+      metric: "CPA",
+      baseline_date: "2026-08-01",
+      comparison_scope: JSON.stringify({ dataGroup: "response", dimensions: {} }),
+      source_path: "/en/tools/marketing-response?stage=mmm&unsafe=1",
+    }]);
+    expect(record.sourcePath).toBe("/tools/marketing-response?stage=mmm");
+    expect(decisionReviewFollowUpMode(record)).toBe("period_auto");
+    expect(decisionReviewFollowUpMode({ metric: "최대 VIF" })).toBe("rerun_manual");
+    expect(decisionReviewFollowUpMode({ metric: "CPA" })).toBe("period_setup");
+    expect(decisionReviewFollowUpMode({ comparisonKind: "forecast_actual" })).toBe("forecast_auto");
+    expect(normalizeDecisionReviewRows([{ action: "외부 링크", source_path: "https://example.com" }])[0].sourcePath).toBe("");
   });
 
   it("classifies review dates without treating missing dates as upcoming", () => {

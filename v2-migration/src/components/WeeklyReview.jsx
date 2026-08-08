@@ -6,6 +6,7 @@ import Papa from "papaparse";
 import {
   assessDecisionOutcome,
   decisionReviewAgeBucket,
+  decisionReviewFollowUpMode,
   getDecisionReviewBucket,
   decisionMetricDirection,
   normalizeDecisionReviewRows,
@@ -105,6 +106,15 @@ const COPY = {
     outsideRangeHint: "실제값이 저장 당시 참고범위를 벗어났습니다. 원인과 구조변화를 함께 확인하세요.",
     pointOnlyHint: "저장된 참고범위가 없어 점예측과 실제값만 비교합니다.",
     openSource: "원본 도구 열기",
+    followUpMethod: "다음 검토 방식",
+    period_auto: "새 데이터 자동 대조",
+    period_autoHint: "같은 범위의 CPA·CPI·ROAS 후속 기간을 모두 받으면 실제값 후보를 제안합니다.",
+    period_setup: "자동 대조 설정 필요",
+    period_setupHint: "기준일과 비교 범위를 채우면 같은 기간의 후속 데이터를 자동 대조할 수 있습니다.",
+    forecast_auto: "예측 자동 대조",
+    forecast_autoHint: "마케팅 예측에 새 CSV를 올리면 저장한 기간·타깃·플랫폼의 실제값만 제안합니다.",
+    rerun_manual: "새 데이터 재분석 후 기록",
+    rerun_manualHint: "VIF·ASA·증분 추정처럼 진단형 결과는 원본 도구에서 새 데이터를 다시 분석한 뒤 실제 결과와 배운 점을 기록합니다.",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -189,12 +199,26 @@ const COPY = {
     outsideRangeHint: "The actual is outside the saved reference range. Check drivers and regime changes before acting.",
     pointOnlyHint: "No reference range was saved, so only the point forecast and actual are compared.",
     openSource: "Open source tool",
+    followUpMethod: "Next review method",
+    period_auto: "Automatic new-data comparison",
+    period_autoHint: "After a full matching CPA, CPI, or ROAS window is available in the same scope, we suggest an actual value.",
+    period_setup: "Set up automatic comparison",
+    period_setupHint: "Add a baseline date and comparison scope to compare an equally long follow-up window automatically.",
+    forecast_auto: "Automatic forecast comparison",
+    forecast_autoHint: "Upload a new CSV in Marketing Forecast to suggest only the actual for the saved period, target, and platform.",
+    rerun_manual: "Rerun with new data, then record",
+    rerun_manualHint: "For diagnostic results such as VIF, ASA, and incrementality, rerun the source tool with new data, then record the actual outcome and learning.",
   },
 };
 
 function toolName(toolId, locale) {
   const meta = findMeta(toolId);
   return localizedTool(toolId, locale)?.title || (locale === "en" ? meta?.titleEn : meta?.title) || toolId || "—";
+}
+
+function sourceToolHref(record, locale) {
+  if (record?.sourcePath) return `${locale === "en" ? "/en" : ""}${record.sourcePath}`;
+  return localizedTool(record?.toolId, locale)?.href || "";
 }
 
 function comparisonLabel(comparison, locale) {
@@ -417,11 +441,13 @@ export default function WeeklyReview({ locale = "ko" }) {
                 ? t.outsideRangeHint
               : t.pointOnlyHint;
             const comparableCandidate = comparableCandidates.get(record.id);
-            const sourceTool = localizedTool(record.toolId, locale);
+            const sourceHref = sourceToolHref(record, locale);
+            const followUpMode = decisionReviewFollowUpMode(record);
+            const isPeriodComparison = followUpMode === "period_auto" || followUpMode === "period_setup";
             const isReviewDue = Boolean(record.reviewDate) && record.reviewDate <= todayKey;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
-                {sourceTool ? <Link className="weekly-review-record__source" href={sourceTool.href}>{toolName(record.toolId, locale)} <span aria-hidden="true">→</span></Link> : <span>{toolName(record.toolId, locale)}</span>}
+                {sourceHref ? <Link className="weekly-review-record__source" href={sourceHref}>{toolName(record.toolId, locale)} <span aria-hidden="true">→</span></Link> : <span>{toolName(record.toolId, locale)}</span>}
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
@@ -466,7 +492,12 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <strong>{comparisonLabel(comparison, locale)}</strong>
                 <small>{outcomeHint}</small>
               </div>}
-              {!isForecastReview && status !== "reviewed" && comparableCandidate && <div className={`weekly-review-record__candidate ${comparableCandidate.state}`}>
+              <div className={`weekly-review-record__follow-up ${followUpMode}`}>
+                <span>{t.followUpMethod}</span>
+                <strong>{t[followUpMode]}</strong>
+                <p>{t[`${followUpMode}Hint`]}</p>
+              </div>
+              {!isForecastReview && isPeriodComparison && status !== "reviewed" && comparableCandidate && <div className={`weekly-review-record__candidate ${comparableCandidate.state}`}>
                 <span>{t.dataCandidate}</span>
                 {comparableCandidate.state === "ready" ? <>
                   <strong>{comparableCandidate.actual}</strong>
@@ -485,7 +516,7 @@ export default function WeeklyReview({ locale = "ko" }) {
                           ? t.candidateDatasetMismatch
                       : t.candidateMissingBasis}</p>}
               </div>}
-              {sourceTool && <Link className="weekly-review-record__source-link" href={sourceTool.href}>{t.openSource} <span aria-hidden="true">→</span></Link>}
+              {sourceHref && <Link className="weekly-review-record__source-link" href={sourceHref}>{t.openSource} <span aria-hidden="true">→</span></Link>}
               <div className="weekly-review-record__fields">
                 <label><span>{t.reviewDate}</span><input type="date" value={record.reviewDate} onChange={(event) => updateRecord(record.id, "reviewDate", event.target.value)} /></label>
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>

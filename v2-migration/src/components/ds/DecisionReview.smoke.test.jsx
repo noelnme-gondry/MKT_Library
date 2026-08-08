@@ -69,7 +69,7 @@ describe("DecisionReview", () => {
   });
 
   it("prefills explicit fields and shares a saved action with Weekly Review", () => {
-    const view = render(<DecisionReview toolId="5-3" decisionPrefill={{
+    const view = render(<DecisionReview toolId="5-3" sourcePath="/tools/budget-allocation" decisionPrefill={{
       conclusion: "검색 예산 확대 여지가 있습니다",
       action: "검색 예산을 10% 시험 증액",
       metric: "CPA",
@@ -82,6 +82,7 @@ describe("DecisionReview", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("검색 예산을 10% 시험 증액");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
     expect(useAppStore.getState().decisionRecords[0].raw).toBeUndefined();
+    expect(useAppStore.getState().decisionRecords[0].sourcePath).toBe("/tools/budget-allocation");
     view.unmount();
     render(<WeeklyReview />);
     expect(screen.getByRole("heading", { name: "검색 예산을 10% 시험 증액" })).toBeTruthy();

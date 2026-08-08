@@ -1,12 +1,14 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
-import { normalizeDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+import { resolvePathToId } from "@/lib/routeMap";
 
-export const DECISION_REVIEW_SCHEMA_VERSION = 6;
+export const DECISION_REVIEW_SCHEMA_VERSION = 7;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
+  "sourcePath",
   "locale",
   "conclusion",
   "action",
@@ -38,6 +40,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
 
 export const DECISION_REVIEW_COLUMNS = [
   "tool_id",
+  "source_path",
   "locale",
   "conclusion",
   "action",
@@ -71,6 +74,7 @@ export const DECISION_REVIEW_COLUMNS = [
 const FIELD_LIMITS = Object.freeze({
   id: 120,
   toolId: 32,
+  sourcePath: 220,
   locale: 5,
   conclusion: 500,
   action: 500,
@@ -239,6 +243,36 @@ function asFiniteNumberText(value) {
   return Number.isFinite(number) ? String(number) : "";
 }
 
+function normalizeSourcePath(value) {
+  const raw = asText(value, FIELD_LIMITS.sourcePath);
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || /[\r\n#]/.test(raw)) return "";
+  const [pathname, query = ""] = raw.split("?", 2);
+  const normalizedPath = (pathname.replace(/^\/en(?=\/|$)/, "") || "/").replace(/\/$/, "") || "/";
+  if (!resolvePathToId(normalizedPath)) return "";
+  const params = new URLSearchParams(query);
+  const stage = params.get("stage");
+  // 현재 반응 분석만 단계 쿼리를 사용한다. 다른 쿼리·외부 URL을 보존하지 않아
+  // 보관함 링크가 의도치 않은 화면이나 외부 대상으로 바뀌지 않게 한다.
+  return ["hub", "trend", "diagnose", "mmm", "lab"].includes(stage)
+    ? `${normalizedPath}?stage=${stage}`
+    : normalizedPath;
+}
+
+function hasComparableMetric(metric) {
+  const text = String(metric ?? "").normalize("NFKC").toUpperCase();
+  return /(^|[^A-Z])(?:CPA|CPI|ROAS)(?=$|[^A-Z])/.test(text);
+}
+
+// 새 CSV로 자동 대조할 수 있는 기록과, 같은 도구에서 재분석한 값을 사용자가
+// 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
+export function decisionReviewFollowUpMode(record = {}) {
+  if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
+  if (!hasComparableMetric(record.metric)) return "rerun_manual";
+  const baselineDate = asDate(record.baselineDate ?? record.baseline_date);
+  const scope = readDecisionComparisonScope(record.comparisonScope ?? record.comparison_scope);
+  return baselineDate && scope ? "period_auto" : "period_setup";
+}
+
 // CPA·ROAS처럼 업계 의미가 안정적인 지표만 자동 제안한다. 비용·전환수·매출처럼
 // 예산이나 목표에 따라 방향이 달라지는 지표는 사용자가 직접 방향을 고르기 전까지
 // 중립으로 남긴다.
@@ -304,6 +338,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   const record = {
     id: asText(field(row, "id", "record_id"), FIELD_LIMITS.id),
     toolId: asText(field(row, "toolId", "tool_id"), FIELD_LIMITS.toolId) || asText(fallbackToolId, FIELD_LIMITS.toolId),
+    sourcePath: normalizeSourcePath(field(row, "sourcePath", "source_path")),
     locale,
     conclusion: asText(field(row, "conclusion"), FIELD_LIMITS.conclusion),
     action,
@@ -352,6 +387,7 @@ export function sanitizeDecisionReviewRecords(records = []) {
 export function serializeDecisionReviewCsv(records = []) {
   const rows = normalizeDecisionReviewRows(records).map((record) => [
     record.toolId,
+    record.sourcePath,
     record.locale,
     record.conclusion,
     record.action,
