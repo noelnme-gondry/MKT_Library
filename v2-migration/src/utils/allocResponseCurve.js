@@ -1,6 +1,14 @@
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { SAT_CONFIG } from "@/utils/satMath";
 
+// 곡선 선분이 관측 지출 범위를 하나라도 벗어나는지 판별한다. Chart.js는 선분 단위로
+// 스타일을 적용하므로, 양 끝점 모두가 [xMin, xMax] 안일 때만 관측 구간으로 취급한다.
+export function isAllocCurveSegmentEstimated(x0, x1, xMin, xMax) {
+  const lo = Math.min(x0, x1);
+  const hi = Math.max(x0, x1);
+  return lo < xMin || hi > xMax;
+}
+
 /*
  * 채널 반응 곡선(PRISM 뷰 P4) — 순수 렌더 헬퍼(골든 아님, 엔진 수학 불변).
  * x = 일 지출, y = 예상 결과수(= x / predictSafeCpr(x)). 곡선은 이미 골든으로 잠긴

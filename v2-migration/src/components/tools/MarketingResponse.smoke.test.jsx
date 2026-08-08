@@ -1756,6 +1756,7 @@ describe("MarketingResponse render smoke", () => {
     expect(() => fireEvent.click(detailSummary)).not.toThrow();
     await flushRaf();
     expect(document.body.textContent).toContain("90% 구간");
+    expect(document.body.textContent).toContain("프로파일 최빈");
   });
 
   it("re-normalizes the RMS contribution share after excluding base demand and trend", async () => {

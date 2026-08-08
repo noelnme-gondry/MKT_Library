@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ALLOC_MATH } from "@/utils/allocationMath";
-import { allocResponseCurve } from "@/utils/allocResponseCurve";
+import { allocResponseCurve, isAllocCurveSegmentEstimated } from "@/utils/allocResponseCurve";
 
 // fitChannel(component) 없이 wrapper 직접 구성 — predictSafeCpr가 읽는 필드만.
 function wrap(points) {
@@ -14,6 +14,14 @@ describe("allocResponseCurve (5-3 PRISM P4 반응 곡선 헬퍼)", () => {
   it("null wrapper / 모델 없음 → null", () => {
     expect(allocResponseCurve(null, {})).toBeNull();
     expect(allocResponseCurve({ xMin: 0, xMax: 10 }, {})).toBeNull();
+  });
+
+  it("관측 최솟값 아래·최댓값 밖 선분도 모두 추정으로 표시한다", () => {
+    // predictSafeCpr는 xMin 아래도 경계값으로 clamp한다. 실선이면 관측값으로 오해되므로
+    // 어느 한 끝이라도 [xMin, xMax] 밖이면 점선(추정) 처리해야 한다.
+    expect(isAllocCurveSegmentEstimated(0, 90, 100, 1000)).toBe(true);
+    expect(isAllocCurveSegmentEstimated(100, 250, 100, 1000)).toBe(false);
+    expect(isAllocCurveSegmentEstimated(950, 1100, 100, 1000)).toBe(true);
   });
 
   it("격자점 steps+1개 + now/plan 마커가 범위 안에서 잡힌다", () => {

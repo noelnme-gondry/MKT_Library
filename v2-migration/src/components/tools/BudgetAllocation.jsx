@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
-import { allocResponseCurve } from "@/utils/allocResponseCurve";
+import { allocResponseCurve, isAllocCurveSegmentEstimated } from "@/utils/allocResponseCurve";
 import { getMappedRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import CsvUploader from "@/components/CsvUploader";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
@@ -1216,10 +1216,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             pointRadius: 0,
             borderWidth: 2,
             order: 2,
-            // 관측 범위(xMax) 밖은 점선+연한 색 — "추정" 시각 고지(§8 정직).
+            // 관측 범위[xMin, xMax] 밖은 점선+연한 색 — predictSafeCpr의 양쪽 clamp를
+            // 실제 관측처럼 보이게 하지 않는다(§8 정직).
             segment: {
-              borderDash: (c) => (c.p1.parsed.x > xMax ? [5, 4] : undefined),
-              borderColor: (c) => (c.p1.parsed.x > xMax ? colMuted : colLine),
+              borderDash: (c) => (isAllocCurveSegmentEstimated(c.p0.parsed.x, c.p1.parsed.x, rc.xMin, xMax) ? [5, 4] : undefined),
+              borderColor: (c) => (isAllocCurveSegmentEstimated(c.p0.parsed.x, c.p1.parsed.x, rc.xMin, xMax) ? colMuted : colLine),
             },
           },
           ...markerSet.map((m) => ({
