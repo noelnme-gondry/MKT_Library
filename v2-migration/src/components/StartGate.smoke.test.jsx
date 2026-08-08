@@ -25,8 +25,8 @@ describe("StartGate render smoke", () => {
     expect(useAppStore.getState().demoDisabled).toBe(true);
     // 도구 카드(질문/제목) 최소 1개.
     expect(document.querySelectorAll(".phase-card").length).toBeGreaterThan(0);
-    expect(screen.getByText(/CSV나 Google Sheets를 가져오세요/)).toBeTruthy();
-    expect(screen.getByText(/현재 컬럼으로 바로 쓸 수 있는 분석/)).toBeTruthy();
+    expect(screen.getByText(/데이터를 올리면, 첫 분석을 골라드립니다/)).toBeTruthy();
+    expect(screen.getByText(/최대 10개 분석의 조건/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "⬇ 기본 CSV 템플릿 받기" })).toBeTruthy();
     expect(document.querySelector('a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
@@ -48,8 +48,8 @@ describe("StartGate render smoke", () => {
 
   it("keeps upload, calculator, diagnosis, and generic example equivalent in English", () => {
     render(<StartGate locale="en" />);
-    expect(screen.getByText("Bring a CSV or Google Sheet")).toBeTruthy();
-    expect(screen.getByText(/which analyses your current columns support/)).toBeTruthy();
+    expect(screen.getByText("Upload data. Get the right first analysis.")).toBeTruthy();
+    expect(screen.getByText(/check up to 10 analysis requirements/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "⬇ Download starter CSV template" })).toBeTruthy();
     expect(document.querySelector('a[href="/en/calculator"]')).toBeTruthy();
     expect(document.querySelector('a[href="/en/diagnose"]')).toBeTruthy();

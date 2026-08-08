@@ -89,6 +89,11 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
       <div className="csv-guide-summary">
         <div className="csv-guide-line">
           <span className="csv-guide-when">{guide.when}</span>
+          {guide.outcomes?.length > 0 && (
+            <ol className="csv-guide-outcomes" aria-label={locale === "en" ? "What happens after upload" : "업로드 후 진행 순서"}>
+              {guide.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}
+            </ol>
+          )}
           {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
           <span className="csv-guide-effort">{T.effort(requiredNeeds.length, localizedTimeEstimate)}</span>
         </div>

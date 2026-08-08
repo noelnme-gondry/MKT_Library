@@ -34,6 +34,7 @@ export const EN_BLOG_SLUGS = new Set([
   "meta-advantage-plus-guide",
   "multicollinearity-mmm-guide",
   "performance-marketer-skills",
+  "performance-marketing-analysis-order",
   "performance-marketing-metrics",
   "postback-integration-guide",
   "retargeting-reengagement-guide",
