@@ -40,16 +40,16 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   const set = (key) => (event) => setSettings((current) => ({ ...current, [key]: event.target.value }));
 
   const downloadActions = () => {
-    const header = ["search_term", "campaign", "adgroup", "match_type", "action", "recommended_cpt", "actual_cpt", "actual_cpa", "pace", "exact_candidate", "negative_candidate"];
-    const lines = recommendations.map((row) => [row.term, row.campaign, row.adgroup, row.matchType, actionCopy(row.action.code, "en"), row.recommendedCpt ?? "", row.cpt ?? "", row.cpa ?? "", row.pace ?? "", row.isExactCandidate ? "yes" : "", row.isNegativeCandidate ? "yes" : ""].map(csvCell).join(","));
+    const header = ["search_term", "country", "campaign", "adgroup", "match_type", "action", "recommended_cpt", "actual_cpt", "actual_cpa", "campaign_pace", "exact_candidate", "negative_candidate"];
+    const lines = recommendations.map((row) => [row.term, row.country, row.campaign, row.adgroup, row.matchType, actionCopy(row.action.code, "en"), row.recommendedCpt ?? "", row.cpt ?? "", row.cpa ?? "", row.pace ?? "", row.isExactCandidate ? "yes" : "", row.isNegativeCandidate ? "yes" : ""].map(csvCell).join(","));
     downloadCsv(`\uFEFF${header.join(",")}\r\n${lines.join("\r\n")}\r\n`, "asa_keyword_actions");
   };
 
   const columns = [
-    { key: "term", label: tr("검색어", "Search term"), fmt: (value, row) => <><strong>{value}</strong><small className="asa-tool__sub">{[row.campaign, row.adgroup].filter(Boolean).join(" · ") || "—"}</small></> },
+    { key: "term", label: tr("검색어", "Search term"), fmt: (value, row) => <><strong>{value}</strong><small className="asa-tool__sub">{[row.country, row.campaign, row.adgroup].filter(Boolean).join(" · ") || "—"}</small></> },
     { key: "matchType", label: tr("매치", "Match") },
     { key: "cost", label: tr("소진", "Spend"), align: "right", fmt: (value) => money(value, locale) },
-    { key: "pace", label: tr("예산 대비", "Pacing"), align: "right", fmt: (value) => pct(value) },
+    { key: "pace", label: tr("캠페인 예산 대비", "Campaign pacing"), align: "right", fmt: (value) => pct(value) },
     { key: "cpa", label: "CPA", align: "right", fmt: (value) => money(value, locale) },
     { key: "action", label: tr("CPT 조치", "CPT action"), fmt: (value, row) => <><strong className={`asa-tool__action asa-tool__action--${value.code}`}>{actionCopy(value.code, locale)}</strong>{row.recommendedCpt != null && <small className="asa-tool__sub">{tr("권장", "Target")} {money(row.recommendedCpt, locale)} ({value.pct > 0 ? "+" : ""}{Math.round(value.pct * 100)}%)</small>}</> },
   ];
@@ -58,15 +58,16 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
     <ToolPageShell
       toolId="5-26"
       locale={locale}
+      titleLevel={2}
       title={tr("ASA 키워드 발굴 · CPT 조정", "ASA Keyword Finder · CPT Actions")}
       summary={<p>{tr("Search Match·Broad 검색어를 Exact로 승격할 후보와, 예산 대비 소진률·목표 CPA를 함께 반영한 CPT 증감 제안을 만듭니다. 실제 변경 전에는 최근 검색어와 앱스토어 콘솔의 정책·입찰 한도를 확인하세요.", "Find Exact-promotion candidates from Search Match and Broad terms, then combine pacing and target CPA for CPT changes. Check recent terms, policy, and bid limits in the Apple Ads console before changing anything.")}</p>}
       toc={hasData && analyzed ? [{ id: "asa-summary", title: tr("조치 요약", "Action summary") }, { id: "asa-actions", title: tr("키워드별 조치", "Keyword actions") }] : []}
     >
       <section className="block asa-tool__setup">
         <h2 className="section-title">{tr("판정 기준", "Decision thresholds")}</h2>
-        <p>{tr("CSV에 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 입력값은 이 화면에서만 사용됩니다.", "When daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. These inputs are used only in this screen.")}</p>
+        <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 예산 소진률은 캠페인 단위로 계산하고, 검색어 성과와 함께 CPT 조치에 반영합니다. 입력값은 이 화면에서만 사용됩니다.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. Pacing is calculated per campaign, then paired with each search term's performance for CPT actions. These inputs are used only in this screen.")}</p>
         <div className="asa-tool__inputs">
-          <label>{tr("일일 예산", "Daily budget")}<input inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
+          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
           <label>{tr("목표 CPA", "Target CPA")}<input inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
           <label>{tr("목표 CPT", "Target CPT")}<input inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
         </div>
@@ -79,7 +80,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
         <>
           <section className="block" id="asa-summary">
             <div className="asa-tool__summary-grid">
-              <div><span>{tr("Exact 승격 후보", "Exact candidates")}</span><strong>{exact.length}</strong><p>{tr("비-Exact · 3설치·8탭 이상 · 목표 달성", "Non-Exact · 3+ installs · 8+ taps · meets target")}</p></div>
+              <div><span>{tr("Exact 승격 후보", "Exact candidates")}</span><strong>{exact.length}</strong><p>{tr("Broad·Search Match · 3성과·8탭 이상 · 목표 달성", "Broad/Search Match · 3+ outcomes · 8+ taps · meets target")}</p></div>
               <div><span>{tr("CPT 증액 후보", "Raise CPT")}</span><strong>{recommendations.filter((row) => row.action.code === "raise").length}</strong><p>{tr("저소진 + 목표 달성", "Under-paced + meets target")}</p></div>
               <div><span>{tr("CPT 감액 후보", "Lower CPT")}</span><strong>{recommendations.filter((row) => row.action.code === "lower").length}</strong><p>{tr("과소진 + 목표 미달", "Over-paced + misses target")}</p></div>
               <div><span>{tr("제외 검토", "Review negatives")}</span><strong>{negatives.length}</strong><p>{tr("목표 CPA의 1.5배 이상 소진", "Spend/CPA is 1.5× over target")}</p></div>

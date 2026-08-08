@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { buildDemoCsv, buildMmmPriorDemo } from "./demoData";
 import { getMappedRows } from "./dashboardAggregator";
+import { DATA_GROUPS } from "@/lib/toolGroups";
+import { TOOL_REQUIRED_FIELDS } from "./csvConstants";
 import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
 import { CREATIVE_STATS } from "./creativeMath";
@@ -8,6 +10,28 @@ import { INCR_MATH } from "./incrMath";
 import { MMM_METH_CONFIG, mmmBayesianHealth, mmmBayesianRun, mmmResolveAbsorb } from "./mmmMath";
 
 describe("demo sanity", () => {
+  it("every data group has its own valid demo instead of a fallback dataset", () => {
+    DATA_GROUPS.forEach((group) => {
+      const demo = buildDemoCsv(group);
+      expect(demo.fileName).toMatch(/^demo_/);
+      expect(demo.raw.length).toBeGreaterThan(0);
+      expect(demo.headers.length).toBeGreaterThan(0);
+    });
+
+    // These three groups were previously sent to the efficiency fallback.
+    // Their published routes use the standard mapped-row path, so their demo
+    // must satisfy the route contract before the analyzer is auto-confirmed.
+    const dedicatedToolByGroup = { brand_incrementality: "5-24", collinearity: "5-25", asa_keyword: "5-26" };
+    Object.entries(dedicatedToolByGroup).forEach(([group, toolId]) => {
+      const demo = buildDemoCsv(group);
+      const mapped = new Set(Object.values(demo.mapping));
+      (TOOL_REQUIRED_FIELDS[toolId] || []).forEach((field) => {
+        if (typeof field === "string" && !mapped.has(field)) throw new Error(`${toolId} demo is missing required field: ${field}`);
+        if (typeof field !== "string" && !field.oneOf.some((key) => mapped.has(key))) throw new Error(`${toolId} demo is missing one of: ${field.oneOf.join(", ")}`);
+      });
+    });
+  });
+
   it("efficiency: retention < 설치·가입 both (리텐션 ≤ 100% 어느 분모든)", () => {
     const d = buildDemoCsv("efficiency");
     for (const r of d.raw) {

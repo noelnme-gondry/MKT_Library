@@ -49,6 +49,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const hasData = (csvData?.raw || []).length > 0 && (csvData?.headers || []).length > 0;
+  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
 
   const headers = csvData.headers || [];
   const resolvedDateColumn = dateColumn || findHeader(headers, csvData.mapping, "date", [/^date$/i, /날짜|일자/]);
@@ -60,9 +61,11 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     campaignOn: row?.[resolvedCampaignColumn],
   })), [csvData.raw, resolvedCampaignColumn, resolvedDateColumn, resolvedOutcomeColumn]);
   const currentSignature = `${csvData.fileName}|${csvData.raw?.length || 0}|${resolvedDateColumn}|${resolvedOutcomeColumn}|${resolvedCampaignColumn}`;
-  const result = useMemo(() => analysisSignature === currentSignature && resolvedDateColumn && resolvedOutcomeColumn && resolvedCampaignColumn
+  // 데모는 필요한 역할이 고정돼 있으므로 시작 버튼을 누른 즉시 결과를 보여 준다.
+  // 실제 파일은 사용자가 열 역할을 확인한 뒤에만 명시적으로 분석한다.
+  const result = useMemo(() => (isDemo || analysisSignature === currentSignature) && resolvedDateColumn && resolvedOutcomeColumn && resolvedCampaignColumn
     ? runBrandInterruptedTimeSeries({ rows: buildRows() })
-    : null, [analysisSignature, buildRows, currentSignature, resolvedCampaignColumn, resolvedDateColumn, resolvedOutcomeColumn]);
+    : null, [analysisSignature, buildRows, currentSignature, isDemo, resolvedCampaignColumn, resolvedDateColumn, resolvedOutcomeColumn]);
   const profile = result?.diagnostics?.ar1Profile || null;
   const profileReady = result?.ok === true && Array.isArray(result.profileInterval) && result.profileInterval.length === 2 && profile;
   const profileEstimate = profileReady ? result.profileIncrementalTotal : null;
