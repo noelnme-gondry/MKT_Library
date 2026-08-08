@@ -115,6 +115,7 @@ export function buildLlmsText() {
     "",
     markdownEntry({ title: "Sitemap", url: `${SITE_URL}/sitemap.xml`, description: "Complete index of canonical public pages." }),
     markdownEntry({ title: "RSS feed", url: `${SITE_URL}/rss.xml`, description: "Full-text Korean practical articles." }),
+    markdownEntry({ title: "RSS feed — English", url: `${SITE_URL}/en/rss.xml`, description: "Full-text English practical articles." }),
     "",
   ].join("\n");
 }

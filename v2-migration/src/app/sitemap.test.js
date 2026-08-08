@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sitemap from "./sitemap";
-import { SITE_URL } from "@/lib/routeMap";
+import { EN_READY_GUIDE_IDS, EN_READY_RESPONSE_SUBTOOL_IDS, EN_READY_TOOL_IDS, SITE_URL, idToPath } from "@/lib/routeMap";
+import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 describe("sitemap", () => {
   it("emits unique canonical URLs and only truthful modification dates", () => {
@@ -33,6 +34,18 @@ describe("sitemap", () => {
     expect(urls.has(`${SITE_URL}/en/dashboard`)).toBe(true);
     expect(urls.has(`${SITE_URL}/tools/experiment-analysis`)).toBe(true);
     expect(urls.has(`${SITE_URL}/en/tools/experiment-analysis`)).toBe(true);
+  });
+
+  it("emits accurate review or release dates for public guides and tools in both locales", () => {
+    const entries = new Map(sitemap().map((entry) => [entry.url, entry]));
+    const routeIds = [...EN_READY_GUIDE_IDS, ...EN_READY_TOOL_IDS, ...EN_READY_RESPONSE_SUBTOOL_IDS];
+
+    for (const routeId of routeIds) {
+      const lastModified = getPublicRouteLastModified(routeId);
+      expect(lastModified, `Missing public date for ${routeId}`).toMatch(/^20\d{2}-\d{2}-\d{2}$/);
+      expect(entries.get(`${SITE_URL}${idToPath(routeId)}`).lastModified.toISOString().slice(0, 10)).toBe(lastModified);
+      expect(entries.get(`${SITE_URL}/en${idToPath(routeId)}`).lastModified.toISOString().slice(0, 10)).toBe(lastModified);
+    }
   });
 
   it("contains localized legal and contact pages", () => {
