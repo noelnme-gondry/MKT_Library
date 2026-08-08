@@ -1,14 +1,14 @@
 ---
-title: "Apple Search Ads: Campaign Structure and Targeting"
-description: "Run ASA as one lumped campaign and only brand keywords spend. Why to split into brand, competitor, category, and discovery, plus match types."
-date: "2026-07-15"
+title: "Apple Search Ads (ASA) Keyword Discovery: Exact Promotion and CPT Bids"
+description: "Use ASA search-term reports to find Exact-promotion candidates and adjust CPT bids from budget pacing and target CPA."
+date: "2026-08-09"
 slug: "apple-search-ads-guide"
-keywords: "Apple Search Ads, ASA, ASA setup, ASA campaign structure, App Store search ads, ASA keywords, iOS app ads, search ads for apps"
+keywords: "Apple Search Ads, ASA, ASA keyword discovery, ASA Exact promotion, ASA CPT, ASA bid, ASA search term report, ASA campaign structure, App Store search ads"
 tags: ["ASA", "UA"]
 draft: false
 ---
 
-Turn on Apple Search Ads (ASA) as one lumped campaign, and a few days later the report shows only brand keywords spending — people who were going to search your app anyway. ASA sits at the top of App Store search, so it catches **high-intent users** and converts well. But to earn that, you have to structure the campaigns by purpose first.
+Run Apple Search Ads (ASA) as one lumped campaign, and a few days later the report may show brand terms taking most of the spend — people who may have searched for your app anyway. ASA sits at the top of App Store search and can reach **high-intent users**. To make that value repeatable, separate campaigns by purpose and run a loop for discovering terms, promoting Exact targets, and adjusting bids.
 
 ## Split campaigns by purpose
 
@@ -26,7 +26,35 @@ Mix purposes into one campaign and budget and bids tangle — cheap brand ends u
 - **Exact**: shows only on the exact keyword. Strong control, for validated keywords.
 - **Broad**: expands to variants and related terms. This is your discovery mode.
 
-The core of operations is the loop between them. Cast wide with discovery and broad, find winners in the search-term report, **promote to Exact**, and block poor performers as negative keywords. Running this discover → promote → block cycle weekly is the backbone of ASA.
+The operating loop sits between these match types. Explore with discovery and broad, find proven terms in the search-term report, **promote them to Exact**, and review poor performers for negative keywords. Running this discover → promote → block cycle is the backbone of ASA.
+
+![ASA keyword discovery, Exact promotion, and CPT action loop](/blog-assets-en/apple-search-ads-guide/keyword-loop.svg)
+
+## How to choose Exact-promotion candidates
+
+Exact is not for any term that happens to look good. It is where you place a search term that is proven enough to deserve its own control. Check all three conditions:
+
+- The term is still non-Exact, such as Search Match or Broad.
+- It has enough volume to judge, for example at least 3 installs and 8 taps.
+- It meets your target CPA.
+
+When a term passes, add it as an Exact target and review the original target and negative structure in the next report. Promotion does not automatically mean you should pause Broad. Exact gives a proven term its own budget and CPT control.
+
+## Raise CPT when pacing is low and performance is good
+
+If a campaign repeatedly spends far below its daily budget while CPA beats target, it may be missing auction opportunities. Before making a large budget change, raise **CPT in a small step** so you can isolate what changed.
+
+- Below 70% pacing while meeting target CPA: suggest CPT +10%.
+- Below 40% pacing while meeting target CPA: consider CPT +15%.
+
+If spend is high and CPA misses target, lower CPT instead.
+
+- Above 110% pacing while missing target CPA: suggest CPT −10%.
+- Above 140% pacing while materially missing target: consider CPT −15%.
+
+Low pacing with poor performance is not a reason to raise CPT. Check the search term, product page, market, and seasonality first. High pacing with good performance is usually a budget-limit and incrementality question, not a reason to bid even higher.
+
+The [ASA Keyword Finder · CPT Actions tool](/tools/asa-keyword-finder) applies these rules to a CSV and lists Exact-promotion, negative-review, and bid-action candidates.
 
 ## Initial setup order
 
@@ -43,4 +71,4 @@ Of the four, brand is the trickiest. The cheap CPA looks great, but many of thos
 
 ## Let's be honest
 
-ASA's UI, match types, and policies keep changing. The campaign structure here is close to a durable principle, but check the current console and Apple's official docs for the actual setup screens and serving rules before you build.
+ASA's UI, match types, and policies keep changing. These are operating principles; check the current console and Apple's official documentation for setup screens, eligible settings, and bid limits before you build.

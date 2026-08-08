@@ -181,6 +181,15 @@ export const IA = [
         seoDescriptionEn:
           "Learns a CPR/ROAS response curve per channel and calculates where to shift spend using a greedy algorithm. Free budget allocation tool — just upload a CSV.",
       },
+      {
+        id: "5-26",
+        title: "ASA 키워드 발굴 · CPT 조정",
+        titleEn: "ASA Keyword Finder · CPT Actions",
+        seoTitle: "ASA 키워드 발굴기: Exact 승격·CPT 입찰 조정",
+        seoDescription: "Apple Search Ads 검색어에서 Exact 승격 후보와 예산 대비 소진률·목표 CPA 기반 CPT 증감 조치를 찾습니다.",
+        seoTitleEn: "ASA Keyword Finder: Exact Promotion & CPT Bids",
+        seoDescriptionEn: "Find Exact-promotion candidates and CPT bid actions from Apple Search Ads search-term pacing and target CPA.",
+      },
     ],
   },
   {
@@ -237,6 +246,15 @@ export const IA = [
         seoTitleEn: "What Makes Users Stick? Free Aha-Moment Finder",
         seoDescriptionEn:
           "Find which early actions, done how many times within how many days, predict retention (F1/lift grid search). Free, upload an event-level CSV.",
+      },
+      {
+        id: "5-25",
+        title: "VIF 다중공선성 점검",
+        titleEn: "VIF Multicollinearity Check",
+        seoTitle: "VIF 다중공선성 진단: MMM 전 채널 지출 점검",
+        seoDescription: "채널별 지출이 같이 움직여 MMM 기여도 분리가 어려운지 VIF와 상관관계로 점검합니다.",
+        seoTitleEn: "VIF Multicollinearity Check Before MMM",
+        seoDescriptionEn: "Use VIF and channel-spend correlation to check whether MMM can separate channel contribution.",
       },
     ],
   },

@@ -67,7 +67,7 @@ describe("LandingPage render smoke", () => {
       "/content/freshness",
       "/tools/brand-campaign-incrementality",
     ]);
-    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(11);
+    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(13);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
@@ -145,7 +145,7 @@ describe("LandingPage render smoke", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my CSV", "Quick calculations", "Find the cause"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Find the cause.Choose one next move.");
-    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(11);
+    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(13);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
     expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
     expect(container.querySelector('a.dc-action-route[href="/en/calculator"]')).toBeTruthy();

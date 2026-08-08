@@ -129,6 +129,14 @@ export const ROUTE_SEO = {
       description: "Estimate brand-campaign lift in brand search, direct traffic, or signups, then route to ITS or holdout analysis based on the data you have.",
     },
   },
+  "5-25": {
+    ko: { title: "VIF 다중공선성 진단 | MMM 전 점검", description: "채널별 지출 CSV로 VIF와 상관관계를 확인해 MMM에서 채널 기여도를 분리할 수 있는지 먼저 점검합니다." },
+    en: { title: "VIF Multicollinearity Check | Before MMM", description: "Check VIF and channel-spend correlation from a CSV before attempting to separate channel contribution in MMM." },
+  },
+  "5-26": {
+    ko: { title: "ASA 키워드 발굴기 | Exact 승격·CPT 입찰 추천", description: "Apple Search Ads 검색어 리포트에서 Exact 승격 후보와 예산 소진·목표 CPA 기반 CPT 증액·감액 조치를 찾습니다." },
+    en: { title: "ASA Keyword Finder | Exact Promotion & CPT Bids", description: "Find Apple Search Ads Exact-promotion candidates and CPT bid actions based on budget pacing and target CPA." },
+  },
   "9-1": {
     ko: {
       title: "콘텐츠 요소 분석",

@@ -16,6 +16,8 @@ export const TOOL_GROUP = {
   "5-20": "aha",
   "5-23": "incrementality",
   "5-24": "brand_incrementality",
+  "5-25": "collinearity",
+  "5-26": "asa_keyword",
   "9-1": "content_attr",
   "9-2": "content_aha",
   "9-3": "content_traffic",

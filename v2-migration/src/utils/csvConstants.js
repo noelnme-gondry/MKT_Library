@@ -38,6 +38,55 @@ export const STANDARD_FIELDS = {
                 group: "디멘션",
                 oneOfGroup: "grouping",
               },
+              adgroup_name: {
+                label: "광고그룹명",
+                aliases: ["adgroup", "ad group", "ad_group", "adgroup name", "ad group name", "광고그룹", "광고 그룹", "광고그룹명"],
+                type: "string",
+                required: false,
+                group: "디멘션",
+              },
+              search_term: {
+                label: "검색어(ASA)",
+                aliases: ["search term", "search_term", "searchterm", "keyword text", "검색어", "검색어구문", "키워드"],
+                type: "string",
+                required: false,
+                group: "ASA",
+              },
+              match_type: {
+                label: "매치 타입(ASA)",
+                aliases: ["match type", "match_type", "matchtype", "keyword match type", "매치타입", "매치 타입", "검색 일치 유형"],
+                type: "string",
+                required: false,
+                group: "ASA",
+              },
+              daily_budget: {
+                label: "일일 예산(ASA)",
+                aliases: ["daily budget", "daily_budget", "dailybudget", "budget per day", "일일예산", "일일 예산"],
+                type: "number",
+                required: false,
+                group: "ASA",
+              },
+              target_cpa: {
+                label: "목표 CPA(ASA)",
+                aliases: ["target cpa", "target_cpa", "goal cpa", "목표cpa", "목표 cpa"],
+                type: "number",
+                required: false,
+                group: "ASA",
+              },
+              target_cpt: {
+                label: "목표 CPT(ASA)",
+                aliases: ["target cpt", "target_cpt", "goal cpt", "max cpt", "목표cpt", "목표 cpt"],
+                type: "number",
+                required: false,
+                group: "ASA",
+              },
+              current_cpt: {
+                label: "현재 CPT(ASA)",
+                aliases: ["current cpt", "current_cpt", "cpt bid", "bid amount", "bid", "현재cpt", "현재 cpt", "입찰가"],
+                type: "number",
+                required: false,
+                group: "ASA",
+              },
               country: {
                 label: "국가",
                 aliases: ["country", "mkt_country", "국가", "country_code", "마켓"],
@@ -1057,6 +1106,8 @@ export const TOOL_REQUIRED_FIELDS = {
                 "campaign_on",
                 { oneOf: ["brand_search", "direct_traffic", "installs", "actions"] },
               ],
+              "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
+              "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
               // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
               // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
               // 5-21과 동일, 화면 라벨만 콘텐츠 도메인(유입경로/카테고리/콘텐츠).
@@ -1112,6 +1163,16 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "cost", unlocks: "캠페인 투자 규모와 증분 성과를 함께 기록" },
                 { key: "country", unlocks: "향후 지역 대조군 설계" },
                 { key: "channel", unlocks: "브랜드 캠페인 매체 구분" },
+              ],
+              "5-25": [{ key: "campaign_name", unlocks: "채널 대신 캠페인 단위 공선성 점검" }],
+              "5-26": [
+                { key: "campaign_name", unlocks: "캠페인별 조치 분리" },
+                { key: "adgroup_name", unlocks: "광고그룹별 조치 분리" },
+                { key: "match_type", unlocks: "Exact 승격 후보 판정" },
+                { key: "daily_budget", unlocks: "검색어별 예산 대비 소진률" },
+                { key: "target_cpa", unlocks: "성과 기준 CPT 조정" },
+                { key: "target_cpt", unlocks: "CPT 권장값 기준" },
+                { key: "current_cpt", unlocks: "현재 CPT에서 증감액 계산" },
               ],
               "5-4": [
                 { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },

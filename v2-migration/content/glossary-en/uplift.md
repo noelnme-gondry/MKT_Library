@@ -1,10 +1,10 @@
 ---
-term: "Uplift"
+term: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
-description: "Uplift is the net increase in performance caused by advertising, measured by comparing an exposed group against a holdout group that saw no ads."
-date: "2026-07-18"
+description: "Uplift is the net increase advertising caused, measured by comparing an exposed group with a holdout group. Learn why it differs from CPA and ROAS."
+date: "2026-08-09"
 slug: "uplift"
-keywords: "uplift, uplift meaning, incrementality, net lift, holdout test, causal lift"
+keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement"]
 draft: false
@@ -13,6 +13,8 @@ draft: false
 ## In one line
 
 **Uplift** is the performance of a group exposed to advertising minus the baseline — what would have happened anyway even without the ad.
+
+![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 
 ## Why it matters
 
@@ -23,6 +25,10 @@ The standard way to measure it is a **[holdout test](/glossary/holdout-test)**: 
 ## Why CPA/ROAS alone isn't enough
 
 CPA and ROAS only tell you what happened among people who saw the ad — they can't tell you whether the ad caused it. If uplift is close to zero, a great-looking CPA can still mean the ad wasn't actually doing much.
+
+## How is uplift calculated?
+
+Start with the conversion-rate difference between a randomized exposed group and holdout group. If the exposed group converts at 8% and the holdout at 5%, uplift is 3 percentage points. If assignment was not randomized, or the groups differ in audience or timing, that difference alone is not proof of ad impact. Use the [Incrementality Analysis tool](/tools/incrementality) to choose a holdout, launch, or shutdown method that matches your data.
 
 ## Go deeper
 

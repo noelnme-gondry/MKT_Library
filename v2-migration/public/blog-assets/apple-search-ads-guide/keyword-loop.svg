@@ -1,0 +1,9 @@
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="250" fill="#fff"/>
+  <g fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"><rect x="28" y="70" width="150" height="82" rx="12"/><rect x="214" y="70" width="150" height="82" rx="12"/><rect x="400" y="70" width="150" height="82" rx="12"/><rect x="586" y="70" width="150" height="82" rx="12"/></g>
+  <g fill="#0f172a" font-size="16" font-weight="700" text-anchor="middle"><text x="103" y="104">Discovery · Broad</text><text x="289" y="104">검색어 리포트</text><text x="475" y="104">Exact 승격</text><text x="661" y="104">CPT 조정 · 제외</text></g>
+  <g fill="#64748b" font-size="12" text-anchor="middle"><text x="103" y="128">넓게 탐색</text><text x="289" y="128">탭·설치·CPA 확인</text><text x="475" y="128">성과 좋은 검색어 고정</text><text x="661" y="128">소진·목표로 입찰 판단</text></g>
+  <g stroke="#2563eb" stroke-width="2.5" fill="none"><path d="M178 111h30"/><path d="M364 111h30"/><path d="M550 111h30"/><path d="M660 174c-80 55-460 55-557 0"/></g>
+  <g fill="#2563eb"><path d="M207 105l9 6-9 6z"/><path d="M393 105l9 6-9 6z"/><path d="M579 105l9 6-9 6z"/><path d="M101 176l10-4-2 10z"/></g>
+  <text x="380" y="225" fill="#475569" font-size="13" text-anchor="middle">좋은 검색어는 통제 가능한 Exact로, 나쁜 검색어는 제외 검토로 되돌립니다.</text>
+</svg>

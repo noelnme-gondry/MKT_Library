@@ -50,6 +50,8 @@ v2-migration/
 | `/tools/experiment-analysis` | 5-4 (+5-7·5-15 legacy) | tools/AbTestHoldout.jsx (A/B) |
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (통제군·전후 on/off) |
 | `/tools/brand-campaign-incrementality` | 5-24 | tools/BrandCampaignIncrementality.jsx (ITS·AR(1)) |
+| `/tools/vif-multicollinearity` | 5-25 | tools/MulticollinearityChecker.jsx (채널 지출 VIF·상관) |
+| `/tools/asa-keyword-finder` | 5-26 | tools/AsaKeywordFinder.jsx (Exact 승격·CPT 조정) |
 | `/tools/marketing-response` | 5-18 | tools/MarketingResponse.jsx (MMM·회귀·예측) |
 | `/tools/paid-organic-trend` | 5-18-paid-organic | tools/PaidOrganicTrend.jsx |
 | `/tools/marketing-trend` · `/tools/cannibalization-diagnosis` · `/tools/mmm-contribution` · `/tools/marketing-forecast` | 5-18-{trend,cannibal,mmm,forecast} | MarketingResponse.jsx (stage 진입) |
@@ -79,6 +81,8 @@ v2-migration/
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군) + `incrPrePostMath.js`(전후·DiD·Welch) | 3방법 탭, CSV 그룹 독립 |
 | BrandCampaignIncrementality.jsx (5-24) | `brandIncrementalityMath.js` | ITS·AR(1) 추론·HAC 소표본 보정·rho 프로파일 구간 |
+| MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`) | MMM 전 지출 패널의 VIF·상관 진단. 높은 VIF는 기여도 분리 거부 신호 |
+| AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`regLabMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` | UI/상태와 모델·차트·export 분리. 단일 CSV+`mmmColMap`. 예측 밴드는 인과 CI가 아닌 **과거 잔차 참고 범위** |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
 | ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | HC3 robust SE·BH 다중검정·forest plot. 역행렬 검증 실패 시 추론 거부 |
@@ -94,7 +98,7 @@ v2-migration/
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js`(Zustand)**: `currentRouteId`(URL 미러)·`IA`/`PHASES`·`dashboardFilter`·`isDarkMode`·`isCmdkOpen`·`viewConfig`·`decisionRecords`·`analyzedByGroup`. `requestAd(cb)`는 광고 제거 후 남은 no-op 래퍼(§12.26).
 - **persist**: 설정만 localStorage(`viewConfig`·`customMetrics`·`customCharts`·`analystMode`, name `mkt_view_config`, `partialize=persistPartialize`). **원본 CSV·매핑·필터 Set은 절대 저장 X**(§2.2). 결정 요약은 사용자가 명시적으로 켠 경우만. 서버/테스트엔 `noopStorage` 폴백.
-- **CSV 그룹 스코프**: `csvGroups` 슬라이스 = `efficiency`·`creative`·`experiment`·`response`·`aha`·`incrementality`·`brand_incrementality`·`content_attr`·`content_aha`·`content_traffic`·`content_freshness`·`content_dashboard`. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 스왑, `setCsvData`가 활성 그룹+미러 기록). **소비자는 `s.csvData`만 읽는다.**
+- **CSV 그룹 스코프**: `csvGroups` 슬라이스 = `efficiency`·`creative`·`experiment`·`response`·`aha`·`incrementality`·`brand_incrementality`·`collinearity`·`asa_keyword`·`content_attr`·`content_aha`·`content_traffic`·`content_freshness`·`content_dashboard`. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 스왑, `setCsvData`가 활성 그룹+미러 기록). **소비자는 `s.csvData`만 읽는다.**
   - `TOOL_GROUP`(`lib/toolGroups.js`)이 `라우트 id → 그룹`, **`DATA_GROUPS`(=그 값 집합)가 그룹 목록의 SSOT**. 세 맵(`csvGroups`·`analyzedByGroup`·`dashboardFilterGroups`)은 `buildGroupMap()`으로 **파생**하므로 라우트만 추가하면 자동으로 따라온다(PR #610). 손으로 나열하던 시절 누락된 키가 미러를 `undefined`로 만들어 도구가 렌더 throw로 죽었다(5-24, PR #608) — 다시 나열식으로 되돌리지 말 것. 구조 가드는 `useDataStore.test.js`.
   - CSV를 **쓰는** 라우트는 도구가 아니어도 `TOOL_GROUP`에 등록(`start-gate`→efficiency). 읽기·쓰기 그룹이 갈리면 업로드가 사라진다(PR #604).
 - **데이터 파이프라인**: 업로드(`CsvUploader.jsx` — PapaParse/xlsx 워커 + **도구 스코프 자동매핑** `lib/data-import/mappingContract.js`) 또는 공개 시트(`GoogleSheetConnect.jsx`, 브라우저 직접 조회) → `csvData`+`canonicalData`(정규화 공통 레코드) → **`getMappedRows(csvData)`**(표준키 행, **cost↔spend 별칭 채움**) → 도구별 엔진 입력 → 순수엔진 → 렌더. 앱 서버 경유 없음, 원본 행·`canonicalData`는 영속화하지 않음.
@@ -111,7 +115,7 @@ v2-migration/
 ## 5.1 콘텐츠 SEO·전환 경로
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
 - **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
-- **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
+- **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 
 ## 6. 테스트 & 린트 (배포 게이트)

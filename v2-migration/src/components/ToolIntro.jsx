@@ -28,6 +28,14 @@ const INTRO = {
     ko: ["브랜드 캠페인 증분 분석", "브랜드 검색·직접 유입·가입의 변화에서 캠페인이 실제로 추가한 성과를 추정합니다."],
     en: ["Brand campaign incrementality", "Estimate the outcomes a brand campaign added in brand search, direct traffic, and signups."],
   },
+  "5-25": {
+    ko: ["VIF 다중공선성 점검", "MMM 전에 채널별 지출이 너무 같이 움직여 기여도를 나눌 수 없는지 확인합니다."],
+    en: ["VIF multicollinearity check", "Before MMM, check whether channel spend moves too tightly together to separate contribution."],
+  },
+  "5-26": {
+    ko: ["ASA 키워드 발굴 · CPT 조정", "검색어를 Exact로 승격할 후보와 예산 소진·성과에 맞춘 CPT 조치를 한 번에 정리합니다."],
+    en: ["ASA keyword finder · CPT actions", "Find Exact-promotion candidates and CPT actions from search-term pacing and performance."],
+  },
   "9-1": {
     ko: ["콘텐츠 요소 분석", "후킹·형식·길이·메시지 중 어떤 요소가 성과와 연결되는지 통제변수와 함께 봅니다."],
     en: ["Content element analysis", "Estimate how hooks, formats, length, and message angles relate to results while controlling for other factors."],

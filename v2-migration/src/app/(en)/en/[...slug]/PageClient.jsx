@@ -30,11 +30,13 @@ const PaidOrganicTrend = dyn(() => import("@/components/tools/PaidOrganicTrend")
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
 const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCampaignIncrementality"));
+const MulticollinearityChecker = dyn(() => import("@/components/tools/MulticollinearityChecker"));
+const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 // EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
 // 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
 const SopContent = dyn(() => import("@/components/sops/SopContent"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
@@ -84,6 +86,8 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "5-24" && <BrandCampaignIncrementality locale="en" />}
+            {routeId === "5-25" && <MulticollinearityChecker locale="en" />}
+            {routeId === "5-26" && <AsaKeywordFinder locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} locale="en" />}
