@@ -2,11 +2,16 @@ import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_RESPO
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 import { CALCULATOR_ORDER } from "@/lib/calculators";
+import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
 const latestDate = (items) => {
   const dates = items.map((item) => item.updated || item.date).filter(Boolean).sort();
   return dates.length ? new Date(dates[dates.length - 1]) : undefined;
+};
+const routeLastModified = (routeId) => {
+  const value = getPublicRouteLastModified(routeId);
+  return value ? new Date(`${value}T00:00:00Z`) : undefined;
 };
 
 // Next 16 auto-serves this at /sitemap.xml. Tool/SOP URLs derive from the routeMap
@@ -16,6 +21,7 @@ export default function sitemap() {
   const seen = new Set();
   const routeEntries = ROUTES.filter((r) => isRoutePublished(r) && !seen.has(r.slug) && seen.add(r.slug)).map((r) => ({
     url: BASE + (r.slug === "/" ? "" : r.slug),
+    lastModified: routeLastModified(r.id),
     changeFrequency:
       r.slug === "/"
         ? "weekly"
@@ -33,6 +39,7 @@ export default function sitemap() {
   // 독립 URL이다. 일반 도구 여정에는 넣지 않고 sitemap에는 명시적으로 포함한다.
   const responseSubtoolEntries = ROUTES.filter((r) => r.publication === "subtool").map((r) => ({
     url: BASE + r.slug,
+    lastModified: routeLastModified(r.id),
     changeFrequency: "weekly",
     priority: 0.75,
   }));
@@ -124,6 +131,7 @@ export default function sitemap() {
   // 새 가이드 번역 시 레지스트리에 추가하면 여기도 자동 반영(하드코딩 표류 방지).
   const enGuideEntries = [...EN_READY_GUIDE_IDS].map((id) => ({
     url: `${BASE}/en${idToPath(id)}`,
+    lastModified: routeLastModified(id),
     changeFrequency: "monthly",
     priority: 0.6,
   }));
@@ -144,11 +152,13 @@ export default function sitemap() {
   // 레지스트리에 추가되는 순간 이 목록도 자동으로 늘어남(하드코딩 없음).
   const enToolEntries = [...EN_READY_TOOL_IDS].map((id) => ({
     url: `${BASE}/en${idToPath(id)}`,
+    lastModified: routeLastModified(id),
     changeFrequency: "weekly",
     priority: 0.8,
   }));
   const enResponseSubtoolEntries = [...EN_READY_RESPONSE_SUBTOOL_IDS].map((id) => ({
     url: `${BASE}/en${idToPath(id)}`,
+    lastModified: routeLastModified(id),
     changeFrequency: "weekly",
     priority: 0.75,
   }));

@@ -36,7 +36,7 @@ describe("llms.txt", () => {
   it("uses unique same-origin absolute links that resolve to canonical public pages", () => {
     const links = markdownLinks(buildLlmsText());
     const sitemapUrls = new Set(sitemap().map((entry) => entry.url));
-    const machineIndexes = new Set([`${SITE_URL}/sitemap.xml`, `${SITE_URL}/rss.xml`]);
+    const machineIndexes = new Set([`${SITE_URL}/sitemap.xml`, `${SITE_URL}/rss.xml`, `${SITE_URL}/en/rss.xml`]);
     const expectedLinkCount = 10
       + indexableAnalysisRoutes("ko").length
       + indexableAnalysisRoutes("en").length

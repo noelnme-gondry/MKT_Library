@@ -15,14 +15,14 @@ v2-migration/
 │  │  ├─ (ko|en)/calculator/        # 계산기 허브 + [slug]
 │  │  ├─ (ko|en)/diagnose/·contact/·privacy/·terms/·templates/
 │  │  ├─ (ko|en)/weekly-review/·weekly-report/   # 결정 검토 루프 · 주간 리포트
-│  │  ├─ sitemap.js·rss.xml/·llms.txt/           # SEO 파생(공개 routeMap + 발행 콘텐츠, 개수 하드코딩 금지)
+│  │  ├─ sitemap.js·rss.xml/·(en)/en/rss.xml/·llms.txt/  # SEO 파생(공개 routeMap + 발행 콘텐츠, 개수 하드코딩 금지)
 │  │  ├─ og-card.png/·og/tool/[id]/              # 전역/도구별 동적 OG 카드
 │  │  ├─ layout.js·global-error.js               # 폰트·SEO 메타·GTM/GA4/AdSense·초기 테마·<GaPageviews/>
 │  │  └─ globals.css                             # ★ 전 디자인 시스템 (단일 파일, 쪼개지 말 것)
 │  ├─ store/useDataStore.js         # ★ SSOT: Zustand — IA·csvGroups·csvData 미러·필터·라우트·viewConfig
 │  ├─ utils/                        # ★ 순수 통계엔진 (*Math.js, 수학 불변·골든) + 표시/데이터 헬퍼
 │  │  └─ metrics/                   # 지표 SSOT: metricRegistry·customMetric·chartBuilder·metricView
-│  ├─ lib/                          # 도메인 로직 (라우팅·SEO·데이터임포트·분석라우터·결정검토…)
+│  ├─ lib/                          # 도메인 로직 (라우팅·SEO·SOP 출처/검수일·발행일·RSS·데이터임포트·분석라우터…)
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
@@ -110,7 +110,7 @@ v2-migration/
 
 ## 5.1 콘텐츠 SEO·전환 경로
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
-- **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함.
+- **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 

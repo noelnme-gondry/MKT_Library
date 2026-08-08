@@ -2,6 +2,7 @@
 import React from 'react';
 import { IA, displayGroupNumber, displayItemNumber } from '@/store/useDataStore';
 import { copyToClipboard } from '@/utils/toast';
+import { getSopEditorial } from '@/lib/sopEditorial';
 
 // 결정론적 element id 생성기 (§3 Math.random 금지). 렌더마다 0부터 재시작해
 // 같은 콘텐츠는 byte-identical 마크업을 낸다.
@@ -20,6 +21,28 @@ function renderFeedbackNudge(pageId) {
 
 function renderDemoBanner(pageId) {
   return ""; // v2에서는 삭제됨 (SOP용 레거시 호환)
+}
+
+function SopEditorialReferences({ routeId, locale }) {
+  const editorial = getSopEditorial(routeId, locale);
+  if (!editorial) return null;
+  const isEnglish = locale === "en";
+  return (
+    <aside className="sop-editorial" aria-label={isEnglish ? "Sources and review information" : "출처 및 검수 정보"}>
+      <div className="sop-editorial__meta">
+        <strong>{isEnglish ? "Sources & review" : "출처 · 검수"}</strong>
+        <span>{isEnglish ? "Reviewed" : "검수일"} · {editorial.reviewedAt}</span>
+      </div>
+      <p>{editorial.reviewer}</p>
+      <ul>
+        {editorial.sources.map((source) => (
+          <li key={source.url}>
+            <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title} ↗</a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
 }
 
 function escapeHtml(unsafe) { if(!unsafe) return ''; return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
@@ -3016,11 +3039,14 @@ function SopContentEn({ routeId, initialData = null }) {
   }
   if (!html) return null;
   return (
-    <div
-      ref={containerRef}
-      className="tab-pane active"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="tab-pane active"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      <SopEditorialReferences routeId={routeId} locale="en" />
+    </>
   );
 }
 
@@ -3061,10 +3087,13 @@ function SopContentKo({ routeId }) {
     );
   }
   return (
-    <div
-      ref={containerRef}
-      className="tab-pane active"
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="tab-pane active"
+        dangerouslySetInnerHTML={{ __html: htmlContent }}
+      />
+      <SopEditorialReferences routeId={routeId} locale="ko" />
+    </>
   );
 }

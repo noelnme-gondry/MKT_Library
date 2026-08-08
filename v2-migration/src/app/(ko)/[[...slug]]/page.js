@@ -5,6 +5,7 @@ import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 import { withOpenGraphBase } from "@/lib/openGraph";
+import { getSopEditorial } from "@/lib/sopEditorial";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -58,6 +59,7 @@ async function PageWithStructuredData({ params }) {
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "ko") : null;
   const searchContent = routeId ? getResponseSubtoolContent(routeId, "ko") : null;
+  const editorial = routeId ? getSopEditorial(routeId, "ko") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
   const toolUrl = routeId ? `${SITE_URL}${idToPath(routeId)}` : "";
   const structuredData = isTool && (meta || routeSeo) ? {
@@ -95,9 +97,22 @@ async function PageWithStructuredData({ params }) {
       acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
   } : null;
+  const sopStructuredData = editorial ? {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: routeSeo?.title || meta?.seoTitle || meta?.title || routeId,
+    description: routeSeo?.description || meta?.seoDescription || meta?.desc,
+    url: toolUrl,
+    inLanguage: "ko-KR",
+    dateModified: editorial.reviewedAt,
+    author: { "@type": "Organization", name: "Growth Opt Playbook", url: SITE_URL },
+    publisher: { "@type": "Organization", name: "Growth Opt Playbook", url: SITE_URL },
+    citation: editorial.sources.map((source) => source.url),
+  } : null;
   return <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
+    {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
     <PageClient params={params} />
   </>;
 }

@@ -7,6 +7,7 @@ import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 import { readSopData } from "@/lib/sopData";
 import { withOpenGraphBase } from "@/lib/openGraph";
+import { getSopEditorial } from "@/lib/sopEditorial";
 import PageClient from "./PageClient";
 
 // EN 가이드({id}.en.json)의 title/deck을 메타데이터로 재사용 — generateMetadata는
@@ -56,6 +57,7 @@ async function PageWithStructuredData({ params }) {
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "en") : null;
   const searchContent = routeId ? getResponseSubtoolContent(routeId, "en") : null;
+  const editorial = routeId ? getSopEditorial(routeId, "en") : null;
   const initialSopData = routeId && EN_READY_GUIDE_IDS.has(routeId) ? readSopData(routeId, "en") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));
   const toolUrl = routeId ? `${SITE_URL}/en${idToPath(routeId)}` : "";
@@ -94,9 +96,22 @@ async function PageWithStructuredData({ params }) {
       acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
   } : null;
+  const sopStructuredData = editorial ? {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: initialSopData?.title || routeSeo?.title || meta?.seoTitleEn || meta?.titleEn || meta?.title || routeId,
+    description: initialSopData?.deck?.replace(/<[^>]+>/g, "") || routeSeo?.description || meta?.seoDescriptionEn || meta?.seoDescription || meta?.desc,
+    url: toolUrl,
+    inLanguage: "en",
+    dateModified: editorial.reviewedAt,
+    author: { "@type": "Organization", name: "Growth Opt Playbook", url: SITE_URL },
+    publisher: { "@type": "Organization", name: "Growth Opt Playbook", url: SITE_URL },
+    citation: editorial.sources.map((source) => source.url),
+  } : null;
   return <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
+    {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
     <PageClient params={params} initialSopData={initialSopData} />
   </>;
 }
