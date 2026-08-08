@@ -1,11 +1,12 @@
 ---
-term: "업리프트(Uplift)란? 홀드아웃 테스트로 광고 순수 증가분 측정"
+term: "업리프트 (Uplift)"
+seoTitle: "업리프트 뜻 | 홀드아웃으로 보는 광고 순수 증가분"
 shortDef: "광고를 봤을 때와 안 봤을 때를 비교해, 광고가 실제로 더 만들어낸 순수 증가분"
 description: "업리프트란 광고 노출·비노출(홀드아웃) 그룹을 비교해 광고가 실제로 만든 순수 증가분을 뜻합니다. CPA·ROAS와 다른 이유와 측정법을 설명합니다."
 date: "2026-08-09"
 slug: "uplift"
 keywords: "업리프트, 업리프트 뜻, 업리프트란, uplift meaning, 인크리멘탈리티, 증분 효과, 홀드아웃 테스트, 순수 증가분, 광고 업리프트"
-relatedPosts: ["incrementality-measurement"]
+relatedPosts: ["incrementality-measurement", "uplift-holdout-guide"]
 category: "측정·분석 방법론"
 draft: false
 ---
