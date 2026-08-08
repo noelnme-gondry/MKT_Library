@@ -6,9 +6,9 @@ describe("symptom diagnosis router", () => {
     expect(getDiagnoseSymptoms("ko").map((item) => item.id)).toEqual(getDiagnoseSymptoms("en").map((item) => item.id));
   });
 
-  it("prioritizes incrementality when causal proof is the goal", () => {
+  it("prioritizes incrementality when causal proof is the goal, even with observational paid-organic data", () => {
     const diagnosis = buildSymptomDiagnosis({ symptom: "organic-drop", data: "organic", goal: "proof" });
-    expect(diagnosis.steps.map((step) => step.toolId)).toEqual(["5-18", "5-23", "5-3"]);
+    expect(diagnosis.steps.map((step) => step.toolId)).toEqual(["5-23", "5-18", "5-3"]);
   });
 
   it("prioritizes creative analysis when creative data is available", () => {
