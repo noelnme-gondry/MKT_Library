@@ -18,6 +18,10 @@ export const ANALYSIS_CONTRACTS = {
   "5-18": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
   "5-23": { minRows: 2, minPeriods: 0, priority: 7 },
   "5-24": { minRows: 28, minPeriods: 28, priority: 8 },
+  // 검색어 리포트와 소재 일별 리포트는 일반 운영 CSV와 구조가 달라, /start에서
+  // 개별 도구의 매핑 계약으로 별도 판정해야 한다.
+  "5-26": { minRows: 1, minPeriods: 1, priority: 2 },
+  "9-6": { minRows: 8, minPeriods: 7, minEntityActivePeriods: 4, entityFields: ["creative_id"], spendKeys: ["spend", "cost"], resultKeys: ["installs"], priority: 3 },
 };
 
 function missingFields(required = [], mapped = new Set()) {
@@ -155,6 +159,12 @@ function defaultRecommendationReason({ toolId, periodCount, entityCoverage, loca
     "5-3": locale === "en"
       ? `${entityLabel}-level performance across ${periodLabel} is ready for increase/decrease budget scenarios.`
       : `${periodLabel}의 ${entityLabel}별 성과가 있어 증액·감액 예산 시나리오를 비교할 수 있습니다.`,
+    "5-26": locale === "en"
+      ? `Search terms, taps, spend, and outcomes are ready to review Exact promotion and CPT actions.`
+      : `검색어·탭·비용·성과가 있어 Exact 승격 후보와 CPT 조정 후보를 바로 확인할 수 있습니다.`,
+    "9-6": locale === "en"
+      ? `Creative-level delivery and outcome data can identify fatigue and the next replacement candidates.`
+      : `소재별 노출·탭·성과가 있어 피로도와 다음 교체 후보를 확인할 수 있습니다.`,
   };
   return reasons[toolId] || null;
 }
@@ -212,6 +222,9 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     warnings: details,
   });
   const recommendation = diagnosis?.byTool?.[toolId] || null;
+  const schemaRecommendationScore = toolId === "5-26" && mapped.has("search_term")
+    ? 120
+    : (toolId === "9-6" && mapped.has("creative_id") ? 110 : 0);
   return {
     toolId,
     status,
@@ -225,7 +238,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     statisticalStatus,
     quality,
     entityCoverage,
-    recommendationScore: recommendation?.score || 0,
+    recommendationScore: recommendation?.score || schemaRecommendationScore,
     recommendationReason: recommendation?.reason || (!isBlocked
       ? defaultRecommendationReason({ toolId, periodCount: quality.periodCount, entityCoverage, locale })
       : null),

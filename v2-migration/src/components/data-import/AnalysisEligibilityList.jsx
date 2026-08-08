@@ -17,6 +17,8 @@ const OUTCOME = {
   "5-18": { ko: "채널 기여·회귀·미래 예산 시나리오", en: "Channel contribution, regression, and forecast" },
   "5-23": { ko: "광고가 실제로 추가 만든 순증분", en: "Outcomes advertising truly added" },
   "5-24": { ko: "브랜드 캠페인이 추가 만든 검색·직접유입·가입", en: "Brand-campaign lift in search, direct traffic, or signups" },
+  "5-26": { ko: "Exact 승격·제외 검토·CPT 증감 후보", en: "Exact, negative-keyword, and CPT action candidates" },
+  "9-6": { ko: "소재 피로도·교체 우선순위·다음 테스트 후보", en: "Creative fatigue, replacement priority, and next test candidates" },
 };
 
 function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = false }) {

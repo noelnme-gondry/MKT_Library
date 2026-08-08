@@ -48,6 +48,40 @@ describe("analysis eligibility", () => {
     expect(rankRecommendedAnalyses([{ status: "caution", priority: 1 }, { status: "ready", priority: 4 }])[0].status).toBe("ready");
   });
 
+  it("recognizes a search-term report and prioritizes ASA actions over generic analysis", () => {
+    const asa = evaluateEligibility({
+      toolId: "5-26",
+      mapping: { Date: "date", SearchTerm: "search_term", Cost: "cost", Taps: "clicks", Installs: "installs" },
+      canonicalData: {
+        records: [{
+          date: "2026-08-01",
+          dimensions: { search_term: "가계부" },
+          metrics: { cost: 4000, clicks: 250, installs: 42 },
+        }],
+      },
+    });
+    expect(asa).toMatchObject({ status: "ready", recommendationScore: 120 });
+    expect(asa.recommendationReason).toContain("Exact 승격 후보");
+    expect(rankRecommendedAnalyses([
+      { status: "ready", priority: 1, recommendationScore: 0 },
+      asa,
+    ])[0].toolId).toBe("5-26");
+  });
+
+  it("recognizes a creative report and prioritizes fatigue analysis", () => {
+    const creative = evaluateEligibility({
+      toolId: "9-6",
+      mapping: { Creative: "creative_id", Date: "date", Channel: "channel", Impressions: "impressions", Clicks: "clicks", Installs: "installs", Spend: "spend" },
+      canonicalData: efficiencyPanel(8, (day) => [{
+        date: isoDay(day),
+        dimensions: { creative_id: "cr_a", channel: "Meta" },
+        metrics: { impressions: 1000 + day * 30, clicks: 30 - day, installs: 5, spend: 300 + day * 5 },
+      }]),
+    });
+    expect(creative).toMatchObject({ status: "ready", recommendationScore: 110 });
+    expect(creative.recommendationReason).toContain("소재별 노출");
+  });
+
   it("uses a data-backed recommendation score within the same readiness tier", () => {
     const ranked = rankRecommendedAnalyses([
       { status: "ready", priority: 1, recommendationScore: 0 },
