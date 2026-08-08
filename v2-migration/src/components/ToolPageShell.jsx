@@ -23,16 +23,18 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   const hasToc = tocItems.length > 0;
   const titleId = useId();
   const TitleTag = titleLevel === 2 ? "h2" : "h1";
+  const hasTitle = Boolean(title && titleLevel !== 0);
+  const hasHeader = hasTitle || Boolean(chips) || Boolean(stickyFilter);
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={typeof title === "string" ? titleId : undefined}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof title === "string" ? titleId : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
             (index.html pageShell 5-x 분기 이관) */}
-        <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
+        {hasHeader && <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
           <div className="page-sticky-row1">
-            {title && (
+            {hasTitle && (
               <div className="tool-instrument-header__heading">
                 <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
                 <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</TitleTag>
@@ -41,7 +43,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
             {chips && <div className="tool-instrument-header__status">{chips}</div>}
           </div>
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
-        </header>
+        </header>}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && (

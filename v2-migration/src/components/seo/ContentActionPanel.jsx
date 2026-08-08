@@ -35,6 +35,14 @@ const TOOL_COPY = {
     ko: { label: "증분 분석", title: "광고가 실제로 추가 만든 성과를 추정하세요", desc: "통제군 또는 캠페인 전후 데이터를 이용해 단순 전환이 아닌 순증분을 계산합니다.", cta: "증분 효과 분석하기" },
     en: { label: "Incrementality", title: "Estimate what advertising truly added", desc: "Use a control group or pre/post design to estimate incremental outcomes rather than attributed conversions.", cta: "Analyze incrementality" },
   },
+  "5-25": {
+    ko: { label: "VIF 다중공선성 점검", title: "MMM 전에 채널 지출의 겹침부터 확인하세요", desc: "날짜·채널·비용으로 VIF와 상관을 확인해 분리 추정이 어려운 채널을 찾습니다.", cta: "VIF 점검하기" },
+    en: { label: "VIF multicollinearity check", title: "Check overlapping channel spend before MMM", desc: "Use date, channel, and cost to review VIF and correlation before asking the model to separate channel effects.", cta: "Check VIF" },
+  },
+  "5-26": {
+    ko: { label: "ASA 키워드 발굴", title: "검색어를 Exact 승격과 CPT 조정 후보로 바꾸세요", desc: "Search Match·Broad·Exact 성과를 나눠 Exact 승격, 제외 검토, CPT 증감 후보를 정리합니다.", cta: "ASA 키워드 후보 정리하기" },
+    en: { label: "ASA keyword finder", title: "Turn search terms into Exact and CPT actions", desc: "Split Search Match, Broad, and Exact performance to review Exact promotions, negatives, and CPT bid changes.", cta: "Review ASA keyword actions" },
+  },
   "5-20": {
     ko: { label: "핵심 가치 발굴", title: "리텐션을 예측하는 초기 행동을 찾으세요", desc: "초기 행동의 시점·횟수 조합을 비교해 장기 가치와 연결되는 Aha 후보를 좁힙니다.", cta: "Aha-moment 분석하기" },
     en: { label: "Aha-moment finder", title: "Find the early behavior that predicts retention", desc: "Compare timing and frequency patterns to narrow down early actions associated with long-term value.", cta: "Find an Aha moment" },

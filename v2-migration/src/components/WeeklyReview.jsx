@@ -16,6 +16,7 @@ import {
 import { assessForecastActual } from "@/lib/forecastReview";
 import { buildComparableDecisionActual } from "@/lib/decisionComparableActual";
 import { localizedTool } from "@/lib/toolConnections";
+import { groupForRoute } from "@/lib/toolGroups";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
 import { downloadCsv, downloadText } from "@/utils/download";
@@ -24,7 +25,7 @@ const COPY = {
   ko: {
     eyebrow: "WEEKLY REVIEW",
     title: "이번 주 결정 인박스",
-    deck: "분석 결과에서 저장한 행동을 검토일 순서로 모았습니다. 실제값과 배운 점을 남겨 다음 판단의 근거로 바꾸세요.",
+    deck: "분석 결과에서 저장한 행동을 검토일 순서로 모았습니다. 실제 결과와 배운 점을 남겨 다음 판단에 다시 쓰세요.",
     import: "결정 기록 CSV 불러오기",
     export: "수정한 CSV 내보내기",
     brief: "공유용 브리프 받기",
@@ -76,13 +77,13 @@ const COPY = {
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
     actualPlaceholder: "예: 4,980 또는 15.2%",
     dataCandidate: "새 데이터 비교 후보",
-    candidateReady: "기준일 다음 날부터 같은 길이 데이터가 준비되었습니다. 확인한 뒤 완료로 저장하세요.",
+    candidateReady: "기준일 다음 날부터 같은 기간의 데이터가 모두 쌓였습니다. 확인한 뒤 검토를 완료하세요.",
     candidateNotDue: "검토일 전에는 데이터를 실제 결과로 처리하지 않습니다.",
     candidateWaiting: "비교 기간의 데이터가 아직 없습니다. 이전 CSV의 마지막 기간은 실제 결과로 쓰지 않습니다.",
     candidateIncomplete: (days, total) => `같은 ${total}일 비교를 위해 ${days}일치 데이터가 더 필요합니다.`,
-    candidateMissingBasis: "기준일 또는 지원 지표(CPA·CPI·ROAS)를 확인하면 같은 기간으로 자동 비교할 수 있습니다.",
+    candidateMissingBasis: "기준일과 지원 지표(CPA·CPI·ROAS)를 입력하면 같은 기간으로 자동 비교할 수 있습니다.",
     candidateMissingScope: "이전 기록에는 데이터 범위가 저장되지 않아 자동 비교하지 않습니다. 같은 범위에서 새 검토를 저장하세요.",
-    candidateDatasetMismatch: "이 결정에 쓴 데이터와 현재 CSV가 달라 자동 비교하지 않습니다. 같은 데이터 범위를 열어 확인하세요.",
+    candidateDatasetMismatch: "이 결정에 쓴 데이터가 이 기기에 없거나 범위가 달라 자동 비교하지 않습니다. 원본 도구에서 같은 범위의 데이터를 올려 확인하세요.",
     candidatePeriod: "비교 기간",
     useCandidate: "이 값으로 검토하기",
     completeReview: "검토 완료로 저장",
@@ -103,6 +104,7 @@ const COPY = {
     withinRangeHint: "실제값이 저장 당시 참고범위 안에 있습니다.",
     outsideRangeHint: "실제값이 저장 당시 참고범위를 벗어났습니다. 원인과 구조변화를 함께 확인하세요.",
     pointOnlyHint: "저장된 참고범위가 없어 점예측과 실제값만 비교합니다.",
+    openSource: "원본 도구 열기",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -186,6 +188,7 @@ const COPY = {
     withinRangeHint: "The actual is inside the reference range saved with the forecast.",
     outsideRangeHint: "The actual is outside the saved reference range. Check drivers and regime changes before acting.",
     pointOnlyHint: "No reference range was saved, so only the point forecast and actual are compared.",
+    openSource: "Open source tool",
   },
 };
 
@@ -243,6 +246,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
   const csvData = useAppStore((state) => state.csvData);
+  const csvGroups = useAppStore((state) => state.csvGroups);
   const activeDataGroup = useAppStore((state) => state.activeDataGroup);
   const decisionSessionRecordIds = useAppStore((state) => state.decisionSessionRecordIds);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
@@ -264,10 +268,18 @@ export default function WeeklyReview({ locale = "ko" }) {
     return counts;
   }, { overdue: 0, today: 0, upcoming: 0, unscheduled: 0, reviewed: 0 }), [sortedRecords, todayKey]);
   const outcomeCounts = useMemo(() => summarizeDecisionOutcomes(sortedRecords), [sortedRecords]);
-  const comparableCandidates = useMemo(() => new Map(records.map((record) => [
-    record.id,
-    buildComparableDecisionActual(record, { canonicalData: csvData?.canonicalData, today: todayKey, dataGroup: activeDataGroup }),
-  ])), [activeDataGroup, csvData?.canonicalData, records, todayKey]);
+  const comparableCandidates = useMemo(() => new Map(records.map((record) => {
+    // 주간 인박스는 여러 도구의 결정을 함께 보여준다. 현재 보고 있는 도구의
+    // csvData만 쓰면 다른 그룹의 정상적인 후속 데이터까지 "CSV 불일치"로
+    // 막히므로, 기록이 만들어진 도구 그룹의 브라우저 메모리만 대조한다.
+    const recordGroup = groupForRoute(record.toolId);
+    const slice = csvGroups?.[recordGroup] || (recordGroup === activeDataGroup ? csvData : null);
+    return [record.id, buildComparableDecisionActual(record, {
+      canonicalData: slice?.canonicalData,
+      today: todayKey,
+      dataGroup: recordGroup,
+    })];
+  })), [activeDataGroup, csvData, csvGroups, records, todayKey]);
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
     const assessment = assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
@@ -405,10 +417,11 @@ export default function WeeklyReview({ locale = "ko" }) {
                 ? t.outsideRangeHint
               : t.pointOnlyHint;
             const comparableCandidate = comparableCandidates.get(record.id);
+            const sourceTool = localizedTool(record.toolId, locale);
             const isReviewDue = Boolean(record.reviewDate) && record.reviewDate <= todayKey;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
-                <span>{toolName(record.toolId, locale)}</span>
+                {sourceTool ? <Link className="weekly-review-record__source" href={sourceTool.href}>{toolName(record.toolId, locale)} <span aria-hidden="true">→</span></Link> : <span>{toolName(record.toolId, locale)}</span>}
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
@@ -472,6 +485,7 @@ export default function WeeklyReview({ locale = "ko" }) {
                           ? t.candidateDatasetMismatch
                       : t.candidateMissingBasis}</p>}
               </div>}
+              {sourceTool && <Link className="weekly-review-record__source-link" href={sourceTool.href}>{t.openSource} <span aria-hidden="true">→</span></Link>}
               <div className="weekly-review-record__fields">
                 <label><span>{t.reviewDate}</span><input type="date" value={record.reviewDate} onChange={(event) => updateRecord(record.id, "reviewDate", event.target.value)} /></label>
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>

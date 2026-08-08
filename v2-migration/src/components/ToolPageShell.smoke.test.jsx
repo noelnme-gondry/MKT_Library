@@ -44,4 +44,11 @@ describe("ToolPageShell instrument header contract", () => {
     expect(screen.getByRole("heading", { level: 2, name: "예산 배분 시뮬레이터" })).toBeTruthy();
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
+
+  it("can omit a repeated workspace title when a static SEO heading already names the tool", () => {
+    const { container } = render(<ToolPageShell title="ASA 키워드 발굴 · CPT 조정" titleLevel={0} summary={<p>요약</p>}><div>본문</div></ToolPageShell>);
+    expect(container.querySelector(".tool-instrument-header")).toBeNull();
+    expect(container.querySelectorAll("h1, h2")).toHaveLength(0);
+    expect(container.textContent).toContain("요약");
+  });
 });

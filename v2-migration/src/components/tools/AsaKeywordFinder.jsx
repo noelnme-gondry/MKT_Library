@@ -58,7 +58,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
     <ToolPageShell
       toolId="5-26"
       locale={locale}
-      titleLevel={2}
+      titleLevel={0}
       title={tr("ASA 키워드 발굴 · CPT 조정", "ASA Keyword Finder · CPT Actions")}
       summary={<p>{tr("Search Match·Broad 검색어를 Exact로 승격할 후보와, 예산 대비 소진률·목표 CPA를 함께 반영한 CPT 증감 제안을 만듭니다. 실제 변경 전에는 최근 검색어와 앱스토어 콘솔의 정책·입찰 한도를 확인하세요.", "Find Exact-promotion candidates from Search Match and Broad terms, then combine pacing and target CPA for CPT changes. Check recent terms, policy, and bid limits in the Apple Ads console before changing anything.")}</p>}
       toc={hasData && analyzed ? [{ id: "asa-summary", title: tr("조치 요약", "Action summary") }, { id: "asa-actions", title: tr("키워드별 조치", "Keyword actions") }] : []}
