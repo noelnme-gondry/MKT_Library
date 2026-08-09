@@ -4,7 +4,7 @@ import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
-import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
+import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { readSopData } from "@/lib/sopData";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
@@ -56,7 +56,7 @@ async function PageWithStructuredData({ params }) {
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "en") : null;
-  const searchContent = routeId ? getResponseSubtoolContent(routeId, "en") : null;
+  const searchContent = routeId ? getToolSearchContent(routeId, "en") : null;
   const editorial = routeId ? getSopEditorial(routeId, "en") : null;
   const initialSopData = routeId && EN_READY_GUIDE_IDS.has(routeId) ? readSopData(routeId, "en") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));

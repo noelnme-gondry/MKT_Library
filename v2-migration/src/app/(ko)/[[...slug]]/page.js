@@ -3,7 +3,7 @@ import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
-import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
+import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
 import PageClient from "./PageClient";
@@ -58,7 +58,7 @@ async function PageWithStructuredData({ params }) {
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "ko") : null;
-  const searchContent = routeId ? getResponseSubtoolContent(routeId, "ko") : null;
+  const searchContent = routeId ? getToolSearchContent(routeId, "ko") : null;
   const editorial = routeId ? getSopEditorial(routeId, "ko") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
   const toolUrl = routeId ? `${SITE_URL}${idToPath(routeId)}` : "";
