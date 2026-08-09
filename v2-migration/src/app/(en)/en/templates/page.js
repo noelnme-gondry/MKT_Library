@@ -3,6 +3,14 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
+import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+
+// 목록 → 도구별 상세(컬럼 설명) 크롤 경로.
+const templateDetailHref = (toolId) => {
+  const page = TEMPLATE_PAGES.find((item) => item.toolId === toolId);
+  return page ? `/en/templates/${page.slug}` : null;
+};
+
 export async function generateMetadata() {
   const title = "Free marketing templates and checklists";
   const description = "Download CSV schemas plus event taxonomy, postback QA, and new ad channel onboarding checklists.";
@@ -86,7 +94,8 @@ export default function EnglishTemplatesPage() {
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>{group.heading}</h2>
           {group.note && <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: "0.9rem" }}>{group.note}</p>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0.9rem" }}>
-            {group.items.map(([toolId, title, desc, href]) => <TemplateDownloadCard key={toolId} toolId={toolId} title={title} desc={desc} href={href} unified={group.unified} locale="en" />)}
+            {group.items.map(([toolId, title, desc, href]) => <TemplateDownloadCard
+              detailHref={templateDetailHref(toolId)} key={toolId} toolId={toolId} title={title} desc={desc} href={href} unified={group.unified} locale="en" />)}
           </div>
         </section>
       ))}
