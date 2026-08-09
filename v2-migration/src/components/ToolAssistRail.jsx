@@ -77,7 +77,7 @@ const ASSIST_SECTIONS = {
     { id: "s-sat-summary", result: true, title: ["증액 여지 판단", "Decide scaling headroom"], body: ["여유와 포화를 구분한 뒤, 실제 금액 배분은 예산 배분에서 검증하세요.", "Separate headroom from saturation, then validate the amount in Budget allocation."] },
   ],
   "5-3": [
-    { id: "s-prep", title: ["배분 기준 준비", "Prepare allocation inputs"], body: ["목표 지표와 가용 예산을 먼저 맞추면 시뮬레이션이 흔들리지 않습니다.", "Set the target metric and available budget before simulating."] },
+    { id: "s-controls", title: ["PRISM 조정", "Set PRISM controls"], body: ["총 예산 또는 목표 CPI·CPA·ROAS 중 하나를 정하면 채널별 금액이 자동으로 계산됩니다.", "Set either a total budget or target CPI, CPA, or ROAS to calculate channel budgets automatically."] },
     { id: "s-scenario", result: true, title: ["배분 시나리오 비교", "Compare allocation scenarios"], body: ["한 번에 크게 옮기기보다, 다음 검증을 위한 보수적 시나리오도 함께 비교하세요.", "Compare a conservative scenario for the next validation alongside a large move."] },
   ],
   "9-6": [

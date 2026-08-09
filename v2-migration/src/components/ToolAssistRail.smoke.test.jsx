@@ -41,7 +41,7 @@ describe("ToolAssistRail", () => {
   it("opens and focuses the existing inline review without creating a record", async () => {
     useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
     window.gtag = vi.fn();
-    document.body.innerHTML = '<section id="s-prep"></section><section id="s-scenario"></section>';
+    document.body.innerHTML = '<section id="s-controls"></section><section id="s-scenario"></section>';
     const { getByRole, getByLabelText, container } = render(<>
       <DecisionReview toolId="5-3" decisionPrefill={{ action: "검색 예산 10% 시험 증액", metric: "CPA" }} />
       <ToolAssistRail toolId="5-3" />
@@ -141,15 +141,15 @@ describe("ToolAssistRail", () => {
   });
 
   it("tracks a contextual jump", () => {
-    document.body.innerHTML = '<section id="s-prep"></section>';
+    document.body.innerHTML = '<section id="s-controls"></section>';
     const scrollIntoView = vi.fn();
-    document.getElementById("s-prep").scrollIntoView = scrollIntoView;
+    document.getElementById("s-controls").scrollIntoView = scrollIntoView;
     window.gtag = vi.fn();
     const { getByRole } = render(<ToolAssistRail toolId="5-3" />);
     fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
     fireEvent.click(getByRole("button", { name: /이 위치로 이동/ }));
     expect(scrollIntoView).toHaveBeenCalled();
-    expect(window.gtag).toHaveBeenCalledWith("event", "tool_assist_jump", expect.objectContaining({ tool_id: "5-3", section_id: "s-prep" }));
+    expect(window.gtag).toHaveBeenCalledWith("event", "tool_assist_jump", expect.objectContaining({ tool_id: "5-3", section_id: "s-controls" }));
     delete window.gtag;
   });
 

@@ -81,12 +81,12 @@ export const ROUTE_SEO = {
   },
   "5-3": {
     ko: {
-      title: "예산 배분 시뮬레이터 | 채널별 증액·감액",
-      description: "채널별 한계 CPA·ROAS와 지출 여력을 바탕으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션하는 무료 마케팅 예산 배분 도구입니다.",
+      title: "예산 배분 시뮬레이터 | 목표 CPI·CPA·ROAS",
+      description: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분을 계산합니다.",
     },
     en: {
-      title: "Marketing Budget Allocation",
-      description: "Use marginal CPA, ROAS, and channel headroom to simulate where the next marketing budget should increase or decrease.",
+      title: "Budget Allocation for CPI, CPA & ROAS",
+      description: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended budget and automatic channel allocation without exceeding observed maximum spend.",
     },
   },
   "5-4": {
