@@ -44,7 +44,7 @@ describe("llms.txt", () => {
     const links = markdownLinks(buildLlmsText());
     const sitemapUrls = new Set(sitemap().map((entry) => entry.url));
     const machineIndexes = new Set([`${SITE_URL}/sitemap.xml`, `${SITE_URL}/rss.xml`, `${SITE_URL}/en/rss.xml`]);
-    const expectedLinkCount = 10
+    const expectedLinkCount = 12
       + indexableAnalysisRoutes("ko").length
       + indexableAnalysisRoutes("en").length
       + indexableGuideRoutes("ko").length

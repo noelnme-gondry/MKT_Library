@@ -91,6 +91,8 @@ export default function sitemap() {
     { url: `${BASE}/en/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/en/terms`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/manuals`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/en/manuals`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/contact`, changeFrequency: "yearly", priority: 0.4 },
     { url: `${BASE}/en/contact`, changeFrequency: "yearly", priority: 0.4 },
   ];
