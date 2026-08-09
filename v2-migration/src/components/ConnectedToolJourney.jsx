@@ -6,7 +6,7 @@ import Link from "next/link";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
-import { displayItemNumberShort, findMeta } from "@/store/useDataStore";
+import { findMeta } from "@/store/useDataStore";
 import { trItemTitle } from "@/lib/enNavCopy";
 
 const COPY = {
@@ -118,7 +118,6 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
                       locale: lang,
                     })}
                   >
-                    <span className="connected-tool-card__id">{displayItemNumberShort(tool.id)}</span>
                     <strong>{title}</strong>
                     <p>{tool.question}</p>
                     <b>{T.open} <span aria-hidden="true">→</span></b>

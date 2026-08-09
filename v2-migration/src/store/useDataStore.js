@@ -306,6 +306,16 @@ export function findGroupSection(groupId) {
   return SECTIONS.find((s) => s.groups.includes(groupId)) || null;
 }
 
+// 표시 번호를 붙일 항목인지. 가이드(SOP 01~04)는 번호가 실제 문서 체계라 유지하고,
+// 분석 섹션은 붙이지 않는다 — 사이드바가 IA 그룹이 아니라 TOOL_JOURNEY 스테이지를
+// 그리기 때문에 그룹 기준 번호("03 선택" 아래 2-3·5-1)가 화면 계층과 어긋났다.
+// 도구 번호는 라우트 id도 아니어서 사용자에게 주는 정보가 없다.
+export function isNumberedDocItem(itemId) {
+  const meta = findMeta(itemId);
+  if (!meta) return false;
+  return findGroupSection(meta.group.id)?.id === "guide";
+}
+
 export function findMeta(itemId) {
   for (const g of IA) {
     const it = g.items.find((x) => x.id === itemId);

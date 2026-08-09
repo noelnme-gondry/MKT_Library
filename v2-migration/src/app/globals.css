@@ -6227,8 +6227,7 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .connected-tool-stage__tools { display: grid; gap: 7px; }
 .connected-tool-card { position: relative; display: block; min-height: 126px; padding: 12px; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-container-lowest); color: inherit; text-decoration: none; transition: transform .15s ease,border-color .15s ease,background .15s ease; }
 .connected-tool-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb,var(--primary) 65%,var(--border)); background: color-mix(in srgb,var(--primary) 5%,var(--surface-container-lowest)); }
-.connected-tool-card__id { color: var(--primary); font: 700 9px var(--font-mono); }
-.connected-tool-card strong { display: block; margin-top: 8px; color: var(--text-primary); font-size: 12px; }
+.connected-tool-card strong { display: block; color: var(--text-primary); font-size: 12px; }
 .connected-tool-card p { margin: 5px 0 23px; color: var(--text-secondary); font-size: 10.5px; line-height: 1.45; }
 .connected-tool-card b { position: absolute; right: 11px; bottom: 10px; color: var(--primary); font: 700 9px var(--font-mono); }
 .sidebar-workflow-prep { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 7px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-muted); font-size: 11px; text-decoration: none; }
@@ -6523,8 +6522,7 @@ body.light-mode .app.is-home {
 .decision-console-landing .connected-tool-stage > .tool-template-action { grid-column:2; }
 .decision-console-landing .connected-tool-card { min-height:82px;padding:12px;border-color:var(--dc-line);border-radius:8px;background:var(--dc-panel); }
 .decision-console-landing .connected-tool-card:hover { border-color:var(--dc-line-strong);background:var(--dc-panel); }
-.decision-console-landing .connected-tool-card__id { color:var(--dc-signal);font-size:8px; }
-.decision-console-landing .connected-tool-card strong { margin-top:6px;color:var(--dc-text);font-size:11px; }
+.decision-console-landing .connected-tool-card strong { color:var(--dc-text);font-size:11px; }
 .decision-console-landing .connected-tool-card p { margin:4px 0 16px;color:var(--dc-text-dim);font-size:12px; }
 .decision-console-landing .connected-tool-card b { color:var(--dc-signal);font-size:8px; }
 .decision-console-landing .tool-template-action { border-top-color:color-mix(in srgb,var(--dc-line) 72%,transparent); }
