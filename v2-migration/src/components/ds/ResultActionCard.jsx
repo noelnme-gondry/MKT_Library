@@ -7,6 +7,7 @@ import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 import { computeAnalyzeSig, findMeta, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { findingFromResultCard } from "@/lib/assist/findingProducers";
 import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
+import { encodeSharePayload, shareUrlFromPayload } from "@/lib/decisionShare";
 import { localizedTool } from "@/lib/toolConnections";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
@@ -79,6 +80,7 @@ export default function ResultActionCard({
   const publishFinding = useAppStore((state) => state.publishFinding);
   const addReportBlock = useAppStore((state) => state.addReportBlock);
   const [reportAdded, setReportAdded] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const inputSignature = computeAnalyzeSig(csvData);
   const resolvedAnalysisType = analysisType || productAnalysisType(toolId);
   const dataSource = String(csvData?.fileName || "").startsWith("demo_")
@@ -168,6 +170,23 @@ export default function ResultActionCard({
   useEffect(() => {
     if (generatedFinding) publishFinding(generatedFinding);
   }, [generatedFinding, publishFinding]);
+  const shareToolTitle = locale === "en"
+    ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || toolId)
+    : (findMeta(toolId)?.title || toolId);
+  const canShareDecision = Boolean(toolId && typeof headline === "string" && headline.trim());
+  const copyShareLink = async () => {
+    const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
+    const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      trackProductEvent("share_link_copied", { tool_id: toolId, placement: "result_action_card", locale });
+      window.setTimeout(() => setShareCopied(false), 2400);
+    } catch {
+      // 클립보드 권한이 없으면 조용히 무시한다(공유는 보조 기능).
+    }
+  };
   const collectForReport = () => {
     if (!generatedReportBlock) return;
     addReportBlock(generatedReportBlock);
@@ -188,9 +207,16 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || generatedReportBlock) && (
+        {(controls || download || generatedReportBlock || canShareDecision) && (
           <div className="result-action-card__controls">
             {controls}
+            {canShareDecision && (
+              <button className="btn ghost" type="button" onClick={copyShareLink}>
+                {shareCopied
+                  ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
+                  : (locale === "en" ? "Share conclusion" : "결론 공유")}
+              </button>
+            )}
             {generatedReportBlock && (
               reportAdded ? (
                 <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>

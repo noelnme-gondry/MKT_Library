@@ -5018,6 +5018,19 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-context-header__next > span { color: var(--text-muted); font: 650 9px var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
 .tool-context-header__next a { color: var(--primary); font-weight: 750; text-decoration: none; }
 .tool-context-header__next a:hover { text-decoration: underline; }
+/* 공유된 판단 수신 화면(/share) — 요약 문구만 표시, 원본 데이터 없음. */
+.shared-decision { max-width: 720px; margin: 0 auto; padding: clamp(2rem, 6vw, 4rem) 1.25rem; }
+.shared-decision__eyebrow { color: var(--primary); font: 700 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.shared-decision h1 { margin: 10px 0 0; color: var(--text-primary); font: 640 clamp(24px, 4vw, 32px)/1.28 var(--font-display); letter-spacing: -.04em; }
+.shared-decision__lead { margin: 12px 0 20px; color: var(--text-muted); font-size: 15px; line-height: 1.6; }
+.shared-decision__stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 4px; }
+.shared-decision__stats > div { flex: 1 1 150px; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
+.shared-decision__stats span { display: block; color: var(--text-muted); font-size: 12px; }
+.shared-decision__stats strong { display: block; margin-top: 4px; color: var(--text-primary); font: 640 19px var(--font-display); letter-spacing: -.03em; }
+.shared-decision__subhead { margin: 26px 0 8px; color: var(--text-secondary); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.shared-decision__points { display: grid; gap: 7px; margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 14.5px; line-height: 1.6; }
+.shared-decision__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 16px; }
+.shared-decision__privacy { color: var(--text-muted); font-size: 12.5px; line-height: 1.55; }
 /* 도구 → 콘텐츠 역링크(§유입: 단방향 내부 링크 보완). ToolLongform 바로 뒤. */
 .tool-evidence { margin: 18px 0 12px; padding: 22px 26px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
 .tool-evidence__eyebrow { color: var(--text-muted); font: 700 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
