@@ -1,5 +1,14 @@
+import { ROUTES, isRoutePublished } from "@/lib/routeMap";
+
 const FORBIDDEN_KEYS = new Set(["raw", "rows", "csvData", "csvGroups", "canonicalData", "mappedRows", "fileName", "url"]);
-export const REPORT_SUPPORTED_TOOL_IDS = new Set(["5-2", "5-21", "5-22", "5-3"]);
+
+// 공개 분석 도구는 모두 같은 `ResultActionCard` 계약(결론·근거·수치)을 쓰므로
+// 보고서 블록 대상도 라우트에서 **파생**한다(도구 추가 시 목록 갱신을 잊는 구조 제거).
+// CSV 서명이 없는 도구는 아래 inputSignature 게이트에서 자연히 걸러진다.
+export const REPORT_SUPPORTED_TOOL_IDS = new Set(
+  ROUTES.filter((route) => isRoutePublished(route) && (route.id.startsWith("5-") || route.id.startsWith("9-")))
+    .map((route) => route.id),
+);
 
 function plain(value) {
   return typeof value === "string" || typeof value === "number" ? String(value) : null;

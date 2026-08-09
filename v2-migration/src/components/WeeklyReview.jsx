@@ -435,7 +435,7 @@ export default function WeeklyReview({ locale = "ko" }) {
         <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
         <input ref={importRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={importRecords} />
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadCsv(serializeDecisionReviewCsv(records), "weekly_decision_review")}>{t.export}</button>
-        <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadText(buildBrief(sortedRecords, t, locale), "weekly_operating_brief")}>{t.brief}</button>
+        <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadText(buildBrief(sortedRecords, t, locale), "weekly_operating_brief", "md", locale)}>{t.brief}</button>
         <button
           type="button"
           className="btn text weekly-review-page__clear"
