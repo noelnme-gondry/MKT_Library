@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
-import DecisionReview from "@/components/ds/DecisionReview";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
@@ -37,6 +37,8 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   }) : [], [analyzed, rows, settings]);
   const exact = recommendations.filter((row) => row.isExactCandidate);
   const negatives = recommendations.filter((row) => row.isNegativeCandidate);
+  const raises = recommendations.filter((row) => row.action.code === "raise");
+  const lowers = recommendations.filter((row) => row.action.code === "lower");
   const hasData = Boolean(csvData?.raw?.length);
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const set = (key) => (event) => setSettings((current) => ({ ...current, [key]: event.target.value }));
@@ -80,28 +82,32 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
 
       {hasData && analyzed && (
         <>
-          <section className="block" id="asa-summary">
-            <div className="asa-tool__summary-grid">
-              <div><span>{tr("Exact 승격 후보", "Exact candidates")}</span><strong>{exact.length}</strong><p>{tr("Broad·Search Match · 3성과·8탭 이상 · 목표 달성", "Broad/Search Match · 3+ outcomes · 8+ taps · meets target")}</p></div>
-              <div><span>{tr("CPT 증액 후보", "Raise CPT")}</span><strong>{recommendations.filter((row) => row.action.code === "raise").length}</strong><p>{tr("저소진 + 목표 달성", "Under-paced + meets target")}</p></div>
-              <div><span>{tr("CPT 감액 후보", "Lower CPT")}</span><strong>{recommendations.filter((row) => row.action.code === "lower").length}</strong><p>{tr("과소진 + 목표 미달", "Over-paced + misses target")}</p></div>
-              <div><span>{tr("제외 검토", "Review negatives")}</span><strong>{negatives.length}</strong><p>{tr("목표 CPA의 1.5배 이상 소진", "Spend/CPA is 1.5× over target")}</p></div>
-            </div>
-          </section>
-          {!isDemo && <DecisionReview
+          <div id="asa-summary"><ResultActionCard
+            tone={exact.length || raises.length ? "good" : lowers.length || negatives.length ? "bad" : "neutral"}
+            title={tr("조치 요약", "Action summary")}
+            headline={tr(`Exact 승격 ${exact.length}건 · CPT 증액 ${raises.length}건 · 감액 ${lowers.length}건 후보입니다.`, `${exact.length} Exact, ${raises.length} raise-CPT, and ${lowers.length} lower-CPT candidates are ready.`)}
+            points={[{ text: tr("권장안은 자동 적용이 아니라 Apple Ads 콘솔에서 하나씩 검토할 운영 후보입니다.", "These are review candidates, not automatic Apple Ads changes.") }]}
+            stats={[
+              { label: tr("Exact 승격", "Exact candidates"), value: String(exact.length), detail: tr("Broad·Search Match 후보", "Broad/Search Match candidates") },
+              { label: tr("CPT 증액", "Raise CPT"), value: String(raises.length), detail: tr("저소진 + 목표 달성", "Under-paced + meets target") },
+              { label: tr("CPT 감액", "Lower CPT"), value: String(lowers.length), detail: tr("과소진 + 목표 미달", "Over-paced + misses target") },
+              { label: tr("제외 검토", "Review negatives"), value: String(negatives.length), detail: tr("고비용 저성과", "High-cost underperformance") },
+            ]}
             toolId="5-26"
+            analysisType="asa_keyword"
+            analysisKey={`${exact.length}:${raises.length}:${lowers.length}:${negatives.length}`}
             locale={locale}
-            decisionPrefill={{
-              conclusion: tr(`Exact 승격 ${exact.length}건 · CPT 증액 ${recommendations.filter((row) => row.action.code === "raise").length}건 · 감액 ${recommendations.filter((row) => row.action.code === "lower").length}건 후보입니다.`, `${exact.length} Exact, ${recommendations.filter((row) => row.action.code === "raise").length} raise-CPT, and ${recommendations.filter((row) => row.action.code === "lower").length} lower-CPT candidates are ready.`),
+            decisionPrefill={!isDemo ? {
+              conclusion: tr(`Exact 승격 ${exact.length}건 · CPT 증액 ${raises.length}건 · 감액 ${lowers.length}건 후보입니다.`, `${exact.length} Exact, ${raises.length} raise-CPT, and ${lowers.length} lower-CPT candidates are ready.`),
               action: exact.length
                 ? tr("Exact 승격 후보와 CPT 조치를 Apple Ads 콘솔에서 하나씩 검토한 뒤 제한적으로 적용한다", "Review Exact-promotion candidates and CPT actions one by one in Apple Ads, then apply a limited change")
                 : tr("목표 CPA와 예산을 다시 확인한 뒤 다음 검색어 기간을 재분석한다", "Confirm target CPA and budget, then reanalyze the next search-term period"),
               metric: tr("ASA 권장 조치 건수", "ASA recommended actions"),
-              baseline: String(exact.length + recommendations.filter((row) => ["raise", "lower"].includes(row.action.code)).length),
+              baseline: String(exact.length + raises.length + lowers.length),
               targetDirection: "neutral",
               reviewQuestion: tr("변경한 검색어·CPT 조치가 목표 CPA를 지키면서 소진을 개선했는가?", "Did the changed search terms and CPT actions improve pacing while maintaining target CPA?"),
-            }}
-          />}
+            } : null}
+          /></div>
           <section className="block" id="asa-actions">
             <div className="asa-tool__section-head"><div><h2 className="section-title">{tr("키워드별 권장 조치", "Recommended keyword actions")}</h2><p>{tr("Exact 승격은 기존 비-Exact 키워드를 멈추라는 뜻이 아닙니다. 중복 경합을 피하려면 승격 뒤 원래 타겟·네거티브 구조를 함께 확인하세요.", "Exact promotion does not mean pausing the original non-Exact target. After promotion, review the original target and negative structure to avoid overlap.")}</p></div><button type="button" className="asa-tool__download" onClick={downloadActions}>{tr("CSV로 받기", "Download CSV")}</button></div>
             <DataTable columns={columns} rows={recommendations} rowKey={(row) => `${row.term}-${row.campaign}-${row.adgroup}-${row.matchType}`} emptyText={tr("판정할 검색어 행이 없습니다. 검색어·비용·탭·설치 매핑을 확인하세요.", "No searchable term rows. Check the search term, cost, taps, and installs mapping.")} />

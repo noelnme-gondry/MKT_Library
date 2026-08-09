@@ -6,7 +6,8 @@ import Papa from "papaparse";
 import Chart from "chart.js/auto";
 
 import { useAppStore } from "@/store/useDataStore";
-import DecisionReview from "@/components/ds/DecisionReview";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
@@ -112,6 +113,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const handleFile = (file) => {
     if (!file) return;
     setError("");
+    trackProductEvent("data_import_start", { tool_id: "5-24", source: "csv", locale });
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -120,12 +122,17 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         const rows = Array.isArray(parsed.data) ? parsed.data : [];
         const headers = parsed.meta?.fields || [];
         if (!rows.length || !headers.length || (parsed.errors || []).some((item) => item?.type === "Quotes" || item?.code === "TooManyFields")) {
+          trackProductEvent("data_import_failed", { tool_id: "5-24", source: "csv", state: "parse_error", locale });
           setError(tx(locale, "CSV를 읽지 못했습니다. 날짜·성과·집행 여부 열이 있는 파일인지 확인하세요.", "We could not read this CSV. Confirm it contains date, outcome, and campaign-status columns."));
           return;
         }
         loadRows(rows, file.name);
+        trackProductEvent("data_import_success", { tool_id: "5-24", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
-      error: () => setError(tx(locale, "CSV를 읽는 중 오류가 발생했습니다.", "An error occurred while reading the CSV.")),
+      error: () => {
+        trackProductEvent("data_import_failed", { tool_id: "5-24", source: "csv", state: "parse_error", locale });
+        setError(tx(locale, "CSV를 읽는 중 오류가 발생했습니다.", "An error occurred while reading the CSV."));
+      },
     });
   };
   const analyze = () => {
@@ -134,6 +141,9 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       return;
     }
     setError("");
+    trackProductEventOnce("analysis_started", analysisResultEventKey("5-24", "brand_incrementality", currentSignature, "", locale), {
+      tool_id: "5-24", source: "csv", row_count: csvData.raw?.length || 0, analysis_type: "brand_incrementality", locale,
+    });
     setAnalysisSignature(currentSignature);
   };
   const downloadTemplate = () => downloadCsv("﻿date,brand_search,campaign_on\r\n2025-01-01,180,off\r\n2025-02-05,280,on\r\n", "brand_campaign_its_template");
@@ -143,6 +153,28 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     { id: "its", icon: "↗", title: tx(locale, "날짜별 성과와 ON/OFF 시점이 있다", "I have dated outcomes and a clear ON/OFF date"), body: tx(locale, "일별·주별·월별 cadence에 맞는 최소 관측 기간으로 AR(1) ITS 반사실을 추정합니다.", "Run an AR(1) ITS counterfactual with cadence-appropriate minimum history."), cta: tx(locale, "ITS 분석 준비", "Set up ITS") },
     { id: "prepost", icon: "△", title: tx(locale, "전후 합계만 있다", "I only have before / after totals"), body: tx(locale, "탐색적 전후 비교는 가능하지만 계절성과 공통 변화를 분리하기 어렵습니다.", "An exploratory pre/post read is possible, but seasonality and common change remain mixed."), cta: tx(locale, "전후 비교 열기", "Open pre/post comparison") },
   ];
+  const brandHeadline = !profileReady
+    ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없습니다", "An interval including AR(1) uncertainty could not be formed")
+    : directionalVerdictWithheld
+      ? tx(locale, "방향 판정 보류 · 추정치는 탐색용입니다", "Direction withheld · estimate is exploratory")
+      : hasProfileLiftSignal
+        ? tx(locale, "관찰상 증가 신호가 남지만 인과 증명은 아닙니다", "An observational lift signal remains, but it is not causal proof")
+        : tx(locale, "증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change");
+  const brandDecisionPrefill = result?.ok && !isDemo ? {
+    conclusion: !profileReady
+      ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
+      : hasProfileLiftSignal
+        ? tx(locale, `관찰상 추정 증가분 ${formatValue(profileEstimate, locale)} 신호가 남지만 통제군 없는 인과 증명은 아닙니다.`, `An observed estimated lift of ${formatValue(profileEstimate, locale)} remains, but this is not causal proof without a control.`)
+        : tx(locale, "현재 데이터에서는 증가를 변화 없음과 분리하기 어렵습니다.", "Current data cannot separate lift from no change."),
+    action: hasProfileLiftSignal
+      ? tx(locale, "다음 브랜드 캠페인에는 비집행 비교군을 남겨 증분 효과를 다시 검증한다", "Keep an unexposed comparison group for the next brand campaign and revalidate incrementality")
+      : tx(locale, "추가 사전 기간 또는 통제군을 확보한 뒤 브랜드 증분을 다시 추정한다", "Add pre-period history or a control, then re-estimate brand incrementality"),
+    metric: tx(locale, "추정 증가분", "Estimated incremental outcome"),
+    baseline: formatValue(profileEstimate, locale),
+    targetDirection: "neutral",
+    sourcePeriod: tx(locale, `사전 ${result.prePeriods}기간 · 집행 ${result.postPeriods}기간`, `${result.prePeriods} pre periods · ${result.postPeriods} campaign periods`),
+    reviewQuestion: tx(locale, "새 데이터와 비교군을 포함하면 브랜드 캠페인의 순증분을 더 신뢰성 있게 구분할 수 있는가?", "With new data and a comparison group, can the campaign's net increment be separated more reliably?"),
+  } : null;
 
   return <div className="tab-pane active" id="tab-brand-incrementality">
     <section className="block" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--bg-2)), var(--bg-2))", border: "1px solid var(--border)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
@@ -170,7 +202,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           <div className="csv-drop-icon">⇧</div><div className="csv-drop-text">{tx(locale, "CSV 파일 드래그 & 드롭", "Drag & drop a CSV")}</div><div className="csv-drop-sub">{tx(locale, "또는 클릭하여 선택", "or click to choose a file")}</div>
         </div>
         <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }} />
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}><button type="button" className="ab-pill" onClick={downloadTemplate}>{tx(locale, "CSV 양식 다운로드", "Download CSV template")}</button><button type="button" className="ab-pill" onClick={() => loadRows(brandDemo(), "demo_brand_campaign_its.csv", { isDemo: true })}>{tx(locale, "예시 데이터 보기", "View example data")}</button></div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}><button type="button" className="ab-pill" onClick={downloadTemplate}>{tx(locale, "CSV 양식 다운로드", "Download CSV template")}</button><button type="button" className="ab-pill" onClick={() => { trackProductEvent("example_run_started", { tool_id: "5-24", source: "tool", placement: "uploader", locale }); loadRows(brandDemo(), "demo_brand_campaign_its.csv", { isDemo: true }); }}>{tx(locale, "예시 데이터 보기", "View example data")}</button></div>
       </div> : <>
         <div className="file-state"><div className="meta-text"><span className="dot"></span><strong>{csvData.fileName}</strong><span className="csv-loaded-stats">{csvData.raw.length.toLocaleString()}{tx(locale, "행", " rows")}</span></div><button className="ab-pill" type="button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{tx(locale, "CSV 변경", "Change CSV")}</button></div>
         <div className="mapping-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "10px", margin: "14px 0" }}>
@@ -186,12 +218,23 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     {result && !result.ok && <section className="block" id="brand-its-result"><div className="callout warn"><div className="body"><strong>{tx(locale, "아직 정직한 ITS 추정을 만들 수 없습니다", "ITS is not yet identifiable")}</strong><p>{result.reason === "multiple_campaign_windows" ? tx(locale, "ON/OFF 구간이 여러 번입니다. 이번 버전은 한 번의 연속 캠페인 구간만 분석합니다. 구간 하나만 남기거나 통제군 설계를 사용하세요.", "There are multiple ON/OFF windows. This version analyzes one continuous campaign window; isolate one window or use a control-group design.") : result.reason === "insufficient_pre_periods" ? tx(locale, `집행 전 기간이 ${result.prePeriods}개입니다. 현재 cadence에는 최소 ${result.minPrePeriods}개 기간이 필요합니다.`, `There are ${result.prePeriods} pre periods; this cadence requires at least ${result.minPrePeriods}.`) : result.reason === "insufficient_post_periods" ? tx(locale, `집행 후 기간이 ${result.postPeriods}개입니다. 현재 cadence에는 최소 ${result.minPostPeriods}개 기간이 필요합니다.`, `There are ${result.postPeriods} post periods; this cadence requires at least ${result.minPostPeriods}.`) : result.reason === "zero_pretrend_variance" ? tx(locale, "집행 전 성과가 완벽한 직선이라 불확실성을 추정할 수 없습니다. 노이즈가 없는 샘플 데이터 또는 지나친 집계 여부를 확인하세요.", "The pre-period is a perfect line, so uncertainty cannot be estimated. Check for noiseless sample data or over-aggregation.") : result.reason === "ar1_variance_not_estimable" ? tx(locale, "사전 기간의 AR(1) 불확실성을 추정할 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "AR(1) uncertainty cannot be estimated from the pre-period. Add history or use a control-group design.") : tx(locale, "날짜·성과·집행 여부를 다시 확인하세요.", "Check date, outcome, and campaign-status columns.")}</p></div></div></section>}
 
     {result?.ok && <section className="block" id="brand-its-result">
-      <h2 className="section-title">{tx(locale, "브랜드 캠페인 증분 추정", "Estimated brand-campaign lift")}</h2>
-      <div className="metric-grid" style={{ marginBottom: "16px" }}>
-        <div className="metric-card"><span>{tx(locale, "추정 증가분", "Estimated incremental outcome")}</span><strong>{formatValue(profileEstimate, locale)}</strong><small>{profileRate == null ? "—" : `${profileRate >= 0 ? "+" : ""}${(profileRate * 100).toFixed(1)}% ${tx(locale, "기준선 대비", "vs baseline")}`}</small></div>
-        <div className="metric-card"><span>{tx(locale, "캠페인 없었을 예상", "Expected without campaign")}</span><strong>{formatValue(profileCounterfactual, locale)}</strong><small>{tx(locale, `${result.prePeriods}개 사전 기간 AR(1) 추세`, `${result.prePeriods} pre-period AR(1) trend`)}</small></div>
-        <div className="metric-card"><span>{tx(locale, "95% AR(1) 프로파일 구간", "95% AR(1) profile interval")}</span><strong>{profileReady ? `${formatValue(result.profileInterval[0], locale)} ~ ${formatValue(result.profileInterval[1], locale)}` : "—"}</strong><small>{tx(locale, "ρ 추정오차 포함 · 보수적 구간", "Includes rho uncertainty · conservative interval")}</small></div>
-      </div>
+      <ResultActionCard
+        tone={hasProfileLiftSignal ? "good" : directionalVerdictWithheld ? "neutral" : "bad"}
+        title={tx(locale, "브랜드 캠페인 증분 추정", "Estimated brand-campaign lift")}
+        headline={brandHeadline}
+        points={[{ text: tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`) }]}
+        stats={[
+          { label: tx(locale, "추정 증가분", "Estimated incremental outcome"), value: formatValue(profileEstimate, locale), detail: profileRate == null ? "—" : `${profileRate >= 0 ? "+" : ""}${(profileRate * 100).toFixed(1)}% ${tx(locale, "기준선 대비", "vs baseline")}` },
+          { label: tx(locale, "캠페인 없었을 예상", "Expected without campaign"), value: formatValue(profileCounterfactual, locale), detail: tx(locale, `${result.prePeriods}개 사전 기간`, `${result.prePeriods} pre periods`) },
+          { label: tx(locale, "95% AR(1) 프로파일 구간", "95% AR(1) profile interval"), value: profileReady ? `${formatValue(result.profileInterval[0], locale)} ~ ${formatValue(result.profileInterval[1], locale)}` : "—" },
+        ]}
+        toolId="5-24"
+        analysisType="brand_incrementality"
+        analysisKey={currentSignature}
+        resultState={profileReady ? "ready" : "inconclusive"}
+        locale={locale}
+        decisionPrefill={brandDecisionPrefill}
+      />
       <div className="callout"><div className="body"><strong>{!profileReady
         ? tx(locale, "AR(1) 계수 불확실성까지 포함한 구간을 만들 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "We cannot construct an interval that includes AR(1) parameter uncertainty. Add history or use a control-group design.")
         : directionalVerdictWithheld
@@ -202,25 +245,6 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
             ? tx(locale, "AR(1) 계수 불확실성까지 반영해도 관찰상 증가 신호가 남습니다. 그래도 통제군 없는 인과 증명은 아닙니다.", "An observational lift signal remains after accounting for AR(1) parameter uncertainty. This is still not causal proof without a control.")
             : tx(locale, "AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.", "After accounting for AR(1) parameter uncertainty, lift cannot be distinguished from no change.")}</strong><p>{tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`)}</p></div></div>
       <div className="chart-container" style={{ height: "320px", marginTop: "16px" }}><canvas ref={chartRef} /></div>
-      {!isDemo && <DecisionReview
-        toolId="5-24"
-        locale={locale}
-        decisionPrefill={{
-          conclusion: !profileReady
-            ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
-            : hasProfileLiftSignal
-              ? tx(locale, `관찰상 추정 증가분 ${formatValue(profileEstimate, locale)} 신호가 남지만 통제군 없는 인과 증명은 아닙니다.`, `An observed estimated lift of ${formatValue(profileEstimate, locale)} remains, but this is not causal proof without a control.`)
-              : tx(locale, "현재 데이터에서는 증가를 변화 없음과 분리하기 어렵습니다.", "Current data cannot separate lift from no change."),
-          action: hasProfileLiftSignal
-            ? tx(locale, "다음 브랜드 캠페인에는 비집행 비교군을 남겨 증분 효과를 다시 검증한다", "Keep an unexposed comparison group for the next brand campaign and revalidate incrementality")
-            : tx(locale, "추가 사전 기간 또는 통제군을 확보한 뒤 브랜드 증분을 다시 추정한다", "Add pre-period history or a control, then re-estimate brand incrementality"),
-          metric: tx(locale, "추정 증가분", "Estimated incremental outcome"),
-          baseline: formatValue(profileEstimate, locale),
-          targetDirection: "neutral",
-          sourcePeriod: tx(locale, `사전 ${result.prePeriods}기간 · 집행 ${result.postPeriods}기간`, `${result.prePeriods} pre periods · ${result.postPeriods} campaign periods`),
-          reviewQuestion: tx(locale, "새 데이터와 비교군을 포함하면 브랜드 캠페인의 순증분을 더 신뢰성 있게 구분할 수 있는가?", "With new data and a comparison group, can the campaign's net increment be separated more reliably?"),
-        }}
-      />}
       <details style={{ marginTop: "14px" }}>
         <summary>{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</summary>
         <ul>

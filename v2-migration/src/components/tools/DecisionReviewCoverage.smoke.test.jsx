@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import BrandCampaignIncrementality from "@/components/tools/BrandCampaignIncrementality";
@@ -53,6 +53,7 @@ function seedVifPanel(costFor) {
 
 describe("decision review coverage for diagnostic tools", () => {
   beforeEach(() => {
+    window.gtag = vi.fn();
     const state = useAppStore.getState();
     useAppStore.setState({
       csvData: EMPTY_CSV,
@@ -62,7 +63,10 @@ describe("decision review coverage for diagnostic tools", () => {
       demoDisabled: true,
     });
   });
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    delete window.gtag;
+  });
 
   it.each([
     ["VIF", "5-25", "collinearity", () => <MulticollinearityChecker />],
@@ -72,6 +76,11 @@ describe("decision review coverage for diagnostic tools", () => {
     const { container } = render(renderTool());
     expect(container.querySelector(`[data-decision-review-tool="${routeId}"]`)).toBeTruthy();
     expect(container.textContent).toContain("다음 검토 약속 만들기");
+    expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
+      tool_id: routeId,
+      analysis_type: routeId === "5-25" ? "multicollinearity" : "asa_keyword",
+      placement: "result_action_card",
+    }));
     if (routeId === "5-25") {
       expect(container.querySelector("#vif-setup")).toBeTruthy();
       expect(container.querySelector("#vif-result")).toBeTruthy();
@@ -89,6 +98,11 @@ describe("decision review coverage for diagnostic tools", () => {
     fireEvent.click(screen.getByRole("button", { name: "증분 추정하기" }));
     await waitFor(() => expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeTruthy());
     expect(container.textContent).toContain("다음 검토 약속 만들기");
+    expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
+      tool_id: "5-24",
+      analysis_type: "brand_incrementality",
+      placement: "result_action_card",
+    }));
   });
 
   it("does not save a VIF decision when fewer than two spend columns vary", () => {

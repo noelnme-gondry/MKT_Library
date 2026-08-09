@@ -10,22 +10,24 @@
 |---|---|---|---|---|
 | Google Search Console | 완료 | `https://growthoptplaybook.com/sitemap.xml` | 완료 확인. 최초 등록일은 알 수 없으며 2026-08-04 활성 상태만 확인 | 2026-08-18 |
 | 네이버 서치어드바이저 | 완료 | `https://growthoptplaybook.com/sitemap.xml`, `https://growthoptplaybook.com/rss.xml` | 완료 확인. 최초 등록일은 알 수 없으며 2026-08-04 활성 상태만 확인 | 2026-08-18 |
-| Bing Webmaster Tools | 미확인 | GSC 가져오기 후 `https://growthoptplaybook.com/sitemap.xml` 상태 확인 | 운영자 계정에서 진행 필요 | 완료 후 최대 48시간 뒤 데이터 생성 확인 |
 
-`llms.txt`는 공개 콘텐츠 경로를 안내하는 파일이지 검색 콘솔 제출 자산이 아니다. Bing에는 sitemap만 확인하며 RSS와 `llms.txt`를 중복 제출하지 않는다. IndexNow는 발행·수정 빈도가 높아질 때 별도 변경으로 검토한다.
+`llms.txt`는 공개 콘텐츠 경로를 안내하는 파일이지 검색 콘솔 제출 자산이 아니다. 검색 운영·비교 대상은 Google과 네이버로 한정한다. 비교일 전에는 노출 수만 보고 신규 글을 추가하거나 제목·본문·내부 링크를 한꺼번에 바꾸지 않는다.
 
 ## 기준 측정 창
 
 - 기준 기간: 2026-07-07~2026-08-03(직전 완료 28일)
 - 비교일: 2026-08-18 KST
 - 검색 지표: 클릭, 노출, CTR, 평균 게재순위, 발견·색인 URL 수
-- 제품 지표: `blog_tool_cta_clicked`, `data_import_start`, `data_import_success`, `data_import_failed`, `analysis_started`, `analysis_blocked`, `analysis_completed`, `analysis_result_viewed`, `analysis_history_viewed`
-- 핵심 전환율: 블로그→도구, 업로드 시작→성공, 분석 시작→완료, 완료→결과 열람
-- 주간 북극성 지표: 데모를 제외하고 `result_state=ready`인 `analysis_completed` 수
+- 제품 지표: `blog_tool_cta_clicked`, `newsletter_submit_attempt`, `data_import_start`, `data_import_success`, `data_import_failed`, `analysis_started`, `analysis_blocked`, `analysis_completed`, `analysis_result_viewed`, `decision_record_added`, `decision_review_completed`
+- 유입 품질: Google·네이버 검색 랜딩 → 비데모 `analysis_completed` 비율
+- 활성화: 첫 `tool_view` → 첫 비데모 `analysis_completed` 전환율과 `elapsed_bucket` 소요시간 구간
+- 리텐션: `decision_record_added` → 7일·28일 안의 `decision_review_completed` 비율
+- 실제 이메일 구독 완료는 사이트의 제출 시도 이벤트가 아니라 Buttondown의 확인 완료 수를 SSOT로 본다.
+- 주간 핵심 지표: 비데모 `analysis_completed(result_state=ready)`와 `decision_review_completed`를 분리해 함께 본다.
 
 ## 변경 이력
 
 | 날짜(KST) | 확인·변경 | 결과 | 다음 행동 |
 |---|---|---|---|
 | 2026-08-04 | GSC·네이버 운영 상태 확인 | 운영자 완료 확인 | 2026-08-18에 같은 28일 지표 재확인 |
-| 2026-08-04 | Bing 상태 분리 | 아직 확인 근거 없음 | Bing에서 GSC 가져오기 → 자동 검증·sitemap 가져오기 상태 확인 |
+| 2026-08-09 | 검색 운영 범위 확정 | Google·네이버만 비교하고 Bing은 제외 | 2026-08-18에 같은 28일 지표 재확인 |

@@ -6,8 +6,19 @@ const ALLOWED_PARAMS = new Set([
   "conflict_count", "missing_required_count", "tab_name", "download_type", "analysis_type",
   "result_state", "locale", "placement", "content_slug", "content_type",
   "source_tool_id", "data_continuity", "rank",
-  "section_id", "state", "days_since_decision",
+  "section_id", "state", "days_since_decision", "elapsed_bucket",
 ]);
+
+let firstToolViewAt = null;
+let hasRecordedFirstActivation = false;
+
+export function productElapsedBucket(elapsedMs) {
+  const seconds = Math.max(0, Number(elapsedMs) || 0) / 1000;
+  if (seconds < 60) return "under_1m";
+  if (seconds < 180) return "1_3m";
+  if (seconds < 600) return "3_10m";
+  return "10m_plus";
+}
 
 // 한 화면에서 Strict Mode 재실행·도구 재마운트가 일어나도 같은 퍼널 사건을
 // 중복 전송하지 않는다. 키 입력은 즉시 비식별 해시로 바꾸고 해시만 보관한다.
@@ -25,6 +36,9 @@ const ANALYSIS_TYPE_BY_TOOL = {
   "5-21": "pvm",
   "5-22": "saturation",
   "5-23": "incrementality",
+  "5-24": "brand_incrementality",
+  "5-25": "multicollinearity",
+  "5-26": "asa_keyword",
   "9-1": "content_elements",
   "9-2": "content_aha",
   "9-3": "pvm",
@@ -49,7 +63,17 @@ export function sanitizeProductEventParams(params = {}) {
 
 export function trackProductEvent(name, params = {}) {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
-  window.gtag("event", name, sanitizeProductEventParams(params));
+  if (name === "tool_view" && firstToolViewAt == null) firstToolViewAt = Date.now();
+  const isFirstReadyActivation = name === "analysis_completed"
+    && firstToolViewAt != null
+    && !hasRecordedFirstActivation
+    && params.source !== "demo"
+    && params.result_state === "ready";
+  const enriched = isFirstReadyActivation
+    ? { ...params, elapsed_bucket: productElapsedBucket(Date.now() - firstToolViewAt) }
+    : params;
+  window.gtag("event", name, sanitizeProductEventParams(enriched));
+  if (isFirstReadyActivation) hasRecordedFirstActivation = true;
   return true;
 }
 

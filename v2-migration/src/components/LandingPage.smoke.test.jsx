@@ -20,6 +20,7 @@ function seedNoData() {
     currentRouteId: "home",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -75,6 +76,31 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelectorAll(".dc-library-card")).toHaveLength(2);
     expect(document.querySelector(".dc-resource-strip")).toBeTruthy();
+  });
+  it("shows a local-only continue panel for saved decisions", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    useAppStore.setState({ decisionRecords: [{
+      id: "decision-home",
+      toolId: "5-3",
+      action: "검색 예산을 10% 줄이고 7일 뒤 CPA를 본다",
+      conclusion: "한계 효율이 낮습니다",
+      reviewDate: today,
+      status: "pending",
+    }] });
+    window.gtag = vi.fn();
+    const { container } = render(<LandingPage />);
+    expect(container.querySelector(".dc-return")).toBeTruthy();
+    expect(container.querySelector(".dc-return__status strong")?.textContent).toBe("1");
+    expect(container.textContent).toContain("검색 예산을 10% 줄이고");
+    const reopen = container.querySelector('a[href="/tools/budget-allocation"]');
+    clickWithoutNavigation(reopen);
+    expect(window.gtag).toHaveBeenCalledWith("event", "landing_continue_tool_clicked", {
+      tool_id: "5-3",
+      source: "landing",
+      placement: "continue_panel",
+      locale: "ko",
+    });
+    delete window.gtag;
   });
   it("tracks the explicitly labelled decision example and replaces the current dataset", () => {
     seedWithData();

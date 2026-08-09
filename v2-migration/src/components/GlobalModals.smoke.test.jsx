@@ -176,4 +176,14 @@ describe("GlobalModals complete tool menu", () => {
     expect(useAppStore.getState().analystMode).toBe(true);
     expect(pushMock).not.toHaveBeenCalled();
   });
+
+  it("reveals the noindex growth funnel report only in analyst mode", () => {
+    renderToolMenu();
+    fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
+    expect(screen.queryByRole("option", { name: /제품 성장 퍼널 리포트/ })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: /분석가 모드 켜기/ }));
+    fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
+    fireEvent.click(screen.getByRole("option", { name: /제품 성장 퍼널 리포트/ }));
+    expect(pushMock).toHaveBeenCalledWith("/growth-funnel");
+  });
 });
