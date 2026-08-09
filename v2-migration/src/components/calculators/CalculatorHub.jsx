@@ -6,7 +6,7 @@ export default function CalculatorHub({ locale = "ko" }) {
   const base = isEn ? "/en" : "";
   const calculators = getAllCalculators(locale);
   return (
-    <main id="main-content" className="calculator-page calculator-hub">
+    <main id="main-content" tabIndex="-1" className="calculator-page calculator-hub">
       <header className="calculator-hero">
         <span>{isEn ? "MARKETING METRIC CALCULATORS" : "마케팅 지표 계산기"}</span>
         <h1>{isEn ? "Get the number first. Upload data only when you need the cause." : "숫자는 바로 계산하고, 원인이 필요할 때만 데이터를 넣으세요"}</h1>

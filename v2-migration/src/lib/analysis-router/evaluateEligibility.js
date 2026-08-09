@@ -1,5 +1,6 @@
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
+import { buildVifSpendPanel } from "./vifReadiness";
 import { deriveStatisticalStatus } from "./statisticalStatus";
 
 export const ANALYSIS_CONTRACTS = {
@@ -18,6 +19,9 @@ export const ANALYSIS_CONTRACTS = {
   "5-18": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
   "5-23": { minRows: 2, minPeriods: 0, priority: 7 },
   "5-24": { minRows: 28, minPeriods: 28, priority: 8 },
+  // VIF는 최소 2개 채널과 채널 수보다 3개 이상 많은 날짜가 있어야 역행렬을
+  // 안정적으로 계산할 수 있다. 결과 지표 없이 날짜·비용·채널만으로 판정한다.
+  "5-25": { minRows: 10, minPeriods: 5, minEntities: 2, blockBelowMinEntities: true, minPeriodsOverEntities: 3, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], priority: 5 },
   // 검색어 리포트와 소재 일별 리포트는 일반 운영 CSV와 구조가 달라, /start에서
   // 개별 도구의 매핑 계약으로 별도 판정해야 한다.
   "5-26": { minRows: 1, minPeriods: 1, priority: 2 },
@@ -159,6 +163,9 @@ function defaultRecommendationReason({ toolId, periodCount, entityCoverage, loca
     "5-3": locale === "en"
       ? `${entityLabel}-level performance across ${periodLabel} is ready for increase/decrease budget scenarios.`
       : `${periodLabel}의 ${entityLabel}별 성과가 있어 증액·감액 예산 시나리오를 비교할 수 있습니다.`,
+    "5-25": locale === "en"
+      ? `${periodLabel} of spend across multiple ${entityLabel}s can be checked for overlapping movement before MMM.`
+      : `${periodLabel}의 여러 ${entityLabel} 지출이 있어 MMM 전에 중복 움직임을 점검할 수 있습니다.`,
     "5-26": locale === "en"
       ? `Search terms, taps, spend, and outcomes are ready to review Exact promotion and CPT actions.`
       : `검색어·탭·비용·성과가 있어 Exact 승격 후보와 CPT 조정 후보를 바로 확인할 수 있습니다.`,
@@ -169,14 +176,27 @@ function defaultRecommendationReason({ toolId, periodCount, entityCoverage, loca
   return reasons[toolId] || null;
 }
 
-export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagnosis, locale = "ko" }) {
+export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagnosis, locale = "ko", mappingContract = null }) {
   const contract = ANALYSIS_CONTRACTS[toolId] || { minRows: 1, minPeriods: 0, priority: 99 };
   const records = canonicalData?.records || [];
   const mapped = new Set(Object.values(mapping).filter((field) => field && field !== "__ignore__"));
   const required = TOOL_REQUIRED_FIELDS[toolId] || [];
+  const requiredKeys = new Set(required.flatMap((field) => typeof field === "string" ? [field] : field?.oneOf || []));
   const missing = missingFields(required, mapped);
   const metricKeys = requiredMetricKeys(required, mapped, records);
   const quality = buildDataQualityReport(canonicalData, { metricKeys });
+  const vifPanel = toolId === "5-25" ? buildVifSpendPanel(records.map((record) => ({
+    date: record.date,
+    entity: record.dimensions?.channel || record.dimensions?.campaign_name,
+    cost: record.metrics?.cost ?? record.metrics?.spend,
+  }))) : null;
+  const eligiblePeriodCount = vifPanel ? vifPanel.dates.length : quality.periodCount;
+  const preliminaryEntityCoverage = evaluateEntityCoverage(records, contract);
+  const eligibleEntityCount = vifPanel ? vifPanel.entities.length : preliminaryEntityCoverage.entities.length;
+  const dynamicMinPeriods = contract.minPeriodsOverEntities && eligibleEntityCount
+    ? eligibleEntityCount + contract.minPeriodsOverEntities
+    : 0;
+  const requiredPeriodCount = Math.max(contract.minPeriods || 0, dynamicMinPeriods);
   const reasons = [];
   const blockers = [];
   const details = [];
@@ -184,13 +204,26 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     reasons.push(`필수 항목 누락: ${missing.join(", ")}`);
     blockers.push({ code: "missing_fields", fields: missing });
   }
+  const hasMappingConflict = Boolean(mappingContract?.conflicts?.length);
+  const hasRequiredMappingConfirmation = Boolean(mappingContract?.assessments?.some((assessment) => (
+    assessment.state === "must_confirm" && requiredKeys.has(assessment.field)
+  )));
+  if (hasMappingConflict) {
+    reasons.push("자동 매핑 충돌 확인 필요");
+    blockers.push({ code: "mapping_conflict" });
+  }
+  if (hasRequiredMappingConfirmation) {
+    reasons.push("필수 컬럼 자동 매핑 확인 필요");
+    blockers.push({ code: "mapping_confirmation" });
+  }
   if (records.length < contract.minRows) {
     reasons.push(`최소 ${contract.minRows}행 필요 (현재 ${records.length}행)`);
     blockers.push({ code: "min_rows", required: contract.minRows, current: records.length });
   }
-  if (contract.minPeriods && quality.periodCount < contract.minPeriods) {
-    reasons.push(`최소 ${contract.minPeriods}개 기간 필요 (현재 ${quality.periodCount}개 기간)`);
-    blockers.push({ code: "min_periods", required: contract.minPeriods, current: quality.periodCount });
+  const hasTooFewPeriods = requiredPeriodCount > 0 && eligiblePeriodCount < requiredPeriodCount;
+  if (hasTooFewPeriods) {
+    reasons.push(`최소 ${requiredPeriodCount}개 기간 필요 (현재 ${eligiblePeriodCount}개 기간)`);
+    blockers.push({ code: "min_periods", required: requiredPeriodCount, current: eligiblePeriodCount });
   }
 
   const unusableMetrics = metricKeys.filter((key) => {
@@ -202,14 +235,24 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     blockers.push({ code: "unusable_metrics", fields: unusableMetrics });
   }
 
-  const isBlocked = missing.length || records.length < contract.minRows || (contract.minPeriods && quality.periodCount < contract.minPeriods) || unusableMetrics.length;
+  const hasTooFewEntities = Boolean(contract.blockBelowMinEntities && eligibleEntityCount < contract.minEntities);
+  if (hasTooFewEntities) {
+    reasons.push(`비교 가능한 단위 최소 ${contract.minEntities}개 필요 (현재 ${eligibleEntityCount}개)`);
+    blockers.push({ code: "min_entities", required: contract.minEntities, current: eligibleEntityCount });
+  }
+  const hasInsufficientVifVariation = Boolean(vifPanel && !hasTooFewEntities && !unusableMetrics.length && vifPanel.entities.length >= 2 && vifPanel.variableEntityIndices.length < 2);
+  if (hasInsufficientVifVariation) {
+    reasons.push(`지출이 변한 채널 또는 캠페인 최소 2개 필요 (현재 ${vifPanel.variableEntityIndices.length}개)`);
+    blockers.push({ code: "insufficient_variation", required: 2, current: vifPanel.variableEntityIndices.length });
+  }
+  const isBlocked = missing.length || hasMappingConflict || hasRequiredMappingConfirmation || records.length < contract.minRows || hasTooFewPeriods || hasTooFewEntities || hasInsufficientVifVariation || unusableMetrics.length;
   let confidenceTier = "standard";
   if (!isBlocked && toolId === "5-18") {
     const mmm = evaluateMmmConfidence(records, quality, contract);
     confidenceTier = mmm.tier;
     details.push(...mmm.details);
   }
-  const entityCoverage = !isBlocked ? evaluateEntityCoverage(records, contract) : { entities: [], details: [] };
+  const entityCoverage = !isBlocked ? preliminaryEntityCoverage : { entities: preliminaryEntityCoverage.entities, details: [] };
   if (!isBlocked) details.push(...entityCoverage.details);
   if (!isBlocked) details.push(...qualityDetails(quality));
   const hasCaution = details.length > 0;
@@ -232,7 +275,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     blockers,
     reasonDetails: details,
     rowCount: records.length,
-    periodCount: quality.periodCount,
+    periodCount: eligiblePeriodCount,
     priority: contract.priority,
     confidenceTier,
     statisticalStatus,
@@ -240,7 +283,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     entityCoverage,
     recommendationScore: recommendation?.score || schemaRecommendationScore,
     recommendationReason: recommendation?.reason || (!isBlocked
-      ? defaultRecommendationReason({ toolId, periodCount: quality.periodCount, entityCoverage, locale })
+      ? defaultRecommendationReason({ toolId, periodCount: eligiblePeriodCount, entityCoverage, locale })
       : null),
   };
 }
@@ -258,6 +301,26 @@ export function formatEligibilityBlocker(result, locale = "ko") {
     return isEn
       ? `Add more rows: at least ${blocker.required.toLocaleString()} are required (${blocker.current.toLocaleString()} now).`
       : `행을 더 추가하세요. 최소 ${blocker.required.toLocaleString()}행이 필요하며 현재 ${blocker.current.toLocaleString()}행입니다.`;
+  }
+  if (blocker.code === "min_entities") {
+    return isEn
+      ? `Add another comparison unit: at least ${blocker.required} channels or campaigns are required (${blocker.current} now).`
+      : `비교 단위를 더 추가하세요. 채널 또는 캠페인이 최소 ${blocker.required}개 필요하며 현재 ${blocker.current}개입니다.`;
+  }
+  if (blocker.code === "mapping_conflict") {
+    return isEn
+      ? "Review the conflicting automatic mappings before opening this analysis."
+      : "충돌한 자동 매핑을 확인한 뒤 이 분석을 여세요.";
+  }
+  if (blocker.code === "mapping_confirmation") {
+    return isEn
+      ? "Confirm the required column mapping before opening this analysis."
+      : "필수 컬럼의 자동 매핑을 확인한 뒤 이 분석을 여세요.";
+  }
+  if (blocker.code === "insufficient_variation") {
+    return isEn
+      ? `Add independent spend movement: at least ${blocker.required} channels or campaigns must vary over time (${blocker.current} now).`
+      : `지출 변동을 추가하세요. 시간에 따라 비용이 변한 채널 또는 캠페인이 최소 ${blocker.required}개 필요하며 현재 ${blocker.current}개입니다.`;
   }
   if (blocker.code === "min_periods") {
     return isEn

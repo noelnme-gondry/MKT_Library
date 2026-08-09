@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 
@@ -22,11 +22,16 @@ describe("ConnectedToolJourney", () => {
     delete window.gtag;
   });
 
-  it("keeps the detailed tool catalogue collapsed behind a compact decision path", () => {
-    const { container, getByText } = render(<ConnectedToolJourney locale="ko" />);
+  it("opens the matching stage instead of sending a multi-tool stage to an arbitrary first tool", async () => {
+    const { container, getByRole } = render(<ConnectedToolJourney locale="ko" />);
     expect(container.querySelectorAll(".connected-tool-path > li")).toHaveLength(5);
     expect(container.querySelector(".connected-tool-journey__details").open).toBe(false);
-    fireEvent.click(getByText("단계별 도구와 입력 형식 보기"));
+    const chooseStage = getByRole("button", { name: /다음 조치 선택.*4개 도구 중 선택/ });
+    expect(chooseStage.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(chooseStage);
     expect(container.querySelector(".connected-tool-journey__details").open).toBe(true);
+    expect(chooseStage.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelectorAll(".tool-template-action")).toHaveLength(2);
+    await waitFor(() => expect(document.activeElement?.id).toBe("connected-tool-stage-choose"));
   });
 });

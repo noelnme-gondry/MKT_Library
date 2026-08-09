@@ -71,9 +71,10 @@ export default function PageClient({ params }) {
     <>
       <div className={`app ${routeId === "home" ? "is-home" : ""} ${routeId.startsWith("5-") || routeId.startsWith("9-") ? "is-analysis" : ""}`}>
         <Sidebar />
-        <main className="main" id="main-content">
+        <div className="main">
           <Header />
-          <article className="content" id="content">
+          <main id="main-content" tabIndex="-1">
+            <article className="content" id="content">
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
@@ -118,8 +119,9 @@ export default function PageClient({ params }) {
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} />}
             <ToolLongform toolId={routeId} />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} />}
-          </article>
-        </main>
+            </article>
+          </main>
+        </div>
       </div>
       {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}

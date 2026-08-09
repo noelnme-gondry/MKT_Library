@@ -25,6 +25,32 @@ function seedConfirmedUserData(routeId, group) {
   });
 }
 
+function seedVifPanel(costFor) {
+  const mappedRows = Array.from({ length: 8 }, (_, day) => ["A", "B"].map((channel, channelIndex) => ({
+    date: `2026-08-${String(day + 1).padStart(2, "0")}`,
+    channel,
+    cost: costFor(day, channelIndex),
+  }))).flat();
+  const csvData = {
+    raw: mappedRows,
+    headers: ["date", "channel", "cost"],
+    mapping: { date: "date", channel: "channel", cost: "cost" },
+    fileName: "uploaded_vif.csv",
+    mappedRows,
+  };
+  const state = useAppStore.getState();
+  const dataGroup = TOOL_GROUP["5-25"];
+  useAppStore.setState({
+    currentRouteId: "5-25",
+    activeDataGroup: dataGroup,
+    csvData,
+    csvGroups: { ...state.csvGroups, [dataGroup]: csvData },
+    analyzedByGroup: { ...state.analyzedByGroup, [dataGroup]: computeAnalyzeSig(csvData) },
+    decisionRecords: [],
+    demoDisabled: true,
+  });
+}
+
 describe("decision review coverage for diagnostic tools", () => {
   beforeEach(() => {
     const state = useAppStore.getState();
@@ -47,8 +73,13 @@ describe("decision review coverage for diagnostic tools", () => {
     expect(container.querySelector(`[data-decision-review-tool="${routeId}"]`)).toBeTruthy();
     expect(container.textContent).toContain("다음 검토 약속 만들기");
     if (routeId === "5-25") {
+      expect(container.querySelector("#vif-setup")).toBeTruthy();
+      expect(container.querySelector("#vif-result")).toBeTruthy();
       expect(screen.getByRole("heading", { name: "채널별 VIF" })).toBeTruthy();
       expect(screen.getByRole("heading", { name: "가장 함께 움직인 채널쌍" })).toBeTruthy();
+    } else {
+      expect(container.querySelector("#asa-setup")).toBeTruthy();
+      expect(container.querySelector("#asa-summary")).toBeTruthy();
     }
   });
 
@@ -58,5 +89,20 @@ describe("decision review coverage for diagnostic tools", () => {
     fireEvent.click(screen.getByRole("button", { name: "증분 추정하기" }));
     await waitFor(() => expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeTruthy());
     expect(container.textContent).toContain("다음 검토 약속 만들기");
+  });
+
+  it("does not save a VIF decision when fewer than two spend columns vary", () => {
+    seedVifPanel(() => 100);
+    const { container } = render(<MulticollinearityChecker />);
+    expect(container.textContent).toContain("계산 불가 · 변동 채널 2개 필요");
+    expect(container.querySelector('[data-decision-review-tool="5-25"]')).toBeNull();
+  });
+
+  it("shows infinity instead of a false zero for perfect collinearity", () => {
+    seedVifPanel((day, channelIndex) => (day + 1) * 100 * (channelIndex + 1));
+    const { container } = render(<MulticollinearityChecker />);
+    expect(container.textContent).toContain("최대 VIF ∞");
+    expect(container.textContent).not.toContain("최대 VIF 0.00");
+    expect(container.querySelector('[data-decision-review-tool="5-25"]')).toBeTruthy();
   });
 });

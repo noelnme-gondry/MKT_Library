@@ -34,7 +34,7 @@ export default function DiagnosePage() {
     ],
   };
   return (
-    <main id="main-content" className="diagnose-page">
+    <article className="diagnose-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
         <span>증상 기반 분석 라우터</span>
@@ -46,6 +46,6 @@ export default function DiagnosePage() {
         <span>FAQ</span><h2>진단을 시작하기 전</h2>
         {FAQ.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}
       </section>
-    </main>
+    </article>
   );
 }

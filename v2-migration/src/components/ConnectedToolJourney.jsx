@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
@@ -17,7 +18,8 @@ const COPY = {
     startAnywhere: "원하는 단계에서 시작",
     template: "이 단계의 입력 형식",
     details: "단계별 도구와 입력 형식 보기",
-    toolCount: (count) => `연결 도구 ${count}개`,
+    representative: (title) => `대표 도구 · ${title}`,
+    choose: (count) => `${count}개 도구 중 선택`,
   },
   en: {
     eyebrow: "CONNECTED WORKFLOW",
@@ -27,13 +29,32 @@ const COPY = {
     startAnywhere: "Start at any stage",
     template: "Input format for this stage",
     details: "View tools and input formats by stage",
-    toolCount: (count) => `${count} connected tools`,
+    representative: (title) => `Representative tool · ${title}`,
+    choose: (count) => `Choose from ${count} tools`,
   },
 };
 
 export default function ConnectedToolJourney({ locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
+  const detailsRef = useRef(null);
+  const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const openStage = (stage) => {
+    if (detailsRef.current) detailsRef.current.open = true;
+    setDetailsOpen(true);
+    trackProductEvent("connected_workflow_stage_opened", {
+      source: "landing",
+      placement: "connected_workflow_path",
+      tab_name: stage.id,
+      locale: lang,
+    });
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(`connected-tool-stage-${stage.id}`);
+      const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      target?.scrollIntoView?.({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      target?.focus?.({ preventScroll: true });
+    });
+  };
 
   return (
     <section className="connected-tool-journey" aria-labelledby="connected-tool-journey-title">
@@ -45,9 +66,15 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
       <ol className="connected-tool-path">
         {TOOL_JOURNEY.map((stage) => {
           const firstTool = localizedTool(stage.tools[0], lang);
+          const content = <>
+            <span>{stage.label[lang]}</span>
+            <strong>{stage.title[lang]}</strong>
+            <p>{stage.description[lang]}</p>
+            <small>{stage.tools.length > 1 ? T.choose(stage.tools.length) : T.representative(firstTool.title)} <b aria-hidden="true">→</b></small>
+          </>;
           return (
             <li key={stage.id}>
-              <Link
+              {stage.tools.length === 1 ? <Link
                 href={firstTool.href}
                 onClick={() => trackProductEvent("connected_workflow_pick", {
                   tool_id: firstTool.id,
@@ -57,20 +84,17 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
                   locale: lang,
                 })}
               >
-                <span>{stage.label[lang]}</span>
-                <strong>{stage.title[lang]}</strong>
-                <p>{stage.description[lang]}</p>
-                <small>{T.toolCount(stage.tools.length)} <b aria-hidden="true">→</b></small>
-              </Link>
+                {content}
+              </Link> : <button type="button" aria-controls={`connected-tool-stage-${stage.id}`} aria-expanded={isDetailsOpen} onClick={() => openStage(stage)}>{content}</button>}
             </li>
           );
         })}
       </ol>
-      <details className="connected-tool-journey__details">
+      <details ref={detailsRef} className="connected-tool-journey__details" onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
         <summary>{T.details}</summary>
         <div className="connected-tool-journey__stages">
           {TOOL_JOURNEY.map((stage) => (
-            <article className="connected-tool-stage" key={stage.id}>
+            <article className="connected-tool-stage" id={`connected-tool-stage-${stage.id}`} key={stage.id} tabIndex="-1">
             <div className="connected-tool-stage__head">
               <span>{stage.label[lang]}</span>
               <h3>{stage.title[lang]}</h3>
@@ -102,13 +126,13 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
                 );
               })}
             </div>
-            <ToolTemplateAction
+            {stage.tools.length === 1 && <ToolTemplateAction
               toolId={stage.tools[0]}
               locale={lang}
               compact
               reason={T.template}
               source={`journey_${stage.id}`}
-            />
+            />}
             </article>
           ))}
         </div>

@@ -16,9 +16,16 @@ export function normalizeDateValue(value) {
   if (value == null) return null;
   const raw = String(value).trim();
   if (!raw || EMPTY_MARKERS.has(raw.toLowerCase())) return null;
-  const compact = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
-  const normalized = compact ? `${compact[1]}-${compact[2]}-${compact[3]}` : raw.replace(/\./g, "-");
-  const parsed = new Date(normalized);
+  const dateOnly = raw.match(/^(\d{4})(?:[./-]?)(\d{2})(?:[./-]?)(\d{2})$/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const month = Number(dateOnly[2]);
+    const day = Number(dateOnly[3]);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (year < 2000 || year > 2100 || parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) return null;
+    return parsed.toISOString().slice(0, 10);
+  }
+  const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return null;
   const year = parsed.getUTCFullYear();
   if (year < 2000 || year > 2100) return null;

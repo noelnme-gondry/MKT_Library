@@ -92,6 +92,18 @@ const ASSIST_SECTIONS = {
     { id: "s-incr-method", title: ["증분 측정 방식 선택", "Choose an incrementality method"], body: ["비교군과 기간 정의가 먼저입니다. 관찰 성과만으로 증분을 단정하지 마세요.", "Define the comparison group and period first; do not infer incrementality from observed outcomes alone."] },
     { id: "s-incr-result", result: true, title: ["증분 결과 판독", "Read the incrementality result"], body: ["무작위 홀드아웃·DiD·단순 전후의 증거 수준을 구분해 다음 실험을 정하세요.", "Distinguish randomized holdout, DiD, and simple pre/post evidence before choosing the next test."] },
   ],
+  "5-24": [
+    { id: "brand-its-setup", title: ["브랜드 증분 데이터 준비", "Prepare brand incrementality data"], body: ["날짜별 성과와 한 번의 연속된 캠페인 OFF→ON 구간을 연결한 뒤 분석을 시작하세요.", "Connect dated outcomes to one continuous campaign OFF-to-ON window before starting the analysis."] },
+    { id: "brand-its-result", result: true, title: ["브랜드 증분 추정 읽기", "Read the brand incrementality estimate"], body: ["추정 증가분과 불확실성 구간을 함께 보고, 대조군 없는 결과는 인과 확정이 아닌 관찰 추정으로 해석하세요.", "Read the estimated lift with its uncertainty interval, and treat results without a control as observational estimates rather than confirmed causality."] },
+  ],
+  "5-25": [
+    { id: "vif-setup", title: ["채널 지출 데이터 준비", "Prepare channel spend data"], body: ["같은 기간의 날짜·채널·비용을 연결해 채널별 지출이 독립적으로 움직였는지 확인하세요.", "Connect date, channel, and spend for the same period to check whether channel spend moved independently."] },
+    { id: "vif-result", result: true, title: ["VIF 판정 읽기", "Read the VIF verdict"], body: ["주의·심각 판정이면 MMM 전에 함께 움직인 채널을 분리해 변동시킨 기간을 먼저 확보하세요.", "For a warning or severe verdict, create periods with independent variation in overlapping channels before running MMM."] },
+  ],
+  "5-26": [
+    { id: "asa-setup", title: ["ASA 판정 기준과 데이터 준비", "Prepare ASA inputs and thresholds"], body: ["검색어 성과와 캠페인 예산·목표 CPA·현재 CPT를 연결해 조정 기준을 확인하세요.", "Connect search-term performance with campaign budget, target CPA, and current CPT to confirm the decision thresholds."] },
+    { id: "asa-summary", result: true, title: ["키워드·CPT 조치 요약", "Read keyword and CPT actions"], body: ["Exact 승격과 CPT 증감 후보를 먼저 좁힌 뒤 Apple Ads 콘솔에서 하나씩 검토하세요.", "Narrow the Exact-promotion and CPT-change candidates, then review them one by one in the Apple Ads console."] },
+  ],
   "5-18": [
     { id: "s-prep", title: ["반응 데이터 준비", "Prepare response data"], body: ["주차 단위와 채널별 비용·성과가 맞아야 반응을 안정적으로 읽을 수 있습니다.", "Align weekly grain with channel cost and outcome to read response reliably."] },
     { id: "s-trend", result: true, title: ["반응 변화 확인", "Read the response change"], body: ["관찰된 변화는 진단 신호입니다. 예산 이동 전에는 잠식·추세를 함께 확인하세요.", "Observed movement is a diagnostic signal. Check cannibalization and trend before moving budget."] },
@@ -150,6 +162,9 @@ const QUICK_ACTION_TARGETS = {
   "5-2": "dashboard-support-tools",
   "9-7": "dashboard-support-tools",
   "5-23": "s-incr-method",
+  "5-24": "brand-its-setup",
+  "5-25": "vif-setup",
+  "5-26": "asa-setup",
   "9-1": "s-content-mapping",
 };
 

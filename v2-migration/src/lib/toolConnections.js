@@ -5,54 +5,67 @@ export const CONNECTED_TOOLS = {
   "5-2": {
     title: { ko: "운영 대시보드", en: "Operations dashboard" },
     question: { ko: "이번 주 전체 성과는 어디서 흔들렸을까?", en: "Where did overall performance move this week?" },
+    keywords: { ko: "이번 주 성과 이상 CPA CPI ROAS 페이싱 예산 소진 대시보드", en: "weekly performance anomaly CPA CPI ROAS pacing budget spend dashboard" },
   },
   "5-21": {
     title: { ko: "캠페인 성과 변동 탐지", en: "Campaign performance variance" },
     question: { ko: "변화를 물량·효율·믹스로 나누면 원인은 뭘까?", en: "Was the change driven by volume, efficiency, or mix?" },
+    keywords: { ko: "CPA CPI ROAS 왜 올랐나 왜 떨어졌나 원인 비용 물량 효율 믹스 변동", en: "CPA CPI ROAS why increase decrease cause volume efficiency mix variance" },
   },
   "5-22": {
     title: { ko: "캠페인 포화도 탐지", en: "Campaign saturation" },
     question: { ko: "효율을 해치지 않고 더 늘릴 수 있을까?", en: "Can we scale further without hurting efficiency?" },
+    keywords: { ko: "예산 늘렸더니 ROAS 떨어짐 떨어졌어요 CPA 상승 포화 한계효율 증액 과소진 성과 안좋음", en: "ROAS dropped falling after scaling raised budget CPA rose saturation marginal efficiency increase overspend poor performance" },
   },
   "5-3": {
     title: { ko: "예산 배분", en: "Budget allocation" },
     question: { ko: "줄인 예산을 어디로 옮기는 게 좋을까?", en: "Where should the pulled-back budget move next?" },
+    keywords: { ko: "예산 어디로 이동 증액 감액 배분 재배분 시뮬레이션", en: "move budget increase decrease allocation reallocation simulation" },
   },
   "9-6": {
     title: { ko: "소재 분석", en: "Creative analysis" },
     question: { ko: "무엇을 교체하고 다음에 어떤 소재를 만들까?", en: "What should we replace and create next?" },
+    keywords: { ko: "소재 피로 교체 CTR 하락 크리에이티브 광고", en: "creative fatigue replace CTR decline ad" },
   },
   "5-4": {
     title: { ko: "실험 분석", en: "Experiment analysis" },
     question: { ko: "관찰된 차이를 실제 효과라고 볼 수 있을까?", en: "Is the observed difference a real effect?" },
+    keywords: { ko: "A/B 테스트 유의성 표본수 차이 실험", en: "AB test significance sample size difference experiment" },
   },
   "5-23": {
     title: { ko: "증분 분석", en: "Incrementality analysis" },
     question: { ko: "광고가 실제로 추가로 만든 성과는 얼마일까?", en: "How much outcome did marketing truly add?" },
+    keywords: { ko: "광고 순수효과 순수 효과 홀드아웃 인과 증분", en: "true causal ad effect holdout incrementality" },
   },
   "5-24": {
     title: { ko: "브랜드 캠페인 증분 분석", en: "Brand campaign incrementality" },
     question: { ko: "브랜딩이 브랜드 검색·직접 유입을 실제로 더 만들었을까?", en: "Did branding actually add brand search or direct traffic?" },
+    keywords: { ko: "브랜드 광고 효과 검색량 직접유입 ITS 브랜딩", en: "brand advertising lift search volume direct traffic ITS" },
   },
   "5-25": {
     title: { ko: "VIF 다중공선성 점검", en: "VIF multicollinearity check" },
     question: { ko: "MMM으로 채널 기여도를 나눌 만큼 지출이 독립적으로 움직였을까?", en: "Did spend move independently enough to separate channel contribution in MMM?" },
+    keywords: { ko: "MMM 전 다중공선성 VIF 채널 지출 같이 움직임", en: "before MMM multicollinearity VIF channel spend moves together" },
   },
   "5-26": {
     title: { ko: "ASA 키워드 발굴", en: "ASA keyword finder" },
     question: { ko: "어떤 검색어를 Exact로 옮기고 CPT를 조정할까?", en: "Which terms should move to Exact and receive a CPT change?" },
+    keywords: { ko: "ASA 광고비 적게 소진돼요 검색어 키워드 Exact 승격 CPT 입찰 소진 저소진 과소진 올릴까 내릴까 증액 감액 성과 좋음 안좋음 애플서치애즈", en: "ASA ad spend too low search term keyword Exact promotion CPT bid pacing underspend overspend raise lower increase decrease Apple Search Ads" },
   },
   "5-18": {
     title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
     question: { ko: "지금 필요한 것은 추세·잠식·기여·예측 중 무엇일까?", en: "Do I need trend, cannibalization, contribution, or forecast next?" },
+    keywords: { ko: "MMM 마케팅 믹스 기여도 카니발 잠식 추세 예측 회귀", en: "MMM marketing mix contribution cannibalization trend forecast regression" },
   },
   "5-20": {
     title: { ko: "핵심 가치 발굴", en: "Aha-moment finder" },
     question: { ko: "잔존을 예측하는 초기 행동은 무엇일까?", en: "Which early actions predict retention?" },
+    keywords: { ko: "리텐션 만드는 행동 Aha 아하 정착 전환 초기 행동", en: "retention behavior Aha activation conversion early action" },
   },
   "9-1": {
     title: { ko: "콘텐츠 요소 분석", en: "Content element analysis" },
     question: { ko: "어떤 콘텐츠 요소가 성과를 만드는 걸까?", en: "Which content elements drive performance?" },
+    keywords: { ko: "콘텐츠 요소 성과 훅 제목 길이 이모지 회귀", en: "content element performance hook title length emoji regression" },
   },
 };
 

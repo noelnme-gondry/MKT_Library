@@ -17,12 +17,17 @@ describe("WeeklyReview", () => {
     expect(screen.getByText(/현재 세션에서만/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "결정 기록 CSV 불러오기" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "이 기기에 결정 요약 저장" }).checked).toBe(false);
+    expect(screen.getByRole("heading", { name: "첫 결정을 이렇게 쌓습니다" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "내 데이터로 첫 분석" }).getAttribute("href")).toBe("/start");
+    expect(screen.getByRole("link", { name: "필요한 분석부터 진단" }).getAttribute("href")).toBe("/diagnose");
+    expect(screen.queryByRole("region", { name: "검토 현황" })).toBeNull();
   });
 
   it("renders all copy in English", () => {
     render(<WeeklyReview locale="en" />);
     expect(document.body.textContent).not.toMatch(/[가-힣]/);
     expect(screen.getByRole("button", { name: "Import decision CSV" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Run my first analysis" }).getAttribute("href")).toBe("/en/start");
   });
 
   it("localizes the hypothesis label in downloaded briefs", () => {

@@ -649,12 +649,12 @@ export const useAppStore = create(persist((set, get) => ({
   }),
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
-  handoffCsvToRoute: (routeId, data) => set((state) => {
+  handoffCsvToRoute: (routeId, data, { markAnalyzed = true } = {}) => set((state) => {
     const g = groupForRoute(routeId);
     const sig = computeAnalyzeSig(data);
     return {
       csvGroups: { ...state.csvGroups, [g]: data },
-      analyzedByGroup: { ...state.analyzedByGroup, [g]: sig },
+      analyzedByGroup: { ...state.analyzedByGroup, [g]: markAnalyzed ? sig : null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: false },
     };
   }),

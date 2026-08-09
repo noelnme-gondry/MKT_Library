@@ -8,10 +8,12 @@ import { getJourneyContext, getNextTools, localizedTool } from "@/lib/toolConnec
 
 const COPY = {
   ko: {
-    eyebrow: "NEXT DECISION",
+    eyebrow: "CONNECTED TOOLS",
     title: "현재 위치",
-    deck: "결과 다음에 할 일",
-    recommended: "추천 다음 단계",
+    deck: "이 분석과 이어지는 선택지",
+    recommended: "일반적인 다음 단계",
+    connected: "연결 분석",
+    afterVerdict: "판정 후 선택",
     sameData: "같은 CSV로 이어보기",
     newData: "새 데이터 준비",
     back: "앞 단계로",
@@ -23,10 +25,12 @@ const COPY = {
     expand: "전체 여정",
   },
   en: {
-    eyebrow: "NEXT DECISION",
+    eyebrow: "CONNECTED TOOLS",
     title: "Current stage",
-    deck: "What to do after this result",
-    recommended: "Recommended next step",
+    deck: "Tools connected to this analysis",
+    recommended: "Common next step",
+    connected: "Connected analysis",
+    afterVerdict: "Choose after the verdict",
     sameData: "Continue with the same CSV",
     newData: "Prepare a new dataset",
     back: "Previous stage",
@@ -46,6 +50,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   const sourceTool = localizedTool(toolId, lang);
   if (nextTools.length === 0) return null;
   const T = COPY[lang];
+  const isVerdictDependent = toolId === "5-25";
   const templateTarget = nextTools.find((tool) => !tool.isSameData);
   // 상단 레일은 "바로 갈 곳" 두 개만 보여주고, 나머지 경로는 접어서 제공한다.
   // 고정 폭 카드 3개가 좁은 도구 셸 밖으로 밀리던 문제를 없애며 선택 부담도 줄인다.
@@ -64,7 +69,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
       <div className="tool-connections__grid">
         {visibleNextTools.map((tool, index) => (
           <Link
-            className={`tool-connection-card ${index === 0 ? "is-recommended" : ""}`}
+            className={`tool-connection-card ${index === 0 && !isVerdictDependent ? "is-recommended" : ""}`}
             href={tool.href}
             key={tool.id}
             onClick={() => trackProductEvent("tool_connection_pick", {
@@ -78,7 +83,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
             })}
           >
             <div className="tool-connection-card__meta">
-              <span>{index === 0 ? T.recommended : tool.id}</span>
+              <span>{isVerdictDependent ? T.afterVerdict : index === 0 ? T.recommended : T.connected}</span>
               <em className={tool.isSameData ? "is-same-data" : ""}>
                 {tool.isSameData ? T.sameData : T.newData}
               </em>

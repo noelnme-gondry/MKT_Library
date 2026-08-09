@@ -9,7 +9,7 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
   const siblings = getAllCalculators(locale).filter((item) => item.slug !== slug);
 
   return (
-    <main id="main-content" className="calculator-page">
+    <main id="main-content" tabIndex="-1" className="calculator-page">
       <nav className="calculator-breadcrumb" aria-label={isEn ? "Breadcrumb" : "현재 위치"}>
         <Link href={base || "/"}>{isEn ? "Home" : "홈"}</Link>
         <span aria-hidden>/</span>

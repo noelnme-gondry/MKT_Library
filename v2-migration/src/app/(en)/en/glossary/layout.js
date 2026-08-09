@@ -6,7 +6,7 @@ export default function EnGlossaryLayout({ children }) {
   return <>
     <div className="app">
       <Sidebar locale="en" />
-      <main className="main" id="main-content"><Header locale="en" />{children}</main>
+      <div className="main"><Header locale="en" /><main id="main-content" tabIndex="-1">{children}</main></div>
     </div>
     <GlobalModals locale="en" />
   </>;

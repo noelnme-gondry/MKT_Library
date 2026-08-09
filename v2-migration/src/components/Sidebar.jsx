@@ -131,13 +131,13 @@ export default function Sidebar({ locale = "ko" }) {
         <div className="home-sidebar-workspace">
           <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
           <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
-            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page">
+            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page" aria-label={`${T.today}: ${T.todayDesc}`}>
               <span className="home-sidebar-nav__icon" aria-hidden="true">◎</span><span className="home-sidebar-nav__copy"><strong>{T.today}</strong><em>{T.todayDesc}</em></span>
             </Link>
-            <Link href={locale === "en" ? "/en/start" : "/start"} className="home-sidebar-nav__item">
+            <Link href={locale === "en" ? "/en/start" : "/start"} className="home-sidebar-nav__item" aria-label={`${T.dataStart}: ${T.dataStartDesc}`}>
               <span className="home-sidebar-nav__icon" aria-hidden="true">⇧</span><span className="home-sidebar-nav__copy"><strong>{T.dataStart}</strong><em>{T.dataStartDesc}</em></span>
             </Link>
-            <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} className="home-sidebar-nav__item">
+            <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} className="home-sidebar-nav__item" aria-label={`${T.diagnose}: ${T.diagnoseDesc}`}>
               <span className="home-sidebar-nav__icon" aria-hidden="true">◇</span><span className="home-sidebar-nav__copy"><strong>{T.diagnose}</strong><em>{T.diagnoseDesc}</em></span>
             </Link>
             <Link

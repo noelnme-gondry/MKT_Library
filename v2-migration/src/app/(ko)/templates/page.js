@@ -167,7 +167,7 @@ export default function TemplatesPage() {
     .map((group) => ({ ...group, items: group.items.filter((item) => isRoutePublished(item.toolId)) }))
     .filter((group) => group.items.length > 0);
   return (
-    <main id="main-content" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}

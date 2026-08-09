@@ -47,8 +47,8 @@ describe("Sidebar render smoke", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
     expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
-    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')).toBeTruthy();
-    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')).toBeTruthy();
+    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')?.getAttribute("aria-label")).toContain("CSV를 올리고 가능한 분석 추천");
+    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain("3문항으로 원인과 확인 순서 찾기");
     expect(document.body.textContent).toContain("CSV를 올리고 가능한 분석 추천");
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);

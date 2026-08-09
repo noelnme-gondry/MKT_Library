@@ -11,10 +11,10 @@ export default function EnGuideLayout({ children }) {
     <>
       <div className="app">
         <Sidebar locale="en" />
-        <main className="main" id="main-content">
+        <div className="main">
           <Header locale="en" />
-          {children}
-        </main>
+          <main id="main-content" tabIndex="-1">{children}</main>
+        </div>
       </div>
       <GlobalModals locale="en" />
     </>

@@ -65,7 +65,10 @@ const CSV_COPY = {
     journeyLabel: "분석 준비 상태",
     journeySource: "데이터 선택",
     journeyMapping: "컬럼 매핑",
+    routerJourneyMapping: "도구별 조건 확인",
+    routerJourneyMappingDone: "✓ 가능한 분석 판정 완료",
     journeyAnalysis: "분석 시작",
+    journeyChooseAnalysis: "추천 분석 선택",
     journeyOwnData: "내 CSV로 교체 필요",
     journeyDemoResult: "예시 결과 보는 중",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()}행 · ${cols}컬럼${demo ? " · 실제 데이터 아님" : ""}`,
@@ -144,7 +147,10 @@ const CSV_COPY = {
     journeyLabel: "Analysis readiness",
     journeySource: "Choose data",
     journeyMapping: "Map columns",
+    routerJourneyMapping: "Check each tool",
+    routerJourneyMappingDone: "✓ Eligible analyses identified",
     journeyAnalysis: "Start analysis",
+    journeyChooseAnalysis: "Choose a recommended analysis",
     journeyOwnData: "Replace with your CSV",
     journeyDemoResult: "Viewing sample result",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()} rows · ${cols} cols${demo ? " · not real data" : ""}`,
@@ -223,6 +229,7 @@ function xlsxFailureState(error) {
 
 export default function CsvUploader({ toolId, analyticsToolId = toolId, locale = "ko", afterFileSummary = null }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
+  const isRouterMode = toolId === "start-gate";
   const eventToolId = analyticsToolId || toolId;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
@@ -768,6 +775,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     ignored: T.unmapped,
   };
   const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
+  const mappingNeedsAttention = missing.length > 0 || analysisBlocked || needsReview > 0 || mappingConflicts.length > 0;
 
   return (
     <div className="csv-uploader" data-analysis-status={analysisStatus}>
@@ -783,8 +791,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       )}
       <ol className="data-journey" aria-label={T.journeyLabel}>
         <li className={isDemo ? "is-sample" : hasFile ? "is-done" : "is-current"}><span>1</span><div><strong>{T.journeySource}</strong><small>{isDemo ? T.journeyOwnData : hasFile ? csvData.fileName : T.dropSub}</small></div></li>
-        <li className={missing.length === 0 && !analysisBlocked ? "is-done" : hasFile ? "is-current" : ""}><span>2</span><div><strong>{T.journeyMapping}</strong><small>{missing.length === 0 && !analysisBlocked ? T.okTitle : T.checkMapping}</small></div></li>
-        <li className={isAnalyzed && !isDemo ? "is-done" : isDemo ? "is-sample" : missing.length === 0 && !analysisBlocked ? "is-current" : ""}><span>3</span><div><strong>{T.journeyAnalysis}</strong><small>{isDemo ? T.journeyDemoResult : isAnalyzed ? T.analyzedBadge : T.analyzeBtn}</small></div></li>
+        <li className={isRouterMode ? "is-done" : missing.length === 0 && !analysisBlocked ? "is-done" : hasFile ? "is-current" : ""}><span>2</span><div><strong>{isRouterMode ? T.routerJourneyMapping : T.journeyMapping}</strong><small>{isRouterMode ? T.routerJourneyMappingDone : missing.length === 0 && !analysisBlocked ? T.okTitle : T.checkMapping}</small></div></li>
+        <li className={isRouterMode ? (isDemo ? "is-sample" : "is-current") : isAnalyzed && !isDemo ? "is-done" : isDemo ? "is-sample" : missing.length === 0 && !analysisBlocked ? "is-current" : ""}><span>3</span><div><strong>{isRouterMode ? T.journeyChooseAnalysis : T.journeyAnalysis}</strong><small>{isRouterMode ? T.journeyChooseAnalysis : isDemo ? T.journeyDemoResult : isAnalyzed ? T.analyzedBadge : T.analyzeBtn}</small></div></li>
       </ol>
       <CsvGuide toolId={toolId} locale={locale} />
       <div className="file-state">
@@ -799,7 +807,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
             {T.rowsCols(csvData.raw.length, csvData.headers.length, isDemo)}
           </span>
         </div>
-        <AnalysisStatusBadge status={analysisStatus} locale={locale} compact />
+        {!isRouterMode && <AnalysisStatusBadge status={analysisStatus} locale={locale} compact />}
         {!isDemo && !isSheetSourced && (
           <button className="ab-pill csv-change-btn" title={T.changeCsvTitle} onClick={handleReset}>
             {T.changeCsvBtn}
@@ -856,7 +864,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       )}
       {errorMsg && <div role="alert" className="csv-upload-error csv-upload-error--loaded">{errorMsg}</div>}
 
-      {blockedState && (
+      {!isRouterMode && blockedState && (
         <AnalysisBlockedTelemetry
           toolId={eventToolId}
           source={analysisSource}
@@ -870,7 +878,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         />
       )}
 
-      {missing.length > 0 ? (
+      {!isRouterMode && (missing.length > 0 ? (
         <div className="required-banner">
           <strong>{T.missingTitle}</strong>
           <p className="required-banner__description">
@@ -891,12 +899,12 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           <strong>{T.okTitle}</strong>
           <p className="required-banner__description">{T.okDesc}</p>
         </div>
-      )}
+      ))}
 
-      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
+      {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
-      <div className="csv-mapping-block">
-        <div className="csv-mapping-header">
+      {!isRouterMode && <details className="csv-mapping-block" defaultOpen={mappingNeedsAttention}>
+        <summary className="csv-mapping-header">
           <div className="csv-mapping-heading">
             <strong className="csv-mapping-title">{T.mappingHeader}</strong>
             <span className="csv-mapping-progress">
@@ -904,7 +912,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
             </span>
           </div>
           <span className="csv-mapping-hint">{T.mappingHint}</span>
-        </div>
+          <span className="csv-mapping-chevron" aria-hidden="true">⌄</span>
+        </summary>
         {importInsights && (
           <div className={`csv-recognition-summary ${mappingConflicts.length ? "has-conflict" : ""}`}>
             <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
@@ -963,11 +972,11 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
             );
           })}
         </div>
-      </div>
+      </details>}
 
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
           사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}
-      {preview.cols.length > 0 && preview.rows.length > 0 && (
+      {!isRouterMode && preview.cols.length > 0 && preview.rows.length > 0 && (
         <div className="csv-preview-block">
           <div className="csv-preview-header">
             <div className="csv-preview-title-group">
@@ -1023,7 +1032,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         </div>
       )}
 
-      {missing.length === 0 && !analysisBlocked && (
+      {toolId !== "start-gate" && missing.length === 0 && !analysisBlocked && (
         isAnalyzed ? (
           <div className="csv-analysis-cta-row is-analyzed">
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
