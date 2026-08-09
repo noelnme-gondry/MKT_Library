@@ -18,9 +18,10 @@ describe("BrandCampaignIncrementality render smoke", () => {
   });
 
   it("mounts a data-readiness router without loading unrelated demo data", () => {
-    expect(() => render(<BrandCampaignIncrementality />)).not.toThrow();
+    const { container } = render(<BrandCampaignIncrementality />);
     expect(screen.getByText("어떤 데이터를 준비했나요?")).toBeTruthy();
     expect(screen.getByRole("link", { name: /통제군 증분 분석 열기/ }).getAttribute("href")).toBe("/tools/incrementality");
+    expect(container.querySelector("#brand-its-setup")).toBeTruthy();
     expect(useAppStore.getState().csvData.raw).toEqual([]);
   });
 
@@ -38,6 +39,7 @@ describe("BrandCampaignIncrementality render smoke", () => {
     const { container } = render(<BrandCampaignIncrementality />);
     fireEvent.click(screen.getByRole("button", { name: "예시 데이터 보기" }));
     await waitFor(() => expect(screen.getByText("95% AR(1) 프로파일 구간")).toBeTruthy());
+    expect(container.querySelector("#brand-its-result")).toBeTruthy();
     expect(container.textContent).toContain("증분 방향을 판정하지 않습니다");
     expect(container.textContent).not.toContain("관찰상 증가 신호가 남습니다");
   });

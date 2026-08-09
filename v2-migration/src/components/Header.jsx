@@ -192,17 +192,6 @@ export default function Header({ locale = "ko" }) {
 
       <div className="topbar-actions">
         <div className="topbar-actions__primary">
-          <button
-            className={`btn ghost header-analyst-mode${analystMode ? " is-active" : ""}`}
-            type="button"
-            aria-pressed={analystMode}
-            title={analystMode ? T.analystModeOn : T.analystModeOff}
-            onClick={() => setAnalystMode(!analystMode)}
-          >
-            <span aria-hidden="true">⌁</span>
-            <span>{T.analystMode}</span>
-            {analystMode && <em aria-label={T.analystModeOn}>ON</em>}
-          </button>
           <Link
             href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
             className="btn ghost header-decision-inbox"

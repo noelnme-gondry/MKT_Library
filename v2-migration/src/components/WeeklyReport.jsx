@@ -61,7 +61,7 @@ export default function WeeklyReport({ locale = "ko" }) {
   };
 
   return (
-    <main id="main-content" className="page-inner weekly-review-page weekly-report-page">
+    <main id="main-content" tabIndex="-1" className="page-inner weekly-review-page weekly-report-page">
       <header className="weekly-review-page__head">
         <div className="weekly-review-page__eyebrow">{t.eyebrow}</div>
         <h1>{t.title}</h1>
@@ -119,4 +119,3 @@ export default function WeeklyReport({ locale = "ko" }) {
     </main>
   );
 }
-

@@ -13,20 +13,19 @@
 
 export const TOOL_GUIDE = {
   "start-gate": {
-    when: "CSV를 올리면 최대 10개 분석의 조건을 확인해, 지금 가능한 분석과 가장 먼저 볼 질문을 추천합니다.",
+    when: "CSV를 올리면 도구별 데이터 조건을 확인해 지금 가능한 분석과 가장 먼저 볼 질문을 추천합니다.",
     outcomes: ["컬럼 자동 매핑", "가능한 분석만 판정", "가장 먼저 볼 질문 추천"],
-    grain: "1행 = 하루 × 채널(또는 캠페인) 성과 — 가능한 경우 채널별로 나눠 주세요",
+    grain: "1행 = 원본 리포트의 한 관측치 — 일별 성과·검색어·실험군·이벤트 형식을 그대로 올려도 됩니다",
     needs: [
-      { col: "date", label: "날짜", why: "기간 비교와 추세를 확인하는 기준", required: true },
-      { col: "cost", label: "광고비", why: "효율과 예산 분석의 기준", required: true },
-      { col: "installs 또는 actions", label: "설치 또는 가입", why: "성과·효율 계산의 기준", required: true },
-      { col: "channel", label: "채널", why: "채널별로 어디를 먼저 볼지 추천", required: false },
-      { col: "impressions·clicks·revenue_d7", label: "노출·클릭·매출", why: "퍼널·ROAS·가치 분석까지 확장", required: false },
+      { col: "date·search_term·user_id·campaign_on", label: "분석 단위", why: "날짜·검색어·사용자·집행 여부 중 파일에 맞는 기준을 찾습니다", required: false },
+      { col: "channel·campaign·creative·group", label: "구분값", why: "채널·캠페인·소재·실험군처럼 비교할 단위를 찾습니다", required: false },
+      { col: "cost·clicks·installs·actions·revenue", label: "수치", why: "비용·탭·설치·가입·매출 중 분석에 쓸 수 있는 지표를 찾습니다", required: false },
+      { col: "daily_budget·target_cpa·current_cpt", label: "운영 기준", why: "예산 소진과 입찰 조정이 가능한 파일인지 확인합니다", required: false },
     ],
     prep: [
       "첫 줄에 컬럼 이름(헤더)을 넣고, 날짜는 한 가지 형식으로 통일해 주세요.",
-      "비용과 성과가 같은 기간·같은 단위인지 먼저 확인해 주세요.",
-      "컬럼이 더 많아도 괜찮습니다. 업로드 뒤 가능한 분석을 데이터 기준으로 추천합니다.",
+      "분석마다 필요한 컬럼이 다릅니다. 특정 컬럼을 억지로 추가하지 말고 원본 리포트를 먼저 올려 주세요.",
+      "컬럼이 더 많아도 괜찮습니다. 업로드 뒤 각 도구의 조건으로 다시 매핑해 가능한 분석을 추천합니다.",
     ],
     example: "date,channel,cost,installs\n2024-01-01,Google UAC,850000,720\n2024-01-01,Meta AAP,610000,540\n2024-01-02,Google UAC,880000,735",
   },
@@ -298,20 +297,19 @@ export const TOOL_GUIDE = {
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
   "start-gate": {
-    when: "Upload a CSV to check up to 10 analysis requirements, see what is runnable now, and get the first question to investigate.",
+    when: "Upload a CSV to check each tool’s data requirements, see what is runnable now, and get the first question to investigate.",
     outcomes: ["Map columns automatically", "Check supported analyses", "Recommend the first question"],
-    grain: "1 row = 1 day × channel (or campaign) performance — split channels when possible",
+    grain: "1 row = one observation from the source report — daily performance, search terms, experiment groups, and events are all accepted",
     needs: [
-      { col: "date", label: "Date", why: "Reference point for period comparisons and trends", required: true },
-      { col: "cost", label: "Ad spend", why: "Basis for efficiency and budget analysis", required: true },
-      { col: "installs or actions", label: "Installs or signups", why: "Basis for performance and efficiency calculations", required: true },
-      { col: "channel", label: "Channel", why: "Lets us recommend where to look first", required: false },
-      { col: "impressions · clicks · revenue_d7", label: "Impressions, clicks, revenue", why: "Unlocks funnel, ROAS, and value analysis", required: false },
+      { col: "date · search_term · user_id · campaign_on", label: "Analysis unit", why: "Finds the date, search term, user, or campaign-status key that fits this file", required: false },
+      { col: "channel · campaign · creative · group", label: "Comparison unit", why: "Finds channels, campaigns, creatives, or experiment groups to compare", required: false },
+      { col: "cost · clicks · installs · actions · revenue", label: "Measures", why: "Finds usable spend, tap, install, signup, or revenue metrics", required: false },
+      { col: "daily_budget · target_cpa · current_cpt", label: "Operating targets", why: "Checks whether pacing and bid recommendations are available", required: false },
     ],
     prep: [
       "Use the first row for column names and keep dates in one format.",
-      "Check that spend and outcomes cover the same period and unit.",
-      "Extra columns are welcome. After upload, we recommend analyses based on the data you have.",
+      "Each analysis needs a different schema. Upload the source report first instead of adding fields that do not belong to it.",
+      "Extra columns are welcome. We remap the file for each tool, then recommend analyses supported by the data.",
     ],
     example: "date,channel,cost,installs\n2024-01-01,Google UAC,850000,720\n2024-01-01,Meta AAP,610000,540\n2024-01-02,Google UAC,880000,735",
   },

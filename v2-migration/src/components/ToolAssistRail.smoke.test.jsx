@@ -68,10 +68,45 @@ describe("ToolAssistRail", () => {
     delete window.gtag;
   });
 
-  it("maps contextual sections for the dashboard and creative analysis", () => {
+  it("maps contextual sections for the dashboard, creative, and new diagnostic tools", () => {
     expect(getSections("5-2").map((section) => section.id)).toContain("dashboard-support-tools");
     expect(getSections("5-2", { hasDashboardResults: false }).map((section) => section.id)).toEqual(["dashboard-data-setup"]);
     expect(getSections("9-6").map((section) => section.id)).toContain("s-creative-hero");
+    expect(getSections("5-24").map((section) => section.id)).toEqual(["brand-its-setup", "brand-its-result"]);
+    expect(getSections("5-25").map((section) => section.id)).toEqual(["vif-setup", "vif-result"]);
+    expect(getSections("5-26").map((section) => section.id)).toEqual(["asa-setup", "asa-summary"]);
+    expect(getSections("5-25")[1].title).toEqual(["VIF 판정 읽기", "Read the VIF verdict"]);
+  });
+
+  it.each([
+    ["브랜드 증분", "5-24", "brand-its-setup", "brand-its-result", "브랜드 증분 데이터 준비"],
+    ["VIF", "5-25", "vif-setup", "vif-result", "채널 지출 데이터 준비"],
+    ["ASA", "5-26", "asa-setup", "asa-summary", "ASA 판정 기준과 데이터 준비"],
+  ])("jumps to the %s setup and announces its result checkpoint", async (_name, toolId, setupId, resultId, setupTitle) => {
+    document.body.innerHTML = `<section id="${setupId}"></section>`;
+    const scrollIntoView = vi.fn();
+    document.getElementById(setupId).scrollIntoView = scrollIntoView;
+    const { getByRole, container } = render(<ToolAssistRail toolId={toolId} />);
+
+    fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
+    expect(container.textContent).toContain(setupTitle);
+    fireEvent.click(getByRole("button", { name: "이 위치로 이동" }));
+    expect(scrollIntoView).toHaveBeenCalled();
+    fireEvent.click(getByRole("button", { name: "분석 도우미 접기" }));
+
+    const result = document.createElement("section");
+    result.id = resultId;
+    document.body.appendChild(result);
+    await waitFor(() => expect(container.textContent).toContain("새 결과가 준비됐습니다"));
+    expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
+  });
+
+  it("shows the same ASA checkpoints in English", () => {
+    document.body.innerHTML = '<section id="asa-setup"></section>';
+    const { getByRole, container } = render(<ToolAssistRail toolId="5-26" locale="en" />);
+    fireEvent.click(getByRole("button", { name: /Open analysis assistant/ }));
+    expect(container.textContent).toContain("Prepare ASA inputs and thresholds");
+    expect(container.textContent).not.toContain("ASA 판정 기준과 데이터 준비");
   });
 
   it("keeps dashboard assistance on the upload and mapping step until a result panel exists", () => {

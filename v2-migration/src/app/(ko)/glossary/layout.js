@@ -6,7 +6,7 @@ export default function GlossaryLayout({ children }) {
   return <>
     <div className="app">
       <Sidebar />
-      <main className="main" id="main-content"><Header />{children}</main>
+      <div className="main"><Header /><main id="main-content" tabIndex="-1">{children}</main></div>
     </div>
     <GlobalModals />
   </>;

@@ -64,9 +64,10 @@ export default function PageClient({ params, initialSopData = null }) {
     <>
       <div className={`app ${routeId.startsWith("5-") || routeId.startsWith("9-") ? "is-analysis" : ""}`}>
         <Sidebar locale="en" />
-        <main className="main" id="main-content">
+        <div className="main">
           <Header locale="en" />
-          <article className="content" id="content">
+          <main id="main-content" tabIndex="-1">
+            <article className="content" id="content">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
@@ -93,8 +94,9 @@ export default function PageClient({ params, initialSopData = null }) {
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} locale="en" />}
             <ToolLongform toolId={routeId} locale="en" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} locale="en" />}
-          </article>
-        </main>
+            </article>
+          </main>
+        </div>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
       <GlobalModals locale="en" />

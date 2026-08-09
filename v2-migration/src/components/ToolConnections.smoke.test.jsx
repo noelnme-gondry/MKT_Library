@@ -22,6 +22,13 @@ describe("ToolConnections", () => {
     expect(container.textContent).toContain("Prepare a new dataset");
   });
 
+  it("does not recommend MMM before the VIF verdict is known", () => {
+    const { container } = render(<ToolConnections toolId="5-25" />);
+    expect(container.querySelector(".tool-connection-card.is-recommended")).toBeNull();
+    expect(container.textContent).toContain("판정 후 선택");
+    expect(container.textContent).not.toContain("일반적인 다음 단계");
+  });
+
   it("tracks the target, source, rank, locale, and data continuity", () => {
     const gtag = vi.fn();
     window.gtag = gtag;

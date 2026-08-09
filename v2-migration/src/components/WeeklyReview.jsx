@@ -31,6 +31,10 @@ const COPY = {
     export: "수정한 CSV 내보내기",
     brief: "공유용 브리프 받기",
     empty: "아직 저장한 결정이 없습니다. 분석 결과의 ‘다음 검토 약속’에서 행동 하나를 저장하면 여기에 바로 나타납니다.",
+    emptyTitle: "첫 결정을 이렇게 쌓습니다",
+    emptySteps: ["내 데이터로 분석 실행", "결과에서 행동·검토일 저장", "검토일에 실제 결과·배운 점 기록"],
+    emptyStart: "내 데이터로 첫 분석",
+    emptyDiagnose: "필요한 분석부터 진단",
     overdue: "기한 지남",
     today: "오늘 검토",
     upcoming: "예정",
@@ -124,6 +128,10 @@ const COPY = {
     export: "Export updated CSV",
     brief: "Download share brief",
     empty: "No decisions saved yet. Save one action from a result card’s ‘next review’ section and it will appear here immediately.",
+    emptyTitle: "Build your first decision record",
+    emptySteps: ["Run an analysis with your data", "Save an action and review date from the result", "Record the outcome and learning on the review date"],
+    emptyStart: "Run my first analysis",
+    emptyDiagnose: "Diagnose what to analyze",
     overdue: "Overdue",
     today: "Review today",
     upcoming: "Upcoming",
@@ -353,37 +361,54 @@ export default function WeeklyReview({ locale = "ko" }) {
   };
 
   return (
-    <main id="main-content" className="page-inner weekly-review-page">
+    <article className="page-inner weekly-review-page">
       <header className="weekly-review-page__head">
         <div className="weekly-review-page__eyebrow">{t.eyebrow}</div>
         <h1>{t.title}</h1>
         <p>{t.deck}</p>
       </header>
 
-      <section className="weekly-review-page__summary" aria-label={t.inboxSummary}>
-        {(["overdue", "today", "unscheduled", "upcoming", "reviewed"]).map((status) => (
-          <div key={status} className={`weekly-review-page__summary-item ${status}`}>
-            <span>{t[status]}</span>
-            <strong>{statusCounts[status]}</strong>
-          </div>
-        ))}
-      </section>
-
-      <section className="weekly-review-page__outcomes" aria-label={t.outcomeSummary}>
-        <div className="weekly-review-page__outcomes-copy">
-          <strong>{t.outcomeSummary}</strong>
-          <p>{t.outcomeSummaryDeck}</p>
-          {forecastComparedCount > 0 && <em>{t.forecastComparison} · {forecastComparedCount}</em>}
-        </div>
-        <div className="weekly-review-page__outcomes-ledger">
-          {(["improved", "declined", "unchanged", "unscored"]).map((state) => (
-            <div key={state} className={`weekly-review-page__outcome-count ${state}`}>
-              <span>{t[state]}</span>
-              <strong>{outcomeCounts[state]}</strong>
+      {sortedRecords.length > 0 && <>
+        <section className="weekly-review-page__summary" aria-label={t.inboxSummary}>
+          {(["overdue", "today", "unscheduled", "upcoming", "reviewed"]).map((status) => (
+            <div key={status} className={`weekly-review-page__summary-item ${status}`}>
+              <span>{t[status]}</span>
+              <strong>{statusCounts[status]}</strong>
             </div>
           ))}
+        </section>
+
+        <section className="weekly-review-page__outcomes" aria-label={t.outcomeSummary}>
+          <div className="weekly-review-page__outcomes-copy">
+            <strong>{t.outcomeSummary}</strong>
+            <p>{t.outcomeSummaryDeck}</p>
+            {forecastComparedCount > 0 && <em>{t.forecastComparison} · {forecastComparedCount}</em>}
+          </div>
+          <div className="weekly-review-page__outcomes-ledger">
+            {(["improved", "declined", "unchanged", "unscored"]).map((state) => (
+              <div key={state} className={`weekly-review-page__outcome-count ${state}`}>
+                <span>{t[state]}</span>
+                <strong>{outcomeCounts[state]}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      </>}
+
+      {sortedRecords.length === 0 && <section className="weekly-review-page__empty" aria-labelledby="weekly-review-empty-title">
+        <div>
+          <span>START HERE</span>
+          <h2 id="weekly-review-empty-title">{t.emptyTitle}</h2>
+          <p>{t.empty}</p>
         </div>
-      </section>
+        <ol>
+          {t.emptySteps.map((step, index) => <li key={step}><b>{index + 1}</b><span>{step}</span></li>)}
+        </ol>
+        <div className="weekly-review-page__empty-actions">
+          <Link className="btn primary" href={locale === "en" ? "/en/start" : "/start"}>{t.emptyStart}</Link>
+          <Link className="btn ghost" href={locale === "en" ? "/en/diagnose" : "/diagnose"}>{t.emptyDiagnose}</Link>
+        </div>
+      </section>}
 
       <section className={`weekly-review-page__storage ${isPersistenceEnabled ? "is-enabled" : ""}`}>
         <div>
@@ -424,8 +449,7 @@ export default function WeeklyReview({ locale = "ko" }) {
         {message && <span role="status">{message}</span>}
       </section>
       <p className="weekly-review-page__privacy">{isPersistenceEnabled ? t.privacySaved : t.privacySession}</p>
-      {sortedRecords.length === 0 ? <div className="weekly-review-page__empty">{t.empty}</div> : (
-        <section className="weekly-review-page__ledger" aria-label={t.title}>
+      {sortedRecords.length > 0 && <section className="weekly-review-page__ledger" aria-label={t.title}>
           {sortedRecords.map((record) => {
             const status = getDecisionReviewBucket(record, todayKey);
             const statusLabel = t[status];
@@ -529,8 +553,7 @@ export default function WeeklyReview({ locale = "ko" }) {
               <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>
             </article>;
           })}
-        </section>
-      )}
-    </main>
+        </section>}
+    </article>
   );
 }

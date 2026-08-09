@@ -34,7 +34,7 @@ export default function EnglishDiagnosePage() {
     ],
   };
   return (
-    <main id="main-content" className="diagnose-page">
+    <article className="diagnose-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
         <span>SYMPTOM-BASED ANALYSIS ROUTER</span>
@@ -46,6 +46,6 @@ export default function EnglishDiagnosePage() {
         <span>FAQ</span><h2>Before you diagnose</h2>
         {FAQ.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}
       </section>
-    </main>
+    </article>
   );
 }

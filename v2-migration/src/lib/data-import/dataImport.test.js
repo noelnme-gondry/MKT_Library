@@ -14,6 +14,9 @@ describe("data import foundation", () => {
     expect(normalizeNumericValue("₩1,200,000")).toMatchObject({ value: 1200000, isPercent: false });
     expect(normalizeNumericValue("12.5%")).toMatchObject({ value: 12.5, isPercent: true });
     expect(normalizeDateValue("20260719")).toBe("2026-07-19");
+    expect(normalizeDateValue("2026/07/19")).toBe("2026-07-19");
+    expect(normalizeDateValue("2026.07.19")).toBe("2026-07-19");
+    expect(normalizeDateValue("2026-02-30")).toBeNull();
   });
 
   it("profiles values without retaining raw rows", () => {

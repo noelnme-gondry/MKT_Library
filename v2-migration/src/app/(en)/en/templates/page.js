@@ -65,7 +65,7 @@ export default function EnglishTemplatesPage() {
     .map((group) => ({ ...group, items: group.items.filter(([toolId]) => isRoutePublished(toolId)) }))
     .filter((group) => group.items.length > 0);
   return (
-    <main id="main-content" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Free marketing templates and checklists</h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>

@@ -7,7 +7,7 @@ export default function Footer() {
   const isAnalysisPath = /^\/(?:en\/)?(?:dashboard|tools\/|content\/)/.test(pathname);
   if (isAnalysisPath) return null;
   const isEn = pathname === "/en" || pathname.startsWith("/en/");
-  const isStandalone = ["/", "/en", "/privacy", "/terms", "/contact", "/en/privacy", "/en/terms", "/en/contact", "/templates", "/en/templates", "/diagnose", "/en/diagnose", "/calculator", "/en/calculator", "/weekly-report", "/en/weekly-report", "/weekly-review", "/en/weekly-review"].includes(pathname)
+  const isStandalone = ["/", "/en", "/privacy", "/terms", "/contact", "/en/privacy", "/en/terms", "/en/contact", "/templates", "/en/templates", "/calculator", "/en/calculator", "/weekly-report", "/en/weekly-report"].includes(pathname)
     || pathname.startsWith("/calculator/")
     || pathname.startsWith("/en/calculator/");
   const hasAppShell = !isStandalone;

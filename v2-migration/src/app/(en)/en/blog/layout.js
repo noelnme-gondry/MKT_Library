@@ -11,10 +11,10 @@ export default function EnBlogLayout({ children }) {
       <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3073450406371629" crossOrigin="anonymous" strategy="afterInteractive" />
       <div className="app">
         <Sidebar locale="en" />
-        <main className="main" id="main-content">
+        <div className="main">
           <Header locale="en" />
-          {children}
-        </main>
+          <main id="main-content" tabIndex="-1">{children}</main>
+        </div>
       </div>
       <GlobalModals locale="en" />
     </>

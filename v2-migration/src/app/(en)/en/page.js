@@ -35,12 +35,14 @@ export default function EnHomePage() {
     <>
       <div className="app is-home">
         <Sidebar locale="en" />
-        <main className="main" id="main-content">
+        <div className="main">
           <Header locale="en" />
-          <article className="content" id="content">
-            <LandingPage locale="en" />
-          </article>
-        </main>
+          <main id="main-content" tabIndex="-1">
+            <article className="content" id="content">
+              <LandingPage locale="en" />
+            </article>
+          </main>
+        </div>
       </div>
       <GlobalModals locale="en" />
     </>

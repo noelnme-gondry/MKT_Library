@@ -82,6 +82,120 @@ describe("analysis eligibility", () => {
     expect(creative.recommendationReason).toContain("소재별 노출");
   });
 
+  it("offers VIF when channel spend has enough independent periods", () => {
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: efficiencyPanel(8, (day) => ["Google", "Meta"].map((channel, index) => ({
+        date: isoDay(day),
+        dimensions: { channel },
+        metrics: { cost: 100 + day * (index + 1) },
+      }))),
+    });
+    expect(vif).toMatchObject({ status: "ready", periodCount: 8 });
+    expect(vif.recommendationReason).toContain("MMM 전에 중복 움직임");
+  });
+
+  it("blocks a required automatic mapping that still needs confirmation", () => {
+    const result = evaluateEligibility({
+      toolId: "5-2",
+      mapping: { 일자: "date", 광고비: "cost", 성과: "installs" },
+      canonicalData: efficiencyPanel(2, (day) => [{
+        date: isoDay(day), dimensions: {}, metrics: { cost: 100, installs: 10 },
+      }]),
+      mappingContract: {
+        conflicts: [],
+        assessments: [{ header: "성과", field: "installs", state: "must_confirm" }],
+      },
+    });
+    expect(result.status).toBe("blocked");
+    expect(result.blockers).toContainEqual({ code: "mapping_confirmation" });
+    expect(formatEligibilityBlocker(result, "ko")).toContain("자동 매핑을 확인");
+  });
+
+  it("blocks VIF when dates do not exceed the channel count by three", () => {
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: efficiencyPanel(5, (day) => ["A", "B", "C"].map((channel) => ({
+        date: isoDay(day), dimensions: { channel }, metrics: { cost: 100 + day },
+      }))),
+    });
+    expect(vif).toMatchObject({ status: "blocked" });
+    expect(vif.reasons.join(" ")).toContain("최소 6개 기간");
+  });
+
+  it("reports the shared VIF period threshold only once", () => {
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: efficiencyPanel(4, (day) => ["Google", "Meta", "Apple"].map((channel) => ({
+        date: isoDay(day), dimensions: { channel }, metrics: { cost: 100 + day },
+      }))),
+    });
+    expect(vif.blockers.filter((blocker) => blocker.code === "min_periods")).toEqual([
+      { code: "min_periods", required: 6, current: 4 },
+    ]);
+  });
+
+  it("counts only dates with a valid VIF entity and spend", () => {
+    const validDates = efficiencyPanel(4, (day) => ["Google", "Meta"].map((channel, index) => ({
+      date: isoDay(day), dimensions: { channel }, metrics: { cost: 100 + day * (index + 1) },
+    }))).records;
+    const invalidEntityDate = [0, 1].map((index) => ({
+      date: isoDay(4), dimensions: { channel: "" }, metrics: { cost: 300 + index },
+    }));
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: { records: [...validDates, ...invalidEntityDate] },
+    });
+    expect(vif).toMatchObject({ status: "blocked", periodCount: 4 });
+    expect(vif.blockers).toContainEqual({ code: "min_periods", required: 5, current: 4 });
+  });
+
+  it("does not let an entity with blank spend raise the VIF period threshold", () => {
+    const records = efficiencyPanel(5, (day) => [
+      { date: isoDay(day), dimensions: { channel: "A" }, metrics: { cost: 100 + day } },
+      { date: isoDay(day), dimensions: { channel: "B" }, metrics: { cost: 200 + day * 2 } },
+      { date: isoDay(day), dimensions: { channel: "Blank" }, metrics: { cost: null } },
+    ]).records;
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: { records },
+    });
+    expect(vif.status).not.toBe("blocked");
+    expect(vif.periodCount).toBe(5);
+    expect(vif.blockers.filter((blocker) => blocker.code === "min_periods")).toEqual([]);
+  });
+
+  it("blocks VIF when fewer than two spend columns vary over time", () => {
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: efficiencyPanel(8, (day) => ["Google", "Meta"].map((channel) => ({
+        date: isoDay(day), dimensions: { channel }, metrics: { cost: 100 },
+      }))),
+    });
+    expect(vif.status).toBe("blocked");
+    expect(vif.blockers).toContainEqual({ code: "insufficient_variation", required: 2, current: 0 });
+    expect(formatEligibilityBlocker(vif, "en")).toContain("must vary over time");
+  });
+
+  it("blocks VIF for a single channel instead of offering an unusable result", () => {
+    const vif = evaluateEligibility({
+      toolId: "5-25",
+      mapping: { Date: "date", Channel: "channel", Cost: "cost" },
+      canonicalData: efficiencyPanel(10, (day) => [{
+        date: isoDay(day), dimensions: { channel: "Google" }, metrics: { cost: 100 + day },
+      }]),
+    });
+    expect(vif).toMatchObject({ status: "blocked" });
+    expect(formatEligibilityBlocker(vif, "ko")).toContain("최소 2개");
+    expect(formatEligibilityBlocker(vif, "en")).toContain("at least 2");
+  });
+
   it("uses a data-backed recommendation score within the same readiness tier", () => {
     const ranked = rankRecommendedAnalyses([
       { status: "ready", priority: 1, recommendationScore: 0 },
