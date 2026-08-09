@@ -25,6 +25,8 @@ function formatValue(value, format, locale) {
 function inputSuffix(type, locale) {
   if (type === "percent") return "%";
   if (type === "count") return locale === "en" ? "/ day" : "명/일";
+  if (type === "quantity") return locale === "en" ? "" : "건";
+  if (type === "days") return locale === "en" ? "days" : "일";
   return locale === "en" ? "currency" : "원";
 }
 
