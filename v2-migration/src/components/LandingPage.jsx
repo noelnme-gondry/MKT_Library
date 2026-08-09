@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 import { trackProductEvent } from "@/lib/analytics";
+import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { useAppStore } from "@/store/useDataStore";
@@ -37,6 +38,16 @@ const COPY = {
     action: "일반 키워드 예산 10% 감액",
     reviewCue: "7일 뒤 CPA 확인",
     evidence: "예시 데이터로 결과 열어보기",
+    continueEyebrow: "CONTINUE ON THIS DEVICE",
+    continueTitle: "지난 판단을 이어서 검토하세요",
+    continueDeck: "이 브라우저에 남아 있는 결정 요약만 보여줍니다. 원본 CSV는 저장하거나 불러오지 않습니다.",
+    dueNow: "지금 검토",
+    nextReview: "다음 검토",
+    latestDecision: "최근 판단",
+    noSchedule: "일정 미정",
+    reviewed: "검토 완료",
+    openInbox: "결정 검토함 열기",
+    reopenTool: "원본 도구 다시 열기",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
     loopDeck: "원본 CSV는 저장하지 않습니다. 결정 요약은 사용자가 직접 켠 경우에만 이 기기에 남깁니다.",
@@ -94,6 +105,16 @@ const COPY = {
     action: "Cut generic-keyword spend 10%",
     reviewCue: "Check CPA in 7 days",
     evidence: "Open results with example data",
+    continueEyebrow: "CONTINUE ON THIS DEVICE",
+    continueTitle: "Continue your last decision",
+    continueDeck: "Only decision summaries stored in this browser appear here. Source CSV data is never restored or stored.",
+    dueNow: "Due now",
+    nextReview: "Next review",
+    latestDecision: "Latest decision",
+    noSchedule: "Not scheduled",
+    reviewed: "Reviewed",
+    openInbox: "Open decision inbox",
+    reopenTool: "Reopen source tool",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
     loopDeck: "Source CSV data is never stored. Decision summaries remain on this device only when you explicitly enable it.",
@@ -133,6 +154,13 @@ export default function LandingPage({ locale = "ko" }) {
   const router = useRouter();
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
+  const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const activeDecisionRecords = decisionRecords.filter((record) => getDecisionReviewBucket(record) !== "reviewed");
+  const dueDecisionRecords = activeDecisionRecords.filter((record) => ["overdue", "today"].includes(getDecisionReviewBucket(record)));
+  const nextDecision = activeDecisionRecords
+    .filter((record) => record.reviewDate)
+    .sort((left, right) => String(left.reviewDate).localeCompare(String(right.reviewDate)))[0];
+  const latestDecision = activeDecisionRecords[0] || decisionRecords[0];
   const toolHref = (id) =>
     lang === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
   const prepareSample = (id, placement) => {
@@ -238,6 +266,38 @@ export default function LandingPage({ locale = "ko" }) {
           </footer>
         </article>
       </section>
+
+      {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
+        <header className="dc-return__head">
+          <div><span>{T.continueEyebrow}</span><h2 id="dc-return-title">{T.continueTitle}</h2></div>
+          <p>{T.continueDeck}</p>
+        </header>
+        <div className="dc-return__grid">
+          <Link
+            className={`dc-return__status${dueDecisionRecords.length ? " is-due" : ""}`}
+            href={lang === "en" ? "/en/weekly-review" : "/weekly-review"}
+            onClick={() => trackLandingNav("landing_review_opened", "continue_panel")}
+          >
+            <span>{T.dueNow}</span><strong>{dueDecisionRecords.length}</strong><b>{T.openInbox} →</b>
+          </Link>
+          <Link
+            className="dc-return__status"
+            href={lang === "en" ? "/en/weekly-review" : "/weekly-review"}
+            onClick={() => trackLandingNav("landing_review_opened", "continue_panel_next")}
+          >
+            <span>{T.nextReview}</span><strong>{nextDecision?.reviewDate || T.noSchedule}</strong><b>{T.openInbox} →</b>
+          </Link>
+          {latestDecision && <article className="dc-return__latest">
+            <span>{T.latestDecision}</span>
+            <strong>{latestDecision.action || latestDecision.conclusion || T.reviewed}</strong>
+            <small>{latestDecision.reviewDate || T.noSchedule}</small>
+            {idToSlug[latestDecision.toolId] && <Link
+              href={toolHref(latestDecision.toolId)}
+              onClick={() => trackProductEvent("landing_continue_tool_clicked", { tool_id: latestDecision.toolId, source: "landing", placement: "continue_panel", locale: lang })}
+            >{T.reopenTool} →</Link>}
+          </article>}
+        </div>
+      </section>}
 
       <section className="dc-loop" aria-labelledby="dc-loop-title">
         <header className="dc-section-head">

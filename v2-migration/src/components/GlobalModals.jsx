@@ -92,6 +92,15 @@ export default function GlobalModals({ locale = "ko" }) {
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
       { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
     ];
+    const growthOps = {
+      key: "growth-funnel",
+      title: locale === "en" ? "Product growth funnel report" : "제품 성장 퍼널 리포트",
+      group: T.analystGroup,
+      href: locale === "en" ? "/en/growth-funnel" : "/growth-funnel",
+      kind: locale === "en" ? "Analyst" : "분석가",
+      hint: locale === "en" ? "Read a GA4 event export locally" : "GA4 이벤트 내보내기를 브라우저에서 분석",
+      searchText: locale === "en" ? "GA4 event export acquisition activation retention funnel report" : "GA4 이벤트 내보내기 유입 활성화 이용 리텐션 퍼널 리포트",
+    };
     const setting = {
         key: analystMode ? "analyst-mode-off" : "analyst-mode-on",
         title: analystMode ? T.analystOff : T.analystOn,
@@ -101,7 +110,7 @@ export default function GlobalModals({ locale = "ko" }) {
     };
     const analyses = items.filter((entry) => entry.kind === (locale === "en" ? "Analysis" : "분석"));
     const guides = items.filter((entry) => !analyses.includes(entry));
-    return [...workspace.slice(0, 3), ...analyses, ...workspace.slice(3), ...guides, setting].map((entry) => ({
+    return [...workspace.slice(0, 3), ...(analystMode ? [growthOps] : []), ...analyses, ...workspace.slice(3), ...guides, setting].map((entry) => ({
       ...entry,
       hint: entry.hint || entry.group,
       searchText: entry.searchText || `${entry.title} ${entry.group} ${entry.kind}`,

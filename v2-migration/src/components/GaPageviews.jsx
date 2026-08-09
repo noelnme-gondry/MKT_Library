@@ -8,6 +8,27 @@ import { trackProductEvent } from "@/lib/analytics";
 // 최초 진입과 history 변경 모두 여기서 정확히 한 번 보낸다. GA enhanced measurement나
 // GTM의 별도 history trigger까지 켜면 다시 중복되므로 이 경로만 유지한다.
 const GA_ID = "G-DK12TNR0GW";
+const GA_READY_RETRY_MS = 250;
+const GA_READY_MAX_ATTEMPTS = 20;
+
+function runWhenGtagReady(callback) {
+  let attempts = 0;
+  let timerId = null;
+  const trySend = () => {
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      callback();
+      return;
+    }
+    attempts += 1;
+    if (attempts < GA_READY_MAX_ATTEMPTS && typeof window !== "undefined") {
+      timerId = window.setTimeout(trySend, GA_READY_RETRY_MS);
+    }
+  };
+  trySend();
+  return () => {
+    if (timerId != null && typeof window !== "undefined") window.clearTimeout(timerId);
+  };
+}
 
 export default function GaPageviews() {
   const pathname = usePathname();
@@ -15,13 +36,15 @@ export default function GaPageviews() {
   const lastToolPath = useRef(null);
   useEffect(() => {
     if (lastPagePath.current === pathname) return;
-    lastPagePath.current = pathname;
-    if (typeof window === "undefined" || typeof window.gtag !== "function") return;
-    window.gtag("event", "page_view", {
-      page_path: pathname,
-      page_location: window.location.href,
-      page_title: typeof document !== "undefined" ? document.title : undefined,
-      send_to: GA_ID,
+    return runWhenGtagReady(() => {
+      if (lastPagePath.current === pathname) return;
+      window.gtag("event", "page_view", {
+        page_path: pathname,
+        page_location: window.location.href,
+        page_title: typeof document !== "undefined" ? document.title : undefined,
+        send_to: GA_ID,
+      });
+      lastPagePath.current = pathname;
     });
   }, [pathname]);
 
@@ -30,8 +53,11 @@ export default function GaPageviews() {
   useEffect(() => {
     const toolId = resolvePathToId(pathname);
     if (!toolId || !/^(5|9)-/.test(toolId) || lastToolPath.current === pathname) return;
-    lastToolPath.current = pathname;
-    trackProductEvent("tool_view", { tool_id: toolId, source: "route", locale: pathname.startsWith("/en/") ? "en" : "ko" });
+    return runWhenGtagReady(() => {
+      if (lastToolPath.current === pathname) return;
+      const sent = trackProductEvent("tool_view", { tool_id: toolId, source: "route", locale: pathname.startsWith("/en/") ? "en" : "ko" });
+      if (sent) lastToolPath.current = pathname;
+    });
   }, [pathname]);
   return null;
 }

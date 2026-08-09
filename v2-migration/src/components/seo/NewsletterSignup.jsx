@@ -7,7 +7,7 @@ import { trackProductEvent } from "@/lib/analytics";
 const FORM_ACTION = "https://buttondown.com/api/emails/embed-subscribe/noelnme";
 
 export default function NewsletterSignup({ locale = "ko", placement = "post" }) {
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isConfirmationPending, setIsConfirmationPending] = useState(false);
   const isEnglish = locale === "en";
   const copy = isEnglish
     ? {
@@ -33,9 +33,11 @@ export default function NewsletterSignup({ locale = "ko", placement = "post" }) 
   const privacyHref = isEnglish ? "/en/privacy" : "/privacy";
   const sourceTag = `blog-${locale}-${placement}`;
 
-  function handleSubmit() {
-    setIsSubmitted(true);
-    trackProductEvent("newsletter_submit", { source: "blog", locale, placement });
+  // Buttondown의 double opt-in 완료 여부는 cross-origin embed에서 확인할 수 없다.
+  // GA에는 제출 시도만 남기고, 실제 구독 완료 수는 Buttondown을 SSOT로 본다.
+  function handleSubmitAttempt() {
+    setIsConfirmationPending(true);
+    trackProductEvent("newsletter_submit_attempt", { source: "blog", locale, placement });
   }
 
   return (
@@ -45,7 +47,7 @@ export default function NewsletterSignup({ locale = "ko", placement = "post" }) 
         <h2>{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
-      <form action={FORM_ACTION} method="post" target="buttondown-subscribe-frame" onSubmit={handleSubmit} className="newsletter-signup__form">
+      <form action={FORM_ACTION} method="post" target="buttondown-subscribe-frame" onSubmit={handleSubmitAttempt} className="newsletter-signup__form">
         <input type="hidden" name="embed" value="1" />
         <input type="hidden" name="tag" value="growthopt-blog" />
         <input type="hidden" name="tag" value={sourceTag} />
@@ -63,7 +65,7 @@ export default function NewsletterSignup({ locale = "ko", placement = "post" }) 
         <p className="newsletter-signup__privacy">
           <Link href={privacyHref}>{copy.privacy}</Link>
         </p>
-        {isSubmitted && <p className="newsletter-signup__success" role="status">{copy.submitted}</p>}
+        {isConfirmationPending && <p className="newsletter-signup__success" role="status">{copy.submitted}</p>}
       </form>
       <iframe className="newsletter-signup__frame" name="buttondown-subscribe-frame" title="Buttondown subscription response" />
     </section>
