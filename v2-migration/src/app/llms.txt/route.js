@@ -3,6 +3,7 @@ import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
+import { readSopData } from "@/lib/sopData";
 
 export const dynamic = "force-static";
 
@@ -11,6 +12,8 @@ const absoluteUrl = (path, locale = "ko") => {
   const normalized = path === "/" ? "" : path;
   return `${SITE_URL}${prefix}${normalized}`;
 };
+
+const plainText = (value) => String(value || "").replace(/<[^>]*>/g, " ");
 
 const markdownText = (value) => String(value || "")
   .replace(/\s+/g, " ")
@@ -30,6 +33,23 @@ function analysisEntries(locale) {
       return seo ? {
         title: seo.title,
         description: seo.description,
+        url: absoluteUrl(route.slug, locale),
+      } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.url.localeCompare(b.url));
+}
+
+function guideEntries(locale) {
+  return ROUTES
+    .filter((route) => isRouteIndexable(route))
+    .filter((route) => route.slug.startsWith("/guide/"))
+    .filter((route) => locale !== "en" || hasEnVersion(route.id))
+    .map((route) => {
+      const sop = readSopData(route.id, locale);
+      return sop?.title ? {
+        title: sop.title,
+        description: plainText(sop.deck).slice(0, 180),
         url: absoluteUrl(route.slug, locale),
       } : null;
     })
@@ -95,6 +115,8 @@ export function buildLlmsText() {
     "",
     section("Analysis tools — Korean", analysisEntries("ko")),
     "",
+    section("Operating guides — Korean", guideEntries("ko")),
+    "",
     section("Practical articles — Korean", blogEntries("ko")),
     "",
     section("Calculators — Korean", calculatorEntries("ko")),
@@ -104,6 +126,8 @@ export function buildLlmsText() {
     section("Start — English", enStart),
     "",
     section("Analysis tools — English", analysisEntries("en")),
+    "",
+    section("Operating guides — English", guideEntries("en")),
     "",
     section("Practical articles — English", blogEntries("en")),
     "",

@@ -342,10 +342,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
 ### 12.28 랜딩 + 홈 구조 (`components/landing/*`)
-`LandingHome` = ① 헤드라인+CTA 2개(내 데이터=`/start` / 데모)+프라이버시 배지 ② `ProductPreview`(브라우저창 프레임, 도구 미니화면 로테이션; SVG 목업 결정론·전역store 비침습) ③ `ToolCarousel`(←/→ + 마우스 드래그, 드래그후 클릭 가드) ④ 블로그 | SOP 허브 카드.
+`LandingPage` = ① 헤드라인+CTA 3개(내 데이터=`/start` · 계산기 · 진단)+프라이버시 배지 ② 이번 주 판단 미리보기 카드(정적 SVG) ③ 주간 결정 루프 3단계 ④ 질문형 도구 카드 ⑤ `ConnectedToolJourney`(전 공개 도구) ⑥ 블로그 | SOP 허브. **구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 랜딩 재작성으로 참조 0이 된 뒤 삭제됨** — 되살리지 말 것.
 - **전 페이지 헤더/셸 완전 통일**: 도구·SOP·홈·블로그·가이드 전부 `Sidebar`+공용 `Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 블로그는 routeMap 밖이라 `Header`가 `pathname`으로 직접 감지.
 - **무주소 게이트 금지**: 상태로만 존재하는 화면은 뒤로가기가 깨짐 → 실제 라우트로(`/guide`·`/start`).
-- **캐러셀 드래그**: `scroll-snap mandatory`가 드래그를 프레임마다 잡아채 "뚝뚝" → 제거(자유 스크롤)+드래그 중 `scroll-behavior:auto`.
 - **정직성**: 유저수·로고 날조 금지.
 
 ---
