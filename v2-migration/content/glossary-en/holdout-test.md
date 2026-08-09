@@ -1,7 +1,8 @@
 ---
 term: "Holdout Test"
+seoTitle: "Holdout Test: Measuring an Ad's Real Effect"
 shortDef: "Randomly withholding ads from part of an audience to measure true incrementality"
-description: "A holdout test randomly splits users or regions into two groups, withholds ads from one (the holdout), and compares performance to measure the ad's true incremental effect."
+description: "A holdout test withholds ads from a random group and compares outcomes to measure incremental effect. Why it is needed and how to read it."
 date: "2026-07-18"
 slug: "holdout-test"
 keywords: "holdout test, holdout meaning, incrementality test, ad holdout experiment"

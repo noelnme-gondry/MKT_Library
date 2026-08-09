@@ -1,7 +1,8 @@
 ---
 term: "Cohort"
+seoTitle: "What Is a Cohort? Why Retention Needs Cohort Splits"
 shortDef: "A group of users who all started (installed/signed up) at the same time"
-description: "A cohort is a group of users who started at the same time — installed or signed up on the same day or week. Tracking retention per cohort reveals churn that overall averages hide."
+description: "A cohort is a group of users who installed or signed up at the same time. How cohort splits reveal churn that blended averages hide."
 date: "2026-07-18"
 slug: "cohort"
 keywords: "cohort, cohort meaning, cohort analysis, cohort retention"

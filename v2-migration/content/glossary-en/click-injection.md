@@ -1,7 +1,8 @@
 ---
 term: "Click Injection"
+seoTitle: "Click Injection: Spotting Attribution Fraud Signals"
 shortDef: "Fraud that fires a fake click right before install to steal attribution credit"
-description: "Click injection is a fraud technique that injects a fake click right as an app finishes downloading, stealing last-click attribution credit from the ad that actually drove the install."
+description: "Click injection fires fake clicks at install time to steal attribution credit. How it inflates performance and which signals to watch."
 date: "2026-07-18"
 slug: "click-injection"
 keywords: "click injection, click injection meaning, ad fraud, attribution fraud, last click fraud"

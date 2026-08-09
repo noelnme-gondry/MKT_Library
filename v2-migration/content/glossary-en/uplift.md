@@ -2,7 +2,7 @@
 term: "Uplift"
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
-description: "Uplift is the net increase advertising caused, measured by comparing an exposed group with a holdout group. Learn why it differs from CPA and ROAS."
+description: "Uplift is the incremental outcome ads created, measured against a holdout. Why it differs from CPA and ROAS and how it is calculated."
 date: "2026-08-09"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"

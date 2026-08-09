@@ -19,7 +19,10 @@ export async function generateMetadata({ params }) {
   const enTerm = getTermBySlug(slug, "en");
   const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": canonical };
   return {
-    title: term.seoTitle || `${term.term} 뜻 — 용어사전`,
+    // absolute — 루트 layout의 " | Growth Opt Playbook" 접미(21자)를 붙이지 않는다.
+    // 검색결과 제목은 30자 안팎에서 잘려서, 브랜드 접미가 붙으면 정작 차별화
+    // 문구가 화면 밖으로 밀린다(네이버 웹사이트 컬렉션에서 특히 짧게 잘림).
+    title: { absolute: term.seoTitle || `${term.term} 뜻 — 용어사전` },
     description: term.description,
     keywords: term.keywords || undefined,
     alternates: { canonical, languages },

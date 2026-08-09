@@ -1,7 +1,8 @@
 ---
 term: "CPM (Cost Per Mille)"
+seoTitle: "CPM Meaning and Formula | What to Check When It Rises"
 shortDef: "Cost per 1,000 impressions — the closest metric to raw media cost"
-description: "CPM (Cost Per Mille) is the cost per 1,000 ad impressions — the metric closest to the raw price a platform charges for reach."
+description: "CPM is the cost of 1,000 impressions. How auction competition and targeting show up in it, and what to check before reacting to a change."
 date: "2026-07-18"
 slug: "cpm"
 keywords: "CPM, CPM meaning, Cost Per Mille, cost per thousand impressions"

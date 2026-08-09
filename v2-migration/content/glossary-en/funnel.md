@@ -1,7 +1,8 @@
 ---
 term: "Funnel"
+seoTitle: "What Is a Funnel? Finding Where Users Drop Off"
 shortDef: "The step-by-step conversion path (impression → click → install → signup → purchase) that narrows at each stage"
-description: "A funnel is the step-by-step conversion path from impression to purchase. Looking at the pass-through rate between each stage reveals where the biggest drop-off is happening."
+description: "A funnel is the step-by-step flow from impression to purchase. How step conversion rates locate the leak, and common reading traps."
 date: "2026-07-18"
 slug: "funnel"
 keywords: "funnel, funnel meaning, conversion funnel, marketing funnel, funnel analysis"

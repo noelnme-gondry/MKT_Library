@@ -20,7 +20,9 @@ export async function generateMetadata({ params }) {
   const koTerm = getTermBySlug(slug, "ko");
   const languages = { en: canonical, ...(koTerm ? { ko: `${SITE_URL}/glossary/${slug}` } : {}), "x-default": koTerm ? `${SITE_URL}/glossary/${slug}` : canonical };
   return {
-    title: term.seoTitle || `What is ${term.term}? — Glossary`,
+    // absolute — skip the root layout's " | Growth Opt Playbook" suffix so the
+    // differentiating half of the title survives the ~60-char SERP truncation.
+    title: { absolute: term.seoTitle || `What is ${term.term}? — Glossary` },
     description: term.description,
     keywords: term.keywords || undefined,
     alternates: { canonical, languages },
