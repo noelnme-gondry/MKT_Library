@@ -1,6 +1,6 @@
 ---
 title: "Apple Search Ads(ASA) 캠페인 구조 설계 가이드"
-description: "ASA를 하나로 뭉치면 브랜드 키워드만 돈을 씁니다. 브랜드·경쟁사·카테고리·디스커버리로 나누는 이유와 매치 타입, 세팅 순서."
+description: "ASA를 캠페인 하나로 뭉쳐 돌리면 브랜드 키워드만 돈을 씁니다. 브랜드·경쟁사·카테고리·디스커버리로 나누는 이유와 세팅 순서를 정리했어요."
 date: "2026-07-15"
 slug: "apple-search-ads-guide"
 keywords: "Apple Search Ads, ASA, 애플 서치 애즈, ASA 세팅, ASA 캠페인 구조, 앱스토어 검색 광고, ASA 키워드, 검색 광고 앱, iOS 앱 광고"

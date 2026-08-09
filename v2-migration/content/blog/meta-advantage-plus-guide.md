@@ -1,6 +1,6 @@
 ---
 title: "Meta Advantage+ App 최적화: OS·이벤트·입찰 설정"
-description: "자동화된 Meta Advantage+ App(AAP)에서 마케터가 실제로 조정 가능한 부분 — OS 분리·이벤트 우선순위·입찰 단계."
+description: "자동화된 Meta Advantage+ App(AAP)에서 마케터가 실제로 조정 가능한 부분(OS 분리·이벤트 우선순위·입찰)을 정리했습니다."
 date: "2026-07-18"
 slug: "meta-advantage-plus-guide"
 keywords: "Meta Advantage+, AAP, Meta 앱 캠페인, AEM 이벤트 우선순위, Meta 어트리뷰션 윈도우, VBO 입찰, Meta 앱 광고 설정"

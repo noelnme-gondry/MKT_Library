@@ -1,6 +1,6 @@
 ---
 title: "포스트백 연동 가이드: SAN·S2S·설치 0 오류 해결"
-description: "포스트백 오류는 마지막으로 정상 확인된 지점부터 좁힙니다. 앱·MMP·매체 흐름, SAN·S2S 차이, 0 진단표를 제공합니다."
+description: "포스트백 오류는 마지막으로 정상 확인된 지점부터 좁혀야 합니다. 앱·MMP·매체 흐름, SAN·S2S 차이, 0 진단표를 제공합니다."
 date: "2026-07-18"
 slug: "postback-integration-guide"
 keywords: "포스트백 연동, MMP postback, 설치 0, 이벤트 누락, 매출 0, 비용 데이터 연동, SAN S2S"

@@ -1,38 +1,38 @@
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
-  "ab-testing": "A/B 테스트 방법: 표본 크기·유의성·판정 기준",
-  "ad-creative-specs-guide": "광고 소재 규격 가이드: 매체별 사이즈·세이프존",
+  "ab-testing": "A/B 테스트 방법: 우연을 걷어내고 판정하기",
+  "ad-creative-specs-guide": "매체별 소재 규격, 왜 하나만 만들면 안 되나",
   "ad-creative-testing": "광고 소재 테스트 방법: 적은 예산으로 몇 개까지 돌려야 할까?",
-  "ad-machine-learning": "광고 머신러닝 학습 단계: CPA 급등 원인과 운영 방법",
-  "ad-performance-diagnosis": "광고 성과 하락 원인: CPA·CTR 떨어질 때 4단계 진단",
-  "aha-event-ad-optimization": "Aha Event로 광고 최적화하기: 설치 CPA와 리텐션 연결",
+  "ad-machine-learning": "광고 머신러닝 학습, 건드릴수록 망가지는 이유",
+  "ad-performance-diagnosis": "광고 성과 하락, 소재보다 먼저 봐야 할 4단계",
+  "aha-event-ad-optimization": "설치 CPA보다 먼저 볼 것: Aha Event",
   "aha-moment-retention": "Aha Moment 찾는 법: 초기 행동과 리텐션 분석",
-  "ai-era-marketer": "AI 시대 퍼포먼스 마케터 역량: 자동화 이후에도 남는 일",
-  "apple-search-ads-guide": "Apple Search Ads(ASA) 캠페인 구조 설계 가이드",
-  "aso-basics-guide": "ASO 전략: 광고비 태우기 전 스토어 전환부터 막는 법",
-  "attribution-data-mismatch": "어트리뷰션 데이터 불일치 원인: 매체·GA4·MMP 전환수 비교",
-  "audience-broad-vs-narrow": "브로드 타겟 vs 좁은 타겟: 광고 오디언스 선택 기준",
+  "ai-era-marketer": "알고리즘이 다 해준다는데, 그럼 마케터는 뭘 하죠",
+  "apple-search-ads-guide": "Apple Search Ads, 캠페인 왜 4개로 쪼개나 — 구조부터",
+  "aso-basics-guide": "광고비 태우기 전에, 스토어에서 새는 설치부터 막으세요 — ASO 기초",
+  "attribution-data-mismatch": "매체는 120건, GA는 70건 — 어떤 숫자를 믿어야 할까요",
+  "audience-broad-vs-narrow": "타겟, 좁혀야 할까 넓혀야 할까",
   "budget-marginal-efficiency": "마케팅 예산 배분: 삭감·증액·재배분의 한계 ROAS·CPA",
-  "campaign-anomaly-detection": "캠페인 이상 탐지: CPA 급등·전환 급감 원인 찾기",
-  "cannibalization-organic-paid": "광고 카니발라이제이션이란? 유료·오가닉 잠식 측정",
-  "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 평균이 숨기는 이탈 읽는 법",
-  "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
-  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 비용 지표 읽는 법",
-  "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP 전환 데이터 이름 규칙",
+  "campaign-anomaly-detection": "캠페인 성과 갑자기 튀는 날, 원인 찾는 법",
+  "cannibalization-organic-paid": "유료 광고가 공짜 유입을 갉아먹고 있을까?",
+  "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 최근 수치가 낮아 보일 때",
+  "correlation-vs-causation": "상관관계 vs 인과관계: 헷갈리면 돈 잃어요",
+  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이, 헷갈리면 예산 샌다",
+  "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP·매체가 같은 행동을 읽게 하는 법",
   "funnel-dropoff-analysis": "전환율(CVR) 개선: 퍼널 이탈 진단부터 A/B 검증까지",
-  "ga4-data-traps": "GA4 데이터 오류처럼 보이는 숫자 차이: 집계 기준 7가지",
-  "google-uac-optimization": "Google UAC 최적화 가이드: 입찰·에셋·이벤트 설정",
-  "hook-3-seconds-framework": "광고 첫 3초 후킹: 영상 소재 이탈률 줄이는 방법",
-  "incrementality-measurement": "증분성 측정이란? 홀드아웃·DiD로 광고 효과 검증",
-  "ios-att-skan-guide": "iOS ATT·SKAN 측정 가이드: 성과가 반토막 보이는 이유",
-  "ltv-cac-ratio": "LTV:CAC 비율 계산법: 3:1 기준과 흔한 오류 3가지",
-  "marketing-mix-modeling": "마케팅 믹스 모델링(MMM)이란? 채널 기여도 측정법",
-  "meta-advantage-plus-guide": "Meta Advantage+ App 최적화: OS·이벤트·입찰 설정",
-  "performance-marketer-skills": "퍼포먼스 마케터 필요 역량: 실무 스킬 쌓는 순서",
+  "ga4-data-traps": "GA4 숫자가 이상한 이유 — 버그가 아니라 원래 그렇게 셉니다",
+  "google-uac-optimization": "Google UAC(앱 캠페인) 최적화, 뭘 건드릴 수 있나",
+  "hook-3-seconds-framework": "광고 첫 3초, 이 안에 승부가 갈려요",
+  "incrementality-measurement": "증분성 측정: 그 전환, 광고가 만든 걸까요?",
+  "ios-att-skan-guide": "iOS 성과가 반토막으로 '보이는' 이유 — ATT·SKAN 측정 정리",
+  "ltv-cac-ratio": "LTV:CAC 3:1이면 안심? 그 계산, 대부분 틀리게 하고 있어요",
+  "marketing-mix-modeling": "라스트클릭이 브랜드검색만 칭찬할 때 — 채널 기여도, MMM으로 재는 법",
+  "meta-advantage-plus-guide": "Meta Advantage+ App 캠페인, 뭘 통제할 수 있나",
+  "performance-marketer-skills": "퍼포먼스 마케터 스킬, 툴 이름부터 외우면 순서가 틀렸어요",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지",
-  "postback-integration-guide": "포스트백 연동 가이드: SAN·S2S·설치 0 오류 해결",
-  "retargeting-reengagement-guide": "리타겟팅·재참여 캠페인 운영: UA와 분리하는 이유",
+  "postback-integration-guide": "포스트백 연동 가이드: 설치·이벤트·매출·비용이 0일 때 점검 순서",
+  "retargeting-reengagement-guide": "리타겟팅, 신규 획득이랑 같이 돌리면 왜 망하나",
   "roas-improvement": "ROAS 개선 방법: 낮아졌을 때 예산보다 먼저 볼 4가지",
 };
 
@@ -110,6 +110,18 @@ const UPDATED_2026_08_06 = {
   ]),
   en: new Set(["cpi-cpa-cpm-difference", "ga4-data-traps", "ltv-cac-ratio", "performance-marketer-skills"]),
 };
+// 2026-08-09: humanize-korean 윤문 패스에서 검색 후킹이 나은 제목/설명으로 교체한
+// 글. KO 전용(EN 원고는 이번 패스 대상이 아니라 날짜를 올리지 않는다).
+const UPDATED_2026_08_09_KO = new Set([
+  "ab-testing", "ad-creative-specs-guide", "ad-machine-learning", "ad-performance-diagnosis",
+  "aha-event-ad-optimization", "aha-moment-retention", "ai-era-marketer", "apple-search-ads-guide",
+  "aso-basics-guide", "attribution-data-mismatch", "audience-broad-vs-narrow", "campaign-anomaly-detection",
+  "cannibalization-organic-paid", "cohort-analysis-guide", "correlation-vs-causation", "cpi-cpa-cpm-difference",
+  "event-taxonomy-guide", "ga4-data-traps", "google-uac-optimization", "hook-3-seconds-framework",
+  "incrementality-measurement", "ios-att-skan-guide", "ltv-cac-ratio", "marketing-mix-modeling",
+  "meta-advantage-plus-guide", "performance-marketer-skills", "performance-marketing-metrics",
+  "postback-integration-guide", "retargeting-reengagement-guide",
+]);
 
 export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug] || DRAFT_TITLES[locale]?.[slug];
@@ -126,11 +138,13 @@ export function getBlogSeo(locale, slug, source = {}) {
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
-    updated: source.updated || (UPDATED_2026_08_06[locale]?.has(slug)
-      ? "2026-08-06"
-      : (UPDATED_2026_07_28.has(slug)
-        ? "2026-07-28"
-        : ((isEnglish ? UPDATED_TODAY_EN : UPDATED_TODAY).has(slug) ? "2026-07-20" : ""))),
+    updated: source.updated || (!isEnglish && UPDATED_2026_08_09_KO.has(slug)
+      ? "2026-08-09"
+      : (UPDATED_2026_08_06[locale]?.has(slug)
+        ? "2026-08-06"
+        : (UPDATED_2026_07_28.has(slug)
+          ? "2026-07-28"
+          : ((isEnglish ? UPDATED_TODAY_EN : UPDATED_TODAY).has(slug) ? "2026-07-20" : "")))),
   };
 }
 

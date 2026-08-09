@@ -1,6 +1,6 @@
 ---
 title: "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지"
-description: "CTR·CVR·CPA·ROAS 네 개로 시작해 CPM·CPC·CPI·LTV:CAC까지 사슬로 연결하고, 문제 위치를 찾는 실무 가이드."
+description: "CTR·CVR·CPA·ROAS로 시작해 CPM·CPC·CPI·LTV:CAC까지 사슬로 연결해 문제 위치를 찾는 실무 가이드입니다."
 date: "2026-07-27"
 updated: "2026-07-27"
 slug: "performance-marketing-metrics"
