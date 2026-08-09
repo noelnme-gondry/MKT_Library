@@ -6,7 +6,26 @@ import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
+import { blogSlugsForTool, glossarySlugsForTool } from "@/lib/toolContentLinks";
+import { getAllPosts } from "@/lib/blog";
+import { getAllTerms } from "@/lib/glossary";
 import PageClient from "./PageClient";
+
+// 도구 → 콘텐츠 역링크(제목·요약은 server 전용 로더에서 읽어 직렬화해 내려준다).
+function buildEvidenceLinks(routeId) {
+  if (!routeId || !(routeId.startsWith("5-") || routeId.startsWith("9-"))) return [];
+  const postBySlug = new Map(getAllPosts("ko").map((post) => [post.slug, post]));
+  const termBySlug = new Map(getAllTerms("ko").map((term) => [term.slug, term]));
+  const posts = blogSlugsForTool(routeId)
+    .map((slug) => postBySlug.get(slug))
+    .filter(Boolean)
+    .map((post) => ({ type: "post", href: `/blog/${post.slug}`, title: post.title, description: post.description || "" }));
+  const terms = glossarySlugsForTool(routeId)
+    .map((slug) => termBySlug.get(slug))
+    .filter(Boolean)
+    .map((term) => ({ type: "term", href: `/glossary/${term.slug}`, title: term.term, description: term.shortDef || "" }));
+  return [...posts, ...terms];
+}
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -113,6 +132,6 @@ async function PageWithStructuredData({ params }) {
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
     {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
-    <PageClient params={params} />
+    <PageClient params={params} evidenceLinks={buildEvidenceLinks(routeId)} />
   </>;
 }

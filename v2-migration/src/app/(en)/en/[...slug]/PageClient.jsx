@@ -11,6 +11,7 @@ import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
+import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
 import ToolConnections from "@/components/ToolConnections";
 import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
@@ -42,7 +43,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
 import { resolveResponseStage } from "@/lib/responseStage";
 
-export default function PageClient({ params, initialSopData = null }) {
+export default function PageClient({ params, initialSopData = null, evidenceLinks = [] }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
   const responseStage = resolveResponseStage(useSearchParams().get("stage"));
@@ -93,6 +94,7 @@ export default function PageClient({ params, initialSopData = null }) {
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} locale="en" />}
             <ToolLongform toolId={routeId} locale="en" />
+            <ToolEvidenceLinks items={evidenceLinks} locale="en" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} locale="en" />}
             </article>
           </main>
