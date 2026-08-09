@@ -238,7 +238,6 @@ export default function Sidebar({ locale = "ko" }) {
                   <>
                     <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`} aria-current={currentRouteId === "8-1" ? "page" : undefined}>
                       <span>{T.dataGuide}</span>
-                      <b>{displayItemNumberShort("8-1")}</b>
                     </Link>
                     {TOOL_JOURNEY.map((stage, stageIndex) => {
                       const hasActive = stage.tools.includes(currentRouteId);
@@ -275,7 +274,8 @@ export default function Sidebar({ locale = "ko" }) {
                                   data-route={toolId}
                                   aria-current={toolId === currentRouteId ? "page" : undefined}
                                 >
-                                  <span className="ix tnum">{displayItemNumberShort(toolId)}</span>
+                                  {/* 도구 번호 칩 없음 — 스테이지 헤더(01~05)가 순서를 보여주고,
+                                      IA 그룹 기준 번호는 이 계층과 축이 달라 어긋났다. */}
                                   <span>{title}</span>
                                 </Link>
                               );

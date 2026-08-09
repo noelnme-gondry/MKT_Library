@@ -10,7 +10,7 @@ import {
 } from "@/lib/toolConnections";
 import { EN_READY_TOOL_IDS, ROUTES, idToSlug, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
-import { displayItemNumberShort } from "@/store/useDataStore";
+import { isNumberedDocItem } from "@/store/useDataStore";
 
 describe("connected tool workflow", () => {
   it("covers every published tool exactly once in the landing journey", () => {
@@ -25,10 +25,19 @@ describe("connected tool workflow", () => {
     expect([...toolIds].sort()).toEqual([...EN_READY_TOOL_IDS].sort());
   });
 
-  it("uses the same visible tool numbers in the journey and sidebar", () => {
-    expect(TOOL_JOURNEY.flatMap((stage) => stage.tools).map(displayItemNumberShort)).toEqual([
-      "2-1", "2-2", "2-3", "2-4", "2-5", "5-1", "3-1", "3-2", "3-3", "4-1", "4-2", "4-3", "5-2",
-    ]);
+  // 여정 도구에는 표시 번호를 붙이지 않는다. 사이드바 분석 섹션이 IA 그룹이 아니라
+  // 스테이지를 그리므로 그룹 기준 번호가 화면 계층과 어긋났고("03 선택" 아래 2-3·5-1),
+  // 가이드(01~04)의 문서 번호와도 값이 겹쳤다. 번호 체계는 가이드 전용으로 한정한다.
+  it("keeps display numbers out of the analysis journey", () => {
+    for (const toolId of TOOL_JOURNEY.flatMap((stage) => stage.tools)) {
+      expect(isNumberedDocItem(toolId)).toBe(false);
+    }
+    expect(isNumberedDocItem("8-1")).toBe(false);
+  });
+
+  it("keeps guide documents numbered", () => {
+    expect(isNumberedDocItem("1-1")).toBe(true);
+    expect(isNumberedDocItem("4-3")).toBe(true);
   });
 
   it("keeps every next-step reference valid and limited to three choices", () => {

@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { IA, displayGroupNumber, displayItemNumber } from '@/store/useDataStore';
+import { IA, displayGroupNumber, displayItemNumber, isNumberedDocItem } from '@/store/useDataStore';
 import { copyToClipboard } from '@/utils/toast';
 import { getSopEditorial } from '@/lib/sopEditorial';
 
@@ -993,7 +993,7 @@ function findMeta(id) {
           </aside>`;
               const footer = `
           <div class="page-footer">
-            <span>${displayItemNumber(meta.id)}. ${escapeHtml(pageTitle)}</span>
+            <span>${isNumberedDocItem(meta.id) ? `${displayItemNumber(meta.id)}. ` : ""}${escapeHtml(pageTitle)}</span>
             <span>${L.lastUpdated} · 2026-05-22</span>
           </div>`;
               const summary = opts.summary
@@ -1026,7 +1026,9 @@ function findMeta(id) {
               // SOP 문서(1-x~4-x): 현행 구조 유지
               const eyebrow = opts.eyebrow
                 ? escapeHtml(opts.eyebrow)
-                : `${displayGroupNumber(group.id)} ${escapeHtml(group.title)} · ${displayItemNumber(meta.id)}`;
+                : isNumberedDocItem(meta.id)
+                  ? `${displayGroupNumber(group.id)} ${escapeHtml(group.title)} · ${displayItemNumber(meta.id)}`
+                  : escapeHtml(group.title);
               return `
           <div class="page-eyebrow">${eyebrow}</div>
           <h1 class="page-title">${escapeHtml(pageTitle)}</h1>
