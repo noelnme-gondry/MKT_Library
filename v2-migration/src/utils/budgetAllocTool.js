@@ -519,3 +519,183 @@ export function computeAllocSummary(payload) {
     nextROAS: next.cost > 0 && nextRevenue > 0 ? nextRevenue / next.cost : null,
   };
 }
+
+/* ── 목표 예산 탐색용 안전 범위 ────────────────────────────────────────────
+   predictSafeCpr은 관측 최대 지출 밖에서 값을 clamp한다. 따라서 그 구간을 그대로
+   예산 목표 역산에 쓰면 "목표를 유지하며 무한 증액"처럼 보일 수 있다. PRISM의
+   전역 추천은 언제나 실제 관측 xMax까지만 쓴다. 외삽 배수는 곡선 진단의 가정일 뿐,
+   목표 예산이나 자동 실행안의 근거로 쓰지 않는다. */
+export function getAllocationEvidenceLimits({ modelsMap }) {
+  const maxSpends = {};
+  const unavailableChannels = [];
+
+  for (const [channel, meta] of modelsMap || []) {
+    const xMax = Number(meta?.xMax);
+    if (!meta?.model || !(xMax > 0) || !Number.isFinite(xMax)) {
+      unavailableChannels.push(channel);
+      continue;
+    }
+    let cap = xMax;
+    const shape = ALLOC_MATH.detectPoly2Shape(meta.model);
+    // ∩형 곡선의 꼭짓점 뒤를 추천하면, 관측 범위 안이어도 "더 쓰면 더 좋다"는
+    // 의미가 된다. 기존 B 모드와 같은 보호선을 C 모드의 목표 탐색에도 적용한다.
+    if (shape?.shape === "bell" && Number.isFinite(shape.vertex) && shape.vertex > 0) {
+      cap = Math.min(cap, shape.vertex);
+    }
+    if (!(cap > 0) || !Number.isFinite(cap)) {
+      unavailableChannels.push(channel);
+      continue;
+    }
+    maxSpends[channel] = cap;
+  }
+
+  const maxBudget = Object.values(maxSpends).reduce((sum, cap) => sum + cap, 0);
+  return { maxSpends, maxBudget, unavailableChannels };
+}
+
+function projectedMetricValue(summary, metric) {
+  if (metric === "revenue_d7") return summary.nextROAS;
+  return summary.nextAvgCPR;
+}
+
+export function isAllocationFullyFunded({ allocation, budget, currency = "KRW" }) {
+  const requestedBudget = Number(budget);
+  const allocated = Number(allocation?.totalAllocated) || 0;
+  const unallocated = Number(allocation?.unallocated) || 0;
+  const minUnit = currency === "USD" || currency === "usd" ? 0.01 : 10;
+  return (
+    requestedBudget > 0 &&
+    allocated > 0 &&
+    unallocated <= Math.max(minUnit, requestedBudget * 1e-6)
+  );
+}
+
+function runAllocationAtBudget({
+  modelsMap,
+  budget,
+  metric,
+  mode = "c",
+  maxSpends = {},
+  extrapolateMode = "1.3",
+  currency = "KRW",
+  historyByCh = {},
+}) {
+  const allocation =
+    mode === "b"
+      ? calculateAllocationModeB({
+          modelsMap,
+          totalBudget: budget,
+          maxSpends,
+          extrapolateMode,
+          currency,
+        })
+      : calculateAllocationModeC({
+          modelsMap,
+          totalBudget: budget,
+          maxSpends,
+          metric,
+          historyByCh,
+        });
+  const summary = computeAllocSummary({ items: allocation.items, metric, historyByCh });
+  return {
+    budget,
+    allocation,
+    summary,
+    value: projectedMetricValue(summary, metric),
+  };
+}
+
+/* 목표 슬라이더용 고정 frontier. 이분 탐색을 쓰지 않는다: 채널별 cap, Poly2 형태,
+   그리디 채널 전환 때문에 포트폴리오 효율이 단조라는 보장이 없다. React 쪽에서는
+   필터/모델이 바뀔 때만 이 ladder를 다시 만들고, 목표 슬라이드 중에는 아래 선택기만
+   사용한다. */
+export function buildAllocationFrontier({
+  modelsMap,
+  minBudget,
+  maxBudget,
+  metric,
+  mode = "c",
+  maxSpends = {},
+  extrapolateMode = "1.3",
+  currency = "KRW",
+  historyByCh = {},
+  steps = 24,
+}) {
+  const low = Number(minBudget);
+  const high = Number(maxBudget);
+  if (!modelsMap || !(low > 0) || !(high >= low) || !metric) return [];
+  const count = Math.max(2, Math.floor(Number(steps) || 24));
+  // 저예산 구간만 목표를 충족할 때도 "불가능"이라고 오판하지 않도록, 로그 간격과
+  // 선형 간격을 함께 쓴다. 후자는 상한 부근의 최대 예산 선택 해상도를 지킨다.
+  const logCount = Math.max(2, Math.ceil(count / 2));
+  const linearCount = Math.max(2, count - logCount + 2);
+  const budgetSet = new Set([low, high]);
+  const logRatio = high / low;
+  for (let index = 1; index < logCount - 1; index += 1) {
+    budgetSet.add(low * Math.pow(logRatio, index / (logCount - 1)));
+  }
+  for (let index = 1; index < linearCount - 1; index += 1) {
+    budgetSet.add(low + ((high - low) * index) / (linearCount - 1));
+  }
+  const budgets = [...budgetSet].sort((a, b) => a - b);
+  const frontier = [];
+  for (const budget of budgets) {
+    frontier.push(
+      runAllocationAtBudget({
+        modelsMap,
+        budget,
+        metric,
+        mode,
+        maxSpends,
+        extrapolateMode,
+        currency,
+        historyByCh,
+      }),
+    );
+  }
+  return frontier;
+}
+
+/* CPI/CPA는 목표 이하, ROAS는 목표 이상인 후보 중 실제로 전액을 배분할 수 있는
+   가장 큰 예산을 선택한다. cap 때문에 남은 돈이 생긴 후보를 "최적 예산"으로 부르는
+   정직성 오류를 막는다. */
+export function selectBudgetForTarget({ frontier, targetValue, metric, currency = "KRW" }) {
+  const target = Number(targetValue);
+  const points = Array.isArray(frontier) ? frontier : [];
+  if (!(target > 0) || !metric || points.length === 0) {
+    return { status: "unavailable", targetValue: targetValue ?? null, candidate: null };
+  }
+  const isRoas = metric === "revenue_d7";
+  const usable = points.filter(
+    (point) =>
+      Number.isFinite(point.value) &&
+      isAllocationFullyFunded({ allocation: point.allocation, budget: point.budget, currency }),
+  );
+  if (!usable.length) return { status: "unavailable", targetValue: target, candidate: null };
+
+  const satisfies = (point) => (isRoas ? point.value >= target : point.value <= target);
+  const matching = usable.filter(satisfies);
+  if (matching.length) {
+    const candidate = [...matching].sort(
+      (a, b) =>
+        (b.allocation.totalAllocated || 0) - (a.allocation.totalAllocated || 0) ||
+        b.budget - a.budget,
+    )[0];
+    const ceilingPoint = points[points.length - 1];
+    const atCeiling = candidate === ceilingPoint && satisfies(ceilingPoint);
+    return {
+      status: atCeiling ? "cap_reached" : "met",
+      targetValue: target,
+      candidate,
+    };
+  }
+
+  // 목표 불가능일 때도 가장 가까운 안전 후보를 보여 줄 수 있게 남긴다. 단, UI는
+  // "목표 충족"이라고 말하지 않고 불가능 상태를 명확히 표시해야 한다.
+  const candidate = [...usable].sort((a, b) => {
+    const aGap = Math.abs(a.value - target) / target;
+    const bGap = Math.abs(b.value - target) / target;
+    return aGap - bGap || b.budget - a.budget;
+  })[0];
+  return { status: "unreachable", targetValue: target, candidate };
+}

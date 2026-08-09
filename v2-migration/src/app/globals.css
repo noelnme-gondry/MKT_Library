@@ -2069,6 +2069,195 @@
         padding: 1rem;
         margin-bottom: 1rem;
       }
+      /* PRISM: 하나의 포트폴리오 입력으로 자동 배분을 만드는 decision desk. 채널별
+         편집기처럼 보이지 않게 전역 driver와 읽기 전용 결과의 위계를 분리한다. */
+      .prism-driver {
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1.15rem;
+        padding: clamp(16px,2.3vw,24px);
+        border: 1px solid color-mix(in srgb,var(--primary) 36%,var(--border-subtle));
+        border-top: 3px solid var(--primary);
+        border-radius: var(--radius-xl);
+        background: linear-gradient(128deg,color-mix(in srgb,var(--primary) 10%,var(--surface-container-lowest)),var(--surface-container-lowest) 46%);
+      }
+      .prism-driver::after {
+        content:"";
+        position:absolute;
+        top:-72px;
+        right:-36px;
+        width:180px;
+        height:180px;
+        border:1px solid color-mix(in srgb,var(--primary) 24%,transparent);
+        border-radius:50%;
+        pointer-events:none;
+      }
+      .prism-driver__head {
+        position:relative;
+        z-index:1;
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:18px;
+        align-items:start;
+      }
+      .prism-driver__eyebrow {
+        display:block;
+        margin-bottom:5px;
+        color:var(--primary);
+        font:700 9px/1 var(--font-mono);
+        letter-spacing:.15em;
+      }
+      .prism-driver .section-title { margin:0; }
+      .prism-driver__head p {
+        max-width:720px;
+        margin:7px 0 0;
+        color:var(--text-secondary);
+        font-size:13px;
+        line-height:1.58;
+      }
+      .prism-driver__mode,.prism-driver__target-choice {
+        display:inline-flex;
+        align-items:center;
+        gap:3px;
+        padding:3px;
+        border:1px solid var(--border-subtle);
+        border-radius:999px;
+        background:color-mix(in srgb,var(--surface-container) 82%,transparent);
+      }
+      .prism-driver__mode button,.prism-driver__target-choice button {
+        min-height:31px;
+        padding:5px 10px;
+        border:0;
+        border-radius:999px;
+        background:transparent;
+        color:var(--text-muted);
+        font:650 11px/1.2 var(--font-mono);
+        cursor:pointer;
+      }
+      .prism-driver__mode button:hover,.prism-driver__target-choice button:hover { color:var(--text-primary); }
+      .prism-driver__mode button.active,.prism-driver__target-choice button.active {
+        background:var(--primary);
+        color:var(--surface-base);
+        box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 28%,transparent);
+      }
+      .prism-driver__target-choice button:disabled { opacity:.42; cursor:not-allowed; }
+      .prism-driver__control {
+        position:relative;
+        z-index:1;
+        display:grid;
+        gap:10px;
+        margin-top:20px;
+        padding:15px 16px 14px;
+        border:1px solid var(--border-subtle);
+        border-radius:var(--radius-lg);
+        background:color-mix(in srgb,var(--surface-container-lowest) 78%,var(--surface-container));
+      }
+      .prism-driver__metric-row {
+        display:flex;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:8px;
+        color:var(--text-muted);
+        font:650 10px/1.2 var(--font-mono);
+        letter-spacing:.06em;
+        text-transform:uppercase;
+      }
+      .prism-driver__label-row {
+        display:flex;
+        align-items:baseline;
+        justify-content:space-between;
+        gap:12px;
+      }
+      .prism-driver__label-row label,.prism-driver__exact label {
+        color:var(--text-muted);
+        font:650 10px/1.2 var(--font-mono);
+        letter-spacing:.07em;
+        text-transform:uppercase;
+      }
+      .prism-driver__readout {
+        color:var(--text-primary);
+        font:730 clamp(21px,2.1vw,30px)/1 var(--font-display);
+        font-variant-numeric:tabular-nums;
+        letter-spacing:-.045em;
+        white-space:nowrap;
+      }
+      .prism-driver__range {
+        width:100%;
+        min-height:28px;
+        margin:0;
+        accent-color:var(--primary);
+        cursor:pointer;
+      }
+      .prism-driver__range:focus-visible { outline:2px solid color-mix(in srgb,var(--primary) 68%,transparent); outline-offset:4px; }
+      .prism-driver__scale {
+        display:flex;
+        justify-content:space-between;
+        gap:10px;
+        color:var(--text-muted);
+        font:500 10px/1.35 var(--font-mono);
+      }
+      .prism-driver__scale span:last-child { text-align:right; }
+      .prism-driver__exact {
+        display:flex;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:4px;
+        padding-top:12px;
+        border-top:1px solid var(--border-subtle);
+      }
+      .prism-driver__exact input {
+        width:min(180px,100%);
+        min-height:34px;
+        padding:6px 9px;
+        border:1px solid var(--border-subtle);
+        border-radius:var(--radius-default);
+        background:var(--surface-container);
+        color:var(--text-primary);
+        font:600 12px var(--font-mono);
+        font-variant-numeric:tabular-nums;
+      }
+      .prism-driver__window {
+        position:relative;
+        z-index:1;
+        display:flex;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:13px;
+        color:var(--text-muted);
+        font-size:11px;
+      }
+      .prism-driver__window > span { font:650 10px var(--font-mono); letter-spacing:.06em; text-transform:uppercase; }
+      .prism-driver__window small { color:var(--text-secondary); font-size:11px; }
+      .prism-driver__status {
+        padding:9px 11px;
+        border-left:2px solid var(--primary);
+        background:color-mix(in srgb,var(--primary) 7%,transparent);
+        color:var(--text-secondary);
+        font-size:12px;
+        line-height:1.5;
+      }
+      .prism-driver__status--met { border-left-color:var(--success); background:color-mix(in srgb,var(--success) 8%,transparent); }
+      .prism-driver__status--cap_reached,.prism-driver__status--unreachable,.prism-driver__status--unavailable { border-left-color:var(--chart-tertiary); background:color-mix(in srgb,var(--chart-tertiary) 8%,transparent); }
+      .prism-driver__empty { margin:0; color:var(--text-muted); font-size:12px; line-height:1.55; }
+      .prism-driver__method {
+        position:relative;
+        z-index:1;
+        margin-top:13px;
+        color:var(--text-muted);
+        font-size:11px;
+      }
+      .prism-driver__method summary { width:fit-content; cursor:pointer; font:600 10px var(--font-mono); letter-spacing:.05em; text-transform:uppercase; }
+      .prism-driver__method > div { display:flex; align-items:flex-start; flex-wrap:wrap; gap:10px 14px; margin-top:9px; }
+      .prism-driver__method p { flex:1 1 330px; margin:0; line-height:1.55; }
+      .prism-result-grid {
+        display:grid;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:10px;
+        margin-bottom:1rem;
+      }
+      .prism-result-card { padding:12px 14px; border:1px solid var(--border-subtle); border-radius:var(--radius-lg); background:var(--surface-container-lowest); }
       .alloc-controls {
         display: grid;
         grid-template-columns: 1fr 200px 120px;
@@ -2137,6 +2326,16 @@
         .alloc-controls {
           grid-template-columns: 1fr;
         }
+        .prism-driver { padding:15px; }
+        .prism-driver__head { grid-template-columns:1fr; gap:12px; }
+        .prism-driver__mode { width:fit-content; }
+        .prism-driver__control { padding:13px; }
+        .prism-driver__readout { font-size:24px; }
+        .prism-driver__scale { font-size:9px; }
+        .prism-driver__window { align-items:flex-start; }
+        .prism-driver__window small { flex-basis:100%; }
+        .prism-driver__method > div { display:grid; }
+        .prism-result-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
       }
 
       /* Scatter 산점도 컨트롤 + 채널 필터 chip */

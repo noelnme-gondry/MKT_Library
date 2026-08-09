@@ -48,7 +48,7 @@ export const TOOL_GUIDE = {
     example: "date,channel,cost,impressions,clicks,installs,revenue_d7\n2024-01-01,Google UAC,850000,420000,9800,720,5400000\n2024-01-01,Meta AAP,610000,510000,7200,540,3900000\n2024-01-02,Google UAC,880000,430000,10100,735,5600000",
   },
   "5-3": {
-    when: "채널·캠페인별 반응 곡선을 추정해 '한 푼 더 쓰면 어디가 이득인지' 예산 재배분을 시뮬레이션합니다.",
+    when: "총 예산이나 목표 CPI·CPA·ROAS를 정하면 채널·캠페인별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분안을 계산합니다.",
     grain: "1행 = 하루 × 채널(또는 캠페인) 실적",
     needs: [
       { col: "date", label: "날짜", why: "곡선 적합에 필요한 시점", required: true },
@@ -433,7 +433,7 @@ export const TOOL_GUIDE_EN = {
     example: "date,group,conversions\n2024-04-01,treatment,200\n2024-04-01,control,180\n2024-05-20,treatment,120\n2024-05-20,control,182",
   },
   "5-3": {
-    when: "Estimate a response curve per channel/campaign to simulate where the next dollar of budget pays off best.",
+    when: "Set a total budget or target CPI, CPA, or ROAS to calculate a recommended total budget and automatic allocation without exceeding each channel/campaign's observed maximum spend.",
     grain: "1 row = 1 day × channel (or campaign) performance",
     needs: [
       { col: "date", label: "Date", why: "Time point needed to fit the curve", required: true },

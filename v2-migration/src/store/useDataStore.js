@@ -173,13 +173,13 @@ export const IA = [
       {
         id: "5-3",
         title: "예산 배분 시뮬레이터",
-        seoTitle: "예산, 어디에 더 써야 ROAS 오를까? 무료 배분 시뮬레이터",
+        seoTitle: "목표 CPI·CPA·ROAS에 맞는 예산은? 무료 배분 시뮬레이터",
         seoDescription:
-          "채널별 CPR·ROAS 곡선을 학습해 예산을 어디에 더 태워야 할지 그리디 알고리즘으로 계산. CSV 업로드만으로 바로 확인하는 무료 예산 배분 도구.",
+          "총 예산 또는 목표 CPI·CPA·ROAS를 슬라이드하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분안을 계산합니다. CSV 업로드만으로 바로 확인하세요.",
         titleEn: "Budget Allocation Simulator",
-        seoTitleEn: "Where Should Your Next Ad Dollar Go? Free Budget Allocation Simulator",
+        seoTitleEn: "What Budget Meets Your CPI, CPA, or ROAS Goal? Free Simulator",
         seoDescriptionEn:
-          "Learns a CPR/ROAS response curve per channel and calculates where to shift spend using a greedy algorithm. Free budget allocation tool — just upload a CSV.",
+          "Slide a total budget or target CPI, CPA, or ROAS to calculate a recommended total budget and automatic channel allocation without exceeding observed maximum spend. Free — just upload a CSV.",
       },
       {
         id: "5-26",
