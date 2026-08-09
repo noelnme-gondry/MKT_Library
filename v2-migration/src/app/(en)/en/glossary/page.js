@@ -7,10 +7,11 @@ import SearchTopicHub from "@/components/seo/SearchTopicHub";
 // EN 용어사전 목록 — /glossary(KR)의 EN 미러(§en-blog-translation-strategy와 동일 방식).
 export async function generateMetadata() {
   const title = "Performance Marketing Glossary | CPA, ROAS, CTR & More";
-  const description = "Clear definitions, formulas, and practical context for CPA, ROAS, CTR, LTV, attribution, and other performance marketing terms — with matching free tools.";
+  const description = "Definitions, formulas, and practical context for CPA, ROAS, CTR, LTV, attribution, and other performance marketing terms — with free tools to run the numbers.";
   const canonical = `${SITE_URL}/en/glossary`;
   return {
-    title,
+    // absolute — skip the brand suffix (same SERP truncation reason as term pages).
+    title: { absolute: title },
     description,
     alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical, "x-default": `${SITE_URL}/glossary` } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }, "en"),

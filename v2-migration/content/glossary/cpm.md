@@ -1,7 +1,8 @@
 ---
 term: "CPM (Cost Per Mille)"
+seoTitle: "CPM 뜻과 계산식 | CPM이 올랐을 때 확인할 것"
 shortDef: "노출 1,000회당 든 비용 — 매체에 지불하는 원가에 가까운 지표"
-description: "CPM(Cost Per Mille)이란 노출 1,000회당 든 광고비입니다. 매체 경쟁·타겟팅 비용을 가장 직접적으로 반영하는 지표예요."
+description: "노출 1,000회당 든 광고비. 매체 경쟁·타겟팅 비용이 반영되는 방식과 해석 전에 확인할 것."
 date: "2026-07-18"
 slug: "cpm"
 keywords: "CPM, CPM 뜻, CPM이란, Cost Per Mille, 노출당 비용, 천 회 노출 비용"

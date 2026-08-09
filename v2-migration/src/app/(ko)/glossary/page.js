@@ -6,11 +6,12 @@ import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 // 용어사전 목록 — 블로그·템플릿과 동일하게 routeMap 밖 독립 페이지(§12.24 패턴).
 export async function generateMetadata() {
-  const title = "퍼포먼스 마케팅 용어사전 | CPA·ROAS·CTR 뜻과 실무 활용";
-  const description = "CPA, ROAS, CTR, LTV, 어트리뷰션 등 퍼포먼스 마케팅 핵심 용어를 한 줄 정의·계산식·실무 맥락으로 설명하고 관련 분석 도구로 연결합니다.";
+  const title = "퍼포먼스 마케팅 용어사전 | CPA·ROAS 뜻과 계산식";
+  const description = "CPA·ROAS·CTR·LTV 등 퍼포먼스 마케팅 용어를 한 줄 정의와 계산식으로 정리하고, 바로 계산해 볼 도구까지 연결합니다.";
   const canonical = `${SITE_URL}/glossary`;
   return {
-    title,
+    // absolute — 브랜드 접미 제거(상세 페이지와 동일 이유, 검색결과 제목 잘림 방지).
+    title: { absolute: title },
     description,
     alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/glossary`, "x-default": canonical } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }),

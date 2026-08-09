@@ -1,7 +1,8 @@
 ---
 term: "ROAS (Return On Ad Spend)"
+seoTitle: "ROAS Meaning and Formula | What Is Break-Even ROAS?"
 shortDef: "Revenue generated per dollar of ad spend — revenue divided by spend"
-description: "ROAS (Return On Ad Spend) is revenue divided by ad spend, usually expressed as a percentage or multiple, showing how much revenue each dollar of spend generated."
+description: "ROAS is revenue divided by ad spend. How it differs from LTV and how to find your break-even ROAS from margin with a calculator."
 date: "2026-07-18"
 slug: "roas"
 keywords: "ROAS, ROAS meaning, Return On Ad Spend, ROAS calculation"
@@ -21,6 +22,10 @@ ROAS depends heavily on which revenue window you use (Day 0, Day 7, Day 14…) �
 ## How it differs from LTV
 
 The formula structure is the same as [LTV](/glossary/ltv) (both are revenue-to-spend ratios), but ROAS uses a fixed revenue window while LTV accounts for long-term repeat purchases. ROAS is a short-term efficiency read; LTV is the long-term value read.
+
+## Run the numbers
+
+"What ROAS breaks even" depends entirely on your margin structure. Enter gross margin and variable fees in the [break-even ROAS calculator](/calculator/break-even-roas) to get your own threshold.
 
 ## Go deeper
 

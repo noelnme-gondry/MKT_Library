@@ -1,7 +1,8 @@
 ---
 term: "Retention"
+seoTitle: "Retention Meaning and Formula | Reading D1, D7, D30"
 shortDef: "The share of installed/signed-up users still active after a given number of days"
-description: "Retention is the share of users who installed or signed up at a given time and are still active some days later, typically measured as D1, D7, or D30 retention."
+description: "Retention is the share of users who come back after installing or signing up. What D1, D7 and D30 mean and the traps when calculating it."
 date: "2026-07-18"
 slug: "retention"
 keywords: "retention, retention meaning, D1 retention, D7 retention, user retention rate"

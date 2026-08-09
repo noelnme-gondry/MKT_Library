@@ -23,7 +23,9 @@ export default function RootDocument({ children, locale = "ko" }) {
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title={isEnglish ? "Growth Opt Playbook — English" : "Growth Opt Playbook"} href={isEnglish ? "/en/rss.xml" : "/rss.xml"} />
         <link rel="alternate" type="text/plain" title="Growth Opt Playbook for AI readers" href="/llms.txt" />
+        {/* SVG를 못 읽는 크롤러(검색결과 파비콘 수집기 포함)를 위해 .ico를 함께 고지. */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
       </head>
       <body suppressHydrationWarning>

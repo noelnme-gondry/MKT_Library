@@ -1,7 +1,8 @@
 ---
 term: "CVR (Conversion Rate)"
+seoTitle: "CVR Meaning and Formula | Diagnosing a Drop in Order"
 shortDef: "Share of clicks (or visits) that converted — conversions divided by clicks"
-description: "CVR (Conversion Rate) is the share of clicks or visits that resulted in a desired action, such as install, signup, or purchase."
+description: "CVR is the share of clicks that convert. What CVR alone hides and where to look first when conversion rate falls."
 date: "2026-07-18"
 slug: "cvr"
 keywords: "CVR, CVR meaning, Conversion Rate, conversion rate calculation"

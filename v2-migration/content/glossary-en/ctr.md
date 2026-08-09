@@ -1,7 +1,8 @@
 ---
 term: "CTR (Click-Through Rate)"
+seoTitle: "CTR Meaning and Formula | What to Check When It Drops"
 shortDef: "Share of impressions that got clicked — clicks divided by impressions"
-description: "CTR (Click-Through Rate) is the share of ad impressions that resulted in a click, showing how well a creative stops the scroll."
+description: "CTR is clicks divided by impressions. How to judge creative with it, why CTR alone misleads, and the order to diagnose a drop."
 date: "2026-07-18"
 slug: "ctr"
 keywords: "CTR, CTR meaning, Click-Through Rate, click through rate calculation"

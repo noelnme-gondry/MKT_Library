@@ -1,7 +1,8 @@
 ---
 term: "확률적 매칭 (Probabilistic Attribution)"
+seoTitle: "확률적 매칭 뜻 | 결정론적 매칭과 뭐가 다른가"
 shortDef: "고유 ID 없이 기기·시간 정보의 패턴만으로 광고 클릭과 앱 설치를 확률적으로 짝지어주는 방식"
-description: "확률적 매칭(Probabilistic Attribution)이란 IDFA 같은 고유 식별자 없이, 기기 모델·OS·시간대 같은 정보 패턴만으로 클릭과 설치를 확률적으로 연결하는 어트리뷰션 방식입니다."
+description: "고유 식별자 없이 기기·시간 패턴으로 클릭과 설치를 잇는 어트리뷰션. 결정론적 매칭과의 차이와 한계."
 date: "2026-07-18"
 slug: "probabilistic-attribution"
 keywords: "확률적 매칭, Probabilistic Attribution, 핑거프린팅, Fingerprinting, IDFA 없는 어트리뷰션, iOS 어트리뷰션"

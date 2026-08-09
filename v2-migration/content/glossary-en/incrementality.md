@@ -1,7 +1,8 @@
 ---
 term: "Incrementality"
+seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
-description: "Incrementality is the pure additional outcome an ad actually caused, measured by comparing an exposed group against a group that saw no ads."
+description: "Incrementality is the outcome lift ads actually caused. How it is measured and why CPA and ROAS alone overstate advertising impact."
 date: "2026-07-18"
 slug: "incrementality"
 keywords: "incrementality, incrementality meaning, incrementality measurement, incrementality testing"

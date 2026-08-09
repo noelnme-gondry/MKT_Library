@@ -2,7 +2,7 @@
 term: "Multicollinearity"
 seoTitle: "What Is Multicollinearity? Check VIF Before MMM"
 shortDef: "When independent variables move together so tightly a regression can't tell their effects apart"
-description: "Multicollinearity is when variables such as channel spend move together so closely that regression cannot separate their effects. Check VIF and channel correlation before MMM."
+description: "Multicollinearity is when channels move together so regression cannot separate their effects. Check VIF and correlation before MMM."
 date: "2026-08-09"
 slug: "multicollinearity"
 keywords: "multicollinearity, multicollinearity meaning, VIF, VIF meaning, MMM multicollinearity, regression collinearity"
