@@ -1,7 +1,8 @@
 ---
 term: "한계 CPA · 한계 ROAS (Marginal CPA / ROAS)"
+seoTitle: "한계 CPA 뜻 | 평균 CPA만 보면 위험한 이유"
 shortDef: "지금 지출에서 다음 1원(또는 마지막 1원)의 CPA·ROAS — 증액·재배분·삭감을 판단하는 1순위 지표"
-description: "한계 CPA·ROAS는 지금 지출에서 '다음 1원'을 더하거나 '마지막 1원'을 뺐을 때의 CPA·ROAS입니다. 지금까지 쓴 돈 전체의 평균이 아니라 경계에서의 증분 효율로, 예산 증액·재배분·삭감 판단의 진짜 기준이 됩니다."
+description: "다음 1원을 더했을 때의 CPA·ROAS. 평균과 다른 이유와 증액·삭감을 판단하는 등한계 기준."
 date: "2026-07-21"
 slug: "marginal-cpa"
 keywords: "한계 CPA, 한계CPA, 한계 ROAS, Marginal CPA, Marginal ROAS, 한계 CPA란, 한계효용, 한계효율, 다음 1원의 효율, 증액 판단 기준, 응답곡선"

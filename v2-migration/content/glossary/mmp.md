@@ -1,7 +1,8 @@
 ---
 term: "MMP (Mobile Measurement Partner)"
+seoTitle: "MMP 뜻 | 어트리뷰션 측정 솔루션이 하는 일"
 shortDef: "여러 광고 매체의 전환 데이터를 한곳에 모아 앱 마케팅 성과를 집계해주는 제3자 측정 솔루션"
-description: "MMP(Mobile Measurement Partner)란 여러 광고 매체의 클릭·설치·인앱 이벤트 데이터를 한곳에 모아 어트리뷰션과 성과를 집계해주는 제3자 측정 솔루션입니다."
+description: "매체별 클릭·설치·인앱 이벤트를 모아 어트리뷰션을 집계하는 제3자 솔루션. 왜 필요한지와 확인점."
 date: "2026-07-18"
 slug: "mmp"
 keywords: "MMP, MMP란, Mobile Measurement Partner, 모바일 어트리뷰션 툴, 앱 마케팅 측정 솔루션"

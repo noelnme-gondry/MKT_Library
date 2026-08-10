@@ -1,5 +1,6 @@
 import { SITE_URL } from "@/lib/routeMap";
 import { getAllPosts } from "@/lib/blog";
+import { getAllTerms } from "@/lib/glossary";
 
 const PRODUCT_UPDATED_AT = new Date("2026-07-29T00:00:00Z");
 const CONTACT = "gondry.montauk@gmail.com (Growth Opt Playbook)";
@@ -11,6 +12,7 @@ const CHANNELS = {
     language: "ko-KR",
     path: "/rss.xml",
     postPrefix: "/blog/",
+    glossaryPrefix: "/glossary/",
   },
   en: {
     title: "Growth Opt Playbook | Performance Marketing Decision Workspace",
@@ -18,6 +20,7 @@ const CHANNELS = {
     language: "en-US",
     path: "/en/rss.xml",
     postPrefix: "/en/blog/",
+    glossaryPrefix: "/en/glossary/",
   },
 };
 
@@ -42,19 +45,39 @@ function stripTags(value) {
 
 export function buildRssFeed(locale = "ko") {
   const config = CHANNELS[locale] || CHANNELS.ko;
+  // 블로그 + 용어사전을 한 피드에. 용어사전도 sitemap과 동일하게 색인 대상인데
+  // 피드에서만 빠져 있으면 RSS로 수집하는 크롤러(네이버 서치어드바이저)에는
+  // 존재하지 않는 문서가 된다. 정렬은 날짜 내림차순, 동률이면 URL로 결정적.
   const posts = getAllPosts(locale);
-  const latestContentDate = posts.map((post) => post.updated || post.date).filter(Boolean).sort().at(-1);
+  const terms = getAllTerms(locale);
+  const entries = [
+    ...posts.map((post) => ({
+      title: stripTags(post.title),
+      link: `${SITE_URL}${config.postPrefix}${post.slug}`,
+      html: post.rssHtml,
+      date: post.date,
+      sortDate: post.updated || post.date,
+    })),
+    ...terms.map((term) => ({
+      title: stripTags(term.seoTitle || term.term),
+      link: `${SITE_URL}${config.glossaryPrefix}${term.slug}`,
+      html: term.html,
+      date: term.date,
+      sortDate: term.date,
+    })),
+  ].sort((a, b) => String(b.sortDate).localeCompare(String(a.sortDate)) || a.link.localeCompare(b.link));
+
+  const latestContentDate = entries.map((entry) => entry.sortDate).filter(Boolean).sort().at(-1);
   const latestTimestamp = latestContentDate ? new Date(latestContentDate).getTime() : 0;
   const lastBuildDate = new Date(Math.max(PRODUCT_UPDATED_AT.getTime(), latestTimestamp)).toUTCString();
-  const items = posts.map((post) => {
-    const link = `${SITE_URL}${config.postPrefix}${post.slug}`;
-    const pubDate = post.date ? new Date(post.date).toUTCString() : PRODUCT_UPDATED_AT.toUTCString();
+  const items = entries.map((entry) => {
+    const pubDate = entry.date ? new Date(entry.date).toUTCString() : PRODUCT_UPDATED_AT.toUTCString();
     return `    <item>
-      <title>${xmlEscape(stripTags(post.title))}</title>
-      <link>${xmlEscape(link)}</link>
-      <description>${cdata(post.rssHtml)}</description>
-      <content:encoded>${cdata(post.rssHtml)}</content:encoded>
-      <guid isPermaLink="true">${xmlEscape(link)}</guid>
+      <title>${xmlEscape(entry.title)}</title>
+      <link>${xmlEscape(entry.link)}</link>
+      <description>${cdata(entry.html)}</description>
+      <content:encoded>${cdata(entry.html)}</content:encoded>
+      <guid isPermaLink="true">${xmlEscape(entry.link)}</guid>
       <pubDate>${pubDate}</pubDate>
     </item>`;
   }).join("\n");

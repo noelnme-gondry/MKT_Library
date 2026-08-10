@@ -1,7 +1,8 @@
 ---
 term: "MMP (Mobile Measurement Partner)"
+seoTitle: "What Is an MMP? Attribution Measurement Explained"
 shortDef: "A third-party service that aggregates conversion data from multiple ad networks into one attribution view"
-description: "An MMP (Mobile Measurement Partner) is a third-party measurement solution that pulls together click, install, and in-app event data from multiple ad networks to attribute performance."
+description: "An MMP consolidates click, install and in-app event data across networks to attribute and report performance. Why teams need one."
 date: "2026-07-18"
 slug: "mmp"
 keywords: "MMP, Mobile Measurement Partner, mobile attribution tool, app marketing measurement"

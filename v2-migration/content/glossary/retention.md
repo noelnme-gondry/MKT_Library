@@ -1,7 +1,8 @@
 ---
 term: "리텐션 (Retention)"
+seoTitle: "리텐션 뜻과 계산법 | D1·D7·D30 보는 법"
 shortDef: "설치·가입한 유저 중 일정 기간 뒤에도 남아있는 비율"
-description: "리텐션이란 특정 시점에 설치·가입한 유저 중 며칠 뒤에도 다시 돌아오는 비율입니다. D1·D7·D30처럼 경과일 기준으로 봅니다."
+description: "설치·가입 후 다시 돌아온 유저 비율. D1·D7·D30 기준과 계산할 때 빠지기 쉬운 함정."
 date: "2026-07-18"
 slug: "retention"
 keywords: "리텐션, 리텐션 뜻, 리텐션이란, Retention, D1 리텐션, D7 리텐션, 유저 잔존율"

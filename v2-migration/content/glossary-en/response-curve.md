@@ -1,7 +1,8 @@
 ---
 term: "Response Curve"
+seoTitle: "Response Curve: Where Extra Spend Stops Paying Off"
 shortDef: "The curve showing how conversions respond as spend increases — typically S-shaped"
-description: "A response curve shows how conversions change as spend increases. It's typically S-shaped: efficient early on, then flattening as spend keeps rising."
+description: "A response curve shows how conversions change with spend. Why the S-shape appears and what to watch when judging headroom to scale."
 date: "2026-07-18"
 slug: "response-curve"
 keywords: "response curve, response curve meaning, diminishing returns curve, budget response curve"

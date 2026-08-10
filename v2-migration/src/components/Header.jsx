@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAppStore, findMeta, displayGroupNumber, displayItemNumber } from "@/store/useDataStore";
+import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
 import { resolvePathToId } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
@@ -174,11 +174,13 @@ export default function Header({ locale = "ko" }) {
             <>
               <span className="sep">/</span>
               <span className="current current--section" title={trGroupTitle(meta.group.id, locale, meta.group.title)}>
-                {displayGroupNumber(meta.group.id, locale)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
+                {isNumberedDocItem(meta.id) && <>{displayGroupNumber(meta.group.id, locale)} · </>}
+                {trGroupTitle(meta.group.id, locale, meta.group.title)}
               </span>
               <span className="sep">/</span>
               <span className="current current--page">
-                {displayItemNumber(meta.id, locale)} · {trItemTitle(meta.id, locale, meta.title)}
+                {isNumberedDocItem(meta.id) && <>{displayItemNumber(meta.id, locale)} · </>}
+                {trItemTitle(meta.id, locale, meta.title)}
               </span>
             </>
           )}

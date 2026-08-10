@@ -2,7 +2,7 @@
 term: "다중공선성 (Multicollinearity)"
 seoTitle: "다중공선성 뜻 | VIF로 MMM 전에 확인하는 법"
 shortDef: "여러 독립변수가 서로 강하게 얽혀서, 회귀분석이 누구의 효과인지 구분 못 하는 현상"
-description: "다중공선성이란 여러 채널·변수가 함께 오르내려 회귀 모델이 각 변수의 효과를 구분하지 못하는 현상입니다. VIF와 채널 상관관계로 MMM 전에 점검합니다."
+description: "여러 채널이 함께 오르내려 회귀가 각 효과를 구분하지 못하는 현상. VIF와 상관으로 MMM 전에 점검하는 법."
 date: "2026-08-09"
 slug: "multicollinearity"
 keywords: "다중공선성, 다중공선성 뜻, 다중공선성이란, multicollinearity, VIF, VIF 뜻, MMM 다중공선성, 회귀분석 공선성"

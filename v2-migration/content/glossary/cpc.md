@@ -1,7 +1,8 @@
 ---
 term: "CPC (Cost Per Click)"
+seoTitle: "CPC 뜻과 계산식 | CTR과 CPC의 관계"
 shortDef: "클릭 1회당 든 비용 — CPM ÷ CTR로 연결되는 지표"
-description: "CPC(Cost Per Click)란 클릭 1회당 든 광고비입니다. CPM을 CTR로 나눈 값과 같아서, CTR이 오르면 CPC는 내려가요."
+description: "클릭 1회당 든 광고비. CPM÷CTR과 같아서 CTR이 오르면 CPC가 내려가는 구조와 읽는 순서."
 date: "2026-07-18"
 slug: "cpc"
 keywords: "CPC, CPC 뜻, CPC란, Cost Per Click, 클릭당 비용, CPC 계산"

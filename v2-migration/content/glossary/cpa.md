@@ -1,7 +1,8 @@
 ---
 term: "CPA (Cost Per Action)"
+seoTitle: "CPA 뜻과 계산식 | 목표 CPA 역산하는 법"
 shortDef: "원하는 행동(가입·구매 등) 1건당 든 비용 — 광고비 ÷ 전환 수"
-description: "CPA(Cost Per Action)란 가입·구매처럼 원하는 행동 1건당 든 광고비입니다. 광고비를 전환 수로 나눠 계산하며, 설치보다 실제 성과에 가까운 지표입니다."
+description: "광고비÷전환 수로 계산하는 행동당 비용. CPA가 높을 때 원인 쪼개는 순서와 목표 CPA 계산기까지."
 date: "2026-07-18"
 slug: "cpa"
 keywords: "CPA, CPA 뜻, CPA란, Cost Per Action, 전환당 비용, 행동당 비용, CPA 계산"
@@ -21,6 +22,10 @@ draft: false
 ## CPA가 높을 때 원인 찾는 법
 
 CPA는 결과예요. 원인은 앞 단계 지표(CPM·CTR·CVR)를 뜯어보면 나와요 — 노출 단가가 비싼지, 클릭이 잘 안 나는지, 클릭 이후 전환이 잘 안 되는지로 나눠 볼 수 있어요.
+
+## 바로 계산해 보기
+
+우리 서비스의 적정 CPA는 LTV와 목표 마진에서 역산합니다. [목표 CPA 역산 계산기](/calculator/target-cpa)에 값을 넣으면 지금 CPA가 기준선 위인지 아래인지 바로 확인할 수 있어요.
 
 ## 더 깊게 보려면
 

@@ -1,7 +1,8 @@
 ---
 term: "인크리멘탈리티 (Incrementality)"
+seoTitle: "인크리멘탈리티 뜻 | CPA·ROAS로는 안 보이는 것"
 shortDef: "광고가 실제로 추가로 만들어낸 순수 성과 — 증분성"
-description: "인크리멘탈리티(증분성)란 광고를 노출한 그룹과 안 한 그룹을 비교해 광고가 실제로 만들어낸 순수 성과 증가분입니다."
+description: "광고를 노출한 그룹과 안 한 그룹의 차이로 본 순수 성과 증가분. 측정법과 CPA·ROAS의 한계."
 date: "2026-07-18"
 slug: "incrementality"
 keywords: "인크리멘탈리티, 인크리멘탈리티 뜻, Incrementality, 증분성, 증분 측정, 증분 분석"

@@ -1,7 +1,8 @@
 ---
 term: "CVR (Conversion Rate)"
+seoTitle: "CVR 뜻과 계산식 | 전환율 떨어졌을 때 순서"
 shortDef: "클릭(또는 방문) 중 실제로 전환된 비율 — 전환 수 ÷ 클릭 수"
-description: "CVR(Conversion Rate, 전환율)이란 클릭 이후 실제로 원하는 행동(설치·가입·구매 등)까지 이어진 비율입니다."
+description: "클릭 이후 전환까지 이어진 비율. CVR만 보면 놓치는 것과 낮아졌을 때 어디부터 확인할지."
 date: "2026-07-18"
 slug: "cvr"
 keywords: "CVR, CVR 뜻, CVR이란, Conversion Rate, 전환율, 전환율 계산"

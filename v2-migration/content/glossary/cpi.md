@@ -1,7 +1,8 @@
 ---
 term: "CPI (Cost Per Install)"
+seoTitle: "CPI 뜻과 계산식 | 채널 비교에 쓸 때 주의점"
 shortDef: "설치 1건당 든 비용 — 광고비 ÷ 설치 수"
-description: "CPI(Cost Per Install)란 앱 설치 1건당 든 광고비로, 광고비를 설치 수로 나눠 계산합니다. 앱 마케팅의 대표적인 초기 단계 지표입니다."
+description: "광고비÷설치 수로 계산하는 앱 설치 단가. 초기 지표로 쓰는 법과 채널 비교에서 놓치기 쉬운 점."
 date: "2026-07-18"
 slug: "cpi"
 keywords: "CPI, CPI 뜻, CPI란, Cost Per Install, 설치당 비용, 앱 설치 비용"

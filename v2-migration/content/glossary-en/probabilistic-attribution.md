@@ -1,7 +1,8 @@
 ---
 term: "Probabilistic Attribution"
+seoTitle: "Probabilistic Attribution vs Deterministic Matching"
 shortDef: "Matching a click to an install by pattern (device, OS, timing) instead of a unique ID"
-description: "Probabilistic attribution matches a click to an install using patterns like device model, OS, and timing instead of a unique identifier like IDFA — used when deterministic IDs aren't available."
+description: "Probabilistic attribution links clicks to installs using device and timing patterns instead of a shared ID. How it differs and its limits."
 date: "2026-07-18"
 slug: "probabilistic-attribution"
 keywords: "probabilistic attribution, fingerprinting, IDFA-less attribution, iOS attribution"

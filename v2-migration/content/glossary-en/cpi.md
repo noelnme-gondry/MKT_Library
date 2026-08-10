@@ -1,7 +1,8 @@
 ---
 term: "CPI (Cost Per Install)"
+seoTitle: "CPI Meaning and Formula | Comparing Channels Safely"
 shortDef: "Cost per app install — total spend divided by number of installs"
-description: "CPI (Cost Per Install) is the cost of a single app install, calculated as ad spend divided by install count. It's the classic top-of-funnel metric in app marketing."
+description: "CPI is spend divided by installs. How to use it as an early app metric and what gets missed when you compare CPI across channels."
 date: "2026-07-18"
 slug: "cpi"
 keywords: "CPI, CPI meaning, Cost Per Install, cost per install calculation"

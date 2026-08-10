@@ -73,6 +73,23 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(4);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
+  // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면
+  // 헤더(01~05)와 앞자리가 어긋나고 가이드 번호와도 겹친다. 도구 칩엔 번호 없음,
+  // 가이드 문서(01~04)는 번호 유지 — 둘 다 회귀로 잠근다.
+  it("numbers guide documents but not analysis tools", () => {
+    pathname = "/dashboard";
+    seedWithData();
+    const { container } = render(<Sidebar />);
+
+    const toolChips = [...container.querySelectorAll(".sidebar-workflow-stage .nav-item .ix")];
+    expect(toolChips).toHaveLength(0);
+    expect(container.querySelector(".sidebar-workflow-prep")?.textContent).toBe("데이터 준비");
+
+    const guideGroup = container.querySelector('.nav-group[data-group="01"]');
+    expect(guideGroup?.querySelector(".nav-group-index")?.textContent).toBe("1");
+    expect(guideGroup?.querySelector('.nav-item[data-route="1-1"] .ix')?.textContent).toBe("1-1");
+  });
+
   it("keeps resource and external-link parity in English", () => {
     pathname = "/en";
     const { container } = render(<Sidebar locale="en" />);

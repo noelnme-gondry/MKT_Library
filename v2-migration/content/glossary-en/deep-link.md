@@ -1,7 +1,8 @@
 ---
 term: "Deep Link"
+seoTitle: "Deep Link vs Deferred Deep Link: The Difference"
 shortDef: "A link that opens an app straight to a specific screen instead of the home screen"
-description: "A deep link opens an app directly to a specific piece of content or product page, instead of just launching the app to its home screen. A deferred deep link does this even when the app wasn't installed yet."
+description: "A deep link opens a specific in-app screen instead of the home screen. How deferred deep links differ and where they break in practice."
 date: "2026-07-18"
 slug: "deep-link"
 keywords: "deep link, deep link meaning, deferred deep link, app deep linking"

@@ -1,7 +1,8 @@
 ---
 term: "CTR (Click-Through Rate)"
+seoTitle: "CTR 뜻과 계산식 | CTR 낮을 때 볼 순서"
 shortDef: "노출된 광고 중 실제로 클릭된 비율 — 클릭 수 ÷ 노출 수"
-description: "CTR(Click-Through Rate, 클릭률)이란 광고가 노출된 횟수 중 실제로 클릭된 비율입니다. 소재가 얼마나 스크롤을 멈추게 하는지를 보여줘요."
+description: "노출 대비 클릭 비율. 소재 성과를 읽는 기준과 CTR만 보면 안 되는 이유, 변화가 보일 때 진단 순서."
 date: "2026-07-18"
 slug: "ctr"
 keywords: "CTR, CTR 뜻, CTR이란, Click-Through Rate, 클릭률, 클릭율 계산"

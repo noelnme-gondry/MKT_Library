@@ -1,7 +1,8 @@
 ---
 term: "Adstock"
+seoTitle: "What Is Adstock? Why Ad Effects Show Up Days Later"
 shortDef: "The lingering effect of an ad that carries over after it stops running"
-description: "Adstock is the carryover effect of advertising — impact that persists for days or weeks after the ad ran, not just on the day it was shown."
+description: "Adstock is the carryover of ad exposure into conversions days or weeks later. Why it matters for MMM and how to read it in practice."
 date: "2026-07-18"
 slug: "adstock"
 keywords: "adstock, adstock meaning, ad carryover effect, MMM adstock, advertising decay"

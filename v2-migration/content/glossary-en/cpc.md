@@ -1,7 +1,8 @@
 ---
 term: "CPC (Cost Per Click)"
+seoTitle: "CPC Meaning and Formula | How CTR Moves Your CPC"
 shortDef: "Cost per click — equal to CPM divided by CTR"
-description: "CPC (Cost Per Click) is the cost of one click, mathematically equal to CPM divided by CTR. When CTR goes up, CPC goes down even at the same CPM."
+description: "CPC is the cost of one click. It equals CPM divided by CTR, so a rising CTR pulls CPC down. Here is the order to read the two in."
 date: "2026-07-18"
 slug: "cpc"
 keywords: "CPC, CPC meaning, Cost Per Click, cost per click calculation"
