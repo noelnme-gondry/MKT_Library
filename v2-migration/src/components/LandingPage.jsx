@@ -18,28 +18,19 @@ const COPY = {
     eyebrow: "퍼포먼스 마케팅 의사결정",
     title: "성과 원인을 찾고,",
     titleAccent: "다음 하나를 정하세요.",
-    deck: "CSV만 올리면 성과·예산·소재·실험을 브라우저 안에서 분석하는 무료 도구 모음.",
-    trustBadges: ["무료", "가입 없음", "브라우저에서만 처리"],
+    deck: "CSV만 올리면 브라우저 안에서 바로 분석합니다.",
     actionAria: "바로 시작할 작업",
     dataCta: "내 CSV로 분석",
-    dataActionHint: "성과·예산·소재를 내 데이터로 확인",
+    dataActionHint: "성과·예산·소재를 내 데이터로",
     calculatorCta: "빠른 계산",
-    calculatorActionHint: "목표 CPA·ROAS·표본수 계산",
+    calculatorActionHint: "목표 CPA·ROAS·표본수",
     diagnoseCta: "성과 원인 찾기",
-    diagnoseActionHint: "CSV 없이 확인 순서 찾기",
+    diagnoseActionHint: "CSV 없이 확인 순서부터",
     demoCta: "예시 데이터로 30초 체험",
     dataGuideCta: "CSV 컬럼 준비 방법",
-    privacy: "가입 없음 · 원본 데이터는 브라우저에서만 처리",
-    instrumentAria: "이번 주 판단 미리보기",
-    weeklyDecision: "이번 주 판단",
-    instrumentReady: "분석 완료",
-    decisionLabel: "예산 결정",
-    verdict: "검색광고 낭비부터 줄이세요.",
-    reason: "검색 일반 비용 +18% · 전체 CPA 안정",
-    nextAction: "다음 행동",
-    action: "일반 키워드 예산 10% 감액",
-    reviewCue: "7일 뒤 CPA 확인",
-    evidence: "예시 데이터로 결과 열어보기",
+    // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
+    // 문장을 두 번 반복했다. 한 줄로 통합.
+    assurance: "무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리",
     continueEyebrow: "CONTINUE ON THIS DEVICE",
     continueTitle: "지난 판단을 이어서 검토하세요",
     continueDeck: "이 브라우저에 남아 있는 결정 요약만 보여줍니다. 원본 CSV는 저장하거나 불러오지 않습니다.",
@@ -85,28 +76,17 @@ const COPY = {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
     title: "Find the cause.",
     titleAccent: "Choose one next move.",
-    deck: "Upload a CSV to analyze performance, budget, creative, and experiments — free, in your browser.",
-    trustBadges: ["Free", "No signup", "Processed in your browser"],
+    deck: "Upload a CSV and analyze it right in your browser.",
     actionAria: "Start a task",
     dataCta: "Analyze my CSV",
-    dataActionHint: "Check performance, budget, and creative",
+    dataActionHint: "Performance, budget, and creative",
     calculatorCta: "Quick calculations",
-    calculatorActionHint: "Calculate target CPA, ROAS, and sample size",
+    calculatorActionHint: "Target CPA, ROAS, sample size",
     diagnoseCta: "Find the cause",
-    diagnoseActionHint: "Get a check order without a CSV",
+    diagnoseActionHint: "A check order without a CSV",
     demoCta: "Try example data in 30 seconds",
     dataGuideCta: "Prepare CSV columns",
-    privacy: "No signup · source data stays in your browser",
-    instrumentAria: "Preview of this week’s decision",
-    weeklyDecision: "This week’s decision",
-    instrumentReady: "Analysis ready",
-    decisionLabel: "Budget decision",
-    verdict: "Cut wasted search spend first.",
-    reason: "Generic search cost +18% · overall CPA stable",
-    nextAction: "Next action",
-    action: "Cut generic-keyword spend 10%",
-    reviewCue: "Check CPA in 7 days",
-    evidence: "Open results with example data",
+    assurance: "Free · no signup · source data stays in your browser",
     continueEyebrow: "CONTINUE ON THIS DEVICE",
     continueTitle: "Continue your last decision",
     continueDeck: "Only decision summaries stored in this browser appear here. Source CSV data is never restored or stored.",
@@ -202,9 +182,6 @@ export default function LandingPage({ locale = "ko" }) {
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <p className="dc-hero__deck">{T.deck}</p>
-          <ul className="dc-hero__trust" aria-label={lang === "en" ? "Service principles" : "서비스 원칙"}>
-            {T.trustBadges.map((badge) => <li key={badge}>{badge}</li>)}
-          </ul>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
               className="dc-action-route dc-action-route--primary"
@@ -239,37 +216,8 @@ export default function LandingPage({ locale = "ko" }) {
               {T.dataGuideCta} →
             </Link>
           </div>
-          <div className="dc-privacy">{T.privacy}</div>
+          <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
-
-        <article className="dc-instrument" aria-label={T.instrumentAria}>
-          <header className="dc-instrument__head">
-            <strong>{T.weeklyDecision}</strong>
-            <span>{T.instrumentReady}</span>
-          </header>
-          <div className="dc-instrument__verdict">
-            <span>{T.decisionLabel}</span>
-            <h2>{T.verdict}</h2>
-            <p>{T.reason}</p>
-          </div>
-          <div className="dc-mini-chart" aria-hidden="true">
-            <svg viewBox="0 0 440 114" preserveAspectRatio="none" focusable="false">
-              <path className="dc-chart-primary" d="M0,80 C35,76 48,57 78,61 S125,82 154,67 S201,35 233,44 S286,80 318,62 S375,32 440,38" />
-              <path className="dc-chart-baseline" d="M0,96 C40,91 73,92 112,82 S180,80 226,77 S305,74 350,66 S407,59 440,55" />
-              <circle cx="440" cy="38" r="4" />
-            </svg>
-          </div>
-          <footer className="dc-instrument__actions">
-            <div>
-              <b>{T.nextAction}</b>
-              <span>{T.action}</span>
-              <small>{T.reviewCue}</small>
-            </div>
-            <button type="button" onClick={() => openSample("5-2", "decision_instrument")}>
-              {T.evidence} →
-            </button>
-          </footer>
-        </article>
       </section>
 
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
@@ -304,6 +252,37 @@ export default function LandingPage({ locale = "ko" }) {
         </div>
       </section>}
 
+      {/* 목적 선택(질문 카드)을 개념 설명(주간 결정 루프)보다 앞에 둔다 — 첫 화면
+          바로 아래에서 "내가 원하는 것"에 도달하게(claude-ux §1 여정=질문 프레임). */}
+      <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.questionEyebrow}</div>
+            <h2 id="dc-question-title">{T.questionTitle}</h2>
+          </div>
+          <p>{T.questionDeck}</p>
+        </header>
+        <div className="dc-question-grid">
+          {T.questions.map((question) => (
+            <Link
+              className="dc-question-card"
+              href={toolHref(question.id)}
+              key={question.id}
+              onClick={() => trackProductEvent("landing_tool_pick", {
+                tool_id: question.id,
+                source: "landing",
+                placement: "question_card",
+                locale: lang,
+              })}
+            >
+              <span>{question.label}</span>
+              <h3>{question.title}</h3>
+              <p>{question.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="dc-loop" aria-labelledby="dc-loop-title">
         <header className="dc-section-head">
           <div>
@@ -332,35 +311,6 @@ export default function LandingPage({ locale = "ko" }) {
               >{content}</Link>
             );
           })}
-        </div>
-      </section>
-
-      <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
-        <header className="dc-section-head">
-          <div>
-            <div className="dc-eyebrow">{T.questionEyebrow}</div>
-            <h2 id="dc-question-title">{T.questionTitle}</h2>
-          </div>
-          <p>{T.questionDeck}</p>
-        </header>
-        <div className="dc-question-grid">
-          {T.questions.map((question) => (
-            <Link
-              className="dc-question-card"
-              href={toolHref(question.id)}
-              key={question.id}
-              onClick={() => trackProductEvent("landing_tool_pick", {
-                tool_id: question.id,
-                source: "landing",
-                placement: "question_card",
-                locale: lang,
-              })}
-            >
-              <span>{question.label}</span>
-              <h3>{question.title}</h3>
-              <p>{question.desc}</p>
-            </Link>
-          ))}
         </div>
       </section>
 

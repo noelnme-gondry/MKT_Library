@@ -346,7 +346,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
-`LandingPage` = ① 헤드라인+CTA 3개(내 데이터=`/start` · 계산기 · 진단)+프라이버시 배지 ② 이번 주 판단 미리보기 카드(SVG) ③ 주간 결정 루프 3단계 ④ 질문형 도구 카드 ⑤ `ConnectedToolJourney` ⑥ 블로그 | SOP 허브. 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 삭제됨 — 되살리지 말 것.
+`LandingPage` = ① **1단 중앙 히어로**(eyebrow+헤드라인+한 줄 데크+목적 CTA 3열 균등+통합 신뢰 1줄) ② 질문형 도구 카드 ③ 주간 결정 루프 3단계 ④ `ConnectedToolJourney` ⑤ 블로그 | SOP 허브. **목적 선택(②)이 개념 설명(③)보다 앞**(첫 화면에서 바로 도구를 찾게, 스모크가 순서 강제).
+- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 구 `.dc-instrument`(가짜 수치 + `.dc-mini-chart` SVG)는 "쓸모없다"는 실제 피드백으로 제거됨. 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`도 삭제됨.
+- **첫 화면 카피는 중복부터 센다**: 신뢰 배지와 프라이버시 줄이 같은 말을 두 번 하고, 데크가 CTA 힌트를 반복하고 있었다("글이 많다"의 정체). 동급 항목은 나열 대신 **박스로 묶어 균등 grid**(claude-ux §5) — 도구·목적 이름을 줄바꿈으로 줄줄 세우지 말 것.
 - **진입 모션**: `utils/landingMotion.js`(anime.js v4, 히어로 타임라인·미니차트 SVG line-draw·스크롤 리빌). 셀렉터가 마크업과 1:1이라 클래스명을 바꾸면 모션 대상도 같이 고칠 것. 안전장치는 §7.
 - **전 페이지 헤더/셸 완전 통일**: 도구·SOP·홈·블로그·가이드 전부 `Sidebar`+공용 `Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 블로그는 routeMap 밖이라 `Header`가 `pathname`으로 직접 감지.
 - **무주소 게이트 금지**: 상태로만 존재하는 화면은 뒤로가기가 깨짐 → 실제 라우트로(`/guide`·`/start`).
