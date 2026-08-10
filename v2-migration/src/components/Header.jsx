@@ -137,6 +137,9 @@ export default function Header({ locale = "ko" }) {
     const currentDark = useAppStore.getState().isDarkMode;
     document.body.classList.toggle("light-mode", !currentDark);
     localStorage.setItem("mkt-library-theme", currentDark ? "dark" : "light");
+    // 차트가 실제로 떠 있을 때만 chart.js를 내려받는다. 블로그·용어사전 같은 콘텐츠
+    // 페이지는 canvas가 없는데도 테마 동기화 때문에 매 진입마다 차트 번들을 받고 있었다.
+    if (!document.querySelector("canvas")) return;
     Promise.all([import("chart.js/auto"), import("@/utils/chartUtils")]).then(([chartModule, themeModule]) => {
       themeModule.refreshMountedChartThemes(chartModule.default);
     });
