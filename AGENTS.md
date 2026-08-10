@@ -347,6 +347,15 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **무주소 게이트 금지**: 상태로만 존재하는 화면은 뒤로가기가 깨짐 → 실제 라우트로(`/guide`·`/start`).
 - **정직성**: 유저수·로고 날조 금지.
 
+### 12.29 검색 진입면·유입 레시피 (2026-08)
+도구·문서 페이지가 검색에서 살아남게 하는 공통 배선. 전부 render/메타층(엔진 불변).
+- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 같은 `faq`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **목록·표는 파생, 하드코딩 금지**: 템플릿 상세(`lib/templateCatalog.js`)는 실제 CSV 헤더와 일치를 골든으로 강제, 도구→콘텐츠 역링크(`lib/toolContentLinks.js`)는 forward 레지스트리에서 파생, 보고서 대상·sitemap·llms.txt도 라우트에서 파생.
+- **공유 링크는 재조립**(`lib/decisionShare.js`): 입력 객체를 펼치지 말고 허용 필드만 새로 조립 + 상한 + noindex. 디코드도 같은 재조립을 거친다(변조 방어). 텍스트 다운로드 출처는 `withAttribution`(CSV엔 금지 — 파싱 깨짐).
+- **콘텐츠 페이지에 앱 번들 흘리지 말 것**: 셸(Header 등)에서 조건 없이 무거운 모듈을 동적 import하면 canvas 없는 문서 페이지도 차트 번들을 받는다. 실제 필요 여부(예: `document.querySelector("canvas")`)를 먼저 확인.
+- **리다이렉트·앵커 텍스트**: `redirects.test.js`가 301 목적지 실재·sitemap 잔존·체인·permanent를 검증. 관련 글/용어 링크의 앵커는 slug 원문이 아니라 **표시명**을 쓴다.
+- **검토 메타(reviewer/reviewedAt)는 에이전트가 채우지 않는다** — 실제 검토가 있어야 하는 편집 정보다(§8). 인프라만 유지하고 값은 비워 둔다.
+
 ---
 
 ## 13. 참고 파일
