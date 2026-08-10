@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";

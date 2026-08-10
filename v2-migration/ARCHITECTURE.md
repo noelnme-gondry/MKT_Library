@@ -134,6 +134,8 @@ v2-migration/
 - **대시보드(5-2) 탭 → `src/components/dashboard/<Tab>.jsx`** (viz·scorecard·pacing·anomaly·ltv·cohort·funnel·segment·seasonality).
 - **전역 상태·IA → `src/store/useDataStore.js`** / **라우트 → `src/lib/routeMap.js`**.
 - **색/테마/레이아웃 → `src/app/globals.css`**.
+- **차트 전역 룩·인터랙션 → `src/utils/chartGlobals.js`** (defaults·기준선 플러그인·외부 HTML 툴팁). 도구는 `import Chart from "@/utils/chartGlobals"`로만 받는다 — `chart.js/auto` 직접 import 금지(셋업 누락). 차트별 옵션은 `chartUtils.js:chartCommonOpts()`.
+- **랜딩 진입 모션 → `src/utils/motion.js`(anime.js 지연로더·모션축소 가드) + `src/utils/landingMotion.js`(오케스트레이션)**. 초기 숨김은 JS가 붙이는 `.is-motion-armed`로만.
 - **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/lib/data-import/*` + `src/components/CsvUploader.jsx`**.
 - **CSV 그룹/슬라이스 → `src/lib/toolGroups.js` + store `csvGroups`**.
 - **퍼널 이벤트 → `src/lib/analytics.js`**: 허용된 구조 메타데이터만 GA4로. 파일명·원본 행·실제 지표값 금지.

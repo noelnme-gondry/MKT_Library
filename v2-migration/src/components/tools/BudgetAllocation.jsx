@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { allocResponseCurve, isAllocCurveSegmentEstimated } from "@/utils/allocResponseCurve";

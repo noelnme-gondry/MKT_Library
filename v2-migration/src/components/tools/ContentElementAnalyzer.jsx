@@ -10,7 +10,7 @@
 // two-sided p에 BH 다중검정 보정을 적용한다.
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { REG_STATS } from "@/utils/regMath";
 import { CHART_THEME } from "@/utils/chartUtils";

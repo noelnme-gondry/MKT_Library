@@ -31,11 +31,24 @@ export const CHART_THEME = {
   get series() { return this.colors; },
 };
 
+/* 폰트 스택 SSOT — 축 틱·범례·툴팁이 제각각 문자열을 쓰면 차트마다 글꼴이 갈린다. */
+export const CHART_FONT_STACK = '"DM Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+export const CHART_MONO_STACK = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+
+export function reducedMotion() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
 export function chartCommonOpts() {
   return {
     responsive: true,
     maintainAspectRatio: false,
-    animation: { duration: typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 280 },
+    animation: { duration: reducedMotion() ? 0 : 460, easing: "easeOutQuart" },
     layout: { padding: { top: 12, right: 12, bottom: 0, left: 0 } },
     plugins: {
       legend: {
@@ -44,23 +57,24 @@ export function chartCommonOpts() {
         align: "end",
         labels: {
           color: CHART_THEME.muted,
-          font: { family: '"DM Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', size: 11 },
+          font: { family: CHART_FONT_STACK, size: 11 },
           usePointStyle: true,
+          pointStyle: "circle",
           boxWidth: 8,
+          boxHeight: 8,
           padding: 16,
         },
       },
       tooltip: {
-        // 툴팁 배경은 항상 어둡게 고정(차트 색과 대비 위해 다크/라이트 공통) — 그런데
-        // titleColor/bodyColor에 테마별로 바뀌는 CHART_THEME.text를 쓰면 라이트모드에서
-        // 어두운 회색 글자가 어두운 배경 위에 놓여 거의 안 보였음. 배경이 항상 어두우니
-        // 글자색도 항상 밝게 고정.
+        // 실제 렌더는 `utils/chartGlobals.js`의 외부 HTML 툴팁이 담당한다(전역 default).
+        // 아래 값은 external 핸들러를 끄고 캔버스 툴팁으로 되돌린 차트를 위한 폴백이며,
+        // 배경이 항상 어둡기 때문에 글자색도 테마와 무관하게 밝게 고정한다.
         backgroundColor: "rgba(0,0,0,0.85)",
         titleColor: "#F9FAFB",
         bodyColor: "#F9FAFB",
-        bodyFont: { family: "JetBrains Mono", size: 12 },
+        bodyFont: { family: CHART_MONO_STACK, size: 12 },
         padding: 10,
-        cornerRadius: 6,
+        cornerRadius: 8,
         borderColor: "rgba(255,255,255,0.1)",
         borderWidth: 1,
         usePointStyle: true,
@@ -69,15 +83,32 @@ export function chartCommonOpts() {
     scales: {
       x: {
         grid: { display: false, drawBorder: false },
-        ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+        border: { color: CHART_THEME.grid },
+        ticks: {
+          color: CHART_THEME.muted,
+          font: { family: CHART_MONO_STACK, size: 10 },
+          // 라벨이 많아지면 Chart.js 기본값은 45도로 눕혀 읽기 어려워진다. 눕히지 않고
+          // 자동으로 솎아낸다(날짜 축에서 특히 차이가 큼).
+          maxRotation: 0,
+          autoSkip: true,
+          autoSkipPadding: 12,
+          padding: 6,
+        },
       },
       y: {
-        grid: { color: CHART_THEME.grid, drawBorder: false },
-        ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+        // 실선 그리드는 데이터선과 경쟁한다. 점선 + 얇은 톤으로 뒤로 물린다.
+        grid: { color: CHART_THEME.grid, drawBorder: false, drawTicks: false, lineWidth: 1, tickBorderDash: [3, 3], borderDash: [3, 3] },
+        border: { display: false, dash: [3, 3] },
+        ticks: { color: CHART_THEME.muted, font: { family: CHART_MONO_STACK, size: 10 }, padding: 8, maxTicksLimit: 6 },
         beginAtZero: true,
       },
     },
+    // hover를 interaction과 같은 모드로 묶어야 기준선(crosshair)·툴팁·포인트 강조가
+    // 같은 지점에서 동시에 반응한다.
+    // `axis`는 지정하지 않는다 — Chart.js가 `indexAxis`에서 추론하므로, 여기에 "x"를
+    // 박으면 가로 막대(`indexAxis:"y"`, 포레스트 플롯 등)의 히트 판정이 깨진다.
     interaction: { mode: "index", intersect: false },
+    hover: { mode: "index", intersect: false },
   };
 }
 

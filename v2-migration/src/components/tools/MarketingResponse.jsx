@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianLikeRun, mmmBayesianHealth, mmmBayesianWeeklyDecomp, mmmBayesianForecast, mmmForecastApplySelectedBlend, mmmForecastCombineNestedParts, mmmForecastScenarioEligibility, mmmForecastRestoreSeasonality, mmmTrendExistence, mmmElasticities, mmmCannibalization, mmmChannelCoverage, mmmIRF, mmmAdstock, mmmAudit, mmmMacroFacts, mmmDataQualityAudit, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
 import { mmmNonlinearLaplace } from "@/utils/mmmNonlinearLaplace";

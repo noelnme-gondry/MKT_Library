@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";

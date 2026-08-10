@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
 import { downloadChartAsPNG, CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";

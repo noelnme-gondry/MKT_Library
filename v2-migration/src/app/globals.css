@@ -3975,6 +3975,68 @@
 
 /* --- GROUP layout-misc --- */
 /* chart-container */
+/* ── 차트 외부 HTML 툴팁 (utils/chartGlobals.js) ─────────────────────────────
+   캔버스 기본 툴팁 대신 DOM으로 그린다. body 직속 포털이라 sticky 글래스 바
+   (backdrop-filter) 안에서도 위치가 뷰포트 기준으로 유지된다(§7). */
+.gop-chart-tooltip {
+  position: fixed;
+  /* 모달·오버레이(z-index 1000)보다 위. pointer-events:none이라 입력을 가리지 않는다. */
+  z-index: 9998;
+  top: 0;
+  left: 0;
+  min-width: 120px;
+  max-width: min(300px, 80vw);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-overlay, var(--bg-2));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+  color: var(--text-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+.gop-chart-tooltip__title {
+  margin-bottom: 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle, var(--border));
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.gop-chart-tooltip__list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gop-chart-tooltip__list li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.gop-chart-tooltip__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.gop-chart-tooltip__footer {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle, var(--border));
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gop-chart-tooltip { transition: none; }
+}
+
 .chart-container {
   position: relative;
   width: 100%;
@@ -6459,6 +6521,35 @@ body.light-mode .app.is-home {
 .dc-instrument__actions span { display:block;margin-top:4px;color:var(--dc-text-dim);font-size:10px; }
 .dc-instrument__actions small { display:block;margin-top:5px;color:var(--dc-mint);font:550 8px/1.35 var(--font-mono); }
 .dc-instrument__actions button { padding:6px 0;border:0;background:transparent;color:var(--dc-signal);font-size:10px;cursor:pointer; }
+
+/* ── 랜딩 진입 모션 초기 상태 (anime.js, utils/landingMotion.js) ──────────────
+   `is-motion-armed`는 **JS가 성공적으로 모션을 부착했을 때만** 붙는다. 스타일시트에
+   처음부터 opacity:0을 박아두면 JS 실패·모션 축소 설정에서 콘텐츠가 영영 안 보인다
+   (점진적 향상). 셀렉터는 landingMotion.js의 타깃과 1:1로 유지할 것. */
+.decision-console-landing.is-motion-armed :is(
+  .dc-hero__copy .dc-eyebrow,
+  #dc-hero-title span,
+  .dc-hero__deck,
+  .dc-hero__trust li,
+  .dc-hero__actions .dc-action-route,
+  .dc-hero__utility-actions,
+  .dc-privacy,
+  .dc-instrument,
+  .dc-mini-chart path,
+  .dc-mini-chart circle,
+  .dc-section-head,
+  .dc-loop__grid .dc-loop-card,
+  .dc-question-grid .dc-question-card,
+  .dc-library__grid .dc-library-card,
+  .dc-resource-strip
+) { opacity:0; }
+/* SVG는 기본 transform-origin이 뷰포트 원점이라 scale이 튄다 — 도형 박스 기준으로 고정. */
+.dc-mini-chart circle { transform-box:fill-box;transform-origin:center; }
+@media (prefers-reduced-motion: reduce) {
+  /* 모션을 끈 사용자에게는 arming 자체가 일어나지 않지만, 이중 안전장치. */
+  .decision-console-landing.is-motion-armed * { opacity:1 !important; }
+}
+
 .dc-section-head { display:flex;align-items:end;justify-content:space-between;gap:24px;margin:48px 0 18px; }
 .dc-section-head h2 { margin:8px 0 0;color:var(--dc-text);font-size:24px;letter-spacing:-.035em; }
 .dc-section-head > p { margin:0;color:var(--dc-text-dim);font-size:11px; }

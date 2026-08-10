@@ -183,6 +183,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **render throw는 골든이 못 잡는다 → 재현 필수**: 골든은 순수함수만 검증. 단일 render throw가 페이지를 통째로 죽여 "분석하기 무반응"·"탭 멈춤" P0가 된다. 상태 의존 분기는 **전 상태값(전 채널·전 토글)으로** 재현해야 잡힘.
 - **preview 스크린샷은 매우 긴 페이지에서 캡처 아티팩트**(빈 화면·이중노출) — 실제 앱 버그가 아니라 툴 한계. 판정은 접근성 트리나 콘솔 에러로, 스크린샷 하나로 "깨졌다" 결론 금지.
 - **SPA 소프트 내비는 GA4 page_view 자동 전송 안 함**(`gtag('config')`는 최초 1회): `components/GaPageviews.jsx`(`usePathname`+최초 제외 가드)가 경로 변경마다 `gtag('event','page_view')`. GTM 이중 태깅 시 이중카운트 주의.
+- **진입 모션의 "초기 숨김"은 JS가 붙인 클래스로만**(랜딩 anime.js): 스타일시트에 `opacity:0`을 박아두면 JS 청크 로드 실패·모션축소 설정에서 콘텐츠가 **영영 안 보인다**. 성공적으로 부착했을 때만 `.is-motion-armed`를 붙이고, 실패 시 즉시 벗긴다(점진적 향상). **조건부 렌더 섹션은 모션 대상에서 제외** — 마운트 시점에 옵저버를 못 달아 하이드레이션 이후 나타나는 노드가 숨은 채 남는다. 트리거는 anime 스크롤 옵저버보다 네이티브 `IntersectionObserver`가 안전(이미 뷰포트 안인 요소의 발화가 명확).
 - **localStorage 영속 금지**(사용자가 명시적으로 켠 경우만). 새로고침 리셋이 기본.
 
 ---
@@ -248,7 +249,10 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 `*Math.js` 모듈에 순수 함수 추가 → 합성 데이터 골든 1개+ → `npm run test:all` 통과 후 commit.
 
 ### 12.3 차트 추가
-`<div class="chart-container"><canvas/></div>` → `chartCommonOpts()`+`CHART_THEME` 옵션 → 생성 직후 rAF `resize()` → 재렌더 전 destroy. PNG 버튼은 `downloadChartAsPNG`. **하드코딩 색·CSS `var()` 리터럴 금지**(§7).
+`import Chart from "@/utils/chartGlobals"`(전역 셋업 경유, `chart.js/auto` 직접 import 금지) → `<div class="chart-container"><canvas/></div>` → `chartCommonOpts()`+`CHART_THEME` → 생성 직후 rAF `resize()` → 재렌더 전 destroy. PNG는 `downloadChartAsPNG`. **하드코딩 색·CSS `var()` 리터럴 금지**(§7).
+- **전역 룩·인터랙션은 옵션이 아니라 defaults+플러그인으로**(`utils/chartGlobals.js`): 도구 50여 곳이 `chartCommonOpts()`의 `scales`·`plugins`를 자기 옵션으로 덮어써서, 공용 옵션 함수만 고치면 룩이 갈린다. 기준선(crosshair)·외부 HTML 툴팁·폰트·hover 반경은 `Chart.defaults`+`register`로 붙여 덮어쓰기와 무관하게 상속시킨다. 적용 여부는 **생성자 단위 WeakSet**으로(모듈 전역 플래그로 잠그면 테스트 더블에 적용 불가).
+- **`pointRadius`는 전역 default로 건드리지 말 것**: 도구마다 의미가 달라(이상치 마커·산점도) 0으로 내리면 마커가 조용히 사라진다. 인터랙션만 키우려면 `hitRadius`/`hoverRadius`로.
+- **외부 툴팁은 body 포털 + textContent**: `backdrop-filter` 조상 안에서 `position:fixed`가 뷰포트 기준이 아니게 되고(§7), 라벨에는 사용자 CSV 값(캠페인명)이 들어오므로 `innerHTML` 금지.
 
 ### 12.4 토글 클릭 → 즉시 반영
 데이터 변형은 사전 계산 → 핸들러는 lookup + `chart.update("none")` 또는 className swap. 전체 re-render 피하기(스크롤·포커스 손실).
@@ -341,8 +345,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
-### 12.28 랜딩 + 홈 구조 (`components/landing/*`)
-`LandingPage` = ① 헤드라인+CTA 3개(내 데이터=`/start` · 계산기 · 진단)+프라이버시 배지 ② 이번 주 판단 미리보기 카드(정적 SVG) ③ 주간 결정 루프 3단계 ④ 질문형 도구 카드 ⑤ `ConnectedToolJourney`(전 공개 도구) ⑥ 블로그 | SOP 허브. **구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 랜딩 재작성으로 참조 0이 된 뒤 삭제됨** — 되살리지 말 것.
+### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
+`LandingPage` = ① 헤드라인+CTA 3개(내 데이터=`/start` · 계산기 · 진단)+프라이버시 배지 ② 이번 주 판단 미리보기 카드(SVG) ③ 주간 결정 루프 3단계 ④ 질문형 도구 카드 ⑤ `ConnectedToolJourney` ⑥ 블로그 | SOP 허브. 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 삭제됨 — 되살리지 말 것.
+- **진입 모션**: `utils/landingMotion.js`(anime.js v4, 히어로 타임라인·미니차트 SVG line-draw·스크롤 리빌). 셀렉터가 마크업과 1:1이라 클래스명을 바꾸면 모션 대상도 같이 고칠 것. 안전장치는 §7.
 - **전 페이지 헤더/셸 완전 통일**: 도구·SOP·홈·블로그·가이드 전부 `Sidebar`+공용 `Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 블로그는 routeMap 밖이라 `Header`가 `pathname`으로 직접 감지.
 - **무주소 게이트 금지**: 상태로만 존재하는 화면은 뒤로가기가 깨짐 → 실제 라우트로(`/guide`·`/start`).
 - **정직성**: 유저수·로고 날조 금지.

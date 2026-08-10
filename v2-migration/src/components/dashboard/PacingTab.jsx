@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
