@@ -34,9 +34,23 @@ export function downloadXlsx(arrayBuffer, baseName = "export") {
   return triggerDownload(blob, withDate(baseName, "xlsx"));
 }
 
+// 사내에 도는 파일이 곧 유통 경로다. 텍스트·마크다운 산출물 끝에 출처 한 줄을 남긴다.
+// CSV·XLSX에는 붙이지 않는다 — 데이터 행으로 섞여 파싱을 깨뜨린다.
+const ATTRIBUTION = {
+  ko: "생성: Growth Opt Playbook — https://growthoptplaybook.com",
+  en: "Generated with Growth Opt Playbook — https://growthoptplaybook.com",
+};
+
+export function withAttribution(textString, locale = "ko") {
+  const text = String(textString ?? "");
+  const line = ATTRIBUTION[locale === "en" ? "en" : "ko"];
+  if (text.includes("https://growthoptplaybook.com")) return text;
+  return `${text.replace(/\s+$/, "")}\n\n---\n${line}\n`;
+}
+
 // 마크다운/텍스트 문서 저장(claude-ux §6 "상세 문서 받기" 탈출구용).
-export function downloadText(textString, baseName = "summary", ext = "md") {
-  const blob = new Blob([textString], { type: "text/plain;charset=utf-8" });
+export function downloadText(textString, baseName = "summary", ext = "md", locale = "ko") {
+  const blob = new Blob([withAttribution(textString, locale)], { type: "text/plain;charset=utf-8" });
   return triggerDownload(blob, withDate(baseName, ext));
 }
 

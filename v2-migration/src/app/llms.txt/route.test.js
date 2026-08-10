@@ -5,6 +5,7 @@ import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
+import { readSopData } from "@/lib/sopData";
 import { GET, buildLlmsText, dynamic } from "./route";
 
 const markdownLinks = (text) => [...text.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+)\)/g)].map((match) => match[1]);
@@ -14,6 +15,12 @@ const indexableAnalysisRoutes = (locale) => ROUTES
   .filter((route) => route.slug === "/dashboard" || route.slug.startsWith("/tools/") || route.slug.startsWith("/content/"))
   .filter((route) => locale !== "en" || hasEnVersion(route.id))
   .filter((route) => getRouteSeo(route.id, locale));
+
+const indexableGuideRoutes = (locale) => ROUTES
+  .filter((route) => isRouteIndexable(route))
+  .filter((route) => route.slug.startsWith("/guide/"))
+  .filter((route) => locale !== "en" || hasEnVersion(route.id))
+  .filter((route) => readSopData(route.id, locale)?.title);
 
 describe("llms.txt", () => {
   it("publishes UTF-8 Markdown with the browser-only privacy promise", async () => {
@@ -37,9 +44,11 @@ describe("llms.txt", () => {
     const links = markdownLinks(buildLlmsText());
     const sitemapUrls = new Set(sitemap().map((entry) => entry.url));
     const machineIndexes = new Set([`${SITE_URL}/sitemap.xml`, `${SITE_URL}/rss.xml`, `${SITE_URL}/en/rss.xml`]);
-    const expectedLinkCount = 10
+    const expectedLinkCount = 12
       + indexableAnalysisRoutes("ko").length
       + indexableAnalysisRoutes("en").length
+      + indexableGuideRoutes("ko").length
+      + indexableGuideRoutes("en").length
       + getAllPosts("ko").length
       + getAllPosts("en").length
       + getAllCalculators("ko").length

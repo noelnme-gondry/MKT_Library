@@ -3,6 +3,7 @@ import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
+import { readSopData } from "@/lib/sopData";
 
 export const dynamic = "force-static";
 
@@ -11,6 +12,8 @@ const absoluteUrl = (path, locale = "ko") => {
   const normalized = path === "/" ? "" : path;
   return `${SITE_URL}${prefix}${normalized}`;
 };
+
+const plainText = (value) => String(value || "").replace(/<[^>]*>/g, " ");
 
 const markdownText = (value) => String(value || "")
   .replace(/\s+/g, " ")
@@ -30,6 +33,23 @@ function analysisEntries(locale) {
       return seo ? {
         title: seo.title,
         description: seo.description,
+        url: absoluteUrl(route.slug, locale),
+      } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.url.localeCompare(b.url));
+}
+
+function guideEntries(locale) {
+  return ROUTES
+    .filter((route) => isRouteIndexable(route))
+    .filter((route) => route.slug.startsWith("/guide/"))
+    .filter((route) => locale !== "en" || hasEnVersion(route.id))
+    .map((route) => {
+      const sop = readSopData(route.id, locale);
+      return sop?.title ? {
+        title: sop.title,
+        description: plainText(sop.deck).slice(0, 180),
         url: absoluteUrl(route.slug, locale),
       } : null;
     })
@@ -75,6 +95,7 @@ export function buildLlmsText() {
     { title: "빠른 마케팅 계산", url: absoluteUrl("/calculator"), description: "목표 CPA, 손익분기 ROAS, LTV:CAC와 표본수를 계산합니다." },
     { title: "CSV 템플릿", url: absoluteUrl("/templates"), description: "분석 도구별 입력 컬럼 템플릿을 받습니다." },
     { title: "운영 가이드", url: absoluteUrl(idToPath("guide-index")), description: "측정, 매체 운영, 소재와 분석 SOP를 확인합니다." },
+    { title: "방법론 매뉴얼", url: absoluteUrl("/manuals"), description: "MMM 모델의 가정과 한계를 정리한 PDF 문서입니다." },
   ];
   const enStart = [
     { title: "Analyze my CSV", url: absoluteUrl(idToPath("start-gate"), "en"), description: "Profile a CSV in the browser and find the analyses it supports." },
@@ -82,6 +103,7 @@ export function buildLlmsText() {
     { title: "Quick marketing calculations", url: absoluteUrl("/calculator", "en"), description: "Calculate target CPA, break-even ROAS, LTV:CAC, and sample size." },
     { title: "CSV templates", url: absoluteUrl("/templates", "en"), description: "Download input-column templates for each analysis." },
     { title: "Operating guides", url: absoluteUrl(idToPath("guide-index"), "en"), description: "Read measurement, campaign, creative, and analysis playbooks." },
+    { title: "Methodology manuals", url: absoluteUrl("/manuals", "en"), description: "PDF documentation of the MMM model's assumptions and limits." },
   ];
 
   return [
@@ -95,6 +117,8 @@ export function buildLlmsText() {
     "",
     section("Analysis tools — Korean", analysisEntries("ko")),
     "",
+    section("Operating guides — Korean", guideEntries("ko")),
+    "",
     section("Practical articles — Korean", blogEntries("ko")),
     "",
     section("Calculators — Korean", calculatorEntries("ko")),
@@ -104,6 +128,8 @@ export function buildLlmsText() {
     section("Start — English", enStart),
     "",
     section("Analysis tools — English", analysisEntries("en")),
+    "",
+    section("Operating guides — English", guideEntries("en")),
     "",
     section("Practical articles — English", blogEntries("en")),
     "",

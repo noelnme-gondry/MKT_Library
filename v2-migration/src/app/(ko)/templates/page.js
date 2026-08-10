@@ -3,6 +3,14 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
+import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+
+// 목록 → 도구별 상세(컬럼 설명) 크롤 경로.
+const templateDetailHref = (toolId) => {
+  const page = TEMPLATE_PAGES.find((item) => item.toolId === toolId);
+  return page ? `/templates/${page.slug}` : null;
+};
+
 // CSV 템플릿 다운로드 랜딩 — routeMap 밖 독립 페이지(/blog·/guide와 동일 패턴, §12.24).
 // 실제 다운로드는 기존 csvTemplate.js(buildToolTemplateCsv, BOM+CRLF §7)를 그대로
 // 재사용 — 신규 CSV 스키마·엔진 없음. 도구가 없는(=hasToolTemplate false) 이벤트/증분
@@ -210,6 +218,7 @@ export default function TemplatesPage() {
                 desc={item.desc}
                 href={item.href}
                 unified={group.unified}
+                detailHref={templateDetailHref(item.toolId)}
               />
             ))}
           </div>

@@ -57,7 +57,7 @@ export default function WeeklyReport({ locale = "ko" }) {
   const title = draft.title || t.defaultTitle;
   const download = () => {
     const safe = serializeReportDraft({ ...draft, title });
-    downloadText(renderReportMarkdown(safe, locale), locale === "en" ? "weekly-performance-report" : "주간-성과-보고서");
+    downloadText(renderReportMarkdown(safe, locale), locale === "en" ? "weekly-performance-report" : "주간-성과-보고서", "md", locale);
   };
 
   return (

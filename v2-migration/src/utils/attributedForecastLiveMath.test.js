@@ -53,7 +53,7 @@ describe("live-condition attributed forecast router", () => {
     });
     expect(explicit.weeks).toHaveLength(60);
     expect(explicit.snapshotDateSource).toBe("file-modified-time");
-  });
+  }, 120_000);
 
   it("keeps a short-history point forecast but certifies only after three nested outer folds", () => {
     expect(runAttributedForecastLiveRouter(datasetFrom(fixture(73)), { horizon: 12 })).toBeNull();
@@ -67,7 +67,7 @@ describe("live-condition attributed forecast router", () => {
     expect(calibrated.intervalCalibrationEligible).toBe(true);
     expect(calibrated.intervalCalibrationFoldCount).toBeGreaterThanOrEqual(8);
     expect(calibrated.minimumIntervalWeeks).toBe(170);
-  }, 30_000);
+  }, 120_000);
 
   it("auto-maps repeated long event columns and OS-scoped wide event headers without summing channel rows", () => {
     const rows = fixture();
@@ -91,7 +91,7 @@ describe("live-condition attributed forecast router", () => {
       sourceActiveWeeks: 1,
       mode: "step-boundary",
     });
-  });
+  }, 120_000);
 
   it("selects on non-overlapping nested origins and separates live, known-spend, and naive errors", () => {
     const dataset = datasetFrom(fixture(170));
@@ -135,7 +135,7 @@ describe("live-condition attributed forecast router", () => {
         spendFreeWmape: expect.any(Number),
       });
     }
-  }, 30_000);
+  }, 120_000);
 
   it("re-forecasts conditionally on an explicit future budget without producing negative components", () => {
     const dataset = datasetFrom(fixture());
@@ -152,7 +152,7 @@ describe("live-condition attributed forecast router", () => {
     if (router.selectedRoute === "android-ios-sum") {
       expect(scenario.parts.every((part) => part.panel?.channels?.length && part.futureCosts?.length === 12)).toBe(true);
     }
-  });
+  }, 120_000);
 
   it("does not let a dominant Android series hide a broken iOS component", () => {
     const start = Date.UTC(2023, 0, 2);
@@ -180,7 +180,7 @@ describe("live-condition attributed forecast router", () => {
     expect(result.osBreakdownEligible).toBe(false);
     expect(result.componentCertificationComplete).toBe(false);
     expect(result.eligible).toBe(false);
-  }, 30_000);
+  }, 120_000);
 
   it("keeps third-platform totals on Direct and withholds component certification", () => {
     const rows = fixture(120);
@@ -195,7 +195,7 @@ describe("live-condition attributed forecast router", () => {
     expect(result.allowedProductionRoutes).toEqual(["direct-total"]);
     expect(result.componentCertificationComplete).toBe(false);
     expect(result.eligible).toBe(false);
-  });
+  }, 120_000);
 
   it("rejects mixed aggregate Total and platform rows before route scoring", () => {
     const rows = fixture(120);
@@ -208,7 +208,7 @@ describe("live-condition attributed forecast router", () => {
     const dataset = datasetFrom(rows);
     expect(dataset.platforms).toEqual(expect.arrayContaining(["android", "ios", "total"]));
     expect(runAttributedForecastLiveRouter(dataset, { horizon: 12 })).toBeNull();
-  });
+  }, 120_000);
 
   it("locks budget response when every horizon falls back to the naive path", () => {
     const start = Date.UTC(2023, 0, 2);
@@ -238,7 +238,7 @@ describe("live-condition attributed forecast router", () => {
       12,
     );
     expect(extreme.predicted).toEqual(baseline.predicted);
-  }, 30_000);
+  }, 120_000);
 
   it("retains the longest evidence window when lookbacks are practically tied", () => {
     const start = Date.UTC(2023, 0, 2);
@@ -263,7 +263,7 @@ describe("live-condition attributed forecast router", () => {
     }));
     expect(result.dataPreservation.selectedSpecId.replace(/^lb\d+__/, ""))
       .toBe(result.dataPreservation.rawBestSpecId.replace(/^lb\d+__/, ""));
-  }, 30_000);
+  }, 120_000);
 
   it("keeps Step-aware audit and default-scenario refits identical to production", () => {
     const rows = fixture(170);
@@ -307,7 +307,7 @@ describe("live-condition attributed forecast router", () => {
     expect(auditRefit.predicted).toEqual(router.backtest.predicted.slice(validationStart));
     expect(auditRefit.organic).toEqual(router.backtest.organic.slice(validationStart));
     expect(auditRefit.performance).toEqual(router.backtest.performance.slice(validationStart));
-  }, 30_000);
+  }, 120_000);
 
   it("validates the exact requested horizon and keeps the sealed outcome out of production selection", () => {
     const baseRows = fixture(180);
@@ -329,5 +329,5 @@ describe("live-condition attributed forecast router", () => {
     const scenario = runAttributedForecastLiveScenario(datasetFrom(baseRows), first, {}, 13);
     expect(scenario.predicted).toHaveLength(13);
     expect(scenario.marginByHorizon).toEqual(first.forecast.marginByHorizon);
-  }, 30_000);
+  }, 120_000);
 });

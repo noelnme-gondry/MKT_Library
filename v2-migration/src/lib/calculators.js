@@ -8,6 +8,9 @@ export const CALCULATOR_ORDER = [
   "target-cpa",
   "ab-test-sample-size",
   "expected-installs",
+  "cpa-roas-converter",
+  "required-cvr",
+  "budget-pacing",
 ];
 
 const COMMON = {
@@ -47,6 +50,35 @@ const COMMON = {
       { id: "alphaPct", type: "percent", defaultValue: 5 },
       { id: "powerPct", type: "percent", defaultValue: 80 },
       { id: "dailyTraffic", type: "count", defaultValue: 1000 },
+    ],
+  },
+  "cpa-roas-converter": {
+    toolId: "5-3",
+    toolHref: "/tools/budget-allocation",
+    inputs: [
+      { id: "aov", type: "currency", defaultValue: 50000 },
+      { id: "cpa", type: "currency", defaultValue: 15000 },
+      { id: "targetRoasPct", type: "percent", defaultValue: 300 },
+    ],
+  },
+  "required-cvr": {
+    toolId: "5-2",
+    toolHref: "/dashboard",
+    inputs: [
+      { id: "budget", type: "currency", defaultValue: 10000000 },
+      { id: "cpm", type: "currency", defaultValue: 5000 },
+      { id: "targetConversions", type: "quantity", defaultValue: 500 },
+      { id: "ctrPct", type: "percent", defaultValue: 1.5 },
+    ],
+  },
+  "budget-pacing": {
+    toolId: "5-2",
+    toolHref: "/dashboard",
+    inputs: [
+      { id: "periodBudget", type: "currency", defaultValue: 30000000 },
+      { id: "spentSoFar", type: "currency", defaultValue: 12000000 },
+      { id: "elapsedDays", type: "days", defaultValue: 12 },
+      { id: "totalDays", type: "days", defaultValue: 30 },
     ],
   },
   "expected-installs": {
@@ -148,6 +180,70 @@ const COPY = {
         ["표본을 채우기 전에 유의하면 끝내도 되나요?", "반복 확인 후 조기 종료하면 거짓 양성률이 커집니다. 순차검정 설계가 아니라면 사전 표본을 채우세요."],
       ],
     },
+    "cpa-roas-converter": {
+      name: "CPA·ROAS 환산 계산기",
+      eyebrow: "지표 환산",
+      title: "CPA ↔ ROAS 환산 계산기",
+      description: "객단가와 CPA를 넣으면 현재 ROAS로 환산하고, 목표 ROAS를 달성하려면 CPA를 얼마까지 낮춰야 하는지 역산합니다.",
+      summary: "같은 성과를 CPA로 말할지 ROAS로 말할지 헷갈릴 때 두 값을 한 번에 맞춥니다.",
+      labels: { aov: "평균 객단가", cpa: "현재 CPA", targetRoasPct: "목표 ROAS" },
+      primaryLabel: "현재 ROAS",
+      secondaryLabel: "목표 ROAS 달성 CPA",
+      formula: "ROAS = 객단가 ÷ CPA · 필요 CPA = 객단가 ÷ 목표 ROAS",
+      caveat: "객단가가 기간·채널마다 다르면 환산값도 달라집니다. 구매당 매출이 아니라 평균값을 쓴다는 점을 기억하세요.",
+      toolCta: "채널별 CPA·ROAS로 예산 배분",
+      guide: [
+        ["현재 ROAS가 목표보다 높음", "CPA에 여유가 있습니다. 증액 시 한계 효율을 함께 확인하세요."],
+        ["현재 ROAS가 목표보다 낮음", "표시된 CPA까지 낮추거나 객단가를 올려야 목표에 닿습니다."],
+      ],
+      faq: [
+        ["ROAS와 CPA는 왜 서로 환산되나요?", "두 지표 모두 같은 성과를 다른 분모로 본 값입니다. 구매당 매출(객단가)이 정해지면 하나에서 다른 하나가 계산됩니다."],
+        ["가입·설치 캠페인에도 쓸 수 있나요?", "가입 1건의 기대 매출을 객단가 자리에 넣으면 됩니다. 다만 그 기대값이 검증된 수치인지 반드시 구분하세요."],
+      ],
+    },
+    "required-cvr": {
+      name: "목표 달성 CVR 계산기",
+      eyebrow: "캠페인 사전 점검",
+      title: "예산·CPM으로 역산하는 목표 전환율(CVR) 계산기",
+      description: "예산, CPM, 목표 전환수, 예상 CTR을 넣으면 목표를 채우기 위해 필요한 전환율과 예상 클릭수를 계산합니다.",
+      summary: "캠페인을 켜기 전에 목표가 산술적으로 가능한 수치인지 먼저 확인합니다.",
+      labels: { budget: "캠페인 예산", cpm: "예상 CPM", targetConversions: "목표 전환수", ctrPct: "예상 CTR" },
+      primaryLabel: "필요 CVR",
+      secondaryLabel: "예상 클릭수",
+      formula: "노출 = 예산 ÷ CPM × 1,000 · 필요 CVR = 목표 전환수 ÷ (노출 × CTR)",
+      caveat: "CPM과 CTR이 캠페인 기간 내내 유지된다는 가정의 산술입니다. 실제로는 경쟁·소재·타겟에 따라 변합니다.",
+      toolCta: "실제 CVR을 대시보드에서 확인",
+      guide: [
+        ["필요 CVR이 과거 실적보다 낮음", "현실적인 목표입니다. 소재·랜딩 개선으로 여유를 만들 수 있습니다."],
+        ["필요 CVR이 과거 실적보다 높음", "예산·CPM·목표 중 하나를 바꿔야 합니다. 전환율만 올려서 메우기는 어렵습니다."],
+        ["필요 CVR이 100%를 넘음", "현재 조건에서는 산술적으로 불가능한 목표입니다."],
+      ],
+      faq: [
+        ["CTR을 모르면 어떻게 하나요?", "같은 매체·소재 유형의 최근 평균을 쓰세요. 근거가 없으면 낙관값 대신 보수적인 값을 넣는 편이 안전합니다."],
+        ["필요 CVR이 100%를 넘으면 무슨 뜻인가요?", "클릭보다 목표 전환수가 많다는 뜻이라 달성이 불가능합니다. 예산을 늘리거나 목표를 낮춰야 합니다."],
+      ],
+    },
+    "budget-pacing": {
+      name: "예산 소진 페이싱 계산기",
+      eyebrow: "월중 운영 점검",
+      title: "광고 예산 페이싱·잔여 일예산 계산기",
+      description: "기간 예산, 지금까지 소진액, 경과일과 총일수를 넣으면 이 속도로 갔을 때의 예상 총소진액과 남은 기간의 하루 예산을 계산합니다.",
+      summary: "월중에 예산이 남을지 모자랄지, 남은 날 하루 얼마씩 써야 하는지 확인합니다.",
+      labels: { periodBudget: "기간 예산", spentSoFar: "현재까지 소진액", elapsedDays: "경과일", totalDays: "기간 총일수" },
+      primaryLabel: "이 속도의 예상 총소진",
+      secondaryLabel: "남은 기간 하루 예산",
+      formula: "예상 총소진 = 소진액 ÷ 경과일 × 총일수 · 잔여 일예산 = (예산 − 소진액) ÷ 남은 일수",
+      caveat: "요일별 편차와 주말 트래픽 차이를 반영하지 않은 단순 선형 페이싱입니다. 시즌 이벤트가 있으면 그대로 적용하지 마세요.",
+      toolCta: "대시보드에서 실제 페이싱 확인",
+      guide: [
+        ["예상 총소진이 예산보다 큼", "이 속도면 기간 전에 예산이 소진됩니다. 일예산을 낮추거나 예산을 늘려야 합니다."],
+        ["예상 총소진이 예산보다 작음", "예산이 남습니다. 성과가 좋은 캠페인에 남은 예산을 배분할 여지가 있습니다."],
+      ],
+      faq: [
+        ["왜 단순 비례로 계산하나요?", "월중 점검은 빠른 판단이 목적이기 때문입니다. 요일·시즌 편차까지 보려면 대시보드의 페이싱 탭을 쓰세요."],
+        ["남은 일예산이 0으로 나오면?", "이미 기간 예산을 초과 소진했다는 뜻입니다. 증액하거나 캠페인을 조정해야 합니다."],
+      ],
+    },
     "expected-installs": {
       name: "예산별 예상 설치수 계산기",
       eyebrow: "단일 채널 계획",
@@ -230,6 +326,51 @@ const COPY = {
       toolCta: "Continue to experiment design",
       guide: [["Smaller MDE", "Detecting a smaller change requires sharply more observations."], ["Higher power", "Reducing missed effects requires more observations."]],
       faq: [["What is MDE?", "The minimum change worth detecting, fixed before the test. Changing it after seeing results breaks the design."], ["Can I stop as soon as significance appears?", "Repeated peeking inflates false positives. Fill the planned sample unless you use a sequential design."]],
+    },
+    "cpa-roas-converter": {
+      name: "CPA to ROAS converter",
+      eyebrow: "Metric conversion",
+      title: "CPA ↔ ROAS conversion calculator",
+      description: "Convert CPA into ROAS using average order value, and work backwards to the CPA required to hit a target ROAS.",
+      summary: "Reconcile the same performance whether your team reports it as CPA or ROAS.",
+      labels: { aov: "Average order value", cpa: "Current CPA", targetRoasPct: "Target ROAS" },
+      primaryLabel: "Current ROAS",
+      secondaryLabel: "CPA needed for target ROAS",
+      formula: "ROAS = AOV ÷ CPA · required CPA = AOV ÷ target ROAS",
+      caveat: "Conversion depends on average order value, which varies by period and channel. This uses the average you enter, not per-order revenue.",
+      toolCta: "Allocate budget with channel CPA and ROAS",
+      guide: [["Current ROAS above target", "There is CPA headroom. Check marginal efficiency before scaling."], ["Current ROAS below target", "You need the shown CPA, a higher order value, or a revised target."]],
+      faq: [["Why are ROAS and CPA convertible?", "They describe the same outcome against different denominators. Once revenue per conversion is fixed, one determines the other."], ["Does this work for signups or installs?", "Yes, if you place the expected revenue per signup in the order-value field\u2014but be explicit about whether that expectation is validated."]],
+    },
+    "required-cvr": {
+      name: "Required CVR calculator",
+      eyebrow: "Pre-launch check",
+      title: "Required conversion rate calculator from budget and CPM",
+      description: "Enter budget, CPM, target conversions, and expected CTR to get the conversion rate required to hit the goal, plus expected clicks.",
+      summary: "Check whether a campaign target is arithmetically reachable before launching it.",
+      labels: { budget: "Campaign budget", cpm: "Expected CPM", targetConversions: "Target conversions", ctrPct: "Expected CTR" },
+      primaryLabel: "Required CVR",
+      secondaryLabel: "Expected clicks",
+      formula: "Impressions = budget ÷ CPM × 1,000 · required CVR = target ÷ (impressions × CTR)",
+      caveat: "This assumes CPM and CTR hold for the whole flight. In practice both move with auction pressure, creative, and audience.",
+      toolCta: "Check actual CVR in the dashboard",
+      guide: [["Required CVR below your history", "The target looks reachable; creative and landing work can add margin."], ["Required CVR above your history", "Change budget, CPM, or the target\u2014conversion rate alone rarely closes that gap."], ["Required CVR above 100%", "The target is arithmetically impossible under these inputs."]],
+      faq: [["What if I do not know CTR?", "Use a recent average for the same channel and creative type. Without evidence, a conservative value is safer than an optimistic one."], ["What does a required CVR above 100% mean?", "It means you need more conversions than clicks, which cannot happen. Raise budget or lower the target."]],
+    },
+    "budget-pacing": {
+      name: "Budget pacing calculator",
+      eyebrow: "Mid-flight check",
+      title: "Ad budget pacing and remaining daily budget calculator",
+      description: "Enter period budget, spend to date, elapsed days, and total days to project end-of-period spend and the daily budget left for the remaining days.",
+      summary: "See whether you will underspend or overspend, and what the remaining days can carry.",
+      labels: { periodBudget: "Period budget", spentSoFar: "Spend to date", elapsedDays: "Days elapsed", totalDays: "Days in period" },
+      primaryLabel: "Projected total spend",
+      secondaryLabel: "Daily budget for remaining days",
+      formula: "Projection = spend ÷ elapsed days × total days · remaining daily = (budget − spend) ÷ days left",
+      caveat: "This is straight-line pacing and ignores weekday and weekend variation. Do not apply it as-is around seasonal events.",
+      toolCta: "Review actual pacing in the dashboard",
+      guide: [["Projection above budget", "At this rate the budget runs out early; lower daily caps or add budget."], ["Projection below budget", "Budget will be left over and can move to the campaigns that are performing."]],
+      faq: [["Why straight-line pacing?", "Mid-flight checks favor speed. For weekday and seasonal variation, use the dashboard pacing tab."], ["What does a remaining daily budget of zero mean?", "Spend has already exceeded the period budget. Increase it or adjust the campaigns."]],
     },
     "expected-installs": {
       name: "Budget to installs calculator",
@@ -337,6 +478,50 @@ export function calculateMarketingMetric(slug, values = {}) {
       secondary: [conservative, optimistic],
       primaryFormat: "count",
       secondaryFormat: "countRange",
+    };
+  }
+
+  if (slug === "cpa-roas-converter") {
+    const aov = finite(values.aov);
+    const cpa = finite(values.cpa);
+    const targetRoas = finite(values.targetRoasPct) / 100;
+    if (!(aov > 0) || !(cpa > 0) || !(targetRoas > 0)) return null;
+    return {
+      primary: LTVCAC_MATH.safeDiv(aov, cpa),
+      secondary: LTVCAC_MATH.safeDiv(aov, targetRoas),
+      primaryFormat: "roas",
+      secondaryFormat: "currency",
+    };
+  }
+
+  if (slug === "required-cvr") {
+    const budget = finite(values.budget);
+    const cpm = finite(values.cpm);
+    const targetConversions = finite(values.targetConversions);
+    const ctr = finite(values.ctrPct) / 100;
+    if (!(budget > 0) || !(cpm > 0) || !(targetConversions > 0) || !(ctr > 0 && ctr <= 1)) return null;
+    const impressions = LTVCAC_MATH.safeDiv(budget, cpm) * 1000;
+    const clicks = impressions * ctr;
+    if (!(clicks > 0)) return null;
+    return {
+      primary: LTVCAC_MATH.safeDiv(targetConversions, clicks),
+      secondary: clicks,
+      primaryFormat: "percent",
+      secondaryFormat: "count",
+    };
+  }
+
+  if (slug === "budget-pacing") {
+    const periodBudget = finite(values.periodBudget);
+    const spentSoFar = finite(values.spentSoFar);
+    const elapsedDays = finite(values.elapsedDays);
+    const totalDays = finite(values.totalDays);
+    if (!(periodBudget > 0) || !(spentSoFar >= 0) || !(elapsedDays > 0) || !(totalDays > elapsedDays)) return null;
+    return {
+      primary: LTVCAC_MATH.safeDiv(spentSoFar, elapsedDays) * totalDays,
+      secondary: Math.max(0, LTVCAC_MATH.safeDiv(periodBudget - spentSoFar, totalDays - elapsedDays)),
+      primaryFormat: "currency",
+      secondaryFormat: "currency",
     };
   }
 

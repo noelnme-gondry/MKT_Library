@@ -38,6 +38,8 @@ describe("AnalysisHistory revisit telemetry", () => {
 
     const { container } = render(<AnalysisHistory toolId="5-2" locale="ko" summary={{ headline: "현재 결과", stats: [] }} />);
     await waitFor(() => expect(container.querySelector(".analysis-history")).toBeTruthy());
+    // 옵저버 등록은 목록 렌더 이후의 effect라 부하가 크면 한 틱 늦게 잡힌다.
+    await waitFor(() => expect(observers.at(-1)?.target).toBeTruthy());
     expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_history_viewed")).toHaveLength(0);
 
     act(() => observers.at(-1).callback([{

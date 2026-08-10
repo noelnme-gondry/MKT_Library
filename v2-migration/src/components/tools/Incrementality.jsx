@@ -592,7 +592,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               })}
               items={[
                 { icon: "📄", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전환율·Lift·증분·iROAS", "Rates, lift, incremental, iROAS"), onSelect: () => dlCsv(card.csv, "incrementality_suppression") },
-                { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression") },
+                { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression", "md", locale) },
               ]}
             />
           }
@@ -1001,7 +1001,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
                   align="right"
                   items={[
                     { icon: "📄", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전후 평균·Δ·유의성", "Pre/post avg, Δ, significance"), onSelect: () => dlCsv(card.csv, lost ? "incrementality_shutdown" : "incrementality_launch") },
-                    { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, lost ? "incrementality_shutdown" : "incrementality_launch") },
+                    { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, lost ? "incrementality_shutdown" : "incrementality_launch", "md", locale) },
                   ]}
                 />
               }

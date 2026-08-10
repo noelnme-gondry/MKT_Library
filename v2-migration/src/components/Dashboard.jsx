@@ -366,7 +366,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     })}
                     items={[
                       { icon: "📄", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
-                      { icon: "📝", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      { icon: "📝", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary", "md", locale) },
                     ]}
                   />
                 }

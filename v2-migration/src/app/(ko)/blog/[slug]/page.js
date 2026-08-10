@@ -6,6 +6,8 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
+import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
+import { getAllTerms } from "@/lib/glossary";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -135,6 +137,12 @@ function buildPostJsonLd(post, canonical) {
 export default async function BlogPostPage({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
+  // 관련 용어의 표시명·짧은 정의는 server 전용 로더에서 읽는다(클라이언트 import 금지).
+  const termBySlug = new Map(getAllTerms("ko").map((term) => [term.slug, term]));
+  const relatedTerms = (post?.relatedGlossary || [])
+    .map((termSlug) => termBySlug.get(termSlug))
+    .filter(Boolean)
+    .map((term) => ({ slug: term.slug, term: term.term, shortDef: term.shortDef, href: `/glossary/${term.slug}` }));
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
@@ -191,12 +199,7 @@ export default async function BlogPostPage({ params }) {
 
       <NewsletterSignup placement="post" />
 
-      {post.relatedGlossary.length > 0 && (
-        <nav className="content-related-links" aria-label="관련 용어">
-          <span>관련 용어</span>
-          {post.relatedGlossary.map((slug) => <Link key={slug} href={`/glossary/${slug}`}>{slug}</Link>)}
-        </nav>
-      )}
+      <RelatedGlossaryList items={relatedTerms} locale="ko" />
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="자주 묻는 질문">

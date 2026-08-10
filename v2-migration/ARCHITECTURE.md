@@ -67,7 +67,9 @@ v2-migration/
 | `/weekly-review` | — | WeeklyReview.jsx (결정 검토 인박스) |
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
-| `/templates` · `/privacy` · `/terms` · `/contact` | — | TemplateDownloadCard · PolicyPage |
+| `/templates` · `/templates/[slug]` | — | TemplateDownloadCard · 템플릿 상세(`lib/templateCatalog.js`) |
+| `/manuals` · `/share` | — | 방법론 PDF 공개 · 결론 공유 수신(`SharedDecision`, noindex) |
+| `/privacy` · `/terms` · `/contact` | — | PolicyPage |
 
 **Content Analytics(9-x)**: 퍼포먼스 엔진의 도메인 리라벨 — 수학 불변, 라벨팩 SSOT=`utils/contentDomain.js`, CSV 격리 그룹 `content_*`. PageClient 폴백 가드 `!startsWith("9-")`(SopContent 누수 차단). SECTIONS는 `analysis`로 흡수(사이드바 자동), slug `/content/*`는 SEO·북마크 보존.
 
@@ -115,6 +117,7 @@ v2-migration/
 ## 5.1 콘텐츠 SEO·전환 경로
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
 - **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
+- **도구 검색 진입면**: `lib/toolSearchContent.js`(공개 도구 KO/EN 롱폼·FAQ SSOT → `ToolLongform` + FAQPage JSON-LD), 역링크는 `lib/toolContentLinks.js`(forward 레지스트리에서 파생) → `ToolEvidenceLinks`.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 

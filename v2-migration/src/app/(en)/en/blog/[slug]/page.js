@@ -6,6 +6,8 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
+import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
+import { getAllTerms } from "@/lib/glossary";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -131,6 +133,12 @@ function buildPostJsonLd(post, canonical) {
 export default async function EnBlogPostPage({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug, "en");
+  // 관련 용어의 표시명·짧은 정의는 server 전용 로더에서 읽는다(클라이언트 import 금지).
+  const termBySlug = new Map(getAllTerms("en").map((term) => [term.slug, term]));
+  const relatedTerms = (post?.relatedGlossary || [])
+    .map((termSlug) => termBySlug.get(termSlug))
+    .filter(Boolean)
+    .map((term) => ({ slug: term.slug, term: term.term, shortDef: term.shortDef, href: `/en/glossary/${term.slug}` }));
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
@@ -186,12 +194,7 @@ export default async function EnBlogPostPage({ params }) {
 
       <NewsletterSignup locale="en" placement="post" />
 
-      {post.relatedGlossary.length > 0 && (
-        <nav className="content-related-links" aria-label="Related glossary terms">
-          <span>Related terms</span>
-          {post.relatedGlossary.map((slug) => <Link key={slug} href={`/en/glossary/${slug}`}>{slug}</Link>)}
-        </nav>
-      )}
+      <RelatedGlossaryList items={relatedTerms} locale="en" />
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="Frequently asked questions">

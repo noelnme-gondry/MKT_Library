@@ -151,7 +151,7 @@ export default function ChecklistDownloadCard({ checklistId, locale = "ko" }) {
       <h3>{copy.title}</h3>
       <p>{copy.desc}</p>
       <div>
-        <button type="button" onClick={() => downloadText(copy.body, item.fileName, "md")}>
+        <button type="button" onClick={() => downloadText(copy.body, item.fileName, "md", locale)}>
           {locale === "en" ? "Download .md" : ".md 다운로드"}
         </button>
         <Link href={copy.href}>{locale === "en" ? "Read guide →" : "관련 가이드 →"}</Link>

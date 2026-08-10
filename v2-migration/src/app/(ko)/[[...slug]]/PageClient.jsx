@@ -14,6 +14,7 @@ import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
+import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
 import ToolConnections from "@/components/ToolConnections";
 import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
@@ -46,7 +47,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
 import { resolveResponseStage } from "@/lib/responseStage";
 
-export default function PageClient({ params }) {
+export default function PageClient({ params, evidenceLinks = [] }) {
   // Next 16: params is a Promise. On the root "/" the optional catch-all gives
   // slug = undefined; on any nested path it's a string[].
   const { slug } = use(params);
@@ -118,6 +119,7 @@ export default function PageClient({ params }) {
             )}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} />}
             <ToolLongform toolId={routeId} />
+            <ToolEvidenceLinks items={evidenceLinks} />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} />}
             </article>
           </main>

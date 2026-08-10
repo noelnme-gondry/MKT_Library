@@ -2,6 +2,7 @@ import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_RESPO
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 import { CALCULATOR_ORDER } from "@/lib/calculators";
+import { TEMPLATE_PAGE_SLUGS } from "@/lib/templateCatalog";
 import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
@@ -67,6 +68,10 @@ export default function sitemap() {
   const templateEntries = [
     { url: `${BASE}/templates`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/en/templates`, changeFrequency: "monthly", priority: 0.6 },
+    ...TEMPLATE_PAGE_SLUGS.flatMap((slug) => [
+      { url: `${BASE}/templates/${slug}`, changeFrequency: "monthly", priority: 0.6 },
+      { url: `${BASE}/en/templates/${slug}`, changeFrequency: "monthly", priority: 0.6 },
+    ]),
   ];
 
   const calculatorEntries = [
@@ -91,6 +96,8 @@ export default function sitemap() {
     { url: `${BASE}/en/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/en/terms`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/manuals`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/en/manuals`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/contact`, changeFrequency: "yearly", priority: 0.4 },
     { url: `${BASE}/en/contact`, changeFrequency: "yearly", priority: 0.4 },
   ];

@@ -4,11 +4,30 @@ import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
-import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
+import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { readSopData } from "@/lib/sopData";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
+import { blogSlugsForTool, glossarySlugsForTool } from "@/lib/toolContentLinks";
+import { getAllPosts } from "@/lib/blog";
+import { getAllTerms } from "@/lib/glossary";
 import PageClient from "./PageClient";
+
+// 도구 → 콘텐츠 역링크(제목·요약은 server 전용 로더에서 읽어 직렬화해 내려준다).
+function buildEvidenceLinks(routeId) {
+  if (!routeId || !(routeId.startsWith("5-") || routeId.startsWith("9-"))) return [];
+  const postBySlug = new Map(getAllPosts("en").map((post) => [post.slug, post]));
+  const termBySlug = new Map(getAllTerms("en").map((term) => [term.slug, term]));
+  const posts = blogSlugsForTool(routeId)
+    .map((slug) => postBySlug.get(slug))
+    .filter(Boolean)
+    .map((post) => ({ type: "post", href: `/en/blog/${post.slug}`, title: post.title, description: post.description || "" }));
+  const terms = glossarySlugsForTool(routeId)
+    .map((slug) => termBySlug.get(slug))
+    .filter(Boolean)
+    .map((term) => ({ type: "term", href: `/en/glossary/${term.slug}`, title: term.term, description: term.shortDef || "" }));
+  return [...posts, ...terms];
+}
 
 // EN 가이드({id}.en.json)의 title/deck을 메타데이터로 재사용 — generateMetadata는
 // 서버 전용이라 fs 직접 읽기 가능(public/은 그대로 정적 서빙, 여기선 빌드타임 참조만).
@@ -56,7 +75,7 @@ async function PageWithStructuredData({ params }) {
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "en") : null;
-  const searchContent = routeId ? getResponseSubtoolContent(routeId, "en") : null;
+  const searchContent = routeId ? getToolSearchContent(routeId, "en") : null;
   const editorial = routeId ? getSopEditorial(routeId, "en") : null;
   const initialSopData = routeId && EN_READY_GUIDE_IDS.has(routeId) ? readSopData(routeId, "en") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));
@@ -112,6 +131,6 @@ async function PageWithStructuredData({ params }) {
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
     {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
-    <PageClient params={params} initialSopData={initialSopData} />
+    <PageClient params={params} initialSopData={initialSopData} evidenceLinks={buildEvidenceLinks(routeId)} />
   </>;
 }
