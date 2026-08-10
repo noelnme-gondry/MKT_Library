@@ -11,6 +11,30 @@ const GA_ID = "G-DK12TNR0GW";
 const GA_READY_RETRY_MS = 250;
 const GA_READY_MAX_ATTEMPTS = 20;
 
+// page_location에서 제거할 쿼리 키. `d`는 /share의 결정 요약 토큰(base64url)로,
+// 디코드하면 결론 문구·근거·수치가 그대로 나온다 — 이걸 GA4로 보내면 사용자
+// 데이터에서 도출한 판단이 제3자에 평문 적재된다(§2.2 정신 위반).
+// utm_*·gclid 등 유입 파라미터는 어트리뷰션에 필요하므로 반드시 보존한다.
+const SENSITIVE_QUERY_KEYS = ["d"];
+
+export function sanitizePageLocation(href) {
+  if (!href) return href;
+  try {
+    const url = new URL(href);
+    let changed = false;
+    for (const key of SENSITIVE_QUERY_KEYS) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    }
+    return changed ? url.toString() : href;
+  } catch {
+    // URL 파싱 실패 시 쿼리 전체를 버리는 쪽이 안전(유출 방지 우선).
+    return String(href).split("?")[0];
+  }
+}
+
 function runWhenGtagReady(callback) {
   let attempts = 0;
   let timerId = null;
@@ -40,7 +64,7 @@ export default function GaPageviews() {
       if (lastPagePath.current === pathname) return;
       window.gtag("event", "page_view", {
         page_path: pathname,
-        page_location: window.location.href,
+        page_location: sanitizePageLocation(window.location.href),
         page_title: typeof document !== "undefined" ? document.title : undefined,
         send_to: GA_ID,
       });

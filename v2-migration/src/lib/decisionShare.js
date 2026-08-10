@@ -30,7 +30,10 @@ function base64UrlDecode(token) {
 export function buildSharePayload({ toolId, toolTitle, headline, points = [], stats = [], locale = "ko" }) {
   const id = typeof toolId === "string" ? toolId : "";
   const line = plain(headline, LIMITS.headline);
-  if (!id || !idToSlug[id] || !line) return null;
+  // idToSlug는 Object.fromEntries 산물이라 프로토타입 체인이 살아 있다. `id`가
+  // "constructor"·"toString" 같은 상속 키면 `idToSlug[id]`가 truthy가 되어 라우트
+  // 검사를 통과하고, 나중에 함수 객체가 href로 흘러간다 → own-property로만 검사.
+  if (!id || !Object.hasOwn(idToSlug, id) || !line) return null;
   return {
     v: SCHEMA_VERSION,
     t: id,
@@ -81,7 +84,10 @@ export function shareUrlFromPayload(token, locale = "ko", origin = "") {
 
 export function toolHrefForShare(payload) {
   if (!payload?.t) return null;
+  // 인코드 경로와 동일한 own-property 가드(방어 이중화). 상속 키가 href로
+  // 흘러가면 <Link href={함수}>가 되어 공유 페이지가 죽는다.
+  if (!Object.hasOwn(idToSlug, payload.t)) return null;
   const slug = idToSlug[payload.t];
-  if (!slug) return null;
+  if (typeof slug !== "string" || !slug) return null;
   return payload.l === "en" ? `/en${slug}` : slug;
 }

@@ -4730,6 +4730,13 @@ body:not(.light-mode) .moon-icon {
 .site-footer__column strong { margin-bottom: 3px; color: var(--text-primary); font: 700 10px var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
 .site-footer__column a { color: var(--text-secondary); text-decoration: none; font-size: 12px; line-height: 1.5; }
 .site-footer__column a:hover { color: var(--primary); }
+/* 분석 화면(도구·대시보드)용 슬림 법적고지 스트립 — 내비게이션은 접고 정책 경로만 유지 */
+.site-footer--slim { margin-top: 2rem; }
+.site-footer__slim-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; max-width: 1180px; margin: 0 auto; padding: 14px 1.5rem; }
+.site-footer__slim-note { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.site-footer__slim-links { display: flex; flex-wrap: wrap; gap: 14px; }
+.site-footer__slim-links a { color: var(--text-secondary); text-decoration: none; font-size: 11px; }
+.site-footer__slim-links a:hover { color: var(--primary); }
 @media (max-width: 720px) { .site-footer__inner { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 26px 16px; padding: 30px 1rem; } .site-footer__brand { grid-column: 1 / -1; } }
 
 .policy-page { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 64px 0 80px; color: var(--text-secondary); }
