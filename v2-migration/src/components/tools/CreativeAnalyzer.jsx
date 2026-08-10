@@ -14,7 +14,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { localizedTool } from "@/lib/toolConnections";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-6/9-6 공용)는 절대 불변 — 여기서 로컬 병합만 수행 (CampaignPvm.jsx PVM_COPY_EN 패턴 동일).

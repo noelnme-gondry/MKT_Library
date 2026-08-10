@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "@/store/useDataStore";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { CHART_THEME, getCssVar, downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";

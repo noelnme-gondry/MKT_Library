@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
+import { runLandingMotion } from "@/utils/landingMotion";
 import { useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
 
@@ -152,6 +154,9 @@ export default function LandingPage({ locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const router = useRouter();
+  const rootRef = useRef(null);
+  // 진입 모션은 렌더층 전용 — 로케일이 바뀌면 DOM이 갈아끼워지므로 다시 부착한다.
+  useEffect(() => runLandingMotion(rootRef.current), [lang]);
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
@@ -188,7 +193,7 @@ export default function LandingPage({ locale = "ko" }) {
   };
 
   return (
-    <div className="decision-console-landing">
+    <div className="decision-console-landing" ref={rootRef}>
       <section className="dc-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy">
           <div className="dc-eyebrow">{T.eyebrow}</div>

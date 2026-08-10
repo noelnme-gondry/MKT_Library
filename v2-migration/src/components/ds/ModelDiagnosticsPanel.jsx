@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import DataTable from "@/components/ds/DataTable";
 import { canRenderModelDiagnostics } from "@/lib/analystCapabilities";
 import { chartCommonOpts, CHART_THEME } from "@/utils/chartUtils";

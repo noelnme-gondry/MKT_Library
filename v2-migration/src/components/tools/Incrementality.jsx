@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Papa from "papaparse";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
 import { INCR_PREPOST, INCR_PREPOST_CONTRACT, normalizeIncrDate } from "@/utils/incrPrePostMath";

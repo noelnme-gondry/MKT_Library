@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
-import Chart from "chart.js/auto";
+import Chart from "@/utils/chartGlobals";
 import * as XLSX from "xlsx";
 import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianHealth, mmmBayesianForecast, mmmForecastRollingSelection, mmmForecastBackgroundCandidateCap, mmmForecastDeclaredFitContract, mmmForecastApplySelectedBlend, mmmForecastSelectNestedRoute, mmmForecastGlobalBaseline, mmmForecastGlobalSeasonality, mmmForecastDampedTrendOffset, mmmForecastRestoreSeasonality, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
 import { mmmOls } from "@/utils/regMath";
