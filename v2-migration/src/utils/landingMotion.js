@@ -51,7 +51,7 @@ export function runLandingMotion(root) {
       return;
     }
 
-    const { animate, createTimeline, stagger, svg } = anime;
+    const { animate, createTimeline, stagger } = anime;
 
     /* ── 1. 히어로 진입 타임라인 ─────────────────────────────────────── */
     const tl = createTimeline({ defaults: { ease: MOTION.ease, duration: MOTION.base } });
@@ -63,57 +63,11 @@ export function runLandingMotion(root) {
     heroStep(".dc-hero__copy .dc-eyebrow", { opacity: [0, 1], y: [10, 0], duration: MOTION.fast });
     heroStep("#dc-hero-title span", { opacity: [0, 1], y: [26, 0], delay: stagger(90) }, "-=200");
     heroStep(".dc-hero__deck", { opacity: [0, 1], y: [16, 0] }, "-=340");
-    heroStep(".dc-hero__trust li", { opacity: [0, 1], y: [10, 0], scale: [0.94, 1], duration: MOTION.fast, delay: stagger(60) }, "-=300");
-    heroStep(".dc-hero__actions .dc-action-route", { opacity: [0, 1], y: [18, 0], delay: stagger(80) }, "-=240");
-    heroStep(".dc-hero__utility-actions, .dc-privacy", { opacity: [0, 1], y: [10, 0], duration: MOTION.fast, delay: stagger(60) }, "-=260");
-    heroStep(".dc-instrument", { opacity: [0, 1], y: [28, 0], scale: [0.985, 1], duration: MOTION.slow }, 120);
+    heroStep(".dc-hero__actions .dc-action-route", { opacity: [0, 1], y: [20, 0], scale: [0.985, 1], delay: stagger(85) }, "-=280");
+    heroStep(".dc-hero__utility-actions, .dc-hero__assurance", { opacity: [0, 1], y: [10, 0], duration: MOTION.fast, delay: stagger(60) }, "-=280");
     animations.push(tl);
 
-    /* ── 2. 히어로 미니차트 SVG 라인 드로잉 ──────────────────────────── */
-    const paths = collect(root, ".dc-mini-chart path");
-    if (paths.length && typeof svg?.createDrawable === "function") {
-      // baseline(비교선)을 먼저, primary(실적선)를 뒤에 그려 시선이 실적선에서 멈추게 한다.
-      const ordered = [...paths].sort((a, b) => {
-        const score = (el) => (el.classList.contains("dc-chart-baseline") ? 0 : 1);
-        return score(a) - score(b);
-      });
-      animations.push(
-        animate(svg.createDrawable(ordered), {
-          draw: ["0 0", "0 1"],
-          // armed 상태에서 opacity:0으로 숨겨 두므로, 그리기 시작과 함께 짧게 띄운다.
-          // (draw 트윈은 지연 중 from-state를 보장하지 않아 순간 노출이 생길 수 있음)
-          opacity: { from: 0, to: 1, duration: MOTION.fast },
-          duration: MOTION.slow,
-          ease: "inOutQuad",
-          delay: stagger(220, { start: 420 }),
-        }),
-      );
-    }
-    const endpoint = collect(root, ".dc-mini-chart circle");
-    if (endpoint.length) {
-      animations.push(
-        animate(endpoint, {
-          opacity: [0, 1],
-          scale: [0, 1],
-          duration: MOTION.fast,
-          ease: "outBack",
-          delay: 1180,
-        }),
-      );
-      // 최신 데이터 지점을 아주 약하게 맥동시켜 "살아 있는 화면"으로 읽히게 한다.
-      animations.push(
-        animate(endpoint, {
-          r: [4, 5.4],
-          duration: 1400,
-          ease: "inOutSine",
-          loop: true,
-          alternate: true,
-          delay: 1600,
-        }),
-      );
-    }
-
-    /* ── 3. 스크롤 진입 리빌 ─────────────────────────────────────────── */
+    /* ── 2. 스크롤 진입 리빌 ─────────────────────────────────────────── */
     const revealOnce = (targets, params) => {
       if (!targets.length) return;
       if (typeof window.IntersectionObserver !== "function") {

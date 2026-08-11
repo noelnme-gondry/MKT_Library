@@ -41,7 +41,9 @@ describe("LandingPage render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
-    expect(document.querySelector(".dc-instrument")).toBeTruthy();
+    // 히어로 우측의 예시 판단 카드(가짜 수치 + 장식 차트)는 제거됨 — 되살리지 말 것.
+    expect(document.querySelector(".dc-instrument")).toBeNull();
+    expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(3);
     expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 CSV로 분석", "빠른 계산", "성과 원인 찾기"]);
@@ -49,8 +51,10 @@ describe("LandingPage render smoke", () => {
     expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과 원인을 찾고,다음 하나를 정하세요.");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("무료 도구 모음");
-    expect([...document.querySelectorAll(".dc-hero__trust li")].map((item) => item.textContent)).toEqual(["무료", "가입 없음", "브라우저에서만 처리"]);
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("브라우저 안에서 바로 분석");
+    // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
+    expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
+    expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리");
     expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/diagnose"]')).toBeTruthy();
@@ -70,6 +74,13 @@ describe("LandingPage render smoke", () => {
     ]);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(13);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
+  });
+  it("puts the question cards ahead of the weekly-loop explainer", () => {
+    render(<LandingPage />);
+    const questions = document.querySelector(".dc-questions");
+    const loop = document.querySelector(".dc-loop");
+    // 목적 선택이 개념 설명보다 먼저 와야 첫 화면에서 바로 도구를 찾는다.
+    expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it("with-data mounts", () => {
     seedWithData();
@@ -98,20 +109,6 @@ describe("LandingPage render smoke", () => {
       tool_id: "5-3",
       source: "landing",
       placement: "continue_panel",
-      locale: "ko",
-    });
-    delete window.gtag;
-  });
-  it("tracks the explicitly labelled decision example and replaces the current dataset", () => {
-    seedWithData();
-    window.gtag = vi.fn();
-    const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".dc-instrument__actions button"));
-    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
-    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
-      tool_id: "5-2",
-      source: "landing",
-      placement: "decision_instrument",
       locale: "ko",
     });
     delete window.gtag;
