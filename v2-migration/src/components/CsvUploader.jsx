@@ -19,6 +19,7 @@ import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClie
 import { mapRowsToStandard } from "@/utils/mappedRows";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
+import { assertCsvFileSize, csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -371,6 +372,17 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       } finally {
         if (taskId === importTaskRef.current) setIsImporting(false);
       }
+      return;
+    }
+    // 크기 상한 — XLSX만 막혀 있고 CSV는 무방비였다. 파일이 arrayBuffer → UTF-16
+    // 문자열 → 워커 복제 → 객체 배열로 여러 벌 상주하므로, 과대 파일은 탭 프로세스를
+    // 죽인다(error.js가 못 잡는 유일한 실패). 읽기 전에 차단한다.
+    try {
+      assertCsvFileSize(file.size);
+    } catch (error) {
+      setErrorMsg(csvImportErrorMessage(error?.code, locale));
+      trackImportFailure(source, csvFailureState(error));
+      setIsImporting(false);
       return;
     }
     // 한국 Excel 기본 CSV 인코딩(CP949/EUC-KR) 자동 복원 — UTF-8로만 읽으면 한글 헤더가
