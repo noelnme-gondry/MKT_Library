@@ -5,8 +5,27 @@ import { usePathname } from "next/navigation";
 export default function Footer() {
   const pathname = usePathname() || "/";
   const isAnalysisPath = /^\/(?:en\/)?(?:dashboard|tools\/|content\/)/.test(pathname);
-  if (isAnalysisPath) return null;
   const isEn = pathname === "/en" || pathname.startsWith("/en/");
+  // 분석 화면은 전체 푸터를 숨겨 도구에 집중시킨다. 다만 사용자가 실제로 CSV를
+  // 올리는 화면이 곧 신뢰 판단 지점이므로, 정책·문의 경로까지 없애면 안 된다
+  // (개인정보처리방침이 이 앱의 "서버 미전송" 주장을 뒷받침하는 유일한 문서다).
+  // → 내비게이션은 접고 법적 고지만 남긴 슬림 스트립으로 대체한다.
+  if (isAnalysisPath) {
+    const p0 = isEn ? "/en" : "";
+    const legal = isEn
+      ? { privacy: "Privacy", terms: "Terms", contact: "Contact", note: "Your uploaded data stays in this browser." }
+      : { privacy: "개인정보처리방침", terms: "이용약관", contact: "문의하기", note: "업로드한 데이터는 이 브라우저 안에서만 처리됩니다." };
+    return <footer className="site-footer site-footer--slim">
+      <div className="site-footer__slim-inner">
+        <span className="site-footer__slim-note">{legal.note}</span>
+        <nav className="site-footer__slim-links" aria-label={isEn ? "Legal" : "정책"}>
+          <Link href={`${p0}/privacy`}>{legal.privacy}</Link>
+          <Link href={`${p0}/terms`}>{legal.terms}</Link>
+          <Link href={`${p0}/contact`}>{legal.contact}</Link>
+        </nav>
+      </div>
+    </footer>;
+  }
   const isStandalone = ["/", "/en", "/privacy", "/terms", "/contact", "/en/privacy", "/en/terms", "/en/contact", "/templates", "/en/templates", "/manuals", "/en/manuals", "/calculator", "/en/calculator", "/weekly-report", "/en/weekly-report"].includes(pathname)
     || pathname.startsWith("/calculator/")
     || pathname.startsWith("/en/calculator/");

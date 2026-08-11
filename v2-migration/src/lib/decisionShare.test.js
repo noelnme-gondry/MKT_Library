@@ -76,4 +76,14 @@ describe("decisionShare", () => {
     expect(toolHrefForShare({ t: "5-3", l: "en" })).toBe("/en/tools/budget-allocation");
     expect(toolHrefForShare({})).toBeNull();
   });
+
+  // idToSlug는 Object.fromEntries 산물이라 프로토타입 체인이 살아 있다. 상속 키를
+  // toolId로 넘기면 예전엔 `idToSlug[id]`가 truthy가 되어 라우트 검사를 통과하고
+  // 함수 객체가 href로 흘러갔다 → own-property 검사로 막혔는지 고정한다.
+  it("rejects prototype-chain keys as toolId (encode + href)", () => {
+    for (const key of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"]) {
+      expect(buildSharePayload({ toolId: key, headline: "hi" })).toBeNull();
+      expect(toolHrefForShare({ t: key, l: "ko" })).toBeNull();
+    }
+  });
 });
