@@ -77,6 +77,26 @@ import MarketingResponse, {
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
 import { MMM_METH_CONFIG, mmmResolveAbsorb } from "@/utils/mmmMath";
 
+vi.mock("@/lib/analysis/webr/mmmElasticNet", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runWebRMmmElasticNet: vi.fn(async (input) => ({
+      status: "complete",
+      n: input.n,
+      folds: input.cuts.length,
+      horizon: input.horizon,
+      alpha: 0.5,
+      nonzeroFeatures: 4,
+      wmape: (input.baselineWmape || 10) * 1.1,
+      baselineWmape: input.baselineWmape,
+      relativeGain: -0.1,
+      recommendation: "keep_current_js",
+      importance: [{ name: "Meta", kind: "media", importance: 1 }],
+    })),
+  };
+});
+
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
 function parseSimpleTemplateCsv(csv) {
@@ -1716,16 +1736,16 @@ describe("MarketingResponse render smoke", () => {
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain(String(latest.Regs));
   });
 
-  it("renders the Classic model, channel totals, health diagnostics, and shared footer manual", async () => {
+  it("defaults to Bayesian, starts the WebR comparison, and renders the selected model details", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
-    expect(document.body.textContent).toContain("Classic");
+    expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
-    expect(document.body.textContent).toContain("Classic은 관측 데이터만 사용");
-    expect(document.body.textContent).toContain("Bayesian");
+    expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");
+    expect(document.body.textContent).toContain("MMM 모델 자동 비교");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
     expect(document.body.textContent).toContain("전체 Spend");
@@ -1734,10 +1754,8 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
-    const bayesian = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.trim() === "Bayesian");
+    const bayesian = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Bayesian MMM"));
     expect(bayesian).toBeTruthy();
-    fireEvent.click(bayesian);
-    await flushRaf();
     expect(bayesian.classList.contains("active")).toBe(true);
     expect(document.body.textContent).not.toContain("conditional posterior 채널 적합");
     // T1: Bayesian 모드 → 정보 prior 토글 + 적합도 신뢰 칩 노출, 끄기(평면 OLS) 재적합 throw 없음.

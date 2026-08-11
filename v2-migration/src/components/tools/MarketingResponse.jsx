@@ -164,7 +164,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
   const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // hub | trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
-  const [mmmMode, setMmmMode] = useState("classic"); // classic = standard Classic path, bayesian = posterior channel fit
+  // 사용자 MMM은 Bayesian을 기본 추정기로 고정하고, WebR challenger를 자동 실행해
+  // 같은 OOS 검증구간에서 더 정확한 결과를 고르게 한다. Classic/Prism 구현은
+  // 과거 결과 호환과 엔진 검증을 위해 내부에만 남긴다.
+  const mmmMode = "bayesian";
+  const [mmmResultModel, setMmmResultModel] = useState("bayesian");
   // T1: Bayesian 모드 정보 prior(지출점유 기반 약정보) — 기본 활성. 끄면 평면 OLS(모델 차이 비교용).
   const [bayesianUsePrior, setBayesianUsePrior] = useState(true);
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
@@ -3773,14 +3777,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         {stage === "mmm" && mmm && !mmm.empty && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <button className={`ab-pill ${mmmMode === "classic" ? "active" : ""}`} onClick={() => {
-              if (mmmMode !== "classic") deferMmmUpdate(() => setMmmMode("classic"));
-            }}>{tx("Classic", "Classic")}</button>
-            {/* Prism Option 3 remains as an internal compatibility path only.
-                It is intentionally not exposed as a user-selectable model. */}
-            <button className={`ab-pill ${mmmMode === "bayesian" ? "active" : ""}`} onClick={() => {
-              if (mmmMode !== "bayesian") deferMmmUpdate(() => setMmmMode("bayesian"));
-            }}>{tx("Bayesian", "Bayesian")}</button>
+            <span className="ab-pill active">{tx("Bayesian + WebR 자동 비교", "Bayesian + WebR auto comparison")}</span>
           </div>
         )}
         {/* T1: Bayesian 모드 정보 prior 토글 + 적합도 신뢰 칩 (모델 차이 비교) */}
@@ -4651,17 +4648,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 : "";
             return (
             <>
-              {mmm.modelMode === "classic" ? (
-                <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                  <strong>{tx("Classic은 관측 데이터만 사용", "Classic uses observational data only")}</strong>
-                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "6px 0 0" }}>
-                    {tx(
-                      "외부 실험·국가 prior와 media/control penalty는 Classic에 적용하지 않습니다. 외부 근거를 결합해 보는 작업은 Bayesian 모델에서만 할 수 있습니다.",
-                      "Classic does not apply experiment/market priors or media/control penalties. Use the Bayesian model if you want to combine external evidence.",
-                    )}
-                  </p>
-                </Card>
-              ) : (
+              <WebRMmmAdvanced
+                mmm={mmm}
+                signature={`${mmmAnalyzedSig}|${target}|${mmmMode}|${bayesianUsePrior ? 1 : 0}`}
+                locale={locale}
+                source={isDemo ? "demo" : csvData?.importSource || "csv"}
+                selectedModel={mmmResultModel}
+                onSelectModel={setMmmResultModel}
+              />
+              {mmmResultModel === "bayesian" ? (
+                <>
                 <MmmEvidenceLedger
                   locale={locale}
                   selectedEvidence={selectedEvidence}
@@ -4677,13 +4673,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   countryPlan={mmm.countryPlan}
                   formatValue={targetValueLabel}
                 />
-              )}
-              <WebRMmmAdvanced
-                mmm={mmm}
-                signature={`${mmmAnalyzedSig}|${target}|${mmmMode}|${bayesianUsePrior ? 1 : 0}`}
-                locale={locale}
-                source={isDemo ? "demo" : csvData?.importSource || "csv"}
-              />
               {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality || classicControlText) && (
                 <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                   <strong>{tx("추세·모델 공정성 진단", "Trend and model fairness diagnostics")}</strong>
@@ -5358,6 +5347,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   {tx("📄 이 과정에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "📄 Want a detailed explanation of this process? — Get the detailed document")}
                 </button>
               </div>
+                </>
+              ) : (
+                <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                  <strong>{tx("WebR Elastic-net 결과를 보고 있습니다", "Viewing the WebR Elastic-net result")}</strong>
+                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "6px 0 0" }}>
+                    {tx(
+                      "WebR는 위에서 예측 중요도와 검증 오차를 보여줍니다. 채널 기여·반응곡선·예산 진단은 Bayesian MMM의 구조적 결과이므로 숨겼습니다. 해당 결과가 필요하면 Bayesian 카드를 선택하세요.",
+                      "WebR reports predictive importance and validation error above. Channel contribution, response curves, and budget diagnostics are structural Bayesian MMM outputs, so they are hidden here. Select the Bayesian card to inspect them.",
+                    )}
+                  </p>
+                </Card>
+              )}
             </>
             );
           })()}
