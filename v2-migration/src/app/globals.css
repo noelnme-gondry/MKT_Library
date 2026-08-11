@@ -5221,7 +5221,7 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .result-action-card.bad .result-action-card__signal { color: var(--danger); }
 .result-action-card__copy { min-width: 0; }
 .result-action-card__label { color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
-.result-action-card__headline { max-width: 760px; margin: 5px 0 0; color: var(--text-primary); font: 650 clamp(17px,1.55vw,21px)/1.32 var(--font-display); letter-spacing: -.035em; }
+.result-action-card__headline { margin: 5px 0 0; color: var(--text-primary); font: 650 clamp(17px,1.55vw,21px)/1.32 var(--font-display); letter-spacing: -.035em; }
 .result-action-card__controls { display: flex; align-items: center; gap: 7px; }
 .result-action-card__controls .ab-pillgroup { gap: 2px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .result-action-card__controls .ab-pillgroup-label { padding: 0 5px 0 0; font-size: 9px; }
@@ -6173,8 +6173,8 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
 }
 
 .content-card.is-featured { grid-column: span 2; min-height: 260px; background: linear-gradient(130deg, color-mix(in srgb,var(--primary) 8%,var(--surface-container-lowest)), var(--surface-container-lowest)); }
-.content-card.is-featured .card-title { max-width: 620px; font-size: clamp(24px,3vw,34px); line-height: 1.17; }
-.content-card.is-featured .card-desc { max-width: 700px; font-size: 14px; }
+.content-card.is-featured .card-title { font-size: clamp(24px,3vw,34px); line-height: 1.17; }
+.content-card.is-featured .card-desc { font-size: 14px; }
 .content-card__featured { margin-right: 10px; padding: 3px 6px; border-radius: 4px; color: #11141b; background: var(--primary); font: 700 8px var(--font-mono); letter-spacing: .06em; }
 body.light-mode .content-card__featured { color: #fff; }
 .content-article { width: min(100%, 820px); margin: 0 auto; padding: clamp(38px,7vw,82px) 24px 72px; }
@@ -6327,7 +6327,7 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .tool-connection-card__meta em { padding: 4px 6px; border: 1px solid var(--border-subtle); border-radius: 999px; color: var(--text-muted); font: 650 8px var(--font-mono); font-style: normal; white-space: nowrap; }
 .tool-connection-card__meta em.is-same-data { border-color: color-mix(in srgb,var(--success) 50%,var(--border)); color: var(--success); }
 .tool-connection-card > strong { display: block; margin-top: 19px; color: var(--text-primary); font: 650 15px var(--font-display); }
-.tool-connection-card > p { max-width: 90%; margin: 7px 0 0; color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; }
+.tool-connection-card > p { margin: 7px 0 0; color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; }
 .tool-connection-card > b { position: absolute; right: 14px; bottom: 12px; color: var(--primary); font: 700 18px var(--font-mono); }
 .tool-connections__map { margin-top: 15px; padding: 11px 13px; border: 1px solid var(--border-subtle); border-radius: 9px; background: color-mix(in srgb,var(--surface-container-low) 72%,transparent); }
 .tool-connections__map > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
@@ -6569,12 +6569,12 @@ body.light-mode .app.is-home {
 .dc-loop-card p { margin:0;color:var(--dc-text-dim);font-size:11px;line-height:1.6; }
 .dc-loop-card b { position:absolute;right:18px;bottom:17px;color:var(--dc-signal);font-size:9px; }
 .dc-question-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
-.dc-question-card { position:relative;display:block;min-height:190px;padding:20px;overflow:hidden;border:1px solid var(--dc-line);border-radius:12px;background:color-mix(in srgb,var(--dc-panel) 94%,transparent);color:var(--dc-text);font-family:inherit;line-height:normal;text-align:left;text-decoration:none;cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease; }
+.dc-question-card { position:relative;display:block;min-height:190px;padding:20px 20px 52px;overflow:hidden;border:1px solid var(--dc-line);border-radius:12px;background:color-mix(in srgb,var(--dc-panel) 94%,transparent);color:var(--dc-text);font-family:inherit;line-height:normal;text-align:left;text-decoration:none;cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease; }
 .dc-question-card::after { content:"→";position:absolute;right:18px;bottom:16px;color:var(--dc-text-dim);font:500 17px/1 var(--font-mono); }
 .dc-question-card:hover { transform:translateY(-3px);border-color:var(--dc-line-strong);background:var(--dc-panel);box-shadow:var(--dc-shadow); }
 .dc-question-card > span { color:var(--dc-signal);font:600 10px/1 var(--font-mono); }
-.dc-question-card h3 { max-width:240px;margin:30px 0 9px;font-size:17px;line-height:1.35;letter-spacing:-.025em; }
-.dc-question-card p { max-width:320px;margin:0;color:var(--dc-text-dim);font-size:12px;line-height:1.55; }
+.dc-question-card h3 { margin:30px 0 9px;font-size:17px;line-height:1.35;letter-spacing:-.025em; }
+.dc-question-card p { margin:0;color:var(--dc-text-dim);font-size:12px;line-height:1.55; }
 .decision-console-landing .connected-tool-journey { margin-top:66px;padding-top:36px;border-top:1px solid var(--dc-line); }
 .decision-console-landing .connected-tool-journey__head { grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);margin-bottom:18px; }
 .decision-console-landing .connected-tool-journey__head > span { color:var(--dc-signal); }
@@ -6623,7 +6623,7 @@ body.light-mode .app.is-home {
 .dc-library-card:hover { transform:translateY(-3px);border-color:var(--dc-line-strong); }
 .dc-library-card > span { color:var(--dc-signal);font:650 9px/1 var(--font-mono);letter-spacing:.12em; }
 .dc-library-card h3 { margin:30px 0 9px;font-size:20px;letter-spacing:-.03em; }
-.dc-library-card p { max-width:440px;margin:0;color:var(--dc-text-dim);font-size:11px;line-height:1.6; }
+.dc-library-card p { margin:0;color:var(--dc-text-dim);font-size:11px;line-height:1.6; }
 .dc-resource-strip { display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:12px;padding:14px 16px;border:1px solid var(--dc-line);border-radius:10px;background:color-mix(in srgb,var(--dc-panel) 70%,transparent); }
 .dc-resource-strip > span { color:var(--dc-text-dim);font-size:10px; }
 .dc-resource-strip > div { display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px; }

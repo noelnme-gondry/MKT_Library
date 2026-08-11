@@ -61,7 +61,7 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
       <header className="connected-tool-journey__head">
         <span>{T.eyebrow}</span>
         <h2 id="connected-tool-journey-title">{T.title}</h2>
-        <p>{T.deck}<br /><strong>{T.startAnywhere}</strong></p>
+        <p>{T.deck} <strong>{T.startAnywhere}</strong></p>
       </header>
       <ol className="connected-tool-path">
         {TOOL_JOURNEY.map((stage) => {
