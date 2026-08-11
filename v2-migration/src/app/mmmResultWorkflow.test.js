@@ -30,4 +30,26 @@ describe("MMM result workflow UI contract", () => {
     expect(webRPanel.indexOf("{T.driverStep}")).toBeLessThan(webRPanel.indexOf("{T.responseStep}"));
     expect(webRPanel.indexOf("{T.responseStep}")).toBeLessThan(webRPanel.indexOf("{T.budgetStep}"));
   });
+
+  it("gives Bayesian the same five-question result flow as WebR", () => {
+    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 효과는 검증에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => expect(marketingResponse).toContain(copy));
+    ["1. How much of actual performance did the model explain?", "2. What explained performance?", "3. Did channel effects persist across validation?", "4. How does prediction change when spend changes?", "5. Is a budget change safe enough to recommend?"].forEach((copy) => expect(marketingResponse).toContain(copy));
+    expect(marketingResponse).toContain('data-mmm-result-model="bayesian"');
+    expect(marketingResponse.indexOf("<WebRMmmAdvanced")).toBeLessThan(marketingResponse.indexOf('data-mmm-result-model="bayesian"'));
+    expect(marketingResponse.match(/<canvas ref=\{fitRef\}/g)).toHaveLength(1);
+    expect(marketingResponse).not.toContain("WebR Elastic-net 결과를 보고 있습니다");
+    expect(css).toMatch(/data-mmm-flow-step="fit"\]\s*\{\s*order:\s*1/);
+    expect(css).toMatch(/data-mmm-flow-step="drivers"\]\s*\{\s*order:\s*2/);
+    expect(css).toMatch(/data-mmm-flow-step="coefficients"\]\s*\{\s*order:\s*3/);
+    expect(css).toMatch(/data-mmm-flow-step="response"\]\s*\{\s*order:\s*4/);
+    expect(css).toMatch(/data-mmm-flow-step="decision"\]\s*\{\s*order:\s*5/);
+  });
+
+  it("shows one Bayesian response channel at a time with an explicit selected state", () => {
+    expect(marketingResponse).toContain('className="mmm-channel-selector" role="group"');
+    expect(marketingResponse).toContain("aria-pressed={effectiveBayesianResponseChannel?.key === channel.key}");
+    expect(marketingResponse).toContain("setBayesianResponseChannel(channel.key)");
+    expect(marketingResponse).not.toContain("satHidden");
+    expect(marketingResponse).not.toContain("saturationCurveView");
+  });
 });
