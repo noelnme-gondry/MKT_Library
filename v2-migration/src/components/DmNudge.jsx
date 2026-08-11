@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
+import { trackProductEvent } from "@/lib/analytics";
 
 // 데이터 준비를 어려워하는 유저를 1:1 DM 상담으로 유도하는 비차단 사이드 팝업.
 // 도구 라우트(5-x·9-x)에서 라이브 데모를 본 뒤 스크롤로 조금 내려가면 우하단에
@@ -69,9 +70,11 @@ export default function DmNudge({ locale = "ko" }) {
   useEffect(() => {
     if (!visible) return;
     const id = requestAnimationFrame(() => setShown(true));
-    if (!viewSent.current && typeof window !== "undefined" && typeof window.gtag === "function") {
+    // raw gtag를 직접 부르면 analytics.js의 파라미터 화이트리스트를 우회한다.
+    // (`from`은 허용 목록 밖이라 조용히 버려지기도 한다) → 공용 계측 경로로 통일.
+    if (!viewSent.current) {
       viewSent.current = true;
-      window.gtag("event", "dm_nudge_view", { from });
+      trackProductEvent("dm_nudge_view", { tool_id: from, placement: "dm_nudge" });
     }
     return () => cancelAnimationFrame(id);
   }, [visible, from]);
@@ -79,9 +82,7 @@ export default function DmNudge({ locale = "ko" }) {
   if (dismissed || !visible) return null;
 
   const onCta = () => {
-    if (typeof window !== "undefined" && typeof window.gtag === "function") {
-      window.gtag("event", "dm_open", { from });
-    }
+    trackProductEvent("dm_open", { tool_id: from, placement: "dm_nudge" });
   };
 
   return (
@@ -174,9 +175,7 @@ export default function DmNudge({ locale = "ko" }) {
       <Link
         href={T.guideHref}
         onClick={() => {
-          if (typeof window !== "undefined" && typeof window.gtag === "function") {
-            window.gtag("event", "dm_guide_open", { from });
-          }
+          trackProductEvent("dm_guide_open", { tool_id: from, placement: "dm_nudge" });
         }}
         style={{
           display: "block",
