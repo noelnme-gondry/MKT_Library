@@ -1,4 +1,5 @@
 import { getWebRAnalysisDefinition, WEBR_ANALYSIS_IDS } from "./analysisRegistry";
+import { buildElasticNetChannelModels } from "./mmmElasticNetResponse";
 import { runWebRAdvancedTask } from "./webRClient";
 
 const DEFINITION = getWebRAnalysisDefinition(WEBR_ANALYSIS_IDS.MMM_ELASTIC_NET_CHALLENGER);
@@ -24,11 +25,55 @@ function pushFeature(features, values, meta) {
   features.push({ values, ...meta });
 }
 
+function mean(values) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function spendCv(values) {
+  const average = mean(values);
+  if (!(average > 0) || values.length < 2) return 0;
+  const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance) / average;
+}
+
+function collinearityGroups(run, channelKeys) {
+  const parents = new Map(channelKeys.map((key) => [key, key]));
+  const find = (key) => {
+    const parent = parents.get(key);
+    if (!parent || parent === key) return parent;
+    const root = find(parent);
+    parents.set(key, root);
+    return root;
+  };
+  const unite = (left, right) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot && rightRoot && leftRoot !== rightRoot) parents.set(rightRoot, leftRoot);
+  };
+  const resolveKey = (featureName) => {
+    const stripped = String(featureName || "").replace(/^media_/, "");
+    return channelKeys.find((key) => key === stripped) || null;
+  };
+  (run?.collinear_pairs || []).forEach((pair) => {
+    if (Math.abs(Number(pair?.corr)) < 0.9) return;
+    const left = resolveKey(pair.a);
+    const right = resolveKey(pair.b);
+    if (left && right) unite(left, right);
+  });
+  const groups = new Map();
+  channelKeys.forEach((key) => {
+    const root = find(key) || key;
+    groups.set(root, [...(groups.get(root) || []), key]);
+  });
+  return new Map(channelKeys.map((key) => [key, groups.get(find(key) || key) || [key]]));
+}
+
 export function buildMmmElasticNetDesign(panel = {}) {
   const n = panel.week?.length || 0;
   const yTarget = Object.values(panel.targets || {}).find((values) => Array.isArray(values) && values.length === n);
   if (!n || !yTarget) return null;
   const features = [];
+  const channelScenarios = [];
   const trend = Array.from({ length: n }, (_, index) => n > 1 ? index / (n - 1) : 0);
   pushFeature(features, trend, { name: "trend", group: "Trend", kind: "control", isMedia: false });
   pushFeature(features, trend.map((value) => value * value), { name: "trend_squared", group: "Trend", kind: "control", isMedia: false });
@@ -45,13 +90,30 @@ export function buildMmmElasticNetDesign(panel = {}) {
   (panel.channels || []).forEach((channel) => {
     const raw = panel.ch?.[channel.key];
     if (!Array.isArray(raw) || raw.length !== n || raw.some((value) => !Number.isFinite(value))) return;
+    const adstockByAlpha = Object.fromEntries(ADSTOCK_GRID.map((alpha) => [alpha, geometricAdstock(raw, alpha)]));
     ADSTOCK_GRID.forEach((alpha) => {
-      pushFeature(features, geometricAdstock(raw, alpha).map((value) => Math.log1p(value)), {
+      pushFeature(features, adstockByAlpha[alpha].map((value) => Math.log1p(value)), {
         name: `media_${channel.key}_adstock_${alpha}`,
         group: channel.label || channel.key,
         kind: "media",
         isMedia: true,
+        channelKey: channel.key,
+        channelLabel: channel.label || channel.key,
+        channelKind: channel.kind || "media",
+        adstockAlpha: alpha,
       });
+    });
+    channelScenarios.push({
+      key: channel.key,
+      label: channel.label || channel.key,
+      kind: channel.kind || "media",
+      observedMin: Math.max(0, Math.min(...raw)),
+      observedMax: Math.max(0, Math.max(...raw)),
+      recentSpend: mean(raw.slice(-Math.min(12, raw.length))),
+      activeWeeks: raw.filter((value) => value > 0).length,
+      uniqueSpendValues: new Set(raw.map((value) => Number(value).toPrecision(12))).size,
+      spendCv: spendCv(raw),
+      lastAdstockByAlpha: Object.fromEntries(ADSTOCK_GRID.map((alpha) => [alpha, adstockByAlpha[alpha].at(-1) || 0])),
     });
   });
   [
@@ -70,6 +132,7 @@ export function buildMmmElasticNetDesign(panel = {}) {
   return {
     X: Array.from({ length: n }, (_, rowIndex) => features.map((feature) => feature.values[rowIndex])),
     terms: features.map(({ values: _values, ...meta }) => meta),
+    channelScenarios,
   };
 }
 
@@ -85,11 +148,13 @@ export function prepareMmmElasticNetInput({ panel, run, target } = {}) {
   if (!design?.X?.length || design.X.some((row) => row.some((value) => !Number.isFinite(value)))) {
     return { ok: false, reason: "invalid_design" };
   }
-  const rolling = run?.rollingBacktest || run?.aggregateRollingBacktest;
+  const rolling = run?.rollingBacktest;
   const hasRollingWindows = Array.isArray(rolling?.cuts) && rolling.cuts.length >= 2 && Number(rolling.horizon) > 0;
   const cuts = hasRollingWindows ? rolling.cuts.slice() : [Math.floor(y.length * 0.8)];
   const horizon = hasRollingWindows ? Number(rolling.horizon) : y.length - cuts[0];
   const baselineWmape = Number(run?.backtest?.wmape);
+  const channelKeys = design.channelScenarios.map((channel) => channel.key);
+  const groupedChannels = collinearityGroups(run, channelKeys);
   return {
     ok: true,
     ...design,
@@ -100,7 +165,12 @@ export function prepareMmmElasticNetInput({ panel, run, target } = {}) {
     horizon,
     baselineWmape: Number.isFinite(baselineWmape) ? baselineWmape : null,
     sameValidationWindows: Number.isFinite(baselineWmape),
-    baselineEngine: run?.methodLabel || "Current JS MMM",
+    baselineEngine: run?.methodLabel || "Bayesian MMM",
+    channelScenarios: design.channelScenarios.map((channel) => ({
+      ...channel,
+      collinearityGroup: groupedChannels.get(channel.key) || [channel.key],
+    })),
+    target,
   };
 }
 
@@ -131,8 +201,17 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
   const recommendation = replacementCandidate
     ? "predictive_replacement_candidate"
     : Number.isFinite(relativeGain) && relativeGain <= -0.05
-      ? "keep_current_js"
+      ? "keep_bayesian"
       : "more_validation_required";
+  const coefficients = rawRows.map((row, index) => {
+    const serializedFolds = String(row.fold_coefficients || "").trim();
+    return {
+      ...input.terms[index],
+      coefficient: Number(row.coefficient),
+      foldCoefficients: serializedFolds ? serializedFolds.split("|").map(Number).filter(Number.isFinite) : [],
+    };
+  });
+  const channelModels = buildElasticNetChannelModels(rawRows, input);
   return {
     analysisId: WEBR_ANALYSIS_IDS.MMM_ELASTIC_NET_CHALLENGER,
     engine: "webr",
@@ -152,7 +231,10 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
     replacementCandidate,
     recommendation,
     importance,
-    estimand: "predictive-only-fixed-causal-feature-library",
+    coefficients,
+    channelModels,
+    target: input.target,
+    estimand: "predictive-only-time-safe-feature-library",
     validationMode: "nested-time-ordered-outer-wmape",
   };
 }
@@ -171,6 +253,7 @@ function elasticNetRCode(predictorCount) {
     outer_wmapes <- numeric(length(fold_cuts))
     selected_alphas <- numeric(length(fold_cuts))
     selected_factors <- numeric(length(fold_cuts))
+    outer_coefs <- matrix(0, nrow=length(fold_cuts), ncol=ncol(model_x))
     for (fold_index in seq_along(fold_cuts)) {
       cut <- fold_cuts[fold_index]
       test_end <- min(nrow(model_x), cut + fold_horizon)
@@ -215,6 +298,7 @@ function elasticNetRCode(predictorCount) {
         standardize=TRUE,
         intercept=TRUE
       )
+      outer_coefs[fold_index, ] <- as.numeric(coef(outer_fit, s=outer_lambda))[-1]
       outer_prediction <- as.numeric(predict(outer_fit, model_x[outer_test_rows, , drop=FALSE], s=outer_lambda))
       outer_denominator <- sum(abs(model_y[outer_test_rows]))
       if (!(outer_denominator > 1e-9)) stop("invalid_outer_wmape_denominator")
@@ -240,6 +324,7 @@ function elasticNetRCode(predictorCount) {
     data.frame(
       term=colnames(model_x),
       coefficient=final_coef,
+      fold_coefficients=apply(outer_coefs, 2, function(values) paste(format(values, digits=17, scientific=TRUE, trim=TRUE), collapse="|")),
       importance=model_importance,
       n=rep(nrow(model_x), ncol(model_x)),
       folds=rep(length(fold_cuts), ncol(model_x)),
@@ -273,8 +358,14 @@ async function executeMmmElasticNet(runtime, input) {
   }
 }
 
+export function resolveMmmElasticNetInput(payload = {}) {
+  return payload?.ok && Array.isArray(payload.X) && Array.isArray(payload.y)
+    ? payload
+    : prepareMmmElasticNetInput(payload);
+}
+
 export async function runWebRMmmElasticNet(payload = {}) {
-  const input = prepareMmmElasticNetInput(payload);
+  const input = resolveMmmElasticNetInput(payload);
   if (!input.ok) return { status: "blocked", ...input };
   return runWebRAdvancedTask({
     packages: DEFINITION.packages,

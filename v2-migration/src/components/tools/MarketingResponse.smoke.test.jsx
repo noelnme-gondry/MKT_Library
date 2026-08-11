@@ -91,7 +91,7 @@ vi.mock("@/lib/analysis/webr/mmmElasticNet", async (importOriginal) => {
       wmape: (input.baselineWmape || 10) * 1.1,
       baselineWmape: input.baselineWmape,
       relativeGain: -0.1,
-      recommendation: "keep_current_js",
+      recommendation: "keep_bayesian",
       importance: [{ name: "Meta", kind: "media", importance: 1 }],
     })),
   };

@@ -4653,6 +4653,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 signature={`${mmmAnalyzedSig}|${target}|${mmmMode}|${bayesianUsePrior ? 1 : 0}`}
                 locale={locale}
                 source={isDemo ? "demo" : csvData?.importSource || "csv"}
+                currency={sourceCurrency}
                 selectedModel={mmmResultModel}
                 onSelectModel={setMmmResultModel}
               />
@@ -5353,8 +5354,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <strong>{tx("WebR Elastic-net 결과를 보고 있습니다", "Viewing the WebR Elastic-net result")}</strong>
                   <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "6px 0 0" }}>
                     {tx(
-                      "WebR는 위에서 예측 중요도와 검증 오차를 보여줍니다. 채널 기여·반응곡선·예산 진단은 Bayesian MMM의 구조적 결과이므로 숨겼습니다. 해당 결과가 필요하면 Bayesian 카드를 선택하세요.",
-                      "WebR reports predictive importance and validation error above. Channel contribution, response curves, and budget diagnostics are structural Bayesian MMM outputs, so they are hidden here. Select the Bayesian card to inspect them.",
+                      "위에서 WebR 전용 반응곡선·한계 CPA/ROAS·포화도·안전 게이트·조건부 예산안을 보여줍니다. Bayesian 기여분해는 두 모델의 결과가 섞이지 않도록 숨겼습니다. WebR 수치는 예측 기반이며 인과효과 보장이 아닙니다.",
+                      "The WebR-specific response curves, marginal CPA/ROAS, saturation, safety gates, and conditional budget plan are shown above. Bayesian contribution decomposition is hidden to avoid mixing model outputs. WebR values are predictive and do not guarantee causal effects.",
                     )}
                   </p>
                 </Card>
