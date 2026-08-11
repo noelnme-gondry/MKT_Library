@@ -22,7 +22,7 @@ v2-migration/
 │  ├─ store/useDataStore.js         # ★ SSOT: Zustand — IA·csvGroups·csvData 미러·필터·라우트·viewConfig
 │  ├─ utils/                        # ★ 순수 통계엔진 (*Math.js, 수학 불변·골든) + 표시/데이터 헬퍼
 │  │  └─ metrics/                   # 지표 SSOT: metricRegistry·customMetric·chartBuilder·metricView
-│  ├─ lib/                          # 도메인 로직 (라우팅·SEO·SOP 출처/검수일·발행일·RSS·데이터임포트·분석라우터…)
+│  ├─ lib/                          # 도메인 로직 (라우팅·SEO·데이터임포트·분석라우터·analysis/webr 고급엔진…)
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
@@ -87,7 +87,7 @@ v2-migration/
 | AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`regLabMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` | UI/상태와 모델·차트·export 분리. 단일 CSV+`mmmColMap`. 예측 밴드는 인과 CI가 아닌 **과거 잔차 참고 범위** |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
-| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | HC3 robust SE·BH 다중검정·forest plot. 역행렬 검증 실패 시 추론 거부 |
+| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `lib/analysis/webr/logisticRegression.js` | 연속 성과=기존 JS HC3·BH. 0/1 성과=사용자 실행 시 WebR binomial GLM·HC3·BH를 별도 고급 결과로 추가. 역행렬·표본·분리 실패 시 추론 거부 |
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath`·`funnelMath`·`segmentMath`·`anomalyMath`·`pacingMath`·`cohortMath`·`seasonalityMath`·`responseMath` | 탭별 순수 math 추출 완료(골든 커버) |
 | 결론 카드 (전 도구) | `dashboardVerdict.js`·`analysis-results/*QuickSummary.js` | 판정은 **도구별 렌더 유틸**, 공용은 카드 셸뿐(§12.27) |
 | (공통) | `chartUtils.js`·`format.js`·`download.js`·`toolGuide.js`·`demoData.js`(seededNoise)·`testFixtures` | 차트·표시포맷·CSV출력·업로드 설명·픽스처 SSOT |
@@ -95,6 +95,7 @@ v2-migration/
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지 |
 | (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위 |
+| (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. 단일 lazy R/Wasm runtime+직렬 작업 큐, 분석별 package/runner/normalizer. 기존 JS 기본 엔진은 명시적 승격 검증 전까지 불변 |
 | (결정 검토) | `lib/decisionReview.js`·`decisionComparableActual.js`·`decisionComparisonScope.js`·`forecastReview.js` | 결정 기록 스키마·기준일+N일 비교 후보·데이터 범위 스코프 |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
@@ -105,6 +106,7 @@ v2-migration/
   - CSV를 **쓰는** 라우트는 도구가 아니어도 `TOOL_GROUP`에 등록(`start-gate`→efficiency). 읽기·쓰기 그룹이 갈리면 업로드가 사라진다(PR #604).
 - **데이터 파이프라인**: 업로드(`CsvUploader.jsx` — PapaParse/xlsx 워커 + **도구 스코프 자동매핑** `lib/data-import/mappingContract.js`) 또는 공개 시트(`GoogleSheetConnect.jsx`, 브라우저 직접 조회) → `csvData`+`canonicalData`(정규화 공통 레코드) → **`getMappedRows(csvData)`**(표준키 행, **cost↔spend 별칭 채움**) → 도구별 엔진 입력 → 순수엔진 → 렌더. 앱 서버 경유 없음, 원본 행·`canonicalData`는 영속화하지 않음.
 - **계산 게이트**: `analyzedByGroup[group]` + `isGroupAnalyzed` 뒤에서만 무거운 compute. 매핑 변경=시그 변경=결과 자동 숨김.
+- **WebR 게이트**: 기본 분석 완료 뒤 지원되는 고급 분석만 사용자가 별도 실행한다. `webr`는 동적 import하고 패키지는 runtime당 1회만 mount한다. 원본 헤더·CSV 문자열은 R 코드에 삽입하지 않고 검증된 숫자열을 안전한 내부 alias로 bind한다.
 
 ## 5. 글로벌 스타일 (CSS/테마)
 - **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
