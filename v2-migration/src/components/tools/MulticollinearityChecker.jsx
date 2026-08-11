@@ -41,7 +41,15 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
   const verdict = result?.vif?.verdict;
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const copy = verdict === "ok" ? tr("현재 지출 패턴에서는 심한 중복 움직임이 보이지 않습니다. 그래도 연관은 인과가 아니므로 MMM 결과는 실험·홀드아웃과 함께 해석하세요.", "The spend pattern has no severe overlap signal. Correlation is still not causation; interpret MMM with experiments or holdouts.") : verdict === "warn" || verdict === "severe" ? tr("채널별 기여도를 숫자로 나누기 전에, 같이 움직인 채널을 분리해 변동시킨 기간을 확보하세요. 이 상태의 MMM 계수는 배분 근거로 쓰기 어렵습니다.", "Before dividing contribution by channel, create periods where the paired channels move independently. MMM coefficients in this state are weak evidence for allocation.") : verdict === "not_applicable" ? tr("채널은 있지만 시간에 따라 지출이 변한 채널이 2개 미만이라 VIF를 계산할 수 없습니다. 최소 2개 채널의 지출이 서로 다르게 움직인 기간을 추가하세요.", "Channels are present, but fewer than two vary over time, so VIF is not computable. Add periods where at least two channels move independently.") : tr("채널 수와 공통 기간이 부족합니다. 최소 2개 채널, 채널 수보다 3개 이상 많은 날짜가 필요합니다.", "There are not enough channels or common periods. Use at least two channels and at least three more dates than channels.");
-  const vifRows = result?.vif ? result.vif.variableIndices.map((index, vifIndex) => ({ channel: result.channels[index], vif: result.vif.vif[vifIndex] })) : [];
+  // computeVif는 계산 불가 시 vif: []를 반환하면서 variableIndices는 비우지 않는다
+  // (골든 계약: modelDiagnostics.test.js). 위치 zip만 하면 vif[i]가 undefined가 되고,
+  // 표시층에서 이를 비유한(∞)으로 렌더해 "계산 불가"를 "완전 공선(최악)"으로 뒤집었다.
+  // → 값이 실제로 존재하는 행만 남긴다. 남은 Infinity는 진짜 완전 공선이다(§8 날조 금지).
+  const vifRows = result?.vif
+    ? result.vif.variableIndices
+      .map((index, vifIndex) => ({ channel: result.channels[index], vif: result.vif.vif[vifIndex] }))
+      .filter((row) => typeof row.vif === "number" && !Number.isNaN(row.vif))
+    : [];
   const maxVif = result?.vif?.maxVif;
   const formattedMaxVif = Number.isFinite(maxVif) ? maxVif.toFixed(2) : verdict === "severe" ? "∞" : tr("계산 불가", "Not computable");
   const canSaveDecision = result?.vif && verdict !== "not_applicable" && verdict !== "unknown";
@@ -71,7 +79,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
         locale={locale}
         decisionPrefill={decisionPrefill}
       /></div>
-      <section className="block"><h2 className="section-title">{tr("채널별 VIF", "VIF by channel")}</h2><DataTable columns={[{ key: "channel", label: tr("채널", "Channel") }, { key: "vif", label: "VIF", align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : "∞" }]} rows={vifRows} rowKey={(row) => row.channel} emptyText={tr("계산 가능한 VIF가 없습니다.", "No computable VIF values.")} /></section>
+      <section className="block"><h2 className="section-title">{tr("채널별 VIF", "VIF by channel")}</h2><DataTable columns={[{ key: "channel", label: tr("채널", "Channel") }, { key: "vif", label: "VIF", align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : value === Infinity ? "∞" : tr("계산 불가", "Not computable") }]} rows={vifRows} rowKey={(row) => row.channel} emptyText={tr("계산 가능한 VIF가 없습니다.", "No computable VIF values.")} /></section>
       <section className="block"><h2 className="section-title">{tr("가장 함께 움직인 채널쌍", "Most correlated channel pairs")}</h2><DataTable columns={[{ key: "left", label: tr("채널 A", "Channel A") }, { key: "right", label: tr("채널 B", "Channel B") }, { key: "correlation", label: tr("상관", "Correlation"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : "—" }]} rows={result?.pairs || []} rowKey={(row) => `${row.left}-${row.right}`} emptyText={tr("비교할 쌍이 없습니다.", "No pairs to compare.")} /></section>
     </>}
   </ToolPageShell>;

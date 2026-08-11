@@ -28,10 +28,13 @@ function findHeader(headers, aliases) {
   return headers.find((header) => normalizedAliases.includes(normalizeHeader(header))) || "";
 }
 
-function numericCount(value, fallback = 1) {
-  if (value == null || String(value).trim() === "") return fallback;
+// event_count 컬럼이 아예 없으면 "행 1개 = 이벤트 1건"이 올바른 해석이다(row_event_volume).
+// 그러나 컬럼이 있는데 셀이 비었거나 숫자가 아니면 실제 건수를 모르는 것이므로,
+// 조용히 1로 채우면 없는 수치를 만들어내는 것이다(§8·§11 날조 금지) → null 반환.
+function numericCount(value) {
+  if (value == null || String(value).trim() === "") return null;
   const parsed = Number(String(value).replaceAll(",", "").trim());
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function normalizedDate(value) {
@@ -46,20 +49,28 @@ export function parseGrowthFunnelRows(rows = []) {
   const headers = [...new Set(safeRows.flatMap((row) => Object.keys(row)))];
   const columns = Object.fromEntries(Object.entries(HEADER_ALIASES).map(([key, aliases]) => [key, findHeader(headers, aliases)]));
   if (!columns.eventName) return { ok: false, reason: "missing_event_name", events: [], columns };
+  let unparsedCountRows = 0;
   const events = safeRows.map((row) => ({
     eventName: String(row[columns.eventName] || "").trim(),
-    count: numericCount(columns.eventCount ? row[columns.eventCount] : null, 1),
+    // 컬럼 부재 = 행당 1건(정상 해석). 컬럼 존재 + 파싱 실패 = 건수 불명 → 제외 대상.
+    count: columns.eventCount ? numericCount(row[columns.eventCount]) : 1,
     date: columns.date ? normalizedDate(row[columns.date]) : "",
     source: columns.source ? String(row[columns.source] || "").trim().toLocaleLowerCase() : "",
     resultState: columns.resultState ? String(row[columns.resultState] || "").trim().toLocaleLowerCase() : "",
     toolId: columns.toolId ? String(row[columns.toolId] || "").trim() : "",
     elapsedBucket: columns.elapsedBucket ? String(row[columns.elapsedBucket] || "").trim() : "",
-  })).filter((event) => event.eventName);
+  })).filter((event) => {
+    if (!event.eventName) return false;
+    // 건수를 알 수 없는 행은 집계에서 빼고 그 사실을 노출한다(추정치로 채우지 않음).
+    if (event.count == null) { unparsedCountRows += 1; return false; }
+    return true;
+  });
   return {
     ok: events.length > 0,
     reason: events.length ? "" : "empty_events",
     events,
     columns,
+    unparsedCountRows,
     mode: columns.eventCount ? "aggregated_event_volume" : "row_event_volume",
   };
 }
