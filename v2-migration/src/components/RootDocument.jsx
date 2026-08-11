@@ -2,6 +2,8 @@ import Script from "next/script";
 import { DM_Sans, JetBrains_Mono, Noto_Sans_KR, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
 import GaPageviews from "@/components/GaPageviews";
+import ConsentBanner from "@/components/ConsentBanner";
+import { consentDefaultSnippet } from "@/lib/consent";
 import SkipLink from "@/components/SkipLink";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
@@ -64,6 +66,12 @@ export default function RootDocument({ children, locale = "ko" }) {
             style={{ display: "none", visibility: "hidden" }}
           ></iframe>
         </noscript>
+        {/* Consent Mode v2 기본값 — 반드시 GTM·GA4보다 먼저 실행돼야 한다.
+            EEA/UK는 region 기본 거부(판정은 Google이 IP로 수행), 그 외 지역은 허용. */}
+        <script
+          id="consent-default"
+          dangerouslySetInnerHTML={{ __html: consentDefaultSnippet() }}
+        />
         <Script id="gtm" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-T6C7QW75');`}
         </Script>
@@ -73,6 +81,7 @@ export default function RootDocument({ children, locale = "ko" }) {
         </Script>
         <GaPageviews />
         {children}
+        <ConsentBanner locale={locale} />
         <Footer />
       </body>
     </html>

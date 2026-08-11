@@ -7,6 +7,9 @@ const ALLOWED_PARAMS = new Set([
   "result_state", "locale", "placement", "content_slug", "content_type",
   "source_tool_id", "data_continuity", "rank",
   "section_id", "state", "days_since_decision", "elapsed_bucket",
+  // 크래시 계측 — 오류 메시지·스택은 원자료가 섞일 수 있어 절대 싣지 않고,
+  // 범주형(scope=site|analysis, state=오류 타입, section_id=digest)만 보낸다.
+  "scope",
 ]);
 
 let firstToolViewAt = null;
