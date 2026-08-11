@@ -2,13 +2,12 @@ import { getToolSearchContent } from "@/lib/toolSearchContent";
 
 export default function ToolLongform({ toolId, locale = "ko" }) {
   const localeKey = locale === "en" ? "en" : "ko";
+  const sectionTitle = localeKey === "en" ? "Method and FAQ" : "판단 기준과 FAQ";
   const content = getToolSearchContent(toolId, localeKey);
   if (!content) return null;
 
   return <section className="tool-longform" aria-labelledby={`tool-longform-${toolId}`}>
-    <span className="tool-longform__eyebrow">{content.eyebrow}</span>
-    <h2 id={`tool-longform-${toolId}`}>{content.title}</h2>
-    <p className="tool-longform__lead">{content.lead}</p>
+    <h2 id={`tool-longform-${toolId}`}>{sectionTitle}</h2>
     <details className="tool-longform__details">
       <summary>{content.detailsLabel}</summary>
       <div className="tool-longform__body">

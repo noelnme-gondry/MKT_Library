@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 
 // 데이터 준비를 어려워하는 유저를 1:1 DM 상담으로 유도하는 비차단 사이드 팝업.
-// 도구 라우트(5-x·9-x)에서 라이브 데모를 본 뒤 스크롤로 조금 내려가면 우하단에
+// 도구 라우트(5-x·9-x)에서 데모 CSV를 본 뒤 스크롤로 조금 내려가면 우하단에
 // 슬라이드-인. 화면을 가리지 않는 코너 카드(§요구: 옆에 팝업처럼). 닫기=세션 한정
 // dismiss(§12.13 피드백 넛지 패턴, localStorage 미저장 → 새로고침 시 재노출).
 const SCROLL_REVEAL = 400; // px — 데모를 보고 "조금 내린" 시점
@@ -18,19 +18,17 @@ const COPY = {
   ko: {
     aria: "데이터 준비 문의",
     close: "닫기",
-    title: "데이터 준비가 막막하신가요?",
-    body: "지금 화면은 예시 데이터예요. 어떤 데이터를 어디서 어떻게 뽑아야 할지 1:1로 도와드릴게요.",
-    cta: "인스타그램 DM으로 문의 →",
-    guide: "먼저 데이터 준비 가이드 보기 →",
+    title: "내 데이터로 시작하기",
+    cta: "데이터 준비를 1:1로 문의 →",
+    guide: "CSV 준비 가이드 보기 →",
     guideHref: "/guide/csv-data-prep",
   },
   en: {
     aria: "Ask about data prep",
     close: "Close",
-    title: "Not sure how to prep your data?",
-    body: "This screen is sample data. We'll help you figure out exactly what data to pull and from where, 1:1.",
-    cta: "Ask via Instagram DM →",
-    guide: "See the data prep guide first →",
+    title: "Start with your own data",
+    cta: "Ask for 1:1 data prep help →",
+    guide: "See the CSV prep guide →",
     guideHref: "/en/guide/csv-data-prep",
   },
 };
@@ -40,13 +38,15 @@ export default function DmNudge({ locale = "ko" }) {
   const dismissed = useAppStore((s) => s.dmNudgeDismissed);
   const dismiss = useAppStore((s) => s.dismissDmNudge);
   const from = useAppStore((s) => s.currentRouteId);
+  const csvData = useAppStore((s) => s.csvData);
+  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const [visible, setVisible] = useState(false);
   const [shown, setShown] = useState(false); // 진입 애니메이션 트리거
   const viewSent = useRef(false);
 
   // 스크롤 임계 도달 또는 폴백 타이머로 1회 노출.
   useEffect(() => {
-    if (dismissed) return;
+    if (dismissed || !isDemo) return;
     let done = false;
     const reveal = () => {
       if (done) return;
@@ -64,7 +64,7 @@ export default function DmNudge({ locale = "ko" }) {
       window.removeEventListener("scroll", onScroll);
       clearTimeout(t);
     };
-  }, [dismissed]);
+  }, [dismissed, isDemo]);
 
   // 노출되면 진입 애니메이션 + GA view 이벤트(1회).
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function DmNudge({ locale = "ko" }) {
     return () => cancelAnimationFrame(id);
   }, [visible, from]);
 
-  if (dismissed || !visible) return null;
+  if (dismissed || !isDemo || !visible) return null;
 
   const onCta = () => {
     trackProductEvent("dm_open", { tool_id: from, placement: "dm_nudge" });
@@ -130,21 +130,11 @@ export default function DmNudge({ locale = "ko" }) {
           fontSize: "14px",
           fontWeight: 700,
           color: "var(--text-primary)",
-          marginBottom: "5px",
+          marginBottom: "11px",
           paddingRight: "16px",
         }}
       >
         {T.title}
-      </div>
-      <div
-        style={{
-          fontSize: "12.5px",
-          color: "var(--text-muted)",
-          lineHeight: 1.55,
-          marginBottom: "11px",
-        }}
-      >
-        {T.body}
       </div>
       <a
         href={IG_DM_URL}

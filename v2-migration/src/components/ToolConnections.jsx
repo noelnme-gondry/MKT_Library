@@ -8,9 +8,6 @@ import { getJourneyContext, getNextTools, localizedTool } from "@/lib/toolConnec
 
 const COPY = {
   ko: {
-    eyebrow: "CONNECTED TOOLS",
-    title: "현재 위치",
-    deck: "이 분석과 이어지는 선택지",
     recommended: "일반적인 다음 단계",
     connected: "연결 분석",
     afterVerdict: "판정 후 선택",
@@ -20,14 +17,11 @@ const COPY = {
     here: "같은 단계에서",
     forward: "다음 단계로",
     cycle: "다음 운영 주기",
-    mapDeck: "어디서 시작해도 괜찮습니다. 앞뒤 단계와 같은 단계의 다른 도구로 자유롭게 이동하세요.",
+    mapDeck: "전체 분석 여정",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
     expand: "전체 여정",
   },
   en: {
-    eyebrow: "CONNECTED TOOLS",
-    title: "Current stage",
-    deck: "Tools connected to this analysis",
     recommended: "Common next step",
     connected: "Connected analysis",
     afterVerdict: "Choose after the verdict",
@@ -37,7 +31,7 @@ const COPY = {
     here: "Same-stage options",
     forward: "Next stage",
     cycle: "Next operating cycle",
-    mapDeck: "Start anywhere, then move freely to the previous, next, or an alternative tool in the same stage.",
+    mapDeck: "Full analysis journey",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
     expand: "Full journey",
   },
@@ -59,12 +53,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   return (
     <section className="tool-connections tool-connections--rail" aria-labelledby={`tool-connections-${toolId}`}>
       <header className="tool-connections__head">
-        <span>{T.eyebrow}</span>
-        <div>
-          <small>{T.title}</small>
-          <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang] || sourceTool?.title}</h2>
-        </div>
-        <p>{T.deck}</p>
+        <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang] || sourceTool?.title}</h2>
       </header>
       <div className="tool-connections__grid">
         {visibleNextTools.map((tool, index) => (
@@ -97,7 +86,6 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         <summary>{T.expand} <span aria-hidden="true">＋</span></summary>
         {journey && (
           <div className="tool-connections__map" aria-label={T.mapDeck}>
-            <p>{T.mapDeck}</p>
             <div>
               <JourneyLinks label={T.back} tools={journey.previous} sourceToolId={toolId} locale={lang} />
               {journey.alternatives.length > 0 && (

@@ -16,11 +16,9 @@ const COPY = {
   ko: {
     open: "분석 도우미 열기",
     close: "분석 도우미 접기",
-    eyebrow: "CONTEXT ASSIST",
     current: "지금 보는 단계",
     jump: "이 위치로 이동",
     evidence: "근거 위치 보기",
-    decision: "현재 판단",
     action: "지금 할 일",
     mapping: "데이터 매핑 확인",
     prepare: "데이터 준비하기",
@@ -31,20 +29,16 @@ const COPY = {
     defaultTitle: "분석 흐름 안내",
     defaultBody: "현재 화면에서 필요한 입력과 결과를 확인한 뒤, 다음 판단으로 이어가세요.",
     resultReady: "새 결과가 준비됐습니다",
-    briefing: "지금 볼 것",
     why: "왜 중요한가",
     newData: "다른 데이터 형식이 필요해 필터를 넘기지 않습니다.",
     review: "검토 약속 만들기",
-    reviewHint: "추천 행동과 검토일이 준비되어 있습니다",
   },
   en: {
     open: "Open analysis assistant",
     close: "Collapse analysis assistant",
-    eyebrow: "CONTEXT ASSIST",
     current: "Current step",
     jump: "Jump to this section",
     evidence: "View supporting result",
-    decision: "Current decision",
     action: "Do this now",
     mapping: "Check data mapping",
     prepare: "Prepare data",
@@ -55,11 +49,9 @@ const COPY = {
     defaultTitle: "Analysis guide",
     defaultBody: "Check the inputs and result in view, then continue to the next decision.",
     resultReady: "A new result is ready",
-    briefing: "Review now",
     why: "Why it matters",
     newData: "This tool needs a different data grain, so filters will not carry over.",
     review: "Schedule a review",
-    reviewHint: "A suggested action and review date are ready",
   },
 };
 
@@ -339,11 +331,9 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       </button>
       <div className="tool-assist-rail__panel" id={`tool-assist-${toolId}`} aria-hidden={!isOpen}>
         <header>
-          <span>{T.eyebrow}</span>
           <strong>{sourceTool.title}</strong>
         </header>
         <div className="tool-assist-rail__context">
-          <small>{primaryFinding ? T.briefing : activeInsight ? T.decision : T.current}</small>
           <h2>{primaryFinding?.headline || insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
           <p>{primaryFinding?.detail || insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
           {primaryFinding?.evidence?.length > 0 && (
@@ -364,7 +354,6 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           {decisionReviewTargetId && (
             <button className="tool-assist-rail__review-action" type="button" aria-controls={decisionReviewTargetId} onClick={openDecisionReview}>
               <span>{T.review}</span>
-              <strong>{T.reviewHint}</strong>
               <b aria-hidden="true">→</b>
             </button>
           )}
