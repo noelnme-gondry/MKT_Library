@@ -7,8 +7,8 @@ async function initializeWebR() {
   if (typeof window === "undefined") throw new Error("webr_browser_required");
   runtimeStatus = "initializing";
   try {
-    // Next.js 16 dynamic import: keep the ~48 MB R/Wasm runtime out of the
-    // initial route bundle and download it only after an advanced-analysis click.
+    // Next.js 16 dynamic import: keep the R/Wasm loader out of the initial route
+    // bundle and fetch the large runtime assets only after an advanced-analysis click.
     const { WebR } = await import("webr");
     const runtime = new WebR();
     await runtime.init();

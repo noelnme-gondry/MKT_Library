@@ -23,6 +23,7 @@ import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTe
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
+import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 
 const MUTED = "var(--text-muted)";
 const MIN_BINARY_SUPPORT = 5;
@@ -856,6 +857,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               )}
             </section>
           )}
+
+          <WebRRandomForestPanel
+            fit={fit}
+            signature={analyzedSig}
+            locale={locale}
+            source={isDemo ? "demo" : csvData?.importSource || "csv"}
+          />
 
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">

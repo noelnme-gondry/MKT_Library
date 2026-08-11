@@ -12,6 +12,7 @@ import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
 import { runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
+import { runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
 
 vi.mock("@/lib/analysis/webr/logisticRegression", async (importOriginal) => {
   const actual = await importOriginal();
@@ -37,6 +38,26 @@ vi.mock("@/lib/analysis/webr/logisticRegression", async (importOriginal) => {
         oddsRatioHigh: 3.2,
         isSignificant: true,
       }],
+    })),
+  };
+});
+
+vi.mock("@/lib/analysis/webr/randomForest", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runWebRRandomForest: vi.fn(async () => ({
+      status: "complete",
+      outcomeType: "classification",
+      n: 160,
+      folds: 5,
+      primaryMetric: "brier",
+      secondaryMetric: "accuracy",
+      randomForest: { primary: 0.14, secondary: 0.81 },
+      baseline: { engine: "logistic_regression", primary: 0.18, secondary: 0.74 },
+      relativeGain: 0.22,
+      recommendation: "random_forest_candidate",
+      importance: [{ name: "title_has_number", importance: 0.18 }],
     })),
   };
 });
@@ -284,5 +305,22 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     expect(await screen.findByText(/title_has_number의 오즈비 2\.10/)).toBeTruthy();
     expect(screen.getByText(/^오즈비는 성공 확률 자체가 아니라/)).toBeTruthy();
+  });
+
+  it("compares Random Forest with the regression baseline on the same analyzed rows", async () => {
+    seedWithBinaryOutcome();
+    const { container } = render(<ContentElementAnalyzer />);
+
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "converted" } });
+    for (const name of ["title_has_number", "title_len"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      if (!button.classList.contains("active")) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Random Forest 비교 실행" }));
+
+    expect(runWebRRandomForest).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    expect(await screen.findByText("예측 레이어 교체 후보")).toBeTruthy();
+    expect(screen.getByText(/Permutation importance/)).toBeTruthy();
   });
 });
