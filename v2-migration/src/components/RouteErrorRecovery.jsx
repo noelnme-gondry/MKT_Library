@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { trackProductEvent } from "@/lib/analytics";
 
 export default function RouteErrorRecovery({ error, reset, locale = "ko", scope = "analysis" }) {
   const isEnglish = locale === "en";
@@ -14,7 +15,16 @@ export default function RouteErrorRecovery({ error, reset, locale = "ko", scope 
       digest: error?.digest || null,
       name: error?.name || "Error",
     });
-  }, [error]);
+    // 지금까지 크래시는 콘솔에만 남고 어디에도 전송되지 않아, "어떤 CSV가 앱을
+    // 깨뜨리는가"를 영원히 알 수 없었다. 오류 메시지·스택에는 원자료가 섞일 수
+    // 있으므로 절대 싣지 않고, 분류 가능한 범주형 값만 보낸다(§2.2).
+    trackProductEvent("app_error", {
+      scope,
+      state: String(error?.name || "Error").slice(0, 40),
+      section_id: String(error?.digest || "no_digest").slice(0, 40),
+      locale,
+    });
+  }, [error, scope, locale]);
 
   return (
     <main style={{ minHeight: "60vh", display: "grid", placeItems: "center", padding: "40px 20px" }}>
