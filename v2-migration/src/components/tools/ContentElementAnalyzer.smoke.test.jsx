@@ -11,6 +11,56 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
+import { runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
+import { runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
+
+vi.mock("@/lib/analysis/webr/logisticRegression", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runWebRLogisticRegression: vi.fn(async () => ({
+      status: "complete",
+      n: 160,
+      classCounts: { zero: 80, one: 80 },
+      aic: 151.4,
+      pseudoR2: 0.24,
+      rows: [{
+        name: "title_has_number",
+        estimate: Math.log(2.1),
+        stdError: 0.2,
+        statistic: 3.7,
+        rawP: 0.001,
+        p: 0.001,
+        ciLow: Math.log(1.4),
+        ciHigh: Math.log(3.2),
+        oddsRatio: 2.1,
+        oddsRatioLow: 1.4,
+        oddsRatioHigh: 3.2,
+        isSignificant: true,
+      }],
+    })),
+  };
+});
+
+vi.mock("@/lib/analysis/webr/randomForest", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runWebRRandomForest: vi.fn(async () => ({
+      status: "complete",
+      outcomeType: "classification",
+      n: 160,
+      folds: 5,
+      primaryMetric: "brier",
+      secondaryMetric: "accuracy",
+      randomForest: { primary: 0.14, secondary: 0.81 },
+      baseline: { engine: "logistic_regression", primary: 0.18, secondary: 0.74 },
+      relativeGain: 0.22,
+      recommendation: "random_forest_candidate",
+      importance: [{ name: "title_has_number", importance: 0.18 }],
+    })),
+  };
+});
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -74,6 +124,26 @@ function seedWithNoSignal() {
     ctr: (Math.floor(i / 2) % 3) + 1,
   }));
   const slice = { raw, headers, mapping: {}, fileName: "no_signal_content_attr.csv" };
+  useAppStore.setState({
+    currentRouteId: "9-1",
+    csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice },
+    csvData: slice,
+  });
+}
+
+function seedWithBinaryOutcome() {
+  const headers = ["post_id", "title_has_number", "title_len", "converted"];
+  const raw = Array.from({ length: 160 }, (_, i) => {
+    const hasNumber = i % 2;
+    const score = (i * 7 + hasNumber * 3 + i % 5) % 10;
+    return {
+      post_id: `p${i}`,
+      title_has_number: hasNumber,
+      title_len: 20 + (i % 35),
+      converted: score < (hasNumber ? 6 : 4) ? 1 : 0,
+    };
+  });
+  const slice = { raw, headers, mapping: {}, fileName: "binary_content_attr.csv" };
   useAppStore.setState({
     currentRouteId: "9-1",
     csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice },
@@ -217,5 +287,40 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(screen.getByText("추정 불가")).toBeTruthy();
     expect(screen.getByText(/희소 요소\(rare_hook\)/)).toBeTruthy();
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+  });
+
+  it("runs WebR logistic regression only for a sufficiently supported binary outcome", async () => {
+    seedWithBinaryOutcome();
+    const { container } = render(<ContentElementAnalyzer />);
+
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "converted" } });
+    for (const name of ["title_has_number", "title_len"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      if (!button.classList.contains("active")) fireEvent.click(button);
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+    fireEvent.click(screen.getByRole("button", { name: "WebR 고급 분석 실행" }));
+
+    expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    expect(await screen.findByText(/title_has_number의 오즈비 2\.10/)).toBeTruthy();
+    expect(screen.getByText(/^오즈비는 성공 확률 자체가 아니라/)).toBeTruthy();
+  });
+
+  it("compares Random Forest with the regression baseline on the same analyzed rows", async () => {
+    seedWithBinaryOutcome();
+    const { container } = render(<ContentElementAnalyzer />);
+
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "converted" } });
+    for (const name of ["title_has_number", "title_len"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      if (!button.classList.contains("active")) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Random Forest 비교 실행" }));
+
+    expect(runWebRRandomForest).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    expect(await screen.findByText("예측 레이어 교체 후보")).toBeTruthy();
+    expect(screen.getByText(/Permutation importance/)).toBeTruthy();
   });
 });

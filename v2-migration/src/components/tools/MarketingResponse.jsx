@@ -15,6 +15,7 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
+import WebRMmmAdvanced from "@/components/tools/WebRMmmAdvanced";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
 import { STATISTICAL_STATUS } from "@/lib/analysis-router/statisticalStatus";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
@@ -4677,6 +4678,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   formatValue={targetValueLabel}
                 />
               )}
+              <WebRMmmAdvanced
+                mmm={mmm}
+                signature={`${mmmAnalyzedSig}|${target}|${mmmMode}|${bayesianUsePrior ? 1 : 0}`}
+                locale={locale}
+                source={isDemo ? "demo" : csvData?.importSource || "csv"}
+              />
               {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality || classicControlText) && (
                 <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                   <strong>{tx("추세·모델 공정성 진단", "Trend and model fairness diagnostics")}</strong>

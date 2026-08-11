@@ -22,6 +22,8 @@ import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
+import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 
 const MUTED = "var(--text-muted)";
 const MIN_BINARY_SUPPORT = 5;
@@ -89,6 +91,19 @@ const EA_COPY = {
     sigDown: "유의 ↓",
     ns: "무유의",
     tableFootnote: '표준오차·신뢰구간은 이분산에 강건한 HC3, 판정은 BH 보정 p값 기준입니다. 신뢰구간은 요소별 pointwise 구간입니다. 계수는 각 요소의 원단위 연관 — 있음/없음(0/1)은 "있을 때 vs 없을 때", 숫자는 "1 증가 시" 성과 변화입니다.',
+    advancedTitle: "WebR 고급 분석 · 로지스틱 회귀",
+    advancedDesc: "성과가 0/1인 경우 선형회귀 대신 성공 확률의 오즈를 모델링합니다. R의 binomial GLM과 HC3 강건 표준오차를 쓰며, 기존 JS 결과를 덮어쓰지 않고 별도 검증 결과로 표시합니다.",
+    advancedRun: "WebR 고급 분석 실행",
+    advancedLoading: "R/Wasm 런타임과 통계 패키지를 준비해 분석 중입니다…",
+    advancedBlocked: (current, required) => `현재 적은 쪽 결과가 ${current}건입니다. 변수 수를 고려하면 최소 ${required}건이 필요해 고급 회귀를 보류합니다.`,
+    advancedFailed: "WebR 분석을 불러오지 못했습니다. 기존 JS 분석 결과는 그대로 유효합니다. 네트워크 상태를 확인한 뒤 다시 시도하세요.",
+    advancedUnstable: "수렴 실패 또는 완전·준완전 분리 신호가 있어 로지스틱 계수를 해석하지 않습니다. 표본을 늘리거나 결과를 거의 완벽히 가르는 요소를 제외하세요.",
+    advancedNoSignal: "BH 보정 후 유의한 오즈비 연관을 확정할 증거가 부족합니다.",
+    advancedTop: (name, oddsRatio) => `${name}의 오즈비 ${oddsRatio}가 가장 강한 유의 연관입니다. 인과효과는 아닙니다.`,
+    advancedMethod: "binomial GLM · HC3 · BH 보정",
+    advancedThOdds: "오즈비",
+    advancedThP: "BH p",
+    advancedThCi: "95% 오즈비 CI",
   },
   en: {
     dataPrep: "Prepare your data",
@@ -150,6 +165,19 @@ const EA_COPY = {
     sigDown: "Sig ↓",
     ns: "n.s.",
     tableFootnote: "SEs and pointwise intervals use heteroskedasticity-robust HC3; decisions use BH-adjusted p-values. Coefficients are raw-unit associations — present vs absent for 0/1 elements, or the outcome change per +1 for numeric elements.",
+    advancedTitle: "WebR advanced analysis · Logistic regression",
+    advancedDesc: "For a binary 0/1 outcome, this models the odds of success rather than fitting a linear outcome. It uses R's binomial GLM with HC3 robust standard errors and stays separate from the existing JS result.",
+    advancedRun: "Run WebR advanced analysis",
+    advancedLoading: "Preparing the R/Wasm runtime and statistical package…",
+    advancedBlocked: (current, required) => `The smaller outcome class has ${current} rows. This model needs at least ${required} for the selected feature count, so advanced regression is withheld.`,
+    advancedFailed: "The WebR analysis could not load. The existing JS result remains available. Check the network and try again.",
+    advancedUnstable: "The model shows non-convergence or complete/quasi-complete separation, so its coefficients are withheld. Add observations or remove an element that almost perfectly predicts the outcome.",
+    advancedNoSignal: "After BH adjustment, there is not enough evidence to confirm a significant odds-ratio association.",
+    advancedTop: (name, oddsRatio) => `${name} has the strongest significant odds-ratio association (${oddsRatio}). This is not a causal effect.`,
+    advancedMethod: "Binomial GLM · HC3 · BH adjustment",
+    advancedThOdds: "Odds ratio",
+    advancedThP: "BH p",
+    advancedThCi: "95% odds-ratio CI",
   },
 };
 
@@ -166,6 +194,12 @@ function isNumericColumn(rows, header) {
 }
 
 const num = (v) => parseFloat(String(v == null ? "" : v).replace(/,/g, ""));
+
+function fmtOddsRatio(value) {
+  if (!Number.isFinite(value)) return "—";
+  if (value >= 10000 || (value > 0 && value < 0.001)) return value.toExponential(2);
+  return value.toFixed(value >= 100 ? 1 : 2);
+}
 
 function numberRange(values) {
   let min = Infinity, max = -Infinity;
@@ -223,6 +257,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const fileRef = useRef(null);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
+  const webRRequestRef = useRef(0);
 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
@@ -233,6 +268,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [analyzedSig, setAnalyzedSig] = useState(null);
   const [mappingOpen, setMappingOpen] = useState(true);
   const [seededKey, setSeededKey] = useState(null);
+  const [webRRun, setWebRRun] = useState({ status: "idle", signature: null, result: null });
 
   const handleFile = (file) => {
     if (!file) return;
@@ -396,9 +432,56 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       rows, n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length, excludedRows: csvData.raw.length - n,
       R2: res.R2, adjR2: res.adjR2, intercept: res.beta[0], outcome,
       // Additive UI payload only: diagnostics inspect the exact displayed OLS fit.
-      olsFit: res, X, terms: ["(Intercept)", ...supportedFeatures],
+      olsFit: res, X, y, terms: ["(Intercept)", ...supportedFeatures],
     };
   }, [analyzed, hasData, csvData, outcome, features]);
+
+  const logisticInput = useMemo(() => {
+    if (!fit || fit.error || !fit.y?.length || !fit.y.every((value) => value === 0 || value === 1)) return null;
+    return prepareLogisticInput({ X: fit.X, y: fit.y, terms: fit.terms });
+  }, [fit]);
+
+  const runAdvancedLogistic = async () => {
+    if (!logisticInput?.ok) return;
+    const requestId = ++webRRequestRef.current;
+    const signature = analyzedSig;
+    setWebRRun({ status: "loading", signature, result: null });
+    trackProductEvent("analysis_started", {
+      tool_id: "9-1",
+      source: isDemo ? "demo" : csvData?.importSource || "csv",
+      row_count: logisticInput.y.length,
+      analysis_type: "webr_logistic_regression",
+      locale,
+    });
+    try {
+      const result = await runWebRLogisticRegression(logisticInput);
+      if (requestId !== webRRequestRef.current) return;
+      setWebRRun({ status: "complete", signature, result });
+      trackProductEvent("analysis_completed", {
+        tool_id: "9-1",
+        source: isDemo ? "demo" : csvData?.importSource || "csv",
+        row_count: logisticInput.y.length,
+        analysis_type: "webr_logistic_regression",
+        result_state: result.status,
+        locale,
+      });
+    } catch {
+      if (requestId !== webRRequestRef.current) return;
+      setWebRRun({ status: "failed", signature, result: null });
+      trackProductEvent("analysis_completed", {
+        tool_id: "9-1",
+        source: isDemo ? "demo" : csvData?.importSource || "csv",
+        row_count: logisticInput.y.length,
+        analysis_type: "webr_logistic_regression",
+        result_state: "failed",
+        locale,
+      });
+    }
+  };
+
+  useEffect(() => () => {
+    webRRequestRef.current += 1;
+  }, []);
 
   useEffect(() => {
     if (!analyzed || !fit?.error) return;
@@ -699,6 +782,88 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </section>
 
           {analystMode && <ModelDiagnosticsPanel scope="9-1:ols" fit={fit.olsFit} X={fit.X} labels={fit.terms} locale={locale} />}
+
+          {logisticInput && (
+            <section className="block" id="s-content-webr-logistic">
+              <h2 className="section-title"><span className="ix">ADV</span>{T.advancedTitle}</h2>
+              <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px" }}>{T.advancedDesc}</p>
+              {!logisticInput.ok ? (
+                <div className="required-banner">
+                  <strong>{tr("표본 보강 필요", "More outcome support needed")}</strong>
+                  <p style={{ margin: ".35rem 0 0", fontSize: "12.5px" }}>
+                    {logisticInput.reason === "insufficient_class_support"
+                      ? T.advancedBlocked(logisticInput.minorityCount, logisticInput.requiredMinority)
+                      : tr("이진 0/1 결과와 선택 요소를 다시 확인하세요.", "Review the binary 0/1 outcome and selected features.")}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <button className="ab-button" onClick={runAdvancedLogistic} disabled={webRRun.status === "loading" && webRRun.signature === analyzedSig}>
+                      {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedRun}
+                    </button>
+                    <span className="muted" style={{ fontSize: "11.5px" }}>
+                      {T.advancedMethod} · 0={logisticInput.classCounts.zero.toLocaleString()} · 1={logisticInput.classCounts.one.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {webRRun.signature === analyzedSig && webRRun.status === "failed" && (
+                    <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.advancedFailed}</p></div>
+                  )}
+
+                  {webRRun.signature === analyzedSig && webRRun.result?.status === "unstable" && (
+                    <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.advancedUnstable}</p></div>
+                  )}
+
+                  {webRRun.signature === analyzedSig && webRRun.result?.status === "complete" && (() => {
+                    const advancedTop = webRRun.result.rows.find((row) => row.isSignificant) || null;
+                    return (
+                      <div style={{ marginTop: "14px" }}>
+                        <div className="callout" style={{ marginBottom: "10px" }}>
+                          <strong>{advancedTop
+                            ? T.advancedTop(advancedTop.name, fmtOddsRatio(advancedTop.oddsRatio))
+                            : T.advancedNoSignal}</strong>
+                          <p className="muted" style={{ margin: ".35rem 0 0", fontSize: "11.5px" }}>
+                            n {webRRun.result.n.toLocaleString()} · McFadden pseudo R² {Number.isFinite(webRRun.result.pseudoR2) ? webRRun.result.pseudoR2.toFixed(3) : "—"} · AIC {Number.isFinite(webRRun.result.aic) ? webRRun.result.aic.toFixed(1) : "—"}
+                          </p>
+                        </div>
+                        <div className="table-wrap">
+                          <table className="data" style={{ fontSize: "12.5px" }}>
+                            <thead><tr>
+                              <th style={{ textAlign: "left" }}>{T.thElement}</th>
+                              <th style={{ textAlign: "right" }}>{T.advancedThOdds}</th>
+                              <th style={{ textAlign: "right" }}>{T.advancedThP}</th>
+                              <th style={{ textAlign: "right" }}>{T.advancedThCi}</th>
+                              <th style={{ textAlign: "center" }}>{T.thVerdict}</th>
+                            </tr></thead>
+                            <tbody>{webRRun.result.rows.map((row) => (
+                              <tr key={row.name}>
+                                <td style={{ textAlign: "left" }}>{row.name}</td>
+                                <td className="tnum" style={{ textAlign: "right" }}>{fmtOddsRatio(row.oddsRatio)}</td>
+                                <td className="tnum" style={{ textAlign: "right" }}>{row.p.toFixed(3)}</td>
+                                <td className="tnum" style={{ textAlign: "right" }}>[{fmtOddsRatio(row.oddsRatioLow)}, {fmtOddsRatio(row.oddsRatioHigh)}]</td>
+                                <td style={{ textAlign: "center" }}>{row.isSignificant ? (row.oddsRatio >= 1 ? T.sigUp : T.sigDown) : T.ns}</td>
+                              </tr>
+                            ))}</tbody>
+                          </table>
+                        </div>
+                        <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
+                          {tr("오즈비는 성공 확률 자체가 아니라 odds의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "An odds ratio multiplies the odds, not the probability itself. This is an observed association, not a causal effect.")}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </section>
+          )}
+
+          <WebRRandomForestPanel
+            fit={fit}
+            signature={analyzedSig}
+            locale={locale}
+            source={isDemo ? "demo" : csvData?.importSource || "csv"}
+          />
 
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">

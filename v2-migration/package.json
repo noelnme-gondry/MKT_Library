@@ -24,6 +24,7 @@
     "papaparse": "^5.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "webr": "0.6.0",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zustand": "^5.0.14"
   },
