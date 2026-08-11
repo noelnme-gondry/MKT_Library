@@ -117,6 +117,18 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
     : recommendation === "baseline_regression"
       ? { title: T.keep, body: T.keepBody(Math.abs(result.relativeGain * 100).toFixed(1)), tone: "warn" }
       : { title: T.tie, body: T.tieBody(observedDifference), tone: "info" };
+  const onModelKeyDown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    const choices = Array.from(event.currentTarget.parentElement?.querySelectorAll('[role="radio"]') || []);
+    if (!choices.length) return;
+    event.preventDefault();
+    const current = Math.max(0, choices.indexOf(event.currentTarget));
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End"
+      ? choices.length - 1
+      : (current + (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1) + choices.length) % choices.length;
+    choices[nextIndex].focus();
+    choices[nextIndex].click();
+  };
 
   return (
     <section className="block" id="s-content-webr-random-forest">
@@ -133,16 +145,18 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
               <div className={`callout ${verdict.tone}`}>
                 <div className="body"><strong>{verdict.title}</strong><p>{verdict.body}</p></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", margin: "10px 0" }}>
-                <button type="button" className={`stat-card ${selectedModel === "baseline" ? "active" : ""}`} onClick={() => setSelectedModel("baseline")} style={{ textAlign: "left", cursor: "pointer", border: selectedModel === "baseline" ? "2px solid var(--primary)" : undefined }}>
-                  <div className="lbl">{baselineLabel} · {result.primaryMetric} · {T.lowerIsBetter}</div>
-                  <div className="val">{metricValue(result.primaryMetric, result.baseline.primary)}</div>
-                  <small>{result.secondaryMetric} {metricValue(result.secondaryMetric, result.baseline.secondary)}{selectedModel === "baseline" ? ` · ✓ ${T.selected}` : ""}</small>
+              <div className="mmm-model-switcher" role="radiogroup" aria-label={T.title}>
+                <button type="button" role="radio" aria-checked={selectedModel === "baseline"} className={`mmm-model-choice ${selectedModel === "baseline" ? "is-selected" : ""}`} onClick={() => setSelectedModel("baseline")} onKeyDown={onModelKeyDown}>
+                  <span className="mmm-model-choice__radio" aria-hidden="true" />
+                  <span className="mmm-model-choice__copy"><strong>{baselineLabel}</strong><small>{result.primaryMetric} · {T.lowerIsBetter}<br />{result.secondaryMetric} {metricValue(result.secondaryMetric, result.baseline.secondary)}</small></span>
+                  <span className="mmm-model-choice__metric">{metricValue(result.primaryMetric, result.baseline.primary)}</span>
+                  <span className="mmm-model-choice__badges">{selectedModel === "baseline" && <b>{T.selected}</b>}</span>
                 </button>
-                <button type="button" className={`stat-card ${selectedModel === "random_forest" ? "active" : ""}`} onClick={() => setSelectedModel("random_forest")} style={{ textAlign: "left", cursor: "pointer", border: selectedModel === "random_forest" ? "2px solid var(--primary)" : undefined }}>
-                  <div className="lbl">Random Forest · {result.primaryMetric} · {T.lowerIsBetter}</div>
-                  <div className="val">{metricValue(result.primaryMetric, result.randomForest.primary)}</div>
-                  <small>{result.secondaryMetric} {metricValue(result.secondaryMetric, result.randomForest.secondary)}{selectedModel === "random_forest" ? ` · ✓ ${T.selected}` : ""}</small>
+                <button type="button" role="radio" aria-checked={selectedModel === "random_forest"} className={`mmm-model-choice ${selectedModel === "random_forest" ? "is-selected" : ""}`} onClick={() => setSelectedModel("random_forest")} onKeyDown={onModelKeyDown}>
+                  <span className="mmm-model-choice__radio" aria-hidden="true" />
+                  <span className="mmm-model-choice__copy"><strong>Random Forest</strong><small>{result.primaryMetric} · {T.lowerIsBetter}<br />{result.secondaryMetric} {metricValue(result.secondaryMetric, result.randomForest.secondary)}</small></span>
+                  <span className="mmm-model-choice__metric">{metricValue(result.primaryMetric, result.randomForest.primary)}</span>
+                  <span className="mmm-model-choice__badges">{selectedModel === "random_forest" && <b>{T.selected}</b>}</span>
                 </button>
               </div>
               {selectedModel === "random_forest" ? <>

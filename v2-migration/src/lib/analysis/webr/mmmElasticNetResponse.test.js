@@ -15,6 +15,7 @@ function channel(overrides = {}) {
     observedMin: 0,
     observedMax: 300,
     recentSpend: 100,
+    recentActiveWeeks: 12,
     activeWeeks: 80,
     uniqueSpendValues: 20,
     spendCv: 0.35,
@@ -50,7 +51,22 @@ describe("WebR MMM Elastic-net response math", () => {
     ], input);
     expect(models[0].coefficient).toBeCloseTo(0.3, 12);
     expect(models[0].positiveFoldShare).toBe(1);
+    expect(models[0].hasCompleteFoldEvidence).toBe(true);
     expect(models[0].terms[1]).toMatchObject({ alpha: 0.6, lastAdstock: 220, foldCoefficients: [0.1, 0.1] });
+  });
+
+  it("holds the channel gate when fold coefficients are missing instead of copying the final coefficient", () => {
+    const input = {
+      cuts: [78, 96],
+      terms: [{ isMedia: true, channelKey: "meta", adstockAlpha: 0 }],
+      channelScenarios: [{ ...channel(), lastAdstockByAlpha: { 0: 100 } }],
+    };
+    const [model] = buildElasticNetChannelModels([{ coefficient: 0.2, fold_coefficients: "" }], input);
+    expect(model).toMatchObject({ hasCompleteFoldEvidence: false, positiveFoldShare: 0 });
+    expect(evaluateElasticNetChannelGate(model, { folds: 2, increment: 20 })).toMatchObject({
+      eligible: false,
+      reasons: expect.arrayContaining(["unstable-fold-coefficient"]),
+    });
   });
 
   it("produces a monotone concave current-carry response and fold range", () => {

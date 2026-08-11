@@ -1,0 +1,33 @@
+import fs from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const css = fs.readFileSync(new URL("./globals.css", import.meta.url), "utf8");
+const marketingResponse = fs.readFileSync(new URL("../components/tools/MarketingResponse.jsx", import.meta.url), "utf8");
+const webRPanel = fs.readFileSync(new URL("../components/tools/WebRMmmAdvanced.jsx", import.meta.url), "utf8");
+const randomForestPanel = fs.readFileSync(new URL("../components/tools/WebRRandomForestPanel.jsx", import.meta.url), "utf8");
+
+describe("MMM result workflow UI contract", () => {
+  it("recreates Bayesian charts when the selected result model changes", () => {
+    expect(marketingResponse).toMatch(/\[stage, mmmResultModel, mmm,/);
+    expect(marketingResponse).toContain('mmmResultModel === "bayesian"');
+    expect(marketingResponse).toContain("Chart.getChart?.(canvas)?.resize()");
+  });
+
+  it("uses a defined accessible model switch instead of an unstyled stat-card button", () => {
+    expect(webRPanel).toContain('className="mmm-model-switcher" role="radiogroup"');
+    expect(webRPanel).toContain('role="radio" aria-checked={selectedModel === "bayesian"}');
+    expect(webRPanel).not.toMatch(/<button[^>]+className=\{`stat-card/);
+    expect(randomForestPanel).toContain('className="mmm-model-switcher" role="radiogroup"');
+    expect(randomForestPanel).not.toMatch(/<button[^>]+className=\{`stat-card/);
+    expect(css).toMatch(/\.mmm-model-switcher\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*\.mmm-model-switcher\s*\{\s*grid-template-columns:\s*1fr;/);
+  });
+
+  it("keeps the WebR workflow in fit-to-decision order in both languages", () => {
+    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 계수는 검증구간에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => expect(webRPanel).toContain(copy));
+    ["1. How much of actual performance did the model explain?", "2. What explained performance?", "3. Did channel coefficients persist across validation windows?", "4. How does prediction change when spend changes?", "5. Is a budget change safe enough to recommend?"].forEach((copy) => expect(webRPanel).toContain(copy));
+    expect(webRPanel.indexOf("{T.fitStep}")).toBeLessThan(webRPanel.indexOf("{T.driverStep}"));
+    expect(webRPanel.indexOf("{T.driverStep}")).toBeLessThan(webRPanel.indexOf("{T.responseStep}"));
+    expect(webRPanel.indexOf("{T.responseStep}")).toBeLessThan(webRPanel.indexOf("{T.budgetStep}"));
+  });
+});

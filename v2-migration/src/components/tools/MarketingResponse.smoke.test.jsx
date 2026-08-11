@@ -1745,7 +1745,7 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");
-    expect(document.body.textContent).toContain("MMM 모델 자동 비교");
+    expect(document.body.textContent).toContain("MMM 결과 모델");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
     expect(document.body.textContent).toContain("전체 Spend");
@@ -1756,7 +1756,8 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("R-hat");
     const bayesian = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Bayesian MMM"));
     expect(bayesian).toBeTruthy();
-    expect(bayesian.classList.contains("active")).toBe(true);
+    expect(bayesian.classList.contains("is-selected")).toBe(true);
+    expect(bayesian.getAttribute("aria-checked")).toBe("true");
     expect(document.body.textContent).not.toContain("conditional posterior 채널 적합");
     // T1: Bayesian 모드 → 정보 prior 토글 + 적합도 신뢰 칩 노출, 끄기(평면 OLS) 재적합 throw 없음.
     expect(document.body.textContent).toContain("정보 prior");

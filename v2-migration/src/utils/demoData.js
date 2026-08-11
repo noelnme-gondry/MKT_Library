@@ -302,7 +302,9 @@ function buildExperiment() {
 // cannibalization" in the old demo).
 function buildResponse() {
   const headers = ["week", "country", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
-  const nWeeks = 104;
+  // Bayesian과 WebR가 같은 2개 이상의 12주 OOS fold를 만들 수 있도록
+  // 최소 120주보다 여유 있게 제공한다. 한쪽만 숫자가 뜨는 비교는 허용하지 않는다.
+  const nWeeks = 132;
   // channel: spend generator + response coefficient + adstock decay + saturation half-point.
   // sign: +1 = genuine lift (organic-friendly), -1 = genuine cannibalization (subtracts organic).
   // steep = spend ramps up fast with little noise, so the lowest-25%-spend

@@ -2682,7 +2682,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // Stage ② charts: CV, RMS contribution share, saturation, fit, decomp
   useEffect(() => {
     const inst = [];
-    if (stage === "mmm" && mmm && !mmm.empty) {
+    if (stage === "mmm" && mmmResultModel === "bayesian" && mmm && !mmm.empty) {
       const run = mmm.run;
       const dateViewDecomp = displayedDecomp;
       const dateViewPanel = displayedMmmPanel;
@@ -2985,7 +2985,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, displayedSaturationCurveSeries, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmmResultModel, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, displayedSaturationCurveSeries, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -3308,7 +3308,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   /* ------------------------------ RENDER ------------------------------ */
   // 아코디언 안 차트는 접힘 상태에서 폭 0으로 마운트됨(§7 함정) → 펼칠 때 resize 이벤트로 재측정.
   const onAccordionToggle = (e) => {
-    if (e.currentTarget.open) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    if (!e.currentTarget.open) return;
+    const details = e.currentTarget;
+    requestAnimationFrame(() => {
+      details.querySelectorAll("canvas").forEach((canvas) => Chart.getChart?.(canvas)?.resize());
+      window.dispatchEvent(new Event("resize"));
+    });
   };
 
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
