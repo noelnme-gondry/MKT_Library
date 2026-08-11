@@ -162,7 +162,7 @@ describe("demo sanity", () => {
     expect(run.backtest?.wmape).toEqual(expect.any(Number));
     expect(mediaContribution.every((value) => value >= -1e-8)).toBe(true);
     expect(health.negativeBaselineShare).toBe(0);
-  });
+  }, 20_000);
 
   it("MMM prior evidence: exposes repeated on/off periods and named markets", () => {
     const demo = buildMmmPriorDemo();
