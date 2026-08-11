@@ -15,7 +15,7 @@ function foldCoefficients(row, foldCount) {
     ? serialized.split("|").map(Number).filter(Number.isFinite)
     : [];
   if (parsed.length === foldCount) return parsed;
-  return Array.from({ length: foldCount }, () => finiteOr(row?.coefficient));
+  return [];
 }
 
 export function buildElasticNetChannelModels(rawRows = [], input = {}) {
@@ -31,7 +31,10 @@ export function buildElasticNetChannelModels(rawRows = [], input = {}) {
     const foldChannelCoefficients = Array.from({ length: foldCount }, (_, foldIndex) => (
       terms.reduce((sum, term) => sum + finiteOr(term.foldCoefficients[foldIndex]), 0)
     ));
-    const positiveFoldShare = foldCount
+    const hasCompleteFoldEvidence = foldCount > 0
+      && terms.length > 0
+      && terms.every((term) => term.foldCoefficients.length === foldCount);
+    const positiveFoldShare = hasCompleteFoldEvidence
       ? foldChannelCoefficients.filter((value) => value > COEFFICIENT_EPSILON).length / foldCount
       : 0;
     return {
@@ -39,6 +42,7 @@ export function buildElasticNetChannelModels(rawRows = [], input = {}) {
       terms,
       foldChannelCoefficients,
       coefficient: terms.reduce((sum, term) => sum + term.coefficient, 0),
+      hasCompleteFoldEvidence,
       positiveFoldShare,
     };
   });
@@ -115,6 +119,7 @@ export function evaluateElasticNetChannelGate(channel, options = {}) {
   if ((options.folds || 0) < 2) reasons.push("insufficient-oos-folds");
   if (!(channel?.coefficient > COEFFICIENT_EPSILON) || channel?.positiveFoldShare < 1) reasons.push("unstable-fold-coefficient");
   if ((channel?.activeWeeks || 0) < 20) reasons.push("sparse-active-weeks");
+  if (!(channel?.recentSpend > COEFFICIENT_EPSILON) || (channel?.recentActiveWeeks || 0) < 4) reasons.push("recently-inactive-channel");
   if ((channel?.uniqueSpendValues || 0) < 5 || !(channel?.spendCv >= 0.1)) reasons.push("insufficient-spend-variation");
   if (channel?.collinearityGroup?.length > 1) reasons.push("high-collinearity");
   if (!(increment > 0) || currentSpend + increment > finiteOr(channel?.observedMax)) reasons.push("outside-observed-spend-range");

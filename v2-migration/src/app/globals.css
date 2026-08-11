@@ -5624,6 +5624,115 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .is-analysis .tab-pane.active .callout .body { min-width: 0; }
 .is-analysis .tab-pane.active .callout .body > p { font-size: 11.5px; line-height: 1.55; }
 
+/* MMM model result workflow: model choice -> fit -> drivers -> response -> decision. */
+.mmm-model-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.mmm-model-choice {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-areas: "radio copy metric" ". badges badges";
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+  min-height: 82px;
+  padding: 13px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--surface-container-lowest);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.mmm-model-choice:hover:not(:disabled) { border-color: var(--border); background: var(--surface-container-low); }
+.mmm-model-choice:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.mmm-model-choice:disabled { opacity: .58; cursor: wait; }
+.mmm-model-choice.is-selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest));
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.mmm-model-choice__radio {
+  grid-area: radio;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--text-muted);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 3px var(--surface-container-lowest);
+}
+.mmm-model-choice.is-selected .mmm-model-choice__radio { border-color: var(--primary); background: var(--primary); }
+.mmm-model-choice__copy { grid-area: copy; min-width: 0; }
+.mmm-model-choice__copy strong { display: block; font-size: 13px; }
+.mmm-model-choice__copy small { display: block; margin-top: 3px; color: var(--text-muted); font: 10px/1.35 var(--font-mono); }
+.mmm-model-choice__metric { grid-area: metric; color: var(--text-primary); font: 700 19px/1 var(--font-mono); text-align: right; }
+.mmm-model-choice__badges { grid-area: badges; display: flex; justify-content: flex-end; gap: 5px; min-height: 18px; }
+.mmm-model-choice__badges :where(b, em, small) { padding: 3px 6px; border-radius: 999px; font: 600 9px/1.2 var(--font-mono); font-style: normal; }
+.mmm-model-choice__badges b { background: var(--primary); color: var(--surface-base); }
+.mmm-model-choice__badges em { background: color-mix(in srgb, var(--success) 13%, transparent); color: var(--success); }
+.mmm-model-choice__badges small { color: var(--text-muted); }
+
+.mmm-result-flow { display: grid; gap: 12px; margin-top: 12px; }
+.mmm-result-step {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-container-lowest);
+}
+.mmm-result-step__head { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 9px; margin-bottom: 12px; }
+.mmm-result-step__head > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--primary) 13%, transparent);
+  color: var(--primary);
+  font: 700 10px var(--font-mono);
+}
+.mmm-result-step__head h3 { margin: 1px 0 3px; color: var(--text-primary); font-size: 14px; }
+.mmm-result-step__head p { margin: 0; max-width: 900px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.mmm-result-step > h4 { margin: 15px 0 7px; color: var(--text-primary); font-size: 12px; }
+.mmm-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 0 0 10px; }
+.mmm-metric-card { min-width: 0; padding: 10px 11px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-low); }
+.mmm-metric-card.is-primary { border-color: color-mix(in srgb, var(--primary) 45%, var(--border-subtle)); }
+.mmm-metric-card small { display: block; color: var(--text-muted); font-size: 9.5px; line-height: 1.35; }
+.mmm-metric-card strong { display: block; margin-top: 4px; color: var(--text-primary); font: 700 16px/1.15 var(--font-mono); overflow-wrap: anywhere; }
+.mmm-metric-card em { display: block; margin-top: 4px; color: var(--text-muted); font: 9px/1.35 var(--font-mono); font-style: normal; }
+.mmm-result-chart { height: 290px; min-height: 290px; margin: 8px 0 10px; }
+.mmm-result-note { margin: 7px 0 0; color: var(--text-muted); font-size: 10.5px; line-height: 1.5; }
+.mmm-model-setup { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font: 9.5px/1.4 var(--font-mono); }
+.mmm-model-setup strong { color: var(--text-secondary); }
+.mmm-channel-selector { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 9px; }
+.mmm-channel-selector button { appearance: none; min-height: 34px; padding: 6px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: transparent; color: var(--text-secondary); font: 600 10.5px var(--font-mono); cursor: pointer; }
+.mmm-channel-selector button:hover { border-color: var(--border); color: var(--text-primary); }
+.mmm-channel-selector button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.mmm-channel-selector button.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary); }
+.mmm-webr-table th { white-space: nowrap; }
+.mmm-webr-table :where(th.tnum, td.tnum) { text-align: right; }
+.mmm-result-details { margin-top: 10px; border-top: 1px solid var(--border-subtle); padding-top: 9px; }
+.mmm-result-details summary { color: var(--text-secondary); font-size: 11px; font-weight: 650; cursor: pointer; }
+.mmm-result-details .table-wrap { margin-top: 8px; }
+.mmm-budget-input { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 9px; color: var(--text-muted); font-size: 10.5px; }
+.mmm-budget-input label { color: var(--text-secondary); }
+.mmm-budget-input input { width: 140px; margin-left: 5px; }
+
+@media (max-width: 720px) {
+  .mmm-model-switcher { grid-template-columns: 1fr; }
+  .mmm-model-choice { min-height: 72px; }
+  .mmm-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mmm-result-step { padding: 12px; }
+  .mmm-result-chart { height: 250px; min-height: 250px; }
+  .mmm-channel-selector button { min-height: 44px; }
+}
+
 .mmm-health-warning__button {
   flex: 0 0 auto;
   width: 34px;

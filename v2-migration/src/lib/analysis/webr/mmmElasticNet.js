@@ -29,6 +29,84 @@ function mean(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
+function finiteNumber(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function parseSerializedNumbers(value) {
+  const serialized = String(value ?? "").trim();
+  return serialized
+    ? serialized.split("|").map(Number).filter(Number.isFinite)
+    : [];
+}
+
+export function buildElasticNetFitDiagnostics(input = {}, coefficients = [], suppliedIntercept = null) {
+  const y = Array.isArray(input.y) ? input.y.map(Number) : [];
+  const X = Array.isArray(input.X) ? input.X : [];
+  if (!y.length || X.length !== y.length || coefficients.length !== (input.terms?.length || 0)) return null;
+  const beta = coefficients.map((coefficient) => finiteNumber(coefficient?.coefficient) ?? 0);
+  const linear = X.map((row) => row.reduce((sum, value, index) => sum + (Number(value) || 0) * beta[index], 0));
+  const intercept = finiteNumber(suppliedIntercept) ?? mean(y.map((value, index) => value - linear[index]));
+  const fitted = linear.map((value) => intercept + value);
+  const residuals = y.map((value, index) => value - fitted[index]);
+  const actualMean = mean(y);
+  const sse = residuals.reduce((sum, value) => sum + value ** 2, 0);
+  const sst = y.reduce((sum, value) => sum + (value - actualMean) ** 2, 0);
+  const nonzeroActual = y.map((value, index) => ({ value, residual: residuals[index] }))
+    .filter(({ value }) => Math.abs(value) > 1e-12);
+
+  const grouped = new Map();
+  coefficients.forEach((coefficient, termIndex) => {
+    const term = input.terms[termIndex];
+    if (!term) return;
+    const current = grouped.get(term.group) || {
+      name: term.group,
+      kind: term.isMedia ? "media" : "control",
+      values: Array(y.length).fill(0),
+    };
+    X.forEach((row, rowIndex) => {
+      current.values[rowIndex] += (Number(row[termIndex]) || 0) * beta[termIndex];
+    });
+    if (term.isMedia) current.kind = "media";
+    grouped.set(term.group, current);
+  });
+  const drivers = [
+    { name: "Baseline", kind: "baseline", values: Array(y.length).fill(intercept) },
+    ...grouped.values(),
+  ].map((driver) => ({
+    ...driver,
+    meanContribution: mean(driver.values),
+    rmsContribution: Math.sqrt(mean(driver.values.map((value) => value ** 2))),
+  }));
+  const rmsTotal = drivers.reduce((sum, driver) => sum + driver.rmsContribution, 0);
+
+  return {
+    labels: Array.isArray(input.labels) && input.labels.length === y.length
+      ? input.labels.slice()
+      : y.map((_, index) => index + 1),
+    actual: y,
+    fitted,
+    residuals,
+    intercept,
+    r2: sst > 1e-12 ? 1 - sse / sst : null,
+    rmse: Math.sqrt(sse / y.length),
+    mae: mean(residuals.map(Math.abs)),
+    mape: nonzeroActual.length
+      ? mean(nonzeroActual.map(({ value, residual }) => Math.abs(residual / value))) * 100
+      : null,
+    wmape: y.reduce((sum, value) => sum + Math.abs(value), 0) > 1e-12
+      ? residuals.reduce((sum, value) => sum + Math.abs(value), 0)
+        / y.reduce((sum, value) => sum + Math.abs(value), 0) * 100
+      : null,
+    drivers: drivers.map((driver) => ({
+      ...driver,
+      rmsShare: rmsTotal > 1e-12 ? driver.rmsContribution / rmsTotal : 0,
+    })),
+  };
+}
+
 function spendCv(values) {
   const average = mean(values);
   if (!(average > 0) || values.length < 2) return 0;
@@ -110,6 +188,7 @@ export function buildMmmElasticNetDesign(panel = {}) {
       observedMin: Math.max(0, Math.min(...raw)),
       observedMax: Math.max(0, Math.max(...raw)),
       recentSpend: mean(raw.slice(-Math.min(12, raw.length))),
+      recentActiveWeeks: raw.slice(-Math.min(12, raw.length)).filter((value) => value > 0).length,
       activeWeeks: raw.filter((value) => value > 0).length,
       uniqueSpendValues: new Set(raw.map((value) => Number(value).toPrecision(12))).size,
       spendCv: spendCv(raw),
@@ -150,21 +229,29 @@ export function prepareMmmElasticNetInput({ panel, run, target } = {}) {
   }
   const rolling = run?.rollingBacktest;
   const hasRollingWindows = Array.isArray(rolling?.cuts) && rolling.cuts.length >= 2 && Number(rolling.horizon) > 0;
-  const cuts = hasRollingWindows ? rolling.cuts.slice() : [Math.floor(y.length * 0.8)];
-  const horizon = hasRollingWindows ? Number(rolling.horizon) : y.length - cuts[0];
-  const baselineWmape = Number(run?.backtest?.wmape);
+  if (!hasRollingWindows) {
+    return { ok: false, reason: "insufficient_comparable_history", n: y.length, requiredObservations: Math.max(120, DEFINITION.minObservations) };
+  }
+  const cuts = rolling.cuts.slice();
+  const horizon = Number(rolling.horizon);
+  const baselineWmape = [run?.backtest?.wmape, run?.backtest?.mape, rolling?.meanWmape]
+    .map(finiteNumber)
+    .find((value) => value != null) ?? null;
   const channelKeys = design.channelScenarios.map((channel) => channel.key);
   const groupedChannels = collinearityGroups(run, channelKeys);
   return {
     ok: true,
     ...design,
     y,
+    labels: Array.isArray(panel?.weekLabel) && panel.weekLabel.length === y.length
+      ? panel.weekLabel.slice()
+      : (panel?.week || []).slice(),
     n: y.length,
     predictorCount: design.terms.length,
     cuts,
     horizon,
-    baselineWmape: Number.isFinite(baselineWmape) ? baselineWmape : null,
-    sameValidationWindows: Number.isFinite(baselineWmape),
+    baselineWmape,
+    sameValidationWindows: baselineWmape != null,
     baselineEngine: run?.methodLabel || "Bayesian MMM",
     channelScenarios: design.channelScenarios.map((channel) => ({
       ...channel,
@@ -204,14 +291,14 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
       ? "keep_bayesian"
       : "more_validation_required";
   const coefficients = rawRows.map((row, index) => {
-    const serializedFolds = String(row.fold_coefficients || "").trim();
     return {
       ...input.terms[index],
       coefficient: Number(row.coefficient),
-      foldCoefficients: serializedFolds ? serializedFolds.split("|").map(Number).filter(Number.isFinite) : [],
+      foldCoefficients: parseSerializedNumbers(row.fold_coefficients),
     };
   });
   const channelModels = buildElasticNetChannelModels(rawRows, input);
+  const fit = buildElasticNetFitDiagnostics(input, coefficients, model.intercept);
   return {
     analysisId: WEBR_ANALYSIS_IDS.MMM_ELASTIC_NET_CHALLENGER,
     engine: "webr",
@@ -230,6 +317,8 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
     relativeGain,
     replacementCandidate,
     recommendation,
+    foldWmapes: parseSerializedNumbers(model.fold_wmapes),
+    fit,
     importance,
     coefficients,
     channelModels,
@@ -318,13 +407,17 @@ function elasticNetRCode(predictorCount) {
       standardize=TRUE,
       intercept=TRUE
     )
-    final_coef <- as.numeric(coef(final_fit, s=final_lambda))[-1]
+    final_coef_all <- as.numeric(coef(final_fit, s=final_lambda))
+    final_intercept <- final_coef_all[1]
+    final_coef <- final_coef_all[-1]
     feature_scale <- apply(model_x, 2, sd)
     model_importance <- abs(final_coef * feature_scale)
     data.frame(
       term=colnames(model_x),
       coefficient=final_coef,
+      intercept=rep(final_intercept, ncol(model_x)),
       fold_coefficients=apply(outer_coefs, 2, function(values) paste(format(values, digits=17, scientific=TRUE, trim=TRUE), collapse="|")),
+      fold_wmapes=rep(paste(format(outer_wmapes, digits=17, scientific=TRUE, trim=TRUE), collapse="|"), ncol(model_x)),
       importance=model_importance,
       n=rep(nrow(model_x), ncol(model_x)),
       folds=rep(length(fold_cuts), ncol(model_x)),

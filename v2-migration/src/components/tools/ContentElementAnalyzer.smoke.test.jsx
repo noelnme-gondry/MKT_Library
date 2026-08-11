@@ -319,10 +319,12 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(await screen.findByText("예측 정확도 승자: Random Forest")).toBeTruthy();
     expect(runWebRRandomForest).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
-    const randomForest = screen.getByRole("button", { name: /Random Forest · brier/ });
-    expect(randomForest.classList.contains("active")).toBe(true);
+    const randomForest = screen.getByRole("radio", { name: /Random Forest/ });
+    expect(randomForest.classList.contains("is-selected")).toBe(true);
+    expect(randomForest.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getAllByRole("radio").filter((choice) => choice.getAttribute("aria-checked") === "true")).toHaveLength(1);
     expect(screen.getByText(/Permutation importance/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /로지스틱 회귀 · brier/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /로지스틱 회귀/ }));
     expect(screen.getByText(/회귀 결과의 계수·신뢰구간/)).toBeTruthy();
   });
 });
