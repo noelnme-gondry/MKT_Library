@@ -74,7 +74,6 @@ import {
   buildForecastProductionModel,
   buildForecastRecentBacktest,
   buildMmmGuideDoc,
-  buildMmmSaturationCurveGroups,
   buildOsForecastPanel,
   buildPaidOrganicPlatformModel,
   buildPaidOrganicRecentBacktest,
@@ -175,8 +174,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
   const [includeBaseDemandInShare, setIncludeBaseDemandInShare] = useState(true);
-  const [satHidden, setSatHidden] = useState({}); // 수확체감 곡선 채널별 표시 토글 { [chKey]: true=숨김 }
-  const [saturationCurveView, setSaturationCurveView] = useState("channel");
+  const [bayesianResponseChannel, setBayesianResponseChannel] = useState(null);
   const [isHealthWarningOpen, setIsHealthWarningOpen] = useState(false);
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
@@ -1513,11 +1511,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     Boolean(contributionViewStart || contributionViewEnd),
   ), [mmm, displayedSaturationPanel, contributionViewStart, contributionViewEnd]);
   const displayedSaturationCurveSeries = useMemo(() => {
-    if (saturationCurveView === "group") {
-      return buildMmmSaturationCurveGroups(displayedSaturationByChannel, displayedSaturationPanel?.channels, locale);
-    }
     return Object.values(displayedSaturationByChannel).map((channel) => ({ ...channel, isGroup: false }));
-  }, [displayedSaturationByChannel, displayedSaturationPanel, locale, saturationCurveView]);
+  }, [displayedSaturationByChannel]);
+  const effectiveBayesianResponseChannel = useMemo(() => {
+    const channels = Object.values(displayedSaturationByChannel);
+    return channels.find((channel) => channel.key === bayesianResponseChannel)
+      || channels.slice().sort((left, right) => (Number(right.recentMean) || 0) - (Number(left.recentMean) || 0))[0]
+      || null;
+  }, [bayesianResponseChannel, displayedSaturationByChannel]);
+  const visibleSaturationCurveSeries = useMemo(() => (
+    effectiveBayesianResponseChannel
+      ? displayedSaturationCurveSeries.filter((channel) => channel.key === effectiveBayesianResponseChannel.key)
+      : displayedSaturationCurveSeries
+  ), [displayedSaturationCurveSeries, effectiveBayesianResponseChannel]);
 
   // 주간 상위 그룹 기여를 by-construction으로 나눈 채널 배분값을 집계한다.
   const weeklyChannelPerformance = useMemo(() => {
@@ -2750,11 +2756,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       // 반응 곡선 (per channel, y = 비음수 절대 기여 = 그 지출에서의 예상 기여).
       // 기존 한계응답(ln_coef/(1+x)) 곡선은 x→0에서 발산(1,000,000)해 판독 불가(§유저) →
       // 누적 반응 곡선으로 교체(단조·발산 없음, 평평해질수록 수확체감). 현재 지출 위치 점으로 표시.
-      if (satRef.current && displayedSaturationCurveSeries.length) {
+      if (satRef.current && visibleSaturationCurveSeries.length) {
         const themeVarS = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColS = themeVarS("--text-muted") || CHART_THEME.muted;
         const textColS = themeVarS("--text-1") || CHART_THEME.text;
-        const chs = displayedSaturationCurveSeries;
+        const chs = visibleSaturationCurveSeries;
         if (chs.length) {
           const maxSpend = Math.max(...chs.map((s) => s.recentMean || 0)) * 1.6 || 40000;
           const grid = Array.from({ length: 41 }, (_, i) => (i / 40) * maxSpend);
@@ -2779,7 +2785,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               pointBackgroundColor: col,
               pointBorderColor: textColS,
               pointBorderWidth: 1.5,
-              hidden: !s.isGroup && !!satHidden[s.key],
             };
           });
           const satOpts = chartBase();
@@ -2797,10 +2802,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       }
       // 목표가 전환이면 CPA, 매출이면 ROAS. 수확체감 반응곡선을 비용 효율 언어로
       // 다시 읽어 예산을 늘릴수록 왜 CPR이 오르고 ROAS가 내려가는지 보여준다.
-      if (efficiencyRef.current && displayedSaturationCurveSeries.length) {
+      if (efficiencyRef.current && visibleSaturationCurveSeries.length) {
         const themeVarE = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColE = themeVarE("--text-muted") || CHART_THEME.muted;
-        const chs = displayedSaturationCurveSeries;
+        const chs = visibleSaturationCurveSeries;
         if (chs.length) {
           const isRoas = mmm.target === "Revenue";
           const maxSpend = Math.max(...chs.map((s) => s.recentMean || 0)) * 1.6 || 40000;
@@ -2829,7 +2834,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               pointBackgroundColor: col,
               pointBorderColor: mutedColE,
               pointBorderWidth: 1.5,
-              hidden: !s.isGroup && !!satHidden[s.key],
               spanGaps: false,
             };
           });
@@ -2985,7 +2989,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmmResultModel, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, displayedSaturationCurveSeries, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmmResultModel, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, visibleSaturationCurveSeries, spikeNotes, decompGrouped, includeBaseDemandInShare, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -4663,7 +4667,29 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 onSelectModel={setMmmResultModel}
               />
               {mmmResultModel === "bayesian" ? (
-                <>
+                <div className="mmm-result-flow mmm-result-flow--bayesian" data-mmm-result-model="bayesian">
+                <section className="mmm-result-step" data-mmm-flow-step="fit" aria-labelledby="mmm-bayesian-fit-title">
+                  <div className="mmm-result-step__head">
+                    <span>01</span>
+                    <div>
+                      <h3 id="mmm-bayesian-fit-title">{tx("1. 실제 성과를 얼마나 설명했나", "1. How much of actual performance did the model explain?")}</h3>
+                      <p>{tx("실제값과 학습기간 적합값을 먼저 확인하고, 보지 않은 미래 구간은 시간순 OOS 오차로 따로 판단합니다.", "Compare actuals with the in-sample fitted series first, then judge unseen future windows separately with time-ordered OOS error.")}</p>
+                    </div>
+                  </div>
+                  {dateScopedDecomp ? <>
+                    <div className="mmm-metric-grid">
+                      <div className="mmm-metric-card"><small>{tx("학습 WMAPE", "Training WMAPE")}</small><strong>{Number.isFinite(health?.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</strong></div>
+                      <div className="mmm-metric-card is-primary"><small>{tx("시간순 OOS WMAPE", "Time-ordered OOS WMAPE")}</small><strong>{Number.isFinite(health?.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"}</strong></div>
+                      <div className="mmm-metric-card"><small>{tx("RMSE", "RMSE")}</small><strong>{targetValueLabel(dateScopedDecomp.rmse)}</strong></div>
+                      <div className="mmm-metric-card"><small>{tx("모델 경고", "Model warnings")}</small><strong>{health?.flags?.length || 0}</strong><em>{budgetEligible ? tx("예산 판단 가능", "Budget decision allowed") : tx("예산 판단 보류", "Budget decision held")}</em></div>
+                    </div>
+                    <div className="chart-container mmm-result-chart"><canvas ref={fitRef}></canvas></div>
+                    <p className="mmm-result-note">{tx("학습 적합도는 과거 설명력이고 OOS 오차는 미래 구간 예측력입니다. 어느 지표도 채널의 인과효과를 확정하지 않습니다.", "Training fit describes historical explanation; OOS error measures future-window prediction. Neither identifies a channel's causal effect.")}</p>
+                  </> : <div className="required-banner"><p>{tx("실제값과 적합값을 계산할 수 없습니다.", "Actual and fitted values are unavailable.")}</p></div>}
+                </section>
+
+                <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="expert" onToggle={onAccordionToggle}>
+                  <summary>{tx("외부 근거·모델 건강·자동 선택 상세", "External evidence, model health, and automatic-selection details")}</summary>
                 <MmmEvidenceLedger
                   locale={locale}
                   selectedEvidence={selectedEvidence}
@@ -4711,7 +4737,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </div>
               )}
               {health && (
-                <section className="block" aria-label={tx("모델 건강 진단", "Model health diagnostics")}>
+                <section className="mmm-bayesian-health-detail" aria-label={tx("모델 건강 진단", "Model health diagnostics")}>
                   <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>{tx("모델 건강", "Model health")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx(`예측 오차 ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · 경고 ${health.flags?.length || 0}건`, `Forecast error ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · ${health.flags?.length || 0} warnings`)}</span><span title={tx(`전문: 전체 wMAPE·시간순 검증 오차·잔차 상관·VIF·채널 상관·계절성 후보·사전분포 이동을 함께 점검합니다.\n쉬운 말: 전체 예측은 맞아도 함께 움직이는 채널은 각자 몫을 정확히 나누기 어렵습니다. 이 값들은 전체 학습 기간 기준입니다.`, `Technical: checks fit error, time-ordered validation, residual correlation, VIF, channel correlation, seasonality candidates, and prior shifts.\nPlain: even a good overall forecast cannot cleanly separate channels that move together. These checks use the full training period.`)} style={{ cursor: "help", color: "var(--primary, #adc6ff)", fontSize: "17px" }}>ⓘ</span></h2>
                   <div style={{ display: "none", gap: "10px", flexWrap: "wrap" }}>
                     <div className="stat-card"><div className="lbl">{tx("전체 wMAPE", "In-sample wMAPE")}</div><div className="val">{Number.isFinite(health.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</div></div>
@@ -4784,21 +4810,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </p>
                 </section>
               )}
-              {/* ── 메인: 평어 헤드라인 ── */}
-              <Card style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <Badge color="#7aa2f7">{tx("기여 분해", "Contribution")}</Badge>
-                <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
-              </Card>
-              {(mmm.panel.externalDefs || []).length > 0 && (
-                <p className="muted" style={{ margin: "-5px 0 12px", fontSize: "11.5px", lineHeight: 1.5 }}>
-                  {tx("업계 현황은 원시 설치·매출 수가 아니라, 해당 지수의 평소 대비 상대 변화(log index)를 기준으로 우리 KPI에 미친 추정 변화만 표시합니다. 따라서 시장 전체 설치 수를 그대로 우리 성과로 더하지 않습니다.", "Industry controls use only relative change from their normal level (log index), not raw market installs or revenue. The chart shows the estimated change in this KPI, not the market total added directly to your result.")}
-                </p>
-              )}
-
+                </details>
               {/* ── 메인: 무엇이 성과를 움직였나 — RMS 기여 크기 비중 ── */}
-              <section className="block">
+              <section className="mmm-result-step" data-mmm-flow-step="drivers" aria-labelledby="mmm-bayesian-driver-title">
+                <div className="mmm-result-step__head">
+                  <span>02</span>
+                  <div>
+                    <h3 id="mmm-bayesian-driver-title">{tx("2. 무엇이 성과를 설명했나", "2. What explained performance?")}</h3>
+                    <p>{headline}</p>
+                  </div>
+                </div>
+                {(mmm.panel.externalDefs || []).length > 0 && <p className="mmm-result-note">{tx("업계 현황은 시장 전체 수치가 아니라 평소 대비 상대 변화가 우리 KPI를 설명한 값입니다.", "Industry controls show how relative change from normal explains this KPI, not the market total itself.")}</p>}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
-                  <h2 className="section-title" style={{ margin: 0 }}>{tx("무엇이 성과를 움직였나", "What moved performance")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· RMS 기여 크기 비중", "· RMS contribution-magnitude share")}</span></h2>
+                  <strong className="mmm-result-subtitle">{tx("주별 기여 크기", "Weekly contribution magnitude")}</strong>
                   <div className="ab-pillgroup" style={{ margin: 0 }} aria-label={tx("기본 수요·추세 포함 여부", "Include base demand and trend")}>
                     <span className="ab-pillgroup-label">{tx("기본 수요·추세", "Base demand · trend")}</span>
                     <button type="button" className={`ab-pill ${includeBaseDemandInShare ? "active" : ""}`} onClick={() => setIncludeBaseDemandInShare(true)}>{tx("포함", "Include")}</button>
@@ -4829,9 +4853,44 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     >ⓘ</span>
               </section>
 
+              <section className="mmm-result-step" data-mmm-flow-step="coefficients" aria-labelledby="mmm-bayesian-coef-title">
+                <div className="mmm-result-step__head">
+                  <span>03</span>
+                  <div>
+                    <h3 id="mmm-bayesian-coef-title">{tx("3. 채널 효과는 검증에서도 유지됐나", "3. Did channel effects persist across validation?")}</h3>
+                    <p>{tx("효과 방향과 90% profile 혼합 구간을 함께 봅니다. 이 범위는 모델 불확실성이며 홀드아웃 전 인과효과 확정이 아닙니다.", "Review effect direction with its 90% profile-mixture interval. This is model uncertainty, not causal proof before a holdout.")}</p>
+                  </div>
+                </div>
+                <div className="table-wrap">
+                  <table className="data mmm-webr-table">
+                    <thead><tr><th>{tx("채널", "Channel")}</th><th className="tnum">{tx("양수 확률", "P(positive)")}</th><th className="tnum">{tx("효과 크기", "Effect size")}</th><th className="tnum">{tx("90% 범위", "90% range")}</th><th>{tx("예산 사용", "Budget use")}</th></tr></thead>
+                    <tbody>{Object.values(sat).map((channel) => {
+                      const marginal = channel.incrementalAt(channel.recentMean, marginalStepSource);
+                      const inObservedRange = channel.isIncrementInObservedRange(channel.recentMean, marginalStepSource);
+                      const useBudget = budgetEligible && channel.budgetEligible && inObservedRange && marginal?.ci?.[0] > 0;
+                      return <tr key={channel.key}>
+                        <td><strong>{channel.label}</strong></td>
+                        <td className="tnum">{fmtOne(channel.posteriorPositive * 100)}%</td>
+                        <td className="tnum">{targetValueLabel(channel.ln_coef, { decimals: 1 })}</td>
+                        <td className="tnum">{targetValueLabel(channel.ci?.[0], { decimals: 1 })}–{targetValueLabel(channel.ci?.[1], { decimals: 1 })}</td>
+                        <td><strong className={useBudget ? "mmm-gate-pass" : "muted"}>{useBudget ? tx("통과", "Pass") : tx("보류", "Hold")}</strong>{!useBudget && <small className="muted" style={{ display: "block" }}>{budgetGateLabel([...(channel.budgetGateReasons || []), ...(!inObservedRange ? ["outside-observed-spend-range"] : []), ...(marginal?.ci?.[0] <= 0 ? [tx("한계효과 구간 0 포함", "marginal interval crosses 0")] : [])])}</small>}</td>
+                      </tr>;
+                    })}</tbody>
+                  </table>
+                </div>
+              </section>
+
               {/* ── 메인: 다음 예산은 여기로 (액션 카드) ── */}
+              <section className="mmm-result-step" data-mmm-flow-step="decision" aria-labelledby="mmm-bayesian-decision-title">
+                <div className="mmm-result-step__head">
+                  <span>05</span>
+                  <div>
+                    <h3 id="mmm-bayesian-decision-title">{tx("5. 예산 변경을 추천해도 안전한가", "5. Is a budget change safe enough to recommend?")}</h3>
+                    <p>{tx("식별·집행 이력·지출 변동·관측 범위·한계효과 구간을 모두 통과한 채널만 후보로 남깁니다.", "Only channels that pass identification, activity, spend variation, observed-range, and marginal-effect checks remain eligible.")}</p>
+                  </div>
+                </div>
               {!budgetEligible ? (
-                <div className="callout warn" style={{ marginBottom: "12px" }}>
+                <div className="callout warn">
                   <div className="ico">!</div><div className="body"><strong>{identification.priorScaleConverged === false
                     ? tx("예산 추천 보류 — 잔차분산·prior penalty 반복이 수렴하지 않았습니다", "Budget recommendation paused — residual-scale/prior-penalty iteration did not converge")
                     : tx("예산 추천 보류 — 채널 효과가 식별되지 않았습니다", "Budget recommendation paused — channel effects are not identified")}</strong><p>{unresolvedCollinearity
@@ -4841,10 +4900,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       : tx("기간 대비 파라미터가 많거나 채널 간 상관이 높아 예산 순위를 신뢰하기 어렵습니다. 아래 반응곡선은 진단용으로만 보세요.", "There are too many parameters for the time span or media correlation is too high to trust a budget ranking. Treat the response curves below as diagnostic only.")}</p></div>
                 </div>
               ) : ranked.length > 0 ? (
-                <section className="block" style={{ border: "2px solid var(--primary, #adc6ff)" }}>
-                  <h2 className="section-title">{isRankingAmbiguous
+                <div className="mmm-budget-decision">
+                  <h4>{isRankingAmbiguous
                     ? tx("🎯 증액 후보군 — 우열 불명확", "🎯 Increase candidates — no clear winner")
-                    : tx("🎯 다음 예산 우선 후보", "🎯 First candidate for the next budget")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx(`· 지금 지출에서 +${marginalStepLabel}당 늘어나는 ${tgtKo}와 90% 구간`, `· extra ${tgtKo} and 90% interval per +${marginalStepLabel} at current spend`)}</span></h2>
+                    : tx("🎯 다음 예산 우선 후보", "🎯 First candidate for the next budget")}</h4>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {decisionCandidates.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: !isRankingAmbiguous && i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px", flexWrap: "wrap" }}>
@@ -4859,16 +4918,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{isRankingAmbiguous
                     ? tx("상위 후보들의 90% 한계효과 구간이 겹쳐 단일 1위를 정하지 않았습니다. 후보군을 유지하고 추가 실험으로 구분하세요.", "Top candidates have overlapping 90% marginal-effect intervals, so no single winner is declared. Keep the candidate set and distinguish it with an additional experiment.")
                     : tx("양수 확률·채널별 데이터 충분성·식별 gate를 통과하고 90% 한계효과 구간도 0보다 큰 후보입니다. 관측 회귀 기반 가설이므로 점진적으로 변경하고 홀드아웃으로 확인하세요.", "This candidate passes positive-probability, channel-data, and identification gates, and its 90% marginal-effect interval stays above zero. It remains an observational hypothesis; change gradually and confirm with a holdout.")}</p>
-                </section>
+                </div>
               ) : (
                 <div className="callout warn" style={{ marginBottom: "12px" }}>
                   <div className="ico">!</div><div className="body"><strong>{tx("예산 추천 보류 — 채널별 근거가 부족합니다", "Budget recommendation paused — channel-level evidence is insufficient")}</strong><p>{tx("효과 양수 확률, 최근 20주 이상 집행, 지출 변동, 최근 활동, 변환된 관측 노출 범위, 90% 한계효과 구간을 모두 통과한 채널이 없습니다. 점추정 순위를 액션으로 사용하지 마세요.", "No channel passes all gates for positive probability, at least 20 active weeks, spend variation, recent activity, transformed observed-exposure range, and a 90% marginal-effect interval above zero. Do not turn point-estimate rankings into action.")}</p></div>
                 </div>
               )}
+              </section>
 
-              {/* 기간 전체에서 실제로 집행된 주만 평균낸 채널별 모델 성과 — 상세 아코디언 밖에 고정. */}
+              {/* 기간 전체에서 실제로 집행된 주만 평균낸 채널별 모델 성과 — 전문가 상세. */}
               {displayedWeeklyChannelPerformance.length > 0 && (
-                <section className="block mmm-weekly-performance" id="s-mmm-weekly-performance">
+                <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="allocation" onToggle={onAccordionToggle}>
+                  <summary>{tx("채널별 배분·공선성·집행 시점 상세", "Channel allocation, collinearity, and spend-timing details")}</summary>
+                <section className="mmm-weekly-performance" id="s-mmm-weekly-performance">
                   <div className="mmm-weekly-performance__head">
                     <div>
                       <h2 className="section-title">{tx("채널별 RR 배분", "Channel RR allocation")}</h2>
@@ -5030,26 +5092,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </Card>
                   )}
                 </section>
+                </details>
               )}
 
-              {/* ── 아코디언 A: 실제 vs 모델 (fit + 드라이버 분해 + 튀는 주) ── */}
-              <details className="block" onToggle={onAccordionToggle}>
-                <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>{tx("실제 성과와 모델이 얼마나 맞나? — 실제 vs 모델 그래프 · 드라이버 분해 · 튀는 주", "How well does the model match actual performance? — actual vs. model graph · driver breakdown · spikes")}</summary>
+              {/* ── ② 전문가 상세: 주별 드라이버와 튀는 주 ── */}
+              <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="driver-detail" onToggle={onAccordionToggle}>
+                <summary>{tx("주별 드라이버·이상 구간 상세", "Weekly driver and spike details")}</summary>
                 <div style={{ marginTop: "12px" }}>
-                  <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-                    <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-                    <span className="ab-pill active">Empirical-Bayes MMM</span>
-                  </div>
                   {dateScopedDecomp ? (
                     <>
-                      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "10px" }}>
-                        <div className="stat-card"><div className="lbl">{tx("평균 오차(RMSE)", "Average error (RMSE)")}</div><div className="val">±{targetValueLabel(dateScopedDecomp.rmse)}</div></div>
-                        <div className="stat-card"><div className="lbl">{tx("평균 오차율(MAPE)", "Average error rate (MAPE)")}</div><div className="val">{dateScopedDecomp.mape}%</div></div>
-                        {mmm.run.backtest && <div className="stat-card"><div className="lbl">{tx("시간순 OOS MAPE", "Time-ordered OOS MAPE")}</div><div className="val">{mmm.run.backtest.mape.toFixed(1)}%</div></div>}
-                        <div className="stat-card"><div className="lbl">{tx("선택 기간 평균", "Selected-period average")}</div><div className="val">{targetValueLabel(dateScopedDecomp.baseline)}</div></div>
-                      </div>
-                      <p className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{tx('실제(회색)와 모델(파랑)이 가까울수록 잘 맞은 거예요. 점선(시즌·추세 등)은 광고와 무관한 부분만 뽑아낸 흐름이라 시간에 따라 움직여요 — "전체 기간 평균"(고정값)과는 다른 선입니다.', 'The closer actual (gray) and model (blue) are, the better the fit. The dashed line (season/trend etc.) is the ad-unrelated portion only and moves over time — different from the fixed "full-period average" line.')}</p>
-                      <div className="chart-container" style={{ height: "240px", marginBottom: "12px" }}><canvas ref={fitRef}></canvas></div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
                         <h3 className="section-title" style={{ fontSize: "13.5px", margin: 0 }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
                         <button
@@ -5196,10 +5247,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </div>
               </details>
 
-              {/* ── 아코디언 B: 계산 상세(adstock·RMS 기여 크기·수확체감·채널효과) ── */}
-              <details className="block" onToggle={onAccordionToggle}>
-                <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>{tx("이 숫자들은 어떻게 나왔나요? — 계산 과정 자세히 보기", "How were these numbers computed? — see the calculation in detail")}</summary>
-                <div style={{ marginTop: "12px" }}>
+              {/* ── ④ 반응곡선·한계효과 ── */}
+              <section className="mmm-result-step" data-mmm-flow-step="response" aria-labelledby="mmm-bayesian-response-title">
+                <div className="mmm-result-step__head">
+                  <span>04</span>
+                  <div>
+                    <h3 id="mmm-bayesian-response-title">{tx("4. 지출을 바꾸면 예측이 어떻게 달라지나", "4. How does prediction change when spend changes?")}</h3>
+                    <p>{tx("관측한 지출 범위 안에서 채널 반응과 CPA·ROAS 변화를 확인합니다. 평평해질수록 추가 지출 효율이 낮습니다.", "Inspect channel response and CPA/ROAS within observed spend. A flatter curve means lower efficiency from additional spend.")}</p>
+                  </div>
+                </div>
+                <details className="mmm-result-details" onToggle={onAccordionToggle}>
+                  <summary>{tx("광고 여운·포화 변환 상세", "Carryover and saturation-transform details")}</summary>
+                  <div style={{ marginTop: "12px" }}>
                   <StatHead title={tx("① 채널별 광고 여운·포화", "① Per-channel carryover and saturation")} hint={tx("한 번에 한 채널씩 α × 반포화점 × Hill 기울기 profile 후보를 비교합니다. 이 표는 기본 기여·예측에 쓰는 대표 후보를 보여 주고, 아래 효과 신뢰도는 profile 후보 차이를 BIC 가중 평균합니다.", "Profile candidates compare α × half-saturation × Hill slope one channel at a time. This table shows the representative candidate used for base contribution and forecast; effect confidence below BIC-averages variation across profile candidates.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
@@ -5252,37 +5311,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                   <StatHead title={tx("③ RMS 기여 크기 비중", "③ RMS contribution-magnitude share")} hint={tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눕니다. 인과 확정·설명된 R² 배분·Shapley 값이 아닙니다.", "Divides each driver's mean squared weekly contribution by the total. It is not causal attribution, allocated explained R², or a Shapley value.")} />
                   <div className="chart-container" style={{ height: "200px", marginBottom: "8px" }}><canvas ref={shapleyRef}></canvas></div>
-                  <StatHead title={tx("④ 수확체감 — 더 쓰면 효과가 얼마나 꺾이나", "④ Diminishing returns — how much does effect fall as you spend more")} hint={tx("곡선이 평평해질수록 1달러당 효과가 줄어요(수확체감). ● = 지금 지출 위치. 이미 꺾인 뒤에 있으면 증액 효율이 낮다는 뜻. 점선 = 양수 효과의 확신이 낮아 예산 추천에서 보류한 채널입니다.", "The flatter the curve, the less each dollar returns (diminishing returns). ● = current spend point. If it's already past the bend, added spend is less efficient. Dashed = lower confidence in a positive effect, so the channel is held from budget recommendations.")} />
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
-                    <div className="ab-pillgroup" aria-label={tx("반응곡선 보기", "Response-curve view")}>
-                      <span className="ab-pillgroup-label">{tx("보기", "View")}</span>
-                      <button className={"ab-pill " + (saturationCurveView === "channel" ? "active" : "")} onClick={() => setSaturationCurveView("channel")}>{tx("채널별", "Channels")}</button>
-                      <button className={"ab-pill " + (saturationCurveView === "group" ? "active" : "")} onClick={() => setSaturationCurveView("group")}>{tx("그룹별", "Groups")}</button>
-                    </div>
-                    {saturationCurveView === "group" && (
-                      <span className="muted" style={{ fontSize: "10.5px" }}>{tx("브랜딩 전체 · 퍼포먼스 전체", "Brand total · Performance total")}</span>
-                    )}
                   </div>
-                  {saturationCurveView === "channel" ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
-                      {Object.entries(sat).map(([key, s], i) => {
-                        const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
-                        const off = !!satHidden[key];
-                        return (
-                          <button key={key} onClick={() => setSatHidden((h) => ({ ...h, [key]: !h[key] }))}
-                            style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: off ? "transparent" : "var(--bg-1)", color: off ? MUTED : "var(--text-1)", fontSize: "10.5px", cursor: "pointer", opacity: off ? 0.5 : 1, textDecoration: off ? "line-through" : "none" }}>
-                            <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: s.posteriorPositive < 0.8 ? "transparent" : col, outline: s.posteriorPositive < 0.8 ? `1px dashed ${col}` : "none", display: "inline-block" }}></span>
-                            {s.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="muted" style={{ fontSize: "10.5px", margin: "0 0 8px", lineHeight: 1.45 }}>{tx(
-                      "각 그룹 안의 현재 채널별 집행 비중을 유지한 채 그룹 예산을 함께 늘리거나 줄인 시나리오입니다. 그룹을 하나의 새 채널로 재학습한 결과는 아닙니다.",
-                      "This scales a group's current channel mix up or down together. It is not a new MMM refit that treats the group as one channel.",
-                    )}</p>
-                  )}
+                </details>
+                  <strong className="mmm-result-subtitle">{tx("채널 반응곡선", "Channel response curves")}</strong>
+                  <div className="mmm-channel-selector" role="group" aria-label={tx("Bayesian 반응 채널", "Bayesian response channel")}>
+                    {Object.values(sat).map((channel) => (
+                      <button
+                        type="button"
+                        key={channel.key}
+                        aria-pressed={effectiveBayesianResponseChannel?.key === channel.key}
+                        className={effectiveBayesianResponseChannel?.key === channel.key ? "is-selected" : ""}
+                        onClick={() => setBayesianResponseChannel(channel.key)}
+                      >{channel.label}</button>
+                    ))}
+                  </div>
                   <div>
                     <div className="chart-container" style={{ height: "340px", minHeight: "340px", marginBottom: "12px" }}><canvas ref={satRef}></canvas></div>
                     <div>
@@ -5292,7 +5334,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <tbody>
                             {(() => {
                               const sbc = sat;
-                              const keys = Object.keys(sbc);
+                              const keys = effectiveBayesianResponseChannel?.key
+                                ? [effectiveBayesianResponseChannel.key]
+                                : Object.keys(sbc);
                               if (!keys.length) return <tr><td colSpan="4" style={{ color: MUTED }}>—</td></tr>;
                               const cell = (v) => (v == null ? "—" : targetValueLabel(v, { decimals: 1, sign: true }));
                               return keys.map((k) => {
@@ -5315,56 +5359,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                       <StatHead title={mmm.target === "Revenue" ? tx("⑤ ROAS 곡선", "⑤ ROAS curve") : tx("⑤ CPA 곡선", "⑤ CPA curve")} hint={mmm.target === "Revenue" ? tx("지출이 늘수록 같은 광고비가 만드는 매출 비율(ROAS)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how revenue return per spend changes as spend grows. Interpret positive-effect channels only.") : tx("지출이 늘수록 결과 1건을 만드는 비용(CPA)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how cost per result changes as spend grows. Interpret positive-effect channels only.")} />
                       <div className="chart-container" style={{ height: "280px", minHeight: "280px", marginBottom: "12px" }}><canvas ref={efficiencyRef}></canvas></div>
-                      <p className="muted" style={{ fontSize: "10.5px", marginTop: "4px" }}>
-                        <strong>{isRevenueTarget ? tx('"추가 지출당 매출"', '"incremental revenue per added spend"') : tx(`"+${marginalStepLabel}당 추가 인원"`, `"additional people per +${marginalStepLabel}"`)}</strong> = {tx("그 지출 수준에서 예산을 실무 증액 단위만큼 더할 때 늘어나는 선택 KPI와 90% profile 혼합 구간입니다(지출↑일수록 작아짐).", "the selected KPI added by one practical budget increment at that spend level, with its 90% profile-mixture interval (shrinks as spend rises).")} {isRevenueTarget ? tx("매출은 표시 통화로 환산하고 ROAS는 비율로 따로 봅니다.", "Revenue is converted to the display currency; ROAS is shown separately as a ratio.") : tx("절대 인원은 holdout, 효율(CPR)은 비용 대비 따로 봅니다.", "Absolute count needs a holdout; efficiency (CPR) is shown separately relative to cost.")}
-                      </p>
+                      <p className="mmm-result-note">{tx(`표와 곡선은 추가 ${marginalStepLabel}에서 예상되는 ${tgtKo} 변화와 90% 모델 범위입니다. 관측한 지출 범위 안에서만 해석하세요.`, `The table and curves show the expected ${tgtKo} change per additional ${marginalStepLabel} with a 90% model range. Interpret only within observed spend.`)}</p>
                     </div>
                   </div>
-                  {/* 채널별 empirical-Bayes 효과 요약 */}
-                  <p style={{ fontSize: "12px", margin: "14px 0 4px" }}>{tx("채널별 효과 요약", "Per-channel effect summary")}</p>
-                  <div className="table-wrap">
-                    <table className="data" style={{ fontSize: "11.5px" }}>
-                      <thead><tr><th>{tx("채널", "Channel")}</th><th>{spendReferenceLabel}</th><th>{tx("추가 지출 효과", "Marginal effect")}</th><th>{tx("양수 확률", "P(positive)")}</th><th>{tx("판정", "Verdict")}</th></tr></thead>
-                      <tbody>
-                        {Object.values(sat).map((s) => {
-                          const marginal = s.incrementalAt(s.recentMean, marginalStepSource);
-                          const inObservedRange = s.isIncrementInObservedRange(s.recentMean, marginalStepSource);
-                          const useBudget = budgetEligible && s.budgetEligible && inObservedRange && marginal.ci?.[0] > 0;
-                          return (
-                            <tr key={s.key} style={useBudget ? undefined : { opacity: 0.6 }}>
-                              <td><strong>{s.label}</strong></td>
-                              <td className="tnum">{spendLabel(s.recentMean)}</td>
-                              <td className="tnum">{marginal == null ? "—" : <>{targetValueLabel(marginal.mean, { decimals: 1, sign: true })}/{marginalStepLabel}<small style={{ display: "block", color: MUTED }}>[{targetValueLabel(marginal.ci[0], { decimals: 1 })} ~ {targetValueLabel(marginal.ci[1], { decimals: 1 })}]</small></>}</td>
-                              <td className="tnum">{fmtOne(s.posteriorPositive * 100)}%</td>
-                              <td style={{ color: useBudget ? NEG : MUTED, fontWeight: 600 }}>{useBudget ? tx("예산 추천", "Recommended") : !inObservedRange ? tx("외삽 · 보류", "Extrapolation · hold") : tx("보류", "Hold")}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </details>
+              </section>
 
               {/* ── 맨 밑: 상세 설명 문서 다운로드 ── */}
-              <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-                <button className="ab-button"
+              <div className="mmm-result-download" data-mmm-flow-step="download">
+                <button type="button"
                   onClick={() => textDownload(`${tx("MMM_기여분해_설명", "mmm_contribution_explained")}_${mmm.target}_${_today()}.md`, buildMmmGuideDoc(mmm, tgtKo, locale))}>
-                  {tx("📄 이 과정에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "📄 Want a detailed explanation of this process? — Get the detailed document")}
+                  {tx("상세 분석 문서 받기", "Download detailed analysis notes")}
                 </button>
               </div>
-                </>
-              ) : (
-                <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                  <strong>{tx("WebR Elastic-net 결과를 보고 있습니다", "Viewing the WebR Elastic-net result")}</strong>
-                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "6px 0 0" }}>
-                    {tx(
-                      "위에서 WebR 전용 반응곡선·한계 CPA/ROAS·포화도·안전 게이트·조건부 예산안을 보여줍니다. Bayesian 기여분해는 두 모델의 결과가 섞이지 않도록 숨겼습니다. WebR 수치는 예측 기반이며 인과효과 보장이 아닙니다.",
-                      "The WebR-specific response curves, marginal CPA/ROAS, saturation, safety gates, and conditional budget plan are shown above. Bayesian contribution decomposition is hidden to avoid mixing model outputs. WebR values are predictive and do not guarantee causal effects.",
-                    )}
-                  </p>
-                </Card>
-              )}
+                </div>
+              ) : null}
             </>
             );
           })()}

@@ -1754,6 +1754,18 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
+    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 효과는 검증에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => {
+      expect(document.body.textContent).toContain(copy);
+    });
+    expect(container.querySelector('[data-mmm-result-model="bayesian"]')).toBeTruthy();
+    const responseChannelGroup = container.querySelector('[role="group"][aria-label="Bayesian 반응 채널"]');
+    expect(responseChannelGroup).toBeTruthy();
+    const responseChannelButtons = Array.from(responseChannelGroup.querySelectorAll("button"));
+    expect(responseChannelButtons.filter((button) => button.getAttribute("aria-pressed") === "true")).toHaveLength(1);
+    if (responseChannelButtons.length > 1) {
+      fireEvent.click(responseChannelButtons[1]);
+      expect(responseChannelButtons.filter((button) => button.getAttribute("aria-pressed") === "true")).toHaveLength(1);
+    }
     const bayesian = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Bayesian MMM"));
     expect(bayesian).toBeTruthy();
     expect(bayesian.classList.contains("is-selected")).toBe(true);
@@ -1770,7 +1782,7 @@ describe("MarketingResponse render smoke", () => {
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
     // T2: 계산 상세 아코디언 열면 ① 변환 파라미터 Laplace 90% 구간 범례가 throw 없이 렌더.
-    const detailSummary = Array.from(container.querySelectorAll("summary")).find((summary) => summary.textContent.includes("계산 과정 자세히 보기"));
+    const detailSummary = Array.from(container.querySelectorAll("summary")).find((summary) => summary.textContent.includes("광고 여운·포화 변환 상세"));
     expect(detailSummary).toBeTruthy();
     expect(() => fireEvent.click(detailSummary)).not.toThrow();
     await flushRaf();
