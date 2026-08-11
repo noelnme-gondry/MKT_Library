@@ -5041,12 +5041,12 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .kpi-card .label { color: var(--text-muted); font: 600 10px var(--font-mono); letter-spacing: .04em; }
 .kpi-card .value { margin-top: 7px; color: var(--text-primary); font: 650 clamp(20px,1.65vw,26px) var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -.045em; line-height: 1.12; white-space: nowrap; }
 .kpi-grid--overview .kpi-card .delta { display: none; }
-.kpi-grid--overview .kpi-card--explorer { display: grid; min-height: 168px; padding: 13px 14px; cursor: pointer; text-align: left; color: inherit; font: inherit; transition: background .16s, color .16s; }
+.kpi-grid--overview .kpi-card--explorer { display: grid; width: 100%; min-height: 156px; padding: 12px 14px; cursor: pointer; text-align: left; color: inherit; font: inherit; transition: background .16s, color .16s; }
 .kpi-grid--overview .kpi-card--explorer:hover { background: color-mix(in srgb, var(--primary) 3%, transparent); }
 .kpi-grid--overview .kpi-card--explorer.is-selected { background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-lowest)); box-shadow: inset 0 -2px 0 var(--primary); }
 .kpi-card__select-state { min-height: 14px; color: var(--primary); font: 700 9px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .kpi-card--explorer .value { margin-top: 3px; font-size: clamp(17px, 1.45vw, 23px); }
-.kpi-sparkline { width: 100%; height: 42px; margin: 7px 0 4px; overflow: visible; color: var(--primary); }
+.kpi-sparkline { display: block; width: 100%; height: 38px; margin: 5px 0 3px; overflow: visible; color: var(--primary); }
 .kpi-sparkline polygon { fill: color-mix(in srgb, currentColor 13%, transparent); stroke: none; }
 .kpi-sparkline polyline { fill: none; stroke: currentColor; stroke-width: 2.8; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
 .kpi-sparkline circle { fill: var(--surface-container-lowest); stroke: currentColor; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
