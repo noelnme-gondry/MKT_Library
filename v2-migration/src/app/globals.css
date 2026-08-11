@@ -5132,16 +5132,33 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .shared-decision__points { display: grid; gap: 7px; margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: 14.5px; line-height: 1.6; }
 .shared-decision__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 16px; }
 .shared-decision__privacy { color: var(--text-muted); font-size: 12.5px; line-height: 1.55; }
-/* 도구 → 콘텐츠 역링크(§유입: 단방향 내부 링크 보완). ToolLongform 바로 뒤. */
-.tool-evidence { margin: 18px 0 12px; padding: 22px 26px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
-.tool-evidence__eyebrow { color: var(--text-muted); font: 700 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
-.tool-evidence h2 { margin: 8px 0 14px; color: var(--text-primary); font: 640 19px/1.3 var(--font-display); letter-spacing: -.03em; }
-.tool-evidence__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.tool-evidence__list a { display: grid; gap: 3px; padding: 11px 13px; border: 1px solid var(--border-subtle); border-radius: 9px; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
-.tool-evidence__list a:hover { border-color: var(--primary); transform: translateY(-1px); }
-.tool-evidence__list span { color: var(--text-muted); font: 700 9.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.tool-evidence__list strong { color: var(--text-primary); font-size: 14.5px; font-weight: 640; line-height: 1.35; }
-.tool-evidence__list small { color: var(--text-muted); font-size: 12.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* 도구 → 콘텐츠 역링크(§유입: 단방향 내부 링크 보완). 본문과 구분되는 판단 근거 서랍. */
+.tool-evidence { position: relative; margin: 30px 0 14px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border)); border-radius: 14px; background: var(--surface-container-lowest); }
+.tool-evidence::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--primary); }
+.tool-evidence__header { padding: 22px 26px 18px 30px; border-bottom: 1px solid var(--border-subtle); background: linear-gradient(120deg, color-mix(in srgb, var(--primary) 11%, var(--surface-container-lowest)), var(--surface-container-lowest) 66%); }
+.tool-evidence__eyebrow { color: var(--primary); font: 750 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.tool-evidence h2 { margin: 7px 0 0; color: var(--text-primary); font: 660 21px/1.3 var(--font-display); letter-spacing: -.035em; }
+.tool-evidence__header p { max-width: 680px; margin: 7px 0 0; color: var(--text-secondary); font-size: 12.5px; line-height: 1.55; }
+.tool-evidence__groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 18px 22px 22px 26px; background: color-mix(in srgb, var(--surface-container-low) 56%, transparent); }
+.tool-evidence__group { min-width: 0; overflow: hidden; border: 1px solid var(--border-subtle); border-top: 3px solid var(--primary); border-radius: 10px; background: var(--surface-container-lowest); }
+.tool-evidence__group:only-child { grid-column: 1 / -1; }
+.tool-evidence__group--term { border-top-color: var(--text-secondary); }
+.tool-evidence__group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 13px 14px 11px; background: var(--surface-container-low); }
+.tool-evidence__group-head > div { min-width: 0; }
+.tool-evidence__group-head strong { display: block; color: var(--text-primary); font: 700 12px/1.35 var(--font-display); }
+.tool-evidence__group-head span { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10.5px; line-height: 1.4; }
+.tool-evidence__group-head small { flex: none; padding: 3px 7px; border: 1px solid var(--border-subtle); border-radius: 99px; color: var(--text-muted); font: 700 9px var(--font-mono); white-space: nowrap; }
+.tool-evidence__list { margin: 0; padding: 0; list-style: none; }
+.tool-evidence__list li + li { border-top: 1px solid var(--border-subtle); }
+.tool-evidence__list a { display: grid; grid-template-columns: minmax(0, 1fr) 22px; align-items: center; gap: 10px; padding: 13px 14px; color: inherit; text-decoration: none; transition: background .15s, color .15s; }
+.tool-evidence__list a:hover { background: color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)); }
+.tool-evidence__list a:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+.tool-evidence__link-copy { min-width: 0; }
+.tool-evidence__link-copy strong { display: block; color: var(--text-primary); font-size: 13.5px; font-weight: 650; line-height: 1.4; }
+.tool-evidence__link-copy small { display: -webkit-box; margin-top: 3px; overflow: hidden; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tool-evidence__arrow { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-container); color: var(--primary); font: 700 12px var(--font-mono); transition: transform .15s, background .15s; }
+.tool-evidence__list a:hover .tool-evidence__arrow { background: color-mix(in srgb, var(--primary) 15%, var(--surface-container)); transform: translateX(2px); }
+@media (max-width: 720px) { .tool-evidence { margin-top: 24px; } .tool-evidence__header { padding: 19px 19px 16px 23px; } .tool-evidence h2 { font-size: 19px; } .tool-evidence__groups { grid-template-columns: 1fr; padding: 14px 14px 17px 18px; } }
 .tool-longform { margin: 44px 0 12px; padding: 26px; border: 1px solid var(--border-subtle); border-radius: 12px; background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--surface-container-lowest)), var(--surface-container-lowest)); }
 .tool-longform__eyebrow { color: var(--primary); font: 700 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 .tool-longform h2 { max-width: 760px; margin: 9px 0 0; color: var(--text-primary); font: 650 24px/1.25 var(--font-display); letter-spacing: -.04em; }
