@@ -129,6 +129,18 @@ describe("Dashboard render smoke", () => {
     expect(utilities.hasAttribute("open")).toBe(false);
   });
 
+  it("lets the waiting instruction wrap naturally without forced line breaks", () => {
+    seedWithData();
+    useAppStore.setState({
+      analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
+    });
+    const { container } = render(<Dashboard />);
+    const waitingCard = screen.getByText("분석 대기 중").closest(".card");
+    expect(waitingCard).toBeTruthy();
+    expect(waitingCard.querySelector("br")).toBeNull();
+    expect(container.querySelector(".dashboard-content")).toBeNull();
+  });
+
   it("puts the conclusion before follow-up actions and supporting views", () => {
     seedWithData();
     const { container } = render(<Dashboard />);

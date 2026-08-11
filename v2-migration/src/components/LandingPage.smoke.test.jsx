@@ -73,6 +73,7 @@ describe("LandingPage render smoke", () => {
       "/tools/brand-campaign-incrementality",
     ]);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(13);
+    expect(document.querySelector(".connected-tool-journey__head br")).toBeNull();
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("puts the question cards ahead of the weekly-loop explainer", () => {
