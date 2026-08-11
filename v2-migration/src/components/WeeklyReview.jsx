@@ -11,6 +11,7 @@ import {
   decisionMetricDirection,
   normalizeDecisionReviewRows,
   serializeDecisionReviewCsv,
+  serializeDecisionReviewIcs,
   summarizeDecisionOutcomes,
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
@@ -20,7 +21,7 @@ import { localizedTool } from "@/lib/toolConnections";
 import { groupForRoute } from "@/lib/toolGroups";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
-import { downloadCsv, downloadText } from "@/utils/download";
+import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
 
 const COPY = {
   ko: {
@@ -30,6 +31,7 @@ const COPY = {
     import: "결정 기록 CSV 불러오기",
     export: "수정한 CSV 내보내기",
     brief: "공유용 브리프 받기",
+    reminder: "다음 검토일 캘린더에 추가",
     empty: "아직 저장한 결정이 없습니다. 분석 결과의 ‘다음 검토 약속’에서 행동 하나를 저장하면 여기에 바로 나타납니다.",
     emptyTitle: "첫 결정을 이렇게 쌓습니다",
     emptySteps: ["내 데이터로 분석 실행", "결과에서 행동·검토일 저장", "검토일에 실제 결과·배운 점 기록"],
@@ -127,6 +129,7 @@ const COPY = {
     import: "Import decision CSV",
     export: "Export updated CSV",
     brief: "Download share brief",
+    reminder: "Add next review to calendar",
     empty: "No decisions saved yet. Save one action from a result card’s ‘next review’ section and it will appear here immediately.",
     emptyTitle: "Build your first decision record",
     emptySteps: ["Run an analysis with your data", "Save an action and review date from the result", "Record the outcome and learning on the review date"],
@@ -294,6 +297,12 @@ export default function WeeklyReview({ locale = "ko" }) {
     const bWeight = weights[getDecisionReviewBucket(b, todayKey)];
     return aWeight - bWeight || String(a.reviewDate).localeCompare(String(b.reviewDate));
   }), [records, todayKey]);
+  // 캘린더 리마인더 대상 = 아직 검토하지 않은 것 중 검토일이 가장 이른 기록.
+  // sortedRecords가 이미 overdue→today→unscheduled→upcoming→reviewed 순이라 앞에서 찾는다.
+  const nextReviewRecord = useMemo(
+    () => sortedRecords.find((record) => record.reviewDate && getDecisionReviewBucket(record, todayKey) !== "reviewed") || null,
+    [sortedRecords, todayKey],
+  );
   const statusCounts = useMemo(() => sortedRecords.reduce((counts, record) => {
     const bucket = getDecisionReviewBucket(record, todayKey);
     counts[bucket] += 1;
@@ -436,6 +445,24 @@ export default function WeeklyReview({ locale = "ko" }) {
         <input ref={importRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={importRecords} />
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadCsv(serializeDecisionReviewCsv(records), "weekly_decision_review")}>{t.export}</button>
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadText(buildBrief(sortedRecords, t, locale), "weekly_operating_brief", "md", locale)}>{t.brief}</button>
+        {/* 리마인더는 저장 직후 프롬프트에만 있어, 정작 원장을 검토하는 이 화면에서
+            "다음 검토일을 캘린더에 넣기"가 불가능했다 → 툴바에 노출한다. */}
+        <button
+          type="button"
+          className="btn small"
+          disabled={!nextReviewRecord}
+          onClick={() => {
+            const calendar = serializeDecisionReviewIcs(nextReviewRecord, locale);
+            if (!calendar) return;
+            downloadCalendar(calendar, "decision_review_next");
+            trackProductEvent("decision_review_reminder_exported", {
+              source: "weekly_review",
+              placement: "weekly_review_toolbar",
+              download_type: "ics",
+              locale,
+            });
+          }}
+        >{t.reminder}</button>
         <button
           type="button"
           className="btn text weekly-review-page__clear"

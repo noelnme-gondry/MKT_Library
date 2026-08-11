@@ -365,6 +365,24 @@ export function displayItemNumberShort(itemId) {
 
 // persist 저장 대상 = "설정만"(§2.2). 원본 CSV(csvGroups·csvData)·필터 Set·차트상태는
 // 제외. export하여 불변식(원본 데이터 미저장)을 골든으로 잠금(useDataStore.test.js).
+// 이벤트 마커는 사용자가 직접 입력한 날짜 + 짧은 라벨("브랜드 캠페인 시작")이다.
+// 원본 CSV 행이 아니므로 §2.2(원본 미저장)에 걸리지 않지만, 무한정 쌓이지 않도록
+// 개수·길이를 제한해 저장한다. 저장하지 않으면 새로고침마다 사라져 "왜 이랬는지"를
+// 기록하는 유일한 장치가 매번 증발한다(기능은 이미 완성돼 있는데 배선만 빠져 있었다).
+const MAX_PERSISTED_EVENT_MARKERS = 200;
+export const sanitizeEventMarkers = (markers) => {
+  if (!Array.isArray(markers)) return [];
+  return markers
+    .filter((marker) => marker && typeof marker === "object")
+    .slice(0, MAX_PERSISTED_EVENT_MARKERS)
+    .map((marker) => ({
+      id: String(marker.id ?? "").slice(0, 40),
+      date: String(marker.date ?? "").slice(0, 40),
+      label: String(marker.label ?? "").slice(0, 120),
+    }))
+    .filter((marker) => marker.date || marker.label);
+};
+
 export const persistPartialize = (state) => {
   const persisted = {
     viewConfig: state.viewConfig,
@@ -373,6 +391,7 @@ export const persistPartialize = (state) => {
     // 분석가 모드는 표시 설정만 저장한다. 원본 CSV·매핑·필터는 포함하지 않는다.
     analystMode: state.analystMode === true,
     decisionPersistenceEnabled: state.decisionPersistenceEnabled === true,
+    eventMarkers: sanitizeEventMarkers(state.eventMarkers),
   };
   if (state.decisionPersistenceEnabled === true) {
     persisted.decisionRecords = sanitizeDecisionReviewRecords(state.decisionRecords);
