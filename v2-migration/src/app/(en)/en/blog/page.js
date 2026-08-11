@@ -69,7 +69,7 @@ export default function EnBlogIndexPage() {
       />
       <header className="content-index__hero">
         <span className="content-index__eyebrow">PERFORMANCE MARKETING FIELD NOTES</span>
-        <h1>Turn a performance problem<br />into the next action.</h1>
+        <h1>Turn a performance problem into the next action.</h1>
         <p>Practical notes for narrowing down CPA, ROAS, budget, creative, and measurement issues — then checking the answer with your own data.</p>
         <span className="content-index__meta">{posts.length} ARTICLES · BUILT FOR OPERATORS</span>
       </header>

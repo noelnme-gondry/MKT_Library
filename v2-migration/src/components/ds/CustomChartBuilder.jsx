@@ -92,7 +92,7 @@ export default function CustomChartBuilder({
             </p>
 
             {/* 1) 차트 모양 */}
-            <div className="muted" style={{ fontSize: "10.5px", marginBottom: "5px" }}>{T.shape}</div>
+            <div className="muted" style={{ fontSize: "11px", marginBottom: "5px" }}>{T.shape}</div>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
               {CHART_TYPES.map((t) => (
                 <button
@@ -108,13 +108,13 @@ export default function CustomChartBuilder({
 
             <div style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
               {!isScorecard && <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
-                <span className="muted" style={{ fontSize: "10.5px" }}>{T.row}</span>
+                <span className="muted" style={{ fontSize: "11px" }}>{T.row}</span>
                 <select value={dim} onChange={(e) => setDim(e.target.value)} style={sel}>
                   {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
                 </select>
               </label>}
               <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
-                <span className="muted" style={{ fontSize: "10.5px" }}>{isScorecard ? T.value : T.value3}</span>
+                <span className="muted" style={{ fontSize: "11px" }}>{isScorecard ? T.value : T.value3}</span>
                 <select value={metric} onChange={(e) => setMetric(e.target.value)} style={sel}>
                   {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
                 </select>
@@ -122,7 +122,7 @@ export default function CustomChartBuilder({
             </div>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
-              <span className="muted" style={{ fontSize: "10.5px" }}>{isScorecard ? T.name : T.name4}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{isScorecard ? T.name : T.name4}</span>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={T.placeholder} style={sel} />
             </label>
 
@@ -139,7 +139,7 @@ export default function CustomChartBuilder({
 
         {existing.length > 0 && (
           <div style={{ marginTop: "16px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-            <div className="muted" style={{ fontSize: "10.5px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
+            <div className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               {existing.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)" }}>
@@ -154,7 +154,7 @@ export default function CustomChartBuilder({
           </div>
         )}
 
-        <p className="muted" style={{ fontSize: "10px", marginTop: "12px", textAlign: "right" }}>{T.saved}</p>
+        <p className="muted" style={{ fontSize: "11px", marginTop: "12px", textAlign: "right" }}>{T.saved}</p>
     </ModalDialog>
   );
 }

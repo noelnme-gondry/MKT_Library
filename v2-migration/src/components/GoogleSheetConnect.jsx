@@ -224,8 +224,8 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
           {T.cancelBtn}
         </button>
       </div>
-      <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>{T.urlHint}</span>
-      {recentSources.length > 0 && <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
+      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlHint}</span>
+      {recentSources.length > 0 && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
     </form>
   );
 }

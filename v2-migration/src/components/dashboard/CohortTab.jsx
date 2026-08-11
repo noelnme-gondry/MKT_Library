@@ -231,7 +231,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-cohort">
         <section className="block" id="s-retention">
-          <h2 className="section-title"><span className="ix">§1</span>{tr("리텐션 곡선", "Retention Curve")}</h2>
+          <h2 className="section-title">{tr("리텐션 곡선", "Retention Curve")}</h2>
           <div className="callout warn">
             <div className="ico">!</div>
             <div className="body">
@@ -292,7 +292,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-cohort">
       <section className="block" id="s-retention">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("전체 리텐션 곡선", "Overall Retention Curve")}</h2>
+        <h2 className="section-title">{tr("전체 리텐션 곡선", "Overall Retention Curve")}</h2>
 
         {canActions && canInstalls && (
           <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
@@ -411,7 +411,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
 
       {Object.keys(wrc.bySegment).length > 0 && (
         <section className="block" id="s-ret-segment">
-          <h2 className="section-title"><span className="ix">§2</span>{tr("세그먼트별 리텐션", "Retention by Segment")}</h2>
+          <h2 className="section-title">{tr("세그먼트별 리텐션", "Retention by Segment")}</h2>
           {renderSegmentChart("channel", tr("채널", "Channel"))}
           {renderSegmentChart("country", tr("국가", "Country"))}
           {renderSegmentChart("platform", tr("플랫폼", "Platform"))}
@@ -420,7 +420,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
 
       {wrc.pwr && horizons.length > 0 && (
         <section className="block" id="s-ret-predict">
-          <h2 className="section-title"><span className="ix">§3</span>{tr("리텐션 예측", "Retention Forecast")}</h2>
+          <h2 className="section-title">{tr("리텐션 예측", "Retention Forecast")}</h2>
           <p className="muted" style={{ fontSize: "12px" }}>
             {tr(
               "관측된 Dn 데이터로 power-law 커브를 적합해 미관측 구간을 외삽합니다. 참고값으로만 사용하세요.",

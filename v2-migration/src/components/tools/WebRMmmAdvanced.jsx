@@ -41,7 +41,7 @@ const COPY = {
     oosWmape: "시간순 OOS WMAPE",
     selectedBadge: "현재 결과",
     recommendedBadge: "예측 추천",
-    fitStep: "1. 실제 성과를 얼마나 설명했나",
+    fitStep: "실제 성과를 얼마나 설명했나",
     fitStepDesc: "실제값과 학습기간 적합값을 먼저 확인하고, 일반화 성능은 별도의 시간순 OOS WMAPE로 판단합니다.",
     actual: "실제",
     fitted: "WebR 적합값",
@@ -50,7 +50,7 @@ const COPY = {
     oosFoldRange: "OOS fold 범위",
     rmse: "RMSE",
     fitCaveat: "R²와 학습 WMAPE는 과거 설명력이고, OOS WMAPE는 보지 않은 미래 구간의 예측 오차입니다. 어느 지표도 인과효과를 뜻하지 않습니다.",
-    driverStep: "2. 무엇이 성과를 설명했나",
+    driverStep: "무엇이 성과를 설명했나",
     driverStepDesc: "채널·추세·계절성·이벤트가 매주 적합값에 더하거나 뺀 값을 그대로 보여줍니다. 기여는 예측 분해이며 인과 기여가 아닙니다.",
     weeklyContribution: "주별 예측 기여",
     driver: "드라이버",
@@ -60,7 +60,7 @@ const COPY = {
     baseline: "기본 수요",
     media: "광고 채널",
     control: "비광고",
-    coefficientStep: "3. 채널 계수는 검증구간에서도 유지됐나",
+    coefficientStep: "채널 효과는 검증에서도 유지됐나",
     coefficientStepDesc: "WebR은 채널마다 여러 carryover 후보를 함께 규제합니다. 아래 계수 범위는 검증 fold에서 다시 적합한 값의 범위이며 신뢰구간이나 posterior가 아닙니다.",
     coefficient: "합산 계수",
     nonzeroTerms: "선택된 carryover",
@@ -68,8 +68,8 @@ const COPY = {
     allCoefficients: "추세·계절성·이벤트를 포함한 전체 계수",
     term: "모델 항",
     modelSetup: "모델 설정",
-    responseStep: "4. 지출을 바꾸면 예측이 어떻게 달라지나",
-    budgetStep: "5. 예산 변경을 추천해도 안전한가",
+    responseStep: "지출을 바꾸면 예측이 어떻게 달라지나",
+    budgetStep: "예산 변경을 추천해도 안전한가",
     foldLower: "검증 fold 하한",
     foldUpper: "검증 fold 상한",
     importance: "WebR 예측 중요도",
@@ -144,7 +144,7 @@ const COPY = {
     oosWmape: "Time-ordered OOS WMAPE",
     selectedBadge: "Current result",
     recommendedBadge: "Predictive pick",
-    fitStep: "1. How much of actual performance did the model explain?",
+    fitStep: "How much of actual performance did the model explain?",
     fitStepDesc: "Compare actuals with the in-sample fitted series first, then use time-ordered OOS WMAPE for generalization performance.",
     actual: "Actual",
     fitted: "WebR fitted",
@@ -153,7 +153,7 @@ const COPY = {
     oosFoldRange: "OOS fold range",
     rmse: "RMSE",
     fitCaveat: "R² and training WMAPE describe historical fit; OOS WMAPE measures error on unseen future windows. None of them identifies causality.",
-    driverStep: "2. What explained performance?",
+    driverStep: "What explained performance?",
     driverStepDesc: "Shows how channels, trend, seasonality, and events added to or subtracted from each week's fitted value. This is predictive decomposition, not causal attribution.",
     weeklyContribution: "Weekly predictive contribution",
     driver: "Driver",
@@ -163,7 +163,7 @@ const COPY = {
     baseline: "Baseline demand",
     media: "Media channel",
     control: "Non-media",
-    coefficientStep: "3. Did channel coefficients persist across validation windows?",
+    coefficientStep: "Did channel effects persist across validation windows?",
     coefficientStepDesc: "WebR regularizes multiple carryover candidates per channel together. The ranges below come from refits in validation folds; they are not confidence intervals or posteriors.",
     coefficient: "Summed coefficient",
     nonzeroTerms: "Selected carryovers",
@@ -171,8 +171,8 @@ const COPY = {
     allCoefficients: "All coefficients, including trend, seasonality, and events",
     term: "Model term",
     modelSetup: "Model setup",
-    responseStep: "4. How does prediction change when spend changes?",
-    budgetStep: "5. Is a budget change safe enough to recommend?",
+    responseStep: "How does prediction change when spend changes?",
+    budgetStep: "Is a budget change safe enough to recommend?",
     foldLower: "Validation-fold lower",
     foldUpper: "Validation-fold upper",
     importance: "WebR predictive importance",
@@ -594,7 +594,7 @@ export default function WebRMmmAdvanced({
                     <div className="chart-container mmm-result-chart"><canvas ref={fitChartRef} /></div>
                     <p className="mmm-result-note">{T.fitCaveat}</p>
                   </> : <div className="required-banner"><p style={{ margin: 0 }}>{T.unavailable}</p></div>}
-                  <div className="mmm-model-setup"><strong>{T.modelSetup}</strong><span>folds {result.folds} × {result.horizon}</span><span>α {result.alpha.toFixed(2)}</span><span>λ factor {formatCoefficient(result.lambdaFactor)}</span><span>nonzero {result.nonzeroFeatures}</span></div>
+                  <details className="mmm-result-details mmm-model-setup-details"><summary>{T.modelSetup}</summary><div className="mmm-model-setup"><span>folds {result.folds} × {result.horizon}</span><span>α {result.alpha.toFixed(2)}</span><span>λ factor {formatCoefficient(result.lambdaFactor)}</span><span>nonzero {result.nonzeroFeatures}</span></div></details>
                 </section>
 
                 <section className="mmm-result-step" aria-labelledby="mmm-webr-driver-title">

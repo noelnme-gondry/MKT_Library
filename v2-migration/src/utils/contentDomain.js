@@ -111,9 +111,9 @@ export const PVM_COPY = {
     levelCampaign: "캠페인",
     levelCreative: "소재",
     // TOC(§2~§4) + 섹션 h2 텍스트
-    tocChannels: "§2 채널별 결과",
-    tocCampaigns: "§3 채널·캠페인별 결과",
-    tocCreatives: "§4 소재별 결과",
+    tocChannels: "채널별 결과",
+    tocCampaigns: "채널·캠페인별 결과",
+    tocCreatives: "소재별 결과",
     secChannels: "채널별 결과",
     secCampaigns: "채널·캠페인별 결과",
     secCreatives: "소재별 결과",
@@ -128,10 +128,10 @@ export const PVM_COPY = {
     summaryLead: (ml) =>
       `Price-Volume-Mix(PVM) Bridge 분해로 전체 ${ml} 변화를 채널·캠페인·소재 단위로 정확히 나눕니다(잔차 없음).`,
     summaryLimitBody:
-      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 §2(채널)·§3(캠페인)·§4(소재)는 항상 정확히 중첩됩니다(Σ 일치).",
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 채널·캠페인·소재 보기는 항상 정확히 중첩됩니다(Σ 일치).",
     // §0 인과 경고
     causationCallout:
-      "association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 §2~§4(모드A)는 항상 정확히 중첩됩니다.",
+      "association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 세 보기는 항상 정확히 중첩됩니다.",
     // §2 Mix·Rate 설명
     explainerMix: "예산 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `채널 자체 ${ml}가 변해서 생긴 변화.`,
@@ -155,9 +155,9 @@ export const PVM_COPY = {
     levelChannel: "유입경로",
     levelCampaign: "카테고리",
     levelCreative: "콘텐츠",
-    tocChannels: "§2 유입경로별 결과",
-    tocCampaigns: "§3 유입경로·카테고리별 결과",
-    tocCreatives: "§4 콘텐츠별 결과",
+    tocChannels: "유입경로별 결과",
+    tocCampaigns: "유입경로·카테고리별 결과",
+    tocCreatives: "콘텐츠별 결과",
     secChannels: "유입경로별 결과",
     secCampaigns: "유입경로·카테고리별 결과",
     secCreatives: "콘텐츠별 결과",
@@ -170,9 +170,9 @@ export const PVM_COPY = {
     summaryLead: (ml) =>
       `Price-Volume-Mix(PVM) Bridge 분해로 전체 ${ml} 변화를 유입경로·카테고리·콘텐츠 단위로 정확히 나눕니다(잔차 없음).`,
     summaryLimitBody:
-      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 유입경로×카테고리×콘텐츠 최소 단위에서 한 번 분해 후 합산하므로 §2(유입경로)·§3(카테고리)·§4(콘텐츠)는 항상 정확히 중첩됩니다(Σ 일치).",
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 유입경로×카테고리×콘텐츠 최소 단위에서 한 번 분해 후 합산하므로 유입경로·카테고리·콘텐츠 보기는 항상 정확히 중첩됩니다(Σ 일치).",
     causationCallout:
-      "association(연관)일 뿐 인과를 증명하지 않습니다. 유입경로·카테고리·콘텐츠 모두 최소 단위(유입경로×카테고리×콘텐츠)에서 한 번 분해 후 합산해 §2~§4는 항상 정확히 중첩됩니다.",
+      "association(연관)일 뿐 인과를 증명하지 않습니다. 유입경로·카테고리·콘텐츠 모두 최소 단위(유입경로×카테고리×콘텐츠)에서 한 번 분해 후 합산해 세 보기는 항상 정확히 중첩됩니다.",
     explainerMix: "발행·노출 비중이 평균보다 비싼/싼 유입경로로 옮겨가며 생긴 변화.",
     explainerRate: (ml) => `유입경로 자체 ${ml}가 변해서 생긴 변화.`,
     shareHeader: "트래픽 비중 (P1→P2)",
@@ -249,7 +249,7 @@ export const CREATIVE_COPY = {
     statLifeLabel: "소재 하나가 버티는 평균 기간",
     statFatLabel: "피로해진 소재 비율 (Fatigue)",
     statFatTitle: "성과가 떨어지며 지친 것으로 진단된 소재 비율",
-    healthCalloutT1: "이 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.",
+    healthCalloutT1: "이 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 다음 테스트에서 컨셉을 더 다양하게 시도해야 합니다.",
     healthCalloutS2: "한 주에 새로 올리는 소재 수",
     healthCalloutT2: "가 너무 적으면 지치는 소재를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).",
     healthCalloutS3: "잘 되는 소재에 쓴 비용 비중",
@@ -288,7 +288,7 @@ export const CREATIVE_COPY = {
     plannerFootnote: "교체 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 피로도 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.",
     plannerEmpty: "교체가 필요한 소재가 없습니다.",
     // §8 조합표
-    matrixDesc1: "소재 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.",
+    matrixDesc1: "소재 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 소재 성과표가 그 조합으로 필터링됩니다.",
   },
   content: {
     uploaderToolId: "9-6",
@@ -321,7 +321,7 @@ export const CREATIVE_COPY = {
     statLifeLabel: "콘텐츠 하나가 버티는 평균 기간",
     statFatLabel: "신선도가 떨어진 콘텐츠 비율 (Freshness)",
     statFatTitle: "반응이 떨어지며 노후한 것으로 진단된 콘텐츠 비율",
-    healthCalloutT1: "이 50%를 크게 밑돌면 콘텐츠 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.",
+    healthCalloutT1: "이 50%를 크게 밑돌면 콘텐츠 기획 적중률이 낮은 것 — 다음 테스트에서 컨셉을 더 다양하게 시도해야 합니다.",
     healthCalloutS2: "한 주에 새로 발행하는 콘텐츠 수",
     healthCalloutT2: "가 너무 적으면 신선도가 떨어지는 콘텐츠를 못 따라잡습니다 (벤치마크: 활성 콘텐츠의 20~30% / 주).",
     healthCalloutS3: "잘 되는 콘텐츠에 쓴 비용 비중",
@@ -354,7 +354,7 @@ export const CREATIVE_COPY = {
     plannerGanttTitle: (weeks) => `발행 타임라인 (Gantt) — 향후 ${weeks}주`,
     plannerFootnote: "발행 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 신선도 저하 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.",
     plannerEmpty: "새로 발행이 필요한 콘텐츠가 없습니다.",
-    matrixDesc1: "콘텐츠 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.",
+    matrixDesc1: "콘텐츠 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 콘텐츠 성과표가 그 조합으로 필터링됩니다.",
   },
 };
 

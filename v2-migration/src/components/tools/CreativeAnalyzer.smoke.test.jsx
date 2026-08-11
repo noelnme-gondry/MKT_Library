@@ -155,23 +155,18 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(() => {
       ({ container } = render(<CreativeAnalyzer />));
     }).not.toThrow();
-    // With-data branch renders the §3 per-creative metrics table heading
-    // (faithful to index.html: "소재별 성과표").
-    expect(screen.getByText(/소재별 성과표/)).toBeTruthy();
-    // Ported sections mount: §2 운영 건강도, §7 교체 일정 추천, §9 다음 테스트 추천.
-    // (some phrases repeat across headings + callouts → getAllByText)
+    expect(screen.getByText(/어떤 소재가 성과를 만들었나/)).toBeTruthy();
     expect(screen.getByText(/운영 건강도/)).toBeTruthy();
-    expect(screen.getAllByText(/교체 일정 추천/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/다음 테스트 추천/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/다음에 무엇을 만들까/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/다음 테스트에서 무엇을 확인할까/).length).toBeGreaterThan(0);
     expect(screen.getByText(/누적 집행 위험 구간/)).toBeTruthy();
     expect(screen.getAllByText(/현재 위험 구간/).length).toBeGreaterThan(0);
-    // §4's explanatory sentence is compacted into a hover/focus help icon;
+    // The explanatory sentence is compacted into a hover/focus help icon;
     // leave the metric controls visible without a full-width description line.
     expect(container.querySelector(".section-help")?.getAttribute("title")).toContain("분석 기준 지표");
     expect(screen.queryByText(/후킹 방식.*통계적으로 분석/)).toBeFalsy();
-    // §8 Concept Matrix section is present (matrix falls back to "생성 불가"
-    // here since message_angle isn't in the seed mapping — honest empty state).
-    expect(screen.getAllByText(/조합별 성과표/).length).toBeGreaterThan(0);
+    // The combination section remains present even when the seed produces an honest empty state.
+    expect(screen.getAllByText(/어떤 요소 조합이 좋았나/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText(/다음 검토 약속/));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/cr_/);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));

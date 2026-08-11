@@ -27,9 +27,11 @@ describe("DmNudge", () => {
 
     const { container } = render(<DmNudge />);
     await waitFor(() => expect(container.querySelector("[data-dm-nudge]")).toBeTruthy());
+    await waitFor(() => expect(container.querySelector(".dm-nudge")?.classList.contains("is-visible")).toBe(true));
     expect(container.textContent).toContain("내 데이터로 시작하기");
     expect(container.textContent).toContain("데이터 준비를 1:1로 문의");
     expect(container.textContent).not.toContain("지금 화면은 예시 데이터");
+    expect(container.querySelector(".dm-nudge__close")).toBeTruthy();
 
     Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
   });

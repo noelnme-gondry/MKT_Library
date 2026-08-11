@@ -1011,13 +1011,13 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "12px", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
         <span style={{ fontSize: "18px", fontWeight: 720, color: "#7F77DD" }}>{overlapWeeks}{tx("주", " wk")}</span>
-        <span className="muted" style={{ fontSize: "10.5px" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
+        <span className="muted" style={{ fontSize: "11px" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
         <div style={{ minWidth: timelineWidth + "px", display: "grid", gridTemplateColumns: "168px 1fr", gap: "6px 10px", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: "10px" }}>{tx("채널", "Channel")}</span>
+          <span className="muted" style={{ fontSize: "11px" }}>{tx("채널", "Channel")}</span>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "15px", alignItems: "end" }}>
-            {labels.map((label, index) => <span key={String(label) + "-" + index} style={{ fontSize: "9px", color: "var(--text-muted)", overflow: "visible", whiteSpace: "nowrap", transform: "translateX(-2px)" }}>{labelIndexes.has(index) ? String(label) : ""}</span>)}
+            {labels.map((label, index) => <span key={String(label) + "-" + index} style={{ fontSize: "11px", color: "var(--text-muted)", overflow: "visible", whiteSpace: "nowrap", transform: "translateX(-2px)" }}>{labelIndexes.has(index) ? String(label) : ""}</span>)}
           </div>
           {activeChannels.map((channel, channelIndex) => {
             const maximum = maxByKey[channel.key] || 1;
@@ -1035,7 +1035,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
           })}
         </div>
       </div>
-      <p className="muted" style={{ fontSize: "10.5px", lineHeight: 1.45, margin: "10px 0 0" }}>{tx(
+      <p className="muted" style={{ fontSize: "11px", lineHeight: 1.45, margin: "10px 0 0" }}>{tx(
         "색이 진할수록 그 채널이 자기 최대 집행 수준에 가까웠다는 뜻입니다. 이 표는 같은 시점에 집행했는지 확인하는 용도이며, 채널 효과나 예산 효율을 뜻하지 않습니다.",
         "Darker cells mean a channel was closer to its own peak input. Use this to inspect timing overlap, not channel effect or budget efficiency.",
       )}</p>
@@ -1068,7 +1068,7 @@ export function NetEffectEvidence({ net, locale }) {
       <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "16px", fontWeight: 650 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
     </div>
     <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
-      <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "10px", color: MUTED }}>0</span></div>
+      <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "11px", color: MUTED }}>0</span></div>
       <div style={{ position: "absolute", left: pos(lo), width: `calc(${pos(hi)} - ${pos(lo)})`, top: "18px", height: "5px", borderRadius: "4px", background: tone }}></div>
       <div style={{ position: "absolute", left: pos(coef), top: "11px", width: "18px", height: "18px", marginLeft: "-9px", borderRadius: "50%", background: tone, border: "3px solid var(--bg-2)", boxShadow: "0 0 0 1px var(--border)" }} title={tx("점추정", "Point estimate")}></div>
     </div>
@@ -1150,7 +1150,7 @@ export function MmmManualDownload({ locale = "ko", placement = "footer" }) {
       >
         {isEnglish ? "📘 View the MMM manual · PDF" : "📘 MMM 설명서 확인 · PDF"}
       </a>
-      <p className="muted" style={{ fontSize: "10.5px", margin: "6px 0 0" }}>
+      <p className="muted" style={{ fontSize: "11px", margin: "6px 0 0" }}>
         {isEnglish ? "Inputs, calculations, priors, validation, interpretation, and limitations" : "입력 준비부터 계산·prior·검증·해석·한계까지 한 번에 확인"}
       </p>
     </div>
@@ -1284,7 +1284,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
         <details className="mmm-evidence-ledger__pending">
           <summary style={{ cursor: "pointer", fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</summary>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
-            <table className="data" style={{ fontSize: "10.5px" }}>
+            <table className="data" style={{ fontSize: "11px" }}>
               <thead><tr><th>{tx("국가", "Market")}</th><th>{tx("판정", "Status")}</th><th>{tx("반복 검증", "Rolling checks")}</th><th>{tx("평균 RMSE", "Mean RMSE")}</th><th>{tx("기본 대비", "vs base")}</th><th>{tx("근거", "Reason")}</th></tr></thead>
               <tbody>{countryIndividualCandidates.map((candidate) => {
                 const reasonLabels = {
@@ -1378,7 +1378,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
               <button type="button" className="ab-pill" onClick={() => downloadMmmEvidenceTemplate(MMM_EXPERIMENT_GEO_WIDE_TEMPLATE_CSV, "mmm_experiment_geo_wide_template.csv")}>{tx("Geo wide 예시 CSV", "Geo wide example CSV")}</button>
               <button type="button" className="ab-pill" onClick={() => downloadMmmEvidenceTemplate(MMM_EXPERIMENT_GEO_LONG_TEMPLATE_CSV, "mmm_experiment_geo_long_template.csv")}>{tx("Geo long 예시 CSV", "Geo long example CSV")}</button>
             </div>
-            <p className="muted" style={{ fontSize: "10.5px", margin: "7px 0 0" }}>{tx("예시의 registrations·meta_spend는 메인 MMM에서 매핑한 실제 Y·채널 헤더와 똑같이 바꾸세요. type 컬럼이 있으면 우선 판별하며, 위 선택으로 강제할 수 있습니다.", "Replace registrations and meta_spend with the exact Y and channel headers mapped in the main MMM. A type column is used for detection when present, and the selector above can override it.")}</p>
+            <p className="muted" style={{ fontSize: "11px", margin: "7px 0 0" }}>{tx("예시의 registrations·meta_spend는 메인 MMM에서 매핑한 실제 Y·채널 헤더와 똑같이 바꾸세요. type 컬럼이 있으면 우선 판별하며, 위 선택으로 강제할 수 있습니다.", "Replace registrations and meta_spend with the exact Y and channel headers mapped in the main MMM. A type column is used for detection when present, and the selector above can override it.")}</p>
           </div>
           <div className="mmm-evidence-ledger__source">
             <div className="mmm-evidence-ledger__source-head"><span>02</span><div><strong>{tx("참고 국가 MMM 데이터", "Reference-market MMM data")}</strong><p>{tx("타깃 국가와 같은 KPI·채널 포맷을 사용하고, 여러 국가라면 country 컬럼을 포함합니다. 앱은 양수 adstock 중앙값으로 채널 spend 규모를 타깃 운용점에 정렬하지만, KPI 정의·통화·전환창의 실질 동등성은 업로드 전에 확인하세요.", "Use the target market's KPI/channel format and include a country column for multiple markets. The app aligns channel spend scale to the target operating point by positive-adstock median, but you must confirm true equivalence of KPI definition, currency, and attribution window.")}</p></div></div>

@@ -510,7 +510,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           locale={locale}
         />
       )}
-      <h2 className="section-title"><span className="ix">§1</span>{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
+      <h2 className="section-title">{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
 
       {series && (
         <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
@@ -908,7 +908,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
         />
       )}
       <section className="block" style={{ marginBottom: "12px" }}>
-        <h2 className="section-title"><span className="ix">§1</span>{tr("비교 설정", "Comparison settings")}</h2>
+        <h2 className="section-title">{tr("비교 설정", "Comparison settings")}</h2>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
           <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
           <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}>
@@ -955,7 +955,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
 
       {r && (
         <section className="block" id="s-incr-result">
-          <h2 className="section-title"><span className="ix">§2</span>{lost ? tr(confirmedLoss ? "종료 임팩트 (손실 후보)" : "종료 후 변화", confirmedLoss ? "Shutdown impact (loss candidate)" : "Post-shutdown change") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
+          <h2 className="section-title">{lost ? tr(confirmedLoss ? "종료 임팩트 (손실 후보)" : "종료 후 변화", confirmedLoss ? "Shutdown impact (loss candidate)" : "Post-shutdown change") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
           {card && (
             <ResultActionCard
               toolId="5-23"

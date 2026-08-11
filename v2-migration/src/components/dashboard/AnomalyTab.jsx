@@ -244,7 +244,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
     return (
       <div className="tab-pane active" id="tab-anomaly">
         <section className="block" id="s-anom">
-          <h2 className="section-title"><span className="ix">§1</span>{tr("이상 감지", "Anomaly Detection")}</h2>
+          <h2 className="section-title">{tr("이상 감지", "Anomaly Detection")}</h2>
           <p className="muted">{tr("데이터가 없습니다.", "No data available.")}</p>
         </section>
       </div>
@@ -263,7 +263,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   return (
     <div className="tab-pane active" id="tab-anomaly">
       <section className="block" id="s-anom">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("이상 감지", "Anomaly Detection")}</h2>
+        <h2 className="section-title">{tr("이상 감지", "Anomaly Detection")}</h2>
 
         <div className="ab-pillgroup">
           <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>

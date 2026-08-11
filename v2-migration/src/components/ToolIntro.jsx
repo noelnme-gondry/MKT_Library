@@ -1,6 +1,3 @@
-import Link from "next/link";
-import { idToSlug } from "@/lib/routeMap";
-import { responseStageHref } from "@/lib/responseStage";
 import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 
 const INTRO = {
@@ -46,41 +43,18 @@ const INTRO = {
   },
 };
 
-const TOOL_CROSS_LINK = {
-  "5-18": {
-    ko: { label: "다음 조치", toolId: "5-3", cta: "잠식 의심 채널 예산 시뮬레이션" },
-    en: { label: "Next step", toolId: "5-3", cta: "Simulate suspect-channel budget moves" },
-  },
-  "5-3": {
-    ko: { label: "예산 이동 전", toolId: "5-18", stage: "diagnose", cta: "광고 잠식 먼저 점검" },
-    en: { label: "Before moving budget", toolId: "5-18", stage: "diagnose", cta: "Check ad cannibalization first" },
-  },
-};
-
-const HEADER_COPY = {
-  ko: { aria: "도구 안내", local: "브라우저 내 분석", mode: "의사결정 도구" },
-  en: { aria: "About this tool", local: "BROWSER-ONLY ANALYSIS", mode: "DECISION TOOL" },
-};
+const HEADER_COPY = { ko: { aria: "도구 안내" }, en: { aria: "About this tool" } };
 
 export default function ToolIntro({ toolId, locale = "ko" }) {
   const localeKey = locale === "en" ? "en" : "ko";
   const searchContent = getResponseSubtoolContent(toolId, localeKey);
   const copy = INTRO[toolId]?.[localeKey] || (searchContent ? [searchContent.h1, searchContent.intro] : null);
-  const crossLink = TOOL_CROSS_LINK[toolId]?.[localeKey];
   const T = HEADER_COPY[localeKey];
   if (!copy) return null;
   return <header className="tool-context-header tool-instrument-header" aria-label={T.aria} data-tool-id={toolId}>
     <div className="tool-instrument-header__copy">
-      <div className="tool-context-header__meta tool-instrument-header__meta">
-        <em>{T.local}</em>
-        <span>{T.mode}</span>
-      </div>
       <h1 className="tool-context-header__title tool-instrument-header__title">{copy[0]}</h1>
       <p className="tool-instrument-header__description">{copy[1]}</p>
     </div>
-    {crossLink && <div className="tool-context-header__next tool-instrument-header__next">
-      <span>{crossLink.label}</span>
-      <Link href={crossLink.toolId === "5-18" && crossLink.stage ? responseStageHref(crossLink.stage, locale) : `${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
-    </div>}
   </header>;
 }

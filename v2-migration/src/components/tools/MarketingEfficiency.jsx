@@ -455,7 +455,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       ) : (
       <>
       <section className="block" id="s-sat-summary">
-        <h2 className="section-title"><span className="ix">§0</span>{tr("한눈에 보기", "At a glance")}</h2>
+        <h2 className="section-title">{tr("한눈에 보기", "At a glance")}</h2>
         <ResultActionCard
           toolId="5-22"
           analysisType="saturation"
@@ -539,7 +539,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       </section>
 
       <section className="block" id="s-sat">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("포화도 순위", "Saturation ranking")}</h2>
+        <h2 className="section-title">{tr("포화도 순위", "Saturation ranking")}</h2>
 
         <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -637,7 +637,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                         <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `${vm.color}55` }}>
                           <span className="dot" style={{ background: vm.color }}></span>{vm.label}
                         </span>{" "}
-                        <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>{vm.advice}</span>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{vm.advice}</span>
                       </td>
                     </tr>
                   );
@@ -675,7 +675,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         <section className="block" id="s-sat-curve">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <h2 className="section-title" style={{ marginBottom: 0 }}>
-              <span className="ix">§2</span>{tr("응답곡선", "Response curve")} — {selName}
+              {tr("응답곡선", "Response curve")} — {selName}
             </h2>
             <button
               className="ab-pill"

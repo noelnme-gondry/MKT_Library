@@ -38,7 +38,7 @@ export default function EnglishDiagnosePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
         <span>SYMPTOM-BASED ANALYSIS ROUTER</span>
-        <h1>Not sure what to<br />analyze first?</h1>
+        <h1>Not sure what to analyze first?</h1>
         <p>Choose the symptom that feels closest. After the third answer, you’ll get one analysis to check first.</p>
       </header>
       <DiagnoseRouter locale="en" />

@@ -87,11 +87,8 @@ describe("ContentFreshness (9-6 소재 분석) render smoke", () => {
   it("mounts without throwing with a valid seeded creative CSV", () => {
     seedWithData();
     expect(() => render(<ContentFreshness />)).not.toThrow();
-    // With-data branch renders the §3 per-creative metrics table heading
-    // (performance-domain label: "소재별 성과표").
-    expect(screen.getByText(/소재별 성과표/)).toBeTruthy();
-    // Ported sections mount with performance labels: §5 피로도 진단, §7 교체 일정 추천.
-    expect(screen.getAllByText(/피로도 진단/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/교체 일정 추천/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/어떤 소재가 성과를 만들었나/)).toBeTruthy();
+    expect(screen.getAllByText(/어떤 소재가 지치기 시작했나/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/다음에 무엇을 만들까/).length).toBeGreaterThan(0);
   });
 });

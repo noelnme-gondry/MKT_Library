@@ -15,15 +15,14 @@ import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import ToolPageShell from "@/components/ToolPageShell";
 
-// 우측 TOC — legacy page_5_21() 목차와 동일 (§0 한눈에 보기~§4 …별 결과).
-// §2~§4 라벨은 도메인 카피팩(C)에서 주입 — performance는 기존과 byte-동일.
+// 우측 TOC — 현재 결과의 질문 순서만 노출하고 내부 섹션 번호는 숨긴다.
 function buildPvmToc(C, locale) {
   return [
-    { id: "s-pvm-result", title: locale === "en" ? "§0 Overview" : "§0 한눈에 보기" },
-    { id: "s-pvm-scorecard", title: locale === "en" ? "§1 Scorecard" : "§1 스코어카드" },
-    { id: "s-pvm-channels", title: C.tocChannels },
-    { id: "s-pvm-campaigns", title: C.tocCampaigns },
-    { id: "s-pvm-creatives", title: C.tocCreatives },
+    { id: "s-pvm-result", title: locale === "en" ? "Overview" : "한눈에 보기" },
+    { id: "s-pvm-scorecard", title: locale === "en" ? "Performance change" : "성과 변화" },
+    { id: "s-pvm-channels", title: String(C.tocChannels).replace(/^§\d+\s*/, "") },
+    { id: "s-pvm-campaigns", title: String(C.tocCampaigns).replace(/^§\d+\s*/, "") },
+    { id: "s-pvm-creatives", title: String(C.tocCreatives).replace(/^§\d+\s*/, "") },
   ];
 }
 
@@ -35,9 +34,9 @@ const PVM_COPY_EN = {
     levelChannel: "Channel",
     levelCampaign: "Campaign",
     levelCreative: "Creative",
-    tocChannels: "§2 By Channel",
-    tocCampaigns: "§3 By Channel · Campaign",
-    tocCreatives: "§4 By Creative",
+    tocChannels: "By Channel",
+    tocCampaigns: "By Channel · Campaign",
+    tocCreatives: "By Creative",
     secChannels: "By Channel",
     secCampaigns: "By Channel · Campaign",
     secCreatives: "By Creative",
@@ -49,9 +48,9 @@ const PVM_COPY_EN = {
     summaryLead: (ml) =>
       `Price-Volume-Mix (PVM) bridge decomposition splits the total ${ml} change exactly into channel, campaign, and creative levels (no residual).`,
     summaryLimitBody:
-      "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (channel × campaign × creative) and rolled up, §2 (channel), §3 (campaign), and §4 (creative) always nest exactly (sums match).",
+      "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (channel × campaign × creative) and rolled up, the channel, campaign, and creative views always nest exactly (sums match).",
     causationCallout:
-      "This shows association, not causation. Channel, campaign, and creative are all decomposed once at the finest unit (channel × campaign × creative) and summed, so §2–§4 (Mode A) always nest exactly.",
+      "This shows association, not causation. Channel, campaign, and creative are all decomposed once at the finest unit (channel × campaign × creative) and summed, so the three views always nest exactly.",
     explainerMix: "The change from budget mix shifting toward channels that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the channel's own ${ml} changing.`,
     shareHeader: "Result Share (P1→P2)",
@@ -69,9 +68,9 @@ const PVM_COPY_EN = {
     levelChannel: "Traffic Source",
     levelCampaign: "Category",
     levelCreative: "Content",
-    tocChannels: "§2 By Traffic Source",
-    tocCampaigns: "§3 By Traffic Source · Category",
-    tocCreatives: "§4 By Content",
+    tocChannels: "By Traffic Source",
+    tocCampaigns: "By Traffic Source · Category",
+    tocCreatives: "By Content",
     secChannels: "By Traffic Source",
     secCampaigns: "By Traffic Source · Category",
     secCreatives: "By Content",
@@ -84,9 +83,9 @@ const PVM_COPY_EN = {
     summaryLead: (ml) =>
       `Price-Volume-Mix (PVM) bridge decomposition splits the total ${ml} change exactly into traffic source, category, and content levels (no residual).`,
     summaryLimitBody:
-      "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (traffic source × category × content) and rolled up, §2 (traffic source), §3 (category), and §4 (content) always nest exactly (sums match).",
+      "This decomposition is arithmetically exact but does not prove causation (association only). Because it's decomposed once at the finest unit (traffic source × category × content) and rolled up, the traffic-source, category, and content views always nest exactly (sums match).",
     causationCallout:
-      "This shows association, not causation. Traffic source, category, and content are all decomposed once at the finest unit (traffic source × category × content) and summed, so §2–§4 always nest exactly.",
+      "This shows association, not causation. Traffic source, category, and content are all decomposed once at the finest unit (traffic source × category × content) and summed, so the three views always nest exactly.",
     explainerMix: "The change from publishing/exposure mix shifting toward traffic sources that are cheaper/more expensive than average.",
     explainerRate: (ml) => `The change from the traffic source's own ${ml} changing.`,
     shareHeader: "Traffic Share (P1→P2)",
@@ -502,6 +501,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const [pvmSortChannel, setPvmSortChannel] = useState({ col: null, dir: "desc" });
   const [pvmSortCampaign, setPvmSortCampaign] = useState({ col: null, dir: "desc" });
   const [pvmSortCreative, setPvmSortCreative] = useState({ col: null, dir: "desc" });
+  const [downloadError, setDownloadError] = useState("");
 
   const hasData = csvData?.raw?.length > 0;
 
@@ -799,7 +799,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // 차트 PNG 다운로드 — 다크 배경 합성 후 export(§7). ref 기반(v2엔 전역 핸들러 없음)
   const downloadChartPng = (canvasRef, nameSuffix) => {
     if (!ready) {
-      alert(tr("항등식이 확인된 분석 결과가 없습니다.", "No identity-verified analysis result is available."));
+      setDownloadError(tr("항등식이 확인된 분석 결과가 없습니다. 분석 결과를 먼저 확인하세요.", "No identity-verified result is available. Review the analysis result first."));
       return;
     }
     const canvas = canvasRef?.current;
@@ -823,12 +823,13 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     document.body.appendChild(a);
     a.click();
     setTimeout(() => document.body.removeChild(a), 0);
+    setDownloadError("");
   };
 
   // 결과 CSV 다운로드 — 살아있는 스프레드시트 수식(§7 CRLF+BOM). buildPvmResultCsv 재사용
   const downloadPvmCsv = () => {
     if (!ready) {
-      alert(tr("분석 데이터가 없습니다. 먼저 데이터를 매핑하세요.", "No analysis data. Please map your data first."));
+      setDownloadError(tr("분석 데이터가 없습니다. 먼저 데이터를 매핑하세요.", "No analysis data is available. Map the data first."));
       return;
     }
     try {
@@ -846,9 +847,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 0);
+      setDownloadError("");
     } catch (e) {
       console.warn("PVM CSV download failed:", e.message);
-      alert(tr("CSV 생성 중 오류가 발생했습니다.", "An error occurred while generating the CSV."));
+      setDownloadError(tr("CSV를 만들지 못했습니다. 데이터 매핑을 확인한 뒤 다시 시도하세요.", "The CSV could not be created. Check the data mapping and try again."));
     }
   };
 
@@ -1165,8 +1167,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       subRateVal = e.creativeSumRate || 0;
     }
     if (level === "creative") {
-      subMixNode = <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
-      subRateNode = <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
+      subMixNode = <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
+      subRateNode = <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
     } else {
       subMixNode = (subMixVal >= 0 ? "+" : "") + pvmFmtMoney(subMixVal, cur);
       subRateNode = (subRateVal >= 0 ? "+" : "") + pvmFmtMoney(subRateVal, cur);
@@ -1187,7 +1189,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       // 자체(e.crKey)는 이모지 없이 그대로 유지되므로 정렬 시 항상 깨끗한 값 기준.
       nameNode = (
         <>
-          <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
           <strong style={{ verticalAlign: "middle" }}>{e.crKey || unspec}</strong>
           {safeUrl && (
             <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "11px", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
@@ -1340,7 +1342,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         style={{ background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§0</span>{tr("한눈에 보기", "Overview")}</h2>
+          <h2 className="section-title" style={{ margin: 0 }}>{tr("한눈에 보기", "Overview")}</h2>
         </div>
 
         <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
@@ -1383,7 +1385,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <p style={{ margin: "8px 0 0", fontSize: "11.5px", color: "var(--text-muted)" }}>{periodCaption}</p>
         )}
 
-        {ready ? (
+        {ready ? <>
           <ResultActionCard
             toolId={pvmManifest.toolId}
             analysisKey={analysisKey}
@@ -1488,7 +1490,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               </div>
             </details>
           </ResultActionCard>
-        ) : (
+          {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
+        </> : (
           <div className="callout warn" style={{ marginTop: "12px" }}>
             <div className="ico">!</div>
             <div className="body">
@@ -1503,7 +1506,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
       {/* §1 스코어카드 */}
       <section className="block" id="s-pvm-scorecard">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("스코어카드", "Scorecard")}</h2>
+        <h2 className="section-title">{tr("성과는 얼마나 변했나?", "How much did performance change?")}</h2>
         {ready ? (
           <>
             {(() => {
@@ -1535,7 +1538,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
       {/* §2 채널별 결과 */}
       <section className="block" id="s-pvm-channels">
-        <h2 className="section-title"><span className="ix">§2</span>{C.secChannels}</h2>
+        <h2 className="section-title">{C.secChannels}</h2>
 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
           <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)", outline: "none" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
@@ -1602,7 +1605,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
       {/* §3 채널·캠페인별 결과 */}
       <section className="block" id="s-pvm-campaigns">
-        <h2 className="section-title"><span className="ix">§3</span>{C.secCampaigns}</h2>
+        <h2 className="section-title">{C.secCampaigns}</h2>
         {!ready ? (
           <p className="muted" style={{ fontSize: "12px" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
         ) : !cache.campaignMapped ? (
@@ -1642,7 +1645,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
       {/* §4 소재별 결과 */}
       <section className="block" id="s-pvm-creatives">
-        <h2 className="section-title"><span className="ix">§4</span>{C.secCreatives}</h2>
+        <h2 className="section-title">{C.secCreatives}</h2>
         {!ready ? (
           <p className="muted" style={{ fontSize: "12px" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
         ) : !cache.creativeMapped ? (

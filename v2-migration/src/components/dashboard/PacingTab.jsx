@@ -241,7 +241,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-pacing">
         <section className="block" id="s-pace">
-          <h2 className="section-title"><span className="ix">§1</span>{T.sectionTitle}</h2>
+          <h2 className="section-title">{T.sectionTitle}</h2>
           <p className="muted">{T.noDateData}</p>
         </section>
       </div>
@@ -256,7 +256,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-pacing">
       <section className="block" id="s-pace">
-        <h2 className="section-title"><span className="ix">§1</span>{T.sectionTitle}</h2>
+        <h2 className="section-title">{T.sectionTitle}</h2>
 
         <div className="ab-pillgroup">
           <span className="ab-pillgroup-label">{T.metricLabel}</span>

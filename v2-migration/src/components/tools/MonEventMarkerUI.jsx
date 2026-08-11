@@ -144,7 +144,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
               <button
                 className="ab-pill"
                 type="button"
-                style={{ padding: "2px 8px", fontSize: "10.5px" }}
+                style={{ padding: "2px 8px", fontSize: "11px" }}
                 onClick={() => removeEventMarker(m.id)}
               >
                 {T.deleteBtn}

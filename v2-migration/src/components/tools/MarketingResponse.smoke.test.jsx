@@ -1754,7 +1754,7 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
-    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 효과는 검증에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => {
+    ["실제 성과를 얼마나 설명했나", "무엇이 성과를 설명했나", "채널 효과는 검증에서도 유지됐나", "지출을 바꾸면 예측이 어떻게 달라지나", "예산 변경을 추천해도 안전한가"].forEach((copy) => {
       expect(document.body.textContent).toContain(copy);
     });
     expect(container.querySelector('[data-mmm-result-model="bayesian"]')).toBeTruthy();

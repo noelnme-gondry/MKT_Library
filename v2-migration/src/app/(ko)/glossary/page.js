@@ -60,7 +60,7 @@ export default function GlossaryIndexPage() {
       />
       <header className="content-index__hero">
         <span className="content-index__eyebrow">PERFORMANCE MARKETING GLOSSARY</span>
-        <h1>검색한 용어를<br />운영 판단으로 연결합니다</h1>
+        <h1>검색한 용어를 운영 판단으로 연결합니다</h1>
         <p>CPA·ROAS·CTR·LTV부터 어트리뷰션과 증분 측정까지. 뜻과 계산식에서 멈추지 않고, 어느 데이터를 봐야 하는지까지 정리합니다.</p>
         <span className="content-index__meta">{terms.length} TERMS · DEFINITION → PRACTICE</span>
       </header>

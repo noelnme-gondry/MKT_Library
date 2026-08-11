@@ -60,6 +60,9 @@ describe("CsvUploader render smoke", () => {
     expect(document.querySelectorAll("[data-mapping-status]")).toHaveLength(6);
     expect(document.querySelector("[data-mapping-target]")?.getAttribute("aria-label")).toContain("표준 필드");
     expect(document.querySelector(".csv-preview-table")).toBeTruthy();
+    expect(document.querySelector(".csv-guide")).toBeNull();
+    expect(document.querySelector(".data-journey")).toBeNull();
+    expect(screen.getByText("x.csv")).toBeTruthy();
   });
 
   it("tracks one typed analysis start for repeated confirmation of the same input", () => {

@@ -150,7 +150,7 @@ export default function CustomMetricBuilder({
         ) : (
           <>
             <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "12px" }}>
-              <span className="muted" style={{ fontSize: "10.5px" }}>{T.name}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{T.name}</span>
               <input
                 type="text" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder={T.namePlaceholder}
@@ -182,7 +182,7 @@ export default function CustomMetricBuilder({
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
-              <span className="muted" style={{ fontSize: "10.5px" }}>{T.chartShape}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{T.chartShape}</span>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button type="button" onClick={() => setChartType("bar")} className={`ab-pill ${chartType === "bar" ? "active" : ""}`} style={{ fontWeight: chartType === "bar" ? 700 : 400 }}>{T.bar}</button>
                 <button type="button" onClick={() => setChartType("line")} className={`ab-pill ${chartType === "line" ? "active" : ""}`} style={{ fontWeight: chartType === "line" ? 700 : 400 }}>{T.line}</button>
@@ -211,7 +211,7 @@ export default function CustomMetricBuilder({
 
         {existing.length > 0 && (
           <div style={{ marginTop: "16px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-            <div className="muted" style={{ fontSize: "10.5px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
+            <div className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               {existing.map((m) => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 8px", borderRadius: "6px", border: `1px solid ${editingId === m.id ? "var(--primary, #4c8dff)" : "var(--border)"}` }}>
@@ -227,7 +227,7 @@ export default function CustomMetricBuilder({
           </div>
         )}
 
-        <p className="muted" style={{ fontSize: "10px", marginTop: "12px", textAlign: "right" }}>
+        <p className="muted" style={{ fontSize: "11px", marginTop: "12px", textAlign: "right" }}>
           {T.shown}
         </p>
     </ModalDialog>

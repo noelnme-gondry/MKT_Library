@@ -69,7 +69,7 @@ export default function BlogIndexPage() {
       />
       <header className="content-index__hero">
         <span className="content-index__eyebrow">PERFORMANCE MARKETING FIELD NOTES</span>
-        <h1>광고 성과 문제를<br />다음 조치로 바꾸는 실무 노트</h1>
+        <h1>광고 성과 문제를 다음 조치로 바꾸는 실무 노트</h1>
         <p>CPA·ROAS·예산·소재·측정 문제를 원인부터 좁히는 글입니다. 읽은 다음에는 같은 질문을 무료 도구에서 내 데이터로 확인할 수 있습니다.</p>
         <span className="content-index__meta">{posts.length} ARTICLES · UPDATED FOR OPERATORS</span>
       </header>
