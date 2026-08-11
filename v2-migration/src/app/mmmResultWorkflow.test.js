@@ -24,16 +24,16 @@ describe("MMM result workflow UI contract", () => {
   });
 
   it("keeps the WebR workflow in fit-to-decision order in both languages", () => {
-    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 계수는 검증구간에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => expect(webRPanel).toContain(copy));
-    ["1. How much of actual performance did the model explain?", "2. What explained performance?", "3. Did channel coefficients persist across validation windows?", "4. How does prediction change when spend changes?", "5. Is a budget change safe enough to recommend?"].forEach((copy) => expect(webRPanel).toContain(copy));
+    ["실제 성과를 얼마나 설명했나", "무엇이 성과를 설명했나", "채널 효과는 검증에서도 유지됐나", "지출을 바꾸면 예측이 어떻게 달라지나", "예산 변경을 추천해도 안전한가"].forEach((copy) => expect(webRPanel).toContain(copy));
+    ["How much of actual performance did the model explain?", "What explained performance?", "Did channel effects persist across validation windows?", "How does prediction change when spend changes?", "Is a budget change safe enough to recommend?"].forEach((copy) => expect(webRPanel).toContain(copy));
     expect(webRPanel.indexOf("{T.fitStep}")).toBeLessThan(webRPanel.indexOf("{T.driverStep}"));
     expect(webRPanel.indexOf("{T.driverStep}")).toBeLessThan(webRPanel.indexOf("{T.responseStep}"));
     expect(webRPanel.indexOf("{T.responseStep}")).toBeLessThan(webRPanel.indexOf("{T.budgetStep}"));
   });
 
   it("gives Bayesian the same five-question result flow as WebR", () => {
-    ["1. 실제 성과를 얼마나 설명했나", "2. 무엇이 성과를 설명했나", "3. 채널 효과는 검증에서도 유지됐나", "4. 지출을 바꾸면 예측이 어떻게 달라지나", "5. 예산 변경을 추천해도 안전한가"].forEach((copy) => expect(marketingResponse).toContain(copy));
-    ["1. How much of actual performance did the model explain?", "2. What explained performance?", "3. Did channel effects persist across validation?", "4. How does prediction change when spend changes?", "5. Is a budget change safe enough to recommend?"].forEach((copy) => expect(marketingResponse).toContain(copy));
+    ["실제 성과를 얼마나 설명했나", "무엇이 성과를 설명했나", "채널 효과는 검증에서도 유지됐나", "지출을 바꾸면 예측이 어떻게 달라지나", "예산 변경을 추천해도 안전한가"].forEach((copy) => expect(marketingResponse).toContain(copy));
+    ["How much of actual performance did the model explain?", "What explained performance?", "Did channel effects persist across validation?", "How does prediction change when spend changes?", "Is a budget change safe enough to recommend?"].forEach((copy) => expect(marketingResponse).toContain(copy));
     expect(marketingResponse).toContain('data-mmm-result-model="bayesian"');
     expect(marketingResponse.indexOf("<WebRMmmAdvanced")).toBeLessThan(marketingResponse.indexOf('data-mmm-result-model="bayesian"'));
     expect(marketingResponse.match(/<canvas ref=\{fitRef\}/g)).toHaveLength(1);

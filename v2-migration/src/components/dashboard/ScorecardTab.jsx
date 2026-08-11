@@ -207,17 +207,20 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     return {
       key: c.k, label: c.label,
       node: (
-        <div
-          className="ab-stat"
+        <button
+          type="button"
+          className="ab-stat ab-stat-button"
           onClick={c.chartable ? () => setSelectedMetric(isActive ? null : c.k) : undefined}
-          style={{ cursor: c.chartable ? "pointer" : "default", ...(isActive ? { outline: "2px solid #adc6ff", borderRadius: "6px" } : {}) }}
+          disabled={!c.chartable}
+          aria-pressed={c.chartable ? isActive : undefined}
+          style={{ cursor: c.chartable ? "pointer" : "default" }}
         >
           <div className="ab-stat-label">{c.label}</div>
           <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
           <div className={`ab-stat-hint ${cls}`}>
             {d == null ? T.noPrevData : T.wow(arrow, Math.abs(d * 100).toFixed(1))}
           </div>
-        </div>
+        </button>
       ),
     };
   });
@@ -349,7 +352,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       {/* 예산 배분 진단·CTA는 마케팅 전용(콘텐츠엔 예산배분 도구가 없음) → content 제외. */}
       {!isContent && <BudgetHealthCard locale={locale} />}
       <section className="block" id="s-score">
-        <h2 className="section-title"><span className="ix">§1</span>{T.kpiTitle(windowDays)}</h2>
+        <h2 className="section-title">{T.kpiTitle(windowDays)}</h2>
         <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
           <span className="ab-pillgroup-label">{T.periodLabel}</span>
           {[7, 14, 28].map(d => (

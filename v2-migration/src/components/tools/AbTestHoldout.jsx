@@ -406,7 +406,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
       {activeTab === "design" && (
         <>
           <section className="block" id="s-mode">
-            <h2 className="section-title"><span className="ix">§1</span>{tr("모드 선택", "Select mode")}</h2>
+            <h2 className="section-title">{tr("지금 무엇을 확인할까요?", "What do you need to check now?")}</h2>
             <div className="ab-tabs">
               <button className={`ab-tab ${mode === "plan" ? "active" : ""}`} onClick={() => setMode("plan")}>{tr("필요 표본 계산", "Required sample")}</button>
               <button className={`ab-tab ${mode === "analyze" ? "active" : ""}`} onClick={() => setMode("analyze")}>{tr("수동 결과 판독", "Manual readout")}</button>
@@ -435,7 +435,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             {/* ===== Plan mode ===== */}
             {mode === "plan" && (
               <div>
-                <h2 className="section-title"><span className="ix">§2</span>{tr("① 테스트 시작 전 모수 계산", "① Parameter calc before launching the test")}</h2>
+                <h2 className="section-title">{tr("실험에 몇 명이 필요한가?", "How many people does the experiment need?")}</h2>
                 <p style={{ color: "var(--text-secondary)" }}>
                   {testType === "binary"
                     ? tr("현재 전환율과 탐지하고 싶은 최소 lift(MDE)를 입력하면, 그룹당 필요한 샘플 사이즈가 계산됩니다.", "Enter the current conversion rate and the minimum lift (MDE) you want to detect, and the required sample size per arm is calculated.")
@@ -561,7 +561,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             {/* ===== Analyze mode ===== */}
             {mode === "analyze" && testType === "binary" && (
               <div>
-                <h2 className="section-title"><span className="ix">§2</span>{tr("② Binary (CVR) 결과 분석", "② Binary (CVR) result analysis")}</h2>
+                <h2 className="section-title">{tr("두 안의 전환율 차이가 우연보다 큰가?", "Is the conversion-rate difference larger than chance?")}</h2>
                 <p style={{ color: "var(--text-secondary)" }}>{tr("각 그룹의 노출 수와 전환 수를 입력하면 Frequentist(z-test)와 Bayesian 결과를 동시에 보여줍니다.", "Enter each arm's exposure count and conversion count to see Frequentist (z-test) and Bayesian results side by side.")}</p>
                 <div className="ab-form-grid ab-form-grid-2col">
                   <div>
@@ -614,7 +614,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
             {mode === "analyze" && testType === "continuous" && (
               <div>
-                <h2 className="section-title"><span className="ix">§2</span>{tr("② Continuous (CPR/ARPPU/Revenue) 결과 분석", "② Continuous (CPR/ARPPU/Revenue) result analysis")}</h2>
+                <h2 className="section-title">{tr("두 안의 평균 성과 차이가 우연보다 큰가?", "Is the average-outcome difference larger than chance?")}</h2>
                 <p style={{ color: "var(--text-secondary)" }}>{tr("각 그룹의 표본 수(n), 평균(mean), 표준편차(sd)를 입력하면 Welch t 검정으로 평균 차이의 유의성과 95% 신뢰구간을 계산합니다.", "Enter each arm's sample size (n), mean, and standard deviation (sd) to calculate the mean-difference significance and 95% confidence interval with Welch's t-test.")}</p>
                 <div className="ab-form-grid ab-form-grid-2col">
                   <div>
@@ -671,7 +671,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             {/* ===== Threshold mode ===== */}
             {mode === "threshold" && (
               <div>
-                <h2 className="section-title"><span className="ix">§2</span>{tr("③ 모수 크기별 추천 신뢰수준 가이드", "③ Recommended confidence level guide by parameter size")}</h2>
+                <h2 className="section-title">{tr("이 표본에서 어디까지 판단할 수 있나?", "How far can this sample support a decision?")}</h2>
                 <p style={{ color: "var(--text-secondary)" }}>
                   {tr(
                     <>α = 0.05, Power = 0.80 기준 그룹당 필요 샘플 사이즈 매트릭스 ({thresholdMatrix.kind === "binary" ? "Binary · CVR" : "Continuous · CV = σ/μ 사용, baseline 값에 무관"}). 일평균 트래픽으로 나누면 테스트 기간 산정 가능.</>,
@@ -718,7 +718,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </section>
 
           <section className="block" id="s-powercurve">
-            <h2 className="section-title"><span className="ix">§3</span>{tr("MDE vs Sample Size 파워 커브", "MDE vs Sample Size power curve")}</h2>
+            <h2 className="section-title">{tr("감지 가능한 차이는 어느 정도인가?", "What size of difference can this test detect?")}</h2>
             <p style={{ color: "var(--text-secondary)" }}>{tr("표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.", "As the sample size (per arm) grows, the minimum detectable effect (MDE) shrinks. A lower baseline conversion rate needs more samples.")}</p>
             <div className="ab-form-grid">
               <div className="ab-field">
@@ -748,7 +748,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </section>
 
           <details className="block" id="s-notes">
-            <summary className="section-title" style={{ cursor: "pointer" }}><span className="ix">§4</span>{tr("전문가용 통계 노트 펼치기", "Open statistical notes for experts")}</summary>
+            <summary className="section-title" style={{ cursor: "pointer" }}>{tr("전문가용 통계 노트 펼치기", "Open statistical notes for experts")}</summary>
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. {tr("p-value < α 시 귀무가설 기각.", "Reject the null hypothesis when p-value < α.")}</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>

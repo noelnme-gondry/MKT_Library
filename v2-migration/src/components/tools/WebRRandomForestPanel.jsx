@@ -148,13 +148,13 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
               <div className="mmm-model-switcher" role="radiogroup" aria-label={T.title}>
                 <button type="button" role="radio" aria-checked={selectedModel === "baseline"} className={`mmm-model-choice ${selectedModel === "baseline" ? "is-selected" : ""}`} onClick={() => setSelectedModel("baseline")} onKeyDown={onModelKeyDown}>
                   <span className="mmm-model-choice__radio" aria-hidden="true" />
-                  <span className="mmm-model-choice__copy"><strong>{baselineLabel}</strong><small>{result.primaryMetric} · {T.lowerIsBetter}<br />{result.secondaryMetric} {metricValue(result.secondaryMetric, result.baseline.secondary)}</small></span>
+                  <span className="mmm-model-choice__copy"><strong>{baselineLabel}</strong><small>{result.primaryMetric} · {T.lowerIsBetter} · {result.secondaryMetric} {metricValue(result.secondaryMetric, result.baseline.secondary)}</small></span>
                   <span className="mmm-model-choice__metric">{metricValue(result.primaryMetric, result.baseline.primary)}</span>
                   <span className="mmm-model-choice__badges">{selectedModel === "baseline" && <b>{T.selected}</b>}</span>
                 </button>
                 <button type="button" role="radio" aria-checked={selectedModel === "random_forest"} className={`mmm-model-choice ${selectedModel === "random_forest" ? "is-selected" : ""}`} onClick={() => setSelectedModel("random_forest")} onKeyDown={onModelKeyDown}>
                   <span className="mmm-model-choice__radio" aria-hidden="true" />
-                  <span className="mmm-model-choice__copy"><strong>Random Forest</strong><small>{result.primaryMetric} · {T.lowerIsBetter}<br />{result.secondaryMetric} {metricValue(result.secondaryMetric, result.randomForest.secondary)}</small></span>
+                  <span className="mmm-model-choice__copy"><strong>Random Forest</strong><small>{result.primaryMetric} · {T.lowerIsBetter} · {result.secondaryMetric} {metricValue(result.secondaryMetric, result.randomForest.secondary)}</small></span>
                   <span className="mmm-model-choice__metric">{metricValue(result.primaryMetric, result.randomForest.primary)}</span>
                   <span className="mmm-model-choice__badges">{selectedModel === "random_forest" && <b>{T.selected}</b>}</span>
                 </button>

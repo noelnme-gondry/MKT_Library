@@ -90,50 +90,17 @@ export default function DmNudge({ locale = "ko" }) {
       role="complementary"
       aria-label={T.aria}
       data-dm-nudge
-      style={{
-        position: "fixed",
-        right: "20px",
-        bottom: "20px",
-        zIndex: 900,
-        width: "min(320px, calc(100vw - 32px))",
-        transform: shown ? "translateY(0)" : "translateY(14px)",
-        opacity: shown ? 1 : 0,
-        transition: "transform .28s ease, opacity .28s ease",
-        background: "var(--surface-base)",
-        border: "1px solid var(--border)",
-        borderRadius: "14px",
-        boxShadow: "0 10px 30px rgba(0,0,0,.28)",
-        padding: "14px 15px",
-      }}
+      className={`dm-nudge ${shown ? "is-visible" : ""}`}
     >
       <button
         type="button"
         onClick={dismiss}
         aria-label={T.close}
-        style={{
-          position: "absolute",
-          top: "8px",
-          right: "9px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--text-muted)",
-          fontSize: "14px",
-          lineHeight: 1,
-          padding: "2px 4px",
-        }}
+        className="dm-nudge__close"
       >
         ✕
       </button>
-      <div
-        style={{
-          fontSize: "14px",
-          fontWeight: 700,
-          color: "var(--text-primary)",
-          marginBottom: "11px",
-          paddingRight: "16px",
-        }}
-      >
+      <div className="dm-nudge__title">
         {T.title}
       </div>
       <a
@@ -141,20 +108,7 @@ export default function DmNudge({ locale = "ko" }) {
         target="_blank"
         rel="noopener noreferrer"
         onClick={onCta}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "7px",
-          width: "100%",
-          textDecoration: "none",
-          fontSize: "13px",
-          fontWeight: 600,
-          padding: "9px 12px",
-          borderRadius: "9px",
-          color: "#fff",
-          background: "var(--primary, #4f7cff)",
-        }}
+        className="dm-nudge__cta"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -167,14 +121,7 @@ export default function DmNudge({ locale = "ko" }) {
         onClick={() => {
           trackProductEvent("dm_guide_open", { tool_id: from, placement: "dm_nudge" });
         }}
-        style={{
-          display: "block",
-          marginTop: "8px",
-          textAlign: "center",
-          fontSize: "11.5px",
-          color: "var(--text-muted)",
-          textDecoration: "none",
-        }}
+        className="dm-nudge__guide"
       >
         {T.guide}
       </Link>

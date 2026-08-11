@@ -107,7 +107,7 @@ function RoleSelect({ col, role, setRole, tr = (ko) => ko }) {
       aria-label={tr(`${col} 역할`, `${col} role`)}
       title={tr("드래그 대신 역할을 직접 선택", "Choose a role instead of dragging")}
       className="map-select"
-      style={{ maxWidth: "112px", minWidth: "0px", fontSize: "10.5px" }}
+      style={{ maxWidth: "112px", minWidth: "0px", fontSize: "11px" }}
     >
       {ROLE_OPTIONS.map(([value, ko, en]) => <option key={value} value={value}>{tr(ko, en)}</option>)}
     </select>
@@ -203,7 +203,7 @@ function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragC
           : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
       </div>
       {single && cols.length > 1 && (
-        <div style={{ fontSize: "10.5px", color: "#f59e0b", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
+        <div style={{ fontSize: "11px", color: "#f59e0b", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
       )}
     </div>
   );

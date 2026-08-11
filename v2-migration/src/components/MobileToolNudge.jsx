@@ -58,38 +58,13 @@ export default function MobileToolNudge({ locale = "ko" }) {
   if (!isMobile || dismissed) return null;
 
   return (
-    <div
-      role="note"
-      data-mobile-nudge
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: "8px",
-        padding: "10px 12px",
-        marginBottom: "12px",
-        borderRadius: "var(--radius-lg, 6px)",
-        border: "1px solid var(--border)",
-        background: "var(--surface-base)",
-        color: "var(--text-muted)",
-        fontSize: "12.5px",
-        lineHeight: 1.5,
-      }}
-    >
+    <div role="note" data-mobile-nudge className="mobile-tool-nudge">
       <span style={{ flex: 1 }}>{T.text}</span>
       <button
         type="button"
         onClick={dismissMobileNudge}
         aria-label={T.dismissAria}
-        style={{
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--text-muted)",
-          fontSize: "14px",
-          lineHeight: 1,
-          padding: "2px 4px",
-          flexShrink: 0,
-        }}
+        className="mobile-tool-nudge__close"
       >
         ✕
       </button>

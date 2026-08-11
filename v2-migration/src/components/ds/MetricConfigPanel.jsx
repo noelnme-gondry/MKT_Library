@@ -186,7 +186,7 @@ export default function MetricConfigPanel({
           })}
 
           {offKeys.length > 0 && (
-            <div className="muted" style={{ fontSize: "10.5px", margin: "8px 2px 2px" }}>{T.hidden} ({offKeys.length}) — {T.restore}</div>
+            <div className="muted" style={{ fontSize: "11px", margin: "8px 2px 2px" }}>{T.hidden} ({offKeys.length}) — {T.restore}</div>
           )}
           {offKeys.map((key) => {
             const it = byKey.get(key);
@@ -205,7 +205,7 @@ export default function MetricConfigPanel({
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "14px 18px", borderTop: "1px solid var(--border)", marginTop: "12px" }}>
           <button className="ab-pill" onClick={resetDraft}>{T.reset}</button>
-          <span className="muted" style={{ fontSize: "10px", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
+          <span className="muted" style={{ fontSize: "11px", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
           <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
           <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>{T.apply}</button>
         </div>

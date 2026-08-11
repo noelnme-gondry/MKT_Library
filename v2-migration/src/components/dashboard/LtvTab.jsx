@@ -340,19 +340,19 @@ export default function LtvTab({ locale = "ko" } = {}) {
     { k: "ltv", label: T.colLtv(ltvHorizon), render: (r) => (r.ltvAtHorizon != null ? (
       <>
         {fmtCur(r.ltvAtHorizon)}
-        {r.ltvPredicted && <span style={{ fontSize: "9px", color: "#adc6ff", cursor: "help", marginLeft: "4px" }} title={T.colLtvTooltip(r.maxObsDn, ltvHorizon)}>ⓘ</span>}
+        {r.ltvPredicted && <span style={{ fontSize: "11px", color: "#adc6ff", cursor: "help", marginLeft: "4px" }} title={T.colLtvTooltip(r.maxObsDn, ltvHorizon)}>ⓘ</span>}
       </>
     ) : "—") },
     { k: "ratio", label: T.colRatio, cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },
     { k: "payback", label: T.colPayback, render: (r) => fmtPb(r.payback) },
-    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "10px" }, render: (r) => r.fitKind },
+    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "11px" }, render: (r) => r.fitKind },
   ];
   const orderedLtvCols = applyMetricView(ltvCols, ltvTableCfg, (c) => c.k);
 
   return (
     <div className="tab-pane active" id="tab-ltv">
       <section className="block" id="s-ctl">
-        <h2 className="section-title"><span className="ix">§1</span>{T.s1Title}</h2>
+        <h2 className="section-title">{T.s1Title}</h2>
         <div className="ab-pillgroup">
           <span className="ab-pillgroup-label">{T.unitLabel}</span>
           {availFields.map(f => {
@@ -397,7 +397,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
 
       <section className="block" id="s-table">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§2</span>{T.s2Title(ltvHorizon)}</h2>
+          <h2 className="section-title">{T.s2Title(ltvHorizon)}</h2>
           <button className="ab-pill" onClick={() => setLtvCfgOpen(true)} title={T.editColsTitle}>{T.editCols}</button>
         </div>
         <p className="muted">
@@ -445,7 +445,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       </section>
 
       <section className="block" id="s-ltv-curve">
-        <h2 className="section-title"><span className="ix">§3</span>{T.s3Title}</h2>
+        <h2 className="section-title">{T.s3Title}</h2>
         <p className="muted">{T.s3Desc}</p>
         <div className="chart-container" style={{ height: "260px" }}>
           <canvas id="ltvcac-curve" ref={chartRef}></canvas>
@@ -453,7 +453,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       </section>
 
       <section className="block" id="s-mat">
-        <h2 className="section-title"><span className="ix">§4</span>{T.s4Title}</h2>
+        <h2 className="section-title">{T.s4Title}</h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", alignItems: "flex-start", marginBottom: "14px" }}>
           <div className="ab-pillgroup">
             <span className="ab-pillgroup-label">{T.unitLabel}</span>
@@ -540,7 +540,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                       <td className="tnum">{fmtCur(u.cost)}</td>
                       {showCols.map((d) => <td key={d} className="tnum">{fmtCell(d)}</td>)}
                       <td className="tnum">{mat != null ? mat.toFixed(2) + "×" : "—"}</td>
-                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "10px" }}>{u.fit?.kind || "—"}</td>
+                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "11px" }}>{u.fit?.kind || "—"}</td>
                     </tr>
                   );
                 })

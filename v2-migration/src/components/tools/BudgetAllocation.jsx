@@ -1647,7 +1647,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
         >
         <section className="block" id="s-filter">
-          <h2 className="section-title"><span className="ix">§1</span>{tr("분석 조건", "Analysis settings")}</h2>
+          <h2 className="section-title">{tr("어떤 조건으로 계산할까요?", "What should this plan optimize for?")}</h2>
           <p className="muted" style={{ fontSize: "12px" }}>
             {tr(
               "최적화 목표를 먼저 선택하고, 분석 단위와 국가/채널/OS 필터를 정한 뒤 '적용'을 누르면 산점도·추세선·예산 분배가 계산됩니다.",
@@ -1681,7 +1681,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       style={{ flexDirection: "column", alignItems: "flex-start", opacity: ok ? 1 : 0.4, cursor: ok ? "pointer" : "not-allowed", textAlign: "left" }}
                     >
                       <span style={{ fontSize: "13px", fontWeight: 700 }}>{o.short} {o.arrow}{isBasisDefault ? tr(" ·기본", " ·default") : ""}</span>
-                      <span style={{ fontSize: "10px", fontWeight: 400, opacity: 0.85 }}>{o.label}{!ok ? " 🔒" : ""}</span>
+                      <span style={{ fontSize: "11px", fontWeight: 400, opacity: 0.85 }}>{o.label}{!ok ? " 🔒" : ""}</span>
                     </button>
                   );
                 })}
@@ -1931,7 +1931,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         >
         <section className="block" id="s-verify">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "8px" }}>
-            <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§2</span>{tr("추세선 검증 (Trendline Verification)", "Trendline verification")}</h2>
+            <h2 className="section-title" style={{ margin: 0 }}>{tr("데이터가 예산 변화에 반응했나?", "Did performance respond to budget changes?")}</h2>
             <div style={{ display: "flex", gap: "8px" }}>
               <button
                 className="btn secondary"
@@ -1961,17 +1961,20 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 {verifyRows.length === 0 ? (
                   <div style={{ padding: "16px", color: "var(--text-muted)", fontSize: "13px" }}>
                     {tr(
-                      "선택한 단위에서 유효한 데이터(비용>0 · 결과>0)를 찾지 못했습니다. §1에서 다른 단위를 선택하거나 지표 매핑을 확인하세요.",
-                      "No valid data (cost > 0 · results > 0) was found for the selected unit. Choose a different unit in §1 or check your metric mapping."
+                      "선택한 단위에서 유효한 데이터(비용>0 · 결과>0)를 찾지 못했습니다. 분석 조건에서 다른 단위를 선택하거나 지표 매핑을 확인하세요.",
+                      "No valid data (cost > 0 · results > 0) was found for the selected unit. Choose another analysis unit or check the metric mapping."
                     )}
                   </div>
                 ) : (
                   verifyRows.map((r) => {
                     const isSelected = r.ch === effectiveVerifyGroup;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={r.ch}
                         onClick={() => setVerifySelectedGroup(r.ch)}
+                        aria-pressed={isSelected}
+                        className="analysis-choice-card"
                         style={{
                           padding: "10px 14px",
                           borderBottom: "1px solid var(--border)",
@@ -2003,7 +2006,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                             {tr("선택된 모델:", "Selected model:")} <strong>{r.modelLabel}</strong>{r.r2 != null ? ` · R² ${r.r2.toFixed(2)}` : ""} · n={r.n}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })
                 )}
@@ -2331,7 +2334,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         <div className="prism-driver__head">
           <div>
             <span className="prism-driver__eyebrow">PRISM CONTROL</span>
-            <h2 className="section-title" id="prism-driver-title"><span className="ix">§1</span>{tr("무엇을 정할까요?", "What do you want to set?")}</h2>
+            <h2 className="section-title" id="prism-driver-title">{tr("무엇을 정할까요?", "What do you want to set?")}</h2>
             <p>{tr("예산이나 효율 목표 하나만 정하면, PRISM이 채널별 금액을 자동으로 계산합니다. 채널 행은 결과표이며 직접 조정하지 않습니다.", "Set one portfolio constraint — budget or efficiency target — and PRISM calculates the channel allocation. Channel rows are read-only results, not manual controls.")}</p>
           </div>
           <div className="prism-driver__mode" role="group" aria-label={tr("PRISM 조정 기준", "PRISM planning basis")}>
@@ -2674,7 +2677,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         onToggle={(e) => { if (e.currentTarget.open) requestAnimationFrame(() => chartInstance.current?.resize()); }}
       >
         <summary className="section-title alloc-fold-summary" style={{ cursor: "pointer" }}>
-          <span className="ix">§1</span>{tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
+          {tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
           <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("추세선 모델·이상치·산점도 — 펼쳐서 검증", "Trendline model · outliers · scatter — expand to verify")}</span>
         </summary>
         <div className="alloc-card" style={{ marginTop: "12px" }}>
@@ -2879,7 +2882,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         return (
         <section className="block" id="s-table">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-            <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§3</span>{tr("채널별 상세", "Channel detail")}</h2>
+            <h2 className="section-title" style={{ margin: 0 }}>{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
             {rollupLevels.length > 1 && (
               <div className="ab-pillgroup" style={{ margin: 0 }}>
                 <span className="ab-pillgroup-label" title={tr("분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).", "Allocation is always calculated at the finest unit — this view just merges it for display (efficiency is recalculated from the totals).")}>{tr("묶어 보기", "Group view")}</span>
@@ -2970,7 +2973,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 ) : items.length === 0 ? (
                   <tr>
                     <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px" }}>
-                      {tr("배분 가능한 채널이 없습니다. 검증 단계(§2)에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step (§2).")}
+                      {tr("배분 가능한 채널이 없습니다. 검증 단계에서 추세선 적합에 성공한 채널이 있는지 확인하세요.", "No channels are available for allocation. Check whether any channels have a successful trendline fit in the verification step.")}
                     </td>
                   </tr>
                 ) : (
@@ -2991,7 +2994,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                               {conf && (
                                 <span
                                   title={tr(`적합 신뢰도 ${conf.ko} · R²=${(conf.r2 || 0).toFixed(2)} · 점 ${conf.n}개 (적합 품질·데이터 기반, 확률 아님)`, `Fit confidence ${conf.en} · R²=${(conf.r2 || 0).toFixed(2)} · ${conf.n} pts (fit quality/data, not probability)`)}
-                                  style={{ fontSize: "10px", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--bg-1)", color: conf.level === "med" ? "var(--text-muted)" : "#fff", border: conf.level === "med" ? "1px solid var(--border)" : "none" }}
+                                  style={{ fontSize: "11px", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--bg-1)", color: conf.level === "med" ? "var(--text-muted)" : "#fff", border: conf.level === "med" ? "1px solid var(--border)" : "none" }}
                                 >{tr(conf.ko, conf.en)}</span>
                               )}
                             </div>
@@ -3046,7 +3049,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       <section className="block" id="s-bar">
           <h2 className="section-title">
-            <span className="ix">§4</span>{tr("권장 배분 비중", "Recommended allocation share")}
+            {tr("권장 배분 비중", "Recommended allocation share")}
           </h2>
           {!(plannedDailyBudget > 0) || items.length === 0 ? (
             <p className="muted" style={{ fontSize: "12px", marginTop: "12px" }}>
@@ -3061,7 +3064,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* §5 What-if 시나리오 */}
       <section className="block" id="s-scenario">
-          <h2 className="section-title"><span className="ix">§5</span>{tr("What-if 시나리오 (예산별 예상 성과)", "What-if scenarios (projected performance by budget)")}</h2>
+          <h2 className="section-title">{tr("예산을 바꾸면 결과가 어떻게 달라지나?", "How would results change at another budget?")}</h2>
           {!(plannedDailyBudget > 0) || scenarios.length === 0 ? (
             <p className="muted" style={{ fontSize: "12px", marginTop: "12px" }}>
               {tr("전역 입력을 정하면 해당 계획 예산의 0.5×~2× 구간을 같은 알고리즘으로 비교합니다.", "Set a global input to compare the 0.5×–2× range around that planned budget with the same algorithm.")}
@@ -3094,7 +3097,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                         const isBase = s.m === 1.0;
                         return (
                           <tr key={s.m} style={{ background: isBase ? "rgba(173,198,255,0.10)" : "transparent" }}>
-                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "10px" }}>{tr("현재", "current")}</span>}</td>
+                            <td className="tnum">{s.m}× {isBase && <span style={{ color: "var(--primary, #adc6ff)", fontSize: "11px" }}>{tr("현재", "current")}</span>}</td>
                             <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(s.budget, currency)}</td>
                             <td className="tnum" style={{ textAlign: "right" }}><strong>{formatNumberK(s.totResults, 0)}</strong> {unitLabel}{locale === "en" ? "s" : ""}</td>
                             <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(s.avgCpr, effectiveMetric, currency)}</td>
@@ -3120,7 +3123,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* §6 채널 반응 곡선 (PRISM P4) — 지출→결과 곡선 + now/plan/knee/onset 마커 */}
       <section className="block" id="s-response">
-        <h2 className="section-title"><span className="ix">§6</span>{tr("채널 반응 곡선 (지출 → 결과)", "Channel response curve (spend → results)")}</h2>
+        <h2 className="section-title">{tr("채널별 추가 지출 효과는?", "What does additional spend produce by channel?")}</h2>
         {!responseCurve || !responseCurve.curve || !responseCurve.curve.points.length ? (
           <p className="muted" style={{ fontSize: "12px", marginTop: "12px" }}>
             {tr("총 예산을 입력하고 채널을 선택하면 지출을 늘릴 때 결과가 어떻게 늘어나는지(수확체감·과포화 지점 포함) 곡선으로 보여줍니다.", "Enter a total budget and pick a channel to see how results grow as you increase spend — including the diminishing-returns and over-saturation points.")}
@@ -3180,7 +3183,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* §7 알고리즘 노트 (index.html s-algo 이식) */}
       <section className="block" id="s-algo">
-        <h2 className="section-title"><span className="ix">§7</span>{tr("알고리즘 노트", "Algorithm notes")}</h2>
+        <h2 className="section-title">{tr("계산 기준", "Calculation details")}</h2>
         <p>{tr(
           <>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</>,
           <>This page is a JS port of Campaign Allocator&apos;s (Streamlit) <strong>Mode A · efficiency-based recommended share</strong>. Core formula:</>

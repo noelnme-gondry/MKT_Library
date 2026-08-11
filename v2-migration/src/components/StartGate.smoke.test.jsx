@@ -112,7 +112,8 @@ describe("StartGate render smoke", () => {
     const startView = render(<StartGate />);
 
     expect(screen.getByRole("heading", { name: /VIF 다중공선성 점검/ })).toBeTruthy();
-    expect(screen.getAllByText("추천 분석 선택").length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "추천 분석 결과" })).toBeTruthy();
+    expect(document.querySelector(".data-journey")).toBeNull();
     expect(screen.queryByText(/필수 컬럼이 매핑되지 않았습니다/)).toBeNull();
     expect(document.querySelector(".csv-mapping-block")).toBeNull();
 

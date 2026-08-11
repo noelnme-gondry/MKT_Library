@@ -1091,11 +1091,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     <button key={v.value} className={`ab-pill ${on ? "active" : ""}`}
                       onClick={() => setActiveSeg(on ? null : { col: s.col, value: v.value })}
                       title={tr(`${v.count.toLocaleString()}행`, `${v.count.toLocaleString()} rows`)}>
-                      {v.value} <span style={{ color: MUTED, fontSize: "10px" }}>{v.count.toLocaleString()}</span>
+                      {v.value} <span style={{ color: MUTED, fontSize: "11px" }}>{v.count.toLocaleString()}</span>
                     </button>
                   );
                 })}
-                {s.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
+                {s.truncated && <span style={{ fontSize: "11px", color: "#f59e0b" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
               </React.Fragment>
             ))}
             {validSeg && (
@@ -1116,7 +1116,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         </div>
       )}
       <section className="block" id="s-aha-map">
-        <h2 className="section-title"><span className="ix">§0</span>{tr("컬럼 역할 매핑", "Column role mapping")}</h2>
+        <h2 className="section-title">{tr("컬럼 역할 매핑", "Column role mapping")}</h2>
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
             <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
@@ -1266,7 +1266,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <div key={label} style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "11px", color: MUTED }}>{label}</div>
                   <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{val}</div>
-                  {sub ? <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
+                  {sub ? <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
                 </div>
               ))}
             </div>
@@ -1284,7 +1284,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     ),
                   }}
                 />
-                <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
+                <div style={{ fontSize: "11px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
                   {tr("예측력(F1)", "Predictive strength (F1)")} {topAction.holdout.F1.toFixed(2)} · {tr("예측력 표시", "predictive strength")} {confidenceDots(topAction.holdout.F1)}
                 </div>
               </div>
@@ -1357,20 +1357,21 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                   {list.length ? list.map((r) => (
-                    <div key={r.action} onClick={() => setDrilldownAction(r.action)}
-                      style={{ background: "var(--surface-container-low)", border: `1px solid ${r.action === drillTarget ? "rgba(122,162,247,0.55)" : "var(--border)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "6px", cursor: "pointer" }}>
+                    <button type="button" key={r.action} onClick={() => setDrilldownAction(r.action)} aria-pressed={r.action === drillTarget}
+                      className="analysis-choice-card"
+                      style={{ background: "var(--surface-container-low)", border: `1px solid ${r.action === drillTarget ? "var(--primary)" : "var(--border)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "6px", cursor: "pointer" }}>
                       <div style={{ fontSize: "13px", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
                         <span>{r.action}</span><span style={{ fontSize: "11px", color: MUTED }}>›</span>
                       </div>
                       <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>{ahaActionPhrase(r, locale)}</div>
-                    </div>
+                    </button>
                   )) : <div style={{ fontSize: "11px", color: MUTED }}>{tr("없음", "None")}</div>}
                 </div>
               );
             };
             return (
               <section className="block" id="s-aha-kanban">
-                <h2 className="section-title"><span className="ix">§1</span>{C.kanbanTitle}</h2>
+                <h2 className="section-title">{C.kanbanTitle}</h2>
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
                   <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
@@ -1386,7 +1387,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
           {/* ── §2 드릴다운 — 평어 해석(디테일화) + 윈도우×k 히트맵 ── */}
           <section className="block" id="s-aha-drill">
-            <h2 className="section-title"><span className="ix">§2</span>{C.drillTitle}{drillTarget ? ` — ${drillTarget}` : ""}</h2>
+            <h2 className="section-title">{C.drillTitle}{drillTarget ? ` — ${drillTarget}` : ""}</h2>
             {drillResult && viewResults.length > 0 && (
               <div style={{ marginBottom: "10px" }}>
                 <select className="map-select" value={drillTarget} onChange={(e) => setDrilldownAction(e.target.value)}>
@@ -1408,7 +1409,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
                   <div style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
                   <div style={{ fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>{help}</div>
-                  <div style={{ fontSize: "10px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tr("통계 원값(전문가용)", "Raw statistic (expert)")}>{tech}</div>
+                  <div style={{ fontSize: "11px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tr("통계 원값(전문가용)", "Raw statistic (expert)")}>{tech}</div>
                 </div>
               );
               return (
@@ -1648,7 +1649,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                               </td>
                               <td className="tnum">{r.bestWindow === Infinity ? tr("전체", "All") : "d" + r.bestWindow}</td>
                               <td className="tnum">≥{r.bestK}</td>
-                              <td className="tnum">{(r.allSupport || 0).toLocaleString()}{tr("명", "")} <span style={{ color: MUTED, fontSize: "10.5px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
+                              <td className="tnum">{(r.allSupport || 0).toLocaleString()}{tr("명", "")} <span style={{ color: MUTED, fontSize: "11px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
                               <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.P.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.R.toFixed(3)}</td>

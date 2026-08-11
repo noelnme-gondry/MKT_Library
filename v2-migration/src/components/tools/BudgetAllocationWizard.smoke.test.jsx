@@ -64,7 +64,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(() => render(<BudgetAllocation />)).not.toThrow();
     fireEvent.click(screen.getByText(/곡선 검증·보정/));
 
-    expect(screen.getByText(/추세선 검증/)).toBeTruthy();
+    expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
     const canvas = document.getElementById("chart-alloc-scatter-verify");
     expect(canvas).toBeTruthy();
 
@@ -216,7 +216,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(quickGoal).toBeTruthy();
     expect(quickGoal.value).toBe("install");
     fireEvent.click(screen.getByRole("button", { name: "적용됨" }));
-    expect(screen.getByText(/추세선 검증/)).toBeTruthy();
+    expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
   });
 
   it("keeps the same global-driver behavior in English", () => {

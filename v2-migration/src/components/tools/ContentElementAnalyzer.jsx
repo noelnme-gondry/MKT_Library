@@ -638,7 +638,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       {/* ── §0 매핑 ── */}
       <details className="block analysis-data-mapping" id="s-content-mapping" open={mappingOpen} onToggle={(event) => setMappingOpen(event.currentTarget.open)}>
         <summary>
-          <span><span className="ix">§0</span>{T.mappingTitle}</span>
+          <span>{T.mappingTitle}</span>
           {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
         </summary>
         <div className="analysis-data-mapping__body">
@@ -871,7 +871,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">
-            <h2 className="section-title"><span className="ix">§1</span>{T.forestTitle}</h2>
+            <h2 className="section-title">{T.forestTitle}</h2>
             <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
               {locale === "en" ? (
                 <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "#22c55e" }}>Green</span> / <span style={{ color: "#f87171" }}>red</span> = BH p&lt;.05 · <span style={{ color: "#94a3b8" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>

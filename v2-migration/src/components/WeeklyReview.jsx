@@ -54,6 +54,8 @@ const COPY = {
     persistenceError: "브라우저 저장소를 사용할 수 없어 저장을 켜지 못했습니다. CSV로 내보내 보관해 주세요.",
     clear: "전체 기록 삭제",
     clearConfirm: "이 브라우저의 결정 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.",
+    clearAction: "삭제하기",
+    cancel: "취소",
     inboxSummary: "검토 현황",
     baseline: "기준",
     baselineDate: "기준 데이터",
@@ -152,6 +154,8 @@ const COPY = {
     persistenceError: "Browser storage is unavailable, so retention could not be enabled. Export a CSV to keep these records.",
     clear: "Delete all records",
     clearConfirm: "Delete every decision record in this browser? This cannot be undone.",
+    clearAction: "Delete records",
+    cancel: "Cancel",
     inboxSummary: "Review status",
     baseline: "Baseline",
     baselineDate: "Baseline data through",
@@ -277,6 +281,7 @@ export function buildBrief(records, t, locale) {
 export default function WeeklyReview({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
+  const [clearPending, setClearPending] = useState(false);
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
@@ -467,14 +472,19 @@ export default function WeeklyReview({ locale = "ko" }) {
           type="button"
           className="btn text weekly-review-page__clear"
           disabled={!records.length}
-          onClick={() => {
-            if (typeof window !== "undefined" && window.confirm(t.clearConfirm)) clearDecisionRecords();
-          }}
+          onClick={() => setClearPending(true)}
         >
           {t.clear}
         </button>
         {message && <span role="status">{message}</span>}
       </section>
+      {clearPending && <section className="weekly-review-page__clear-confirm" role="alertdialog" aria-labelledby="weekly-review-clear-title">
+        <p id="weekly-review-clear-title">{t.clearConfirm}</p>
+        <div>
+          <button type="button" className="btn small" onClick={() => setClearPending(false)}>{t.cancel}</button>
+          <button type="button" className="btn small primary" onClick={() => { clearDecisionRecords(); setClearPending(false); }}>{t.clearAction}</button>
+        </div>
+      </section>}
       <p className="weekly-review-page__privacy">{isPersistenceEnabled ? t.privacySaved : t.privacySession}</p>
       {sortedRecords.length > 0 && <section className="weekly-review-page__ledger" aria-label={t.title}>
           {sortedRecords.map((record) => {

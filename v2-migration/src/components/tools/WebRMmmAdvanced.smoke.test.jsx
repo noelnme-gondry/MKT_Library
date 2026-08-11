@@ -97,11 +97,11 @@ describe("WebRMmmAdvanced render smoke", () => {
 
     await waitFor(() => expect(runWebRMmmElasticNet).toHaveBeenCalledWith(expect.objectContaining({ ok: true })));
     expect(await screen.findByText("예측 정확도 승자: WebR Elastic-net")).toBeTruthy();
-    expect(await screen.findByText("1. 실제 성과를 얼마나 설명했나")).toBeTruthy();
-    expect(screen.getByText("2. 무엇이 성과를 설명했나")).toBeTruthy();
-    expect(screen.getByText("3. 채널 계수는 검증구간에서도 유지됐나")).toBeTruthy();
-    expect(screen.getByText("4. 지출을 바꾸면 예측이 어떻게 달라지나")).toBeTruthy();
-    expect(screen.getByText("5. 예산 변경을 추천해도 안전한가")).toBeTruthy();
+    expect(await screen.findByText("실제 성과를 얼마나 설명했나")).toBeTruthy();
+    expect(screen.getByText("무엇이 성과를 설명했나")).toBeTruthy();
+    expect(screen.getByText("채널 효과는 검증에서도 유지됐나")).toBeTruthy();
+    expect(screen.getByText("지출을 바꾸면 예측이 어떻게 달라지나")).toBeTruthy();
+    expect(screen.getByText("예산 변경을 추천해도 안전한가")).toBeTruthy();
     expect(screen.getByText("예산 추천 안전 게이트")).toBeTruthy();
     expect(screen.getByText("WebR 조건부 예산 배분")).toBeTruthy();
     expect(screen.queryByText(/Classic/)).toBeNull();

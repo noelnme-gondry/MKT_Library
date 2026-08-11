@@ -1468,10 +1468,18 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
     return (
       <span
         className={`reg-chip mmm-mapper-chip ${isUnassigned ? "mmm-mapper-chip--unassigned" : "mmm-mapper-chip--mapped"}`}
+        role="group"
+        tabIndex={0}
+        aria-label={tr(`${col} 매핑 설정`, `${col} mapping controls`)}
         draggable
         onDragStart={(event) => beginDrag(event, col)}
         onDragEnd={() => { setDragCol(null); setDragOverRole(null); }}
         onClick={(event) => { event.stopPropagation(); setSelectedCol(col); }}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+          event.preventDefault();
+          setSelectedCol(col);
+        }}
         style={{ background: selectedCol === col ? "color-mix(in srgb, var(--primary) 14%, var(--bg-2))" : "var(--bg-2)", border: selectedCol === col ? "1px solid var(--primary)" : "1px solid var(--border)", boxShadow: selectedCol === col ? "0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)" : "none" }}
       >
         <strong className="mmm-mapper-chip__label" title={col}>{col}</strong>
@@ -1515,11 +1523,19 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   const Zone = ({ role, label, withKind, withPlat }) => (
     <div
       data-mmm-role-zone={role}
+      role={selectedCol ? "button" : undefined}
+      tabIndex={selectedCol ? 0 : -1}
+      aria-label={selectedCol ? tr(`${selectedCol}을 ${label}에 배치`, `Place ${selectedCol} in ${label}`) : undefined}
       onDragEnter={(event) => { event.preventDefault(); setDragOverRole(role); }}
       onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; setDragOverRole(role); }}
       onDragLeave={() => setDragOverRole((current) => current === role ? null : current)}
       onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), role); }}
       onClick={() => placeColumn(selectedCol, role)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        placeColumn(selectedCol, role);
+      }}
       className="mmm-mapper-zone"
       style={{ border: dragOverRole === role ? "2px solid var(--primary)" : "1px dashed var(--border)", background: dragOverRole === role ? "color-mix(in srgb, var(--primary) 8%, var(--bg-1))" : selectedCol ? "color-mix(in srgb, var(--primary) 3%, var(--bg-1))" : "transparent", cursor: selectedCol ? "pointer" : "default" }}
     >

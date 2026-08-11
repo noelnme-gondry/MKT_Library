@@ -208,7 +208,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
       <section className="block" id="s-seasonality">
         <div className="seasonality-heading">
           <div>
-            <h2 className="section-title"><span className="ix">§</span>{locale === "en" ? "Calendar seasonality" : "캘린더 시즈널리티"}</h2>
+            <h2 className="section-title">{locale === "en" ? "Calendar seasonality" : "캘린더 시즈널리티"}</h2>
             <p className="seasonality-sub">{locale === "en" ? "Input frequency is detected automatically. Existing country, OS, channel and date filters apply." : "입력 단위를 자동 인식합니다. 상단의 국가·OS·채널·기간 필터가 그대로 적용됩니다."}</p>
           </div>
           <div className="seasonality-controls">

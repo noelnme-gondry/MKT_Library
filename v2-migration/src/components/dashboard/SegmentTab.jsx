@@ -100,7 +100,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
                     return (
                       <td key={ci} className="tnum" style={{ background: getBg(v) }}>
                         {met.fmt(cell)}
-                        <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {fmtCurrencyPrecise(cell.cost, displayCurrency)}
                         </div>
                       </td>
@@ -122,7 +122,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-segment">
         <section className="block" id="s-matrix">
-          <h2 className="section-title"><span className="ix">§1</span>{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
+          <h2 className="section-title">{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
           <p className="muted">{tr("데이터 없음", "No data")}</p>
         </section>
       </div>
@@ -132,7 +132,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-segment">
       <section className="block" id="s-matrix">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
+        <h2 className="section-title">{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
 
         <div className="ab-pillgroup">
           <span className="ab-pillgroup-label">{tr("행 축", "Row axis")}</span>

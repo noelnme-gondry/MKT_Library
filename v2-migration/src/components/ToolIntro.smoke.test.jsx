@@ -10,22 +10,23 @@ describe("ToolIntro heading and locale contract", () => {
     expect(container.querySelector("h1")?.classList.contains("sr-only")).toBe(false);
     expect(container.textContent).toContain("두 안의 차이가 우연인지");
     expect(container.querySelector(".tool-instrument-header")?.getAttribute("data-tool-id")).toBe("5-4");
-    expect(container.textContent).toContain("브라우저 내 분석");
-    expect(container.textContent).toContain("의사결정 도구");
+    expect(container.textContent).not.toContain("브라우저 내 분석");
+    expect(container.textContent).not.toContain("의사결정 도구");
   });
 
   it("keeps the heading and explanation equivalent in English", () => {
     const { container } = render(<ToolIntro toolId="5-4" locale="en" />);
     expect(screen.getByRole("heading", { level: 1, name: "Experiment analysis" })).toBeTruthy();
     expect(container.textContent).toContain("whether the difference is more than chance");
-    expect(container.textContent).toContain("BROWSER-ONLY ANALYSIS");
-    expect(container.textContent).toContain("DECISION TOOL");
+    expect(container.textContent).not.toContain("BROWSER-ONLY ANALYSIS");
+    expect(container.textContent).not.toContain("DECISION TOOL");
     expect(container.textContent?.match(/[가-힣]/)).toBeNull();
   });
 
   it("renders an SSR-ready budget heading instead of leaving it to the dynamic tool", () => {
-    render(<ToolIntro toolId="5-3" />);
+    const { container } = render(<ToolIntro toolId="5-3" />);
     expect(screen.getByRole("heading", { level: 1, name: "무료 마케팅 예산 배분 시뮬레이터" })).toBeTruthy();
+    expect(container.querySelector(".tool-instrument-header__next")).toBeNull();
   });
 
   it("gives every response subtool a unique Korean and English heading", () => {

@@ -1068,7 +1068,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </details>
 
       <section className="block" id="s-validation">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("관측 충분성", "Data sufficiency")}</h2>
+        <h2 className="section-title">{tr("판단할 만큼 데이터가 충분한가?", "Is there enough data to decide?")}</h2>
         {hasValidationIssues ? (
           <div className="callout warning">
             <div className="ico">!</div>
@@ -1100,7 +1100,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       {health && (
         <section className="block" id="s-velocity">
-          <h2 className="section-title"><span className="ix">§2</span>{C.healthTitle}</h2>
+          <h2 className="section-title">{C.healthTitle}</h2>
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
             {C.healthDescPre}<strong>{C.healthDescS1}</strong>{tr(", 얼마나 빠르게 ", ", how fast we're ")}<strong>{C.healthDescS2}</strong>{tr(", 하나가 얼마나 ", ", and how long one lasts before it ")}<strong>{C.healthDescS3}</strong>.
           </p>
@@ -1144,7 +1144,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       )}
 
       <section className="block" id="s-metrics">
-        <h2 className="section-title"><span className="ix">§3</span>{C.metricsTitle} {selectedCell ? tr("(필터됨)", "(filtered)") : tr("(상위 50, 노출수 순)", "(top 50, by impressions)")}</h2>
+        <h2 className="section-title">{tr("어떤 소재가 성과를 만들었나?", "Which creatives produced results?")} {selectedCell ? tr("(필터됨)", "(filtered)") : tr("(상위 50, 노출수 순)", "(top 50, by impressions)")}</h2>
         <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "12px" }}>{C.metricsDesc}</p>
         {selectedCell && (
           <div className="callout" style={{ marginBottom: "8px" }}>
@@ -1169,7 +1169,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               {sortedMetrics.length ? (
                 sortedMetrics.map((m) => (
                   <tr key={m.creative_id}>
-                    <td><code className="inline" style={{ fontSize: "10px" }}>{String(m.creative_id).slice(0, 24)}</code></td>
+                    <td><code className="inline" style={{ fontSize: "11px" }}>{String(m.creative_id).slice(0, 24)}</code></td>
                     <td>{String(m.channel || "")}</td>
                     <td className="tnum">{m.days}</td>
                     <td className="tnum">{(m.impressions || 0).toLocaleString()}</td>
@@ -1203,7 +1203,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <section className="block" id="s-decompose">
         <h2 className="section-title">
-          <span className="ix">§4</span>{tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}
+          {tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}
           {hasDecompose && (
             <span
               className="section-help"
@@ -1306,7 +1306,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                         return (
                           <tr key={i}>
                             <td>{e.factor}</td>
-                            <td><strong>{e.level}</strong> <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>vs {e.ref}</span></td>
+                            <td><strong>{e.level}</strong> <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>vs {e.ref}</span></td>
                             <td className="tnum">{e.ref}</td>
                             <td className="tnum"><strong style={{ color }}>{decMeta.fmtVal(e.coef)}</strong></td>
                             <td className="tnum">{fmtNum(e.z, 2)}</td>
@@ -1336,7 +1336,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-fatigue">
-        <h2 className="section-title"><span className="ix">§5</span>{C.fatigueTitle}</h2>
+        <h2 className="section-title">{tr("어떤 소재가 지치기 시작했나?", "Which creatives are starting to fatigue?")}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
           {C.fatigueDesc((fatigue || []).length, fatiguedCount)}
         </p>
@@ -1376,7 +1376,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 fatiguedRows.map((f, i) => (
                   <tr key={i}>
                     <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{C.fatiguedBadge}</span></td>
-                    <td><code className="inline" style={{ fontSize: "10px" }}>{String(f.creative_id).slice(0, 24)}</code></td>
+                    <td><code className="inline" style={{ fontSize: "11px" }}>{String(f.creative_id).slice(0, 24)}</code></td>
                     <td className="tnum" style={{ fontSize: "11px" }}>{f.peakDate || ""}</td>
                     <td className="tnum">{fmtPct(f.peakValue)}</td>
                     <td className="tnum">{fmtPct(f.currentValue)}</td>
@@ -1393,7 +1393,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-fatigue-alert">
-        <h2 className="section-title"><span className="ix">§6</span>{C.fatigueAlertTitle}</h2>
+        <h2 className="section-title">{C.fatigueAlertTitle}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
           {C.fatigueAlertDesc((fatigueAlerts || []).length, alertNowN)}
         </p>
@@ -1424,8 +1424,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                           : "#22c55e";
                   return (
                     <tr key={i}>
-                      <td>{a.alert ? <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "10.5px" }}>—</span>}</td>
-                      <td><code className="inline" style={{ fontSize: "10px" }}>{String(a.creative_id).slice(0, 24)}</code></td>
+                      <td>{a.alert ? <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>—</span>}</td>
+                      <td><code className="inline" style={{ fontSize: "11px" }}>{String(a.creative_id).slice(0, 24)}</code></td>
                       <td className="tnum">{a.days}{tr("일", "d")}</td>
                       <td className="tnum"><strong style={{ color: scoreColor }}>{a.score == null ? "—" : (a.score * 100).toFixed(0) + "%"}</strong></td>
                       <td className="tnum" style={{ color: (a.ctrTrendPctPerDay || 0) < 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.ctrTrendPctPerDay, locale)}</td>
@@ -1433,7 +1433,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
                       <td className="tnum">
                         {a.etaDays == null ? (
-                          <span style={{ color: "var(--text-muted)", fontSize: "10.5px" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
                         ) : a.etaDays === 0 ? (
                           <strong style={{ color: "#f87171" }}>{tr("즉시", "Immediate")}</strong>
                         ) : (
@@ -1453,7 +1453,6 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <section className="block" id="s-fatigue-risk">
         <h2 className="section-title">
-          <span className="ix">§6.1</span>
           {tr("누적 집행 위험 구간 · 과거 신호 적중률", "Cumulative delivery risk zone · historical signal hit rate")}
         </h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px", lineHeight: 1.6 }}>
@@ -1537,7 +1536,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                             {item.signalDate ? tr("하락 신호 발생", "Decline signaled") : tr("위험 구간 진입", "Entered risk zone")}
                           </span>
                         </td>
-                        <td><code className="inline" style={{ fontSize: "10px" }}>{String(item.creative_id).slice(0, 24)}</code></td>
+                        <td><code className="inline" style={{ fontSize: "11px" }}>{String(item.creative_id).slice(0, 24)}</code></td>
                         <td>{item.channel || tr("미분류", "Unclassified")}</td>
                         <td className="tnum">{tr(`${item.ageDays}일`, `${item.ageDays}d`)}</td>
                         <td className="tnum">{Math.round(item.cumulativeImpressions).toLocaleString()}</td>
@@ -1576,7 +1575,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-auto-planner">
-        <h2 className="section-title"><span className="ix">§7</span>{C.plannerTitle}</h2>
+        <h2 className="section-title">{tr("다음에 무엇을 만들까?", "What should we produce next?")}</h2>
         {autoPlan && autoPlan.plan.length ? (
           (() => {
             const buckets = CREATIVE_FATIGUE.ganttBuckets(autoPlan.plan, ganttWeeks);
@@ -1627,13 +1626,13 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                         <div style={{ width: "54px", flexShrink: 0, fontSize: "11px", color: "var(--text-muted)", paddingTop: "4px" }}>W+{b.week}</div>
                         <div style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
                           {b.items.length === 0 ? (
-                            <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>—</span>
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>—</span>
                           ) : (
                             b.items.map((p) => (
                               <span
                                 key={p.queueRank}
                                 title={`${String(p.creative_id)} · ${(URGENCY_LABEL[locale] || URGENCY_LABEL.ko)[p.urgency]} · score=${p.score == null ? "—" : (p.score * 100).toFixed(0) + "%"}`}
-                                style={{ display: "inline-block", padding: "2px 7px", borderRadius: "4px", fontSize: "10px", background: URGENCY_COLOR[p.urgency] + "33", border: `1px solid ${URGENCY_COLOR[p.urgency]}88`, color: "var(--text-1)" }}
+                                style={{ display: "inline-block", padding: "2px 7px", borderRadius: "4px", fontSize: "11px", background: URGENCY_COLOR[p.urgency] + "33", border: `1px solid ${URGENCY_COLOR[p.urgency]}88`, color: "var(--text-1)" }}
                               >
                                 #{p.queueRank} {String(p.creative_id).slice(0, 12)}
                               </span>
@@ -1659,7 +1658,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-matrix">
-        <h2 className="section-title"><span className="ix">§8</span>{tr("조합별 성과표 (Concept Matrix)", "Combination performance grid (Concept Matrix)")}{matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
+        <h2 className="section-title">{tr("어떤 요소 조합이 좋았나?", "Which element combinations worked?")}{matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
         {matrix && matrix.grid.length ? (
           <>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.matrixDesc1}</p>
@@ -1707,7 +1706,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                               outlineOffset: isSel ? "-2px" : undefined,
                             }}
                           >
-                            <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                               {(MATRIX_STATUS_LABEL[locale] || MATRIX_STATUS_LABEL.ko)[cell.status]}{cell.n ? ` · n=${cell.n}` : ""}{isSel ? tr(" ★ 선택됨", " ★ selected") : ""}
                             </div>
                             {cell.status !== "empty" ? (
@@ -1733,7 +1732,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-next">
-        <h2 className="section-title"><span className="ix">§9</span>{tr("다음 테스트 추천", "Next test recommendations")}</h2>
+        <h2 className="section-title">{tr("다음 테스트에서 무엇을 확인할까?", "What should the next test check?")}</h2>
         {nextTest && nextTest.length ? (
           <>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "6px", lineHeight: 1.5 }}>
@@ -1769,7 +1768,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td className="tnum">{h.arms}</td>
                       <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>{h.rationale}</td>
                       <td className="tnum">{h.sampleSize ? h.sampleSize.toLocaleString() : "—"}</td>
-                      <td style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
+                      <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                         {(h.gates || []).map((g, gi) => (
                           <div key={gi}>· {g}</div>
                         ))}

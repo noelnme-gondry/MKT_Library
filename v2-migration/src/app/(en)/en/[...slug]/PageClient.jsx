@@ -10,6 +10,7 @@ import StartGate from "@/components/StartGate";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
+import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
@@ -105,6 +106,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
       {/* 데이터 준비를 어려워하는 유저용 1:1 상담 넛지(세션 1회, 스크롤 후 노출) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge locale="en" />}
       <GlobalModals locale="en" />
+      <UiSemantics />
     </>
   );
 }

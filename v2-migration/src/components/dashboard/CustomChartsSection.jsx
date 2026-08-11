@@ -139,7 +139,7 @@ export default function CustomChartsSection({
   return (
     <section className="block">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h2 className="section-title"><span className="ix">§{sectionNo}</span>{sectionTitle}</h2>
+        <h2 className="section-title">{sectionTitle}</h2>
         <div style={{ display: "flex", gap: "6px" }}>
           <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
           {chartMetas.length > 0 && (
