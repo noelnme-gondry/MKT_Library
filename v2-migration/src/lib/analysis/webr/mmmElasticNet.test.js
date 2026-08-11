@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMmmElasticNetDesign, normalizeMmmElasticNetResult, prepareMmmElasticNetInput } from "./mmmElasticNet";
+import { buildMmmElasticNetDesign, normalizeMmmElasticNetResult, prepareMmmElasticNetInput, resolveMmmElasticNetInput } from "./mmmElasticNet";
 
 function panel(n = 120) {
   const week = Array.from({ length: n }, (_, index) => index + 1);
@@ -20,7 +20,7 @@ function panel(n = 120) {
 }
 
 describe("WebR MMM elastic-net challenger adapter", () => {
-  it("builds a fixed causal feature library without outcome-derived transforms", () => {
+  it("builds a fixed time-safe feature library without outcome-derived transforms", () => {
     const design = buildMmmElasticNetDesign(panel());
     expect(design.X).toHaveLength(120);
     expect(design.terms.filter((term) => term.group === "Meta")).toHaveLength(4);
@@ -37,8 +37,8 @@ describe("WebR MMM elastic-net challenger adapter", () => {
       panel: panel(),
       target: "Regs",
       run: {
-        methodLabel: "Classic MMM",
-        aggregateRollingBacktest: { cuts: [78, 96], horizon: 12 },
+        methodLabel: "Bayesian MMM",
+        rollingBacktest: { cuts: [78, 96], horizon: 12 },
         backtest: { wmape: 12 },
       },
     });
@@ -54,6 +54,7 @@ describe("WebR MMM elastic-net challenger adapter", () => {
       },
     });
     expect(bayesianPrepared).toMatchObject({ ok: true, cuts: [80, 100], horizon: 10, baselineWmape: 9 });
+    expect(resolveMmmElasticNetInput(bayesianPrepared)).toBe(bayesianPrepared);
   });
 
   it("allows only a multi-window 5%+ predictive replacement candidate", () => {
@@ -61,12 +62,14 @@ describe("WebR MMM elastic-net challenger adapter", () => {
       panel: panel(),
       target: "Regs",
       run: {
-        methodLabel: "Classic MMM",
-        aggregateRollingBacktest: { cuts: [78, 96], horizon: 12 },
+        methodLabel: "Bayesian MMM",
+        rollingBacktest: { cuts: [78, 96], horizon: 12 },
         backtest: { wmape: 12 },
       },
     });
     const rows = prepared.terms.map((_, index) => ({
+      coefficient: prepared.terms[index].isMedia ? 0.1 + index * 0.001 : 0.01,
+      fold_coefficients: prepared.terms[index].isMedia ? "0.08|0.11" : "0.01|0.01",
       importance: index === 0 ? 1 : 0.2,
       n: 120,
       folds: 2,
@@ -75,11 +78,15 @@ describe("WebR MMM elastic-net challenger adapter", () => {
       wmape: 10,
       nonzero_features: 6,
     }));
-    expect(normalizeMmmElasticNetResult(rows, prepared)).toMatchObject({
+    const normalized = normalizeMmmElasticNetResult(rows, prepared);
+    expect(normalized).toMatchObject({
       replacementCandidate: true,
       recommendation: "predictive_replacement_candidate",
       validationMode: "nested-time-ordered-outer-wmape",
     });
+    expect(normalized.channelModels).toHaveLength(2);
+    expect(normalized.channelModels[0].terms).toHaveLength(4);
+    expect(normalized.channelModels[0].terms[0].foldCoefficients).toEqual([0.08, 0.11]);
 
     expect(normalizeMmmElasticNetResult(rows.map((row) => ({ ...row, wmape: 12.3 })), prepared)).toMatchObject({
       replacementCandidate: false,
@@ -87,7 +94,24 @@ describe("WebR MMM elastic-net challenger adapter", () => {
     });
     expect(normalizeMmmElasticNetResult(rows.map((row) => ({ ...row, wmape: 13 })), prepared)).toMatchObject({
       replacementCandidate: false,
-      recommendation: "keep_current_js",
+      recommendation: "keep_bayesian",
     });
+  });
+
+  it("marks highly collinear media channels as one interpretation group", () => {
+    const prepared = prepareMmmElasticNetInput({
+      panel: panel(),
+      target: "Regs",
+      run: {
+        methodLabel: "Bayesian MMM",
+        rollingBacktest: { cuts: [78, 96], horizon: 12 },
+        backtest: { wmape: 12 },
+        collinear_pairs: [{ a: "media_meta", b: "media_google", corr: 0.95 }],
+      },
+    });
+    expect(prepared.channelScenarios.map((channel) => channel.collinearityGroup)).toEqual([
+      ["meta", "google"],
+      ["meta", "google"],
+    ]);
   });
 });
