@@ -8,7 +8,7 @@
 // 통계적 정직성(§8): 관측 속성 회귀는 교락이 심함 → "연관"이지 "인과" 아님.
 // OLS가 산출하지 않는 값("확률 85%" 등)은 만들지 않는다. 유의성은 HC3 robust
 // two-sided p에 BH 다중검정 보정을 적용한다.
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
@@ -92,8 +92,8 @@ const EA_COPY = {
     ns: "무유의",
     tableFootnote: '표준오차·신뢰구간은 이분산에 강건한 HC3, 판정은 BH 보정 p값 기준입니다. 신뢰구간은 요소별 pointwise 구간입니다. 계수는 각 요소의 원단위 연관 — 있음/없음(0/1)은 "있을 때 vs 없을 때", 숫자는 "1 증가 시" 성과 변화입니다.',
     advancedTitle: "WebR 고급 분석 · 로지스틱 회귀",
-    advancedDesc: "성과가 0/1인 경우 선형회귀 대신 성공 확률의 오즈를 모델링합니다. R의 binomial GLM과 HC3 강건 표준오차를 쓰며, 기존 JS 결과를 덮어쓰지 않고 별도 검증 결과로 표시합니다.",
-    advancedRun: "WebR 고급 분석 실행",
+    advancedDesc: "성과가 0/1이면 분석 시작과 함께 R의 binomial GLM·HC3 강건 표준오차를 자동 계산합니다. 선형회귀와 함께 표시하되, 확률형 결과의 해석에는 로지스틱 결과를 우선 사용합니다.",
+    advancedRun: "WebR 다시 실행",
     advancedLoading: "R/Wasm 런타임과 통계 패키지를 준비해 분석 중입니다…",
     advancedBlocked: (current, required) => `현재 적은 쪽 결과가 ${current}건입니다. 변수 수를 고려하면 최소 ${required}건이 필요해 고급 회귀를 보류합니다.`,
     advancedFailed: "WebR 분석을 불러오지 못했습니다. 기존 JS 분석 결과는 그대로 유효합니다. 네트워크 상태를 확인한 뒤 다시 시도하세요.",
@@ -166,8 +166,8 @@ const EA_COPY = {
     ns: "n.s.",
     tableFootnote: "SEs and pointwise intervals use heteroskedasticity-robust HC3; decisions use BH-adjusted p-values. Coefficients are raw-unit associations — present vs absent for 0/1 elements, or the outcome change per +1 for numeric elements.",
     advancedTitle: "WebR advanced analysis · Logistic regression",
-    advancedDesc: "For a binary 0/1 outcome, this models the odds of success rather than fitting a linear outcome. It uses R's binomial GLM with HC3 robust standard errors and stays separate from the existing JS result.",
-    advancedRun: "Run WebR advanced analysis",
+    advancedDesc: "For a binary 0/1 outcome, starting the analysis automatically runs R's binomial GLM with HC3 robust standard errors. Both views remain visible, while the logistic result is preferred for probability outcomes.",
+    advancedRun: "Retry WebR",
     advancedLoading: "Preparing the R/Wasm runtime and statistical package…",
     advancedBlocked: (current, required) => `The smaller outcome class has ${current} rows. This model needs at least ${required} for the selected feature count, so advanced regression is withheld.`,
     advancedFailed: "The WebR analysis could not load. The existing JS result remains available. Check the network and try again.",
@@ -258,6 +258,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const webRRequestRef = useRef(0);
+  const webRAutoSignatureRef = useRef(null);
 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
@@ -441,7 +442,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     return prepareLogisticInput({ X: fit.X, y: fit.y, terms: fit.terms });
   }, [fit]);
 
-  const runAdvancedLogistic = async () => {
+  const runAdvancedLogistic = useCallback(async () => {
     if (!logisticInput?.ok) return;
     const requestId = ++webRRequestRef.current;
     const signature = analyzedSig;
@@ -477,7 +478,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
         locale,
       });
     }
-  };
+  }, [analyzedSig, csvData, isDemo, locale, logisticInput]);
+
+  useEffect(() => {
+    if (!analyzedSig || !logisticInput?.ok || webRAutoSignatureRef.current === analyzedSig) return;
+    webRAutoSignatureRef.current = analyzedSig;
+    runAdvancedLogistic();
+  }, [analyzedSig, logisticInput?.ok, runAdvancedLogistic]);
 
   useEffect(() => () => {
     webRRequestRef.current += 1;
@@ -799,16 +806,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <button className="ab-button" onClick={runAdvancedLogistic} disabled={webRRun.status === "loading" && webRRun.signature === analyzedSig}>
-                      {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedRun}
-                    </button>
                     <span className="muted" style={{ fontSize: "11.5px" }}>
-                      {T.advancedMethod} · 0={logisticInput.classCounts.zero.toLocaleString()} · 1={logisticInput.classCounts.one.toLocaleString()}
+                      {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedMethod} · 0={logisticInput.classCounts.zero.toLocaleString()} · 1={logisticInput.classCounts.one.toLocaleString()}
                     </span>
                   </div>
 
                   {webRRun.signature === analyzedSig && webRRun.status === "failed" && (
-                    <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.advancedFailed}</p></div>
+                    <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.advancedFailed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={runAdvancedLogistic}>{T.advancedRun}</button></div>
                   )}
 
                   {webRRun.signature === analyzedSig && webRRun.result?.status === "unstable" && (

@@ -289,7 +289,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
   });
 
-  it("runs WebR logistic regression only for a sufficiently supported binary outcome", async () => {
+  it("automatically runs WebR logistic regression for a sufficiently supported binary outcome", async () => {
     seedWithBinaryOutcome();
     const { container } = render(<ContentElementAnalyzer />);
 
@@ -300,14 +300,13 @@ describe("ContentElementAnalyzer render smoke", () => {
     }
 
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
-    fireEvent.click(screen.getByRole("button", { name: "WebR 고급 분석 실행" }));
 
-    expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     expect(await screen.findByText(/title_has_number의 오즈비 2\.10/)).toBeTruthy();
+    expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     expect(screen.getByText(/^오즈비는 성공 확률 자체가 아니라/)).toBeTruthy();
   });
 
-  it("compares Random Forest with the regression baseline on the same analyzed rows", async () => {
+  it("automatically compares Random Forest, selects its win, and keeps both model choices", async () => {
     seedWithBinaryOutcome();
     const { container } = render(<ContentElementAnalyzer />);
 
@@ -317,10 +316,13 @@ describe("ContentElementAnalyzer render smoke", () => {
       if (!button.classList.contains("active")) fireEvent.click(button);
     }
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
-    fireEvent.click(screen.getByRole("button", { name: "Random Forest 비교 실행" }));
 
+    expect(await screen.findByText("예측 정확도 승자: Random Forest")).toBeTruthy();
     expect(runWebRRandomForest).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
-    expect(await screen.findByText("예측 레이어 교체 후보")).toBeTruthy();
+    const randomForest = screen.getByRole("button", { name: /Random Forest · brier/ });
+    expect(randomForest.classList.contains("active")).toBe(true);
     expect(screen.getByText(/Permutation importance/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /로지스틱 회귀 · brier/ }));
+    expect(screen.getByText(/회귀 결과의 계수·신뢰구간/)).toBeTruthy();
   });
 });

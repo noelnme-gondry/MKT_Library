@@ -85,7 +85,7 @@ export function prepareMmmElasticNetInput({ panel, run, target } = {}) {
   if (!design?.X?.length || design.X.some((row) => row.some((value) => !Number.isFinite(value)))) {
     return { ok: false, reason: "invalid_design" };
   }
-  const rolling = run?.aggregateRollingBacktest;
+  const rolling = run?.rollingBacktest || run?.aggregateRollingBacktest;
   const hasRollingWindows = Array.isArray(rolling?.cuts) && rolling.cuts.length >= 2 && Number(rolling.horizon) > 0;
   const cuts = hasRollingWindows ? rolling.cuts.slice() : [Math.floor(y.length * 0.8)];
   const horizon = hasRollingWindows ? Number(rolling.horizon) : y.length - cuts[0];
@@ -130,7 +130,7 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
     && relativeGain >= 0.05;
   const recommendation = replacementCandidate
     ? "predictive_replacement_candidate"
-    : Number.isFinite(relativeGain) && relativeGain <= 0
+    : Number.isFinite(relativeGain) && relativeGain <= -0.05
       ? "keep_current_js"
       : "more_validation_required";
   return {
@@ -153,6 +153,7 @@ export function normalizeMmmElasticNetResult(rawRows = [], input = {}) {
     recommendation,
     importance,
     estimand: "predictive-only-fixed-causal-feature-library",
+    validationMode: "nested-time-ordered-outer-wmape",
   };
 }
 
@@ -167,37 +168,61 @@ function elasticNetRCode(predictorCount) {
     lower_limits <- ${BIND_PREFIX}lower
     alpha_grid <- c(0.05, 0.25, 0.5, 0.75, 1)
     lambda_factors <- 10^seq(0, -4, length.out=30)
-    absolute_error <- matrix(0, nrow=length(alpha_grid), ncol=length(lambda_factors))
-    denominator <- 0
+    outer_wmapes <- numeric(length(fold_cuts))
+    selected_alphas <- numeric(length(fold_cuts))
+    selected_factors <- numeric(length(fold_cuts))
     for (fold_index in seq_along(fold_cuts)) {
       cut <- fold_cuts[fold_index]
       test_end <- min(nrow(model_x), cut + fold_horizon)
-      train_rows <- seq_len(cut)
-      test_rows <- seq.int(cut + 1L, test_end)
-      fold_scale <- max(sd(model_y[train_rows]), 1e-6)
-      fold_lambda <- fold_scale * lambda_factors
-      denominator <- denominator + sum(abs(model_y[test_rows]))
+      outer_train_rows <- seq_len(cut)
+      outer_test_rows <- seq.int(cut + 1L, test_end)
+      inner_horizon <- min(fold_horizon, max(4L, floor(cut * 0.15)))
+      inner_cut <- cut - inner_horizon
+      if (inner_cut < 20L) stop("insufficient_inner_training_history")
+      inner_train_rows <- seq_len(inner_cut)
+      inner_test_rows <- seq.int(inner_cut + 1L, cut)
+      inner_denominator <- sum(abs(model_y[inner_test_rows]))
+      if (!(inner_denominator > 1e-9)) stop("invalid_inner_wmape_denominator")
+      inner_score <- matrix(Inf, nrow=length(alpha_grid), ncol=length(lambda_factors))
+      inner_scale <- max(sd(model_y[inner_train_rows]), 1e-6)
+      inner_lambda <- inner_scale * lambda_factors
       for (alpha_index in seq_along(alpha_grid)) {
-        fold_fit <- glmnet::glmnet(
-          model_x[train_rows, , drop=FALSE],
-          model_y[train_rows],
+        inner_fit <- glmnet::glmnet(
+          model_x[inner_train_rows, , drop=FALSE],
+          model_y[inner_train_rows],
           family="gaussian",
           alpha=alpha_grid[alpha_index],
-          lambda=fold_lambda,
+          lambda=inner_lambda,
           lower.limits=lower_limits,
           standardize=TRUE,
           intercept=TRUE
         )
-        fold_prediction <- predict(fold_fit, model_x[test_rows, , drop=FALSE], s=fold_lambda)
-        absolute_error[alpha_index, ] <- absolute_error[alpha_index, ] + colSums(abs(fold_prediction - model_y[test_rows]))
+        inner_prediction <- predict(inner_fit, model_x[inner_test_rows, , drop=FALSE], s=inner_lambda)
+        inner_score[alpha_index, ] <- colSums(abs(inner_prediction - model_y[inner_test_rows])) / inner_denominator * 100
       }
+      selected <- arrayInd(which.min(inner_score), dim(inner_score))[1, ]
+      selected_alphas[fold_index] <- alpha_grid[selected[1]]
+      selected_factors[fold_index] <- lambda_factors[selected[2]]
+      outer_scale <- max(sd(model_y[outer_train_rows]), 1e-6)
+      outer_lambda <- outer_scale * selected_factors[fold_index]
+      outer_fit <- glmnet::glmnet(
+        model_x[outer_train_rows, , drop=FALSE],
+        model_y[outer_train_rows],
+        family="gaussian",
+        alpha=selected_alphas[fold_index],
+        lambda=outer_lambda,
+        lower.limits=lower_limits,
+        standardize=TRUE,
+        intercept=TRUE
+      )
+      outer_prediction <- as.numeric(predict(outer_fit, model_x[outer_test_rows, , drop=FALSE], s=outer_lambda))
+      outer_denominator <- sum(abs(model_y[outer_test_rows]))
+      if (!(outer_denominator > 1e-9)) stop("invalid_outer_wmape_denominator")
+      outer_wmapes[fold_index] <- sum(abs(outer_prediction - model_y[outer_test_rows])) / outer_denominator * 100
     }
-    if (!(denominator > 1e-9)) stop("invalid_wmape_denominator")
-    score <- absolute_error / denominator * 100
-    selected <- arrayInd(which.min(score), dim(score))[1, ]
-    selected_alpha <- alpha_grid[selected[1]]
-    selected_factor <- lambda_factors[selected[2]]
-    selected_wmape <- score[selected[1], selected[2]]
+    selected_alpha <- selected_alphas[length(selected_alphas)]
+    selected_factor <- selected_factors[length(selected_factors)]
+    selected_wmape <- mean(outer_wmapes)
     final_lambda <- max(sd(model_y), 1e-6) * selected_factor
     final_fit <- glmnet::glmnet(
       model_x,

@@ -43,6 +43,17 @@ describe("WebR MMM elastic-net challenger adapter", () => {
       },
     });
     expect(prepared).toMatchObject({ ok: true, cuts: [78, 96], horizon: 12, baselineWmape: 12 });
+
+    const bayesianPrepared = prepareMmmElasticNetInput({
+      panel: panel(),
+      target: "Regs",
+      run: {
+        methodLabel: "Bayesian MMM",
+        rollingBacktest: { cuts: [80, 100], horizon: 10 },
+        backtest: { wmape: 9 },
+      },
+    });
+    expect(bayesianPrepared).toMatchObject({ ok: true, cuts: [80, 100], horizon: 10, baselineWmape: 9 });
   });
 
   it("allows only a multi-window 5%+ predictive replacement candidate", () => {
@@ -67,6 +78,16 @@ describe("WebR MMM elastic-net challenger adapter", () => {
     expect(normalizeMmmElasticNetResult(rows, prepared)).toMatchObject({
       replacementCandidate: true,
       recommendation: "predictive_replacement_candidate",
+      validationMode: "nested-time-ordered-outer-wmape",
+    });
+
+    expect(normalizeMmmElasticNetResult(rows.map((row) => ({ ...row, wmape: 12.3 })), prepared)).toMatchObject({
+      replacementCandidate: false,
+      recommendation: "more_validation_required",
+    });
+    expect(normalizeMmmElasticNetResult(rows.map((row) => ({ ...row, wmape: 13 })), prepared)).toMatchObject({
+      replacementCandidate: false,
+      recommendation: "keep_current_js",
     });
   });
 });

@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
-import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import React, { useState } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import WebRMmmAdvanced from "@/components/tools/WebRMmmAdvanced";
 import { runWebRMmmElasticNet } from "@/lib/analysis/webr/mmmElasticNet";
@@ -41,7 +41,7 @@ function mmmFixture() {
     },
     target: "Regs",
     run: {
-      methodLabel: "Classic MMM",
+      methodLabel: "Bayesian MMM",
       aggregateRollingBacktest: { cuts: [78, 96], horizon: 12 },
       backtest: { wmape: 10 },
     },
@@ -51,18 +51,24 @@ function mmmFixture() {
 describe("WebRMmmAdvanced render smoke", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("runs the WebR challenger and limits a win to the predictive layer", async () => {
-    render(<WebRMmmAdvanced mmm={mmmFixture()} signature="sig" />);
-    fireEvent.click(screen.getByRole("button", { name: "WebR MMM 맞대결 실행" }));
+  it("automatically compares both models, selects the winner, and allows an explicit choice", async () => {
+    function Harness() {
+      const [selectedModel, setSelectedModel] = useState("bayesian");
+      return <WebRMmmAdvanced mmm={mmmFixture()} signature="sig" selectedModel={selectedModel} onSelectModel={setSelectedModel} />;
+    }
+    render(<Harness />);
 
-    expect(runWebRMmmElasticNet).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
-    expect(await screen.findByText("예측 엔진 교체 후보")).toBeTruthy();
-    expect(screen.getByText(/채널 기여·예산 결정은 별도 검증 전까지/)).toBeTruthy();
+    await waitFor(() => expect(runWebRMmmElasticNet).toHaveBeenCalledWith(expect.objectContaining({ ok: true })));
+    expect(await screen.findByText("예측 정확도 승자: WebR Elastic-net")).toBeTruthy();
+    expect(await screen.findByText("WebR 예측 중요도")).toBeTruthy();
+    expect(screen.getByText("Robyn은 현재 브라우저 WebR에서 실행할 수 없습니다")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Bayesian MMM/ }));
+    expect(screen.getByText(/채널 기여·반응곡선·예산 진단은 Bayesian MMM 결과/)).toBeTruthy();
   });
 
-  it("keeps the English panel free of Korean UI copy", () => {
+  it("keeps the English panel free of Korean UI copy", async () => {
     const { container } = render(<WebRMmmAdvanced mmm={mmmFixture()} signature="sig" locale="en" />);
-    expect(container.textContent).toContain("Elastic-net MMM challenger");
+    expect(await screen.findByText("Automatic MMM model comparison")).toBeTruthy();
     expect(container.textContent).not.toMatch(/[가-힣]/);
   });
 });
