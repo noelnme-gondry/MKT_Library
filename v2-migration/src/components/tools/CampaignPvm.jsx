@@ -833,7 +833,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
     try {
       const ml2 = pvmMetricLabel(cache, C);
-      const content = buildPvmResultCsv(cache, ml2);
+      const content = buildPvmResultCsv(cache, ml2, locale);
       const fname = `pvm_result_${ml2}_${cache.p2Range[1]}.csv`;
       const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -1173,7 +1173,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
 
     const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
-    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur));
+    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale);
 
     let nameNode;
     let isNew = false;

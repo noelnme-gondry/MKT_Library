@@ -4,7 +4,8 @@
 
 // 진단(💡) 문구 — index.html pvmGenerateDiagnosis 이식.
 // level: "channel" | "campaign" | "creative".
-export function pvmGenerateDiagnosis(e, level, fmtMoney) {
+export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko") {
+  const isEn = locale === "en";
   const fmt = (val) => {
     const s = fmtMoney(Math.abs(val));
     return val >= 0 ? `+${s}` : `-${s}`;
@@ -14,35 +15,46 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney) {
   const rateVal = e.rate;
 
   if (level === "creative") {
-    return `소재 단위 최하위 레벨입니다. 이 소재의 예산 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 CPA에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
+    return isEn
+      ? `This is the lowest (creative) level. The change in this creative's budget share (mix effect: ${fmt(mixVal)}) and the change in unit cost itself (rate effect: ${fmt(rateVal)}) together moved final CPA by ${fmt(e.contribution)}.`
+      : `소재 단위 최하위 레벨입니다. 이 소재의 예산 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 CPA에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
   }
 
   // 이 단계의 믹스 효과(e.mix)는 하위 셀 mix 합과 항등(rollup 설계 — "상위=하위합" 보존).
   // 따라서 '순수 이동 vs 하위합 믹스'는 서로 다른 효과가 아니라 같은 값이며, 과거엔 이를
   // 두 효과인 것처럼 대비(배달 사고/최적화 작동 — 실제로는 도달 불가한 분기)해 오도했다.
   // 실제로 구분되는 두 축인 믹스 효과와 단가(레이트) 효과의 합으로 정직하게 설명한다.
-  const label = level === "channel" ? "채널" : "캠페인";
+  const label = isEn ? (level === "channel" ? "channel" : "campaign") : (level === "channel" ? "채널" : "캠페인");
   let diagnosis = "";
   if (mixVal > 0 && rateVal > 0) {
-    diagnosis = `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 끌어올렸습니다. 하위 세그먼트 탭에서 어느 항목이 이 상승을 주도했는지 확인해 비중을 줄이거나 소재를 점검하세요.`;
+    diagnosis = isEn
+      ? `For this ${label}, both the budget-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pushed CPA up. Check the sub-segment tab to see which item drove the increase, then reduce its share or review creatives.`
+      : `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 끌어올렸습니다. 하위 세그먼트 탭에서 어느 항목이 이 상승을 주도했는지 확인해 비중을 줄이거나 소재를 점검하세요.`;
   } else if (mixVal < 0 && rateVal < 0) {
-    diagnosis = `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 낮췄습니다. 효율적인 상태이므로 현재 운영 기조를 유지하세요.`;
+    diagnosis = isEn
+      ? `For this ${label}, both the budget-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pulled CPA down. This is an efficient state — keep the current operating approach.`
+      : `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 낮췄습니다. 효율적인 상태이므로 현재 운영 기조를 유지하세요.`;
   } else {
-    diagnosis = `이 ${label}의 CPA 변화는 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)})이 서로 다른 방향으로 작용한 결과입니다. 하위 세그먼트 탭에서 각 효과를 주도한 항목을 확인하세요.`;
+    diagnosis = isEn
+      ? `This ${label}'s CPA change is the net of a budget-share shift (mix effect: ${fmt(mixVal)}) and a unit-cost change (rate effect: ${fmt(rateVal)}) working in opposite directions. Check the sub-segment tab to find what drove each effect.`
+      : `이 ${label}의 CPA 변화는 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)})이 서로 다른 방향으로 작용한 결과입니다. 하위 세그먼트 탭에서 각 효과를 주도한 항목을 확인하세요.`;
   }
   return diagnosis;
 }
 
-function pvmWeekBasisLabel(wb) {
+function pvmWeekBasisLabel(wb, isEn = false) {
+  if (isEn) return wb === "rolling7" ? "Last 7 days" : "Completed week (Mon-Sun)";
   return wb === "rolling7" ? "최근 7일" : "마감주(월~일)";
 }
-function pvmLookbackLabel(lb) {
+function pvmLookbackLabel(lb, isEn = false) {
+  if (isEn) return lb === 1 ? "Previous week" : lb === 2 ? "2 weeks ago" : "3 weeks ago";
   return lb === 1 ? "직전주" : lb === 2 ? "2주전" : "3주전";
 }
 
 // 살아있는 스프레드시트 수식 CSV 문자열 생성 — index.html downloadPvmCsv 이식.
 // c = buildPvmCache 결과. ml = 지표 라벨(CPA/CPI). 반환: BOM 포함 CSV 텍스트.
-export function buildPvmResultCsv(c, ml) {
+export function buildPvmResultCsv(c, ml, locale = "ko") {
+  const isEn = locale === "en";
   if (c?.analysisStatus !== "COMPLETE" || c?.identity?.ok !== true) {
     throw new Error("PVM export requires an identity-verified decomposition.");
   }
@@ -62,17 +74,17 @@ export function buildPvmResultCsv(c, ml) {
 
   // META — 공식 정의 + 상수(Cbar, 총 result) 노출
   push(["section", "key", "value"]);
-  push(["META", "지표", ml]);
-  push(["META", "통화", (c.currency || "krw") === "usd" ? "USD" : "KRW"]);
-  push(["META", "기준주", pvmWeekBasisLabel(c.weekBasis)]);
-  push(["META", "비교기준", pvmLookbackLabel(c.lookback)]);
+  push(["META", isEn ? "Metric" : "지표", ml]);
+  push(["META", isEn ? "Currency" : "통화", (c.currency || "krw") === "usd" ? "USD" : "KRW"]);
+  push(["META", isEn ? "Week basis" : "기준주", pvmWeekBasisLabel(c.weekBasis, isEn)]);
+  push(["META", isEn ? "Comparison basis" : "비교기준", pvmLookbackLabel(c.lookback, isEn)]);
   push(["META", "P1", `${c.p1Range[0]}~${c.p1Range[1]}`]);
   push(["META", "P2", `${c.p2Range[0]}~${c.p2Range[1]}`]);
-  push(["META", "mix 공식", "mix=(cpaBar-Cbar)*(share2-share1)"]);
-  push(["META", "rate 공식", "rate=sBar*(cpa2-cpa1)"]);
-  push(["META", "Cbar(전체평균CPA)", r1(Cbar)]);
-  push(["META", "총 result1(P1)", r0(c.Result1)]);
-  push(["META", "총 result2(P2)", r0(c.Result2)]);
+  push(["META", isEn ? "mix formula" : "mix 공식", "mix=(cpaBar-Cbar)*(share2-share1)"]);
+  push(["META", isEn ? "rate formula" : "rate 공식", "rate=sBar*(cpa2-cpa1)"]);
+  push(["META", isEn ? "Cbar (overall average CPA)" : "Cbar(전체평균CPA)", r1(Cbar)]);
+  push(["META", isEn ? "Total result1 (P1)" : "총 result1(P1)", r0(c.Result1)]);
+  push(["META", isEn ? "Total result2 (P2)" : "총 result2(P2)", r0(c.Result2)]);
   lines.push("");
 
   // SCORECARD — delta는 수식
