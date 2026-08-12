@@ -1493,3 +1493,12 @@ export const TOOL_OPTIONAL_FIELDS = {
 export function autoMapHeaders(headers, rows = [], allowedKeys) {
   return scoreMappingCandidates({ headers, rows, allowedKeys, fields: STANDARD_FIELDS }).selections;
 }
+
+// 숫자로 해석되는 표준 필드 키 집합. STANDARD_FIELDS에서 **파생**한다 — 손으로 나열하면
+// 새 지표를 추가할 때 한쪽만 갱신돼 조용히 어긋난다(§7 "목록을 두 곳에 나열하지 말 것").
+// percent는 제외: "%" 해석은 소비처 계약이라 여기서 정규화하면 의미가 바뀐다.
+export const NUMERIC_STANDARD_KEYS = new Set(
+  Object.entries(STANDARD_FIELDS)
+    .filter(([, field]) => field?.type === "number")
+    .map(([key]) => key),
+);

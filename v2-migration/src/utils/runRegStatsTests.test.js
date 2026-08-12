@@ -97,6 +97,33 @@ describe("runRegStatsTests (golden port)", () => {
     expect(fit.hc3Pval.every(Number.isNaN)).toBe(true);
   });
 
+  // 감사 P0-2: 가드가 없을 때 R²=-Infinity와 p=1.06e-60("극도로 유의")이 화면에 나갔다.
+  it("T5e · 상수 종속변수(TSS=0)에서 유한값 + estimable=false", () => {
+    const X = [[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6]];
+    const y = [100, 100, 100, 100, 100, 100];
+    const fit = REG_STATS.ols(X, y);
+    expect(fit.estimable).toBe(false);
+    expect(Number.isFinite(fit.R2)).toBe(true);
+    expect(Number.isFinite(fit.adjR2)).toBe(true);
+    expect(fit.se.every(Number.isFinite)).toBe(true);
+    expect(fit.tval.every(Number.isFinite)).toBe(true);
+  });
+
+  it("T5f · n === k (df=0)에서 se/tval이 유한하고 estimable=false", () => {
+    const fit = REG_STATS.ols([[1, 1], [1, 2]], [3, 7]);
+    expect(fit.estimable).toBe(false);
+    expect(fit.se.every(Number.isFinite)).toBe(true);
+    expect(fit.tval.every(Number.isFinite)).toBe(true);
+  });
+
+  it("T5g · 정상 입력에서는 estimable=true (가드가 no-op)", () => {
+    const X = Array.from({ length: 40 }, (_, i) => [1, i + 1]);
+    const y = X.map((row) => 3 + 2 * row[1]);
+    const fit = REG_STATS.ols(X, y);
+    expect(fit.estimable).toBe(true);
+    expect(fit.regularized).toBe(false);
+  });
+
   it("T6 · 결정론", () => {
     const X1 = [],
       y1 = [];
