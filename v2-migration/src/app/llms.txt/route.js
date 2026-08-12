@@ -4,6 +4,7 @@ import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { readSopData } from "@/lib/sopData";
+import { findMeta } from "@/store/useDataStore";
 
 export const dynamic = "force-static";
 
@@ -47,11 +48,20 @@ function guideEntries(locale) {
     .filter((route) => locale !== "en" || hasEnVersion(route.id))
     .map((route) => {
       const sop = readSopData(route.id, locale);
-      return sop?.title ? {
-        title: sop.title,
-        description: plainText(sop.deck).slice(0, 180),
+      // KO 가이드는 public/content/pages에 1-1·8-1 두 개만 JSON이 있고 나머지 13개는
+      // SopContent.jsx의 인라인 JSX로 렌더된다(EN은 15개 전부 JSON). sop?.title만
+      // 보면 한국어 운영가이드 섹션이 **0건**으로 나가서, KR이 주 시장인데 LLM·AI
+      // 검색 진입면에서는 영어 가이드만 존재하는 역전이 생겼다(감사 P1-8).
+      // KO 제목의 SSOT는 store의 IA다(findMeta) — app/(ko)/[[...slug]]/page.js도
+      // 같은 경로를 쓴다. deck은 KO JSON이 있으면 그걸, 없으면 IA의 desc를 쓴다.
+      const meta = findMeta(route.id);
+      const title = sop?.title || meta?.title;
+      if (!title) return null;
+      return {
+        title,
+        description: plainText(sop?.deck || meta?.desc || "").slice(0, 180),
         url: absoluteUrl(route.slug, locale),
-      } : null;
+      };
     })
     .filter(Boolean)
     .sort((a, b) => a.url.localeCompare(b.url));

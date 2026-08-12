@@ -74,11 +74,15 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
   };
 
   return (
-    <nav className="dashboard-tabs" role="tablist" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
-      {groups.map((group) => (
-        <div className="dashboard-tabs__group" key={group.label} role="group" aria-label={locale === "en" ? group.labelEn : group.label}>
-          <span className="dashboard-tabs__label">{locale === "en" ? group.labelEn : group.label}</span>
-          <div className="dashboard-tabs__items" role="presentation">
+    // role="tablist"가 role="group"을 거쳐 tab을 소유하면 ARIA 필수 소유 관계가 끊겨
+    // 보조기술이 탭을 탭으로 인식하지 못한다. 그룹마다 tablist를 두고 nav는 평범한
+    // 내비게이션 컨테이너로 되돌린다(감사 P1-15). 로빙 tabindex·화살표 키는 기존 유지.
+    <nav className="dashboard-tabs" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
+      {groups.map((group, groupIndex) => (
+        // id는 인덱스로 만든다 — 그룹 라벨("장기 가치")에 공백이 있어 id로 못 쓴다.
+        <div className="dashboard-tabs__group" key={group.label}>
+          <span className="dashboard-tabs__label" id={`dashboard-tabgroup-${groupIndex}`}>{locale === "en" ? group.labelEn : group.label}</span>
+          <div className="dashboard-tabs__items" role="tablist" aria-labelledby={`dashboard-tabgroup-${groupIndex}`}>
             {group.tabs.map((tabId) => {
               const info = TABS_INFO[tabId];
               const isActive = dashboardTab === tabId;

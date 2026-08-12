@@ -263,6 +263,9 @@ import { seededNoise } from "./testFixtures.js";
                    const tryX = rows.map((_, i) => [1, ...tryXcols.map((col) => col[i])]);
                    try {
                      const fit = REG_STATS.ols(tryX, tryY);
+                     // 릿지로 구조된 적합(공선)이나 추정 불가 적합은 람다 후보에서 제외한다.
+                     // 정규화된 R²는 다른 후보와 비교 가능한 값이 아니다(감사 P0-3).
+                     if (fit.regularized || fit.estimable === false) continue;
                      if (fit.R2 > bestR2) {
                        bestR2 = fit.R2;
                        bestLam = lam;

@@ -22,7 +22,11 @@ export const SAT_MATH = (() => {
 
   function classify(satIndex, cfg) {
     cfg = cfg || SAT_CONFIG;
-    if (satIndex == null || !isFinite(satIndex)) return "saturated";
+    // null = 계산 자체가 안 된 상태. Infinity(한계 CPR 발산 = 진짜 포화)와 같은
+    // 버킷에 넣으면 "모름"이 "증액 위험"으로 단정된다(감사 P1-2).
+    // satVerdictMeta(null)에 이미 "—/분석 불가" 분기가 있는데 도달하지 못했다.
+    if (satIndex == null) return null;
+    if (!isFinite(satIndex)) return "saturated";
     if (satIndex >= cfg.satHigh) return "saturated";
     if (satIndex < cfg.scaleLow) return "scale";
     return "linear";
@@ -51,7 +55,7 @@ export const SAT_MATH = (() => {
       }
     }
     const poly2Shape = A.detectPoly2Shape(model);
-    const chWrap = { model, poly2Shape, xMax };
+    const chWrap = { model, poly2Shape, xMin, xMax }; // xMin 누락 시 predictSafeCpr의 하한 clamp가 죽는다(감사 P1-4)
     const currentCost = recentAvgDailyCost(kept, cfg.recentDays);
     const avgCpr = A.predictSafeCpr(chWrap, currentCost);
     if (avgCpr == null || avgCpr <= 0) return { ok: false, reason: "out_of_range", n: kept.length };
@@ -198,9 +202,11 @@ export function satActiveVerdict(r, metric) {
   return r.verdict;
 }
 
+// 색은 semantic 토큰으로 — 하드코딩 hex는 라이트 모드에서 대비가 무너진다(§12.3, 감사 P1-14).
+// 표시층이 이 값을 그대로 CSS color로 쓰므로 var()를 돌려준다(canvas가 아니라 DOM 경로).
 export function satVerdictMeta(v) {
-  if (v === "saturated") return { label: "포화", color: "#f87171", icon: "▲", advice: "증액 위험" };
-  if (v === "scale") return { label: "여유", color: "#22c55e", icon: "▼", advice: "증액 기회" };
-  if (v === "linear") return { label: "적정", color: "#9ca3af", icon: "●", advice: "현상 유지" };
-  return { label: "—", color: "#6b7280", icon: "·", advice: "분석 불가" };
+  if (v === "saturated") return { label: "포화", color: "var(--danger)", icon: "▲", advice: "증액 위험" };
+  if (v === "scale") return { label: "여유", color: "var(--success)", icon: "▼", advice: "증액 기회" };
+  if (v === "linear") return { label: "적정", color: "var(--text-secondary)", icon: "●", advice: "현상 유지" };
+  return { label: "—", color: "var(--text-muted)", icon: "·", advice: "분석 불가" };
 }

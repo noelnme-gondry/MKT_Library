@@ -1,8 +1,10 @@
 // 5-4 AbTestReadoutIncr — 순수 수학 유틸 (index.html 원본 verbatim 이식)
-// - INCR_MATH.compute: 홀드아웃 증분(counterfactual·lift·iROAS)
+// - INCR_MATH.compute: 홀드아웃 증분(counterfactual·lift·iROAS) + 유의성·95% CI
 // - parseHoldoutGroup: test/control 그룹 표기 정규화
 // - READOUT_CONFIG / parseControl / computeMetricVerdict: Test Readout verdict 로직
 // 결정론(no Math.random). index.html이 SSOT — 값·분기 verbatim.
+
+import { STATS } from "./abTestMath";
 
 export const INCR_MATH = {
   // test/control 집계 → 증분 지표
@@ -29,6 +31,14 @@ export const INCR_MATH = {
       test.spend > 0 && incrementalConv > 0
         ? test.spend / incrementalConv
         : null; // 증분 전환당 비용
+    // 유의성·95% CI (§8.4). 이게 없으면 노이즈 범위 차이도 "광고가 만든 증분 N건"으로
+    // 확정 서술된다(감사 P1-1). 이미 있는 twoPropZTest를 재사용 — 새 수학 아님.
+    // 대조군을 A, 노출군을 B로 넣어 liftAbs 부호를 tRate-cRate와 일치시킨다.
+    const sig = STATS.twoPropZTest(control.den, control.num, test.den, test.num);
+    // CI가 0을 걸치면 "증분이 있다"고 말할 근거가 없다. 무유의 ≠ 효과 없음이므로
+    // 판정은 inconclusive(판단 보류)이지 "효과 없음"이 아니다(§8.6).
+    const conclusive = !!sig && Number.isFinite(sig.ciLow95) && Number.isFinite(sig.ciHigh95)
+      && ((sig.ciLow95 > 0 && sig.ciHigh95 > 0) || (sig.ciLow95 < 0 && sig.ciHigh95 < 0));
     return {
       tRate,
       cRate,
@@ -39,6 +49,12 @@ export const INCR_MATH = {
       incrementalRev,
       iroas,
       cpia,
+      pValue: sig ? sig.pValue : null,
+      ciLow95: sig ? sig.ciLow95 : null,
+      ciHigh95: sig ? sig.ciHigh95 : null,
+      nTest: test.den,
+      nControl: control.den,
+      conclusive,
     };
   },
 };

@@ -392,16 +392,24 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
   // 결론 카드 props + 다운로드(계산된 인사이트만). 엔진 결과 재사용.
   const card = r && (() => {
-    const headline = positive
+    // CI가 0을 걸치면 확정 서술을 하지 않는다. 무유의는 "효과 없음"의 증거가 아니라
+    // 현재 표본에서의 판단 보류다(§8.6, 감사 P1-1).
+    const headline = !r.conclusive
+      ? tr(
+          `증분 추정치는 ${fmtNum(inc)}건이지만 95% 신뢰구간이 0을 지나 판단을 보류합니다 — 표본이 더 필요합니다.`,
+          `The point estimate is ${fmtNum(inc)} incremental conversions, but the 95% CI crosses zero — inconclusive; more sample is needed.`
+        )
+      : positive
       ? tr(
           `광고가 실제로 만든 증분 전환은 ${fmtNum(inc)}건입니다${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}.`,
           `Ads actually created ${fmtNum(inc)} incremental conversions${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}.`
         )
       : tr(
-          "홀드아웃 대비 증분이 0 이하입니다 — 이 기간 광고의 순증분 효과가 확인되지 않습니다.",
-          "Incrementality vs. holdout is zero or below — no net incremental ad effect is confirmed for this period."
+          "홀드아웃 대비 증분이 통계적으로 음수입니다 — 이 기간 광고의 순증분 효과가 확인되지 않습니다.",
+          "Incrementality vs. holdout is statistically negative — no net incremental ad effect is confirmed for this period."
         );
     const points = [];
+    if (!r.conclusive) points.push({ cls: "muted", text: tr("‘효과 없음’이 아니라 ‘아직 판단할 수 없음’입니다 — 기간을 늘리거나 홀드아웃 규모를 키우세요.", "This is 'not yet decidable', not 'no effect' — extend the period or increase the holdout size.") });
     if (win.balanced === false) points.push({ cls: "bad", text: tr("홀드아웃 前 두 그룹이 이미 벌어져 있어 균형이 의심됩니다 — 증분이 왜곡됐을 수 있습니다.", "The two groups already differed before the holdout — balance is questionable and incrementality may be distorted.") });
     else if (win.balanced) points.push({ cls: "good", text: tr("홀드아웃 前 두 그룹이 균형이라 비교가 타당합니다.", "The groups were balanced before the holdout, so the comparison is valid.") });
     if (r.iroas != null) points.push({ text: win.balanced === false
@@ -416,6 +424,9 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       { label: tr("증분 전환", "Incremental conv."), value: fmtNum(inc) },
       { label: tr("상대 Lift", "Relative lift"), value: r.liftRel != null ? fmtPct(r.liftRel) : "—" },
     ];
+    if (r.ciLow95 != null && r.ciHigh95 != null)
+      stats.push({ label: tr("전환율 차이 95% CI", "Conv.-rate diff 95% CI"), value: `${fmtPct(r.ciLow95)} ~ ${fmtPct(r.ciHigh95)}` });
+    if (r.pValue != null) stats.push({ label: "p", value: r.pValue < 0.001 ? "<0.001" : r.pValue.toFixed(3) });
     if (r.cpia != null) stats.push({ label: tr("증분 전환당 비용", "Cost/incr. conv."), value: fmtCurrency(r.cpia, { currency }) });
     if (r.iroas != null) stats.push({ label: "iROAS", value: `${r.iroas.toFixed(2)}×` });
 
@@ -435,7 +446,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       `${headline}\n\n` +
       csvRows.map(([k, v]) => `- ${k}: ${v}`).join("\n") + "\n\n" +
       points.map((p) => `- ${p.text}`).join("\n") + "\n";
-    return { tone: positive ? "good" : "bad", headline, points, stats, csv, text };
+    // 판단 보류는 good도 bad도 아니다 — 회색(neutral)으로 두어 배지와 헤드라인이 모순되지 않게 한다(claude-ux §4).
+    return { tone: !r.conclusive ? "neutral" : positive ? "good" : "bad", headline, points, stats, csv, text };
   })();
   const decisionSourcePeriod = r ? `${start} ~ ${end}` : "";
   const decisionMetric = Number.isFinite(r?.iroas) ? "iROAS" : tr("증분 전환", "Incremental conversions");

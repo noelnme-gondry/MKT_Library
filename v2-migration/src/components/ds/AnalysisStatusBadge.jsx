@@ -2,15 +2,20 @@
 import React from "react";
 import { analysisStatusLabel } from "@/lib/analysis-router/analysisStatus";
 
+// 전부 semantic 토큰으로 통일한다. ANALYZING·COMPLETE·STALE만 raw hex를 써서
+// 라이트 모드에서 다크용 색이 그대로 나왔다 — 한 파일 안에서 규칙이 갈렸고,
+// ds/는 다른 도구가 베끼는 기준이라 전파 위험이 있었다(감사 P1-13).
+const tone = (token, mix) => ({ color: `var(${token})`, background: `color-mix(in srgb, var(${token}) ${mix}%, transparent)` });
+
 const TONE = {
-  EMPTY: { color: "var(--text-muted)", background: "color-mix(in srgb, var(--text-muted) 12%, transparent)" },
-  READY: { color: "var(--primary, #adc6ff)", background: "color-mix(in srgb, var(--primary, #adc6ff) 14%, transparent)" },
-  ANALYZING: { color: "#e0af68", background: "color-mix(in srgb, #e0af68 16%, transparent)" },
-  COMPLETE: { color: "#5ad19a", background: "color-mix(in srgb, #5ad19a 16%, transparent)" },
-  STALE: { color: "#e0af68", background: "color-mix(in srgb, #e0af68 16%, transparent)" },
-  BLOCKED: { color: "var(--danger, #f0917e)", background: "color-mix(in srgb, var(--danger, #f0917e) 14%, transparent)" },
-  FAILED: { color: "var(--danger, #f0917e)", background: "color-mix(in srgb, var(--danger, #f0917e) 14%, transparent)" },
-  CANCELED: { color: "var(--text-muted)", background: "color-mix(in srgb, var(--text-muted) 12%, transparent)" },
+  EMPTY: tone("--text-muted", 12),
+  READY: tone("--primary", 14),
+  ANALYZING: tone("--warning", 16),
+  COMPLETE: tone("--success", 16),
+  STALE: tone("--warning", 16),
+  BLOCKED: tone("--danger", 14),
+  FAILED: tone("--danger", 14),
+  CANCELED: tone("--text-muted", 12),
 };
 
 export default function AnalysisStatusBadge({ status, locale = "ko", compact = false }) {

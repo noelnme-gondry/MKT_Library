@@ -187,7 +187,9 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     // a*ln(x) 항이 발산해(a<0이면 +∞) xMin 쪽으로 살짝만 외삽해도 곡선이 비정상적으로
     // 치솟아 보였음(#4). 곡선은 실제 관측 구간[xMin,xMax] 안에서만 그림.
     const fitMin = xMin, fitMax = xMax;
-    const chWrap = { model: sel.model, poly2Shape: sel.poly2Shape, xMax };
+    // xMin을 빠뜨리면 predictSafeCpr의 하한 clamp(allocationMath.js:378)가 죽어
+    // 관측 구간 아래로 외삽될 때 Log/Power/Poly2가 발산·음수로 튄다(감사 P1-4).
+    const chWrap = { model: sel.model, poly2Shape: sel.poly2Shape, xMin, xMax };
 
     const curve = [];
     const STEPS = 60;
@@ -634,7 +636,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                       )}
                       <td className="tnum" style={{ fontWeight: 700, color: vm.color }}>{idxStr}</td>
                       <td>
-                        <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `${vm.color}55` }}>
+                        <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `color-mix(in srgb, ${vm.color} 33%, transparent)` }}>
                           <span className="dot" style={{ background: vm.color }}></span>{vm.label}
                         </span>{" "}
                         <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{vm.advice}</span>

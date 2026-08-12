@@ -42,7 +42,11 @@ function fmtCurrency(value, currency) {
 }
 
 const num = (v) => {
-  const n = Number(v);
+  // 천단위 콤마를 안 벗기면 멀쩡한 데이터가 전부 invalidRows로 잡혀
+  // "전환수는 0 이상 분모 이하여야 합니다"라는 **틀린 원인**을 안내한다(감사 P1-5).
+  // Incrementality.jsx의 num()과 동일 계약.
+  if (v == null || String(v).trim() === "") return NaN;
+  const n = Number(String(v).replace(/[,\s]/g, ""));
   return Number.isFinite(n) ? n : NaN;
 };
 const isTruthy = (v) =>

@@ -6,6 +6,7 @@ import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { readSopData } from "@/lib/sopData";
+import { findMeta } from "@/store/useDataStore";
 import { GET, buildLlmsText, dynamic } from "./route";
 
 const markdownLinks = (text) => [...text.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+)\)/g)].map((match) => match[1]);
@@ -16,11 +17,15 @@ const indexableAnalysisRoutes = (locale) => ROUTES
   .filter((route) => locale !== "en" || hasEnVersion(route.id))
   .filter((route) => getRouteSeo(route.id, locale));
 
+// KO SOP JSON에는 title 필드가 아예 없다(EN만 있음) — 그래서 readSopData(...)?.title로
+// 거르면 KO 가이드가 2개도 아닌 **0개**가 된다. 기대값 계산이 구현과 같은 버그를 갖고
+// 있어서 llms.txt의 KO 가이드 섹션이 빈 채로 통과했다(감사 P1-8).
+// 이제 제목은 IA(findMeta)에서 오므로 인덱싱 가능한 가이드 라우트 전체가 기대값이다.
 const indexableGuideRoutes = (locale) => ROUTES
   .filter((route) => isRouteIndexable(route))
   .filter((route) => route.slug.startsWith("/guide/"))
   .filter((route) => locale !== "en" || hasEnVersion(route.id))
-  .filter((route) => readSopData(route.id, locale)?.title);
+  .filter((route) => readSopData(route.id, locale)?.title || findMeta(route.id)?.title);
 
 describe("llms.txt", () => {
   it("publishes UTF-8 Markdown with the browser-only privacy promise", async () => {
@@ -86,5 +91,19 @@ describe("llms.txt", () => {
       for (const calculator of getAllCalculators(locale)) expect(text).toContain(`](${SITE_URL}${prefix}/calculator/${calculator.slug})`);
       for (const term of getAllTerms(locale)) expect(text).toContain(`](${SITE_URL}${prefix}/glossary/${term.slug})`);
     }
+  });
+});
+
+// 감사 P1-8: KO 운영가이드 섹션이 0건으로 나가던 회귀 가드.
+// public/content/pages에 KO JSON이 2개뿐이라 sop?.title만 보면 13개가 사라진다.
+describe("llms.txt · 가이드 로케일 대칭", () => {
+  it("KO와 EN 운영가이드 개수가 같다", async () => {
+    const body = buildLlmsText();
+    const koSection = body.split("## Operating guides — Korean")[1]?.split("\n## ")[0] || "";
+    const enSection = body.split("## Operating guides — English")[1]?.split("\n## ")[0] || "";
+    const koCount = (koSection.match(/^- \[/gm) || []).length;
+    const enCount = (enSection.match(/^- \[/gm) || []).length;
+    expect(koCount).toBeGreaterThan(0);
+    expect(koCount).toBe(enCount);
   });
 });

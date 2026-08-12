@@ -1,5 +1,6 @@
 import { SITE_URL } from "@/lib/routeMap";
 import Link from "next/link";
+import AnalyticsOptOut from "@/components/AnalyticsOptOut";
 import PolicyPage from "@/components/PolicyPage";
 import { withOpenGraphBase } from "@/lib/openGraph";
 
@@ -32,8 +33,18 @@ export default function EnglishPrivacyPage() {
           content: <p>For convenience, this device may retain theme, language and display preferences, column-mapping recipes, recently connected public Google Sheets URLs, and summaries of recent analysis runs in localStorage or IndexedDB. Decision records stay in the current session by default. Only when you explicitly enable <strong>“Keep decision summaries on this device”</strong> do we store the tool ID and language; conclusion, action, and hypothesis; metric and baseline; source period, review question, and review date; actual outcome and learning; and created/updated timestamps in localStorage. When you save a decision, these fields may include channel, campaign, creative, action, or analysis-element names and summary figures that you entered or accepted from an analysis-result prefill. Full source CSV rows, file names, mappings, filters, input signatures, and chart data are not included. Turning storage off removes the persistent copy while retaining the current session; use Delete all records in Weekly Review or clear browser site data to remove everything.</p>,
         },
         {
+          title: "External requests from advanced analysis",
+          content: <p>Some tools&apos; <strong>advanced analysis (regression, Random Forest, MMM challenger)</strong> downloads the <strong>WebR runtime and R packages from an external CDN</strong> so R code can run in your browser. Only those file requests leave your device — <strong>your uploaded CSV, column mapping, and results are never transmitted</strong>. All computation finishes inside this browser. If you would rather avoid the external requests, simply do not run advanced analysis; the standard analyses work without them.</p>,
+        },
+        {
           title: "Analytics and advertising",
-          content: <p>Google Analytics, Google Tag Manager, and Google AdSense may process cookies, device identifiers, and visit information. This processing is subject to Google&apos;s policies and your browser and consent settings.</p>,
+          content: (
+            <>
+              <p>Google Analytics, Google Tag Manager, and Google AdSense may process cookies, device identifiers, and visit information. This processing is subject to Google&apos;s policies and your browser and consent settings.</p>
+              <p>Regardless of your region, you can turn visit analytics and ad measurement off below. The choice is stored in this browser and does not affect how the analysis tools work.</p>
+              <AnalyticsOptOut locale="en" />
+            </>
+          ),
         },
         {
           title: "Email subscriptions",

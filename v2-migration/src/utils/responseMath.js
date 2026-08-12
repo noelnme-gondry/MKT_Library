@@ -158,14 +158,14 @@ export const CANNIBAL_STATS = {
     const buckets = Array.from({ length: 7 }, () => ({ sum: 0, n: 0 }));
     for (let i = 0; i < dates.length; i++) {
       if (!Number.isFinite(residuals[i])) continue;
-      const w = new Date(dates[i]).getDay();
+      const w = new Date(dates[i]).getUTCDay();
       buckets[w].sum += residuals[i];
       buckets[w].n++;
     }
     const weekdayMean = buckets.map((b) => (b.n > 0 ? b.sum / b.n : 0));
     const detrended = residuals.map((r, i) => {
       if (!Number.isFinite(r)) return NaN;
-      const w = new Date(dates[i]).getDay();
+      const w = new Date(dates[i]).getUTCDay();
       return r - weekdayMean[w];
     });
     return { weekdayMean, detrended };

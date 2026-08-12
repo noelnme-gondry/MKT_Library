@@ -2790,9 +2790,11 @@ export function mmmDataQualityAudit(panel) {
               const y = panel.targets[targetName];
               // VIF (design + const, skip const)
               const vifs = CREATIVE_MATH.vif(_designConst(X));
+              // vif()는 적합 불가 열에 null을 준다(감사 H-2) — toFixed 전에 가드.
+              // 같은 파일의 다른 VIF 소비처(:5776)는 이미 이 형태다.
               const vifByName = names
-                .map((nm, i) => ({ var: nm, vif: +vifs[i + 1].toFixed(3) }))
-                .sort((a, b) => b.vif - a.vif);
+                .map((nm, i) => ({ var: nm, vif: Number.isFinite(vifs[i + 1]) ? +vifs[i + 1].toFixed(3) : null }))
+                .sort((a, b) => (b.vif || 0) - (a.vif || 0));
               // collinear pairs (|corr|>=0.85)
               const pairs = [];
               for (let i = 0; i < names.length; i++)

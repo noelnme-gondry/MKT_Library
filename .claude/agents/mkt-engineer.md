@@ -34,11 +34,11 @@ tools:
 
 # 현재 도구
 
-5-2 운영 대시보드 · 5-21 PVM 변동 · 5-22 포화도 진단 · 5-3 예산 배분 (여기까지 efficiency CSV 공유) · 5-4 실험 분석(A/B) · 5-23 증분 분석(홀드아웃 3방법) · 5-24 브랜드 증분(ITS) · 5-18 마케팅 반응 분석(카니발·MMM·회귀예측) · 5-20 핵심 가치 발굴(Aha) · 9-6 소재 분석 · 9-1 콘텐츠 요소 분석기 · 9-2·9-3·9-7 콘텐츠(hidden). 전 도구 free.
+5-2 운영 대시보드 · 5-21 PVM 변동 · 5-22 포화도 진단 · 5-3 예산 배분 (여기까지 efficiency CSV 공유) · 5-4 실험 분석(A/B) · 5-23 증분 분석(홀드아웃 3방법) · 5-24 브랜드 증분(ITS) · 5-18 마케팅 반응 분석(카니발·MMM·회귀예측) · 5-20 핵심 가치 발굴(Aha) · 5-25 다중공선성 점검(VIF) · 5-26 ASA 키워드 · 9-6 소재 분석 · 9-1 콘텐츠 요소 분석기 · 9-2·9-3·9-7 콘텐츠(hidden). 전 도구 free.
 
 **9-x는 퍼포먼스 엔진의 도메인 리라벨** — 수학 불변, 라벨팩(`utils/contentDomain.js`) 파라미터화. 복제 금지. **9-4 CMM은 드롭**(MMM 금액 스케일 vs 콘텐츠 편수 불일치 — 재시도 금지). 상세: AGENTS.md §4.2·§12.23.
 
-**신규 도구는 디자인시스템 공용규약 필수**(§12.21: `format.js`·전역 통화·`ds/DataTable`·`ds/CsvGuide`·`ds/ResultActionCard`).
+**신규 도구는 디자인시스템 공용규약 필수**(§12.21: `format.js`·전역 통화·`ds/DataTable`·`ds/CsvGuide`·`ds/ResultActionCard`·`ds/PillGroup`).
 
 # 토큰 효율 (AGENTS.md §17)
 
@@ -52,7 +52,9 @@ tools:
 - 계산 게이트: `analyzedByGroup`/`isGroupAnalyzed` 뒤에서만 무거운 compute. 토글은 lookup만(§4.4).
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).
 - CSV 상태는 `TOOL_GROUP` 기반 그룹 스코프 — 읽기(`activeDataGroup`)·쓰기(`groupForRoute`) 그룹이 갈리지 않게(§4.3).
-- 함정 목록: AGENTS.md §7 + `docs/pitfalls.md` 상세.
+- 함정 목록: AGENTS.md §7 + `docs/pitfalls.md` 상세. 최신 전면 감사는 `docs/system-audit-2026-08-12.md`.
+- **목록 검증 테스트는 SSOT에서 파생**(`ROUTES.filter(isRoutePublished)` 등). 손으로 쓴 배열을 도는 커버리지 가드는 가드가 아니다 — 빠진 도구가 검증에서도 빠진다(§7).
+- **하네스에 "완료"를 적기 전에 grep으로 셀 것.** 틀린 완료 선언은 없는 규칙보다 해롭다(§15).
 
 # 마지막 체크 (모든 커밋 직전)
 

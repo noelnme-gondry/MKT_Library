@@ -9,6 +9,7 @@ import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/u
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
+import PillGroup from "@/components/ds/PillGroup";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import BudgetHealthCard from "./BudgetHealthCard";
 
@@ -353,13 +354,12 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       {!isContent && <BudgetHealthCard locale={locale} />}
       <section className="block" id="s-score">
         <h2 className="section-title">{T.kpiTitle(windowDays)}</h2>
-        <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
-          <span className="ab-pillgroup-label">{T.periodLabel}</span>
-          {[7, 14, 28].map(d => (
-            <button key={d} className={`ab-pill ${windowDays === d ? "active" : ""}`} onClick={() => setWindowDays(d)}>
-              {T.days(d)}
-            </button>
-          ))}
+        <PillGroup
+          label={T.periodLabel}
+          value={windowDays}
+          onChange={setWindowDays}
+          options={[7, 14, 28].map((d) => ({ value: d, label: T.days(d) }))}
+          extra={<>
           <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title={T.customMetricTitle}>
             {T.customMetric}
           </button>
@@ -373,7 +373,8 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
               {T.edit}
             </button>
           )}
-        </div>
+          </>}
+        />
         {editMode && (
           <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{T.editHint}</p>
         )}

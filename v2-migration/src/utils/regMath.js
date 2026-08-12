@@ -190,14 +190,21 @@ export const REG_STATS = (() => {
     const ybar = y.reduce((a, b) => a + b, 0) / n;
     const RSS = resid.reduce((s, r) => s + r * r, 0);
     const TSS = y.reduce((s, v) => s + (v - ybar) ** 2, 0);
-    const df = n - k,
-      sigma2 = RSS / df;
-    const R2 = 1 - RSS / TSS,
-      adjR2 = 1 - ((1 - R2) * (n - 1)) / df;
-    const se = beta.map((_, j) => Math.sqrt(sigma2 * XtXi[j][j]));
-    const tval = beta.map((b, j) => b / se[j]);
-    const pval = tval.map((t) => tSF(Math.abs(t), df));
-    const tc = tinv(0.05, df);
+    const df = n - k;
+    // 퇴화 입력 가드 — 같은 파일 mmmOls(:28-34)가 이미 갖고 있던 방어를 여기에 맞춘다.
+    // 없을 때 실제로 화면에 나갔던 값: 상수 종속변수(TSS=0)에서 R²=-Infinity와
+    // p=1.06e-60("극도로 유의")이 렌더됐고, n===k(df=0)에서 se=Infinity·tval=NaN이
+    // 나왔다(감사 P0-2, 재현 완료). 정상 입력(TSS>0·df>0·se>0)에서는 전부 no-op이라
+    // 골든 byte-identical.
+    const dfSafe = Math.max(1, df);
+    const estimable = df > 0 && TSS > 0;
+    const sigma2 = RSS / dfSafe;
+    const R2 = TSS > 0 ? 1 - RSS / TSS : 0,
+      adjR2 = 1 - ((1 - R2) * (n - 1)) / dfSafe;
+    const se = beta.map((_, j) => Math.sqrt(Math.max(0, sigma2 * XtXi[j][j])));
+    const tval = beta.map((b, j) => (se[j] > 0 ? b / se[j] : 0));
+    const pval = tval.map((t) => tSF(Math.abs(t), dfSafe));
+    const tc = tinv(0.05, dfSafe);
     const ci = beta.map((b, j) => [b - tc * se[j], b + tc * se[j]]);
     // HC3 heteroskedasticity-consistent covariance. Content/creative metrics
     // frequently have variance that grows with impressions, so classical OLS
@@ -223,10 +230,10 @@ export const REG_STATS = (() => {
     const hc3Cov = hc3Valid ? mul(mul(XtXi, meat), XtXi) : null;
     const hc3Se = hc3Valid ? beta.map((_, j) => Math.sqrt(Math.max(0, hc3Cov[j][j]))) : beta.map(() => NaN);
     const hc3Tval = hc3Valid ? beta.map((value, j) => (hc3Se[j] > 0 ? value / hc3Se[j] : 0)) : beta.map(() => NaN);
-    const hc3Pval = hc3Valid ? hc3Tval.map((value) => tSF(Math.abs(value), df)) : beta.map(() => NaN);
+    const hc3Pval = hc3Valid ? hc3Tval.map((value) => tSF(Math.abs(value), dfSafe)) : beta.map(() => NaN);
     const hc3Ci = hc3Valid ? beta.map((value, j) => [value - tc * hc3Se[j], value + tc * hc3Se[j]]) : beta.map(() => [NaN, NaN]);
     const F = (TSS - RSS) / (k - 1) / sigma2,
-      Fp = betai(df / 2, (k - 1) / 2, df / (df + (k - 1) * F));
+      Fp = betai(dfSafe / 2, (k - 1) / 2, dfSafe / (dfSafe + (k - 1) * F));
     return {
       beta,
       se,
@@ -247,6 +254,7 @@ export const REG_STATS = (() => {
       Fp,
       XtXi, // 예측 밴드 leverage 계산용 (additive — 기존 호출부 무영향)
       regularized,
+      estimable, // false = 자유도 0 또는 종속변수 무분산. 계수·R²를 결론으로 쓰지 말 것.
       hc3Se,
       hc3Tval,
       hc3Pval,

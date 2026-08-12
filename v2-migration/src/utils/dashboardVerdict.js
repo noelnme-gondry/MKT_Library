@@ -8,7 +8,9 @@ import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 
-const SIG = 0.05; // 유의미한 변화 임계(±5%)
+// 통계 검정이 아니라 "주목할 만한 변화" 크기 임계값이다. 한국어 "유의"는 통계적
+// 유의성을 함의해 검정을 한 것처럼 읽힌다(감사 H-6).
+const SIG = 0.05; // 주목할 만한 변화 임계(±5%) — 검정 아님
 
 function pct(cur, prev) {
   if (prev == null || prev === 0 || cur == null) return null;

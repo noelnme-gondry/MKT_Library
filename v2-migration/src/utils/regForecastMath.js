@@ -244,6 +244,24 @@ export const REG_FORECAST = {
     } catch (e) {
       return { ok: false, reason: "적합 실패: " + e.message, n: nHist, k };
     }
+    // ols는 특이행렬을 잡으면 throw하지 않고 대각에 1e-8을 더해 릿지로 풀어낸다
+    // (regMath.js:180-186). 그 플래그를 안 보면 공선 데이터에서 임의의 계수와 95%
+    // 예측 밴드가 "확정 숫자"로 화면에 나간다(감사 P0-3). 식별 불가는 숫자가 아니라
+    // 이유를 돌려준다 — §8.6 "증거 없음 ≠ 효과 없음".
+    if (fit.regularized)
+      return {
+        ok: false,
+        reason: "변수 간 공선성으로 계수를 식별할 수 없습니다. 겹치는 변수(예: 총지출과 채널별 지출)를 하나만 남기고 다시 실행하세요.",
+        n: nHist,
+        k,
+      };
+    if (fit.estimable === false)
+      return {
+        ok: false,
+        reason: "종속변수의 변동이 없거나 자유도가 부족해 추정할 수 없습니다. 기간을 늘리거나 변수를 줄이세요.",
+        n: nHist,
+        k,
+      };
     const beta = fit.beta;
     const predFutT = Xfut.map((r) =>
       r.reduce((s, v, i) => s + v * beta[i], 0),

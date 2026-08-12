@@ -319,12 +319,17 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
 
     if (fit && fit.model) {
       const { model, xMin, xMax } = fit;
+      // 곡선과 배분이 같은 예측 함수를 써야 한다. model.predict를 직접 부르면
+      // poly2 종모양(a<0)의 꼭짓점 clamp가 빠져, 차트는 vertex 이후 CPR이 치솟는데
+      // 배분 엔진(budgetAllocTool)은 vertex 값에 고정된 CPR로 증액을 추천한다
+      // → "곡선은 나빠지는데 왜 증액하라고 하나"(감사 P1-3).
+      const curveWrap = { model, poly2Shape: fit.poly2Shape || ALLOC_MATH.detectPoly2Shape(model), xMin, xMax };
       const trendPts = [];
       const steps = 50;
       const stepSize = (xMax - xMin) / steps;
       for (let j = 0; j <= steps; j++) {
         const x = xMin + j * stepSize;
-        const rawY = model.predict(x);
+        const rawY = ALLOC_MATH.predictSafeCpr(curveWrap, x);
         const y = isRoas && rawY > 0 ? 1 / rawY : rawY;
         if (isFinite(y) && y > 0) {
           const nv = norm(x, y);
