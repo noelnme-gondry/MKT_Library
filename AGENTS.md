@@ -82,6 +82,8 @@ v2-migration/
 | 5-24 | 브랜드 캠페인 증분 분석 (ITS·AR(1)·대조군 연결) | 자체 CSV |
 | 5-18 | 마케팅 반응 분석 (카니발 진단·MMM 기여·회귀+미래예측) | 주간 패널 CSV |
 | 5-20 | 핵심 가치 발굴 (Aha-moment 윈도우×횟수 그리드) | 이벤트 CSV |
+| 5-25 | 다중공선성 점검 (채널 지출 VIF·상관 — MMM 전 진단) | 자체 CSV |
+| 5-26 | ASA 키워드 (Exact 승격·CPT 조정) | 자체 CSV |
 | 9-6 | 소재 분석 (지표·피로도·포레스트) | 소재 daily CSV |
 | 9-1 | 콘텐츠 요소 분석기 (요소별 성과 기여) | 콘텐츠 CSV |
 | 9-2·9-3·9-7 | 콘텐츠 Aha·트래픽 변동·운영 대시보드 (`hidden:true`) | 콘텐츠 CSV |
@@ -95,7 +97,7 @@ csvGroups[group]   // 그룹별 슬라이스 {raw, headers, mapping, fileName, c
 activeDataGroup    // 현재 활성 그룹 (비-도구 라우트에선 마지막 도구 그룹 유지)
 csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이것만 읽음
 ```
-- `TOOL_GROUP`(`src/lib/toolGroups.js`)이 `라우트 id → 그룹`. 같은 grain은 슬라이스 공유(efficiency=5-2·5-21·5-22·5-3·start-gate), 이질 도구는 격리(aha·creative·experiment·response·incrementality·brand_incrementality·content_*).
+- `TOOL_GROUP`(`src/lib/toolGroups.js`)이 `라우트 id → 그룹`. 같은 grain은 슬라이스 공유(efficiency=5-2·5-21·5-22·5-3·start-gate), 이질 도구는 격리(aha·creative·experiment·response·incrementality·brand_incrementality·collinearity·asa_keyword·content_*).
 - `setCurrentRouteId` → 미러 스왑 + 그룹별 `dashboardFilter` 승계. `setCsvData` → `groupForRoute(currentRouteId)` 슬라이스에 쓰기.
 - **CSV를 쓰는 라우트는 도구가 아니어도 `TOOL_GROUP`에 등록**(읽기·쓰기 그룹 불일치 = 업로드 소실, §7).
 - 필수/옵션 필드: `TOOL_REQUIRED_FIELDS`+`TOOL_OPTIONAL_FIELDS`(`utils/csvConstants.js`). 자동매핑은 `lib/data-import/mappingContract.js`가 **도구 스코프로** 호출.
@@ -152,6 +154,9 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **헤더명이 아니라 "값"으로 매핑하는 필드는 `valueVocabulary`**(source=광고/오가닉): 헤더/타입 점수 무시하고 값 어휘 매칭만 사용. **숫자 컬럼(`numericRate≥0.8`)은 enum 어휘 후보에서 제외**하고 **짧은 토큰(≤2자)은 정확일치만** — `"850000".includes("0")`으로 비용·설치가 `campaign_on`에 선점되는 사고(PR #603).
 - **CSV를 "쓰는" 라우트는 반드시 `TOOL_GROUP`에 등록**(PR #603→#604): 읽기(sticky `activeDataGroup`)와 쓰기(`groupForRoute`)가 다른 그룹을 고르면 재진입 시 미러가 빈 슬라이스를 가리켜 **방금 올린 CSV가 사라진다**. `TOOL_GROUP` 파생 상수(`TEMPLATE_FAMILY` 등)에 새 id가 딸려 들어가는지도 확인.
 - **그룹·라우트 목록을 두 곳에 나열하지 말 것 — 파생시켜라**(PR #608→#610): `TOOL_GROUP`엔 있는데 스토어 `csvGroups`엔 없던 그룹 하나가 미러를 `undefined`로 만들어 도구를 렌더 throw로 죽였다(5-24, 배포된 채 하루). 같은 사고가 `/start`에서도 났다(#604). 지금은 세 맵이 `buildGroupMap()` 파생 — **"한 곳에 추가하면 다른 곳도 고쳐야 한다"는 주석이 보이면 그게 곧 다음 버그다.** 파생이 불가능하면 최소한 정합 테스트를 둘 것.
+- **커버리지 가드가 손으로 쓴 배열을 돌면 가드가 아니다**(2026-08 감사): `toolOg.test.js`는 "every published tool"을 검증한다면서 하드코딩 11개 배열을 순회했고, **빠진 도구가 정확히 검증에서도 빠져** 5-25·5-26이 generic OG·빈 featureList로 배포됐다. `pageKeywords.js`는 테스트가 아예 0건이었다. 목록 검증은 반드시 `ROUTES.filter(isRoutePublished)` 같은 **SSOT에서 파생**해 돌 것 — 옆 파일 `toolSearchContent.test.js:60`이 이미 올바른 형태다. **가드가 있다는 사실이 가드가 없다는 사실을 가린다.**
+- **"완료" 문구를 하네스에 적기 전에 grep으로 세 볼 것**(같은 감사): §12.27이 "공개 분석 도구 전체 채택 완료"라고 적혀 있었지만 결론 카드가 없는 도구가 2개, 다운로드가 없는 도구가 4개였다. §15의 "틀린 규칙은 없는 규칙보다 해롭다"가 완료 선언에도 적용된다.
+- **한 도구의 두 도메인이 같은 id를 공유하면 라벨팩이 엇갈린다**(같은 감사): 9-6 라우트는 `domain="performance"`(소재)로 렌더되는데 `uploaderToolId`는 `"5-6"`이고 `TOOL_GUIDE`엔 `"9-6"`(콘텐츠 문구)만 있었다 → `CsvGuide`가 null을 반환해 **업로드 안내가 통째로 사라졌다**(작성된 카피 70줄이 도달 불가). 리라벨 도구는 id·문구·필드 계약 셋이 각각 어느 도메인 것인지 확인하고, `TOOL_GROUP` 파생 커버리지 테스트로 고정할 것.
 - **스모크 `beforeEach`의 상태 주입이 진입 경로를 우회한다**(같은 사고): 셋업이 store 슬라이스를 직접 넣어주면 실제 사용자 경로(`setCurrentRouteId` → 미러 스왑)를 안 밟아 크래시를 놓친다. 진입 경로 자체를 밟는 케이스를 **따로** 둘 것. 초기 상태 불변식은 다른 describe의 `beforeEach`에 오염되므로 별도 describe + `getInitialState()`로.
 - **좁힌 업로드 스코프가 공유 슬라이스를 오염**(같은 PR): 진입 화면 매핑이 그룹 슬라이스에 저장돼 **사이드바로 진입한 도구가 이어 쓴다**(추천 카드 경로만 재매핑). 스코프에서 뺀 컬럼은 하류에서 영구 미매핑. 진입 화면 스코프 = **그 그룹 도구들의 필드 합집합**. 스코프는 오매핑 방지용이 아니라 소속 판별용 — 오매핑은 스코어러에서 막을 것.
 - **필터 옵션 생성 ↔ 비교의 trim 불일치 = "선택해도 0행"**: 옵션은 `String(v)` 그대로인데 필터는 `.trim()`으로 비교 → `" Paid"` 같은 값이 안 맞음. 값 기반 필터는 **생성·비교 정규화를 항상 같이** 맞출 것.
@@ -166,11 +171,20 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **계층 드릴다운 단일레벨 키 그룹핑 = 상위 over-merge**: 상위가 "전체"면 복합키(`cmp│cr`)로 — finest 합산이라 Σ 항등식 불변, `children[0]`로 대표키 추출.
 - **shift-share/Bennet "비중"은 비용 아니라 결과량 share**: `s=result/ΣResult`가 정의. COST 컬럼 옆 "비중"은 비용 비중으로 오독돼 신뢰 붕괴 → 라벨을 "**결과 비중**"으로 명시 + 툴팁 고지(거짓 숫자로 의심받는 카피 = 실질 버그).
 - **리텐션은 모수 가중 + %-vs-인원수 컬럼 판별**: 행별 단순평균 금지(코호트 크기 무시), 비율 전용 clamp도 인원수 입력을 100%로 망가뜨림. SSOT `computeWeightedRetention` — 분모=Σ모수, 분자=비율이면 Σ(ret×모수)·인원수면 Σret. **컬럼 max≤1→비율, 초과→인원수**.
+- **표시 경로와 계산 경로가 다른 예측 함수를 쓰면 화면이 추천과 어긋난다**(2026-08 감사): 5-3 차트는 `model.predict(x)`를 직접 불러 poly2 꼭짓점 clamp가 빠졌고, 배분 엔진은 `predictSafeCpr`를 썼다 → "곡선은 나빠지는데 왜 증액하라고 하나". `.model.predict` 함정과 같은 클래스인데 `undefined`가 아니라 **다른 값**이라 더 안 보인다. 래퍼 필드도 전부 넘길 것(`xMin` 누락 = 하한 clamp 사망).
+- **정규화·구조로 살려낸 적합은 "추정치"가 아니다**(같은 감사): `REG_STATS.ols`는 특이행렬을 잡으면 대각에 1e-8을 더해 릿지로 풀고 `regularized:true`만 남기는데, 이 플래그를 확인하는 곳이 전 코드베이스에 1곳뿐이었다 → 공선 데이터에 **95% 예측 밴드가 확정 숫자로** 표시됐다. 플래그를 만들면 소비처 전수를 같이 배선할 것.
+- **퇴화 입력 가드는 형제 함수에서 복사해 올 것**(같은 감사): 같은 파일의 `mmmOls`엔 `n<=k`·`sst>0`·`Math.max(0,…)`·`se>0` 네 가드가 있는데 `REG_STATS.ols`엔 없어서 상수 종속변수에서 **R²=-Infinity와 p=1.06e-60("극도로 유의")**이 렌더됐다. 정상 입력에선 no-op이라 골든 byte-identical로 추가된다.
+- **"계산 불가"를 좋은 등급으로 접지 말 것**(같은 감사): `creativeMath.vif`는 적합 실패를 `r2=0`으로 떨어뜨려 **VIF=1(완전히 깨끗)**로 표시했다 — 식별 불가를 문제 없음으로 뒤집는 방향의 실패다. `satMath.classify`도 `satIndex==null`(미상)을 "포화"로 단정했다. 미상은 미상 버킷(null)으로.
+- **날짜 문자열은 UTC로 파싱되므로 요일도 `getUTCDay()`**: `new Date("2026-08-12").getDay()`는 로컬 기준이라 UTC 이서 타임존에서 하루 밀린다. 주석이 "UTC"라고 적혀 있는데 코드가 `getDay()`인 경우가 실제로 6곳 있었다(파일마다 갈림).
 - **모델 래퍼는 `.model.predict`지 `.predict` 아님**(5-3): `predictSafeCpr(wrap, cost)`가 CPR 반환, 결과=cost÷CPR. 직접 호출은 **undefined→결과 0**. 골든은 순수 math만 봐서 못 잡음 → **각 분배 경로를 데모로 repro**.
 - **5-18 MMM**: ROAS는 표시층 invert만(배분은 CPR 공간). 회귀계수는 **연관≠인과**. 전부-0/완전공선 컬럼 → `_nonRedundantCols`(Gram-Schmidt) 드롭. 희소 채널 음수 탄력성은 "노이즈"지 "잠식" 아님.
 - **`const x = ... f(()=>...x...)` 자기 참조 = TDZ throw**: const 초기화식 안에서 자신을 참조하면 callback 실행 시 ReferenceError. `&&` 단락으로 안 도는 기본 경로는 멀쩡, 조건 truthy 되는 순간 throw. 모듈 상수 선언 순서도 같은 함정 — 파생 상수는 원본 뒤에.
 
 **렌더·UI**
+- **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`.
+  - 토큰화하면 `` `${color}55` `` 같은 **hex 알파 접합이 깨진다**(`var(--danger)55`는 무효 CSS) → `color-mix(in srgb, … 33%, transparent)`.
+- **`role="tablist"`가 `role="group"`을 거쳐 `tab`을 소유하면 계약이 끊긴다**(같은 감사): 로빙 tabindex·화살표 키가 멀쩡해도 보조기술이 탭을 탭으로 인식하지 못한다. 그룹이 필요하면 **그룹마다 tablist**를 두고 바깥은 일반 컨테이너로. `role="radio"`도 `radiogroup` 부모가 없으면 같은 문제 + 전 옵션이 탭 순서에 들어간다.
+- **`title` 단독은 어포던스가 아니다 — CSS로 강제할 것**: claude-ux §0이 이름을 지목해 금지했는데도 12곳 이상 살아 있었다. 개별 수정 대신 `[title]` 셀렉터에 점선 밑줄+`cursor:help`를 거는 전역 규칙 1개가 전부를 덮는다.
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**: canvas는 `var()`를 못 읽어 불투명 검정 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(`chartUtils.js`)로 렌더타임 해석.
 - **Chart.js v4 커스텀 `generateLabels`는 per-item `fontColor` 자동 주입 안 함** → 다크모드 범례 텍스트 실종(라이트는 멀쩡 → 한쪽만 검증하면 놓침). 부호 구분 색쌍은 명도차 크게(중간톤끼리는 구분 안 됨).
 - **조건부 마운트 캔버스는 최초 폭 0**: 토글·step 전환으로 새로 마운트되는 차트는 부모 레이아웃 전이라 width=0. `new Chart(...)` 직후 `requestAnimationFrame(() => instance.resize())` 1회 필수.
@@ -336,11 +350,11 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ### 12.25 세그먼트 나눠보기 필터 (매핑 role→토글)
 차원 컬럼(성별·플랫폼·국가) 지정 시 분석을 값별로 나눠 봄. **엔진·게이트 불변, 행 부분집합만 필터해 재계산**. `role=segment` + `guessRole` 화이트리스트로 자동 안착(그 외 문자열은 tray, 오탐 방지). 세그먼트=탐색 토글이라 **게이트 시그 밖**(재분석 불필요), 매핑 잔상은 유효성 검사로 방지. 일괄 매핑 버튼은 segment 제외(사용자 지정 보존).
 
-### 12.26 분석 전면광고 제거 상태 (PR #290 이후 폐기)
-`AdInterstitial`·`AdFreeInit`·`adGate`·`adFree` 전부 삭제됨. `requestAd(cb)`만 호출부 호환용 no-op 래퍼로 잔존 — 광고 게이트·비밀 URL로 되살리지 말 것. 수익화는 이탈·AdSense 정책 데이터 확인 후 별도 결정.
+### 12.26 분석 전면광고 = 폐기 (PR #290)
+광고 게이트를 어떤 형태로도 되살리지 말 것(`requestAd`는 호출부 호환 no-op만 잔존). 수익화는 이탈·AdSense 데이터 확인 후 별도 결정.
 
 ### 12.27 결론 카드 + 다운로드 허브 공용화
-- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **공개 분석 도구 전체 채택 완료.**
+- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). 채택 현황은 선언하지 말고 grep으로 확인할 것 — 2026-08 기준 `PaidOrganicTrend`·`WebRMmmAdvanced`에 카드가 없고, `ContentElementAnalyzer`·`MulticollinearityChecker`에 다운로드가 없다.
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
@@ -371,7 +385,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - `v2-migration/claude-ux.md` — UX 원칙 (§15.5 트리거 시 필독)
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
 - `docs/pitfalls.md` — 함정 상세 / `docs/backlog.md` — 백로그 + MMM 스펙(§B)
-- `docs/code-health-audit.md` — 코드·아키텍처 건강성 감사
+- `docs/system-audit-2026-08-12.md` — 최신 전면 감사(UI/UX·분석·구조, P0 3·P1 15·P2 12)
 - `docs/design-system-baseline.md` · `docs/pvm-campaign-variance-spec.md` · `docs/regression-forecast-merge-spec.md` · `docs/content-analytics-rollout-spec.md` · `docs/custom-metrics-data-config-spec.md` — 기능별 설계 스펙
 - `supabase/SETUP.md` · `supabase/schema.sql` — 현재 미사용(§3), 참고용 보존
 - `.claude/agents/mkt-engineer.md` — 본 파일의 압축판(Claude 서브에이전트용, 같이 동기화)
@@ -414,7 +428,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **183파일·1257 통과**(golden+jsdom smoke) · eslint 0 · `next build` ✓.
+- ✅ 검증 하네스: `npm run test:all` **230파일·1724 통과**(golden 150 + jsdom smoke 80) · eslint 0 · `next build` ✓. **수치를 적을 땐 실제로 돌려서 적을 것**(구 기재는 46파일·467건 어긋나 있었다).
 - ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 전 도구 채택 완료.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천), 브랜드 증분(5-24 ITS).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
