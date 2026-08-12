@@ -28,6 +28,15 @@
         --border-subtle: rgba(255, 255, 255, 0.05);
         --border-stronger: rgba(255, 255, 255, 0.15);
 
+        /* shadcn-compatible semantic aliases. Existing Obsidian Flux tokens
+           remain the source of truth, including all Chart.js lookups. */
+        --foreground: var(--text-primary);
+        --muted: var(--bg-2);
+        --muted-foreground: var(--text-muted);
+        --card: var(--bg-2);
+        --card-foreground: var(--text-primary);
+        --ring: var(--primary);
+
         --topbar-bg: rgba(18, 18, 18, 0.85);
         --page-sticky-bg: rgba(18, 18, 18, 0.92);
 
@@ -101,6 +110,13 @@
         --border: rgba(0, 0, 0, 0.1);
         --border-subtle: rgba(0, 0, 0, 0.08);
         --border-stronger: rgba(0, 0, 0, 0.12);
+
+        --foreground: var(--text-primary);
+        --muted: var(--bg-2);
+        --muted-foreground: var(--text-muted);
+        --card: var(--bg-2);
+        --card-foreground: var(--text-primary);
+        --ring: var(--primary);
 
         --topbar-bg: rgba(255, 255, 255, 0.85);
         --page-sticky-bg: rgba(255, 255, 255, 0.92);

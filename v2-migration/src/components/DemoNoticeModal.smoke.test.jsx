@@ -44,7 +44,7 @@ describe("DemoNoticeModal", () => {
         <DemoNoticeModal locale={locale} />
       </>
     );
-    const dropzone = screen.getByRole("button", { name: "CSV upload area" });
+    const dropzone = screen.getByRole("button", { name: "CSV upload area", hidden: true });
     const scrollIntoView = vi.fn();
     dropzone.scrollIntoView = scrollIntoView;
 

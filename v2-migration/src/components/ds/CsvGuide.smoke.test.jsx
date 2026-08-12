@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CsvGuide from "@/components/ds/CsvGuide";
 
 describe("CsvGuide", () => {
@@ -8,7 +8,7 @@ describe("CsvGuide", () => {
     window.gtag = vi.fn();
   });
 
-  it("opens an accessible portalled guide and preserves the explicit close action", () => {
+  it("opens an accessible portalled guide and preserves the explicit close action", async () => {
     render(<CsvGuide toolId="5-2" />);
     const trigger = screen.getByRole("button", { name: "📖 어떤 데이터가 왜 필요한가요?" });
     trigger.focus();
@@ -22,7 +22,7 @@ describe("CsvGuide", () => {
     fireEvent.click(close);
 
     expect(screen.queryByRole("dialog", { name: "이 도구에 올릴 데이터 안내" })).toBeNull();
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it("keeps the English guide copy and table labels", () => {
