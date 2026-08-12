@@ -148,8 +148,14 @@ export const CREATIVE_MATH = {
       }
       const w = new Array(n).fill(1);
       const fit = this.wlsSolve(Xj, yj, w);
-      const r2 = fit ? fit.R2 : 0;
-      vifs[j] = 1 / Math.max(0.001, 1 - r2);
+      // 적합 실패(특이·rank 부족)를 r2=0으로 떨어뜨리면 VIF=1, 즉 "완전히 깨끗"으로
+      // 표시된다 — 식별 불가를 문제 없음으로 뒤집는 것이다(감사 H-2).
+      // modelDiagnostics.computeVif는 같은 상황에서 null + verdict:"severe"를 준다.
+      if (!fit) {
+        vifs[j] = null;
+        continue;
+      }
+      vifs[j] = 1 / Math.max(0.001, 1 - fit.R2);
     }
     return vifs;
   },

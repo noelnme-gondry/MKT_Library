@@ -37,7 +37,7 @@ export const FUNNEL_MATH = {
       const grpSums = [0, 0],
         grpNs = [0, 0];
       for (const x of valid) {
-        const wd = new Date(x.date).getDay();
+        const wd = new Date(x.date).getUTCDay();
         const isWe = wd === 0 || wd === 6 ? 1 : 0;
         grpSums[isWe] += x.cvr;
         grpNs[isWe]++;
@@ -66,7 +66,7 @@ export const FUNNEL_MATH = {
             x.lowAdj = false;
             continue;
           }
-          const wd = new Date(x.date).getDay();
+          const wd = new Date(x.date).getUTCDay();
           const isWe = wd === 0 || wd === 6 ? 1 : 0;
           x.cvrAdj = x.cvr - grpMean[isWe] + dailyMean;
           x.devPctAdj =

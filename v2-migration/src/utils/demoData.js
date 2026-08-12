@@ -666,102 +666,6 @@ function buildContentTraffic() {
   return { raw, headers, mapping, fileName: "demo_content_traffic.csv" };
 }
 
-// ── content_freshness (9-6 콘텐츠 수명주기·신선도 진단) ───────────────────────
-// creative(5-6)와 동일 grain(1행 = 하루 × 콘텐츠)·동일 엔진(creativeMath, CTR/CVR
-// 비율 기반이라 스케일 안전)이되 콘텐츠 도메인 값: creative_id=콘텐츠·channel=배포
-// 채널(블로그/유튜브/인스타/뉴스레터)·format=형식(글/영상/카드뉴스/인포그래픽)·
-// message_angle=콘텐츠 앵글·hook_type=후킹 유형. 신선도 신호: 콘텐츠마다 다른 감쇠율
-// (decay)을 심어 일부는 급격히 반응이 식고(신선도 저하 검출·경고), 일부는 신선 유지.
-// message_angle × format 조합당 콘텐츠 ≥5개(minNCell) 채워 §8 조합표도 산출.
-// 결정론(seededNoise, NO Math.random §3).
-function buildContentFreshness() {
-  const headers = [
-    "creative_id", "date", "channel", "impressions", "clicks", "installs",
-    "spend", "revenue_d7", "video_3s_views", "video_completions",
-    "message_angle", "format", "hook_type", "cta_style", "first_3s",
-    "duration_bucket", "has_text_overlay",
-  ];
-  // 콘텐츠 앵글 어휘 + CTR/CVR(구독전환) 효과 (합성 신호)
-  const angles = [
-    { v: "정보성가이드", ctr: 0.009, cvr: 0.03 },
-    { v: "사례연구", ctr: 0.004, cvr: 0.02 },
-    { v: "트렌드분석", ctr: 0.000, cvr: 0.01 },
-    { v: "오피니언", ctr: 0.003, cvr: -0.01 },
-  ];
-  const formats = [
-    { v: "영상", ctr: 0.006, cvr: 0.00, isVideo: true },
-    { v: "카드뉴스", ctr: 0.002, cvr: 0.02, isVideo: false },
-    { v: "글", ctr: -0.004, cvr: 0.01, isVideo: false },
-    { v: "인포그래픽", ctr: 0.010, cvr: 0.04, isVideo: false },
-  ];
-  const hooks = ["질문형", "숫자형", "공감형"];
-  const ctas = ["구독하기", "무료뉴스레터", "더보기"];
-  const first3 = ["핵심결론먼저", "질문던지기", "사례제시"];
-  const durations = ["<3분", "3-8분", "8분+"];
-  const channels = ["블로그", "유튜브", "인스타그램", "뉴스레터"];
-  const baseCtr = 0.022, baseCvr = 0.12, baseArppu = 12000;
-  const dates = generateDates(28, "2024-02-01");
-  // 조합별 상태 플랜 — creative와 동일 분포(검증/부족/유망/미관측)로 §8 다채롭게.
-  const plan = {
-    "정보성가이드|영상": "P", "정보성가이드|글": "V", "정보성가이드|카드뉴스": "S", "정보성가이드|인포그래픽": "_",
-    "사례연구|영상": "V", "사례연구|글": "V", "사례연구|카드뉴스": "V", "사례연구|인포그래픽": "S",
-    "트렌드분석|영상": "V", "트렌드분석|글": "V", "트렌드분석|카드뉴스": "_", "트렌드분석|인포그래픽": "V",
-    "오피니언|영상": "V", "오피니언|글": "S", "오피니언|카드뉴스": "V", "오피니언|인포그래픽": "P",
-  };
-  const raw = [];
-  let cIdx = 0, seed = 137;
-  for (const ang of angles) {
-    for (const fmt of formats) {
-      const code = plan[`${ang.v}|${fmt.v}`] || "V";
-      if (code === "_") continue; // 미관측 조합 — 콘텐츠 없음
-      const nCon = code === "S" ? 3 : code === "P" ? 5 : 6;
-      const lowImp = code === "P";           // 유망: 노출 적어 확정 어려움
-      const nDays = lowImp ? 1 : dates.length;
-      for (let k = 0; k < nCon; k++) {
-        cIdx++;
-        const rnd = seededNoise((seed += 23));
-        const hook = hooks[cIdx % hooks.length];
-        const cta = ctas[(cIdx + 1) % ctas.length];
-        const f3 = first3[(cIdx + 2) % first3.length];
-        const dur = fmt.isVideo ? durations[(cIdx + k) % durations.length] : "<3분";
-        const overlay = (cIdx + k) % 2;
-        const ch = channels[cIdx % channels.length];
-        const id = `post_${String(cIdx).padStart(3, "0")}_${fmt.v}_${ang.v}`;
-        // 신선도 감쇠율: 1/4 콘텐츠는 급격히 식음(신선도 저하 검출), 나머지는 완만.
-        const fastDecay = cIdx % 4 === 0;
-        const fatigue = fastDecay ? 0.020 + (cIdx % 3) * 0.004 : 0.002 + (cIdx % 5) * 0.002;
-        const cCtr = clamp01(baseCtr + ang.ctr + fmt.ctr + (overlay ? 0.002 : 0));
-        const cCvr = clamp01(baseCvr + ang.cvr + fmt.cvr + (hook === "공감형" ? 0.02 : 0));
-        const arppu = baseArppu * (ang.v === "정보성가이드" ? 1.15 : ang.v === "오피니언" ? 0.85 : 1);
-        for (let d = 0; d < nDays; d++) {
-          const decay = Math.max(0.3, 1 - fatigue * d);
-          const impressions = lowImp ? round(400 + rnd() * 120) : round(30000 + rnd() * 24000);
-          const ctr = clamp01(cCtr * decay * (1 + rnd() * 0.12));
-          const clicks = round(impressions * ctr);
-          const cvr = clamp01(cCvr * (1 + rnd() * 0.15));
-          const installs = round(clicks * cvr);
-          const cpc = 320 + rnd() * 140;
-          const spend = round(clicks * cpc);
-          const pu = installs * (0.5 + rnd() * 0.15);
-          const revenue = round(pu * arppu * (1 + rnd() * 0.2));
-          const v3s = fmt.isVideo ? round(impressions * (0.55 + rnd() * 0.15)) : 0;
-          const vcomp = fmt.isVideo ? round(v3s * (0.25 + rnd() * 0.15)) : 0;
-          raw.push({
-            creative_id: id, date: dates[d], channel: ch,
-            impressions, clicks, installs, spend, revenue_d7: revenue,
-            video_3s_views: v3s, video_completions: vcomp,
-            message_angle: ang.v, format: fmt.v, hook_type: hook,
-            cta_style: cta, first_3s: f3, duration_bucket: dur,
-            has_text_overlay: overlay,
-          });
-        }
-      }
-    }
-  }
-  const mapping = {};
-  headers.forEach((h) => { mapping[h] = h; });
-  return { raw, headers, mapping, fileName: "demo_content_freshness.csv" };
-}
 
 // ── content_dashboard (9-7 콘텐츠 운영 대시보드) ──────────────────────────────
 // 콘텐츠 운영 CSV — 유입경로(traffic_source)·카테고리·콘텐츠·비용·노출·클릭·방문·구독.
@@ -835,7 +739,6 @@ const BUILDERS = {
   content_aha: buildContentAha,
   content_attr: buildContentAttr,
   content_traffic: buildContentTraffic,
-  content_freshness: buildContentFreshness,
   content_dashboard: buildContentDashboard,
 };
 

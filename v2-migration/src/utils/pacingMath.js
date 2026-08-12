@@ -19,7 +19,9 @@ export const PACING_MATH = {
     return { ym, mtd, daysElapsed, daysInMonth, runRate, projected };
   },
   // 최근 N주(4~8주) 일별 시리즈 → 요일별 평균 맵(0=일~6=토) + 표본수
-  // 'YYYY-MM-DD' ISO 형식, getDay() UTC 파싱(buildDailyAgg와 동일)
+  // 'YYYY-MM-DD' ISO 형식은 UTC로 파싱되므로 요일도 getUTCDay()로 읽는다.
+  // getDay()(로컬)로 읽으면 UTC 이서 타임존에서 요일이 하루 밀린다 — 주석은 UTC라고
+  // 적혀 있는데 코드가 로컬이었다(감사 H-1). anomalyMath.js는 이미 getUTCDay() 사용.
   weekdayProfile(daily, recentWeeks) {
     const weeks = recentWeeks || 6;
     const n = weeks * 7;
@@ -27,7 +29,7 @@ export const PACING_MATH = {
     const sums = [0, 0, 0, 0, 0, 0, 0],
       counts = [0, 0, 0, 0, 0, 0, 0];
     for (const d of recent) {
-      const wd = new Date(d.date).getDay();
+      const wd = new Date(d.date).getUTCDay();
       sums[wd] += d.value;
       counts[wd]++;
     }
@@ -41,7 +43,7 @@ export const PACING_MATH = {
     const ok = counts.every((c) => c >= 3);
     return { means, counts, ok };
   },
-  // 요일별 평균 합산 예측(산식 A): mtd + Σ잔여일 wdMean[getDay()]
+  // 요일별 평균 합산 예측(산식 A): mtd + Σ잔여일 wdMean[getUTCDay()]
   paceWeekday(daily, opts) {
     if (!daily.length) return null;
     const p = this.pace(daily);
@@ -62,7 +64,7 @@ export const PACING_MATH = {
     let remaining = 0;
     for (let d = lastDay + 1; d <= p.daysInMonth; d++) {
       const dt = new Date(Date.UTC(y, mo - 1, d));
-      const wd = dt.getDay();
+      const wd = dt.getUTCDay();
       const wdMean = prof.means[wd];
       if (wdMean != null) remaining += wdMean;
     }
