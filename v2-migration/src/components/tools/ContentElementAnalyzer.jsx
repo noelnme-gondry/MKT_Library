@@ -18,6 +18,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
 import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
@@ -764,6 +765,12 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString(), detail: T.excludedRows(fit.n, fit.inputRows) },
                 { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
               ]}
+              download={<DownloadHub
+                toolId="9-1"
+                locale={locale}
+                label={tr("결과 받기", "Download results")}
+                items={[{ icon: "⬇", analyticsType: "csv", label: tr("요소 계수 (CSV)", "Element coefficients (CSV)"), desc: tr("HC3·BH 보정·신뢰구간", "HC3 · BH adjustment · confidence intervals"), onSelect: () => downloadCoefCsv(fit.rows) }]}
+              />}
               analysisDetails={(
             <AnalysisDetails
               locale={locale}
@@ -895,7 +902,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                   R² {(fit.R2).toFixed(3)} · adj.R² {(fit.adjR2).toFixed(3)} · n {fit.n.toLocaleString()} · {T.intercept} {fit.intercept.toFixed(3)}
                   {fit.dropped.length ? ` · ${T.droppedPrefix}${fit.dropped.join(", ")}` : ""}
                 </div>
-                <button className="ab-pill" onClick={() => downloadCoefCsv(fit.rows)}>⬇ CSV</button>
               </div>
               <div className="table-wrap" style={{ marginTop: "8px" }}>
                 <table className="data" style={{ fontSize: "12.5px" }}>

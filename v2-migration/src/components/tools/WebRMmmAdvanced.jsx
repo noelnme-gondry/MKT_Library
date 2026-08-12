@@ -13,6 +13,7 @@ import {
 import Chart from "@/utils/chartGlobals";
 import { chartCommonOpts, CHART_THEME } from "@/utils/chartUtils";
 import { CommaNumberInput } from "@/components/tools/marketingResponseModel";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 
 const COPY = {
   ko: {
@@ -581,6 +582,22 @@ export default function WebRMmmAdvanced({
           {result?.status === "complete" && (
             <div>
               <div className={`callout ${verdict.tone}`}><div className="body"><strong>{verdict.title}</strong><p>{verdict.body}</p></div></div>
+              <ResultActionCard
+                tone={verdict.tone === "good" ? "good" : verdict.tone === "bad" ? "bad" : "neutral"}
+                title={locale === "en" ? "Model comparison conclusion" : "모델 비교 결론"}
+                headline={verdict.title}
+                points={[{ text: verdict.body }]}
+                stats={[
+                  { label: T.bayesian, value: Number.isFinite(bayesianWmape) ? `${bayesianWmape.toFixed(1)}%` : "—", detail: T.oosWmape },
+                  { label: T.webr, value: Number.isFinite(result.wmape) ? `${result.wmape.toFixed(1)}%` : "—", detail: T.oosWmape },
+                  { label: T.oosFoldRange, value: String(result.folds || "—") },
+                ]}
+                toolId="5-18"
+                analysisType="webr-mmm-comparison"
+                analysisKey={`${signature}:${result.wmape}:${bayesianWmape}`}
+                locale={locale}
+                decisionReview={false}
+              />
               {selectedModel === "webr" ? <div className="mmm-result-flow">
                 <section className="mmm-result-step" aria-labelledby="mmm-webr-fit-title">
                   <div className="mmm-result-step__head"><span>01</span><div><h3 id="mmm-webr-fit-title">{T.fitStep}</h3><p>{T.fitStepDesc}</p></div></div>

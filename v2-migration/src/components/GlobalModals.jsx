@@ -5,6 +5,7 @@ import { IA, useAppStore } from "@/store/useDataStore";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { CONNECTED_TOOLS } from "@/lib/toolConnections";
+import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
 
 const COPY = {
   ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "바로 맞는 도구를 찾지 못했습니다", emptyHint: "파일을 올려 가능한 분석을 확인하거나 세 문항으로 문제부터 좁혀보세요.", emptyStart: "내 데이터 분석", emptyDiagnose: "성과 문제 진단", pages: "빠른 이동", analystGroup: "작업 환경", analystOn: "분석가 모드 켜기", analystOff: "분석가 모드 끄기" },
@@ -171,6 +172,7 @@ export default function GlobalModals({ locale = "ko" }) {
   };
 
   return <>
+    <LegacyPillGroupA11y />
     <div id="toast-container" className="toast-container" role="status" aria-live="polite"></div>
     <div id="cmdk" className="cmdk-overlay" hidden={!isCmdkOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setCmdkOpen(false); }}>
       <div ref={panelRef} className="cmdk-panel" role="dialog" aria-modal="true" aria-label={T.placeholder} onKeyDown={onDialogKeyDown}>

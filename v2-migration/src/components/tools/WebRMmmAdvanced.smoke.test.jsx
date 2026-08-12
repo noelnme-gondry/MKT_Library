@@ -5,7 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import WebRMmmAdvanced, { webRMmmDisplayLabel } from "@/components/tools/WebRMmmAdvanced";
 import { runWebRMmmElasticNet } from "@/lib/analysis/webr/mmmElasticNet";
 
-vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
+vi.mock("@/lib/analytics", async (importOriginal) => ({
+  ...(await importOriginal()),
+  trackProductEvent: vi.fn(),
+}));
 vi.mock("@/lib/analysis/webr/mmmElasticNet", async (importOriginal) => {
   const actual = await importOriginal();
   return {
@@ -96,7 +99,7 @@ describe("WebRMmmAdvanced render smoke", () => {
     render(<Harness />);
 
     await waitFor(() => expect(runWebRMmmElasticNet).toHaveBeenCalledWith(expect.objectContaining({ ok: true })));
-    expect(await screen.findByText("예측 정확도 승자: WebR Elastic-net")).toBeTruthy();
+    expect((await screen.findAllByText("예측 정확도 승자: WebR Elastic-net")).length).toBeGreaterThan(0);
     expect(await screen.findByText("실제 성과를 얼마나 설명했나")).toBeTruthy();
     expect(screen.getByText("무엇이 성과를 설명했나")).toBeTruthy();
     expect(screen.getByText("채널 효과는 검증에서도 유지됐나")).toBeTruthy();

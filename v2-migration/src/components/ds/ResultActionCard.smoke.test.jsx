@@ -50,6 +50,18 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(container.querySelector(".result-action-card__stats").getAttribute("aria-label")).toBe("Key figures");
   });
 
+  it("offers a localized detailed-document download for actionable results", () => {
+    render(
+      <ResultActionCard
+        toolId="5-3"
+        headline="결론"
+        analysisBasis={false}
+        decisionReview={false}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "상세 문서 받기" })).toBeTruthy();
+  });
+
   it("passes an explicit decision prefill without inferring from generic points or stats", () => {
     const { container } = render(
       <ResultActionCard
