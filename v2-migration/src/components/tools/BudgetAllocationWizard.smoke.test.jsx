@@ -80,6 +80,22 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(barSection).toBeTruthy();
   });
 
+  it("진단과 총 합계 비교를 요약 헤드라인과 내부 카드로 구분한다", () => {
+    render(<BudgetAllocation />);
+    const diagnosis = document.querySelector(".alloc-diag-card");
+    const comparison = document.querySelector(".alloc-total-card");
+    expect(diagnosis).toBeTruthy();
+    expect(comparison).toBeTruthy();
+    expect(diagnosis.querySelector(".alloc-insight-summary")?.textContent).toMatch(/감액|증액|효율 점검/);
+    expect(comparison.querySelector(".alloc-insight-summary")?.textContent).toMatch(/CPI|CPA|ROAS/);
+
+    fireEvent.click(diagnosis.querySelector("summary"));
+    fireEvent.click(comparison.querySelector("summary"));
+    expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeLessThanOrEqual(3);
+    expect(comparison.querySelectorAll(".alloc-total-block")).toHaveLength(2);
+    expect(comparison.querySelector(".alloc-total-block.is-recommended")).toBeTruthy();
+  });
+
   it("renders the §4 bar chart as a real <canvas> (Chart.js) once a budget is entered", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
