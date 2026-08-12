@@ -17,6 +17,11 @@ export const TOOL_OG_CONFIG = {
   "5-24": { accent: "#f472b6", glyph: "BRAND LIFT", metrics: { ko: ["브랜드 검색", "ITS", "증가분"], en: ["BRAND SEARCH", "ITS", "LIFT"] } },
   "9-1": { accent: "#38bdf8", glyph: "ELEMENTS", metrics: { ko: ["요소", "효과", "신뢰구간"], en: ["ELEMENT", "EFFECT", "INTERVAL"] } },
   "9-6": { accent: "#f97316", glyph: "CREATIVE", metrics: { ko: ["교체", "피로", "다음 제작"], en: ["REPLACE", "FATIGUE", "NEXT BRIEF"] } },
+  // 5-25·5-26은 배포된 뒤로도 여기 없어서 generic /og-card.png를 쓰고 있었고,
+  // SoftwareApplication JSON-LD의 featureList가 빈 배열이었다(감사 P1-9).
+  // 커버리지 테스트가 하드코딩 배열을 돌아 누락을 못 잡았다 — 이제 ROUTES에서 파생한다.
+  "5-25": { accent: "#818cf8", glyph: "COLLINEAR", metrics: { ko: ["VIF", "상관", "분리 가능성"], en: ["VIF", "CORRELATION", "SEPARABILITY"] } },
+  "5-26": { accent: "#2dd4bf", glyph: "ASA", metrics: { ko: ["검색어", "Exact 승격", "CPT 조정"], en: ["SEARCH TERM", "EXACT PROMOTION", "CPT BID"] } },
 };
 
 export function getToolOgData(toolId, locale = "ko") {

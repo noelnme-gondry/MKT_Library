@@ -231,6 +231,27 @@ export const TOOL_GUIDE = {
     ],
     example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,튜토리얼,tut_101,96000,820\n2024-01-08,social,사례연구,case_201,168000,410\n2024-01-15,social,사례연구,case_201,246000,650",
   },
+  // 5-6 = 소재 분석(9-6 라우트가 domain="performance"로 렌더). 9-6 항목은 콘텐츠
+  // 도메인 문구라 소재 화면에 그대로 쓸 수 없다. 이 키가 없어서 /content/freshness의
+  // CSV 가이드 패널이 통째로 렌더되지 않았다(감사 P1-7 — CsvGuide는 guide가 없으면
+  // null을 반환한다).
+  "5-6": {
+    when: "소재별 성과·피로도(시간이 지나며 반응이 식는지)·속성 효과(어떤 후킹·형식이 잘 되나)를 분석하고 언제 소재를 갈아끼울지 알려줍니다.",
+    grain: "1행 = 하루 × 소재(creative)",
+    needs: [
+      { col: "creative_id", label: "소재 ID", why: "소재 단위 집계의 키", required: true },
+      { col: "date", label: "날짜", why: "피로도(시간에 따른 성과 하락) 감지", required: true },
+      { col: "impressions·clicks·installs", label: "노출·클릭·전환", why: "CTR/CVR·승률 계산", required: true },
+      { col: "spend", label: "소재 집행 비용", why: "CPA·효율", required: true },
+      { col: "message_angle·format·hook_type…", label: "소재 속성", why: "속성별 효과(WLS)·조합 매트릭스", required: false },
+    ],
+    prep: [
+      "속성 컬럼(앵글·형식·후킹)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
+      "조합표는 조합당 소재 5개 이상 있어야 '검증'으로 뜹니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험(5-4)으로 검증하세요.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta,52000,1600,210,540000,혜택강조,영상\ncr_002,2024-02-01,Google,48000,1900,180,480000,사례연구,이미지",
+  },
   "9-6": {
     when: "콘텐츠별 반응·신선도(시간이 지나며 반응이 식는지)·속성 효과(어떤 후킹·형식이 잘 되나)를 분석하고 새로 발행/교체할 시점을 알려줍니다.",
     grain: "1행 = 하루 × 콘텐츠(content)",
@@ -511,6 +532,23 @@ export const TOOL_GUIDE_EN = {
       "The result is 'association', not causation — only the arithmetic decomposition itself is exact.",
     ],
     example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,tutorial,tut_101,96000,820\n2024-01-08,social,case study,case_201,168000,410\n2024-01-15,social,case study,case_201,246000,650",
+  },
+  "5-6": {
+    when: "Analyze per-creative performance, fatigue (does response cool off over time), and attribute effects (which hooks/formats perform well), and flag when to swap creatives out.",
+    grain: "1 row = 1 day × creative",
+    needs: [
+      { col: "creative_id", label: "Creative ID", why: "Key for per-creative aggregation", required: true },
+      { col: "date", label: "Date", why: "Detects fatigue (performance decay over time)", required: true },
+      { col: "impressions · clicks · installs", label: "Impressions, clicks, conversions", why: "Computes CTR/CVR and win rate", required: true },
+      { col: "spend", label: "Creative spend", why: "Cost per acquisition, efficiency", required: true },
+      { col: "message_angle · format · hook_type ...", label: "Creative attributes", why: "Per-attribute effect (WLS), combination matrix", required: false },
+    ],
+    prep: [
+      "Adding attribute columns (angle, format, hook) unlocks the 'which trait works' breakdown and combination table.",
+      "The combination table only shows as 'verified' when each combination has 5+ creatives.",
+      "The result is association, not causation — confirm with an experiment (5-4) before acting on it.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta,52000,1600,210,540000,Benefit-led,Video\ncr_002,2024-02-01,Google,48000,1900,180,480000,Case study,Image",
   },
   "9-6": {
     when: "Analyze per-content response, freshness (does response cool off over time), and attribute effects (which hooks/formats perform well), and flag when to publish new content or swap it out.",
