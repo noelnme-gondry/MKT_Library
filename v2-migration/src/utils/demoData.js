@@ -301,7 +301,7 @@ function buildExperiment() {
 // channels regardless of true effect (root cause of "everything looks like
 // cannibalization" in the old demo).
 function buildResponse() {
-  const headers = ["week", "country", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
+  const headers = ["week", "country", "signups", "paid_signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
   // Bayesian과 WebR가 같은 2개 이상의 12주 OOS fold를 만들 수 있도록
   // 최소 120주보다 여유 있게 제공한다. 한쪽만 숫자가 뜨는 비교는 허용하지 않는다.
   const nWeeks = 132;
@@ -331,6 +331,7 @@ function buildResponse() {
   const rndSpend = {};
   chans.forEach((c, i) => { rndSpend[c.key] = seededNoise(311 + i * 13); });
   const rndY = seededNoise(907);
+  const rndPaid = seededNoise(1103);
   // week start dates
   const start = Date.parse("2023-01-02");
   const raw = [];
@@ -341,6 +342,7 @@ function buildResponse() {
     // 않으며, 이 값은 국가 prior self-reference 제외 gate를 체험하기 위한 입력이다.
     const row = { week: weekStr, country: "KR" };
     let contrib = 0;
+    let paidSignal = 0;
     for (const c of chans) {
       // spend: base * (trend) * (seasonal) * noise
       const trend = 1 + (w / nWeeks) * c.trendRate;
@@ -355,6 +357,9 @@ function buildResponse() {
       // hill saturation on adstocked spend
       const sat = adstock[c.key] / (adstock[c.key] + c.half);
       contrib += c.sign * c.coef * sat * 12000; // scale to signups units
+      // Paid 성과는 어트리뷰션 관측값이라 순증분 계수의 부호와 별개다. 모든
+      // 채널의 포화된 집행량을 반영하되 Total을 넘지 않도록 아래에서 제한한다.
+      paidSignal += Math.abs(c.coef) * sat;
     }
     // organic baseline: dips ~20% over weeks 0-20, then recovers/grows — avoids a
     // pure monotonic trend that would make every channel's low-spend window
@@ -363,6 +368,10 @@ function buildResponse() {
     const season = 900 * Math.sin((w / 52) * 2 * Math.PI + 1);
     const signups = Math.max(0, round(baseline + season + contrib + rndY() * 700));
     row.signups = signups;
+    row.paid_signups = Math.min(
+      signups,
+      Math.max(0, round(signups * 0.24 + paidSignal * 850 + rndPaid() * 180)),
+    );
     raw.push(row);
   }
   // MMM 채널 spend 스케일(§base/half)은 USD 기준으로 설계됨(mmmSaturation의

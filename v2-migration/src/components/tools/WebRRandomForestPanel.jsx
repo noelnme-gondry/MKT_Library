@@ -7,11 +7,17 @@ import { prepareRandomForestInput, runWebRRandomForest } from "@/lib/analysis/we
 const COPY = {
   ko: {
     title: "Random Forest 자동 비교",
-    desc: "분석을 시작하면 같은 행의 결정론적 3~5겹 교차검증으로 Random Forest와 회귀 기준선을 자동 비교합니다. 오차가 낮은 모델을 기본 선택하고, 두 결과 중 보고 싶은 모델을 직접 고를 수 있습니다.",
+    desc: "기본 회귀 결과를 먼저 읽은 뒤, 예측력이 실제로 더 나아지는지만 추가로 비교합니다.",
     run: "Random Forest 다시 실행",
-    loading: "R Random Forest 500그루와 교차검증을 실행 중입니다…",
-    blocked: (n, required) => `현재 ${n || 0}행입니다. 변수 수를 고려하면 최소 ${required || 100}행이 필요해 비교를 보류합니다.`,
+    loading: "Random Forest 500그루와 교차검증을 실행 중입니다. 첫 실행은 R 엔진을 불러와 10~20초 걸릴 수 있습니다.",
+    blocked: (n, required) => `현재 완전한 행은 ${n || 0}개입니다. 선택한 요소 수 기준으로 최소 ${required || 100}개가 필요합니다.`,
     failed: "Random Forest 비교를 완료하지 못했습니다. 기존 회귀 결과에는 영향이 없습니다.",
+    whyBlocked: "왜 Random Forest 분석이 안 되나요?",
+    requirements: "필요 데이터 기준",
+    requirementsBody: (required) => `콘텐츠 1건당 1행, 숫자 성과 1개, 숫자 요소 1개 이상, 빈칸 없는 행 최소 ${required || 100}개가 필요합니다. 0/1 성과라면 0과 1이 각각 20행 이상이어야 합니다.`,
+    invalid: "선택한 성과·요소에 숫자가 아닌 값이나 빈칸이 많아 비교 입력을 만들지 못했습니다.",
+    constant: "선택한 성과 값이 모두 같아 예측 모델을 비교할 수 없습니다.",
+    classSupport: (minority, required) => `0/1 성과 중 적은 쪽이 ${minority || 0}행입니다. 각 값이 최소 ${required || 20}행 필요합니다.`,
     candidate: "예측 정확도 승자: Random Forest",
     keep: "예측 정확도 승자: 기존 회귀",
     tie: "예측 승자 보류: 실질적인 예측력 차이 없음",
@@ -29,11 +35,17 @@ const COPY = {
   },
   en: {
     title: "Automatic Random Forest comparison",
-    desc: "Starting the analysis automatically compares a Random Forest with the regression baseline using deterministic 3–5-fold cross-validation on the same rows. The lower-error model is selected by default, and you can choose either result.",
+    desc: "Read the baseline regression first, then use this optional comparison only to check whether predictive accuracy materially improves.",
     run: "Retry Random Forest",
-    loading: "Running a 500-tree R Random Forest and cross-validation…",
-    blocked: (n, required) => `${n || 0} rows are available. This feature count requires at least ${required || 100}, so the comparison is withheld.`,
+    loading: "Running a 500-tree Random Forest and cross-validation. The first run can take 10–20 seconds while the R engine loads.",
+    blocked: (n, required) => `${n || 0} complete rows are available. The selected feature count requires at least ${required || 100}.`,
     failed: "The Random Forest comparison did not complete. The existing regression result is unchanged.",
+    whyBlocked: "Why isn't Random Forest available?",
+    requirements: "Data requirements",
+    requirementsBody: (required) => `Use one row per content item, one numeric outcome, at least one numeric feature, and at least ${required || 100} complete rows. For a binary outcome, both 0 and 1 need at least 20 rows.`,
+    invalid: "The selected outcome or features contain too many non-numeric or missing values to build the comparison input.",
+    constant: "The selected outcome is constant, so predictive models cannot be compared.",
+    classSupport: (minority, required) => `The smaller binary class has ${minority || 0} rows; each class needs at least ${required || 20}.`,
     candidate: "Predictive-accuracy winner: Random Forest",
     keep: "Predictive-accuracy winner: current regression",
     tie: "Predictive winner withheld: no material difference",
@@ -64,6 +76,9 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   const [run, setRun] = useState({ status: "idle", signature: null, result: null });
   const [selectedModel, setSelectedModel] = useState("baseline");
   const input = useMemo(() => prepareRandomForestInput({ X: fit?.X, y: fit?.y, terms: fit?.terms }), [fit]);
+  const predictorCount = input.predictorCount ?? Math.max(0, (fit?.terms?.length || 1) - 1);
+  const observedRows = input.n ?? fit?.y?.length ?? 0;
+  const requiredObservations = input.requiredObservations ?? Math.max(100, predictorCount * 20);
 
   useEffect(() => () => {
     requestRef.current += 1;
@@ -102,6 +117,25 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
 
   if (!fit?.X || !fit?.y) return null;
 
+  if (!input.ok) {
+    const reason = input.reason === "constant_outcome"
+      ? T.constant
+      : input.reason === "insufficient_class_support"
+        ? T.classSupport(input.minorityCount, input.requiredMinority)
+        : input.reason === "insufficient_observations"
+          ? T.blocked(observedRows, requiredObservations)
+          : T.invalid;
+    return (
+      <details className="rf-help" id="s-content-webr-random-forest">
+        <summary><span aria-hidden="true">ⓘ</span> {T.whyBlocked}</summary>
+        <div className="rf-help__body">
+          <strong>{reason}</strong>
+          <p>{T.requirementsBody(requiredObservations)}</p>
+        </div>
+      </details>
+    );
+  }
+
   const visible = run.signature === signature ? run : { status: "idle", result: null };
   const result = visible.result;
   const recommendation = result?.recommendation;
@@ -134,10 +168,11 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
     <section className="block" id="s-content-webr-random-forest">
       <h2 className="section-title"><span className="ix">ADV</span>{T.title}</h2>
       <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px" }}>{T.desc}</p>
-      {!input.ok ? (
-        <div className="required-banner"><p style={{ margin: 0 }}>{T.blocked(input.n, input.requiredObservations)}</p></div>
-      ) : (
-        <>
+      <details className="rf-requirements">
+        <summary><span aria-hidden="true">ⓘ</span> {T.requirements}</summary>
+        <p>{T.requirementsBody(requiredObservations)}</p>
+      </details>
+      <>
           {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "12px" }}>{T.loading}</p>}
           {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
@@ -170,7 +205,6 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
             </div>
           )}
         </>
-      )}
     </section>
   );
 }

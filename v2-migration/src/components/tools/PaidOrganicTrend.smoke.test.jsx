@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import PaidOrganicTrend from "@/components/tools/PaidOrganicTrend";
 import { buildPaidOrganicTrendDemo } from "@/utils/paidOrganicTrend";
+import { buildDemoCsv } from "@/utils/demoData";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -33,6 +34,14 @@ describe("PaidOrganicTrend render smoke", () => {
     expect(container.querySelector("canvas")).toBeTruthy();
     const link = screen.getByRole("link", { name: /카니발 정밀 진단 열기/ });
     expect(link.getAttribute("href")).toBe("/tools/cannibalization-diagnosis");
+  });
+
+  it("runs from the shared marketing-response demo without another upload", () => {
+    seed(buildDemoCsv("response"));
+    const { container } = render(<PaidOrganicTrend />);
+    expect(screen.getByText("주별 WoW 변화 궤적")).toBeTruthy();
+    expect(screen.getByText("Organic = 전체 − Paid")).toBeTruthy();
+    expect(container.querySelector("canvas")).toBeTruthy();
   });
 
   it("keeps KR and EN routes functionally equivalent", () => {

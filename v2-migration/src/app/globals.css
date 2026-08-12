@@ -5238,6 +5238,16 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-local-controls { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .analysis-local-controls__inner { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .analysis-local-controls__label { margin-right: 3px; color: var(--text-secondary); font: 700 10px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.response-target-context { display: inline-flex; align-items: center; min-height: 30px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
+.response-target-context > span { padding: 0 8px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+.response-target-context > strong { align-self: stretch; display: inline-flex; align-items: center; padding: 0 10px; border-left: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 11px; }
+.response-target-context > small,
+.response-target-source { color: var(--text-muted); font: 600 9px var(--font-mono); }
+.response-target-context > small { padding: 0 9px 0 0; }
+.response-target-source { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.response-package-button { min-width: 102px; justify-content: center; transition: border-color .15s ease, color .15s ease, background .15s ease; }
+.response-package-button.done { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); }
+.response-package-button.error { border-color: var(--danger); color: var(--danger); }
 .analysis-data-mapping { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .analysis-data-mapping > summary { color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 700; }
 .analysis-data-mapping > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -5718,6 +5728,24 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .mmm-model-choice__badges b { background: var(--primary); color: var(--surface-base); }
 .mmm-model-choice__badges em { background: color-mix(in srgb, var(--success) 13%, transparent); color: var(--success); }
 .mmm-model-choice__badges small { color: var(--text-muted); }
+
+/* Random Forest is optional predictive evidence, so it sits below the primary
+   association analysis and collapses into a quiet reason card when blocked. */
+.rf-help { margin: 8px 0 0; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
+.rf-help > summary,
+.rf-requirements > summary { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); cursor: pointer; list-style: none; font-size: 11px; font-weight: 650; }
+.rf-help > summary { min-height: 42px; padding: 0 13px; }
+.rf-help > summary::-webkit-details-marker,
+.rf-requirements > summary::-webkit-details-marker { display: none; }
+.rf-help > summary::after,
+.rf-requirements > summary::after { content: "⌄"; margin-left: auto; color: var(--text-muted); font: 700 10px var(--font-mono); }
+.rf-help[open] > summary::after,
+.rf-requirements[open] > summary::after { content: "⌃"; }
+.rf-help__body { padding: 0 13px 13px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.rf-help__body strong { display: block; margin-top: 11px; color: var(--text-primary); }
+.rf-help__body p { margin: 5px 0 0; }
+.rf-requirements { margin: -2px 0 12px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-low); }
+.rf-requirements > p { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 10.5px; line-height: 1.5; }
 
 .mmm-result-flow { display: grid; gap: 12px; margin-top: 12px; }
 .mmm-result-flow--bayesian > [data-mmm-flow-step="fit"] { order: 1; }

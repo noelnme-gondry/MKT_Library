@@ -276,6 +276,11 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(screen.getByText("유의한 요소를 확정할 증거가 아직 부족합니다.")).toBeTruthy();
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+    const rfHelp = screen.getByText("왜 Random Forest 분석이 안 되나요?").closest("details");
+    expect(rfHelp).toBeTruthy();
+    expect(rfHelp.open).toBe(false);
+    fireEvent.click(rfHelp.querySelector("summary"));
+    expect(screen.getByText(/현재 완전한 행은 60개.*최소 100개/)).toBeTruthy();
   });
 
   it("abstains from a sparse binary element instead of over-reading four appearances", () => {
@@ -324,6 +329,9 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(randomForest.getAttribute("aria-checked")).toBe("true");
     expect(screen.getAllByRole("radio").filter((choice) => choice.getAttribute("aria-checked") === "true")).toHaveLength(1);
     expect(screen.getByText(/Permutation importance/)).toBeTruthy();
+    const expertPanel = screen.getByText(/전문가 뷰/).closest("details");
+    const randomForestPanel = container.querySelector("#s-content-webr-random-forest");
+    expect(expertPanel.compareDocumentPosition(randomForestPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /로지스틱 회귀/ }));
     expect(screen.getByText(/회귀 결과의 계수·신뢰구간/)).toBeTruthy();
   });
