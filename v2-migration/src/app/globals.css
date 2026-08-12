@@ -5183,20 +5183,32 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-evidence__arrow { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-container); color: var(--primary); font: 700 12px var(--font-mono); transition: transform .15s, background .15s; }
 .tool-evidence__list a:hover .tool-evidence__arrow { background: color-mix(in srgb, var(--primary) 15%, var(--surface-container)); transform: translateX(2px); }
 @media (max-width: 720px) { .tool-evidence { margin-top: 24px; } .tool-evidence__header { padding: 15px 17px 12px 21px; } .tool-evidence h2 { font-size: 17px; } .tool-evidence__groups { grid-template-columns: 1fr; padding: 12px 12px 15px 16px; } }
-.tool-longform { margin: 36px 0 12px; padding: 20px 22px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
-.tool-longform h2 { margin: 0; color: var(--text-primary); font: 650 18px/1.3 var(--font-display); letter-spacing: -.03em; }
-.tool-longform__details { margin-top: 12px; border-top: 1px solid var(--border-subtle); }
-.tool-longform__details summary { padding: 13px 0; color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 750; }
-.tool-longform__body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 0 14px; }
-.tool-longform__body section { padding: 13px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
+.tool-longform { margin: 64px 0 12px; padding: 0; border: 0; background: transparent; }
+.tool-longform__boundary { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; color: var(--text-muted); font: 650 9px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.tool-longform__boundary::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.tool-longform__disclosure { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-low); }
+.tool-longform__summary { position: relative; display: grid; grid-template-columns: 76px minmax(0, 1fr) 18px; grid-template-rows: auto auto; align-items: center; column-gap: 14px; min-height: 66px; padding: 12px 16px; cursor: pointer; list-style: none; }
+.tool-longform__summary::-webkit-details-marker { display: none; }
+.tool-longform__summary::after { content: "›"; grid-column: 3; grid-row: 1 / 3; color: var(--text-muted); font-size: 19px; transform: rotate(0deg); transition: transform .16s ease; }
+.tool-longform__disclosure[open] > .tool-longform__summary::after { transform: rotate(90deg); }
+.tool-longform__summary:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+.tool-longform__summary:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.tool-longform__eyebrow { grid-column: 1; grid-row: 1 / 3; align-self: stretch; display: flex; align-items: center; border-right: 1px solid var(--border-subtle); color: var(--text-muted); font: 700 9px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.tool-longform__title { grid-column: 2; grid-row: 1; color: var(--text-primary); font: 700 14px/1.35 var(--font-display); letter-spacing: -.015em; }
+.tool-longform__hint { grid-column: 2; grid-row: 2; margin-top: 3px; color: var(--text-muted); font-size: 10.5px; line-height: 1.4; }
+.tool-longform__content { padding: 0 16px 16px; border-top: 1px solid var(--border-subtle); background: var(--surface-container-lowest); }
+.tool-longform__details { border-bottom: 1px solid var(--border-subtle); }
+.tool-longform__details summary { padding: 14px 0; color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 750; }
+.tool-longform__body { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0 0 14px; }
+.tool-longform__body section { padding: 13px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-container-low); }
 .tool-longform__body h3 { margin: 0; color: var(--text-primary); font-size: 12px; }
 .tool-longform__body p { margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
-.tool-longform__faq { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
-.tool-longform__faq > h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 13px; }
+.tool-longform__faq { padding-top: 15px; }
+.tool-longform__faq > h3 { margin: 0 0 7px; color: var(--text-secondary); font-size: 12px; }
 .tool-longform__faq details { border-top: 1px solid var(--border-subtle); }
 .tool-longform__faq summary { padding: 11px 0; color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 700; }
 .tool-longform__faq p { max-width: 780px; margin: -2px 0 12px; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
-@media (max-width: 720px) { .tool-longform { margin-top: 28px; padding: 17px; } .tool-longform h2 { font-size: 17px; } .tool-longform__body { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .tool-longform { margin-top: 48px; } .tool-longform__summary { grid-template-columns: 58px minmax(0, 1fr) 16px; column-gap: 10px; padding: 11px 13px; } .tool-longform__body { grid-template-columns: 1fr; } }
 .tool-page-shell, .dashboard-shell { display: flex; width: 100%; min-height: 100%; }
 .tool-page-shell__main, .dashboard-shell__main { flex: 1; min-width: 0; }
 .tool-page-shell.has-toc .tool-page-shell__main, .dashboard-shell.has-results .dashboard-shell__main { padding-right: 208px; }
@@ -8701,14 +8713,6 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   box-shadow: inset 2px 0 0 var(--primary);
 }
 .tool-connections__more > summary { min-height: 36px; border-radius: 5px; }
-.tool-longform {
-  margin-top: 48px;
-  padding: 24px 0 0;
-  border-width: 1px 0 0;
-  border-radius: 0;
-  background: transparent;
-}
-.tool-longform__body section { border-width: 1px 0 0; border-radius: 0; background: transparent; }
 .tool-assist-rail__toggle { min-height: 44px; border-radius: 8px; }
 .tool-assist-rail__panel { width: 328px; border-radius: 10px; }
 .tool-assist-rail__toggle b { font-size: 11px; }
