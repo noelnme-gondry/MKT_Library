@@ -9,6 +9,11 @@ describe("ToolLongform", () => {
     const { container } = render(<ToolLongform toolId="5-18" />);
     expect(container.querySelector(".tool-longform")).toBeTruthy();
     expect(container.querySelector(".tool-longform a")).toBeNull();
+    expect(container.querySelector(".tool-longform__boundary")?.textContent).toContain("분석 결과는 여기까지");
+    const disclosure = container.querySelector(".tool-longform__disclosure");
+    expect(disclosure).toBeTruthy();
+    expect(disclosure.open).toBe(false);
+    expect(disclosure.querySelector(":scope > summary")?.textContent).toContain("필요할 때만 펼쳐보세요");
     expect(container.textContent).toContain("판단 기준과 FAQ");
     expect(container.textContent).toContain("진단 기준과 다음 조치 보기");
     expect(container.textContent).not.toContain("도구 사용 가이드");
@@ -17,6 +22,8 @@ describe("ToolLongform", () => {
   it("removes the duplicate CTA in the English guide too", () => {
     const { container } = render(<ToolLongform toolId="5-3" locale="en" />);
     expect(container.querySelector(".tool-longform a")).toBeNull();
+    expect(container.querySelector(".tool-longform__boundary")?.textContent).toContain("End of analysis");
+    expect(container.querySelector(".tool-longform__summary")?.textContent).toContain("Open only when you need the methodology");
     expect(container.textContent).toContain("Method and FAQ");
     expect(container.textContent).toContain("See calculation logic and safeguards");
   });
