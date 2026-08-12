@@ -25,6 +25,7 @@ import { auditClassicNoPriorRun, classicNoPriorConfig, classicNoPriorFitOptions 
 import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
+import PillGroup from "@/components/ds/PillGroup";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import { allocateFixedMmmGroupTotals, buildMmmAggregateMediaPanel, buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
@@ -236,6 +237,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
   const [mmmAnalyzedRaw, setMmmAnalyzedRaw] = useState(null);
   const [mmmUploadError, setMmmUploadError] = useState(null);
+  const [packageDownloadStatus, setPackageDownloadStatus] = useState("idle");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isForecastWorkerRunning, setIsForecastWorkerRunning] = useState(false);
   const [forecastWorkerProgress, setForecastWorkerProgress] = useState({ completed: 0, total: 0 });
@@ -255,6 +257,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const forecastWorkerRequestRef = useRef(0);
   const regimeWorkerRequestRef = useRef(0);
   const forecastMatchEventRef = useRef("");
+  const packageStatusTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (packageStatusTimerRef.current) clearTimeout(packageStatusTimerRef.current);
+  }, []);
   // 타깃·플랫폼·prior를 처음 전환할 때도 수백 회 profile/rolling fit이 필요할 수
   // 있다. 오버레이를 두 프레임 먼저 그린 뒤 상태를 커밋해 첫 클릭이 멈춘 것처럼
   // 보이지 않게 한다. 같은 조합 재방문은 위 WeakMap 캐시에서 즉시 반환된다.
@@ -330,9 +336,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const saved = responseMappingSession?.raw === csvData.raw ? responseMappingSession : null;
       const guess = saved?.colMap || autoGuessColMap(csvData.headers, csvData.raw);
       const weekStart = saved?.weekStart || mmmWeekStart;
-      const shouldAutoAnalyze = Boolean(saved || demoPending.current);
+      const isDemoAutoAnalyze = demoPending.current;
+      const shouldAutoAnalyze = Boolean(saved || isDemoAutoAnalyze);
       setMmmColMap(guess);
       setMmmWeekStart(weekStart);
+      // 데모도 사용자가 저장한 매핑과 같은 세션 계약을 사용한다. 컴포넌트를
+      // 벗어났다가 허브로 돌아와도 5개 분석 선택지가 그대로 복원되어야 한다.
+      if (isDemoAutoAnalyze && !saved) {
+        setResponseMappingSession({ raw: csvData.raw, colMap: guess, weekStart });
+      }
       // 허브에서 저장한 매핑으로 독립 화면에 직접 들어온 경우에는 다시 매핑을
       // 요구하지 않는다. 새 CSV·데모만 명시적으로 분석 확인을 거친다.
       setMmmAnalyzedSig(shouldAutoAnalyze ? `${JSON.stringify(guess)}\u001fweek-start:${weekStart}` : null);
@@ -355,7 +367,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       prevCsvSig.current = null;
       prevCsvRaw.current = null;
     }
-  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart, responseMappingSession]);
+  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart, responseMappingSession, setResponseMappingSession]);
   useEffect(() => {
     if (forecastRegimeInputChanged(prevForecastRegimeInputSig.current, forecastRegimeInputSig)) {
       setFcRegimeTrainingWeeks(null);
@@ -3323,7 +3335,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
   // §12.15대로 회귀·미래예측(lab)에 흡수. 카드: no·아이콘·제목·설명 + active 하이라이트.
   const renderTabs = () => {
-    if (isolated) return null;
+    if (isolated || stage === "hub") return null;
     const defs = mmmStageDefs(locale);
     const onStageKeyDown = (event, stageId) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -3711,25 +3723,55 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       <button className="ab-button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{tx("📁 내 CSV 업로드하기", "📁 Upload my CSV")}</button>
     </div>
   );
+  const targetLabel = (value) => value === "Traffic" ? tx("총유입", "Traffic")
+    : value === "Regs" ? tx("가입", "Signups")
+      : value === "React" ? tx("재유입", "Reactivation")
+        : value === "Purchasers" ? tx("구매자", "Purchasers")
+          : value === "Revenue" ? tx("매출", "Revenue")
+            : tx("가입+재유입", "Signups + Reactivation");
+  const targetOptions = availTargets.map((value) => ({ value, label: targetLabel(value) }));
+  const handlePackageDownload = () => {
+    try {
+      const packageRun = sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end);
+      const packagePanel = sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start);
+      const packageMmm = { ...mmm, run: packageRun, panel: packagePanel, saturationPanel: packagePanel };
+      const packageDecomp = mmmBayesianWeeklyDecomp(packageRun);
+      const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
+      const packageForecast = mmmBayesianForecast(mmm.run, mmm.saturationPanel || mmm.panel, null, 13);
+      downloadMmmWorkbook({ mmm: packageMmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
+      setPackageDownloadStatus("done");
+    } catch {
+      setPackageDownloadStatus("error");
+    }
+    if (packageStatusTimerRef.current) clearTimeout(packageStatusTimerRef.current);
+    packageStatusTimerRef.current = setTimeout(() => setPackageDownloadStatus("idle"), 2500);
+  };
   const controlBar = () => (
     <div className="analysis-local-controls__inner">
       <span className="analysis-local-controls__label">
         {tx("마케팅 반응 분석", "Marketing Response Analysis")} <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        {(availTargets.length > 1 || targetSourceHeaders.length > 0) && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label" title={targetSourceHeaders.length ? tx(`현재 Y 원본: ${targetSourceHeaders.join(" + ")}`, `Current Y source: ${targetSourceHeaders.join(" + ")}`) : undefined}>
-              {tx("타깃", "Target")}{targetSourceHeaders.length ? ` · ${targetSourceHeaders.join(" + ")}` : ""}
-            </span>
-            {availTargets.map((t) => (
-              <button key={t} className={`ab-pill ${effectiveTarget === t ? "active" : ""}`} onClick={() => {
-                if (effectiveTarget !== t) deferMmmUpdate(() => setTarget(t));
-              }}>
-                {t === "Traffic" ? tx("총유입", "Traffic") : t === "Regs" ? tx("가입", "Signups") : t === "React" ? tx("재유입", "Reactivation") : t === "Purchasers" ? tx("구매자", "Purchasers") : t === "Revenue" ? tx("매출", "Revenue") : tx("가입+재유입", "Signups + Reactivation")}
-              </button>
-            ))}
+        {availTargets.length === 1 && (
+          <div className="response-target-context">
+            <span>{tx("타깃", "Target")}</span>
+            <strong>{targetLabel(effectiveTarget)}</strong>
+            {targetSourceHeaders.length > 0 && <small>{tx("원본", "Source")} · {targetSourceHeaders.join(" + ")}</small>}
           </div>
+        )}
+        {availTargets.length > 1 && (
+          <>
+            <PillGroup
+              label={tx("타깃", "Target")}
+              options={targetOptions}
+              value={effectiveTarget}
+              onChange={(nextTarget) => {
+                if (effectiveTarget !== nextTarget) deferMmmUpdate(() => setTarget(nextTarget));
+              }}
+              style={{ margin: 0 }}
+            />
+            {targetSourceHeaders.length > 0 && <span className="response-target-source">{tx("원본", "Source")} · {targetSourceHeaders.join(" + ")}</span>}
+          </>
         )}
         {platformTags.length > 0 && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
@@ -3825,15 +3867,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           </div>
         )}
         {mmm && !mmm.empty && (
-          <button className="ab-pill" onClick={() => {
-            const packageRun = sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end);
-            const packagePanel = sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start);
-            const packageMmm = { ...mmm, run: packageRun, panel: packagePanel, saturationPanel: packagePanel };
-            const packageDecomp = mmmBayesianWeeklyDecomp(packageRun);
-            const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
-            const packageForecast = mmmBayesianForecast(mmm.run, mmm.saturationPanel || mmm.panel, null, 13);
-            downloadMmmWorkbook({ mmm: packageMmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
-          }}>{tx("⬇ 분석 패키지", "⬇ Analysis package")}</button>
+          <>
+            <button type="button" className={`ab-pill response-package-button ${packageDownloadStatus}`} onClick={handlePackageDownload}>
+              {packageDownloadStatus === "done"
+                ? tx("✓ 저장됨", "✓ Saved")
+                : packageDownloadStatus === "error"
+                  ? tx("다시 시도", "Try again")
+                  : tx("⬇ 분석 패키지", "⬇ Analysis package")}
+            </button>
+            <span className="sr-only" role="status" aria-live="polite">
+              {packageDownloadStatus === "done" ? tx("분석 패키지 저장이 시작되었습니다.", "The analysis package download has started.") : packageDownloadStatus === "error" ? tx("분석 패키지를 저장하지 못했습니다.", "The analysis package could not be saved.") : ""}
+            </span>
+          </>
         )}
       </div>
     </div>

@@ -12,7 +12,7 @@
 // name (week→week, Regs→reg, *_spend→channel). Channels must vary INDEPENDENTLY
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse, {
@@ -113,6 +113,8 @@ function seedNoData() {
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
+    demoDisabled: true,
   });
 }
 
@@ -783,15 +785,30 @@ describe("MarketingResponse render smoke", () => {
   it("uses the hub only to choose an independent analysis after mapping", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse initialStage="hub" />);
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
     const saveMapping = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("매핑 저장 후 분석 선택"));
     expect(saveMapping).toBeTruthy();
     fireEvent.click(saveMapping);
     await flushRaf();
     const links = Array.from(container.querySelectorAll("a")).map((link) => link.getAttribute("href"));
+    expect(links.filter((href) => href?.startsWith("/tools/"))).toHaveLength(5);
+    expect(links).toContain("/tools/paid-organic-trend");
     expect(links).toContain("/tools/marketing-trend");
     expect(links).toContain("/tools/cannibalization-diagnosis");
     expect(links).toContain("/tools/mmm-contribution");
     expect(links).toContain("/tools/marketing-forecast");
+  });
+
+  it("persists the auto-loaded demo mapping when the response hub remounts", async () => {
+    useAppStore.setState({ demoDisabled: false });
+    const first = render(<MarketingResponse initialStage="hub" />);
+    await waitFor(() => expect(useAppStore.getState().responseMappingSession.raw).toBe(useAppStore.getState().csvData.raw));
+    first.unmount();
+
+    const second = render(<MarketingResponse initialStage="hub" />);
+    await waitFor(() => expect(second.container.querySelectorAll('a[href^="/tools/"]')).toHaveLength(5));
+    expect(second.container.querySelector("details")?.open).toBe(false);
+    expect(second.container.querySelector('[role="tablist"]')).toBeNull();
   });
 
   it("summarizes the loaded forecast result into a concrete hold/action recommendation", () => {
@@ -1620,6 +1637,10 @@ describe("MarketingResponse render smoke", () => {
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
     await flushRaf();
+    const targetGroup = Array.from(container.querySelectorAll(".ab-pillgroup")).find((group) => group.querySelector(".ab-pillgroup-label")?.textContent === "타깃");
+    expect(targetGroup).toBeTruthy();
+    expect(targetGroup.querySelector(".ab-pillgroup-label").getAttribute("title")).toBeNull();
+    expect(targetGroup.querySelector('[role="radiogroup"]')).toBeTruthy();
     clickByText(container, "매출");
     expect(document.body.textContent).toContain("분석 중");
     await flushRaf();

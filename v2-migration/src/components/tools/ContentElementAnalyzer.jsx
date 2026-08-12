@@ -869,13 +869,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             </section>
           )}
 
-          <WebRRandomForestPanel
-            fit={fit}
-            signature={analyzedSig}
-            locale={locale}
-            source={isDemo ? "demo" : csvData?.importSource || "csv"}
-          />
-
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">
             <h2 className="section-title">{T.forestTitle}</h2>
@@ -938,6 +931,14 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               </p>
             </div>
           </details>
+
+          {/* 예측 모델 비교는 핵심 연관 해석을 다 읽은 뒤 필요한 사람만 본다. */}
+          <WebRRandomForestPanel
+            fit={fit}
+            signature={analyzedSig}
+            locale={locale}
+            source={isDemo ? "demo" : csvData?.importSource || "csv"}
+          />
         </>
       )}
     </div>

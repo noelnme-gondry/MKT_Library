@@ -135,6 +135,9 @@ describe("demo sanity", () => {
     const sign = d.raw.map((r) => r.signups);
     expect(Math.max(...sign)).toBeGreaterThan(Math.min(...sign) * 1.2);
     expect(d.headers).toContain("google_spend");
+    expect(d.headers).toContain("paid_signups");
+    expect(d.raw.every((row) => row.paid_signups >= 0 && row.paid_signups <= row.signups)).toBe(true);
+    expect(new Set(d.raw.map((row) => row.paid_signups)).size).toBeGreaterThan(20);
   });
 
   it("response: MMM demo has identifiable spend variation and non-negative absolute media contribution", () => {
