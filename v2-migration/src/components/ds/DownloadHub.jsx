@@ -1,14 +1,11 @@
 "use client";
-import React, { useState, useRef, useEffect, useId } from "react";
+import React, { useState } from "react";
+import { DropdownMenu } from "radix-ui";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadJson } from "@/utils/download";
 
-// 결과 다운로드 허브 — 도구마다 흩어져 있던 PNG/CSV/텍스트 다운로드 버튼을
-// 눈에 잘 띄는 단일 드롭다운("⬇ 결과 받기 ▾")으로 통일한다(디자인시스템 §1).
-// 순수 표시 컴포넌트 — 실제 다운로드 로직(downloadChartAsPNG·downloadCsv 등)은
-// 각 도구가 items[].onSelect로 주입한다(엔진·유틸 불변).
-//
-// items: [{ label, desc?, icon?, onSelect }]  (onSelect 없거나 disabled면 비활성)
+// 결과 다운로드 허브 — Radix 포털과 roving focus를 사용해 glass/sticky 조상과
+// 무관하게 메뉴를 배치하고 키보드 동작을 표준화한다.
 export default function DownloadHub({
   items = [],
   label = "결과 받기",
@@ -20,10 +17,6 @@ export default function DownloadHub({
   locale = "ko",
 }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  const menuRef = useRef(null);
-  const triggerRef = useRef(null);
-  const menuId = useId();
   const manifestItem = manifest ? {
     label: locale === "en" ? "Run details (JSON)" : "실행 정보(JSON)",
     desc: locale === "en"
@@ -33,65 +26,27 @@ export default function DownloadHub({
     analyticsType: "manifest",
     onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
   } : null;
-  const usable = [...items, manifestItem].filter((it) => it && it.onSelect);
-
-  // 바깥 클릭 / ESC로 닫기.
-  useEffect(() => {
-    if (!open) return;
-    const firstItem = menuRef.current?.querySelector('[role="menuitem"]');
-    firstItem?.focus();
-    const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-      if (!menuRef.current || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
-      const buttons = [...menuRef.current.querySelectorAll('[role="menuitem"]')];
-      if (!buttons.length) return;
-      e.preventDefault();
-      const current = buttons.indexOf(document.activeElement);
-      const next = e.key === "ArrowDown"
-        ? (current + 1 + buttons.length) % buttons.length
-        : (current - 1 + buttons.length) % buttons.length;
-      buttons[next].focus();
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const usable = [...items, manifestItem].filter((item) => item?.onSelect);
 
   if (usable.length === 0) return null;
 
   return (
-    <div ref={wrapRef} className={className} style={{ position: "relative", display: "inline-block" }}>
-      <button
-        type="button"
-        ref={triggerRef}
-        className="ab-pill"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-controls={menuId}
-        aria-expanded={open}
-        aria-label={label}
-        style={{ fontWeight: 600, ...buttonStyle }}
-      >
-        ⬇ {label} ▾
-      </button>
-      {open && (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
+    <DropdownMenu.Root open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          className={`ab-pill ${className}`.trim()}
+          aria-label={label}
+          style={{ fontWeight: 600, ...buttonStyle }}
+        >
+          ⬇ {label} ▾
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align={align === "right" ? "end" : "start"}
+          sideOffset={6}
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            [align === "right" ? "right" : "left"]: 0,
             minWidth: "220px",
             zIndex: 50,
             background: "var(--bg-1)",
@@ -101,18 +56,12 @@ export default function DownloadHub({
             padding: "6px",
           }}
         >
-          {usable.map((it, i) => (
-            <button
-              key={i}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: it.analyticsType || "other" });
-                it.onSelect();
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
+          {usable.map((item) => (
+            <DropdownMenu.Item
+              key={`${item.analyticsType || "item"}-${item.label}`}
+              onSelect={() => {
+                trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" });
+                item.onSelect();
               }}
               style={{
                 display: "block",
@@ -127,21 +76,21 @@ export default function DownloadHub({
                 fontSize: "13px",
                 lineHeight: 1.4,
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+              onFocus={(event) => { event.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))"; }}
+              onBlur={(event) => { event.currentTarget.style.background = "transparent"; }}
             >
               <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                {it.icon ? `${it.icon} ` : ""}{it.label}
+                {item.icon ? `${item.icon} ` : ""}{item.label}
               </span>
-              {it.desc && (
+              {item.desc && (
                 <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                  {it.desc}
+                  {item.desc}
                 </span>
               )}
-            </button>
+            </DropdownMenu.Item>
           ))}
-        </div>
-      )}
-    </div>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

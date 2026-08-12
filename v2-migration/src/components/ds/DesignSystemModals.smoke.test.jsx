@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React, { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
@@ -25,7 +25,7 @@ describe("design-system modal consumers", () => {
   it.each([
     ["Open chart builder", "Build a custom chart"],
     ["Open metric builder", "Build a custom metric"],
-  ])("uses the shared keyboard and focus contract for %s", (triggerName, dialogName) => {
+  ])("uses the shared keyboard and focus contract for %s", async (triggerName, dialogName) => {
     const Harness = triggerName.includes("chart") ? ChartHarness : MetricHarness;
     render(<Harness />);
     const trigger = screen.getByRole("button", { name: triggerName });
@@ -36,7 +36,7 @@ describe("design-system modal consumers", () => {
     if (triggerName.includes("chart")) expectTouchTarget(screen.getByRole("button", { name: "Delete: Spend by channel" }));
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: dialogName })).toBeNull();
-    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it("reorders visible metrics without drag and saves the same order", () => {
