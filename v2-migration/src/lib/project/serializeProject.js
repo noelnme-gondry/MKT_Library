@@ -15,6 +15,10 @@ function filterToJson(filter) {
   return {
     dateStart: filter?.dateStart || undefined,
     dateEnd: filter?.dateEnd || undefined,
+    compareEnabled: Boolean(filter?.compareEnabled) || undefined,
+    comparisonStart: filter?.comparisonStart || undefined,
+    comparisonEnd: filter?.comparisonEnd || undefined,
+    comparisonPreset: filter?.comparisonPreset || undefined,
     platforms: list(filter?.platforms),
     countries: list(filter?.countries),
     channels: list(filter?.channels),
@@ -49,4 +53,3 @@ export function parseProjectText(text) {
   if (new TextEncoder().encode(text).length > 1_000_000) throw new Error("PROJECT_FILE_TOO_LARGE");
   return validateProjectFile(JSON.parse(text));
 }
-

@@ -48,6 +48,11 @@ function seedNoData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
     customCharts: {},
+    dashboardFilter: {
+      dateStart: null, dateEnd: null, compareEnabled: false,
+      comparisonStart: null, comparisonEnd: null, comparisonPreset: "previous",
+      platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set(),
+    },
   });
 }
 
@@ -64,6 +69,19 @@ describe("VizTab render smoke", () => {
     seedWithData();
     expect(() => render(<VizTab />)).not.toThrow();
     expect(document.getElementById("tab-viz")).toBeTruthy();
+  });
+
+  it("uses the selected comparison period for KPI trend notes", () => {
+    seedWithData();
+    useAppStore.setState({
+      dashboardFilter: {
+        dateStart: "2026-01-06", dateEnd: "2026-01-10", compareEnabled: true,
+        comparisonStart: "2026-01-01", comparisonEnd: "2026-01-05", comparisonPreset: "previous",
+        platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set(),
+      },
+    });
+    render(<VizTab />);
+    expect(screen.getAllByText(/비교 기간 대비/).length).toBeGreaterThan(0);
   });
 
   it("connects a KPI card to the single explorer chart without inventing retention data", () => {

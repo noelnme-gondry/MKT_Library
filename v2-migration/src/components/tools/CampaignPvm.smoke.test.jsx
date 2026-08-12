@@ -10,12 +10,25 @@ import { useAppStore } from "@/store/useDataStore";
 import CampaignPvm, { buildPvmCache } from "@/components/tools/CampaignPvm";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
+const EMPTY_FILTER = () => ({
+  dateStart: null,
+  dateEnd: null,
+  compareEnabled: false,
+  comparisonStart: null,
+  comparisonEnd: null,
+  comparisonPreset: "previous",
+  platforms: new Set(),
+  countries: new Set(),
+  channels: new Set(),
+  sources: new Set(),
+});
 
 function seedNoData() {
   useAppStore.setState({
     currentRouteId: "5-21",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    dashboardFilter: EMPTY_FILTER(),
   });
 }
 
@@ -108,12 +121,33 @@ describe("CampaignPvm render smoke", () => {
 
   it("mounts without throwing with a valid seeded CSV", () => {
     seedWithData();
-    expect(() => render(<CampaignPvm />)).not.toThrow();
+    let view;
+    expect(() => { view = render(<CampaignPvm />); }).not.toThrow();
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     expect(screen.getByLabelText("검증 지표").value).toMatch(/CPI|CPA/);
+    expect(view.container.querySelector(".tool-page-shell__main > .summary")).toBeNull();
+  });
+
+  it("uses dashboard date and comparison ranges as P1 and P2", () => {
+    seedWithData();
+    useAppStore.setState({
+      dashboardFilter: {
+        dateStart: "2026-01-19",
+        dateEnd: "2026-01-25",
+        compareEnabled: true,
+        comparisonStart: "2026-01-05",
+        comparisonEnd: "2026-01-11",
+        comparisonPreset: "custom",
+        platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set(),
+      },
+    });
+    render(<CampaignPvm />);
+
+    expect(screen.getAllByText(/기준 2026-01-05~2026-01-11.*현재 2026-01-19~2026-01-25/).length).toBeGreaterThan(0);
+    expect(screen.getByText("날짜 필터의 비교 기간 적용 중")).toBeTruthy();
   });
 
   it("rolls campaign and creative rows up from one finest-grain decomposition", () => {

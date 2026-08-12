@@ -294,8 +294,15 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
 
   // 1. Data Aggregation (useMemo)
-  const { filteredRows, dailyAgg, byChannel, totals, kpi } = useMemo(() => {
+  const { filteredRows, dailyAgg, byChannel, totals, kpi, comparisonKpi, comparisonRowCount } = useMemo(() => {
     const fRows = getMonFilteredRows(csvData, dashboardFilter);
+    const comparisonRows = dashboardFilter.compareEnabled && dashboardFilter.comparisonStart && dashboardFilter.comparisonEnd
+      ? getMonFilteredRows(csvData, {
+        ...dashboardFilter,
+        dateStart: dashboardFilter.comparisonStart,
+        dateEnd: dashboardFilter.comparisonEnd,
+      })
+      : [];
     const dAgg = aggregateByKey(fRows, "date", ["cost", "installs", "actions", "revenue_d7", "clicks"]).sort(
       (a, b) => (a._key > b._key ? 1 : -1)
     );
@@ -315,7 +322,15 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       {}
     );
     const k = calculateKPIs(fRows, selectedCohort, effBasis);
-    return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k };
+    return {
+      filteredRows: fRows,
+      dailyAgg: dAgg,
+      byChannel: chAgg,
+      totals: t,
+      kpi: k,
+      comparisonKpi: comparisonRows.length ? calculateKPIs(comparisonRows, selectedCohort, effBasis) : null,
+      comparisonRowCount: comparisonRows.length,
+    };
   }, [csvData, dashboardFilter, selectedCohort, effBasis]);
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
@@ -385,6 +400,30 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   }, [effBasis]);
 
   const metricTrend = (metric) => {
+    if (dashboardFilter.compareEnabled && comparisonKpi) {
+      const previous = metricValue(metric, comparisonKpi);
+      const current = metricValue(metric, kpi);
+      const change = Number.isFinite(previous) && Number.isFinite(current) && previous !== 0
+        ? (current - previous) / Math.abs(previous)
+        : null;
+      if (change == null || !Number.isFinite(change)) return {
+        change: null,
+        statusKey: "missing",
+        status: locale === "en" ? "— Data needed" : "— 데이터 필요",
+        note: locale === "en" ? "No comparison baseline is available." : "비교 기준값이 없습니다.",
+      };
+      const higherIsBetter = ["outcome", "roas", "ctr", "retention"].includes(metric);
+      const direction = higherIsBetter ? change : -change;
+      const statusKey = Math.abs(change) < 0.03 ? "stable" : direction > 0 ? "improving" : "warning";
+      const status = locale === "en"
+        ? ({ stable: "✓ Stable", improving: "↗ Improving", warning: "▲ Attention" })[statusKey]
+        : ({ stable: "✓ 안정", improving: "↗ 개선", warning: "▲ 주의" })[statusKey];
+      const directionText = locale === "en" ? (change > 0 ? "up" : "down") : (change > 0 ? "상승" : "하락");
+      const note = locale === "en"
+        ? `${Math.abs(change * 100).toFixed(1)}% ${directionText} vs comparison period (${comparisonRowCount} rows)`
+        : `비교 기간 대비 ${Math.abs(change * 100).toFixed(1)}% ${directionText} · ${comparisonRowCount.toLocaleString()}행`;
+      return { change, statusKey, status, note };
+    }
     const values = dailyKpis.map((d) => metricValue(metric, d.kpi)).filter((v) => Number.isFinite(v));
     if (values.length < 4) return {
       change: null,
@@ -425,7 +464,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     return attention[0]?.key || "acq";
   // metricTrend only reads memoized dailyKpis + stable render values.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyKpis, valueMetricKey, effBasis]);
+  }, [dailyKpis, valueMetricKey, effBasis, comparisonKpi, comparisonRowCount, dashboardFilter.compareEnabled, kpi]);
 
   // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
   const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =

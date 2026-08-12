@@ -13,6 +13,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
+import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
 
 // 우측 TOC — 현재 결과의 질문 순서만 노출하고 내부 섹션 번호는 숨긴다.
@@ -162,7 +163,10 @@ export function buildPvmCache(csvData, state) {
   const isContentDomain = state.domain === "content";
   // 대시보드 공유 CSV는 비용 표준키가 cost, PVM 전용 업로드는 spend일 수 있다.
   // 동일한 통화량을 뜻하는 이 경로에서만 spend 보조값을 만들며 원본·매핑은 건드리지 않는다.
-  const rows = getMonFilteredRows(csvData, state.dashboardFilter).map((row) => ({
+  const rowFilter = state.periodOverride
+    ? { ...state.dashboardFilter, dateStart: null, dateEnd: null }
+    : state.dashboardFilter;
+  const rows = getMonFilteredRows(csvData, rowFilter).map((row) => ({
     ...row,
     // PVM 엔진이 천단위 콤마/공백을 같은 계약으로 파싱하고 비정상 값은
     // NOT_IDENTIFIED로 차단한다. 여기서 Number(...)||0으로 조용히 지우지 않는다.
@@ -490,6 +494,17 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const [weekBasis, setWeekBasis] = useState("calendar");
   const [lookback, setLookback] = useState(1);
   const [periodOverride, setPeriodOverride] = useState(null);
+  const dashboardPeriodOverride = useMemo(() => {
+    if (!dashboardFilter.dateStart || !dashboardFilter.dateEnd) return null;
+    const comparison = dashboardFilter.compareEnabled && dashboardFilter.comparisonStart && dashboardFilter.comparisonEnd
+      ? { start: dashboardFilter.comparisonStart, end: dashboardFilter.comparisonEnd }
+      : buildComparisonRange(dashboardFilter.dateStart, dashboardFilter.dateEnd, "previous");
+    return {
+      periodA: comparison,
+      periodB: { start: dashboardFilter.dateStart, end: dashboardFilter.dateEnd },
+    };
+  }, [dashboardFilter.compareEnabled, dashboardFilter.comparisonEnd, dashboardFilter.comparisonStart, dashboardFilter.dateEnd, dashboardFilter.dateStart]);
+  const effectivePeriodOverride = periodOverride || dashboardPeriodOverride;
   const currency = displayCurrency === "USD" ? "usd" : "krw";
 
   const [drillChannel, setDrillChannel] = useState("__all__");
@@ -512,18 +527,18 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const cache = useMemo(() => {
     if (!hasData) return null;
     try {
-      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, domain });
+      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride: effectivePeriodOverride, domain });
     } catch (e) {
       return { insufficientData: true, message: tr("분석 중 오류: ", "Analysis error: ") + e.message };
     }
-  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, domain, tr]);
+  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, effectivePeriodOverride, domain, tr]);
 
   const ready = cache && !cache.insufficientData && cache.identity?.ok === true;
 
   // PVM 결과 식별자. ResultActionCard가 이 비식별 로컬 키로 완료·실제 노출을 각각
   // 정확히 한 번 기록하며 파일명·채널명 같은 사용자 데이터는 전송하지 않는다.
   const analysisKey = ready
-    ? `${csvData?.raw?.length || 0}|${metric}|${weekBasis}|${lookback}|${denomBasis}`
+    ? `${csvData?.raw?.length || 0}|${metric}|${weekBasis}|${lookback}|${denomBasis}|${cache.p1Range.join(":")}|${cache.p2Range.join(":")}`
     : null;
 
   // §2 차트용 채널 배열 (top7 + 기타 축약) — index.html renderPvmCharts 이식
@@ -1286,24 +1301,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         locale={locale}
         title={C.title}
         chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
-        summary={
-          <>
-            <p>
-              {ready
-                ? C.summaryLead(ml)
-                : tr(
-                  "비교 기간의 모든 항목에서 단가가 정의되고 합산 항등식이 확인될 때만 PVM 원인 분해를 제공합니다.",
-                  "PVM drivers are shown only when every comparison cell has a defined unit cost and the additive identity is verified.",
-                )}
-            </p>
-            <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
-              <summary>{tr("⚠️ 해석 한계 펼치기", "⚠️ Interpretation limits (expand)")}</summary>
-              <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                {ready ? C.summaryLimitBody : (cache?.message || C.insufficientFallback)}
-              </div>
-            </details>
-          </>
-        }
         toc={buildPvmToc(C, locale)}
         stickyFilter={<DashboardFilterBar locale={locale} />}
       >
@@ -1355,29 +1352,33 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               <button className={`ab-pill ${metric === "cpi" ? "active" : ""}`} onClick={() => setMetric("cpi")}>CPI</button>
             </div>
           )}
-          <div className="ab-pillgroup">
-            <span className="ab-pillgroup-label">{tr("기준 주", "Week basis")}</span>
-            <button className={`ab-pill ${weekBasis === "calendar" ? "active" : ""}`} onClick={() => setWeekBasis("calendar")}>{tr("마감주(월~일)", "Calendar week (Mon–Sun)")}</button>
-            <button className={`ab-pill ${weekBasis === "rolling7" ? "active" : ""}`} onClick={() => setWeekBasis("rolling7")}>{tr("최근 7일", "Last 7 days")}</button>
-          </div>
-          <div className="ab-pillgroup">
-            <span className="ab-pillgroup-label">{tr("비교 기준", "Comparison basis")}</span>
-            {[1, 2, 3].map((lb) => {
-              const locked = cache?.lockState?.[lb];
-              return (
-                <button
-                  key={lb}
-                  className={`ab-pill ${lookback === lb && !locked ? "active" : ""}`}
-                  disabled={!!locked}
-                  title={locked ? tr("데이터가 더 필요합니다", "More data required") : ""}
-                  style={{ opacity: locked ? 0.5 : 1, cursor: locked ? "default" : "pointer" }}
-                  onClick={() => !locked && setLookback(lb)}
-                >
-                  {locked ? "🔒 " : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}
-                </button>
-              );
-            })}
-          </div>
+          {effectivePeriodOverride ? (
+            <span className="analysis-control-group__label">{tr("날짜 필터의 비교 기간 적용 중", "Using the date filter comparison")}</span>
+          ) : <>
+            <div className="ab-pillgroup">
+              <span className="ab-pillgroup-label">{tr("기준 주", "Week basis")}</span>
+              <button className={`ab-pill ${weekBasis === "calendar" ? "active" : ""}`} onClick={() => setWeekBasis("calendar")}>{tr("마감주(월~일)", "Calendar week (Mon–Sun)")}</button>
+              <button className={`ab-pill ${weekBasis === "rolling7" ? "active" : ""}`} onClick={() => setWeekBasis("rolling7")}>{tr("최근 7일", "Last 7 days")}</button>
+            </div>
+            <div className="ab-pillgroup">
+              <span className="ab-pillgroup-label">{tr("비교 기준", "Comparison basis")}</span>
+              {[1, 2, 3].map((lb) => {
+                const locked = cache?.lockState?.[lb];
+                return (
+                  <button
+                    key={lb}
+                    className={`ab-pill ${lookback === lb && !locked ? "active" : ""}`}
+                    disabled={!!locked}
+                    title={locked ? tr("데이터가 더 필요합니다", "More data required") : ""}
+                    style={{ opacity: locked ? 0.5 : 1, cursor: locked ? "default" : "pointer" }}
+                    onClick={() => !locked && setLookback(lb)}
+                  >
+                    {locked ? "🔒 " : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}
+                  </button>
+                );
+              })}
+            </div>
+          </>}
         </div>
         </div>
 
