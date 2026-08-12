@@ -172,20 +172,41 @@ export default function DiagnoseRouter({ locale = "ko" }) {
       )}
 
       <fieldset className="diagnose-step">
-        <legend>{t.questions[step]}</legend>
-        <div>
-          {currentOptions.map((option) => (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={answers[currentKey] === option.id}
-              key={option.id}
-              onClick={() => choose(option.id)}
-            >
-              <span>{option.label}</span>
-              <b aria-hidden="true">→</b>
-            </button>
-          ))}
+        <legend id={`diagnose-legend-${step}`}>{t.questions[step]}</legend>
+        {/* role="radio"는 radiogroup 부모를 요구하고, 라디오 그룹은 Tab 한 번으로 진입해
+            화살표로 이동해야 한다(claude-ux.md §1.1). 예전엔 맨 <div>였고 전 옵션이
+            탭 순서에 들어가 있었다 — CSV 없이 들어오는 진입 퍼널이라 영향이 크다(감사 P1-15). */}
+        <div role="radiogroup" aria-labelledby={`diagnose-legend-${step}`}>
+          {currentOptions.map((option, index) => {
+            const checked = answers[currentKey] === option.id;
+            // 로빙 tabindex: 선택된 항목(없으면 첫 항목)만 탭 순서에 남긴다.
+            const isTabStop = checked || (!answers[currentKey] && index === 0);
+            return (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={checked}
+                tabIndex={isTabStop ? 0 : -1}
+                key={option.id}
+                data-diagnose-option={index}
+                onClick={() => choose(option.id)}
+                onKeyDown={(event) => {
+                  const last = currentOptions.length - 1;
+                  let next = null;
+                  if (event.key === "ArrowDown" || event.key === "ArrowRight") next = index === last ? 0 : index + 1;
+                  else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = index === 0 ? last : index - 1;
+                  else if (event.key === "Home") next = 0;
+                  else if (event.key === "End") next = last;
+                  if (next == null) return;
+                  event.preventDefault();
+                  event.currentTarget.parentElement?.querySelector(`[data-diagnose-option="${next}"]`)?.focus();
+                }}
+              >
+                <span>{option.label}</span>
+                <b aria-hidden="true">→</b>
+              </button>
+            );
+          })}
         </div>
       </fieldset>
 

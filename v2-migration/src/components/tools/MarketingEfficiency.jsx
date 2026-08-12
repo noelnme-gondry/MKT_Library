@@ -636,7 +636,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                       )}
                       <td className="tnum" style={{ fontWeight: 700, color: vm.color }}>{idxStr}</td>
                       <td>
-                        <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `${vm.color}55` }}>
+                        <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `color-mix(in srgb, ${vm.color} 33%, transparent)` }}>
                           <span className="dot" style={{ background: vm.color }}></span>{vm.label}
                         </span>{" "}
                         <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{vm.advice}</span>

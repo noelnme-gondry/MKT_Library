@@ -645,7 +645,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           byId.get(r.creative_id).push(r);
         }
         const W = CREATIVE_CONFIG.fatigue.decayWindow;
-        const palette = ["#adc6ff", "#22c55e", "#f87171", "#fbbf24", "#a78bfa"];
+        // CHART_THEME.colors는 getCssVar 기반 getter라 테마 전환 시
+        // refreshMountedChartThemes가 갱신한다. 하드코딩 배열은 다크 톤에 고정됐다(감사 P1-14).
+        const palette = CHART_THEME.colors;
         const datasets = [];
         const allDateSet = new Set();
         fatigued.forEach((f, idx) => {

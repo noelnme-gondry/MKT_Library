@@ -808,10 +808,10 @@
         background: var(--secondary);
       }
       .chip.warning .dot {
-        background: #f7b955;
+        background: var(--warning);
       }
       .chip.ok .dot {
-        background: #5ad19a;
+        background: var(--success);
       }
 
       /* TOC / 2-column layout */
@@ -988,10 +988,10 @@
         background: #7f52ff;
       }
       .code-lang.json .lang-dot {
-        background: #f7b955;
+        background: var(--warning);
       }
       .code-lang.bash .lang-dot {
-        background: #5ad19a;
+        background: var(--success);
       }
       .code-lang.http .lang-dot {
         background: #adc6ff;
@@ -1158,7 +1158,7 @@
         background: rgba(76, 215, 246, 0.06);
       }
       .pill.tier-3 {
-        color: #f7b955;
+        color: var(--warning);
         border-color: rgba(247, 185, 85, 0.3);
         background: rgba(247, 185, 85, 0.06);
       }
@@ -1196,7 +1196,7 @@
         color: var(--secondary);
       }
       .kpi-card .delta.down {
-        color: #ff8a8a;
+        color: var(--danger);
       }
 
       /* PVM(5-21) — sleek impact chip / bridge scorecard / top-mover */
@@ -1214,7 +1214,7 @@
         vertical-align: middle;
       }
       .pvm-chip.up {
-        color: #ff8a8a;
+        color: var(--danger);
         background: rgba(248, 113, 113, 0.12);
       }
       .pvm-chip.down {
@@ -1279,7 +1279,7 @@
         line-height: 1;
       }
       .pvm-mover.up .ar {
-        color: #ff8a8a;
+        color: var(--danger);
       }
       .pvm-mover.down .ar {
         color: #4ade80;
@@ -1301,7 +1301,7 @@
         font-weight: 600;
       }
       .pvm-mover.up .mv {
-        color: #ff8a8a;
+        color: var(--danger);
       }
       .pvm-mover.down .mv {
         color: #4ade80;
@@ -1318,10 +1318,10 @@
         margin: 0.75rem 0 1rem;
       }
       .callout.warn {
-        border-left: 2px solid #f7b955;
+        border-left: 2px solid var(--warning);
       }
       .callout.danger {
-        border-left: 2px solid #ff8a8a;
+        border-left: 2px solid var(--danger);
       }
       .callout.info {
         border-left: 2px solid var(--primary);
@@ -1339,10 +1339,10 @@
         font-weight: 600;
       }
       .callout.warn .ico {
-        color: #f7b955;
+        color: var(--warning);
       }
       .callout.danger .ico {
-        color: #ff8a8a;
+        color: var(--danger);
       }
       .callout.info .ico {
         color: var(--primary);
@@ -1669,7 +1669,7 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #5ad19a;
+        background: var(--success);
       }
       .file-state .meta-stats {
         color: var(--text-secondary);
@@ -1747,19 +1747,19 @@
         color: var(--text-muted);
       }
       .map-status.ok {
-        color: #5ad19a;
+        color: var(--success);
       }
       .map-status.auto {
         color: var(--secondary);
       }
       .map-status.warn {
-        color: #f7b955;
+        color: var(--warning);
       }
       .map-status.confirmed, .map-status.manual {
-        color: #5ad19a;
+        color: var(--success);
       }
       .map-status.review {
-        color: #f7b955;
+        color: var(--warning);
       }
       .map-status.must_confirm, .map-status.conflict {
         color: var(--danger);
@@ -1781,7 +1781,7 @@
       .required-banner {
         background: var(--surface-container-lowest);
         border: 1px solid var(--border-subtle);
-        border-left: 2px solid #f7b955;
+        border-left: 2px solid var(--warning);
         border-radius: var(--radius-xl);
         padding: 0.875rem 1rem;
         margin-bottom: 1rem;
@@ -1789,7 +1789,7 @@
         color: var(--text-secondary);
       }
       .required-banner.ok {
-        border-left-color: #5ad19a;
+        border-left-color: var(--success);
       }
       .required-banner strong {
         color: var(--text-primary);
@@ -2573,7 +2573,7 @@
         color: var(--text-primary);
       }
       .alloc-sim-row strong.down {
-        color: #ff8a8a;
+        color: var(--danger);
       }
       .alloc-sim-sep {
         height: 1px;
@@ -2638,7 +2638,7 @@
         color: var(--text-secondary);
       }
       .alloc-trend-r2-sub strong {
-        color: #5ad19a;
+        color: var(--success);
       }
       .alloc-trend-r2-section tr.muted td {
         color: var(--text-muted);
@@ -2700,7 +2700,7 @@
       .alloc-cost-input.locked {
         border-color: rgba(247, 185, 85, 0.5);
         background: rgba(247, 185, 85, 0.05);
-        color: #f7b955;
+        color: var(--warning);
       }
       .alloc-cost-reset {
         background: transparent;
@@ -2721,7 +2721,7 @@
         margin-left: 0.25rem;
       }
       .alloc-bar-seg.locked {
-        border-top: 2px solid #f7b955;
+        border-top: 2px solid var(--warning);
       }
 
       /* §4 채널 셀 — 이전 관측 합산 + 경고 */
@@ -2746,7 +2746,7 @@
       .alloc-ch-warn {
         font-family: var(--font-mono);
         font-size: 11px;
-        color: #f7b955;
+        color: var(--warning);
         background: rgba(247, 185, 85, 0.06);
         border: 1px solid rgba(247, 185, 85, 0.2);
         padding: 0.2rem 0.45rem;
@@ -2772,7 +2772,7 @@
       .alloc-lock-toggle {
         background: transparent;
         border: 1px solid rgba(247, 185, 85, 0.4);
-        color: #f7b955;
+        color: var(--warning);
         padding: 0.1rem 0.4rem;
         border-radius: var(--radius-default);
         font-size: 11px;
@@ -2828,13 +2828,13 @@
         margin: 0 0 16px;
       }
       .alloc-verdict-card.good {
-        border-left-color: #5ad19a;
+        border-left-color: var(--success);
       }
       .alloc-verdict-card.bad {
-        border-left-color: #ff8a8a;
+        border-left-color: var(--danger);
       }
       .alloc-verdict-card.neutral {
-        border-left-color: #f7b955;
+        border-left-color: var(--warning);
       }
       .alloc-verdict-title {
         font-size: 14px;
@@ -2933,13 +2933,13 @@
         font-variant-numeric: tabular-nums;
       }
       .alloc-diag-line.bad {
-        border-left-color: #ff8a8a;
+        border-left-color: var(--danger);
       }
       .alloc-diag-line.good {
-        border-left-color: #5ad19a;
+        border-left-color: var(--success);
       }
       .alloc-diag-line.neutral {
-        border-left-color: #f7b955;
+        border-left-color: var(--warning);
       }
       .alloc-diag-line.muted {
         color: var(--text-muted);
@@ -2956,13 +2956,13 @@
         background: var(--surface-container-lowest, var(--bg-2));
       }
       .alloc-verify-strip.good {
-        border-left: 3px solid #5ad19a;
+        border-left: 3px solid var(--success);
       }
       .alloc-verify-strip.bad {
-        border-left: 3px solid #ff8a8a;
+        border-left: 3px solid var(--danger);
       }
       .alloc-verify-strip.neutral {
-        border-left: 3px solid #f7b955;
+        border-left: 3px solid var(--warning);
       }
       .alloc-verify-head {
         font-weight: 700;
@@ -3020,12 +3020,12 @@
         display: none;
       }
       .alloc-alert-fold.is-danger > summary.alloc-alert-chip {
-        color: #ff8a8a;
+        color: var(--danger);
         border-color: rgba(255, 138, 138, 0.4);
         background: rgba(255, 138, 138, 0.08);
       }
       .alloc-alert-fold.is-warn > summary.alloc-alert-chip {
-        color: #f7b955;
+        color: var(--warning);
         border-color: rgba(247, 185, 85, 0.4);
         background: rgba(247, 185, 85, 0.08);
       }
@@ -3100,7 +3100,7 @@
         font-weight: 600;
       }
       .alloc-total-row strong .down {
-        color: #ff8a8a;
+        color: var(--danger);
       }
       .alloc-total-sep {
         height: 1px;
@@ -3166,7 +3166,7 @@
 
       /* chip ★ 마크 */
       .alloc-chip-star {
-        color: #5ad19a;
+        color: var(--success);
         font-size: 11px;
         margin-left: 0.25rem;
         font-weight: 600;
@@ -3205,7 +3205,7 @@
       .alloc-reset-btn {
         background: transparent;
         border: 1px solid rgba(255, 138, 138, 0.3);
-        color: #ff8a8a;
+        color: var(--danger);
         font-family: var(--font-mono);
         font-size: 11px;
         padding: 0.3rem 0.6rem;
@@ -3296,6 +3296,16 @@
         flex-wrap: wrap;
         min-height: 38px;
         overflow: visible;
+      }
+      /* title만 달아두면 hover 가능하다는 시각 단서가 없어 유저가 존재 자체를 모른다
+         (claude-ux.md §0 — 실사용에서 확인된 함정). title이 있는 라벨·칩에는 점선 밑줄과
+         cursor:help를 강제해 어포던스를 만든다. 감사 P1-16. */
+      .ab-pillgroup-label[title],
+      [data-help],
+      .chip[title]:not(.ab-pill),
+      .seasonality-heatmap__cell[title] {
+        border-bottom: 1px dotted currentColor;
+        cursor: help;
       }
       .ab-pillgroup-label {
         font-family: var(--font-mono);
@@ -3691,7 +3701,7 @@
           rgba(247, 185, 85, 0.02) 100%
         );
         border: 1px solid rgba(247, 185, 85, 0.25);
-        border-left: 3px solid #f7b955;
+        border-left: 3px solid var(--warning);
         border-radius: var(--radius-xl);
         padding: 0.875rem 1rem;
         margin: 0 0 1.25rem;
@@ -3705,7 +3715,7 @@
 /* alert-icon */
       .alert-banner .alert-icon {
         font-size: 18px;
-        color: #f7b955;
+        color: var(--warning);
         flex-shrink: 0;
       }
       body.light-mode .alert-banner .alert-icon {
@@ -3720,7 +3730,7 @@
         line-height: 19px;
       }
       .alert-banner .alert-body strong {
-        color: #f7b955;
+        color: var(--warning);
       }
       body.light-mode .alert-banner .alert-body {
         color: #111827 !important;
@@ -3733,7 +3743,7 @@
       .alert-banner .alert-cta {
         background: rgba(247, 185, 85, 0.12);
         border: 1px solid rgba(247, 185, 85, 0.3);
-        color: #f7b955;
+        color: var(--warning);
         font-family: var(--font-mono);
         font-size: 12px;
         padding: 0.4rem 0.75rem;
@@ -3963,7 +3973,7 @@
         color: #22c55e;
       }
       .ab-stat-hint.neg {
-        color: #ff8a8a;
+        color: var(--danger);
       }
 
       /* ab-stat-row */
@@ -6409,8 +6419,8 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .analysis-basis-bar__metric-list strong { color: var(--text-primary); }
 .data-quality-report { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .data-confidence-tier { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); font: 700 9px var(--font-mono); letter-spacing: .04em; }
-.data-confidence-tier.exploratory { border-color: color-mix(in srgb,#f7b955 55%,var(--border)); color: #d99a2e; }
-.data-confidence-tier.decision { border-color: color-mix(in srgb,#5ad19a 55%,var(--border)); color: #42ad78; }
+.data-confidence-tier.exploratory { border-color: color-mix(in srgb,var(--warning) 55%,var(--border)); color: #d99a2e; }
+.data-confidence-tier.decision { border-color: color-mix(in srgb,var(--success) 55%,var(--border)); color: #42ad78; }
 .data-confidence-hint { position: relative; display: inline-block; width: 15px; height: 15px; color: var(--text-muted); font: 700 10px/1 var(--font-mono); vertical-align: text-bottom; }
 .data-confidence-hint > summary { display: grid; width: 100%; height: 100%; place-items: center; border: 1px solid var(--border-stronger); border-radius: 999px; cursor: help; list-style: none; }
 .data-confidence-hint > summary::-webkit-details-marker { display: none; }
@@ -7251,7 +7261,7 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-top-stat em { color:var(--primary);font:700 8px var(--font-mono);font-style:normal; }
 @media (max-width:980px) { .dashboard-top-stat { display:none; } }
 .dashboard-demo-source,.dashboard-decision-strip { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-container-lowest); }
-.dashboard-demo-source { border-left:3px solid #f7b955;background:color-mix(in srgb,#f7b955 7%,var(--surface-container-lowest)); }
+.dashboard-demo-source { border-left:3px solid var(--warning);background:color-mix(in srgb,var(--warning) 7%,var(--surface-container-lowest)); }
 .dashboard-decision-strip { padding:10px 0;border-width:1px 0;border-radius:0;background:transparent; }
 .dashboard-demo-source > div > span,.dashboard-decision-strip > div:first-child > span { display:block;color:var(--primary);font:700 8px var(--font-mono);letter-spacing:.1em; }
 .dashboard-demo-source strong,.dashboard-decision-strip strong { display:block;margin-top:3px;color:var(--text-primary);font-size:13px; }
@@ -7564,7 +7574,7 @@ body:has(.consent-banner) .tool-assist-rail { display:none; }
 .calculator-explainer__rows article + article { padding-left:18px;border-left:1px solid var(--border); }
 .calculator-explainer__rows strong { color:var(--text-primary);font-size:12px; }
 .calculator-explainer__rows p { margin:6px 0 0;color:var(--text-muted);font-size:10.5px;line-height:1.55; }
-.calculator-explainer aside { margin-top:16px;padding:13px 15px;border-left:3px solid #f7b955;background:color-mix(in srgb,#f7b955 7%,var(--surface-container-low)); }
+.calculator-explainer aside { margin-top:16px;padding:13px 15px;border-left:3px solid var(--warning);background:color-mix(in srgb,var(--warning) 7%,var(--surface-container-low)); }
 .calculator-explainer aside strong { color:var(--text-primary);font-size:10.5px; }
 .calculator-explainer aside p { margin:4px 0 0;color:var(--text-secondary);font-size:10.5px;line-height:1.55; }
 .calculator-faq details { border-bottom:1px solid var(--border); }

@@ -181,7 +181,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   // Segment Charts
   useEffect(() => {
     if (!hasData || !wrc.bySegment) return;
-    const PALETTE = ["#7aa2f7", "#9ece6a", "#e0af68", "#f7768e", "#bb9af7", "#2ac3de", "#ff9e64", "#73daca", "#c0caf5", "#a9b1d6", "#db4b4b", "#41a6b5"];
+    const PALETTE = CHART_THEME.colors; // 테마 전환 대응(감사 P1-14)
     
     const segmentChartInstances = segmentChartInstancesRef.current;
     Object.keys(wrc.bySegment).forEach(sk => {

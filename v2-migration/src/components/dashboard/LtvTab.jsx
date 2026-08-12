@@ -4,7 +4,7 @@ import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
-import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { chartCommonOpts, getCssVar, CHART_THEME } from "@/utils/chartUtils";
 import { buildLtvData, LTV_DNS, LTVCAC_MATH } from "@/utils/ltvMath";
 import { buildMaturationRows, MATURATION_MATH } from "@/utils/cohortMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
@@ -240,7 +240,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     if (chartInstanceRef.current) chartInstanceRef.current.destroy();
 
     const topRows = rows.slice(0, 8);
-    const PALETTE = ["#7aa2f7", "#9ece6a", "#e0af68", "#f7768e", "#bb9af7", "#2ac3de", "#ff9e64", "#73daca"];
+    const PALETTE = CHART_THEME.colors; // 테마 전환 대응(감사 P1-14)
 
     const labels = LTV_DNS.map(d => `D${d}`);
     const datasets = topRows.map((r, ri) => {
