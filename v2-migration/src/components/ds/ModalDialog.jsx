@@ -2,13 +2,6 @@
 import React, { useRef } from "react";
 import { Dialog } from "radix-ui";
 
-let lastFocusedElement = null;
-if (typeof document !== "undefined") {
-  document.addEventListener("focusin", (event) => {
-    if (event.target instanceof HTMLElement) lastFocusedElement = event.target;
-  });
-}
-
 // Shared dialog behavior comes from Radix: body portal, focus containment,
 // focus restoration, Escape handling, and scroll locking. Callers continue to
 // own the existing visual classes and styles.
@@ -28,10 +21,6 @@ export default function ModalDialog({
   children,
 }) {
   const previousFocusRef = useRef(null);
-  if (open && !previousFocusRef.current && typeof document !== "undefined") {
-    previousFocusRef.current = lastFocusedElement || document.activeElement;
-  }
-
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) onClose?.();
   };
@@ -53,6 +42,7 @@ export default function ModalDialog({
             aria-labelledby={ariaLabelledBy || undefined}
             aria-describedby={ariaDescribedBy || undefined}
             onOpenAutoFocus={(event) => {
+              previousFocusRef.current = document.activeElement;
               const initialFocus = initialFocusRef?.current;
               if (!initialFocus) return;
               event.preventDefault();
