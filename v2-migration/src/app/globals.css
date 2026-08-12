@@ -2907,11 +2907,68 @@
       /* §0 진단 카드 — "어디가 문제인가" (결론 카드 위) */
       .alloc-diag-card {
         border: 1px solid var(--border);
+        border-left: 3px solid var(--primary);
         border-radius: var(--radius-xl, 12px);
         background: var(--surface-container-lowest, var(--bg-2));
-        padding: 13px 16px;
-        margin: 0 0 12px;
+        padding: 0;
+        margin: 0 0 14px;
+        overflow: hidden;
       }
+      .alloc-diag-card.is-bad { border-left-color: var(--danger); }
+      .alloc-diag-card.is-good { border-left-color: var(--success); }
+      .alloc-insight-summary {
+        position: relative;
+        display: grid;
+        grid-template-columns: 116px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 50px;
+        padding: 10px 14px;
+        cursor: pointer;
+        list-style: none;
+      }
+      .alloc-insight-summary::-webkit-details-marker { display: none; }
+      .alloc-insight-summary::before {
+        content: "›";
+        position: absolute;
+        top: 50%;
+        left: 14px;
+        color: var(--text-muted);
+        font-size: 18px;
+        transform: translateY(-50%) rotate(0deg);
+        transition: transform .16s ease;
+      }
+      details[open] > .alloc-insight-summary::before { transform: translateY(-50%) rotate(90deg); }
+      .alloc-insight-summary__title {
+        padding-left: 17px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .alloc-insight-summary > strong { color: var(--text-primary); font-size: 13px; font-weight: 700; }
+      .alloc-insight-summary__action { color: var(--primary); font-size: 11px; font-weight: 650; }
+      .alloc-diag-grid {
+        display: grid;
+        grid-template-columns: repeat(3,minmax(0,1fr));
+        gap: 9px;
+        padding: 12px 14px 14px;
+        border-top: 1px solid var(--border-subtle);
+        background: var(--surface-container-low);
+      }
+      .alloc-diag-item {
+        min-width: 0;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-top: 3px solid var(--warning);
+        border-radius: var(--radius-lg);
+        background: var(--surface-container-lowest);
+      }
+      .alloc-diag-item.bad { border-top-color: var(--danger); }
+      .alloc-diag-item.good { border-top-color: var(--success); }
+      .alloc-diag-item.muted { border-top-color: var(--border-stronger); }
+      .alloc-diag-item > span { color: var(--text-muted); font: 650 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+      .alloc-diag-item > strong { display: block; margin-top: 7px; overflow: hidden; color: var(--text-primary); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+      .alloc-diag-item > p { margin: 5px 0 0; color: var(--text-secondary); font-size: 11.5px; line-height: 1.5; }
       /* PRISM P5 접힘 섹션: summary가 section-title 역할일 때 배지·정렬 유지 */
       .alloc-fold-summary {
         display: flex;
@@ -2928,48 +2985,16 @@
         border-radius: var(--radius-default);
         font-weight: 500;
       }
-      .alloc-diag-title {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 9px;
-      }
-      .alloc-diag-line {
-        font-size: 12.5px;
-        line-height: 1.6;
-        color: var(--text-secondary);
-        padding: 6px 0 6px 11px;
-        border-left: 3px solid var(--border);
-      }
-      .alloc-diag-line + .alloc-diag-line {
-        margin-top: 5px;
-      }
-      .alloc-diag-line strong {
-        color: var(--text-primary);
-        font-variant-numeric: tabular-nums;
-      }
-      .alloc-diag-line.bad {
-        border-left-color: var(--danger);
-      }
-      .alloc-diag-line.good {
-        border-left-color: var(--success);
-      }
-      .alloc-diag-line.neutral {
-        border-left-color: var(--warning);
-      }
-      .alloc-diag-line.muted {
-        color: var(--text-muted);
-      }
-
       /* §5 배분 점검 스트립 (검증) */
       .alloc-verify-strip {
         border: 1px solid var(--border);
         border-radius: 9px;
-        padding: 9px 12px;
+        padding: 0;
         margin: 0 0 11px;
         font-size: 12px;
         line-height: 1.55;
         background: var(--surface-container-lowest, var(--bg-2));
+        overflow: hidden;
       }
       .alloc-verify-strip.good {
         border-left: 3px solid var(--success);
@@ -2980,22 +3005,12 @@
       .alloc-verify-strip.neutral {
         border-left: 3px solid var(--warning);
       }
-      .alloc-verify-head {
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-      .alloc-verify-body {
-        color: var(--text-secondary);
-      }
       .alloc-verify-strip strong {
         color: var(--text-primary);
         font-variant-numeric: tabular-nums;
       }
-      .alloc-verify-note {
-        margin-top: 6px;
-        font-size: 11px;
-        color: var(--text-muted);
-      }
+      .alloc-verify-detail { padding: 11px 14px 13px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); }
+      .alloc-verify-detail small { display: block; margin-top: 5px; color: var(--text-muted); }
 
       /* §1 산점도·진단 접이식 + 추세선 알림 칩 */
       .alloc-diag > summary.alloc-diag-summary {
@@ -3049,33 +3064,20 @@
       /* §4 아래 총 합계 비교 카드 */
       .alloc-total-card {
         background: var(--surface-container-lowest);
-        border: 1px solid var(--border-subtle);
+        border: 1px solid var(--border);
         border-radius: var(--radius-xl);
-        padding: 1rem 1.25rem 1.25rem;
-        margin: 1rem 0 0.5rem;
+        padding: 0;
+        margin: 0 0 14px;
+        overflow: hidden;
       }
-      .alloc-total-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 0.875rem;
-        letter-spacing: -0.005em;
-        display: flex;
-        align-items: baseline;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-      }
-      .alloc-total-sub {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 400;
-      }
+      .alloc-total-summary { border-left: 3px solid var(--primary); }
+      .alloc-total-meta { padding: 10px 14px 0; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font: 500 10.5px var(--font-mono); }
       .alloc-total-grid {
         display: grid;
         grid-template-columns: 1fr 24px 1fr;
         gap: 0.875rem;
         align-items: stretch;
+        padding: 12px 14px 14px;
       }
       .alloc-total-arrow {
         display: grid;
@@ -3086,10 +3088,11 @@
       }
       .alloc-total-block {
         background: var(--surface-container-low);
-        border: 1px solid var(--border-subtle);
+        border: 1px solid var(--border);
         border-radius: var(--radius-lg);
         padding: 0.75rem 0.875rem;
       }
+      .alloc-total-block.is-recommended { border-color: color-mix(in srgb,var(--primary) 42%,var(--border-subtle)); background: color-mix(in srgb,var(--primary) 5%,var(--surface-container-low)); }
       .alloc-total-block-title {
         font-family: var(--font-mono);
         font-size: 11px;
@@ -3115,6 +3118,10 @@
         color: var(--text-primary);
         font-weight: 600;
       }
+      .alloc-total-row strong small { color: var(--text-muted); font-size: 10px; font-weight: 500; }
+      .alloc-total-delta { margin-left: 5px; font-size: 10.5px; }
+      .alloc-total-delta.is-good { color: var(--success); }
+      .alloc-total-delta.is-bad { color: var(--danger); }
       .alloc-total-row strong .down {
         color: var(--danger);
       }
@@ -3124,6 +3131,9 @@
         margin: 0.4rem 0;
       }
       @media (max-width: 720px) {
+        .alloc-insight-summary { grid-template-columns: minmax(0,1fr) auto; gap: 4px 8px; }
+        .alloc-insight-summary__title { grid-column: 1 / -1; }
+        .alloc-diag-grid { grid-template-columns: 1fr; }
         .alloc-total-grid {
           grid-template-columns: 1fr;
         }

@@ -1002,7 +1002,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       totResults += h.windowResults;
     }
     if (!chans.length || totCost <= 0) {
-      return { insufficient: true, lines: [] };
+      return {
+        insufficient: true,
+        lines: [],
+        summary: tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data"),
+        tone: "neutral",
+      };
     }
     const portEff = totResults > 0 ? totCost / totResults : null;
     const fin = chans.filter((c) => isFinite(c.eff));
@@ -1013,8 +1018,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const rnd = (v) => Math.round(v);
     const costSh = (c) => (totCost > 0 ? (c.cost / totCost) * 100 : 0);
     const resSh = (c) => (totResults > 0 ? (c.results / totResults) * 100 : 0);
-    const resLbl = (c) =>
-      roas ? fmtCurrency(c.results, currency) : tr(`${formatNumberK(c.results, 0)}건`, formatNumberK(c.results, 0));
     const effLbl = (c) =>
       !isFinite(c.eff)
         ? "—"
@@ -1028,58 +1031,77 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     if (chans.length < 2) {
       lines.push({
         cls: "muted",
+        label: tr("진단 대기", "Waiting for comparison"),
+        title: tr("채널 비교가 필요합니다", "More channels needed"),
         text: tr(
-          `채널을 2개 이상 선택하면 채널 간 효율 비교 진단이 표시됩니다 (현재 ${chans.length}개).`,
-          `Select 2 or more channels to see an efficiency comparison across channels (currently ${chans.length}).`
+          `현재 ${chans.length}개 · 2개 이상 선택하세요.`,
+          `${chans.length} selected · choose at least 2.`
         ),
       });
     } else {
       if (!isFinite(worst.eff)) {
         lines.push({
           cls: "bad",
+          label: tr("우선 감액", "Reduce first"),
+          title: worst.ch,
           text: tr(
-            `💸 ${worst.ch} — 최근 ${recentDays}일 예산의 ${rnd(costSh(worst))}%(${fmtCurrency(worst.cost, currency)})를 쓰는데 ${roas ? "매출" : "결과"}가 거의 없습니다. 가장 시급한 점검 대상입니다.`,
-            `💸 ${worst.ch} — spent ${rnd(costSh(worst))}% (${fmtCurrency(worst.cost, currency)}) of the last ${recentDays}-day budget with almost no ${roas ? "revenue" : "results"}. This is the most urgent item to review.`
+            `예산 ${rnd(costSh(worst))}% · ${roas ? "매출" : "결과"} 거의 없음`,
+            `${rnd(costSh(worst))}% of budget · almost no ${roas ? "revenue" : "results"}`
           ),
         });
       } else if (ratioBad >= 1.2) {
         lines.push({
           cls: "bad",
+          label: tr("우선 감액", "Reduce first"),
+          title: worst.ch,
           text: tr(
-            `💸 ${worst.ch} — 최근 ${recentDays}일 예산의 ${rnd(costSh(worst))}%(${fmtCurrency(worst.cost, currency)})를 쓰는데 ${roas ? "매출 비중" : "결과 비중"}은 ${rnd(resSh(worst))}%(${resLbl(worst)})뿐입니다. ${metricLabel} ${effLbl(worst)} — 평균보다 ${ratioBad.toFixed(1)}배 비효율.`,
-            `💸 ${worst.ch} — spent ${rnd(costSh(worst))}% (${fmtCurrency(worst.cost, currency)}) of the last ${recentDays}-day budget but only ${rnd(resSh(worst))}% (${resLbl(worst)}) of ${roas ? "revenue" : "results"}. ${metricLabel} ${effLbl(worst)} — ${ratioBad.toFixed(1)}x less efficient than average.`
+            `예산 ${rnd(costSh(worst))}% / ${roas ? "매출" : "결과"} ${rnd(resSh(worst))}% · ${metricLabel} ${effLbl(worst)} · 평균보다 ${ratioBad.toFixed(1)}배 비효율`,
+            `Budget ${rnd(costSh(worst))}% / ${roas ? "revenue" : "results"} ${rnd(resSh(worst))}% · ${metricLabel} ${effLbl(worst)} · ${ratioBad.toFixed(1)}x less efficient`
           ),
         });
       } else {
         lines.push({
           cls: "neutral",
+          label: tr("재배분 효과 제한", "Limited reallocation gain"),
+          title: tr("채널 효율이 비슷합니다", "Channel efficiency is similar"),
           text: tr(
-            `📊 채널 간 효율 차이가 작습니다 (최고↔최저 ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}배). 재배분으로 얻을 효율은 제한적 — 채널 자체 효율(소재·타겟) 개선이 우선입니다.`,
-            `📊 The efficiency gap between channels is small (best↔worst ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}x). Reallocation gains are limited here — improving channel efficiency itself (creative/targeting) should come first.`
+            `최고↔최저 ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}배 · 소재·타겟 개선 우선`,
+            `Best↔worst ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}x · improve creative and targeting first`
           ),
         });
       }
       if (best && best.ch !== worst.ch && isFinite(best.eff) && ratioGood >= 1.2) {
         lines.push({
           cls: "good",
+          label: tr("증액 후보", "Increase candidate"),
+          title: best.ch,
           text: tr(
-            `💎 ${best.ch} — ${metricLabel} ${effLbl(best)}로 가장 효율적(평균보다 ${ratioGood.toFixed(1)}배)인데 예산은 ${rnd(costSh(best))}%뿐입니다. 증액 여지가 있습니다.`,
-            `💎 ${best.ch} — the most efficient (${metricLabel} ${effLbl(best)}, ${ratioGood.toFixed(1)}x better than average) but only gets ${rnd(costSh(best))}% of the budget. There's room to increase it.`
+            `${metricLabel} ${effLbl(best)} · 예산 ${rnd(costSh(best))}% · 평균보다 ${ratioGood.toFixed(1)}배 효율`,
+            `${metricLabel} ${effLbl(best)} · budget ${rnd(costSh(best))}% · ${ratioGood.toFixed(1)}x more efficient`
           ),
         });
       }
       if (topShare >= 0.5 && topShare >= 1.5 / chans.length) {
         lines.push({
           cls: "neutral",
+          label: tr("집중 위험", "Concentration risk"),
+          title: topCh.ch,
           text: tr(
-            `📊 예산이 ${topCh.ch}에 ${rnd(topShare * 100)}% 집중 — 단일 채널 의존도가 높습니다. 리스크 분산을 점검하세요.`,
-            `📊 ${rnd(topShare * 100)}% of the budget is concentrated in ${topCh.ch} — dependence on a single channel is high. Consider diversifying the risk.`
+            `전체 예산 ${rnd(topShare * 100)}% 집중 · 분산 여부 점검`,
+            `${rnd(topShare * 100)}% of total budget · review diversification`
           ),
         });
       }
     }
-    return { insufficient: false, lines };
-  }, [allocation.items, effectiveMetric, historyByCh, recentDays, currency, tr]);
+    const visibleLines = lines.slice(0, 3);
+    const badCount = visibleLines.filter((line) => line.cls === "bad").length;
+    const goodCount = visibleLines.filter((line) => line.cls === "good").length;
+    const summaryText = tr(
+      [badCount ? `감액 ${badCount}` : "", goodCount ? `증액 ${goodCount}` : "", !badCount && !goodCount ? "효율 점검" : ""].filter(Boolean).join(" · "),
+      [badCount ? `${badCount} reduce` : "", goodCount ? `${goodCount} increase` : "", !badCount && !goodCount ? "Efficiency review" : ""].filter(Boolean).join(" · "),
+    );
+    return { insufficient: false, lines: visibleLines, summary: summaryText, tone: badCount ? "bad" : goodCount ? "good" : "neutral" };
+  }, [allocation.items, effectiveMetric, historyByCh, currency, tr]);
 
   // What-if 시나리오 데이터
   const scenarios = useMemo(() => {
@@ -2268,6 +2290,30 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return { tone, text, acts, S };
   })();
 
+  const comparisonHeadline = (() => {
+    if (!summary) return "";
+    const previousMetric = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
+    const nextMetric = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
+    const metricChange = previousMetric != null && nextMetric != null && previousMetric !== 0
+      ? ((nextMetric - previousMetric) / Math.abs(previousMetric)) * 100
+      : null;
+    const budgetChange = summary.prev.cost > 0
+      ? ((summary.next.cost - summary.prev.cost) / summary.prev.cost) * 100
+      : null;
+    const metricSummary = metricChange == null
+      ? tr(`${metricLabel} 비교 불가`, `${metricLabel} not comparable`)
+      : Math.abs(metricChange) < 0.05
+        ? tr(`${metricLabel} 유지`, `${metricLabel} unchanged`)
+        : tr(
+          `${metricLabel} ${Math.abs(metricChange).toFixed(1)}% ${roas ? (metricChange > 0 ? "개선" : "악화") : (metricChange < 0 ? "개선" : "악화")}`,
+          `${metricLabel} ${Math.abs(metricChange).toFixed(1)}% ${roas ? (metricChange > 0 ? "better" : "worse") : (metricChange < 0 ? "better" : "worse")}`,
+        );
+    const budgetSummary = budgetChange == null
+      ? ""
+      : tr(`일예산 ${budgetChange >= 0 ? "+" : "−"}${Math.abs(budgetChange).toFixed(1)}%`, `Daily budget ${budgetChange >= 0 ? "+" : "−"}${Math.abs(budgetChange).toFixed(1)}%`);
+    return [metricSummary, budgetSummary].filter(Boolean).join(" · ");
+  })();
+
   const step3Toc = [
     { id: "s-controls", title: tr("PRISM 조정", "PRISM controls") },
     { id: "s-result", title: tr("추천 결과", "Recommendation") },
@@ -2723,39 +2769,31 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
       {diagnosis && (
-        <details
-          className="alloc-diag-card alloc-fold"
-          style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}
-        >
-          <summary style={{ fontWeight: 600, fontSize: "14px", cursor: "pointer" }}>🔍 {tr("진단 — 지금 어디가 문제인가", "Diagnosis — what's the problem right now")}</summary>
-          <div style={{ marginTop: "8px" }}>
+        <details className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
+          <summary className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
+            <strong>{diagnosis.summary}</strong>
+            <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
+          </summary>
+          <div className="alloc-diag-grid">
           {diagnosis.insufficient ? (
-            <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+            <article className="alloc-diag-item muted">
+              <span>{tr("진단 대기", "Waiting for data")}</span>
+              <strong>{tr("최근 집행 데이터가 부족합니다", "Not enough recent spend data")}</strong>
+              <p>
               {tr(
-                `최근 ${recentDays}일 집행 데이터가 부족해 문제 진단을 생략합니다.`,
-                `Not enough spend data in the last ${recentDays} days, so the problem diagnosis is skipped.`
+                `최근 ${recentDays}일 데이터를 더 확보하세요.`,
+                `Add more data from the last ${recentDays} days.`
               )}
-            </div>
+              </p>
+            </article>
           ) : (
             diagnosis.lines.map((l, i) => (
-              <div
-                key={i}
-                style={{
-                  fontSize: "13px",
-                  lineHeight: 1.55,
-                  padding: "3px 0",
-                  color:
-                    l.cls === "bad"
-                      ? "#f0917e"
-                      : l.cls === "good"
-                        ? "#5ad19a"
-                        : l.cls === "muted"
-                          ? "var(--text-muted)"
-                          : "var(--text-secondary)",
-                }}
-              >
-                {l.text}
-              </div>
+              <article key={`${l.label}-${i}`} className={`alloc-diag-item ${l.cls}`}>
+                <span>{l.label}</span>
+                <strong>{l.title}</strong>
+                <p>{l.text}</p>
+              </article>
             ))
           )}
           </div>
@@ -2764,39 +2802,38 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* 총 합계 비교 카드 */}
       {summary && (
-        <details style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}>
-          <summary style={{ fontWeight: 600, fontSize: "14px", cursor: "pointer" }}>
-            {tr("총 합계 비교", "Total comparison")}{" "}
-            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400 }}>
-              {tr("과거와 추천안의 상세 수치", "Detailed historical vs recommended figures")}
-            </span>
+        <details className="alloc-total-card alloc-fold">
+          <summary className="alloc-insight-summary alloc-total-summary">
+            <span className="alloc-insight-summary__title">{tr("총 합계 비교", "Total comparison")}</span>
+            <strong>{comparisonHeadline}</strong>
+            <span className="alloc-insight-summary__action">{tr("수치 보기", "View figures")}</span>
           </summary>
-          <div style={{ marginTop: "10px", fontSize: "11px", color: "var(--text-muted)" }}>
+          <div className="alloc-total-meta">
             {tr(
               `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${planBudgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
               `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${planBudgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "12px", alignItems: "center", marginTop: "10px" }}>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" }}>{tr(`과거 기준 (최근 ${summary.recentDays}일 평균 일예산)`, `Historical basis (avg. daily budget, last ${summary.recentDays} days)`)}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("비용 (일평균)", "Cost (daily avg.)")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
-              {summary.prev.installs > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("설치 (예상)", "Installs (projected)")}</span><strong className="tnum">{formatNumberK(summary.prev.installs, 0)}</strong></div>}
-              {summary.prev.actions > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("액션 (예상)", "Actions (projected)")}</span><strong className="tnum">{formatNumberK(summary.prev.actions, 0)}</strong></div>}
-              {summary.prev.revenue > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("매출 (예상)", "Revenue (projected)")}</span><strong className="tnum">{fmtCurrency(summary.prev.revenue, currency)}</strong></div>}
-              <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }}></div>
-              {summary.prev.installs > 0 && summary.prev.cost > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("평균 CPI", "Average CPI")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.installs, currency, { metric: true })}</strong></div>}
-              {summary.prev.actions > 0 && summary.prev.cost > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("평균 CPA", "Average CPA")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.actions, currency, { metric: true })}</strong></div>}
-              {summary.prevROAS != null && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("평균 ROAS", "Average ROAS")}</span><strong className="tnum">{(summary.prevROAS * 100).toFixed(1)}%</strong></div>}
-            </div>
-            <div style={{ fontSize: "20px", color: "var(--text-muted)" }}>→</div>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" }}>{tr("분배 후 예상 (일 단위)", "Projected after allocation (daily)")}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("총 배분 Cost", "Total allocated cost")}</span><strong className="tnum">{fmtCurrency(summary.next.cost, currency)}{allocation.unallocated > 0 && <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> {tr("+미배분", "+unallocated")} {fmtCurrency(allocation.unallocated, currency)}</span>}</strong></div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</span><strong className="tnum">{formatNumberK(summary.next.results, 0)}</strong></div>
-              {summary.nextRevenue > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("예상 매출", "Projected revenue")}</span><strong className="tnum">{fmtCurrency(summary.nextRevenue, currency)}</strong></div>}
-              <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }}></div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)}</span><strong className="tnum">{fmtCostMetric(summary.nextAvgCPR, effectiveMetric, currency)}{(() => {
+          <div className="alloc-total-grid">
+            <section className="alloc-total-block">
+              <div className="alloc-total-block-title">{tr(`현재 기준 · 최근 ${summary.recentDays}일`, `Current baseline · last ${summary.recentDays} days`)}</div>
+              <div className="alloc-total-row highlight"><span>{tr("일평균 비용", "Average daily cost")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
+              {summary.prev.installs > 0 && <div className="alloc-total-row"><span>{tr("설치", "Installs")}</span><strong className="tnum">{formatNumberK(summary.prev.installs, 0)}</strong></div>}
+              {summary.prev.actions > 0 && <div className="alloc-total-row"><span>{tr("액션", "Actions")}</span><strong className="tnum">{formatNumberK(summary.prev.actions, 0)}</strong></div>}
+              {summary.prev.revenue > 0 && <div className="alloc-total-row"><span>{tr("매출", "Revenue")}</span><strong className="tnum">{fmtCurrency(summary.prev.revenue, currency)}</strong></div>}
+              <div className="alloc-total-sep" />
+              {summary.prev.installs > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPI", "Average CPI")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.installs, currency, { metric: true })}</strong></div>}
+              {summary.prev.actions > 0 && summary.prev.cost > 0 && <div className="alloc-total-row"><span>{tr("평균 CPA", "Average CPA")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost / summary.prev.actions, currency, { metric: true })}</strong></div>}
+              {summary.prevROAS != null && <div className="alloc-total-row"><span>{tr("평균 ROAS", "Average ROAS")}</span><strong className="tnum">{(summary.prevROAS * 100).toFixed(1)}%</strong></div>}
+            </section>
+            <div className="alloc-total-arrow" aria-hidden="true">→</div>
+            <section className="alloc-total-block is-recommended">
+              <div className="alloc-total-block-title">{tr("추천안 · 일 단위", "Recommendation · daily")}</div>
+              <div className="alloc-total-row highlight"><span>{tr("총 배분 비용", "Total allocated cost")}</span><strong className="tnum">{fmtCurrency(summary.next.cost, currency)}{allocation.unallocated > 0 && <small> {tr("미배분", "unallocated")} {fmtCurrency(allocation.unallocated, currency)}</small>}</strong></div>
+              <div className="alloc-total-row"><span>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)}</span><strong className="tnum">{formatNumberK(summary.next.results, 0)}</strong></div>
+              {summary.nextRevenue > 0 && <div className="alloc-total-row"><span>{tr("예상 매출", "Projected revenue")}</span><strong className="tnum">{fmtCurrency(summary.nextRevenue, currency)}</strong></div>}
+              <div className="alloc-total-sep" />
+              <div className="alloc-total-row"><span>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)}</span><strong className="tnum">{fmtCostMetric(summary.nextAvgCPR, effectiveMetric, currency)}{(() => {
                 const dPrev = displayMetricValue(summary.prevAvgCPR, effectiveMetric);
                 const dNext = displayMetricValue(summary.nextAvgCPR, effectiveMetric);
                 if (dPrev == null || dNext == null || dPrev === 0) return null;
@@ -2804,35 +2841,25 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 const good = roas ? d > 0 : d < 0;
                 const ar = d > 0 ? "▲" : d < 0 ? "▼" : "—";
                 const pct = Math.abs(d / dPrev) * 100;
-                return <span style={{ fontSize: "11px", marginLeft: "4px", color: good ? "#5ad19a" : "#f0917e" }}>{ar} {pct.toFixed(1)}%</span>;
+                return <span className={`alloc-total-delta ${good ? "is-good" : "is-bad"}`}>{ar} {pct.toFixed(1)}%</span>;
               })()}</strong></div>
-              {summary.nextROAS != null && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
-            </div>
+              {summary.nextROAS != null && <div className="alloc-total-row"><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
+            </section>
           </div>
         </details>
       )}
 
       {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
       {verify && plannedDailyBudget > 0 && items.length >= 2 && (
-        <details
-          className="alloc-fold"
-          style={{
-            background: "var(--bg-1)",
-            border: "1px solid var(--border)",
-            borderLeft: `3px solid ${verify.tone === "good" ? "#5ad19a" : verify.tone === "bad" ? "#f0917e" : "var(--primary, #adc6ff)"}`,
-            borderRadius: "var(--radius)",
-            padding: "10px 14px",
-            marginBottom: "1rem",
-            fontSize: "13px",
-            lineHeight: 1.55,
-          }}
-        >
-          <summary style={{ cursor: "pointer" }}>
-            <strong>{verify.head}</strong> <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>{tr("배분 점검 — 펼쳐서 근거 보기", "Allocation check — expand for details")}</span>
+        <details className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
+          <summary className="alloc-insight-summary">
+            <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
+            <strong>{verify.head}</strong>
+            <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
           </summary>
-          <div style={{ marginTop: "6px" }}>
-            <span style={{ color: "var(--text-secondary)" }}>{verify.body}</span>
-            {verify.note && <div style={{ marginTop: "4px", color: "var(--text-muted)", fontSize: "12px" }}>{verify.note}</div>}
+          <div className="alloc-verify-detail">
+            <span>{verify.body}</span>
+            {verify.note && <small>{verify.note}</small>}
           </div>
         </details>
       )}
