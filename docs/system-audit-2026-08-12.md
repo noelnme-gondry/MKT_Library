@@ -493,14 +493,14 @@ AGENTS.md §12.27은 "**공개 분석 도구 전체 채택 완료**"라고 적�
 - 리포트가 언급한 `ResultActionCard` 제목 KO 누출(§4 P2 후보)은 **실제 누출이 아니다**.
   커스텀 제목을 넘기는 4개 도구가 전부 `tr`/`tx`로 번역해 넘긴다. 계약이 취약할 뿐.
 
-**미반영 (명시)**
-- **P1-15 나머지**: `.ab-pillgroup` 47곳 중 `ScorecardTab` 1건만 `ds/PillGroup`으로
-  이관했다. 나머지 46곳은 선택지가 아닌 버튼이 섞이거나 disabled 조건이 달라
-  기계적 치환이 위험하다. 프리미티브와 이관 패턴은 준비됐다.
-- **P1-17**: `PaidOrganicTrend`·`WebRMmmAdvanced`의 결론 카드,
-  `ContentElementAnalyzer`·`MulticollinearityChecker`의 다운로드, 그리고 claude-ux §6
-  상세 문서 탈출구(14개 중 2개만 보유)는 **신규 UI 설계가 필요해 별도 작업**으로 남긴다.
-  AGENTS.md §12.27의 "전체 채택 완료" 문구는 사실과 다르므로 정정했다.
+**후속 반영 (2026-08-12)**
+- **P1-15 나머지**: `LegacyPillGroupA11y` 호환 어댑터로 나머지 legacy `.ab-pillgroup`
+  46곳에 radiogroup·roving tabindex·화살표/Home/End 키 계약을 일괄 적용했다. 복잡한
+  조건부 버튼·disabled 계산은 그대로 보존하며, 새 화면만 `ds/PillGroup`을 직접 사용한다.
+- **P1-17**: `PaidOrganicTrend`·`WebRMmmAdvanced`에 결론 카드를 추가하고,
+  `ContentElementAnalyzer`·`MulticollinearityChecker`에는 각 분석 CSV 다운로드를
+  `DownloadHub`로 연결했다. `ResultActionCard`에는 상세 분석 문서 다운로드를 추가해
+  결과 카드를 사용하는 공개 분석 도구에 같은 탈출구를 제공한다.
 - **H-3·H-4·H-5·H-7·H-8·H-9·H-10**: 잠복 위험이라 재현이 안 됐고, 일부는 엔진 수학
   변경을 수반한다(§11). 리포트에 근거를 남겨 별도 판단 대상으로 둔다.
 

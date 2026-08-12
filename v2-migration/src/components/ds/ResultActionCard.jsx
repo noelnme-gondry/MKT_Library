@@ -9,6 +9,7 @@ import { findingFromResultCard } from "@/lib/assist/findingProducers";
 import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
 import { encodeSharePayload, shareUrlFromPayload } from "@/lib/decisionShare";
 import { localizedTool } from "@/lib/toolConnections";
+import { downloadText } from "@/utils/download";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -46,6 +47,17 @@ function decisionPrefillKey(prefill) {
   }));
 }
 
+function detailedDocument({ title, headline, stats, points, locale }) {
+  const heading = locale === "en" ? "Analysis details" : "분석 상세 문서";
+  const keyFigures = stats.length
+    ? `\n## ${locale === "en" ? "Key figures" : "핵심 수치"}\n${stats.map((stat) => `- ${stat.label}: ${stat.value}${stat.detail ? ` (${stat.detail})` : ""}`).join("\n")}`
+    : "";
+  const evidence = points.length
+    ? `\n## ${locale === "en" ? "Interpretation and next checks" : "해석과 다음 확인"}\n${points.map((point) => `- ${typeof point.text === "string" ? point.text : "—"}`).join("\n")}`
+    : "";
+  return `# ${title}\n\n## ${heading}\n${typeof headline === "string" ? headline : "—"}${keyFigures}${evidence}\n\n${locale === "en" ? "This document summarizes the displayed result. It does not replace causal validation or an experiment." : "이 문서는 화면에 표시된 결과를 요약합니다. 인과 검증이나 실험을 대체하지 않습니다."}\n`;
+}
+
 export default function ResultActionCard({
   tone = "neutral",
   title = "결론",
@@ -61,6 +73,7 @@ export default function ResultActionCard({
   collapsePointsAfter = null,
   locale = "ko",
   toolId = null,
+  shareTitle = null,
   analysisKey = null,
   analysisType = null,
   resultState = "ready",
@@ -93,16 +106,19 @@ export default function ResultActionCard({
     channels: [...(dashboardFilter?.channels || [])].map(String).sort(),
     countries: [...(dashboardFilter?.countries || [])].map(String).sort(),
   }), [dashboardFilter]);
+  const shareToolTitle = locale === "en"
+    ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || shareTitle || toolId)
+    : (findMeta(toolId)?.title || shareTitle || toolId);
   const generatedReportBlock = useMemo(() => reportBlock || reportBlockFromResultCard({
     toolId,
-    toolTitle: locale === "en" ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || toolId) : (findMeta(toolId)?.title || toolId),
+    toolTitle: shareToolTitle,
     headline,
     points,
     stats,
     inputSignature,
     locale,
     scope: resultScope,
-  }), [reportBlock, toolId, headline, points, stats, inputSignature, locale, resultScope]);
+  }), [reportBlock, toolId, shareToolTitle, headline, points, stats, inputSignature, locale, resultScope]);
   const generatedFinding = useMemo(() => findingFromResultCard({
     toolId,
     tone,
@@ -170,10 +186,8 @@ export default function ResultActionCard({
   useEffect(() => {
     if (generatedFinding) publishFinding(generatedFinding);
   }, [generatedFinding, publishFinding]);
-  const shareToolTitle = locale === "en"
-    ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || toolId)
-    : (findMeta(toolId)?.title || toolId);
   const canShareDecision = Boolean(toolId && typeof headline === "string" && headline.trim());
+  const canDownloadDetails = Boolean(toolId && typeof headline === "string" && headline.trim());
   const copyShareLink = async () => {
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
     const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
@@ -207,7 +221,7 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || generatedReportBlock || canShareDecision) && (
+        {(controls || download || generatedReportBlock || canShareDecision || canDownloadDetails) && (
           <div className="result-action-card__controls">
             {controls}
             {canShareDecision && (
@@ -215,6 +229,20 @@ export default function ResultActionCard({
                 {shareCopied
                   ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
                   : (locale === "en" ? "Share conclusion" : "결론 공유")}
+              </button>
+            )}
+            {canDownloadDetails && (
+              <button
+                className="btn ghost"
+                type="button"
+                onClick={() => downloadText(
+                  detailedDocument({ title: shareToolTitle, headline, stats, points, locale }),
+                  `${toolId}-analysis-details`,
+                  "md",
+                  locale,
+                )}
+              >
+                {locale === "en" ? "Download details" : "상세 문서 받기"}
               </button>
             )}
             {generatedReportBlock && (

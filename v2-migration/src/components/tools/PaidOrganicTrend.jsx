@@ -6,6 +6,7 @@ import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { getCssVar } from "@/utils/chartUtils";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import {
   buildPaidOrganicTrend,
   buildPaidOrganicTrendDemo,
@@ -322,6 +323,23 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                   <small>{C.ctaHint}</small>
                 </div>
               </section>
+              <ResultActionCard
+                tone={verdictCopy[2] === "bad" ? "bad" : verdictCopy[2] === "good" ? "good" : "neutral"}
+                title={locale === "en" ? "Conclusion" : "결론"}
+                headline={verdictCopy[0]}
+                points={[{ text: verdictCopy[1] }, { text: C.ctaHint, cls: "muted" }]}
+                stats={[
+                  { label: C.recentOrganic, value: fmtPct(result.recentOrganicChange) },
+                  { label: C.recentPaid, value: fmtPct(result.recentPaidChange) },
+                  { label: C.opposite, value: `${result.oppositeCount}/${result.meaningfulCount || 0}` },
+                ]}
+                toolId="5-18-paid-organic"
+                shareTitle={locale === "en" ? "Paid · Organic Movement Map" : "Paid·Organic 변화맵"}
+                analysisKey={`${result.recentOrganicChange}:${result.recentPaidChange}:${result.oppositeCount}`}
+                locale={locale}
+                analysisBasis={false}
+                decisionReview={false}
+              />
             </>
           ) : (
             <div className="callout warn paid-organic-insufficient" role="status"><div className="ico">!</div><div className="body">{C.insufficient}</div></div>
