@@ -19,6 +19,10 @@ let decisionFallbackSequence = 0;
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
   dateEnd: null,
+  compareEnabled: false,
+  comparisonStart: null,
+  comparisonEnd: null,
+  comparisonPreset: "previous",
   platforms: new Set(),
   countries: new Set(),
   channels: new Set(),
@@ -610,6 +614,10 @@ export const useAppStore = create(persist((set, get) => ({
       dashboardFilterGroups[group] = {
         dateStart: filters.dateStart || null,
         dateEnd: filters.dateEnd || null,
+        compareEnabled: Boolean(filters.compareEnabled),
+        comparisonStart: filters.comparisonStart || null,
+        comparisonEnd: filters.comparisonEnd || null,
+        comparisonPreset: filters.comparisonPreset === "previousYear" || filters.comparisonPreset === "custom" ? filters.comparisonPreset : "previous",
         platforms: new Set(filters.platforms || []),
         countries: new Set(filters.countries || []),
         channels: new Set(filters.channels || []),

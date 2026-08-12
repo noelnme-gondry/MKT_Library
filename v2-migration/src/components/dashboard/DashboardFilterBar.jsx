@@ -1,6 +1,8 @@
 "use client";
 import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
+import { getMappedRows } from "@/utils/dashboardAggregator";
+import DateRangePicker from "@/components/ds/DateRangePicker";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 import AnalysisControlBar from "./AnalysisControlBar";
 
@@ -104,6 +106,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
       return { dates: [], platforms: [], countries: [], channels: [], sources: [], hasInstalls: false, hasActions: false };
 
     const rows = csvData.raw;
+    const mappedRows = getMappedRows(csvData);
     const mapping = csvData.mapping || {};
     const mapped = new Set(Object.values(mapping));
 
@@ -120,7 +123,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     const uniq = (arr) => [...new Set(arr.map((v) => String(v ?? "").trim()).filter(Boolean))].sort();
 
     return {
-      dates: hasDate ? [...new Set(rows.map((r) => r[orig("date")]).filter(Boolean))].sort() : [],
+      dates: hasDate ? [...new Set(mappedRows.map((row) => row.date).filter(Boolean))].sort() : [],
       platforms: hasPlatform ? uniq(rows.map((r) => r[orig("platform")])) : [],
       countries: hasCountry ? uniq(rows.map((r) => r[orig("country")])) : [],
       channels: hasChannel ? uniq(rows.map((r) => r[orig("channel")])) : [],
@@ -146,6 +149,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   let activeCount = 0;
   if (dashboardFilter.dateStart) activeCount++;
   if (dashboardFilter.dateEnd) activeCount++;
+  if (dashboardFilter.compareEnabled) activeCount++;
   if (dashboardFilter.platforms && dashboardFilter.platforms.size > 0) activeCount++;
   if (dashboardFilter.countries && dashboardFilter.countries.size > 0) activeCount++;
   if (dashboardFilter.channels && dashboardFilter.channels.size > 0) activeCount++;
@@ -156,6 +160,10 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     setDashboardFilter({
       dateStart: null,
       dateEnd: null,
+      compareEnabled: false,
+      comparisonStart: null,
+      comparisonEnd: null,
+      comparisonPreset: "previous",
       platforms: new Set(),
       countries: new Set(),
       channels: new Set(),
@@ -173,32 +181,18 @@ export default function DashboardFilterBar({ locale = "ko" }) {
         <div className="dashboard-filter-bar__scope" role="group" aria-label={locale === "en" ? "Date and segment filters" : "날짜와 세그먼트 필터"}>
           {dates.length > 0 && (
             <div className="dashboard-filter-bar__date-range">
-              <label className="mon-filter-item">
-                <span className="mon-filter-label">{T.start}</span>
-                <input
-                  type="date"
-                  className="mon-filter-input"
-                  lang={locale === "en" ? "en-US" : "ko-KR"}
-                  aria-label={T.start}
-                  value={dashboardFilter.dateStart || ""}
-                  min={minDate}
-                  max={maxDate}
-                  onChange={(e) => setDashboardFilter({ dateStart: e.target.value || null })}
-                />
-              </label>
-              <label className="mon-filter-item">
-                <span className="mon-filter-label">{T.end}</span>
-                <input
-                  type="date"
-                  className="mon-filter-input"
-                  lang={locale === "en" ? "en-US" : "ko-KR"}
-                  aria-label={T.end}
-                  value={dashboardFilter.dateEnd || ""}
-                  min={minDate}
-                  max={maxDate}
-                  onChange={(e) => setDashboardFilter({ dateEnd: e.target.value || null })}
-                />
-              </label>
+              <DateRangePicker
+                locale={locale}
+                minDate={minDate}
+                maxDate={maxDate}
+                dateStart={dashboardFilter.dateStart}
+                dateEnd={dashboardFilter.dateEnd}
+                compareEnabled={dashboardFilter.compareEnabled}
+                comparisonStart={dashboardFilter.comparisonStart}
+                comparisonEnd={dashboardFilter.comparisonEnd}
+                comparisonPreset={dashboardFilter.comparisonPreset}
+                onApply={setDashboardFilter}
+              />
             </div>
           )}
 
