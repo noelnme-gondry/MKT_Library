@@ -40,6 +40,8 @@ tools:
 
 **신규 도구는 디자인시스템 공용규약 필수**(§12.21: `format.js`·전역 통화·`ds/DataTable`·`ds/CsvGuide`·`ds/ResultActionCard`·`ds/PillGroup`).
 
+**하단 마감은 `ToolPageOutro` 하나**(§12.30): 분석 아래 붙는 것(다음 단계·참고 자료·관련 글)은 전부 그 박스 안. 경계선("분석 결과는 여기까지")은 outro만 소유하고 자식은 자기 테두리를 벗는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 globals.css 전체로 강제.
+
 # 토큰 효율 (AGENTS.md §17)
 
 - 파일은 **함수/섹션 단위로만**(`wc -l`→offset/limit), 같은 파일 반복 재읽기 금지. ToC(`ARCHITECTURE.md`)로 위치 먼저.

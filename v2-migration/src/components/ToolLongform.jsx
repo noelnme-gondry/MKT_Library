@@ -1,5 +1,7 @@
 import { getToolSearchContent } from "@/lib/toolSearchContent";
 
+// 분석 종료 경계선은 `ToolPageOutro`가 소유한다. 여기서는 참고 자료 한 덩어리만
+// 담당하고, 바깥 묶음 박스 안에서는 자기 테두리를 그리지 않는다(박스 중첩 방지).
 export default function ToolLongform({ toolId, locale = "ko" }) {
   const localeKey = locale === "en" ? "en" : "ko";
   const sectionTitle = localeKey === "en" ? "Method and FAQ" : "판단 기준과 FAQ";
@@ -7,12 +9,8 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
   if (!content) return null;
 
   return <section className="tool-longform" aria-labelledby={`tool-longform-${toolId}`}>
-    <div className="tool-longform__boundary">
-      <span>{localeKey === "en" ? "End of analysis" : "분석 결과는 여기까지"}</span>
-    </div>
     <details className="tool-longform__disclosure">
       <summary className="tool-longform__summary">
-        <span className="tool-longform__eyebrow">{localeKey === "en" ? "Reference" : "참고 자료"}</span>
         <span id={`tool-longform-${toolId}`} className="tool-longform__title" role="heading" aria-level="2">{sectionTitle}</span>
         <span className="tool-longform__hint">{localeKey === "en" ? "Open only when you need the methodology" : "필요할 때만 펼쳐보세요"}</span>
       </summary>

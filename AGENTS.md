@@ -377,6 +377,13 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **리다이렉트·앵커 텍스트**: `redirects.test.js`가 301 목적지 실재·sitemap 잔존·체인·permanent를 검증. 관련 글/용어 링크의 앵커는 slug 원문이 아니라 **표시명**을 쓴다.
 - **검토 메타(reviewer/reviewedAt)는 에이전트가 채우지 않는다** — 실제 검토가 있어야 하는 편집 정보다(§8). 인프라만 유지하고 값은 비워 둔다.
 
+### 12.30 하단 마감 영역 = `ToolPageOutro` 한 박스 (2026-08)
+분석 결과 아래 붙는 것(다음 단계·참고 자료·관련 글)은 **전부 `components/ToolPageOutro.jsx` 안**에 있다. KO/EN `PageClient`는 이 하나만 렌더한다.
+- **경계선 소유자는 하나**: "분석 결과는 여기까지"는 outro가 소유하고 자식은 그리지 않는다. 경계가 자식에 있으면 그 위 형제(다음 단계 레일)가 분석 안쪽으로 읽힌다 — 실제로 그랬다.
+- **박스는 한 겹**: 앱 본문은 open-ledger(테두리 없는 구획), 마감 영역만 닫힌 박스. 안쪽은 `.tool-outro__section` 얇은 선으로만 나누고 자식은 자기 테두리·바탕을 벗는다. 인접한 보조 박스(`.dashboard-support-tools`)도 같은 재질(`--operator-line`/`--work-surface`)을 쓴다.
+- **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
+- **타이포 하한 9.5px**(`app/typographyFloor.test.js`가 globals.css 전체를 훑어 강제). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다.
+
 ---
 
 ## 13. 참고 파일
@@ -428,8 +435,8 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **230파일·1724 통과**(golden 150 + jsdom smoke 80) · eslint 0 · `next build` ✓. **수치를 적을 땐 실제로 돌려서 적을 것**(구 기재는 46파일·467건 어긋나 있었다).
-- ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 전 도구 채택 완료.
+- ✅ 검증 하네스: `npm run test:all` **235파일·1744 통과**(1 skipped) · eslint 0 · `next build` ✓. **수치를 적을 땐 실제로 돌려서 적을 것**(구 기재는 46파일·467건 어긋나 있었다).
+- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — **"전 도구 완료" 아님**(§12.27의 미채택 목록이 현행). 완료 선언 전 grep.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천), 브랜드 증분(5-24 ITS).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 
