@@ -24,7 +24,7 @@ const fmtPct = (v) => (v == null ? "—" : (v * 100).toFixed(2) + "%");
 const fmtDelta = (d) => {
   if (d == null) return <span style={{ color: "var(--text-muted)" }}>—</span>;
   return (
-    <span style={{ color: d >= 0 ? "#34d399" : "#f87171" }}>
+    <span style={{ color: d >= 0 ? "var(--success)" : "var(--danger)" }}>
       {d >= 0 ? "▲ +" : "▼ "}{(d * 100).toFixed(1)}%
     </span>
   );
@@ -347,26 +347,26 @@ export default function FunnelTab({ locale = "ko" } = {}) {
             <table className="data" style={{ fontSize: "11.5px" }}>
               <thead><tr><th>{fieldLabel(c.segRank.field) || c.segRank.field}</th><th>{selLbl} CVR</th><th>{tr("평균 대비", "vs average")}</th><th>{tr("분모 볼륨", "Denom. volume")}</th></tr></thead>
               <tbody>
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#34d399", fontSize: "11px", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--success)", fontSize: "11px", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.best.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
                     <tr key={"b-" + x.seg}>
                       <td><strong>{String(x.seg).slice(0, 24)}</strong></td>
                       <td className="tnum pos">{fmtPct(x.cvr)}</td>
-                      <td className="tnum" style={{ color: dev >= 0 ? "#34d399" : "#f87171" }}>{dev >= 0 ? "+" : ""}{(dev * 100).toFixed(0)}%</td>
+                      <td className="tnum" style={{ color: dev >= 0 ? "var(--success)" : "var(--danger)" }}>{dev >= 0 ? "+" : ""}{(dev * 100).toFixed(0)}%</td>
                       <td className="tnum" style={{ color: "var(--text-muted)" }}>{(x.vol || 0).toLocaleString()}</td>
                     </tr>
                   );
                 })}
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#f87171", fontSize: "11px", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--danger)", fontSize: "11px", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.worst.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
                     <tr key={"w-" + x.seg}>
                       <td><strong>{String(x.seg).slice(0, 24)}</strong></td>
                       <td className="tnum neg">{fmtPct(x.cvr)}</td>
-                      <td className="tnum" style={{ color: dev >= 0 ? "#34d399" : "#f87171" }}>{dev >= 0 ? "+" : ""}{(dev * 100).toFixed(0)}%</td>
+                      <td className="tnum" style={{ color: dev >= 0 ? "var(--success)" : "var(--danger)" }}>{dev >= 0 ? "+" : ""}{(dev * 100).toFixed(0)}%</td>
                       <td className="tnum" style={{ color: "var(--text-muted)" }}>{(x.vol || 0).toLocaleString()}</td>
                     </tr>
                   );

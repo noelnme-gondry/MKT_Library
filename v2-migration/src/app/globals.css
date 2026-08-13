@@ -1,3 +1,20 @@
+/* ========== Cascade Layers ==========
+   레이어 순서 = 우선순위 순서(뒤가 이긴다). 레이어 밖 규칙은 모든 레이어를 이기므로
+   이 파일의 내용은 전부 레이어 안에 있어야 한다.
+
+   - reset  : 지금은 비어 있다. 외부 리셋(Tailwind preflight 등)을 나중에 도입하면
+              `@import "tailwindcss/preflight" layer(reset);` 처럼 **이 레이어로** 넣는다.
+              그러면 아래 tokens·app이 항상 이겨서 9천 줄이 리셋에 밀리는 사고가 없다.
+   - tokens : 디자인 토큰(:root·body.light-mode) + 요소 기본값.
+   - app    : 앱 전체 스타일.
+
+   주의: `!important`는 레이어 순서를 **뒤집는다**(앞 레이어가 이긴다). tokens에는
+   `!important`가 0개라 현재 동작은 레이어 도입 전과 동일하다 — tokens에 !important를
+   새로 넣지 말 것.
+   ===================================== */
+@layer reset, tokens, app;
+
+@layer tokens {
 /* ========== Design Tokens (Obsidian Flux) ========== */
       :root {
         /* --- Dark Mode (Default) - Saturation-less Dark Gray --- */
@@ -166,6 +183,9 @@
         font-variant-numeric: tabular-nums;
       }
 
+} /* @layer tokens 끝 */
+
+@layer app {
       /* ========== Layout ========== */
       .app {
         display: grid;
@@ -620,7 +640,7 @@
       .alloc-outlier-alert-banner {
         background: rgba(122, 162, 247, 0.08);
         border: 1px solid var(--accent);
-        color: #adc6ff;
+        color: var(--primary);
         padding: 8px 12px;
         border-radius: 6px;
         font-size: 12px;
@@ -1010,7 +1030,7 @@
         background: var(--success);
       }
       .code-lang.http .lang-dot {
-        background: #adc6ff;
+        background: var(--primary);
       }
       .copy-btn {
         background: transparent;
@@ -9151,3 +9171,4 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .consent-banner__text a { color: var(--primary); }
 .consent-banner__actions { display: flex; gap: 8px; }
 @media (max-width: 640px) { .consent-banner { justify-content: flex-start; } }
+} /* @layer app 끝 */

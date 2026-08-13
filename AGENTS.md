@@ -183,6 +183,8 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 **렌더·UI**
 - **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`.
   - 토큰화하면 `` `${color}55` `` 같은 **hex 알파 접합이 깨진다**(`var(--danger)55`는 무효 CSS) → `color-mix(in srgb, … 33%, transparent)`.
+  - **역으로, 토큰화하면 안 되는 리터럴이 더 많다**(2026-08 실측: `globals.css` raw hex 285 · 인라인 `color` 50 중 안전 치환은 19곳뿐). 금지 4종: ① 브랜드색(YouTube·Naver…) ② **영구 다크 표면 위 텍스트** — `.sidebar{background:#10131a}`엔 `body.light-mode` 재정의가 **일부러 없다**. 여기 hex를 토큰으로 바꾸면 다크 사이드바에 다크 텍스트가 된다(AA 개선이 아니라 파괴) ③ Chart.js 데이터셋에 들어가는 값(canvas는 `var()` 못 읽음 → `CHART_THEME`) ④ 토큰이 없는 색과 짝지은 값(범례↔셀, chip↔dot). **정확히 같은 값의 토큰이 있는 순수 텍스트 색만** 치환할 것 — 다크 렌더가 byte-identical이라 안전이 증명된다.
+- **`globals.css`는 캐스케이드 레이어 3단**(`@layer reset, tokens, app;` — 파일 상단 주석 참조): 외부 리셋(Tailwind preflight 등)을 도입하면 `layer(reset)`으로 넣어야 9천 줄이 리셋에 밀리지 않는다. 레이어 **밖** 규칙은 모든 레이어를 이기므로 이 파일 내용은 전부 레이어 안에 있어야 하고, `!important`는 레이어 순서를 뒤집으므로 `tokens`엔 넣지 말 것(현재 0개).
 - **`role="tablist"`가 `role="group"`을 거쳐 `tab`을 소유하면 계약이 끊긴다**(같은 감사): 로빙 tabindex·화살표 키가 멀쩡해도 보조기술이 탭을 탭으로 인식하지 못한다. 그룹이 필요하면 **그룹마다 tablist**를 두고 바깥은 일반 컨테이너로. `role="radio"`도 `radiogroup` 부모가 없으면 같은 문제 + 전 옵션이 탭 순서에 들어간다.
 - **`title` 단독은 어포던스가 아니다 — CSS로 강제할 것**: claude-ux §0이 이름을 지목해 금지했는데도 12곳 이상 살아 있었다. 개별 수정 대신 `[title]` 셀렉터에 점선 밑줄+`cursor:help`를 거는 전역 규칙 1개가 전부를 덮는다.
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**: canvas는 `var()`를 못 읽어 불투명 검정 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(`chartUtils.js`)로 렌더타임 해석.
@@ -361,7 +363,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
 `LandingPage` = ① **1단 중앙 히어로**(eyebrow+헤드라인+한 줄 데크+목적 CTA 3열 균등+통합 신뢰 1줄) ② 질문형 도구 카드 ③ 주간 결정 루프 3단계 ④ `ConnectedToolJourney` ⑤ 블로그 | SOP 허브. **목적 선택(②)이 개념 설명(③)보다 앞**(첫 화면에서 바로 도구를 찾게, 스모크가 순서 강제).
-- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 구 `.dc-instrument`(가짜 수치 + `.dc-mini-chart` SVG)는 "쓸모없다"는 실제 피드백으로 제거됨. 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`도 삭제됨.
+- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 구 `.dc-instrument`(가짜 수치 + `.dc-mini-chart` SVG)는 PR #644에서 히어로를 1단으로 재구성하며 제거됐다(CSS 20줄·COPY 10키 동반 삭제, 순변화 −118줄). 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`도 삭제됨.
 - **첫 화면 카피는 중복부터 센다**: 신뢰 배지와 프라이버시 줄이 같은 말을 두 번 하고, 데크가 CTA 힌트를 반복하고 있었다("글이 많다"의 정체). 동급 항목은 나열 대신 **박스로 묶어 균등 grid**(claude-ux §5) — 도구·목적 이름을 줄바꿈으로 줄줄 세우지 말 것.
 - **진입 모션**: `utils/landingMotion.js`(anime.js v4, 히어로 타임라인·미니차트 SVG line-draw·스크롤 리빌). 셀렉터가 마크업과 1:1이라 클래스명을 바꾸면 모션 대상도 같이 고칠 것. 안전장치는 §7.
 - **전 페이지 헤더/셸 완전 통일**: 도구·SOP·홈·블로그·가이드 전부 `Sidebar`+공용 `Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 블로그는 routeMap 밖이라 `Header`가 `pathname`으로 직접 감지.
@@ -382,7 +384,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **경계선 소유자는 하나**: "분석 결과는 여기까지"는 outro가 소유하고 자식은 그리지 않는다. 경계가 자식에 있으면 그 위 형제(다음 단계 레일)가 분석 안쪽으로 읽힌다 — 실제로 그랬다.
 - **박스는 한 겹**: 앱 본문은 open-ledger(테두리 없는 구획), 마감 영역만 닫힌 박스. 안쪽은 `.tool-outro__section` 얇은 선으로만 나누고 자식은 자기 테두리·바탕을 벗는다. 인접한 보조 박스(`.dashboard-support-tools`)도 같은 재질(`--operator-line`/`--work-surface`)을 쓴다.
 - **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
-- **타이포 하한 9.5px**(`app/typographyFloor.test.js`가 globals.css 전체를 훑어 강제). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다.
+- **타이포 하한 9.5px**(`app/typographyFloor.test.js`). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다. 이 가드는 오래 `globals.css` **한 파일만** 훑었는데 인라인 `style={{fontSize}}`이 581곳이라 우회로가 통째로 열려 있었다 → 지금은 `src/**/*.jsx` 리터럴도 같은 하한으로 훑는다(계산식은 정적으로 못 읽으므로 대상 밖).
 
 ---
 

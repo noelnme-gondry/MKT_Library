@@ -307,7 +307,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
   const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(0) + "%";
   const fmtX = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(2) + "×";
   const fmtCur = (v) => fmtCurrencyPrecise(v, displayCurrency);
-  const fmtPb = (v) => v == null ? <span style={{ color: "#f87171" }}>{T.paybackUnrecovered}</span> : T.paybackDays(v);
+  const fmtPb = (v) => v == null ? <span style={{ color: "var(--danger)" }}>{T.paybackUnrecovered}</span> : T.paybackDays(v);
 
   const HEALTHY_RATIO = 3;
   const WARN_RATIO = 1;
@@ -340,7 +340,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     { k: "ltv", label: T.colLtv(ltvHorizon), render: (r) => (r.ltvAtHorizon != null ? (
       <>
         {fmtCur(r.ltvAtHorizon)}
-        {r.ltvPredicted && <span style={{ fontSize: "11px", color: "#adc6ff", cursor: "help", marginLeft: "4px" }} title={T.colLtvTooltip(r.maxObsDn, ltvHorizon)}>ⓘ</span>}
+        {r.ltvPredicted && <span style={{ fontSize: "11px", color: "var(--primary)", cursor: "help", marginLeft: "4px" }} title={T.colLtvTooltip(r.maxObsDn, ltvHorizon)}>ⓘ</span>}
       </>
     ) : "—") },
     { k: "ratio", label: T.colRatio, cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },

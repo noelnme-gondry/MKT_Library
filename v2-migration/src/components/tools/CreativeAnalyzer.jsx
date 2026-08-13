@@ -1377,12 +1377,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               {fatiguedRows.length ? (
                 fatiguedRows.map((f, i) => (
                   <tr key={i}>
-                    <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{C.fatiguedBadge}</span></td>
+                    <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{C.fatiguedBadge}</span></td>
                     <td><code className="inline" style={{ fontSize: "11px" }}>{String(f.creative_id).slice(0, 24)}</code></td>
                     <td className="tnum" style={{ fontSize: "11px" }}>{f.peakDate || ""}</td>
                     <td className="tnum">{fmtPct(f.peakValue)}</td>
                     <td className="tnum">{fmtPct(f.currentValue)}</td>
-                    <td className="tnum"><strong style={{ color: "#f87171" }}>−{(f.dropPct * 100).toFixed(1)}%</strong></td>
+                    <td className="tnum"><strong style={{ color: "var(--danger)" }}>−{(f.dropPct * 100).toFixed(1)}%</strong></td>
                     <td className="tnum">{f.lifespanDays}{tr("일", "d")}</td>
                   </tr>
                 ))
@@ -1426,18 +1426,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                           : "#22c55e";
                   return (
                     <tr key={i}>
-                      <td>{a.alert ? <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>—</span>}</td>
+                      <td>{a.alert ? <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>—</span>}</td>
                       <td><code className="inline" style={{ fontSize: "11px" }}>{String(a.creative_id).slice(0, 24)}</code></td>
                       <td className="tnum">{a.days}{tr("일", "d")}</td>
                       <td className="tnum"><strong style={{ color: scoreColor }}>{a.score == null ? "—" : (a.score * 100).toFixed(0) + "%"}</strong></td>
-                      <td className="tnum" style={{ color: (a.ctrTrendPctPerDay || 0) < 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.ctrTrendPctPerDay, locale)}</td>
-                      <td className="tnum" style={{ color: (a.impressionTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.impressionTrendPctPerDay, locale)}</td>
-                      <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
+                      <td className="tnum" style={{ color: (a.ctrTrendPctPerDay || 0) < 0 ? "var(--danger)" : "var(--text-muted)" }}>{fmtPctDay(a.ctrTrendPctPerDay, locale)}</td>
+                      <td className="tnum" style={{ color: (a.impressionTrendPctPerDay || 0) > 0 ? "var(--danger)" : "var(--text-muted)" }}>{fmtPctDay(a.impressionTrendPctPerDay, locale)}</td>
+                      <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "var(--danger)" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
                       <td className="tnum">
                         {a.etaDays == null ? (
                           <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
                         ) : a.etaDays === 0 ? (
-                          <strong style={{ color: "#f87171" }}>{tr("즉시", "Immediate")}</strong>
+                          <strong style={{ color: "var(--danger)" }}>{tr("즉시", "Immediate")}</strong>
                         ) : (
                           <strong>{tr(`${a.etaDays}일 후`, `in ${a.etaDays}d`)}</strong>
                         )}
@@ -1533,8 +1533,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     riskZoneRows.slice(0, 30).map((item) => (
                       <tr key={item.seriesKey}>
                         <td>
-                          <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: item.signalDate ? "#f87171" : "#fbbf24" }}>
-                            <span className="dot" style={{ background: item.signalDate ? "#f87171" : "#fbbf24" }}></span>
+                          <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: item.signalDate ? "var(--danger)" : "var(--warning)" }}>
+                            <span className="dot" style={{ background: item.signalDate ? "var(--danger)" : "var(--warning)" }}></span>
                             {item.signalDate ? tr("하락 신호 발생", "Decline signaled") : tr("위험 구간 진입", "Entered risk zone")}
                           </span>
                         </td>
