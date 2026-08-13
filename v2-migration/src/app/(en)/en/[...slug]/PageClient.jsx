@@ -12,9 +12,7 @@ import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
-import ToolLongform from "@/components/ToolLongform";
-import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
-import ToolConnections from "@/components/ToolConnections";
+import ToolPageOutro from "@/components/ToolPageOutro";
 import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
@@ -94,9 +92,13 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "5-26" && <AsaKeywordFinder locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} locale="en" />}
-            <ToolLongform toolId={routeId} locale="en" />
-            <ToolEvidenceLinks items={evidenceLinks} locale="en" />
+            {/* KR과 동일한 하단 마감 계층(§12.30) */}
+            <ToolPageOutro
+              toolId={routeId}
+              locale="en"
+              evidenceLinks={evidenceLinks}
+              withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
+            />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} locale="en" />}
             </article>
           </main>

@@ -20,6 +20,7 @@ const COPY = {
     mapDeck: "전체 분석 여정",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
     expand: "전체 여정",
+    heading: "다음 단계",
   },
   en: {
     recommended: "Common next step",
@@ -34,6 +35,7 @@ const COPY = {
     mapDeck: "Full analysis journey",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
     expand: "Full journey",
+    heading: "Next step",
   },
 };
 
@@ -52,8 +54,13 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
 
   return (
     <section className="tool-connections tool-connections--rail" aria-labelledby={`tool-connections-${toolId}`}>
+      {/* 머리글은 "이 묶음이 무엇인지"만 말한다. 현재 단계 이름은 위치 안내라
+          제목 자리를 차지하지 않고 흐린 보조 문구로 내린다(claude-ux §5.1). */}
       <header className="tool-connections__head">
-        <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang] || sourceTool?.title}</h2>
+        <h2 id={`tool-connections-${toolId}`}>{T.heading}</h2>
+        {(journey?.stage.title[lang] || sourceTool?.title) && (
+          <p>{journey?.stage.title[lang] || sourceTool?.title}</p>
+        )}
       </header>
       <div className="tool-connections__grid">
         {visibleNextTools.map((tool, index) => (

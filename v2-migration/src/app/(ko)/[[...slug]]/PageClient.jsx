@@ -15,9 +15,7 @@ import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
-import ToolLongform from "@/components/ToolLongform";
-import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
-import ToolConnections from "@/components/ToolConnections";
+import ToolPageOutro from "@/components/ToolPageOutro";
 import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
@@ -119,9 +117,13 @@ export default function PageClient({ params, evidenceLinks = [] }) {
              !routeId.startsWith("9-") && (
               <SopContent routeId={routeId} />
             )}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} />}
-            <ToolLongform toolId={routeId} />
-            <ToolEvidenceLinks items={evidenceLinks} />
+            {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
+                결과와 같은 층위로 흐르지 않게(§12.30). */}
+            <ToolPageOutro
+              toolId={routeId}
+              evidenceLinks={evidenceLinks}
+              withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
+            />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} />}
             </article>
           </main>
