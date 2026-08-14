@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluateEligibility, formatEligibilityBlocker, rankRecommendedAnalyses } from "./evaluateEligibility";
+import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker, rankRecommendedAnalyses } from "./evaluateEligibility";
+import { ROUTES, isRoutePublished } from "@/lib/routeMap";
 
 const isoDay = (index) => new Date(Date.UTC(2026, 6, index + 1)).toISOString().slice(0, 10);
 const canonicalData = {
@@ -255,5 +256,41 @@ describe("analysis eligibility", () => {
     });
     expect(result).toMatchObject({ status: "caution" });
     expect(result.reasonDetails.join(" ")).toContain("지출 변동이 너무 작은");
+  });
+});
+
+// /start가 어떤 도구를 "평가조차 안 하는지"는 목록에서 빠졌다는 사실로만 드러난다.
+// 실제로 5-20·9-1이 계약 없이 빠져 있었고, 5-23처럼 의도적으로 뺀 것과 구분되지
+// 않았다. 목록은 ROUTES에서 파생해 대조한다 — 새 도구가 조용히 빠지지 않도록.
+describe("analysis contract coverage", () => {
+  const publishedToolIds = ROUTES
+    .filter((route) => isRoutePublished(route) && /^(5|9)-\d+$/.test(route.id))
+    .map((route) => route.id);
+
+  it("declares a contract for every published analysis tool", () => {
+    const missing = publishedToolIds.filter((id) => !ANALYSIS_CONTRACTS[id]);
+    expect(missing).toEqual([]);
+  });
+
+  it("blocks foreign-grain tools with the columns they actually need", () => {
+    for (const [toolId, contract] of Object.entries(ANALYSIS_CONTRACTS)) {
+      if (!contract.foreignGrain) continue;
+      const result = evaluateEligibility({ toolId, mapping: {}, canonicalData, locale: "ko" });
+      expect(result.status, toolId).toBe("blocked");
+      const blocker = result.blockers.find((item) => item.code === "foreign_grain");
+      expect(blocker, toolId).toBeTruthy();
+      expect(blocker.grain, toolId).toBeTruthy();
+      expect(blocker.fields.length, toolId).toBeGreaterThan(0);
+      // 영어 화면에서도 같은 이유가 나와야 한다(§2.11).
+      const en = evaluateEligibility({ toolId, mapping: {}, canonicalData, locale: "en" });
+      expect(en.blockers.some((item) => item.code === "foreign_grain"), toolId).toBe(true);
+    }
+  });
+
+  it("keeps foreign-grain tools out of the recommended list", () => {
+    const foreign = Object.entries(ANALYSIS_CONTRACTS).filter(([, c]) => c.foreignGrain).map(([id]) => id);
+    expect(foreign.length).toBeGreaterThan(0);
+    const results = foreign.map((toolId) => evaluateEligibility({ toolId, mapping: {}, canonicalData, locale: "ko" }));
+    expect(rankRecommendedAnalyses(results)).toEqual([]);
   });
 });
