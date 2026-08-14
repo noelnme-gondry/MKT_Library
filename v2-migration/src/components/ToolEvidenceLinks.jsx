@@ -5,11 +5,13 @@ const COPY = {
     title: "관련 가이드와 용어",
     post: "실무 가이드",
     term: "핵심 용어",
+    compare: "이 방법을 써야 하나",
   },
   en: {
     title: "Related guides and terms",
     post: "Guide",
     term: "Key glossary terms",
+    compare: "Should you use this method",
   },
 };
 
@@ -18,11 +20,17 @@ const COPY = {
 export default function ToolEvidenceLinks({ items = [], locale = "ko" }) {
   if (!items.length) return null;
   const T = COPY[locale === "en" ? "en" : "ko"];
+  // 비교 그룹을 먼저 둔다 — "이 도구를 써야 하나"가 "이 도구를 어떻게 쓰나"보다 앞선다.
   const groups = [
+    {
+      key: "compare",
+      title: T.compare,
+      items: items.filter((item) => item.type === "compare"),
+    },
     {
       key: "post",
       title: T.post,
-      items: items.filter((item) => item.type !== "term"),
+      items: items.filter((item) => item.type !== "term" && item.type !== "compare"),
     },
     {
       key: "term",

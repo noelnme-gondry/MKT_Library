@@ -5223,6 +5223,9 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-evidence__groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 22px; }
 .tool-evidence__group { min-width: 0; }
 .tool-evidence__group:only-child { grid-column: 1 / -1; }
+/* "이 방법을 써야 하나"는 나머지 둘보다 앞선 질문이라 한 줄을 통째로 쓴다.
+   제목이 길어 2열에 넣으면 줄바꿈이 심해지기도 한다. */
+.tool-evidence__group--compare { grid-column: 1 / -1; }
 .tool-evidence__group-head { margin-bottom: 2px; }
 .tool-evidence__group-head strong { display: block; color: var(--text-muted); font: 700 10px/1.4 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
 .tool-evidence__list { margin: 0; padding: 0; list-style: none; }
