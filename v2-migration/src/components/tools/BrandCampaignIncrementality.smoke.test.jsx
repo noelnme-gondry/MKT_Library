@@ -37,7 +37,10 @@ describe("BrandCampaignIncrementality render smoke", () => {
 
   it("shows the deterministic demo result immediately", async () => {
     const { container } = render(<BrandCampaignIncrementality />);
-    fireEvent.click(screen.getByRole("button", { name: "예시 데이터 보기" }));
+    // 업로드 안내가 도구 자체 마크업에서 공용 CsvGuide로 바뀌면서 예시 버튼 라벨도
+    // 다른 도구와 같아졌다. 문구 전체를 박아두면 공용 카피가 바뀔 때마다 깨지므로
+    // 진입 지점만 특정한다.
+    fireEvent.click(screen.getByRole("button", { name: /예시 데이터/ }));
     await waitFor(() => expect(screen.getByText("95% AR(1) 프로파일 구간")).toBeTruthy());
     expect(container.querySelector("#brand-its-result")).toBeTruthy();
     expect(container.textContent).toContain("증분 방향을 판정하지 않습니다");

@@ -287,6 +287,25 @@ export const TOOL_GUIDE = {
     ],
     example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,자연 검색,126000,58000,2600,1740,104\n2024-01-08,소셜,216000,74000,2200,1020,31\n2024-01-15,뉴스레터,99000,41000,2870,1980,218",
   },
+  // 5-24는 오래도록 TOOL_GUIDE 키가 없어 CsvGuide를 쓸 수 없었고, 업로드 안내가
+  // 도구 안에 따로 적혀 있었다(§12.21 ④ 이탈). 계약을 여기로 올려 다른 도구와
+  // 같은 안내·템플릿 경로를 쓰게 한다.
+  "5-24": {
+    when: "브랜드 캠페인을 켠 전후로 브랜드 검색·직접 유입·가입이 실제로 늘었는지 사전 추세 기준선(ITS)과 비교합니다.",
+    grain: "1행 = 하루(또는 한 주·한 달)",
+    needs: [
+      { col: "date", label: "날짜", why: "사전 추세와 집행 후 구간을 나누는 기준", required: true },
+      { col: "brand_search 또는 direct_traffic·installs·actions", label: "성과 지표", why: "증가분을 추정할 대상", required: true },
+      { col: "campaign_on", label: "브랜드 캠페인 집행 여부", why: "집행 전 OFF → 집행 후 ON인 한 번의 연속 구간", required: true },
+      { col: "cost", label: "캠페인 비용", why: "투자 규모와 증분 성과를 함께 기록", required: false },
+    ],
+    prep: [
+      "집행 여부는 on/off, 1/0, 집행/중단처럼 해석 가능한 값으로 넣습니다.",
+      "ON/OFF가 여러 번 반복되면 이번 버전은 분석하지 않습니다 — 구간 하나만 남기거나 통제군 설계를 쓰세요.",
+      "대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다. 인과 확정이 아니라 추정 증가분입니다.",
+    ],
+    example: "date,brand_search,campaign_on\n2025-01-01,180,off\n2025-01-02,186,off\n2025-02-05,280,on\n2025-02-06,291,on",
+  },
   "5-25": {
     when: "MMM을 실행하기 전에 채널별 지출이 너무 함께 움직여 채널 기여도를 분리하기 어려운지 VIF로 빠르게 점검합니다.",
     grain: "1행 = 하루 × 채널(또는 캠페인) 지출",
@@ -584,6 +603,22 @@ export const TOOL_GUIDE_EN = {
       "With 2+ weeks of data, the scorecard (WoW) and anomaly detection work meaningfully.",
     ],
     example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,Organic search,126000,58000,2600,1740,104\n2024-01-08,Social,216000,74000,2200,1020,31\n2024-01-15,Newsletter,99000,41000,2870,1980,218",
+  },
+  "5-24": {
+    when: "Check whether brand search, direct traffic, or signups actually rose after a brand campaign started, against a pre-period trend baseline (ITS).",
+    grain: "1 row = one day (or week, or month)",
+    needs: [
+      { col: "date", label: "Date", why: "Splits the pre-trend from the campaign window", required: true },
+      { col: "brand_search or direct_traffic / installs / actions", label: "Outcome", why: "The metric whose lift is estimated", required: true },
+      { col: "campaign_on", label: "Brand campaign status", why: "One continuous OFF-before / ON-after window", required: true },
+      { col: "cost", label: "Campaign cost", why: "Records investment alongside the incremental outcome", required: false },
+    ],
+    prep: [
+      "Use recognizable status values such as on/off, 1/0, or active/inactive.",
+      "Repeated ON/OFF cycles are not analyzed in this version — isolate one window or use a control-group design.",
+      "Without a control, seasonality, PR, and promotions are not separated. This is estimated lift, not confirmed causality.",
+    ],
+    example: "date,brand_search,campaign_on\n2025-01-01,180,off\n2025-01-02,186,off\n2025-02-05,280,on\n2025-02-06,291,on",
   },
   "5-25": {
     when: "Before MMM, quickly check VIF to see whether channel spend moved too tightly together to separate contribution.",

@@ -73,8 +73,11 @@ export async function generateMetadata({ params }) {
   const meta = findMeta(routeId);
   const routeSeo = getRouteSeo(routeId, "ko");
   const title = routeSeo?.title || meta?.seoTitle || meta?.title || routeId;
-  // seoTitle/seoDescription: SERP 클릭 유도용 결과지향 문구(선택적 오버라이드).
-  // 없으면 기존 방식(항목 제목 + 그룹 desc, 중복 설명 방지)으로 폴백.
+  // meta.seoTitle/seoDescription은 **더 이상 SERP 오버라이드가 아니다**. routeSeo가
+  // 색인 가능한 전 라우트를 덮으므로(routeSeo.test.js가 강제) 이 폴백은 preview
+  // 라우트에서만 도달한다. 스토어의 그 필드들은 현재 ⌘K 검색 텍스트(GlobalModals)
+  // 용도로 살아 있다 — "SERP 클릭 유도 오버라이드"라고 적혀 있던 옛 주석은 틀렸다.
+  // routeSeo에 없는 preview 라우트는 항목 제목 + 그룹 desc로 폴백한다.
   const description =
     routeSeo?.description || meta?.seoDescription ||
     (meta?.title
