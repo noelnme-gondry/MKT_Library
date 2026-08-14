@@ -711,7 +711,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       const barData = eff.map((e) => [sc(e.ciLow), sc(e.ciHigh)]);
       const barColors = eff.map((e) => {
         if (e.pAdj < 0.05)
-          return decomposeEffectIsGood(e.coef, meta) ? "#22c55eAA" : "#f87171AA";
+          return decomposeEffectIsGood(e.coef, meta) ? CHART_THEME.success + "AA" : CHART_THEME.danger + "AA";
         return "rgba(150,150,150,0.4)";
       });
       const pointData = eff.map((e, i) => ({ x: sc(e.coef), y: i }));
@@ -1304,7 +1304,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     <tbody>
                       {effRows.map((e, i) => {
                         const isGood = decomposeEffectIsGood(e.coef, decMeta);
-                        const color = e.pAdj < 0.05 ? (isGood ? "#22c55e" : "#f87171") : "var(--text-1)";
+                        const color = e.pAdj < 0.05 ? (isGood ? "var(--success)" : "var(--danger)") : "var(--text-1)";
                         return (
                           <tr key={i}>
                             <td>{e.factor}</td>

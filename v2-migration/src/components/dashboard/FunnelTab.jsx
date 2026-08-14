@@ -72,7 +72,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       +((adjOn && x.cvrAdj != null ? x.cvrAdj : x.cvr) * 100).toFixed(2)
     );
     const mean = cache.dailyMean != null ? +(cache.dailyMean * 100).toFixed(2) : null;
-    const ptColors = daily.map((x) => ((adjOn ? x.lowAdj : x.low) ? "#f87171" : "#adc6ff"));
+    const ptColors = daily.map((x) => ((adjOn ? x.lowAdj : x.low) ? CHART_THEME.danger : CHART_THEME.primary));
     const ptR = daily.map((x) => ((adjOn ? x.lowAdj : x.low) ? 4 : 2));
     const lbl = `${cache.selLabel || tr("선택 단계", "Selected stage")} CVR(%)${adjOn ? tr(" (요일보정)", " (weekday-adj)") : ""}`;
 

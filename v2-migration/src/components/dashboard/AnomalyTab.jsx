@@ -192,7 +192,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
           fill: true,
           tension: 0.2,
           pointRadius: flags.map(f => f.flag ? 6 : 1.5),
-          pointBackgroundColor: flags.map(f => f.flag ? (f.z > 0 ? "#fbbf24" : "#f87171") : CHART_THEME.primary),
+          pointBackgroundColor: flags.map(f => f.flag ? (f.z > 0 ? CHART_THEME.warning : CHART_THEME.danger) : CHART_THEME.primary),
           pointBorderColor: flags.map(f => f.flag ? "#000" : "transparent"),
           borderWidth: 2
         }]
