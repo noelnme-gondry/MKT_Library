@@ -1311,7 +1311,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                           : idToSlug["5-4"] || "/tools/experiment-analysis"
                       );
                     }}
-                    style={{ color: "#adc6ff", textDecoration: "underline", cursor: "pointer" }}
+                    style={{ color: "var(--primary)", textDecoration: "underline", cursor: "pointer" }}
                   >
                     {tr("홀드아웃 실험(5-4)", "holdout experiment (5-4)")}
                   </a>
@@ -1430,7 +1430,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                         }}
                       />
                       {overfit && (
-                        <div style={{ fontSize: "11.5px", color: "#fbbf24", marginTop: "6px" }}>⚠ {tr("학습셋에선 잘 맞는데 검증셋(홀드아웃)에서 뚝 떨어져요 — 우연일 수 있으니 표본을 더 확인하세요.", "It fit well on the training set but dropped sharply on the validation set (holdout) — this could be coincidence, so check the sample further.")}</div>
+                        <div style={{ fontSize: "11.5px", color: "var(--warning)", marginTop: "6px" }}>⚠ {tr("학습셋에선 잘 맞는데 검증셋(홀드아웃)에서 뚝 떨어져요 — 우연일 수 있으니 표본을 더 확인하세요.", "It fit well on the training set but dropped sharply on the validation set (holdout) — this could be coincidence, so check the sample further.")}</div>
                       )}
                     </div>
                   </div>

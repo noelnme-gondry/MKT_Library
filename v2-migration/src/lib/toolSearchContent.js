@@ -10,6 +10,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "지표를 나열하지 말고, 이번 주에 볼 것 하나를 정하세요",
+      question: "캠페인 CSV로 뭘 먼저 봐야 하나요?",
+      answer: "최근 기간과 직전 기간을 비교해 달라진 것 하나를 고릅니다.",
       lead: "운영 대시보드는 캠페인 CSV를 브라우저에서 집계해 비용·설치·전환·CPA·ROAS의 최근 움직임과 이상 신호를 한 화면에 모읍니다. 목적은 모든 지표를 보는 것이 아니라, 이번 주에 손댈 곳 하나를 고르는 것입니다.",
       detailsLabel: "확인 순서와 해석 기준 보기",
       sections: [
@@ -26,6 +28,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Do not read every metric—choose the one thing to act on this week",
+      question: "What should I look at first in a campaign CSV?",
+      answer: "Compare the recent window with the prior one and pick one change.",
       lead: "The operations dashboard aggregates a campaign CSV in your browser and puts recent movement in spend, installs, conversions, CPA, and ROAS in one view with anomaly signals. The goal is to select one thing to act on, not to display every metric.",
       detailsLabel: "See the review order and interpretation rules",
       sections: [
@@ -44,6 +48,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "성과가 왜 변했는지, 물량·효율·믹스로 나눠 보세요",
+      question: "CPA가 올랐는데 원인을 어떻게 찾나요?",
+      answer: "변화를 물량·효율·믹스 세 항으로 나눠서 봅니다.",
       lead: "성과 변동 분석은 두 기간의 차이를 잔차 없이 분해합니다. 결과가 늘었을 때 그것이 더 많이 써서인지, 효율이 좋아져서인지, 예산 비중이 옮겨가서인지를 채널·캠페인·소재 단계로 내려가며 확인합니다.",
       detailsLabel: "분해 방식과 읽는 순서 보기",
       sections: [
@@ -60,6 +66,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Split the change into volume, efficiency, and mix",
+      question: "How do I find why CPA went up?",
+      answer: "Split the change into volume, efficiency, and mix.",
       lead: "Campaign variance analysis decomposes the gap between two periods without residuals. It separates whether an outcome moved because you spent more, because efficiency changed, or because budget share shifted—down through channel, campaign, and creative.",
       detailsLabel: "See the decomposition method and reading order",
       sections: [
@@ -78,6 +86,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "평균 효율이 좋다고 더 써도 되는 것은 아닙니다",
+      question: "이 채널에 예산을 더 넣어도 되나요?",
+      answer: "한계 CPA가 평균 CPA보다 크게 높으면 이미 포화입니다.",
       lead: "포화도 진단은 채널·캠페인이 지금 지출 구간에서 얼마나 여력이 남았는지를 봅니다. 판단 기준은 평균 CPA가 아니라 '다음 1원이 만드는' 한계 CPA이며, 둘의 비율로 포화·적정·여유를 구분합니다.",
       detailsLabel: "포화지수 계산과 한계 보기",
       sections: [
@@ -94,6 +104,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Good average efficiency does not mean room to spend more",
+      question: "Can I put more budget into this channel?",
+      answer: "If marginal CPA far exceeds average CPA, it is already saturated.",
       lead: "Saturation analysis asks how much headroom a channel or campaign still has at its current spend level. The test is marginal CPA—what the next unit of spend produces—compared with average CPA, and the ratio separates saturated, healthy, and scalable spend.",
       detailsLabel: "See how the saturation index is computed and its limits",
       sections: [
@@ -112,6 +124,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "지금 교체할 소재와, 다음에 만들 소재를 함께 정하세요",
+      question: "광고 소재를 언제 교체해야 하나요?",
+      answer: "노출은 유지되는데 성과가 초기 대비 꺾일 때 교체합니다.",
       lead: "소재 분석은 소재별 CTR·CVR·CPA를 비교하고 노출이 쌓이며 성과가 떨어지는 피로 신호를 찾습니다. 목적은 순위표를 만드는 것이 아니라 '무엇을 내리고 무엇을 더 만들지'를 정하는 것입니다.",
       detailsLabel: "피로도 판정 기준과 주의점 보기",
       sections: [
@@ -128,6 +142,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Decide what to retire and what to make next—together",
+      question: "When should I retire an ad creative?",
+      answer: "Retire it when performance drops from its early level while impressions hold.",
       lead: "Creative analysis compares CTR, CVR, and CPA per asset and looks for fatigue: performance decaying as impressions accumulate. The output is a production decision, not a leaderboard.",
       detailsLabel: "See fatigue criteria and caveats",
       sections: [
@@ -147,6 +163,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "광고가 신규 성과를 만들었는지, 기존 유입을 옮겼는지 구분하세요",
+      question: "채널별 기여도는 어떻게 추정하나요?",
+      answer: "주간 지출·결과 패널에 회귀를 적합해 추정합니다. 인과는 아닙니다.",
       lead: "카니발라이제이션 진단은 광고가 켜진 뒤 성과가 늘었다는 사실만으로 결론내리지 않습니다. 같은 시점의 오가닉·브랜드·검색 흐름과 채널 지출 패턴을 함께 보고, 예산을 다시 검토할 채널을 좁히는 탐색 도구입니다.",
       detailsLabel: "진단 기준과 다음 조치 보기",
       sections: [
@@ -163,6 +181,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Separate incremental outcomes from shifted demand",
+      question: "How is channel contribution estimated?",
+      answer: "Fit a regression to a weekly spend and outcome panel. Not causal.",
       lead: "Cannibalization diagnosis looks beyond a paid-performance lift. It compares spend patterns with organic, brand, and search trends to narrow the channels that deserve a budget review.",
       detailsLabel: "See diagnostic criteria and next steps",
       sections: [
@@ -181,6 +201,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "평균 효율이 아니라 다음 돈의 한계 효율로 예산을 옮기세요",
+      question: "예산을 채널별로 얼마씩 나눠야 하나요?",
+      answer: "추가 1원의 효율이 채널마다 같아지는 지점까지 옮깁니다.",
       lead: "예산 배분은 지금 가장 좋아 보이는 채널에 돈을 몰아주는 기능이 아닙니다. 채널별 반응곡선과 현재 지출 위치를 바탕으로, 다음 예산 단위가 어디에서 가장 나은 결과를 낼지 비교하는 시뮬레이션입니다.",
       detailsLabel: "계산 기준과 안전한 사용법 보기",
       sections: [
@@ -197,6 +219,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Move budget by marginal efficiency, not average efficiency",
+      question: "How much budget should each channel get?",
+      answer: "Shift until the next unit of spend is equally efficient everywhere.",
       lead: "Budget allocation compares the likely outcome from the next unit of spend at each channel's current position. It is not a rule to concentrate budget in the channel with the best average result.",
       detailsLabel: "See calculation logic and safeguards",
       sections: [
@@ -215,6 +239,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "차이가 있었는지보다, 그 차이를 믿을 만한지를 먼저 보세요",
+      question: "A/B 테스트 결과가 유의한지 어떻게 판단하나요?",
+      answer: "신뢰구간이 0을 포함하는지 보고 표본이 충분했는지 함께 확인합니다.",
       lead: "실험 분석은 시작 전 필요한 표본을 설계하고, 끝난 뒤 두 그룹의 차이와 신뢰구간·검정력을 함께 읽습니다. 전환율이 높게 나왔다는 사실만으로 승자를 정하지 않기 위한 도구입니다.",
       detailsLabel: "설계 기준과 판독 규칙 보기",
       sections: [
@@ -231,6 +257,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Ask whether the difference is trustworthy, not just whether it exists",
+      question: "How do I judge whether an A/B result is significant?",
+      answer: "Check whether the interval excludes zero, and whether the sample was sufficient.",
       lead: "Experiment analysis plans the sample you need before the test and reads lift, confidence interval, and power together afterwards. It exists so a higher observed rate alone does not decide the winner.",
       detailsLabel: "See design rules and read-out criteria",
       sections: [
@@ -249,6 +277,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "어떤 초기 행동이 오래 남는 사용자와 함께 나타나는지 찾으세요",
+      question: "초기 이탈을 줄이려면 어떤 행동을 유도해야 하나요?",
+      answer: "정착과 가장 강하게 연결된 행동 횟수와 기간 조합을 찾습니다.",
       lead: "핵심 가치 발굴은 '며칠 안에 몇 번' 조합을 격자 탐색해, 장기 잔존·가치와 가장 강하게 연결되는 초기 행동 기준을 찾습니다. 온보딩과 캠페인 목표 이벤트를 정할 때 쓰는 탐색 도구입니다.",
       detailsLabel: "탐색 방식과 해석 한계 보기",
       sections: [
@@ -265,6 +295,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Find which early action shows up alongside users who stay",
+      question: "Which action should I drive to reduce early churn?",
+      answer: "Find the action count and window most associated with users who stay.",
       lead: "The aha-moment finder grid-searches 'how many times within how many days' and surfaces the early-action threshold most strongly associated with lasting value. It is an exploration tool for onboarding and campaign event choices.",
       detailsLabel: "See the search method and interpretation limits",
       sections: [
@@ -283,6 +315,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "광고가 없었어도 생겼을 성과를 빼고 남는 몫을 봅니다",
+      question: "광고를 껐을 때 성과가 얼마나 줄어드나요?",
+      answer: "홀드아웃이나 전후 비교로 광고가 만든 몫만 추정합니다.",
       lead: "증분 분석은 광고가 실제로 더 만든 성과를 추정합니다. 통제군(홀드아웃), 신규 켜기, 종료 세 가지 설계를 지원하며, 각 설계가 감당할 수 있는 결론의 강도를 함께 표시합니다.",
       detailsLabel: "세 가지 설계와 신뢰 조건 보기",
       sections: [
@@ -299,6 +333,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Measure what remains after removing what would have happened anyway",
+      question: "How much would I lose if I turned ads off?",
+      answer: "Estimate only the advertising-created share with a holdout or pre/post design.",
       lead: "Incrementality analysis estimates the outcomes advertising actually added. It supports three designs—holdout, switch-on, and switch-off—and states how strong a conclusion each design can carry.",
       detailsLabel: "See the three designs and their conditions",
       sections: [
@@ -317,6 +353,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "브랜드 캠페인이 만든 증가분을 시계열로 분리합니다",
+      question: "브랜드 캠페인 효과는 어떻게 측정하나요?",
+      answer: "끌 수 없으므로 개입 전 추세를 연장해 비교합니다.",
       lead: "브랜드 캠페인 증분 분석은 브랜드 검색·직접 유입·가입 같은 시계열에서 캠페인 시작 전후의 수준·기울기 변화를 추정합니다. 홀드아웃을 만들기 어려운 브랜드 활동을 그나마 엄밀하게 보기 위한 설계입니다.",
       detailsLabel: "ITS 추정과 신뢰 조건 보기",
       sections: [
@@ -333,6 +371,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Isolate brand-campaign lift from the time series itself",
+      question: "How do I measure a brand campaign?",
+      answer: "You cannot pause it, so extend the pre-period trend and compare.",
       lead: "Brand campaign incrementality estimates level and slope change around a campaign start in series like brand search, direct traffic, or signups. It is the most rigorous option available when a clean holdout cannot be built.",
       detailsLabel: "See the ITS estimate and its conditions",
       sections: [
@@ -351,6 +391,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "채널 기여도를 나눌 수 있는 데이터인지 먼저 확인하세요",
+      question: "MMM 결과가 이상한데 왜 그런가요?",
+      answer: "채널 지출이 늘 같이 움직였다면 기여도를 분리할 수 없습니다.",
       lead: "다중공선성 진단은 채널별 지출이 서로 얼마나 같이 움직이는지를 VIF와 상관으로 봅니다. 채널들이 늘 함께 움직이면 어떤 모델도 기여를 채널별로 나눌 수 없기 때문에, MMM 실행 전 점검용입니다.",
       detailsLabel: "VIF 해석과 대응 방법 보기",
       sections: [
@@ -367,6 +409,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Check whether your data can separate channel contribution at all",
+      question: "Why does my MMM output look wrong?",
+      answer: "If channel spends always moved together, contribution cannot be separated.",
       lead: "The multicollinearity check measures how much channel spends move together using VIF and correlation. When channels always rise and fall in step, no model can split their contribution—so this runs before MMM, not after.",
       detailsLabel: "See how to read VIF and what to do about it",
       sections: [
@@ -385,6 +429,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "검색어 리포트에서 승격할 키워드와 조정할 입찰을 뽑습니다",
+      question: "Apple Search Ads 키워드를 어떻게 정리하나요?",
+      answer: "성과가 검증된 검색어를 Exact로 올리고 CPT를 조정합니다.",
       lead: "ASA 키워드 발굴기는 Apple Search Ads 검색어 리포트를 읽어 Exact로 승격할 후보, 제외 검토 대상, 예산 소진과 목표 CPA에 따른 CPT 증감 후보를 정리합니다.",
       detailsLabel: "판정 기준과 사용 순서 보기",
       sections: [
@@ -401,6 +447,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "Turn a search-term report into promotions and bid moves",
+      question: "How do I clean up Apple Search Ads keywords?",
+      answer: "Promote proven search terms to Exact and adjust their CPT.",
       lead: "The ASA keyword finder reads an Apple Search Ads search-term report and separates Exact-promotion candidates, negative-keyword candidates, and CPT increases or decreases based on budget pacing and target CPA.",
       detailsLabel: "See the decision rules and working order",
       sections: [
@@ -419,6 +467,8 @@ const CONTENT = {
     ko: {
       eyebrow: "도구 사용 가이드",
       title: "어떤 요소가 성과와 연결되는지, 다른 조건을 통제하고 봅니다",
+      question: "어떤 콘텐츠 요소가 성과에 영향을 주나요?",
+      answer: "다른 요소를 통제한 회귀로 요소별 연관을 비교합니다.",
       lead: "콘텐츠 요소 분석은 후킹·형식·길이·메시지 같은 요소를 회귀로 비교합니다. 단순 평균 비교와 달리 다른 요소를 함께 통제하므로, '길이가 길어서'인지 '형식이 달라서'인지를 구분하려 할 때 씁니다.",
       detailsLabel: "추정 방식과 통계적 한계 보기",
       sections: [
@@ -435,6 +485,8 @@ const CONTENT = {
     en: {
       eyebrow: "Tool guide",
       title: "See which elements relate to performance, holding the rest constant",
+      question: "Which content elements affect performance?",
+      answer: "Compare per-element association with a regression that controls the others.",
       lead: "Content element analysis compares hooks, formats, length, and message traits with regression. Unlike averaging by tag, it controls for the other elements, which is what separates 'longer worked' from 'the format worked'.",
       detailsLabel: "See the estimation method and statistical limits",
       sections: [
@@ -456,4 +508,14 @@ export const TOOL_SEARCH_CONTENT_IDS = Object.keys(CONTENT);
 export function getToolSearchContent(toolId, locale = "ko") {
   const localeKey = locale === "en" ? "en" : "ko";
   return CONTENT[toolId]?.[localeKey] || getResponseSubtoolContent(toolId, localeKey) || null;
+}
+
+// FAQPage JSON-LD용 목록. 도구가 답하는 핵심 질문을 **첫 항목**으로 올린다 —
+// 화면에서 접기 바깥에 두는 것과 같은 이유다. 5-18 하위 폴백 콘텐츠에는 두 필드가
+// 없을 수 있으므로 있을 때만 앞에 붙인다.
+export function getToolFaq(toolId, locale = "ko") {
+  const content = getToolSearchContent(toolId, locale);
+  if (!content?.faq?.length) return [];
+  const head = content.question && content.answer ? [{ q: content.question, a: content.answer }] : [];
+  return [...head, ...content.faq];
 }

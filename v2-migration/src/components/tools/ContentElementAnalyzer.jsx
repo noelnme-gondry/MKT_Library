@@ -645,7 +645,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
         <div className="analysis-data-mapping__body">
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
-            <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+            <span className="dot" style={{ background: isDemo ? "var(--warning)" : "var(--success)" }}></span>
             {isDemo ? <strong>{T.previewingDemo}</strong> : <strong>{fileName}</strong>}
             <span className="csv-loaded-stats tnum">{T.rowsStats(csvData.raw.length, numericCols.length)}</span>
           </div>
@@ -694,7 +694,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </div>
         ) : analyzed ? (
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
+            <span style={{ color: "var(--success)", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
             <span style={{ color: MUTED, fontSize: "11px" }}>{T.analyzedHint}</span>
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
           </div>
@@ -874,9 +874,9 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <h2 className="section-title">{T.forestTitle}</h2>
             <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
               {locale === "en" ? (
-                <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "#22c55e" }}>Green</span> / <span style={{ color: "#f87171" }}>red</span> = BH p&lt;.05 · <span style={{ color: "#94a3b8" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>
+                <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "var(--success)" }}>Green</span> / <span style={{ color: "var(--danger)" }}>red</span> = BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>
               ) : (
-                <>점 = 추정 연관(계수), 막대 = 요소별 HC3 95% 신뢰구간. <span style={{ color: "#22c55e" }}>초록</span>/<span style={{ color: "#f87171" }}>빨강</span>=BH p&lt;.05 · <span style={{ color: "#94a3b8" }}>회색</span>=BH p≥.05. 위에서부터 강건한 연관이 큰 순(|t|).</>
+                <>점 = 추정 연관(계수), 막대 = 요소별 HC3 95% 신뢰구간. <span style={{ color: "var(--success)" }}>초록</span>/<span style={{ color: "var(--danger)" }}>빨강</span>=BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>회색</span>=BH p≥.05. 위에서부터 강건한 연관이 큰 순(|t|).</>
               )}
             </p>
             <div className="chart-container" style={{ height: `${Math.max(160, fit.rows.length * 42 + 70)}px` }}>
@@ -914,7 +914,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                     {fit.rows.map((r) => (
                       <tr key={r.name}>
                         <td style={{ textAlign: "left" }}>{r.name}</td>
-                        <td className="tnum" style={{ textAlign: "right", color: r.sig ? (r.coef >= 0 ? "#22c55e" : "#f87171") : undefined }}>{r.coef.toFixed(3)}</td>
+                        <td className="tnum" style={{ textAlign: "right", color: r.sig ? (r.coef >= 0 ? "var(--success)" : "var(--danger)") : undefined }}>{r.coef.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.se.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.t.toFixed(2)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.rawP.toFixed(3)}</td>

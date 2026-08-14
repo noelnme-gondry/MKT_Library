@@ -181,8 +181,11 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **`const x = ... f(()=>...x...)` 자기 참조 = TDZ throw**: const 초기화식 안에서 자신을 참조하면 callback 실행 시 ReferenceError. `&&` 단락으로 안 도는 기본 경로는 멀쩡, 조건 truthy 되는 순간 throw. 모듈 상수 선언 순서도 같은 함정 — 파생 상수는 원본 뒤에.
 
 **렌더·UI**
-- **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`.
+- **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`·`.danger`·`.warning`·`.success`(판정 색 getter). remap Map은 **각 토큰의 다크·라이트 값 + 과거 리터럴을 전부 키로** 가져야 한다 — 하나라도 빠지면 그 데이터셋만 옛 색으로 굳는다. getter 반환값은 리터럴 hex라 `CHART_THEME.danger + "AA"` 알파 접합이 그대로 되고(§7 hex-알파 함정은 `var()`에만 해당), canvas는 `var()`를 못 읽으므로 **데이터셋엔 반드시 getter**를 넘길 것.
   - 토큰화하면 `` `${color}55` `` 같은 **hex 알파 접합이 깨진다**(`var(--danger)55`는 무효 CSS) → `color-mix(in srgb, … 33%, transparent)`.
+  - **역으로, 토큰화하면 안 되는 리터럴이 더 많다**(2026-08 실측: `globals.css` raw hex 285 · 인라인 `color` 50 중 안전 치환은 19곳뿐). 금지 4종: ① 브랜드색(YouTube·Naver…) ② **영구 다크 표면 위 텍스트** — `.sidebar{background:#10131a}`엔 `body.light-mode` 재정의가 **일부러 없다**. 여기 hex를 토큰으로 바꾸면 다크 사이드바에 다크 텍스트가 된다(AA 개선이 아니라 파괴) ③ Chart.js 데이터셋에 들어가는 값(canvas는 `var()` 못 읽음 → `CHART_THEME`) ④ 토큰이 없는 색과 짝지은 값(범례↔셀, chip↔dot). **정확히 같은 값의 토큰이 있는 순수 텍스트 색만** 치환할 것.
+  - **토큰 값을 대조할 땐 "마지막 정의"를 볼 것 — `:root`와 `body.light-mode`가 파일에 각각 두 번 있다**(§4.1 tokens 레이어의 61~63·142~144, app 레이어의 4821·4889 블록). 앞 블록만 보고 `#f87171`을 "`--danger`와 같은 값"이라 판단하면 틀린다 — **실효값은 `#ff8178`**(`--warning` `#f2b84b`, `--success` `#65d3b3`, `--primary` `#82aaff`). 실제로 이 착각으로 "다크 byte-identical"이라 적고 치환한 적이 있다. 대조는 눈이 아니라 **마지막 정의를 파싱해서** 할 것.
+- **`globals.css`는 캐스케이드 레이어 3단**(`@layer reset, tokens, app;` — 파일 상단 주석 참조): 외부 리셋(Tailwind preflight 등)을 도입하면 `layer(reset)`으로 넣어야 9천 줄이 리셋에 밀리지 않는다. 레이어 **밖** 규칙은 모든 레이어를 이기므로 이 파일 내용은 전부 레이어 안에 있어야 하고, `!important`는 레이어 순서를 뒤집으므로 `tokens`엔 넣지 말 것(현재 0개).
 - **`role="tablist"`가 `role="group"`을 거쳐 `tab`을 소유하면 계약이 끊긴다**(같은 감사): 로빙 tabindex·화살표 키가 멀쩡해도 보조기술이 탭을 탭으로 인식하지 못한다. 그룹이 필요하면 **그룹마다 tablist**를 두고 바깥은 일반 컨테이너로. `role="radio"`도 `radiogroup` 부모가 없으면 같은 문제 + 전 옵션이 탭 순서에 들어간다.
 - **`title` 단독은 어포던스가 아니다 — CSS로 강제할 것**: claude-ux §0이 이름을 지목해 금지했는데도 12곳 이상 살아 있었다. 개별 수정 대신 `[title]` 셀렉터에 점선 밑줄+`cursor:help`를 거는 전역 규칙 1개가 전부를 덮는다.
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**: canvas는 `var()`를 못 읽어 불투명 검정 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(`chartUtils.js`)로 렌더타임 해석.
@@ -361,7 +364,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
 `LandingPage` = ① **1단 중앙 히어로**(eyebrow+헤드라인+한 줄 데크+목적 CTA 3열 균등+통합 신뢰 1줄) ② 질문형 도구 카드 ③ 주간 결정 루프 3단계 ④ `ConnectedToolJourney` ⑤ 블로그 | SOP 허브. **목적 선택(②)이 개념 설명(③)보다 앞**(첫 화면에서 바로 도구를 찾게, 스모크가 순서 강제).
-- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 구 `.dc-instrument`(가짜 수치 + `.dc-mini-chart` SVG)는 "쓸모없다"는 실제 피드백으로 제거됨. 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`도 삭제됨.
+- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 구 `.dc-instrument`(가짜 수치 + `.dc-mini-chart` SVG)는 PR #644에서 히어로를 1단으로 재구성하며 제거됐다(CSS 20줄·COPY 10키 동반 삭제, 순변화 −118줄). 구 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`도 삭제됨.
 - **첫 화면 카피는 중복부터 센다**: 신뢰 배지와 프라이버시 줄이 같은 말을 두 번 하고, 데크가 CTA 힌트를 반복하고 있었다("글이 많다"의 정체). 동급 항목은 나열 대신 **박스로 묶어 균등 grid**(claude-ux §5) — 도구·목적 이름을 줄바꿈으로 줄줄 세우지 말 것.
 - **진입 모션**: `utils/landingMotion.js`(anime.js v4, 히어로 타임라인·미니차트 SVG line-draw·스크롤 리빌). 셀렉터가 마크업과 1:1이라 클래스명을 바꾸면 모션 대상도 같이 고칠 것. 안전장치는 §7.
 - **전 페이지 헤더/셸 완전 통일**: 도구·SOP·홈·블로그·가이드 전부 `Sidebar`+공용 `Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 블로그는 routeMap 밖이라 `Header`가 `pathname`으로 직접 감지.
@@ -370,7 +373,10 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.29 검색 진입면·유입 레시피 (2026-08)
 도구·문서 페이지가 검색에서 살아남게 하는 공통 배선. 전부 render/메타층(엔진 불변).
-- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 같은 `faq`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·question·answer·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 `getToolFaq()`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **AEO: 답을 접기 바깥·JSON-LD 첫 항목에**(2026-08): LLM은 페이지 앞쪽에서 답을 뽑는다. 도구·비교 페이지는 `question`(예상 프롬프트) + `answer`(한 문장)를 갖고, 화면에서는 접기 **밖**에, 구조화 데이터에서는 FAQ **첫 항목**에 둔다. 가드가 `answer` 90자 상한·`?` 종결·FAQ 중복을 강제한다. 리스트·표가 추출에 유리하므로 비교는 산문이 아니라 표로 쓴다.
+- **브랜드 사실은 `lib/brandFacts.js` 한 곳**: 무료·가입 없음·브라우저 처리·결정론 같은 문장이 랜딩·롱폼·`llms.txt`에 제각각 적혀 있으면 인용하는 쪽도 제각각 가져간다. `BRAND_FACTS`+`BRAND_LIMITS`(못 하는 것도 같은 급으로)에서 파생하고, **도구 이름·설명은 여기 적지 말고 `routeSeo`에서 조회**한다. 문자열을 검증하는 테스트도 SSOT를 조회해 대조할 것 — 문장을 테스트에 복사하면 SSOT를 고쳐도 옛 문장이 통과한다.
+- **방법 비교(`/compare`)는 브랜드 vs 브랜드가 아니라 방법 vs 방법**: 남의 제품 사양을 표로 단정하면 검증할 수 없고 §8에 어긋난다. 마케터가 실제로 묻는 것도 "증분이랑 MMM 중 뭐 먼저"에 가깝다. SSOT `lib/compareContent.js`, 렌더 `ComparePage.jsx`, sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생.
 - **목록·표는 파생, 하드코딩 금지**: 템플릿 상세(`lib/templateCatalog.js`)는 실제 CSV 헤더와 일치를 골든으로 강제, 도구→콘텐츠 역링크(`lib/toolContentLinks.js`)는 forward 레지스트리에서 파생, 보고서 대상·sitemap·llms.txt도 라우트에서 파생.
 - **공유 링크는 재조립**(`lib/decisionShare.js`): 입력 객체를 펼치지 말고 허용 필드만 새로 조립 + 상한 + noindex. 디코드도 같은 재조립을 거친다(변조 방어). 텍스트 다운로드 출처는 `withAttribution`(CSV엔 금지 — 파싱 깨짐).
 - **콘텐츠 페이지에 앱 번들 흘리지 말 것**: 셸(Header 등)에서 조건 없이 무거운 모듈을 동적 import하면 canvas 없는 문서 페이지도 차트 번들을 받는다. 실제 필요 여부(예: `document.querySelector("canvas")`)를 먼저 확인.
@@ -382,7 +388,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **경계선 소유자는 하나**: "분석 결과는 여기까지"는 outro가 소유하고 자식은 그리지 않는다. 경계가 자식에 있으면 그 위 형제(다음 단계 레일)가 분석 안쪽으로 읽힌다 — 실제로 그랬다.
 - **박스는 한 겹**: 앱 본문은 open-ledger(테두리 없는 구획), 마감 영역만 닫힌 박스. 안쪽은 `.tool-outro__section` 얇은 선으로만 나누고 자식은 자기 테두리·바탕을 벗는다. 인접한 보조 박스(`.dashboard-support-tools`)도 같은 재질(`--operator-line`/`--work-surface`)을 쓴다.
 - **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
-- **타이포 하한 9.5px**(`app/typographyFloor.test.js`가 globals.css 전체를 훑어 강제). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다.
+- **타이포 하한 9.5px**(`app/typographyFloor.test.js`). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다. 이 가드는 오래 `globals.css` **한 파일만** 훑었는데 인라인 `style={{fontSize}}`이 581곳이라 우회로가 통째로 열려 있었다 → 지금은 `src/**/*.jsx` 리터럴도 같은 하한으로 훑는다(계산식은 정적으로 못 읽으므로 대상 밖).
 
 ---
 

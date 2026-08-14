@@ -29,6 +29,14 @@ export const CHART_THEME = {
     return [this.primary, this.secondary, this.tertiary, this.accent, "#a78bfa", "#2dd4bf", "#fb923c", "#f472b6", "#60a5fa", this.muted];
   },
   get series() { return this.colors; },
+  // 판정 색(나쁨/주의/좋음). 도구들이 데이터셋에 `#f87171` 같은 리터럴을 직접 적어
+  // 왔는데, 그 값은 refreshMountedChartThemes의 remap 대상이 아니라 테마를 바꿔도
+  // 그대로 남았다. getter는 렌더 시점에 CSS 변수를 읽으므로 초기 렌더부터 테마를 탄다.
+  // 반환값이 리터럴 hex라 `CHART_THEME.danger + "AA"` 같은 알파 접합도 그대로 쓸 수 있다
+  // (§7의 hex-알파 함정은 `var()`를 넘길 때의 얘기다).
+  get danger() { return getCssVar("--danger") || "#ff8178"; },
+  get warning() { return getCssVar("--warning") || "#f2b84b"; },
+  get success() { return getCssVar("--success") || "#65d3b3"; },
 };
 
 /* 폰트 스택 SSOT — 축 틱·범례·툴팁이 제각각 문자열을 쓰면 차트마다 글꼴이 갈린다. */
@@ -124,11 +132,17 @@ export function getCssVar(name) {
 // destroy/recompute its data model.
 export function refreshMountedChartThemes(ChartCtor) {
   if (!ChartCtor?.instances) return;
+  // 키는 "마운트된 차트에 남아 있을 수 있는 값" 전부 — 각 토큰의 다크·라이트 값과,
+  // 도구들이 예전에 직접 적었던 리터럴까지. 하나라도 빠지면 그 데이터셋만 테마를
+  // 안 따라가고 옛 색으로 굳는다.
   const replacements = new Map([
     ["#8fb1ff", CHART_THEME.primary], ["#3146d8", CHART_THEME.primary],
     ["#77dcaa", CHART_THEME.secondary], ["#087a4f", CHART_THEME.secondary],
     ["#ffc56e", CHART_THEME.tertiary], ["#9b5c00", CHART_THEME.tertiary],
     ["#ff8d7e", CHART_THEME.accent], ["#bc3f35", CHART_THEME.accent],
+    ["#ff8178", CHART_THEME.danger], ["#cf3d3d", CHART_THEME.danger], ["#f87171", CHART_THEME.danger],
+    ["#f2b84b", CHART_THEME.warning], ["#a76400", CHART_THEME.warning], ["#fbbf24", CHART_THEME.warning],
+    ["#65d3b3", CHART_THEME.success], ["#11866e", CHART_THEME.success], ["#34d399", CHART_THEME.success],
   ]);
   const remap = (value) => {
     if (Array.isArray(value)) return value.map(remap);

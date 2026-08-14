@@ -3,6 +3,8 @@ import sitemap from "@/app/sitemap";
 import { getAllPosts } from "@/lib/blog";
 import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
+import { getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
+import { COMPARE_SLUGS } from "@/lib/compareContent";
 import { ROUTES, SITE_URL, hasEnVersion, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { readSopData } from "@/lib/sopData";
@@ -39,7 +41,13 @@ describe("llms.txt", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(text.startsWith("# Growth Opt Playbook\n")).toBe(true);
     expect(text).toContain("내 CSV로 분석 시작");
-    expect(text).toContain("processed in the user's browser");
+    // 프라이버시 약속은 이제 brandFacts SSOT에서 파생된다. 문자열을 여기 다시 적으면
+    // SSOT를 고쳐도 테스트가 옛 문장을 통과시킨다 — 사실 자체를 조회해서 대조한다.
+    const privacy = getBrandFacts("en").find((fact) => fact.id === "privacy");
+    expect(text).toContain(privacy.claim);
+    expect(text).toContain(privacy.detail);
+    // 한계도 같은 급으로 실려야 인용될 때 과장되지 않는다.
+    for (const limit of getBrandLimits("en")) expect(text).toContain(limit.claim);
     expect(text).not.toContain("�");
     expect(text.endsWith("\n")).toBe(true);
     expect(text).toBe(buildLlmsText());
@@ -60,6 +68,7 @@ describe("llms.txt", () => {
       + getAllCalculators("en").length
       + getAllTerms("ko").length
       + getAllTerms("en").length
+      + COMPARE_SLUGS.length * 2
       + machineIndexes.size;
 
     expect(links.length).toBe(expectedLinkCount);
