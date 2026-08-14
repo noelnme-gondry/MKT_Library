@@ -29,6 +29,24 @@ export const ITEM_KEYWORDS = {
   "5-24": "브랜드 캠페인 증분, 브랜드 검색량 분석, ITS 분석, 중단점 회귀, 브랜드 리프트 측정",
   "5-25": "다중공선성, VIF, 분산팽창지수, 채널 상관관계, MMM 사전 점검, 기여도 분리",
   "5-26": "Apple Search Ads, ASA 키워드, Exact 승격, CPT 입찰 조정, 검색어 리포트, 앱스토어 검색광고",
+  // 가이드도 항목 단위. GROUP_KEYWORDS만 있으면 같은 그룹의 3~4개 페이지가 제목만
+  // 다르고 keywords·description이 통째로 같아져 서로 잡아먹는다(그룹 01은 4페이지가
+  // 동일 문자열이었다). GROUP_KEYWORDS는 신규 가이드용 폴백으로 남긴다.
+  "1-1": "MMP SDK 연동, 테크니컬 PRD, 딥링크 라우팅, 앱 마케팅 개발 협업, 트래킹 QA",
+  "1-2": "이벤트 택소노미, 인앱 이벤트 설계, 이벤트 네이밍 규칙, GA4 이벤트, 전환 이벤트 파라미터",
+  "1-3": "포스트백 연동, Adjust 포스트백, SAN 연동, S2S postback, 매체 전환 전달",
+  "1-4": "iOS ATT, SKAdNetwork, SKAN 4.0, 컨버전 값 스키마, ATT 동의율, iOS 프라이버시 대응",
+  "2-1": "Google UAC, 앱 캠페인 운영, UAC 입찰 전략, 에셋 그룹, 구글 앱 광고",
+  "2-2": "Meta Advantage+ App, AAP 최적화, Meta 앱 광고, SKAN 캠페인, OS 분리 운영",
+  "2-3": "Apple Search Ads 운영, ASA 캠페인 구조, ASA 키워드 입찰, 앱스토어 검색광고",
+  "2-4": "앱 리타겟팅, 리인게이지먼트, 디퍼드 딥링크, 휴면 사용자 복귀, 재참여 캠페인",
+  "3-1": "ASO, 앱스토어 최적화, 스토어 메타데이터, 스토어 A/B 테스트, ASO 키워드",
+  "3-2": "광고 소재 규격, 소재 사이즈, 플레이어블 광고, 영상 세이프존, 매체별 에셋 규격",
+  "3-3": "3초 훅, 영상 광고 후킹, 첫 프레임 설계, 영상 이탈률, 소재 기획 프레임워크",
+  "4-1": "앱 마케팅 KPI, CPI CPA 정의, ARPU, ROAS 기준, 마케팅 벤치마크",
+  "4-2": "코호트 분석, 리텐션 곡선, D1 D7 D30 리텐션, 누적 ARPU, LTV 추정",
+  "4-3": "카니발리제이션, 오가닉 페이드, ROAS 과대평가, 증분 보정, 유료 오가닉 잠식",
+  "8-1": "CSV 데이터 준비, 컬럼 매핑, 데이터 전처리, 분석 데이터 구조, 노코드 데이터 분석",
 };
 
 // EN 버전 — EN_READY_TOOL_IDS(routeMap.js)에 있는 항목만. 없으면 buildPageKeywords가
@@ -49,6 +67,21 @@ export const ITEM_KEYWORDS_EN = {
   "5-24": "brand campaign incrementality, brand search volume analysis, interrupted time series, ITS analysis, brand lift measurement",
   "5-25": "multicollinearity, VIF, variance inflation factor, channel correlation, MMM pre-check, contribution separability",
   "5-26": "Apple Search Ads, ASA keywords, exact match promotion, CPT bid adjustment, search terms report, app store search ads",
+  "1-1": "MMP SDK integration, technical PRD, deep link routing, mobile attribution QA",
+  "1-2": "event taxonomy, in-app event spec, event naming convention, GA4 events, conversion parameters",
+  "1-3": "postback integration, Adjust postback, SAN integration, S2S postback, network conversion delivery",
+  "1-4": "iOS ATT, SKAdNetwork, SKAN 4.0, conversion value schema, ATT opt-in rate, iOS privacy",
+  "2-1": "Google UAC, app campaign operations, UAC bidding, asset groups, Google app ads",
+  "2-2": "Meta Advantage+ App, AAP optimization, Meta app ads, SKAN campaign, OS split operation",
+  "2-3": "Apple Search Ads operations, ASA campaign structure, ASA keyword bidding, app store search ads",
+  "2-4": "app retargeting, re-engagement, deferred deep link, dormant user reactivation",
+  "3-1": "ASO, app store optimization, store metadata, store A/B testing, ASO keywords",
+  "3-2": "ad creative specs, creative sizes, playable ads, video safe zone, network asset specs",
+  "3-3": "3-second hook, video ad hook, first frame design, video drop-off, creative framework",
+  "4-1": "app marketing KPI, CPI CPA definition, ARPU, ROAS benchmark, marketing benchmarks",
+  "4-2": "cohort analysis, retention curve, D1 D7 D30 retention, cumulative ARPU, LTV projection",
+  "4-3": "cannibalization, organic vs paid, ROAS overestimation, incrementality correction",
+  "8-1": "CSV data prep, column mapping, data preprocessing, analysis data structure, no-code analytics",
 };
 
 // SOP 가이드 (01~04, 08) — 그룹(group) 단위.
