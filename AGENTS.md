@@ -399,6 +399,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
 - `docs/pitfalls.md` — 함정 상세 / `docs/backlog.md` — 백로그 + MMM 스펙(§B)
 - `docs/system-audit-2026-08-12.md` — 최신 전면 감사(UI/UX·분석·구조, P0 3·P1 15·P2 12)
+- `docs/aeo-prompt-checklist.md` — **생성물**. AEO 측정용 프롬프트 목록(KO/EN 각 17). 손으로 고치지 말고 `node scripts/aeo-prompts.mjs`로 재생성 — 원본은 `toolSearchContent`의 `question`/`answer`와 `compareContent`다. 월별 기록은 `docs/aeo-runs/`에 사본을 떠서 한다.
 - `docs/design-system-baseline.md` · `docs/pvm-campaign-variance-spec.md` · `docs/regression-forecast-merge-spec.md` · `docs/content-analytics-rollout-spec.md` · `docs/custom-metrics-data-config-spec.md` — 기능별 설계 스펙
 - `supabase/SETUP.md` · `supabase/schema.sql` — 현재 미사용(§3), 참고용 보존
 - `.claude/agents/mkt-engineer.md` — 본 파일의 압축판(Claude 서브에이전트용, 같이 동기화)
