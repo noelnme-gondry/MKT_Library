@@ -31,6 +31,7 @@ v2-migration/
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)
 │     ├─ landing/·seo/·calculators/·sops/
 │     ├─ ToolPageOutro.jsx      # ★ 하단 마감 박스 = 경계선 + 다음단계·참고자료·관련글 (§12.30)
+│     ├─ GuideAnswer.jsx        # 가이드 질문·한 문장 답 (본문 위, 접기 바깥)
 │     └─ Header/Sidebar/Footer/CsvUploader/GlobalModals/StartGate/WeeklyReview…  # 셸
 ├─ content/blog(-en)/·glossary(-en)/   # 발행 원고 (fs가 SSOT)
 ├─ ARCHITECTURE.md (이 파일) · claude-ux.md (UX 원칙)
@@ -97,7 +98,7 @@ v2-migration/
 | (지표/커스텀) | `utils/metrics/`: `metricRegistry.js`(파생지표 SSOT)·`customMetric.js`(N항 조립, eval 없음)·`chartBuilder.js`·`metricView.js`(hidden/order/sizes) | UI=`ds/CustomMetricBuilder`·`CustomChartBuilder`·`InlineCardEditor`·`MetricConfigPanel`. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지 |
-| (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위 |
+| (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위. `foreignGrain` 계약(5-20·9-1)은 grain이 달라 항상 차단하되 필요한 컬럼을 `TOOL_GUIDE`에서 파생해 안내 |
 | (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
 | (결정 검토) | `lib/decisionReview.js`·`decisionComparableActual.js`·`decisionComparisonScope.js`·`forecastReview.js` | 결정 기록 스키마·기준일+N일 비교 후보·데이터 범위 스코프 |
 
@@ -124,6 +125,7 @@ v2-migration/
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
 - **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
 - **도구 검색 진입면**: `lib/toolSearchContent.js`(공개 도구 KO/EN 롱폼·FAQ SSOT → `ToolLongform` + FAQPage JSON-LD), 역링크는 `lib/toolContentLinks.js`(forward 레지스트리에서 파생) → `ToolEvidenceLinks`. 각 도구의 `question`/`answer`는 접기 **바깥**에 렌더하고 `getToolFaq()`가 FAQ JSON-LD 첫 항목으로 올린다.
+- **가이드(SOP) 검색 진입면**: `lib/guideSearchContent.js`(15개 KO/EN `question`·`answer`·FAQ + `tool`·`posts`·`terms`) → `components/GuideAnswer.jsx`(본문 위·접기 바깥) + `page.js`의 FAQPage·BreadcrumbList + `buildGuideEvidenceLinks` → `ToolEvidenceLinks`의 `tool` 그룹. 가이드는 본문이 이미 롱폼이라 `sections`를 두지 않는다. 블로그 역방향은 같은 파일의 `guidesForPost()`(posts에서 파생) → `components/seo/RelatedGuideList.jsx`. **도구 전용 게이트(`isTool`)에 가이드를 빠뜨리면 15개가 통째로 배선 밖으로 나간다(AGENTS.md §7).**
 - **브랜드 사실 SSOT**: `lib/brandFacts.js`(가격·데이터 처리·결정론 등 `BRAND_FACTS` + 한계 `BRAND_LIMITS`). `llms.txt`가 여기서 파생한다. 도구 이름·설명은 여기 적지 않고 `routeSeo`에서 조회한다.
 - **방법 비교**: `lib/compareContent.js`(KO/EN `question`·`answer`·비교표·`guidance`·FAQ) → `components/ComparePage.jsx` + `/compare[/slug]` KO/EN. sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생. 인바운드는 `getComparesForTool()` 역인덱스 → `buildEvidenceLinks` → `ToolEvidenceLinks`(도구 9개) + 푸터 + ⌘K 개별 항목 + 사이드바 LIBRARY.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
