@@ -2,14 +2,14 @@
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
   "ab-testing": "A/B 테스트 방법: 표본 크기·유의성·판정 기준",
-  "ad-creative-specs-guide": "광고 소재 규격 가이드: 매체별 사이즈·세이프존",
+  "ad-creative-specs-guide": "소재가 반려·크롭되는 이유: 매체 규격 위반 진단",
   "ad-creative-testing": "광고 소재 테스트 방법: 적은 예산으로 몇 개까지 돌려야 할까?",
   "ad-machine-learning": "광고 머신러닝 학습 단계: CPA 급등 원인과 운영 방법",
   "ad-performance-diagnosis": "광고 성과 하락 원인: CPA·CTR 떨어질 때 4단계 진단",
   "aha-event-ad-optimization": "Aha Event로 광고 최적화하기: 설치 CPA와 리텐션 연결",
   "aha-moment-retention": "Aha Moment 찾는 법: 초기 행동과 리텐션 분석",
   "ai-era-marketer": "AI 시대 퍼포먼스 마케터 역량: 자동화 이후에도 남는 일",
-  "apple-search-ads-guide": "Apple Search Ads(ASA): Exact 승격·CPT 조정",
+  "apple-search-ads-guide": "Apple Search Ads 검색어 진단: 낭비 키워드 찾기",
   "aso-basics-guide": "ASO 전략: 광고비 태우기 전 스토어 전환부터 막는 법",
   "attribution-data-mismatch": "어트리뷰션 데이터 불일치 원인: 매체·GA4·MMP 전환수 비교",
   "audience-broad-vs-narrow": "브로드 타겟 vs 좁은 타겟: 광고 오디언스 선택 기준",
@@ -19,22 +19,22 @@ const KO_TITLES = {
   "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 평균이 숨기는 이탈 읽는 법",
   "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
   "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 비용 지표 읽는 법",
-  "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP 전환 데이터 이름 규칙",
+  "event-taxonomy-guide": "이벤트 택소노미 오류 진단: 이름 충돌·누락 찾기",
   "funnel-dropoff-analysis": "전환율(CVR) 개선: 퍼널 이탈 진단부터 A/B 검증까지",
   "ga4-data-traps": "GA4 데이터 오류처럼 보이는 숫자 차이: 집계 기준 7가지",
-  "google-uac-optimization": "Google UAC 최적화 가이드: 입찰·에셋·이벤트 설정",
+  "google-uac-optimization": "Google UAC 성과가 흔들릴 때: 학습·입찰 원인 진단",
   "hook-3-seconds-framework": "광고 첫 3초 후킹: 영상 소재 이탈률 줄이는 방법",
   "incrementality-measurement": "증분성 측정이란? 홀드아웃·DiD로 광고 효과 검증",
   "ios-att-skan-guide": "iOS ATT·SKAN 측정 가이드: 성과가 반토막 보이는 이유",
   "ltv-cac-ratio": "LTV:CAC 비율 계산법: 3:1 기준과 흔한 오류 3가지",
   "marketing-mix-modeling": "마케팅 믹스 모델링(MMM)이란? 채널 기여도 측정법",
   "multicollinearity-mmm-guide": "MMM 전 다중공선성 점검: VIF가 높을 때 채널 기여도 해석법",
-  "meta-advantage-plus-guide": "Meta Advantage+ App 최적화: OS·이벤트·입찰 설정",
+  "meta-advantage-plus-guide": "Meta Advantage+ 성과 진단: iOS·안드로이드 차이 읽기",
   "performance-marketer-skills": "퍼포먼스 마케터 필요 역량: 실무 스킬 쌓는 순서",
   "performance-marketing-metrics": "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지",
   "performance-marketing-analysis-order": "퍼포먼스 마케팅 분석 순서: 데이터에 맞는 첫 분석 고르기",
-  "postback-integration-guide": "포스트백 연동 가이드: SAN·S2S·설치 0 오류 해결",
-  "retargeting-reengagement-guide": "리타겟팅·재참여 캠페인 운영: UA와 분리하는 이유",
+  "postback-integration-guide": "포스트백 오류 진단: 설치 0·전환 누락 원인 찾기",
+  "retargeting-reengagement-guide": "리타겟팅 성과가 좋아 보이는 이유: UA 혼입 진단",
   "roas-improvement": "ROAS 개선 방법: 낮아졌을 때 예산보다 먼저 볼 4가지",
   "uplift-holdout-guide": "광고 업리프트 측정법: 홀드아웃 테스트로 순수 증가분 읽는 법",
 };
@@ -57,22 +57,22 @@ const EN_TITLES = {
   "performance-marketing-metrics": "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS",
   "performance-marketing-analysis-order": "Performance Marketing Analysis: Pick the Right First Method",
   "aha-moment-retention": "How to Find the Aha Moment: Early Actions and Retention",
-  "apple-search-ads-guide": "Apple Search Ads Keywords: Exact Promotion and CPT Bids",
+  "apple-search-ads-guide": "Apple Search Ads Terms: Find Wasted Keywords",
   "aso-basics-guide": "ASO Strategy: Improve Store Conversion and Keywords",
   "campaign-anomaly-detection": "Campaign Anomaly Detection: Find CPA and Conversion Drops",
   "cannibalization-organic-paid": "Ad Cannibalization: Measure Paid and Organic Overlap",
   "cohort-analysis-guide": "Cohort Analysis: Reading D1, D7, and D30 Retention Cohorts",
   "cpi-cpa-cpm-difference": "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained",
-  "event-taxonomy-guide": "Event Taxonomy: Naming Rules for GA4 and MMP",
+  "event-taxonomy-guide": "Event Taxonomy Errors: Find Name Clashes and Gaps",
   "funnel-dropoff-analysis": "Conversion Rate: Diagnose Funnel Drop-off and Test Fixes",
-  "google-uac-optimization": "Google UAC Optimization: What You Can Actually Control",
+  "google-uac-optimization": "When Google UAC Slips: Diagnose Learning and Bids",
   "hook-3-seconds-framework": "The 3-Second Hook: Reduce Video Ad Drop-off",
   "ios-att-skan-guide": "iOS Measurement: ATT, SKAN, and Conversion Value Explained",
-  "ad-creative-specs-guide": "Ad Creative Specs Guide: Platform Sizes and Safe Zones",
+  "ad-creative-specs-guide": "Why Creatives Get Rejected or Cropped by Networks",
   "ad-creative-testing": "How Many Ad Creatives Should You Test on a Limited Budget?",
-  "meta-advantage-plus-guide": "Meta Advantage+ App Optimization: OS, Events, and Bidding",
-  "postback-integration-guide": "Postback Integration: Fix SAN, S2S, and Zero Installs",
-  "retargeting-reengagement-guide": "Retargeting & Re-engagement: Why to Split From Acquisition",
+  "meta-advantage-plus-guide": "Meta Advantage+ Diagnosis: Reading iOS vs Android",
+  "postback-integration-guide": "Postback Errors: Diagnose Zero Installs and Lost Events",
+  "retargeting-reengagement-guide": "Why Retargeting Looks Better Than It Is",
   "roas-improvement": "How to Improve ROAS: Four Checks Before Cutting Budget",
   "uplift-holdout-guide": "Advertising Uplift: Measure Net Lift With a Holdout Test",
   "ltv-cac-ratio": "LTV:CAC Ratio Explained: How to Calculate It Correctly",
@@ -117,6 +117,14 @@ const UPDATED_2026_08_06 = {
   en: new Set(["cpi-cpa-cpm-difference", "ga4-data-traps", "ltv-cac-ratio", "performance-marketer-skills"]),
 };
 
+// 2026-08-14: 같은 주제 가이드(/guide/*)와 제목 프레이밍까지 겹쳐 한 쿼리에 두 URL이
+// 붙던 글을 진단·원인 프레이밍으로 교체했다(역할 분리 — 글은 "왜/무엇", 가이드는
+// "어떻게"). 본문은 그대로고 표기층만 바뀐 2026-08-06과 같은 성격의 편집이다.
+const UPDATED_2026_08_14 = new Set([
+  "ad-creative-specs-guide", "apple-search-ads-guide", "event-taxonomy-guide", "google-uac-optimization",
+  "meta-advantage-plus-guide", "postback-integration-guide", "retargeting-reengagement-guide",
+]);
+
 export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug] || DRAFT_TITLES[locale]?.[slug];
   if (!title) return null;
@@ -132,7 +140,9 @@ export function getBlogSeo(locale, slug, source = {}) {
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
-    updated: source.updated || (UPDATED_2026_08_06[locale]?.has(slug)
+    updated: source.updated || (UPDATED_2026_08_14.has(slug)
+      ? "2026-08-14"
+      : UPDATED_2026_08_06[locale]?.has(slug)
       ? "2026-08-06"
       : (UPDATED_2026_07_28.has(slug)
         ? "2026-07-28"

@@ -7,6 +7,10 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
+import RelatedGuideList from "@/components/seo/RelatedGuideList";
+import { guidesForPost } from "@/lib/guideSearchContent";
+import { getRouteSeo } from "@/lib/routeSeo";
+import { idToPath } from "@/lib/routeMap";
 import { getAllTerms } from "@/lib/glossary";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
@@ -143,6 +147,12 @@ export default async function BlogPostPage({ params }) {
     .map((termSlug) => termBySlug.get(termSlug))
     .filter(Boolean)
     .map((term) => ({ slug: term.slug, term: term.term, shortDef: term.shortDef, href: `/glossary/${term.slug}` }));
+  // 같은 주제 가이드 역링크. 이 맵은 `guideSearchContent`의 posts에서 파생하므로
+  // 가이드→글과 글→가이드가 어긋날 수 없다(§12.29 목록은 파생, 하드코딩 금지).
+  const relatedGuides = guidesForPost(slug)
+    .map((guideId) => ({ guideId, seo: getRouteSeo(guideId, "ko") }))
+    .filter((item) => item.seo)
+    .map((item) => ({ href: `${idToPath(item.guideId)}`, title: item.seo.title, description: item.seo.description }));
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
@@ -198,6 +208,8 @@ export default async function BlogPostPage({ params }) {
       />
 
       <NewsletterSignup placement="post" />
+
+      <RelatedGuideList items={relatedGuides} locale="ko" />
 
       <RelatedGlossaryList items={relatedTerms} locale="ko" />
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getAllPosts } from "./blog";
+import { getBlogSeo } from "./blogSeo";
 import { getAllTerms } from "./glossary";
 import {
   GUIDE_SEARCH_CONTENT_IDS,
@@ -9,7 +10,9 @@ import {
   getGuideSearchContent,
   guidePostSlugs,
   guideTermSlugs,
+  guidesForPost,
 } from "./guideSearchContent";
+import { getRouteSeo } from "./routeSeo";
 import { ROUTES, isRoutePublished, idToSlug } from "./routeMap";
 
 const LOCALES = ["ko", "en"];
@@ -68,6 +71,34 @@ describe("guideSearchContent", () => {
       const tool = getGuidePrimaryTool(id);
       expect(tool, id).toBeTruthy();
       expect(idToSlug[tool], `${id} → ${tool} is not a real route`).toBeTruthy();
+    }
+  });
+
+  it("keeps guide→post and post→guide in sync (reverse index is derived)", () => {
+    for (const id of GUIDE_SEARCH_CONTENT_IDS) {
+      for (const slug of guidePostSlugs(id)) {
+        expect(guidesForPost(slug), `${slug} → ${id} 역방향 누락`).toContain(id);
+      }
+    }
+    for (const [slug, guideIds] of Object.entries(
+      Object.fromEntries(
+        GUIDE_SEARCH_CONTENT_IDS.flatMap((id) => guidePostSlugs(id).map((slug) => [slug, guidesForPost(slug)])),
+      ),
+    )) {
+      for (const id of guideIds) {
+        expect(guidePostSlugs(id), `${id} → ${slug} 정방향 누락`).toContain(slug);
+      }
+    }
+  });
+
+  it.each(LOCALES)("does not let a paired guide and post share one title (%s)", (locale) => {
+    for (const id of GUIDE_SEARCH_CONTENT_IDS) {
+      const guideTitle = getRouteSeo(id, locale)?.title;
+      for (const slug of guidePostSlugs(id)) {
+        const postTitle = getBlogSeo(locale, slug)?.title;
+        if (!postTitle) continue;
+        expect(postTitle, `${id} ↔ ${slug} 제목 동일`).not.toBe(guideTitle);
+      }
     }
   });
 

@@ -7,6 +7,10 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
+import RelatedGuideList from "@/components/seo/RelatedGuideList";
+import { guidesForPost } from "@/lib/guideSearchContent";
+import { getRouteSeo } from "@/lib/routeSeo";
+import { idToPath } from "@/lib/routeMap";
 import { getAllTerms } from "@/lib/glossary";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
@@ -139,6 +143,12 @@ export default async function EnBlogPostPage({ params }) {
     .map((termSlug) => termBySlug.get(termSlug))
     .filter(Boolean)
     .map((term) => ({ slug: term.slug, term: term.term, shortDef: term.shortDef, href: `/en/glossary/${term.slug}` }));
+  // 같은 주제 가이드 역링크. 이 맵은 `guideSearchContent`의 posts에서 파생하므로
+  // 가이드→글과 글→가이드가 어긋날 수 없다(§12.29 목록은 파생, 하드코딩 금지).
+  const relatedGuides = guidesForPost(slug)
+    .map((guideId) => ({ guideId, seo: getRouteSeo(guideId, "en") }))
+    .filter((item) => item.seo)
+    .map((item) => ({ href: `/en${idToPath(item.guideId)}`, title: item.seo.title, description: item.seo.description }));
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
@@ -193,6 +203,8 @@ export default async function EnBlogPostPage({ params }) {
       />
 
       <NewsletterSignup locale="en" placement="post" />
+
+      <RelatedGuideList items={relatedGuides} locale="en" />
 
       <RelatedGlossaryList items={relatedTerms} locale="en" />
 

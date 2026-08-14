@@ -364,3 +364,17 @@ export function guideTermSlugs(guideId) {
 export function isGuideRouteId(routeId) {
   return Boolean(routeId && Object.hasOwn(CONTENT, routeId));
 }
+
+// 블로그 글 → 가이드 역인덱스. 12편의 글이 같은 주제 가이드와 1:1로 겹치는데
+// 양쪽이 서로를 가리키지 않으면 검색엔진이 어느 쪽을 대표로 볼지 정하지 못한다.
+// 이 맵을 따로 손으로 적으면 위쪽 posts와 어긋나므로 **파생**한다(§12.29).
+const POST_TO_GUIDES = Object.entries(CONTENT).reduce((acc, [guideId, entry]) => {
+  for (const slug of entry.posts) {
+    (acc[slug] ||= []).push(guideId);
+  }
+  return acc;
+}, {});
+
+export function guidesForPost(slug) {
+  return POST_TO_GUIDES[slug] || [];
+}
