@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
+import GuideAnswer from "@/components/GuideAnswer";
 import GuideIndex from "@/components/GuideIndex";
 import StartGate from "@/components/StartGate";
 import LandingPage from "@/components/LandingPage";
@@ -115,7 +116,11 @@ export default function PageClient({ params, evidenceLinks = [] }) {
              routeId !== "start-gate" &&
              !routeId.startsWith("5-") &&
              !routeId.startsWith("9-") && (
-              <SopContent routeId={routeId} />
+              <>
+                {/* 가이드가 답하는 질문·한 문장 답은 본문 위, 접기 바깥(§12.29). */}
+                <GuideAnswer guideId={routeId} />
+                <SopContent routeId={routeId} />
+              </>
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}

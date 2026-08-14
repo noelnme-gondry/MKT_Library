@@ -5044,6 +5044,11 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .sop-editorial a { color: var(--primary); font-size: 11px; text-decoration: none; }
 .sop-editorial a:hover { text-decoration: underline; }
 @media (max-width: 560px) { .sop-editorial__meta { align-items: flex-start; flex-direction: column; gap: 3px; } }
+/* 가이드가 답하는 질문 + 한 문장 답. 본문 위·접기 바깥에 둔다(§12.29) — 검색과
+   LLM은 페이지 앞쪽에서 답을 뽑으므로 접히면 존재하지 않는 것과 같다. */
+.guide-answer { margin: 0 0 20px; padding: 16px 18px; border-left: 3px solid var(--primary); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--primary) 5%, var(--surface-container-lowest)); }
+.guide-answer__question { margin: 0; color: var(--text-primary); font-family: var(--font-display); font-size: 17px; line-height: 1.4; }
+.guide-answer__answer { margin: 8px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.65; }
 .callout:is(.warn,.warning) { border-left: 3px solid var(--warning); background: color-mix(in srgb,var(--warning) 6%,var(--surface-container-lowest)); }
 .callout:is(.danger,.error) { border-left: 3px solid var(--danger); background: color-mix(in srgb,var(--danger) 6%,var(--surface-container-lowest)); }
 .callout.info { border-left: 3px solid var(--info); background: color-mix(in srgb,var(--info) 6%,var(--surface-container-lowest)); }
@@ -5226,6 +5231,10 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 /* "이 방법을 써야 하나"는 나머지 둘보다 앞선 질문이라 한 줄을 통째로 쓴다.
    제목이 길어 2열에 넣으면 줄바꿈이 심해지기도 한다. */
 .tool-evidence__group--compare { grid-column: 1 / -1; }
+/* 가이드에서 "내 데이터로 확인하기"는 참고 링크가 아니라 다음 행동이다 — 전폭으로
+   먼저 두고 강조한다. 나머지 그룹(글·용어)은 기본 재질을 유지한다. */
+.tool-evidence__group--tool { grid-column: 1 / -1; }
+.tool-evidence__group--tool a { border-color: color-mix(in srgb, var(--primary) 38%, var(--border)); background: color-mix(in srgb, var(--primary) 6%, transparent); }
 .tool-evidence__group-head { margin-bottom: 2px; }
 .tool-evidence__group-head strong { display: block; color: var(--text-muted); font: 700 10px/1.4 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
 .tool-evidence__list { margin: 0; padding: 0; list-style: none; }

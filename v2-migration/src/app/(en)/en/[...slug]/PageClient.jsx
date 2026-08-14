@@ -11,6 +11,7 @@ import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
 import UiSemantics from "@/components/ds/UiSemantics";
+import GuideAnswer from "@/components/GuideAnswer";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
 import ToolAssistRail from "@/components/ToolAssistRail";
@@ -91,7 +92,11 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "5-25" && <MulticollinearityChecker locale="en" />}
             {routeId === "5-26" && <AsaKeywordFinder locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
-            {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
+            {/^[1-4]-|^8-/.test(routeId) && <>
+              {/* 가이드가 답하는 질문·한 문장 답은 본문 위, 접기 바깥(§12.29). */}
+              <GuideAnswer guideId={routeId} locale="en" />
+              <SopContent routeId={routeId} locale="en" initialData={initialSopData} />
+            </>}
             {/* KR과 동일한 하단 마감 계층(§12.30) */}
             <ToolPageOutro
               toolId={routeId}

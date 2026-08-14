@@ -6,12 +6,14 @@ const COPY = {
     post: "실무 가이드",
     term: "핵심 용어",
     compare: "이 방법을 써야 하나",
+    tool: "내 데이터로 확인하기",
   },
   en: {
     title: "Related guides and terms",
     post: "Guide",
     term: "Key glossary terms",
     compare: "Should you use this method",
+    tool: "Check this with your data",
   },
 };
 
@@ -20,8 +22,15 @@ const COPY = {
 export default function ToolEvidenceLinks({ items = [], locale = "ko" }) {
   if (!items.length) return null;
   const T = COPY[locale === "en" ? "en" : "ko"];
-  // 비교 그룹을 먼저 둔다 — "이 도구를 써야 하나"가 "이 도구를 어떻게 쓰나"보다 앞선다.
+  // 가이드에서는 "읽었으니 이제 내 데이터로 확인" 링크가 가장 앞이다. 이 그룹이
+  // 생기기 전까지 가이드 15개는 도구로 나가는 링크가 하나도 없는 막다른 페이지였다.
+  // 비교 그룹은 그다음 — "이 도구를 써야 하나"가 "어떻게 쓰나"보다 앞선다.
   const groups = [
+    {
+      key: "tool",
+      title: T.tool,
+      items: items.filter((item) => item.type === "tool"),
+    },
     {
       key: "compare",
       title: T.compare,
@@ -30,7 +39,7 @@ export default function ToolEvidenceLinks({ items = [], locale = "ko" }) {
     {
       key: "post",
       title: T.post,
-      items: items.filter((item) => item.type !== "term" && item.type !== "compare"),
+      items: items.filter((item) => item.type !== "term" && item.type !== "compare" && item.type !== "tool"),
     },
     {
       key: "term",
