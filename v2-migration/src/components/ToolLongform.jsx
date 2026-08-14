@@ -9,6 +9,13 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
   if (!content) return null;
 
   return <section className="tool-longform" aria-labelledby={`tool-longform-${toolId}`}>
+    {/* 이 도구가 답하는 질문과 한 문장 답을 접기 **바깥**에 둔다. 방법론은 필요할 때만
+        펼치면 되지만, "이걸로 뭘 하나"는 펼치기 전에 읽혀야 한다. 5-18 하위 화면은
+        폴백 콘텐츠라 두 필드가 없을 수 있어 있을 때만 그린다. */}
+    {content.question && content.answer ? <div className="tool-longform__answer">
+      <p className="tool-longform__question">{content.question}</p>
+      <p>{content.answer}</p>
+    </div> : null}
     <details className="tool-longform__disclosure">
       <summary className="tool-longform__summary">
         <span id={`tool-longform-${toolId}`} className="tool-longform__title" role="heading" aria-level="2">{sectionTitle}</span>

@@ -373,7 +373,10 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.29 검색 진입면·유입 레시피 (2026-08)
 도구·문서 페이지가 검색에서 살아남게 하는 공통 배선. 전부 render/메타층(엔진 불변).
-- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 같은 `faq`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·question·answer·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 `getToolFaq()`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **AEO: 답을 접기 바깥·JSON-LD 첫 항목에**(2026-08): LLM은 페이지 앞쪽에서 답을 뽑는다. 도구·비교 페이지는 `question`(예상 프롬프트) + `answer`(한 문장)를 갖고, 화면에서는 접기 **밖**에, 구조화 데이터에서는 FAQ **첫 항목**에 둔다. 가드가 `answer` 90자 상한·`?` 종결·FAQ 중복을 강제한다. 리스트·표가 추출에 유리하므로 비교는 산문이 아니라 표로 쓴다.
+- **브랜드 사실은 `lib/brandFacts.js` 한 곳**: 무료·가입 없음·브라우저 처리·결정론 같은 문장이 랜딩·롱폼·`llms.txt`에 제각각 적혀 있으면 인용하는 쪽도 제각각 가져간다. `BRAND_FACTS`+`BRAND_LIMITS`(못 하는 것도 같은 급으로)에서 파생하고, **도구 이름·설명은 여기 적지 말고 `routeSeo`에서 조회**한다. 문자열을 검증하는 테스트도 SSOT를 조회해 대조할 것 — 문장을 테스트에 복사하면 SSOT를 고쳐도 옛 문장이 통과한다.
+- **방법 비교(`/compare`)는 브랜드 vs 브랜드가 아니라 방법 vs 방법**: 남의 제품 사양을 표로 단정하면 검증할 수 없고 §8에 어긋난다. 마케터가 실제로 묻는 것도 "증분이랑 MMM 중 뭐 먼저"에 가깝다. SSOT `lib/compareContent.js`, 렌더 `ComparePage.jsx`, sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생.
 - **목록·표는 파생, 하드코딩 금지**: 템플릿 상세(`lib/templateCatalog.js`)는 실제 CSV 헤더와 일치를 골든으로 강제, 도구→콘텐츠 역링크(`lib/toolContentLinks.js`)는 forward 레지스트리에서 파생, 보고서 대상·sitemap·llms.txt도 라우트에서 파생.
 - **공유 링크는 재조립**(`lib/decisionShare.js`): 입력 객체를 펼치지 말고 허용 필드만 새로 조립 + 상한 + noindex. 디코드도 같은 재조립을 거친다(변조 방어). 텍스트 다운로드 출처는 `withAttribution`(CSV엔 금지 — 파싱 깨짐).
 - **콘텐츠 페이지에 앱 번들 흘리지 말 것**: 셸(Header 등)에서 조건 없이 무거운 모듈을 동적 import하면 canvas 없는 문서 페이지도 차트 번들을 받는다. 실제 필요 여부(예: `document.querySelector("canvas")`)를 먼저 확인.

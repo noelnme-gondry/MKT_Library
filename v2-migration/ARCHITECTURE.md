@@ -70,6 +70,7 @@ v2-migration/
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
 | `/templates` · `/templates/[slug]` | — | TemplateDownloadCard · 템플릿 상세(`lib/templateCatalog.js`) |
+| `/compare` · `/compare/[slug]` | — | ComparePage.jsx · 방법 비교 SSOT(`lib/compareContent.js`) |
 | `/manuals` · `/share` | — | 방법론 PDF 공개 · 결론 공유 수신(`SharedDecision`, noindex) |
 | `/privacy` · `/terms` · `/contact` | — | PolicyPage |
 
@@ -122,7 +123,9 @@ v2-migration/
 ## 5.1 콘텐츠 SEO·전환 경로
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
 - **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
-- **도구 검색 진입면**: `lib/toolSearchContent.js`(공개 도구 KO/EN 롱폼·FAQ SSOT → `ToolLongform` + FAQPage JSON-LD), 역링크는 `lib/toolContentLinks.js`(forward 레지스트리에서 파생) → `ToolEvidenceLinks`.
+- **도구 검색 진입면**: `lib/toolSearchContent.js`(공개 도구 KO/EN 롱폼·FAQ SSOT → `ToolLongform` + FAQPage JSON-LD), 역링크는 `lib/toolContentLinks.js`(forward 레지스트리에서 파생) → `ToolEvidenceLinks`. 각 도구의 `question`/`answer`는 접기 **바깥**에 렌더하고 `getToolFaq()`가 FAQ JSON-LD 첫 항목으로 올린다.
+- **브랜드 사실 SSOT**: `lib/brandFacts.js`(가격·데이터 처리·결정론 등 `BRAND_FACTS` + 한계 `BRAND_LIMITS`). `llms.txt`가 여기서 파생한다. 도구 이름·설명은 여기 적지 않고 `routeSeo`에서 조회한다.
+- **방법 비교**: `lib/compareContent.js`(KO/EN `question`·`answer`·비교표·`guidance`·FAQ) → `components/ComparePage.jsx` + `/compare[/slug]` KO/EN. sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 

@@ -4,7 +4,7 @@ import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
-import { getToolSearchContent } from "@/lib/toolSearchContent";
+import { getToolFaq, getToolSearchContent } from "@/lib/toolSearchContent";
 import { readSopData } from "@/lib/sopData";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
@@ -109,7 +109,7 @@ async function PageWithStructuredData({ params }) {
   const faqStructuredData = searchContent?.faq?.length ? {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: searchContent.faq.map((item) => ({
+    mainEntity: getToolFaq(routeId, "en").map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: { "@type": "Answer", text: item.a },

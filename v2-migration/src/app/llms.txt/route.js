@@ -1,4 +1,6 @@
 import { getAllPosts } from "@/lib/blog";
+import { getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
+import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
@@ -39,6 +41,14 @@ function analysisEntries(locale) {
     })
     .filter(Boolean)
     .sort((a, b) => a.url.localeCompare(b.url));
+}
+
+// 방법 비교(/compare) — 답을 앞에 둔 페이지라 description에 그 한 문장 답을 그대로 쓴다.
+function compareEntries(locale) {
+  return COMPARE_SLUGS.map((slug) => {
+    const page = getComparePage(slug, locale);
+    return page ? { title: page.title, description: page.answer, url: absoluteUrl(`/compare/${slug}`, locale) } : null;
+  }).filter(Boolean);
 }
 
 function guideEntries(locale) {
@@ -121,7 +131,17 @@ export function buildLlmsText() {
     "",
     "> Free, no-signup performance marketing analysis tools that turn campaign data into one next action.",
     "",
-    "Growth Opt Playbook is built for performance marketers. Uploaded CSV and Google Sheets data is processed in the user's browser and is not sent to the application server. Korean is the primary language, and verified English routes are listed separately.",
+    "Growth Opt Playbook is built for performance marketers. Korean is the primary language, and verified English routes are listed separately.",
+    "",
+    // 브랜드 사실과 한계는 `lib/brandFacts.js` SSOT에서 파생한다. 여기에 문장을 따로
+    // 적어두면 인용하는 쪽마다 다른 문장을 가져가게 된다.
+    "## About this site",
+    "",
+    ...getBrandFacts("en").map((fact) => `- ${fact.claim} ${fact.detail}`),
+    "",
+    "### Limitations",
+    "",
+    ...getBrandLimits("en").map((limit) => `- ${limit.claim} ${limit.detail}`),
     "",
     section("Start — Korean", koStart),
     "",
@@ -130,6 +150,8 @@ export function buildLlmsText() {
     section("Operating guides — Korean", guideEntries("ko")),
     "",
     section("Practical articles — Korean", blogEntries("ko")),
+    "",
+    section("Method comparisons — Korean", compareEntries("ko")),
     "",
     section("Calculators — Korean", calculatorEntries("ko")),
     "",
@@ -142,6 +164,8 @@ export function buildLlmsText() {
     section("Operating guides — English", guideEntries("en")),
     "",
     section("Practical articles — English", blogEntries("en")),
+    "",
+    section("Method comparisons — English", compareEntries("en")),
     "",
     section("Calculators — English", calculatorEntries("en")),
     "",

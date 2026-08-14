@@ -20,6 +20,7 @@ const SIDEBAR_COPY = {
     diagnose: "성과 문제 진단",
     templates: "템플릿·체크리스트",
     glossary: "용어사전",
+    compare: "방법 비교",
     youtube: "유튜브",
     instagram: "인스타",
     facebook: "페북",
@@ -48,6 +49,7 @@ const SIDEBAR_COPY = {
     diagnose: "Diagnose Performance",
     templates: "Templates",
     glossary: "Glossary",
+    compare: "Method comparisons",
     resourceLabel: "LIBRARY",
     youtube: "YouTube",
     instagram: "Instagram",
@@ -84,7 +86,7 @@ export default function Sidebar({ locale = "ko" }) {
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
   const isDiagnose = cleanPath === "/diagnose";
   const isWeeklyReview = cleanPath === "/weekly-review";
-  const isLibraryRoute = /^\/(blog|guide|templates|glossary)(\/|$)/.test(cleanPath);
+  const isLibraryRoute = /^\/(blog|guide|templates|glossary|compare)(\/|$)/.test(cleanPath);
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
@@ -367,6 +369,13 @@ export default function Sidebar({ locale = "ko" }) {
           aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
         >
           <span><strong>{T.glossary}</strong><small>TERMS</small></span><b>↗</b>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/compare" : "/compare"}
+          className="sidebar-library-link"
+          aria-current={(pathname || "").includes("/compare") ? "page" : undefined}
+        >
+          <span><strong>{T.compare}</strong><small>VS</small></span><b>↗</b>
         </Link>
         </section>
       </details>

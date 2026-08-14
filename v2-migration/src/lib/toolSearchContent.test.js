@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { RESPONSE_SUBTOOL_IDS } from "./responseSubtoolContent";
-import { TOOL_SEARCH_CONTENT_IDS, getToolSearchContent } from "./toolSearchContent";
+import { TOOL_SEARCH_CONTENT_IDS, getToolFaq, getToolSearchContent } from "./toolSearchContent";
 import { ROUTES, isRoutePublished } from "./routeMap";
 
 const LOCALES = ["ko", "en"];
@@ -32,6 +32,37 @@ describe("toolSearchContent", () => {
         expect(item.q.length, id).toBeGreaterThan(5);
         expect(item.a.length, id).toBeGreaterThan(20);
       }
+    }
+  });
+
+  // AEO: 도구가 답하는 질문과 한 문장 답을 접기 바깥과 FAQ JSON-LD 첫 항목에 둔다.
+  // 답이 길어지면 "앞에 둔다"의 의미가 없어지므로 길이 상한도 같이 고정한다.
+  it.each(LOCALES)("answers the tool's core question up front (%s)", (locale) => {
+    for (const id of TOOL_SEARCH_CONTENT_IDS) {
+      const content = getToolSearchContent(id, locale);
+      expect(content.question, id).toBeTruthy();
+      expect(content.question.endsWith("?"), id).toBe(true);
+      expect(content.answer, id).toBeTruthy();
+      expect(content.answer.length, `${id} answer too long`).toBeLessThanOrEqual(90);
+      // 핵심 질문이 아래 FAQ와 중복되면 같은 질문이 두 번 렌더된다.
+      expect(content.faq.map((item) => item.q), id).not.toContain(content.question);
+    }
+  });
+
+  it.each(LOCALES)("puts the core question first in the FAQ payload (%s)", (locale) => {
+    for (const id of TOOL_SEARCH_CONTENT_IDS) {
+      const content = getToolSearchContent(id, locale);
+      const faq = getToolFaq(id, locale);
+      expect(faq[0]?.q, id).toBe(content.question);
+      expect(faq.length, id).toBe(content.faq.length + 1);
+      expect(new Set(faq.map((item) => item.q)).size, id).toBe(faq.length);
+    }
+  });
+
+  it("does not reuse one core question across tools", () => {
+    for (const locale of LOCALES) {
+      const questions = TOOL_SEARCH_CONTENT_IDS.map((id) => getToolSearchContent(id, locale).question);
+      expect(new Set(questions).size).toBe(questions.length);
     }
   });
 

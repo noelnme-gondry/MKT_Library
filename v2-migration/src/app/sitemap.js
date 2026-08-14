@@ -3,6 +3,7 @@ import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 import { CALCULATOR_ORDER } from "@/lib/calculators";
 import { TEMPLATE_PAGE_SLUGS } from "@/lib/templateCatalog";
+import { COMPARE_SLUGS } from "@/lib/compareContent";
 import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
@@ -71,6 +72,17 @@ export default function sitemap() {
     ...TEMPLATE_PAGE_SLUGS.flatMap((slug) => [
       { url: `${BASE}/templates/${slug}`, changeFrequency: "monthly", priority: 0.6 },
       { url: `${BASE}/en/templates/${slug}`, changeFrequency: "monthly", priority: 0.6 },
+    ]),
+  ];
+
+  // 방법 비교("/compare") — routeMap 밖 독립 페이지. KO/EN 모두 발행하므로
+  // 슬러그 SSOT에서 두 로케일을 함께 파생한다.
+  const compareEntries = [
+    { url: `${BASE}/compare`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/en/compare`, changeFrequency: "monthly", priority: 0.7 },
+    ...COMPARE_SLUGS.flatMap((slug) => [
+      { url: `${BASE}/compare/${slug}`, changeFrequency: "monthly", priority: 0.7 },
+      { url: `${BASE}/en/compare/${slug}`, changeFrequency: "monthly", priority: 0.7 },
     ]),
   ];
 
@@ -170,7 +182,7 @@ export default function sitemap() {
     priority: 0.75,
   }));
 
-  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...calculatorEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
+  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...compareEntries, ...calculatorEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
 }
 
 function getPostsByTagSafe(tagSlug, posts) {

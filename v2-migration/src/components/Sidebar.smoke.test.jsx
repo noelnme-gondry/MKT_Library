@@ -51,8 +51,9 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain("3문항으로 원인과 확인 순서 찾기");
     expect(document.body.textContent).toContain("CSV를 올리고 가능한 분석 추천");
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
+    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(5);
     expect(document.querySelector('.sidebar-library-link[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('.sidebar-library-link[href="/compare"]')).toBeTruthy();
     expect(document.querySelector('.sidebar-channel-blog[href="/blog"]')).toBeTruthy();
     expect(document.body.textContent).toContain("마케팅 지표 계산기");
     expect(document.body.textContent).not.toContain("무CSV 계산기");
