@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { COMPARE_SLUGS, getComparePage, getCompareFaq } from "./compareContent";
+import { COMPARE_SLUGS, getComparePage, getCompareFaq, getComparesForTool } from "./compareContent";
 import { getBrandFacts, getBrandLimits, getPublishedToolCount } from "./brandFacts";
 import { ROUTES, isRoutePublished } from "./routeMap";
 import { getRouteSeo } from "./routeSeo";
@@ -69,6 +69,41 @@ describe("compareContent", () => {
         expect(getRouteSeo(toolId, "en"), `${slug} → ${toolId}`).toBeTruthy();
       }
     }
+  });
+
+  // 만든 페이지가 사이트와 접점 없이 혼자 놓이는 것을 막는 가드.
+  // 비교 → 도구(페이지 하단 링크)와 도구 → 비교(근거 링크) 양방향이 모두 있어야 한다.
+  describe("사이트 접점", () => {
+    it("makes every comparison reachable from at least one tool page", () => {
+      const reachable = new Set();
+      const toolIds = new Set(ROUTES.filter((route) => isRoutePublished(route)).map((route) => route.id));
+      for (const toolId of toolIds) {
+        for (const page of getComparesForTool(toolId, "ko")) reachable.add(page.slug);
+      }
+      for (const slug of COMPARE_SLUGS) {
+        expect(reachable.has(slug), `${slug}: 어떤 도구에서도 도달할 수 없다`).toBe(true);
+      }
+    });
+
+    it.each(LOCALES)("resolves the reverse index in both locales (%s)", (locale) => {
+      for (const slug of COMPARE_SLUGS) {
+        for (const toolId of getComparePage(slug, "ko").toolIds) {
+          const slugs = getComparesForTool(toolId, locale).map((page) => page.slug);
+          expect(slugs, `${toolId} → ${slug}`).toContain(slug);
+        }
+      }
+    });
+
+    it("shares the parent's comparisons with 5-18 subtool routes", () => {
+      const parent = getComparesForTool("5-18", "ko").map((page) => page.slug);
+      expect(parent.length).toBeGreaterThan(0);
+      expect(getComparesForTool("5-18-mmm", "ko").map((page) => page.slug)).toEqual(parent);
+    });
+
+    it("returns an empty list for tools with no comparison", () => {
+      expect(getComparesForTool("guide-index", "ko")).toEqual([]);
+      expect(getComparesForTool(undefined, "ko")).toEqual([]);
+    });
   });
 
   it("returns null for an unknown slug instead of throwing", () => {

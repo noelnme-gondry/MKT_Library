@@ -5,6 +5,7 @@ import { IA, useAppStore } from "@/store/useDataStore";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { CONNECTED_TOOLS } from "@/lib/toolConnections";
+import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
 
 const COPY = {
@@ -92,6 +93,20 @@ export default function GlobalModals({ locale = "ko" }) {
       { key: "blog", title: locale === "en" ? "Performance marketing blog" : "퍼포먼스 마케팅 블로그", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/blog" : "/blog", kind: locale === "en" ? "Blog" : "블로그" },
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
       { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
+      // 비교 페이지는 개별 항목으로 넣는다 — "MMM"이나 "증분"을 치면 목록이 아니라
+      // 그 질문에 답하는 페이지가 바로 떠야 한다. 목록은 COMPARE_SLUGS에서 파생.
+      ...COMPARE_SLUGS.map((slug) => {
+        const page = getComparePage(slug, locale === "en" ? "en" : "ko");
+        return {
+          key: `compare-${slug}`,
+          title: page.title,
+          group: locale === "en" ? "Learn" : "실무 자료",
+          href: locale === "en" ? `/en/compare/${slug}` : `/compare/${slug}`,
+          kind: locale === "en" ? "Compare" : "비교",
+          hint: page.answer,
+          searchText: `${page.title} ${page.question} ${page.answer}`,
+        };
+      }),
     ];
     const growthOps = {
       key: "growth-funnel",

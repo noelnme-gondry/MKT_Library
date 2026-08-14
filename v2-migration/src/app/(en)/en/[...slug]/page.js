@@ -10,6 +10,7 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
 import { blogSlugsForTool, glossarySlugsForTool } from "@/lib/toolContentLinks";
 import { getAllPosts } from "@/lib/blog";
+import { getComparesForTool } from "@/lib/compareContent";
 import { getAllTerms } from "@/lib/glossary";
 import PageClient from "./PageClient";
 
@@ -26,7 +27,10 @@ function buildEvidenceLinks(routeId) {
     .map((slug) => termBySlug.get(slug))
     .filter(Boolean)
     .map((term) => ({ type: "term", href: `/en/glossary/${term.slug}`, title: term.term, description: term.shortDef || "" }));
-  return [...posts, ...terms];
+  // 방법 비교 역링크. "이 도구를 써야 하나"는 도구 안이 아니라 비교 페이지가 답한다.
+  const compares = getComparesForTool(routeId, "en")
+    .map((page) => ({ type: "compare", href: `/en/compare/${page.slug}`, title: page.title, description: page.answer }));
+  return [...posts, ...terms, ...compares];
 }
 
 // EN 가이드({id}.en.json)의 title/deck을 메타데이터로 재사용 — generateMetadata는

@@ -74,7 +74,9 @@ const CONTENT = {
   },
 
   "mmm-vs-experiment": {
-    toolIds: ["5-18", "5-23", "5-4"],
+    // 5-25(다중공선성)를 넣는다 — 이 페이지의 "채널 지출이 늘 같이 움직였다면 MMM이
+    // 분리하지 못한다"에 실제로 답하는 도구가 그것이다.
+    toolIds: ["5-18", "5-23", "5-4", "5-25"],
     ko: {
       eyebrow: "방법 비교",
       title: "MMM과 증분 실험 중 무엇을 먼저 해야 하나",
@@ -277,4 +279,27 @@ export function getCompareFaq(slug, locale = "ko") {
   const page = getComparePage(slug, locale);
   if (!page) return [];
   return [{ q: page.question, a: page.answer }, ...page.faq];
+}
+
+// 도구 → 비교 페이지 역인덱스. `toolIds`에서 **파생**한다(목록을 두 곳에 나열 금지).
+// 비교 페이지가 도구로 나가는 링크만 있고 들어오는 길이 없으면 사이트와 떨어져
+// 혼자 놓인다 — 도구 화면 하단에서 이 역링크로 잇는다.
+const TOOL_INDEX = (() => {
+  const index = new Map();
+  for (const [slug, entry] of Object.entries(CONTENT)) {
+    for (const toolId of entry.toolIds) {
+      if (!index.has(toolId)) index.set(toolId, []);
+      index.get(toolId).push(slug);
+    }
+  }
+  return index;
+})();
+
+// 5-18 하위 진입 라우트(5-18-mmm 등)는 부모 도구의 비교를 공유한다.
+const normalizeToolId = (toolId) => (String(toolId || "").startsWith("5-18-") ? "5-18" : toolId);
+
+export function getComparesForTool(toolId, locale = "ko") {
+  return (TOOL_INDEX.get(normalizeToolId(toolId)) || [])
+    .map((slug) => getComparePage(slug, locale))
+    .filter(Boolean);
 }
