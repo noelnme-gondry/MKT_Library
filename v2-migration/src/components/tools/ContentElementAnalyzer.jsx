@@ -27,6 +27,7 @@ import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/
 import { prepareRateInput, runWebRRateRegression } from "@/lib/analysis/webr/rateRegression";
 import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/countRegression";
 import { chooseOutcomeModel } from "@/utils/outcomeType";
+import { prepareMixedInput, runWebRMixedModel } from "@/lib/analysis/webr/mixedModel";
 import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 
 const MUTED = "var(--text-muted)";
@@ -274,6 +275,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [mappingOpen, setMappingOpen] = useState(true);
   const [seededKey, setSeededKey] = useState(null);
   const [webRRun, setWebRRun] = useState({ status: "idle", signature: null, result: null });
+  // 혼합모형은 lme4(Matrix·Rcpp 동반)를 받아야 해서 이 레지스트리에서 가장 무겁다.
+  // 다른 고급 분석처럼 자동 실행하지 않고 사용자가 명시적으로 누를 때만 내려받는다.
+  const [clusterColumn, setClusterColumn] = useState("");
+  const [mixedRun, setMixedRun] = useState({ status: "idle", signature: null, result: null });
+  const mixedRequestRef = useRef(0);
 
   const handleFile = (file) => {
     if (!file) return;
@@ -461,6 +467,50 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     return null;
   }, [fit]);
   const logisticInput = advancedModel?.input || null;
+
+  // 군집 후보 = 숫자가 아닌 열(캠페인·카테고리·채널처럼 반복되는 라벨).
+  const clusterCandidates = useMemo(() => {
+    const headers = csvData?.headers || [];
+    return headers.filter((header) => !numericCols.includes(header));
+  }, [csvData, numericCols]);
+
+  const mixedInput = useMemo(() => {
+    if (!fit || fit.error || !fit.y?.length || !clusterColumn) return null;
+    const rows = csvData?.raw || [];
+    // fit은 유효 행만 남긴 결과라 원본 행과 길이가 다를 수 있다. 같은 필터를 다시
+    // 적용하지 않고, 길이가 어긋나면 아예 시도하지 않는다(잘못 짝지으면 조용히 틀린다).
+    if (rows.length !== fit.y.length) return { ok: false, reason: "row_alignment_mismatch" };
+    return prepareMixedInput({
+      X: fit.X,
+      y: fit.y,
+      terms: fit.terms,
+      groups: rows.map((row) => row?.[clusterColumn]),
+    });
+  }, [clusterColumn, csvData, fit]);
+
+  const runMixedModel = useCallback(async () => {
+    if (!mixedInput?.ok) return;
+    const requestId = ++mixedRequestRef.current;
+    const signature = analyzedSig;
+    setMixedRun({ status: "loading", signature, result: null });
+    trackProductEvent("analysis_started", {
+      tool_id: "9-1", source: isDemo ? "demo" : csvData?.importSource || "csv",
+      row_count: mixedInput.y.length, analysis_type: "webr_mixed_model", locale,
+    });
+    try {
+      const result = await runWebRMixedModel(mixedInput);
+      if (requestId !== mixedRequestRef.current) return;
+      setMixedRun({ status: "complete", signature, result });
+      trackProductEvent("analysis_completed", {
+        tool_id: "9-1", source: isDemo ? "demo" : csvData?.importSource || "csv",
+        row_count: mixedInput.y.length, analysis_type: "webr_mixed_model",
+        result_state: result.status, locale,
+      });
+    } catch {
+      if (requestId !== mixedRequestRef.current) return;
+      setMixedRun({ status: "failed", signature, result: null });
+    }
+  }, [analyzedSig, csvData, isDemo, locale, mixedInput]);
 
   const runAdvancedLogistic = useCallback(async () => {
     if (!logisticInput?.ok) return;
@@ -909,6 +959,87 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                     );
                   })()}
                 </>
+              )}
+            </section>
+          )}
+
+          {/* ── 반복·군집 자료: 선형혼합모형 (선택 실행) ── */}
+          {!fit?.error && clusterCandidates.length > 0 && (
+            <section className="block">
+              <h2 className="section-title">{tr("같은 대상을 여러 번 측정했나요?", "Repeated measures on the same unit?")}</h2>
+              <p className="muted" style={{ fontSize: "12px", margin: "2px 0 10px" }}>{tr(
+                "캠페인·카테고리처럼 같은 대상에서 여러 행이 나온 자료는 대상별 기준선 차이를 반영해야 합니다. 반영하지 않으면 관측이 적은 대상이 우연히 상위로 올라옵니다.",
+                "When several rows come from the same campaign or category, the model has to account for per-unit baseline differences. Without it, units with few observations rise to the top by luck.",
+              )}</p>
+              <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div>
+                  <label style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tr("반복 단위 열", "Repeated-unit column")}</label>
+                  <select className="map-select" style={{ marginTop: "6px" }} value={clusterColumn} onChange={(event) => { setClusterColumn(event.target.value); setMixedRun({ status: "idle", signature: null, result: null }); }}>
+                    <option value="">{tr("선택 안 함", "None")}</option>
+                    {clusterCandidates.map((header) => <option key={header} value={header}>{header}</option>)}
+                  </select>
+                </div>
+                <button className="ab-button" disabled={!mixedInput?.ok || mixedRun.status === "loading"} onClick={runMixedModel}>
+                  {mixedRun.status === "loading" ? tr("R 실행 중…", "Running in R…") : tr("혼합모형 실행", "Run mixed model")}
+                </button>
+              </div>
+              {/* 무거운 다운로드는 누르기 전에 알린다. */}
+              {clusterColumn && mixedInput?.ok && mixedRun.status === "idle" && (
+                <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{tr(
+                  "처음 실행할 때 R 패키지(lme4)를 내려받습니다 — 이 도구에서 가장 큰 다운로드입니다.",
+                  "The first run downloads the lme4 R package — the largest download in this tool.",
+                )}</p>
+              )}
+              {clusterColumn && mixedInput && !mixedInput.ok && (
+                <p className="muted" style={{ fontSize: "11.5px", marginTop: "10px" }}>
+                  {mixedInput.reason === "too_few_groups" ? tr(`반복 단위가 ${mixedInput.groups}개뿐입니다 — 최소 ${mixedInput.requiredGroups}개가 필요합니다.`, `Only ${mixedInput.groups} units — at least ${mixedInput.requiredGroups} are needed.`)
+                    : mixedInput.reason === "no_repeated_measures" ? tr("각 단위에 행이 하나씩뿐이라 혼합모형을 쓸 이유가 없습니다.", "Each unit has a single row, so a mixed model adds nothing here.")
+                      : mixedInput.reason === "insufficient_rows" ? tr(`행이 ${mixedInput.rows}개입니다 — 최소 ${mixedInput.requiredRows}개가 필요합니다.`, `${mixedInput.rows} rows — at least ${mixedInput.requiredRows} are needed.`)
+                        : tr("이 열로는 반복 구조를 만들 수 없습니다.", "This column does not form a repeated structure.")}
+                </p>
+              )}
+              {mixedRun.status === "failed" && (
+                <p className="muted" style={{ fontSize: "11.5px", marginTop: "10px" }}>{tr("혼합모형 실행에 실패했습니다.", "The mixed model failed to run.")}</p>
+              )}
+              {mixedRun.result?.status === "unstable" && (
+                <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{mixedRun.result.reason === "singular_fit"
+                  ? tr("단위 간 분산이 0으로 수렴했습니다(싱귤러 적합). 이건 '단위 차이가 없다'는 결론이 아니라 이 데이터로는 추정되지 않는다는 뜻입니다 — 기존 결과를 그대로 쓰세요.", "The between-unit variance collapsed to zero (singular fit). That is not a finding of 'no unit differences' — it means this data cannot estimate it. Keep using the existing result.")
+                  : tr("모형이 수렴하지 않아 판정을 내지 않습니다.", "The model did not converge, so no verdict is given.")}</p></div>
+              )}
+              {mixedRun.result?.status === "complete" && (
+                <div className="callout" style={{ marginTop: "12px" }}>
+                  <div className="body">
+                    <strong>{tr(
+                      `전체 변동의 ${(mixedRun.result.icc * 100).toFixed(0)}%가 단위 간 차이입니다`,
+                      `${(mixedRun.result.icc * 100).toFixed(0)}% of the variation is between units`,
+                    )}</strong>
+                    <p style={{ margin: "4px 0 0", fontSize: "12.5px" }}>{mixedRun.result.icc >= 0.1
+                      ? tr("단위별 기준선 차이가 작지 않습니다. 위 표의 요소 효과는 이 차이를 흡수하지 않은 값이므로, 아래 혼합모형 계수를 함께 보세요.", "Baseline differences between units are not small. The element effects above do not absorb them, so read the mixed-model coefficients below alongside them.")
+                      : tr("단위별 기준선 차이가 크지 않아 위 표의 결과와 크게 다르지 않을 것입니다.", "Baseline differences between units are small, so this should not differ much from the table above.")}</p>
+                    <div className="table-wrap" style={{ marginTop: "10px" }}>
+                      <table className="data" style={{ fontSize: "12.5px" }}>
+                        <thead><tr>
+                          <th style={{ textAlign: "left" }}>{T.thElement}</th>
+                          <th style={{ textAlign: "right" }}>{tr("계수", "Estimate")}</th>
+                          <th style={{ textAlign: "right" }}>{T.advancedThP}</th>
+                          <th style={{ textAlign: "right" }}>{T.advancedThCi}</th>
+                        </tr></thead>
+                        <tbody>{mixedRun.result.rows.map((row) => (
+                          <tr key={row.name}>
+                            <td style={{ textAlign: "left" }}>{row.name}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{row.estimate.toFixed(4)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>{row.p.toFixed(3)}</td>
+                            <td className="tnum" style={{ textAlign: "right" }}>[{row.ciLow.toFixed(3)}, {row.ciHigh.toFixed(3)}]</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                    <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{tr(
+                      `단위 ${mixedRun.result.groupCount}개 · 단위 간 SD ${mixedRun.result.groupSd.toFixed(3)} · 잔차 SD ${mixedRun.result.residualSd.toFixed(3)}. lme4는 정확한 분모 자유도를 주지 않아 p는 Wald 대표본 근사입니다. 관측 연관이며 인과효과가 아닙니다.`,
+                      `${mixedRun.result.groupCount} units · between-unit SD ${mixedRun.result.groupSd.toFixed(3)} · residual SD ${mixedRun.result.residualSd.toFixed(3)}. lme4 does not provide exact denominator df, so p-values are Wald large-sample approximations. This is an observed association, not a causal effect.`,
+                    )}</p>
+                  </div>
+                </div>
               )}
             </section>
           )}
