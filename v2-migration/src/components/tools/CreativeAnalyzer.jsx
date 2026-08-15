@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
+import { twoWayAnova } from "@/utils/factorialAnovaMath";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { CHART_THEME, downloadChartAsPNG } from "@/utils/chartUtils";
@@ -579,6 +580,28 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         ? CREATIVE_STATS.conceptMatrix(metrics, axesCfg, CREATIVE_CONFIG)
         : null;
 
+    // §8.1 조합 상호작용 검정 — Concept Matrix는 칸 평균만 보여준다. "이 앵글이
+    // 이 포맷에서만 잘 먹히나"는 상호작용 항이 있어야 답할 수 있고, 주효과만 보고
+    // 조합을 추천하면 A는 영상에서·B는 이미지에서 좋은 경우를 뭉갠다.
+    // WLS decompose(연관 추정)는 그대로 두고, 판정용 검정만 추가한다.
+    const interactionMetric = CREATIVE_CONFIG.decompose.metrics.find((metric) =>
+      metrics.some((row) => Number.isFinite(row?.[metric])));
+    const interactionRows = interactionMetric
+      ? metrics.filter((row) => Number.isFinite(row?.[interactionMetric]) && row?.[axesCfg.rows] && row?.[axesCfg.cols])
+      : [];
+    const conceptInteraction = matrix && interactionRows.length
+      ? {
+        metric: interactionMetric,
+        ...twoWayAnova({
+          y: interactionRows.map((row) => row[interactionMetric]),
+          factorA: interactionRows.map((row) => row[axesCfg.rows]),
+          factorB: interactionRows.map((row) => row[axesCfg.cols]),
+          nameA: axesCfg.rows,
+          nameB: axesCfg.cols,
+        }),
+      }
+      : null;
+
     // §9 다음 테스트 후보 (matrix 기반)
     const nextTest = matrix ? generateNextTestHypotheses(matrix, decompose, locale) : null;
 
@@ -598,6 +621,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       metrics,
       activeAttrs,
       decompose,
+      conceptInteraction,
       fatigue,
       fatigueAlerts,
       fatigueRisk,
@@ -805,7 +829,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     );
   }
 
-  const { validation, metrics, decompose, fatigue, fatigueAlerts, fatigueRisk, health, matrix, nextTest, snapshotHash } =
+  const { validation, metrics, decompose, fatigue, fatigueAlerts, fatigueRisk, health, matrix, conceptInteraction, nextTest, snapshotHash } =
     analysis;
   const hasValidationIssues = validation.errors.length > 0 || validation.droppedRows > 0;
 
@@ -1664,6 +1688,36 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         {matrix && matrix.grid.length ? (
           <>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.matrixDesc1}</p>
+            {/* 조합 상호작용 판정. 칸 평균만 보면 "어느 칸이 제일 높나"까지밖에 못 읽고,
+                그 차이가 조합 때문인지 각 축의 주효과가 겹친 결과인지 알 수 없다. */}
+            {conceptInteraction?.ok && (
+              <div className={`callout ${conceptInteraction.interaction.isSignificant ? "info" : ""}`} style={{ margin: "10px 0" }}>
+                <div className="body">
+                  <strong>{conceptInteraction.interaction.isSignificant
+                    ? tr("조합에 따라 효과가 달라집니다", "The combination changes the effect")
+                    : tr("조합 효과의 근거는 아직 부족합니다", "No established combination effect yet")}</strong>
+                  <p style={{ margin: "4px 0 0" }}>{conceptInteraction.interaction.isSignificant
+                    ? tr(
+                      `${rowAttr}와 ${colAttr}의 상호작용이 유의합니다(${conceptInteraction.metric.toUpperCase()} 기준, p=${conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)}). 각 축을 따로 보고 고르지 말고 위 표에서 조합 단위로 고르세요.`,
+                      `The ${rowAttr} × ${colAttr} interaction is significant (on ${conceptInteraction.metric.toUpperCase()}, p=${conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)}). Pick a combination from the table above rather than choosing each axis separately.`,
+                    )
+                    : tr(
+                      `현재 데이터에서는 ${rowAttr}와 ${colAttr}가 서로의 효과를 바꾼다는 근거가 부족합니다(${conceptInteraction.metric.toUpperCase()} 기준, p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p.toFixed(3)}). 근거 부족은 "조합 효과 없음"이 아니라 아직 구분되지 않는다는 뜻입니다.`,
+                      `The data does not establish that ${rowAttr} and ${colAttr} change each other's effect (on ${conceptInteraction.metric.toUpperCase()}, p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p.toFixed(3)}). Not established is not the same as no effect.`,
+                    )}</p>
+                  <p className="muted" style={{ margin: "6px 0 0", fontSize: "11px" }}>{tr(
+                    `Type II 제곱합 · 소재 ${conceptInteraction.n}개 · 잔차 자유도 ${conceptInteraction.residual.df}. 배분 알고리즘의 선택 편향이 포함돼 있어 연관이지 인과가 아닙니다.`,
+                    `Type II sums of squares · ${conceptInteraction.n} creatives · residual df ${conceptInteraction.residual.df}. Delivery-algorithm selection bias is included, so read this as association, not causation.`,
+                  )}</p>
+                </div>
+              </div>
+            )}
+            {conceptInteraction && !conceptInteraction.ok && conceptInteraction.reason !== "invalid_input" && (
+              <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{tr(
+                "조합 상호작용을 검정할 만큼 칸이 채워지지 않았습니다 — 조합별로 소재가 더 필요합니다.",
+                "There are not enough filled cells to test the combination effect — more creatives per combination are needed.",
+              )}</p>
+            )}
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
               {tr("셀 상태:", "Cell status:")} <span style={{ background: MATRIX_STATUS_COLOR.validated, padding: "2px 8px", borderRadius: "4px" }} title={tr("효과가 검증됐다는 뜻이 아니라 판단에 필요한 관측량이 충분한 조합", "Enough observations to evaluate; this does not mean the effect is validated")}>{tr("충분히 관측", "Enough data")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.promising, padding: "2px 8px", borderRadius: "4px" }} title={tr("좋아 보이지만 아직 데이터가 적어 확정하기 어려운 조합", "Looks promising but too little data to confirm yet")}>{tr("유망", "Promising")}</span> ·{" "}

@@ -140,6 +140,85 @@ export const STATS = (() => {
     return { pA, pB, liftAbs, liftRel, z, pValue, ciLow95, ciHigh95 };
   }
 
+  // ── Fisher 정확검정 (2×2) ──────────────────────────────────────────────────
+  // z-검정은 정규근사라 기대빈도가 작으면 p를 과소평가한다(= 없는 유의를 만든다).
+  // 저전환 실험에서 이건 이론적 흠이 아니라 판정을 뒤집는 실무 문제라, 근사 없이
+  // 초기하분포를 직접 합산하는 경로를 둔다. 합산은 결정론적이고 표본 크기에만
+  // 의존하므로 같은 입력이면 byte-identical(§8.3).
+  function logChoose(n, k) {
+    if (k < 0 || k > n) return -Infinity;
+    return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+  }
+
+  // 행 합(nA·nB)과 열 합(성공 합)을 고정한 조건부 분포. k = A그룹의 성공 수.
+  // 정규화 상수 logChoose(N, m)은 계산하지 않고 **관측점 기준 상대 로그확률**만 쓴다.
+  // 그 항은 모든 k에 공통이라 합의 비율에서 해석적으로 상쇄되는데, 그냥 두면
+  // N이 커질수록 큰 수(≈1800)의 Lanczos 오차가 그대로 실려 정확값과 1e-11 수준으로
+  // 어긋난다. 상쇄시키면 ΣP=1이 구성상 보장되고 정확값과 1e-13 이하로 맞는다.
+  function hypergeometricRelLogPmf(k, referenceK, nA, nB, successTotal) {
+    return (logChoose(nA, k) - logChoose(nA, referenceK))
+      + (logChoose(nB, successTotal - k) - logChoose(nB, successTotal - referenceK));
+  }
+
+  // 근사를 못 믿는 조건. 기대빈도 5 미만(Cochran)만 쓰면 저전환 실험을 놓친다 —
+  // n=200/200에 전환 3 vs 12이면 기대빈도는 전부 7.5라 이 기준을 통과하는데,
+  // z가 p=0.018, 정확검정이 p=0.032로 근사가 2배 낙관적이다. 전환 건수 자체가
+  // 적으면 표본이 커도 조건부 분포가 이산적이라 근사가 깨지므로 두 조건을 함께 본다.
+  const EXACT_TEST_CONFIG = Object.freeze({ minExpectedCell: 5, minSuccessCount: 10 });
+
+  function shouldPreferExactTest(nA, xA, nB, xB, config = EXACT_TEST_CONFIG) {
+    if (![nA, xA, nB, xB].every(Number.isFinite) || !(nA > 0) || !(nB > 0)) return false;
+    const total = nA + nB;
+    const successTotal = xA + xB;
+    const failureTotal = total - successTotal;
+    const expected = [
+      (nA * successTotal) / total,
+      (nB * successTotal) / total,
+      (nA * failureTotal) / total,
+      (nB * failureTotal) / total,
+    ];
+    if (expected.some((value) => value < config.minExpectedCell)) return true;
+    return Math.min(xA, xB) < config.minSuccessCount;
+  }
+
+  function fisherExact2x2(nA, xA, nB, xB) {
+    if (![nA, xA, nB, xB].every(Number.isFinite)) return null;
+    if (!(nA > 0) || !(nB > 0) || xA < 0 || xB < 0 || xA > nA || xB > nB) return null;
+    if (![nA, xA, nB, xB].every((value) => Number.isInteger(value))) return null;
+    const successTotal = xA + xB;
+    const total = nA + nB;
+    // 성공이 0건이거나 전부 성공이면 조건부 분포에 점이 하나뿐 — 검정할 여지가 없다.
+    if (successTotal === 0 || successTotal === total) {
+      return { pValue: 1, pA: xA / nA, pB: xB / nB, oddsRatio: NaN, support: 1, observedK: xA };
+    }
+    const lower = Math.max(0, successTotal - nB);
+    const upper = Math.min(nA, successTotal);
+    // 관측점의 상대 로그확률은 정의상 0. 부동소수 비교로 관측점 자신이 탈락하는
+    // 일이 없게 상대 허용오차를 둔다.
+    const threshold = 1e-7;
+    let numerator = 0;
+    let denominator = 0;
+    let support = 0;
+    for (let k = lower; k <= upper; k += 1) {
+      const relLogP = hypergeometricRelLogPmf(k, xA, nA, nB, successTotal);
+      const weight = Math.exp(relLogP);
+      denominator += weight;
+      support += 1;
+      if (relLogP <= threshold) numerator += weight;
+    }
+    const pValue = denominator > 0 ? numerator / denominator : 1;
+    // 표본 오즈비(조건부 MLE 아님) — 표시층이 그렇게 이름 붙여야 한다.
+    const oddsRatio = (nA - xA) > 0 && xB > 0 ? (xA * (nB - xB)) / ((nA - xA) * xB) : NaN;
+    return {
+      pValue: Math.min(1, pValue),
+      pA: xA / nA,
+      pB: xB / nB,
+      oddsRatio,
+      support,
+      observedK: xA,
+    };
+  }
+
   function logGamma(z) {
     const coefficients = [
       0.9999999999998099, 676.5203681218851, -1259.1392167224028,
@@ -379,6 +458,22 @@ export const STATS = (() => {
     return { costA, costB, total: costA + costB, cprA, cprB: cprBuse };
   }
 
+  // Holm step-down 보정. massReadout 안에 인라인으로만 있던 걸 꺼냈다 — 상관행렬
+  // (5-25)도 같은 보정이 필요한데 두 번 구현하면 반드시 갈라진다.
+  // 원래 순서를 유지한 배열을 돌려주고, 단조 비감소를 강제한다.
+  function holmAdjust(pValues = []) {
+    const indexed = pValues
+      .map((value, index) => ({ index, value: Number.isFinite(value) ? value : 1 }))
+      .sort((left, right) => left.value - right.value);
+    const adjusted = new Array(pValues.length).fill(1);
+    let previous = 0;
+    indexed.forEach((entry, rank) => {
+      previous = Math.min(1, Math.max(previous, entry.value * (indexed.length - rank)));
+      adjusted[entry.index] = previous;
+    });
+    return adjusted;
+  }
+
   function massReadout(arms) {
     const control = arms.find((a) => a.isControl);
     if (!control || !control.n || control.n <= 0)
@@ -429,12 +524,10 @@ export const STATS = (() => {
       };
     });
     const variants = rows.filter((row) => !row.isControl).sort((a, b) => a.rawPValue - b.rawPValue);
-    let previousAdjusted = 0;
+    const adjustedVariantP = holmAdjust(variants.map((row) => row.rawPValue));
     variants.forEach((row, index) => {
-      const adjusted = Math.min(1, Math.max(previousAdjusted, row.rawPValue * (variants.length - index)));
-      row.pValue = adjusted;
-      row.sig = adjusted < 0.05;
-      previousAdjusted = adjusted;
+      row.pValue = adjustedVariantP[index];
+      row.sig = adjustedVariantP[index] < 0.05;
     });
     return { control, rows };
   }
@@ -501,6 +594,10 @@ export const STATS = (() => {
     studentTCDF,
     sampleSizePerArm,
     twoPropZTest,
+    fisherExact2x2,
+    shouldPreferExactTest,
+    EXACT_TEST_CONFIG,
+    holmAdjust,
     bayesianAB,
     sampleSizeContinuous,
     continuousTest,
