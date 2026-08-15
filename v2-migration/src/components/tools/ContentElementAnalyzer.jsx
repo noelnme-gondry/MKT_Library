@@ -24,6 +24,9 @@ import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTe
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
+import { prepareRateInput, runWebRRateRegression } from "@/lib/analysis/webr/rateRegression";
+import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/countRegression";
+import { chooseOutcomeModel } from "@/utils/outcomeType";
 import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 
 const MUTED = "var(--text-muted)";
@@ -438,10 +441,26 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     };
   }, [analyzed, hasData, csvData, outcome, features]);
 
-  const logisticInput = useMemo(() => {
-    if (!fit || fit.error || !fit.y?.length || !fit.y.every((value) => value === 0 || value === 1)) return null;
-    return prepareLogisticInput({ X: fit.X, y: fit.y, terms: fit.terms });
+  // 성과변수 척도에 맞는 모형으로 보낸다. 예전에는 0/1일 때만 R로 가고 나머지는
+  // 전부 OLS였다 — CTR·CVR 같은 0~1 비율과 설치·전환 카운트가 그 버킷에 떨어졌고
+  // 둘 다 OLS 가정이 깨지는 자료다(utils/outcomeType.js, 골든으로 고정).
+  const advancedModel = useMemo(() => {
+    if (!fit || fit.error || !fit.y?.length) return null;
+    const choice = chooseOutcomeModel(fit.y);
+    const shared = { X: fit.X, y: fit.y, terms: fit.terms };
+    if (choice.model === "binomial") {
+      return { family: "binomial", choice, input: prepareLogisticInput(shared), run: runWebRLogisticRegression, analysisType: "webr_logistic_regression" };
+    }
+    if (choice.model === "beta") {
+      return { family: "beta", choice, input: prepareRateInput(shared), run: runWebRRateRegression, analysisType: "webr_beta_regression" };
+    }
+    if (choice.model === "poisson" || choice.model === "negbin") {
+      return { family: "count", choice, input: prepareCountInput(shared), run: runWebRCountRegression, analysisType: "webr_count_regression" };
+    }
+    // 연속형은 기존 OLS 결과가 맞는 모형이라 고급 분석을 붙이지 않는다.
+    return null;
   }, [fit]);
+  const logisticInput = advancedModel?.input || null;
 
   const runAdvancedLogistic = useCallback(async () => {
     if (!logisticInput?.ok) return;
@@ -452,18 +471,18 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       tool_id: "9-1",
       source: isDemo ? "demo" : csvData?.importSource || "csv",
       row_count: logisticInput.y.length,
-      analysis_type: "webr_logistic_regression",
+      analysis_type: advancedModel.analysisType,
       locale,
     });
     try {
-      const result = await runWebRLogisticRegression(logisticInput);
+      const result = await advancedModel.run(logisticInput);
       if (requestId !== webRRequestRef.current) return;
       setWebRRun({ status: "complete", signature, result });
       trackProductEvent("analysis_completed", {
         tool_id: "9-1",
         source: isDemo ? "demo" : csvData?.importSource || "csv",
         row_count: logisticInput.y.length,
-        analysis_type: "webr_logistic_regression",
+        analysis_type: advancedModel.analysisType,
         result_state: result.status,
         locale,
       });
@@ -474,12 +493,12 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
         tool_id: "9-1",
         source: isDemo ? "demo" : csvData?.importSource || "csv",
         row_count: logisticInput.y.length,
-        analysis_type: "webr_logistic_regression",
+        analysis_type: advancedModel.analysisType,
         result_state: "failed",
         locale,
       });
     }
-  }, [analyzedSig, csvData, isDemo, locale, logisticInput]);
+  }, [advancedModel, analyzedSig, csvData, isDemo, locale, logisticInput]);
 
   useEffect(() => {
     if (!analyzedSig || !logisticInput?.ok || webRAutoSignatureRef.current === analyzedSig) return;
@@ -814,7 +833,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                     <span className="muted" style={{ fontSize: "11.5px" }}>
-                      {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedMethod} · 0={logisticInput.classCounts.zero.toLocaleString()} · 1={logisticInput.classCounts.one.toLocaleString()}
+                      {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedMethod}
+                      {advancedModel.family === "binomial" && ` · 0=${logisticInput.classCounts.zero.toLocaleString()} · 1=${logisticInput.classCounts.one.toLocaleString()}`}
+                    </span>
+                    {/* 왜 이 모형인지 화면이 직접 말한다 — 자동 라우팅은 조용하면 안 된다. */}
+                    <span className="muted" style={{ fontSize: "11.5px" }}>
+                      {advancedModel.family === "beta" && tr("성과가 0~1 비율이라 베타 회귀(로짓 링크)로 적합합니다. 선형회귀는 구간 밖을 예측합니다.", "The outcome is a 0–1 proportion, so this uses beta regression (logit link). Linear regression would predict outside the interval.")}
+                      {advancedModel.family === "count" && tr("성과가 카운트라 로그 링크 모형으로 적합합니다. 과산포가 확인되면 음이항으로 전환합니다.", "The outcome is a count, so this uses a log-link model, switching to negative binomial when overdispersion is confirmed.")}
                     </span>
                   </div>
 
@@ -828,21 +853,38 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
                   {webRRun.signature === analyzedSig && webRRun.result?.status === "complete" && (() => {
                     const advancedTop = webRRun.result.rows.find((row) => row.isSignificant) || null;
+                    // 로그 링크 계수의 지수는 오즈비가 아니라 발생률비(IRR)다. 같은 열에
+                    // 다른 단위를 담으면서 이름을 안 바꾸면 그게 곧 거짓 숫자다.
+                    const isCount = advancedModel.family === "count";
+                    const effect = (row) => isCount ? row.rateRatio : row.oddsRatio;
+                    const effectLow = (row) => isCount ? row.rateRatioLow : row.oddsRatioLow;
+                    const effectHigh = (row) => isCount ? row.rateRatioHigh : row.oddsRatioHigh;
+                    const effectLabel = isCount ? tr("발생률비", "Rate ratio") : T.advancedThOdds;
                     return (
                       <div style={{ marginTop: "14px" }}>
                         <div className="callout" style={{ marginBottom: "10px" }}>
                           <strong>{advancedTop
-                            ? T.advancedTop(advancedTop.name, fmtOddsRatio(advancedTop.oddsRatio))
+                            ? T.advancedTop(advancedTop.name, fmtOddsRatio(effect(advancedTop)))
                             : T.advancedNoSignal}</strong>
                           <p className="muted" style={{ margin: ".35rem 0 0", fontSize: "11.5px" }}>
-                            n {webRRun.result.n.toLocaleString()} · McFadden pseudo R² {Number.isFinite(webRRun.result.pseudoR2) ? webRRun.result.pseudoR2.toFixed(3) : "—"} · AIC {Number.isFinite(webRRun.result.aic) ? webRRun.result.aic.toFixed(1) : "—"}
+                            n {webRRun.result.n.toLocaleString()}
+                            {Number.isFinite(webRRun.result.pseudoR2) && ` · pseudo R² ${webRRun.result.pseudoR2.toFixed(3)}`}
+                            {Number.isFinite(webRRun.result.aic) && ` · AIC ${webRRun.result.aic.toFixed(1)}`}
+                            {webRRun.result.switchedToNegativeBinomial && tr(
+                              ` · 과산포(Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}) 확인 → 음이항 전환`,
+                              ` · overdispersion (Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}) → switched to negative binomial`,
+                            )}
+                            {webRRun.result.boundaryAdjusted && tr(
+                              " · 0·1 경계값이 있어 축소변환 후 적합",
+                              " · boundary 0/1 values were squeezed before fitting",
+                            )}
                           </p>
                         </div>
                         <div className="table-wrap">
                           <table className="data" style={{ fontSize: "12.5px" }}>
                             <thead><tr>
                               <th style={{ textAlign: "left" }}>{T.thElement}</th>
-                              <th style={{ textAlign: "right" }}>{T.advancedThOdds}</th>
+                              <th style={{ textAlign: "right" }}>{effectLabel}</th>
                               <th style={{ textAlign: "right" }}>{T.advancedThP}</th>
                               <th style={{ textAlign: "right" }}>{T.advancedThCi}</th>
                               <th style={{ textAlign: "center" }}>{T.thVerdict}</th>
@@ -850,16 +892,18 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                             <tbody>{webRRun.result.rows.map((row) => (
                               <tr key={row.name}>
                                 <td style={{ textAlign: "left" }}>{row.name}</td>
-                                <td className="tnum" style={{ textAlign: "right" }}>{fmtOddsRatio(row.oddsRatio)}</td>
+                                <td className="tnum" style={{ textAlign: "right" }}>{fmtOddsRatio(effect(row))}</td>
                                 <td className="tnum" style={{ textAlign: "right" }}>{row.p.toFixed(3)}</td>
-                                <td className="tnum" style={{ textAlign: "right" }}>[{fmtOddsRatio(row.oddsRatioLow)}, {fmtOddsRatio(row.oddsRatioHigh)}]</td>
-                                <td style={{ textAlign: "center" }}>{row.isSignificant ? (row.oddsRatio >= 1 ? T.sigUp : T.sigDown) : T.ns}</td>
+                                <td className="tnum" style={{ textAlign: "right" }}>[{fmtOddsRatio(effectLow(row))}, {fmtOddsRatio(effectHigh(row))}]</td>
+                                <td style={{ textAlign: "center" }}>{row.isSignificant ? (effect(row) >= 1 ? T.sigUp : T.sigDown) : T.ns}</td>
                               </tr>
                             ))}</tbody>
                           </table>
                         </div>
                         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
-                          {tr("오즈비는 성공 확률 자체가 아니라 odds의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "An odds ratio multiplies the odds, not the probability itself. This is an observed association, not a causal effect.")}
+                          {isCount
+                            ? tr("발생률비는 건수의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "A rate ratio multiplies the expected count. This is an observed association, not a causal effect.")
+                            : tr("오즈비는 성공 확률 자체가 아니라 odds의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "An odds ratio multiplies the odds, not the probability itself. This is an observed association, not a causal effect.")}
                         </p>
                       </div>
                     );
