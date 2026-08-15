@@ -145,6 +145,12 @@ export const IA = [
       { id: "8-1", title: "CSV 데이터 준비 & 컬럼 매핑 가이드" },
     ],
   },
+  // 항목의 `seoTitle*`·`seoDescription*`은 이름과 달리 **SERP 메타가 아니다**.
+  // 페이지 title/description의 SSOT는 `lib/routeSeo.js`이고, generateMetadata가
+  // routeSeo를 먼저 읽으므로 여기 문구는 렌더된 <title>에 절대 도달하지 않는다
+  // (routeSeo가 색인 가능한 전 라우트를 덮는 것을 routeSeo.test.js가 강제한다).
+  // 실제 용도는 ⌘K 검색 텍스트(`GlobalModals.jsx`) — 질문형·키워드형 문구라
+  // 명령 팔레트 매칭에 도움이 된다. 새 SERP 문구는 routeSeo에 쓸 것.
   {
     id: "05",
     title: "운영 & 성과 분석",

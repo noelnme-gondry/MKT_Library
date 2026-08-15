@@ -5,6 +5,7 @@ import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import { getToolFaq, getToolSearchContent } from "@/lib/toolSearchContent";
+import { getGuideFaq, getGuidePrimaryTool, getGuideSearchContent, guidePostSlugs, guideTermSlugs, isGuideRouteId } from "@/lib/guideSearchContent";
 import { readSopData } from "@/lib/sopData";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import { getSopEditorial } from "@/lib/sopEditorial";
@@ -14,9 +15,31 @@ import { getComparesForTool } from "@/lib/compareContent";
 import { getAllTerms } from "@/lib/glossary";
 import PageClient from "./PageClient";
 
+// 가이드 → 콘텐츠·도구 역링크. KR 미러(§(ko)/[[...slug]]/page.js)와 같은 계약.
+function buildGuideEvidenceLinks(routeId) {
+  const postBySlug = new Map(getAllPosts("en").map((post) => [post.slug, post]));
+  const termBySlug = new Map(getAllTerms("en").map((term) => [term.slug, term]));
+  const toolId = getGuidePrimaryTool(routeId);
+  const toolSeo = toolId && hasEnVersion(toolId) ? getRouteSeo(toolId, "en") : null;
+  const tools = toolId && toolSeo
+    ? [{ type: "tool", href: `/en${idToPath(toolId)}`, title: toolSeo.title, description: toolSeo.description }]
+    : [];
+  const posts = guidePostSlugs(routeId)
+    .map((slug) => postBySlug.get(slug))
+    .filter(Boolean)
+    .map((post) => ({ type: "post", href: `/en/blog/${post.slug}`, title: post.title, description: post.description || "" }));
+  const terms = guideTermSlugs(routeId)
+    .map((slug) => termBySlug.get(slug))
+    .filter(Boolean)
+    .map((term) => ({ type: "term", href: `/en/glossary/${term.slug}`, title: term.term, description: term.shortDef || "" }));
+  return [...tools, ...posts, ...terms];
+}
+
 // 도구 → 콘텐츠 역링크(제목·요약은 server 전용 로더에서 읽어 직렬화해 내려준다).
 function buildEvidenceLinks(routeId) {
-  if (!routeId || !(routeId.startsWith("5-") || routeId.startsWith("9-"))) return [];
+  if (!routeId) return [];
+  if (isGuideRouteId(routeId)) return buildGuideEvidenceLinks(routeId);
+  if (!(routeId.startsWith("5-") || routeId.startsWith("9-"))) return [];
   const postBySlug = new Map(getAllPosts("en").map((post) => [post.slug, post]));
   const termBySlug = new Map(getAllTerms("en").map((term) => [term.slug, term]));
   const posts = blogSlugsForTool(routeId)
@@ -110,14 +133,29 @@ async function PageWithStructuredData({ params }) {
       },
     ],
   } : null;
-  const faqStructuredData = searchContent?.faq?.length ? {
+  // 가이드도 FAQ·Breadcrumb을 낸다(KR 미러). isTool 게이트만 있던 시절 가이드는
+  // TechArticle 하나뿐이라 FAQPage도 BreadcrumbList도 없었다.
+  const guideContent = routeId && EN_READY_GUIDE_IDS.has(routeId) ? getGuideSearchContent(routeId, "en") : null;
+  const faqSource = searchContent?.faq?.length
+    ? getToolFaq(routeId, "en")
+    : guideContent ? getGuideFaq(routeId, "en") : [];
+  const faqStructuredData = faqSource.length ? {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: getToolFaq(routeId, "en").map((item) => ({
+    mainEntity: faqSource.map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
+  } : null;
+  const guideBreadcrumb = guideContent ? {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
+      { "@type": "ListItem", position: 2, name: "Operating guides", item: `${SITE_URL}/en${idToPath("guide-index")}` },
+      { "@type": "ListItem", position: 3, name: initialSopData?.title || routeSeo?.title || meta?.title || routeId, item: toolUrl },
+    ],
   } : null;
   const sopStructuredData = editorial ? {
     "@context": "https://schema.org",
@@ -134,6 +172,7 @@ async function PageWithStructuredData({ params }) {
   return <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
+    {guideBreadcrumb && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(guideBreadcrumb) }} />}
     {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
     <PageClient params={params} initialSopData={initialSopData} evidenceLinks={buildEvidenceLinks(routeId)} />
   </>;

@@ -7,6 +7,8 @@ import Chart from "@/utils/chartGlobals";
 
 import { useAppStore } from "@/store/useDataStore";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
+import CsvGuide from "@/components/ds/CsvGuide";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { downloadCsv } from "@/utils/download";
@@ -160,6 +162,47 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       : hasProfileLiftSignal
         ? tx(locale, "관찰상 증가 신호가 남지만 인과 증명은 아닙니다", "An observational lift signal remains, but it is not causal proof")
         : tx(locale, "증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change");
+  // 결과 내보내기. 이 도구는 오래도록 **입력 템플릿만** 받을 수 있고 추정 증가분·
+  // 반사실·AR(1) 구간을 화면 밖으로 꺼낼 방법이 없었다(§12.27 "계산한 인사이트만"에
+  // 정면으로 어긋남 — 원자료가 아니라 계산 결과가 없어서 못 받던 경우).
+  const csvCell = (value) => {
+    const text = value == null ? "" : String(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const buildCsv = (rows) => `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
+  const downloadSeries = () => {
+    if (!result?.ok) return;
+    const header = ["date", "campaign_on", "actual", "counterfactual", "incremental"];
+    const rows = (result.points || []).map((point) => [
+      point.date,
+      point.date >= result.campaignStartDate ? "on" : "off",
+      point.value,
+      point.counterfactual,
+      point.incremental,
+    ]);
+    downloadCsv(buildCsv([header, ...rows]), "brand_campaign_its_series");
+  };
+  const downloadSummary = () => {
+    if (!result?.ok) return;
+    const rows = [
+      [tx(locale, "항목", "Field"), tx(locale, "값", "Value")],
+      [tx(locale, "캠페인 시작일", "Campaign start date"), result.campaignStartDate],
+      [tx(locale, "사전 기간 수", "Pre periods"), result.prePeriods],
+      [tx(locale, "집행 기간 수", "Post periods"), result.postPeriods],
+      [tx(locale, "실제 합계", "Actual total"), result.actualTotal],
+      [tx(locale, "반사실 합계", "Counterfactual total"), profileCounterfactual],
+      [tx(locale, "추정 증가분", "Estimated incremental"), profileEstimate],
+      [tx(locale, "95% AR(1) 프로파일 하한", "95% AR(1) profile lower"), profileReady ? result.profileInterval[0] : ""],
+      [tx(locale, "95% AR(1) 프로파일 상한", "95% AR(1) profile upper"), profileReady ? result.profileInterval[1] : ""],
+      [tx(locale, "AR(1) rho (MLE)", "AR(1) rho (MLE)"), profile?.rhoMle ?? ""],
+      [tx(locale, "판정", "Verdict"), brandHeadline],
+      // 다운로드본만 따로 돌아다녀도 설계 한계를 잃지 않게 같이 적는다(§8).
+      [tx(locale, "한계", "Limitation"), tx(locale,
+        "통제군 없는 ITS 관찰 추정입니다. 계절성·PR·프로모션 영향은 분리되지 않습니다.",
+        "Observational ITS without a control. Seasonality, PR, and promotions are not separated.")],
+    ];
+    downloadCsv(buildCsv(rows), "brand_campaign_its_summary");
+  };
   const brandDecisionPrefill = result?.ok && !isDemo ? {
     conclusion: !profileReady
       ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
@@ -196,13 +239,14 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
 
     {dataPath === "its" && <section className="block" id="brand-its-setup">
       <h2 className="section-title">{tx(locale, "ITS 데이터 준비", "Prepare ITS data")}</h2>
-      <p className="muted">{tx(locale, "한 행은 하루·한 주·한 달입니다. 브랜드 검색·직접 유입·가입 중 하나를 성과 지표로 쓰고, 캠페인 집행 여부는 집행 전 OFF → 집행 후 ON인 한 번의 연속 구간이어야 합니다.", "One row is a day, week, or month. Choose brand search, direct traffic, or signups as the outcome. Campaign status must be one continuous OFF-before / ON-after window.")}</p>
+      {/* 업로드 안내는 공용 CsvGuide 계약(§12.21 ④)을 쓴다. 예전에는 이 자리에
+          같은 내용이 손으로 적혀 있어 TOOL_GUIDE와 갈라질 수 있었다. */}
+      <CsvGuide toolId="5-24" onDownloadTemplate={downloadTemplate} onTryExample={() => { trackProductEvent("example_run_started", { tool_id: "5-24", source: "tool", placement: "guide", locale }); loadRows(brandDemo(), "demo_brand_campaign_its.csv", { isDemo: true }); }} locale={locale} />
       {!hasData ? <div className="csv-uploader">
         <div className="csv-dropzone" role="button" tabIndex={0} onClick={() => inputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") inputRef.current?.click(); }}>
           <div className="csv-drop-icon">⇧</div><div className="csv-drop-text">{tx(locale, "CSV 파일 드래그 & 드롭", "Drag & drop a CSV")}</div><div className="csv-drop-sub">{tx(locale, "또는 클릭하여 선택", "or click to choose a file")}</div>
         </div>
         <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }} />
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}><button type="button" className="ab-pill" onClick={downloadTemplate}>{tx(locale, "CSV 양식 다운로드", "Download CSV template")}</button><button type="button" className="ab-pill" onClick={() => { trackProductEvent("example_run_started", { tool_id: "5-24", source: "tool", placement: "uploader", locale }); loadRows(brandDemo(), "demo_brand_campaign_its.csv", { isDemo: true }); }}>{tx(locale, "예시 데이터 보기", "View example data")}</button></div>
       </div> : <>
         <div className="file-state"><div className="meta-text"><span className="dot"></span><strong>{csvData.fileName}</strong><span className="csv-loaded-stats">{csvData.raw.length.toLocaleString()}{tx(locale, "행", " rows")}</span></div><button className="ab-pill" type="button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{tx(locale, "CSV 변경", "Change CSV")}</button></div>
         <div className="mapping-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "10px", margin: "14px 0" }}>
@@ -228,6 +272,15 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           { label: tx(locale, "캠페인 없었을 예상", "Expected without campaign"), value: formatValue(profileCounterfactual, locale), detail: tx(locale, `${result.prePeriods}개 사전 기간`, `${result.prePeriods} pre periods`) },
           { label: tx(locale, "95% AR(1) 프로파일 구간", "95% AR(1) profile interval"), value: profileReady ? `${formatValue(result.profileInterval[0], locale)} ~ ${formatValue(result.profileInterval[1], locale)}` : "—" },
         ]}
+        download={<DownloadHub
+          toolId="5-24"
+          locale={locale}
+          label={tx(locale, "결과 받기", "Download results")}
+          items={[
+            { icon: "⬇", analyticsType: "csv", label: tx(locale, "기간별 실제·반사실 (CSV)", "Period series (CSV)"), desc: tx(locale, "날짜별 실제·캠페인 없었을 예상·차이", "Actual, counterfactual, and difference by date"), onSelect: downloadSeries },
+            { icon: "⬇", analyticsType: "csv", label: tx(locale, "증분 추정 요약 (CSV)", "Incrementality summary (CSV)"), desc: tx(locale, "추정 증가분·AR(1) 구간·판정과 설계 한계", "Estimate, AR(1) interval, verdict, and design limits"), onSelect: downloadSummary },
+          ]}
+        />}
         toolId="5-24"
         analysisType="brand_incrementality"
         analysisKey={currentSignature}

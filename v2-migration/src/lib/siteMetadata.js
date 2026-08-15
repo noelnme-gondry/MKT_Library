@@ -1,6 +1,7 @@
 import { withOpenGraphBase } from "./openGraph";
-
-const SITE_URL = "https://growthoptplaybook.com";
+// SITE_URL의 SSOT는 routeMap.js다(AGENTS.md §1). 여기서 다시 선언하면 도메인이
+// 바뀔 때 canonical·OG·sitemap이 서로 다른 호스트를 가리키게 된다.
+import { SITE_URL } from "./routeMap";
 
 const COPY = {
   ko: {

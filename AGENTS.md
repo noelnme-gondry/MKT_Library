@@ -154,8 +154,11 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **헤더명이 아니라 "값"으로 매핑하는 필드는 `valueVocabulary`**(source=광고/오가닉): 헤더/타입 점수 무시하고 값 어휘 매칭만 사용. **숫자 컬럼(`numericRate≥0.8`)은 enum 어휘 후보에서 제외**하고 **짧은 토큰(≤2자)은 정확일치만** — `"850000".includes("0")`으로 비용·설치가 `campaign_on`에 선점되는 사고(PR #603).
 - **CSV를 "쓰는" 라우트는 반드시 `TOOL_GROUP`에 등록**(PR #603→#604): 읽기(sticky `activeDataGroup`)와 쓰기(`groupForRoute`)가 다른 그룹을 고르면 재진입 시 미러가 빈 슬라이스를 가리켜 **방금 올린 CSV가 사라진다**. `TOOL_GROUP` 파생 상수(`TEMPLATE_FAMILY` 등)에 새 id가 딸려 들어가는지도 확인.
 - **그룹·라우트 목록을 두 곳에 나열하지 말 것 — 파생시켜라**(PR #608→#610): `TOOL_GROUP`엔 있는데 스토어 `csvGroups`엔 없던 그룹 하나가 미러를 `undefined`로 만들어 도구를 렌더 throw로 죽였다(5-24, 배포된 채 하루). 같은 사고가 `/start`에서도 났다(#604). 지금은 세 맵이 `buildGroupMap()` 파생 — **"한 곳에 추가하면 다른 곳도 고쳐야 한다"는 주석이 보이면 그게 곧 다음 버그다.** 파생이 불가능하면 최소한 정합 테스트를 둘 것.
-- **커버리지 가드가 손으로 쓴 배열을 돌면 가드가 아니다**(2026-08 감사): `toolOg.test.js`는 "every published tool"을 검증한다면서 하드코딩 11개 배열을 순회했고, **빠진 도구가 정확히 검증에서도 빠져** 5-25·5-26이 generic OG·빈 featureList로 배포됐다. `pageKeywords.js`는 테스트가 아예 0건이었다. 목록 검증은 반드시 `ROUTES.filter(isRoutePublished)` 같은 **SSOT에서 파생**해 돌 것 — 옆 파일 `toolSearchContent.test.js:60`이 이미 올바른 형태다. **가드가 있다는 사실이 가드가 없다는 사실을 가린다.**
-- **"완료" 문구를 하네스에 적기 전에 grep으로 세 볼 것**(같은 감사): §12.27이 "공개 분석 도구 전체 채택 완료"라고 적혀 있었지만 결론 카드가 없는 도구가 2개, 다운로드가 없는 도구가 4개였다. §15의 "틀린 규칙은 없는 규칙보다 해롭다"가 완료 선언에도 적용된다.
+- **커버리지 가드가 손으로 쓴 배열을 돌면 가드가 아니다 — 그리고 고친 파일 옆에서 그대로 재발한다**: `toolOg.test.js`가 "every published tool"이라며 하드코딩 배열을 돌아 5-25·5-26을 놓쳤고(generic OG·빈 featureList 배포), 그 파일만 파생으로 고친 뒤 **옆의 `routeSeo.test.js`가 똑같은 형태로 똑같은 두 도구를 놓치고 있었다**(5-26 KO 32자·EN 69자가 한도 30·60을 넘긴 채 통과). 파생(`ROUTES.filter(isRouteIndexable)`)으로 바꾸자마자 검사된 적 없던 `guide-index`·`start-gate` 설명 초과 2건이 추가로 나왔다. **교훈을 적용할 땐 같은 패턴의 파일을 전부 grep해서 한 번에 고칠 것** — 한 곳만 고치면 교훈이 기록됐다는 사실이 남은 구멍을 가린다. **가드가 있다는 사실이 가드가 없다는 사실을 가린다.** 같은 이유로 "완료" 문구도 하네스에 적기 전에 grep으로 셀 것(§12.27의 미채택 목록은 두 번 연속 낡은 채였다).
+- **라우트 종류로 갈리는 게이트는 "나머지 종류"를 통째로 배선 밖에 둔다**(2026-08-14 감사): `page.js`의 `isTool = id.startsWith("5-")||startsWith("9-")` 하나 때문에 가이드 15개가 FAQPage·BreadcrumbList 없이, `buildEvidenceLinks`의 같은 조건 때문에 아웃바운드 링크 **0건**으로 나가고 있었다(공개 라우트의 절반). `routeSeo` 엔트리도 없어 description이 그룹 desc 폴백 → 같은 그룹끼리 통째로 중복. **이런 게이트를 새로 쓸 땐 "그럼 나머지 라우트는 무엇을 받나"를 그 자리에서 답할 것.**
+- **KR이 주 시장인데 EN만 배선되는 역전이 반복된다**(같은 감사): EN 가이드는 `{id}.en.json` deck으로 페이지별 고유 description을 받는데 KO는 JSON이 2개뿐이라 폴백으로 떨어졌다. `llms.txt`에서 이미 같은 역전을 고쳤던 자리다(주석에 기록까지 있었다). **로케일 분기 폴백을 쓸 때 KO 경로가 EN보다 얇아지지 않는지 확인.**
+- **목록에서 "빠진 것"과 "의도적으로 뺀 것"은 코드에서 구분돼야 한다**(같은 감사): `/start`의 `ROUTER_TOOL_IDS`는 5-23을 `filter`로 명시 제외했지만 5-20·9-1은 계약이 그냥 없어서, 두 도구가 추천에서 영구 부재인 게 결정인지 사고인지 알 수 없었다(사고였다). 제외는 주석 달린 명시 제외로, 커버리지는 SSOT 파생 테스트로 고정할 것.
+- **"죽은 코드"로 보이는 데이터에 다른 소비처가 있을 수 있다**(같은 감사): 스토어 IA의 `seoTitle*` 34개는 `routeSeo`가 항상 이기므로 SERP에 도달하지 않지만, `GlobalModals`가 ⌘K 검색 텍스트로 쓰고 있었다. 지웠으면 명령 팔레트 매칭이 조용히 나빠졌다. **삭제 전 이름 전수 grep** — 주석만 사실에 맞게 고치는 게 답일 때가 있다.
 - **한 도구의 두 도메인이 같은 id를 공유하면 라벨팩이 엇갈린다**(같은 감사): 9-6 라우트는 `domain="performance"`(소재)로 렌더되는데 `uploaderToolId`는 `"5-6"`이고 `TOOL_GUIDE`엔 `"9-6"`(콘텐츠 문구)만 있었다 → `CsvGuide`가 null을 반환해 **업로드 안내가 통째로 사라졌다**(작성된 카피 70줄이 도달 불가). 리라벨 도구는 id·문구·필드 계약 셋이 각각 어느 도메인 것인지 확인하고, `TOOL_GROUP` 파생 커버리지 테스트로 고정할 것.
 - **스모크 `beforeEach`의 상태 주입이 진입 경로를 우회한다**(같은 사고): 셋업이 store 슬라이스를 직접 넣어주면 실제 사용자 경로(`setCurrentRouteId` → 미러 스왑)를 안 밟아 크래시를 놓친다. 진입 경로 자체를 밟는 케이스를 **따로** 둘 것. 초기 상태 불변식은 다른 describe의 `beforeEach`에 오염되므로 별도 describe + `getInitialState()`로.
 - **좁힌 업로드 스코프가 공유 슬라이스를 오염**(같은 PR): 진입 화면 매핑이 그룹 슬라이스에 저장돼 **사이드바로 진입한 도구가 이어 쓴다**(추천 카드 경로만 재매핑). 스코프에서 뺀 컬럼은 하류에서 영구 미매핑. 진입 화면 스코프 = **그 그룹 도구들의 필드 합집합**. 스코프는 오매핑 방지용이 아니라 소속 판별용 — 오매핑은 스코어러에서 막을 것.
@@ -357,7 +360,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 광고 게이트를 어떤 형태로도 되살리지 말 것(`requestAd`는 호출부 호환 no-op만 잔존). 수익화는 이탈·AdSense 데이터 확인 후 별도 결정.
 
 ### 12.27 결론 카드 + 다운로드 허브 공용화
-- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). 채택 현황은 선언하지 말고 grep으로 확인할 것 — 2026-08 기준 `PaidOrganicTrend`·`WebRMmmAdvanced`에 카드가 없고, `ContentElementAnalyzer`·`MulticollinearityChecker`에 다운로드가 없다.
+- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 선언하지 말고 grep으로 확인할 것** — 이 줄에 적힌 미채택 목록은 두 번 연속 낡은 채로 남아 있었다(적힌 4곳이 이미 다 채택돼 있었다). 2026-08-14 실측: 도구 15개 전부 카드 보유, 다운로드는 `PaidOrganicTrend`·`WebRMmmAdvanced` 2곳만 없음(둘 다 subtool/패널).
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
@@ -443,9 +446,10 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **235파일·1744 통과**(1 skipped) · eslint 0 · `next build` ✓. **수치를 적을 땐 실제로 돌려서 적을 것**(구 기재는 46파일·467건 어긋나 있었다).
-- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — **"전 도구 완료" 아님**(§12.27의 미채택 목록이 현행). 완료 선언 전 grep.
-- 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천), 브랜드 증분(5-24 ITS).
+- ✅ 검증 하네스: `npm run test:all` **237파일·1839 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-14 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
+- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
+- 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 
 ---

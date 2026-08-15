@@ -1,4 +1,5 @@
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
+import { getToolGuide } from "@/utils/toolGuide";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
 import { buildVifSpendPanel } from "./vifReadiness";
 import { deriveStatisticalStatus } from "./statisticalStatus";
@@ -26,6 +27,14 @@ export const ANALYSIS_CONTRACTS = {
   // 개별 도구의 매핑 계약으로 별도 판정해야 한다.
   "5-26": { minRows: 1, minPeriods: 1, priority: 2 },
   "9-6": { minRows: 8, minPeriods: 7, minEntityActivePeriods: 4, entityFields: ["creative_id"], spendKeys: ["spend", "cost"], resultKeys: ["installs"], priority: 3 },
+  // 5-20·9-1은 효율 패널과 grain이 다르다(1행 = 유저 1명 / 콘텐츠 1편). 캠페인 일별
+  // CSV로는 사실상 항상 "불가"지만, 목록에서 통째로 빼면 "왜 못 하는지, 뭐가 더
+  // 필요한지"를 아예 못 보게 된다 — 5-23처럼 **의도적으로** 제외하는 것과 "그냥
+  // 없는 것"은 다르다(실제로 이 둘은 후자였다). 표준 필드 계약(TOOL_REQUIRED_FIELDS)에
+  // 억지로 넣지는 않는다: user_id·converted는 STANDARD_FIELDS 키가 아니라 템플릿·
+  // 매핑 파이프라인이 undefined를 받게 된다. 필요한 grain·컬럼은 TOOL_GUIDE에서 파생한다.
+  "5-20": { minRows: 1, minPeriods: 0, foreignGrain: true, priority: 20 },
+  "9-1": { minRows: 1, minPeriods: 0, foreignGrain: true, priority: 21 },
 };
 
 function missingFields(required = [], mapped = new Set()) {
@@ -204,6 +213,18 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     reasons.push(`필수 항목 누락: ${missing.join(", ")}`);
     blockers.push({ code: "missing_fields", fields: missing });
   }
+  // grain이 다른 도구는 "이 CSV로는 불가"를 컬럼 이름까지 붙여 정직하게 말한다.
+  // 문구는 TOOL_GUIDE에서 파생 — 여기 다시 적으면 업로드 화면 안내와 갈라진다.
+  const foreignGrainGuide = contract.foreignGrain ? getToolGuide(toolId, locale) : null;
+  const foreignGrainColumns = (foreignGrainGuide?.needs || [])
+    .filter((need) => need.required)
+    .map((need) => need.label || need.col);
+  if (foreignGrainGuide) {
+    reasons.push(locale === "en"
+      ? `Needs a different CSV grain (${foreignGrainGuide.grain}) — required: ${foreignGrainColumns.join(", ")}`
+      : `다른 단위의 CSV가 필요합니다 (${foreignGrainGuide.grain}) — 필요: ${foreignGrainColumns.join(", ")}`);
+    blockers.push({ code: "foreign_grain", grain: foreignGrainGuide.grain, fields: foreignGrainColumns });
+  }
   const hasMappingConflict = Boolean(mappingContract?.conflicts?.length);
   const hasRequiredMappingConfirmation = Boolean(mappingContract?.assessments?.some((assessment) => (
     assessment.state === "must_confirm" && requiredKeys.has(assessment.field)
@@ -245,7 +266,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     reasons.push(`지출이 변한 채널 또는 캠페인 최소 2개 필요 (현재 ${vifPanel.variableEntityIndices.length}개)`);
     blockers.push({ code: "insufficient_variation", required: 2, current: vifPanel.variableEntityIndices.length });
   }
-  const isBlocked = missing.length || hasMappingConflict || hasRequiredMappingConfirmation || records.length < contract.minRows || hasTooFewPeriods || hasTooFewEntities || hasInsufficientVifVariation || unusableMetrics.length;
+  const isBlocked = Boolean(foreignGrainGuide) || missing.length || hasMappingConflict || hasRequiredMappingConfirmation || records.length < contract.minRows || hasTooFewPeriods || hasTooFewEntities || hasInsufficientVifVariation || unusableMetrics.length;
   let confidenceTier = "standard";
   if (!isBlocked && toolId === "5-18") {
     const mmm = evaluateMmmConfidence(records, quality, contract);
