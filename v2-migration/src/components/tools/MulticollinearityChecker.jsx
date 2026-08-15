@@ -10,15 +10,7 @@ import { downloadCsv } from "@/utils/download";
 import { useAppStore } from "@/store/useDataStore";
 import { buildVifSpendPanel } from "@/lib/analysis-router/vifReadiness";
 import { getMappedRows } from "@/utils/dashboardAggregator";
-import { computeVif, DIAG_THRESHOLDS } from "@/utils/modelDiagnostics";
-
-function pearson(a, b) {
-  const meanA = a.reduce((sum, value) => sum + value, 0) / a.length;
-  const meanB = b.reduce((sum, value) => sum + value, 0) / b.length;
-  const top = a.reduce((sum, value, index) => sum + (value - meanA) * (b[index] - meanB), 0);
-  const bottom = Math.sqrt(a.reduce((sum, value) => sum + (value - meanA) ** 2, 0) * b.reduce((sum, value) => sum + (value - meanB) ** 2, 0));
-  return bottom > 0 ? top / bottom : null;
-}
+import { computeVif, correlationMatrix, DIAG_THRESHOLDS } from "@/utils/modelDiagnostics";
 
 function analyze(rows) {
   const panel = buildVifSpendPanel(rows.map((row) => ({
@@ -28,11 +20,13 @@ function analyze(rows) {
   })));
   const channels = panel.entities;
   const matrix = panel.matrix;
-  if (channels.length < 2 || matrix.length < channels.length + 3) return { channels, matrix, vif: null, pairs: [] };
+  if (channels.length < 2 || matrix.length < channels.length + 3) return { channels, matrix, vif: null, correlation: null, pairs: [] };
   const vif = computeVif(matrix);
-  const pairs = [];
-  for (let i = 0; i < channels.length; i += 1) for (let j = i + 1; j < channels.length; j += 1) pairs.push({ left: channels[i], right: channels[j], correlation: pearson(matrix.map((row) => row[i]), matrix.map((row) => row[j])) });
-  return { channels, matrix, vif, pairs: pairs.sort((a, b) => Math.abs(b.correlation || 0) - Math.abs(a.correlation || 0)) };
+  // r만 보여주던 시절엔 채널 5개 = 쌍 10개라 우연히 강한 상관이 하나쯤 늘 나왔고,
+  // 그걸 "함께 움직인다"고 읽을 근거가 화면에 없었다. Holm 보정 p와 pointwise 95%
+  // 구간을 함께 낸다(엔진: modelDiagnostics.correlationMatrix, 골든 검증됨).
+  const correlation = correlationMatrix(channels.map((name, index) => ({ name, values: matrix.map((row) => row[index]) })));
+  return { channels, matrix, vif, correlation, pairs: correlation.pairs };
 }
 
 export default function MulticollinearityChecker({ locale = "ko" } = {}) {
@@ -73,6 +67,26 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
       .map((line) => line.map(cell).join(","));
     downloadCsv(`\uFEFF${lines.join("\r\n")}`, "vif-multicollinearity");
   };
+  // 상관은 화면에서 판정까지 하므로 내보내기도 판정 근거를 통째로 담는다 —
+  // r만 있는 CSV는 받아봐야 "우연인지"를 다시 판단할 수 없다(§12.27).
+  const downloadCorrelationCsv = () => {
+    const cell = (value) => {
+      const text = value == null ? "" : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const header = ["channel_a", "channel_b", "r", "ci_low_95_pointwise", "ci_high_95_pointwise", "raw_p", "holm_p", "moves_together"];
+    const lines = [header, ...(result?.pairs || []).map((row) => [
+      row.left,
+      row.right,
+      Number.isFinite(row.r) ? row.r : "",
+      Number.isFinite(row.ciLow) ? row.ciLow : "",
+      Number.isFinite(row.ciHigh) ? row.ciHigh : "",
+      Number.isFinite(row.rawP) ? row.rawP : "",
+      Number.isFinite(row.holmP) ? row.holmP : "",
+      Number.isFinite(row.r) ? (row.isSignificant ? "yes" : "no") : "not_computable",
+    ])].map((line) => line.map(cell).join(","));
+    downloadCsv(`\uFEFF${lines.join("\r\n")}\r\n`, "channel-correlation-holm");
+  };
   return <ToolPageShell toolId="5-25" locale={locale} titleLevel={0} title={tr("VIF 다중공선성 점검", "VIF Multicollinearity Check")} summary={<p>{tr("MMM을 돌리기 전에 채널별 지출이 서로 너무 같이 움직였는지 확인합니다. 숫자는 진단 신호이며, 공선성을 해결한 인과 추정은 아닙니다.", "Check whether channel spend moved too tightly together before running MMM. This is a diagnostic signal, not a causal fix.")}</p>}>
     <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 계산 불가는 심각으로 표시합니다. 비용·채널·날짜만 있으면 됩니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or an uncomputable value is severe. You only need date, channel, and spend.`)}</p></section>
     <CsvUploader toolId="5-25" locale={locale} />
@@ -89,10 +103,32 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
         resultState={canSaveDecision ? "ready" : "blocked"}
         locale={locale}
         decisionPrefill={decisionPrefill}
-        download={<DownloadHub toolId="5-25" locale={locale} label={tr("결과 받기", "Download results")} items={[{ icon: "⬇", analyticsType: "csv", label: tr("VIF 결과 (CSV)", "VIF results (CSV)"), desc: tr("채널별 VIF 원자료", "Channel-level VIF values"), onSelect: downloadVifCsv }]} />}
+        download={<DownloadHub toolId="5-25" locale={locale} label={tr("결과 받기", "Download results")} items={[
+          { icon: "⬇", analyticsType: "csv", label: tr("VIF 결과 (CSV)", "VIF results (CSV)"), desc: tr("채널별 VIF 원자료", "Channel-level VIF values"), onSelect: downloadVifCsv },
+          { icon: "⬇", analyticsType: "csv", label: tr("채널쌍 상관 (CSV)", "Channel-pair correlation (CSV)"), desc: tr("r·pointwise 95% 구간·Holm 보정 p·판정", "r, pointwise 95% interval, Holm-adjusted p, verdict"), onSelect: downloadCorrelationCsv },
+        ]} />}
       /></div>
       <section className="block"><h2 className="section-title">{tr("채널별 VIF", "VIF by channel")}</h2><DataTable columns={[{ key: "channel", label: tr("채널", "Channel") }, { key: "vif", label: "VIF", align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : value === Infinity ? "∞" : tr("계산 불가", "Not computable") }]} rows={vifRows} rowKey={(row) => row.channel} emptyText={tr("계산 가능한 VIF가 없습니다.", "No computable VIF values.")} /></section>
-      <section className="block"><h2 className="section-title">{tr("가장 함께 움직인 채널쌍", "Most correlated channel pairs")}</h2><DataTable columns={[{ key: "left", label: tr("채널 A", "Channel A") }, { key: "right", label: tr("채널 B", "Channel B") }, { key: "correlation", label: tr("상관", "Correlation"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : "—" }]} rows={result?.pairs || []} rowKey={(row) => `${row.left}-${row.right}`} emptyText={tr("비교할 쌍이 없습니다.", "No pairs to compare.")} /></section>
+      <section className="block">
+        <h2 className="section-title">{tr("가장 함께 움직인 채널쌍", "Most correlated channel pairs")}</h2>
+        <p className="muted" style={{ fontSize: "12px", margin: "0 0 10px" }}>{tr(
+          `쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강한 상관이 나올 수 있어 p값은 Holm 보정을 거칩니다. 95% 구간은 각 쌍의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.`,
+          `With ${result?.correlation?.comparisons ?? 0} pairs, p-values are Holm-adjusted for multiplicity. The 95% intervals are pointwise per pair, not multiplicity-adjusted.`,
+        )}</p>
+        <DataTable
+          columns={[
+            { key: "left", label: tr("채널 A", "Channel A") },
+            { key: "right", label: tr("채널 B", "Channel B") },
+            { key: "r", label: tr("상관 (r)", "Correlation (r)"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : tr("계산 불가", "Not computable") },
+            { key: "ciLow", label: tr("95% 구간", "95% interval"), align: "right", fmt: (_, row) => Number.isFinite(row.ciLow) && Number.isFinite(row.ciHigh) ? `${row.ciLow.toFixed(2)} ~ ${row.ciHigh.toFixed(2)}` : "—" },
+            { key: "holmP", label: tr("Holm p", "Holm p"), align: "right", fmt: (value) => Number.isFinite(value) ? (value < 0.001 ? "<0.001" : value.toFixed(3)) : "—" },
+            { key: "isSignificant", label: tr("판정", "Verdict"), fmt: (value, row) => !Number.isFinite(row.r) ? tr("계산 불가", "Not computable") : value ? tr("함께 움직임", "Moves together") : tr("근거 부족", "Not established") },
+          ]}
+          rows={result?.pairs || []}
+          rowKey={(row) => `${row.left}-${row.right}`}
+          emptyText={tr("비교할 쌍이 없습니다.", "No pairs to compare.")}
+        />
+      </section>
     </>}
   </ToolPageShell>;
 }

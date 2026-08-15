@@ -1,5 +1,6 @@
 import { MMR_STATS } from "./mmmMath";
 import { REG_STATS } from "./regMath";
+import { studentTp } from "./statPrimitives";
 
 // Kept separate from the estimator so diagnostics remain deterministic and do
 // not alter any existing model result. Thresholds are guidance, not proof.
@@ -11,6 +12,8 @@ export const DIAG_THRESHOLDS = Object.freeze({
   dwHigh: 2.5,
   bgAlpha: 0.05,
   inferenceAlpha: 0.05,
+  // 상관행렬 판정 임계 — Holm 보정 후 p와 비교한다(§8.6 임계값은 config로).
+  correlationAlpha: 0.05,
 });
 
 const EMPTY = Object.freeze({
@@ -156,4 +159,92 @@ export function computeVif(X) {
     : maxVif >= DIAG_THRESHOLDS.vifSevere ? "severe"
       : maxVif >= DIAG_THRESHOLDS.vifWarn ? "warn" : "ok";
   return { vif, maxVif, verdict, variableIndices };
+}
+
+// ── 상관행렬 + 다중비교 보정 ────────────────────────────────────────────────
+// 5-25는 채널쌍 상관계수 r만 화면에 뿌리고 있었다. 채널 5개면 쌍이 10개라
+// 우연히 강한 상관 하나쯤은 늘 나오는데, p값도 보정도 없으면 그걸 구분할 근거가
+// 화면에 없다. r만 크게 나온 쌍을 "함께 움직인다"고 읽으면 MMM 판단이 어긋난다.
+//
+// CI는 각 쌍의 **pointwise** 95% 구간이다(Fisher z 변환). Holm은 p값에만 적용하고
+// 구간에는 적용하지 않는다 — 5-4가 이미 같은 구분을 화면 문구로 쓰고 있어
+// 두 도구가 다른 말을 하지 않게 맞춘다.
+export function correlationMatrix(columns = []) {
+  const usable = columns.filter((column) => Array.isArray(column?.values) && column.values.every(Number.isFinite));
+  if (usable.length < 2) return { n: 0, pairs: [], adjustment: "holm", ciKind: "pointwise", reason: "insufficient_columns" };
+  const n = usable[0].values.length;
+  if (!usable.every((column) => column.values.length === n)) {
+    return { n: 0, pairs: [], adjustment: "holm", ciKind: "pointwise", reason: "ragged_columns" };
+  }
+  if (n < 3) return { n, pairs: [], adjustment: "holm", ciKind: "pointwise", reason: "insufficient_rows" };
+
+  const pairs = [];
+  for (let i = 0; i < usable.length; i += 1) {
+    for (let j = i + 1; j < usable.length; j += 1) {
+      pairs.push({ left: usable[i].name, right: usable[j].name, ...pearsonInference(usable[i].values, usable[j].values, n) });
+    }
+  }
+  // 계산 불가(분산 0 등)는 p=1로 밀어 넣지 않고 보정 대상에서 뺀다 — 넣으면
+  // 다른 쌍의 보정 강도를 부풀려 실제 신호를 죽인다.
+  const testable = pairs.filter((pair) => Number.isFinite(pair.rawP));
+  const adjusted = holmAdjustLocal(testable.map((pair) => pair.rawP));
+  testable.forEach((pair, index) => {
+    pair.holmP = adjusted[index];
+    pair.isSignificant = adjusted[index] < DIAG_THRESHOLDS.correlationAlpha;
+  });
+  pairs.forEach((pair) => {
+    if (!Number.isFinite(pair.rawP)) {
+      pair.holmP = null;
+      pair.isSignificant = false;
+    }
+  });
+  pairs.sort((left, right) => Math.abs(right.r ?? 0) - Math.abs(left.r ?? 0));
+  return { n, pairs, adjustment: "holm", ciKind: "pointwise", comparisons: testable.length, reason: null };
+}
+
+function pearsonInference(a, b, n) {
+  const meanA = a.reduce((sum, value) => sum + value, 0) / n;
+  const meanB = b.reduce((sum, value) => sum + value, 0) / n;
+  let sab = 0, saa = 0, sbb = 0;
+  for (let index = 0; index < n; index += 1) {
+    const da = a[index] - meanA;
+    const db = b[index] - meanB;
+    sab += da * db;
+    saa += da * da;
+    sbb += db * db;
+  }
+  // 한쪽이 상수면 상관은 정의되지 않는다. 0으로 접으면 "무관"이라는 **판정**이
+  // 되는데 실제로는 "계산 불가"다(§7 미상은 미상 버킷으로).
+  if (!(saa > 0) || !(sbb > 0)) {
+    return { r: null, t: null, df: n - 2, rawP: null, holmP: null, ciLow: null, ciHigh: null, isSignificant: false };
+  }
+  const r = Math.max(-1, Math.min(1, sab / Math.sqrt(saa * sbb)));
+  const df = n - 2;
+  const denom = 1 - r * r;
+  const t = denom > 0 ? r * Math.sqrt(df / denom) : (r > 0 ? Infinity : -Infinity);
+  const rawP = Number.isFinite(t) ? studentTp(t, df) : 0;
+  // Fisher z 구간은 n>3이어야 정의된다.
+  let ciLow = null, ciHigh = null;
+  if (n > 3 && Math.abs(r) < 1) {
+    const z = Math.atanh(r);
+    const se = 1 / Math.sqrt(n - 3);
+    ciLow = Math.tanh(z - 1.959963984540054 * se);
+    ciHigh = Math.tanh(z + 1.959963984540054 * se);
+  }
+  return { r, t, df, rawP, holmP: null, ciLow, ciHigh, isSignificant: false };
+}
+
+// abTestMath.STATS.holmAdjust와 같은 계약. 이 파일이 A/B 엔진 전체를 끌어오지
+// 않도록 지역 구현을 두되, 동작 동일성은 modelDiagnostics.test.js가 대조한다.
+function holmAdjustLocal(pValues = []) {
+  const indexed = pValues
+    .map((value, index) => ({ index, value: Number.isFinite(value) ? value : 1 }))
+    .sort((left, right) => left.value - right.value);
+  const adjusted = new Array(pValues.length).fill(1);
+  let previous = 0;
+  indexed.forEach((entry, rank) => {
+    previous = Math.min(1, Math.max(previous, entry.value * (indexed.length - rank)));
+    adjusted[entry.index] = previous;
+  });
+  return adjusted;
 }

@@ -177,7 +177,12 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     const freq = STATS.twoPropZTest(nA, xA, nB, xB);
     // 결정론적 Beta posterior grid 적분 — 같은 입력은 항상 같은 결과.
     const bayes = STATS.bayesianAB({ nA, xA, nB, xB, sims: 10000 });
-    return { freq, bayes };
+    // z는 정규근사라 전환이 적으면 p를 과소평가한다(= 없는 유의를 만든다).
+    // 근사를 못 믿는 구간에서는 정확검정을 계산해 **판정 기준을 그쪽으로 옮긴다** —
+    // 더 정확한 검정이 "유의 아님"이라 말하는데 화면이 "유의"라고 하면 안 된다.
+    const preferExact = STATS.shouldPreferExactTest(nA, xA, nB, xB);
+    const exact = preferExact ? STATS.fisherExact2x2(nA, xA, nB, xB) : null;
+    return { freq, bayes, exact, preferExact };
   }, [mode, testType, anNa, anXa, anNb, anXb]);
 
   const analyzeContinuous = useMemo(() => {
@@ -583,8 +588,10 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   {!analyzeBinary ? null : analyzeBinary.invalid ? (
                     <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{tr("각 그룹 노출 수는 1 이상, 전환 수는 0 ~ 노출 수 범위여야 합니다.", "Each arm's exposure count must be 1 or more, and conversions must be between 0 and the exposure count.")}</p></div></div>
                   ) : (() => {
-                    const { freq, bayes } = analyzeBinary;
+                    const { freq, bayes, exact } = analyzeBinary;
                     const liftPositive = freq.liftRel >= 0;
+                    // 판정에 쓰는 p. 정확검정이 있으면 그쪽이 기준이다.
+                    const decisionP = exact ? exact.pValue : freq.pValue;
                     const winner = bayes.probBWins >= 0.95 ? tr("B 우세 (강한 증거)", "B wins (strong evidence)") : bayes.probBWins >= 0.8 ? tr("B 우세 (보통 증거)", "B wins (moderate evidence)") : bayes.probBWins >= 0.5 ? tr("약한 B 우세", "Weak B lean") : bayes.probBWins >= 0.2 ? tr("약한 A 우세", "Weak A lean") : tr("A 우세 (강한 증거)", "A wins (strong evidence)");
                     return (
                       <div className="ab-result-split">
@@ -594,9 +601,14 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                             <div className="ab-stat"><div className="ab-stat-label">{tr("전환율 A / B", "Conversion rate A / B")}</div><div className="ab-stat-value tnum">{(freq.pA * 100).toFixed(2)}% / {(freq.pB * 100).toFixed(2)}%</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">{tr("상대 Lift", "Relative lift")}</div><div className="ab-stat-value tnum" style={{ color: liftPositive ? undefined : "#ef4444" }}>{(freq.liftRel * 100).toFixed(2)}%</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">z-score</div><div className="ab-stat-value tnum">{freq.z.toFixed(3)}</div></div>
-                            <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{freq.pValue.toFixed(4)} <PvBadge p={freq.pValue} locale={locale} /></div></div>
+                            <div className="ab-stat"><div className="ab-stat-label">{exact ? tr("p-value (근사)", "p-value (approx.)") : "p-value"}</div><div className="ab-stat-value tnum">{freq.pValue.toFixed(4)} {!exact && <PvBadge p={freq.pValue} locale={locale} />}</div></div>
+                            {exact && <div className="ab-stat"><div className="ab-stat-label">{tr("p-value (Fisher 정확검정)", "p-value (Fisher exact)")}</div><div className="ab-stat-value tnum">{exact.pValue.toFixed(4)} <PvBadge p={exact.pValue} locale={locale} /></div></div>}
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("절대 차이 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(freq.ciLow95 * 100).toFixed(2)}% , {(freq.ciHigh95 * 100).toFixed(2)}% ]</div></div>
-                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(freq.pValue, liftPositive), fontWeight: 700 }}>{freq.pValue < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 700 }}>{decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                            {exact && <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("왜 정확검정인가", "Why the exact test")}</div><div className="ab-stat-value" style={{ fontWeight: 500, fontSize: "12px", lineHeight: 1.55 }}>{tr(
+                              "전환 수가 적어 정규근사(z)를 신뢰하기 어렵습니다. 판정은 근사 없이 계산한 Fisher 정확검정을 기준으로 합니다.",
+                              "Conversion counts are low, so the normal (z) approximation is unreliable. The verdict uses Fisher's exact test, which needs no approximation.",
+                            )}</div></div>}
                           </div>
                         </div>
                         <div className="ab-result-block">
