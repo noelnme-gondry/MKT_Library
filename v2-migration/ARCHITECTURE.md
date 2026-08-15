@@ -83,15 +83,15 @@ v2-migration/
 | BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) | fitBest·predictSafeCpr·removeOutliers |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup |
-| CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) | WLS·피로도 |
-| AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve |
+| CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA) |
+| AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve·`fisherExact2x2`(저전환 구간에서 판정 기준을 정확검정으로 이동)·`holmAdjust` |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군) + `incrPrePostMath.js`(전후·DiD·Welch) | 3방법 탭, CSV 그룹 독립 |
 | BrandCampaignIncrementality.jsx (5-24) | `brandIncrementalityMath.js` | ITS·AR(1) 추론·HAC 소표본 보정·rho 프로파일 구간 |
-| MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`) | MMM 전 지출 패널의 VIF·상관 진단. 높은 VIF는 기여도 분리 거부 신호 |
+| MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`·`correlationMatrix`) | MMM 전 지출 패널의 VIF·상관 진단. 높은 VIF는 기여도 분리 거부 신호 |
 | AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` + `lib/analysis/webr/mmmElasticNet.js` | UI/상태와 모델·차트·export 분리. WebR glmnet은 동일 시간창의 **예측 챌린저**일 뿐 기여·인과 모델을 자동 대체하지 않음 |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
-| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `lib/analysis/webr/logisticRegression.js`·`randomForest.js` | 연속 성과=기존 JS HC3·BH. 0/1 성과=WebR binomial GLM·HC3·BH. 100행+이면 Random Forest와 동일 교차검증으로 예측력 비교. RF 승리는 예측 레이어 후보일 뿐 회귀 추론은 유지 |
+| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `utils/outcomeType.js` + `lib/analysis/webr/logisticRegression.js`·`rateRegression.js`·`countRegression.js`·`mixedModel.js`·`randomForest.js` | **종속변수 척도로 모형을 고른다**: 0/1=binomial · 0~1 비율=beta(로짓) · 카운트=Poisson→과산포면 negbin · 그 외=기존 JS HC3·BH. 반복 단위 열을 고르면 lme4 random intercept(수동 실행). 100행+이면 Random Forest와 동일 교차검증으로 예측력 비교. RF 승리는 예측 레이어 후보일 뿐 회귀 추론은 유지 |
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath`·`funnelMath`·`segmentMath`·`anomalyMath`·`pacingMath`·`cohortMath`·`seasonalityMath`·`responseMath` | 탭별 순수 math 추출 완료(골든 커버) |
 | 결론 카드 (전 도구) | `dashboardVerdict.js`·`analysis-results/*QuickSummary.js` | 판정은 **도구별 렌더 유틸**, 공용은 카드 셸뿐(§12.27) |
 | (공통) | `chartUtils.js`·`format.js`·`download.js`·`toolGuide.js`·`demoData.js`(seededNoise)·`testFixtures` | 차트·표시포맷·CSV출력·업로드 설명·픽스처 SSOT |
@@ -99,7 +99,7 @@ v2-migration/
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지 |
 | (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위. `foreignGrain` 계약(5-20·9-1)은 grain이 달라 항상 차단하되 필요한 컬럼을 `TOOL_GUIDE`에서 파생해 안내 |
-| (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
+| (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. `rateRegression`(betareg·0~1 비율)·`countRegression`(MASS·Poisson→과산포면 negbin)·`mixedModel`(lme4·random intercept, **가장 무거운 다운로드 — 자동 실행 금지**). 척도 판별은 `utils/outcomeType.js`. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
 | (결정 검토) | `lib/decisionReview.js`·`decisionComparableActual.js`·`decisionComparisonScope.js`·`forecastReview.js` | 결정 기록 스키마·기준일+N일 비교 후보·데이터 범위 스코프 |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
