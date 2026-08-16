@@ -105,29 +105,47 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
         decisionPrefill={decisionPrefill}
         download={<DownloadHub toolId="5-25" locale={locale} label={tr("결과 받기", "Download results")} items={[
           { icon: "⬇", analyticsType: "csv", label: tr("VIF 결과 (CSV)", "VIF results (CSV)"), desc: tr("채널별 VIF 원자료", "Channel-level VIF values"), onSelect: downloadVifCsv },
-          { icon: "⬇", analyticsType: "csv", label: tr("채널쌍 상관 (CSV)", "Channel-pair correlation (CSV)"), desc: tr("r·pointwise 95% 구간·Holm 보정 p·판정", "r, pointwise 95% interval, Holm-adjusted p, verdict"), onSelect: downloadCorrelationCsv },
+          { icon: "⬇", analyticsType: "csv", label: tr("채널쌍 상관 (CSV)", "Channel-pair correlation (CSV)"), desc: tr("채널쌍별 상관과 판정 근거 숫자", "Correlation and the numbers behind each verdict"), onSelect: downloadCorrelationCsv },
         ]} />}
       /></div>
       <section className="block"><h2 className="section-title">{tr("채널별 VIF", "VIF by channel")}</h2><DataTable columns={[{ key: "channel", label: tr("채널", "Channel") }, { key: "vif", label: "VIF", align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : value === Infinity ? "∞" : tr("계산 불가", "Not computable") }]} rows={vifRows} rowKey={(row) => row.channel} emptyText={tr("계산 가능한 VIF가 없습니다.", "No computable VIF values.")} /></section>
       <section className="block">
         <h2 className="section-title">{tr("가장 함께 움직인 채널쌍", "Most correlated channel pairs")}</h2>
-        <p className="muted" style={{ fontSize: "12px", margin: "0 0 10px" }}>{tr(
-          `쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강한 상관이 나올 수 있어 p값은 Holm 보정을 거칩니다. 95% 구간은 각 쌍의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.`,
-          `With ${result?.correlation?.comparisons ?? 0} pairs, p-values are Holm-adjusted for multiplicity. The 95% intervals are pointwise per pair, not multiplicity-adjusted.`,
-        )}</p>
+        {/* 판정 칩이 이미 다중비교 보정을 반영한다. 보정 p와 구간을 열로 펴면 6열이 되고
+            사용자가 숫자 넷을 대조해야 하는데, 그 대조는 우리가 이미 했다(§12.14·§12.17). */}
         <DataTable
           columns={[
             { key: "left", label: tr("채널 A", "Channel A") },
             { key: "right", label: tr("채널 B", "Channel B") },
-            { key: "r", label: tr("상관 (r)", "Correlation (r)"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : tr("계산 불가", "Not computable") },
-            { key: "ciLow", label: tr("95% 구간", "95% interval"), align: "right", fmt: (_, row) => Number.isFinite(row.ciLow) && Number.isFinite(row.ciHigh) ? `${row.ciLow.toFixed(2)} ~ ${row.ciHigh.toFixed(2)}` : "—" },
-            { key: "holmP", label: tr("Holm p", "Holm p"), align: "right", fmt: (value) => Number.isFinite(value) ? (value < 0.001 ? "<0.001" : value.toFixed(3)) : "—" },
+            { key: "r", label: tr("함께 움직인 정도", "How closely they moved"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : tr("계산 불가", "Not computable") },
             { key: "isSignificant", label: tr("판정", "Verdict"), fmt: (value, row) => !Number.isFinite(row.r) ? tr("계산 불가", "Not computable") : value ? tr("함께 움직임", "Moves together") : tr("근거 부족", "Not established") },
           ]}
           rows={result?.pairs || []}
           rowKey={(row) => `${row.left}-${row.right}`}
           emptyText={tr("비교할 쌍이 없습니다.", "No pairs to compare.")}
         />
+        {(result?.pairs || []).length > 0 && (
+          <details className="stat-method">
+            <summary>{tr("판정 근거 숫자 보기", "Show the numbers behind the verdict")}</summary>
+            <div>
+              <p style={{ margin: "0 0 8px" }}>{tr(
+                `채널쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강하게 움직인 쌍이 섞일 수 있습니다. 그 몫을 덜어낸 값(Holm 보정 p)으로 판정했습니다. 95% 구간은 각 쌍을 따로 본 구간입니다.`,
+                `With ${result?.correlation?.comparisons ?? 0} pairs, some will move together by chance. The verdict uses p-values adjusted for that (Holm). The 95% intervals are per-pair, not multiplicity-adjusted.`,
+              )}</p>
+              <DataTable
+                columns={[
+                  { key: "left", label: tr("채널 A", "Channel A") },
+                  { key: "right", label: tr("채널 B", "Channel B") },
+                  { key: "ciLow", label: tr("95% 구간", "95% interval"), align: "right", fmt: (_, row) => Number.isFinite(row.ciLow) && Number.isFinite(row.ciHigh) ? `${row.ciLow.toFixed(2)} ~ ${row.ciHigh.toFixed(2)}` : "—" },
+                  { key: "holmP", label: tr("보정 p", "Adjusted p"), align: "right", fmt: (value) => Number.isFinite(value) ? (value < 0.001 ? "<0.001" : value.toFixed(3)) : "—" },
+                ]}
+                rows={result?.pairs || []}
+                rowKey={(row) => `${row.left}-${row.right}-detail`}
+                emptyText=""
+              />
+            </div>
+          </details>
+        )}
       </section>
     </>}
   </ToolPageShell>;

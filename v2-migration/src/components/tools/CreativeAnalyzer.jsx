@@ -1693,29 +1693,27 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             {conceptInteraction?.ok && (
               <div className={`callout ${conceptInteraction.interaction.isSignificant ? "info" : ""}`} style={{ margin: "10px 0" }}>
                 <div className="body">
+                  {/* 결론 한 줄 + 행동 한 줄. 검정 이름·제곱합·자유도는 접기로(§12.14·§12.17). */}
                   <strong>{conceptInteraction.interaction.isSignificant
-                    ? tr("조합에 따라 효과가 달라집니다", "The combination changes the effect")
-                    : tr("조합 효과의 근거는 아직 부족합니다", "No established combination effect yet")}</strong>
+                    ? tr("조합에 따라 결과가 달라집니다", "The combination changes the result")
+                    : tr("조합 효과는 아직 근거가 부족합니다", "No established combination effect yet")}</strong>
                   <p style={{ margin: "4px 0 0" }}>{conceptInteraction.interaction.isSignificant
-                    ? tr(
-                      `${rowAttr}와 ${colAttr}의 상호작용이 유의합니다(${conceptInteraction.metric.toUpperCase()} 기준, p=${conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)}). 각 축을 따로 보고 고르지 말고 위 표에서 조합 단위로 고르세요.`,
-                      `The ${rowAttr} × ${colAttr} interaction is significant (on ${conceptInteraction.metric.toUpperCase()}, p=${conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)}). Pick a combination from the table above rather than choosing each axis separately.`,
-                    )
-                    : tr(
-                      `현재 데이터에서는 ${rowAttr}와 ${colAttr}가 서로의 효과를 바꾼다는 근거가 부족합니다(${conceptInteraction.metric.toUpperCase()} 기준, p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p.toFixed(3)}). 근거 부족은 "조합 효과 없음"이 아니라 아직 구분되지 않는다는 뜻입니다.`,
-                      `The data does not establish that ${rowAttr} and ${colAttr} change each other's effect (on ${conceptInteraction.metric.toUpperCase()}, p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p.toFixed(3)}). Not established is not the same as no effect.`,
+                    ? tr(`${rowAttr}와 ${colAttr}를 따로 고르지 말고 위 표에서 조합 단위로 고르세요.`, `Pick a combination from the table above instead of choosing ${rowAttr} and ${colAttr} separately.`)
+                    : tr("지금은 각 축을 따로 봐도 됩니다. 근거 부족은 '조합 효과 없음'이 아니라 아직 구분되지 않는다는 뜻입니다.", "For now the axes can be read separately. Not established is not the same as no effect.")}</p>
+                  <details className="stat-method">
+                    <summary>{tr("판정 근거 보기", "Show the basis for this verdict")}</summary>
+                    <p>{tr(
+                      `${conceptInteraction.metric.toUpperCase()} 기준으로 두 축이 서로의 효과를 바꾸는지 검정했습니다(이원배치 분산분석, Type II). p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)} · 소재 ${conceptInteraction.n}개 · 잔차 자유도 ${conceptInteraction.residual.df}. 배분 알고리즘의 선택 편향이 포함돼 있어 연관이지 인과가 아닙니다.`,
+                      `Tested on ${conceptInteraction.metric.toUpperCase()} whether the two axes change each other's effect (two-way ANOVA, Type II). p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)} · ${conceptInteraction.n} creatives · residual df ${conceptInteraction.residual.df}. Delivery-algorithm selection bias is included, so read this as association, not causation.`,
                     )}</p>
-                  <p className="muted" style={{ margin: "6px 0 0", fontSize: "11px" }}>{tr(
-                    `Type II 제곱합 · 소재 ${conceptInteraction.n}개 · 잔차 자유도 ${conceptInteraction.residual.df}. 배분 알고리즘의 선택 편향이 포함돼 있어 연관이지 인과가 아닙니다.`,
-                    `Type II sums of squares · ${conceptInteraction.n} creatives · residual df ${conceptInteraction.residual.df}. Delivery-algorithm selection bias is included, so read this as association, not causation.`,
-                  )}</p>
+                  </details>
                 </div>
               </div>
             )}
             {conceptInteraction && !conceptInteraction.ok && conceptInteraction.reason !== "invalid_input" && (
               <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{tr(
-                "조합 상호작용을 검정할 만큼 칸이 채워지지 않았습니다 — 조합별로 소재가 더 필요합니다.",
-                "There are not enough filled cells to test the combination effect — more creatives per combination are needed.",
+                "조합별 소재가 더 쌓이면 조합 효과를 판정할 수 있습니다.",
+                "Once more creatives accumulate per combination, the combination effect can be judged.",
               )}</p>
             )}
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
