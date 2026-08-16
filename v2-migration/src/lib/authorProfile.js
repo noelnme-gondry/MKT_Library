@@ -22,18 +22,24 @@ export const AUTHOR = {
   // JSON-LD·바이라인·프로필 링크가 한 번에 따라온다.
   name: "Growth Opt Playbook",
   ko: {
-    role: "퍼포먼스 마케팅 · 운영자",
-    bio: "앱 퍼포먼스 마케팅 실무에서 쓰던 분석을 도구로 만들어 무료로 공개하고 있습니다.",
+    role: "퍼포먼스 마케팅 5년 · 데이터 분석 3년",
+    bio: "앱 퍼포먼스 마케팅 5년, 데이터 분석 3년. 실무에서 쓰던 분석을 도구로 만들어 무료로 공개하고 있습니다.",
   },
   en: {
-    role: "Performance marketing · maintainer",
-    bio: "Turning the analyses used in app performance marketing into free, browser-only tools.",
+    role: "5 years in performance marketing · 3 in data analysis",
+    bio: "Five years in app performance marketing and three in data analysis. I turn the analyses I used at work into free, browser-only tools.",
   },
   // 저자를 식별하는 실제 페이지. /contact가 운영자 연락 채널을 공개하는 자리다.
   profilePath: "/contact",
-  // 외부에서 같은 주체임을 확인할 수 있는 주소만 넣는다(이미 /contact에 공개된 것).
-  sameAs: ["https://www.instagram.com/gondry__workshop/"],
-  // 검증 가능한 자격 정보가 생기면 여기에. 비어 있으면 JSON-LD에서 빠진다.
+  // 외부에서 같은 주체임을 확인할 수 있는 주소만 넣는다. 네이버 블로그는 같은
+  // 사람이 운영하는 다른 발행면이라, 이 연결이 있어야 검색엔진이 두 자산을
+  // 별개 주체로 보지 않는다.
+  sameAs: [
+    "https://blog.naver.com/growthoptplaybook",
+    "https://www.instagram.com/gondry__workshop/",
+  ],
+  // schema.org `hasCredential`은 학위·자격증처럼 **발급 주체가 있는** 것을 위한
+  // 필드다. 경력 연수는 여기 넣으면 스키마 오용이라 `bio`·`role`로만 표기한다.
   credentials: [],
 };
 

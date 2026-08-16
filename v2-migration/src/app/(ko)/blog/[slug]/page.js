@@ -9,6 +9,7 @@ import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
 import RelatedGuideList from "@/components/seo/RelatedGuideList";
 import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
+import AuthorCard from "@/components/seo/AuthorCard";
 import { clusterLinksFor } from "@/lib/topicClusters";
 import { getBlogSeo } from "@/lib/blogSeo";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
@@ -203,6 +204,8 @@ export default async function BlogPostPage({ params }) {
       </article>
 
       <ContentActionPanel toolId={post.primaryTool} post={post} />
+
+      <AuthorCard locale="ko" />
 
       <EditorialTrust
         reviewer={post.reviewer}
