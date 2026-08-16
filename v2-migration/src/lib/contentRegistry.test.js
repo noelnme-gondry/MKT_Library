@@ -208,3 +208,34 @@ describe("editorial SEO registries", () => {
     ]));
   });
 });
+
+// AEO: 발행 글은 FAQPage 구조화 데이터를 낸다. 이 가드가 없던 동안 36편 중 20편이
+// FAQ 없이 나가고 있었고, 목록을 손으로 세지 않으면 드러나지 않았다.
+// 목록은 발행물에서 파생한다 — 하드코딩하면 새 글이 가드에서도 똑같이 빠진다(§7).
+describe("블로그 FAQ 커버리지", () => {
+  it.each(["ko", "en"])("%s 발행 글은 모두 FAQ를 2문항 이상 갖는다", (locale) => {
+    const missing = getAllPosts(locale)
+      .filter((post) => !Array.isArray(post.faq) || post.faq.length < 2)
+      .map((post) => post.slug);
+    expect(missing).toEqual([]);
+  });
+
+  it("FAQ 질문·답이 비어 있거나 지나치게 짧지 않다", () => {
+    for (const locale of ["ko", "en"]) {
+      for (const post of getAllPosts(locale)) {
+        for (const item of post.faq) {
+          expect(item.q.trim().length, `${locale}/${post.slug}`).toBeGreaterThan(8);
+          expect(item.a.trim().length, `${locale}/${post.slug}`).toBeGreaterThan(30);
+        }
+      }
+    }
+  });
+
+  it("한 글 안에서 같은 질문이 반복되지 않는다", () => {
+    for (const locale of ["ko", "en"]) {
+      for (const post of getAllPosts(locale)) {
+        expect(new Set(post.faq.map((item) => item.q)).size, `${locale}/${post.slug}`).toBe(post.faq.length);
+      }
+    }
+  });
+});

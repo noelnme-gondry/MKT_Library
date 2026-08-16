@@ -6,6 +6,12 @@ slug: "cannibalization-organic-paid"
 keywords: "cannibalization, cannibalisation, internal cannibalization, internal cannibalisation, organic cannibalization, paid vs organic, brand search ads, incrementality, cannibalization diagnosis, organic conversion decline"
 tags: ["Analysis", "Incrementality Analysis"]
 draft: false
+faq:
+  - q: "If cannibalization exists, should I turn ads off?"
+    a: "No. It is a matter of degree — some cannibalization can coexist with real net lift. What you need is a corrected ROAS to decide with, not an on/off switch."
+  - q: "Is brand search advertising always cannibalization?"
+    a: "Not necessarily. When competitors bid on your brand terms it has defensive value. An on/off test is the only reliable way to measure the actual net lift."
+
 ---
 
 Turn off brand-search ads and organic traffic rises by exactly that much? Then that ad spend was re-buying **people who were coming anyway**. That's **internal cannibalization** (also spelled *internal cannibalisation*) — paid eating into free traffic.

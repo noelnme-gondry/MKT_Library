@@ -6,6 +6,12 @@ slug: "aso-basics-guide"
 keywords: "ASO, app store optimization, ASO basics, app keyword optimization, app store conversion rate, store page conversion, app icon screenshots, app ranking, organic installs"
 tags: ["ASO", "Metrics Basics"]
 draft: false
+faq:
+  - q: "How is ASO performance measured?"
+    a: "There is no network report for free traffic. Read store console impressions, product page views, and install conversion rate alongside the organic install trend. During heavy paid scaling, check separately whether paid is absorbing organic."
+  - q: "Should I fix screenshots or keywords first?"
+    a: "If people reach the product page but do not install, visual elements come first. If impressions themselves are low, keywords and title come first. Let conversion rate versus impressions decide."
+
 ---
 
 While you're tweaking creative and bids to lower CPI, the store page where users actually decide to install has often sat untouched for months. A tap on your ad still installs on the store, so if store conversion is leaking, ad spend leaks along with it.

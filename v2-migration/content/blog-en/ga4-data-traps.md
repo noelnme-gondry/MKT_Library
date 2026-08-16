@@ -6,6 +6,12 @@ slug: "ga4-data-traps"
 keywords: "GA4, GA4 sessions, GA4 conversion count changing, data threshold, processing lag, attribution, unassigned traffic, UA vs GA4, Reporting Identity, GA4 numbers don't match, GA4 data discrepancy, GA4 counting method, GA4 session count difference"
 tags: ["Analytics Methodology", "Performance Marketing"]
 draft: false
+faq:
+  - q: "Is a gap between GA4 and network numbers a bug?"
+    a: "Usually it is a difference in counting rules, not an error — session definitions, attribution models, retention and sampling, and consent settings all differ."
+  - q: "Which number should be the official one?"
+    a: "Fix one per decision type: internal database or payment data for business performance, network numbers for in-network optimization, MMP for cross-channel comparison. Deciding in advance stops every meeting turning into a numbers argument."
+
 ---
 
 You pulled last week's conversions Monday, check again Wednesday, and the number went up. Sessions are lower than what you remember from UA. The channel report has a pile of "unassigned." If you've ever wondered whether you can trust GA4's numbers, you're not alone. The short answer: GA4 isn't broken. It just counts differently. Here are the four traps that trip people up most, plus the ground rules that actually hold up.

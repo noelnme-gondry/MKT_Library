@@ -6,6 +6,12 @@ slug: "meta-advantage-plus-guide"
 keywords: "Meta Advantage+, AAP, Meta 앱 캠페인, AEM 이벤트 우선순위, Meta 어트리뷰션 윈도우, VBO 입찰, Meta 앱 광고 설정"
 tags: ["UA", "측정"]
 draft: false
+faq:
+  - q: "왜 OS를 분리해서 운영하나요?"
+    a: "iOS는 SKAN 집계라 지연과 기준이 다릅니다. 합쳐 두면 예산이 한쪽으로 쏠려도 원인을 볼 수 없고, 성과 판단 기준도 섞입니다."
+  - q: "Meta 기본 어트리뷰션 창을 그대로 써도 되나요?"
+    a: "기본값은 7일 클릭·1일 조회입니다. 다른 매체와 나란히 비교하려면 1일 클릭 기준을 함께 보는 편이 안전합니다."
+
 ---
 
 Meta Advantage+ App(AAP)도 [Google UAC](/blog/google-uac-optimization)처럼 자동화가 많이 들어간 캠페인이에요. 광고 그룹 단위 세밀 조정은 거의 못 하고, 캠페인 단위로 목표를 주면 나머지는 알고리즘이 해요. 그래도 결과를 좌우하는 레버는 분명히 있어요.

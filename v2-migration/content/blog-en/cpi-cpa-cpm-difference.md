@@ -6,6 +6,12 @@ slug: "cpi-cpa-cpm-difference"
 keywords: "what is CPM, what is CPC, CPM vs CPC, impression cost, click cost, CPM calculation, CPC calculation, advertising impression cost, advertising click cost"
 tags: ["Metrics Basics", "Marketing Metrics"]
 draft: false
+faq:
+  - q: "Should I target CPI or CPA?"
+    a: "CPI when installs are the goal, CPA when an in-app action is. Their denominators differ, so they cannot be mixed, and the optimization signal should be a single choice for the model to learn."
+  - q: "Is a low CPM good?"
+    a: "Not on its own. Low CPM with low CTR and conversion rate can still produce a worse final CPA. Treat CPM as an intermediate metric for diagnosing causes."
+
 ---
 
 CPM and CPC sit at the front of the advertising funnel: impressions and clicks. Reading them well helps separate an expensive auction from weak response. For the full CPI, CPA, and ROAS chain—and which optimization metric to choose—start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article focuses on CPM and CPC definitions and front-of-funnel diagnosis.

@@ -6,6 +6,12 @@ slug: "ad-machine-learning"
 keywords: "ad machine learning, learning phase, campaign learning, auto-bidding, campaign budget optimization, CBO, why CPA fluctuates during learning phase, when to leave a campaign alone, ad learning phase, learning phase reset, how automated bidding works"
 tags: ["Automation", "Machine Learning"]
 draft: false
+faq:
+  - q: "Should I avoid touching campaigns during learning?"
+    a: "Large budget or bid changes reset learning. But an outright misconfiguration — the wrong conversion event, a mistyped region — is better fixed immediately. Protecting the learning phase while it trains on a wrong signal costs more."
+  - q: "If CPA spikes, should I cut budget right away?"
+    a: "Separate the cause first. Learning restarts, rising competition, creative fatigue, and broken conversion tracking each need a different response. Cutting budget on a tracking bug kills a healthy campaign."
+
 ---
 
 "It's probably still in the learning phase" — half true, half dangerous. Misunderstand the learning phase and you make one of two mistakes: overreacting to the wild swings during learning, or waiting forever assuming "it'll get better once learning finishes." Both leak budget.

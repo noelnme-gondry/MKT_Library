@@ -6,6 +6,12 @@ slug: "correlation-vs-causation"
 keywords: "correlation, causation, correlation vs causation, confounder, reverse causation, spurious correlation, marketing analysis, experimentation, correlation does not imply causation, confounding variable example, correlation vs causation difference, causal analysis in marketing, data misinterpretation"
 tags: ["Analysis Methodology", "Performance Marketing"]
 draft: false
+faq:
+  - q: "If the correlation is very high, is it causal?"
+    a: "No. Two metrics following the same seasonality or the same budget cycle can correlate strongly without one causing the other. A causal claim needs randomized assignment, or at minimum an on/off comparison."
+  - q: "What if an experiment is impossible?"
+    a: "Use quasi-experimental designs such as pre/post, control regions, or interrupted time series, and label the result as an estimated lift. State that seasonality and promotions were not separated."
+
 ---
 
 # Correlation vs. Causation: Confuse Them and You Lose Money

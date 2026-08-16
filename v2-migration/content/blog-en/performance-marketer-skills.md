@@ -6,6 +6,12 @@ slug: "performance-marketer-skills"
 keywords: "performance marketer skills, marketing career path, data analysis, budget allocation, incrementality measurement, marketing tool stack, how to become a performance marketer, skills needed for performance marketing, learning performance marketing, marketer competencies"
 tags: ["Career", "Performance Marketing"]
 draft: false
+faq:
+  - q: "What order should I learn things in?"
+    a: "Metric definitions and measurement structure first. Optimization tactics learned without knowing what is being counted only make you chase wrong numbers faster."
+  - q: "Do I need SQL or statistics?"
+    a: "You do not need to write queries yourself. You do need to judge whether the sample is sufficient, whether a difference could be chance, and whether a correlation is being stated as a cause."
+
 ---
 
 "What do I need to learn to become a performance marketer?" A lot of answers to this question start by rattling off tool names — Meta Ads Manager, GA4, SQL, a tag manager… but tools aren't skills. They're just instruments. Today, instead of a tool list, let's map this out as a **growth sequence** — the order skills actually stack in. Once you know which level you're standing on, it's obvious what to learn next.

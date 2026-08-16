@@ -359,7 +359,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.24 블로그 (SEO 마케팅 컬럼, `/blog`)
 `routeMap` **밖**의 fs 기반 MD 파이프라인. **글 발행 = `v2-migration/content/blog/<slug>.md` 추가**(frontmatter: `title`≤40·`description`≤80·`date`·`slug`·`keywords`·`tags`·`draft`·`ogImage`; `_TEMPLATE.md` 복사, `_`프리픽스·`draft:true`는 미발행). `src/lib/blog.js`는 **server 전용**(클라이언트 import 금지).
-- **여러 글 → 필라 통합 = 6곳 동시 갱신**: ① `content/blog(-en)`·`glossary(-en)` 파일 add/삭제(**EN 짝파일 필수** — 경로는 `blog-en`이지 `en/blog` 아님) ② `next.config.mjs redirects()`에 구 URL→필라 301(ko·en 각각) ③ **레지스트리 3종 정합**(`contentRegistry.test.js`가 강제): `contentToolRegistry`·`blogSeo`·`localizedHref` ④ 삭제글 참조 glossary `relatedPosts` 재지정. 내부 링크는 KR 상대경로만(렌더러가 EN 접두).
+- **여러 글 → 필라 통합 = 6곳 동시 갱신**: ① `content/blog(-en)`·`glossary(-en)` 파일 add/삭제(**EN 짝파일 필수** — 경로는 `blog-en`이지 `en/blog` 아님) ② `next.config.mjs redirects()`에 구 URL→필라 301(ko·en 각각) ③ 레지스트리 정합(아래 5곳) ④ 삭제글 참조 glossary `relatedPosts` 재지정. 내부 링크는 KR 상대경로만(렌더러가 EN 접두).
+- **신규 글 1편 = 파일 2개(KO·EN) + 레지스트리 5곳**: `blogSeo`(KO_TITLES·EN_TITLES) · `blogEditorial`(KO_ANSWERS·EN_ANSWERS·`CONDITION_GROUP_BY_SLUG`) · `contentToolRegistry`(`BLOG_PRIMARY_TOOL`·`BLOG_RELATED_GLOSSARY`) · `localizedHref`(`EN_BLOG_SLUGS`) · frontmatter `faq`(2건+). 하나라도 빠지면 `contentRegistry.test.js`가 잡는다.
+- **frontmatter `tags`는 자유 문자열이 아니다**: `blog.js`의 `TAG_CATEGORY`(KO)·`TAG_CATEGORY_EN`에 없는 태그는 **그대로 통과해 7번째 카테고리를 만든다** — 네비게이션은 6개 고정이라 `getAllTags` 가드가 막는다. 새 글은 매핑에 있는 태그만 쓰거나 매핑을 먼저 추가할 것(신규 6편에서 3개가 걸렸다).
 - **SEO 연동**: `sitemap.js`·`rss.xml`이 `getAllPosts`로 직접 포함(블로그는 fs가 SSOT). SOP(JSON)는 MD 이관 안 함.
 - **제목·설명 SSOT는 `blogSeo.js`지 frontmatter가 아님**: `blog.js`가 `seo?.title || data.title`로 덮어써 h1·`<title>`·OG·JSON-LD·sitemap·RSS가 전부 레지스트리 값을 쓴다. **`.md`의 title을 고쳐도 화면은 안 바뀐다**(발행글 대부분이 이미 divergent) → 제목 수정은 `KO_TITLES`/`EN_TITLES`에서. 길이 한도는 테스트가 강제(KO 40자·EN 60자, 자동생성 description 포함). `updated`는 로케일별 날짜 Set → sitemap `lastmod`+`dateModified`이므로 KO만 고쳤으면 EN 날짜를 올리지 말 것.
 
@@ -456,7 +458,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **244파일·1928 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-15 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **244파일·1932 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-16 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).

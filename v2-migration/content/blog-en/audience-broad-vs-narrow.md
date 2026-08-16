@@ -6,6 +6,12 @@ slug: "audience-broad-vs-narrow"
 keywords: "targeting strategy, broad targeting, narrow targeting, audience exhaustion, retargeting, lookalike audience, CPA, broad vs narrow targeting, when to use broad targeting, ad audience setup, audience expansion"
 tags: ["Targeting", "Audience Strategy"]
 draft: false
+faq:
+  - q: "Is broad targeting always better?"
+    a: "No. It works when enough conversion data has accumulated for the model to learn. Early on, or when conversions are sparse, a narrower audience can concentrate the signal."
+  - q: "Why does CPA rise after narrowing the audience?"
+    a: "A smaller reachable pool means the same people see the ad repeatedly, so frequency climbs and fatigue sets in. Check frequency and CTR trends together."
+
 ---
 
 "Narrow targeting is more accurate" and "broad is the answer these days" both circulate at the same time. Both are true, and both are half-true. The right answer changes with the situation, so this isn't something to memorize — it's something to learn to judge. Today, let's look at what to check before you decide.
