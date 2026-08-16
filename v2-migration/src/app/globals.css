@@ -5044,6 +5044,16 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .sop-editorial a { color: var(--primary); font-size: 11px; text-decoration: none; }
 .sop-editorial a:hover { text-decoration: underline; }
 @media (max-width: 560px) { .sop-editorial__meta { align-items: flex-start; flex-direction: column; gap: 3px; } }
+/* 통계 방법·보조 수치 접기. 결론은 펴고 근거는 접는다(§12.14) — 이 클래스를 쓰는
+   자리는 전부 "요약 한 줄 + 펼치면 방법" 구조여야 한다. 새로 만들지 말고 재사용할 것. */
+.stat-method { margin: 10px 0 0; }
+.stat-method > summary { color: var(--text-muted); font-size: 11.5px; cursor: pointer; list-style: none; }
+.stat-method > summary::-webkit-details-marker { display: none; }
+.stat-method > summary::before { content: "＋ "; color: var(--text-muted); }
+.stat-method[open] > summary::before { content: "－ "; }
+.stat-method > summary:hover { color: var(--text-secondary); }
+.stat-method > p, .stat-method > div { margin: 6px 0 0; color: var(--text-muted); font-size: 11.5px; line-height: 1.6; }
+
 /* 가이드가 답하는 질문 + 한 문장 답. 본문 위·접기 바깥에 둔다(§12.29) — 검색과
    LLM은 페이지 앞쪽에서 답을 뽑으므로 접히면 존재하지 않는 것과 같다. */
 .guide-answer { margin: 0 0 20px; padding: 16px 18px; border-left: 3px solid var(--primary); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--primary) 5%, var(--surface-container-lowest)); }

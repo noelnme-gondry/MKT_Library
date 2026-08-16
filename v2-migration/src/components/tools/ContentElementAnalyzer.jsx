@@ -468,10 +468,21 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   }, [fit]);
   const logisticInput = advancedModel?.input || null;
 
-  // 군집 후보 = 숫자가 아닌 열(캠페인·카테고리·채널처럼 반복되는 라벨).
+  // 군집 후보 = 숫자가 아니면서 **실제로 값이 반복되는** 열. 반복이 없으면 혼합모형을
+  // 쓸 수 없으므로 후보에서 빼고, 후보가 하나도 없으면 섹션 자체를 렌더하지 않는다
+  // (예전엔 비숫자 열만 있으면 항상 보여서 못 쓰는 섹션이 계속 떠 있었다).
   const clusterCandidates = useMemo(() => {
     const headers = csvData?.headers || [];
-    return headers.filter((header) => !numericCols.includes(header));
+    const rows = csvData?.raw || [];
+    if (!rows.length) return [];
+    return headers.filter((header) => {
+      if (numericCols.includes(header)) return false;
+      const values = rows.map((row) => row?.[header]).filter((value) => value != null && value !== "");
+      if (values.length !== rows.length) return false;
+      const distinct = new Set(values).size;
+      // 최소 4개 그룹 + 그룹당 평균 2행 이상(prepareMixedInput의 계약과 같은 기준).
+      return distinct >= 4 && distinct * 2 <= values.length;
+    });
   }, [csvData, numericCols]);
 
   const mixedInput = useMemo(() => {
@@ -886,11 +897,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                       {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedMethod}
                       {advancedModel.family === "binomial" && ` · 0=${logisticInput.classCounts.zero.toLocaleString()} · 1=${logisticInput.classCounts.one.toLocaleString()}`}
                     </span>
-                    {/* 왜 이 모형인지 화면이 직접 말한다 — 자동 라우팅은 조용하면 안 된다. */}
-                    <span className="muted" style={{ fontSize: "11.5px" }}>
-                      {advancedModel.family === "beta" && tr("성과가 0~1 비율이라 베타 회귀(로짓 링크)로 적합합니다. 선형회귀는 구간 밖을 예측합니다.", "The outcome is a 0–1 proportion, so this uses beta regression (logit link). Linear regression would predict outside the interval.")}
-                      {advancedModel.family === "count" && tr("성과가 카운트라 로그 링크 모형으로 적합합니다. 과산포가 확인되면 음이항으로 전환합니다.", "The outcome is a count, so this uses a log-link model, switching to negative binomial when overdispersion is confirmed.")}
-                    </span>
+                    {/* 왜 이 모형인지는 배지 한 개로. 자동 라우팅이 조용하면 안 되지만,
+                        문장 두 개를 결론 옆에 펴 둘 이유도 없다(§12.14·§12.17). */}
+                    {advancedModel.family !== "binomial" && (
+                      <span className="ab-pill" style={{ fontSize: "11px", padding: "2px 8px" }}>
+                        {advancedModel.family === "beta" ? tr("비율 성과", "Proportion outcome") : tr("건수 성과", "Count outcome")}
+                      </span>
+                    )}
                   </div>
 
                   {webRRun.signature === analyzedSig && webRRun.status === "failed" && (
@@ -920,14 +933,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                             n {webRRun.result.n.toLocaleString()}
                             {Number.isFinite(webRRun.result.pseudoR2) && ` · pseudo R² ${webRRun.result.pseudoR2.toFixed(3)}`}
                             {Number.isFinite(webRRun.result.aic) && ` · AIC ${webRRun.result.aic.toFixed(1)}`}
-                            {webRRun.result.switchedToNegativeBinomial && tr(
-                              ` · 과산포(Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}) 확인 → 음이항 전환`,
-                              ` · overdispersion (Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}) → switched to negative binomial`,
-                            )}
-                            {webRRun.result.boundaryAdjusted && tr(
-                              " · 0·1 경계값이 있어 축소변환 후 적합",
-                              " · boundary 0/1 values were squeezed before fitting",
-                            )}
+
                           </p>
                         </div>
                         <div className="table-wrap">
@@ -950,11 +956,21 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                             ))}</tbody>
                           </table>
                         </div>
-                        <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
-                          {isCount
-                            ? tr("발생률비는 건수의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "A rate ratio multiplies the expected count. This is an observed association, not a causal effect.")
-                            : tr("오즈비는 성공 확률 자체가 아니라 odds의 배수입니다. 관측 연관이며 인과효과가 아닙니다.", "An odds ratio multiplies the odds, not the probability itself. This is an observed association, not a causal effect.")}
-                        </p>
+                        <details className="stat-method">
+                          <summary>{tr("이 숫자를 어떻게 읽나요?", "How do I read these numbers?")}</summary>
+                          <p>
+                            {isCount
+                              ? tr("표의 숫자는 건수가 몇 배가 되는지를 뜻합니다(발생률비). ", "The numbers show how many times the expected count changes (rate ratio). ")
+                              : tr("표의 숫자는 성공 확률 자체가 아니라 odds가 몇 배가 되는지를 뜻합니다(오즈비). ", "The numbers multiply the odds, not the probability itself (odds ratio). ")}
+                            {advancedModel.family === "beta" && tr("성과가 0~1 비율이라 구간을 벗어나지 않는 모형(베타 회귀)으로 계산했습니다. ", "The outcome is a 0–1 proportion, so a model that stays inside that range (beta regression) was used. ")}
+                            {webRRun.result.boundaryAdjusted && tr("0이나 1이 섞여 있어 아주 살짝 안쪽으로 밀어 계산했습니다. ", "Values at exactly 0 or 1 were nudged just inside the range before fitting. ")}
+                            {webRRun.result.switchedToNegativeBinomial && tr(
+                              `건수가 들쭉날쭉해(과산포, Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}) 그에 맞는 모형(음이항)으로 바꿔 계산했습니다. `,
+                              `Counts were far more variable than a simple count model allows (overdispersion, Pearson χ²/df ${webRRun.result.dispersionRatio.toFixed(2)}), so a negative-binomial model was used. `,
+                            )}
+                            {tr("관측된 연관이며 인과효과가 아닙니다.", "This is an observed association, not a causal effect.")}
+                          </p>
+                        </details>
                       </div>
                     );
                   })()}
@@ -968,8 +984,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <section className="block">
               <h2 className="section-title">{tr("같은 대상을 여러 번 측정했나요?", "Repeated measures on the same unit?")}</h2>
               <p className="muted" style={{ fontSize: "12px", margin: "2px 0 10px" }}>{tr(
-                "캠페인·카테고리처럼 같은 대상에서 여러 행이 나온 자료는 대상별 기준선 차이를 반영해야 합니다. 반영하지 않으면 관측이 적은 대상이 우연히 상위로 올라옵니다.",
-                "When several rows come from the same campaign or category, the model has to account for per-unit baseline differences. Without it, units with few observations rise to the top by luck.",
+                "같은 캠페인·카테고리에서 여러 행이 나왔다면 그 차이를 반영해 다시 계산할 수 있습니다.",
+                "If several rows come from the same campaign or category, the analysis can account for that.",
               )}</p>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
                 <div>
@@ -1034,10 +1050,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                         ))}</tbody>
                       </table>
                     </div>
-                    <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{tr(
-                      `단위 ${mixedRun.result.groupCount}개 · 단위 간 SD ${mixedRun.result.groupSd.toFixed(3)} · 잔차 SD ${mixedRun.result.residualSd.toFixed(3)}. lme4는 정확한 분모 자유도를 주지 않아 p는 Wald 대표본 근사입니다. 관측 연관이며 인과효과가 아닙니다.`,
-                      `${mixedRun.result.groupCount} units · between-unit SD ${mixedRun.result.groupSd.toFixed(3)} · residual SD ${mixedRun.result.residualSd.toFixed(3)}. lme4 does not provide exact denominator df, so p-values are Wald large-sample approximations. This is an observed association, not a causal effect.`,
-                    )}</p>
+                    <details className="stat-method">
+                      <summary>{tr("계산 방법", "How this was calculated")}</summary>
+                      <p>{tr(
+                        `단위 ${mixedRun.result.groupCount}개 · 단위 간 SD ${mixedRun.result.groupSd.toFixed(3)} · 잔차 SD ${mixedRun.result.residualSd.toFixed(3)}. 단위별 기준선 차이를 random effect로 두고 적합했습니다(선형혼합모형). p값은 대표본 근사(Wald)입니다 — 정확한 분모 자유도는 제공되지 않습니다. 관측 연관이며 인과효과가 아닙니다.`,
+                        `${mixedRun.result.groupCount} units · between-unit SD ${mixedRun.result.groupSd.toFixed(3)} · residual SD ${mixedRun.result.residualSd.toFixed(3)}. Per-unit baseline differences were fitted as a random effect (linear mixed model). p-values are large-sample (Wald) approximations — exact denominator df are not available. This is an observed association, not a causal effect.`,
+                      )}</p>
+                    </details>
                   </div>
                 </div>
               )}

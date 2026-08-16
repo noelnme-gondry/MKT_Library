@@ -601,15 +601,23 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                             <div className="ab-stat"><div className="ab-stat-label">{tr("전환율 A / B", "Conversion rate A / B")}</div><div className="ab-stat-value tnum">{(freq.pA * 100).toFixed(2)}% / {(freq.pB * 100).toFixed(2)}%</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">{tr("상대 Lift", "Relative lift")}</div><div className="ab-stat-value tnum" style={{ color: liftPositive ? undefined : "#ef4444" }}>{(freq.liftRel * 100).toFixed(2)}%</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">z-score</div><div className="ab-stat-value tnum">{freq.z.toFixed(3)}</div></div>
-                            <div className="ab-stat"><div className="ab-stat-label">{exact ? tr("p-value (근사)", "p-value (approx.)") : "p-value"}</div><div className="ab-stat-value tnum">{freq.pValue.toFixed(4)} {!exact && <PvBadge p={freq.pValue} locale={locale} />}</div></div>
-                            {exact && <div className="ab-stat"><div className="ab-stat-label">{tr("p-value (Fisher 정확검정)", "p-value (Fisher exact)")}</div><div className="ab-stat-value tnum">{exact.pValue.toFixed(4)} <PvBadge p={exact.pValue} locale={locale} /></div></div>}
+                            {/* p값은 **판정에 실제로 쓴 값** 하나만 보여준다. 두 개를 나란히 두면
+                                사용자가 둘을 화해시켜야 하는데, 그건 우리가 할 일이다(§12.14). */}
+                            <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{decisionP.toFixed(4)} <PvBadge p={decisionP} locale={locale} /></div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("절대 차이 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(freq.ciLow95 * 100).toFixed(2)}% , {(freq.ciHigh95 * 100).toFixed(2)}% ]</div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 700 }}>{decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
-                            {exact && <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("왜 정확검정인가", "Why the exact test")}</div><div className="ab-stat-value" style={{ fontWeight: 500, fontSize: "12px", lineHeight: 1.55 }}>{tr(
-                              "전환 수가 적어 정규근사(z)를 신뢰하기 어렵습니다. 판정은 근사 없이 계산한 Fisher 정확검정을 기준으로 합니다.",
-                              "Conversion counts are low, so the normal (z) approximation is unreliable. The verdict uses Fisher's exact test, which needs no approximation.",
-                            )}</div></div>}
                           </div>
+                          {/* 계산 방법은 접기 한 줄. 근거를 결론과 같은 층에 펴지 않는다(§12.14).
+                              문구는 쉬운 말 먼저, 용어는 뒤에(§12.17). */}
+                          {exact && (
+                            <details className="stat-method">
+                              <summary>{tr("전환이 적어 정확한 계산을 썼습니다", "Low conversion counts — an exact calculation was used")}</summary>
+                              <p>{tr(
+                                `전환 수가 적으면 흔히 쓰는 근사 계산(z 검정)이 차이를 실제보다 크게 봅니다. 그래서 근사 없이 세는 방식(Fisher 정확검정)으로 판정했습니다. 참고로 근사 계산의 p값은 ${freq.pValue.toFixed(4)}입니다.`,
+                                `With few conversions the usual approximation (z-test) overstates the difference, so the verdict uses an exact count-based calculation (Fisher's exact test). For reference, the approximate p-value is ${freq.pValue.toFixed(4)}.`,
+                              )}</p>
+                            </details>
+                          )}
                         </div>
                         <div className="ab-result-block">
                           <div className="ab-result-block-title">Bayesian · Beta-Binomial</div>

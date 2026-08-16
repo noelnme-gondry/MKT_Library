@@ -308,7 +308,12 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(await screen.findByText(/title_has_number의 오즈비 2\.10/)).toBeTruthy();
     expect(runWebRLogisticRegression).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
-    expect(screen.getByText(/^오즈비는 성공 확률 자체가 아니라/)).toBeTruthy();
+    // 오즈비 해석과 "인과 아님" 고지는 접기 안으로 내려갔지만 사라지면 안 된다(§8).
+    // 문구 전체를 박아두면 카피를 다듬을 때마다 깨지므로 핵심 두 조각만 확인한다.
+    // 오즈비 해석과 "인과 아님" 고지가 한 문단 안에 함께 남아 있어야 한다(§8).
+    // 문구 전체를 박아두면 카피를 다듬을 때마다 깨지므로 핵심 조각으로만 확인한다.
+    const oddsNote = screen.getByText(/odds가 몇 배/);
+    expect(oddsNote.textContent).toMatch(/인과효과가 아닙니다/);
   });
 
   it("automatically compares Random Forest, selects its win, and keeps both model choices", async () => {
