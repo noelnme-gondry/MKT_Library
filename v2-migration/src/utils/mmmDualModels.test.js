@@ -254,6 +254,23 @@ describe("dual MMM engines", () => {
         0,
       )).toBeCloseTo(week.contrib.Brand, 8);
     });
+    // 회귀 가드: 점예측이 다시 절단 사후평균으로 돌아가면 학습 오차가 OOS 오차보다
+    // 나빠진다 — 적합된 모형에서 나올 수 없는 값이라 이 한 줄이 그 상태를 잡는다.
+    // (버그 당시 실측: 학습 WMAPE 35.8% vs OOS 9.5%, R² −6.91, 90% 커버리지 0.00)
+    {
+      const totalActual = bayesianLike.weeks.reduce((sum, week) => sum + Math.abs(week.actual), 0);
+      const totalError = bayesianLike.weeks.reduce((sum, week) => sum + Math.abs(week.residual), 0);
+      const trainWmape = (totalError / totalActual) * 100;
+      expect(bayesianLike.posterior.r2).toBeGreaterThan(0);
+      expect(trainWmape).toBeLessThan(20);
+      if (Number.isFinite(bayesianLike.backtest?.wmape)) {
+        expect(trainWmape).toBeLessThanOrEqual(bayesianLike.backtest.wmape + 1e-9);
+      }
+      // 적합선이 실측 위아래로 통째로 치우치지 않아야 한다(레벨 시프트 탐지).
+      const meanActual = bayesianLike.weeks.reduce((sum, week) => sum + week.actual, 0) / bayesianLike.weeks.length;
+      const meanFitted = bayesianLike.weeks.reduce((sum, week) => sum + week.fitted, 0) / bayesianLike.weeks.length;
+      expect(Math.abs(meanFitted - meanActual) / Math.abs(meanActual)).toBeLessThan(0.02);
+    }
     expect(bayesianLike.modelVariant).toBe("bayesian-like");
     expect(bayesianLike.effectiveCfg.mediaPenalty).toBe(0);
     expect(bayesianLike.posteriorApproximation.enabled).toBe(true);
@@ -263,8 +280,13 @@ describe("dual MMM engines", () => {
         (total, group) => total + (Number(week.contrib[group]) || 0),
         0,
       );
-      expect(week.fitted).toBeCloseTo(sum, 8);
-      expect(week.actual).toBeCloseTo(week.fitted + week.residual, 8);
+      // 점예측은 MAP 적합에서 오고, MAP weeks의 fitted/residual은 소수 2자리로
+      // 저장된다(표시 계약). 기여 합은 반올림하지 않으므로 항등식은 **저장 정밀도**
+      // 기준으로 확인해야 한다 — 1e-9을 요구하면 절단 사후평균으로 fitted를 다시
+      // 만들던 시절에만 통과한다(그게 학습 WMAPE를 5.6%→35.8%로 만들던 버그였다).
+      expect(Math.abs(week.fitted - sum)).toBeLessThan(0.005);
+      // fitted·residual 각각이 2자리 반올림이므로 합의 오차 상한은 0.01이다.
+      expect(Math.abs(week.actual - (week.fitted + week.residual))).toBeLessThan(0.01);
     });
   }, 30000);
 

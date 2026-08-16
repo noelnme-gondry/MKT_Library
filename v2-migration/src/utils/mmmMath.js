@@ -6693,7 +6693,16 @@ export function mmmDataQualityAudit(panel) {
                 if (stepNames.has(name)) return "Regime change";
                 return "Trend";
               };
-              const weeks = run.weeks.map((week, weekIndex) => {
+              // 점예측(fitted·기여·구간)은 **MAP 적합**을 쓴다. 절단 사후분포의 평균은
+              // MAP이 0 경계에 붙은 채널마다 음수 꼬리가 잘려 위로 밀리고, 채널 수만큼
+              // 누적돼 적합선이 실측 위로 통째로 뜬다(데모: 평균 +36%, R² 0.74 → −6.91,
+              // 학습 WMAPE 5.6% → 35.8%, 90% 커버리지 0.97 → 0.00).
+              // 학습 오차가 OOS 오차(9.5%)보다 나쁘다는 게 그 증거였다 — 적합된 모형에서
+              // 나올 수 없는 값이다. 사후 draw는 **불확실성**(계수 구간·그룹 CI·식별 판정)
+              // 전용이고, 점예측의 기준이 되면 안 된다.
+              // MAP weeks는 Σ기여 = fitted 항등식과 예측구간을 이미 만족한다(§7 분해 정합).
+              const weeks = run.weeks;
+              const posteriorMeanWeeks = run.weeks.map((week, weekIndex) => {
                 const contrib = Object.fromEntries(run.groupNames.map((group) => [group, 0]));
                 contrib.Trend = 0;
                 run.names.forEach((name, featureIndex) => {
@@ -6729,6 +6738,8 @@ export function mmmDataQualityAudit(panel) {
                 posteriorMeanCoefficients,
                 channelContributions,
                 weeks,
+                // 사후평균 재구성은 참고용으로만 남긴다(점예측 기준 아님).
+                posteriorMeanWeeks,
                 draws: coefficientDraws.length,
                 seed: _mmmHashSeed(seedMaterial + "|posterior-mc"),
                 covarianceScope: "selected-transform-conditional-full-covariance",
