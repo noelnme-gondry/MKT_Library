@@ -6,6 +6,12 @@ slug: "google-uac-optimization"
 keywords: "Google UAC, App Campaign, UAC optimization, UAC bidding, tCPA tROAS, app install ads, Google app ads setup"
 tags: ["UAC", "UA"]
 draft: false
+faq:
+  - q: "What can I actually control in UAC?"
+    a: "Campaign structure, bid-stage progression, and asset group diversity. Targeting and placement are decided by the system, so those three levers are where operator time pays off."
+  - q: "In what order should bid stages progress?"
+    a: "Fill the learning phase on install optimization, move to in-app actions, then to ROAS. Skipping a stage resets learning and you start accumulating again."
+
 ---
 
 Google UAC (App Campaigns) lets the algorithm decide most of the placements, targeting, and bidding. "So what does the marketer even do?" is the natural question. There are clear levers — and **knowing which ones they are, and leaving the rest alone**, is the heart of running UAC.

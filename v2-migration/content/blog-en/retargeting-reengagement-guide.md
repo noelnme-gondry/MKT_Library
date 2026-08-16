@@ -6,6 +6,12 @@ slug: "retargeting-reengagement-guide"
 keywords: "retargeting, re-engagement, re-engagement campaign, reviving dormant users, retargeting audience, deferred deep link, lookalike seed, user segments"
 tags: ["UA", "Growth"]
 draft: false
+faq:
+  - q: "Can retargeting be read alongside acquisition?"
+    a: "These users already know the app, so CPA reads low. Merged reporting makes overall acquisition look better than it is and distorts budget allocation."
+  - q: "How do I know retargeting added anything?"
+    a: "Hold out an unexposed group and compare. Conversion rate inside the exposed group cannot separate users who would have returned anyway from users the ad brought back."
+
 ---
 
 The campaign that brings new users (UA) and the one that recalls existing users (retargeting) have completely different purposes. Mix them in one campaign and they eat each other's budget, and you can't see which side earned the result. So split them from the start.

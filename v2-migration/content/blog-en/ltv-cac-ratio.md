@@ -6,6 +6,12 @@ slug: "ltv-cac-ratio"
 keywords: "LTV, CAC, LTV CAC, how to calculate LTV, CAC calculation, customer lifetime value, customer acquisition cost, LTV CAC ratio, LTV CAC 3:1, payback period, unit economics"
 tags: ["Analysis", "Budget Allocation"]
 draft: false
+faq:
+  - q: "Is 3:1 LTV:CAC an absolute rule?"
+    a: "It is a common rule of thumb, not a law. The right level shifts with payback period, margin, and growth stage, so recalculate it against your own unit economics."
+  - q: "How much history does an LTV estimate need?"
+    a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
+
 ---
 
 Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.

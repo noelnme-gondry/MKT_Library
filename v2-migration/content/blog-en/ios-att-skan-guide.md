@@ -6,6 +6,12 @@ slug: "ios-att-skan-guide"
 keywords: "ATT, SKAN, SKAdNetwork, iOS performance measurement, iOS privacy, App Tracking Transparency, iOS14 marketing, app attribution, conversion value, privacy advertising"
 tags: ["Measurement", "iOS"]
 draft: false
+faq:
+  - q: "If ATT opt-in is low, did performance actually get worse?"
+    a: "No. Losing measurement is not the same as losing performance. Traffic without consent loses deterministic attribution, so iOS performance reads lower than it truly is."
+  - q: "How do I design the SKAN conversion value?"
+    a: "SKAN returns a single value, so the metrics tied most directly to your business KPI belong at the top of the priority order. Packing in too many events buries the signal that matters."
+
 ---
 
 If Android is fine but only iOS looks cut in half, suspect **measurement** before the campaign. After the "Allow tracking?" prompt (ATT), precise user-level tracking on iOS got hard, and you now read performance through Apple's limited aggregate frame, SKAdNetwork (SKAN). Miss this structure and you'll kill a perfectly good iOS campaign on the numbers alone. Here's what changed and what to judge by inside it.

@@ -6,6 +6,12 @@ slug: "ad-creative-specs-guide"
 keywords: "ad creative specs, creative sizes by platform, video safe zone, playable ad specs, creative review rejection, app ad creative guide"
 tags: ["Ad Creative", "Metrics Basics"]
 draft: false
+faq:
+  - q: "Will an off-spec creative simply not run?"
+    a: "It depends on the network. Some reject it in review; others serve it but auto-crop, cutting off captions or logos. The second case is more dangerous because performance drops with no visible cause in the report."
+  - q: "How much space does a safe zone need?"
+    a: "It is the edge area covered by the network's own UI. Profile rows and CTA buttons sit top and bottom, interaction icons sit on the sides, so keep key captions and logos inside. Exact pixels come from each network's official guide."
+
 ---
 
 Upload the same video to several platforms without thinking, and some crop it automatically while others reject it outright in review. Each platform demands different ratios, file sizes, and UI safe zones. However good the creative is, if the spec blocks it, it never serves.

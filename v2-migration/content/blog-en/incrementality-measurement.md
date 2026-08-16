@@ -6,6 +6,12 @@ slug: "incrementality-measurement"
 keywords: "incrementality measurement, holdout experiment, difference-in-differences, DiD, iROAS, attribution, conversion lift, incrementality vs attribution, holdout group test, what is incrementality, measuring ad effectiveness, proving ad impact, what is a holdout test"
 tags: ["Incrementality Analysis", "Performance Marketing"]
 draft: false
+faq:
+  - q: "Is a holdout required to measure incrementality?"
+    a: "It is the most reliable method but not the only one. When a randomized holdout is impractical, use control regions or on/off pre-post comparison — and label the result an estimate rather than causal proof."
+  - q: "What share should the holdout be?"
+    a: "Derive it from the minimum effect you want to detect and your conversion volume. Too small and the difference is undetectable; too large and the opportunity cost grows. Calculate the required sample first, then back out the share."
+
 ---
 
 # Incrementality Measurement: Did the Ad 'Create' That Conversion, or Just 'Pick It Up'?

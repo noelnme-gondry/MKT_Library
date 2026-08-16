@@ -6,6 +6,12 @@ slug: "meta-advantage-plus-guide"
 keywords: "Meta Advantage+, AAP, Meta app campaign, AEM event priority, Meta attribution window, VBO bidding, Meta app ad setup"
 tags: ["UA", "Measurement"]
 draft: false
+faq:
+  - q: "Why split campaigns by OS?"
+    a: "iOS reports through SKAN with different delay and counting rules. Merged campaigns hide which side the budget drifted to and mix the basis for judging performance."
+  - q: "Can I keep Meta's default attribution window?"
+    a: "The default is 7-day click plus 1-day view. To compare Meta with other networks, read the 1-day click basis alongside it."
+
 ---
 
 Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.

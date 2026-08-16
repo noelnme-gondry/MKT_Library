@@ -6,6 +6,12 @@ slug: "ab-testing"
 keywords: "A/B testing, AB test, statistical significance, statistical power, sample size, early stopping, peeking, conversion rate optimization, CRO, landing page experiment, how to run an A/B test, minimum detectable effect, what is A/B testing, A/B test duration, A/B test sample size, statistical significance testing"
 tags: ["Experiment Analysis", "Performance Marketing"]
 draft: false
+faq:
+  - q: "How long should an A/B test run?"
+    a: "Decide by required sample size, not by calendar days. Calculate the per-group sample from your baseline conversion rate and the minimum difference you want to detect, then run until it accumulates. Stopping early because a result looks significant sharply inflates false positives."
+  - q: "Conversions are very low but the test says significant. Can I trust it?"
+    a: "With few conversions the usual normal (z) approximation overstates the difference. With 50 per group and 0 vs 5 conversions, z calls it significant while an exact test does not. When conversions are sparse, judge on the exact test."
+
 ---
 
 # A/B Testing: Ruling Out Chance Before You Call the Winner

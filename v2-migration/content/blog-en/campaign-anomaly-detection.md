@@ -6,6 +6,12 @@ slug: "campaign-anomaly-detection"
 keywords: "campaign anomaly detection, performance drop, CPA spike cause, conversion collapse, marketing anomaly, campaign monitoring, performance variance cause"
 tags: ["Analysis", "Monitoring"]
 draft: false
+faq:
+  - q: "How large a swing counts as an anomaly?"
+    a: "Judge against that campaign's usual variation rather than an absolute threshold. Compare like weekdays when there is a weekly cycle, and read volume alongside the rate — small samples swing widely by nature."
+  - q: "Should an anomaly alert trigger immediate action?"
+    a: "First separate a data problem from a performance problem. Broken tracking or delayed reporting is no reason to touch the campaign. Then split the change into volume, efficiency, and mix to locate it."
+
 ---
 
 You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: **is this a real anomaly, or just that day's noise?**

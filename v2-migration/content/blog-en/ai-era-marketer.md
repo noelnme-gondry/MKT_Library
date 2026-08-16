@@ -6,6 +6,12 @@ slug: "ai-era-marketer"
 keywords: "AI in marketing, marketing automation, marketer skills, machine learning ads, future of performance marketing, auto-bidding, will AI replace marketers, skills for marketers in the AI era, AI marketing, how to use AI in marketing, marketer career outlook"
 tags: ["AI", "Career"]
 draft: false
+faq:
+  - q: "Does more automation mean less work for marketers?"
+    a: "Execution shrinks, judgment grows. What to optimize toward, which conversion to feed the model, and whether a result can be read causally still have to be defined by a person — and those choices move performance the most."
+  - q: "How far should I trust an AI-generated analysis?"
+    a: "Trust it when you can reproduce which data and which assumptions produced the number; otherwise hold. Sentences that turn a correlation into a cause need separate evidence."
+
 ---
 
 Auto-bidding sets the bid. The algorithm finds the audience. Automated campaigns even pick the placement and creative combination. AI writes the copy and generates the images. So doesn't it feel like everything a marketer used to do is disappearing, one task at a time? Most of us have felt that anxiety at some point.
