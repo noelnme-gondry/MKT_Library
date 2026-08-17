@@ -48,6 +48,9 @@ const BLOG_PRIMARY_TOOL = {
 
 const GLOSSARY_PRIMARY_TOOL = {
   adstock: "5-18",
+  arpu: "5-2",
+  aso: "9-6",
+  attribution: "5-23",
   cac: "5-2",
   cannibalization: "5-18",
   "click-injection": "5-2",
@@ -65,10 +68,12 @@ const GLOSSARY_PRIMARY_TOOL = {
   incrementality: "5-23",
   ltv: "5-2",
   "marginal-cpa": "5-22",
+  mmm: "5-18",
   mmp: "5-2",
   multicollinearity: "5-25",
   "probabilistic-attribution": "5-18",
   "response-curve": "5-22",
+  retargeting: "5-23",
   retention: "5-2",
   roas: "5-3",
   uplift: "5-23",
