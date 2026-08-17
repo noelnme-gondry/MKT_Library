@@ -31,7 +31,7 @@ export async function generateMetadata({ params }) {
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
   const koPost = getPostBySlug(slug, "ko");
-  const languages = { en: canonical, ...(koPost ? { ko: `${SITE_URL}/blog/${slug}` } : {}), "x-default": koPost ? `${SITE_URL}/blog/${slug}` : canonical };
+  const languages = { en: canonical, ...(koPost ? { ko: `${SITE_URL}/blog/${slug}` } : {}), "x-default": canonical };
 
   const og = {
     type: "article",

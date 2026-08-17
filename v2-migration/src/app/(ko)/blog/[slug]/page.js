@@ -31,7 +31,7 @@ export async function generateMetadata({ params }) {
   const canonical = `${SITE_URL}/blog/${post.slug}`;
   // EN 짝 파일 있으면 hreflang으로 상호 연결(§blog-en-translation-strategy) — EN은 KR 목록/내비 비노출, 링크로만 도달.
   const enPost = getPostBySlug(slug, "en");
-  const languages = { ko: canonical, ...(enPost ? { en: `${SITE_URL}/en/blog/${slug}` } : {}), "x-default": canonical };
+  const languages = { ko: canonical, ...(enPost ? { en: `${SITE_URL}/en/blog/${slug}` } : {}), "x-default": enPost ? `${SITE_URL}/en/blog/${slug}` : canonical };
   const og = {
     type: "article",
     title: post.title,

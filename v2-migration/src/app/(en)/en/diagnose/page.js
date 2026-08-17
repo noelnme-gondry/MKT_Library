@@ -13,7 +13,7 @@ export const metadata = {
   description: "Answer three questions about CPI, ROAS, revenue, or organic decline to get a cause hypothesis, check order, and matching free analysis tools.",
   alternates: {
     canonical: `${SITE_URL}/en/diagnose`,
-    languages: { ko: `${SITE_URL}/diagnose`, en: `${SITE_URL}/en/diagnose`, "x-default": `${SITE_URL}/diagnose` },
+    languages: { ko: `${SITE_URL}/diagnose`, en: `${SITE_URL}/en/diagnose`, "x-default": `${SITE_URL}/en/diagnose` },
   },
   openGraph: withOpenGraphBase({ title: "Marketing performance diagnosis", description: "Turn a symptom into a hypothesis and check order.", url: `${SITE_URL}/en/diagnose`, images: [`${SITE_URL}/og-card.png`] }, "en"),
 };

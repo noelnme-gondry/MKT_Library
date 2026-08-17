@@ -8,7 +8,7 @@ tags: ["ASA", "UA"]
 draft: false
 primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
-answer: "검색어 리포트에서 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
+answer: "Apple Search Ads(ASA)에서는 검색어 리포트에서 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
 conditions: "설치 3건·탭 8건과 CPT ±10~15%는 이 서비스의 기본 운영 휴리스틱입니다. 계정 규모와 변동성에 맞게 조정하고, 실제 매치 범위·입찰 한도는 현재 Apple Ads 콘솔을 확인하세요."
 reviewedAt: "2026-08-09"
 reviewer: "Growth Opt Playbook"

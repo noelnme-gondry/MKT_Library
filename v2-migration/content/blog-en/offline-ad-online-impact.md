@@ -50,3 +50,17 @@ The check is simple. Put channel spend into [VIF multicollinearity check](/tools
 - Accumulate pre-period data. A short baseline widens the interval until nothing can be said.
 
 Following even one of the three changes next quarter's answer.
+
+## Try this today
+
+**One.** Before the next flight starts, pull **at least eight weeks** of brand search volume and direct traffic and park it somewhere. A baseline cannot be built after the fact, and without one the interval stays so wide that no result is sayable.
+
+**Two.** Ask the media team one question: **can we leave any region unexposed?** Offline buys are region-addressable, which makes this far easier than it is in digital. One or two held-out regions turn next quarter's estimate from "the trend went up" into "the exposed regions moved and the held-out ones did not."
+
+## Let's be honest
+
+Everything above estimates a counterfactual from a trend, not from a randomised comparison. When a product launch, a PR moment, or a seasonal peak lands in the same window, this design cannot separate them from the flight.
+
+So write the other events in that window down alongside the number. That is not hedging — it is the information you need in order to decide whether to buy the same flight again. A result read without knowing "PR also landed that month" sets an expectation the next quarter will not meet.
+
+If the calculation is tedious, upload your report CSV. The pre-period trend, the gap above it, and an interval that accounts for week-to-week autocorrelation all get computed in your browser, and nothing is sent to a server.

@@ -8,7 +8,7 @@ export const metadata = {
   description: "Growth Opt Playbook 무료 마케팅 분석 도구와 실무 가이드의 이용 조건, 데이터 처리 방식과 책임 범위입니다.",
   alternates: {
     canonical: `${SITE_URL}/terms`,
-    languages: { ko: `${SITE_URL}/terms`, en: `${SITE_URL}/en/terms`, "x-default": `${SITE_URL}/terms` },
+    languages: { ko: `${SITE_URL}/terms`, en: `${SITE_URL}/en/terms`, "x-default": `${SITE_URL}/en/terms` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/terms` }),
 };

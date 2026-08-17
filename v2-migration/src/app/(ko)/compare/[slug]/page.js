@@ -24,7 +24,7 @@ export async function generateMetadata({ params }) {
       languages: {
         ko: canonical,
         en: `${SITE_URL}/en/compare/${slug}`,
-        "x-default": canonical,
+        "x-default": `${SITE_URL}/en/compare/${slug}`,
       },
     },
     openGraph: withOpenGraphBase({ title: page.title, description: page.answer, url: canonical, images: [`${SITE_URL}/og-card.png`] }),

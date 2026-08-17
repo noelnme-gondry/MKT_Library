@@ -8,7 +8,7 @@ export const metadata = {
   description: "Terms governing the free marketing analysis tools and practical guides provided by Growth Opt Playbook.",
   alternates: {
     canonical: `${SITE_URL}/en/terms`,
-    languages: { ko: `${SITE_URL}/terms`, en: `${SITE_URL}/en/terms`, "x-default": `${SITE_URL}/terms` },
+    languages: { ko: `${SITE_URL}/terms`, en: `${SITE_URL}/en/terms`, "x-default": `${SITE_URL}/en/terms` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/en/terms` }, "en"),
 };

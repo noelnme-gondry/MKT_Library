@@ -7,7 +7,7 @@ export const metadata = {
   description: "Calculate LTV:CAC, payback, break-even ROAS, target CPA, A/B sample size, and installs from budget without a CSV.",
   alternates: {
     canonical: `${SITE_URL}/en/calculator`,
-    languages: { ko: `${SITE_URL}/calculator`, en: `${SITE_URL}/en/calculator`, "x-default": `${SITE_URL}/calculator` },
+    languages: { ko: `${SITE_URL}/calculator`, en: `${SITE_URL}/en/calculator`, "x-default": `${SITE_URL}/en/calculator` },
   },
   openGraph: withOpenGraphBase({
     title: "Free performance marketing calculators",

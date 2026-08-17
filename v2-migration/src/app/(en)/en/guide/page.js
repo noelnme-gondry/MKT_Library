@@ -14,7 +14,7 @@ export async function generateMetadata() {
     // absolute: title이 이미 브랜드 접미사 포함 — layout.js template 중복 적용 방지.
     title: { absolute: title },
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/guide`, en: canonical, "x-default": `${SITE_URL}/guide` } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/guide`, en: canonical, "x-default": canonical } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }, "en"),
   };
 }

@@ -49,3 +49,17 @@ It is also worth knowing that the calculation depends on the type of outcome met
 This analysis is a **tool for narrowing hypotheses**. Observational data carries the selection bias of the delivery algorithm. When a platform gives more impressions to content that responds well, the attributes of that content look better than they are.
 
 So the order runs like this. Pick the one or two elements that came out on top, produce content that differs only in that element, and confirm it with [experiment analysis](/tools/experiment-analysis). Narrowing with observation and confirming with an experiment is the fastest path.
+
+## Try this today
+
+**One.** Add the attribute columns to your content tracker **now, as a production step** — not as a retro task. Tagging a quarter's worth from memory imports a bias toward remembering successful content as better made, and that bias lands directly in the coefficients.
+
+**Two.** Pick the single element your team argues about most and check how many pieces actually differ on it. If almost everything you made has the same hook type, the data holds no information about hook type, however many rows it has.
+
+## Let's be honest
+
+Elements that always travel together cannot be separated. If every short video also had a bright thumbnail, no amount of modelling will tell you which one carried the result — the honest output there is "cannot separate," not a smaller coefficient.
+
+And the direction of causation stays open. A piece may have performed well because of its hook, or the hook may have been made carefully *because* the topic was already promising. Observational element analysis narrows what to try next; a controlled comparison is what confirms it.
+
+Upload your content CSV and the per-element contribution is computed in your browser, with elements too thin or too collinear to judge marked as withheld rather than given a number.

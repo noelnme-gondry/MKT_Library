@@ -13,7 +13,7 @@ export async function generateMetadata() {
     // absolute — skip the brand suffix (same SERP truncation reason as term pages).
     title: { absolute: title },
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical, "x-default": `${SITE_URL}/glossary` } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical, "x-default": canonical } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }, "en"),
   };
 }

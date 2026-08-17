@@ -13,7 +13,7 @@ export async function generateMetadata() {
     // absolute — 브랜드 접미 제거(상세 페이지와 동일 이유, 검색결과 제목 잘림 방지).
     title: { absolute: title },
     description,
-    alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/glossary`, "x-default": canonical } },
+    alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/glossary`, "x-default": `${SITE_URL}/en/glossary` } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }),
   };
 }

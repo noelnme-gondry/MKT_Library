@@ -15,7 +15,7 @@ export async function generateMetadata() {
   return {
     title,
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/blog`, en: canonical, "x-default": `${SITE_URL}/blog` } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/blog`, en: canonical, "x-default": canonical } },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }, "en"),
   };
 }

@@ -17,7 +17,7 @@ export async function generateMetadata({ params }) {
 
   const canonical = `${SITE_URL}/glossary/${term.slug}`;
   const enTerm = getTermBySlug(slug, "en");
-  const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": canonical };
+  const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": enTerm ? `${SITE_URL}/en/glossary/${slug}` : canonical };
   return {
     // absolute — 루트 layout의 " | Growth Opt Playbook" 접미(21자)를 붙이지 않는다.
     // 검색결과 제목은 30자 안팎에서 잘려서, 브랜드 접미가 붙으면 정작 차별화

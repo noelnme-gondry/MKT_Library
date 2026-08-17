@@ -30,7 +30,7 @@ export async function generateMetadata({ params }) {
       languages: {
         ko: `${SITE_URL}/templates/${slug}`,
         en: `${SITE_URL}/en/templates/${slug}`,
-        "x-default": `${SITE_URL}/templates/${slug}`,
+        "x-default": `${SITE_URL}/en/templates/${slug}`,
       },
     },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }),
