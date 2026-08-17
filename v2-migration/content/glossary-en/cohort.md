@@ -9,6 +9,13 @@ keywords: "cohort, cohort meaning, cohort analysis, cohort retention"
 category: "Measurement & Methodology"
 relatedPosts: ["cohort-analysis-guide"]
 draft: false
+faq:
+  - q: "How is a cohort different from retention?"
+    a: "A cohort is the unit — users who started at the same time. Retention is the share of that group still returning later. Average retention that is not split by cohort moves with changes in new-user volume, which makes it hard to interpret."
+  - q: "What should cohorts be grouped by?"
+    a: "Usually install or signup date, though first purchase date is also used. Any choice works as long as the starting point is stated on the chart, and changing it midway breaks comparison with past periods."
+  - q: "Why do recent cohorts suddenly look worse?"
+    a: "Most often because the observation window has not filled. A user who installed yesterday has no D30, and rendering that as zero looks like a collapse. Leave immature cells blank or mark them separately."
 ---
 
 ## In one line

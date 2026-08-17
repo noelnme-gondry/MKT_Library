@@ -49,11 +49,10 @@ export const EN_BLOG_SLUGS = new Set([
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([
-  "adstock", "cac", "cannibalization", "click-injection", "cohort",
-  "cpa", "cpc", "cpi", "cpm", "ctr", "cvr", "deep-link", "ecpi",
-  "funnel", "holdout-test", "incrementality", "ltv", "marginal-cpa",
-  "mmp", "multicollinearity", "probabilistic-attribution", "response-curve",
-  "retention", "roas", "uplift",
+  "adstock", "arpu", "aso", "attribution", "cac", "cannibalization", "click-injection",
+  "cohort", "cpa", "cpc", "cpi", "cpm", "ctr", "cvr", "deep-link", "ecpi", "funnel",
+  "holdout-test", "incrementality", "ltv", "marginal-cpa", "mmm", "mmp", "multicollinearity",
+  "probabilistic-attribution", "response-curve", "retargeting", "retention", "roas", "uplift"
 ]);
 
 export function localizedHref(href, locale = "ko") {
