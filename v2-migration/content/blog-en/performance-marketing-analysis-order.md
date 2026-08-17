@@ -32,11 +32,11 @@ Choose the first analysis from two things: **the decision you need to make** and
 | Daily spend and conversions | Where is performance moving? | [Operations dashboard](/dashboard) | Narrow the channel and period |
 | Campaign results before and after | Why did CPA or ROAS change? | [Performance variance](/tools/campaign-variance) | Separate volume, efficiency, and mix |
 | Daily channel spend at several levels | How far can we scale? | [Saturation diagnosis](/tools/campaign-saturation) | [Budget allocation](/tools/budget-allocation) |
-| Control and test aggregates | Which variant won? | [A/B experiment analysis](/tools/experiment) | Apply and measure again |
+| Control and test aggregates | Which variant won? | [A/B experiment analysis](/tools/experiment-analysis) | Apply and measure again |
 | Holdout market, period, or control | Did ads create net lift? | [Incrementality analysis](/tools/incrementality) | Budget from incremental value |
-| 52+ weekly observations by channel | What are the long-run responses? | [VIF diagnosis](/tools/vif-diagnosis) | MMM after collinearity checks |
+| 52+ weekly observations by channel | What are the long-run responses? | [VIF diagnosis](/tools/vif-multicollinearity) | MMM after collinearity checks |
 | Search-term report | Which terms and CPT bids need action? | [ASA Keyword Finder](/tools/asa-keyword-finder) | Exact, negative, and bid actions |
-| Daily creative delivery and conversion data | Which creative is fatiguing? | [Creative analysis](/tools/creative-analysis) | Replace or scale candidates |
+| Daily creative delivery and conversion data | Which creative is fatiguing? | [Creative analysis](/content/freshness) | Replace or scale candidates |
 
 This is not a ranking by sophistication. It is a map of **what your current data can answer**. If there is no control, start with an operating diagnosis instead of imitating an incrementality study.
 
@@ -70,7 +70,7 @@ Without a control, holdout market, or off period, observational performance does
 
 MMM is not last merely because it is heavy. It answers a different question when you have a sufficiently long weekly panel of channel spend, outcomes, and controls such as seasonality and promotions. This service uses 52 weeks as a starting eligibility check, but time alone is not enough. If channels move together, their contributions are difficult to separate.
 
-Run [VIF diagnosis](/tools/vif-diagnosis) before MMM. High VIF is a signal to combine channels or redesign the period and variables. A model producing numbers does not make channel contribution identifiable.
+Run [VIF diagnosis](/tools/vif-multicollinearity) before MMM. High VIF is a signal to combine channels or redesign the period and variables. A model producing numbers does not make channel contribution identifiable.
 
 ## If you do not know the tool, start with three questions
 

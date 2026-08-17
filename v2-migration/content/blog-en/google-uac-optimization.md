@@ -30,7 +30,7 @@ The goal you set changes **who the algorithm brings**. Run tCPI only and it inst
 
 The algorithm picks placements, but **you supply the raw material.** The more diverse and higher-quality your text, image, and video assets, the wider the algorithm's combinations. Assets are effectively your UAC creative strategy.
 
-The common mistake is fixating on count. Filling the slots with the same video cropped landscape, square, and portrait fills the slots but doesn't add combination diversity. Filling with **different angles** (problem-statement, result, testimonial) actually widens the space. When you retire low performers, don't swap them all at once — replace the bottom few. Check what's landing with [creative analysis](/tools/creative-analysis).
+The common mistake is fixating on count. Filling the slots with the same video cropped landscape, square, and portrait fills the slots but doesn't add combination diversity. Filling with **different angles** (problem-statement, result, testimonial) actually widens the space. When you retire low performers, don't swap them all at once — replace the bottom few. Check what's landing with [creative analysis](/content/freshness).
 
 ### 3. Conversion events and signals
 

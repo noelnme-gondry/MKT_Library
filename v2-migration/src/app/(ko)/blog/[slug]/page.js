@@ -8,6 +8,11 @@ import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
 import RelatedGuideList from "@/components/seo/RelatedGuideList";
+import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
+import AuthorCard from "@/components/seo/AuthorCard";
+import { clusterLinksFor } from "@/lib/topicClusters";
+import { getBlogSeo } from "@/lib/blogSeo";
+import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { guidesForPost } from "@/lib/guideSearchContent";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { idToPath } from "@/lib/routeMap";
@@ -85,13 +90,8 @@ function splitAtContentAction(html) {
 // 글별 구조화 데이터(JSON-LD) — BlogPosting(리치결과) + BreadcrumbList(빵부스러기).
 // SSR로 초기 HTML에 포함돼 크롤러가 즉시 파싱.
 function buildPostJsonLd(post, canonical) {
-  const publisher = {
-    "@type": "Organization",
-    "@id": `${SITE_URL}/#org`,
-    name: "Growth Opt Playbook",
-    url: `${SITE_URL}/`,
-    logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
-  };
+  const publisher = publisherNode("ko");
+  const author = authorNode("ko");
   const images = extractImages(post.html);
   const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
   const faqNode = post.faq.length
@@ -115,7 +115,7 @@ function buildPostJsonLd(post, canonical) {
         description: post.description,
         datePublished: post.date || undefined,
         dateModified: post.updated || post.date || undefined,
-        author: publisher,
+        author,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
         url: canonical,
@@ -182,7 +182,11 @@ export default async function BlogPostPage({ params }) {
           </aside>
         )}
         <div className="content-article__meta">
-          <span className="content-article__byline">Growth Opt Playbook 편집</span>
+          {/* 저자를 식별 가능한 실제 페이지로 잇는다 — 이름만 적힌 바이라인은
+              검색엔진에도 독자에게도 "누가 썼는지"를 답하지 못한다. */}
+          <Link href={AUTHOR.profilePath} className="content-article__byline" rel="author">
+            {AUTHOR.name} · {AUTHOR.ko.role}
+          </Link>
           <span>{fmtDate(post.date)}</span>
           {post.updated && post.updated !== post.date && <span>업데이트 {fmtDate(post.updated)}</span>}
           {post.tags.map((t) => (
@@ -201,10 +205,18 @@ export default async function BlogPostPage({ params }) {
 
       <ContentActionPanel toolId={post.primaryTool} post={post} />
 
+      <AuthorCard locale="ko" />
+
       <EditorialTrust
         reviewer={post.reviewer}
         reviewedAt={post.reviewedAt}
         sources={post.sources}
+      />
+
+      <TopicClusterLinks
+        links={clusterLinksFor(post.slug)}
+        titleFor={(slug) => getBlogSeo("ko", slug)?.title || slug}
+        locale="ko"
       />
 
       <NewsletterSignup placement="post" />

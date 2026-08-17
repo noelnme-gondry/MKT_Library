@@ -8,6 +8,11 @@ import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
 import RelatedGuideList from "@/components/seo/RelatedGuideList";
+import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
+import AuthorCard from "@/components/seo/AuthorCard";
+import { clusterLinksFor } from "@/lib/topicClusters";
+import { getBlogSeo } from "@/lib/blogSeo";
+import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { guidesForPost } from "@/lib/guideSearchContent";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { idToPath } from "@/lib/routeMap";
@@ -81,13 +86,8 @@ function splitAtContentAction(html) {
 }
 
 function buildPostJsonLd(post, canonical) {
-  const publisher = {
-    "@type": "Organization",
-    "@id": `${SITE_URL}/#org`,
-    name: "Growth Opt Playbook",
-    url: `${SITE_URL}/`,
-    logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
-  };
+  const publisher = publisherNode("en");
+  const author = authorNode("en");
   const images = extractImages(post.html);
   const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
   const faqNode = post.faq.length
@@ -111,7 +111,7 @@ function buildPostJsonLd(post, canonical) {
         description: post.description,
         datePublished: post.date || undefined,
         dateModified: post.updated || post.date || undefined,
-        author: publisher,
+        author,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
         url: canonical,
@@ -178,7 +178,9 @@ export default async function EnBlogPostPage({ params }) {
           </aside>
         )}
         <div className="content-article__meta">
-          <span className="content-article__byline">Growth Opt Playbook Editorial</span>
+          <Link href={`/en${AUTHOR.profilePath}`} className="content-article__byline" rel="author">
+            {AUTHOR.name} · {AUTHOR.en.role}
+          </Link>
           <span>{fmtDate(post.date)}</span>
           {post.updated && post.updated !== post.date && <span>Updated {fmtDate(post.updated)}</span>}
           {post.tags.map((t) => (
@@ -195,11 +197,19 @@ export default async function EnBlogPostPage({ params }) {
 
       <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
 
+      <AuthorCard locale="en" />
+
       <EditorialTrust
         locale="en"
         reviewer={post.reviewer}
         reviewedAt={post.reviewedAt}
         sources={post.sources}
+      />
+
+      <TopicClusterLinks
+        links={clusterLinksFor(post.slug)}
+        titleFor={(slug) => getBlogSeo("en", slug)?.title || slug}
+        locale="en"
       />
 
       <NewsletterSignup locale="en" placement="post" />
