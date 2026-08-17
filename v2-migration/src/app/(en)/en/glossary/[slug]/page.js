@@ -48,6 +48,16 @@ function buildTermJsonLd(term, canonical) {
         inLanguage: "en-US",
         inDefinedTermSet: `${SITE_URL}/en/glossary`,
       },
+      ...(term.faq.length
+        ? [{
+            "@type": "FAQPage",
+            mainEntity: term.faq.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          }]
+        : []),
       {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -93,6 +103,18 @@ export default async function EnGlossaryTermPage({ params }) {
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
 
       <ContentActionPanel locale="en" term={term} />
+
+      {term.faq.length > 0 && (
+        <section className="blog-faq" aria-label="Frequently asked questions">
+          <h2>Frequently asked questions</h2>
+          {term.faq.map((item, i) => (
+            <details key={i} className="blog-faq-item">
+              <summary>{item.q}</summary>
+              <div className="blog-faq-item-answer">{item.a}</div>
+            </details>
+          ))}
+        </section>
+      )}
 
       {relatedPosts.length > 0 && (
         <div style={{ marginTop: "2rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>

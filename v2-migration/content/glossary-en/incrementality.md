@@ -2,13 +2,20 @@
 term: "Incrementality"
 seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
-description: "Incrementality is the outcome lift ads actually caused. How it is measured and why CPA and ROAS alone overstate advertising impact."
+description: "Incrementality is the performance advertising actually added on top of what would have happened anyway. How to measure it, and why CPA and ROAS mislead."
 date: "2026-07-18"
 slug: "incrementality"
 keywords: "incrementality, incrementality meaning, incrementality measurement, incrementality testing"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement"]
 draft: false
+faq:
+  - q: "How is incrementality different from attribution?"
+    a: "Attribution is a rule for splitting conversions that already happened across channels. Incrementality asks whether those conversions would have happened without the ad. Attribution always allocates 100%; incremental effect is often far smaller."
+  - q: "How do you measure incrementality?"
+    a: "A randomised holdout is the strongest design. Without a control group you can use before-and-after comparisons around turning a campaign on or off, geo splits, or a time-series baseline. Each step down that list lets more competing explanations in."
+  - q: "If incrementality is low, should I turn the ads off?"
+    a: "Check sample size and window before cutting. Incremental estimates often carry wide intervals, and campaign types whose effect arrives late — brand campaigns especially — are understated over short observation periods."
 ---
 
 ## In one line

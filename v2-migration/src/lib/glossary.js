@@ -54,6 +54,12 @@ function parseFile(fileName, locale) {
     category: data.category || (locale === "en" ? "Other" : "기타"),
     // 이 용어를 더 깊게 다루는 기존 블로그 글 slug 배열(있으면 상세 페이지에 링크).
     relatedPosts: Array.isArray(data.relatedPosts) ? data.relatedPosts : [],
+    // 용어집에 실제로 들어오는 쿼리는 "리텐션 뜻"·"d30 리텐션"처럼 이미 질문이다.
+    // 그 질문에 그대로 답하는 FAQ를 두면 FAQPage 구조화 데이터로 나가고, 답을
+    // 뽑아 쓰는 쪽(LLM·요약 스니펫)이 인용할 단위가 생긴다(§12.29 AEO).
+    faq: Array.isArray(data.faq)
+      ? data.faq.filter((item) => item?.q && item?.a).map((item) => ({ q: String(item.q), a: String(item.a) }))
+      : [],
     primaryTool: data.primaryTool || primaryToolForContent(slug, "glossary"),
     draft: data.draft === true,
     html: localizeInternalLinks(marked.parse(content || ""), locale),
