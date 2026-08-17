@@ -1,0 +1,58 @@
+<svg viewBox="0 0 740 380" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="740" height="380" fill="#ffffff"/>
+
+  <!-- shared symptom -->
+  <rect x="250" y="26" width="240" height="52" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.4"/>
+  <text x="370" y="49" fill="#B91C1C" font-size="14" font-weight="700" text-anchor="middle">CPC goes $0.20 &#8594; $0.30</text>
+  <text x="370" y="68" fill="#B91C1C" font-size="12" text-anchor="middle">Same symptom, two different causes</text>
+
+  <!-- branch arrows -->
+  <g stroke="#94A3B8" stroke-width="1.8" fill="none">
+    <path d="M330 78 L200 108"/>
+    <path d="M410 78 L540 108"/>
+  </g>
+  <g fill="#94A3B8">
+    <polygon points="196,105 188,112 200,116"/>
+    <polygon points="544,105 552,112 540,116"/>
+  </g>
+
+  <!-- case 1: CPM rose -->
+  <rect x="34" y="118" width="312" height="176" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="190" y="145" fill="#0F172A" font-size="14" font-weight="700" text-anchor="middle">1. CPM went up</text>
+
+  <text x="60" y="176" fill="#475569" font-size="12.5">CPM</text>
+  <text x="326" y="176" fill="#B91C1C" font-size="12.5" font-weight="700" text-anchor="end">$2.00 &#8594; $3.00</text>
+  <line x1="60" y1="186" x2="326" y2="186" stroke="#E2E8F0"/>
+
+  <text x="60" y="208" fill="#475569" font-size="12.5">CTR</text>
+  <text x="326" y="208" fill="#475569" font-size="12.5" text-anchor="end">1.0% &#8594; 1.0% (flat)</text>
+  <line x1="60" y1="218" x2="326" y2="218" stroke="#E2E8F0"/>
+
+  <text x="60" y="243" fill="#334155" font-size="12.5" font-weight="700">Means</text>
+  <text x="326" y="243" fill="#334155" font-size="12.5" text-anchor="end">The auction got pricier</text>
+
+  <rect x="60" y="256" width="266" height="24" rx="6" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="193" y="272" fill="#1D4ED8" font-size="12" font-weight="700" text-anchor="middle">&#8594; Check audience, bid, seasonality</text>
+
+  <!-- case 2: CTR fell -->
+  <rect x="394" y="118" width="312" height="176" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="550" y="145" fill="#0F172A" font-size="14" font-weight="700" text-anchor="middle">2. CTR went down</text>
+
+  <text x="420" y="176" fill="#475569" font-size="12.5">CPM</text>
+  <text x="686" y="176" fill="#475569" font-size="12.5" text-anchor="end">$2.00 &#8594; $2.00 (flat)</text>
+  <line x1="420" y1="186" x2="686" y2="186" stroke="#E2E8F0"/>
+
+  <text x="420" y="208" fill="#475569" font-size="12.5">CTR</text>
+  <text x="686" y="208" fill="#B91C1C" font-size="12.5" font-weight="700" text-anchor="end">1.0% &#8594; 0.67%</text>
+  <line x1="420" y1="218" x2="686" y2="218" stroke="#E2E8F0"/>
+
+  <text x="420" y="243" fill="#334155" font-size="12.5" font-weight="700">Means</text>
+  <text x="686" y="243" fill="#334155" font-size="12.5" text-anchor="end">Response got weaker</text>
+
+  <rect x="420" y="256" width="266" height="24" rx="6" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="553" y="272" fill="#1D4ED8" font-size="12" font-weight="700" text-anchor="middle">&#8594; Check creative and fatigue</text>
+
+  <!-- footer -->
+  <rect x="34" y="310" width="672" height="42" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="370" y="336" fill="#475569" font-size="12.5" text-anchor="middle">CPC alone makes these identical. Only CPM and CTR side by side tell you what to fix.</text>
+</svg>

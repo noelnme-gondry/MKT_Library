@@ -42,16 +42,16 @@ faq:
     a: "No. Keep assets that still perform, add new variants first, and replace only the weaker portion after an adequate observation window."
 ---
 
-There is no universal answer such as “always test three creatives.” The number of creatives you can test at once depends on two inputs: **the budget available for one test batch and the amount each creative needs before you can make a useful decision.**
+There is no universal answer such as “always test three creatives.” The number of creatives you can test at once depends on two inputs: the budget available for one test batch and the amount each creative needs before you can make a useful decision.
 
 Adding more creatives without increasing the budget spreads delivery thin. Some ads receive too little exposure to tell you whether they failed or never had a fair chance. The goal is not to launch the most assets. It is to give each hypothesis enough opportunity to produce an answer.
 
 ## The short answer
 
-- **How many creatives?** Test `⌊test-batch budget ÷ decision budget per creative⌋` assets. Round down so every asset keeps its decision budget.
-- **Which metric decides?** For sales or acquisition, prioritize CPA, ROAS, or conversion rate. Treat CTR as a diagnostic metric.
-- **When do you decide?** After the minimum observation period, decide when either adequate conversion evidence is available or the decision-spend cap is reached.
-- **What if delivery is uneven?** Classify the result as a hold or rerun it with an official platform experiment instead of forcing a loser decision.
+- How many creatives? Test `⌊test-batch budget ÷ decision budget per creative⌋` assets. Round down so every asset keeps its decision budget.
+- Which metric decides? For sales or acquisition, prioritize CPA, ROAS, or conversion rate. Treat CTR as a diagnostic metric.
+- When do you decide? After the minimum observation period, decide when either adequate conversion evidence is available or the decision-spend cap is reached.
+- What if delivery is uneven? Classify the result as a hold or rerun it with an official platform experiment instead of forcing a loser decision.
 
 ![Ad creative launch, test, decision, fatigue tracking, and replacement lifecycle](/blog-assets/ad-creative-testing/ad-creative-lifecycle-en.png)
 
@@ -176,7 +176,7 @@ Keep the audience, optimization event, bid strategy, period, and landing experie
 
 ### 4. Minimum observation rule
 
-Define a minimum observation period and two exit paths before launch. Run the first read when **either adequate conversion evidence is available or the predefined decision-spend cap is reached.** This OR rule prevents a zero-conversion asset from running forever without letting the team rewrite the threshold after seeing the result. Hold the decision when delivery is too low or conditions are not comparable.
+Define a minimum observation period and two exit paths before launch. Run the first read when either adequate conversion evidence is available or the predefined decision-spend cap is reached. This OR rule prevents a zero-conversion asset from running forever without letting the team rewrite the threshold after seeing the result. Hold the decision when delivery is too low or conditions are not comparable.
 
 ### 5. Post-test action
 
@@ -264,7 +264,7 @@ Google Ads [Demand Gen creative refresh guidance](https://support.google.com/goo
 
 TikTok's [performance creative guidance](https://ads.tiktok.com/help/article/creative-best-practices?lang=en) offers three to five assets per ad group as a starting point while explicitly noting that every campaign differs. Treat that as platform guidance, not a universal quota, and replenish the existing ad group when sustained decline or weak new reach appears.
 
-The safer sequence is **keep assets that still perform → add new variants first → observe enough data → replace the weaker portion.**
+The safer sequence is keep assets that still perform → add new variants first → observe enough data → replace the weaker portion.
 
 <!-- CONTENT_ACTION -->
 

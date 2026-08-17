@@ -20,19 +20,19 @@ The useful question is not which product has a checklist item. It is how each wo
 
 ## Where teams usually see a difference
 
-- **Dashboard and learning curve.** Adjust is often perceived as easier to navigate for a team adopting an attribution platform for the first time. Confirm this with a hands-on trial using the people who will operate it daily.
-- **Raw-data access.** Teams that transform install, session, and event data in their own warehouse should inspect the export scope, latency, retention window, and pricing for every required feed—not only the headline feature list.
-- **SKAN handling.** AppsFlyer emphasizes workflows that reconcile aggregated SKAN data with device-level measurement. This deserves a close review when iOS is a meaningful share of your growth.
-- **Fraud protection.** AppsFlyer highlights machine-learning fraud detection across network patterns. Compare the actual protection, reporting, and appeal workflow for categories exposed to click injection or other invalid traffic.
-- **Partner ecosystem.** AppsFlyer is widely known for a broad set of media, DSP, and analytics integrations. List your required partners before deciding; the relevant question is whether *your* stack is covered and maintained.
-- **Commercial model.** Quotes can depend on attributed conversions, optional modules, data exports, and scale. Do not choose from an old pricing comparison. Ask both vendors for an equivalent scenario using your expected volume and feature set.
+- Dashboard and learning curve. Adjust is often perceived as easier to navigate for a team adopting an attribution platform for the first time. Confirm this with a hands-on trial using the people who will operate it daily.
+- Raw-data access. Teams that transform install, session, and event data in their own warehouse should inspect the export scope, latency, retention window, and pricing for every required feed—not only the headline feature list.
+- SKAN handling. AppsFlyer emphasizes workflows that reconcile aggregated SKAN data with device-level measurement. This deserves a close review when iOS is a meaningful share of your growth.
+- Fraud protection. AppsFlyer highlights machine-learning fraud detection across network patterns. Compare the actual protection, reporting, and appeal workflow for categories exposed to click injection or other invalid traffic.
+- Partner ecosystem. AppsFlyer is widely known for a broad set of media, DSP, and analytics integrations. List your required partners before deciding; the relevant question is whether *your* stack is covered and maintained.
+- Commercial model. Quotes can depend on attributed conversions, optional modules, data exports, and scale. Do not choose from an old pricing comparison. Ask both vendors for an equivalent scenario using your expected volume and feature set.
 
 ## A decision guide
 
-- **You are adopting an MMP for the first time and need a predictable operating model.** Start by evaluating Adjust's onboarding experience and commercial proposal.
-- **iOS is a major growth surface and you need a coherent SKAN reporting workflow.** Put AppsFlyer's SKAN reconciliation workflow through your own test data.
-- **You depend on many media and analytics integrations.** Audit the partner list and implementation quality; AppsFlyer may have an advantage in breadth.
-- **Your warehouse needs granular, reusable event data.** Evaluate both raw-data products in detail, including schema, delivery latency, export limits, and total price.
+- You are adopting an MMP for the first time and need a predictable operating model. Start by evaluating Adjust's onboarding experience and commercial proposal.
+- iOS is a major growth surface and you need a coherent SKAN reporting workflow. Put AppsFlyer's SKAN reconciliation workflow through your own test data.
+- You depend on many media and analytics integrations. Audit the partner list and implementation quality; AppsFlyer may have an advantage in breadth.
+- Your warehouse needs granular, reusable event data. Evaluate both raw-data products in detail, including schema, delivery latency, export limits, and total price.
 
 ## Do not treat this page as a pricing sheet
 

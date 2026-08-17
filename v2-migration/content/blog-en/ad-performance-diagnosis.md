@@ -44,9 +44,9 @@ Treating one day of noise like a long-term problem can introduce changes that di
 
 ## The four-step diagnosis sequence
 
-1. **Validate the number.** Rule out tracking errors, reporting delay, and thin samples.
+1. Validate the number. Rule out tracking errors, reporting delay, and thin samples.
 2. **Isolate the scope.** Separate an account-wide issue from a channel or campaign issue.
-3. **Split mix and efficiency.** Check whether the expensive channel gained share or performance itself worsened.
+3. Split mix and efficiency. Check whether the expensive channel gained share or performance itself worsened.
 4. **Trace the funnel.** Use CPM, CTR, and conversion rate to decide the next action.
 
 Skipping this order can lead to replacing healthy creative, stopping a campaign that is still gathering evidence, or treating a landing-page problem as an ad problem.

@@ -44,8 +44,8 @@ That is a combination effect, and it shows up in a cross-tab of the two axes wit
 
 ## Moving results into production guidelines
 
-- **Do not use an attribute whose interval crosses zero.** Not even the direction is settled.
-- **Drop attributes with thin samples.** An attribute present in three creatives just reflects the other characteristics of those three.
-- **Send only the top one or two to an experiment.** Turning all of them into guidelines stacks up unverified rules.
+- Do not use an attribute whose interval crosses zero. Not even the direction is settled.
+- Drop attributes with thin samples. An attribute present in three creatives just reflects the other characteristics of those three.
+- Send only the top one or two to an experiment. Turning all of them into guidelines stacks up unverified rules.
 
 The job of observational analysis is **deciding what to test next**. Narrow the candidates, hand them to [experiment analysis](/tools/experiment-analysis), and the question becomes one a small budget can settle.

@@ -12,11 +12,11 @@ draft: false
 
 ## In one line
 
-A **deep link** opens an app directly to a specific screen — a product page, an event, a piece of content — instead of just landing on the home screen.
+A deep link opens an app directly to a specific screen — a product page, an event, a piece of content — instead of just landing on the home screen.
 
 ## What makes it "deferred"
 
-The tricky part is when the user doesn't have the app yet. They get routed to the store to install first — a **deferred deep link** remembers the original destination and takes them straight there once install finishes, instead of dropping them on the home screen.
+The tricky part is when the user doesn't have the app yet. They get routed to the store to install first — a deferred deep link remembers the original destination and takes them straight there once install finishes, instead of dropping them on the home screen.
 
 ## Why it matters
 

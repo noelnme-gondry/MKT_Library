@@ -40,9 +40,9 @@ It is also worth knowing that the calculation depends on the type of outcome met
 
 ## The order to read results in
 
-1. **Does the interval cross zero?** If it does, not even the direction is settled. That is "not yet distinguishable," not "no effect."
-2. **Is the sample sufficient?** If an element appeared in only three pieces, the other characteristics of those three dominate the coefficient.
-3. **Is the size practically meaningful?** A statistically significant 0.02pp difference in CTR is not a reason to change production direction.
+1. Does the interval cross zero? If it does, not even the direction is settled. That is "not yet distinguishable," not "no effect."
+2. Is the sample sufficient? If an element appeared in only three pieces, the other characteristics of those three dominate the coefficient.
+3. Is the size practically meaningful? A statistically significant 0.02pp difference in CTR is not a reason to change production direction.
 
 ## The next step is an experiment
 

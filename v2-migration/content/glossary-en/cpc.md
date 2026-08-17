@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**CPC (Cost Per Click)** is the cost of a single click — equal to **CPM ÷ CTR**.
+CPC (Cost Per Click) is the cost of a single click — equal to CPM ÷ CTR.
 
 ## Why it matters
 

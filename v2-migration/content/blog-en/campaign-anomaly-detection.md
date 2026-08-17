@@ -14,7 +14,7 @@ faq:
 
 ---
 
-You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: **is this a real anomaly, or just that day's noise?**
+You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: is this a real anomaly, or just that day's noise?
 
 ## First choose: a sudden spike, or a sustained performance drop?
 

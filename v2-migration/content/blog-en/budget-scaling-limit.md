@@ -39,7 +39,7 @@ On a ROAS basis the direction inverts: lower marginal-to-average ROAS means more
 
 ## A curve needs spend that actually varied
 
-There is an important precondition. **A channel whose spend stayed flat cannot produce a curve.** With all points clustered at one level, the slope is unknowable.
+There is an important precondition. A channel whose spend stayed flat cannot produce a curve. With all points clustered at one level, the slope is unknowable.
 
 So some channels come back as "withheld." That is not a tool limitation — it is the data declining to answer. What you need is not a statistical option but **a period where spend was deliberately varied**. Raising then lowering one channel's budget noticeably for two or three weeks makes the curve estimable next quarter.
 

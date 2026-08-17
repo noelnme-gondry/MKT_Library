@@ -22,7 +22,7 @@ faq:
 
 ## In one line
 
-**Retention** is the share of users who installed or signed up at a given point that are still coming back some days later — commonly measured as D1, D7, or D30.
+Retention is the share of users who installed or signed up at a given point that are still coming back some days later — commonly measured as D1, D7, or D30.
 
 ## Why it matters
 
@@ -34,11 +34,11 @@ It matters for advertising too. When retention is low, no amount of CPI reductio
 
 Count install day as D0.
 
-- **D1 retention** — came back the next day. Tests first impression and onboarding. If this breaks, the later numbers do not matter yet.
-- **D7 retention** — one week later. Whether a single trial is turning into a habit.
-- **D30 retention** — one month later. The size of the base that actually stays, and the number most directly tied to revenue and LTV.
+- D1 retention — came back the next day. Tests first impression and onboarding. If this breaks, the later numbers do not matter yet.
+- D7 retention — one week later. Whether a single trial is turning into a habit.
+- D30 retention — one month later. The size of the base that actually stays, and the number most directly tied to revenue and LTV.
 
-They answer different questions. Strong D1 with collapsing D30 points at **sustained value**, not onboarding; weak D1 points at traffic quality or the first session.
+They answer different questions. Strong D1 with collapsing D30 points at sustained value, not onboarding; weak D1 points at traffic quality or the first session.
 
 ## The formula
 
@@ -48,23 +48,23 @@ For a single cohort:
 D7 retention = (users who returned on D7) ÷ (users who installed that day)
 ```
 
-The denominator is **that cohort's size**. Dividing by total active users produces a different metric entirely.
+The denominator is that cohort's size. Dividing by total active users produces a different metric entirely.
 
-You also have to define "returned" up front. Whether opening the app counts, or a core action is required, changes the number a lot. Either choice is defensible — but **once set, don't change it.** A changed definition breaks comparison with the past.
+You also have to define "returned" up front. Whether opening the app counts, or a core action is required, changes the number a lot. Either choice is defensible — but once set, don't change it. A changed definition breaks comparison with the past.
 
 ## Three common traps
 
-**One: averaging cohorts unweighted.** Averaging daily retention rates gives a 100-user cohort the same weight as a 10,000-user one. Weight by cohort size instead.
+One: averaging cohorts unweighted. Averaging daily retention rates gives a 100-user cohort the same weight as a 10,000-user one. Weight by cohort size instead.
 
-**Two: cohorts that have not matured.** A user who installed yesterday has no D30 yet. If that renders as 0, recent cohorts look like they collapsed. **Leave immature cells blank.**
+Two: cohorts that have not matured. A user who installed yesterday has no D30 yet. If that renders as 0, recent cohorts look like they collapsed. Leave immature cells blank.
 
-**Three: mixing rates and counts.** Depending on the report, a retention column may hold `0.32` (a rate) or `320` (a count). Calculating without separating the two produces entirely wrong results.
+Three: mixing rates and counts. Depending on the report, a retention column may hold `0.32` (a rate) or `320` (a count). Calculating without separating the two produces entirely wrong results.
 
 ## "What is a good rate?"
 
 This one is hard to answer honestly. The normal range varies so much by category, monetisation and acquisition mix that outside averages usually do not fit — and their sourcing is often unclear.
 
-There is really only one trustworthy reference: **your own past cohorts.** Stacking the last 8–12 weeks and asking whether this cohort sits inside or outside that range is far more useful than comparing against someone else's average.
+There is really only one trustworthy reference: your own past cohorts. Stacking the last 8–12 weeks and asking whether this cohort sits inside or outside that range is far more useful than comparing against someone else's average.
 
 ## Go deeper
 

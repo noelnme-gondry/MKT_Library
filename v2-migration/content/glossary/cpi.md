@@ -13,7 +13,7 @@ draft: false
 
 ## 한 줄로
 
-**CPI(Cost Per Install)**는 앱 설치 1건당 든 비용이에요. **광고비 ÷ 설치 수**로 계산해요.
+CPI(Cost Per Install)는 앱 설치 1건당 든 비용이에요. 광고비 ÷ 설치 수로 계산해요.
 
 ## 왜 중요한가
 

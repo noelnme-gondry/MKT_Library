@@ -70,11 +70,11 @@ The goal is not simply to lower VIF. It is to create observations where channels
 
 ## Three common mistakes
 
-**High correlation means one channel has no effect.** No. Both may work; the current data simply cannot precisely divide their credit.
+High correlation means one channel has no effect. No. Both may work; the current data simply cannot precisely divide their credit.
 
-**Low VIF proves causality.** No. Promotions, price, and seasonality may still be missing variables. VIF checks only one failure mode.
+Low VIF proves causality. No. Promotions, price, and seasonality may still be missing variables. VIF checks only one failure mode.
 
-**If MMM cannot split channels, nothing is usable.** You can still make bundle-level decisions, review saturation, run a small scale test, and use a holdout. Reduce the uncertain unit and add validation.
+If MMM cannot split channels, nothing is usable. You can still make bundle-level decisions, review saturation, run a small scale test, and use a holdout. Reduce the uncertain unit and add validation.
 
 ## Wrap-up
 

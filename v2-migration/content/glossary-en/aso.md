@@ -20,26 +20,26 @@ faq:
 
 ## In one line
 
-**ASO (App Store Optimization)** is the work of getting your app shown more often inside the App Store and Google Play, and turning more of those impressions into installs.
+ASO (App Store Optimization) is the work of getting your app shown more often inside the App Store and Google Play, and turning more of those impressions into installs.
 
 ## It is really two different jobs
 
 Treating ASO as "adding keywords" misses half of it. Two distinct things are bundled together.
 
-- **Visibility** — which searches surface your app. App name, subtitle, keyword field and description drive this.
-- **Conversion** — whether people install once they see it. Icon, screenshots, first line, ratings and reviews decide this.
+- Visibility — which searches surface your app. App name, subtitle, keyword field and description drive this.
+- Conversion — whether people install once they see it. Icon, screenshots, first line, ratings and reviews decide this.
 
 Work out which one is broken first. If impressions are plentiful and installs are not, more keywords will not help.
 
 ## It is tied directly to paid efficiency
 
-This part gets forgotten. **Users you paid for still pass through the store page.** Lifting store conversion from 30% to 40% produces 33% more installs on the same spend — that is a direct cut to [CPI](/glossary/cpi).
+This part gets forgotten. Users you paid for still pass through the store page. Lifting store conversion from 30% to 40% produces 33% more installs on the same spend — that is a direct cut to [CPI](/glossary/cpi).
 
 So ASO is not only the organic owner's job; it sits on top of paid channel efficiency too.
 
 ## Traps when verifying
 
-Keyword rank alone creates an illusion. A rank can improve on a term with no volume and installs will not move. Read **install conversion against store impressions** alongside it.
+Keyword rank alone creates an illusion. A rank can improve on a term with no volume and installs will not move. Read install conversion against store impressions alongside it.
 
 And change one thing at a time. Swapping icon, screenshots and description together leaves you unable to tell what worked — the same principle as any [controlled test](/glossary/holdout-test).
 

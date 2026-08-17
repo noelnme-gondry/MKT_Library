@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-**Cannibalization** happens when a paid ad — often brand search or retargeting, aimed at people who already know you — takes credit for conversions that would have happened organically anyway.
+Cannibalization happens when a paid ad — often brand search or retargeting, aimed at people who already know you — takes credit for conversions that would have happened organically anyway.
 
 ## Why it's risky
 
@@ -28,7 +28,7 @@ Performance reports credit every conversion to the ad that touched it last. If s
 
 ## How to confirm it
 
-Observation alone can't prove cannibalization exists. A **[holdout test](/glossary/holdout-test)** — randomly turning the ad off for part of your audience and comparing total conversions — is the real way to confirm it.
+Observation alone can't prove cannibalization exists. A [holdout test](/glossary/holdout-test) — randomly turning the ad off for part of your audience and comparing total conversions — is the real way to confirm it.
 
 ## Go deeper
 

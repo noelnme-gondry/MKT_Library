@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**Adstock** is the carryover effect of an ad — impact that doesn't stop the day it ran, but decays gradually over days or weeks.
+Adstock is the carryover effect of an ad — impact that doesn't stop the day it ran, but decays gradually over days or weeks.
 
 ## Why it matters
 

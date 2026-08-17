@@ -1,0 +1,58 @@
+<svg viewBox="0 0 740 380" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="740" height="380" fill="#ffffff"/>
+
+  <!-- 공통 증상 -->
+  <rect x="250" y="26" width="240" height="52" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.4"/>
+  <text x="370" y="49" fill="#B91C1C" font-size="14" font-weight="700" text-anchor="middle">CPC가 200원 → 300원</text>
+  <text x="370" y="68" fill="#B91C1C" font-size="12" text-anchor="middle">같은 증상, 원인은 두 가지</text>
+
+  <!-- 갈림 화살표 -->
+  <g stroke="#94A3B8" stroke-width="1.8" fill="none">
+    <path d="M330 78 L200 108"/>
+    <path d="M410 78 L540 108"/>
+  </g>
+  <g fill="#94A3B8">
+    <polygon points="196,105 188,112 200,116"/>
+    <polygon points="544,105 552,112 540,116"/>
+  </g>
+
+  <!-- 케이스 1: CPM 상승 -->
+  <rect x="34" y="118" width="312" height="176" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="190" y="145" fill="#0F172A" font-size="14" font-weight="700" text-anchor="middle">① CPM이 올랐다</text>
+
+  <text x="60" y="176" fill="#475569" font-size="12.5">CPM</text>
+  <text x="326" y="176" fill="#B91C1C" font-size="12.5" font-weight="700" text-anchor="end">2,000원 → 3,000원</text>
+  <line x1="60" y1="186" x2="326" y2="186" stroke="#E2E8F0"/>
+
+  <text x="60" y="208" fill="#475569" font-size="12.5">CTR</text>
+  <text x="326" y="208" fill="#475569" font-size="12.5" text-anchor="end">1.0% → 1.0% (그대로)</text>
+  <line x1="60" y1="218" x2="326" y2="218" stroke="#E2E8F0"/>
+
+  <text x="60" y="243" fill="#334155" font-size="12.5" font-weight="700">뜻</text>
+  <text x="326" y="243" fill="#334155" font-size="12.5" text-anchor="end">경매가 비싸진 것</text>
+
+  <rect x="60" y="256" width="266" height="24" rx="6" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="193" y="272" fill="#1D4ED8" font-size="12" font-weight="700" text-anchor="middle">→ 타겟·입찰·시즌을 보세요</text>
+
+  <!-- 케이스 2: CTR 하락 -->
+  <rect x="394" y="118" width="312" height="176" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="550" y="145" fill="#0F172A" font-size="14" font-weight="700" text-anchor="middle">② CTR이 떨어졌다</text>
+
+  <text x="420" y="176" fill="#475569" font-size="12.5">CPM</text>
+  <text x="686" y="176" fill="#475569" font-size="12.5" text-anchor="end">2,000원 → 2,000원 (그대로)</text>
+  <line x1="420" y1="186" x2="686" y2="186" stroke="#E2E8F0"/>
+
+  <text x="420" y="208" fill="#475569" font-size="12.5">CTR</text>
+  <text x="686" y="208" fill="#B91C1C" font-size="12.5" font-weight="700" text-anchor="end">1.0% → 0.67%</text>
+  <line x1="420" y1="218" x2="686" y2="218" stroke="#E2E8F0"/>
+
+  <text x="420" y="243" fill="#334155" font-size="12.5" font-weight="700">뜻</text>
+  <text x="686" y="243" fill="#334155" font-size="12.5" text-anchor="end">반응이 약해진 것</text>
+
+  <rect x="420" y="256" width="266" height="24" rx="6" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="553" y="272" fill="#1D4ED8" font-size="12" font-weight="700" text-anchor="middle">→ 소재·피로도를 보세요</text>
+
+  <!-- 하단 정리 -->
+  <rect x="34" y="310" width="672" height="42" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="370" y="336" fill="#475569" font-size="12.5" text-anchor="middle">CPC만 보면 둘이 똑같아 보여요. CPM과 CTR을 같이 놓아야 어디를 고칠지 갈립니다.</text>
+</svg>

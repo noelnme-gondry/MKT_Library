@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**Marginal CPA / Marginal ROAS** is the CPA/ROAS of the **next dollar you add (or the last dollar you remove)** at your current spend — the incremental efficiency at the margin, not the average [CPA](/glossary/cpa) / [ROAS](/glossary/roas) over everything spent so far.
+Marginal CPA / Marginal ROAS is the CPA/ROAS of the next dollar you add (or the last dollar you remove) at your current spend — the incremental efficiency at the margin, not the average [CPA](/glossary/cpa) / [ROAS](/glossary/roas) over everything spent so far.
 
 ## Why the average alone is dangerous
 
@@ -21,7 +21,7 @@ draft: false
 
 ## The decision rule
 
-**Marginal CPA ÷ average CPA** above 1 means the next dollar is worse than the average (a saturation signal); near 1 means there's still headroom to scale. "Where should the next dollar go / where should it come from?" is answered by the marginal metric.
+Marginal CPA ÷ average CPA above 1 means the next dollar is worse than the average (a saturation signal); near 1 means there's still headroom to scale. "Where should the next dollar go / where should it come from?" is answered by the marginal metric.
 
 ## Equimarginal principle
 

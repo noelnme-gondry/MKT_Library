@@ -51,13 +51,13 @@ On top of that, iOS adds another layer. Since tracking restrictions kicked in, a
 
 ![Which number to trust, by question](/blog-assets-en/attribution-data-mismatch/number-purpose.svg)
 
-**Comparing campaigns or creatives within the same platform? Use that platform's dashboard.** Even if the absolute numbers are inflated, relative comparisons measured by the same rules are valid. Nothing beats this for judging whether creative A beats creative B.
+Comparing campaigns or creatives within the same platform? Use that platform's dashboard. Even if the absolute numbers are inflated, relative comparisons measured by the same rules are valid. Nothing beats this for judging whether creative A beats creative B.
 
-**Comparing across channels? Pick one — MMP or GA4 — and stick with it.** Either works, as long as you're consistent. The worst move is cherry-picking whichever number flatters each channel. The moment you do, meetings stop being analysis and become negotiation.
+Comparing across channels? Pick one — MMP or GA4 — and stick with it. Either works, as long as you're consistent. The worst move is cherry-picking whichever number flatters each channel. The moment you do, meetings stop being analysis and become negotiation.
 
-**Judging whether the business did well? Your own order/payment DB is final.** However attribution splits things up, the actual total volume of conversions that happened lives here. Validate every report's total against this number.
+Judging whether the business did well? Your own order/payment DB is final. However attribution splits things up, the actual total volume of conversions that happened lives here. Validate every report's total against this number.
 
-And one more thing: **"how much revenue drops if we turn this channel off" — none of the numbers above can answer that.** They're all observational data, mixed in with conversions that would have happened anyway without the ad. That question can only be answered with an [incrementality test](/blog/incrementality-measurement). If you want to decompose the contribution of every channel at once, that's [MMM](/blog/marketing-mix-modeling) territory.
+And one more thing: "how much revenue drops if we turn this channel off" — none of the numbers above can answer that. They're all observational data, mixed in with conversions that would have happened anyway without the ad. That question can only be answered with an [incrementality test](/blog/incrementality-measurement). If you want to decompose the contribution of every channel at once, that's [MMM](/blog/marketing-mix-modeling) territory.
 
 By the way, if GA4's own numbers feel off, that is a separate issue. After setting the reporting source, check GA4-specific traps such as session definitions and processing lag in [GA4 data traps](/blog/ga4-data-traps).
 

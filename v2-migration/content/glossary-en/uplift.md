@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-**Uplift** is the performance of a group exposed to advertising minus the baseline — what would have happened anyway even without the ad.
+Uplift is the performance of a group exposed to advertising minus the baseline — what would have happened anyway even without the ad.
 
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 
@@ -28,7 +28,7 @@ faq:
 
 Not every conversion in an exposed group is caused by the ad — some of those people (brand searchers, repeat buyers) would have converted regardless. Uplift isolates the piece that's genuinely incremental.
 
-The standard way to measure it is a **[holdout test](/glossary/holdout-test)**: randomly split users into an exposed group and a holdout group that sees no ads, then compare conversion rates.
+The standard way to measure it is a [holdout test](/glossary/holdout-test): randomly split users into an exposed group and a holdout group that sees no ads, then compare conversion rates.
 
 ## Why CPA/ROAS alone isn't enough
 

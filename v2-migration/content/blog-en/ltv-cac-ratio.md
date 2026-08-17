@@ -22,7 +22,7 @@ CAC (Customer Acquisition Cost) is simple.
 
 CAC = total spend to acquire ÷ customers acquired
 
-The thing to watch is **what you use as the denominator.** Installs, signups, or paying customers give completely different numbers. Standardize the definition of "customer" across the team. Usually, the paying user is the meaningful basis.
+The thing to watch is what you use as the denominator. Installs, signups, or paying customers give completely different numbers. Standardize the definition of "customer" across the team. Usually, the paying user is the meaningful basis.
 
 ## LTV is an estimate
 
@@ -36,17 +36,17 @@ Lifespan comes from the [retention curve](/blog/cohort-analysis-guide). Better r
 
 A quick example (numbers illustrative). Spend $50,000 to acquire 500 paying customers → CAC $100. If they spend $20/month on average and stay 12 months, LTV is $240. So LTV:CAC = 240 ÷ 100 = 2.4:1.
 
-More rigorously you plot cumulative revenue curves per cohort and extrapolate the future, but early on the data is shallow and uncertain. Keep in mind **early-cohort LTV always risks over- or under-estimation.**
+More rigorously you plot cumulative revenue curves per cohort and extrapolate the future, but early on the data is shallow and uncertain. Keep in mind early-cohort LTV always risks over- or under-estimation.
 
 ## Three spots people get wrong
 
-The formula is two divisions. What's wrong isn't the formula — it's **the values you feed it.**
+The formula is two divisions. What's wrong isn't the formula — it's the values you feed it.
 
-**1) The "customer" in numerator and denominator differ.** You compute CAC on paying customers but LTV on the average of all installers. Then the ratio doesn't even hold. LTV and CAC must use the same customer definition.
+1) The "customer" in numerator and denominator differ. You compute CAC on paying customers but LTV on the average of all installers. Then the ratio doesn't even hold. LTV and CAC must use the same customer definition.
 
-**2) Computing LTV on revenue.** Even if revenue-based LTV is $240 as above, if contribution margin after cost and fees is 30%, the real money kept is $72. At CAC $100 that's 2.4:1 on revenue but under 1:1 on profit. In thin-margin businesses this gap decides life or death. Read LTV on **contribution margin**, not revenue.
+2) Computing LTV on revenue. Even if revenue-based LTV is $240 as above, if contribution margin after cost and fees is 30%, the real money kept is $72. At CAC $100 that's 2.4:1 on revenue but under 1:1 on profit. In thin-margin businesses this gap decides life or death. Read LTV on **contribution margin**, not revenue.
 
-**3) Looking only at the blended average.** Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
+3) Looking only at the blended average. Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
 
 ## Reading LTV:CAC
 

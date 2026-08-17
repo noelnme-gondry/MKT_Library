@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**CPI (Cost Per Install)** is the cost of a single app install: **spend ÷ installs**.
+CPI (Cost Per Install) is the cost of a single app install: spend ÷ installs.
 
 ## Why it matters
 
