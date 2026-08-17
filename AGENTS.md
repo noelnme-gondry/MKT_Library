@@ -408,8 +408,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
 - **타이포 하한 9.5px**(`app/typographyFloor.test.js`). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다. 이 가드는 오래 `globals.css` **한 파일만** 훑었는데 인라인 `style={{fontSize}}`이 581곳이라 우회로가 통째로 열려 있었다 → 지금은 `src/**/*.jsx` 리터럴도 같은 하한으로 훑는다(계산식은 정적으로 못 읽으므로 대상 밖).
 
-### 12.31 외부 채널(네이버) 파생 원고 — `docs/naver-blog-glossary-drafts.md`
-사이트 콘텐츠를 **복제하지 말고 파생**시킨다. 원본 SSOT는 `content/glossary/*.md`, 파생물은 `docs/`에 두고 사이트 라우트·테스트·sitemap을 건드리지 않는다. EN 대칭(§2.11)은 **면제** — 네이버는 KR 전용 외부 채널이고 사이트 UI·메타가 아니다(면제 사유를 문서 머리에 적을 것).
+### 12.31 외부 채널(네이버 등) 배포 원고
+**산출물은 리포에 남기지 않는다** — 네이버용 용어사전 원고를 `docs/`에 커밋했다가 "네이버 용이라" 삭제됐다(2026-08-17). 외부 채널 원고는 채팅·파일 전달로 끝내고, 리포에는 원본 콘텐츠만 둔다. 아래는 다시 요청받을 때의 규칙.
+- 사이트 콘텐츠를 **복제하지 말고 파생**시킨다. 원본 SSOT는 `content/glossary/*.md`·`content/blog/*.md`이고, 파생 작업이 사이트 라우트·테스트·sitemap을 건드리면 안 된다. EN 대칭(§2.11)은 **면제** — 외부 KR 채널은 사이트 UI·메타가 아니다(면제 사유를 원고 머리에 적을 것).
 - **"기능이 닿는 것만" 추릴 때 `contentToolRegistry`를 그대로 믿지 말 것**: `GLOSSARY_PRIMARY_TOOL`은 **폴백 `5-2`가 섞여 있어** 전 항목이 매핑된 것처럼 보인다. 실제로 30편 중 6편(`aso`·`click-injection`·`deep-link`·`ecpi`·`mmp`·`probabilistic-attribution`)은 대응 기능이 없다 — 제외 이유를 표로 남겨야 다음 사람이 다시 세지 않는다.
 - **외부 문서의 URL도 라우트에서 검증할 것**: 손으로 적은 링크는 리네임에 안 따라온다. `ROUTES`+`CALCULATOR_ORDER`+glossary 파일명으로 대조하는 일회성 스크립트를 돌려 미해결 0을 확인한다(75건 중 0건). UTM은 `utm_content=<용어 slug>`로 편별 기여를 분리한다.
 - **파생물의 분량은 원본보다 짧아야 한다 — 형식을 원본에서 물려받을 것**: 용어사전을 옮기랬는데 항목마다 소제목 5개·1,400자짜리 **블로그 글로 부풀려** 되돌린 적이 있다(24편 1,300줄 → 480줄). 긴 설명을 외부 채널에 다 옮기면 **사이트로 넘어올 이유가 사라진다** — 파생물은 정의·핵심 주의 1~2개·도구 링크까지만(항목 278자, 원본 1,000~1,400자의 1/4). 카테고리도 새로 만들지 말고 원본 `category` 값을 그대로 쓴다. "SEO에 좋게"는 분량을 늘리라는 뜻이 아니다.
@@ -423,7 +424,6 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
 - `docs/pitfalls.md` — 함정 상세 / `docs/backlog.md` — 백로그 + MMM 스펙(§B)
 - `docs/system-audit-2026-08-12.md` — 최신 전면 감사(UI/UX·분석·구조, P0 3·P1 15·P2 12)
-- `docs/naver-blog-glossary-drafts.md` — 네이버 블로그용 용어사전 파생 원고 24편(§12.31). 선별 기준·제외 6편·발행 순서·URL 사전 포함. 원본은 `content/glossary/*.md`.
 - `docs/aeo-prompt-checklist.md` — **생성물**. AEO 측정용 프롬프트 목록(KO/EN 각 17). 손으로 고치지 말고 `node scripts/aeo-prompts.mjs`로 재생성 — 원본은 `toolSearchContent`의 `question`/`answer`와 `compareContent`다. 월별 기록은 `docs/aeo-runs/`에 사본을 떠서 한다.
 - `docs/design-system-baseline.md` · `docs/pvm-campaign-variance-spec.md` · `docs/regression-forecast-merge-spec.md` · `docs/content-analytics-rollout-spec.md` · `docs/custom-metrics-data-config-spec.md` — 기능별 설계 스펙
 - `supabase/SETUP.md` · `supabase/schema.sql` — 현재 미사용(§3), 참고용 보존
