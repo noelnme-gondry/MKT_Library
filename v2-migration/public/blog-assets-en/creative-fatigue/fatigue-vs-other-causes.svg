@@ -1,43 +1,42 @@
-<svg viewBox="0 0 800 430" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
-  <rect x="0" y="0" width="800" height="430" fill="#ffffff"/>
+<svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect x="0" y="0" width="700" height="420" fill="#ffffff"/>
 
-  <!-- start -->
-  <rect x="298" y="24" width="204" height="46" rx="10" fill="#F1F5F9" stroke="#CBD5E1"/>
-  <text x="400" y="53" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">CTR Dropped</text>
+  <!-- 시작 -->
+  <rect x="248" y="24" width="204" height="46" rx="10" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="350" y="53" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">CTR has fallen</text>
 
-  <line x1="400" y1="70" x2="400" y2="96" stroke="#94A3B8" stroke-width="2"/>
-  <polygon points="395,90 400,102 405,90" fill="#94A3B8"/>
+  <line x1="350" y1="70" x2="350" y2="96" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="345,90 350,102 355,90" fill="#94A3B8"/>
 
-  <!-- decision question -->
-  <rect x="236" y="104" width="328" height="46" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
-  <text x="400" y="133" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">Did frequency also go up?</text>
+  <!-- 분기 질문 -->
+  <rect x="196" y="104" width="308" height="46" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="350" y="133" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">Did frequency rise too?</text>
 
-  <!-- branch lines -->
-  <line x1="400" y1="150" x2="400" y2="170" stroke="#94A3B8" stroke-width="2"/>
-  <line x1="220" y1="170" x2="580" y2="170" stroke="#94A3B8" stroke-width="2"/>
-  <line x1="220" y1="170" x2="220" y2="196" stroke="#94A3B8" stroke-width="2"/>
-  <polygon points="215,190 220,202 225,190" fill="#94A3B8"/>
-  <line x1="580" y1="170" x2="580" y2="196" stroke="#94A3B8" stroke-width="2"/>
-  <polygon points="575,190 580,202 585,190" fill="#94A3B8"/>
+  <!-- 좌우 분기선 -->
+  <line x1="350" y1="150" x2="350" y2="170" stroke="#94A3B8" stroke-width="2"/>
+  <line x1="170" y1="170" x2="530" y2="170" stroke="#94A3B8" stroke-width="2"/>
+  <line x1="170" y1="170" x2="170" y2="196" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="165,190 170,202 175,190" fill="#94A3B8"/>
+  <line x1="530" y1="170" x2="530" y2="196" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="525,190 530,202 535,190" fill="#94A3B8"/>
 
-  <text x="310" y="164" fill="#059669" font-size="13" font-weight="700" text-anchor="middle">Yes</text>
-  <text x="490" y="164" fill="#DC2626" font-size="13" font-weight="700" text-anchor="middle">No</text>
+  <text x="250" y="164" fill="#059669" font-size="13" font-weight="700" text-anchor="middle">Yes</text>
+  <text x="452" y="164" fill="#DC2626" font-size="13" font-weight="700" text-anchor="middle">No</text>
 
-  <!-- left: likely fatigue -->
-  <rect x="80" y="204" width="280" height="100" rx="10" fill="#ECFDF5" stroke="#A7F3D0"/>
-  <text x="220" y="234" fill="#047857" font-size="14.5" font-weight="700" text-anchor="middle">Likely Creative Fatigue</text>
-  <text x="220" y="258" fill="#475569" font-size="12" text-anchor="middle">Same people, repeat exposure</text>
-  <text x="220" y="278" fill="#475569" font-size="12" text-anchor="middle">&#8594; refresh creative / widen audience</text>
+  <!-- 왼쪽: 피로도 -->
+  <rect x="52" y="204" width="236" height="92" rx="10" fill="#ECFDF5" stroke="#A7F3D0"/>
+  <text x="170" y="234" fill="#047857" font-size="14.5" font-weight="700" text-anchor="middle">Likely creative fatigue</text>
+  <text x="170" y="260" fill="#475569" font-size="12.5" text-anchor="middle">Repeated exposure to the same people</text>
+  <text x="170" y="280" fill="#475569" font-size="12.5" text-anchor="middle">→ Rotate creative / widen audience</text>
 
-  <!-- right: other cause -->
-  <rect x="440" y="204" width="280" height="100" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
-  <text x="580" y="234" fill="#B91C1C" font-size="14.5" font-weight="700" text-anchor="middle">Might Not Be Fatigue</text>
-  <text x="580" y="258" fill="#475569" font-size="12" text-anchor="middle">Competition &#183; season &#183; targeting</text>
-  <text x="580" y="278" fill="#475569" font-size="12" text-anchor="middle">&#8594; new creative won't help</text>
+  <!-- 오른쪽: 다른 원인 -->
+  <rect x="412" y="204" width="236" height="92" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="530" y="234" fill="#B91C1C" font-size="14.5" font-weight="700" text-anchor="middle">Probably not fatigue</text>
+  <text x="530" y="260" fill="#475569" font-size="12.5" text-anchor="middle">More competition · season · targeting change</text>
+  <text x="530" y="280" fill="#475569" font-size="12.5" text-anchor="middle">→ New creative will not fix it</text>
 
-  <!-- warning box -->
-  <rect x="60" y="316" width="680" height="100" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
-  <text x="400" y="340" fill="#475569" font-size="12.5" text-anchor="middle">Frequency and CTR moving together only shows correlation.</text>
-  <text x="400" y="360" fill="#475569" font-size="12.5" text-anchor="middle">To confirm fatigue caused it, you can only compare by</text>
-  <text x="400" y="380" fill="#475569" font-size="12.5" text-anchor="middle">changing just the creative &#8212; nothing else.</text>
+  <!-- 경고 박스 -->
+  <rect x="90" y="322" width="520" height="60" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="350" y="346" fill="#475569" font-size="12.5" text-anchor="middle">Frequency and CTR moving together is association, no more.</text>
+  <text x="350" y="368" fill="#475569" font-size="12.5" text-anchor="middle">To confirm fatigue as the cause, change only the creative and compare.</text>
 </svg>

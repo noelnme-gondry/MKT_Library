@@ -40,7 +40,7 @@ But a higher CPA does not automatically mean the creative is worse. Conversion t
 
 Treating one day of noise like a long-term problem can introduce changes that disturb learning and the comparison baseline. Treating a repeated decline like noise can let the cause grow. Separate the time pattern first.
 
-![Four-step ad performance diagnosis flow: validate data, isolate channels, split mix and efficiency, then diagnose the funnel](/blog-assets/ad-performance-drop/diagnosis-order.svg)
+![Four-step ad performance diagnosis flow: validate data, isolate channels, split mix and efficiency, then diagnose the funnel](/blog-assets-en/ad-performance-drop/diagnosis-order.svg)
 
 ## The four-step diagnosis sequence
 
@@ -75,11 +75,11 @@ This step does not prove a cause. It narrows the surface area worth changing.
 
 Overall CPA can rise even when every channel's CPA is unchanged. If a more expensive channel takes a larger share of conversions, the blended CPA rises. That is a **mix effect**.
 
-![Mix effect example: channel CPAs stay constant while a higher-cost channel's conversion share raises total CPA](/blog-assets/cpa-reduction/mix-effect-example.svg)
+![Mix effect example: channel CPAs stay constant while a higher-cost channel's conversion share raises total CPA](/blog-assets-en/cpa-reduction/mix-effect-example.svg)
 
 If channel CPA itself rises, that is an **efficiency effect**. Creative fatigue, audience exhaustion, competition, or a weaker landing experience become more plausible.
 
-![Waterfall chart splitting a total CPA increase into budget mix effect and channel efficiency effect](/blog-assets/cpa-reduction/cpa-decomposition.svg)
+![Waterfall chart splitting a total CPA increase into budget mix effect and channel efficiency effect](/blog-assets-en/cpa-reduction/cpa-decomposition.svg)
 
 | Result | First action |
 |---|---|
@@ -95,7 +95,7 @@ This decomposition describes what moved together; it does not prove why it moved
 
 Trace CPM, then CTR, then conversion rate.
 
-![Symptom map for separating competition, creative fatigue, targeting, landing-page, and budget-mix causes using CPM, CTR, CVR, and CPA](/blog-assets/ad-performance-drop/symptom-map.svg)
+![Symptom map for separating competition, creative fatigue, targeting, landing-page, and budget-mix causes using CPM, CTR, CVR, and CPA](/blog-assets-en/ad-performance-drop/symptom-map.svg)
 
 ### Higher CPM: inspect the auction environment
 
@@ -109,9 +109,9 @@ CTR can fall without any creative change when placement mix shifts, automated ta
 
 The classic fatigue signature is **rising frequency plus falling CTR**. It is consistent with repeated exposure and weaker response, but the combination does not prove the cause by itself.
 
-![Creative fatigue signal where ad frequency rises while CTR declines over time](/blog-assets/creative-fatigue/fatigue-signature.svg)
+![Creative fatigue signal where ad frequency rises while CTR declines over time](/blog-assets-en/creative-fatigue/fatigue-signature.svg)
 
-![Decision tree distinguishing creative fatigue from competition, seasonality, or targeting changes when CTR falls](/blog-assets/creative-fatigue/fatigue-vs-other-causes.svg)
+![Decision tree distinguishing creative fatigue from competition, seasonality, or targeting changes when CTR falls](/blog-assets-en/creative-fatigue/fatigue-vs-other-causes.svg)
 
 There is no universal rule such as “refresh at frequency three.” The useful benchmark is your own history: at what frequency and after how many days did past creatives begin to decline?
 

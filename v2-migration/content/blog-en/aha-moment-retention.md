@@ -45,7 +45,7 @@ You need user-level data to test candidates.
 
 The target does not have to be D30 retention. It may be D7 retention, a first purchase, or paid conversion if it matches the product’s value cycle. Every candidate action must occur before the target window. Using a D30-or-later event to predict D30 retention leaks future information into the analysis.
 
-![Flow from user-level data through candidate actions, window and count, to a retention target for Aha Moment discovery](/blog-assets/aha-moment-retention/candidate-discovery-flow.svg)
+![Flow from user-level data through candidate actions, window and count, to a retention target for Aha Moment discovery](/blog-assets-en/aha-moment-retention/candidate-discovery-flow.svg)
 
 ## Compare action, time window, and count together
 
@@ -65,7 +65,7 @@ For an invite action, compare `one invite within D1`, `three invites within D3`,
 
 F1 is useful because it balances precision and recall. But a high F1 does not make an action a cause of retention. It only makes the action a stronger hypothesis to test.
 
-![Illustrative scatter plot showing reach and Lift, separating rare high-Lift signals, common weak signals, and actionable candidates](/blog-assets/aha-moment-retention/reach-lift-scatter.svg)
+![Illustrative scatter plot showing reach and Lift, separating rare high-Lift signals, common weak signals, and actionable candidates](/blog-assets-en/aha-moment-retention/reach-lift-scatter.svg)
 
 ## Illustrative example: why Lift alone is not enough
 
@@ -94,7 +94,7 @@ Validate that a candidate holds on a separate holdout set. A large gap between t
 
 ## Move from discovery to an experiment
 
-![Flow from Aha Moment candidate discovery through onboarding experiment, retention validation, and Aha Event optimization](/blog-assets/aha-moment-retention/discovery-to-experiment-flow.svg)
+![Flow from Aha Moment candidate discovery through onboarding experiment, retention validation, and Aha Event optimization](/blog-assets-en/aha-moment-retention/discovery-to-experiment-flow.svg)
 
 1. **Define the candidate** in one sentence: action, window, count, and target.
 2. **Choose an encouragement**: tutorial, empty state, reminder, or message that does not harm the experience.
