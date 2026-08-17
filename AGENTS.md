@@ -190,6 +190,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **`const x = ... f(()=>...x...)` 자기 참조 = TDZ throw**: const 초기화식 안에서 자신을 참조하면 callback 실행 시 ReferenceError. `&&` 단락으로 안 도는 기본 경로는 멀쩡, 조건 truthy 되는 순간 throw. 모듈 상수 선언 순서도 같은 함정 — 파생 상수는 원본 뒤에.
 
 **렌더·UI**
+- **버튼이 안 보이는 원인은 색이 아니라 캐스케이드일 수 있다**(2026-08-17): 블로그 본문 중간 CTA가 파란 버튼 위 파란 글씨로 나가 드래그해야 읽혔다. 범인은 `.blog-prose a`(특이도 0,1,1)가 `.content-action-panel__cta`(0,1,0)를 이겨 글자색을 배경과 같은 `--primary`로 덮은 것 — **대비 계산기로는 못 잡는다**(규칙만 보면 정상). 컨테이너 요소 셀렉터(`.prose a`)는 그 안에 놓일 컴포넌트를 전부 납치하므로 `a:not([class])`로 원고 링크만 한정할 것. 그리고 `--primary` 배경 위 글자색은 `--on-primary`로 통일 — `--bg-1`·`--surface-base`·raw hex·`white`가 23곳에 흩어져 라이트 3.97~4.40, `white`는 다크 2.30으로 AA 미달이었다(`--on-primary`는 4.64·8.30). `app/buttonContrast.test.js`가 셋 다 파생 검사한다.
 - **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`·`.danger`·`.warning`·`.success`(판정 색 getter). remap Map은 **각 토큰의 다크·라이트 값 + 과거 리터럴을 전부 키로** 가져야 한다 — 하나라도 빠지면 그 데이터셋만 옛 색으로 굳는다. getter 반환값은 리터럴 hex라 `CHART_THEME.danger + "AA"` 알파 접합이 그대로 되고(§7 hex-알파 함정은 `var()`에만 해당), canvas는 `var()`를 못 읽으므로 **데이터셋엔 반드시 getter**를 넘길 것.
   - 토큰화하면 `` `${color}55` `` 같은 **hex 알파 접합이 깨진다**(`var(--danger)55`는 무효 CSS) → `color-mix(in srgb, … 33%, transparent)`.
   - **역으로, 토큰화하면 안 되는 리터럴이 더 많다**(2026-08 실측: `globals.css` raw hex 285 · 인라인 `color` 50 중 안전 치환은 19곳뿐). 금지 4종: ① 브랜드색(YouTube·Naver…) ② **영구 다크 표면 위 텍스트** — `.sidebar{background:#10131a}`엔 `body.light-mode` 재정의가 **일부러 없다**. 여기 hex를 토큰으로 바꾸면 다크 사이드바에 다크 텍스트가 된다(AA 개선이 아니라 파괴) ③ Chart.js 데이터셋에 들어가는 값(canvas는 `var()` 못 읽음 → `CHART_THEME`) ④ 토큰이 없는 색과 짝지은 값(범례↔셀, chip↔dot). **정확히 같은 값의 토큰이 있는 순수 텍스트 색만** 치환할 것.
@@ -461,7 +462,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **250파일·1984 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-17 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **251파일·1988 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-17 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).

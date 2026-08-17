@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-Probabilistic attribution connects a click to an install by matching patterns — device model, OS version, time window, IP range — instead of a unique identifier. It's used when a deterministic ID like IDFA isn't available.
+Without a unique identifier like the IDFA, you are left matching patterns — device model, OS version, time window, IP range — to judge that a click and an install were probably the same person. That approach is probabilistic attribution.
 
 ## Why it exists
 

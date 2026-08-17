@@ -20,7 +20,7 @@ faq:
 
 ## 한 줄로
 
-ASO(App Store Optimization, 앱스토어 최적화)는 App Store·Google Play 안에서 우리 앱이 더 많이 노출되고, 그 노출이 더 많이 설치로 이어지도록 만드는 작업이에요.
+광고를 눌러도 설치는 스토어에서 일어납니다. ASO(App Store Optimization, 앱스토어 최적화)는 App Store·Google Play 안에서 우리 앱이 더 많이 노출되고, 그 노출이 더 많이 설치로 이어지도록 만드는 작업이에요.
 
 ## 두 개의 다른 일이 섞여 있어요
 

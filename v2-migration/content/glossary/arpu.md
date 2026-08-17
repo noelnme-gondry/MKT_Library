@@ -20,7 +20,7 @@ faq:
 
 ## 한 줄로
 
-ARPU(Average Revenue Per User)는 일정 기간의 매출을 전체 유저 수로 나눈 값이에요. 유저 한 명이 평균 얼마를 만들어냈는지를 봅니다.
+매출 ÷ 전체 유저 수. ARPU(Average Revenue Per User)는 이 한 줄이 전부예요. 유저 한 명이 평균 얼마를 만들어냈는지를 봅니다.
 
 ## ARPPU와 헷갈리면 안 됩니다
 

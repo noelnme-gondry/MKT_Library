@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-A funnel is the step-by-step conversion path — impression → click → install → signup → purchase — where the audience narrows at each stage, like the shape of a funnel.
+Impression → click → install → signup → purchase. That step-by-step path, where the audience shrinks at every stage, is a funnel — named for the shape it makes, wide at the top and narrowing downward.
 
 ## Why it matters
 

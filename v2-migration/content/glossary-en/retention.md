@@ -22,7 +22,7 @@ faq:
 
 ## In one line
 
-Retention is the share of users who installed or signed up at a given point that are still coming back some days later — commonly measured as D1, D7, or D30.
+The share of users who installed or signed up at a given point and are still coming back some days later (D1, D7, D30) — that number is retention.
 
 ## Why it matters
 

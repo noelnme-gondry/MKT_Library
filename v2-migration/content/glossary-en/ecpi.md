@@ -12,7 +12,7 @@ draft: false
 
 ## In one line
 
-eCPI (Estimated CPI) is a modeled cost-per-install figure a network reports when it can't observe individual installs — as under SKAdNetwork — reverse-engineered from spend and aggregated conversion signals.
+In environments like SKAdNetwork you cannot see who installed at the user level, so CPI cannot be counted directly. eCPI (Estimated CPI) is the figure a network models back from spend and aggregated conversion data instead.
 
 ## How it differs from regular CPI
 

@@ -13,7 +13,7 @@ draft: false
 
 ## 한 줄로
 
-CTR(Click-Through Rate, 클릭률)은 광고가 노출된 횟수 중 실제로 클릭된 비율이에요. 클릭 수 ÷ 노출 수로 계산해요.
+클릭 수 ÷ 노출 수. CTR(Click-Through Rate, 클릭률)은 광고가 노출된 횟수 중 실제로 클릭된 비율이에요.
 
 ## 왜 중요한가
 

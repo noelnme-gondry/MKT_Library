@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-An MMP (Mobile Measurement Partner) collects click, install, and in-app event data from different ad networks (Google, Meta, TikTok, etc.) and consolidates it into a single attribution view — who gets credit for which user.
+Clicks, installs, and in-app events arrive separately from Google, Meta, and TikTok. An MMP (Mobile Measurement Partner) is the third-party tool that gathers them in one place and settles "which network brought this user."
 
 ## Why you need one
 

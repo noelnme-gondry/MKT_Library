@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CPA (Cost Per Action) is the cost of one desired action — a signup, a purchase — calculated as spend ÷ conversions.
+Spend ÷ conversions. CPA (Cost Per Action) is what one desired action cost you — a signup, a purchase.
 
 ## Why it matters
 

@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-A response curve shows how conversions respond as spend rises — typically S-shaped: efficient at first, then flattening out, eventually going nearly flat.
+Plot how conversions respond as spend rises and you get a response curve — typically S-shaped: efficient at first, then flattening, then nearly level.
 
 ## Why it matters
 

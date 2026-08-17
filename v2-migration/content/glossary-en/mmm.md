@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-MMM (Marketing Mix Modeling) estimates each channel's contribution by modelling how channel spend, external factors and base demand related to outcomes over time.
+When you need channel-level contribution without user-level tracking, the method is MMM (Marketing Mix Modeling) — modelling how channel spend, external factors, and baseline demand related to outcomes over time.
 
 ## It does not track users
 

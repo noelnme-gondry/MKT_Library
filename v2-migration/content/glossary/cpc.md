@@ -13,7 +13,7 @@ draft: false
 
 ## 한 줄로
 
-CPC(Cost Per Click)는 클릭 1회당 든 비용이에요. CPM ÷ CTR과 같은 값이에요.
+CPC(Cost Per Click)는 클릭 1회당 든 비용입니다. 독립된 지표라기보다 CPM ÷ CTR의 결과값이라, 오르면 둘 중 어느 쪽이 움직였는지부터 봐야 해요.
 
 ## 왜 중요한가
 

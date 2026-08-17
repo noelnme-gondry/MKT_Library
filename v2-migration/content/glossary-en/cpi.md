@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CPI (Cost Per Install) is the cost of a single app install: spend ÷ installs.
+Spend ÷ installs. CPI (Cost Per Install) is the cost of one app install, and usually the first metric anyone checks in app marketing.
 
 ## Why it matters
 

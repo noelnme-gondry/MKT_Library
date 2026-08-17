@@ -12,7 +12,7 @@ draft: false
 
 ## In one line
 
-A deep link opens an app directly to a specific screen — a product page, an event, a piece of content — instead of just landing on the home screen.
+There is a difference between a link that merely opens an app and one that lands the user on a specific product page or event screen. The second is a deep link.
 
 ## What makes it "deferred"
 

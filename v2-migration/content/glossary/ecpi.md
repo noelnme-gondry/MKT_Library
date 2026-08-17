@@ -12,7 +12,7 @@ draft: false
 
 ## 한 줄로
 
-eCPI(Estimated CPI)는 SKAdNetwork처럼 개별 유저 단위로 누가 설치했는지 볼 수 없는 환경에서, 매체가 지출과 집계된 전환 데이터를 바탕으로 역산해서 추정한 CPI예요.
+SKAdNetwork처럼 개별 유저 단위로 누가 설치했는지 볼 수 없는 환경에서는 CPI를 직접 못 셉니다. 그래서 매체가 지출과 집계된 전환 데이터로 역산해 내놓는 추정치가 eCPI(Estimated CPI)예요.
 
 ## 일반 CPI랑 뭐가 다른가
 
