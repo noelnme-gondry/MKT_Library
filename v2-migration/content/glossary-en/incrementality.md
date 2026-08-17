@@ -20,11 +20,11 @@ faq:
 
 ## In one line
 
-**Incrementality** is the pure additional outcome an ad actually caused — not every conversion among people who saw it, but the share that wouldn't have happened otherwise.
+Incrementality is the pure additional outcome an ad actually caused — not every conversion among people who saw it, but the share that wouldn't have happened otherwise.
 
 ## How it's measured
 
-The most reliable method is a **[holdout test](/glossary/holdout-test)**: randomly split users into an exposed group and a holdout group, then compare conversion rates. The difference is [uplift](/glossary/uplift).
+The most reliable method is a [holdout test](/glossary/holdout-test): randomly split users into an exposed group and a holdout group, then compare conversion rates. The difference is [uplift](/glossary/uplift).
 
 ## Why CPA/ROAS alone isn't enough
 

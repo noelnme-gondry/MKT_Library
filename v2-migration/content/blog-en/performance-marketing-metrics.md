@@ -55,10 +55,10 @@ Before memorizing every acronym, line up these four metrics. In day-to-day work,
 
 ![CTR, conversion rate, CPA, and ROAS, each labeled with the question it answers and where to look when it is low.](/blog-assets-en/junior-metrics-guide/metric-questions.svg)
 
-- **CTR — Did the creative earn attention?** When it is low, check the hook, thumbnail, copy, and the audience's first reaction. Compare with your own recent trend, not a universal benchmark.
-- **CVR — Did visitors take action?** When it is low, inspect the landing page, offer, signup or checkout flow, and whether the ad makes the same promise. See the [conversion funnel guide](/blog/funnel-dropoff-analysis) for the full workflow.
-- **CPA — What did one conversion cost?** Do not replace creative just because blended CPA rose. The average can rise when more budget shifts to a more expensive channel even if channel efficiency did not change.
-- **ROAS — Is the outcome profitable?** ROAS measures revenue, not margin or long-term repurchase. It can also include conversions that would have happened without advertising; when a firm answer matters, check [incrementality measurement](/blog/incrementality-measurement).
+- CTR — Did the creative earn attention? When it is low, check the hook, thumbnail, copy, and the audience's first reaction. Compare with your own recent trend, not a universal benchmark.
+- CVR — Did visitors take action? When it is low, inspect the landing page, offer, signup or checkout flow, and whether the ad makes the same promise. See the [conversion funnel guide](/blog/funnel-dropoff-analysis) for the full workflow.
+- CPA — What did one conversion cost? Do not replace creative just because blended CPA rose. The average can rise when more budget shifts to a more expensive channel even if channel efficiency did not change.
+- ROAS — Is the outcome profitable? ROAS measures revenue, not margin or long-term repurchase. It can also include conversions that would have happened without advertising; when a firm answer matters, check [incrementality measurement](/blog/incrementality-measurement).
 
 The same high CPA needs different action depending on the surrounding metrics. Low CTR with normal CVR points to creative or targeting; normal CTR with low CVR points to the landing page or product. When the sample is thin, the correct answer is "not enough evidence yet."
 

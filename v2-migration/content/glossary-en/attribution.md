@@ -20,25 +20,25 @@ faq:
 
 ## In one line
 
-**Attribution** is the rule that decides **which ad touchpoint gets credit** for a conversion that already happened.
+Attribution is the rule that decides which ad touchpoint gets credit for a conversion that already happened.
 
 ## It is a rule, not a fact
 
 This is the part that matters most. Someone sees an Instagram ad, clicks a search ad days later, then installs. Whose install is it?
 
-There is no correct answer. So you **pick a rule**: give it all to the last click, split it across touchpoints, or count only touchpoints inside a set window.
+There is no correct answer. So you pick a rule: give it all to the last click, split it across touchpoints, or count only touchpoints inside a set window.
 
 Attribution numbers are the output of that rule, not a law of nature. Change the rule and the numbers change.
 
 ## Do not confuse it with incrementality
 
-Attribution asks **"who should we record this conversion under?"** [Incrementality](/glossary/incrementality) asks **"would this conversion have happened without the ad?"**
+Attribution asks "who should we record this conversion under?" [Incrementality](/glossary/incrementality) asks "would this conversion have happened without the ad?"
 
 Completely different questions. Attribution always allocates 100% somewhere, while real incremental effect can be far smaller than that total. Brand search advertising is the clearest example — attribution credits it heavily, yet many of those users would have arrived anyway.
 
 ## Why systems disagree
 
-Conversion counts differing across the ad platform, GA4 and your [MMP](/glossary/mmp) is not a malfunction. Their **attribution windows, processing times and conversion definitions** differ.
+Conversion counts differing across the ad platform, GA4 and your [MMP](/glossary/mmp) is not a malfunction. Their attribution windows, processing times and conversion definitions differ.
 
 Before picking which number is right, put each system's rules side by side. Most "data errors" are explained there.
 

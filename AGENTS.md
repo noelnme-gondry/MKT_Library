@@ -242,6 +242,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **정직성**: 공선이면 분해 거부하고 수치로 설명 + 대안 제시. 동작 안 하는 카피·가짜 인증 거부.
 - **지표의 시간 의미 확인**: cohort-window(revenue_d7)를 캘린더-일별 분석에 섞지 말 것.
 - **설계 스펙 먼저, 구현은 핸드오프**: 비용 큰 작업은 `docs/*.md` 자체완결 스펙(파일:줄·옵션·함정·검증) 확정 후 실행 위임.
+- **콘텐츠 작업 우선순위는 감이 아니라 Search Console에서 나온다**(2026-08-17): 사용자가 GSC 3개월 export를 던져주며 "차이 보고 개선점 반영"을 요구했다. 실측 결과 **부실한 글 목록과 검색 수요 목록이 거의 일치**했다 — `cpi-cpa-cpm-difference`는 평균순위 8.3위에 노출 35인데 클릭 0(랭킹은 되는데 안 눌림), SKAN 계열 질의는 250+ 노출인데 글이 3.7KB였다. **순위 상위 + CTR 0 = 콘텐츠/스니펫 문제, 노출 많음 + 순위 낮음 = 분량·깊이 문제**로 갈라서 처방할 것. KR은 클릭 18/19·평균 27위인데 EN은 노출 1245·클릭 0이라 시장별 상태도 다르다.
 
 ---
 
@@ -363,6 +364,8 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **신규 글 1편 = 파일 2개(KO·EN) + 레지스트리 5곳**: `blogSeo`(KO_TITLES·EN_TITLES) · `blogEditorial`(KO_ANSWERS·EN_ANSWERS·`CONDITION_GROUP_BY_SLUG`) · `contentToolRegistry`(`BLOG_PRIMARY_TOOL`·`BLOG_RELATED_GLOSSARY`) · `localizedHref`(`EN_BLOG_SLUGS`) · frontmatter `faq`(2건+). 하나라도 빠지면 `contentRegistry.test.js`가 잡는다.
 - **frontmatter `tags`는 자유 문자열이 아니다**: `blog.js`의 `TAG_CATEGORY`(KO)·`TAG_CATEGORY_EN`에 없는 태그는 **그대로 통과해 7번째 카테고리를 만든다** — 네비게이션은 6개 고정이라 `getAllTags` 가드가 막는다. 새 글은 매핑에 있는 태그만 쓰거나 매핑을 먼저 추가할 것(신규 6편에서 3개가 걸렸다).
 - **SEO 연동**: `sitemap.js`·`rss.xml`이 `getAllPosts`로 직접 포함(블로그는 fs가 SSOT). SOP(JSON)는 MD 이관 안 함.
+- **그림(SVG)은 viewBox가 곧 캔버스 — 밖으로 나간 글자는 그냥 잘린다**(2026-08-17): `junior-metrics-guide/metric-diagnosis.svg`가 x=530에서 시작하는 26자 문장을 viewBox 700 안에 담아 "→ 클릭은 잘 되는데 안 사요. 랜딩·"에서 잘린 채 배포됐다. **EN 짝은 이미 문장을 아랫줄 중앙정렬로 고쳐둔 상태였다** — 한쪽만 고치고 짝을 안 본 사고(§2.11의 역방향). 지금은 `contentAssets.test.js`가 전 SVG를 파싱해 글자 폭을 추정·검사하고 참조 이미지 실재도 함께 본다. 긴 주석은 칸 옆이 아니라 **아랫줄 중앙정렬**로.
+- **문장 전체를 `**`로 감싸는 강조가 AI투의 정체**(같은 작업): 용어사전 200곳·블로그 210곳이 "…해야 정확해요."처럼 문장을 통째로 볼드 처리하고 있었고, 사용자가 직접 지목했다. 목록 항목의 **짧은 라벨**은 마크다운 구조라 정당하지만 문장 볼드는 장식일 뿐이다. 일괄 제거 시 **한 리스트 안에서 일부만 볼드로 남는 상태가 제일 나쁘다** — 블록 단위로 전부 있거나 전부 없게 정규화할 것. 볼드가 소제목 역할을 하던 자리(`**하나, X.**`)는 제거 후 문장 파편이 되므로 명사구로 다시 쓸 것.
 - **제목·설명 SSOT는 `blogSeo.js`지 frontmatter가 아님**: `blog.js`가 `seo?.title || data.title`로 덮어써 h1·`<title>`·OG·JSON-LD·sitemap·RSS가 전부 레지스트리 값을 쓴다. **`.md`의 title을 고쳐도 화면은 안 바뀐다**(발행글 대부분이 이미 divergent) → 제목 수정은 `KO_TITLES`/`EN_TITLES`에서. 길이 한도는 테스트가 강제(KO 40자·EN 60자, 자동생성 description 포함). `updated`는 로케일별 날짜 Set → sitemap `lastmod`+`dateModified`이므로 KO만 고쳤으면 EN 날짜를 올리지 말 것.
 
 ### 12.25 세그먼트 나눠보기 필터 (매핑 role→토글)
@@ -458,7 +461,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **244파일·1932 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-16 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **250파일·1984 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-17 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).

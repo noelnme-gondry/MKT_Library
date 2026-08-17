@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**CPM (Cost Per Mille, "mille" = thousand)** is the cost per 1,000 impressions — the closest thing to the raw media price a platform charges.
+CPM (Cost Per Mille, "mille" = thousand) is the cost per 1,000 impressions — the closest thing to the raw media price a platform charges.
 
 ## Why it matters
 

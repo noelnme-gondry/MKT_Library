@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**LTV (Lifetime Value)** is the total revenue a single customer generates before churning. The simplest version is **ARPU × average lifespan**.
+LTV (Lifetime Value) is the total revenue a single customer generates before churning. The simplest version is ARPU × average lifespan.
 
 ## Why it's always an estimate
 
@@ -21,7 +21,7 @@ LTV depends on the future, so it can't be measured with certainty — only estim
 
 ## Where it's used
 
-LTV pairs with [CAC](/glossary/cac) in the **LTV:CAC ratio** to judge whether it's worth continuing to spend on a channel. 3:1 is a commonly cited healthy benchmark, but the right threshold varies a lot by industry and margin structure.
+LTV pairs with [CAC](/glossary/cac) in the LTV:CAC ratio to judge whether it's worth continuing to spend on a channel. 3:1 is a commonly cited healthy benchmark, but the right threshold varies a lot by industry and margin structure.
 
 ## Run the numbers
 

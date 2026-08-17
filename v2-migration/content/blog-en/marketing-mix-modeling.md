@@ -57,15 +57,15 @@ Nearly every channel sees its marginal conversion growth slow down as you increa
 
 To sum up, it answers three things.
 
-**One, each channel's true contribution.** It redistributes credit that last-click hands to brand search, retargeting, or even click-injection ads, aligning it with actual contribution.
+One, each channel's true contribution. It redistributes credit that last-click hands to brand search, retargeting, or even click-injection ads, aligning it with actual contribution.
 
-**Two, next month's forecast.** It projects roughly how much revenue you'd generate if you kept the current allocation. This comes from the nature of regression — once you have the fitted coefficients, forecasting follows naturally.
+Two, next month's forecast. It projects roughly how much revenue you'd generate if you kept the current allocation. This comes from the nature of regression — once you have the fitted coefficients, forecasting follows naturally.
 
 ![A line chart showing MMM's forecast extending from actual past revenue into the future, with uncertainty shown as a 95% confidence band that widens to the right rather than a single point estimate.](/blog-assets-en/marketing-mix-modeling/forecast-band.svg)
 
 What matters here is that it shouldn't claim "next month will be exactly $100k" as a single point. It shows uncertainty as a band — "somewhere in this range, with 95% probability." That's an honest forecast. Nothing in statistics is 100% certain.
 
-**Three, cannibalization diagnosis.** It checks whether channels (or, depending on your unit of analysis, campaigns) are stealing from each other. A common example: brand search ads eating organic traffic that would have come in for free anyway.
+Three, cannibalization diagnosis. It checks whether channels (or, depending on your unit of analysis, campaigns) are stealing from each other. A common example: brand search ads eating organic traffic that would have come in for free anyway.
 
 ## How far should you trust it — MMM's limits
 

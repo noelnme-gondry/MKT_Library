@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-A **cohort** is a group of users who started at the same time — typically installed or signed up on the same day or week.
+A cohort is a group of users who started at the same time — typically installed or signed up on the same day or week.
 
 ## Why you need it
 
@@ -28,8 +28,8 @@ Total active users can look like they're growing just because new users keep arr
 
 ## Where it's used
 
-- **Channel evaluation**: does a cheap channel also bring good [retention](/glossary/retention)?
-- **[LTV](/glossary/ltv) estimation**: cumulative revenue curves per cohort are the basis of LTV modeling.
+- Channel evaluation: does a cheap channel also bring good [retention](/glossary/retention)?
+- [LTV](/glossary/ltv) estimation: cumulative revenue curves per cohort are the basis of LTV modeling.
 
 ## Go deeper
 

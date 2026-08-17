@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**Probabilistic attribution** connects a click to an install by matching patterns — device model, OS version, time window, IP range — instead of a unique identifier. It's used when a deterministic ID like IDFA isn't available.
+Probabilistic attribution connects a click to an install by matching patterns — device model, OS version, time window, IP range — instead of a unique identifier. It's used when a deterministic ID like IDFA isn't available.
 
 ## Why it exists
 
@@ -21,8 +21,8 @@ Before Apple's App Tracking Transparency (ATT), a unique identifier could link a
 
 ## Deterministic vs. probabilistic
 
-- **Deterministic matching**: a unique ID links click and install with certainty. Accurate, but requires user consent.
-- **Probabilistic matching**: contextual signals suggest a likely match without consent. Less privacy-invasive, but **can be wrong**.
+- Deterministic matching: a unique ID links click and install with certainty. Accurate, but requires user consent.
+- Probabilistic matching: contextual signals suggest a likely match without consent. Less privacy-invasive, but can be wrong.
 
 ## Why to be careful
 

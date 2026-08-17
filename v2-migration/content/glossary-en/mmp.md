@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-An **MMP (Mobile Measurement Partner)** collects click, install, and in-app event data from different ad networks (Google, Meta, TikTok, etc.) and consolidates it into a single attribution view — who gets credit for which user.
+An MMP (Mobile Measurement Partner) collects click, install, and in-app event data from different ad networks (Google, Meta, TikTok, etc.) and consolidates it into a single attribution view — who gets credit for which user.
 
 ## Why you need one
 

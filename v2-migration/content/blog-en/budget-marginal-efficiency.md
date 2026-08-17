@@ -31,13 +31,13 @@ faq:
 
 **The short version (3 lines)**
 
-- Whether you are **increasing, reallocating, or cutting** budget, start with **marginal ROAS or CPA over the incremental or removed spend range.**
-- Add where marginal efficiency is highest, shift from low to high, cut where it's lowest. **Same curve, you're just pushing it in a different direction.**
-- A response curve does not guarantee the future. **Scaling and cutting use the same decision logic, but they may not behave like mirror images in live operations.**
+- Whether you are **increasing, reallocating, or cutting** budget, start with marginal ROAS or CPA over the incremental or removed spend range.
+- Add where marginal efficiency is highest, shift from low to high, cut where it's lowest. Same curve, you're just pushing it in a different direction.
+- A response curve does not guarantee the future. Scaling and cutting use the same decision logic, but they may not behave like mirror images in live operations.
 
 ## Why ranking by *average* efficiency misleads you
 
-Ranking channels only by average ROAS (or average CPA) can keep pouring spend into a saturated winner while starving a channel with headroom. What matters is **efficiency over the incremental spend range = marginal efficiency.** Google Meridian likewise separates [ROI as average return at historical spend from mROI as the return on incremental spend at the current level](https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves).
+Ranking channels only by average ROAS (or average CPA) can keep pouring spend into a saturated winner while starving a channel with headroom. What matters is efficiency over the incremental spend range = marginal efficiency. Google Meridian likewise separates [ROI as average return at historical spend from mROI as the return on incremental spend at the current level](https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves).
 
 In this article, **marginal CPA** is an operating definition that applies the same idea in cost space: `change in spend ÷ change in conversions` over an incremental range. It is not a Google Meridian term; the official source above supports the distinction between mROI and the response curve.
 
@@ -49,7 +49,7 @@ Treat equalized marginal efficiency as an allocation candidate only when the res
 
 Headroom means the current estimate still places the channel before saturation. Prioritize channels whose next-dollar ROAS clears the target line; below the line, the expected incremental return misses the requirement.
 
-**So why can a winning campaign worsen after scaling?** It may have entered the flat part of the response curve, while auction conditions, audience, creative, or conversion maturity changed at the same time. Do not force those possibilities into one domino story. There is also **no universal 20–30% scaling rule.** Choose a small testable step from the observed spend range, current platform guidance, conversion volume, and acceptable volatility; review the result before the next increase.
+So why can a winning campaign worsen after scaling? It may have entered the flat part of the response curve, while auction conditions, audience, creative, or conversion maturity changed at the same time. Do not force those possibilities into one domino story. There is also no universal 20–30% scaling rule. Choose a small testable step from the observed spend range, current platform guidance, conversion volume, and acceptable volatility; review the result before the next increase.
 
 ### Reallocating — move until marginal efficiency equalizes
 
@@ -57,7 +57,7 @@ With a fixed total, pull from the low-marginal channel and push to the high-marg
 
 ### Cutting — remove the lowest-marginal dollar first
 
-"Told to cut 30%—what goes first?" starts on the same curve. Instead of an even trim, build a **candidate cut order ranked by marginal (incremental) contribution.** Then apply operating constraints: minimum delivery, measurement coverage, the role of brand or always-on activity, and reversibility.
+"Told to cut 30%—what goes first?" starts on the same curve. Instead of an even trim, build a candidate cut order ranked by marginal (incremental) contribution. Then apply operating constraints: minimum delivery, measurement coverage, the role of brand or always-on activity, and reversibility.
 
 ## Why a response curve cannot make scaling and cutting mirror images
 

@@ -31,8 +31,8 @@ Move terms that proved out in Discovery to Exact, and **add each moved term as a
 
 Read the search terms report and look at two things together.
 
-1. **Have enough conversions accumulated to judge?** One or two conversions can produce a flattering CPA by chance.
-2. **Does efficiency meet target CPA?** Whether the actual CPA, on those accumulated conversions, lands inside target.
+1. Have enough conversions accumulated to judge? One or two conversions can produce a flattering CPA by chance.
+2. Does efficiency meet target CPA? Whether the actual CPA, on those accumulated conversions, lands inside target.
 
 Terms meeting both conditions are promotion candidates. Terms spending heavily with no conversions are negative-keyword candidates.
 

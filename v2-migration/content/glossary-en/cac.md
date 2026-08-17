@@ -13,11 +13,11 @@ draft: false
 
 ## In one line
 
-**CAC (Customer Acquisition Cost)** is the cost of acquiring one customer: **total acquisition spend ÷ customers acquired**.
+CAC (Customer Acquisition Cost) is the cost of acquiring one customer: total acquisition spend ÷ customers acquired.
 
 ## Why it matters
 
-What matters more than the CAC number itself is **what you count as a "customer."** Install-based, signup-based, and paying-user-based CAC can differ enormously — define it consistently across your team so channels and periods are actually comparable. Counting paying users is usually the most meaningful choice.
+What matters more than the CAC number itself is what you count as a "customer." Install-based, signup-based, and paying-user-based CAC can differ enormously — define it consistently across your team so channels and periods are actually comparable. Counting paying users is usually the most meaningful choice.
 
 ## Run the numbers
 

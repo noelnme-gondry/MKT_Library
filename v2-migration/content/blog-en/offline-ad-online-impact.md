@@ -45,8 +45,8 @@ The check is simple. Put channel spend into [VIF multicollinearity check](/tools
 
 ## Design the next flight
 
-- **Split by region.** Leaving some areas unexposed creates a same-period comparison group. Offline buys are region-addressable, so this is often easier than for digital.
-- **Hold digital flat.** Not raising digital during the flight makes separation far easier.
-- **Accumulate pre-period data.** A short baseline widens the interval until nothing can be said.
+- Split by region. Leaving some areas unexposed creates a same-period comparison group. Offline buys are region-addressable, so this is often easier than for digital.
+- Hold digital flat. Not raising digital during the flight makes separation far easier.
+- Accumulate pre-period data. A short baseline widens the interval until nothing can be said.
 
 Following even one of the three changes next quarter's answer.

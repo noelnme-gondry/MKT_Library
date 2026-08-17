@@ -20,14 +20,14 @@ faq:
 
 ## In one line
 
-**ARPU (Average Revenue Per User)** is revenue over a period divided by the **total number of users** — what an average user produced.
+ARPU (Average Revenue Per User) is revenue over a period divided by the total number of users — what an average user produced.
 
 ## Do not confuse it with ARPPU
 
 The names are close but the denominators differ.
 
-- **ARPU** = revenue ÷ **all** users
-- **ARPPU** = revenue ÷ **paying** users
+- ARPU = revenue ÷ all users
+- ARPPU = revenue ÷ paying users
 
 In an app with a 3% payer rate, ARPPU lands around 30× ARPU. The two lead to completely different conclusions, so check which one a report is actually showing.
 
@@ -35,13 +35,13 @@ They answer different questions: ARPU is the profitability of the whole user poo
 
 ## A rise is not automatically good
 
-ARPU is a ratio, so it **also rises when the denominator falls.** When new-user volume drops, the remaining base skews toward heavy users and ARPU climbs on its own.
+ARPU is a ratio, so it also rises when the denominator falls. When new-user volume drops, the remaining base skews toward heavy users and ARPU climbs on its own.
 
-Reading ARPU alone and declaring improved monetisation is therefore risky. Read **user count and revenue together**, and split by [cohort](/glossary/cohort) where you can.
+Reading ARPU alone and declaring improved monetisation is therefore risky. Read user count and revenue together, and split by [cohort](/glossary/cohort) where you can.
 
 ## How it feeds LTV
 
-[LTV](/glossary/ltv) ultimately comes from **cumulative ARPU curves** per cohort: stack cumulative ARPU at D7, D30 and D90 after install and see where the curve converges.
+[LTV](/glossary/ltv) ultimately comes from cumulative ARPU curves per cohort: stack cumulative ARPU at D7, D30 and D90 after install and see where the curve converges.
 
 Watch the observation window. Recent cohorts have immature curves, and extending them in that state produces badly wrong LTV.
 

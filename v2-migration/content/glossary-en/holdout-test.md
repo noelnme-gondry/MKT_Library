@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-A **holdout test** randomly splits users or regions into two groups and withholds ads from one group entirely (the holdout), then compares outcomes against the exposed group.
+A holdout test randomly splits users or regions into two groups and withholds ads from one group entirely (the holdout), then compares outcomes against the exposed group.
 
 ## Why it's needed
 

@@ -23,7 +23,7 @@ Scrolling a feed, some videos make you stop and some you swipe past instantly. T
 - **③ Result first**: put a before/after or the outcome in the very first cut. Especially strong where results are visual — diet, learning, beauty.
 - **④ Proof / citation**: open with reviews, ratings, or press captures on-screen. Use it when credibility is the deciding factor.
 
-All four share one principle: **convince the viewer "this is relevant to me" within a tenth of a second.** Don't decide which pattern fits your product by gut — run two or three and [compare with an A/B test](/blog/ab-testing).
+All four share one principle: convince the viewer "this is relevant to me" within a tenth of a second. Don't decide which pattern fits your product by gut — run two or three and [compare with an A/B test](/blog/ab-testing).
 
 ## Opening-frame (freeze frame) checklist
 

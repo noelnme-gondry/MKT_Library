@@ -20,21 +20,21 @@ faq:
 
 ## In one line
 
-**Retargeting** (also called re-engagement) serves ads to people who already know or previously installed your app, to bring them back.
+Retargeting (also called re-engagement) serves ads to people who already know or previously installed your app, to bring them back.
 
 ## Why it always looks efficient
 
 Open the report and retargeting CPA beats acquisition comfortably. "Put more budget here" follows naturally.
 
-The catch is that the **audience already knows you**: people with the app installed but unopened, people with items in a cart. Many of them would have come back within days regardless.
+The catch is that the audience already knows you: people with the app installed but unopened, people with items in a cart. Many of them would have come back within days regardless.
 
 When that return lands in the ad report as a conversion, performance the ad did not create gets recorded as the ad's. It is the same structure as [cannibalization](/glossary/cannibalization).
 
 ## So judge it on incrementality
 
-CPA is weak evidence in retargeting. What you need is **how many would not have returned without the ad** — [incrementality](/glossary/incrementality).
+CPA is weak evidence in retargeting. What you need is how many would not have returned without the ad — [incrementality](/glossary/incrementality).
 
-Checking it is straightforward: **randomly exclude** part of the audience and compare return rates between the groups. If the excluded group came back at a similar rate, the campaign created less than it claims.
+Checking it is straightforward: randomly exclude part of the audience and compare return rates between the groups. If the excluded group came back at a similar rate, the campaign created less than it claims.
 
 ## Do not mix it with acquisition
 

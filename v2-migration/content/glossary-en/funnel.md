@@ -13,15 +13,15 @@ draft: false
 
 ## In one line
 
-A **funnel** is the step-by-step conversion path — impression → click → install → signup → purchase — where the audience narrows at each stage, like the shape of a funnel.
+A funnel is the step-by-step conversion path — impression → click → install → signup → purchase — where the audience narrows at each stage, like the shape of a funnel.
 
 ## Why it matters
 
-If you want to raise conversion but don't know where to start, map the funnel. The **pass-through rate** between each stage shows exactly where the biggest leak is.
+If you want to raise conversion but don't know where to start, map the funnel. The pass-through rate between each stage shows exactly where the biggest leak is.
 
 ## A common trap
 
-The lowest pass-through stage isn't always the top priority. Weigh **room for improvement × traffic volume** — a stage that's already seen by a lot of users can move more total conversions with a small improvement than a low-traffic stage with a low rate.
+The lowest pass-through stage isn't always the top priority. Weigh room for improvement × traffic volume — a stage that's already seen by a lot of users can move more total conversions with a small improvement than a low-traffic stage with a low rate.
 
 ## Go deeper
 

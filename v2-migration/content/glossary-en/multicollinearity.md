@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**Multicollinearity** happens when independent variables in a regression, such as spend on multiple channels, move up and down together so consistently that the model cannot stably separate their effects.
+Multicollinearity happens when independent variables in a regression, such as spend on multiple channels, move up and down together so consistently that the model cannot stably separate their effects.
 
 ![Channel spend moving together and a VIF check](/blog-assets-en/multicollinearity/vif-before-mmm.svg)
 
@@ -24,7 +24,7 @@ This is a common trap in marketing data. If you always scale two channels togeth
 ## How to spot it
 
 - Check pairwise correlation between channels before modeling.
-- Check **VIF (variance inflation factor)**. A VIF of 5+ is commonly a warning and 10+ a severe signal. A low VIF does not prove causality; a high VIF means the channel coefficients have weak standalone interpretation.
+- Check VIF (variance inflation factor). A VIF of 5+ is commonly a warning and 10+ a severe signal. A low VIF does not prove causality; a high VIF means the channel coefficients have weak standalone interpretation.
 - Coefficients with counterintuitive signs or unusually large standard errors are a warning sign.
 - The real fix isn't statistical — it's data design: you need periods where channels moved independently for the model to tell them apart.
 

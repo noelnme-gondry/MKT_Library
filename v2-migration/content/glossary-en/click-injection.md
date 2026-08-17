@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-**Click injection** is an Android fraud technique that fires a fake click in the brief moment between an app finishing its download and install starting, hijacking last-click attribution credit from whatever ad actually drove the user.
+Click injection is an Android fraud technique that fires a fake click in the brief moment between an app finishing its download and install starting, hijacking last-click attribution credit from whatever ad actually drove the user.
 
 ## Why it matters
 
