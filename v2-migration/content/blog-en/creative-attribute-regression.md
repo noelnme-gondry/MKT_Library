@@ -49,3 +49,17 @@ That is a combination effect, and it shows up in a cross-tab of the two axes wit
 - Send only the top one or two to an experiment. Turning all of them into guidelines stacks up unverified rules.
 
 The job of observational analysis is **deciding what to test next**. Narrow the candidates, hand them to [experiment analysis](/tools/experiment-analysis), and the question becomes one a small budget can settle.
+
+## Try this today
+
+**One.** Open your last 20–30 creatives and add just **three attribute columns** — the three you actually argue about in retros. Three real columns beat fifteen aspirational ones, and you can fill three from the assets themselves without relying on memory.
+
+**Two.** Before reading any coefficient, count how many creatives carry each attribute. Anything appearing in fewer than about five is describing those specific creatives, not the attribute. Mark those as unreadable rather than reading them anyway.
+
+## Let's be honest
+
+This is observational data, and the delivery algorithm chose which creatives got volume. It gave impressions to what it predicted would perform, so high-performing attributes are partly a record of **what the algorithm liked**, not only what audiences liked. That selection bias cannot be removed by adding more columns.
+
+Which is why the output here is a shortlist, not a conclusion. Narrow to the top one or two candidates, hand them to [experiment analysis](/tools/experiment-analysis), and let a small controlled test settle what the regression only suggested.
+
+The honest framing to bring to a retro: "these two attributes are worth testing next," not "person thumbnails perform better."

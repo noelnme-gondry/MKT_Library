@@ -13,7 +13,7 @@ export const metadata = {
   description: "CPI 상승, ROAS 하락, 설치 대비 매출 정체, 오가닉 감소 증상을 3문항으로 진단하고 확인 순서와 맞는 무료 분석 도구를 추천합니다.",
   alternates: {
     canonical: `${SITE_URL}/diagnose`,
-    languages: { ko: `${SITE_URL}/diagnose`, en: `${SITE_URL}/en/diagnose`, "x-default": `${SITE_URL}/diagnose` },
+    languages: { ko: `${SITE_URL}/diagnose`, en: `${SITE_URL}/en/diagnose`, "x-default": `${SITE_URL}/en/diagnose` },
   },
   openGraph: withOpenGraphBase({ title: "마케팅 성과 문제 진단", description: "증상 3문항으로 원인 가설과 확인 순서를 잡으세요.", url: `${SITE_URL}/diagnose`, images: [`${SITE_URL}/og-card.png`] }),
 };

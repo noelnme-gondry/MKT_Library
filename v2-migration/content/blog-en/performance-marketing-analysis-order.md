@@ -8,7 +8,7 @@ tags: ["Diagnosis", "Analysis Methodology"]
 draft: false
 primaryTool: "5-2"
 relatedGlossary: ["cpa", "incrementality", "multicollinearity", "response-curve"]
-answer: "Start with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
+answer: "Performance marketing analysis starts with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
 conditions: "The time windows below are practical eligibility checks used by this service. More rows do not fix poor measurement or weak variation, and observational data alone cannot establish causal lift."
 reviewedAt: "2026-08-09"
 reviewer: "Growth Opt Playbook"

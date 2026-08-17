@@ -7,7 +7,7 @@ export const metadata = {
   description: "LTV:CAC, 페이백, 손익분기 ROAS, 목표 CPA, A/B 테스트 표본수와 예산별 설치수를 CSV 없이 바로 계산합니다.",
   alternates: {
     canonical: `${SITE_URL}/calculator`,
-    languages: { ko: `${SITE_URL}/calculator`, en: `${SITE_URL}/en/calculator`, "x-default": `${SITE_URL}/calculator` },
+    languages: { ko: `${SITE_URL}/calculator`, en: `${SITE_URL}/en/calculator`, "x-default": `${SITE_URL}/en/calculator` },
   },
   openGraph: withOpenGraphBase({
     title: "무료 마케팅 지표 계산기",

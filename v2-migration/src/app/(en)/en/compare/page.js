@@ -13,7 +13,7 @@ export async function generateMetadata() {
     description,
     alternates: {
       canonical,
-      languages: { ko: `${SITE_URL}/compare`, en: canonical, "x-default": `${SITE_URL}/compare` },
+      languages: { ko: `${SITE_URL}/compare`, en: canonical, "x-default": canonical },
     },
     openGraph: withOpenGraphBase({ title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] }),
   };

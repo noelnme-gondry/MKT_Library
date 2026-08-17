@@ -124,3 +124,15 @@ An early behavior associated with retention is not automatically its cause. High
 Correct D1, D7, and D30 interpretation starts with mature cohorts—not more charts. Confirm the maximum available event date, compare only users with equal observation time, and keep the retention definition fixed. Then the heatmap can tell you whether to investigate acquisition, onboarding, repeat value, or data quality.
 
 Next, use the [Cohort-Based Retention Guide](/en/guide/cohort-retention) to connect retention to LTV, then identify candidate early behaviors in the [Aha Moment tool](/en/tools/aha-moment) before changing optimization or onboarding.
+
+## Try this today
+
+**One.** Open your retention table and check whether the most recent rows are **immature**. A cohort that installed yesterday has no D30 yet; if that renders as 0 rather than blank, your recent cohorts look like a collapse that never happened. This is the single most common false alarm in retention reporting.
+
+**Two.** Check how your averages are computed. If several days' retention rates are averaged without weighting, a 100-user cohort counts the same as a 10,000-user one. Weight by cohort size and the trend often changes direction.
+
+## Let's be honest
+
+Retention benchmarks from outside your product are mostly unusable. The normal range varies so much by category, monetisation model and acquisition mix that an external average tells you little, and the sourcing is frequently unclear.
+
+The only reference worth trusting is **your own past cohorts**. Stack the last 8–12 weeks and ask whether this cohort sits inside or outside that band. That comparison answers a real question; comparing against someone else's number mostly generates false confidence in both directions.

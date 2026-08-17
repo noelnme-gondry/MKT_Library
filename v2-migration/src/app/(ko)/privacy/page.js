@@ -9,7 +9,7 @@ export const metadata = {
   description: "Growth Opt Playbook의 브라우저 내 CSV 처리, 분석 도구 이용 통계와 광고 관련 개인정보 처리 기준입니다.",
   alternates: {
     canonical: `${SITE_URL}/privacy`,
-    languages: { ko: `${SITE_URL}/privacy`, en: `${SITE_URL}/en/privacy`, "x-default": `${SITE_URL}/privacy` },
+    languages: { ko: `${SITE_URL}/privacy`, en: `${SITE_URL}/en/privacy`, "x-default": `${SITE_URL}/en/privacy` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/privacy` }),
 };

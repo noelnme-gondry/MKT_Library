@@ -15,11 +15,28 @@ faq:
 
 # What Do You Judge a Brand Campaign On, When Nobody Clicks?
 
-Every brand campaign ends with the same question: "So what did it earn?"
+About two weeks after a brand campaign wraps, the readout meeting gets booked. Three slides in, someone asks the only question that matters:
 
-Performance campaigns run in a straight line from click to conversion. Brand campaigns do not. Someone sees the ad, does not tap, and a few days later searches your brand name directly. That conversion lands under brand search or direct traffic, and nothing appears in the brand campaign account.
+"So what did this earn?"
 
-So a brand campaign has to be judged **on a time series, not on clicks**.
+That is the cold moment, because the conversion count in the report is embarrassing. Six figures of spend, and the campaign account shows twenty conversions. Walk in with that number and next quarter's budget disappears.
+
+The instinct is to defend it — bring impressions, bring reach. Nobody believes those. The actual problem is upstream: the wrong number was being defended in the first place.
+
+The short version:
+
+> A brand campaign is not evaluated on clicks.
+> It is evaluated **on a time series**.
+
+## Why nothing lands in the brand campaign account
+
+Performance campaigns run in one straight line. See the ad, tap it, install, pay. The conversions pile up inside that account.
+
+Brand campaigns do not behave that way. Someone sees the ad and does not tap. A few days later they remember, search your brand name directly, and convert.
+
+Where does that conversion get recorded? Under **brand search** or **direct traffic**. Nothing lands in the brand campaign account — and the brand search campaign gets praised for great efficiency, when the demand it harvested was created by the brand campaign.
+
+Judge on clicks and you will always undercount. Cut budget on that number and you lose the ability to see the effect at all.
 
 ## Choose the outcome metric
 
@@ -56,3 +73,15 @@ So when you write the result, list the other events in the window. That is not d
 The strongest design is to **hold out a region or audience**. Excluding a few regions instead of going national creates a same-period comparison group, and seasonality or PR effects hit both sides equally, so they cancel.
 
 Put one line in the next brand campaign brief: "keep N regions unexposed." That single line produces a much better answer to next quarter's "what did it earn." When you can hold out a comparison group, the control-group design in [incrementality analysis](/tools/incrementality) gives a sharper answer.
+
+## Try this today
+
+**One.** Whatever your outcome metric is — brand search volume, direct traffic — pull the **eight weeks before launch**, not the recent weeks. Without that, there is nothing to do once the campaign ends. A baseline is only ever built in advance.
+
+**Two.** Put one line in the next brand campaign brief: **"leave N regions unexposed."**
+
+That single line changes a lot. Instead of going national, holding out a few regions creates a same-period comparison group. Seasonality, PR, competitor moves — all of it hits both sides equally and cancels out. Next quarter's "what did it earn" gets a much firmer answer.
+
+If the calculation is tedious, upload your existing report CSV. It fits the pre-period trend, measures how far actuals rose above it, and returns an interval that accounts for autocorrelation. Data is processed in your browser and never sent to a server.
+
+A modest-looking brand campaign number is not necessarily a modest result. It may simply be a result that does not live in that account.

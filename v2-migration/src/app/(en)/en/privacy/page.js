@@ -9,7 +9,7 @@ export const metadata = {
   description: "How Growth Opt Playbook handles browser-only analysis data, local settings, analytics, advertising, and email subscriptions.",
   alternates: {
     canonical: `${SITE_URL}/en/privacy`,
-    languages: { ko: `${SITE_URL}/privacy`, en: `${SITE_URL}/en/privacy`, "x-default": `${SITE_URL}/privacy` },
+    languages: { ko: `${SITE_URL}/privacy`, en: `${SITE_URL}/en/privacy`, "x-default": `${SITE_URL}/en/privacy` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/en/privacy` }, "en"),
 };

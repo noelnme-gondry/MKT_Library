@@ -72,3 +72,15 @@ Find a candidate, nudge the action in onboarding or messaging, compare D7 retent
 | Same-day performance | D7 retention, return visits, and revenue |
 
 Automation optimizes the goal you give it. Make that goal a better proxy for durable product value, and ad performance can start contributing to business growth instead of just cheaper installs.
+
+## Try this today
+
+**One.** Take your current optimization event and count its **daily volume**. Below roughly a few dozen a day, the network cannot learn on it however well chosen it is — move one step earlier in the funnel, build volume, then step back down.
+
+**Two.** Split last quarter's installs into two groups: those that fired your Aha candidate within the window and those that did not. Compare D7 or D30 retention between them. A candidate that does not separate those two curves is not an Aha event, whatever the product intuition says.
+
+## Let's be honest
+
+An Aha event is a **correlate of retention, not a proven cause of it**. Users who complete an early action may simply have been more motivated to begin with, and optimizing acquisition toward that action can select for people who would have retained anyway.
+
+That distinction matters when you scale. If the event is only a marker of pre-existing intent, bidding harder on it buys the same users at a higher price rather than better users. Where the decision is large, confirm with a holdout in [incrementality analysis](/tools/incrementality) rather than with the correlation alone.

@@ -153,9 +153,13 @@ export function hasEnVersion(id) {
 export function enAlternates(routeId) {
   if (!hasEnVersion(routeId)) return null;
   const path = idToPath(routeId);
+  const en = `${SITE_URL}/en${path === "/" ? "" : path}`;
   return {
     ko: `${SITE_URL}${path}`,
-    en: `${SITE_URL}/en${path === "/" ? "" : path}`,
-    "x-default": `${SITE_URL}${path}`,
+    en,
+    // x-default는 ko·en 어느 쪽에도 매칭되지 않는 제3언어권 검색자가 받는 판이다.
+    // 한국어 사용자는 hreflang="ko"로, 영어 사용자는 "en"으로 먼저 매칭되므로
+    // 이 값은 그 둘에 영향을 주지 않는다 → 국제 확장 방향에 맞춰 EN을 기본으로 둔다.
+    "x-default": en,
   };
 }

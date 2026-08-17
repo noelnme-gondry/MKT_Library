@@ -7,7 +7,7 @@ export const metadata = {
   description: "Growth Opt Playbook의 비즈니스 제안, 협업, 제품 피드백과 개인정보 관련 문의 채널입니다.",
   alternates: {
     canonical: `${SITE_URL}/contact`,
-    languages: { ko: `${SITE_URL}/contact`, en: `${SITE_URL}/en/contact`, "x-default": `${SITE_URL}/contact` },
+    languages: { ko: `${SITE_URL}/contact`, en: `${SITE_URL}/en/contact`, "x-default": `${SITE_URL}/en/contact` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/contact` }),
 };

@@ -7,7 +7,7 @@ export const metadata = {
   description: "Contact Growth Opt Playbook for business inquiries, partnerships, product feedback, or privacy requests.",
   alternates: {
     canonical: `${SITE_URL}/en/contact`,
-    languages: { ko: `${SITE_URL}/contact`, en: `${SITE_URL}/en/contact`, "x-default": `${SITE_URL}/contact` },
+    languages: { ko: `${SITE_URL}/contact`, en: `${SITE_URL}/en/contact`, "x-default": `${SITE_URL}/en/contact` },
   },
   openGraph: withOpenGraphBase({ url: `${SITE_URL}/en/contact` }, "en"),
 };

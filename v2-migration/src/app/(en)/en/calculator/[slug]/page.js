@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
     description: calculator.description,
     alternates: {
       canonical,
-      languages: { ko: `${SITE_URL}/calculator/${slug}`, en: canonical, "x-default": `${SITE_URL}/calculator/${slug}` },
+      languages: { ko: `${SITE_URL}/calculator/${slug}`, en: canonical, "x-default": canonical },
     },
     openGraph: withOpenGraphBase({ title: calculator.title, description: calculator.description, url: canonical, images: [`${SITE_URL}/og-card.png`] }, "en"),
   };

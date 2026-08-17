@@ -8,7 +8,7 @@ tags: ["ASA", "UA"]
 draft: false
 primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
-answer: "Promote non-Exact search terms only after they have enough taps and installs and meet target CPA. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target."
+answer: "In Apple Search Ads (ASA), promote non-Exact search terms only after they have enough taps and installs and meet target CPA. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target."
 conditions: "The 3-install, 8-tap, and ±10–15% CPT thresholds are this service's operating defaults, not Apple rules. Adjust them to account size and volatility, and verify current match behavior and bid limits in Apple Ads."
 reviewedAt: "2026-08-09"
 reviewer: "Growth Opt Playbook"

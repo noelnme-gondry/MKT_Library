@@ -84,3 +84,15 @@ For a new campaign, compare a **new ON** period with a similar group left off. F
 Uplift is not a metric for cutting ads. It identifies the campaigns that truly create outcomes so you can invest with confidence. Before scaling a campaign because CPA looks good, ask how much disappears without it.
 
 With exposed and holdout numbers, new-ON data, or shutdown data, use [Incrementality Analysis](/tools/incrementality) to calculate the appropriate method entirely in the browser.
+
+## Try this today
+
+**One.** List your campaigns by reported CPA and look at the **best** one. Ask what share of its conversions would have happened anyway. Brand search and retargeting sit at the top of most reports precisely because they harvest existing intent — the best-looking campaign is often the least incremental.
+
+**Two.** Pick one campaign and carve out a **5–10% holdout** starting this week. Write the success criterion down before it runs. Even a rough holdout answers a question that no amount of attribution analysis can.
+
+## Let's be honest
+
+Uplift is estimated with uncertainty, and uncertainty is usually wide. A holdout that returns "positive but not significant" has not shown the ad works, and it has not shown it fails either — it has shown the test lacked power. Reporting that as "no effect" is the most common way an incrementality result gets misused.
+
+Nor does one measurement generalise. Uplift shifts with season, competitive pressure, and how saturated the channel already is, so a number measured in a peak month does not describe a quiet one. For campaigns carrying a large share of budget, re-measure periodically rather than treating the first result as settled.

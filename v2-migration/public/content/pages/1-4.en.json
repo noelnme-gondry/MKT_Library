@@ -5,17 +5,44 @@
   "title": "iOS Privacy Playbook (ATT & SKAN)",
   "deck": "Raise the ATT prompt authorization rate and design a SKAdNetwork 4.0 Conversion Value schema around your business KPIs. A 0.1pp difference in ATT opt-in translates directly into 5–10% of iOS CPI.",
   "chips": [
-    { "label": "Owner · Growth + Product" },
-    { "label": "SKAN 4.0 ready", "variant": "ok" },
-    { "label": "iOS 14.5+ required", "variant": "warning" }
+    {
+      "label": "Owner · Growth + Product"
+    },
+    {
+      "label": "SKAN 4.0 ready",
+      "variant": "ok"
+    },
+    {
+      "label": "iOS 14.5+ required",
+      "variant": "warning"
+    }
   ],
   "summary": "ATT (App Tracking Transparency) is the system prompt asking consent to use the IDFA; when declined, attribution downgrades to the single SKAdNetwork (SKAN) channel. SKAN 4.0 sends a Coarse (low/medium/high) + Fine (0–63) value at three windows (0–2 / 3–7 / 8–35 days). This guide covers (1) ATT prompt optimization, (2) SKAN CV schema design, (3) Adjust mapping setup.",
   "toc": [
-    { "id": "s-att", "title": "ATT prompt design" },
-    { "id": "s-skan", "title": "SKAN 4.0 schema" },
-    { "id": "s-cvmap", "title": "Conversion Value mapping" },
-    { "id": "s-adjust", "title": "Adjust setup" },
-    { "id": "s-trouble", "title": "Troubleshooting" }
+    {
+      "id": "s-att",
+      "title": "ATT prompt design"
+    },
+    {
+      "id": "s-skan",
+      "title": "SKAdNetwork 4.0 schema"
+    },
+    {
+      "id": "s-privacy-threshold",
+      "title": "Crowd anonymity (the privacy threshold)"
+    },
+    {
+      "id": "s-cvmap",
+      "title": "Conversion Value mapping (commerce app example)"
+    },
+    {
+      "id": "s-adjust",
+      "title": "Adjust SKAN setup"
+    },
+    {
+      "id": "s-trouble",
+      "title": "Troubleshooting"
+    }
   ],
   "body": [
     {
@@ -24,7 +51,10 @@
       "ix": "§1",
       "title": "ATT prompt design",
       "content": [
-        { "type": "paragraph", "html": "Industry-average ATT authorization rates: games ~28%, commerce ~35%, fintech ~42% (as of 2025). Three levers to raise it:" },
+        {
+          "type": "paragraph",
+          "html": "Industry-average ATT authorization rates: games ~28%, commerce ~35%, fintech ~42% (as of 2025). Three levers to raise it:"
+        },
         {
           "type": "list",
           "ordered": true,
@@ -54,43 +84,224 @@
       "ix": "§2",
       "title": "SKAdNetwork 4.0 schema",
       "content": [
-        { "type": "paragraph", "html": "Key changes in SKAN 4.0:" },
+        {
+          "type": "paragraph",
+          "html": "SKAN 4.0 changed four things that matter to how you structure campaigns and read results."
+        },
         {
           "type": "list",
           "items": [
-            "<strong>3-postback windows</strong>: one postback each at 0–2 / 3–7 / 8–35 days after install",
-            "<strong>Coarse Conversion Value</strong>: 3 levels — <code class=\"inline\">low</code> / <code class=\"inline\">medium</code> / <code class=\"inline\">high</code> — so low-traffic campaigns still collect signal",
-            "<strong>Fine Conversion Value</strong>: 0–63 (6 bits) — only campaigns with sufficient traffic qualify",
-            "<strong>Hierarchical Source ID</strong>: campaign/ad-group/creative-level signal (2-digit → 4-digit)"
+            "<strong>3 postback windows</strong>: one postback each at 0–2 / 3–7 / 8–35 days after install, so late-firing behaviour (subscription, repeat purchase) is finally observable.",
+            "<strong>Coarse Conversion Value</strong>: 3 levels — <code class=\"inline\">low</code> / <code class=\"inline\">medium</code> / <code class=\"inline\">high</code> — so low-traffic campaigns still collect signal.",
+            "<strong>Fine Conversion Value</strong>: 0–63 (6 bits), returned only in the first window and only when the campaign clears the crowd anonymity tier.",
+            "<strong>Hierarchical Source ID</strong>: campaign / ad-group / creative-level signal (2-digit → 4-digit), again gated by tier."
           ]
+        },
+        {
+          "type": "subheading",
+          "title": "What each window can actually carry"
+        },
+        {
+          "type": "table",
+          "headers": [
+            {
+              "label": "Window",
+              "type": "string"
+            },
+            {
+              "label": "Value returned",
+              "type": "string"
+            },
+            {
+              "label": "Use it for",
+              "type": "string"
+            }
+          ],
+          "rows": [
+            [
+              "0–2 days",
+              "Fine (0–63) or coarse",
+              "Activation quality — signup, tutorial, first purchase"
+            ],
+            [
+              "3–7 days",
+              "Coarse only (low/med/high)",
+              "Early retention or repeat behaviour"
+            ],
+            [
+              "8–35 days",
+              "Coarse only (low/med/high)",
+              "Long-run value banding — arrives last"
+            ]
+          ]
+        },
+        {
+          "type": "paragraph",
+          "html": "The second and third windows are three buckets, not sixty-four. Designing detailed LTV bands there collapses them into <code class=\"inline\">low/medium/high</code>, so keep the granular design in window 1 and use the later windows for direction only."
+        },
+        {
+          "type": "subheading",
+          "title": "Adoption order that avoids rework"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Ship window 1 with a small, decision-grade schema first. A schema you can read beats a schema that covers everything.",
+            "Add windows 2–3 only once you know which late behaviour actually separates good cohorts from bad.",
+            "Freeze the mapping before you start reading trends — remapping splits your history into two incomparable halves.",
+            "Re-check tier eligibility after any campaign restructure, because consolidation and splitting both move it."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Do not port your Android campaign structure",
+          "html": "On most channels finer campaign structure means better analysis. Under SKAN it means <strong>worse data</strong>: each slice carries less volume, drops to a lower crowd anonymity tier, and loses the fine value and the granular Source ID. On iOS, deliberately consolidating campaigns often buys more measurement than it costs in control."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-privacy-threshold",
+      "ix": "§3",
+      "title": "Crowd anonymity (the privacy threshold)",
+      "content": [
+        {
+          "type": "paragraph",
+          "html": "Crowd anonymity is Apple's guard against re-identification: when too few installs sit behind a postback, Apple returns less detail. It is the single most common reason a correctly implemented schema still comes back empty."
+        },
+        {
+          "type": "list",
+          "items": [
+            "Low tier → no fine Conversion Value, and Source ID truncated to its coarsest form.",
+            "Higher tier → fine value and more Source ID digits become available.",
+            "Tier is evaluated per postback context, so it moves with your campaign structure and daily volume — it is not a one-time setting."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Reading an empty schema",
+          "html": "If fine values stopped arriving after a restructure, suspect the tier before you suspect the SDK. Consolidate campaigns to rebuild volume and re-check before changing any code."
+        },
+        {
+          "type": "paragraph",
+          "html": "Apple does not publish fixed tier thresholds and the rules change between versions — confirm against <a href=\"https://developer.apple.com/documentation/storekit/skadnetwork\">Apple's SKAdNetwork documentation</a> before committing to a structure."
         }
       ]
     },
     {
       "type": "section",
       "id": "s-cvmap",
-      "ix": "§3",
+      "ix": "§4",
       "title": "Conversion Value mapping (commerce app example)",
       "content": [
-        { "type": "paragraph", "html": "Map cumulative revenue + key-event occurrence combinations into 64 slots. Fine's 64 levels apply only in the day 0–2 window; days 3–7 and 8–35 get only Coarse's 3 levels." },
+        {
+          "type": "paragraph",
+          "html": "Map cumulative revenue + key-event occurrence combinations into 64 slots. Fine's 64 levels apply only in the day 0–2 window; days 3–7 and 8–35 get only Coarse's 3 levels."
+        },
         {
           "type": "table",
           "headers": [
-            { "label": "Fine CV", "type": "number" },
-            { "label": "Condition", "type": "string" },
-            { "label": "Coarse", "type": "string" },
-            { "label": "Business meaning", "type": "string" }
+            {
+              "label": "Fine CV",
+              "type": "number"
+            },
+            {
+              "label": "Condition",
+              "type": "string"
+            },
+            {
+              "label": "Coarse",
+              "type": "string"
+            },
+            {
+              "label": "Business meaning",
+              "type": "string"
+            }
           ],
           "rows": [
-            ["0", "install only", { "pill": "", "text": "low" }, "Install only"],
-            ["1", "session_start ≥ 2", { "pill": "", "text": "low" }, "Revisit"],
-            ["5", "add_to_cart ×1", { "pill": "", "text": "low" }, "Engagement start"],
-            ["10", "add_to_cart ≥ 2 OR begin_checkout", { "pill": "tier-2", "text": "medium" }, "High engagement"],
-            ["20", "purchase ×1 · revenue < $5", { "pill": "tier-2", "text": "medium" }, "Low-value purchase"],
-            ["30", "purchase ×1 · revenue $5–$20", { "pill": "tier-2", "text": "medium" }, "Mid-value purchase"],
-            ["45", "purchase ×1 · revenue $20–$50", { "pill": "tier-1", "text": "high" }, "High-value purchase"],
-            ["55", "purchase ≥ 2 OR revenue ≥ $50", { "pill": "tier-1", "text": "high" }, "Loyal purchaser"],
-            ["63", "subscribe (monthly)", { "pill": "tier-1", "text": "high" }, "Subscription conversion"]
+            [
+              "0",
+              "install only",
+              {
+                "pill": "",
+                "text": "low"
+              },
+              "Install only"
+            ],
+            [
+              "1",
+              "session_start ≥ 2",
+              {
+                "pill": "",
+                "text": "low"
+              },
+              "Revisit"
+            ],
+            [
+              "5",
+              "add_to_cart ×1",
+              {
+                "pill": "",
+                "text": "low"
+              },
+              "Engagement start"
+            ],
+            [
+              "10",
+              "add_to_cart ≥ 2 OR begin_checkout",
+              {
+                "pill": "tier-2",
+                "text": "medium"
+              },
+              "High engagement"
+            ],
+            [
+              "20",
+              "purchase ×1 · revenue < $5",
+              {
+                "pill": "tier-2",
+                "text": "medium"
+              },
+              "Low-value purchase"
+            ],
+            [
+              "30",
+              "purchase ×1 · revenue $5–$20",
+              {
+                "pill": "tier-2",
+                "text": "medium"
+              },
+              "Mid-value purchase"
+            ],
+            [
+              "45",
+              "purchase ×1 · revenue $20–$50",
+              {
+                "pill": "tier-1",
+                "text": "high"
+              },
+              "High-value purchase"
+            ],
+            [
+              "55",
+              "purchase ≥ 2 OR revenue ≥ $50",
+              {
+                "pill": "tier-1",
+                "text": "high"
+              },
+              "Loyal purchaser"
+            ],
+            [
+              "63",
+              "subscribe (monthly)",
+              {
+                "pill": "tier-1",
+                "text": "high"
+              },
+              "Subscription conversion"
+            ]
           ]
         }
       ]
@@ -98,7 +309,7 @@
     {
       "type": "section",
       "id": "s-adjust",
-      "ix": "§4",
+      "ix": "§5",
       "title": "Adjust SKAN setup",
       "content": [
         {
@@ -123,7 +334,7 @@
     {
       "type": "section",
       "id": "s-trouble",
-      "ix": "§5",
+      "ix": "§6",
       "title": "Troubleshooting",
       "content": [
         {
