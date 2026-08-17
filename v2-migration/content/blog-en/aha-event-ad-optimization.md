@@ -25,6 +25,8 @@ The practical move is to find the early action between install and purchase that
 
 Two users can both count as one install. One leaves after ten seconds; the other uses a core feature and returns later in the week. To the ad platform, both are an install. To the business, they are completely different outcomes.
 
+![Optimising on install CPA alone versus optimising through the Aha Event — the second keeps far more users.](/blog-assets-en/aha-event-ad-optimization/install-vs-quality-funnel.svg)
+
 If install CPA is low while Aha Event reach and D7 retention are low too, you may be buying cheap churn. A campaign with a slightly higher install CPA can be better when more users reach the Aha Event and retain. Read [cohort retention](/blog/cohort-analysis-guide) alongside the average so recent users are not over-read.
 
 ## Why purchase optimization is not always enough
@@ -36,6 +38,8 @@ You need a signal that is closer to business value than an install, but occurs e
 ## The Aha Event is that bridge
 
 An Aha Event is the action where a user first experiences your product's core value. For a collaboration tool, it could be creating a project and inviting a teammate. For a content service, it might be saving or subscribing to the first item. For a SaaS product, it can be completing a key workflow with real data.
+
+![The optimization ladder from install to signup to Aha Event to D7 retention and revenue.](/blog-assets-en/aha-event-ad-optimization/optimization-ladder.svg)
 
 A useful Aha Event is:
 
@@ -59,6 +63,8 @@ For example, if the Aha Event is “create a project and invite a teammate,” t
 ## Treat an Aha Event as a hypothesis first
 
 An Aha Event is a powerful clue, not automatic proof of causation. Highly motivated users may both complete the action and retain longer.
+
+![Find a candidate, drive it in onboarding, compare retention, then validate before scaling.](/blog-assets-en/aha-event-ad-optimization/validation-loop.svg)
 
 Find a candidate, nudge the action in onboarding or messaging, compare D7 retention and revenue against a control, then scale only events that produce a confirmed lift. See [incrementality measurement](/blog/incrementality-measurement) for how to make that control comparison credible. The process is **discover → nudge → compare → validate**.
 

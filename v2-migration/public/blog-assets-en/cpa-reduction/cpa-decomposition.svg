@@ -1,37 +1,36 @@
-<svg viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
-  <rect x="0" y="0" width="720" height="400" fill="#ffffff"/>
+<svg viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect x="0" y="0" width="680" height="380" fill="#ffffff"/>
 
   <!-- baseline -->
-  <line x1="70" y1="320" x2="650" y2="320" stroke="#9CA3AF" stroke-width="1.5"/>
+  <line x1="60" y1="320" x2="620" y2="320" stroke="#9CA3AF" stroke-width="1.5"/>
 
   <!-- connectors -->
   <g stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="5 4">
-    <line x1="190" y1="103" x2="245" y2="103"/>
-    <line x1="335" y1="84" x2="390" y2="84"/>
-    <line x1="480" y1="60" x2="535" y2="60"/>
+    <line x1="180" y1="103" x2="230" y2="103"/>
+    <line x1="320" y1="84" x2="370" y2="84"/>
+    <line x1="460" y1="60" x2="510" y2="60"/>
   </g>
 
-  <!-- last month CPA 9,200 -->
-  <rect x="100" y="103" width="90" height="217" fill="#CBD5E1"/>
-  <text x="145" y="95" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">₩9,200</text>
-  <text x="145" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Last month</text>
+  <!-- 지난달 CPA 9,200 -->
+  <rect x="90" y="103" width="90" height="217" fill="#CBD5E1"/>
+  <text x="135" y="95" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">$9.20</text>
+  <text x="135" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Last month CPA</text>
 
-  <!-- mix effect +800 -->
-  <rect x="245" y="84" width="90" height="19" fill="#3B82F6"/>
-  <text x="290" y="76" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">+₩800</text>
-  <text x="290" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Mix effect</text>
+  <!-- 믹스효과 +800 -->
+  <rect x="230" y="84" width="90" height="19" fill="#3B82F6"/>
+  <text x="275" y="76" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">+$0.80</text>
+  <text x="275" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Mix effect</text>
 
-  <!-- efficiency effect +1,000 -->
-  <rect x="390" y="60" width="90" height="24" fill="#EF4444"/>
-  <text x="435" y="52" fill="#DC2626" font-size="14" font-weight="700" text-anchor="middle">+₩1,000</text>
-  <text x="435" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Efficiency effect</text>
+  <!-- 효율효과 +1,000 -->
+  <rect x="370" y="60" width="90" height="24" fill="#EF4444"/>
+  <text x="415" y="52" fill="#DC2626" font-size="14" font-weight="700" text-anchor="middle">+$1.00</text>
+  <text x="415" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Efficiency effect</text>
 
-  <!-- this month CPA 11,000 -->
-  <rect x="535" y="60" width="90" height="260" fill="#64748B"/>
-  <text x="580" y="52" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">₩11,000</text>
-  <text x="580" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">This month</text>
+  <!-- 이번달 CPA 11,000 -->
+  <rect x="510" y="60" width="90" height="260" fill="#64748B"/>
+  <text x="555" y="52" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">$11.00</text>
+  <text x="555" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">This month CPA</text>
 
   <!-- caption -->
-  <text x="360" y="362" fill="#6B7280" font-size="12.5" text-anchor="middle">Of the ₩1,800 rise, ₩800 comes from mix (allocation) and</text>
-  <text x="360" y="380" fill="#6B7280" font-size="12.5" text-anchor="middle">₩1,000 from a genuine efficiency loss.</text>
+  <text x="340" y="366" fill="#6B7280" font-size="12.5" text-anchor="middle">Of the $1.80 rise, $0.80 came from the mix and $1.00 from real efficiency.</text>
 </svg>

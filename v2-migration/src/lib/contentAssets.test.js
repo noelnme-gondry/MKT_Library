@@ -116,6 +116,27 @@ describe("원고 그림 자산", () => {
     expect(missing, `없는 그림 파일:\n${missing.join("\n")}`).toEqual([]);
   });
 
+  it("원고 언어와 그림 속 글자의 언어가 맞는다", () => {
+    // EN 글이 한글 도표를, KO 글이 영어 도표를 쓰고 있던 사고가 12건 있었다
+    // (`ad-performance-diagnosis` EN 6장이 한글, `cohort-analysis-guide` KO 3장이 영어).
+    // 파일이 어느 폴더에 있느냐가 아니라 **글자가 무슨 언어냐**로 봐야 잡힌다.
+    const mismatched = [];
+    for (const ref of imageRefs) {
+      if (!ref.src.endsWith(".svg")) continue;
+      const file = path.join(REPO_ROOT, "public", ref.src);
+      if (!fs.existsSync(file)) continue;
+      const svg = fs.readFileSync(file, "utf8");
+      const labels = [...svg.matchAll(/>([^<]+)</g)].map((m) => m[1]).join(" ");
+      const hangul = (labels.match(/[가-힣]/g) || []).length;
+      const words = (labels.match(/\b[A-Za-z]{4,}\b/g) || []).length;
+      const isEnglishArticle = ref.from.includes("-en/");
+      if (isEnglishArticle && hangul > 10) mismatched.push(`${ref.from} → ${ref.src} (한글 ${hangul}자)`);
+      // 영문 약어(CTR·CPA·SKAN)만 있는 도표는 KO에서도 정상이라 단어 수로 본다.
+      if (!isEnglishArticle && hangul === 0 && words > 8) mismatched.push(`${ref.from} → ${ref.src} (영단어 ${words}개, 한글 0)`);
+    }
+    expect(mismatched, `원고와 그림의 언어 불일치:\n${mismatched.join("\n")}`).toEqual([]);
+  });
+
   it("SVG 안의 글자가 viewBox 밖으로 잘리지 않는다", () => {
     const clipped = [];
     for (const file of svgFiles) {

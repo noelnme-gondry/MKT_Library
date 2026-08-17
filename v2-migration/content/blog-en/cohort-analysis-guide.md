@@ -45,7 +45,7 @@ Write down two dates before calculating a report: the cohort start date and the 
 
 Use the source-data maximum, not the current date. A delayed pipeline, late upload, or timezone boundary can make the latest calendar day incomplete. Mark immature cohorts as incomplete or N/A and exclude them from mature-cohort averages.
 
-![Timeline showing mature cohort cutoffs for D1, D7, and D30 retention](/blog-assets/cohort-analysis-guide/mature-cohort-timeline.svg)
+![Timeline showing mature cohort cutoffs for D1, D7, and D30 retention](/blog-assets-en/cohort-analysis-guide/mature-cohort-timeline.svg)
 
 | Metric | Latest daily cohort available when data ends July 30 |
 |---|---|
@@ -68,7 +68,7 @@ This is **illustrative data**, not an industry benchmark.
 
 The user-weighted D7 retention for the two mature cohorts is about 17.5%. If the two immature cohorts are treated as 0%, the number appears to fall to about 8.5%. That is a reporting error, not evidence that users suddenly churned.
 
-![Bar chart comparing 17.5 percent D7 retention from mature cohorts with 8.5 percent when incomplete cohorts are treated as zero](/blog-assets/cohort-analysis-guide/incomplete-cohort-bias.svg)
+![Bar chart comparing 17.5 percent D7 retention from mature cohorts with 8.5 percent when incomplete cohorts are treated as zero](/blog-assets-en/cohort-analysis-guide/incomplete-cohort-bias.svg)
 
 Analytics products may flag recent, incomplete intervals for the same reason. See Amplitude’s [Retention Analysis FAQ](https://amplitude.com/docs/analytics/charts/retention-analysis/faq) for how incomplete periods affect interpretation.
 
@@ -95,7 +95,7 @@ Show cohort size. In a ten-user cohort, one retained user changes retention by t
 
 ## What to check after a retention change
 
-![Decision flow for diagnosing retention changes by D1 and D7 pattern, channel, OS, and early behavior](/blog-assets/cohort-analysis-guide/retention-diagnosis-flow.svg)
+![Decision flow for diagnosing retention changes by D1 and D7 pattern, channel, OS, and early behavior](/blog-assets-en/cohort-analysis-guide/retention-diagnosis-flow.svg)
 
 | Observation | First question | Next action |
 |---|---|---|
