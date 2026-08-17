@@ -2,13 +2,20 @@
 term: "Uplift"
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
-description: "Uplift is the incremental outcome ads created, measured against a holdout. Why it differs from CPA and ROAS and how it is calculated."
+description: "Uplift is the difference between an exposed group and a holdout — the outcome ads actually caused. Why it differs from CPA and ROAS, and how to find it."
 date: "2026-08-09"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement", "uplift-holdout-guide"]
 draft: false
+faq:
+  - q: "How is uplift different from ROAS?"
+    a: "ROAS divides all revenue from people who saw the ad by its cost, so it includes conversions that would have happened anyway. Uplift removes that share and counts only what advertising added. Strong ROAS with near-zero uplift is a real and common outcome."
+  - q: "How do you calculate uplift?"
+    a: "From the outcome difference between a randomly assigned exposed group and a holdout. If the exposed group converts at 8% and the holdout at 5%, uplift is 3 percentage points. Without random assignment, or with different windows or audiences, that gap is not an ad effect."
+  - q: "Can uplift come out negative?"
+    a: "It can. Usually that is small-sample noise, so read the confidence interval first. When the interval crosses zero, the honest reading is 'not yet distinguishable', not 'no effect'."
 ---
 
 ## In one line

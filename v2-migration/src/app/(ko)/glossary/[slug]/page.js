@@ -49,6 +49,16 @@ function buildTermJsonLd(term, canonical) {
         inLanguage: "ko-KR",
         inDefinedTermSet: `${SITE_URL}/glossary`,
       },
+      ...(term.faq.length
+        ? [{
+            "@type": "FAQPage",
+            mainEntity: term.faq.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          }]
+        : []),
       {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -95,6 +105,18 @@ export default async function GlossaryTermPage({ params }) {
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
 
       <ContentActionPanel term={term} />
+
+      {term.faq.length > 0 && (
+        <section className="blog-faq" aria-label="자주 묻는 질문">
+          <h2>자주 묻는 질문</h2>
+          {term.faq.map((item, i) => (
+            <details key={i} className="blog-faq-item">
+              <summary>{item.q}</summary>
+              <div className="blog-faq-item-answer">{item.a}</div>
+            </details>
+          ))}
+        </section>
+      )}
 
       {relatedPosts.length > 0 && (
         <div style={{ marginTop: "2rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
