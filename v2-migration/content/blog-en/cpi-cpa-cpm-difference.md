@@ -21,7 +21,7 @@ CPM and CPC sit at the front of the advertising funnel: impressions and clicks. 
 Every metric attaches to a different point in the funnel.
 
 - **CPM** (Cost Per Mille) — cost per 1,000 impressions. Closest to the raw price you pay the platform.
-- **CPC** (Cost Per Click) — cost per click. Connects as CPM ÷ CTR.
+- **CPC** (Cost Per Click) — cost per click. Connects as cost per impression (CPM ÷ 1,000) ÷ CTR.
 - **CPI** (Cost Per Install) — cost per install. The headline metric for app marketing.
 - **CPA** (Cost Per Action) — cost per desired action (signup, purchase). Closest to real outcome.
 
@@ -33,7 +33,9 @@ Lay it in one line and it clicks (numbers are illustrative). Spend $10,000 for 5
 
 Looking at CPA alone can't tell you *why* it's bad. Decompose it with that chain and the cause shows up.
 
-> CPA ≈ CPM ÷ (CTR × CVR × install-to-action rate)
+> CPA ≈ (CPM ÷ 1,000) ÷ (CTR × CVR × install-to-action rate)
+
+CPM is priced per 1,000 impressions, so convert it to a per-impression cost before you start the chain — otherwise the result lands 1,000× too high.
 
 When CPA is high, this is where it splits:
 
