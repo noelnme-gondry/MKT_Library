@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-Multicollinearity happens when independent variables in a regression, such as spend on multiple channels, move up and down together so consistently that the model cannot stably separate their effects.
+When independent variables in a regression — spend across several channels, say — always rise and fall together, the model cannot reliably separate which one produced the result. That state is multicollinearity.
 
 ![Channel spend moving together and a VIF check](/blog-assets-en/multicollinearity/vif-before-mmm.svg)
 

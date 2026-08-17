@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-Marginal CPA / Marginal ROAS is the CPA/ROAS of the next dollar you add (or the last dollar you remove) at your current spend — the incremental efficiency at the margin, not the average [CPA](/glossary/cpa) / [ROAS](/glossary/roas) over everything spent so far.
+If [CPA](/glossary/cpa) and [ROAS](/glossary/roas) are averages over everything you have spent, marginal CPA and marginal ROAS are the values for the next dollar you add — or the last dollar you remove. Scale-up and pull-back decisions belong to these, not the average.
 
 ## Why the average alone is dangerous
 

@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-Uplift is the performance of a group exposed to advertising minus the baseline — what would have happened anyway even without the ad.
+Take the performance of a group exposed to advertising and subtract the baseline — what would have happened anyway with no ads at all. The remainder is uplift.
 
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 

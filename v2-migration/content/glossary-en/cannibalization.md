@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-Cannibalization happens when a paid ad — often brand search or retargeting, aimed at people who already know you — takes credit for conversions that would have happened organically anyway.
+Sometimes a paid ad simply takes traffic that would have arrived organically for free. That is cannibalization, and it shows up most on ads aimed at people who already know you — brand search, retargeting.
 
 ## Why it's risky
 

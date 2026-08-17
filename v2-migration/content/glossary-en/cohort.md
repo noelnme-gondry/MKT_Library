@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-A cohort is a group of users who started at the same time — typically installed or signed up on the same day or week.
+Users who started at the same time — typically installed or signed up on the same day or week — form a cohort. You group them this way to watch how that same set behaves as time passes.
 
 ## Why you need it
 

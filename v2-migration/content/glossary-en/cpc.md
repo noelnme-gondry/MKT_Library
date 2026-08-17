@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CPC (Cost Per Click) is the cost of a single click — equal to CPM ÷ CTR.
+CPC (Cost Per Click) is the cost of a single click. It is less a standalone metric than the result of CPM ÷ CTR, so when it rises the first question is which of those two moved.
 
 ## Why it matters
 

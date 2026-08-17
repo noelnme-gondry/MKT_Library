@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-ROAS (Return On Ad Spend) is revenue generated per dollar of ad spend: revenue ÷ spend. Spend $5,000 and generate $15,000 in revenue, and ROAS is 300%.
+Revenue ÷ spend. ROAS (Return On Ad Spend) is the revenue each dollar of ad spend produced, usually shown as a percentage. Spend $5,000, generate $15,000, and ROAS is 300%.
 
 ## Why it matters
 

@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-Incrementality is the pure additional outcome an ad actually caused — not every conversion among people who saw it, but the share that wouldn't have happened otherwise.
+A hundred conversions does not mean advertising caused a hundred conversions. Subtract the people who would have arrived anyway and what remains is incrementality.
 
 ## How it's measured
 

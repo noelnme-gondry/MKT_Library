@@ -13,7 +13,7 @@ draft: false
 
 ## 한 줄로
 
-CAC(Customer Acquisition Cost, 고객 획득 비용)는 고객 한 명을 획득하는 데 든 비용이에요. 획득에 쓴 총비용 ÷ 획득한 고객 수로 계산해요.
+획득에 쓴 총비용 ÷ 획득한 고객 수 — CAC(Customer Acquisition Cost, 고객 획득 비용)는 고객 한 명을 데려오는 데 든 돈입니다. 분모를 뭘로 잡느냐에 따라 값이 크게 달라져요.
 
 ## 왜 중요한가
 

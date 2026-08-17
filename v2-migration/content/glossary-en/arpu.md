@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-ARPU (Average Revenue Per User) is revenue over a period divided by the total number of users — what an average user produced.
+Revenue ÷ total users. That one line is all ARPU (Average Revenue Per User) is: what an average user generated over a period.
 
 ## Do not confuse it with ARPPU
 

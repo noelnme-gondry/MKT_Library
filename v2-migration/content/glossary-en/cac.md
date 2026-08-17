@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CAC (Customer Acquisition Cost) is the cost of acquiring one customer: total acquisition spend ÷ customers acquired.
+Total acquisition spend ÷ customers acquired. CAC (Customer Acquisition Cost) is what one customer cost you, and what you count as a "customer" in the denominator changes the number a lot.
 
 ## Why it matters
 

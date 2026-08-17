@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CVR (Conversion Rate) is the share of clicks or visits that turned into a desired action: conversions ÷ clicks.
+Conversions ÷ clicks. CVR (Conversion Rate) is the share of clicks or visits that turned into a desired action.
 
 ## Why it matters
 

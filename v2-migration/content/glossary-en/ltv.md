@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-LTV (Lifetime Value) is the total revenue a single customer generates before churning. The simplest version is ARPU × average lifespan.
+LTV (Lifetime Value) is the total revenue a single customer generates before churning. The simplest version estimates it as average revenue (ARPU) × average lifespan.
 
 ## Why it's always an estimate
 

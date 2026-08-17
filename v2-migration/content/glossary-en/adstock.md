@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-Adstock is the carryover effect of an ad — impact that doesn't stop the day it ran, but decays gradually over days or weeks.
+An ad you run today is not spent by tonight. That carryover — impact decaying gradually over days or weeks as it turns into conversions — is what adstock describes.
 
 ## Why it matters
 

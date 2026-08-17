@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-Retargeting (also called re-engagement) serves ads to people who already know or previously installed your app, to bring them back.
+Serving ads to people who already know or previously installed your app, so they come back, is retargeting (also called re-engagement). Both the audience and the goal differ from new-user acquisition.
 
 ## Why it always looks efficient
 

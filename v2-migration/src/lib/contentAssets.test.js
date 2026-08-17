@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -14,7 +15,9 @@ import { describe, expect, it } from "vitest";
  * 원고 목록·그림 목록을 여기 나열하지 말 것 — 새 글·새 그림이 자동으로 검사된다.
  */
 
-const REPO_ROOT = process.cwd();
+// 파일 위치 기준으로 잡는다 — `process.cwd()`는 실행 위치에 따라 리포 루트가 될 수
+// 있고, 그러면 수집이 0건이 되어 검사가 통째로 헛돈다.
+const REPO_ROOT = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
 const CONTENT_DIRS = ["content/blog", "content/blog-en", "content/glossary", "content/glossary-en"];
 const ASSET_ROOTS = ["public/blog-assets", "public/blog-assets-en"];
 const IMAGE_PATTERN = /!\[[^\]]*\]\((\/[^)\s]+)\)/g;

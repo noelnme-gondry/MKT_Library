@@ -13,7 +13,7 @@ draft: false
 
 ## In one line
 
-CTR (Click-Through Rate) is the share of impressions that got clicked: clicks ÷ impressions.
+Clicks ÷ impressions. CTR (Click-Through Rate) is the share of impressions that got clicked.
 
 ## Why it matters
 

@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-ASO (App Store Optimization) is the work of getting your app shown more often inside the App Store and Google Play, and turning more of those impressions into installs.
+Every ad click still installs on the store. ASO (App Store Optimization) is the work of getting your app shown more often inside the App Store and Google Play, and converting more of those impressions into installs.
 
 ## It is really two different jobs
 

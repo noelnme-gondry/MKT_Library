@@ -20,7 +20,7 @@ faq:
 
 ## In one line
 
-Attribution is the rule that decides which ad touchpoint gets credit for a conversion that already happened.
+If someone saw three ads before converting, whose win is it? Attribution is the rule that answers that — how credit for a conversion that already happened gets assigned across touchpoints.
 
 ## It is a rule, not a fact
 
