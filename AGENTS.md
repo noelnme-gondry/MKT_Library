@@ -184,6 +184,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **정규화·구조로 살려낸 적합은 "추정치"가 아니다**(같은 감사): `REG_STATS.ols`는 특이행렬을 잡으면 대각에 1e-8을 더해 릿지로 풀고 `regularized:true`만 남기는데, 이 플래그를 확인하는 곳이 전 코드베이스에 1곳뿐이었다 → 공선 데이터에 **95% 예측 밴드가 확정 숫자로** 표시됐다. 플래그를 만들면 소비처 전수를 같이 배선할 것.
 - **퇴화 입력 가드는 형제 함수에서 복사해 올 것**(같은 감사): 같은 파일의 `mmmOls`엔 `n<=k`·`sst>0`·`Math.max(0,…)`·`se>0` 네 가드가 있는데 `REG_STATS.ols`엔 없어서 상수 종속변수에서 **R²=-Infinity와 p=1.06e-60("극도로 유의")**이 렌더됐다. 정상 입력에선 no-op이라 골든 byte-identical로 추가된다.
 - **"계산 불가"를 좋은 등급으로 접지 말 것**(같은 감사): `creativeMath.vif`는 적합 실패를 `r2=0`으로 떨어뜨려 **VIF=1(완전히 깨끗)**로 표시했다 — 식별 불가를 문제 없음으로 뒤집는 방향의 실패다. `satMath.classify`도 `satIndex==null`(미상)을 "포화"로 단정했다. 미상은 미상 버킷(null)으로.
+- **지표 사슬 공식은 단위 배수를 숫자로 검산할 것 — 눈으로 읽으면 1,000배가 조용히 빠진다**(2026-08-17): 발행된 용어집·블로그가 `CPC = CPM ÷ CTR`, `CPA = CPM ÷ (CTR × CVR)`로 적고 있다. CPM은 **1,000회** 노출 단가라 실제는 `(CPM ÷ 1,000) ÷ CTR`이고, 현행 표기는 1,000배 틀린 값이다(CPM 5,000·CTR 1% → 500원인데 50만 원). 카피에 "≈"·"연결된다"를 붙여도 등식으로 읽히므로 **거짓 숫자(§8)**다. 콘텐츠 공식은 한 조합을 대입해 실제 값이 나오는지 확인하고, 같은 사슬이 KO/EN·용어집/블로그 6곳에 흩어져 있으니 grep으로 한 번에 고칠 것.
 - **날짜 문자열은 UTC로 파싱되므로 요일도 `getUTCDay()`**: `new Date("2026-08-12").getDay()`는 로컬 기준이라 UTC 이서 타임존에서 하루 밀린다. 주석이 "UTC"라고 적혀 있는데 코드가 `getDay()`인 경우가 실제로 6곳 있었다(파일마다 갈림).
 - **모델 래퍼는 `.model.predict`지 `.predict` 아님**(5-3): `predictSafeCpr(wrap, cost)`가 CPR 반환, 결과=cost÷CPR. 직접 호출은 **undefined→결과 0**. 골든은 순수 math만 봐서 못 잡음 → **각 분배 경로를 데모로 repro**.
 - **5-18 MMM**: ROAS는 표시층 invert만(배분은 CPR 공간). 회귀계수는 **연관≠인과**. 전부-0/완전공선 컬럼 → `_nonRedundantCols`(Gram-Schmidt) 드롭. 희소 채널 음수 탄력성은 "노이즈"지 "잠식" 아님.
@@ -372,7 +373,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 광고 게이트를 어떤 형태로도 되살리지 말 것(`requestAd`는 호출부 호환 no-op만 잔존). 수익화는 이탈·AdSense 데이터 확인 후 별도 결정.
 
 ### 12.27 결론 카드 + 다운로드 허브 공용화
-- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 선언하지 말고 grep으로 확인할 것** — 이 줄에 적힌 미채택 목록은 두 번 연속 낡은 채로 남아 있었다(적힌 4곳이 이미 다 채택돼 있었다). 2026-08-14 실측: 도구 15개 전부 카드 보유, 다운로드는 `PaidOrganicTrend`·`WebRMmmAdvanced` 2곳만 없음(둘 다 subtool/패널).
+- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 선언하지 말고 grep으로 확인할 것**(적어둔 미채택 목록이 두 번 연속 낡아 있었다). 2026-08-14 실측: 도구 15개 전부 카드 보유, 다운로드는 `PaidOrganicTrend`·`WebRMmmAdvanced` 2곳만 없음(둘 다 subtool/패널).
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
@@ -406,6 +407,11 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
 - **타이포 하한 9.5px**(`app/typographyFloor.test.js`). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다. 이 가드는 오래 `globals.css` **한 파일만** 훑었는데 인라인 `style={{fontSize}}`이 581곳이라 우회로가 통째로 열려 있었다 → 지금은 `src/**/*.jsx` 리터럴도 같은 하한으로 훑는다(계산식은 정적으로 못 읽으므로 대상 밖).
 
+### 12.31 외부 채널(네이버) 파생 원고 — `docs/naver-blog-glossary-drafts.md`
+사이트 콘텐츠를 **복제하지 말고 파생**시킨다. 원본 SSOT는 `content/glossary/*.md`, 파생물은 `docs/`에 두고 사이트 라우트·테스트·sitemap을 건드리지 않는다. EN 대칭(§2.11)은 **면제** — 네이버는 KR 전용 외부 채널이고 사이트 UI·메타가 아니다(면제 사유를 문서 머리에 적을 것).
+- **"기능이 닿는 것만" 추릴 때 `contentToolRegistry`를 그대로 믿지 말 것**: `GLOSSARY_PRIMARY_TOOL`은 **폴백 `5-2`가 섞여 있어** 전 항목이 매핑된 것처럼 보인다. 실제로 30편 중 6편(`aso`·`click-injection`·`deep-link`·`ecpi`·`mmp`·`probabilistic-attribution`)은 대응 기능이 없다 — 제외 이유를 표로 남겨야 다음 사람이 다시 세지 않는다.
+- **외부 문서의 URL도 라우트에서 검증할 것**: 손으로 적은 링크는 리네임에 안 따라온다. `ROUTES`+`CALCULATOR_ORDER`+glossary 파일명으로 대조하는 일회성 스크립트를 돌려 미해결 0을 확인한다(163건 중 0건이었다). UTM은 `utm_content=<용어 slug>`로 편별 기여를 분리한다.
+
 ---
 
 ## 13. 참고 파일
@@ -415,6 +421,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
 - `docs/pitfalls.md` — 함정 상세 / `docs/backlog.md` — 백로그 + MMM 스펙(§B)
 - `docs/system-audit-2026-08-12.md` — 최신 전면 감사(UI/UX·분석·구조, P0 3·P1 15·P2 12)
+- `docs/naver-blog-glossary-drafts.md` — 네이버 블로그용 용어사전 파생 원고 24편(§12.31). 선별 기준·제외 6편·발행 순서·URL 사전 포함. 원본은 `content/glossary/*.md`.
 - `docs/aeo-prompt-checklist.md` — **생성물**. AEO 측정용 프롬프트 목록(KO/EN 각 17). 손으로 고치지 말고 `node scripts/aeo-prompts.mjs`로 재생성 — 원본은 `toolSearchContent`의 `question`/`answer`와 `compareContent`다. 월별 기록은 `docs/aeo-runs/`에 사본을 떠서 한다.
 - `docs/design-system-baseline.md` · `docs/pvm-campaign-variance-spec.md` · `docs/regression-forecast-merge-spec.md` · `docs/content-analytics-rollout-spec.md` · `docs/custom-metrics-data-config-spec.md` — 기능별 설계 스펙
 - `supabase/SETUP.md` · `supabase/schema.sql` — 현재 미사용(§3), 참고용 보존
@@ -458,7 +465,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **244파일·1932 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-16 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **249파일·1981 통과**(1 skipped) · eslint 0 (2026-08-17 실측). **수치를 적을 땐 실제로 돌려서 적을 것** — `vitest: not found`(deps 미설치)로 죽은 실행을 파이프 뒤 `echo`의 exit 0으로 착각해 "통과"라 적은 적이 있다. 종료코드는 `${PIPESTATUS[0]}`로 볼 것.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
