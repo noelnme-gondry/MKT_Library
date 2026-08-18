@@ -19,7 +19,6 @@ faq:
   - q: "Can I find an Aha Moment without user-level event data?"
     a: "You need at least a user ID, a 0/1 target, and early action counts to test the relationship directly. Aggregated campaign data cannot establish a person-level behavior-retention link."
 ---
-
 An Aha Moment is not the one action that retained users happened to do most often. It is a testable statement about **which users did which action, how many times, and by when**—and whether encouraging that action actually improves long-term retention.
 
 For example, “users who added three friends retained better” may be a useful candidate, but highly motivated users may simply add more friends. Candidate discovery finds association. Product and marketing decisions need a separate causal test.

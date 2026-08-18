@@ -19,7 +19,6 @@ faq:
   - q: "Is delayed cost data normal?"
     a: "Cost usually uses a separate API integration, permission set, and sync schedule. Diagnose it separately from conversion postbacks."
 ---
-
 When an integration shows “zero installs,” do not start by rebuilding the postback. Check whether the event happened in the app, reached the MMP, was sent to the network, and was counted under the network's rules. The last verified point tells you where to investigate.
 
 ## What a postback sends

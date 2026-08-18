@@ -17,7 +17,6 @@ faq:
   - q: "Does ASO improve paid performance too?"
     a: "Yes. Ad clicks still pass through the store page, so a higher store conversion rate produces more installs from the same spend. Moving conversion from 30% to 40% yields about 33% more installs and lowers CPI by the same proportion."
 ---
-
 While you're tweaking creative and bids to lower CPI, the store page where users actually decide to install has often sat untouched for months. A tap on your ad still installs on the store, so if store conversion is leaking, ad spend leaks along with it.
 
 ASO (App Store Optimization) plugs that hole and grows organic installs on top. It has two axes: getting found (visibility) and getting installed (conversion).
@@ -36,7 +35,7 @@ For your app to appear when someone searches, the store has to associate you wit
 
 - **App name and subtitle** — the strongest signal. Weave in core keywords naturally.
 - **Keyword field (iOS) / description text (Android)** — this is where related search terms go.
-- The rules differ by store. iOS uses a dedicated keyword field; Google Play matches words in the description. Fill them according to each store's policy.
+- **The rules differ by store** — iOS uses a dedicated keyword field; Google Play matches words in the description. Fill them according to each store's policy.
 
 Judging keywords by rank alone creates an illusion. Ranking first for a term nobody searches adds no installs. Real traffic is **volume × your rank × the click rate at that rank**, and mid-tail terms with clear intent often convert better than the crowded head terms.
 

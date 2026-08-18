@@ -13,7 +13,6 @@ faq:
     a: "Trust it when you can reproduce which data and which assumptions produced the number; otherwise hold. Sentences that turn a correlation into a cause need separate evidence."
 
 ---
-
 Auto-bidding sets the bid. The algorithm finds the audience. Automated campaigns even pick the placement and creative combination. AI writes the copy and generates the images. So doesn't it feel like everything a marketer used to do is disappearing, one task at a time? Most of us have felt that anxiety at some point.
 
 Short answer: the work isn't disappearing — the center of gravity is shifting. From operating to judging. Today let's get concrete about what that means, and what you actually need to prepare for.

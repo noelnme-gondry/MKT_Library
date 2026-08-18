@@ -13,7 +13,6 @@ faq:
     a: "The default is 7-day click plus 1-day view. To compare Meta with other networks, read the 1-day click basis alongside it."
 
 ---
-
 Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.
 
 ## OS split isn't optional

@@ -13,9 +13,6 @@ faq:
     a: "With few conversions the usual normal (z) approximation overstates the difference. With 50 per group and 0 vs 5 conversions, z calls it significant while an exact test does not. When conversions are sparse, judge on the exact test."
 
 ---
-
-# A/B Testing: Ruling Out Chance Before You Call the Winner
-
 Have you ever looked at landing page variant A against variant B and decided "hmm… B looks a bit better?" Run it for a few days, pick whichever has the higher conversion rate. But that could just be chance.
 
 A/B testing is exactly the method for turning that "feeling" into a "number." Today let's look at how to run one properly, and one trap that catches nine out of ten people. By the end, you'll be a lot more careful about saying "this beat that."

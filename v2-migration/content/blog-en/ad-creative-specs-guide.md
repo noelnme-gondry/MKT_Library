@@ -13,7 +13,6 @@ faq:
     a: "It is the edge area covered by the network's own UI. Profile rows and CTA buttons sit top and bottom, interaction icons sit on the sides, so keep key captions and logos inside. Exact pixels come from each network's official guide."
 
 ---
-
 Upload the same video to several platforms without thinking, and some crop it automatically while others reject it outright in review. Each platform demands different ratios, file sizes, and UI safe zones. However good the creative is, if the spec blocks it, it never serves.
 
 ## Specs differ by platform

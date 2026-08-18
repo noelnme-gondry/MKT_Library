@@ -7,7 +7,6 @@ keywords: "Adjust vs AppsFlyer, Adjust AppsFlyer 차이, MMP 비교, 모바일 �
 tags: ["측정", "분석 방법론"]
 draft: true
 ---
-
 <!-- 초안(draft) — 발행 전 사람 손질 필요. 아래 기능·가격 비교는 웹 검색으로 모은
      서드파티 비교 사이트(Capterra·G2·TrustRadius 등) 요약 기반이라, 발행 전 각 사
      공식 페이지로 최신 가격·기능 재확인 필요(양사 정책이 자주 바뀜). -->

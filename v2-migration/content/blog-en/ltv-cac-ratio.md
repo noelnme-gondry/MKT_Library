@@ -13,7 +13,6 @@ faq:
     a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
 
 ---
-
 Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.
 
 ## Start with CAC
@@ -42,11 +41,11 @@ More rigorously you plot cumulative revenue curves per cohort and extrapolate th
 
 The formula is two divisions. What's wrong isn't the formula — it's the values you feed it.
 
-1) The "customer" in numerator and denominator differ. You compute CAC on paying customers but LTV on the average of all installers. Then the ratio doesn't even hold. LTV and CAC must use the same customer definition.
+1. **The "customer" in numerator and denominator differ.** You compute CAC on paying customers but LTV on the average of all installers. Then the ratio doesn't even hold. LTV and CAC must use the same customer definition.
 
-2) Computing LTV on revenue. Even if revenue-based LTV is $240 as above, if contribution margin after cost and fees is 30%, the real money kept is $72. At CAC $100 that's 2.4:1 on revenue but under 1:1 on profit. In thin-margin businesses this gap decides life or death. Read LTV on **contribution margin**, not revenue.
+2. **Computing LTV on revenue.** Even if revenue-based LTV is $240 as above, if contribution margin after cost and fees is 30%, the real money kept is $72. At CAC $100 that's 2.4:1 on revenue but under 1:1 on profit. In thin-margin businesses this gap decides life or death. Read LTV on **contribution margin**, not revenue.
 
-3) Looking only at the blended average. Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
+3. **Looking only at the blended average.** Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
 
 ## Reading LTV:CAC
 

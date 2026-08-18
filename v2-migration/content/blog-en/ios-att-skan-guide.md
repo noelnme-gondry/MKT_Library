@@ -19,7 +19,6 @@ faq:
   - q: "Can I calculate ROAS from SKAN data?"
     a: "Only loosely. You can encode revenue into conversion-value buckets, but the resolution is low and revenue beyond the measurement window is never captured. Treat SKAN ROAS as an estimate for ranking campaigns, not as an absolute number."
 ---
-
 If Android is fine but only iOS looks cut in half, suspect measurement before the campaign. After the "Allow tracking?" prompt (ATT), precise user-level tracking on iOS got hard, and you now read performance through Apple's limited aggregate frame, SKAdNetwork (SKAN). Miss this structure and you'll kill a perfectly good iOS campaign on the numbers alone.
 
 Here's what changed and what to judge by inside it.

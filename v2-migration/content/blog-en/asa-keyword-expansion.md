@@ -17,12 +17,11 @@ faq:
   - q: "Why do brand keywords need a separate campaign?"
     a: "Brand terms produce unusually good CPAs because many of those users would have found the app anyway. Mixed in with generic terms, that efficiency lifts the blended average and hides how new-user acquisition is really performing."
 ---
-
 Turning on Apple Search Ads for the first time is genuinely exciting. It is the only advertising that appears in App Store search results, and given how much of iOS app discovery runs through search, there is no reason not to run it.
 
 So the usual first move: build one campaign, switch on Search Match, and also add the terms that look good into Exact. Two months later CPT is climbing and nothing obvious explains it.
 
-The explanation is usually mundane and expensive — **two of your own campaigns are bidding on the same search term.** You are raising your own bid.
+The explanation is usually mundane and expensive — two of your own campaigns are bidding on the same search term. You are raising your own bid.
 
 The short version:
 
@@ -43,9 +42,9 @@ One more thing: **keep Discovery running.** Switching it off once promotion is "
 
 When reading the search terms report, look at these two side by side.
 
-**One: have enough conversions accumulated to judge?** One or two conversions can produce a flattering CPA purely by chance. A term showing $4 CPA on two conversions can easily settle at $30 once real volume runs through it — this is the single most common way a promotion disappoints.
+One: have enough conversions accumulated to judge? One or two conversions can produce a flattering CPA purely by chance. A term showing $4 CPA on two conversions can easily settle at $30 once real volume runs through it — this is the single most common way a promotion disappoints.
 
-**Two: does the actual CPA meet target?** Measured on those accumulated conversions, not on the two that looked good.
+Two: does the actual CPA meet target? Measured on those accumulated conversions, not on the two that looked good.
 
 A term needs **both** to be a promotion candidate. Meeting one alone means not yet. Conversely, terms spending heavily with no conversions are negative-keyword candidates.
 
@@ -70,7 +69,7 @@ And without a target CPA this table does not function at all. Moving bids up and
 
 Search terms containing your own brand name come back with overwhelmingly good CPAs. It feels great at first — "our ASA efficiency is incredible."
 
-But a large share of those people **would have found the app without the ad.** By the time someone searches your brand name, they already know you.
+But a large share of those people would have found the app without the ad. By the time someone searches your brand name, they already know you.
 
 Keeping brand terms in the same campaign as generic terms creates the illusion of a good overall CPA. Raise budget on that number and actual new installs do not move; you simply spend more on brand terms.
 

@@ -16,7 +16,6 @@ faq:
   - q: "Does a ROAS increase after reallocation prove the change worked?"
     a: "It is an observed improvement, not proof of causation. Seasonality, promotions, and competition can change at the same time, so validate important scale decisions with small steps or a control."
 ---
-
 When ROAS falls, the instinct is to cut budget. But one blended ROAS number can make you cut a channel that still has efficient room to grow. First separate **immature data, channel movement, and leakage after conversion** before changing spend.
 
 ## 1. Do not treat yesterday’s ROAS as a final answer

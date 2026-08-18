@@ -24,7 +24,6 @@ faq:
   - q: "What is the difference between Classic and Rolling retention?"
     a: "Classic retention measures a return exactly on the relevant day. Rolling retention includes a return on or after that day, so the two values should not be compared as the same D7 metric."
 ---
-
 Only compare a D7 cohort after every user in that cohort has had seven full days to return. If your data ends on July 30, a cohort acquired on July 28 has not had a chance to reach D7 yet. Treating it as zero—or quietly averaging it in—makes retention look worse than it is.
 
 Retention cohort analysis groups people who started at the same time, then measures whether they return and perform a meaningful action later. It is not a single all-user retention number. That distinction matters whenever acquisition volume, channel mix, or product releases change.

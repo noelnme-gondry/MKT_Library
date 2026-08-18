@@ -18,7 +18,6 @@ faq:
   - q: "Can I run MMM as soon as I have a lot of data?"
     a: "No. You need a long weekly channel panel with meaningful spend variation, then a VIF check for collinearity. High collinearity makes channel contributions hard to separate."
 ---
-
 When performance drops, it is tempting to choose a method first: “Should we run MMM?” or “Is this an A/B test?” That can force the data into a method it cannot support. A daily campaign export can find an operating problem quickly, but it cannot prove the net causal effect of advertising by itself.
 
 Choose the first analysis from two things: **the decision you need to make** and **what one row represents**. Get those right, and you can reach an action without starting with the heaviest model.

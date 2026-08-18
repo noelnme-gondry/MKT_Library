@@ -19,7 +19,6 @@ faq:
   - q: "Over what window should I compare CPM, CPC, CPI, and CPA?"
     a: "Day-level comparisons mislead because weekday variation is large. Compare equal-length windows such as the last 7 days against the previous 7, and exclude recent days that have not matured for metrics whose conversions land late."
 ---
-
 You have probably heard that CPM went up, lowered your bid, and watched nothing improve. If the real cause was creative rather than the auction, that is exactly what should happen. CPM and CPC sit at the front of the advertising funnel — impressions and clicks — and reading them separately is what lets you tell "the auction got expensive" apart from "our response got weaker."
 
 For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article focuses on the first two links in that chain.

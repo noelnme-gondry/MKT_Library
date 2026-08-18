@@ -13,9 +13,6 @@ faq:
     a: "Derive it from the minimum effect you want to detect and your conversion volume. Too small and the difference is undetectable; too large and the opportunity cost grows. Calculate the required sample first, then back out the share."
 
 ---
-
-# Incrementality Measurement: Did the Ad 'Create' That Conversion, or Just 'Pick It Up'?
-
 You served a search ad to someone who searched your brand name. They clicked through, and they purchased. Your report shows 'ROAS 800%.' Feels good, right?
 
 But wait — wouldn't those people have landed on your site anyway, even without the ad? They already searched your brand name. If so, that conversion wasn't "created" by the ad — it was "picked up" by it. Today let's look at how to tell these two apart: **incrementality measurement**, which isolates only the performance an ad actually created. By the end, you won't be able to take dashboard ROAS at face value the way you used to. And that skepticism is exactly what leads to richer analysis.
@@ -26,7 +23,7 @@ Let's start by distinguishing two concepts people frequently confuse.
 
 Attribution (credit allocation) takes a conversion that has already happened and splits "which channel gets the credit for this." Whether it's last-click or first-click, it's the job of assigning credit that's already been earned to a channel. But there's one question it can't answer:
 
-**"What would have happened if we hadn't run that ad?"**
+### "What would have happened if we hadn't run that ad?"
 
 This is called the counterfactual (a hypothetical that never actually happened). Incrementality is exactly this question. As a formula:
 

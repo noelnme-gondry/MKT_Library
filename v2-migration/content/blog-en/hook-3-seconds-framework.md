@@ -13,7 +13,6 @@ faq:
     a: "Hold every other element fixed, vary the hook, then check whether the difference is statistically significant. Changing several elements at once makes the effect impossible to attribute."
 
 ---
-
 Scrolling a feed, some videos make you stop and some you swipe past instantly. That decision happens almost entirely in the **first three seconds**. However much effort went into the creative, if you can't stop the scroll in three seconds, nobody sees the next thirty. So the hook isn't decoration — it's **the first gate that decides your return on the whole thing**.
 
 ## Four proven hook patterns

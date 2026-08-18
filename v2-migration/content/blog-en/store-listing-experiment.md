@@ -17,7 +17,6 @@ faq:
   - q: "Can a winning variant still turn out to have no effect?"
     a: "Yes. An interval crossing zero means not yet distinguishable, even with a winner badge showing. Store experiments also only observe people who reached the product page — changing the icon also changes tap-through in search results, which sits outside the test, so the total effect can be larger or smaller than the experiment reports."
 ---
-
 Screenshots changed, and two weeks later conversion is up. Was it the screenshots? If ad spend also grew and the season turned in those same two weeks, the honest answer is that you do not know.
 
 [Decomposing store conversion](/blog/store-conversion-drop-diagnosis) narrows where to look, but it does not prove cause. Confirming that a change worked takes an experiment — and both stores provide one for free.
@@ -39,9 +38,9 @@ Store experiments remove this by construction. Traffic arriving **at the same mo
 
 Apple and Google measure differently, so their results do not belong on the same scale.
 
-**Apple PPO (Product Page Optimization).** Up to three treatments run alongside the original, for up to 90 days, covering icon, screenshots and preview videos. Testing the icon actually changes the app icon on device home screens, so icon tests deserve more caution than the rest.
+Apple PPO (Product Page Optimization). Up to three treatments run alongside the original, for up to 90 days, covering icon, screenshots and preview videos. Testing the icon actually changes the app icon on device home screens, so icon tests deserve more caution than the rest.
 
-**Google Play listing experiments.** Icon, screenshots and preview video plus short and full descriptions. These can be split by region and language, so testing in a single country is possible.
+Google Play listing experiments. Icon, screenshots and preview video plus short and full descriptions. These can be split by region and language, so testing in a single country is possible.
 
 Traffic allocation, win criteria and statistical treatment all differ. "It won on Apple, so ship it on Play" is a hypothesis, not evidence — run it on both.
 
@@ -68,9 +67,9 @@ Write these two lines down at the start.
 
 **Start with the interval.** An interval crossing zero means "not yet distinguishable", not "no effect". Those are different states — more data might still separate them.
 
-**Read the lift in absolute terms too.** Going from 30% to 31% is a 3.3% relative improvement but 1pp absolute: 100 extra installs per 10,000 views. Whether that size justifies the cost of shipping it is the actual decision.
+Read the lift in absolute terms too. Going from 30% to 31% is a 3.3% relative improvement but 1pp absolute: 100 extra installs per 10,000 views. Whether that size justifies the cost of shipping it is the actual decision.
 
-**Remember what the experiment cannot see.** Store experiments only observe people who reached the product page. But the icon also appears in search result lists, so changing it changes how many people reach the page at all — and that sits outside the test. The full effect of an icon change can be larger or smaller than the number the experiment reports.
+Remember what the experiment cannot see. Store experiments only observe people who reached the product page. But the icon also appears in search result lists, so changing it changes how many people reach the page at all — and that sits outside the test. The full effect of an icon change can be larger or smaller than the number the experiment reports.
 
 ## Carrying results into operations
 

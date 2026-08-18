@@ -13,7 +13,6 @@ faq:
     a: "You do not need to write queries yourself. You do need to judge whether the sample is sufficient, whether a difference could be chance, and whether a correlation is being stated as a cause."
 
 ---
-
 "What do I need to learn to become a performance marketer?" A lot of answers to this question start by rattling off tool names — Meta Ads Manager, GA4, SQL, a tag manager… but tools aren't skills. They're just instruments. Today, instead of a tool list, let's map this out as a **growth sequence** — the order skills actually stack in. Once you know which level you're standing on, it's obvious what to learn next.
 
 ## Knowing a tool and knowing how to decide are two different things

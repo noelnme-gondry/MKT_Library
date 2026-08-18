@@ -13,7 +13,6 @@ faq:
     a: "Fix one per decision type: internal database or payment data for business performance, network numbers for in-network optimization, MMP for cross-channel comparison. Deciding in advance stops every meeting turning into a numbers argument."
 
 ---
-
 You pulled last week's conversions Monday, check again Wednesday, and the number went up. Sessions are lower than what you remember from UA. The channel report has a pile of "unassigned." If you've ever wondered whether you can trust GA4's numbers, you're not alone. The short answer: GA4 isn't broken. It just counts differently. Here are the four traps that trip people up most, plus the ground rules that actually hold up.
 
 ## First choose: a GA4 issue, or a cross-system comparison issue?

@@ -12,9 +12,6 @@ faq:
   - q: "How many creatives do I need before this analysis works?"
     a: "Meaningfully more than the number of attributes you are comparing. With four attributes you need at least dozens of creatives, and each attribute needs enough creatives both with and without it before the coefficients stabilise."
 ---
-
-# When You Cannot Run a Test, Answer With the Creatives You Already Served
-
 Everyone knows A/B testing is the right answer. The problem is that you cannot run one every time — the budget is small, there are too few creatives, or the network refuses to split delivery evenly.
 
 There is a second-best option for those situations: **turn the attributes of creatives you already served into data and compare them**.
