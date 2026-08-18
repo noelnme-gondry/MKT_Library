@@ -120,6 +120,10 @@ v2-migration/
 - **타입**: DM Sans(body)+Space Grotesk(display)+JetBrains Mono(data), `next/font` 변수만.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만.
+- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 6개(점검·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다.
+- **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.
+- **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 6개(점검·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다.
+- **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.
 - **하단 마감**: 분석 아래는 `ToolPageOutro` 한 덩어리(`.tool-outro` 박스 + `.tool-outro__section` 구분선). 자식(`ToolConnections`·`ToolLongform`·`ToolEvidenceLinks`)은 자기 테두리·경계선을 그리지 않는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 강제(§12.30).
 - 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
 

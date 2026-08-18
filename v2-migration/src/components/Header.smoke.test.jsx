@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Header from "@/components/Header";
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -66,12 +67,12 @@ describe("Header render smoke", () => {
       decisionRecords: [{ id: "decision_1", toolId: "5-2", action: "Review CPA", reviewDate: "2020-01-01", actual: "", learning: "" }],
     });
     const { unmount } = render(<Header />);
-    const koLink = screen.getByRole("link", { name: "결정 검토함, 지금 검토할 결정 1건" });
+    const koLink = screen.getByRole("link", { name: `${workspaceNavItem("review").name}, 지금 검토할 결정 1건` });
     expect(koLink.getAttribute("href")).toBe("/weekly-review");
     expect(koLink.textContent).toContain("1");
     unmount();
     render(<Header locale="en" />);
-    expect(screen.getByRole("link", { name: "Decision inbox, 1 decision due now" }).getAttribute("href")).toBe("/en/weekly-review");
+    expect(screen.getByRole("link", { name: `${workspaceNavItem("review", "en").name}, 1 decision due now` }).getAttribute("href")).toBe("/en/weekly-review");
   });
   it("keeps lower-frequency controls in one localized utility menu", () => {
     const { unmount } = render(<Header />);
@@ -82,7 +83,7 @@ describe("Header render smoke", () => {
     unmount();
     render(<Header locale="en" />);
     expect(document.querySelector(".header-utility-menu > summary")?.getAttribute("aria-label")).toBe("More settings");
-    expect(screen.getByRole("link", { name: "Decision inbox" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: workspaceNavItem("review", "en").name })).toBeTruthy();
     expect(screen.getByRole("button", { name: "All tools" })).toBeTruthy();
   });
   it("keeps analyst mode in the utility menu and exposes its active state", () => {

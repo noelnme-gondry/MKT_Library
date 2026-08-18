@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import ToolIndex from "@/components/ds/ToolIndex";
 import { allToolIndexEntries, PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
+import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
 describe("ToolIndex", () => {
   it("발행 도구를 하나도 빠뜨리지 않고 그린다", () => {
@@ -44,10 +45,16 @@ describe("ToolIndex", () => {
     expect(container.querySelector(".tool-index__link").getAttribute("href")).toMatch(/^\/en\//);
   });
 
-  it("스테이지 번호를 아래 워크플로와 같은 표기로 낸다", () => {
-    // 01~05는 워크플로 섹션이 이미 쓰는 언어다. 같은 축을 말한다는 걸 번호로 잇는다.
+  it("스테이지 번호를 여정 순서대로 빠짐없이 낸다", () => {
+    // 번호를 손으로 적으면 갈래가 늘 때 이 줄만 고치게 된다 — 레지스트리에서 파생한다.
     const { container } = render(<ToolIndex />);
     const numbers = [...container.querySelectorAll(".tool-index__stage-no")].map((n) => n.textContent);
-    expect(numbers).toEqual(["01", "02", "03", "04", "05"]);
+    expect(numbers).toEqual(TOOL_JOURNEY.map((_, index) => String(index + 1).padStart(2, "0")));
+  });
+
+  it("갈래를 접지 않는다 — 펼 때마다 위치가 달라지면 방금 본 도구를 다시 찾게 된다", () => {
+    const { container } = render(<ToolIndex />);
+    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelectorAll(".tool-index__stage")).toHaveLength(TOOL_JOURNEY.length);
   });
 });

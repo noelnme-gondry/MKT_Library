@@ -7,7 +7,7 @@ import { localizedHref } from "@/lib/localizedHref";
 /**
  * ToolIndex — "무엇을 할 수 있나"를 한 화면에 펴는 목록.
  *
- * 도구가 17개인데 홈에서 이름이 보이는 건 4개뿐이었고, 나머지는 사이드바를
+ * 홈에서 이름이 보이는 도구가 4개뿐이었고, 나머지는 사이드바를
  * 열어야만 존재를 알 수 있었다. 같은 목록을 세 곳(홈·업로드 화면·전체 보기)에
  * 두되 **밀도만 다르게** 한다. 문장은 toolIndex 하나에서 나온다.
  *
@@ -17,39 +17,25 @@ import { localizedHref } from "@/lib/localizedHref";
  *
  * 정렬 축은 도구 이름이 아니라 **질문 단계**다. 마케터는 "무엇을 판단해야 하나"로
  * 도구를 찾지 도구 이름을 외워서 찾지 않는다.
+ *
+ * 갈래별 접기(<details>)는 뺐다 — 하나 펼 때마다 아래 갈래가 통째로 밀려서
+ * 방금 본 도구가 어디 있었는지 매번 다시 찾아야 했다. 갈래가 2~3개짜리로
+ * 고르게 나뉜 뒤로는 전부 펴 두는 게 더 짧고, 위치가 고정된다.
  */
-const countLabel = (n, locale) => (locale === "en" ? `${n}` : `${n}개`);
-
-// 접힘 모드는 native <details>로. JS 상태 없이 접근성(키보드·보조기술)이 따라온다.
-function StageBox({ collapsible, open, children }) {
-  if (!collapsible) return <section className="tool-index__stage">{children}</section>;
-  return <details className="tool-index__stage tool-index__stage--fold" open={open || undefined}>{children}</details>;
-}
-
-function StageHead({ collapsible, children }) {
-  if (!collapsible) return <div className="tool-index__stage-head">{children}</div>;
-  return <summary className="tool-index__stage-head">{children}</summary>;
-}
-
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null, onItemClick = null, collapsible = false, openFirst = true }) {
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
 
   return (
     <div className={`tool-index tool-index--${density}`}>
-      {stages.map((stage, stageIndex) => (
-        <StageBox
-          key={stage.id}
-          collapsible={collapsible}
-          open={collapsible ? openFirst && stageIndex === 0 : undefined}
-        >
-          <StageHead collapsible={collapsible}>
+      {stages.map((stage) => (
+        <section className="tool-index__stage" key={stage.id}>
+          <div className="tool-index__stage-head">
             {stage.label && <span className="tool-index__stage-no">{stage.label.split("·")[0].trim()}</span>}
             <Heading className="tool-index__stage-title">{stage.title}</Heading>
-            {collapsible && <span className="tool-index__stage-count">{countLabel(stage.tools.length, locale)}</span>}
-            {!isCompact && !collapsible && <p className="tool-index__stage-desc">{stage.description}</p>}
-          </StageHead>
+            {!isCompact && <p className="tool-index__stage-desc">{stage.description}</p>}
+          </div>
           <ul className="tool-index__list">
             {stage.tools.map((tool) => {
               // eligibleIds가 주어지면 지금 올린 CSV로 되는 것만 강조하고, 나머지는
@@ -79,7 +65,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
               );
             })}
           </ul>
-        </StageBox>
+        </section>
       ))}
     </div>
   );

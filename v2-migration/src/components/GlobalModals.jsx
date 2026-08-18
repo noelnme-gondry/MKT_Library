@@ -7,10 +7,12 @@ import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { CONNECTED_TOOLS } from "@/lib/toolConnections";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
+// 워크스페이스 목적지 이름은 사이드바·헤더·푸터와 같은 SSOT에서 받는다.
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 const COPY = {
-  ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "바로 맞는 도구를 찾지 못했습니다", emptyHint: "파일을 올려 가능한 분석을 확인하거나 세 문항으로 문제부터 좁혀보세요.", emptyStart: "내 데이터 분석", emptyDiagnose: "성과 문제 진단", pages: "빠른 이동", analystGroup: "작업 환경", analystOn: "분석가 모드 켜기", analystOff: "분석가 모드 끄기" },
-  en: { placeholder: "Search tasks, tools, and guides", move: "move", run: "open", close: "close", empty: "We could not find a direct match", emptyHint: "Upload a file to see compatible analyses, or narrow the problem in three questions.", emptyStart: "Analyze my data", emptyDiagnose: "Diagnose performance", pages: "Quick navigation", analystGroup: "Workspace", analystOn: "Turn on Analyst mode", analystOff: "Turn off Analyst mode" },
+  ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "바로 맞는 도구를 찾지 못했습니다", emptyHint: "파일을 올려 가능한 분석을 확인하거나 세 문항으로 문제부터 좁혀보세요.", pages: "빠른 이동", analystGroup: "작업 환경", analystOn: "분석가 모드 켜기", analystOff: "분석가 모드 끄기" },
+  en: { placeholder: "Search tasks, tools, and guides", move: "move", run: "open", close: "close", empty: "We could not find a direct match", emptyHint: "Upload a file to see compatible analyses, or narrow the problem in three questions.", pages: "Quick navigation", analystGroup: "Workspace", analystOn: "Turn on Analyst mode", analystOff: "Turn off Analyst mode" },
 };
 
 const SEARCH_STOP_WORDS = new Set([
@@ -92,9 +94,10 @@ export default function GlobalModals({ locale = "ko" }) {
     };
     }));
     const workspace = [
-      { key: "start", title: locale === "en" ? "Analyze my data" : "내 데이터 분석", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/start" : "/start", kind: locale === "en" ? "Start" : "시작", hint: locale === "en" ? "Upload CSV or XLSX and see compatible analyses" : "CSV·XLSX를 올리고 가능한 분석 추천", searchText: locale === "en" ? "analyze data CSV XLSX file upload compatible analysis recommendation" : "내 데이터 분석 CSV XLSX 파일 업로드 가능한 분석 추천" },
-      { key: "diagnose", title: locale === "en" ? "Diagnose performance" : "성과 문제 진단", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/diagnose" : "/diagnose", kind: locale === "en" ? "Diagnose" : "진단", hint: locale === "en" ? "Find the likely cause and check order in three questions" : "3문항으로 원인과 확인 순서 찾기", searchText: locale === "en" ? "diagnose performance issue cause check order CPA CPI ROAS three questions" : "성과 문제 진단 원인 확인 순서 CPA CPI ROAS 세 문항 3문항" },
-      { key: "calculator", title: locale === "en" ? "Marketing metric calculators" : "마케팅 지표 계산기", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/calculator" : "/calculator", kind: locale === "en" ? "Calculate" : "계산", hint: locale === "en" ? "Calculate target CPA, ROAS, and A/B sample size" : "목표 CPA·ROAS·A/B 표본수 계산", searchText: locale === "en" ? "marketing metric calculator target CPA ROAS AB sample size" : "마케팅 지표 계산기 목표 CPA ROAS AB A/B 표본수" },
+      { key: "start", head: true, title: workspaceNavItem("start", locale).name, group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/start" : "/start", kind: locale === "en" ? "Start" : "시작", hint: locale === "en" ? "Upload CSV or XLSX and see compatible analyses" : "CSV·XLSX를 올리고 가능한 분석 추천", searchText: locale === "en" ? "analyze data CSV XLSX file upload compatible analysis recommendation" : "내 데이터 분석 CSV XLSX 파일 업로드 가능한 분석 추천" },
+      { key: "diagnose", head: true, title: workspaceNavItem("diagnose", locale).name, group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/diagnose" : "/diagnose", kind: locale === "en" ? "Diagnose" : "진단", hint: locale === "en" ? "Find the likely cause and check order in three questions" : "3문항으로 원인과 확인 순서 찾기", searchText: locale === "en" ? "diagnose performance issue cause check order CPA CPI ROAS three questions" : "성과 문제 진단 원인 확인 순서 CPA CPI ROAS 세 문항 3문항" },
+      { key: "review", head: true, title: workspaceNavItem("review", locale).name, group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/weekly-review" : "/weekly-review", kind: locale === "en" ? "Review" : "검토", hint: workspaceNavItem("review", locale).desc, searchText: locale === "en" ? "past decisions review inbox weekly outcome check what happened" : "지난 결정 결정 검토함 주간 검토 결과 확인 회고" },
+      { key: "calculator", head: true, title: locale === "en" ? "Marketing metric calculators" : "마케팅 지표 계산기", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/calculator" : "/calculator", kind: locale === "en" ? "Calculate" : "계산", hint: locale === "en" ? "Calculate target CPA, ROAS, and A/B sample size" : "목표 CPA·ROAS·A/B 표본수 계산", searchText: locale === "en" ? "marketing metric calculator target CPA ROAS AB sample size" : "마케팅 지표 계산기 목표 CPA ROAS AB A/B 표본수" },
       { key: "blog", title: locale === "en" ? "Performance marketing blog" : "퍼포먼스 마케팅 블로그", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/blog" : "/blog", kind: locale === "en" ? "Blog" : "블로그" },
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
       { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
@@ -131,7 +134,11 @@ export default function GlobalModals({ locale = "ko" }) {
     };
     const analyses = items.filter((entry) => entry.kind === (locale === "en" ? "Analysis" : "분석"));
     const guides = items.filter((entry) => !analyses.includes(entry));
-    return [...workspace.slice(0, 3), ...(analystMode ? [growthOps] : []), ...analyses, ...workspace.slice(3), ...guides, setting].map((entry) => ({
+    // 손으로 적은 slice(0,3)은 워크스페이스에 항목이 하나 늘자마자 계산기를
+    // 도구 밑으로 밀어냈다 — 경계는 위치가 아니라 표시(head)로 정한다.
+    const workspaceHead = workspace.filter((entry) => entry.head);
+    const workspaceRest = workspace.filter((entry) => !entry.head);
+    return [...workspaceHead, ...(analystMode ? [growthOps] : []), ...analyses, ...workspaceRest, ...guides, setting].map((entry) => ({
       ...entry,
       hint: entry.hint || entry.group,
       searchText: entry.searchText || `${entry.title} ${entry.group} ${entry.kind}`,
@@ -199,7 +206,7 @@ export default function GlobalModals({ locale = "ko" }) {
         <div className="cmdk-inputwrap"><span aria-hidden>⌕</span><input ref={inputRef} id="cmdk-input" type="search" role="combobox" aria-label={T.placeholder} aria-autocomplete="list" aria-expanded="true" aria-controls="cmdk-results" aria-activedescendant={results[selected] ? `cmdk-option-${results[selected].key}` : undefined} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={onInputKey} placeholder={T.placeholder} autoComplete="off" spellCheck="false" /><button type="button" onClick={() => setCmdkOpen(false)} aria-label={T.close} style={{ minWidth: "44px", minHeight: "44px" }}>ESC</button></div>
         <div id="cmdk-results" className="cmdk-results" role={results.length ? "listbox" : undefined} aria-label={T.pages}>
           {results.map((entry, index) => <button id={`cmdk-option-${entry.key}`} key={entry.key} type="button" role="option" aria-selected={selected === index} className={`cmdk-item${selected === index ? " sel" : ""}`} onMouseEnter={() => setSelected(index)} onClick={() => open(entry)}><span className="cmdk-ico">{entry.kind.slice(0,1)}</span><span className="cmdk-l"><b>{entry.title}</b><small>{entry.hint}</small></span><span className="cmdk-tier">{entry.kind}</span></button>)}
-          {results.length === 0 && <div className="cmdk-empty"><strong>{T.empty}</strong><p>{T.emptyHint}</p><div className="cmdk-empty__actions"><button type="button" onClick={() => open(entries.find((entry) => entry.key === "start"))}>{T.emptyStart}</button><button type="button" onClick={() => open(entries.find((entry) => entry.key === "diagnose"))}>{T.emptyDiagnose}</button></div></div>}
+          {results.length === 0 && <div className="cmdk-empty"><strong>{T.empty}</strong><p>{T.emptyHint}</p><div className="cmdk-empty__actions"><button type="button" onClick={() => open(entries.find((entry) => entry.key === "start"))}>{workspaceNavItem("start", locale).name}</button><button type="button" onClick={() => open(entries.find((entry) => entry.key === "diagnose"))}>{workspaceNavItem("diagnose", locale).name}</button></div></div>}
         </div>
         <div className="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> {T.move}</span><span><kbd>↵</kbd> {T.run}</span><span><kbd>esc</kbd> {T.close}</span></div>
       </div>

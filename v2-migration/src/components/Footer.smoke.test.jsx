@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import Footer from "@/components/Footer";
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 let pathname = "/";
 vi.mock("next/navigation", () => ({
@@ -17,7 +18,7 @@ describe("Footer localized policy links", () => {
     expect(screen.getByRole("link", { name: "개인정보처리방침" }).getAttribute("href")).toBe("/privacy");
     expect(screen.getByRole("link", { name: "이용약관" }).getAttribute("href")).toBe("/terms");
     expect(screen.getByRole("link", { name: "문의하기" }).getAttribute("href")).toBe("/contact");
-    expect(screen.getByRole("link", { name: "결정 검토함" }).getAttribute("href")).toBe("/weekly-review");
+    expect(screen.getByRole("link", { name: workspaceNavItem("review").name }).getAttribute("href")).toBe("/weekly-review");
   });
 
   it("links English visitors to English policy and contact pages", () => {
@@ -26,7 +27,7 @@ describe("Footer localized policy links", () => {
     expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/en/privacy");
     expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/en/terms");
     expect(screen.getByRole("link", { name: "Contact" }).getAttribute("href")).toBe("/en/contact");
-    expect(screen.getByRole("link", { name: "Decision inbox" }).getAttribute("href")).toBe("/en/weekly-review");
+    expect(screen.getByRole("link", { name: workspaceNavItem("review", "en").name }).getAttribute("href")).toBe("/en/weekly-review");
   });
 
   // 분석 화면은 전체 푸터를 숨기지만, CSV를 올리는 화면이 곧 신뢰 판단 지점이라
