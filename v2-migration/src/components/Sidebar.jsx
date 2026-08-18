@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort, findMeta } from "@/store/useDataStore";
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
+import { localizedHref } from "@/lib/localizedHref";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
@@ -27,7 +28,7 @@ const SIDEBAR_COPY = {
     naverBlog: "네이버 블로그",
     resourceLabel: "LIBRARY",
     workspaceLabel: "DECISION WORKSPACE",
-    allTools: "전체 도구",
+    allTools: "할 수 있는 분석 전체 →",
     today: "오늘의 질문",
     todayDesc: "지금 확인할 변화와 다음 행동",
     review: "결정 검토함",
@@ -56,7 +57,7 @@ const SIDEBAR_COPY = {
     facebook: "Facebook",
     naverBlog: "Naver Blog",
     workspaceLabel: "DECISION WORKSPACE",
-    allTools: "All tools",
+    allTools: "Every analysis →",
     today: "Today’s question",
     todayDesc: "See the current signal and next action",
     review: "Decision inbox",
@@ -185,7 +186,9 @@ export default function Sidebar({ locale = "ko" }) {
       </nav>
       <div className="inner-workspace-label">
         <span>{T.workspaceLabel}</span>
-        <b>{T.allTools}</b>
+        {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
+            무관하게 전체 목록으로 가는 길을 상시 노출한다. */}
+        <Link className="inner-workspace-label__all" href={localizedHref("/start", locale)}>{T.allTools}</Link>
       </div>
       <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder} aria-haspopup="dialog" aria-controls="cmdk" aria-expanded={isCmdkOpen}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

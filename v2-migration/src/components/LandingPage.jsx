@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
+import ToolIndex from "@/components/ds/ToolIndex";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
@@ -58,6 +59,9 @@ const COPY = {
       { id: "9-6", label: "CREATIVE ACTION", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위를 정리합니다." },
       { id: "5-24", label: "BRAND LIFT", title: "브랜딩 성과가 실제로 있었을까?", desc: "브랜드 검색·직접 유입의 증가분을 데이터 준비 수준에 맞춰 추정합니다." },
     ],
+    catalogEyebrow: "ALL ANALYSES",
+    catalogTitle: "할 수 있는 분석 전체",
+    catalogDeck: "판단 단계별로 묶었습니다. 이름을 몰라도 질문으로 찾을 수 있어요.",
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
     libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
@@ -114,6 +118,9 @@ const COPY = {
       { id: "9-6", label: "CREATIVE ACTION", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps." },
       { id: "5-24", label: "BRAND LIFT", title: "Did branding create real lift?", desc: "Estimate lift in brand search and direct traffic with the strongest design your data supports." },
     ],
+    catalogEyebrow: "ALL ANALYSES",
+    catalogTitle: "Every analysis you can run",
+    catalogDeck: "Grouped by the decision each one supports — find it by the question, not the name.",
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "Build evidence for the next decision.",
     libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
@@ -317,6 +324,19 @@ export default function LandingPage({ locale = "ko" }) {
       <div id="workflow">
         <ConnectedToolJourney locale={lang} />
       </div>
+
+      {/* 홈에서 이름이 보이는 도구가 4개뿐이었다. 나머지는 사이드바를 열어야만
+          존재를 알 수 있었다 — 압축 밀도로 전부 편다. */}
+      <section className="dc-catalog" id="catalog" aria-labelledby="dc-catalog-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.catalogEyebrow}</div>
+            <h2 id="dc-catalog-title">{T.catalogTitle}</h2>
+          </div>
+          <p>{T.catalogDeck}</p>
+        </header>
+        <ToolIndex locale={lang} density="compact" headingLevel={3} />
+      </section>
 
       <section className="dc-library" id="library" aria-labelledby="dc-library-title">
         <header className="dc-section-head">

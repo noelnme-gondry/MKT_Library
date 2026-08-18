@@ -3,6 +3,7 @@ import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates
 export const STANDARD_FIELDS = {
               date: {
                 label: "날짜",
+                labelEn: "Date",
                 aliases: ["dt", "날짜", "일자", "event_date", "day"],
                 type: "date",
                 required: true,
@@ -24,6 +25,7 @@ export const STANDARD_FIELDS = {
               },
               channel: {
                 label: "채널/매체",
+                labelEn: "Channel",
                 aliases: ["network", "source", "media", "매체", "채널"],
                 type: "string",
                 required: false,
@@ -32,6 +34,7 @@ export const STANDARD_FIELDS = {
               },
               campaign_name: {
                 label: "캠페인명",
+                labelEn: "Campaign",
                 aliases: ["campaign", "캠페인", "캠페인명"],
                 type: "string",
                 required: false,
@@ -47,6 +50,7 @@ export const STANDARD_FIELDS = {
               },
               search_term: {
                 label: "검색어(ASA)",
+                labelEn: "Search term (ASA)",
                 aliases: ["search term", "search_term", "searchterm", "keyword text", "검색어", "검색어구문", "키워드"],
                 type: "string",
                 required: false,
@@ -112,6 +116,7 @@ export const STANDARD_FIELDS = {
               },
               cost: {
                 label: "비용",
+                labelEn: "Spend",
                 aliases: ["spend", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
                 type: "number",
                 required: true,
@@ -119,6 +124,7 @@ export const STANDARD_FIELDS = {
               },
               impressions: {
                 label: "노출수",
+                labelEn: "Impressions",
                 aliases: ["imp", "impression", "노출", "노출수"],
                 type: "number",
                 required: false,
@@ -126,6 +132,7 @@ export const STANDARD_FIELDS = {
               },
               clicks: {
                 label: "클릭수",
+                labelEn: "Clicks",
                 aliases: ["click", "클릭", "클릭수"],
                 type: "number",
                 required: false,
@@ -152,6 +159,7 @@ export const STANDARD_FIELDS = {
                 // `source`(광고/오가닉)와 다른 축이다 — 같은 키를 쓰면 매핑 화면 라벨이
                 // 어긋나고, organic/paid 값 어휘로는 스토어 소스 값을 잡지 못한다.
                 label: "유입 소스 (스토어)",
+                labelEn: "Traffic source (store)",
                 aliases: [
                   "source_type", "source type", "소스유형", "소스 유형",
                   "traffic_source", "traffic source", "트래픽소스", "트래픽 소스",
@@ -170,6 +178,7 @@ export const STANDARD_FIELDS = {
               },
               product_page_views: {
                 label: "제품 페이지 조회",
+                labelEn: "Product page views",
                 aliases: ["product_page_views", "product page views", "page_views", "store_listing_visitors", "listing_visitors", "제품페이지조회", "제품 페이지 조회", "스토어조회", "페이지조회"],
                 type: "number",
                 required: false,
@@ -177,6 +186,7 @@ export const STANDARD_FIELDS = {
               },
               installs: {
                 label: "설치수",
+                labelEn: "Installs",
                 aliases: [
                   "install", "설치", "설치수", "inst",
                   // 스토어 콘솔 export 실제 컬럼명 — 없으면 5-27이 설치 열을 못 잡는다.
@@ -191,6 +201,7 @@ export const STANDARD_FIELDS = {
               },
               actions: {
                 label: "액션/가입 수",
+                labelEn: "Actions / signups",
                 aliases: [
                   "action",
                   "actions",
@@ -217,6 +228,7 @@ export const STANDARD_FIELDS = {
               },
               brand_search: {
                 label: "브랜드 검색량",
+                labelEn: "Brand search volume",
                 aliases: ["brand_search", "branded_search", "brand search", "브랜드검색", "브랜드 검색", "브랜드키워드", "branded queries"],
                 type: "number",
                 required: false,
@@ -225,6 +237,7 @@ export const STANDARD_FIELDS = {
               },
               direct_traffic: {
                 label: "직접 유입",
+                labelEn: "Direct traffic",
                 aliases: ["direct_traffic", "direct traffic", "direct_sessions", "direct sessions", "직접유입", "직접 유입", "다이렉트유입"],
                 type: "number",
                 required: false,
@@ -512,6 +525,7 @@ export const STANDARD_FIELDS = {
               // === Creative Analyzer 전용 (5-6) ===
               creative_id: {
                 label: "소재ID",
+                labelEn: "Creative ID",
                 aliases: [
                   "creative",
                   "creative id",
@@ -557,6 +571,7 @@ export const STANDARD_FIELDS = {
               },
               spend: {
                 label: "비용(Creative)",
+                labelEn: "Spend (creative)",
                 aliases: ["광고비", "spend", "creative spend", "cost", "비용"],
                 type: "number",
                 required: false,
@@ -676,6 +691,7 @@ export const STANDARD_FIELDS = {
               },
               is_control: {
                 label: "대조군 여부 (A/B)",
+                labelEn: "Control flag (A/B)",
                 aliases: ["control", "is control", "is_control", "대조군여부", "대조군"],
                 type: "string",
                 required: false,
@@ -697,6 +713,7 @@ export const STANDARD_FIELDS = {
               },
               numerator: {
                 label: "전환수 (분자)",
+                labelEn: "Conversions (numerator)",
                 aliases: ["num", "numerator", "conversions", "conv", "성공수", "전환수", "전환"],
                 type: "number",
                 required: false,
@@ -704,6 +721,7 @@ export const STANDARD_FIELDS = {
               },
               denominator: {
                 label: "그룹 인원·모수 (분모)",
+                labelEn: "Sample size (denominator)",
                 aliases: ["den", "denominator", "users", "exposures", "group_size", "전체수", "노출수", "인원", "모수"],
                 type: "number",
                 required: false,
@@ -955,6 +973,7 @@ export const STANDARD_FIELDS = {
               },
               mmm_reg: {
                 label: "가입(Reg)",
+                labelEn: "Registrations",
                 aliases: ["Regs", "reg", "registrations", "가입"],
                 type: "number",
                 required: false,
@@ -962,6 +981,7 @@ export const STANDARD_FIELDS = {
               },
               mmm_react: {
                 label: "재활성(React)",
+                labelEn: "Reactivations",
                 aliases: ["React", "reactivation", "재활성"],
                 type: "number",
                 required: false,
@@ -969,6 +989,7 @@ export const STANDARD_FIELDS = {
               },
               ch_google_roi: {
                 label: "Spend Google ROI",
+                labelEn: "Spend Google ROI",
                 aliases: ["G_ROI", "google_roi", "g_roi"],
                 type: "number",
                 required: false,
@@ -976,6 +997,7 @@ export const STANDARD_FIELDS = {
               },
               ch_google_cbua: {
                 label: "Spend Google CBUA",
+                labelEn: "Spend Google CBUA",
                 aliases: ["G_CBUA", "google_cbua", "g_cbua"],
                 type: "number",
                 required: false,
@@ -983,6 +1005,7 @@ export const STANDARD_FIELDS = {
               },
               ch_meta: {
                 label: "Spend Meta",
+                labelEn: "Spend Meta",
                 aliases: ["Meta", "meta", "facebook"],
                 type: "number",
                 required: false,
@@ -990,6 +1013,7 @@ export const STANDARD_FIELDS = {
               },
               ch_tiktok: {
                 label: "Spend TikTok",
+                labelEn: "Spend TikTok",
                 aliases: ["TT", "tiktok", "tt"],
                 type: "number",
                 required: false,
@@ -997,6 +1021,7 @@ export const STANDARD_FIELDS = {
               },
               ch_brand: {
                 label: "Spend Brand",
+                labelEn: "Spend Brand",
                 aliases: ["Brand", "brand", "브랜드"],
                 type: "number",
                 required: false,

@@ -1,5 +1,7 @@
 "use client";
 import React, { useId } from "react";
+import ToolBrief from "@/components/ds/ToolBrief";
+import { toolIndexEntry } from "@/lib/toolIndex";
 
 /**
  * ToolPageShell — 5-x 분석 도구 공용 레이아웃 래퍼.
@@ -19,15 +21,19 @@ const COPY = {
 
 export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleLevel = 1 }) {
   const T = COPY[locale] || COPY.ko;
+  // 도구 이름의 SSOT는 스토어 IA다. 컴포넌트가 제목을 직접 넘기면 리네임 때
+  // 두 곳이 갈린다 — toolId가 있으면 레지스트리 이름이 이긴다.
+  const registered = toolId ? toolIndexEntry(toolId, locale) : null;
+  const resolvedTitle = registered?.name || title;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
   const titleId = useId();
   const TitleTag = titleLevel === 2 ? "h2" : "h1";
-  const hasTitle = Boolean(title && titleLevel !== 0);
+  const hasTitle = Boolean(resolvedTitle && titleLevel !== 0);
   const hasHeader = hasTitle || Boolean(chips) || Boolean(stickyFilter);
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof title === "string" ? titleId : undefined}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={hasTitle && typeof resolvedTitle === "string" ? titleId : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
@@ -37,13 +43,15 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
             {hasTitle && (
               <div className="tool-instrument-header__heading">
                 <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
-                <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</TitleTag>
+                <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{resolvedTitle}</TitleTag>
               </div>
             )}
             {chips && <div className="tool-instrument-header__status">{chips}</div>}
           </div>
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
         </header>}
+
+        {toolId && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && (
