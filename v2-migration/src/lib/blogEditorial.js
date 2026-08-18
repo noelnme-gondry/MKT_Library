@@ -44,6 +44,9 @@ const KO_ANSWERS = {
   "retargeting-reengagement-guide": "리타겟팅은 이미 우리를 아는 사람이 대상이라 CPA가 낮게 나오므로 신규 획득(UA)과 반드시 분리해야 합니다. 신규 CPA 30,000원과 리타겟팅 CPA 6,000원을 합쳐 18,000원으로 보면 어느 캠페인의 현실도 아닌 숫자가 나오고, 실제 증분은 오디언스의 5~10%를 홀드아웃으로 빼봐야 알 수 있습니다.",
   "roas-improvement": "ROAS가 떨어졌을 때 예산부터 줄이면 원인을 못 찾습니다 — 전체 ROAS가 300%여도 채널마다 편차가 크기 때문입니다. 데이터 성숙도와 채널별 효율, 전환 이후 객단가를 먼저 나눠 보고, 재배분은 '좋아 보이는 곳에 몰기'가 아니라 다음 1원이 어디서 더 나은 결과를 만들지로 판단하세요.",
   "uplift-holdout-guide": "업리프트는 광고를 본 그룹과 홀드아웃 그룹의 전환율 차이입니다 — 노출군 8%, 홀드아웃 5%면 업리프트는 3%p입니다. 무작위 배정이 아니거나 두 그룹의 기간·대상이 다르면 이 차이를 광고 효과로 볼 수 없고, 구간이 0을 걸치면 '효과 없음'이 아니라 '아직 구분 안 됨'으로 읽어야 합니다.",
+  "skan4-migration-guide": "SKAN 4 전환은 첫 창(0~2일) 컨버전 밸류 스키마부터 확정하고, 그다음 캠페인 구조를 iOS 기준으로 합친 뒤, 창 2·3은 필요해질 때 붙이는 순서가 안전합니다. 창 2·3은 low·medium·high 세 단계뿐이라 나중에 붙여도 손실이 적지만, 첫 창 매핑을 바꾸면 그 전후 데이터 비교가 끊깁니다.",
+  "skan-conversion-value-schema": "SKAN 컨버전 밸류는 6비트 64칸이고, 담고 싶은 걸 다 넣으면 칸당 볼륨이 무너집니다. 하루 설치 500건을 64칸으로 쪼개면 칸당 평균 8건이라 노이즈가 신호를 덮으므로, '이 값이 달라지면 다른 행동을 하는가'를 기준으로 판단이 갈리는 지점만 나누세요.",
+  "skan-vs-mmp-attribution": "SKAN 어트리뷰션과 MMP 숫자는 원래 안 맞습니다 — 집계 단위(캠페인 vs 유저), 도착 시점(무작위 지연 vs 실시간), ATT 거부 유저 포함 여부가 다르기 때문입니다. 합치려 하지 말고 유저 단위 분석은 MMP, iOS 캠페인 간 비교는 SKAN, 실제 기여는 증분 분석으로 나누세요.",
 };
 
 const EN_ANSWERS = {
@@ -90,6 +93,9 @@ const EN_ANSWERS = {
   "retargeting-reengagement-guide": "Retargeting reaches people who already know you, so its CPA reads low and it must be separated from new-user acquisition. Blending $30 acquisition CPA with $6 retargeting CPA produces $18 — a number describing neither campaign — and the real lift only becomes visible when you hold out 5–10% of the audience.",
   "roas-improvement": "Cutting budget first when ROAS falls hides the cause, because blended 300% ROAS can sit on top of very different per-channel results. Separate data maturity, per-channel efficiency, and post-conversion order value first, and reallocate by asking where the next dollar performs better rather than piling into whatever looks best.",
   "uplift-holdout-guide": "Uplift is the conversion-rate gap between an exposed group and a holdout — 8% exposed against 5% held out is 3pp of uplift. Without random assignment, or when the two groups differ in period or audience, that gap is not ad effect, and an interval crossing zero means 'not yet distinguishable', not 'no effect'.",
+  "skan4-migration-guide": "SKAN 4 migration is safest in this order: lock the first window (days 0–2) conversion-value schema, consolidate campaign structure for iOS, then add windows 2 and 3 when you need them. The later windows return only low, medium, or high, so adding them late costs little — but remapping the first window breaks comparison across the change.",
+  "skan-conversion-value-schema": "The SKAN conversion value is six bits — 64 slots — and encoding everything collapses volume per slot. Splitting 500 daily installs across 64 slots averages eight each, where noise buries signal, so split only where the value changes what you would actually do.",
+  "skan-vs-mmp-attribution": "SKAN attribution and MMP numbers are supposed to disagree: they differ in unit (campaign versus user), arrival (randomised delay versus real time), and whether ATT-declined users are included. Rather than reconciling them, use the MMP for user-level analysis, SKAN for comparing iOS campaigns, and incrementality for actual contribution.",
 };
 
 const CONDITION_GROUP_BY_SLUG = {
@@ -110,6 +116,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "ai-era-marketer": "editorial", "performance-marketer-skills": "editorial",
   "roas-improvement": "economics",
   "uplift-holdout-guide": "causal",
+  "skan4-migration-guide": "measurement", "skan-conversion-value-schema": "measurement", "skan-vs-mmp-attribution": "measurement",
 };
 
 const CONDITIONS = {

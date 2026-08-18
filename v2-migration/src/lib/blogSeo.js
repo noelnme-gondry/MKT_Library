@@ -43,6 +43,9 @@ const KO_TITLES = {
   "retargeting-reengagement-guide": "리타겟팅 성과가 좋아 보이는 이유: UA 혼입 진단",
   "roas-improvement": "ROAS 개선 방법: 낮아졌을 때 예산보다 먼저 볼 4가지",
   "uplift-holdout-guide": "광고 업리프트 측정법: 홀드아웃 테스트로 순수 증가분 읽는 법",
+  "skan4-migration-guide": "SKAN 4 전환 실무: 창 3개를 어떤 순서로 켜나",
+  "skan-conversion-value-schema": "SKAN 컨버전 밸류 설계: 64칸에 뭘 담을까",
+  "skan-vs-mmp-attribution": "SKAN 어트리뷰션과 MMP 숫자가 다른 이유",
 };
 
 const EN_TITLES = {
@@ -88,6 +91,9 @@ const EN_TITLES = {
   "roas-improvement": "How to Improve ROAS: Four Checks Before Cutting Budget",
   "uplift-holdout-guide": "Advertising Uplift: Measure Net Lift With a Holdout Test",
   "ltv-cac-ratio": "LTV:CAC Ratio Explained: How to Calculate It Correctly",
+  "skan4-migration-guide": "SKAN 4 Migration: Which Window to Turn On First",
+  "skan-conversion-value-schema": "SKAN Conversion Value: What Fits in 64 Slots",
+  "skan-vs-mmp-attribution": "Why SKAN Attribution and MMP Numbers Disagree",
 };
 
 const TITLES = { ko: KO_TITLES, en: EN_TITLES };

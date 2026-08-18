@@ -46,6 +46,9 @@ export const EN_BLOG_SLUGS = new Set([
   "retargeting-reengagement-guide",
   "roas-improvement",
   "uplift-holdout-guide",
+  "skan4-migration-guide",
+  "skan-conversion-value-schema",
+  "skan-vs-mmp-attribution",
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([

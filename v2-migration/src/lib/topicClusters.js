@@ -68,6 +68,9 @@ export const TOPIC_CLUSTERS = [
       "ga4-data-traps",
       "ios-att-skan-guide",
       "postback-integration-guide",
+      "skan-conversion-value-schema",
+      "skan-vs-mmp-attribution",
+      "skan4-migration-guide",
     ],
   },
   {

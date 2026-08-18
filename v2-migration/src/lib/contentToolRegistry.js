@@ -44,6 +44,9 @@ const BLOG_PRIMARY_TOOL = {
   "retargeting-reengagement-guide": "5-22",
   "roas-improvement": "5-3",
   "uplift-holdout-guide": "5-23",
+  "skan4-migration-guide": "5-2",
+  "skan-conversion-value-schema": "5-2",
+  "skan-vs-mmp-attribution": "5-23",
 };
 
 const GLOSSARY_PRIMARY_TOOL = {
@@ -154,6 +157,9 @@ const BLOG_RELATED_GLOSSARY = {
   "retargeting-reengagement-guide": ["cpm", "cvr"],
   "roas-improvement": ["roas", "marginal-cpa", "response-curve"],
   "uplift-holdout-guide": ["uplift", "holdout-test", "incrementality"],
+  "skan4-migration-guide": ["skan", "conversion-value", "crowd-anonymity"],
+  "skan-conversion-value-schema": ["conversion-value", "skan", "crowd-anonymity"],
+  "skan-vs-mmp-attribution": ["skan", "mmp", "attribution-window"],
 };
 
 export function primaryToolForContent(slug, type = "blog") {
