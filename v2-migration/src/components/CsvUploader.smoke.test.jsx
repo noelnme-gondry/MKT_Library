@@ -44,11 +44,26 @@ describe("CsvUploader render smoke", () => {
     delete window.gtag;
     seedNoData();
   });
-  it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
-    // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드 — 빈 드롭존 대신 즉시 매핑그리드/결과.
+  it("no-data는 업로드 화면 — 데모를 자동으로 켜지 않는다", () => {
+    // 예전에는 진입 즉시 샘플 분석이 떠서 "내 데이터를 올리는 곳"이 가려졌다.
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
-    expect(document.querySelector(".mapping-grid")).toBeTruthy();
-    expect(document.querySelector(".csv-dropzone")).toBeFalsy();
+    expect(document.querySelector(".csv-dropzone")).toBeTruthy();
+    expect(document.querySelector(".mapping-grid")).toBeFalsy();
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("");
+  });
+
+  it("예시 버튼이 눈에 띄는 자리에 있고 누르면 그때 로드된다", () => {
+    render(<CsvUploader toolId="5-2" />);
+    const demo = document.querySelector(".csv-entry-actions__demo");
+    expect(demo).toBeTruthy();
+    fireEvent.click(demo);
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
+  });
+
+  it("/start 업로드 화면에는 도구용 예시 버튼을 두지 않는다", () => {
+    // 여긴 "내 파일로 시작"이 목적이라 예시 버튼이 목적과 충돌한다.
+    render(<CsvUploader toolId="start-gate" />);
+    expect(document.querySelector(".csv-entry-actions__demo")).toBeFalsy();
   });
   it("with-data mounts (mapping grid)", () => {
     seedWithData();

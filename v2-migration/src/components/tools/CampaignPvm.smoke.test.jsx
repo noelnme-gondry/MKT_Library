@@ -113,10 +113,11 @@ function overflowSlice() {
 describe("CampaignPvm render smoke", () => {
   beforeEach(() => seedNoData());
 
-  it("mounts without throwing in the no-data state (auto-loads demo)", () => {
+  it("mounts without throwing in the no-data state (upload screen)", () => {
+    // 데모 자동로드를 없앴으므로 no-data는 업로드/데이터 준비 화면이 정상이다.
     expect(() => render(<CampaignPvm />)).not.toThrow();
     // No-data → CsvUploader auto-loads sample data, replacing the uploader-prep block.
-    expect(screen.queryByRole("heading", { name: "데이터 준비" })).toBeFalsy();
+    expect(screen.queryByRole("heading", { name: "데이터 준비" })).toBeTruthy();
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {

@@ -60,6 +60,8 @@ export function toolIndexEntry(toolId, locale = "ko") {
     name: (locale === "en" ? trItemTitle(toolId, locale, meta?.titleEn || meta?.title) : meta?.title) || toolId,
     question: content.question || "",
     answer: content.answer || "",
+    // 이 도구를 열면 실제로 화면에 나오는 것 3가지. 짧은 이름이 못 말하는 부분을 메운다.
+    outputs: Array.isArray(content.outputs) ? content.outputs : [],
     needs: requiredLabels(toolId, locale),
   };
 }

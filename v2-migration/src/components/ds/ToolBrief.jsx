@@ -20,6 +20,11 @@ export default function ToolBrief({ toolId, locale = "ko" }) {
     <section className="tool-brief" aria-label={locale === "en" ? "What this tool does" : "이 도구가 하는 일"}>
       {entry.question && <p className="tool-brief__q">{entry.question}</p>}
       {entry.answer && <p className="tool-brief__a">{entry.answer}</p>}
+      {entry.outputs.length > 0 && (
+        <ul className="tool-brief__outputs">
+          {entry.outputs.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      )}
       {entry.needs.length > 0 && (
         <p className="tool-brief__needs">
           <span className="tool-brief__needs-label">{locale === "en" ? "Needs" : "필요한 데이터"}</span>

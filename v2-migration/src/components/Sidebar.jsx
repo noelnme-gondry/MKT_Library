@@ -217,7 +217,7 @@ export default function Sidebar({ locale = "ko" }) {
           <small aria-hidden="true">{dueDecisionCount || "WEEK"}</small>
         </Link>
       </nav>
-      <div className="inner-workspace-label">
+      <div className="inner-workspace-label inner-workspace-label--stacked">
         <span>{T.workspaceLabel}</span>
         {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
             무관하게 전체 목록으로 가는 길을 상시 노출한다. */}
@@ -280,13 +280,12 @@ export default function Sidebar({ locale = "ko" }) {
                     {TOOL_JOURNEY.map((stage, stageIndex) => {
                       const hasActive = stage.tools.includes(currentRouteId);
                       const stageKey = `journey-${stage.id}`;
-                      // 여정 스테이지는 기본 펼침. 예전에는 활성 스테이지만 펼쳐져
-                      // "무엇을 할 수 있는지" 보려면 다섯 번 열어야 했다 — 그게 곧
-                      // "사이드바를 열어보기 불편하다"의 정체였다. 접는 건 사용자가
-                      // 명시적으로 눌렀을 때만.
+                      // 활성 스테이지만 펼친다. 발견("무엇을 할 수 있나")은 이제 홈과
+                      // /start의 인덱스가 맡으므로, 사이드바까지 17개를 펴면 세션 중
+                      // 이동용 내비가 벽이 된다(CSV 올린 화면에서 특히).
                       const isGroupCollapsed = collapsedGroups[stageKey] !== undefined
                         ? collapsedGroups[stageKey]
-                        : false;
+                        : !hasActive;
                       return (
                         <div key={stage.id} className={`nav-group sidebar-workflow-stage ${isGroupCollapsed ? "collapsed" : ""}`} data-stage={stage.id}>
                           <button

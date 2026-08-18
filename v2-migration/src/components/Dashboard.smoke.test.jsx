@@ -69,11 +69,10 @@ describe("Dashboard render smoke", () => {
     seedNoData();
   });
 
-  it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
+  it("no-data mounts with the upload screen (no auto demo)", () => {
+    // 데모 자동로드를 없앴다 — 진입 즉시 샘플 결과가 뜨지 않는다.
     expect(() => render(<Dashboard />)).not.toThrow();
-    expect(document.querySelector(".mapping-grid")).toBeTruthy();
-    expect(document.querySelector(".csv-dropzone")).toBeFalsy();
-    expect(document.querySelector("#dashboard-demo-source")).toBeTruthy();
+    expect(document.querySelector(".csv-dropzone")).toBeTruthy();
     expect(document.querySelector(".decision-review")).toBeNull();
     expect(screen.queryByRole("button", { name: "검토 약속 만들기" })).toBeNull();
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);

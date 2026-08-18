@@ -9411,4 +9411,55 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .dc-questions .tool-index { columns: 1; }
 }
 
+
+/* 접힘 모드 — 17개를 다 펴면 길고, 다 접으면 무엇이 있는지 안 보인다.
+   그룹 헤더 5줄에 개수를 적어 "17개가 5갈래에 있다"를 먼저 말하고, 필요한
+   갈래만 편다. native <details>라 키보드·보조기술이 그냥 따라온다. */
+.tool-index__stage--fold { border-bottom: 1px solid var(--border-subtle); }
+.tool-index__stage--fold > .tool-index__stage-head {
+  cursor: pointer; list-style: none; user-select: none;
+  border-bottom: 0; padding: 9px 2px; margin: 0;
+}
+.tool-index__stage--fold > .tool-index__stage-head::-webkit-details-marker { display: none; }
+.tool-index__stage--fold > .tool-index__stage-head::after {
+  content: "+"; margin-left: auto; color: var(--text-muted);
+  font-size: 14px; line-height: 1; transition: transform .15s ease;
+}
+.tool-index__stage--fold[open] > .tool-index__stage-head::after { content: "−"; }
+.tool-index__stage--fold > .tool-index__stage-head:hover .tool-index__stage-title { color: var(--primary); }
+.tool-index__stage-count {
+  font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.tool-index__stage--fold > .tool-index__list { padding: 0 0 10px 22px; }
+
+
+/* 도구 브리프의 "볼 수 있는 것" — 이름이 짧아 못 말하는 부분을 결과물 3개로 메운다. */
+.tool-brief__outputs {
+  list-style: none; margin: 8px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.tool-brief__outputs li {
+  font-size: 12px; color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px;
+}
+
+
+/* 도구 진입 시 예시 버튼 — 예전에는 데모가 자동으로 떠서 "내 데이터를 올리는 곳"이
+   가려졌다. 이제 업로드가 기본이고, 예시는 눈에 띄지만 부차적인 자리에 둔다. */
+.csv-entry-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.csv-entry-actions__demo {
+  background: var(--bg-1); color: var(--primary);
+  border: 1px solid var(--primary); border-radius: 8px;
+  padding: 9px 16px; font-size: 13.5px; font-weight: 650; cursor: pointer;
+}
+.csv-entry-actions__demo:hover, .csv-entry-actions__demo:focus-visible {
+  background: var(--primary); color: var(--on-primary);
+}
+.csv-entry-actions__hint { font-size: 12.5px; color: var(--text-muted); }
+
+
+/* "DECISION WORKSPACE"와 전체 목록 링크가 한 줄에서 서로 밀어내며 겹쳤다.
+   두 줄로 쌓아 각자 온전히 읽히게 한다. */
+.inner-workspace-label--stacked { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+
 } /* @layer app 끝 */
