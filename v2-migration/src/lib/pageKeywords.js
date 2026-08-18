@@ -28,6 +28,7 @@ export const ITEM_KEYWORDS = {
   // 이 파일엔 테스트가 아예 없었다(감사 P1-9) — pageKeywords.test.js가 이제 강제한다.
   "5-24": "브랜드 캠페인 증분, 브랜드 검색량 분석, ITS 분석, 중단점 회귀, 브랜드 리프트 측정",
   "5-25": "다중공선성, VIF, 분산팽창지수, 채널 상관관계, MMM 사전 점검, 기여도 분리",
+  "5-27": "ASO, 앱스토어 최적화, 스토어 전환율, 제품 페이지 조회, 유입 소스별 전환, 스토어 퍼널, ASO 분석 도구",
   "5-26": "Apple Search Ads, ASA 키워드, Exact 승격, CPT 입찰 조정, 검색어 리포트, 앱스토어 검색광고",
   // 가이드도 항목 단위. GROUP_KEYWORDS만 있으면 같은 그룹의 3~4개 페이지가 제목만
   // 다르고 keywords·description이 통째로 같아져 서로 잡아먹는다(그룹 01은 4페이지가
@@ -66,6 +67,7 @@ export const ITEM_KEYWORDS_EN = {
   "9-1": "content element analysis, content performance contribution, content marketing analytics",
   "5-24": "brand campaign incrementality, brand search volume analysis, interrupted time series, ITS analysis, brand lift measurement",
   "5-25": "multicollinearity, VIF, variance inflation factor, channel correlation, MMM pre-check, contribution separability",
+  "5-27": "ASO, app store optimization, store conversion rate, product page views, conversion by traffic source, store funnel, ASO analysis tool",
   "5-26": "Apple Search Ads, ASA keywords, exact match promotion, CPT bid adjustment, search terms report, app store search ads",
   "1-1": "MMP SDK integration, technical PRD, deep link routing, mobile attribution QA",
   "1-2": "event taxonomy, in-app event spec, event naming convention, GA4 events, conversion parameters",

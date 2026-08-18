@@ -84,6 +84,7 @@ v2-migration/
 | 5-20 | 핵심 가치 발굴 (Aha-moment 윈도우×횟수 그리드) | 이벤트 CSV |
 | 5-25 | 다중공선성 점검 (채널 지출 VIF·상관 — MMM 전 진단) | 자체 CSV |
 | 5-26 | ASA 키워드 (Exact 승격·CPT 조정) | 자체 CSV |
+| 5-27 | ASO 스토어 전환 (퍼널·믹스 vs 효율 분해) | 스토어 콘솔 CSV |
 | 9-6 | 소재 분석 (지표·피로도·포레스트) | 소재 daily CSV |
 | 9-1 | 콘텐츠 요소 분석기 (요소별 성과 기여) | 콘텐츠 CSV |
 | 9-2·9-3·9-7 | 콘텐츠 Aha·트래픽 변동·운영 대시보드 (`hidden:true`) | 콘텐츠 CSV |
@@ -155,6 +156,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **CSV를 "쓰는" 라우트는 반드시 `TOOL_GROUP`에 등록**(PR #603→#604): 읽기(sticky `activeDataGroup`)와 쓰기(`groupForRoute`)가 다른 그룹을 고르면 재진입 시 미러가 빈 슬라이스를 가리켜 **방금 올린 CSV가 사라진다**. `TOOL_GROUP` 파생 상수(`TEMPLATE_FAMILY` 등)에 새 id가 딸려 들어가는지도 확인.
 - **그룹·라우트 목록을 두 곳에 나열하지 말 것 — 파생시켜라**(PR #608→#610): `TOOL_GROUP`엔 있는데 스토어 `csvGroups`엔 없던 그룹 하나가 미러를 `undefined`로 만들어 도구를 렌더 throw로 죽였다(5-24, 배포된 채 하루). 같은 사고가 `/start`에서도 났다(#604). 지금은 세 맵이 `buildGroupMap()` 파생 — **"한 곳에 추가하면 다른 곳도 고쳐야 한다"는 주석이 보이면 그게 곧 다음 버그다.** 파생이 불가능하면 최소한 정합 테스트를 둘 것.
 - **커버리지 가드가 손으로 쓴 배열을 돌면 가드가 아니다 — 그리고 고친 파일 옆에서 그대로 재발한다**: `toolOg.test.js`가 "every published tool"이라며 하드코딩 배열을 돌아 5-25·5-26을 놓쳤고(generic OG·빈 featureList 배포), 그 파일만 파생으로 고친 뒤 **옆의 `routeSeo.test.js`가 똑같은 형태로 똑같은 두 도구를 놓치고 있었다**(5-26 KO 32자·EN 69자가 한도 30·60을 넘긴 채 통과). 파생(`ROUTES.filter(isRouteIndexable)`)으로 바꾸자마자 검사된 적 없던 `guide-index`·`start-gate` 설명 초과 2건이 추가로 나왔다. **교훈을 적용할 땐 같은 패턴의 파일을 전부 grep해서 한 번에 고칠 것** — 한 곳만 고치면 교훈이 기록됐다는 사실이 남은 구멍을 가린다. **가드가 있다는 사실이 가드가 없다는 사실을 가린다.** 같은 이유로 "완료" 문구도 하네스에 적기 전에 grep으로 셀 것(§12.27의 미채택 목록은 두 번 연속 낡은 채였다).
+- **테스트 안의 `foo?.()`는 검사를 조용히 삭제한다**(2026-08-18): 5-25 스모크가 없는 이름을 `useAppStore.getState().setAnalyzed?.("5-25", true)`로 불러(실제 이름은 `setGroupAnalyzed`) **분석 게이트를 통과한 적이 없었다** — 결과 표 자체가 안 그려지니 `if(계산 불가 문구) expect(∞ 없음)` 조건부 단언도 함께 무효화돼, "∞ 날조 금지" 가드가 아무것도 안 지키고 있었다. 프로덕션의 옵셔널 체이닝은 방어지만 **테스트에서는 실패를 통과로 바꾸는 스위치**다. 셋업이 상태를 바꿨다면 그 사실 자체를 단언하고(`expect(isGroupAnalyzed(id)).toBe(true)`), 조건부 `if` 안에 단언을 넣지 말 것.
 - **골든값은 출력에서 전체 자릿수로 복사할 것 — 눈으로 채우면 9번째 자리부터 틀린다**(2026-08-15): Fisher 참조값을 `.toFixed(10)` 출력만 보고 뒤 자릿수를 지어냈다가 테스트에 잡혔다. 참조는 **구현과 다른 경로**로 산출하고(BigInt 고정소수점·닫힌형·손계산) 전체 자릿수를 그대로 붙여넣을 것. 값이 안 맞을 때 tolerance부터 늘리면 그 순간 골든이 아니다.
 - **큰 정규화 상수를 그대로 두면 Lanczos 오차가 결과에 실린다**(같은 작업): 초기하 합에서 `logChoose(N,m)`은 모든 항에 공통이라 해석적으로 상쇄되는데, 계산해서 빼면 log값 ≈1800의 오차가 남아 정확값과 3e-11 어긋났다. **관측점 기준 상대 로그확률로 바꾸니 5e-16**(ΣP=1도 구성상 보장). 로그-스페이스 합산은 항상 상대값으로.
 - **같은 열에 다른 단위를 담으면서 이름을 안 바꾸면 그게 거짓 숫자다**(같은 작업): 로그 링크 계수의 지수는 오즈비가 아니라 발생률비(IRR)다. family를 바꿔 붙일 땐 열 이름·해석 문구·판정 방향을 함께 스왑할 것.
@@ -274,7 +276,9 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 ## 12. 자주 사용한 패턴 (Recipes)
 
 ### 12.1 새 분석 도구 추가
-1. store `IA`에 `{ id:"5-N", title, desc }` → 2. `routeMap.js`에 `{id, slug, component}` → 3. `PageClient` 디스패치(SOP 폴백 가드 확인) → 4. `TOOL_REQUIRED/OPTIONAL_FIELDS` 정의 → 5. `toolGroups.js`에 CSV 그룹 → 6. `utils/toolGuide.js:TOOL_GUIDE[id]` → 7. `demoData` 픽스처 → 8. 컴포넌트(`ds/*` 상속, §12.21) → 9. `sitemap.js` → 10. 골든+스모크 → PR.
+1. store `IA`에 `{ id:"5-N", title, desc }` → 2. `routeMap.js`에 `{id, slug, component}` → 3. `PageClient` 디스패치(SOP 폴백 가드 확인) → 4. `TOOL_REQUIRED/OPTIONAL_FIELDS` 정의 → 5. `toolGroups.js`에 CSV 그룹 → 6. `utils/toolGuide.js:TOOL_GUIDE[id]` → 7. `demoData` 픽스처 → 8. 컴포넌트(`ds/*` 상속, §12.21) → 9. `sitemap.js` → 10. 골든+**스모크** → PR.
+- **여기 적힌 10단계는 최소집합이지 전부가 아니다**(5-27에서 실측: 실제 배선 25곳). 레시피를 따라 쓴 뒤 **형제 도구 id를 grep**(`grep -rn "5-26" src/`)해서 나온 파일을 전부 채울 것 — 가드 테스트가 그중 10곳을 뒤늦게 잡아냈다.
+- **새 도구 스모크는 선택이 아니다**: 5-27은 없는 export(`fmtPercent`)를 import한 채 `test:all` 2074개를 전부 통과하고 `next build`에서야 걸렸다. 골든은 순수함수만 본다(§7).
 
 ### 12.2 새 통계 함수
 `*Math.js` 모듈에 순수 함수 추가 → 합성 데이터 골든 1개+ → `npm run test:all` 통과 후 commit.
@@ -468,8 +472,8 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **253파일·2058 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
-- ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent`(질문·답·FAQ) + FAQPage·BreadcrumbList + 도구/글/용어 아웃바운드. 이전에는 그룹 desc 폴백으로 같은 그룹끼리 설명이 겹치고 아웃바운드가 0건이었다.
+- ✅ 검증 하네스: `npm run test:all` **255파일·2077 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep(§12.27에 실측일 기재).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.

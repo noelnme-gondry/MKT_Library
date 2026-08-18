@@ -88,6 +88,35 @@ function buildEfficiency() {
   return { raw, headers, mapping, fileName: "demo_efficiency.csv" };
 }
 
+// ── aso_store (5-27) ───────────────────────────────────────────────────────
+// 후반 3주에 Browse 비중을 크게 올리되 소스별 전환율은 거의 유지한다. 그래서
+// 전체 전환율은 눈에 띄게 떨어지지만 원인은 페이지가 아니라 트래픽 구성이고,
+// 도구의 믹스 vs 효율 분해가 실제로 "믹스"를 가리키는 데모가 된다(§12.16 —
+// 진단 도구 데모는 합성 패턴이 신호를 띠어야 의미가 있다).
+function buildAsoStore() {
+  const headers = ["date", "source", "impressions", "product_page_views", "installs"];
+  const dates = generateDates(42, "2025-03-01");
+  const raw = [];
+  dates.forEach((date, index) => {
+    const late = index >= 21;
+    // 조회 수만 이동시키고 소스별 전환율(Search 45%, Browse 9%)은 유지한다.
+    const searchViews = (late ? 2600 : 4300) + ((index * 37) % 9) * 60;
+    const browseViews = (late ? 5200 : 2400) + ((index * 53) % 7) * 80;
+    const referrerViews = 900 + ((index * 19) % 5) * 40;
+    raw.push(
+      { date, source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * 0.45) },
+      { date, source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * 0.09) },
+      { date, source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * 0.22) },
+    );
+  });
+  return {
+    raw,
+    headers,
+    mapping: { date: "date", source: "source", impressions: "impressions", product_page_views: "product_page_views", installs: "installs" },
+    fileName: "demo_aso_store.csv",
+  };
+}
+
 // ── collinearity (5-25) ────────────────────────────────────────────────────
 // Meta·TikTok 지출을 거의 같은 일정으로 움직이게 해 VIF 도구가 "진행 보류"
 // 신호를 실제로 보여 준다. Google·ASA는 다른 리듬으로 넣어 비교 근거도 남긴다.
@@ -743,6 +772,7 @@ const BUILDERS = {
   aha: buildAha,
   incrementality: buildIncrSuppressionDemo,
   brand_incrementality: buildBrandIncrementality,
+  aso_store: buildAsoStore,
   collinearity: buildCollinearity,
   asa_keyword: buildAsaKeyword,
   content_aha: buildContentAha,

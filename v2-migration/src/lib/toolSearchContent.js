@@ -387,6 +387,44 @@ const CONTENT = {
       ],
     },
   },
+  "5-27": {
+    ko: {
+      eyebrow: "도구 사용 가이드",
+      title: "스토어 전환율이 떨어진 이유를 페이지와 유입으로 가릅니다",
+      question: "스토어 전환율이 떨어졌는데 스크린샷을 바꿔야 하나요?",
+      answer: "소스별 전환율이 그대로면 페이지가 아니라 유입 구성 문제입니다.",
+      lead: "ASO 스토어 전환 분석은 스토어 콘솔 CSV로 노출→제품 페이지 조회→설치 퍼널을 세우고, 두 기간의 전환율 변화를 트래픽 구성 효과와 소스별 효율 효과로 나눕니다. 처방이 정반대인 두 원인을 섞인 채로 두면 어느 쪽도 못 고치기 때문입니다.",
+      detailsLabel: "분해 방식과 한계 보기",
+      sections: [
+        ["언제 써야 하나", "전체 스토어 전환율이 눈에 띄게 떨어졌을 때, 광고를 크게 늘린 구간에 오가닉 설치가 줄었을 때, 스크린샷을 바꿔야 할지 판단이 안 설 때 씁니다. 날짜·유입 소스·제품 페이지 조회·설치 네 열이면 됩니다."],
+        ["무엇을 계산하나", "기간을 앞뒤로 갈라 소스별 전환율과 설치 비중을 구하고, 전체 전환율 변화를 구성 효과(비중 이동)와 효율 효과(소스별 전환율 변화)로 분해합니다. 분해 수학은 캠페인 성과 변동에서 쓰는 것과 같은 무잔차 분해입니다."],
+        ["결과를 어떻게 쓰나", "구성 효과가 지배적이면 페이지가 아니라 유입이 왜 바뀌었는지(광고 증액·피처링·시즌)를 보고, 효율 효과가 지배적이면 아이콘·스크린샷·평점 같은 제품 페이지 요소를 봅니다. 확정은 스토어 실험으로 하세요."],
+      ],
+      faq: [
+        { q: "노출 데이터가 없어도 쓸 수 있나요?", a: "쓸 수 있습니다. 노출 열이 없으면 탭률만 계산하지 않고, 제품 페이지 조회→설치 전환과 소스별 분해는 그대로 나옵니다." },
+        { q: "구성 효과가 크면 아무것도 안 해도 되나요?", a: "아닙니다. 페이지를 고칠 일이 아니라는 뜻이지 문제가 없다는 뜻은 아닙니다. 전환이 낮은 소스의 비중이 왜 늘었는지가 다음 질문입니다." },
+        { q: "이 분해로 인과를 말할 수 있나요?", a: "없습니다. 관측 데이터에서 어디를 볼지 좁혀줄 뿐이고, 같은 기간에 광고·피처링·시즌이 함께 움직였다면 원인까지는 알 수 없습니다." },
+      ],
+    },
+    en: {
+      eyebrow: "Tool guide",
+      title: "Separate a store conversion drop into page and traffic causes",
+      question: "Store conversion dropped — should I change the screenshots?",
+      answer: "If per-source conversion held, the cause is the traffic mix, not the page.",
+      lead: "ASO store conversion analysis builds the impression-to-page-to-install funnel from a store console CSV, then splits the change between two periods into a traffic-mix effect and a per-source efficiency effect. The two causes call for opposite fixes, so neither can be addressed while they stay blended.",
+      detailsLabel: "See the decomposition and its limits",
+      sections: [
+        ["When to use it", "When blended store conversion falls noticeably, when organic installs drop during a period of paid scaling, or when you cannot tell whether screenshots need work. Four columns are enough: date, traffic source, product page views, installs."],
+        ["What it computes", "It splits the period in half, computes per-source conversion and install share, and decomposes the blended change into a mix effect (share movement) and an efficiency effect (per-source conversion change). The decomposition is the same residual-free math used for campaign performance variance."],
+        ["How to use the result", "If the mix effect dominates, investigate why traffic composition changed — paid scaling, featuring, seasonality — rather than the page. If the efficiency effect dominates, look at icon, screenshots, and rating. Confirm either with a store experiment."],
+      ],
+      faq: [
+        { q: "Can I use it without impressions data?", a: "Yes. Without an impressions column only tap-through is skipped; page-to-install conversion and the per-source decomposition still compute." },
+        { q: "If the mix effect dominates, is there nothing to do?", a: "No — it means the page is not the fix, not that nothing is wrong. The next question is why the share of low-converting sources grew." },
+        { q: "Does this establish cause?", a: "It does not. It narrows where to look in observational data, and if ads, featuring, and seasonality all moved in the same window it cannot tell you which one did it." },
+      ],
+    },
+  },
   "5-25": {
     ko: {
       eyebrow: "도구 사용 가이드",

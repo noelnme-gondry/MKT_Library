@@ -33,6 +33,7 @@ export const ROUTES = [
   { id: "5-24", slug: "/tools/brand-campaign-incrementality", component: "BrandCampaignIncrementality" },
   { id: "5-25", slug: "/tools/vif-multicollinearity", component: "MulticollinearityChecker" },
   { id: "5-26", slug: "/tools/asa-keyword-finder", component: "AsaKeywordFinder" },
+  { id: "5-27", slug: "/tools/aso-store-conversion", component: "AsoStoreConversion" },
   // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
   { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
   { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder", publication: "preview" },
@@ -125,7 +126,7 @@ export function isRouteIndexable(routeOrId) {
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "9-1", "5-18", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-18", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27",
 ]);
 
 // 5-18의 하위 분석은 독립 URL이지만 전역 도구 목록·사이드바에는 노출하지
