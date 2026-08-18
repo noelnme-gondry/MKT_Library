@@ -18,7 +18,7 @@ import { localizedHref } from "@/lib/localizedHref";
  * 정렬 축은 도구 이름이 아니라 **질문 단계**다. 마케터는 "무엇을 판단해야 하나"로
  * 도구를 찾지 도구 이름을 외워서 찾지 않는다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null }) {
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
@@ -44,7 +44,11 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
                   <Link
                     className="tool-index__link"
                     href={localizedHref(tool.href, locale)}
-                    onClick={onSelect ? (event) => { event.preventDefault(); onSelect(tool.id); } : undefined}
+                    // onSelect는 이동을 가로채고(업로드 화면의 재매핑 핸드오프),
+                    // onItemClick은 평범한 이동에 곁들이는 기록용이다.
+                    onClick={onSelect
+                      ? (event) => { event.preventDefault(); onSelect(tool.id); }
+                      : onItemClick ? () => onItemClick(tool.id) : undefined}
                   >
                     <span className="tool-index__name">{tool.name}</span>
                     <span className="tool-index__q">{tool.question}</span>

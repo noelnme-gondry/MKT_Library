@@ -9378,4 +9378,18 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 }
 .nav-subnav__item:hover, .nav-subnav__item:focus-visible { color: var(--primary); }
 
+
+/* 홈 첫 화면의 도구 인덱스 — 17개가 한눈에 들어와야 한다. 스테이지를 가로로
+   늘어놓고 각 열은 이름+질문 두 줄만. 상자 없이 열 구분은 여백으로만. */
+.dc-questions .tool-index { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 22px 26px; }
+.dc-questions .tool-index__stage-head { margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.dc-questions .tool-index__list { grid-template-columns: 1fr; gap: 0; }
+.dc-questions .tool-index__item { border-top: 0; }
+.dc-questions .tool-index__link { padding: 7px 4px 7px 0; gap: 1px; }
+.dc-questions .tool-index__name { font-size: 14px; }
+.dc-questions .tool-index__q {
+  font-size: 12px; line-height: 1.42;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
 } /* @layer app 끝 */

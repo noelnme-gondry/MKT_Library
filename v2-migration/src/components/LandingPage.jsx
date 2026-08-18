@@ -52,16 +52,7 @@ const COPY = {
     ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
-    questionDeck: "도구 이름보다 실제 업무 질문으로 시작합니다.",
-    questions: [
-      { id: "5-2", label: "WEEKLY HEALTH", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검합니다." },
-      { id: "5-3", label: "BUDGET MOVE", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보를 비교합니다." },
-      { id: "9-6", label: "CREATIVE ACTION", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위를 정리합니다." },
-      { id: "5-24", label: "BRAND LIFT", title: "브랜딩 성과가 실제로 있었을까?", desc: "브랜드 검색·직접 유입의 증가분을 데이터 준비 수준에 맞춰 추정합니다." },
-    ],
-    catalogEyebrow: "ALL ANALYSES",
-    catalogTitle: "할 수 있는 분석 전체",
-    catalogDeck: "판단 단계별로 묶었습니다. 이름을 몰라도 질문으로 찾을 수 있어요.",
+    questionDeck: "17개 분석 전부입니다. 도구 이름이 아니라 판단 단계로 골라요.",
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
     libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
@@ -111,16 +102,7 @@ const COPY = {
     ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
-    questionDeck: "Start with the operating question, not the tool name.",
-    questions: [
-      { id: "5-2", label: "WEEKLY HEALTH", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view." },
-      { id: "5-3", label: "BUDGET MOVE", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency." },
-      { id: "9-6", label: "CREATIVE ACTION", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps." },
-      { id: "5-24", label: "BRAND LIFT", title: "Did branding create real lift?", desc: "Estimate lift in brand search and direct traffic with the strongest design your data supports." },
-    ],
-    catalogEyebrow: "ALL ANALYSES",
-    catalogTitle: "Every analysis you can run",
-    catalogDeck: "Grouped by the decision each one supports — find it by the question, not the name.",
+    questionDeck: "All 17 analyses, grouped by the decision each one supports.",
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "Build evidence for the next decision.",
     libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
@@ -261,6 +243,10 @@ export default function LandingPage({ locale = "ko" }) {
 
       {/* 목적 선택(질문 카드)을 개념 설명(주간 결정 루프)보다 앞에 둔다 — 첫 화면
           바로 아래에서 "내가 원하는 것"에 도달하게(claude-ux §1 여정=질문 프레임). */}
+      {/* 첫 화면에서 "무엇을 할 수 있나"가 전부 보여야 한다. 예전에는 손으로 고른
+          질문 카드 4장만 있어서 17개 중 4개만 이름이 노출됐고, 전체 목록은 스크롤
+          네 번 아래에 있었다. 카드와 목록 두 장치를 하나로 합친다 — 페이지는 짧아지고
+          보이는 도구는 4개에서 전부로 늘어난다. */}
       <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
         <header className="dc-section-head">
           <div>
@@ -269,38 +255,17 @@ export default function LandingPage({ locale = "ko" }) {
           </div>
           <p>{T.questionDeck}</p>
         </header>
-        <div className="dc-question-grid">
-          {T.questions.map((question) => (
-            <Link
-              className="dc-question-card"
-              href={toolHref(question.id)}
-              key={question.id}
-              onClick={() => trackProductEvent("landing_tool_pick", {
-                tool_id: question.id,
-                source: "landing",
-                placement: "question_card",
-                locale: lang,
-              })}
-            >
-              <span>{question.label}</span>
-              <h3>{question.title}</h3>
-              <p>{question.desc}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* 홈에서 이름이 보이는 도구가 4개뿐이었다. 나머지는 사이드바를 열어야만
-          존재를 알 수 있었다 — 압축 밀도로 전부 편다. */}
-      <section className="dc-catalog" id="catalog" aria-labelledby="dc-catalog-title">
-        <header className="dc-section-head">
-          <div>
-            <div className="dc-eyebrow">{T.catalogEyebrow}</div>
-            <h2 id="dc-catalog-title">{T.catalogTitle}</h2>
-          </div>
-          <p>{T.catalogDeck}</p>
-        </header>
-        <ToolIndex locale={lang} density="compact" headingLevel={3} />
+        <ToolIndex
+          locale={lang}
+          density="compact"
+          headingLevel={3}
+          onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
+            tool_id: toolId,
+            source: "landing",
+            placement: "question_card",
+            locale: lang,
+          })}
+        />
       </section>
 
       <section className="dc-loop" aria-labelledby="dc-loop-title">
