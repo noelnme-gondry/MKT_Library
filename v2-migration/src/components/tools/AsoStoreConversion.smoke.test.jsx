@@ -41,6 +41,8 @@ describe("AsoStoreConversion render smoke", () => {
     expect(ko.container.querySelector("#aso-result")).toBeTruthy();
     expect(ko.container.querySelector("#aso-funnel")).toBeTruthy();
     expect(ko.container.querySelector("#aso-sources")).toBeTruthy();
+    // 추이 차트는 캔버스가 실제로 붙어야 한다(조건부 마운트라 렌더 분기에서만 드러남).
+    expect(ko.container.querySelector("#aso-trend canvas")).toBeTruthy();
     ko.unmount();
 
     const en = render(<AsoStoreConversion locale="en" />);

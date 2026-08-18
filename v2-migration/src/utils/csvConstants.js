@@ -131,6 +131,27 @@ export const STANDARD_FIELDS = {
                 required: false,
                 group: "단일 지표",
               },
+              store_source: {
+                // 스토어 유입 소스(App Store Search·Browse·Referrer / Play 검색·둘러보기).
+                // `source`(광고/오가닉)와 다른 축이다 — 같은 키를 쓰면 매핑 화면 라벨이
+                // 어긋나고, organic/paid 값 어휘로는 스토어 소스 값을 잡지 못한다.
+                label: "유입 소스 (스토어)",
+                aliases: [
+                  "source_type", "source type", "소스유형", "소스 유형",
+                  "traffic_source", "traffic source", "트래픽소스", "트래픽 소스",
+                  "유입소스", "유입 소스", "유입경로",
+                ],
+                type: "enum",
+                required: false,
+                group: "디멘션",
+                // 값은 전부 3자 이상이라 짧은 토큰 오탐(§7)에서 자유롭다.
+                valueVocabulary: [
+                  "app store search", "app store browse", "app referrer", "web referrer",
+                  "institutional purchase", "unavailable",
+                  "google play search", "google play explore", "third-party referrers",
+                  "앱스토어검색", "앱스토어둘러보기", "구글플레이검색", "구글플레이탐색",
+                ],
+              },
               product_page_views: {
                 label: "제품 페이지 조회",
                 aliases: ["product_page_views", "product page views", "page_views", "store_listing_visitors", "listing_visitors", "제품페이지조회", "제품 페이지 조회", "스토어조회", "페이지조회"],
@@ -140,7 +161,13 @@ export const STANDARD_FIELDS = {
               },
               installs: {
                 label: "설치수",
-                aliases: ["install", "설치", "설치수", "inst"],
+                aliases: [
+                  "install", "설치", "설치수", "inst",
+                  // 스토어 콘솔 export 실제 컬럼명 — 없으면 5-27이 설치 열을 못 잡는다.
+                  "total_downloads", "total downloads", "first_time_downloads", "first-time downloads",
+                  "store_listing_acquisitions", "store listing acquisitions", "installers",
+                  "다운로드", "총다운로드", "최초다운로드",
+                ],
                 type: "number",
                 required: false,
                 group: "단일 지표",
@@ -1114,7 +1141,7 @@ export const TOOL_REQUIRED_FIELDS = {
                 { oneOf: ["brand_search", "direct_traffic", "installs", "actions"] },
               ],
               "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
-              "5-27": ["date", "source", "product_page_views", "installs"],
+              "5-27": ["date", "store_source", "product_page_views", "installs"],
               "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
               // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
               // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
