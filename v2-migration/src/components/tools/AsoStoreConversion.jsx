@@ -13,6 +13,7 @@ import Chart from "@/utils/chartGlobals";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { classifyStoreShift, dailyConversionSeries, decomposeStoreConversion, storeFunnel } from "@/utils/asoStoreMath";
 import { alignEventsToAxis, eventsFromRows, mergeEvents } from "@/utils/storeEvents";
+import { comparePeriodLengths, describePeriod, formatCountDelta, formatPeriod, formatRateDelta } from "@/utils/periodCompare";
 import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
 import StoreEventLog from "@/components/tools/StoreEventLog";
 import { fmtPct } from "@/utils/format";
@@ -48,7 +49,13 @@ function analyze(rows) {
   const split = splitByDate(engineRows);
   if (!split) return { overall, series, split: null, decomposed: null, verdict: { verdict: "unknown", reason: "기간 부족" } };
   const decomposed = decomposeStoreConversion(split.before, split.after);
-  return { overall, series, split, decomposed, verdict: classifyStoreShift(decomposed) };
+  // 두 기간을 실제 날짜·일수로 말해야 사용자가 비교의 공정성을 스스로 검증한다.
+  const periods = {
+    before: describePeriod(split.before.map((row) => row.date)),
+    after: describePeriod(split.after.map((row) => row.date)),
+  };
+  periods.balance = comparePeriodLengths(periods.before, periods.after);
+  return { overall, series, split, periods, decomposed, verdict: classifyStoreShift(decomposed) };
 }
 
 export default function AsoStoreConversion({ locale = "ko" } = {}) {
@@ -143,6 +150,9 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
   // fmtPct는 **비율**(0~1)을 받아 자기가 ×100 한다. 여기서 value*100을 넘기면
   // 두 번 곱해져 14.6%가 1464%로 나간다 — 실제로 그렇게 배포됐다.
   const pct = (value) => (value == null ? tr("계산 불가", "Not computable") : fmtPct(value, 2));
+
+  const rateDelta = formatRateDelta(decomposed?.funnelBefore?.viewToInstall, decomposed?.funnelAfter?.viewToInstall);
+  const installDelta = formatCountDelta(decomposed?.funnelBefore?.installs, decomposed?.funnelAfter?.installs);
 
   const headline =
     verdict === "mix"
@@ -243,6 +253,41 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             { icon: "⬇", analyticsType: "csv", label: tr("소스별 분해 (CSV)", "Per-source decomposition (CSV)"), desc: tr("소스별 전환율·비중과 믹스·효율 기여", "Per-source conversion, share, and mix/efficiency contribution"), onSelect: downloadSourceCsv },
           ]} /> : null}
         /></div>
+
+        {result.periods?.before && result.periods?.after && <section className="block" id="aso-periods">
+          <h2 className="section-title">{tr("비교한 두 기간", "The two periods compared")}</h2>
+          <dl className="period-compare">
+            <div className="period-compare__cell">
+              <dt>{tr("앞 기간", "Earlier")}</dt>
+              <dd>{formatPeriod(result.periods.before, locale)}</dd>
+            </div>
+            <div className="period-compare__cell">
+              <dt>{tr("뒤 기간", "Later")}</dt>
+              <dd>{formatPeriod(result.periods.after, locale)}</dd>
+            </div>
+            <div className="period-compare__cell">
+              <dt>{tr("조회→설치 변화", "View-to-install change")}</dt>
+              <dd className={`period-compare__delta is-${rateDelta?.tone || "flat"}`}>{rateDelta?.text || "—"}</dd>
+            </div>
+            <div className="period-compare__cell">
+              <dt>{tr("설치 변화", "Install change")}</dt>
+              <dd className={`period-compare__delta is-${installDelta?.tone || "flat"}`}>{installDelta?.text || "—"}</dd>
+            </div>
+          </dl>
+          <p className="muted">{result.periods.balance?.balanced
+            ? tr(
+                "두 기간의 데이터 일수가 같아 비율 비교가 공정합니다.",
+                "Both periods cover the same number of days, so the rate comparison is like-for-like.",
+              )
+            : tr(
+                `데이터가 있는 날이 앞 ${result.periods.balance?.beforeDays}일 · 뒤 ${result.periods.balance?.afterDays}일로 다릅니다. 비율은 그대로 비교할 수 있지만 합계(설치 수)는 길이 차이를 감안해 읽으세요.`,
+                `Day counts differ (${result.periods.balance?.beforeDays} vs ${result.periods.balance?.afterDays}). Rates remain comparable, but read totals with that gap in mind.`,
+              )}</p>
+          <p className="muted">{tr(
+            "%p는 절대 차이, 괄호 안 %는 상대 차이입니다. 전환율 30%가 40%가 되면 +10%p이자 +33.3%예요.",
+            "%p is the absolute gap and the bracketed % is the relative change. 30% to 40% is +10pp and +33.3%.",
+          )}</p>
+        </section>}
 
         <section className="block" id="aso-funnel">
           <h2 className="section-title">{tr("스토어 퍼널", "Store funnel")}</h2>
