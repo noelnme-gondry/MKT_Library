@@ -425,6 +425,18 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`<footer>`는 body 직계가 아니면 이름 있는 landmark가 아니다** → 이름 붙은 `<section>`(role=region)으로 통째로 건너뛰게 한다.
 - **타이포 하한 9.5px**(`app/typographyFloor.test.js`). 6~8px 모노 라벨이 앱 곳곳에 흩어져 있었고, `display:none`된 라벨이 테스트 `textContent`에는 잡혀 "검증했는데 안 보이는" 상태였다. 이 가드는 오래 `globals.css` **한 파일만** 훑었는데 인라인 `style={{fontSize}}`이 581곳이라 우회로가 통째로 열려 있었다 → 지금은 `src/**/*.jsx` 리터럴도 같은 하한으로 훑는다(계산식은 정적으로 못 읽으므로 대상 밖).
 
+### 12.31 도구 발견 경로 (이름 · 인덱스 · 브리프)
+도구가 17개를 넘으면 "무엇을 할 수 있나"가 화면에서 사라진다. 세 부품이 한 세트다.
+- **이름은 10자 이내·괄호 금지·결과를 가리키는 명사구**(평균 19.6자→6.8자). 내부 id·slug는 불변.
+  이름을 줄이면 **검색이 같이 줄어든다** — ⌘K 코퍼스에 `seoTitle`을 제목 가중치로 넣어 전문용어를 지킨다.
+- **`lib/toolIndex.js`가 목록의 SSOT** — 새 목록을 만들지 말고 TOOL_JOURNEY(질문 축)·IA(이름)·
+  toolSearchContent(질문·답)·TOOL_REQUIRED_FIELDS(필요 컬럼)에서 파생한다. 정렬 축은 이름이 아니라 질문.
+- **`ds/ToolIndex`는 밀도만 달리해** 홈(compact)·`/start`(full)·사이드바 링크 세 곳에 심는다.
+  못 쓰는 도구는 **숨기지 말고 흐리게** — 숨기면 존재 자체를 못 본다. `/start`에서는 `onSelect`로
+  업로드한 CSV를 대상 도구용으로 재매핑해 넘겨야 한다(링크 이동만 하면 도구가 빈 채로 열린다).
+- **`ds/ToolBrief`가 짧아진 이름을 메운다** — 질문/답/필요 데이터 세 줄, 상자 없음. 목록과 **같은 문장**을 쓴다.
+- 컴포넌트가 제목을 직접 넘기지 않는다. `ToolPageShell`이 `toolId`로 레지스트리 이름을 쓴다(이름의 두 번째 출처 금지).
+
 ---
 
 ## 13. 참고 파일
@@ -477,7 +489,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **263파일·2176 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **263파일·2178 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
