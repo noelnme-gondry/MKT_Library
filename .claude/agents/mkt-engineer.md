@@ -75,5 +75,6 @@ tools:
 
 - `AGENTS.md` — 전체 규칙·아키텍처·레시피·함정·현재 상태 (루트 `CLAUDE.md`는 포인터)
 - `v2-migration/ARCHITECTURE.md` — v2 코드맵 (착수 전 필독)
+- **`docs/product-ssot.md` — 제품 계약 SSOT**: 대외 사실·한계(F/L 카드), 도구 수 정의(14 핵심 + 5 반응 모듈), 화면 상태 8종·결과 카드 4층·키보드/포커스/대비/터치 계약, 실측 부채(D-01~D-12). **공개 카피·상태 문구·접근성이 걸린 작업은 여기 먼저. 새 문장을 만들지 말고 가져올 것.**
 - `v2-migration/claude-ux.md` — UX 원칙 (UX 개선 요청 시 필독, §15.5)
 - `docs/pitfalls.md` — 함정 상세 / `docs/backlog.md` — 백로그 + MMM 스펙

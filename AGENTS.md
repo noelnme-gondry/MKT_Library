@@ -38,6 +38,7 @@
 9. **병렬 사용 환경 동기화 의무**: Codex·Claude·Antigravity 병렬 작동 중 — 작업 시작 전 항상 `git fetch`+`git status`, 리모트와 다르면 사용자에게 "pull 후 진행?" 확인.
 10. **전체 파일 덮어쓰기·임의 포맷팅 금지**: 충돌·작업유실 방지. 무관한 코드 들여쓰기·포맷 임의 변경 금지, 정확히 타겟팅된 부분(Delta)만 수정.
 11. **외부 노출 KR/EN 동시 반영**: UI·카피·CTA·링크·SEO 메타·구조화 데이터·공개 문서·랜딩·도구 흐름을 수정하면 **같은 작업에서 EN도 의미·기능·라우트 기준으로 동등하게** 수정하고 KR/EN 검증을 함께 실행. EN 미지원 페이지는 반쪽 번역 말고 `EN_READY_*` 게이트 유지.
+12. **대외 사실·UX·접근성 계약은 `docs/product-ssot.md`가 정본**: 제품명·도구 수·무료/가입/브라우저 처리·통계 한계(F/L 카드), 화면 상태 8종·결과 카드 4층·키보드/포커스/대비/터치 계약이 거기 있다. 새 문장을 코드나 다른 문서에서 **만들지 말고 거기서 가져올 것**. 계약을 바꿔야 하면 SSOT를 먼저 고치고 코드(`brandFacts.js` 등)를 그 사본으로 맞춘다.
 
 ---
 
@@ -201,7 +202,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
   - **토큰 값을 대조할 땐 "마지막 정의"를 볼 것 — `:root`와 `body.light-mode`가 파일에 각각 두 번 있다**(§4.1 tokens 레이어의 61~63·142~144, app 레이어의 4821·4889 블록). 앞 블록만 보고 `#f87171`을 "`--danger`와 같은 값"이라 판단하면 틀린다 — **실효값은 `#ff8178`**(`--warning` `#f2b84b`, `--success` `#65d3b3`, `--primary` `#82aaff`). 실제로 이 착각으로 "다크 byte-identical"이라 적고 치환한 적이 있다. 대조는 눈이 아니라 **마지막 정의를 파싱해서** 할 것.
 - **`globals.css`는 캐스케이드 레이어 3단**(`@layer reset, tokens, app;` — 파일 상단 주석 참조): 외부 리셋(Tailwind preflight 등)을 도입하면 `layer(reset)`으로 넣어야 9천 줄이 리셋에 밀리지 않는다. 레이어 **밖** 규칙은 모든 레이어를 이기므로 이 파일 내용은 전부 레이어 안에 있어야 하고, `!important`는 레이어 순서를 뒤집으므로 `tokens`엔 넣지 말 것(현재 0개).
 - **`role="tablist"`가 `role="group"`을 거쳐 `tab`을 소유하면 계약이 끊긴다**(같은 감사): 로빙 tabindex·화살표 키가 멀쩡해도 보조기술이 탭을 탭으로 인식하지 못한다. 그룹이 필요하면 **그룹마다 tablist**를 두고 바깥은 일반 컨테이너로. `role="radio"`도 `radiogroup` 부모가 없으면 같은 문제 + 전 옵션이 탭 순서에 들어간다.
-- **`title` 단독은 어포던스가 아니다 — CSS로 강제할 것**: claude-ux §0이 이름을 지목해 금지했는데도 12곳 이상 살아 있었다. 개별 수정 대신 `[title]` 셀렉터에 점선 밑줄+`cursor:help`를 거는 전역 규칙 1개가 전부를 덮는다.
+- **`title` 단독은 어포던스가 아니다 — 그리고 "전역 규칙 1개로 덮었다"는 이 줄이 틀렸다**(2026-08-19 정정): 실제 `globals.css`의 어포던스 규칙은 `[title]` 전역이 아니라 `.ab-pillgroup-label[title]`·`.chip[title]`·`.seasonality-heatmap__cell[title]` **3개 셀렉터 + `[data-help]`**뿐인데, 컴포넌트의 `title=`은 **237곳**이다. 좁은 셀렉터를 적어 놓고 하네스에 "전부를 덮는다"라고 선언한 순간 남은 234곳이 안 보이게 됐다 — §7의 "가드가 있다는 사실이 가드가 없다는 사실을 가린다"가 하네스 문장 자체에서 재발한 사례다. **커버리지를 선언할 땐 셀렉터가 아니라 대상 수를 grep으로 셀 것.** 부채는 `docs/product-ssot.md` D-04.
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**: canvas는 `var()`를 못 읽어 불투명 검정 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(`chartUtils.js`)로 렌더타임 해석.
 - **Chart.js v4 커스텀 `generateLabels`는 per-item `fontColor` 자동 주입 안 함** → 다크모드 범례 텍스트 실종(라이트는 멀쩡 → 한쪽만 검증하면 놓침). 부호 구분 색쌍은 명도차 크게(중간톤끼리는 구분 안 됨).
 - **조건부 마운트 캔버스는 최초 폭 0**: 토글·step 전환으로 새로 마운트되는 차트는 부모 레이아웃 전이라 width=0. `new Chart(...)` 직후 `requestAnimationFrame(() => instance.resize())` 1회 필수.
@@ -391,7 +392,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 광고 게이트를 어떤 형태로도 되살리지 말 것(`requestAd`는 호출부 호환 no-op만 잔존). 수익화는 이탈·AdSense 데이터 확인 후 별도 결정.
 
 ### 12.27 결론 카드 + 다운로드 허브 공용화
-- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 선언하지 말고 grep으로 확인할 것** — 이 줄에 적힌 미채택 목록은 두 번 연속 낡은 채로 남아 있었다(적힌 4곳이 이미 다 채택돼 있었다). 2026-08-14 실측: 도구 15개 전부 카드 보유, 다운로드는 `PaidOrganicTrend`·`WebRMmmAdvanced` 2곳만 없음(둘 다 subtool/패널).
+- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 이 줄에 적지 말 것** — 세 번 연속 낡은 채였다. 최신 실측은 §16, 부채는 `docs/product-ssot.md` D-07.
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
@@ -450,6 +451,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 13. 참고 파일
 
+- **`docs/product-ssot.md` — 제품 계약 SSOT**(§2.12): 대외 사실·한계(F/L), 도구 카탈로그 정의(14 핵심 + 5 반응 모듈), UX·접근성 계약, 품질 게이트, 실측 부채 백로그(D-01~D-12). 공개 카피·상태 문구·a11y 판단이 걸린 작업은 **여기 먼저**.
 - **`v2-migration/ARCHITECTURE.md` — v2 코드맵**(경로 매핑 ~200줄): 라우트↔컴포넌트↔엔진, SSOT(store), 글로벌 CSS. **큰 작업 착수 전 먼저 읽어 위치 파악**(전체 탐색보다 토큰 절약). 새 도구·엔진·경로·상태 추가/이동 시 **함께 갱신**(§15).
 - `v2-migration/claude-ux.md` — UX 원칙 (§15.5 트리거 시 필독)
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
@@ -491,7 +493,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 15.5 유저 친화적 UI 개선 트리거 (필독) 🎨
 
-사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 착수 전 반드시 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행한다. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑, 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성.) **수학 엔진은 절대 건드리지 않고 렌더층만 재구성.**
+사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 착수 전 반드시 `docs/product-ssot.md` §5~§7과 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행한다. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑, 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성.) **수학 엔진은 절대 건드리지 않고 렌더층만 재구성.**
 
 ---
 
@@ -500,7 +502,9 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
 - ✅ 검증 하네스: `npm run test:all` **263파일·2178 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
-- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep.
+- ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
+- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep. **2026-08-19 실측: 공개 도구 14개 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26(직접 `downloadCsv`)·5-18 본체·`PaidOrganicTrend`.**
+- 🔄 **접근성 부채**(product-ssot §10): `title=` 237곳 대 어포던스 셀렉터 3개(D-04) · `.ab-pillgroup` 17파일 대 `PillGroup` 6파일(D-05) · `outline:none` 14곳 짝 미검증(D-06) · `BRAND_FACTS` 95% CI 보편 주장(D-01·P0).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 
