@@ -368,7 +368,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ### 12.24 블로그 (SEO 마케팅 컬럼, `/blog`)
 `routeMap` **밖**의 fs 기반 MD 파이프라인. **글 발행 = `v2-migration/content/blog/<slug>.md` 추가**(frontmatter: `title`≤40·`description`≤80·`date`·`slug`·`keywords`·`tags`·`draft`·`ogImage`; `_TEMPLATE.md` 복사, `_`프리픽스·`draft:true`는 미발행). `src/lib/blog.js`는 **server 전용**(클라이언트 import 금지).
 - **여러 글 → 필라 통합 = 6곳 동시 갱신**: ① `content/blog(-en)`·`glossary(-en)` 파일 add/삭제(**EN 짝파일 필수** — 경로는 `blog-en`이지 `en/blog` 아님) ② `next.config.mjs redirects()`에 구 URL→필라 301(ko·en 각각) ③ 레지스트리 정합(아래 5곳) ④ 삭제글 참조 glossary `relatedPosts` 재지정. 내부 링크는 KR 상대경로만(렌더러가 EN 접두).
-- **신규 글 1편 = 파일 2개(KO·EN) + 레지스트리 6곳**: `blogSeo`(KO_TITLES·EN_TITLES) · `blogEditorial`(KO_ANSWERS·EN_ANSWERS·`CONDITION_GROUP_BY_SLUG`) · `contentToolRegistry`(`BLOG_PRIMARY_TOOL`·`BLOG_RELATED_GLOSSARY`) · `localizedHref`(`EN_BLOG_SLUGS`) · **`topicClusters`(멤버 등록)** · frontmatter `faq`(2건+). 하나라도 빠지면 `contentRegistry.test.js`·`topicClusters.test.js`가 잡는다 — 2026-08-18에 이 줄이 "5곳"이라 적혀 있어 토픽 클러스터를 빠뜨렸고 가드가 잡았다. **하네스에 개수를 적을 땐 grep으로 셀 것**(§7).
+- **신규 글 1편 = 파일 2개(KO·EN) + 레지스트리 6곳**: `blogSeo`(KO_TITLES·EN_TITLES) · `blogEditorial`(KO_ANSWERS·EN_ANSWERS·`CONDITION_GROUP_BY_SLUG`) · `contentToolRegistry`(`BLOG_PRIMARY_TOOL`·`BLOG_RELATED_GLOSSARY`) · `localizedHref`(`EN_BLOG_SLUGS`) · **`topicClusters`(멤버 등록)** · frontmatter `faq`(2건+). 하나라도 빠지면 `contentRegistry.test.js`·`topicClusters.test.js`·`aeoAnswer.test.js`가 잡는다(2026-08-18 신규 2편에서 6곳 전부 + EN AEO 핵심어까지 실제로 걸렸다) — 2026-08-18에 이 줄이 "5곳"이라 적혀 있어 토픽 클러스터를 빠뜨렸고 가드가 잡았다. **하네스에 개수를 적을 땐 grep으로 셀 것**(§7).
 - **frontmatter `tags`는 자유 문자열이 아니다**: `blog.js`의 `TAG_CATEGORY`(KO)·`TAG_CATEGORY_EN`에 없는 태그는 **그대로 통과해 7번째 카테고리를 만든다** — 네비게이션은 6개 고정이라 `getAllTags` 가드가 막는다. 새 글은 매핑에 있는 태그만 쓰거나 매핑을 먼저 추가할 것(신규 6편에서 3개가 걸렸다).
 - **SEO 연동**: `sitemap.js`·`rss.xml`이 `getAllPosts`로 직접 포함(블로그는 fs가 SSOT). SOP(JSON)는 MD 이관 안 함.
 - **그림(SVG)은 viewBox가 곧 캔버스 — 밖으로 나간 글자는 그냥 잘린다**(2026-08-17): `junior-metrics-guide/metric-diagnosis.svg`가 x=530에서 시작하는 26자 문장을 viewBox 700 안에 담아 "→ 클릭은 잘 되는데 안 사요. 랜딩·"에서 잘린 채 배포됐다. **EN 짝은 이미 문장을 아랫줄 중앙정렬로 고쳐둔 상태였다** — 한쪽만 고치고 짝을 안 본 사고(§2.11의 역방향). 지금은 `contentAssets.test.js`가 전 SVG를 파싱해 글자 폭을 추정·검사하고 참조 이미지 실재도 함께 본다. 긴 주석은 칸 옆이 아니라 **아랫줄 중앙정렬**로.
@@ -474,7 +474,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **256파일·2087 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **256파일·2095 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).

@@ -15,6 +15,8 @@ export const EN_BLOG_SLUGS = new Set([
   "apple-search-ads-guide",
   "asa-keyword-expansion",
   "aso-basics-guide",
+  "store-conversion-drop-diagnosis",
+  "store-listing-experiment",
   "attribution-data-mismatch",
   "audience-broad-vs-narrow",
   "brand-campaign-lift",
@@ -54,10 +56,10 @@ export const EN_BLOG_SLUGS = new Set([
 export const EN_GLOSSARY_SLUGS = new Set([
   "adstock", "arpu", "aso", "att", "attribution", "attribution-window",
   "cac", "cannibalization", "click-injection", "cohort", "conversion-value", "cpa",
-  "cpc", "cpi", "cpm", "creative-fatigue", "crowd-anonymity", "ctr",
+  "cpc", "cpi", "cpm", "creative-fatigue", "crowd-anonymity", "ctr", "custom-product-page",
   "cvr", "deep-link", "difference-in-differences", "ecpi", "frequency", "funnel",
   "holdout-test", "incremental-roas", "incrementality", "learning-phase", "lookalike", "ltv",
-  "marginal-cpa", "mmm", "mmp", "multicollinearity", "payback-period", "postback",
+  "marginal-cpa", "mmm", "mmp", "multicollinearity", "payback-period", "postback", "product-page-views",
   "probabilistic-attribution", "response-curve", "retargeting", "retention", "roas", "skan",
   "statistical-power", "uplift", "view-through-conversion"
 ]);
