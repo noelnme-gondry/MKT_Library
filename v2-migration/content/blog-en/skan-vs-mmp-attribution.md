@@ -15,7 +15,6 @@ faq:
   - q: "Can I optimise in real time on SKAN data?"
     a: "No. Postbacks arrive after the window closes plus a randomised delay, so adjusting bids on same-day performance does not work on iOS."
 ---
-
 Open an iOS campaign report and there are three numbers: the ads manager, your MMP, and SKAN. All three differ, and none of them is wrong.
 
 ## They are counting different things
@@ -35,9 +34,9 @@ That last row matters most. Installs from users who declined ATT cannot be confi
 
 **One: delay.** SKAN arrives after the window closes plus a randomised delay. Compared on the same date, SKAN always looks behind. Re-check a few days later.
 
-**Two: the [privacy threshold](/glossary/crowd-anonymity).** Low-volume campaigns return less. A SKAN install total below your MMP's may simply mean campaigns are split too finely.
+Two: the [privacy threshold](/glossary/crowd-anonymity). Low-volume campaigns return less. A SKAN install total below your MMP's may simply mean campaigns are split too finely.
 
-**Three: attribution rules.** SKAN uses Apple's logic; your MMP uses its own [attribution window](/glossary/attribution-window). Different post-click eligibility means the same install gets allocated differently.
+Three: attribution rules. SKAN uses Apple's logic; your MMP uses its own [attribution window](/glossary/attribution-window). Different post-click eligibility means the same install gets allocated differently.
 
 <!-- CONTENT_ACTION -->
 
@@ -59,7 +58,7 @@ Reading weekly, and judging on data that is already a few days old, is the rhyth
 
 ## Try this today
 
-**One.** Put the last 30 days of iOS installs in three columns: ads manager, MMP, SKAN. **The size of the gap is the size of what you cannot see.**
+**One.** Put the last 30 days of iOS installs in three columns: ads manager, MMP, SKAN. The size of the gap is the size of what you cannot see.
 
 **Two.** If the gap is unusually large only in recent days, delay is the likely cause. Re-measure a window from two weeks ago and check whether the gap narrows. If it does not, the cause is the threshold, not delay.
 

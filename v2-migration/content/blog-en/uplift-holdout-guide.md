@@ -12,9 +12,6 @@ faq:
   - q: "Can I skip uplift testing when CPA is good?"
     a: "No. Brand Search and retargeting can show strong CPA among people likely to convert anyway. Use a holdout when the decision is whether more spend will create additional business outcome."
 ---
-
-# Great CPA but no business growth? Measure advertising uplift
-
 A Brand Search campaign has a great CPA. Retargeting collects many conversions. But if total revenue or new customers do not rise with spend, the report may include conversions that would have happened without advertising.
 
 The question is not “how many conversions did this ad receive?” It is **“how many conversions would disappear without this ad?”** That difference is advertising uplift, or net incremental outcome.

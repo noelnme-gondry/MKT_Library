@@ -13,9 +13,6 @@ faq:
     a: "Use quasi-experimental designs such as pre/post, control regions, or interrupted time series, and label the result as an estimated lift. State that seasonality and promotions were not separated."
 
 ---
-
-# Correlation vs. Causation: Confuse Them and You Lose Money
-
 On days when ice cream sales are high, drowning accidents also go up. Does ice cream cause drowning? Of course not. There's a separate cause — both are driven by 'summer.'
 
 That's the kind of illusion you get when you confuse correlation with causation. The example is extreme, but in real life we make plenty of milder versions of the same mistake. In marketing, this mistake costs real money — it sends budget to the wrong channel, or kills a perfectly healthy campaign. Today, let's draw a clear line between the two.

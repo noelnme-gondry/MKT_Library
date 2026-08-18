@@ -28,7 +28,6 @@ faq:
   - q: "Should I diagnose a sudden performance improvement too?"
     a: "Yes. Duplicate or invalid conversions and channel-mix shifts can make results look better. Validate the number and decompose the change before scaling spend."
 ---
-
 When you operate marketing campaigns, ad performance sometimes worsens without an obvious action on your side. The first instinct is usually to blame the creative.
 
 But a higher CPA does not automatically mean the creative is worse. Conversion tracking may have broken, budget may have shifted toward a more expensive channel, or the landing page may be the problem. Diagnose in this order: **validate the number → isolate the scope → separate mix from efficiency → trace the funnel**.
@@ -44,9 +43,9 @@ Treating one day of noise like a long-term problem can introduce changes that di
 
 ## The four-step diagnosis sequence
 
-1. Validate the number. Rule out tracking errors, reporting delay, and thin samples.
+1. **Validate the number.** Rule out tracking errors, reporting delay, and thin samples.
 2. **Isolate the scope.** Separate an account-wide issue from a channel or campaign issue.
-3. Split mix and efficiency. Check whether the expensive channel gained share or performance itself worsened.
+3. **Split mix and efficiency.** Check whether the expensive channel gained share or performance itself worsened.
 4. **Trace the funnel.** Use CPM, CTR, and conversion rate to decide the next action.
 
 Skipping this order can lead to replacing healthy creative, stopping a campaign that is still gathering evidence, or treating a landing-page problem as an ad problem.

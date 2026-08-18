@@ -13,7 +13,6 @@ faq:
   - q: "How is marginal CPA calculated?"
     a: "Fit a curve to outcomes across spend levels, then measure how much additional outcome one more unit of spend produces at the current point. Channels whose spend barely varied cannot support a curve, so the verdict is withheld."
 ---
-
 You have probably had this exchange.
 
 "This channel's CPA is 30% under target."
@@ -36,7 +35,7 @@ The short version:
 
 Ad channels generally follow diminishing returns. Cheap inventory and responsive audiences get consumed first, and larger budgets reach progressively more expensive people.
 
-So this state is extremely common: **average CPA sits under target while marginal CPA has already passed it.** Scaling in that zone slowly degrades the average, and a few weeks later someone asks why CPA went up. That is exactly the cycle above.
+So this state is extremely common: average CPA sits under target while marginal CPA has already passed it. Scaling in that zone slowly degrades the average, and a few weeks later someone asks why CPA went up. That is exactly the cycle above.
 
 ## Saturation is one ratio
 

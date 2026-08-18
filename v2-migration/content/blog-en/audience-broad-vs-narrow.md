@@ -13,7 +13,6 @@ faq:
     a: "A smaller reachable pool means the same people see the ad repeatedly, so frequency climbs and fatigue sets in. Check frequency and CTR trends together."
 
 ---
-
 "Narrow targeting is more accurate" and "broad is the answer these days" both circulate at the same time. Both are true, and both are half-true. The right answer changes with the situation, so this isn't something to memorize — it's something to learn to judge. Today, let's look at what to check before you decide.
 
 ## Narrowing gets you accuracy, but it costs more and burns out faster

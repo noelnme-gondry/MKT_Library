@@ -13,7 +13,6 @@ faq:
     a: "Separate the cause first. Learning restarts, rising competition, creative fatigue, and broken conversion tracking each need a different response. Cutting budget on a tracking bug kills a healthy campaign."
 
 ---
-
 "It's probably still in the learning phase" — half true, half dangerous. Misunderstand the learning phase and you make one of two mistakes: overreacting to the wild swings during learning, or waiting forever assuming "it'll get better once learning finishes." Both leak budget.
 
 Today, let's really look at what ad machine learning is actually doing — when you should leave it alone, and when you should step in. This one's a bit long. Understand it, though, and it changes how you run accounts entirely.

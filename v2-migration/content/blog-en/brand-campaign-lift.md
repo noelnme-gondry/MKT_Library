@@ -12,9 +12,6 @@ faq:
   - q: "Is it acceptable to report a number with no control group?"
     a: "Yes, if you label it an estimated lift. Without a control, seasonality, PR, and promotions are not separated, so list the other events that happened in the same window alongside the number."
 ---
-
-# What Do You Judge a Brand Campaign On, When Nobody Clicks?
-
 About two weeks after a brand campaign wraps, the readout meeting gets booked. Three slides in, someone asks the only question that matters:
 
 "So what did this earn?"

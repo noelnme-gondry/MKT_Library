@@ -41,7 +41,6 @@ faq:
   - q: "Should I replace every winning creative at once?"
     a: "No. Keep assets that still perform, add new variants first, and replace only the weaker portion after an adequate observation window."
 ---
-
 There is no universal answer such as “always test three creatives.” The number of creatives you can test at once depends on two inputs: the budget available for one test batch and the amount each creative needs before you can make a useful decision.
 
 Adding more creatives without increasing the budget spreads delivery thin. Some ads receive too little exposure to tell you whether they failed or never had a fair chance. The goal is not to launch the most assets. It is to give each hypothesis enough opportunity to produce an answer.

@@ -17,7 +17,6 @@ faq:
   - q: "How do I calculate a cannibalization rate?"
     a: "Divide the organic conversions gained in the held-out group by the paid conversions it lost. If 100 paid conversions disappear and organic rises by 70, the cannibalization rate is 70% and net lift is 30. Without random assignment, that number is not causal."
 ---
-
 Turn off brand-search ads and organic traffic rises by exactly that much? Then that ad spend was re-buying people who were coming anyway. That's internal cannibalization — paid eating into free traffic.
 
 ## Why it's dangerous
@@ -40,7 +39,7 @@ Before pausing the brand campaign: 100 paid conversions, 200 organic, 300 total.
 
 The cannibalization rate is 70 ÷ 100 = 70%. The report credits this campaign with 100 conversions; it really produced 30. Its CPA needs to be recalculated at roughly three times what the dashboard shows.
 
-The key point: **finding cannibalization is not an argument for switching the campaign off.** If the CPA of those 30 net conversions still clears your target, there is a reason to keep running. Cannibalization is a signal to re-judge with corrected numbers, not an on/off verdict.
+The key point: finding cannibalization is not an argument for switching the campaign off. If the CPA of those 30 net conversions still clears your target, there is a reason to keep running. Cannibalization is a signal to re-judge with corrected numbers, not an on/off verdict.
 
 ## Signs to suspect cannibalization
 
@@ -79,7 +78,7 @@ Either way, do not leave brand campaigns in the same campaign as generic keyword
 
 Put paid conversions and organic conversions in one weekly table, side by side, and add a spend column next to them.
 
-For the weeks where spend moved sharply, check one thing: **did total conversions move in the same direction?** If spend rose and the total stayed flat, you now have grounds to suspect cannibalization. That is not evidence — it is a reason to run the experiment.
+For the weeks where spend moved sharply, check one thing: did total conversions move in the same direction? If spend rose and the total stayed flat, you now have grounds to suspect cannibalization. That is not evidence — it is a reason to run the experiment.
 
 ## Let's be honest
 

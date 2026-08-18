@@ -17,7 +17,6 @@ faq:
   - q: "What do I do when mix is the cause?"
     a: "Look at why the traffic composition changed rather than at the page. Paid scaling pushing more Browse traffic, a featuring placement, and seasonality all call for different responses. Since per-source conversion is fine, the right move is sometimes to retarget the goal at installs rather than at conversion rate."
 ---
-
 Say store conversion fell from 32% to 21%. The first thing said in the review is almost always "when did we last touch the screenshots?" Then you split by source and find that neither Search nor Browse moved at all. The page is fine; only the total got worse.
 
 This post is about telling those two situations apart. The fixes are opposites, so neither can be applied while they are blended together.
@@ -82,7 +81,7 @@ Reading the trend chart is simple: dashed per-source lines running parallel whil
 
 **When mix is the cause.** Start with why the composition changed. Paid scaling raising Browse impressions, a featuring placement, and seasonality all call for different responses. Conversion itself is healthy here, so retargeting the goal at installs rather than conversion rate is often correct — more volume through a lower-converting door is not automatically bad.
 
-**When efficiency is the cause.** Narrow down which source fell. An even drop across all sources points at page elements or ratings; a drop confined to one source means that source's traffic intent changed. A Search-only drop most often means you newly ranked for keywords that do not match the app.
+When efficiency is the cause. Narrow down which source fell. An even drop across all sources points at page elements or ratings; a drop confined to one source means that source's traffic intent changed. A Search-only drop most often means you newly ranked for keywords that do not match the app.
 
 ## Try this today
 
@@ -92,7 +91,7 @@ Reading the trend chart is simple: dashed per-source lines running parallel whil
 
 ## Let's be honest
 
-This decomposition **narrows where to look; it does not establish cause.** Mix accounting for −9pp means that much is explained by weighting — not why the weighting moved. If paid scaling, a featuring placement, and seasonality all landed in the same window, this table cannot separate them.
+This decomposition narrows where to look; it does not establish cause. Mix accounting for −9pp means that much is explained by weighting — not why the weighting moved. If paid scaling, a featuring placement, and seasonality all landed in the same window, this table cannot separate them.
 
 Confirming that a screenshot or icon change worked requires a [store experiment](/blog/store-listing-experiment), not observational data. Testing whether paid traffic displaces organic is a job for [incrementality analysis](/tools/incrementality).
 

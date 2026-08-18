@@ -12,9 +12,6 @@ faq:
   - q: "Can I turn these results straight into production guidelines?"
     a: "Use them to narrow hypotheses. Observational data carries the selection bias of the delivery algorithm, so it is not causal. Confirm only the top one or two elements with an experiment before writing a rule."
 ---
-
-# Turning "the hook was good" Into a Number
-
 Content retros keep producing the same sentence: "this one worked because the hook was strong." But that piece was also shorter than usual, and the thumbnail was brighter. Which of those made the performance is unknown.
 
 Changing one element at a time is certain, but five elements produce dozens of combinations. You cannot run them all.

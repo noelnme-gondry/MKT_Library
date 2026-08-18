@@ -9267,4 +9267,32 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .consent-banner__text a { color: var(--primary); }
 .consent-banner__actions { display: flex; gap: 8px; }
 @media (max-width: 640px) { .consent-banner { justify-content: flex-start; } }
+
+/* ── 5-27 액션 로그 ─────────────────────────────────────────────────────── */
+/* 값은 전부 semantic 토큰 — raw hex를 쓰면 라이트 모드 재정의가 안 먹는다(§7). */
+.event-log__inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 12px 0 16px; }
+.event-log__form { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-1); }
+.event-log__subtitle { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 2px; }
+.event-log__row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.event-log__form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); flex: 1 1 140px; }
+.event-log__form input, .event-log__form select, .event-log__form textarea {
+  padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-base); color: var(--text-primary); font-size: 13px; font-family: inherit;
+}
+.event-log__form textarea { resize: vertical; min-height: 92px; }
+.event-log__notice { font-size: 12.5px; color: var(--text-secondary); margin: 6px 0; }
+.event-log__list { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.event-log__item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 8px; border-bottom: 1px solid var(--border-subtle); font-size: 13px; }
+.event-log__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.event-log__date { font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.event-log__type { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+.event-log__label { color: var(--text-primary); font-weight: 600; }
+.event-log__note { color: var(--text-muted); font-size: 12.5px; }
+.event-log__origin { margin-left: auto; font-size: 11.5px; color: var(--text-muted); }
+.event-log__remove {
+  margin-left: auto; background: none; border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: 6px; width: 24px; height: 24px; cursor: pointer; line-height: 1; font-size: 14px;
+}
+.event-log__remove:hover { color: var(--danger); border-color: var(--danger); }
+
 } /* @layer app 끝 */

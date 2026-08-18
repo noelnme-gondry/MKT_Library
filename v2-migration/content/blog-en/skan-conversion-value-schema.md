@@ -17,7 +17,6 @@ faq:
   - q: "Does the ad platform learn from the conversion value?"
     a: "Yes, which is why a design mistake becomes an optimization problem. Feed it a bad signal and the algorithm works hard to bring you the wrong users."
 ---
-
 SKAN returns exactly one value per install: the [conversion value](/glossary/conversion-value). Deciding what goes into that narrow slot is the part of iOS measurement that takes the most actual work.
 
 ## 64 slots is smaller than it sounds
@@ -40,13 +39,13 @@ A schema you can read beats a schema that covers everything. That is the whole p
 
 ## Four common mistakes
 
-**One: encoding behavior outside the window.** The first window is days 0–2. If your average purchase lands on day 5, that signal never reaches it. Check your real conversion-delay distribution before fixing the schema.
+One: encoding behavior outside the window. The first window is days 0–2. If your average purchase lands on day 5, that signal never reaches it. Check your real conversion-delay distribution before fixing the schema.
 
-**Two: dropping raw revenue in.** Revenue is continuous and must be bucketed; tight buckets run out of slots fast. Split only the bands that matter.
+Two: dropping raw revenue in. Revenue is continuous and must be bucketed; tight buckets run out of slots fast. Split only the bands that matter.
 
 **Three: remapping often.** Change the mapping and data before and after mean different things. If you must, record the date and never blend the periods.
 
-**Four: designing finely in windows 2 and 3.** Those return only low, medium, and high. Ten LTV bands there collapse into three.
+Four: designing finely in windows 2 and 3. Those return only low, medium, and high. Ten LTV bands there collapse into three.
 
 ## The platform learns from this value
 

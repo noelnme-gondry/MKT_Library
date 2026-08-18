@@ -14,7 +14,6 @@ faq:
   - q: "Why use an Aha Event instead of purchase optimization?"
     a: "Purchase is closer to the business goal, but it can be too sparse for early-stage campaigns to learn from. An Aha Event can be an earlier, higher-volume quality signal."
 ---
-
 An install CPA can fall while the business still feels unchanged. Installs and sign-ups rise, but very few people return a few days later.
 
 That does not always mean the campaign failed. It can mean you gave the platform a goal that was too easy. When you optimize for installs, automation gets very good at finding people likely to install. It does not automatically find people who will experience your product's value and stay.

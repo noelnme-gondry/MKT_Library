@@ -17,7 +17,6 @@ faq:
   - q: "Should I rebuild a poorly performing campaign from scratch?"
     a: "Usually not. A new campaign restarts accumulated learning at zero. Consider rebuilding only after goal and asset adjustments have failed, or when the structure itself is wrong."
 ---
-
 Google UAC (App Campaigns) lets the algorithm decide most of the placements, targeting, and bidding. "So what does the marketer even do?" is the natural question. There are clear levers — and knowing which ones they are, and leaving the rest alone, is the heart of running UAC.
 
 Put the other way: spending time trying to control what you cannot control is the most common waste in UAC. Pulling placement-level reports and asking to exclude specific inventory mostly goes nowhere in this campaign structure.
@@ -64,7 +63,7 @@ Pick one campaign, open the last 30 days, and check two things.
 
 First, **count how many changes you made in those 30 days** — budget, target cost, and asset changes combined. More than twice a week and the campaign is likely living in a permanent learning state. The cause of weak performance may be the change frequency rather than the settings.
 
-Second, **count the daily volume of your optimization event.** If it is too low, no amount of goal tuning gives the algorithm something to learn. Moving one step earlier in the funnel to build volume, then stepping back down, is usually faster.
+Second, count the daily volume of your optimization event. If it is too low, no amount of goal tuning gives the algorithm something to learn. Moving one step earlier in the funnel to build volume, then stepping back down, is usually faster.
 
 ## Let's be honest
 

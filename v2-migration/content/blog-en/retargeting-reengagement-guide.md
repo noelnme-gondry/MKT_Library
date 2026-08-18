@@ -17,7 +17,6 @@ faq:
   - q: "After how many days is a user dormant?"
     a: "There is no fixed threshold — it comes from your service's natural usage cycle. Fourteen days without a session means something entirely different for a weekly app than for a daily one. Set the line where your retention curve bends."
 ---
-
 The campaign that brings new users (UA) and the one that recalls existing users (retargeting) have completely different purposes. Mix them in one campaign and they eat each other's budget, and you can't see which side earned the result. So split them from the start.
 
 ## Why mixing them breaks the numbers
@@ -75,7 +74,7 @@ Seed size matters too. Too small and the platform cannot find a pattern; too lar
 
 ## Try this today
 
-Pick one retargeting campaign and **hold out 5–10% of its audience.** That group sees no retargeting ads at all.
+Pick one retargeting campaign and hold out 5–10% of its audience. That group sees no retargeting ads at all.
 
 Two to four weeks later (longer than your purchase cycle), compare return and purchase rates between the two groups. Near-identical results mean the campaign was paying for people who were coming back anyway. A clear gap is your real incremental lift.
 

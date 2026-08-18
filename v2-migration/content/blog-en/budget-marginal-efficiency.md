@@ -28,8 +28,7 @@ faq:
   - q: "Does cutting budget always reset campaign learning?"
     a: "No. There is no universal rule that every budget reduction resets learning. Large changes can still create delivery and performance volatility, so record the change and allow an adequate observation window."
 ---
-
-**The short version (3 lines)**
+### The short version (3 lines)
 
 - Whether you are **increasing, reallocating, or cutting** budget, start with marginal ROAS or CPA over the incremental or removed spend range.
 - Add where marginal efficiency is highest, shift from low to high, cut where it's lowest. Same curve, you're just pushing it in a different direction.
@@ -85,7 +84,7 @@ No signup · your CSV is processed in the browser · no server storage.
 
 ---
 
-**Related**
+### Related
 
 - Tools: [Campaign Saturation Diagnosis](/tools/campaign-saturation) — is there headroom to scale · [Creative Fatigue Analysis](/content/freshness) — check fatigue signals during operation
 - Glossary: [Marginal CPA · Marginal ROAS · response curve — the marginal-metrics hub](/glossary/marginal-cpa)

@@ -12,9 +12,6 @@ faq:
   - q: "Can I separate TV from digital contribution?"
     a: "If both moved in the same window, the data alone usually cannot separate them. Separation needs periods where the two budgets moved differently. Without that, report a combined effect rather than inventing a split."
 ---
-
-# Installs Rose When TV Started — Was It Really TV?
-
 Offline advertising has no clicks. So measurement usually ends either in vague impressions, or in the opposite error: crediting the entire lift during the flight to TV.
 
 The way out of both is to **compare exposed and unexposed windows as a time series**.
@@ -55,7 +52,7 @@ Following even one of the three changes next quarter's answer.
 
 **One.** Before the next flight starts, pull **at least eight weeks** of brand search volume and direct traffic and park it somewhere. A baseline cannot be built after the fact, and without one the interval stays so wide that no result is sayable.
 
-**Two.** Ask the media team one question: **can we leave any region unexposed?** Offline buys are region-addressable, which makes this far easier than it is in digital. One or two held-out regions turn next quarter's estimate from "the trend went up" into "the exposed regions moved and the held-out ones did not."
+**Two.** Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. One or two held-out regions turn next quarter's estimate from "the trend went up" into "the exposed regions moved and the held-out ones did not."
 
 ## Let's be honest
 

@@ -17,7 +17,6 @@ faq:
   - q: "Should I be preparing for SKAN 5 now?"
     a: "SKAN 4 is still the industry standard, and Apple's forward direction is AdAttributionKit. Settling your per-window schema and campaign structure carries over to either, which is a better use of time than chasing a version."
 ---
-
 The most common mistake in a SKAN 4 migration is ordering: designing all three windows at once and porting the Android campaign structure straight across. Data arrives, and half of it is empty.
 
 [SKAN](/glossary/skan) generally and its relationship with ATT are covered in the [iOS ATT and SKAN measurement guide](/blog/ios-att-skan-guide). This article is only about **the order**.
@@ -32,7 +31,7 @@ SKAN 4 returns a postback for each of three periods after install. They do not c
 | Days 3–7 | Coarse only (low/medium/high) | Early return and habit formation |
 | Days 8–35 | Coarse only (low/medium/high) | Long-run value — arrives last |
 
-One conclusion follows immediately: **precise design only means anything in the first window.** Detailed LTV bands in windows 2 and 3 collapse into three buckets.
+One conclusion follows immediately: precise design only means anything in the first window. Detailed LTV bands in windows 2 and 3 collapse into three buckets.
 
 ## Step 1 — Lock the first window's schema
 
@@ -52,7 +51,7 @@ Skip this and everything above stops mattering.
 
 The reason is [crowd anonymity](/glossary/crowd-anonymity), the privacy threshold. Low install volume means Apple returns less: at a low tier, neither the fine value nor the granular source identifier arrives.
 
-Which produces the paradox specific to SKAN. On other channels, finer campaign structure means better analysis. **Under SKAN, splitting shrinks each slice's volume and coarsens the data.**
+Which produces the paradox specific to SKAN. On other channels, finer campaign structure means better analysis. Under SKAN, splitting shrinks each slice's volume and coarsens the data.
 
 Port your Android structure across and you can flatten iOS data wholesale. Consolidate deliberately instead. What you give up is campaign-level control; what you get back is measurement at all.
 
