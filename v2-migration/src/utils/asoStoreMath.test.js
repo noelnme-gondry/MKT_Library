@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateBySource,
   classifyStoreShift,
+  dailyConversionSeries,
   decomposeStoreConversion,
   storeFunnel,
 } from "./asoStoreMath";
@@ -113,5 +114,45 @@ describe("decomposeStoreConversion", () => {
     const first = decomposeStoreConversion(mixOnlyBefore, mixOnlyAfter);
     const second = decomposeStoreConversion(mixOnlyBefore, mixOnlyAfter);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+  });
+});
+
+describe("dailyConversionSeries", () => {
+  const rows = [
+    { date: "2026-03-02", source: "Search", views: 100, installs: 45 },
+    { date: "2026-03-01", source: "Search", views: 200, installs: 100 },
+    { date: "2026-03-01", source: "Browse", views: 100, installs: 10 },
+    { date: "2026-03-02", source: "Browse", views: 300, installs: 15 },
+  ];
+
+  it("날짜를 오름차순으로 정렬한다", () => {
+    expect(dailyConversionSeries(rows).dates).toEqual(["2026-03-01", "2026-03-02"]);
+  });
+
+  it("전체 전환율은 소스 합산 분모로 계산한다", () => {
+    // 3/1: (100+10)/(200+100)=0.36667, 3/2: (45+15)/(100+300)=0.15
+    const series = dailyConversionSeries(rows);
+    expect(series.total[0]).toBeCloseTo(110 / 300, 12);
+    expect(series.total[1]).toBeCloseTo(60 / 400, 12);
+  });
+
+  it("소스는 총 설치 내림차순으로 결정론적으로 정렬된다", () => {
+    const series = dailyConversionSeries(rows);
+    expect(series.sources.map((s) => s.source)).toEqual(["Search", "Browse"]);
+    expect(series.sources[0].values).toEqual([0.5, 0.45]);
+  });
+
+  it("분모가 0인 날은 값을 만들지 않고 null로 둔다", () => {
+    const series = dailyConversionSeries([
+      { date: "2026-03-01", source: "Search", views: 0, installs: 0 },
+      { date: "2026-03-02", source: "Search", views: 50, installs: 10 },
+    ]);
+    expect(series.total).toEqual([null, 0.2]);
+    expect(series.sources[0].values).toEqual([null, 0.2]);
+  });
+
+  it("빈 입력에서 throw 하지 않는다", () => {
+    expect(dailyConversionSeries([])).toEqual({ dates: [], total: [], sources: [] });
+    expect(dailyConversionSeries(null).dates).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
@@ -9,7 +9,9 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { downloadCsv } from "@/utils/download";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
-import { classifyStoreShift, decomposeStoreConversion, storeFunnel } from "@/utils/asoStoreMath";
+import Chart from "@/utils/chartGlobals";
+import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
+import { classifyStoreShift, dailyConversionSeries, decomposeStoreConversion, storeFunnel } from "@/utils/asoStoreMath";
 import { fmtPct } from "@/utils/format";
 
 const TOOL_ID = "5-27";
@@ -17,7 +19,7 @@ const TOOL_ID = "5-27";
 // 매핑된 행 → 엔진 입력. 값은 문자열로 들어오므로 엔진 쪽에서 Number 변환한다(§7).
 const toEngineRows = (rows) => rows.map((row) => ({
   date: row.date,
-  source: row.source,
+  source: row.store_source,
   impressions: row.impressions,
   views: row.product_page_views,
   installs: row.installs,
@@ -39,17 +41,89 @@ function splitByDate(rows) {
 function analyze(rows) {
   const engineRows = toEngineRows(rows);
   const overall = storeFunnel(engineRows);
+  const series = dailyConversionSeries(engineRows);
   const split = splitByDate(engineRows);
-  if (!split) return { overall, split: null, decomposed: null, verdict: { verdict: "unknown", reason: "기간 부족" } };
+  if (!split) return { overall, series, split: null, decomposed: null, verdict: { verdict: "unknown", reason: "기간 부족" } };
   const decomposed = decomposeStoreConversion(split.before, split.after);
-  return { overall, split, decomposed, verdict: classifyStoreShift(decomposed) };
+  return { overall, series, split, decomposed, verdict: classifyStoreShift(decomposed) };
 }
 
 export default function AsoStoreConversion({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  // useCallback 없이 두면 매 렌더마다 새 함수가 되어 차트 useEffect가 다시 돌고,
+  // 그때마다 캔버스를 destroy → 재생성한다(깜빡임 + 낭비).
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const analyzed = useAppStore((state) => state.isGroupAnalyzed(TOOL_ID));
   const result = useMemo(() => (analyzed ? analyze(getMappedRows(csvData)) : null), [analyzed, csvData]);
+
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+
+  const series = result?.series;
+  const cutDate = result?.split?.cut;
+
+  useEffect(() => {
+    if (!chartRef.current || !series || series.dates.length === 0) return undefined;
+    if (chartInstance.current) chartInstance.current.destroy();
+
+    const palette = CHART_THEME.colors;
+    const base = chartCommonOpts();
+    const instance = new Chart(chartRef.current.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: series.dates,
+        datasets: [
+          {
+            label: tr("전체", "Overall"),
+            data: series.total.map((value) => (value == null ? null : value * 100)),
+            borderColor: CHART_THEME.textPrimary,
+            backgroundColor: "transparent",
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.25,
+            spanGaps: false,
+          },
+          ...series.sources.map((entry, index) => ({
+            label: entry.source,
+            data: entry.values.map((value) => (value == null ? null : value * 100)),
+            borderColor: palette[index % palette.length],
+            backgroundColor: "transparent",
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            pointRadius: 0,
+            tension: 0.25,
+            spanGaps: false,
+          })),
+        ],
+      },
+      options: {
+        ...base,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          ...base.scales,
+          y: {
+            ...(base.scales?.y || {}),
+            title: { display: true, text: tr("조회→설치 전환율 (%)", "View-to-install rate (%)"), color: CHART_THEME.text },
+            ticks: { ...(base.scales?.y?.ticks || {}), color: CHART_THEME.text },
+          },
+          x: {
+            ...(base.scales?.x || {}),
+            ticks: { ...(base.scales?.x?.ticks || {}), color: CHART_THEME.text, maxTicksLimit: 10 },
+          },
+        },
+      },
+    });
+    chartInstance.current = instance;
+    // 조건부 마운트(분석 게이트 뒤) 캔버스는 최초 폭이 0이라 한 번 강제 리사이즈(§7).
+    requestAnimationFrame(() => instance.resize());
+
+    return () => {
+      instance.destroy();
+      chartInstance.current = null;
+    };
+  }, [series, cutDate, isDarkMode, locale, tr]);
 
   const verdict = result?.verdict?.verdict;
   const decomposed = result?.decomposed;
@@ -175,6 +249,19 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             "No impressions column, so tap-through was not computed. View-to-install remains valid.",
           )}</p>}
         </section>
+
+        {series && series.dates.length > 1 && <section className="block" id="aso-trend">
+          <h2 className="section-title">{tr("전환율 추이", "Conversion trend")}</h2>
+          <p className="muted">{tr(
+            "굵은 선이 전체 전환율, 점선이 소스별 전환율입니다. 소스별 선은 그대로인데 전체만 내려갔다면 구성이 바뀐 것이고, 소스별 선이 같이 내려갔다면 페이지 쪽입니다.",
+            "The solid line is the blended rate and the dashed lines are per-source rates. Per-source lines holding while the blended line falls means the mix moved; per-source lines falling together points at the page.",
+          )}</p>
+          <div className="chart-container" style={{ height: 320 }}><canvas ref={chartRef} /></div>
+          {cutDate && <p className="muted">{tr(
+            `앞뒤 비교 기준일은 ${cutDate}입니다. 이 날짜 이전이 앞 기간, 이후가 뒤 기간입니다.`,
+            `The two halves split at ${cutDate} — earlier dates form the first period, later ones the second.`,
+          )}</p>}
+        </section>}
 
         {sourceRows.length > 0 && <section className="block" id="aso-sources">
           <h2 className="section-title">{tr("소스별 분해", "Per-source breakdown")}</h2>

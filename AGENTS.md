@@ -150,9 +150,10 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 **데이터·CSV**
 - **CSV 콤마**: `"2,488"` 쌍따옴표 안 콤마. PapaParse 사용(직접 split 금지). **dynamicTyping 없이** → 모든 값 문자열, `Number()`/`parseFloat`.
 - **CSV 다운로드 = CRLF + BOM**: `join("\n")`은 Excel에서 한 행으로 뭉침(RFC4180 위반). **`\r\n` 조인 + BOM + `text/csv;charset=utf-8`**(공용 `utils/download.js`). 콤마는 따옴표 이스케이프. 날짜 문자열 컬럼은 `parseFloat`가 연도만 뽑으므로 원본 라벨 별도 보존(`weekLabel`).
-- **`type="number"`는 천단위 콤마 표시 불가**: 금액 입력은 v2 **`CommaNumberInput` 재사용**(type=text·표시 콤마·읽기 strip·blur 재포맷). `parseFloat("72,341,057")=72` 함정 — 모든 read 사이트에서 콤마 strip 필수(하나라도 빠지면 분배 0 버그).
+- **`type="number"`는 천단위 콤마 표시 불가**: 금액 입력은 `CommaNumberInput` 재사용. `parseFloat("72,341,057")=72` 함정 — 모든 read 사이트에서 콤마 strip 필수.
 - **CSV 자동매핑은 도구별 필드로 스코프**: 전체 `STANDARD_FIELDS`로 매핑하면 그 도구가 안 쓰는 필드까지 잡아 "매핑됐는데 기능엔 못 씀". `TOOL_REQUIRED_FIELDS`(oneOf 포함)+`TOOL_OPTIONAL_FIELDS` 합집합으로 제한. 주의: `cost`(효율)와 `spend`(Creative)는 별도 키 — 같은 "비용"이라도 grain 따라 다름. **엔진이 어떤 표준키를 읽는지 항상 확인**(PVM/creativeMath는 `r.spend` → `getMappedRows`에서 cost↔spend 양쪽 채움).
 - **헤더명이 아니라 "값"으로 매핑하는 필드는 `valueVocabulary`**(source=광고/오가닉): 헤더/타입 점수 무시하고 값 어휘 매칭만 사용. **숫자 컬럼(`numericRate≥0.8`)은 enum 어휘 후보에서 제외**하고 **짧은 토큰(≤2자)은 정확일치만** — `"850000".includes("0")`으로 비용·설치가 `campaign_on`에 선점되는 사고(PR #603).
+- **데모 픽스처가 표준키를 헤더로 쓰면 자동매핑은 검사된 적이 없다**(2026-08-18): 5-27을 실제 App Store Connect export(`Date`·`Source Type`·`Impressions`·`Product Page Views`·`Total Downloads`)로 올려 보니 **필수 4개 중 소스와 설치 2개가 `__ignore__`** 로 떨어졌다. 원인 둘 — ① 유입 소스에 `source`(광고/오가닉)를 재사용했는데 그 필드는 `valueVocabulary`가 organic·paid라 "App Store Search"를 못 잡고 라벨도 어긋난다 ② `installs` 별칭에 스토어 콘솔 컬럼명이 없었다. 그런데 데모 픽스처가 헤더를 표준키 그대로(`source`·`installs`) 썼기 때문에 스모크·골든이 전부 통과했다. **자기가 만든 헤더로만 검사하면 실사용 CSV의 실패는 영원히 안 보인다** — 도구를 새로 낼 때 실제 플랫폼 export 컬럼명으로 `buildMappingContract`를 돌리는 케이스를 함께 둘 것(`storeConsoleMapping.test.js`).
 - **CSV를 "쓰는" 라우트는 반드시 `TOOL_GROUP`에 등록**(PR #603→#604): 읽기(sticky `activeDataGroup`)와 쓰기(`groupForRoute`)가 다른 그룹을 고르면 재진입 시 미러가 빈 슬라이스를 가리켜 **방금 올린 CSV가 사라진다**. `TOOL_GROUP` 파생 상수(`TEMPLATE_FAMILY` 등)에 새 id가 딸려 들어가는지도 확인.
 - **그룹·라우트 목록을 두 곳에 나열하지 말 것 — 파생시켜라**(PR #608→#610): `TOOL_GROUP`엔 있는데 스토어 `csvGroups`엔 없던 그룹 하나가 미러를 `undefined`로 만들어 도구를 렌더 throw로 죽였다(5-24, 배포된 채 하루). 같은 사고가 `/start`에서도 났다(#604). 지금은 세 맵이 `buildGroupMap()` 파생 — **"한 곳에 추가하면 다른 곳도 고쳐야 한다"는 주석이 보이면 그게 곧 다음 버그다.** 파생이 불가능하면 최소한 정합 테스트를 둘 것.
 - **커버리지 가드가 손으로 쓴 배열을 돌면 가드가 아니다 — 그리고 고친 파일 옆에서 그대로 재발한다**: `toolOg.test.js`가 "every published tool"이라며 하드코딩 배열을 돌아 5-25·5-26을 놓쳤고(generic OG·빈 featureList 배포), 그 파일만 파생으로 고친 뒤 **옆의 `routeSeo.test.js`가 똑같은 형태로 똑같은 두 도구를 놓치고 있었다**(5-26 KO 32자·EN 69자가 한도 30·60을 넘긴 채 통과). 파생(`ROUTES.filter(isRouteIndexable)`)으로 바꾸자마자 검사된 적 없던 `guide-index`·`start-gate` 설명 초과 2건이 추가로 나왔다. **교훈을 적용할 땐 같은 패턴의 파일을 전부 grep해서 한 번에 고칠 것** — 한 곳만 고치면 교훈이 기록됐다는 사실이 남은 구멍을 가린다. **가드가 있다는 사실이 가드가 없다는 사실을 가린다.** 같은 이유로 "완료" 문구도 하네스에 적기 전에 grep으로 셀 것(§12.27의 미채택 목록은 두 번 연속 낡은 채였다).
@@ -473,7 +474,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **255파일·2079 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **256파일·2087 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).

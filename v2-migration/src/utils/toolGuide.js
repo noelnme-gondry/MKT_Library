@@ -311,7 +311,7 @@ export const TOOL_GUIDE = {
     grain: "1행 = 하루 × 유입 소스",
     needs: [
       { col: "date", label: "날짜", why: "기간 비교 기준", required: true },
-      { col: "source", label: "유입 소스", why: "Search·Browse·Referrer 등 분해 단위", required: true },
+      { col: "store_source", label: "유입 소스", why: "Search·Browse·Referrer 등 분해 단위", required: true },
       { col: "product_page_views", label: "제품 페이지 조회", why: "전환율 분모", required: true },
       { col: "installs", label: "설치", why: "전환율 분자", required: true },
       { col: "impressions", label: "노출", why: "노출→제품페이지 통과율(선택)", required: false },
@@ -321,7 +321,7 @@ export const TOOL_GUIDE = {
       "두 기간을 비교하므로 최소 2주 이상, 같은 길이의 앞뒤 구간이 필요합니다.",
       "노출 열이 없어도 제품페이지→설치 전환은 계산됩니다.",
     ],
-    example: "date,source,impressions,product_page_views,installs\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
+    example: "Date,Source Type,Impressions,Product Page Views,Total Downloads\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
   },
   "5-25": {
     when: "MMM을 실행하기 전에 채널별 지출이 너무 함께 움직여 채널 기여도를 분리하기 어려운지 VIF로 빠르게 점검합니다.",
@@ -642,7 +642,7 @@ export const TOOL_GUIDE_EN = {
     grain: "1 row = one day \u00d7 traffic source",
     needs: [
       { col: "date", label: "Date", why: "Basis for period comparison", required: true },
-      { col: "source", label: "Traffic source", why: "Decomposition unit \u2014 Search, Browse, Referrer", required: true },
+      { col: "store_source", label: "Traffic source", why: "Decomposition unit \u2014 Search, Browse, Referrer", required: true },
       { col: "product_page_views", label: "Product page views", why: "Conversion denominator", required: true },
       { col: "installs", label: "Installs", why: "Conversion numerator", required: true },
       { col: "impressions", label: "Impressions", why: "Impression-to-page tap-through (optional)", required: false },
@@ -652,7 +652,7 @@ export const TOOL_GUIDE_EN = {
       "Two periods are compared, so you need at least two weeks split into equal-length windows.",
       "Page-to-install conversion still computes without an impressions column.",
     ],
-    example: "date,source,impressions,product_page_views,installs\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
+    example: "Date,Source Type,Impressions,Product Page Views,Total Downloads\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
   },
   "5-25": {
     when: "Before MMM, quickly check VIF to see whether channel spend moved too tightly together to separate contribution.",

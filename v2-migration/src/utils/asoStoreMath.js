@@ -92,3 +92,43 @@ export function classifyStoreShift(decomposed, config = STORE_VERDICT_CONFIG) {
   if (mixShare <= config.negligibleShare) return { verdict: "efficiency", mixShare, totals, reason: "소스별 전환율 변화가 주도" };
   return { verdict: "mixed", mixShare, totals, reason: "구성과 효율이 함께 움직임" };
 }
+
+/**
+ * 날짜별 조회→설치 전환율 시계열. 전체 한 줄 + 소스별 한 줄씩.
+ *
+ * 판정 카드는 "앞뒤 두 덩어리"만 말해 주기 때문에, 변화가 특정 날짜에 꺾였는지
+ * 서서히 밀렸는지가 안 보인다. 분해 결과를 믿을지 판단하려면 그 모양을 봐야 한다.
+ * 분모가 0인 날은 값을 만들지 않고 null로 남긴다(§8 — 없는 수를 채우지 않는다).
+ */
+export function dailyConversionSeries(rows) {
+  const byDate = new Map();
+  const sources = new Set();
+  for (const row of rows || []) {
+    const date = String(row.date ?? "").trim();
+    if (!date) continue;
+    const source = String(row.source ?? "").trim() || "(미지정)";
+    sources.add(source);
+    if (!byDate.has(date)) byDate.set(date, { total: { views: 0, installs: 0 }, bySource: new Map() });
+    const slot = byDate.get(date);
+    const views = num(row.views);
+    const installs = num(row.installs);
+    slot.total.views += views;
+    slot.total.installs += installs;
+    const prev = slot.bySource.get(source) || { views: 0, installs: 0 };
+    slot.bySource.set(source, { views: prev.views + views, installs: prev.installs + installs });
+  }
+  const dates = [...byDate.keys()].sort();
+  const rate = (cell) => (cell && cell.views > 0 ? cell.installs / cell.views : null);
+  return {
+    dates,
+    total: dates.map((date) => rate(byDate.get(date).total)),
+    // 소스 순서는 총 설치 내림차순 — 범례가 매번 같은 순서로 나오도록 결정론 유지.
+    sources: [...sources]
+      .map((source) => ({
+        source,
+        installs: dates.reduce((sum, date) => sum + (byDate.get(date).bySource.get(source)?.installs || 0), 0),
+        values: dates.map((date) => rate(byDate.get(date).bySource.get(source))),
+      }))
+      .sort((a, b) => b.installs - a.installs || a.source.localeCompare(b.source)),
+  };
+}

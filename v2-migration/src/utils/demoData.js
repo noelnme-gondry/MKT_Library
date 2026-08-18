@@ -94,7 +94,7 @@ function buildEfficiency() {
 // 도구의 믹스 vs 효율 분해가 실제로 "믹스"를 가리키는 데모가 된다(§12.16 —
 // 진단 도구 데모는 합성 패턴이 신호를 띠어야 의미가 있다).
 function buildAsoStore() {
-  const headers = ["date", "source", "impressions", "product_page_views", "installs"];
+  const headers = ["date", "store_source", "impressions", "product_page_views", "installs"];
   const dates = generateDates(42, "2025-03-01");
   const raw = [];
   dates.forEach((date, index) => {
@@ -104,15 +104,15 @@ function buildAsoStore() {
     const browseViews = (late ? 5200 : 2400) + ((index * 53) % 7) * 80;
     const referrerViews = 900 + ((index * 19) % 5) * 40;
     raw.push(
-      { date, source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * 0.45) },
-      { date, source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * 0.09) },
-      { date, source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * 0.22) },
+      { date, store_source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * 0.45) },
+      { date, store_source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * 0.09) },
+      { date, store_source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * 0.22) },
     );
   });
   return {
     raw,
     headers,
-    mapping: { date: "date", source: "source", impressions: "impressions", product_page_views: "product_page_views", installs: "installs" },
+    mapping: { date: "date", store_source: "store_source", impressions: "impressions", product_page_views: "product_page_views", installs: "installs" },
     fileName: "demo_aso_store.csv",
   };
 }
