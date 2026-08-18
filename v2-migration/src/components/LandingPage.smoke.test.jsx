@@ -8,6 +8,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 import LandingPage from "@/components/LandingPage";
+import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -189,5 +190,18 @@ describe("LandingPage render smoke", () => {
       "/en/tools/brand-campaign-incrementality",
     ]);
     expect(container.textContent).toContain("Try example data in 30 seconds");
+  });
+
+  it("도구 목록이 첫 화면 근처에 온다 — 아래로 밀리면 없는 것과 같다", () => {
+    render(<LandingPage />);
+    const questions = document.querySelector(".dc-questions");
+    const catalog = document.querySelector(".dc-catalog");
+    const loop = document.querySelector(".dc-loop");
+    expect(catalog, "도구 목록 섹션이 없다").toBeTruthy();
+    // 질문 카드(4장) 바로 다음이어야 한다. 루프·워크플로 설명 뒤로 가면 화면 밖이라
+    // "홈에서 무슨 분석이 가능한지 안 보인다"가 그대로 남는다.
+    expect(questions.compareDocumentPosition(catalog) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(catalog.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(catalog.querySelectorAll(".tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
   });
 });

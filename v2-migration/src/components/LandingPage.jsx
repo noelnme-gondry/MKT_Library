@@ -290,6 +290,19 @@ export default function LandingPage({ locale = "ko" }) {
         </div>
       </section>
 
+      {/* 홈에서 이름이 보이는 도구가 4개뿐이었다. 나머지는 사이드바를 열어야만
+          존재를 알 수 있었다 — 압축 밀도로 전부 편다. */}
+      <section className="dc-catalog" id="catalog" aria-labelledby="dc-catalog-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.catalogEyebrow}</div>
+            <h2 id="dc-catalog-title">{T.catalogTitle}</h2>
+          </div>
+          <p>{T.catalogDeck}</p>
+        </header>
+        <ToolIndex locale={lang} density="compact" headingLevel={3} />
+      </section>
+
       <section className="dc-loop" aria-labelledby="dc-loop-title">
         <header className="dc-section-head">
           <div>
@@ -324,19 +337,6 @@ export default function LandingPage({ locale = "ko" }) {
       <div id="workflow">
         <ConnectedToolJourney locale={lang} />
       </div>
-
-      {/* 홈에서 이름이 보이는 도구가 4개뿐이었다. 나머지는 사이드바를 열어야만
-          존재를 알 수 있었다 — 압축 밀도로 전부 편다. */}
-      <section className="dc-catalog" id="catalog" aria-labelledby="dc-catalog-title">
-        <header className="dc-section-head">
-          <div>
-            <div className="dc-eyebrow">{T.catalogEyebrow}</div>
-            <h2 id="dc-catalog-title">{T.catalogTitle}</h2>
-          </div>
-          <p>{T.catalogDeck}</p>
-        </header>
-        <ToolIndex locale={lang} density="compact" headingLevel={3} />
-      </section>
 
       <section className="dc-library" id="library" aria-labelledby="dc-library-title">
         <header className="dc-section-head">

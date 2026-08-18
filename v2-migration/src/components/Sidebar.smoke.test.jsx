@@ -46,7 +46,10 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(5);
+    // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
+    // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
+    expect(document.querySelector(".home-sidebar-nav__item--all")).toBeTruthy();
     expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')?.getAttribute("aria-label")).toContain("CSV를 올리고 가능한 분석 추천");
     expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain("3문항으로 원인과 확인 순서 찾기");
     expect(document.body.textContent).toContain("CSV를 올리고 가능한 분석 추천");
