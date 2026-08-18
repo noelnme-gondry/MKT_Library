@@ -96,7 +96,7 @@ const ASSIST_SECTIONS = {
     { id: "asa-setup", title: ["ASA 판정 기준과 데이터 준비", "Prepare ASA inputs and thresholds"], body: ["검색어 성과와 캠페인 예산·목표 CPA·현재 CPT를 연결해 조정 기준을 확인하세요.", "Connect search-term performance with campaign budget, target CPA, and current CPT to confirm the decision thresholds."] },
     { id: "asa-summary", result: true, title: ["키워드·CPT 조치 요약", "Read keyword and CPT actions"], body: ["Exact 승격과 CPT 증감 후보를 먼저 좁힌 뒤 Apple Ads 콘솔에서 하나씩 검토하세요.", "Narrow the Exact-promotion and CPT-change candidates, then review them one by one in the Apple Ads console."] },
   ],
-  "5-18": [
+  "5-18-shared": [
     { id: "s-prep", title: ["반응 데이터 준비", "Prepare response data"], body: ["주차 단위와 채널별 비용·성과가 맞아야 반응을 안정적으로 읽을 수 있습니다.", "Align weekly grain with channel cost and outcome to read response reliably."] },
     { id: "s-trend", result: true, title: ["반응 변화 확인", "Read the response change"], body: ["관찰된 변화는 진단 신호입니다. 예산 이동 전에는 잠식·추세를 함께 확인하세요.", "Observed movement is a diagnostic signal. Check cannibalization and trend before moving budget."] },
     { id: "s-macro", result: true, title: ["기여도 해석", "Interpret contribution"], body: ["모델 기여도는 예산 방향을 정하는 근거이며, 인과 효과 확정은 별도 검증이 필요합니다.", "Model contribution guides budget direction; causal confirmation needs separate validation."] },
@@ -144,7 +144,20 @@ const DASHBOARD_DEMO_SECTIONS = {
 
 // 공개 도구 여정과 별개로, preview 콘텐츠 화면도 같은 보조 경험을 제공한다.
 // CONNECTED_TOOLS에 넣으면 랜딩 여정·CSV 템플릿의 공개 범위까지 바뀌므로 여기서만 관리한다.
+// 구 5-18 한 화면에 네 안내가 섞여 있었다. 분석이 각각 도구가 된 뒤로는 자기
+// 결과 섹션만 안내한다 — 문구는 하나에서 파생하고 화면별로 골라 쓴다.
+const responseAssist = (...ids) => ASSIST_SECTIONS["5-18-shared"].filter((section) => ids.includes(section.id));
+ASSIST_SECTIONS["5-18"] = responseAssist("s-prep", "s-trend");
+ASSIST_SECTIONS["5-18-trend"] = responseAssist("s-prep", "s-trend");
+ASSIST_SECTIONS["5-18-paid-organic"] = responseAssist("s-prep", "s-trend");
+ASSIST_SECTIONS["5-18-cannibal"] = responseAssist("s-prep", "s-trend");
+ASSIST_SECTIONS["5-18-mmm"] = responseAssist("s-prep", "s-macro");
+ASSIST_SECTIONS["5-18-forecast"] = responseAssist("s-prep", "s-forecast");
+delete ASSIST_SECTIONS["5-18-shared"];
+
 const ASSIST_TOOL_FALLBACKS = {
+  // 목록에 없는 5-18(공유 매핑 허브)은 CONNECTED_TOOLS에 없으므로 이름을 여기서 준다.
+  "5-18": { title: { ko: "패널 데이터 준비", en: "Panel data setup" } },
   "9-2": { title: { ko: "킬러 콘텐츠·충성 독자 발굴", en: "Killer content and loyal reader finder" } },
   "9-3": { title: { ko: "콘텐츠 트래픽 변동 탐지", en: "Content traffic variance" } },
   "9-7": { title: { ko: "콘텐츠 운영 대시보드", en: "Content operations dashboard" } },

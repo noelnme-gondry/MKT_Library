@@ -36,7 +36,7 @@ const TOOL_COPY = {
   "5-21": { href: "/tools/campaign-variance", ko: ["성과 변동 분석", "CPA 변화를 물량·믹스·효율 요인으로 무잔차 분해"], en: ["Performance variance", "Decompose CPA change into volume, mix, and efficiency"] },
   "5-22": { href: "/tools/campaign-saturation", ko: ["캠페인 포화도 진단", "예산 확대 구간의 한계 CPA·ROAS 확인"], en: ["Campaign saturation", "Check marginal CPA and ROAS at the scaled spend level"] },
   "5-3": { href: "/tools/budget-allocation", ko: ["예산 배분", "확인된 효율과 지출 여력으로 다음 예산 시뮬레이션"], en: ["Budget allocation", "Simulate the next budget with efficiency and headroom"] },
-  "5-18": { href: "/tools/marketing-response", ko: ["마케팅 반응 분석", "유료·오가닉 추세와 잠식 가능성을 관측 데이터로 점검"], en: ["Marketing response", "Review paid-organic trends and possible displacement"] },
+  "5-18-cannibal": { href: "/tools/cannibalization-diagnosis", ko: ["잠식 진단", "유료 광고가 오가닉 성과를 잠식하는지 네 신호로 점검"], en: ["Cannibalization diagnosis", "Check four signals that paid may displace organic outcomes"] },
   "5-23": { href: "/tools/incrementality", ko: ["증분 효과 분석", "홀드아웃 또는 전후 데이터로 순수 증분 추정"], en: ["Incrementality analysis", "Estimate incremental outcomes with holdout or pre/post data"] },
   "9-6": { href: "/content/freshness", ko: ["소재 피로도 분석", "CTR·CVR 하락이 소재 피로에서 왔는지 확인"], en: ["Creative fatigue", "Check whether CTR or CVR loss is driven by creative fatigue"] },
 };
@@ -44,7 +44,7 @@ const TOOL_COPY = {
 const BASE_ORDER = {
   "cpi-rise": ["5-21", "9-6", "5-22", "5-3"],
   "installs-no-revenue": ["5-2", "5-21", "5-23"],
-  "organic-drop": ["5-18", "5-23", "5-3"],
+  "organic-drop": ["5-18-cannibal", "5-23", "5-3"],
   "roas-drop": ["5-22", "5-21", "5-3"],
 };
 
@@ -58,10 +58,10 @@ export function buildSymptomDiagnosis({ symptom, data, goal, locale = "ko" } = {
   const boost = [];
   // "순수 효과 검증"은 관측 추세를 먼저 보는 것보다 반사실 설계가 우선이다.
   // 유료·오가닉 주간 데이터만 있어도 5-23에서 가능한 설계와 필요한 추가 데이터를
-  // 먼저 안내하므로, 5-18은 가설 탐색용 대안으로 남긴다.
+  // 먼저 안내하므로, 잠식 진단은 가설 탐색용 대안으로 남긴다.
   if (data === "experiment" || goal === "proof") boost.push("5-23");
   if (data === "creative") boost.push("9-6");
-  if (data === "organic") boost.push("5-18");
+  if (data === "organic") boost.push("5-18-cannibal");
   if (goal === "budget") boost.push("5-22", "5-3");
   const ranked = [...new Set([...boost, ...order])].filter((id) => TOOL_COPY[id]);
   const isEn = locale === "en";

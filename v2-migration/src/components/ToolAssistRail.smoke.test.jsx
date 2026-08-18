@@ -160,7 +160,7 @@ describe("ToolAssistRail", () => {
         data-assist-summary-ko="봉인 최근 12주 OOS wMAPE는 32.77%입니다."
         data-assist-actions-ko="현재 예측값으로 예산을 확정하지 마세요.|||최근 레짐 데이터를 추가해 재검증하세요.">
       </section>`;
-    const { getByRole, container } = render(<ToolAssistRail toolId="5-18" />);
+    const { getByRole, container } = render(<ToolAssistRail toolId="5-18-forecast" />);
     await waitFor(() => expect(getByRole("button", { name: /분석 도우미/ })).toBeTruthy());
     if (!container.querySelector(".tool-assist-rail").classList.contains("is-open")) {
       fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));

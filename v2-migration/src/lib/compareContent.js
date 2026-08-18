@@ -76,7 +76,7 @@ const CONTENT = {
   "mmm-vs-experiment": {
     // 5-25(다중공선성)를 넣는다 — 이 페이지의 "채널 지출이 늘 같이 움직였다면 MMM이
     // 분리하지 못한다"에 실제로 답하는 도구가 그것이다.
-    toolIds: ["5-18", "5-23", "5-4", "5-25"],
+    toolIds: ["5-18-mmm", "5-23", "5-4", "5-25"],
     ko: {
       eyebrow: "방법 비교",
       title: "MMM과 증분 실험 중 무엇을 먼저 해야 하나",
@@ -295,8 +295,8 @@ const TOOL_INDEX = (() => {
   return index;
 })();
 
-// 5-18 하위 진입 라우트(5-18-mmm 등)는 부모 도구의 비교를 공유한다.
-const normalizeToolId = (toolId) => (String(toolId || "").startsWith("5-18-") ? "5-18" : toolId);
+// 목록에 없는 5-18 허브로 들어온 요청은 기여 분해(5-18-mmm)의 비교를 빌려 쓴다.
+const normalizeToolId = (toolId) => (toolId === "5-18" ? "5-18-mmm" : toolId);
 
 export function getComparesForTool(toolId, locale = "ko") {
   return (TOOL_INDEX.get(normalizeToolId(toolId)) || [])

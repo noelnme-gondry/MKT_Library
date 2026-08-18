@@ -80,7 +80,8 @@ v2-migration/
 | 5-4 | 실험 분석 (A/B: 설계+판독) | 수동/CSV |
 | 5-23 | 증분 분석 (홀드아웃 3방법: 통제군·신규켜기·종료) | 자체 CSV |
 | 5-24 | 브랜드 캠페인 증분 분석 (ITS·AR(1)·대조군 연결) | 자체 CSV |
-| 5-18 | 마케팅 반응 분석 (카니발 진단·MMM 기여·회귀+미래예측) | 주간 패널 CSV |
+| 5-18-trend·-paid-organic·-cannibal | 추세 분석 · 유입 변화맵 · 잠식 진단 | 주간 패널 CSV 공유 |
+| 5-18-mmm · 5-18-forecast | 채널 기여도(MMM) · 미래 예측 | 주간 패널 CSV 공유 |
 | 5-20 | 핵심 가치 발굴 (Aha-moment 윈도우×횟수 그리드) | 이벤트 CSV |
 | 5-25 | 다중공선성 점검 (채널 지출 VIF·상관 — MMM 전 진단) | 자체 CSV |
 | 5-26 | ASA 키워드 (Exact 승격·CPT 조정) | 자체 CSV |
@@ -307,7 +308,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 ### 12.8 데모 모드
 `demoData` 픽스처(`seededNoise`, `Math.random` 금지) 자동 로드 — `if(!hasData && !demoDisabled)` 가드. `/start` 진입 시 `startMyData()`가 `demoDisabled=true`+데모 슬라이스만 비움(실 업로드 보존). 데모 사용 중이면 `DemoNoticeModal` 세션 1회 안내.
 
-### 12.9 5-18 MMM (마케팅 반응 회귀)
+### 12.9 응답 패널 다섯 분석 (구 5-18)
 3탭 단일 데이터 흐름: ①진단(카니발·추세·그랜저·변화점) ②MMM 기여 분해(adstock·saturation) ③회귀+예측. **한 CSV + shared `mmmColMap`**로 게이트·계산 — ③이 별도 업로드/게이트를 갖지 말 것(화면 불일치 원인). ③ 예측은 `mmmForecast`(②와 동일 계수: adstock·trend·fourier·더미) 단일 엔진. 회귀=가설 생성용, **인과 아님**. 상세: `docs/backlog.md` §B.
 - **`buildPanelFromColMap` 타깃=플랫폼 합산**: OS 태그 다중 매핑 시 종속을 `pick`(첫 1개)하면 Total인데 한 OS만 나옴 → **컬럼 index별 벡터합**. OS 태깅 정규식은 `\b` 대신 `[^a-z]`(언더스코어 오탐 방지).
 - **패널 라벨 필드명 정합**: 엔진·차트는 `panel.dateLabel`·`dates`·`granularity`를 읽지 `weekLabel`이 아님 → 셋 다 세팅 안 하면 x축이 t 인덱스로 폴백. **엔진이 어떤 필드명 읽는지 항상 확인.**
@@ -409,7 +410,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.29 검색 진입면·유입 레시피 (2026-08)
 도구·문서 페이지가 검색에서 살아남게 하는 공통 배선. 전부 render/메타층(엔진 불변).
-- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·question·answer·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 `getToolFaq()`로 FAQPage JSON-LD를 만든다. 5-18 하위는 `responseSubtoolContent` 폴백. **커버리지 가드 테스트가 신규 도구 누락을 막는다.**
+- **도구 롱폼 = `lib/toolSearchContent.js` SSOT**: 공개 도구는 KO/EN `eyebrow·title·lead·question·answer·sections[3]·faq`를 갖는다. `ToolLongform`이 렌더하고 `page.js`가 `getToolFaq()`로 FAQPage JSON-LD를 만든다. 구 5-18 다섯 분석은 `responseSubtoolContent` 폴백. **검사 대상은 CONTENT 키가 아니라 발행 라우트에서 파생**한다 — 키로 만들면 폴백으로 붙은 도구가 AEO 가드를 통째로 비켜간다.
 - **AEO: 답을 접기 바깥·JSON-LD 첫 항목에**(2026-08): LLM은 페이지 앞쪽에서 답을 뽑는다. 도구·비교 페이지는 `question`(예상 프롬프트) + `answer`(한 문장)를 갖고, 화면에서는 접기 **밖**에, 구조화 데이터에서는 FAQ **첫 항목**에 둔다. 가드가 `answer` 90자 상한·`?` 종결·FAQ 중복을 강제한다. 리스트·표가 추출에 유리하므로 비교는 산문이 아니라 표로 쓴다.
 - **브랜드 사실은 `lib/brandFacts.js` 한 곳**: 무료·가입 없음·브라우저 처리·결정론 같은 문장이 랜딩·롱폼·`llms.txt`에 제각각 적혀 있으면 인용하는 쪽도 제각각 가져간다. `BRAND_FACTS`+`BRAND_LIMITS`(못 하는 것도 같은 급으로)에서 파생하고, **도구 이름·설명은 여기 적지 말고 `routeSeo`에서 조회**한다. 문자열을 검증하는 테스트도 SSOT를 조회해 대조할 것 — 문장을 테스트에 복사하면 SSOT를 고쳐도 옛 문장이 통과한다.
 - **방법 비교(`/compare`)는 브랜드 vs 브랜드가 아니라 방법 vs 방법**: 남의 제품 사양을 표로 단정하면 검증할 수 없고 §8에 어긋난다. 마케터가 실제로 묻는 것도 "증분이랑 MMM 중 뭐 먼저"에 가깝다. SSOT `lib/compareContent.js`, 렌더 `ComparePage.jsx`, sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생.
@@ -443,6 +444,14 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **갈래별 접기는 위치를 흔든다**: `<details>` 하나를 펼 때마다 아래(특히 CSS `columns` 안)가 통째로
   밀려 방금 본 도구를 매번 다시 찾게 된다. 갈래가 2~3개로 고르면 **전부 펴 두는 쪽이 더 짧고**, 고정
   grid라 자리가 안 움직인다. 접기가 정말 필요하면 갈래별 토글이 아니라 전체 한 개로.
+- **한 도구 안에 질문 다섯 개를 넣으면 그 넷은 없는 것과 같다**(2026-08-18): 5-18은 도구 목록에 한 줄
+  뿐인데 안에 추세·변화맵·잠식·기여·예측 다섯 화면이 있었고, 라우트는 이미 다섯 개였는데
+  `publication:"subtool"`로 목록에서 빠져 있었다 — 들어가서 카드를 눌러야만 존재를 알 수 있는 구조.
+  지금은 다섯이 각각 도구고, 허브(5-18)가 목록 없는 매핑 화면이다(검색 색인은 유지). 같은 CSV 그룹이라
+  `NEXT_TOOL_IDS`가 서로를 가리키면 "같은 데이터로 바로"가 화면에 뜬다 — 쪼갠 뒤에도 흐름은 남는다.
+  승격은 배선 20곳(IA·journey·CONNECTED_TOOLS·NEXT·검색콘텐츠·필드계약·템플릿·키워드·라우터·콘텐츠
+  레지스트리…)이라 **형제 id를 grep해서 전부 채울 것**(§12.1). 가드 정규식이 `^(5|9)-\d+$`라 하이픈 id를
+  통째로 건너뛰던 것도 이때 드러났다 — **id 형태를 바꾸면 가드의 패턴부터 확인**할 것.
 - **`ds/ToolBrief`가 짧아진 이름을 메운다** — 질문/답/필요 데이터 세 줄, 상자 없음. 목록과 **같은 문장**을 쓴다.
 - 컴포넌트가 제목을 직접 넘기지 않는다. `ToolPageShell`이 `toolId`로 레지스트리 이름을 쓴다(이름의 두 번째 출처 금지).
 

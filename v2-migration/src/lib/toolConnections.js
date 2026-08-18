@@ -57,10 +57,30 @@ export const CONNECTED_TOOLS = {
     question: { ko: "어떤 검색어를 Exact로 옮기고 CPT를 조정할까?", en: "Which terms should move to Exact and receive a CPT change?" },
     keywords: { ko: "ASA 광고비 적게 소진돼요 검색어 키워드 Exact 승격 CPT 입찰 소진 저소진 과소진 올릴까 내릴까 증액 감액 성과 좋음 안좋음 애플서치애즈", en: "ASA ad spend too low search term keyword Exact promotion CPT bid pacing underspend overspend raise lower increase decrease Apple Search Ads" },
   },
-  "5-18": {
-    title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
-    question: { ko: "지금 필요한 것은 추세·잠식·기여·예측 중 무엇일까?", en: "Do I need trend, cannibalization, contribution, or forecast next?" },
-    keywords: { ko: "MMM 마케팅 믹스 기여도 카니발 잠식 추세 예측 회귀", en: "MMM marketing mix contribution cannibalization trend forecast regression" },
+  "5-18-trend": {
+    title: { ko: "추세 분석", en: "Trend analysis" },
+    question: { ko: "이 변화는 광고 때문일까, 원래 그런 추세였을까?", en: "Was this change from marketing, or the trend it was already on?" },
+    keywords: { ko: "추세 계절성 시즌 이상 주차 기준선 베이스라인 자연 증감", en: "trend seasonality baseline irregular week natural movement" },
+  },
+  "5-18-paid-organic": {
+    title: { ko: "유입 변화맵", en: "Paid vs Organic map" },
+    question: { ko: "Paid가 늘 때 Organic이 줄어드는 주가 반복될까?", en: "Do weeks repeat where Paid rises while Organic falls?" },
+    keywords: { ko: "오가닉 줄었어요 자연유입 감소 Paid Organic 반대 움직임 WoW 변화맵", en: "organic dropped natural traffic Paid Organic opposite movement WoW map" },
+  },
+  "5-18-cannibal": {
+    title: { ko: "잠식 진단", en: "Cannibalization diagnosis" },
+    question: { ko: "유료 광고가 원래 올 손님을 사 오고 있는 걸까?", en: "Is paid spend buying demand that would have come anyway?" },
+    keywords: { ko: "카니발 잠식 브랜드 검색 오가닉 잠식 유료 광고 대체 그랜저", en: "cannibalization brand search organic displacement paid substitution Granger" },
+  },
+  "5-18-mmm": {
+    title: { ko: "채널 기여도", en: "Channel contribution" },
+    question: { ko: "성과 중 각 채널이 만든 몫은 얼마일까?", en: "How much of the outcome did each channel contribute?" },
+    keywords: { ko: "MMM 마케팅 믹스 모델 채널 기여도 분해 adstock 포화 기본 수요", en: "MMM marketing mix model channel contribution decomposition adstock saturation base demand" },
+  },
+  "5-18-forecast": {
+    title: { ko: "미래 예측", en: "Forecast" },
+    question: { ko: "다음 기간 성과는 얼마로 예상되고 얼마나 믿을 수 있을까?", en: "What is the next period's outcome, and how much can I trust it?" },
+    keywords: { ko: "예측 미래 전망 회귀 예측 OOS 검증 시나리오 불확실성", en: "forecast projection regression prediction OOS validation scenario uncertainty" },
   },
   "5-20": {
     title: { ko: "핵심 가치 발굴", en: "Aha-moment finder" },
@@ -87,57 +107,73 @@ export const TOOL_JOURNEY = [
     tools: ["5-2", "5-21"],
   },
   {
+    id: "baseline",
+    label: { ko: "02 · BASELINE", en: "02 · BASELINE" },
+    title: { ko: "추세·잠식 점검", en: "Trend and displacement" },
+    description: { ko: "원래 추세인지, 광고가 오가닉을 먹은 건지 가릅니다.", en: "Tell the underlying trend apart from paid displacing organic." },
+    tools: ["5-18-trend", "5-18-paid-organic", "5-18-cannibal"],
+  },
+  {
     id: "budget",
-    label: { ko: "02 · BUDGET", en: "02 · BUDGET" },
+    label: { ko: "03 · BUDGET", en: "03 · BUDGET" },
     title: { ko: "예산 조정", en: "Budget moves" },
     description: { ko: "더 써도 되는지, 어디로 옮길지 정합니다.", en: "Decide what can scale and where budget should move." },
     tools: ["5-22", "5-3"],
   },
   {
     id: "creative",
-    label: { ko: "03 · CREATIVE", en: "03 · CREATIVE" },
+    label: { ko: "04 · CREATIVE", en: "04 · CREATIVE" },
     title: { ko: "먹히는 요소 찾기", en: "What resonates" },
     description: { ko: "소재·콘텐츠·초기 행동 중 무엇이 성과를 만드는지 찾습니다.", en: "Find which creative, content, or early action drives the outcome." },
     tools: ["9-6", "9-1", "5-20"],
   },
   {
     id: "store",
-    label: { ko: "04 · STORE", en: "04 · STORE" },
+    label: { ko: "05 · STORE", en: "05 · STORE" },
     title: { ko: "앱 유입 개선", en: "App store traffic" },
     description: { ko: "검색 키워드와 스토어 페이지에서 새는 곳을 봅니다.", en: "Check search keywords and the store page for leaks." },
     tools: ["5-26", "5-27"],
   },
   {
     id: "prove",
-    label: { ko: "05 · PROOF", en: "05 · PROOF" },
+    label: { ko: "06 · PROOF", en: "06 · PROOF" },
     title: { ko: "효과 검증", en: "Proof" },
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
     tools: ["5-4", "5-23", "5-24"],
   },
   {
     id: "contribution",
-    label: { ko: "06 · MIX", en: "06 · MIX" },
+    label: { ko: "07 · MIX", en: "07 · MIX" },
     title: { ko: "채널 기여도", en: "Channel contribution" },
     description: { ko: "장기 배분의 근거를 채널 단위로 만듭니다.", en: "Build the channel-level basis for long-run allocation." },
-    tools: ["5-25", "5-18"],
+    tools: ["5-25", "5-18-mmm", "5-18-forecast"],
   },
 ];
 
+// 다음 단계 3개. 같은 CSV 그룹이면 화면이 "같은 데이터로 바로" 라고 표시하므로
+// (isSameData), 응답 패널을 쓰는 다섯 분석은 서로를 먼저 가리킨다 — 한 번 매핑한
+// CSV로 이어서 볼 수 있는 질문을 다음 단계로 잇는 것이 이 맵의 목적이다.
 export const NEXT_TOOL_IDS = {
   "5-2": ["5-21", "5-22", "5-3"],
   "5-21": ["5-22", "5-3", "5-4"],
   "5-22": ["5-3", "5-26", "9-6"],
-  "5-3": ["5-22", "5-18", "5-4"],
+  "5-3": ["5-22", "5-18-mmm", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
-  "5-4": ["5-23", "5-18", "5-2"],
+  "5-4": ["5-23", "5-18-cannibal", "5-2"],
   "5-23": ["5-4", "5-24", "5-2"],
   "5-24": ["5-23", "5-4", "5-2"],
-  "5-18": ["5-3", "5-25", "5-20"],
-  "5-25": ["5-18", "5-4", "5-23"],
+  "5-25": ["5-18-mmm", "5-4", "5-23"],
   "5-26": ["5-22", "5-3", "5-27"],
   "5-27": ["5-26", "5-2", "5-23"],
-  "5-20": ["5-18", "5-4", "5-2"],
+  "5-20": ["9-1", "5-4", "5-2"],
   "9-1": ["9-6", "5-4", "5-20"],
+  // 같은 패널 CSV를 쓰는 다섯 — 추세로 기준선을 잡고, 반대 움직임을 보고,
+  // 잠식을 진단하고, 기여를 나눈 뒤 예측으로 넘어간다.
+  "5-18-trend": ["5-18-paid-organic", "5-18-cannibal", "5-18-mmm"],
+  "5-18-paid-organic": ["5-18-cannibal", "5-18-trend", "5-23"],
+  "5-18-cannibal": ["5-23", "5-18-mmm", "5-18-trend"],
+  "5-18-mmm": ["5-25", "5-18-forecast", "5-3"],
+  "5-18-forecast": ["5-18-mmm", "5-3", "5-2"],
 };
 
 export function localizedTool(toolId, locale = "ko") {

@@ -48,7 +48,7 @@ const GROUPS = [
   },
   {
     heading: "Weekly panel CSV",
-    items: [["5-18", "Marketing response (MMM)", "Run cannibalization diagnosis, MMM contribution decomposition, and regression forecasts.", "/en/tools/marketing-response"]],
+    items: [["5-18", "Weekly panel (shared by five analyses)", "Map once, then trend, paid-vs-organic, cannibalization, channel contribution, and forecast all reuse the same data.", "/en/tools/marketing-response"]],
   },
   {
     heading: "Content CSV",

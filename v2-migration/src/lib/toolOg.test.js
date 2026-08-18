@@ -5,7 +5,7 @@ import { ROUTES, isRoutePublished } from "./routeMap";
 // 손으로 쓴 배열이 아니라 ROUTES에서 **파생**한다. 하드코딩하던 시절 5-25·5-26이
 // 배포된 뒤에도 TOOL_OG_CONFIG에서 빠져 있었는데, "every published tool"을 검증한다는
 // 이 테스트가 같은 누락을 가진 배열을 돌아 통과했다(감사 P1-9).
-const TOOL_IDS = ROUTES.filter((route) => isRoutePublished(route) && /^(5|9)-\d+$/.test(route.id)).map((route) => route.id);
+const TOOL_IDS = ROUTES.filter((route) => isRoutePublished(route) && /^(5|9)-[\w-]+$/.test(route.id)).map((route) => route.id);
 
 describe("tool-specific social cards", () => {
   it.each(TOOL_IDS)("%s has distinct KO and EN card copy", (toolId) => {

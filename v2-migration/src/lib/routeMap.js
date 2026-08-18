@@ -20,14 +20,16 @@ export const ROUTES = [
   // 5-6(소재 분석)은 9-6으로 통합됨(중복 제거). /tools/creative-analysis는
   // next.config.mjs redirects()로 /content/freshness(9-6)로 301 리다이렉트.
   { id: "5-4", slug: "/tools/experiment-analysis", component: "AbTestHoldout" },
-  { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse" },
-  // 5-18의 CSV·매핑 허브 아래 독립 분석 화면. 원본은 response 그룹의 브라우저
-  // 메모리에서만 공유하고, 각 화면은 다른 분석을 렌더·실행하지 않는다.
-  { id: "5-18-paid-organic", slug: "/tools/paid-organic-trend", component: "PaidOrganicTrend", publication: "subtool" },
-  { id: "5-18-trend", slug: "/tools/marketing-trend", component: "MarketingResponseTrend", publication: "subtool" },
-  { id: "5-18-cannibal", slug: "/tools/cannibalization-diagnosis", component: "MarketingResponseCannibal", publication: "subtool" },
-  { id: "5-18-mmm", slug: "/tools/mmm-contribution", component: "MarketingResponseMmm", publication: "subtool" },
-  { id: "5-18-forecast", slug: "/tools/marketing-forecast", component: "MarketingResponseForecast", publication: "subtool" },
+  // 5-18은 다섯 분석이 공유하는 CSV·매핑 허브다. 예전에는 이 하나만 도구 목록에
+  // 있고 분석 다섯은 그 안에 들어가야만 보였는데, 서로 다른 질문 다섯 개를 한 이름
+  // 뒤에 숨긴 셈이었다 — 지금은 분석이 각각 도구고, 허브는 목록에 없는 준비 화면이다
+  // (검색에는 남는다: publication="subtool"은 nav에서만 빠지고 색인은 유지).
+  { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse", publication: "subtool" },
+  { id: "5-18-paid-organic", slug: "/tools/paid-organic-trend", component: "PaidOrganicTrend" },
+  { id: "5-18-trend", slug: "/tools/marketing-trend", component: "MarketingResponseTrend" },
+  { id: "5-18-cannibal", slug: "/tools/cannibalization-diagnosis", component: "MarketingResponseCannibal" },
+  { id: "5-18-mmm", slug: "/tools/mmm-contribution", component: "MarketingResponseMmm" },
+  { id: "5-18-forecast", slug: "/tools/marketing-forecast", component: "MarketingResponseForecast" },
   { id: "5-20", slug: "/tools/aha-moment", component: "AhaMomentFinder" },
   { id: "5-23", slug: "/tools/incrementality", component: "Incrementality" },
   { id: "5-24", slug: "/tools/brand-campaign-incrementality", component: "BrandCampaignIncrementality" },
@@ -126,12 +128,15 @@ export function isRouteIndexable(routeOrId) {
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "9-1", "5-18", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27",
+  // 구 5-18 안에 있던 다섯 분석. 각각 독립 도구다.
+  "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast",
 ]);
 
-// 5-18의 하위 분석은 독립 URL이지만 전역 도구 목록·사이드바에는 노출하지
-// 않는다. EN은 같은 컴포넌트의 locale 분기를 사용하므로 이 별도 게이트로 허용한다.
-export const EN_READY_RESPONSE_SUBTOOL_IDS = new Set(["5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"]);
+// 목록·사이드바에는 없지만 독립 URL과 검색 색인을 갖는 라우트. 지금은 5-18
+// (다섯 분석이 공유하는 CSV·매핑 허브) 하나다. EN은 같은 컴포넌트의 locale
+// 분기를 쓰므로 이 별도 게이트로 허용한다.
+export const EN_READY_UNLISTED_IDS = new Set(["5-18"]);
 
 // EN 번역 완료된 SOP 가이드({id}.en.json 존재 + SopContent DATA_BASED_PAGES 등록).
 // 1-1·8-1은 리터럴 라우트(/en/guide/dev-collaboration 등)가 우선 서빙하지만, 사이드바·
@@ -146,7 +151,7 @@ export const EN_READY_GUIDE_IDS = new Set([
 
 export function hasEnVersion(id) {
   // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
-  return id === "home" || id === "guide-index" || id === "start-gate" || EN_READY_TOOL_IDS.has(id) || EN_READY_RESPONSE_SUBTOOL_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
+  return id === "home" || id === "guide-index" || id === "start-gate" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null

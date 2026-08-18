@@ -22,9 +22,12 @@ describe("toolContentLinks", () => {
     }
   });
 
-  it("points 5-18 subtool routes at the parent tool's content", () => {
-    expect(blogSlugsForTool("5-18-mmm")).toEqual(blogSlugsForTool("5-18"));
-    expect(glossarySlugsForTool("5-18-cannibal")).toEqual(glossarySlugsForTool("5-18"));
+  it("gives each response analysis its own content and lets the hub borrow the MMM set", () => {
+    // 다섯 분석이 각각 도구가 된 뒤로 콘텐츠도 분석별로 갈린다 — 잠식 글은 잠식
+    // 진단으로, 기여 글은 기여도로. 목록에 없는 허브(5-18)만 기여 쪽을 빌려 쓴다.
+    expect(glossarySlugsForTool("5-18-cannibal")).toContain("cannibalization");
+    expect(glossarySlugsForTool("5-18-mmm")).toContain("mmm");
+    expect(blogSlugsForTool("5-18")).toEqual(blogSlugsForTool("5-18-mmm"));
   });
 
   it("gives every published tool at least one piece of supporting content", () => {
