@@ -49,10 +49,14 @@ export const EN_BLOG_SLUGS = new Set([
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([
-  "adstock", "arpu", "aso", "attribution", "cac", "cannibalization", "click-injection",
-  "cohort", "cpa", "cpc", "cpi", "cpm", "ctr", "cvr", "deep-link", "ecpi", "funnel",
-  "holdout-test", "incrementality", "ltv", "marginal-cpa", "mmm", "mmp", "multicollinearity",
-  "probabilistic-attribution", "response-curve", "retargeting", "retention", "roas", "uplift"
+  "adstock", "arpu", "aso", "att", "attribution", "attribution-window",
+  "cac", "cannibalization", "click-injection", "cohort", "conversion-value", "cpa",
+  "cpc", "cpi", "cpm", "creative-fatigue", "crowd-anonymity", "ctr",
+  "cvr", "deep-link", "difference-in-differences", "ecpi", "frequency", "funnel",
+  "holdout-test", "incremental-roas", "incrementality", "learning-phase", "lookalike", "ltv",
+  "marginal-cpa", "mmm", "mmp", "multicollinearity", "payback-period", "postback",
+  "probabilistic-attribution", "response-curve", "retargeting", "retention", "roas", "skan",
+  "statistical-power", "uplift", "view-through-conversion"
 ]);
 
 export function localizedHref(href, locale = "ko") {
