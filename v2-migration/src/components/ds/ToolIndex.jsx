@@ -28,6 +28,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       {stages.map((stage) => (
         <section key={stage.id} className="tool-index__stage">
           <div className="tool-index__stage-head">
+            {stage.label && <span className="tool-index__stage-no">{stage.label.split("·")[0].trim()}</span>}
             <Heading className="tool-index__stage-title">{stage.title}</Heading>
             {!isCompact && <p className="tool-index__stage-desc">{stage.description}</p>}
           </div>

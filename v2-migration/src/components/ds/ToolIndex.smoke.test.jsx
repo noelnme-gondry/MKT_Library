@@ -43,4 +43,11 @@ describe("ToolIndex", () => {
     expect(container.textContent).not.toMatch(/[가-힣]/);
     expect(container.querySelector(".tool-index__link").getAttribute("href")).toMatch(/^\/en\//);
   });
+
+  it("스테이지 번호를 아래 워크플로와 같은 표기로 낸다", () => {
+    // 01~05는 워크플로 섹션이 이미 쓰는 언어다. 같은 축을 말한다는 걸 번호로 잇는다.
+    const { container } = render(<ToolIndex />);
+    const numbers = [...container.querySelectorAll(".tool-index__stage-no")].map((n) => n.textContent);
+    expect(numbers).toEqual(["01", "02", "03", "04", "05"]);
+  });
 });
