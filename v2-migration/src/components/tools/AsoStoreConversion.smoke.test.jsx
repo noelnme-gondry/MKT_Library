@@ -43,6 +43,12 @@ describe("AsoStoreConversion render smoke", () => {
     expect(ko.container.querySelector("#aso-sources")).toBeTruthy();
     // 추이 차트는 캔버스가 실제로 붙어야 한다(조건부 마운트라 렌더 분기에서만 드러남).
     expect(ko.container.querySelector("#aso-trend canvas")).toBeTruthy();
+    // 기간 비교 — 실제 날짜와 일수가 화면에 있어야 비교의 공정성을 검증할 수 있다.
+    const periods = ko.container.querySelector("#aso-periods");
+    expect(periods).toBeTruthy();
+    expect(periods.textContent).toMatch(/\d{4}-\d{2}-\d{2} ~ \d{4}-\d{2}-\d{2} \(\d+일\)/);
+    // 비율 변화는 %p, 수량 변화는 % — 접미사가 섞이면 오독된다.
+    expect(periods.textContent).toMatch(/%p/);
     ko.unmount();
 
     // EN은 EN 데모를 시드해야 실제 경로와 같다 — 액션 로그 라벨이 데이터라
