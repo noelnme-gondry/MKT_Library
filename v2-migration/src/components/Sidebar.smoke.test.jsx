@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Sidebar from "@/components/Sidebar";
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 let pathname = "/";
 vi.mock("next/navigation", () => ({
@@ -50,9 +51,9 @@ describe("Sidebar render smoke", () => {
     // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
     // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
     expect(document.querySelector(".home-sidebar-nav__item--all")).toBeTruthy();
-    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')?.getAttribute("aria-label")).toContain("CSV를 올리고 가능한 분석 추천");
-    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain("3문항으로 원인과 확인 순서 찾기");
-    expect(document.body.textContent).toContain("CSV를 올리고 가능한 분석 추천");
+    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("start").desc);
+    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
+    expect(document.body.textContent).toContain(workspaceNavItem("start").desc);
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(5);
     expect(document.querySelector('.sidebar-library-link[href="/calculator"]')).toBeTruthy();
@@ -99,7 +100,7 @@ describe("Sidebar render smoke", () => {
     const { container } = render(<Sidebar locale="en" />);
     expect(container.textContent).toContain("Operating Guide");
     expect(container.textContent).toContain("Naver Blog");
-    expect(container.textContent).toContain("Decision inbox");
+    expect(container.textContent).toContain(workspaceNavItem("review", "en").name);
     expect(container.textContent).toContain("Marketing metric calculators");
     expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
   });
@@ -116,7 +117,7 @@ describe("Sidebar render smoke", () => {
     });
     const { container } = render(<Sidebar />);
     const review = container.querySelector('a[href="/weekly-review"]');
-    expect(review?.getAttribute("aria-label")).toBe("결정 검토함, 지금 검토할 결정 1건");
+    expect(review?.getAttribute("aria-label")).toBe(`${workspaceNavItem("review").name}, 지금 검토할 결정 1건`);
     expect(review?.textContent).toContain("1");
   });
 });

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import ToolIndex from "@/components/ds/ToolIndex";
+// 개수는 세서 쓴다 — "17개"라고 손으로 적힌 값이 실제 발행 도구 수와 어긋나 있었다(§8).
+import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
@@ -51,7 +53,7 @@ const COPY = {
     ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
-    questionDeck: "17개 분석 전부입니다. 도구 이름이 아니라 판단 단계로 골라요.",
+    questionDeck: (count) => `${count}개 분석 전부입니다. 도구 이름이 아니라 판단 상황으로 골라요.`,
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
     libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
@@ -101,7 +103,7 @@ const COPY = {
     ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
-    questionDeck: "All 17 analyses, grouped by the decision each one supports.",
+    questionDeck: (count) => `All ${count} analyses, grouped by the decision each one supports.`,
     libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "Build evidence for the next decision.",
     libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
@@ -243,7 +245,7 @@ export default function LandingPage({ locale = "ko" }) {
       {/* 목적 선택(질문 카드)을 개념 설명(주간 결정 루프)보다 앞에 둔다 — 첫 화면
           바로 아래에서 "내가 원하는 것"에 도달하게(claude-ux §1 여정=질문 프레임). */}
       {/* 첫 화면에서 "무엇을 할 수 있나"가 전부 보여야 한다. 예전에는 손으로 고른
-          질문 카드 4장만 있어서 17개 중 4개만 이름이 노출됐고, 전체 목록은 스크롤
+          질문 카드 4장만 있어서 4개만 이름이 노출됐고, 전체 목록은 스크롤
           네 번 아래에 있었다. 카드와 목록 두 장치를 하나로 합친다 — 페이지는 짧아지고
           보이는 도구는 4개에서 전부로 늘어난다. */}
       <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
@@ -252,13 +254,12 @@ export default function LandingPage({ locale = "ko" }) {
             <div className="dc-eyebrow">{T.questionEyebrow}</div>
             <h2 id="dc-question-title">{T.questionTitle}</h2>
           </div>
-          <p>{T.questionDeck}</p>
+          <p>{T.questionDeck(PUBLISHED_TOOL_IDS.length)}</p>
         </header>
         <ToolIndex
           locale={lang}
           density="compact"
           headingLevel={3}
-          collapsible
           onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
             tool_id: toolId,
             source: "landing",

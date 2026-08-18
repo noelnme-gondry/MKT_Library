@@ -41,6 +41,6 @@ describe("toolIndex", () => {
   });
 
   it("스테이지 순서는 여정 순서를 따른다", () => {
-    expect(toolIndexByStage().map((stage) => stage.id)).toEqual(["monitor", "explain", "choose", "prove", "learn"]);
+    expect(toolIndexByStage().map((stage) => stage.id)).toEqual(["monitor", "budget", "creative", "store", "prove", "contribution"]);
   });
 });

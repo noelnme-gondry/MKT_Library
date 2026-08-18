@@ -97,13 +97,13 @@ describe("connected tool workflow", () => {
 
   it("exposes bidirectional stage navigation and loops learning back to monitoring", () => {
     const creative = getJourneyContext("9-6", "ko");
-    expect(creative.previous.map((tool) => tool.id)).toEqual(["5-21"]);
-    expect(creative.alternatives.map((tool) => tool.id)).toEqual(["5-22", "5-3", "5-26"]);
-    expect(creative.next.map((tool) => tool.id)).toEqual(["5-4", "5-23", "5-24"]);
+    expect(creative.previous.map((tool) => tool.id)).toEqual(["5-22", "5-3"]);
+    expect(creative.alternatives.map((tool) => tool.id)).toEqual(["9-1", "5-20"]);
+    expect(creative.next.map((tool) => tool.id)).toEqual(["5-26", "5-27"]);
 
     const learning = getJourneyContext("5-18", "en");
     expect(learning.isCycleRestart).toBe(true);
-    expect(learning.next.map((tool) => tool.id)).toEqual(["5-2"]);
+    expect(learning.next.map((tool) => tool.id)).toEqual(["5-2", "5-21"]);
     expect(learning.previous.every((tool) => tool.href.startsWith("/en/"))).toBe(true);
   });
 });

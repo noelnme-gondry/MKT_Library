@@ -9,6 +9,8 @@ import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
+// 같은 목적지의 이름이 헤더·사이드바·푸터에 각각 적혀 있어 서로 어긋났다 — SSOT에서 받는다.
+import { workspaceNavItem } from "@/lib/workspaceNav";
 import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 
 const HEADER_COPY = {
@@ -25,9 +27,7 @@ const HEADER_COPY = {
     localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
     print: "인쇄 / PDF",
     printTitle: "현재 분석 결과를 인쇄하거나 PDF로 저장",
-    homeCrumb: "오늘의 질문",
-    decisionInbox: "결정 검토함",
-    decisionInboxAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
+    decisionInboxAria: (count, name) => `${name}${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
     dataContext: "현재 데이터",
     utilities: "기타 설정",
     analystMode: "분석가 모드",
@@ -47,9 +47,7 @@ const HEADER_COPY = {
     localeSwitchTitle: "Switch to the Korean page",
     print: "Print / PDF",
     printTitle: "Print this analysis or save it as a PDF",
-    homeCrumb: "Today’s question",
-    decisionInbox: "Decision inbox",
-    decisionInboxAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
+    decisionInboxAria: (count, name) => `${name}${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
     dataContext: "Current data",
     utilities: "More settings",
     analystMode: "Analyst mode",
@@ -157,7 +155,7 @@ export default function Header({ locale = "ko" }) {
             <BrandMark size={26} label="Growth Opt Playbook" />
             <span className="brand-crumb__label">Growth Opt Playbook</span>
           </Link>
-          {cleanPath === "/" && <><span className="sep">/</span><strong className="current">{T.homeCrumb}</strong></>}
+          {cleanPath === "/" && <><span className="sep">/</span><strong className="current">{workspaceNavItem("home", locale).name}</strong></>}
           {isBlog && <><span className="sep">/</span><Link href={blogHref} className="current current--section">{locale === "en" ? "Blog" : "블로그"}</Link></>}
           {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
           {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Metric calculators" : "지표 계산기"}</Link></>}
@@ -200,11 +198,11 @@ export default function Header({ locale = "ko" }) {
           <Link
             href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
             className="btn ghost header-decision-inbox"
-            aria-label={T.decisionInboxAria(dueDecisionCount)}
+            aria-label={T.decisionInboxAria(dueDecisionCount, workspaceNavItem("review", locale).name)}
             aria-current={isWeeklyReview ? "page" : undefined}
           >
             <span className="header-decision-inbox__icon" aria-hidden="true">◷</span>
-            <span className="header-decision-inbox__label">{T.decisionInbox}</span>
+            <span className="header-decision-inbox__label">{workspaceNavItem("review", locale).name}</span>
             {dueDecisionCount > 0 && <em>{dueDecisionCount}</em>}
           </Link>
           <button

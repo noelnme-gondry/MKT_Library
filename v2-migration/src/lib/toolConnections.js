@@ -74,41 +74,52 @@ export const CONNECTED_TOOLS = {
   },
 };
 
+// 도구를 묶는 축은 "무엇을 판단하려는 상황인가"다. 예전 5갈래는 상태 확인이
+// 1개짜리였고 학습 축적에 MMM·Aha·VIF·ASO·콘텐츠 다섯이 성격 없이 모여 있었다
+// ("여러 상황을 하나에 밀어넣은" 상태). 지금은 한 갈래가 한 상황만 말하고
+// 크기도 2~3개로 고르다 — 갈래 이름만 읽어도 어디를 볼지 정해진다.
 export const TOOL_JOURNEY = [
   {
     id: "monitor",
-    label: { ko: "01 · MONITOR", en: "01 · MONITOR" },
-    title: { ko: "상태 확인", en: "Monitor" },
-    description: { ko: "이번 주 이상 신호와 우선순위를 찾습니다.", en: "Find this week’s anomalies and priorities." },
-    tools: ["5-2"],
+    label: { ko: "01 · CHECK", en: "01 · CHECK" },
+    title: { ko: "이번 주 점검", en: "This week" },
+    description: { ko: "어디가 흔들렸고 왜 그런지 봅니다.", en: "See what moved and why." },
+    tools: ["5-2", "5-21"],
   },
   {
-    id: "explain",
-    label: { ko: "02 · EXPLAIN", en: "02 · EXPLAIN" },
-    title: { ko: "원인 설명", en: "Explain" },
-    description: { ko: "성과 변화가 어디에서 왔는지 분해합니다.", en: "Break down where the performance change came from." },
-    tools: ["5-21"],
+    id: "budget",
+    label: { ko: "02 · BUDGET", en: "02 · BUDGET" },
+    title: { ko: "예산 조정", en: "Budget moves" },
+    description: { ko: "더 써도 되는지, 어디로 옮길지 정합니다.", en: "Decide what can scale and where budget should move." },
+    tools: ["5-22", "5-3"],
   },
   {
-    id: "choose",
-    label: { ko: "03 · CHOOSE", en: "03 · CHOOSE" },
-    title: { ko: "다음 조치 선택", en: "Choose" },
-    description: { ko: "증액·감액·소재 교체의 우선순위를 정합니다.", en: "Prioritize budget moves and creative replacements." },
-    tools: ["5-22", "5-3", "5-26", "9-6"],
+    id: "creative",
+    label: { ko: "03 · CREATIVE", en: "03 · CREATIVE" },
+    title: { ko: "먹히는 요소 찾기", en: "What resonates" },
+    description: { ko: "소재·콘텐츠·초기 행동 중 무엇이 성과를 만드는지 찾습니다.", en: "Find which creative, content, or early action drives the outcome." },
+    tools: ["9-6", "9-1", "5-20"],
+  },
+  {
+    id: "store",
+    label: { ko: "04 · STORE", en: "04 · STORE" },
+    title: { ko: "앱 유입 개선", en: "App store traffic" },
+    description: { ko: "검색 키워드와 스토어 페이지에서 새는 곳을 봅니다.", en: "Check search keywords and the store page for leaks." },
+    tools: ["5-26", "5-27"],
   },
   {
     id: "prove",
-    label: { ko: "04 · PROVE", en: "04 · PROVE" },
-    title: { ko: "효과 검증", en: "Prove" },
+    label: { ko: "05 · PROOF", en: "05 · PROOF" },
+    title: { ko: "효과 검증", en: "Proof" },
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
     tools: ["5-4", "5-23", "5-24"],
   },
   {
-    id: "learn",
-    label: { ko: "05 · LEARN", en: "05 · LEARN" },
-    title: { ko: "학습 축적", en: "Learn" },
-    description: { ko: "채널·고객·콘텐츠의 장기 학습으로 연결합니다.", en: "Turn results into channel, customer, and content learning." },
-    tools: ["5-18", "5-20", "5-25", "5-27", "9-1"],
+    id: "contribution",
+    label: { ko: "06 · MIX", en: "06 · MIX" },
+    title: { ko: "채널 기여도", en: "Channel contribution" },
+    description: { ko: "장기 배분의 근거를 채널 단위로 만듭니다.", en: "Build the channel-level basis for long-run allocation." },
+    tools: ["5-25", "5-18"],
   },
 ];
 

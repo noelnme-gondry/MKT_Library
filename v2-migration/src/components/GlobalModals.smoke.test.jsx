@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import GlobalModals from "@/components/GlobalModals";
 import Header from "@/components/Header";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { workspaceNavItem } from "@/lib/workspaceNav";
 
 // 도구 이름은 레지스트리에서 뽑는다 — 여기에 적어 두면 리네임마다 테스트가 깨진다.
 const nameOf = (id, locale = "ko") => toolIndexEntry(id, locale).name;
@@ -82,9 +83,9 @@ describe("GlobalModals complete tool menu", () => {
   it("includes data analysis, metric calculators, and performance diagnosis as workspace tasks", () => {
     renderToolMenu();
     fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
-    expect(screen.getByRole("option", { name: /내 데이터 분석/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(workspaceNavItem("start").name) })).toBeTruthy();
     expect(screen.getByRole("option", { name: /마케팅 지표 계산기/ })).toBeTruthy();
-    const diagnosis = screen.getByRole("option", { name: /성과 문제 진단/ });
+    const diagnosis = screen.getByRole("option", { name: new RegExp(workspaceNavItem("diagnose").name) });
     fireEvent.click(diagnosis);
     expect(pushMock).toHaveBeenCalledWith("/diagnose");
   });
@@ -93,9 +94,12 @@ describe("GlobalModals complete tool menu", () => {
     renderToolMenu();
     fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
     const initialOptions = screen.getAllByRole("option");
-    expect(initialOptions.slice(0, 3).map((option) => option.textContent)).toEqual([
-      expect.stringContaining("내 데이터 분석"),
-      expect.stringContaining("성과 문제 진단"),
+    // 워크스페이스 목적지 넷이 도구보다 먼저 온다 — 그중 결정 검토함은 예전에
+    // 팔레트에서 통째로 빠져 있었다(같은 목록을 네 곳에 손으로 적던 흔적).
+    expect(initialOptions.slice(0, 4).map((option) => option.textContent)).toEqual([
+      expect.stringContaining(workspaceNavItem("start").name),
+      expect.stringContaining(workspaceNavItem("diagnose").name),
+      expect.stringContaining(workspaceNavItem("review").name),
       expect.stringContaining("마케팅 지표 계산기"),
     ]);
 
@@ -115,7 +119,7 @@ describe("GlobalModals complete tool menu", () => {
     expect(screen.getByRole("option", { name: new RegExp(nameOf("5-22")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CSV 업로드" } });
-    expect(screen.getByRole("option", { name: /내 데이터 분석.*CSV·XLSX를 올리고/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(`${workspaceNavItem("start").name}.*CSV·XLSX를 올리고`) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CPT 올릴까" } });
     expect(screen.getByRole("option", { name: new RegExp(nameOf("5-26")) })).toBeTruthy();
@@ -141,7 +145,7 @@ describe("GlobalModals complete tool menu", () => {
     });
 
     expect(screen.getByText("바로 맞는 도구를 찾지 못했습니다")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "내 데이터 분석" }));
+    fireEvent.click(screen.getByRole("button", { name: workspaceNavItem("start").name }));
     expect(pushMock).toHaveBeenCalledWith("/start");
   });
 

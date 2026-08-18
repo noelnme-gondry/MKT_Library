@@ -7,6 +7,8 @@ import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberSh
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 import { localizedHref } from "@/lib/localizedHref";
+import { workspaceNavItems } from "@/lib/workspaceNav";
+import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import { MMM_STAGE_GROUPS, mmmStageDefs } from "@/components/tools/marketingResponseModel";
 import { responseStageHref } from "@/lib/responseStage";
@@ -18,9 +20,7 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "작업·도구·가이드 검색…",
     blog: "블로그",
     guide: "운영 가이드",
-    dataStart: "내 데이터 분석",
     calculators: "마케팅 지표 계산기",
-    diagnose: "성과 문제 진단",
     templates: "템플릿·체크리스트",
     glossary: "용어사전",
     compare: "방법 비교",
@@ -32,14 +32,9 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "할 수 있는 분석 전체 →",
     allToolsTitle: "할 수 있는 분석",
-    allToolsDesc: "17개를 판단 단계별로 보기",
-    today: "오늘의 질문",
-    todayDesc: "지금 확인할 변화와 다음 행동",
-    review: "결정 검토함",
-    reviewDesc: "지난 판단의 실제 결과 확인",
-    reviewAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
-    dataStartDesc: "CSV를 올리고 가능한 분석 추천",
-    diagnoseDesc: "3문항으로 원인과 확인 순서 찾기",
+    allToolsDesc: (count) => `${count}개를 판단 단계별로 보기`,
+    reviewAria: (count, name = "지난 결정") => `${name}${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
+    reviewDue: (count) => `검토 대기 ${count}건`,
     workflow: "연결된 분석 흐름",
     dataGuide: "데이터 준비",
     insights: "실무 인사이트",
@@ -49,9 +44,7 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "Search tasks, tools, guides…",
     blog: "Blog",
     guide: "Operating Guide",
-    dataStart: "Analyze my data",
     calculators: "Marketing metric calculators",
-    diagnose: "Diagnose Performance",
     templates: "Templates",
     glossary: "Glossary",
     compare: "Method comparisons",
@@ -63,14 +56,9 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "Every analysis →",
     allToolsTitle: "Every analysis",
-    allToolsDesc: "All 17, grouped by decision",
-    today: "Today’s question",
-    todayDesc: "See the current signal and next action",
-    review: "Decision inbox",
-    reviewDesc: "Compare past decisions with actuals",
-    reviewAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
-    dataStartDesc: "Upload a CSV and find supported analyses",
-    diagnoseDesc: "Use 3 questions to find the next check",
+    allToolsDesc: (count) => `All ${count}, grouped by decision`,
+    reviewAria: (count, name = "Past decisions") => `${name}${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
+    reviewDue: (count) => `${count} due now`,
     workflow: "Connected workflow",
     dataGuide: "Prepare data",
     insights: "Practical insights",
@@ -80,6 +68,8 @@ const SIDEBAR_COPY = {
 
 export default function Sidebar({ locale = "ko" }) {
   const T = SIDEBAR_COPY[locale] || SIDEBAR_COPY.ko;
+  // 개수를 손으로 적으면 도구가 늘 때 이 줄만 낡는다 — 레지스트리에서 센다(§7).
+  const allToolsDesc = T.allToolsDesc(PUBLISHED_TOOL_IDS.length);
   // 번역된 항목만 /en 유지, 나머지는 KR 페이지로(반쪽 번역 노출 방지 — §plan).
   const navHref = (id) =>
     locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
@@ -162,60 +152,58 @@ export default function Sidebar({ locale = "ko" }) {
         <div className="home-sidebar-workspace">
           <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
           <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
-            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page" aria-label={`${T.today}: ${T.todayDesc}`}>
-              <span className="home-sidebar-nav__icon" aria-hidden="true">◎</span><span className="home-sidebar-nav__copy"><strong>{T.today}</strong><em>{T.todayDesc}</em></span>
-            </Link>
-            <Link href={locale === "en" ? "/en/start" : "/start"} className="home-sidebar-nav__item" aria-label={`${T.dataStart}: ${T.dataStartDesc}`}>
-              <span className="home-sidebar-nav__icon" aria-hidden="true">⇧</span><span className="home-sidebar-nav__copy"><strong>{T.dataStart}</strong><em>{T.dataStartDesc}</em></span>
-            </Link>
-            <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} className="home-sidebar-nav__item" aria-label={`${T.diagnose}: ${T.diagnoseDesc}`}>
-              <span className="home-sidebar-nav__icon" aria-hidden="true">◇</span><span className="home-sidebar-nav__copy"><strong>{T.diagnose}</strong><em>{T.diagnoseDesc}</em></span>
-            </Link>
-            <Link
-              href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
-              className="home-sidebar-nav__item home-sidebar-nav__item--review"
-              aria-label={T.reviewAria(dueDecisionCount)}
-              data-due={dueDecisionCount > 0 ? "true" : undefined}
-            >
-              <span className="home-sidebar-nav__icon" aria-hidden="true">◷</span><span className="home-sidebar-nav__copy"><strong>{T.review}</strong><em>{T.reviewDesc}</em></span>{dueDecisionCount > 0 && <b aria-hidden="true">{dueDecisionCount}</b>}
-            </Link>
+            {workspaceNavItems(locale).map((item) => {
+              const isReview = item.id === "review";
+              const isActive = item.id === "home";
+              return (
+                <Link
+                  key={item.id}
+                  href={localizedHref(item.href, locale)}
+                  className={`home-sidebar-nav__item${isActive ? " active" : ""}${isReview ? " home-sidebar-nav__item--review" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
+                  data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}
+                >
+                  <span className="home-sidebar-nav__icon" aria-hidden="true">{item.icon}</span>
+                  <span className="home-sidebar-nav__copy"><strong>{item.name}</strong><em>{item.desc}</em></span>
+                  {isReview && dueDecisionCount > 0 && <b aria-hidden="true">{dueDecisionCount}</b>}
+                </Link>
+              );
+            })}
             {/* 홈 사이드바는 워크스페이스 네 줄만 그려서, 정작 홈에서 "무슨 분석이
                 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄을 여기에도 둔다. */}
-            <Link href={localizedHref("/start", locale)} className="home-sidebar-nav__item home-sidebar-nav__item--all" aria-label={`${T.allToolsTitle}: ${T.allToolsDesc}`}>
-              <span className="home-sidebar-nav__icon" aria-hidden="true">▦</span><span className="home-sidebar-nav__copy"><strong>{T.allToolsTitle}</strong><em>{T.allToolsDesc}</em></span>
+            <Link href={localizedHref("/start", locale)} className="home-sidebar-nav__item home-sidebar-nav__item--all" aria-label={`${T.allToolsTitle}: ${allToolsDesc}`}>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">▦</span><span className="home-sidebar-nav__copy"><strong>{T.allToolsTitle}</strong><em>{allToolsDesc}</em></span>
             </Link>
           </nav>
         </div>
       ) : (
         <>
+      {/* 홈 변형과 같은 SSOT를 쓴다 — 예전에는 두 변형이 각자 라벨을 들고 있어서
+          한쪽만 고치면 어긋났고, 부제가 `NOW`·`DATA`·`DIAG`·`WEEK` 같은 암호였다.
+          줄여 쓴 코드는 읽는 사람에게 아무것도 주지 않아 그 자리를 설명으로 바꿨다. */}
       <nav className="sidebar-primary-nav" aria-label={T.workspaceLabel}>
-        <Link href={locale === "en" ? "/en" : "/"} className="sidebar-primary-nav__item">
-          <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/start" : "/start"}
-          className={`sidebar-primary-nav__item${isStart ? " active" : ""}`}
-          aria-current={isStart ? "page" : undefined}
-        >
-          <span aria-hidden="true">⇧</span><strong>{T.dataStart}</strong><small aria-hidden="true">DATA</small>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
-          className={`sidebar-primary-nav__item${isDiagnose ? " active" : ""}`}
-          aria-current={isDiagnose ? "page" : undefined}
-        >
-          <span aria-hidden="true">◇</span><strong>{T.diagnose}</strong><small aria-hidden="true">DIAG</small>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
-          className={`sidebar-primary-nav__item sidebar-primary-nav__item--review${isWeeklyReview ? " active" : ""}`}
-          aria-label={T.reviewAria(dueDecisionCount)}
-          aria-current={isWeeklyReview ? "page" : undefined}
-          data-due={dueDecisionCount > 0 ? "true" : undefined}
-        >
-          <span aria-hidden="true">◷</span><strong>{T.review}</strong>
-          <small aria-hidden="true">{dueDecisionCount || "WEEK"}</small>
-        </Link>
+        {workspaceNavItems(locale).map((item) => {
+          const isReview = item.id === "review";
+          const isActive = (item.id === "start" && isStart)
+            || (item.id === "diagnose" && isDiagnose)
+            || (isReview && isWeeklyReview);
+          const sub = isReview && dueDecisionCount > 0 ? T.reviewDue(dueDecisionCount) : item.desc;
+          return (
+            <Link
+              key={item.id}
+              href={localizedHref(item.href, locale)}
+              className={`sidebar-primary-nav__item${isReview ? " sidebar-primary-nav__item--review" : ""}${isActive ? " active" : ""}`}
+              aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
+              aria-current={isActive ? "page" : undefined}
+              data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}
+            >
+              <span aria-hidden="true">{item.icon}</span>
+              <strong>{item.name}</strong>
+              <small aria-hidden="true">{sub}</small>
+            </Link>
+          );
+        })}
       </nav>
       <div className="inner-workspace-label inner-workspace-label--stacked">
         <span>{T.workspaceLabel}</span>
@@ -281,7 +269,7 @@ export default function Sidebar({ locale = "ko" }) {
                       const hasActive = stage.tools.includes(currentRouteId);
                       const stageKey = `journey-${stage.id}`;
                       // 활성 스테이지만 펼친다. 발견("무엇을 할 수 있나")은 이제 홈과
-                      // /start의 인덱스가 맡으므로, 사이드바까지 17개를 펴면 세션 중
+                      // /start의 인덱스가 맡으므로, 사이드바까지 전부 펴면 세션 중
                       // 이동용 내비가 벽이 된다(CSV 올린 화면에서 특히).
                       const isGroupCollapsed = collapsedGroups[stageKey] !== undefined
                         ? collapsedGroups[stageKey]

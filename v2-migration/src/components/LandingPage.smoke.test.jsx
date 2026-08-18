@@ -68,10 +68,12 @@ describe("LandingPage render smoke", () => {
     // 손으로 고른 질문 카드 4장 → 발행 도구 전체 인덱스. 4개만 보이던 것이
     // 첫 화면에서 전부 보인다.
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(0);
-    // 접힘 모드라 링크는 열린 갈래만 DOM에 보이지만, 5갈래 헤더와 개수는 항상 있다.
-    expect(document.querySelectorAll(".dc-questions .tool-index__stage")).toHaveLength(5);
-    expect(document.querySelectorAll(".dc-questions .tool-index__stage-count")).toHaveLength(5);
-    // 연결 워크플로 섹션은 인덱스와 같은 5단계·같은 도구를 카드로 또 그려서 제거했다.
+    // 갈래별 접기는 뺐다 — 하나 펼 때마다 아래가 밀려 위치가 매번 달라졌다.
+    // 6갈래가 전부 펴진 채로 있고, 링크도 전부 DOM에 있다.
+    expect(document.querySelectorAll(".dc-questions .tool-index__stage")).toHaveLength(6);
+    expect(document.querySelector(".dc-questions details")).toBeNull();
+    expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
@@ -185,7 +187,6 @@ describe("LandingPage render smoke", () => {
     const questions = document.querySelector(".dc-questions");
     const loop = document.querySelector(".dc-loop");
     // 히어로 바로 다음 블록이어야 하고, 루프 설명보다 앞이어야 한다.
-    // 접혀 있어도 전 도구가 DOM에 있어야 검색·크롤러가 찾는다(display만 접힌다).
     expect(questions.querySelectorAll(".tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
