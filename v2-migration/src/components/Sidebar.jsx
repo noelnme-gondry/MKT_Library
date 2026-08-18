@@ -31,6 +31,8 @@ const SIDEBAR_COPY = {
     resourceLabel: "LIBRARY",
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "할 수 있는 분석 전체 →",
+    allToolsTitle: "할 수 있는 분석",
+    allToolsDesc: "17개를 판단 단계별로 보기",
     today: "오늘의 질문",
     todayDesc: "지금 확인할 변화와 다음 행동",
     review: "결정 검토함",
@@ -60,6 +62,8 @@ const SIDEBAR_COPY = {
     naverBlog: "Naver Blog",
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "Every analysis →",
+    allToolsTitle: "Every analysis",
+    allToolsDesc: "All 17, grouped by decision",
     today: "Today’s question",
     todayDesc: "See the current signal and next action",
     review: "Decision inbox",
@@ -174,6 +178,11 @@ export default function Sidebar({ locale = "ko" }) {
               data-due={dueDecisionCount > 0 ? "true" : undefined}
             >
               <span className="home-sidebar-nav__icon" aria-hidden="true">◷</span><span className="home-sidebar-nav__copy"><strong>{T.review}</strong><em>{T.reviewDesc}</em></span>{dueDecisionCount > 0 && <b aria-hidden="true">{dueDecisionCount}</b>}
+            </Link>
+            {/* 홈 사이드바는 워크스페이스 네 줄만 그려서, 정작 홈에서 "무슨 분석이
+                가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄을 여기에도 둔다. */}
+            <Link href={localizedHref("/start", locale)} className="home-sidebar-nav__item home-sidebar-nav__item--all" aria-label={`${T.allToolsTitle}: ${T.allToolsDesc}`}>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">▦</span><span className="home-sidebar-nav__copy"><strong>{T.allToolsTitle}</strong><em>{T.allToolsDesc}</em></span>
             </Link>
           </nav>
         </div>

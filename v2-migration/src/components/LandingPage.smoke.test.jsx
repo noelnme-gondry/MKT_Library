@@ -8,6 +8,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 import LandingPage from "@/components/LandingPage";
+import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -69,14 +70,10 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
     expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
     expect(document.body.textContent).toContain("다음 주 결과 검토");
-    expect(document.querySelectorAll(".dc-question-card")).toHaveLength(4);
-    expect(document.querySelectorAll("a.dc-question-card")).toHaveLength(4);
-    expect([...document.querySelectorAll("a.dc-question-card")].map((link) => link.getAttribute("href"))).toEqual([
-      "/dashboard",
-      "/tools/budget-allocation",
-      "/content/freshness",
-      "/tools/brand-campaign-incrementality",
-    ]);
+    // 손으로 고른 질문 카드 4장 → 발행 도구 전체 인덱스. 4개만 보이던 것이
+    // 첫 화면에서 전부 보인다.
+    expect(document.querySelectorAll(".dc-question-card")).toHaveLength(0);
+    expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(JOURNEY_TOOL_COUNT);
     expect(document.querySelector(".connected-tool-journey__head br")).toBeNull();
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
@@ -136,7 +133,7 @@ describe("LandingPage render smoke", () => {
     seedWithData();
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    for (const link of container.querySelectorAll("a.dc-question-card")) clickWithoutNavigation(link);
+    for (const link of container.querySelectorAll(".dc-questions .tool-index__link")) clickWithoutNavigation(link);
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("x.csv");
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_tool_pick", {
       tool_id: "5-2",
@@ -182,12 +179,21 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelector('a.dc-loop-card[href="/en/weekly-review"]')).toBeTruthy();
     expect(container.textContent).toContain("Review the actual next week");
     expect(container.querySelector('a[href="/en/tools/campaign-variance"]')).toBeTruthy();
-    expect([...container.querySelectorAll("a.dc-question-card")].map((link) => link.getAttribute("href"))).toEqual([
-      "/en/dashboard",
-      "/en/tools/budget-allocation",
-      "/en/content/freshness",
-      "/en/tools/brand-campaign-incrementality",
-    ]);
+    // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
+    const enLinks = [...container.querySelectorAll(".dc-questions .tool-index__link")];
+    expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
     expect(container.textContent).toContain("Try example data in 30 seconds");
+  });
+
+  it("도구 목록이 첫 화면 슬롯에 온다 — 아래로 밀리면 없는 것과 같다", () => {
+    render(<LandingPage />);
+    const questions = document.querySelector(".dc-questions");
+    const loop = document.querySelector(".dc-loop");
+    // 히어로 바로 다음 블록이어야 하고, 루프 설명보다 앞이어야 한다.
+    expect(questions.querySelectorAll(".tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
+    expect(document.querySelector(".dc-catalog")).toBeNull();
   });
 });
