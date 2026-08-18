@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 import ToolIndex from "@/components/ds/ToolIndex";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
@@ -259,6 +258,7 @@ export default function LandingPage({ locale = "ko" }) {
           locale={lang}
           density="compact"
           headingLevel={3}
+          collapsible
           onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
             tool_id: toolId,
             source: "landing",
@@ -299,9 +299,6 @@ export default function LandingPage({ locale = "ko" }) {
         </div>
       </section>
 
-      <div id="workflow">
-        <ConnectedToolJourney locale={lang} />
-      </div>
 
       <section className="dc-library" id="library" aria-labelledby="dc-library-title">
         <header className="dc-section-head">

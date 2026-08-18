@@ -55,11 +55,10 @@ function seedWithData() {
 describe("MarketingEfficiency render smoke", () => {
   beforeEach(() => seedNoData());
 
-  it("mounts without throwing in the no-data state (auto-loads demo)", () => {
+  it("mounts without throwing in the no-data state (upload screen)", () => {
     expect(() => render(<MarketingEfficiency />)).not.toThrow();
-    // No-data → CsvUploader auto-loads sample data + auto-analyzes, so the
-    // "CSV 업로드 대기" prompt is replaced by the live analysis view.
-    expect(screen.queryByText(/CSV 업로드 대기/)).toBeFalsy();
+    // 데모 자동로드를 없앴으므로 no-data는 업로드 대기 상태가 정상이다.
+    expect(screen.queryByText(/CSV 업로드 대기/)).toBeTruthy();
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {

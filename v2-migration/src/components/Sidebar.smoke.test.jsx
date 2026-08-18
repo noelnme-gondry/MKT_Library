@@ -140,13 +140,17 @@ describe("5-18 하위 화면 노출", () => {
     pathname = "/";
   });
 
-  it("여정 스테이지는 기본으로 펼쳐져 있다", () => {
-    // 활성 스테이지만 펼치던 시절엔 "무엇을 할 수 있는지" 보려면 다섯 번 눌러야 했다.
+  it("활성 스테이지만 펼치고 나머지는 접는다", () => {
+    // 발견("무엇을 할 수 있나")은 홈·/start 인덱스가 맡는다. 사이드바까지 17개를
+    // 펴면 CSV 올린 화면에서 내비가 벽이 된다 — 실제로 그렇게 보였다.
     pathname = "/dashboard";
     const { container } = render(<Sidebar />);
-    const collapsed = [...container.querySelectorAll(".sidebar-workflow-stage")]
-      .filter((stage) => stage.classList.contains("collapsed"));
-    expect(collapsed).toHaveLength(0);
+    const stages = [...container.querySelectorAll(".sidebar-workflow-stage")];
+    const open = stages.filter((stage) => !stage.classList.contains("collapsed"));
+    expect(stages.length).toBeGreaterThan(1);
+    expect(open).toHaveLength(1);
+    // 열린 하나는 현재 도구가 속한 스테이지여야 한다.
+    expect(open[0].querySelector('[data-route="5-2"]')).toBeTruthy();
     pathname = "/";
   });
 });

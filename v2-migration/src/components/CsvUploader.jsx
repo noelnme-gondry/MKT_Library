@@ -59,6 +59,8 @@ const CSV_COPY = {
     dropSub: "또는 클릭하여 파일 선택 · XLSX는 25MB 이하",
     importing: "파일 구조를 읽는 중…",
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
+    entryDemoBtn: "예시 데이터로 먼저 보기",
+    entryDemoHint: "내 파일 없이 결과 화면을 그대로 확인할 수 있어요.",
     demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
     demoBannerBtn: "📁 내 CSV 업로드하기",
@@ -132,6 +134,8 @@ const CSV_COPY = {
     dropSub: "or click to choose a file · XLSX up to 25MB",
     importing: "Reading file structure…",
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
+    entryDemoBtn: "Preview with example data",
+    entryDemoHint: "See the full result screen without your own file.",
     demoBannerTitle: "🧪 You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
     demoBannerBtn: "📁 Upload my CSV",
@@ -551,13 +555,9 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   // 분기가 바뀌어 이 컴포넌트가 리마운트된다 — 마운트 1회 조건만으로는 리마운트마다
   // 다시 조건이 참이 돼(데이터 없음) 즉시 데모를 재로드, "Change CSV" 클릭이 무효화됨.
   // manuallyCleared(store, 그룹 스코프)로 리마운트 여부와 무관하게 억제.
-  useEffect(() => {
-    // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트+프리뷰 상태를
-    // 한 번에 세팅, 루프·반복 트리거 아님).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasFile && !manuallyCleared && !demoDisabled) handleLoadDemo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 자동 로드하지 않는다. 예전에는 도구에 들어가면 곧장 샘플 분석 화면이 떠서,
+  // "내 데이터를 올리는 곳"이라는 사실도 "이 도구가 뭘 보여주는지"도 가려졌다.
+  // 이제 빈 화면 대신 브리프(질문·답·볼 수 있는 것)와 눈에 띄는 예시 버튼을 준다.
 
   // --- Compute mapping requirements ---
   const { missing, reqLabels, fieldGroups, allowKeys } = useMemo(() => {
@@ -673,6 +673,14 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           </section>
         ) : (
           <>
+        {toolId !== "start-gate" && (
+          <div className="csv-entry-actions">
+            <button type="button" className="csv-entry-actions__demo" onClick={handleLoadDemo}>
+              {T.entryDemoBtn}
+            </button>
+            <span className="csv-entry-actions__hint">{T.entryDemoHint}</span>
+          </div>
+        )}
         <button
           type="button"
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}

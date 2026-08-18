@@ -18,20 +18,38 @@ import { localizedHref } from "@/lib/localizedHref";
  * 정렬 축은 도구 이름이 아니라 **질문 단계**다. 마케터는 "무엇을 판단해야 하나"로
  * 도구를 찾지 도구 이름을 외워서 찾지 않는다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
+const countLabel = (n, locale) => (locale === "en" ? `${n}` : `${n}개`);
+
+// 접힘 모드는 native <details>로. JS 상태 없이 접근성(키보드·보조기술)이 따라온다.
+function StageBox({ collapsible, open, children }) {
+  if (!collapsible) return <section className="tool-index__stage">{children}</section>;
+  return <details className="tool-index__stage tool-index__stage--fold" open={open || undefined}>{children}</details>;
+}
+
+function StageHead({ collapsible, children }) {
+  if (!collapsible) return <div className="tool-index__stage-head">{children}</div>;
+  return <summary className="tool-index__stage-head">{children}</summary>;
+}
+
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, headingLevel = 3, onSelect = null, onItemClick = null, collapsible = false, openFirst = true }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
 
   return (
     <div className={`tool-index tool-index--${density}`}>
-      {stages.map((stage) => (
-        <section key={stage.id} className="tool-index__stage">
-          <div className="tool-index__stage-head">
+      {stages.map((stage, stageIndex) => (
+        <StageBox
+          key={stage.id}
+          collapsible={collapsible}
+          open={collapsible ? openFirst && stageIndex === 0 : undefined}
+        >
+          <StageHead collapsible={collapsible}>
             {stage.label && <span className="tool-index__stage-no">{stage.label.split("·")[0].trim()}</span>}
             <Heading className="tool-index__stage-title">{stage.title}</Heading>
-            {!isCompact && <p className="tool-index__stage-desc">{stage.description}</p>}
-          </div>
+            {collapsible && <span className="tool-index__stage-count">{countLabel(stage.tools.length, locale)}</span>}
+            {!isCompact && !collapsible && <p className="tool-index__stage-desc">{stage.description}</p>}
+          </StageHead>
           <ul className="tool-index__list">
             {stage.tools.map((tool) => {
               // eligibleIds가 주어지면 지금 올린 CSV로 되는 것만 강조하고, 나머지는
@@ -61,7 +79,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
               );
             })}
           </ul>
-        </section>
+        </StageBox>
       ))}
     </div>
   );
