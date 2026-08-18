@@ -1,0 +1,32 @@
+<svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="320" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">같은 시점 트래픽을 무작위로 갈라 비교합니다</text>
+
+  <rect x="40" y="120" width="140" height="70" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="110" y="150" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">제품 페이지</text>
+  <text x="110" y="171" fill="#475569" font-size="13" text-anchor="middle">방문 트래픽</text>
+
+  <line x1="185" y1="155" x2="255" y2="90" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="185" y1="155" x2="255" y2="155" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="185" y1="155" x2="255" y2="222" stroke="#94a3b8" stroke-width="2"/>
+  <text x="218" y="248" fill="#475569" font-size="12" text-anchor="middle">무작위 배정</text>
+
+  <rect x="260" y="66" width="170" height="50" rx="8" fill="#e2e8f0" stroke="#475569"/>
+  <text x="345" y="96" fill="#0f172a" font-size="13" font-weight="700" text-anchor="middle">원본</text>
+
+  <rect x="260" y="131" width="170" height="50" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="345" y="161" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">변형안 1</text>
+
+  <rect x="260" y="196" width="170" height="50" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="345" y="226" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">변형안 2</text>
+
+  <line x1="440" y1="155" x2="510" y2="155" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="510,155 500,150 500,160" fill="#94a3b8"/>
+
+  <rect x="516" y="110" width="204" height="90" rx="8" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="618" y="138" fill="#9a3412" font-size="13" font-weight="700" text-anchor="middle">전환율 차이 + 신뢰구간</text>
+  <text x="618" y="162" fill="#9a3412" font-size="12" text-anchor="middle">구간이 0을 걸치면</text>
+  <text x="618" y="182" fill="#9a3412" font-size="12" text-anchor="middle">아직 구분 안 됨</text>
+
+  <text x="380" y="295" fill="#475569" font-size="13" text-anchor="middle">시즌·광고비·요일이 세 그룹에 똑같이 걸려 혼입이 사라집니다</text>
+</svg>

@@ -12,6 +12,8 @@ const KO_ANSWERS = {
   "ai-era-marketer": "AI가 소재를 100개 뽑아줘도 방향이 틀리면 100개가 다 쓸모없습니다. 목표 정의, 데이터 검증, 인과 해석, 실험 설계처럼 '무엇을 만들지와 결과를 어떻게 믿을지'를 정하는 판단은 여전히 마케터 몫입니다.",
   "apple-search-ads-guide": "Apple Search Ads(ASA)에서는 검색어 리포트에서 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다.",
   "asa-keyword-expansion": "ASA 키워드 확장은 Discovery로 검색어를 발굴한 뒤, 판단할 만큼 전환이 쌓이면서 목표 CPA도 만족한 검색어만 Exact로 승격하는 과정입니다. 전환 2건에 CPA 4천원이라 승격했다가 물량 붙이면 3만원이 되는 일이 흔하니 두 조건을 반드시 함께 보고, 승격한 검색어는 Discovery에 네거티브로 넣어 자기 입찰가를 올리지 마세요.",
+  "store-conversion-drop-diagnosis": "스토어 전환율이 떨어졌다고 스크린샷부터 바꾸면 원인이 믹스일 때 아무 일도 안 일어납니다. Search 45%·Browse 9%가 각각 그대로여도 조회 비중이 4,300·2,400에서 2,600·5,200으로 뒤집히면 전체 전환율은 32.1%에서 21.0%로 11%p 떨어집니다. 소스별 전환율이 그대로인지부터 확인하세요.",
+  "store-listing-experiment": "스크린샷 변경 효과를 전후 비교로 재면 같은 기간의 광고 증액·시즌이 전부 그 몫으로 잡힙니다. 애플 PPO는 원본 외 최대 3개 안을 최대 90일까지 같은 시점 트래픽을 무작위로 갈라 비교하므로 그 혼입이 설계에서 사라집니다. 종료 조건은 반드시 시작 전에 정하세요.",
   "aso-basics-guide": "ASO는 광고비보다 먼저 손대야 하는 곱셈 항입니다 — 스토어 페이지 조회 10,000건에서 전환율이 30%면 설치 3,000건이지만 40%로 올리면 4,000건이 되어, 같은 광고비로 설치가 33% 늘고 CPI는 25% 내려갑니다. 제품 페이지 조회는 많은데 전환이 낮으면 스크린샷·아이콘·평점을, 노출 자체가 적으면 키워드·제목을 먼저 보세요.",
   "attribution-data-mismatch": "어트리뷰션 데이터 불일치는 흔합니다 — 같은 주 전환이 메타 120건, GA4 70건, MMP 85건, 결제 DB 100건으로 갈리는 식입니다. 어느 하나가 틀린 게 아니라 귀속 창·집계 시점·전환 정의가 서로 다른 것이므로, 숫자를 고르기 전에 각 시스템의 기준을 표로 맞추세요.",
   "audience-broad-vs-narrow": "브로드 타겟과 좁은 타겟 중 정답은 학습에 필요한 전환 신호가 충분한지로 갈립니다. 전환이 얇은 계정에서 타겟을 좁히면 알고리즘이 학습할 데이터가 부족해지고, 반대로 제품이 명확히 특정 층에만 맞는데 넓게 열면 CPA만 오릅니다.",
@@ -61,6 +63,8 @@ const EN_ANSWERS = {
   "ai-era-marketer": "AI can produce 100 creatives, and all 100 are wasted if the direction is wrong. Defining the objective, validating the data, reading causation, and designing experiments — deciding what to make and whether to believe the result — still belong to the marketer.",
   "apple-search-ads-guide": "In Apple Search Ads (ASA), promote non-Exact search terms only after they have enough taps and installs and meet target CPA. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target.",
   "asa-keyword-expansion": "ASA keyword expansion means using Discovery to find search terms, then promoting to Exact only those with enough conversions to judge on and a CPA inside target. A term showing $4 CPA on two conversions routinely settles at $30 once volume runs through it, so require both conditions — and add every promoted term as a Discovery negative so you stop bidding against yourself.",
+  "store-conversion-drop-diagnosis": "When store conversion dropped, swapping screenshots does nothing if the cause is traffic mix. With Search at 45% and Browse at 9% both unchanged, flipping views from 4,300 and 2,400 to 2,600 and 5,200 takes the blended rate from 32.1% to 21.0% \u2014 an 11pp fall with no source getting worse. Check whether per-source rates moved before touching the page.",
+  "store-listing-experiment": "Store listing experiments exist because before-and-after credits that window\u2019s ad scaling and seasonality to the screenshot you changed. Apple PPO runs up to three treatments alongside the original for up to 90 days, splitting same-moment traffic at random so that confounding disappears by design. Fix the stop condition before launching, not while watching.",
   "aso-basics-guide": "ASO is a multiplier that sits in front of ad spend: at 10,000 product page views, moving conversion from 30% to 40% takes installs from 3,000 to 4,000 — 33% more installs and 25% lower CPI on the same budget. If views are high but installs are not, fix screenshots, icon, and rating; if views themselves are low, fix keywords and title.",
   "attribution-data-mismatch": "Attribution mismatch is normal — the same week can read 120 conversions in Meta, 70 in GA4, 85 in your MMP, and 100 in the payment database. None of them is broken; attribution windows, timing, and conversion definitions differ, so align those rules in one table before picking a number.",
   "audience-broad-vs-narrow": "Broad versus narrow targeting is decided by whether the account has enough conversion signal for the algorithm to learn on. Narrowing a low-conversion account starves learning, while opening wide on a product that genuinely fits one segment just raises CPA.",
@@ -116,6 +120,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "ai-era-marketer": "editorial", "performance-marketer-skills": "editorial",
   "roas-improvement": "economics",
   "uplift-holdout-guide": "causal",
+  "store-conversion-drop-diagnosis": "measurement", "store-listing-experiment": "experiment",
   "skan4-migration-guide": "measurement", "skan-conversion-value-schema": "measurement", "skan-vs-mmp-attribution": "measurement",
 };
 

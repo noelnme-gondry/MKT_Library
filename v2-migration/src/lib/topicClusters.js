@@ -86,6 +86,8 @@ export const TOPIC_CLUSTERS = [
       "google-uac-optimization",
       "meta-advantage-plus-guide",
       "retargeting-reengagement-guide",
+      "store-conversion-drop-diagnosis",
+      "store-listing-experiment",
     ],
   },
   {
