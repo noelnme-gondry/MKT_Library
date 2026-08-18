@@ -13,7 +13,7 @@ import { trackProductEvent } from "@/lib/analytics";
 const GUIDE_COPY = {
   ko: {
     need: "필요: ",
-    effort: (count, time) => `필수 ${count}개 · 화면 작업 예상 ${time} (CSV 준비 제외)`,
+    effort: (count) => `필수 컬럼 ${count}개`,
     tryExample: "예시 데이터로 결과 바로 보기",
     openBtn: "📖 어떤 데이터가 왜 필요한가요?",
     modalTitle: "이 도구에 올릴 데이터 안내",
@@ -35,7 +35,7 @@ const GUIDE_COPY = {
   },
   en: {
     need: "Needs: ",
-    effort: (count, time) => `${count} required · estimated ${time} on screen (CSV prep excluded)`,
+    effort: (count) => `${count} required columns`,
     tryExample: "Run the example and see results",
     openBtn: "📖 What data is needed and why?",
     modalTitle: "Data guide for this tool",
@@ -65,8 +65,8 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
 
   const requiredNeeds = guide.needs.filter((n) => n.required);
   const reqCols = requiredNeeds.map((n) => n.label).join(" · ");
-  const timeEstimate = toolId === "5-18" ? "5–10분" : String(toolId).startsWith("5-23:") ? "3–6분" : "2–5분";
-  const localizedTimeEstimate = locale === "en" ? timeEstimate.replace("분", " min") : timeEstimate;
+  // 소요 시간 표기는 뺐다 — 데이터 크기·매핑 상태에 따라 실제와 달라지는데
+  // 화면은 확정된 숫자처럼 보여줬다. 확인할 수 없는 숫자는 적지 않는다(§8).
   const close = () => setOpen(false);
   const runExample = () => {
     trackProductEvent("example_run_started", {
@@ -95,7 +95,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
             </ol>
           )}
           {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
-          <span className="csv-guide-effort">{T.effort(requiredNeeds.length, localizedTimeEstimate)}</span>
+          <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>
         </div>
         <div className="csv-guide-actions">
           {onTryExample && <button type="button" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}

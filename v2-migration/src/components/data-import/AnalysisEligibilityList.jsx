@@ -2,11 +2,10 @@
 import { formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 
 const COPY = {
-  ko: { ready: "바로 가능", caution: "주의해서 가능", blocked: "추가 데이터 필요", exploratory: "탐색용 MMM", decision: "의사결정용 MMM", open: "분석 시작", title: "이 데이터로 먼저 확인할 분석", readyTitle: "바로 실행 가능한 분석", readyDeck: "아래 분석은 현재 매핑으로 바로 열 수 있습니다.", more: "추가 데이터가 있으면 가능한 분석", noneTitle: "지금 바로 실행할 분석은 없습니다", noneDeck: "필요한 컬럼과 기간을 아래에서 확인한 뒤 데이터를 보완하세요.", rows: "행", periods: "기간", recommended: "먼저 보기", available: "다른 분석", unlock: "추가 가능", reason: "추천 이유", clear: "현재 데이터 구조로 바로 시작할 수 있습니다.", detail: "판정 세부 정보", effort: "화면 작업 예상", provisional: "자동 매핑을 마쳤습니다. 먼저 볼 분석과 바로 실행 가능한 분석을 나눠 보여드립니다." },
-  en: { ready: "Ready", caution: "Use with caution", blocked: "Needs more data", exploratory: "Exploratory MMM", decision: "Decision-ready MMM", open: "Open analysis", title: "First analysis to check", readyTitle: "Analyses you can run now", readyDeck: "These analyses can open with your current mapping.", more: "Analyses unlocked by more data", noneTitle: "No analysis is ready yet", noneDeck: "Review the required columns and date coverage below, then add the missing data.", rows: "rows", periods: "periods", recommended: "Start here", available: "Another analysis", unlock: "Can unlock", reason: "Why this", clear: "Your current data structure can start this analysis.", detail: "Decision details", effort: "Estimated on-screen work", provisional: "Automatic mapping is complete. We separate the first analysis from other analyses you can run right away." },
+  ko: { ready: "바로 가능", caution: "주의해서 가능", blocked: "추가 데이터 필요", exploratory: "탐색용 MMM", decision: "의사결정용 MMM", open: "분석 시작", title: "이 데이터로 먼저 확인할 분석", readyTitle: "바로 실행 가능한 분석", readyDeck: "아래 분석은 현재 매핑으로 바로 열 수 있습니다.", more: "추가 데이터가 있으면 가능한 분석", noneTitle: "지금 바로 실행할 분석은 없습니다", noneDeck: "필요한 컬럼과 기간을 아래에서 확인한 뒤 데이터를 보완하세요.", rows: "행", periods: "기간", recommended: "먼저 보기", available: "다른 분석", unlock: "추가 가능", reason: "추천 이유", clear: "현재 데이터 구조로 바로 시작할 수 있습니다.", detail: "판정 세부 정보", provisional: "자동 매핑을 마쳤습니다. 먼저 볼 분석과 바로 실행 가능한 분석을 나눠 보여드립니다." },
+  en: { ready: "Ready", caution: "Use with caution", blocked: "Needs more data", exploratory: "Exploratory MMM", decision: "Decision-ready MMM", open: "Open analysis", title: "First analysis to check", readyTitle: "Analyses you can run now", readyDeck: "These analyses can open with your current mapping.", more: "Analyses unlocked by more data", noneTitle: "No analysis is ready yet", noneDeck: "Review the required columns and date coverage below, then add the missing data.", rows: "rows", periods: "periods", recommended: "Start here", available: "Another analysis", unlock: "Can unlock", reason: "Why this", clear: "Your current data structure can start this analysis.", detail: "Decision details", provisional: "Automatic mapping is complete. We separate the first analysis from other analyses you can run right away." },
 };
 
-const TOOL_TIME = { "5-18": "5–10", "5-23": "3–6", "5-24": "5–8" };
 
 const OUTCOME = {
   "5-2": { ko: "이번 주 성과·예산 속도·이상 신호", en: "Weekly performance, pacing, and anomalies" },
@@ -40,7 +39,7 @@ function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = fal
     </div>
     <h3>{getTitle(result.toolId)}</h3>
     <p className="eligibility-card__outcome"><b>{locale === "en" ? "Answer" : "얻게 되는 답"}</b>{outcome}</p>
-    <div className="eligibility-card__facts"><span>{result.rowCount.toLocaleString()} {T.rows}</span><span>{result.periodCount.toLocaleString()} {T.periods}</span><span>{T.effort} {TOOL_TIME[result.toolId] || "2–5"}{locale === "en" ? " min" : "분"}</span></div>
+    <div className="eligibility-card__facts"><span>{result.rowCount.toLocaleString()} {T.rows}</span><span>{result.periodCount.toLocaleString()} {T.periods}</span></div>
     <p className="eligibility-card__reason">
       {!isBlocked && <b>{T.reason}</b>}
       {reason}

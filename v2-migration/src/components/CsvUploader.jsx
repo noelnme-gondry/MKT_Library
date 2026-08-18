@@ -221,14 +221,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
-  // Group-scoped "user explicitly cleared this" flag — see clearCsvGroup in
-  // the store. Prevents the mount-once demo-autoload effect below from
-  // silently refilling data the user just cleared, since tools remount this
-  // component across their hasData/analyzed JSX branches (§bugfix).
-  const manuallyCleared = useAppStore((s) => s.csvClearedByGroup[TOOL_GROUP[toolId] || "efficiency"]);
-  const demoDisabled = useAppStore((s) => s.demoDisabled);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
-  // 분석하기 클릭 공용 래퍼. 분석은 즉시 실행하고 데모 자동로드도 직접 실행한다.
   const requestAd = useAppStore((s) => s.requestAd);
   // Single-source analyze gate (store, group-scoped §12.5). Reading the whole
   // store here (not a memoized selector) so the boolean recomputes on any
@@ -547,14 +540,6 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
   // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
   const sheetSourceScope = TOOL_GROUP[toolId] || "efficiency";
-  // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
-  // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
-  // 명시적으로 비우면 재자동로드 없음(의도된 빈 드롭존 유지).
-  // §bugfix: 도구가 hasData/analyzed 상태에 따라 이 컴포넌트를 3개의 서로 다른 JSX
-  // 분기에 렌더하므로("!hasData"/"!analyzed"/analyzed details), 데이터를 지우는 순간
-  // 분기가 바뀌어 이 컴포넌트가 리마운트된다 — 마운트 1회 조건만으로는 리마운트마다
-  // 다시 조건이 참이 돼(데이터 없음) 즉시 데모를 재로드, "Change CSV" 클릭이 무효화됨.
-  // manuallyCleared(store, 그룹 스코프)로 리마운트 여부와 무관하게 억제.
   // 자동 로드하지 않는다. 예전에는 도구에 들어가면 곧장 샘플 분석 화면이 떠서,
   // "내 데이터를 올리는 곳"이라는 사실도 "이 도구가 뭘 보여주는지"도 가려졌다.
   // 이제 빈 화면 대신 브리프(질문·답·볼 수 있는 것)와 눈에 띄는 예시 버튼을 준다.

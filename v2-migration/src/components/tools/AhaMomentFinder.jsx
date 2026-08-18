@@ -416,7 +416,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
-  const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const ahaFileRef = useRef(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -482,13 +481,9 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
 
-  // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
-  useEffect(() => {
-    // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트 상태 세팅).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasData && !demoDisabled) handleLoadDemo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
+  // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.
+  // 예시는 업로드 안내(CsvGuide)의 "예시로 보기"로 명시적으로 부른다.
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);

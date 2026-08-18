@@ -36,10 +36,12 @@ describe("CsvGuide", () => {
     expect(screen.getByRole("button", { name: "OK" }).classList.contains("is-primary")).toBe(true);
   });
 
-  it("shows required effort and runs the example without a download round trip", () => {
+  it("shows the required column count and runs the example without a download round trip", () => {
     const onTryExample = vi.fn();
     render(<CsvGuide toolId="5-18" onTryExample={onTryExample} />);
-    expect(document.body.textContent).toContain("화면 작업 예상 5–10분");
+    // 소요 시간("5–10분")은 확인할 수 없는 숫자라 뺐다 — 필수 컬럼 수만 남긴다(§8).
+    expect(document.body.textContent).toMatch(/필수 컬럼 \d+개/);
+    expect(document.body.textContent).not.toMatch(/\d+분/);
     fireEvent.click(screen.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }));
     expect(onTryExample).toHaveBeenCalledTimes(1);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {

@@ -211,7 +211,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
   const responseMappingSession = useAppStore((state) => state.responseMappingSession);
   const setResponseMappingSession = useAppStore((state) => state.setResponseMappingSession);
-  const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
@@ -432,11 +431,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     setSelectedEvidence({ experiment: false, country: false });
   };
 
-  // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
-  useEffect(() => {
-    if (!hasData && !demoDisabled) handleLoadDemo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
+  // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.
+  // 예시는 업로드 안내(CsvGuide)의 "예시로 보기"로 명시적으로 부른다.
   // passive effect가 새 CSV의 매핑을 재설정하기 전 한 렌더에서도 이전 승인 토큰으로
   // 새 raw를 계산하지 않는다. 특히 같은 파일명·헤더로 재업로드한 경우 raw 객체
   // identity까지 맞아야 분석 gate가 열린다.
