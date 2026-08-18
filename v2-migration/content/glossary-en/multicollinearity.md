@@ -9,6 +9,13 @@ keywords: "multicollinearity, multicollinearity meaning, VIF, VIF meaning, MMM m
 category: "Measurement & Methodology"
 relatedPosts: ["marketing-mix-modeling", "multicollinearity-mmm-guide"]
 draft: false
+faq:
+  - q: "What VIF value is a problem?"
+    a: "5 is the usual caution line and 10 the serious one. VIF measures how far the standard error has been inflated, and the error grows by the square root of VIF — so a VIF of 10 means standard errors about 3.2 times wider than with no collinearity, and a VIF of 5 about 2.2 times."
+  - q: "A channel came back with a negative coefficient. Is it hurting sales?"
+    a: "Suspect collinearity first. If search and social budgets always moved together, the model has no basis for separating them, and the negative coefficient is a symptom of failed identification rather than a measured effect. A high VIF means this data cannot separate these channels, not that a channel does not work."
+  - q: "How do you fix multicollinearity?"
+    a: "Through data design rather than statistical technique. The model can only separate channels that have moved separately, so you need periods where one channel was scaled up or down on its own, a geo-split test, or a holdout. Changing model options until contributions appear is not a fix."
 ---
 
 ## In one line

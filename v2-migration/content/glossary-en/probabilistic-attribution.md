@@ -9,6 +9,13 @@ keywords: "probabilistic attribution, fingerprinting, IDFA-less attribution, iOS
 category: "Tracking & Tech"
 relatedPosts: ["attribution-data-mismatch"]
 draft: false
+faq:
+  - q: "What signals does probabilistic matching use?"
+    a: "In place of a unique identifier it combines contextual signals — device model, OS version, screen resolution, timezone, IP range — to estimate the probability that a click and an install belong to the same person. Each signal alone is shared by huge numbers of people, so the method leans on how rare the combination is."
+  - q: "How does it differ from deterministic matching?"
+    a: "Deterministic matching links one to one through a unique ID like the IDFA: accurate, but it requires user consent. Probabilistic matching estimates without consent and is never 100% accurate. Mismatched conversions inflate or deflate individual channels' apparent performance."
+  - q: "How much should you trust probabilistic results?"
+    a: "Treat them as directional rather than as grounds for ranking channels against each other. Accuracy varies with traffic characteristics, so the error does not land evenly across channels. Cross-check against your own server-side conversions or holdout results before deciding anything."
 ---
 
 ## In one line

@@ -11,7 +11,7 @@ relatedPosts: ["marketing-mix-modeling", "multicollinearity-mmm-guide"]
 draft: false
 faq:
   - q: "How much data does MMM need?"
-    a: "At least a year of weekly data, ideally two or more. Separating seasonality from trend requires observing the same periods repeatedly; with a short window the coefficients are decided by assumptions rather than data."
+    a: "At least 52 weeks of a weekly panel, ideally two years or more. Separating seasonality from trend requires observing the same periods repeatedly, and more channels require more history. With a short window the coefficients are decided by assumptions rather than data, so read the output as a 95% interval rather than a point estimate."
   - q: "Can MMM results be treated as causal?"
     a: "No. MMM models association between observed spend and outcomes, so treat it as a hypothesis generator. Confirm with a holdout experiment before committing large budget shifts."
   - q: "What happens when channel spends move together?"

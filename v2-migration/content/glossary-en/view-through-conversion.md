@@ -14,6 +14,8 @@ faq:
     a: "Reading them separately is safer than deciding whether to include them. Blended with click conversions they break comparison between campaigns and automatically favour whichever campaign bought the most impressions."
   - q: "Do lots of view-throughs mean the ads are working?"
     a: "Not on their own. Buying more impressions produces more view-throughs, which also raises the chance those people would have converted anyway. A holdout is what settles it."
+  - q: "Why do view-through numbers differ by platform?"
+    a: "Because each platform sets its own view window. Meta's default is 7-day click plus 1-day view, so someone who buys three days after seeing an ad falls outside Meta's view-through count but lands inside a platform using a longer window. The same conversion is counted in one place and not the other, so line up the windows before comparing."
 ---
 
 ## In one line

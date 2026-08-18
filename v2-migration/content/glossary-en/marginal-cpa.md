@@ -9,6 +9,13 @@ keywords: "marginal CPA, marginal ROAS, marginal efficiency, next-dollar ROAS, d
 category: "Budget & Optimization"
 relatedPosts: ["budget-marginal-efficiency"]
 draft: false
+faq:
+  - q: "How do you calculate marginal CPA?"
+    a: "Divide the added spend by the extra conversions it produced. A channel at $10,000 and 1,250 conversions taken to $12,000 and 1,400 turned an added $2,000 into 150 conversions, a marginal CPA of $13.33 against an average of $8.57 — about 1.6 times higher."
+  - q: "Should decisions use marginal or average CPA?"
+    a: "Scaling decisions use marginal. Reading the $8.57 average as comfortably under a $10 target and adding budget ignores that the next dollar is actually buying conversions at $13.33, already past the target. The average is a report card on the past; the marginal figure is the price tag on what comes next."
+  - q: "At what ratio does a channel count as saturated?"
+    a: "Near 1 means room remains; well above 1 means added budget is not returning proportionally. A channel whose spend barely varied gives no basis for fitting the curve at all, so withhold the verdict rather than producing a number."
 ---
 
 ## In one line

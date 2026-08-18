@@ -9,6 +9,13 @@ keywords: "click injection, click injection meaning, ad fraud, attribution fraud
 category: "Tracking & Tech"
 relatedPosts: ["marketing-mix-modeling", "attribution-data-mismatch"]
 draft: false
+faq:
+  - q: "How does click injection work?"
+    a: "On Android, it detects the moment an app download finishes and installation begins, then fires a fake click just before the install completes. Because last-click attribution credits whichever click came last before the install, an ad that brought no one gets the credit."
+  - q: "How do you detect click injection?"
+    a: "Look at the distribution of click-to-install times. Genuine traffic spreads across minutes because the user has to reach the store, download and install; injection manufactures the click right before completion, so the times bunch abnormally within seconds. That channel showing unusually weak retention or repeat purchase is a corroborating signal."
+  - q: "What do the metrics look like when click injection is present?"
+    a: "CPA looks good while revenue and retention fail to follow. The hijacked installs were going to happen anyway, so they add cost without adding increment. This is one reason MMM, which never tracks individual clicks, and holdout-based incrementality are unaffected by this kind of distortion."
 ---
 
 ## In one line

@@ -16,6 +16,8 @@ faq:
     a: "Not entirely, but a large share of it is. Many people searching your brand name would have arrived anyway. Keeping brand terms in the same campaign as generic ones creates the illusion of strong overall efficiency."
   - q: "If paid and organic both rise, is that not proof there is no cannibalization?"
     a: "Moving together proves nothing on its own. Advertising may have created new demand, or the period may simply have been a seasonal peak. Separating them requires a counterfactual — a control group or a before-and-after design."
+  - q: "How do you calculate the cannibalization rate?"
+    a: "Compare the paid conversions lost when a brand campaign is paused against the organic conversions gained. Losing 100 paid while organic rises by 70 is a 70% cannibalization rate and 30 net incremental conversions — meaning that campaign's real CPA is roughly 3.3 times what the dashboard reports."
 ---
 
 ## In one line
