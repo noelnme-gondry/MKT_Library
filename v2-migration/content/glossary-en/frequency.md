@@ -14,6 +14,8 @@ faq:
     a: "There is no absolute line — the normal range shifts with category, campaign objective, and flight length. Comparing against your own account's past periods, and watching whether it is climbing faster than usual, is more practical."
   - q: "Why does retargeting need frequency watched closely?"
     a: "The audience pool is small, so the same people get hit repeatedly. Without a cap, conversion rate holds flat while CPM climbs and brand perception suffers."
+  - q: "How is frequency calculated?"
+    a: "Divide impressions by reach. 300,000 impressions delivered to 100,000 people is a frequency of 3 — the average person saw the ad three times. Impressions rising while reach holds flat means you are showing the same people more often, not reaching more people."
 ---
 
 ## In one line

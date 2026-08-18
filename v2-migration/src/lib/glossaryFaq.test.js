@@ -9,9 +9,11 @@ import { getAllTerms } from "@/lib/glossary";
  * FAQ는 그 질문에 그대로 답해 FAQPage 구조화 데이터로 나가는 자리이므로,
  * 형태가 깨지면 리치결과에서 통째로 빠진다.
  *
- * 여기서 "전 용어가 FAQ를 가져야 한다"고 강제하지는 않는다 — 짧은 정의만으로
- * 충분한 용어가 있고, 억지로 채우면 답이 아니라 분량이 된다(§8). 대신 **있는
- * FAQ가 쓸모 있는 형태인지**를 검사한다.
+ * 한때 이 주석은 "전 용어가 FAQ를 가져야 한다고 강제하지 않는다"고 적혀 있었다.
+ * 그 결과 기초 용어 19편(cpi·cpa·ctr·roas·funnel…)이 faq 0건으로 남아 FAQPage
+ * JSON-LD 자체를 못 내보내고 있었다 — 상세 라우트가 term.faq가 비면 그 블록을
+ * 통째로 생략하기 때문에, 검색·AI 인용 경로가 조용히 사라진 상태였다. 지금은
+ * 45편 전부 채웠고, 아래 커버리지 검사가 그 상태를 고정한다.
  */
 describe.each(["ko", "en"])("용어집 FAQ (%s)", (locale) => {
   const terms = getAllTerms(locale);
@@ -20,6 +22,12 @@ describe.each(["ko", "en"])("용어집 FAQ (%s)", (locale) => {
   it("FAQ를 가진 용어가 실제로 존재한다", () => {
     // 로더가 깨져 전부 빈 배열이 되면 아래 검사가 공허하게 통과한다.
     expect(withFaq.length).toBeGreaterThan(0);
+  });
+
+  // 발행 목록에서 파생 — 슬러그를 손으로 나열하면 새 용어가 검사 밖으로 샌다(§7).
+  it("발행된 용어는 전부 FAQ를 2건 이상 갖는다", () => {
+    const missing = terms.filter((term) => term.faq.length < 2).map((term) => `${term.slug}(${term.faq.length})`);
+    expect(missing, `FAQ 2건 미만: ${missing.join(", ")}`).toEqual([]);
   });
 
   it("질문은 물음표로 끝나고 답은 문장으로 쓴다", () => {

@@ -14,6 +14,8 @@ faq:
     a: "No. With low power, a real effect goes undetected. 'Not significant' means 'not yet distinguishable', and claiming no effect requires separate evidence that the test could have detected one."
   - q: "What determines power?"
     a: "Sample size, the size of the effect you want to detect, and the variability of the data. Detecting smaller differences requires disproportionately more sample, so decide up front how small a difference matters."
+  - q: "What power level is standard?"
+    a: "80% is the conventional target. That means a real effect is detected four times out of five, and the fifth run comes back non-significant despite the effect existing. A non-significant result from a test that never had 80% power is weak grounds for claiming no effect."
 ---
 
 ## In one line

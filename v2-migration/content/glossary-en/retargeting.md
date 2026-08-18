@@ -16,6 +16,8 @@ faq:
     a: "Randomly exclude part of the audience as a holdout and compare return rates. If the unexposed group came back at a similar rate, much of the credited conversion was not created by the ad."
   - q: "Can retargeting and acquisition share a campaign?"
     a: "Mixing them creates the illusion of strong overall efficiency. The audiences are in different states with different goals, so separate campaigns with explicit exclusion rules make decisions clearer."
+  - q: "What goes wrong when retargeting and acquisition are blended?"
+    a: "You get an average that describes neither. A $30 acquisition CPA blended with a $6 retargeting CPA reads as $18, a number that cannot tell you whether to scale acquisition or cut retargeting. The real lift only becomes visible once 5–10% of the audience is held out."
 ---
 
 ## In one line

@@ -16,6 +16,8 @@ faq:
     a: "Longer than the purchase cycle. If conversions arrive days later and you run for a week, the exposed group is compared while its outcomes are still maturing. Set the end date before you start and do not move it on interim results."
   - q: "Can incrementality be measured without a holdout?"
     a: "You can estimate it from before-and-after comparisons or a time-series baseline, but those cannot separate other changes in the same window. Use them as estimates and stop short of calling them causal."
+  - q: "How do you read a holdout result?"
+    a: "The gap in conversion rate between the two groups is the uplift. 8% in the exposed group against 5% in the holdout is 3pp of uplift. An interval crossing zero means not yet distinguishable rather than no effect, and holdouts are typically sized around 5–10% to balance detection against the revenue you give up."
 ---
 
 ## In one line
