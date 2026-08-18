@@ -19,7 +19,10 @@ describe("connected tool workflow", () => {
     const publishedToolIds = ROUTES
       .filter((route) => /^(5|9)-/.test(route.id) && !route.legacy && isRoutePublished(route))
       .map((route) => route.id);
-    expect(new Set(journeyIds).size).toBe(13);
+    // 개수를 손으로 적으면 도구가 늘 때마다 이 줄만 고치게 되고, 정작 "여정에
+    // 중복 없이 한 번씩 들어갔는가"는 검사되지 않는다(§7). 발행 도구에서 파생한다.
+    expect(new Set(journeyIds).size).toBe(publishedToolIds.length);
+    expect(journeyIds.length).toBe(new Set(journeyIds).size);
     expect([...journeyIds].sort()).toEqual([...toolIds].sort());
     expect([...toolIds].sort()).toEqual([...publishedToolIds].sort());
     expect([...toolIds].sort()).toEqual([...EN_READY_TOOL_IDS].sort());

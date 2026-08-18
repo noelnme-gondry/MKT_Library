@@ -131,6 +131,13 @@ export const STANDARD_FIELDS = {
                 required: false,
                 group: "단일 지표",
               },
+              product_page_views: {
+                label: "제품 페이지 조회",
+                aliases: ["product_page_views", "product page views", "page_views", "store_listing_visitors", "listing_visitors", "제품페이지조회", "제품 페이지 조회", "스토어조회", "페이지조회"],
+                type: "number",
+                required: false,
+                group: "지표",
+              },
               installs: {
                 label: "설치수",
                 aliases: ["install", "설치", "설치수", "inst"],
@@ -1107,6 +1114,7 @@ export const TOOL_REQUIRED_FIELDS = {
                 { oneOf: ["brand_search", "direct_traffic", "installs", "actions"] },
               ],
               "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
+              "5-27": ["date", "source", "product_page_views", "installs"],
               "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
               // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
               // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
@@ -1165,6 +1173,10 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "channel", unlocks: "브랜드 캠페인 매체 구분" },
               ],
               "5-25": [{ key: "campaign_name", unlocks: "채널 대신 캠페인 단위 공선성 점검" }],
+              "5-27": [
+                { key: "impressions", unlocks: "노출→제품페이지 통과율(탭률) 계산" },
+                { key: "country", unlocks: "국가별 스토어 전환 비교" },
+              ],
               "5-26": [
                 { key: "country", unlocks: "국가별 캠페인 예산·통화 분리" },
                 { key: "campaign_name", unlocks: "캠페인별 조치 분리" },

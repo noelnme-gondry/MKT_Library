@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
+import { TOOL_JOURNEY } from "@/lib/toolConnections";
 import LandingPage from "@/components/LandingPage";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -35,6 +36,10 @@ function seedWithData() {
   const slice = { raw, headers, mapping, fileName: "x.csv" };
   useAppStore.setState({ currentRouteId: "home", csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice }, csvData: slice });
 }
+
+// 여정에 등록된 도구 수에서 파생 — 숫자를 손으로 적으면 도구 추가 때마다
+// 이 줄만 고치게 되고 "카드가 빠짐없이 렌더되는가"는 검사되지 않는다(§7).
+const JOURNEY_TOOL_COUNT = new Set(TOOL_JOURNEY.flatMap((stage) => stage.tools)).size;
 
 describe("LandingPage render smoke", () => {
   beforeEach(() => seedNoData());
@@ -72,7 +77,7 @@ describe("LandingPage render smoke", () => {
       "/content/freshness",
       "/tools/brand-campaign-incrementality",
     ]);
-    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(13);
+    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(JOURNEY_TOOL_COUNT);
     expect(document.querySelector(".connected-tool-journey__head br")).toBeNull();
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
@@ -169,7 +174,7 @@ describe("LandingPage render smoke", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my CSV", "Quick calculations", "Find the cause"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Find the cause.Choose one next move.");
-    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(13);
+    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(JOURNEY_TOOL_COUNT);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
     expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
     expect(container.querySelector('a.dc-action-route[href="/en/calculator"]')).toBeTruthy();

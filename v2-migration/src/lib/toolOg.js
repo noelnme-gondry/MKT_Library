@@ -21,6 +21,7 @@ export const TOOL_OG_CONFIG = {
   // SoftwareApplication JSON-LD의 featureList가 빈 배열이었다(감사 P1-9).
   // 커버리지 테스트가 하드코딩 배열을 돌아 누락을 못 잡았다 — 이제 ROUTES에서 파생한다.
   "5-25": { accent: "#818cf8", glyph: "COLLINEAR", metrics: { ko: ["VIF", "상관", "분리 가능성"], en: ["VIF", "CORRELATION", "SEPARABILITY"] } },
+  "5-27": { accent: "#2dd4bf", glyph: "STORE", metrics: { ko: ["스토어 전환", "소스 믹스", "페이지 효율"], en: ["STORE CVR", "SOURCE MIX", "PAGE EFFICIENCY"] } },
   "5-26": { accent: "#2dd4bf", glyph: "ASA", metrics: { ko: ["검색어", "Exact 승격", "CPT 조정"], en: ["SEARCH TERM", "EXACT PROMOTION", "CPT BID"] } },
 };
 

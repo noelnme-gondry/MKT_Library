@@ -41,6 +41,7 @@ export const ITEM_TITLE_EN = {
   "5-18": "Marketing Response Analysis (MMM)",
   "5-20": "Find Your Aha-Moment",
   "5-25": "VIF Multicollinearity Check",
+  "5-27": "ASO Store Conversion",
   "9-1": "Content Element Analysis",
   "9-2": "Killer Content Finder",
   "9-3": "Content Traffic Variance",

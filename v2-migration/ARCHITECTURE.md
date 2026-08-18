@@ -54,6 +54,7 @@ v2-migration/
 | `/tools/brand-campaign-incrementality` | 5-24 | tools/BrandCampaignIncrementality.jsx (ITS·AR(1)) |
 | `/tools/vif-multicollinearity` | 5-25 | tools/MulticollinearityChecker.jsx (채널 지출 VIF·상관) |
 | `/tools/asa-keyword-finder` | 5-26 | tools/AsaKeywordFinder.jsx (Exact 승격·CPT 조정) |
+| `/tools/aso-store-conversion` | 5-27 | tools/AsoStoreConversion.jsx (스토어 퍼널·믹스 vs 효율 분해) |
 | `/tools/marketing-response` | 5-18 | tools/MarketingResponse.jsx (MMM·회귀·예측) |
 | `/tools/paid-organic-trend` | 5-18-paid-organic | tools/PaidOrganicTrend.jsx |
 | `/tools/marketing-trend` · `/tools/cannibalization-diagnosis` · `/tools/mmm-contribution` · `/tools/marketing-forecast` | 5-18-{trend,cannibal,mmm,forecast} | MarketingResponse.jsx (stage 진입) |
@@ -89,6 +90,7 @@ v2-migration/
 | BrandCampaignIncrementality.jsx (5-24) | `brandIncrementalityMath.js` | ITS·AR(1) 추론·HAC 소표본 보정·rho 프로파일 구간 |
 | MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`·`correlationMatrix`) | MMM 전 지출 패널의 VIF·상관 진단. 높은 VIF는 기여도 분리 거부 신호 |
 | AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
+| AsoStoreConversion.jsx (5-27) | `asoStoreMath.js` → `pvmMath.js` | 조회=cost·설치=result로 PVM에 위임. 스토어 전환율 변화를 트래픽 구성(mix) vs 소스별 효율(rate)로 분해 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` + `lib/analysis/webr/mmmElasticNet.js` | UI/상태와 모델·차트·export 분리. WebR glmnet은 동일 시간창의 **예측 챌린저**일 뿐 기여·인과 모델을 자동 대체하지 않음 |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
 | ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `utils/outcomeType.js` + `lib/analysis/webr/logisticRegression.js`·`rateRegression.js`·`countRegression.js`·`mixedModel.js`·`randomForest.js` | **종속변수 척도로 모형을 고른다**: 0/1=binomial · 0~1 비율=beta(로짓) · 카운트=Poisson→과산포면 negbin · 그 외=기존 JS HC3·BH. 반복 단위 열을 고르면 lme4 random intercept(수동 실행). 100행+이면 Random Forest와 동일 교차검증으로 예측력 비교. RF 승리는 예측 레이어 후보일 뿐 회귀 추론은 유지 |
@@ -105,7 +107,7 @@ v2-migration/
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js`(Zustand)**: `currentRouteId`(URL 미러)·`IA`/`PHASES`·`dashboardFilter`·`isDarkMode`·`isCmdkOpen`·`viewConfig`·`decisionRecords`·`analyzedByGroup`. `requestAd(cb)`는 광고 제거 후 남은 no-op 래퍼(§12.26).
 - **persist**: 설정만 localStorage(`viewConfig`·`customMetrics`·`customCharts`·`analystMode`, name `mkt_view_config`, `partialize=persistPartialize`). **원본 CSV·매핑·필터 Set은 절대 저장 X**(§2.2). 결정 요약은 사용자가 명시적으로 켠 경우만. 서버/테스트엔 `noopStorage` 폴백.
-- **CSV 그룹 스코프**: `csvGroups` 슬라이스 = `efficiency`·`creative`·`experiment`·`response`·`aha`·`incrementality`·`brand_incrementality`·`collinearity`·`asa_keyword`·`content_attr`·`content_aha`·`content_traffic`·`content_dashboard`. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 스왑, `setCsvData`가 활성 그룹+미러 기록). **소비자는 `s.csvData`만 읽는다.**
+- **CSV 그룹 스코프**: `csvGroups` 슬라이스 = `efficiency`·`creative`·`experiment`·`response`·`aha`·`incrementality`·`brand_incrementality`·`collinearity`·`asa_keyword`·`aso_store`·`content_attr`·`content_aha`·`content_traffic`·`content_dashboard`. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 스왑, `setCsvData`가 활성 그룹+미러 기록). **소비자는 `s.csvData`만 읽는다.**
   - `TOOL_GROUP`(`lib/toolGroups.js`)이 `라우트 id → 그룹`, **`DATA_GROUPS`(=그 값 집합)가 그룹 목록의 SSOT**. 세 맵(`csvGroups`·`analyzedByGroup`·`dashboardFilterGroups`)은 `buildGroupMap()`으로 **파생**하므로 라우트만 추가하면 자동으로 따라온다(PR #610). 손으로 나열하던 시절 누락된 키가 미러를 `undefined`로 만들어 도구가 렌더 throw로 죽었다(5-24, PR #608) — 다시 나열식으로 되돌리지 말 것. 구조 가드는 `useDataStore.test.js`.
   - CSV를 **쓰는** 라우트는 도구가 아니어도 `TOOL_GROUP`에 등록(`start-gate`→efficiency). 읽기·쓰기 그룹이 갈리면 업로드가 사라진다(PR #604).
 - **데이터 파이프라인**: 업로드(`CsvUploader.jsx` — PapaParse/xlsx 워커 + **도구 스코프 자동매핑** `lib/data-import/mappingContract.js`) 또는 공개 시트(`GoogleSheetConnect.jsx`, 브라우저 직접 조회) → `csvData`+`canonicalData`(정규화 공통 레코드) → **`getMappedRows(csvData)`**(표준키 행, **cost↔spend 별칭 채움**) → 도구별 엔진 입력 → 순수엔진 → 렌더. 앱 서버 경유 없음, 원본 행·`canonicalData`는 영속화하지 않음.
@@ -128,7 +130,7 @@ v2-migration/
 - **가이드(SOP) 검색 진입면**: `lib/guideSearchContent.js`(15개 KO/EN `question`·`answer`·FAQ + `tool`·`posts`·`terms`) → `components/GuideAnswer.jsx`(본문 위·접기 바깥) + `page.js`의 FAQPage·BreadcrumbList + `buildGuideEvidenceLinks` → `ToolEvidenceLinks`의 `tool` 그룹. 가이드는 본문이 이미 롱폼이라 `sections`를 두지 않는다. 블로그 역방향은 같은 파일의 `guidesForPost()`(posts에서 파생) → `components/seo/RelatedGuideList.jsx`. **도구 전용 게이트(`isTool`)에 가이드를 빠뜨리면 15개가 통째로 배선 밖으로 나간다(AGENTS.md §7).**
 - **브랜드 사실 SSOT**: `lib/brandFacts.js`(가격·데이터 처리·결정론 등 `BRAND_FACTS` + 한계 `BRAND_LIMITS`). `llms.txt`가 여기서 파생한다. 도구 이름·설명은 여기 적지 않고 `routeSeo`에서 조회한다.
 - **방법 비교**: `lib/compareContent.js`(KO/EN `question`·`answer`·비교표·`guidance`·FAQ) → `components/ComparePage.jsx` + `/compare[/slug]` KO/EN. sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생. 인바운드는 `getComparesForTool()` 역인덱스 → `buildEvidenceLinks` → `ToolEvidenceLinks`(도구 9개) + 푸터 + ⌘K 개별 항목 + 사이드바 LIBRARY.
-- **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
+- **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25, ASO 글·용어는 5-27로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 
 ## 6. 테스트 & 린트 (배포 게이트)

@@ -258,6 +258,15 @@ export const IA = [
           "Find which early actions, done how many times within how many days, predict retention (F1/lift grid search). Free, upload an event-level CSV.",
       },
       {
+        id: "5-27",
+        title: "ASO 스토어 전환 분석",
+        titleEn: "ASO Store Conversion",
+        seoTitle: "ASO 스토어 전환 분석: 소스별 전환 분해",
+        seoDescription: "스토어 콘솔 CSV로 노출→제품페이지→설치 퍼널을 세우고, 전환율 변화가 트래픽 구성 탓인지 소스별 효율 탓인지 나눠 봅니다.",
+        seoTitleEn: "ASO Store Conversion Analysis",
+        seoDescriptionEn: "Build the store funnel from a console CSV and split conversion change into traffic mix and per-source efficiency.",
+      },
+      {
         id: "5-25",
         title: "VIF 다중공선성 점검",
         titleEn: "VIF Multicollinearity Check",

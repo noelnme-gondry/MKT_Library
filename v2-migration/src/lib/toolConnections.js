@@ -47,6 +47,11 @@ export const CONNECTED_TOOLS = {
     question: { ko: "MMM으로 채널 기여도를 나눌 만큼 지출이 독립적으로 움직였을까?", en: "Did spend move independently enough to separate channel contribution in MMM?" },
     keywords: { ko: "MMM 전 다중공선성 VIF 채널 지출 같이 움직임", en: "before MMM multicollinearity VIF channel spend moves together" },
   },
+  "5-27": {
+    title: { ko: "ASO 스토어 전환 분석", en: "ASO store conversion" },
+    question: { ko: "스토어 전환율이 떨어진 게 페이지 탓일까, 유입 구성이 바뀐 탓일까?", en: "Did store conversion fall because of the page, or because the traffic mix shifted?" },
+    keywords: { ko: "ASO 스토어 전환율 하락 제품 페이지 조회 설치 전환 유입 소스 Search Browse 앱스토어 최적화 스크린샷 아이콘", en: "ASO store conversion rate drop product page views installs traffic source Search Browse app store optimization screenshots icon" },
+  },
   "5-26": {
     title: { ko: "ASA 키워드 발굴", en: "ASA keyword finder" },
     question: { ko: "어떤 검색어를 Exact로 옮기고 CPT를 조정할까?", en: "Which terms should move to Exact and receive a CPT change?" },
@@ -103,7 +108,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "05 · LEARN", en: "05 · LEARN" },
     title: { ko: "학습 축적", en: "Learn" },
     description: { ko: "채널·고객·콘텐츠의 장기 학습으로 연결합니다.", en: "Turn results into channel, customer, and content learning." },
-    tools: ["5-18", "5-20", "5-25", "9-1"],
+    tools: ["5-18", "5-20", "5-25", "5-27", "9-1"],
   },
 ];
 
@@ -118,7 +123,8 @@ export const NEXT_TOOL_IDS = {
   "5-24": ["5-23", "5-4", "5-2"],
   "5-18": ["5-3", "5-25", "5-20"],
   "5-25": ["5-18", "5-4", "5-23"],
-  "5-26": ["5-22", "5-3", "5-23"],
+  "5-26": ["5-22", "5-3", "5-27"],
+  "5-27": ["5-26", "5-2", "5-23"],
   "5-20": ["5-18", "5-4", "5-2"],
   "9-1": ["9-6", "5-4", "5-20"],
 };

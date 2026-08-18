@@ -137,6 +137,10 @@ export const ROUTE_SEO = {
     ko: { title: "ASA 키워드 발굴 | Exact 승격·CPT 조정", description: "Apple Search Ads 검색어 리포트에서 Exact 승격 후보와 예산 소진·목표 CPA 기반 CPT 증액·감액 조치를 찾습니다." },
     en: { title: "ASA Keyword & CPT Bid Finder", description: "Find Apple Search Ads Exact-promotion candidates and CPT bid actions based on budget pacing and target CPA." },
   },
+  "5-27": {
+    ko: { title: "ASO 스토어 전환 분석 | 소스별 분해", description: "스토어 콘솔 CSV로 노출→제품페이지→설치 퍼널을 세우고, 전환율 변화를 트래픽 구성과 소스별 효율로 나눠 봅니다." },
+    en: { title: "ASO Store Conversion Analysis", description: "Build the impression-to-install funnel from a store console CSV and split conversion change into traffic mix and per-source efficiency." },
+  },
   "9-1": {
     ko: {
       title: "콘텐츠 요소 분석 | 회귀로 성과 기여 비교",
