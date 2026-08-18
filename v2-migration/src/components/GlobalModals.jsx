@@ -39,7 +39,10 @@ function searchScore(entry, query) {
   if (!queryParts.length) return 0;
   const haystack = entry.searchText.toLocaleLowerCase();
   const haystackParts = searchTokens(haystack);
-  const titleParts = searchTokens(entry.title);
+  // 표시 이름을 6~8자로 줄이면서 "VIF"·"다중공선성" 같은 전문용어가 이름에서
+  // 빠졌다. 사용자는 그 말로 찾으므로, 같은 도구의 seoTitle을 제목 코퍼스에
+  // 함께 넣어 검색어를 지킨다(짧은 이름 ≠ 검색 불가).
+  const titleParts = searchTokens(`${entry.title} ${entry.searchTitleExtra || ""}`);
   const matched = queryParts.filter((queryPart) => (
     haystack.includes(queryPart)
     || haystackParts.some((part) => part.startsWith(queryPart) || queryPart.startsWith(part))
@@ -84,6 +87,8 @@ export default function GlobalModals({ locale = "ko" }) {
       kind,
       hint: question || groupTitle,
       searchText: `${title} ${groupTitle} ${kind} ${question} ${keywords} ${item.seoTitle || ""} ${item.seoDescription || ""} ${item.seoTitleEn || ""} ${item.seoDescriptionEn || ""}`,
+      // 이름에서 뺀 전문용어(VIF·다중공선성·PVM…)가 제목 가중치로 계속 잡히게 한다.
+      searchTitleExtra: `${item.seoTitle || ""} ${item.seoTitleEn || ""}`,
     };
     }));
     const workspace = [

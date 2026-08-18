@@ -159,31 +159,31 @@ export const IA = [
     items: [
       {
         id: "5-2",
-        title: "운영 대시보드 (스코어카드·페이싱·차트)",
-        titleEn: "Operations Dashboard (Scorecard · Pacing · Charts)",
+        title: "주간 성과 점검",
+        titleEn: "Weekly check",
         seoTitleEn: "Free Ops Dashboard: Scorecard, Pacing, Anomalies, Cohorts",
         seoDescriptionEn:
           "Upload your campaign CSV to see scorecards, budget pacing, anomaly detection, LTV, cohorts, and funnels in one dashboard — free, client-side only.",
       },
       {
         id: "5-21",
-        title: "캠페인 성과 변동 (PVM 분해)",
-        titleEn: "Campaign Performance Variance (PVM Decomposition)",
+        title: "성과 변동 원인",
+        titleEn: "Change drivers",
         seoTitleEn: "Why Did Performance Change? Free PVM Decomposition Tool",
         seoDescriptionEn:
           "Decompose a performance shift into volume, efficiency, and mix effects with zero residual (Bennet decomposition). Free, upload a CSV to run it instantly.",
       },
       {
         id: "5-22",
-        title: "캠페인 포화도 진단 (한계 효율)",
-        titleEn: "Campaign Saturation Diagnosis (Marginal Efficiency)",
+        title: "증액 여력 진단",
+        titleEn: "Headroom check",
         seoTitleEn: "Is This Campaign Saturated? Free Marginal Efficiency Diagnosis",
         seoDescriptionEn:
           "Compares marginal vs. average CPA/ROAS to tell you whether a channel or campaign is saturated or still has room to scale. Free, CSV-based.",
       },
       {
         id: "5-3",
-        title: "예산 배분 시뮬레이터",
+        title: "예산 재배분",
         seoTitle: "목표 CPI·CPA·ROAS에 맞는 예산은? 무료 배분 시뮬레이터",
         seoDescription:
           "총 예산 또는 목표 CPI·CPA·ROAS를 슬라이드하면 채널별 관측 최대 지출을 넘지 않도록 권장 총예산과 자동 배분안을 계산합니다. CSV 업로드만으로 바로 확인하세요.",
@@ -194,8 +194,8 @@ export const IA = [
       },
       {
         id: "5-26",
-        title: "ASA 키워드 발굴 · CPT 조정",
-        titleEn: "ASA Keyword Finder · CPT Actions",
+        title: "ASA 키워드",
+        titleEn: "ASA keywords",
         seoTitle: "ASA 키워드 발굴기: Exact 승격·CPT 입찰 조정",
         seoDescription: "Apple Search Ads 검색어에서 Exact 승격 후보와 예산 대비 소진률·목표 CPA 기반 CPT 증감 조치를 찾습니다.",
         seoTitleEn: "ASA Keyword Finder: Exact Promotion & CPT Bids",
@@ -210,24 +210,24 @@ export const IA = [
     items: [
       {
         id: "5-4",
-        title: "실험 분석 (A/B 테스트)",
-        titleEn: "Experiment Analysis (A/B Test)",
+        title: "A/B 테스트",
+        titleEn: "A/B testing",
         seoTitleEn: "Is A vs B Really Different? Free A/B Test Significance Calculator",
         seoDescriptionEn:
           "Design your sample size and judge whether your A/B test result is statistically significant. Free, no signup — paste your numbers or upload a CSV.",
       },
       {
         id: "5-23",
-        title: "증분 분석 (홀드아웃·전후 비교)",
-        titleEn: "Incrementality Analysis (Holdout · Pre/Post)",
+        title: "광고 순증분",
+        titleEn: "Incremental lift",
         seoTitleEn: "How Much Did Your Ads Really Cause? Free Incrementality Testing",
         seoDescriptionEn:
           "Measure true incremental lift with holdout tests, on/off comparisons, or DiD pre/post analysis — not just correlation. Free, CSV-based.",
       },
       {
         id: "5-24",
-        title: "브랜드 캠페인 증분 분석 (ITS·대조군 연결)",
-        titleEn: "Brand Campaign Incrementality (ITS · Control Routing)",
+        title: "브랜드 증분",
+        titleEn: "Brand lift",
         seoTitleEn: "Did Brand Marketing Create Lift? Free ITS Analysis",
         seoDescriptionEn:
           "Estimate whether a brand campaign added search, direct traffic, or signups with interrupted time series, then route to a stronger holdout design when available.",
@@ -241,7 +241,7 @@ export const IA = [
     items: [
       {
         id: "5-18",
-        title: "마케팅 반응 분석 (MMM·회귀·예측)",
+        title: "채널 기여도",
         seoTitle: "MMM 분석: 광고비, 어디서 벌고 어디서 잃는지 분해",
         seoDescription:
           "마케팅 믹스 모델(MMM)로 채널 간 카니발라이제이션·기여도·미래 성과를 회귀 분석. CSV 업로드로 바로 실행하는 무료 MMM 분석 도구.",
@@ -252,16 +252,16 @@ export const IA = [
       },
       {
         id: "5-20",
-        title: "핵심 가치 발굴 (Aha-moment)",
-        titleEn: "Find Your Aha-Moment",
+        title: "Aha 모먼트",
+        titleEn: "Aha moment",
         seoTitleEn: "What Makes Users Stick? Free Aha-Moment Finder",
         seoDescriptionEn:
           "Find which early actions, done how many times within how many days, predict retention (F1/lift grid search). Free, upload an event-level CSV.",
       },
       {
         id: "5-27",
-        title: "ASO 스토어 전환 분석",
-        titleEn: "ASO Store Conversion",
+        title: "스토어 전환",
+        titleEn: "Store conversion",
         seoTitle: "ASO 스토어 전환 분석: 소스별 전환 분해",
         seoDescription: "스토어 콘솔 CSV로 노출→제품페이지→설치 퍼널을 세우고, 전환율 변화가 트래픽 구성 탓인지 소스별 효율 탓인지 나눠 봅니다.",
         seoTitleEn: "ASO Store Conversion Analysis",
@@ -269,8 +269,8 @@ export const IA = [
       },
       {
         id: "5-25",
-        title: "VIF 다중공선성 점검",
-        titleEn: "VIF Multicollinearity Check",
+        title: "채널 중복 점검",
+        titleEn: "Channel overlap",
         seoTitle: "VIF 다중공선성 진단: MMM 전 채널 지출 점검",
         seoDescription: "채널별 지출이 같이 움직여 MMM 기여도 분리가 어려운지 VIF와 상관관계로 점검합니다.",
         seoTitleEn: "VIF Multicollinearity Check Before MMM",
@@ -290,22 +290,22 @@ export const IA = [
     items: [
       {
         id: "9-6",
-        title: "소재 분석 (지표·피로도·포레스트)",
-        titleEn: "Creative Analysis (Metrics · Fatigue · Forest Plot)",
+        title: "소재 피로도",
+        titleEn: "Creative fatigue",
         seoTitleEn: "Which Creative Should You Replace? Free Fatigue Analysis",
         seoDescriptionEn:
           "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
       },
       {
         id: "9-1",
-        title: "콘텐츠 요소 분석기 (요소별 성과 기여)",
-        titleEn: "Content Element Analyzer (Performance Contribution)",
+        title: "콘텐츠 요소",
+        titleEn: "Content elements",
         seoTitleEn: "Which Content Elements Drive Results? Free Regression Analyzer",
         seoDescriptionEn: "Estimate how hooks, formats, lengths, and message angles relate to content performance with regression controls and clear evidence limits. Free, browser-only CSV analysis.",
       },
-      { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)", hidden: true },
-      { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", titleEn: "Content Traffic Variance (Source · Category · Content)", hidden: true },
-      { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", titleEn: "Content Operations Dashboard (Traffic · Scorecard · Anomalies)", hidden: true },
+      { id: "9-2", title: "킬러 콘텐츠", hidden: true },
+      { id: "9-3", title: "콘텐츠 변동", titleEn: "Content shifts", hidden: true },
+      { id: "9-7", title: "콘텐츠 대시보드", titleEn: "Content dashboard", hidden: true },
     ],
   },
 ];

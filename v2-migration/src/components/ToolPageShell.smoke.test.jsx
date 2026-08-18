@@ -2,12 +2,16 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ToolPageShell from "@/components/ToolPageShell";
+import { toolIndexEntry } from "@/lib/toolIndex";
+
+// 도구 이름의 SSOT는 스토어 IA다. toolId가 있으면 셸이 레지스트리 이름을 쓰므로
+// 넘긴 title은 무시된다 — 이름이 두 곳에 살지 않게 하려는 계약이다.
 
 describe("ToolPageShell instrument header contract", () => {
   it("keeps title, status, scope, summary, and contents in one Korean shell", () => {
     const { container } = render(
       <ToolPageShell
-        title="예산 배분"
+        title="넘겨도 무시되는 제목"
         toolId="5-3"
         chips={<span>분석 가능</span>}
         stickyFilter={<button type="button">최근 30일</button>}
@@ -18,7 +22,8 @@ describe("ToolPageShell instrument header contract", () => {
       </ToolPageShell>,
     );
 
-    expect(screen.getByRole("heading", { level: 1, name: "예산 배분" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: toolIndexEntry("5-3").name })).toBeTruthy();
+    expect(container.textContent).not.toContain("넘겨도 무시되는 제목");
     expect(container.querySelector("header.page-sticky-bar.tool-instrument-header--sticky")).toBeTruthy();
     expect(container.textContent).toContain("의사결정 작업대");
     expect(container.querySelector(".tool-instrument-header__status")?.textContent).toContain("분석 가능");

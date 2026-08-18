@@ -6,7 +6,10 @@ import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort, findMeta } from "@/store/useDataStore";
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
+import { localizedHref } from "@/lib/localizedHref";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
+import { MMM_STAGE_GROUPS, mmmStageDefs } from "@/components/tools/marketingResponseModel";
+import { responseStageHref } from "@/lib/responseStage";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
 
@@ -27,7 +30,7 @@ const SIDEBAR_COPY = {
     naverBlog: "네이버 블로그",
     resourceLabel: "LIBRARY",
     workspaceLabel: "DECISION WORKSPACE",
-    allTools: "전체 도구",
+    allTools: "할 수 있는 분석 전체 →",
     today: "오늘의 질문",
     todayDesc: "지금 확인할 변화와 다음 행동",
     review: "결정 검토함",
@@ -56,7 +59,7 @@ const SIDEBAR_COPY = {
     facebook: "Facebook",
     naverBlog: "Naver Blog",
     workspaceLabel: "DECISION WORKSPACE",
-    allTools: "All tools",
+    allTools: "Every analysis →",
     today: "Today’s question",
     todayDesc: "See the current signal and next action",
     review: "Decision inbox",
@@ -109,6 +112,28 @@ export default function Sidebar({ locale = "ko" }) {
   const toggleSection = (sectionId, currentlyCollapsed) => {
     setCollapsedSections((prev) => ({ ...prev, [sectionId]: !currentlyCollapsed }));
   };
+
+  // 5-18의 네 화면을 세 갈래로 묶어 사이드바에 편다. 라우트는 이미 있으므로
+  // 새로 만드는 것은 없고, "들어가야만 보이던" 구조를 밖으로 꺼낼 뿐이다.
+  const mmmStages = mmmStageDefs(locale);
+  const mmmSubNav = (
+    <div className="nav-subnav" aria-label={locale === "en" ? "Channel contribution views" : "채널 기여도 화면"}>
+      {MMM_STAGE_GROUPS.map((group) => {
+        const items = mmmStages.filter((item) => item.group === group.id);
+        if (!items.length) return null;
+        return (
+          <div key={group.id} className="nav-subnav__group">
+            <span className="nav-subnav__label">{locale === "en" ? group.en : group.ko}</span>
+            {items.map((item) => (
+              <Link key={item.id} href={responseStageHref(item.id, locale)} className="nav-subnav__item">
+                {item.no}
+              </Link>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const toggleGroup = (groupId, currentlyCollapsed) => {
     setCollapsedGroups((prev) => ({ ...prev, [groupId]: !currentlyCollapsed }));
@@ -185,7 +210,9 @@ export default function Sidebar({ locale = "ko" }) {
       </nav>
       <div className="inner-workspace-label">
         <span>{T.workspaceLabel}</span>
-        <b>{T.allTools}</b>
+        {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
+            무관하게 전체 목록으로 가는 길을 상시 노출한다. */}
+        <Link className="inner-workspace-label__all" href={localizedHref("/start", locale)}>{T.allTools}</Link>
       </div>
       <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder} aria-haspopup="dialog" aria-controls="cmdk" aria-expanded={isCmdkOpen}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -244,9 +271,13 @@ export default function Sidebar({ locale = "ko" }) {
                     {TOOL_JOURNEY.map((stage, stageIndex) => {
                       const hasActive = stage.tools.includes(currentRouteId);
                       const stageKey = `journey-${stage.id}`;
+                      // 여정 스테이지는 기본 펼침. 예전에는 활성 스테이지만 펼쳐져
+                      // "무엇을 할 수 있는지" 보려면 다섯 번 열어야 했다 — 그게 곧
+                      // "사이드바를 열어보기 불편하다"의 정체였다. 접는 건 사용자가
+                      // 명시적으로 눌렀을 때만.
                       const isGroupCollapsed = collapsedGroups[stageKey] !== undefined
                         ? collapsedGroups[stageKey]
-                        : !hasActive;
+                        : false;
                       return (
                         <div key={stage.id} className={`nav-group sidebar-workflow-stage ${isGroupCollapsed ? "collapsed" : ""}`} data-stage={stage.id}>
                           <button
@@ -282,6 +313,9 @@ export default function Sidebar({ locale = "ko" }) {
                                 </Link>
                               );
                             })}
+                            {/* 5-18은 한 줄인데 안에 화면이 넷이라 들어가야만 무엇이 있는지
+                                알 수 있었다. 진단·기여도·예측 세 갈래를 여기서 바로 편다. */}
+                            {stage.tools.includes("5-18") && mmmSubNav}
                           </div>
                         </div>
                       );

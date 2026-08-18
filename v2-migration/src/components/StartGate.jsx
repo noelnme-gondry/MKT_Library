@@ -13,6 +13,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import { buildRouterDiagnosis } from "@/lib/analysis-router/buildRouterDiagnosis";
 import { CONNECTED_TOOLS } from "@/lib/toolConnections";
+import ToolIndex from "@/components/ds/ToolIndex";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
@@ -32,8 +33,9 @@ const COPY = {
     open: "이 분석 시작 →",
     recommendationReady: "파일 확인이 끝났습니다. 추천 분석으로 초점을 옮겼습니다.",
     recommendationRegion: "추천 분석 결과",
-    browseAll: "데이터 없이 전체 도구부터 둘러보기",
-    browseAllWithData: "추천 대신 전체 도구 직접 찾기",
+    indexTitle: "할 수 있는 분석 전체",
+    indexDeck: "판단 단계별로 묶었습니다. 필요한 데이터가 무엇인지도 함께 적혀 있어요.",
+    indexDeckWithData: "올리신 파일로 지금 바로 되는 분석을 진하게 표시했습니다. 흐린 것은 컬럼이 더 필요합니다.",
     directEyebrow: "파일 없이 바로",
     directTitle: "업로드하지 않고 시작할 수 있는 작업",
     calculatorTitle: "마케팅 지표 계산기",
@@ -53,8 +55,9 @@ const COPY = {
     open: "Start this →",
     recommendationReady: "File checks are complete. Focus moved to the recommended analyses.",
     recommendationRegion: "Recommended analysis results",
-    browseAll: "Browse every tool without data",
-    browseAllWithData: "Browse every tool instead",
+    indexTitle: "Every analysis you can run",
+    indexDeck: "Grouped by the decision each one supports, with the columns it needs.",
+    indexDeckWithData: "Analyses your file can run right now are shown in full; dimmed ones need more columns.",
     directEyebrow: "START WITHOUT A FILE",
     directTitle: "Tasks you can run without uploading data",
     calculatorTitle: "Marketing metric calculators",
@@ -174,31 +177,21 @@ export default function StartGate({ locale = "ko" }) {
         </div>
       </section>}
 
-      <details className="start-tool-browser">
-        <summary>{hasPreparedData ? C.browseAllWithData : C.browseAll}</summary>
-        {groups.map((g) => (
-        <section key={g.id} className="block">
-          <h2 className="section-title" style={{ margin: "0 0 10px", border: "none", padding: 0 }}>
-            {trGroupTitle(g.id, locale, g.title)}
-          </h2>
-          <div className="phase-grid">
-            {g.items.filter((it) => !it.hidden).map((it) => (
-              <a
-                key={it.id}
-                href="#"
-                className="phase-card phase-card-tool"
-                onClick={(e) => { e.preventDefault(); hasPreparedData ? openRecommended(it.id) : goTool(it.id); }}
-                style={{ cursor: "pointer", textDecoration: "none" }}
-              >
-                <div className="phase-card-title">{trItemTitle(it.id, locale, it.title)}</div>
-                {(locale === "en" ? CONNECTED_TOOLS[it.id]?.question?.en : it.desc) && <div className="phase-card-desc">{locale === "en" ? CONNECTED_TOOLS[it.id]?.question?.en : it.desc}</div>}
-                <div className="phase-card-cta">{C.open}</div>
-              </a>
-            ))}
-          </div>
-        </section>
-        ))}
-      </details>
+      {/* 도구 인덱스 — 예전에는 <details>로 접혀 있어서 "무엇을 할 수 있는지"가
+          화면에 없었다. 항상 펴 두고 질문 단계로 묶는다. 지금 올린 CSV로 안 되는
+          도구도 숨기지 않고 흐리게만 둔다(숨기면 존재 자체를 못 본다). */}
+      <section className="block start-tool-index" aria-labelledby="start-tool-index-title">
+        <h2 className="section-title" id="start-tool-index-title" style={{ margin: "0 0 4px", border: "none", padding: 0 }}>
+          {C.indexTitle}
+        </h2>
+        <p className="muted" style={{ margin: "0 0 16px" }}>{hasPreparedData ? C.indexDeckWithData : C.indexDeck}</p>
+        <ToolIndex
+          locale={locale}
+          density="full"
+          eligibleIds={hasPreparedData ? eligibility.filter((item) => item.ok).map((item) => item.toolId) : null}
+          onSelect={(toolId) => (hasPreparedData ? openRecommended(toolId) : goTool(toolId))}
+        />
+      </section>
     </>
   );
 }

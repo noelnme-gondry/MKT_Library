@@ -4,6 +4,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import GlobalModals from "@/components/GlobalModals";
 import Header from "@/components/Header";
+import { toolIndexEntry } from "@/lib/toolIndex";
+
+// 도구 이름은 레지스트리에서 뽑는다 — 여기에 적어 두면 리네임마다 테스트가 깨진다.
+const nameOf = (id, locale = "ko") => toolIndexEntry(id, locale).name;
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
@@ -70,7 +74,7 @@ describe("GlobalModals complete tool menu", () => {
   it("opens a representative Korean tool route from the real menu", () => {
     renderToolMenu();
     fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
-    fireEvent.click(screen.getByRole("option", { name: /운영 대시보드/ }));
+    fireEvent.click(screen.getByRole("option", { name: new RegExp(nameOf("5-2")) }));
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
     expect(useAppStore.getState().isCmdkOpen).toBe(false);
   });
@@ -98,8 +102,8 @@ describe("GlobalModals complete tool menu", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "작업·도구·가이드 검색" }), {
       target: { value: "줄인 예산을 어디로 옮기는 게 좋을까" },
     });
-    expect(screen.getAllByRole("option")[0].textContent).toContain("예산 배분 시뮬레이터");
-    expect(screen.getByRole("option", { name: /예산 배분 시뮬레이터/ })).toBeTruthy();
+    expect(screen.getAllByRole("option")[0].textContent).toContain(nameOf("5-3"));
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-3")) })).toBeTruthy();
   });
 
   it("finds a tool from natural symptom wording and a workspace task from file intent", () => {
@@ -108,25 +112,25 @@ describe("GlobalModals complete tool menu", () => {
     const search = screen.getByRole("combobox", { name: "작업·도구·가이드 검색" });
 
     fireEvent.change(search, { target: { value: "ROAS가 떨어졌어요" } });
-    expect(screen.getByRole("option", { name: /캠페인 포화도/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-22")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CSV 업로드" } });
     expect(screen.getByRole("option", { name: /내 데이터 분석.*CSV·XLSX를 올리고/ })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CPT 올릴까" } });
-    expect(screen.getByRole("option", { name: /ASA 키워드 발굴/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-26")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "CPA가 올랐어요" } });
-    expect(screen.getByRole("option", { name: /캠페인 성과 변동/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-21")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "광고비가 너무 적게 소진돼요" } });
-    expect(screen.getByRole("option", { name: /ASA 키워드 발굴/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-26")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "VIF 필요해요" } });
-    expect(screen.getByRole("option", { name: /VIF 다중공선성/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-25")) })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "다중공선성 있는지 좀 봐줘" } });
-    expect(screen.getByRole("option", { name: /VIF 다중공선성/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-25")) })).toBeTruthy();
   });
 
   it("offers recovery actions when no command matches", () => {
@@ -146,7 +150,7 @@ describe("GlobalModals complete tool menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "All tools" }));
     const dialog = screen.getByRole("dialog", { name: "Search tasks, tools, and guides" });
     expect(dialog).toBeTruthy();
-    fireEvent.click(screen.getByRole("option", { name: /Budget Allocation Simulator/ }));
+    fireEvent.click(screen.getByRole("option", { name: new RegExp(nameOf("5-3", "en")) }));
     expect(pushMock).toHaveBeenCalledWith("/en/tools/budget-allocation");
   });
 
@@ -156,17 +160,17 @@ describe("GlobalModals complete tool menu", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Search tasks, tools, and guides" }), {
       target: { value: "my ROAS has been falling since I raised budget" },
     });
-    expect(screen.getByRole("option", { name: /Campaign Saturation/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-22", "en")) })).toBeTruthy();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Search tasks, tools, and guides" }), {
       target: { value: "need VIF" },
     });
-    expect(screen.getByRole("option", { name: /VIF Multicollinearity/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-25", "en")) })).toBeTruthy();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Search tasks, tools, and guides" }), {
       target: { value: "could you help me find a VIF check" },
     });
-    expect(screen.getByRole("option", { name: /VIF Multicollinearity/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: new RegExp(nameOf("5-25", "en")) })).toBeTruthy();
   });
 
   it("switches analyst mode as a command without navigating", () => {
@@ -185,5 +189,21 @@ describe("GlobalModals complete tool menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
     fireEvent.click(screen.getByRole("option", { name: /제품 성장 퍼널 리포트/ }));
     expect(pushMock).toHaveBeenCalledWith("/growth-funnel");
+  });
+
+  it("이름에서 뺀 전문용어로도 도구를 찾는다", () => {
+    // 표시 이름을 6~8자로 줄이면서 VIF·다중공선성·PVM 같은 말이 이름에서 빠졌다.
+    // 사용자는 그 말로 찾으므로 검색은 계속 걸려야 한다 — 실제로 한 번 깨졌던 자리다.
+    renderToolMenu();
+    fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
+    const search = screen.getByRole("combobox", { name: "작업·도구·가이드 검색" });
+    for (const [query, toolId] of [["다중공선성", "5-25"], ["VIF", "5-25"], ["MMM", "5-18"]]) {
+      fireEvent.change(search, { target: { value: query } });
+      // 하나만 나오는지가 아니라 "찾히는지"가 계약이다(5-18은 하위 화면도 함께 잡힌다).
+      expect(
+        screen.queryAllByRole("option", { name: new RegExp(nameOf(toolId)) }).length,
+        `"${query}"로 ${toolId}(${nameOf(toolId)})를 못 찾음`,
+      ).toBeGreaterThan(0);
+    }
   });
 });
