@@ -151,8 +151,7 @@ import {
   textDownload,
   trimToActive,
   weekBoundaryDate,
-  withMmmViewSpend,
-} from "@/components/tools/marketingResponseModel";
+  withMmmViewSpend, MMM_STAGE_GROUPS } from "@/components/tools/marketingResponseModel";
 export * from "@/components/tools/marketingResponseModel";
 
 export default function MarketingResponse({ locale = "ko", initialStage = "trend", isolated = false }) {
@@ -3340,7 +3339,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     const onStageKeyDown = (event, stageId) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const ids = defs.map((item) => item.id);
+      // 그룹마다 tablist가 따로이므로 화살표는 같은 그룹 안에서만 돈다.
+      const groupOf = defs.find((item) => item.id === stageId)?.group;
+      const ids = defs.filter((item) => item.group === groupOf).map((item) => item.id);
       const current = ids.indexOf(stageId);
       const nextIndex = event.key === "Home"
         ? 0
@@ -3351,10 +3352,23 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       setStage(nextStage);
       window.requestAnimationFrame(() => document.getElementById(`marketing-response-tab-${nextStage}`)?.focus());
     };
+    // 네 화면을 세 갈래(진단·기여도·예측)로 묶어 보여준다. 그룹마다 tablist를 따로
+    // 두는 이유는 §7 — 하나의 tablist가 group을 거쳐 tab을 소유하면 보조기술이
+    // 탭을 탭으로 인식하지 못한다. 바깥은 일반 컨테이너로 남긴다.
     return (
-    <section className="block" style={{ padding: 0, border: "none", background: "none", marginBottom: "20px" }}>
-      <div role="tablist" aria-label={tx("마케팅 반응 분석 보기", "Marketing response analysis views")} style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        {defs.map((d) => {
+    <section className="block mmm-stage-nav" style={{ padding: 0, border: "none", background: "none", marginBottom: "20px" }}>
+      {MMM_STAGE_GROUPS.map((group) => {
+        const groupDefs = defs.filter((d) => d.group === group.id);
+        if (!groupDefs.length) return null;
+        const groupLabel = locale === "en" ? group.en : group.ko;
+        return (
+      <div key={group.id} className="mmm-stage-group">
+        <div className="mmm-stage-group__head">
+          <span className="mmm-stage-group__title">{groupLabel}</span>
+          <span className="mmm-stage-group__desc">{locale === "en" ? group.enDesc : group.koDesc}</span>
+        </div>
+      <div role="tablist" aria-label={groupLabel} style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        {groupDefs.map((d) => {
           const on = stage === d.id;
           return (
             <button
@@ -3381,6 +3395,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           );
         })}
       </div>
+      </div>
+        );
+      })}
     </section>
     );
   };

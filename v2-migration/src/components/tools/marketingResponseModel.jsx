@@ -3427,20 +3427,28 @@ export function buildCannibSeriesCsv(panel, target) {
 
 // MMM 흐름: 시계열 점검 → 카니발 → 기여 → 예측.
 // locale-aware — 함수로 감싸 ko/en 두 세트를 제공(§12.20 렌더층 다국어 패턴).
+// 5-18의 네 화면을 세 갈래로 묶는다. 예전에는 ①②③④가 나란히 놓여 "다섯 번
+// 눌러야 다 본다"는 인상이었다. 묶음 라벨을 주면 무엇을 하러 왔는지로 바로 간다.
+export const MMM_STAGE_GROUPS = [
+  { id: "diagnose", ko: "진단", en: "Diagnose", koDesc: "믿을 수 있는 데이터인지 먼저 본다", enDesc: "Check the data before trusting it" },
+  { id: "contribute", ko: "기여도", en: "Contribution", koDesc: "어느 채널이 얼마나 만들었나", enDesc: "Which channel produced how much" },
+  { id: "forecast", ko: "예측", en: "Forecast", koDesc: "이대로 가면 어떻게 되나", enDesc: "Where this goes if nothing changes" },
+];
+
 export function mmmStageDefs(locale) {
   if (locale === "en") {
     return [
-      { id: "trend", no: "① Time series", title: "STL trend check", icon: "〰", desc: "Separate natural trend, seasonality, and irregular weeks before judging ad effects." },
-      { id: "diagnose", no: "② Cannibalization", title: "Cannibalization diagnosis", icon: "🔬", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
-      { id: "mmm", no: "③ Contribution", title: "MMM contribution breakdown", icon: "🧩", desc: "What actually moved performance? Where should the next budget go?" },
-      { id: "lab", no: "④ Forecast", title: "Regression · Forecast", icon: "📈", desc: "If things stay the same, or if you change the budget, how will the next weeks look?" },
+      { id: "trend", group: "diagnose", no: "Time series", title: "STL trend check", icon: "〰", desc: "Separate natural trend, seasonality, and irregular weeks before judging ad effects." },
+      { id: "diagnose", group: "diagnose", no: "Cannibalization", title: "Cannibalization diagnosis", icon: "🔬", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
+      { id: "mmm", group: "contribute", no: "Contribution", title: "MMM contribution breakdown", icon: "🧩", desc: "What actually moved performance? Where should the next budget go?" },
+      { id: "lab", group: "forecast", no: "Forecast", title: "Regression · Forecast", icon: "📈", desc: "If things stay the same, or if you change the budget, how will the next weeks look?" },
     ];
   }
   return [
-    { id: "trend", no: "① 시계열 점검", title: "STL 추세 분석", icon: "〰", desc: "광고 판단 전에 자연 추세·계절성·이상 주차를 분리합니다." },
-    { id: "diagnose", no: "② 잠식 진단", title: "카니발 진단", icon: "🔬", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
-    { id: "mmm", no: "③ 기여 분해", title: "MMM 기여 분해", icon: "🧩", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
-    { id: "lab", no: "④ 미래 예측", title: "회귀 · 미래 예측", icon: "📈", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
+    { id: "trend", group: "diagnose", no: "시계열 점검", title: "STL 추세 분석", icon: "〰", desc: "광고 판단 전에 자연 추세·계절성·이상 주차를 분리합니다." },
+    { id: "diagnose", group: "diagnose", no: "잠식 진단", title: "카니발 진단", icon: "🔬", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
+    { id: "mmm", group: "contribute", no: "기여 분해", title: "MMM 기여 분해", icon: "🧩", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
+    { id: "lab", group: "forecast", no: "미래 예측", title: "회귀 · 미래 예측", icon: "📈", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
   ];
 }
 

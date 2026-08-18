@@ -117,3 +117,33 @@ describe("Sidebar render smoke", () => {
     expect(review?.textContent).toContain("1");
   });
 });
+
+describe("5-18 하위 화면 노출", () => {
+  it("사이드바에서 진단·기여도·예측 세 갈래가 바로 보인다", () => {
+    // 예전에는 5-18이 한 줄뿐이라 들어가야만 안에 화면이 넷이란 걸 알 수 있었다.
+    // 홈은 사이드바가 다른 변형(워크스페이스 4줄)을 그리므로 도구 경로에서 본다.
+    pathname = "/dashboard";
+    const { container } = render(<Sidebar />);
+    const subnav = container.querySelector(".nav-subnav");
+    expect(subnav).toBeTruthy();
+    for (const label of ["진단", "기여도", "예측"]) {
+      expect([...subnav.querySelectorAll(".nav-subnav__label")].map((n) => n.textContent)).toContain(label);
+    }
+    // 네 화면이 전부 링크로 나와야 한다 — 하나라도 빠지면 다시 "들어가야만 보인다".
+    expect(subnav.querySelectorAll(".nav-subnav__item")).toHaveLength(4);
+    for (const link of subnav.querySelectorAll(".nav-subnav__item")) {
+      expect(link.getAttribute("href")).toMatch(/^\/tools\//);
+    }
+    pathname = "/";
+  });
+
+  it("여정 스테이지는 기본으로 펼쳐져 있다", () => {
+    // 활성 스테이지만 펼치던 시절엔 "무엇을 할 수 있는지" 보려면 다섯 번 눌러야 했다.
+    pathname = "/dashboard";
+    const { container } = render(<Sidebar />);
+    const collapsed = [...container.querySelectorAll(".sidebar-workflow-stage")]
+      .filter((stage) => stage.classList.contains("collapsed"));
+    expect(collapsed).toHaveLength(0);
+    pathname = "/";
+  });
+});
