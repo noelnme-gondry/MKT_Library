@@ -9379,17 +9379,29 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .nav-subnav__item:hover, .nav-subnav__item:focus-visible { color: var(--primary); }
 
 
-/* 홈 첫 화면의 도구 인덱스 — 17개가 한눈에 들어와야 한다. 스테이지를 가로로
-   늘어놓고 각 열은 이름+질문 두 줄만. 상자 없이 열 구분은 여백으로만. */
-.dc-questions .tool-index { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 22px 26px; }
-.dc-questions .tool-index__stage-head { margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-.dc-questions .tool-index__list { grid-template-columns: 1fr; gap: 0; }
+/* 홈 첫 화면의 도구 인덱스 — 17개가 한눈에 들어와야 한다.
+   두 가지를 여기서 정한다.
+   ① **단일 열**. 스테이지를 나란히 두면 항목 수가 1~5개로 제각각이라 열마다
+      높이가 달라 큰 구멍이 생겼다(상태 확인 1개 옆에 다음 조치 4개).
+   ② **한 항목 = 한 줄**. 이름+질문이 27~41자라 다단으로 쪼개면 무조건 잘린다.
+      한 줄로 붙이면 17개가 22줄에 들어가 훑기가 된다(3줄씩이면 화면을 통째로 먹는다). */
+.dc-questions .tool-index { display: flex; flex-direction: column; gap: 18px; }
+.dc-questions .tool-index__stage-head {
+  margin-bottom: 2px; padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.dc-questions .tool-index__stage-title {
+  font-size: 11.5px; color: var(--text-primary); letter-spacing: .1em; font-weight: 700;
+}
+.dc-questions .tool-index__list { display: block; }
 .dc-questions .tool-index__item { border-top: 0; }
-.dc-questions .tool-index__link { padding: 7px 4px 7px 0; gap: 1px; }
-.dc-questions .tool-index__name { font-size: 14px; }
+.dc-questions .tool-index__link {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 6px 6px 2px; white-space: nowrap; border-radius: 5px;
+}
+.dc-questions .tool-index__name { font-size: 13.5px; flex: none; }
 .dc-questions .tool-index__q {
-  font-size: 12px; line-height: 1.42;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 12.5px; line-height: 1.4; color: var(--text-muted);
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
 
 } /* @layer app 끝 */
