@@ -101,7 +101,7 @@ describe("connected tool workflow", () => {
     expect(creative.alternatives.map((tool) => tool.id)).toEqual(["9-1", "5-20"]);
     expect(creative.next.map((tool) => tool.id)).toEqual(["5-26", "5-27"]);
 
-    const learning = getJourneyContext("5-18", "en");
+    const learning = getJourneyContext("5-18-mmm", "en");
     expect(learning.isCycleRestart).toBe(true);
     expect(learning.next.map((tool) => tool.id)).toEqual(["5-2", "5-21"]);
     expect(learning.previous.every((tool) => tool.href.startsWith("/en/"))).toBe(true);

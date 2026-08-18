@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sitemap from "./sitemap";
-import { EN_READY_GUIDE_IDS, EN_READY_RESPONSE_SUBTOOL_IDS, EN_READY_TOOL_IDS, SITE_URL, idToPath } from "@/lib/routeMap";
+import { EN_READY_GUIDE_IDS, EN_READY_UNLISTED_IDS, EN_READY_TOOL_IDS, SITE_URL, idToPath } from "@/lib/routeMap";
 import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 describe("sitemap", () => {
@@ -38,7 +38,7 @@ describe("sitemap", () => {
 
   it("emits accurate review or release dates for public guides and tools in both locales", () => {
     const entries = new Map(sitemap().map((entry) => [entry.url, entry]));
-    const routeIds = [...EN_READY_GUIDE_IDS, ...EN_READY_TOOL_IDS, ...EN_READY_RESPONSE_SUBTOOL_IDS];
+    const routeIds = [...EN_READY_GUIDE_IDS, ...EN_READY_TOOL_IDS, ...EN_READY_UNLISTED_IDS];
 
     for (const routeId of routeIds) {
       const lastModified = getPublicRouteLastModified(routeId);

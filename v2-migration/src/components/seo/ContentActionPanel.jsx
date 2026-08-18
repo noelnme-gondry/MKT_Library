@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { idToSlug } from "@/lib/routeMap";
-import { primaryResponseStageForContent, primaryToolForContent } from "@/lib/contentToolRegistry";
+import { primaryToolForContent } from "@/lib/contentToolRegistry";
 import { trackProductEvent } from "@/lib/analytics";
-import { responseStageHref } from "@/lib/responseStage";
 
 const TOOL_COPY = {
   "5-2": {
@@ -19,9 +18,25 @@ const TOOL_COPY = {
     ko: { label: "성과 변동 분석", title: "CPA 변화가 어디서 시작됐는지 보세요", desc: "채널·캠페인·소재의 기여도를 나눠 먼저 볼 원인을 정리합니다.", cta: "성과 변동 분석하기" },
     en: { label: "Performance variance", title: "See where the CPA change started", desc: "Break down channel, campaign, and creative contributions to focus the investigation.", cta: "Analyze performance change" },
   },
-  "5-18": {
-    ko: { label: "마케팅 반응 분석", title: "데이터를 매핑하고 필요한 분석만 실행하세요", desc: "추세·카니발·MMM 기여·회귀 예측은 같은 매핑을 쓰되 서로 따로 실행됩니다.", cta: "분석 선택 열기" },
-    en: { label: "Marketing response analysis", title: "Map the data, then run the one analysis you need", desc: "Trend, cannibalization, MMM contribution, and regression forecast share a mapping but run independently.", cta: "Open analysis hub" },
+  "5-18-trend": {
+    ko: { label: "추세 분석", title: "광고 판단 전 자연 추세부터 분리하세요", desc: "계절성·추세·이상 주차를 먼저 구분해 광고 효과를 과대해석하지 않습니다.", cta: "추세 분석 열기" },
+    en: { label: "Trend analysis", title: "Separate the natural trend before judging ads", desc: "Review trend, seasonality, and irregular weeks before interpreting marketing effects.", cta: "Open trend analysis" },
+  },
+  "5-18-paid-organic": {
+    ko: { label: "유입 변화맵", title: "Paid와 Organic이 반대로 움직이는지 보세요", desc: "주별 WoW 궤적으로 반대 움직임이 반복되는지 먼저 확인합니다.", cta: "변화맵 열기" },
+    en: { label: "Paid vs Organic map", title: "See whether Paid and Organic move in opposite directions", desc: "Check on a weekly WoW path whether the opposite movement repeats.", cta: "Open the movement map" },
+  },
+  "5-18-cannibal": {
+    ko: { label: "잠식 진단", title: "광고가 오가닉을 잠식하는지 확인하세요", desc: "채널별 네 가지 신호로 잠식 가능성을 점검합니다.", cta: "잠식 진단 열기" },
+    en: { label: "Cannibalization diagnosis", title: "Check whether paid ads displace organic outcomes", desc: "Review four signals of possible cannibalization by channel.", cta: "Open cannibalization diagnosis" },
+  },
+  "5-18-mmm": {
+    ko: { label: "채널 기여도", title: "성과를 움직인 요인을 분해하세요", desc: "채널·기본 수요·이벤트의 기여를 MMM으로 나눠 봅니다.", cta: "MMM 기여 분해 열기" },
+    en: { label: "Channel contribution", title: "Decompose what moved performance", desc: "Use MMM to separate channel, base-demand, and event contribution.", cta: "Open MMM contribution" },
+  },
+  "5-18-forecast": {
+    ko: { label: "미래 예측", title: "다음 기간 예측을 검증하세요", desc: "예측 전용 회귀와 봉인 OOS 검증으로 다음 기간을 점검합니다.", cta: "회귀 · 미래 예측 열기" },
+    en: { label: "Forecast", title: "Validate the next-period forecast", desc: "Run forecast-only regression with sealed out-of-sample validation.", cta: "Open regression and forecast" },
   },
   "5-22": {
     ko: { label: "캠페인 포화도", title: "예산을 더 쓰기 전에 한계 효율을 확인하세요", desc: "평균 효율이 아니라 추가 광고비의 한계 CPA·ROAS와 증액 여력을 진단합니다.", cta: "포화도 분석하기" },
@@ -54,34 +69,16 @@ const TOOL_COPY = {
 };
 
 const RELATED_TOOL = {
-  "5-18": {
+  "5-18-mmm": {
     ko: { toolId: "5-3", cta: "예산 배분 시뮬레이션" },
     en: { toolId: "5-3", cta: "Plan budget allocation" },
   },
   "5-3": {
-    ko: { toolId: "5-18", cta: "잠식 진단 바로 열기", stage: "diagnose" },
-    en: { toolId: "5-18", cta: "Open cannibalization diagnosis", stage: "diagnose" },
+    ko: { toolId: "5-18-cannibal", cta: "잠식 진단 바로 열기" },
+    en: { toolId: "5-18-cannibal", cta: "Open cannibalization diagnosis" },
   },
 };
 
-const RESPONSE_STAGE_COPY = {
-  trend: {
-    ko: { label: "추세 분석", title: "광고 판단 전 자연 추세부터 분리하세요", desc: "계절성·추세·이상 주차를 먼저 구분해 광고 효과를 과대해석하지 않습니다.", cta: "추세 분석 열기" },
-    en: { label: "Trend analysis", title: "Separate the natural trend before judging ads", desc: "Review trend, seasonality, and irregular weeks before interpreting marketing effects.", cta: "Open trend analysis" },
-  },
-  diagnose: {
-    ko: { label: "카니발 진단", title: "광고가 오가닉을 잠식하는지 확인하세요", desc: "채널별 네 가지 신호로 잠식 가능성을 점검합니다.", cta: "카니발 진단 열기" },
-    en: { label: "Cannibalization diagnosis", title: "Check whether paid ads displace organic outcomes", desc: "Review four signals of possible cannibalization by channel.", cta: "Open cannibalization diagnosis" },
-  },
-  mmm: {
-    ko: { label: "MMM 기여 분해", title: "성과를 움직인 요인을 분해하세요", desc: "채널·기본 수요·이벤트의 기여를 MMM으로 나눠 봅니다.", cta: "MMM 기여 분해 열기" },
-    en: { label: "MMM contribution", title: "Decompose what moved performance", desc: "Use MMM to separate channel, base-demand, and event contribution.", cta: "Open MMM contribution" },
-  },
-  lab: {
-    ko: { label: "회귀 · 미래 예측", title: "다음 기간 예측을 검증하세요", desc: "예측 전용 회귀와 봉인 OOS 검증으로 다음 기간을 점검합니다.", cta: "회귀 · 미래 예측 열기" },
-    en: { label: "Regression · forecast", title: "Validate the next-period forecast", desc: "Run forecast-only regression with sealed out-of-sample validation.", cta: "Open regression and forecast" },
-  },
-};
 
 export default function ContentActionPanel({ locale = "ko", toolId, term, post, placement = "article_post" }) {
   const content = term || post;
@@ -89,13 +86,9 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const candidate = toolId || content?.primaryTool || primaryToolForContent(content?.slug, contentType);
   const resolvedTool = TOOL_COPY[candidate] ? candidate : "5-2";
   const lang = locale === "en" ? "en" : "ko";
-  const responseStage = resolvedTool === "5-18" ? primaryResponseStageForContent(content?.slug, contentType) : null;
-  const copy = responseStage ? RESPONSE_STAGE_COPY[responseStage][lang] : TOOL_COPY[resolvedTool][lang];
+  const copy = TOOL_COPY[resolvedTool][lang];
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
-  const withStage = (toolId, stage) => toolId === "5-18" && stage
-    ? responseStageHref(stage, locale)
-    : `${locale === "en" ? "/en" : ""}${idToSlug[toolId]}${stage ? `?stage=${stage}` : ""}`;
-  const href = responseStage ? responseStageHref(responseStage, locale) : withStage(resolvedTool, copy.stage);
+  const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
   const trackClick = (targetToolId, targetPlacement) => {
     trackProductEvent("blog_tool_cta_clicked", {
       tool_id: targetToolId,
@@ -115,7 +108,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     </div>
     <div className="content-action-panel__links">
       <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>
-      {!isInline && related && <Link href={withStage(related.toolId, related.stage)} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
+      {!isInline && related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
     </div>
   </aside>;
 }

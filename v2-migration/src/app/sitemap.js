@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_RESPONSE_SUBTOOL_IDS, idToPath, isRoutePublished } from "@/lib/routeMap";
+import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_UNLISTED_IDS, idToPath, isRoutePublished } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 import { CALCULATOR_ORDER } from "@/lib/calculators";
@@ -37,9 +37,9 @@ export default function sitemap() {
         ? 0.8
         : 0.6,
   }));
-  // 5-18 하위 분석은 전역 사이드바에는 보이지 않지만 블로그에서 직접 진입하는
-  // 독립 URL이다. 일반 도구 여정에는 넣지 않고 sitemap에는 명시적으로 포함한다.
-  const responseSubtoolEntries = ROUTES.filter((r) => r.publication === "subtool").map((r) => ({
+  // 목록에 없는 라우트(지금은 5-18 공유 매핑 허브)도 블로그·검색에서 직접 들어오는
+  // 독립 URL이다. 도구 여정에는 넣지 않고 sitemap에는 명시적으로 포함한다.
+  const unlistedRouteEntries = ROUTES.filter((r) => r.publication === "subtool").map((r) => ({
     url: BASE + r.slug,
     lastModified: routeLastModified(r.id),
     changeFrequency: "weekly",
@@ -175,14 +175,14 @@ export default function sitemap() {
     changeFrequency: "weekly",
     priority: 0.8,
   }));
-  const enResponseSubtoolEntries = [...EN_READY_RESPONSE_SUBTOOL_IDS].map((id) => ({
+  const enUnlistedEntries = [...EN_READY_UNLISTED_IDS].map((id) => ({
     url: `${BASE}/en${idToPath(id)}`,
     lastModified: routeLastModified(id),
     changeFrequency: "weekly",
     priority: 0.75,
   }));
 
-  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...compareEntries, ...calculatorEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
+  return [...routeEntries, ...unlistedRouteEntries, ...blogEntries, ...templateEntries, ...compareEntries, ...calculatorEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enUnlistedEntries];
 }
 
 function getPostsByTagSafe(tagSlug, posts) {

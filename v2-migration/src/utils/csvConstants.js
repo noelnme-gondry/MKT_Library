@@ -1569,6 +1569,15 @@ export const TOOL_OPTIONAL_FIELDS = {
               ],
             };
 
+// 구 5-18 안에 있던 다섯 분석(추세·변화맵·잠식·기여도·예측)은 같은 주간 패널
+// CSV 하나를 공유한다. 계약을 다섯 번 베껴 쓰면 한 곳만 고쳐져 어긋나므로 허브
+// 계약에서 **파생**한다(§7 — 목록을 두 곳에 나열하지 말 것).
+export const RESPONSE_PANEL_TOOL_IDS = ["5-18-trend", "5-18-paid-organic", "5-18-cannibal", "5-18-mmm", "5-18-forecast"];
+for (const id of RESPONSE_PANEL_TOOL_IDS) {
+  TOOL_REQUIRED_FIELDS[id] = TOOL_REQUIRED_FIELDS["5-18"];
+  TOOL_OPTIONAL_FIELDS[id] = TOOL_OPTIONAL_FIELDS["5-18"];
+}
+
 // CSV 헤더 배열 → {header: 표준필드키|"__ignore__"} 자동매핑. CsvUploader의 CSV 업로드
 // 경로와 구글 시트 임포트 경로가 동일 로직을 공유하도록 추출(원래 CsvUploader.jsx
 // processFile 내부에 있던 걸 이관 — 로직 변경 없음, 재사용을 위한 위치 이동만).

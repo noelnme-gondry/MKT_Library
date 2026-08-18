@@ -239,16 +239,73 @@ export const IA = [
     title: "기여도·가치 분석",
     desc: "MMM·회귀 기반 마케팅 반응 분석과 핵심 가치(Aha-moment) 발굴.",
     items: [
+      // 5-18은 다섯 분석이 공유하는 CSV·매핑 준비 화면이다(목록에는 없고 검색·
+      // /start 추천의 착지점으로만 남는다). 분석 다섯은 각각 독립 도구다.
       {
         id: "5-18",
-        title: "채널 기여도",
-        seoTitle: "MMM 분석: 광고비, 어디서 벌고 어디서 잃는지 분해",
+        title: "패널 데이터 준비",
+        seoTitle: "마케팅 반응 분석: 한 CSV로 추세·잠식·기여·예측",
         seoDescription:
-          "마케팅 믹스 모델(MMM)로 채널 간 카니발라이제이션·기여도·미래 성과를 회귀 분석. CSV 업로드로 바로 실행하는 무료 MMM 분석 도구.",
-        titleEn: "Marketing Response Analysis (MMM)",
-        seoTitleEn: "MMM Analysis: See Where Your Ad Spend Wins and Cannibalizes",
+          "주간 패널 CSV 하나를 매핑해 추세·잠식·MMM 기여·회귀 예측 다섯 분석으로 넘깁니다. 브라우저 안에서만 처리하는 무료 도구.",
+        titleEn: "Panel data setup",
+        seoTitleEn: "Marketing Response: One CSV for Trend, Cannibalization, MMM, Forecast",
         seoDescriptionEn:
-          "Run marketing mix modeling (MMM) to decompose cross-channel cannibalization, contribution, and future performance via regression. Free MMM tool — upload a CSV and run it instantly.",
+          "Map one weekly panel CSV once and hand it to five analyses — trend, cannibalization, MMM contribution, and forecast. Free, processed only in your browser.",
+      },
+      {
+        id: "5-18-trend",
+        title: "추세 분석",
+        seoTitle: "마케팅 추세 분석: 계절성·이상 주차 분리",
+        seoDescription:
+          "광고 효과를 판단하기 전에 자연 추세와 계절성, 이상 주차를 분리해 비교 기준선을 만듭니다.",
+        titleEn: "Trend",
+        seoTitleEn: "Marketing Trend Analysis: Separate Seasonality and Outlier Weeks",
+        seoDescriptionEn:
+          "Separate natural trend, seasonality, and irregular weeks to build the baseline other analyses compare against.",
+      },
+      {
+        id: "5-18-paid-organic",
+        title: "유입 변화맵",
+        seoTitle: "Paid·Organic 변화맵: 주간 반대 움직임 점검",
+        seoDescription:
+          "Organic과 Paid 성과의 WoW 움직임을 한 궤적으로 보고, 정밀 잠식 진단이 필요한 패턴을 찾습니다.",
+        titleEn: "Paid vs Organic",
+        seoTitleEn: "Paid · Organic Movement Map: Spot Opposite Weekly Moves",
+        seoDescriptionEn:
+          "Plot weekly Organic and Paid movement on one path and find the patterns that deserve a deeper cannibalization check.",
+      },
+      {
+        id: "5-18-cannibal",
+        title: "잠식 진단",
+        seoTitle: "광고 카니발라이제이션 진단: 유료가 오가닉을 먹는지",
+        seoDescription:
+          "유료 성과가 늘 때 오가닉·브랜드 성과가 줄었는지 네 가지 신호로 점검하고 홀드아웃 후보를 좁힙니다.",
+        titleEn: "Cannibalization",
+        seoTitleEn: "Ad Cannibalization Diagnosis: Is Paid Replacing Organic?",
+        seoDescriptionEn:
+          "Check four signals that paid outcomes may be replacing organic or branded demand, then shortlist channels for a holdout.",
+      },
+      {
+        id: "5-18-mmm",
+        title: "채널 기여도",
+        seoTitle: "MMM 기여 분해: 광고비, 어디서 벌고 어디서 잃는지",
+        seoDescription:
+          "마케팅 믹스 모델(MMM)로 채널·기본 수요·이벤트의 성과 기여를 분해합니다. CSV 업로드로 바로 실행하는 무료 MMM 도구.",
+        titleEn: "Channel contribution",
+        seoTitleEn: "MMM Contribution: See Where Your Ad Spend Wins",
+        seoDescriptionEn:
+          "Use marketing mix modeling to decompose channel, base-demand, and event contribution. Free — upload a CSV and run it instantly.",
+      },
+      {
+        id: "5-18-forecast",
+        title: "미래 예측",
+        seoTitle: "마케팅 회귀 예측: 봉인 OOS 검증과 불확실성",
+        seoDescription:
+          "예측 전용 회귀와 봉인 OOS 검증으로 다음 기간의 성과와 불확실성 구간을 확인합니다.",
+        titleEn: "Forecast",
+        seoTitleEn: "Marketing Regression Forecast with Sealed OOS Validation",
+        seoDescriptionEn:
+          "Run forecast-only regression with sealed out-of-sample validation to assess the next period and its uncertainty.",
       },
       {
         id: "5-20",

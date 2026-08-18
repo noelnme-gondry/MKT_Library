@@ -8,6 +8,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import LandingPage from "@/components/LandingPage";
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
+import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -69,8 +70,8 @@ describe("LandingPage render smoke", () => {
     // 첫 화면에서 전부 보인다.
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(0);
     // 갈래별 접기는 뺐다 — 하나 펼 때마다 아래가 밀려 위치가 매번 달라졌다.
-    // 6갈래가 전부 펴진 채로 있고, 링크도 전부 DOM에 있다.
-    expect(document.querySelectorAll(".dc-questions .tool-index__stage")).toHaveLength(6);
+    // 갈래는 전부 펴진 채로 있고, 링크도 전부 DOM에 있다(개수는 레지스트리에서 파생).
+    expect(document.querySelectorAll(".dc-questions .tool-index__stage")).toHaveLength(TOOL_JOURNEY.length);
     expect(document.querySelector(".dc-questions details")).toBeNull();
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.

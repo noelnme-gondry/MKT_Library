@@ -207,7 +207,7 @@ describe("analysis eligibility", () => {
 
   it("keeps 12-week MMM open for exploration, not budget decisions", () => {
     const result = evaluateEligibility({
-      toolId: "5-18",
+      toolId: "5-18-mmm",
       mapping: { Week: "week", Registrations: "mmm_reg", Google: "ch_google_roi", Meta: "ch_meta" },
       canonicalData: mmmData(12),
     });
@@ -217,7 +217,7 @@ describe("analysis eligibility", () => {
 
   it("marks a 52-week independent MMM panel as decision-ready", () => {
     const result = evaluateEligibility({
-      toolId: "5-18",
+      toolId: "5-18-mmm",
       mapping: { Week: "week", Registrations: "mmm_reg", Google: "ch_google_roi", Meta: "ch_meta" },
       canonicalData: mmmData(52),
     });
