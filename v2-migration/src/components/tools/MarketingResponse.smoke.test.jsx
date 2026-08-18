@@ -799,9 +799,13 @@ describe("MarketingResponse render smoke", () => {
     expect(links).toContain("/tools/marketing-forecast");
   });
 
-  it("persists the auto-loaded demo mapping when the response hub remounts", async () => {
+  it("persists the demo mapping when the response hub remounts", async () => {
+    // 데모는 자동으로 뜨지 않는다 — 업로드 안내의 "예시로 보기"를 눌러야 들어온다.
+    // (도구에 들어가자마자 샘플 화면이 뜨면 내 데이터를 올리는 곳이라는 사실이 가려진다.)
     useAppStore.setState({ demoDisabled: false });
     const first = render(<MarketingResponse initialStage="hub" />);
+    expect(useAppStore.getState().csvData.raw?.length || 0).toBe(0);
+    fireEvent.click(first.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }));
     await waitFor(() => expect(useAppStore.getState().responseMappingSession.raw).toBe(useAppStore.getState().csvData.raw));
     first.unmount();
 
