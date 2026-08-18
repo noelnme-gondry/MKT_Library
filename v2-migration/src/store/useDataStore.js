@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
+import { mergeEvents as mergeStoreEvents } from "@/utils/storeEvents";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 import { TOOL_GROUP, groupForRoute, buildGroupMap } from "@/lib/toolGroups";
 import { validateFinding } from "@/lib/assist/findingSchema";
@@ -566,6 +567,19 @@ export const useAppStore = create(persist((set, get) => ({
     decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds].filter((recordId) => recordId !== id)),
   })),
   clearDecisionRecords: () => set({ decisionRecords: [], decisionSessionRecordIds: new Set() }),
+
+  // ── 스토어 운영 이벤트(액션 로그) — 5-27 ─────────────────────────────────
+  // 세션 메모리 전용이다(§7 localStorage 영속 금지). 오래 들고 갈 방법은 CSV
+  // 다운로드이고, 그 CSV를 다시 올리면 그대로 복구된다.
+  // 여기 담기는 건 사용자가 직접 적은 이벤트뿐 — CSV에서 뽑은 이벤트는
+  // 원본에 이미 있으므로 저장하지 않는다(중복 소유 금지).
+  storeEventsManual: [],
+  setStoreEventsManual: (events) => set({ storeEventsManual: mergeStoreEvents(events) }),
+  addStoreEvents: (events) => set((state) => ({ storeEventsManual: mergeStoreEvents(state.storeEventsManual, events) })),
+  removeStoreEvent: (date, label) => set((state) => ({
+    storeEventsManual: state.storeEventsManual.filter((event) => !(event.date === date && event.label === label)),
+  })),
+  clearStoreEvents: () => set({ storeEventsManual: [] }),
 
   // 구조화된 분석 연결 상태. 모두 세션 메모리 전용이며 persistPartialize에 포함하지
   // 않는다. 원본 행 대신 집계 결과·설정만 보관한다.

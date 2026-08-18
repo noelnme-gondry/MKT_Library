@@ -45,6 +45,10 @@ describe("AsoStoreConversion render smoke", () => {
     expect(ko.container.querySelector("#aso-trend canvas")).toBeTruthy();
     ko.unmount();
 
+    // EN은 EN 데모를 시드해야 실제 경로와 같다 — 액션 로그 라벨이 데이터라
+    // KO 픽스처를 EN 화면에 그대로 넣으면 한글이 화면에 남는다.
+    seed(buildDemoCsv("aso_store", "en"));
+    useAppStore.getState().setGroupAnalyzed("5-27");
     const en = render(<AsoStoreConversion locale="en" />);
     expect(en.container.textContent).toContain("Store funnel");
     expect(en.container.textContent).not.toMatch(/[가-힣]/);

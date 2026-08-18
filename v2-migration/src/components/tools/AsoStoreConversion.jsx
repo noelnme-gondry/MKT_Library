@@ -12,6 +12,9 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import Chart from "@/utils/chartGlobals";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { classifyStoreShift, dailyConversionSeries, decomposeStoreConversion, storeFunnel } from "@/utils/asoStoreMath";
+import { alignEventsToAxis, eventsFromRows, mergeEvents } from "@/utils/storeEvents";
+import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
+import StoreEventLog from "@/components/tools/StoreEventLog";
 import { fmtPct } from "@/utils/format";
 
 const TOOL_ID = "5-27";
@@ -56,12 +59,19 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
   const analyzed = useAppStore((state) => state.isGroupAnalyzed(TOOL_ID));
   const result = useMemo(() => (analyzed ? analyze(getMappedRows(csvData)) : null), [analyzed, csvData]);
 
+  // 세 경로(본 CSV 컬럼 · 별도 CSV · 직접 추가)를 하나로 모은다. 스토어에는
+  // 직접 추가분만 있고, CSV 컬럼 이벤트는 원본이 소유한다(중복 소유 금지).
+  const manualEvents = useAppStore((state) => state.storeEventsManual);
+  const csvEvents = useMemo(() => (analyzed ? eventsFromRows(getMappedRows(csvData)) : []), [analyzed, csvData]);
+  const allEvents = useMemo(() => mergeEvents(csvEvents, manualEvents), [csvEvents, manualEvents]);
+
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
 
   const series = result?.series;
   const cutDate = result?.split?.cut;
+  const axisEvents = useMemo(() => alignEventsToAxis(allEvents, series?.dates), [allEvents, series]);
 
   useEffect(() => {
     if (!chartRef.current || !series || series.dates.length === 0) return undefined;
@@ -71,6 +81,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
     const base = chartCommonOpts();
     const instance = new Chart(chartRef.current.getContext("2d"), {
       type: "line",
+      // 전역 register 대신 이 차트에만 붙인다 — 세로 이벤트 선은 5-27만 쓴다.
+      plugins: [eventMarkersPlugin],
       data: {
         labels: series.dates,
         datasets: [
@@ -101,6 +113,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         ...base,
         responsive: true,
         maintainAspectRatio: false,
+        plugins: { ...(base.plugins || {}), eventMarkers: { events: axisEvents.onAxis } },
         scales: {
           ...base.scales,
           y: {
@@ -123,11 +136,13 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
       instance.destroy();
       chartInstance.current = null;
     };
-  }, [series, cutDate, isDarkMode, locale, tr]);
+  }, [series, cutDate, axisEvents, isDarkMode, locale, tr]);
 
   const verdict = result?.verdict?.verdict;
   const decomposed = result?.decomposed;
-  const pct = (value) => (value == null ? tr("계산 불가", "Not computable") : fmtPct(value * 100, 2));
+  // fmtPct는 **비율**(0~1)을 받아 자기가 ×100 한다. 여기서 value*100을 넘기면
+  // 두 번 곱해져 14.6%가 1464%로 나간다 — 실제로 그렇게 배포됐다.
+  const pct = (value) => (value == null ? tr("계산 불가", "Not computable") : fmtPct(value, 2));
 
   const headline =
     verdict === "mix"
@@ -262,6 +277,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             `The two halves split at ${cutDate} — earlier dates form the first period, later ones the second.`,
           )}</p>}
         </section>}
+
+        <StoreEventLog locale={locale} csvEvents={csvEvents} mergedEvents={allEvents} offAxis={axisEvents.offAxis} />
 
         {sourceRows.length > 0 && <section className="block" id="aso-sources">
           <h2 className="section-title">{tr("소스별 분해", "Per-source breakdown")}</h2>

@@ -89,30 +89,52 @@ function buildEfficiency() {
 }
 
 // ── aso_store (5-27) ───────────────────────────────────────────────────────
-// 후반 3주에 Browse 비중을 크게 올리되 소스별 전환율은 거의 유지한다. 그래서
-// 전체 전환율은 눈에 띄게 떨어지지만 원인은 페이지가 아니라 트래픽 구성이고,
-// 도구의 믹스 vs 효율 분해가 실제로 "믹스"를 가리키는 데모가 된다(§12.16 —
-// 진단 도구 데모는 합성 패턴이 신호를 띠어야 의미가 있다).
+// 84일 × 소스 4개 = 336행. 이야기를 셋 심어 두어 이벤트 주석이 실제로 쓸모
+// 있게 만든다(§12.16 — 진단 도구 데모는 합성 패턴이 신호를 띠어야 한다).
+//   D21 스크린샷 교체 → Search 전환율만 계단식 상승 (효율)
+//   D42 광고 증액     → 저전환 Browse 조회가 급증  (믹스)
+//   D63 가격 인하     → 전 소스 전환율이 함께 소폭 상승 (효율)
+// 그래서 "전체만 내려갔는데 소스별은 그대로"인 구간과 "소스별이 같이 움직인"
+// 구간이 한 데이터 안에 다 들어 있다.
 function buildAsoStore() {
-  const headers = ["date", "store_source", "impressions", "product_page_views", "installs"];
-  const dates = generateDates(42, "2025-03-01");
+  const headers = ["date", "store_source", "impressions", "product_page_views", "installs", "event", "event_type"];
+  const dates = generateDates(84, "2025-03-01");
+  const EVENTS = {
+    20: { label: "스크린샷 1번 교체", type: "creative" },
+    41: { label: "UA 예산 2배 증액", type: "campaign" },
+    62: { label: "연간권 20% 인하", type: "price" },
+  };
   const raw = [];
   dates.forEach((date, index) => {
-    const late = index >= 21;
-    // 조회 수만 이동시키고 소스별 전환율(Search 45%, Browse 9%)은 유지한다.
-    const searchViews = (late ? 2600 : 4300) + ((index * 37) % 9) * 60;
-    const browseViews = (late ? 5200 : 2400) + ((index * 53) % 7) * 80;
-    const referrerViews = 900 + ((index * 19) % 5) * 40;
+    const afterCreative = index >= 20;
+    const afterScale = index >= 41;
+    const afterPrice = index >= 62;
+    // 소스별 기본 전환율. 교체 이후 Search만, 인하 이후 전 소스가 오른다.
+    const searchCvr = 0.40 + (afterCreative ? 0.06 : 0) + (afterPrice ? 0.03 : 0);
+    const browseCvr = 0.085 + (afterPrice ? 0.015 : 0);
+    const referrerCvr = 0.21 + (afterPrice ? 0.02 : 0);
+    const webCvr = 0.14 + (afterPrice ? 0.01 : 0);
+    // 조회 수. 증액 이후 Browse가 크게 늘어 저전환 비중이 커진다.
+    const searchViews = 4200 + ((index * 37) % 11) * 70 + (afterScale ? 300 : 0);
+    const browseViews = (afterScale ? 6400 : 2300) + ((index * 53) % 9) * 90;
+    const referrerViews = 880 + ((index * 19) % 7) * 45;
+    const webViews = 610 + ((index * 29) % 5) * 55;
+    const event = EVENTS[index];
+    const tag = (position) => (event && position === 0 ? { event: event.label, event_type: event.type } : { event: "", event_type: "" });
     raw.push(
-      { date, store_source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * 0.45) },
-      { date, store_source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * 0.09) },
-      { date, store_source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * 0.22) },
+      { date, store_source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * searchCvr), ...tag(0) },
+      { date, store_source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * browseCvr), ...tag(1) },
+      { date, store_source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * referrerCvr), ...tag(2) },
+      { date, store_source: "Web Referrer", impressions: webViews * 5, product_page_views: webViews, installs: Math.round(webViews * webCvr), ...tag(3) },
     );
   });
   return {
     raw,
     headers,
-    mapping: { date: "date", store_source: "store_source", impressions: "impressions", product_page_views: "product_page_views", installs: "installs" },
+    mapping: {
+      date: "date", store_source: "store_source", impressions: "impressions",
+      product_page_views: "product_page_views", installs: "installs", event: "event", event_type: "event_type",
+    },
     fileName: "demo_aso_store.csv",
   };
 }
@@ -784,6 +806,10 @@ const BUILDERS = {
 // group name (TOOL_GROUP value) → demo csv. A missing builder is a product bug:
 // silently showing another tool's data creates a false "demo result".
 const DEMO_EN_VALUE_MAP = {
+  // 5-27 액션 로그 — 데모 이벤트 라벨도 EN에서는 영어로 나가야 한다
+  // (차트 세로선과 목록에 그대로 찍히는 값이라 KO가 새면 바로 보인다).
+  "스크린샷 1번 교체": "Swapped first screenshot", "UA 예산 2배 증액": "Doubled UA budget",
+  "연간권 20% 인하": "Cut annual plan 20%",
   "할인혜택": "Discount offer", "사회적증거": "Social proof", "기능강조": "Feature focus", "감성스토리": "Emotional story",
   "제작영상": "Produced video", "정적이미지": "Static image", "플레이어블": "Playable", "문제제기": "Problem",
   "호기심": "Curiosity", "혜택제시": "Benefit", "지금설치": "Install now", "무료체험": "Free trial", "한정할인": "Limited offer",

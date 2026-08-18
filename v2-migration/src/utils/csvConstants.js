@@ -131,6 +131,22 @@ export const STANDARD_FIELDS = {
                 required: false,
                 group: "단일 지표",
               },
+              event: {
+                // 그날 우리가 한 행동(스크린샷 교체·가격 인하…). 차트에 세로선으로 찍혀
+                // "이 조치가 어디에 영향을 줬나"를 눈으로 맞춰 보게 한다.
+                label: "이벤트(액션 로그)",
+                aliases: ["event", "action", "액션", "이벤트", "메모", "annotation", "note", "변경사항"],
+                type: "string",
+                required: false,
+                group: "디멘션",
+              },
+              event_type: {
+                label: "이벤트 종류",
+                aliases: ["event_type", "action_type", "이벤트종류", "액션종류", "종류"],
+                type: "string",
+                required: false,
+                group: "디멘션",
+              },
               store_source: {
                 // 스토어 유입 소스(App Store Search·Browse·Referrer / Play 검색·둘러보기).
                 // `source`(광고/오가닉)와 다른 축이다 — 같은 키를 쓰면 매핑 화면 라벨이
@@ -1203,6 +1219,8 @@ export const TOOL_OPTIONAL_FIELDS = {
               "5-27": [
                 { key: "impressions", unlocks: "노출→제품페이지 통과율(탭률) 계산" },
                 { key: "country", unlocks: "국가별 스토어 전환 비교" },
+                { key: "event", unlocks: "그날 한 조치를 추이 차트에 세로선으로 표시" },
+                { key: "event_type", unlocks: "이벤트 종류별 색 구분" },
               ],
               "5-26": [
                 { key: "country", unlocks: "국가별 캠페인 예산·통화 분리" },
