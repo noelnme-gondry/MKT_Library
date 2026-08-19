@@ -26,7 +26,7 @@ export const BRAND = {
     audience: "직접 캠페인을 운영하며 예산·소재·채널을 주 단위로 결정하는 퍼포먼스 마케터",
   },
   en: {
-    shortName: "Growth Optimization Playbook",
+    shortName: "Growth Opt Playbook",
     definition: "A free set of browser-based tools for analyzing app and web performance marketing data.",
     audience: "Performance marketers who run campaigns and decide budget, creative, and channel weekly",
   },

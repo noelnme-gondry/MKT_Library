@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { COMPARE_SLUGS, getComparePage, getCompareFaq, getComparesForTool } from "./compareContent";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { BRAND, getBrandFacts, getBrandLimits, getPublishedToolCount } from "./brandFacts";
+import { OPEN_GRAPH_SITE_NAME } from "./openGraph";
+import { PUBLISHER_NAME } from "./authorProfile";
 import { ROUTES, isRoutePublished } from "./routeMap";
 import { getRouteSeo } from "./routeSeo";
 
@@ -160,6 +165,36 @@ describe("brandFacts", () => {
   it("uses the canonical product name", () => {
     expect(BRAND.name).toBe("Growth Opt Playbook");
     expect(BRAND.ko.shortName).toBe(BRAND.name);
+  });
+
+  // 사람이 읽는 카피의 제품명 리터럴까지 전부 파생시키지는 않는다(~70곳이고
+  // "문의하기 | Growth Opt Playbook"처럼 합성된 문자열이 많다). 대신 **기계가 읽는
+  // 정체성**은 SSOT에서 파생해야 한다 — JSON-LD·OG·publisher가 갈리면 인용하는
+  // 엔진이 다른 이름을 가져간다. 실제로 BRAND.name만 확장형으로 갈라져 있었다.
+  it("derives the machine-readable identity from the single source", () => {
+    expect(OPEN_GRAPH_SITE_NAME).toBe(BRAND.name);
+    expect(PUBLISHER_NAME).toBe(BRAND.name);
+    const rootDocument = readFileSync(
+      path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "components/RootDocument.jsx"),
+      "utf-8",
+    );
+    expect(rootDocument).toMatch(/name: BRAND\.name/);
+    expect(rootDocument, "JSON-LD에 제품명을 리터럴로 다시 적지 말 것").not.toMatch(/name: "Growth/);
+  });
+
+  // 확장형은 설명 문구로만 쓴다. 이름 자리에 남아 있으면 두 표기가 다시 공존한다.
+  it("keeps the expanded name out of the codebase", () => {
+    const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+    const walk = (dir) => readdirSync(dir).flatMap((entry) => {
+      const full = path.join(dir, entry);
+      if (statSync(full).isDirectory()) return walk(full);
+      return /\.(js|jsx)$/.test(entry) ? [full] : [];
+    });
+    const legacyName = ["Growth", "Optimization", "Playbook"].join(" "); // 이 파일 자신이 걸리지 않게 조립한다
+    const offenders = walk(root)
+      .filter((file) => readFileSync(file, "utf-8").includes(legacyName))
+      .map((file) => path.relative(root, file));
+    expect(offenders, "확장형 제품명이 남아 있다(product-ssot §1.1)").toEqual([]);
   });
 
   it("keeps fact ids stable across locales", () => {

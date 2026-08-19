@@ -475,6 +475,21 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
   const [activeProblem, setActiveProblem] = useState("swaps");
+  // 탭 계약(product-ssot §6.1): 화살표·Home·End로 이동하고 선택 항목만 tab 순서에 남는다.
+  // 이 도구만 계약이 통째로 빠져 있어 마우스로만 조작할 수 있었다(D-09).
+  const onProblemKeyDown = useCallback((event, currentId, ids) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const current = ids.indexOf(currentId);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? ids.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + ids.length) % ids.length;
+    const nextId = ids[nextIndex];
+    setActiveProblem(nextId);
+    window.requestAnimationFrame(() => document.getElementById(`creative-problem-tab-${nextId}`)?.focus());
+  }, []);
   // §8 Concept Matrix 셀 클릭 → §2 성과표 필터 (index CREATIVE_STATE.selectedCell)
   const [selectedCell, setSelectedCell] = useState(null); // {row, col} | null
   // §7 Auto-Planner: 주당 신규 소재 공급량 + Gantt 표시 주수
@@ -1036,7 +1051,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </div>
         <div className="creative-control-room__choices" role="tablist" aria-label={tr("소재 운영 문제", "Creative operations problem") }>
           {problemChoices.map((item) => (
-            <button key={item.id} type="button" role="tab" aria-selected={activeProblem === item.id} className={activeProblem === item.id ? "is-active" : ""} onClick={() => setActiveProblem(item.id)}>
+            <button
+              key={item.id}
+              type="button"
+              id={`creative-problem-tab-${item.id}`}
+              role="tab"
+              aria-selected={activeProblem === item.id}
+              aria-controls="creative-problem-panel"
+              tabIndex={activeProblem === item.id ? 0 : -1}
+              className={activeProblem === item.id ? "is-active" : ""}
+              onClick={() => setActiveProblem(item.id)}
+              onKeyDown={(event) => onProblemKeyDown(event, item.id, problemChoices.map((choice) => choice.id))}
+            >
               <span className="creative-control-room__icon" aria-hidden>{item.icon}</span>
               <span><strong>{item.label}</strong><small>{item.desc}</small></span>
               <b>{item.count}</b>
@@ -1044,7 +1070,13 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           ))}
         </div>
 
-        <div className="creative-control-room__panel" role="tabpanel">
+        <div
+          className="creative-control-room__panel"
+          id="creative-problem-panel"
+          role="tabpanel"
+          aria-labelledby={`creative-problem-tab-${activeProblem}`}
+          tabIndex={0}
+        >
           {activeProblem === "swaps" && (
             <>
               <div className="creative-control-room__panel-title">

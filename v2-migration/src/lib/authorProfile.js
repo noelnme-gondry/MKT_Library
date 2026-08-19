@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/lib/routeMap";
+import { BRAND } from "@/lib/brandFacts";
 import { TOPIC_CLUSTERS } from "@/lib/topicClusters";
 
 /* ============================================================
@@ -20,7 +21,7 @@ import { TOPIC_CLUSTERS } from "@/lib/topicClusters";
 export const AUTHOR = {
   // 현재 사이트·네이버에서 실제로 쓰는 공개 바이라인. 실명 공개를 원하시면 여기만 바꾸면
   // JSON-LD·바이라인·프로필 링크가 한 번에 따라온다.
-  name: "Growth Opt Playbook",
+  name: BRAND.name,
   ko: {
     role: "퍼포먼스 마케팅 5년 · 데이터 분석 3년",
     bio: "앱 퍼포먼스 마케팅 5년, 데이터 분석 3년. 실무에서 쓰던 분석을 도구로 만들어 무료로 공개하고 있습니다.",
@@ -43,7 +44,7 @@ export const AUTHOR = {
   credentials: [],
 };
 
-export const PUBLISHER_NAME = "Growth Opt Playbook";
+export const PUBLISHER_NAME = BRAND.name;
 
 /**
  * 이 사이트가 실제로 다루는 주제. 문자열을 새로 적지 않고 **토픽 클러스터에서

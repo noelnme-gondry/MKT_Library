@@ -98,10 +98,15 @@
 
 ## 다른 계정/세션에서 이어가기
 
-새 계정·새 세션에서 이 작업을 그대로 이어가려면, 레포 클론(또는 동기화) 후 아래 프롬프트로 시작:
+> **⚠ 2026-06 시점 기록이다. 아래 프롬프트를 지금 그대로 쓰지 말 것.**
+> 이 문서의 나머지는 과거 이력이라 `index.html` 언급이 그때 사실로서 정확하지만,
+> 이 블록만은 **복사해 실행하라고 만든 프롬프트**라 낡은 채로 두면 새 세션이 틀린
+> 전제를 갖는다. 레거시 단일 파일 앱은 Phase 8 컷오버로 제거됐고 지금 런타임은
+> `v2-migration/`의 Next.js다(AGENTS.md §2.1). 아래는 당시 상태를 남긴 것이며,
+> 지금 세션을 시작할 때 읽어야 할 것은 `AGENTS.md`와 `docs/product-ssot.md`다.
 
 ```
-이 레포는 Performance Marketing Library (단일 index.html SPA, Railway 배포)다.
+이 레포는 Performance Marketing Library다. (2026-06 당시: 단일 index.html SPA)
 작업 규칙은 CLAUDE.md를, 6월 작업 이력은 docs/worklog.md를 먼저 끝까지 읽어라.
 
 현재 상태:
