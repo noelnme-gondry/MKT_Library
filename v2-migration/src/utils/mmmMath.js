@@ -1107,6 +1107,10 @@ export function mmmDataQualityAudit(panel) {
               combinedGoogle: ["google_roi", "google_cbua"], // G_Total (sheet/precedence/detrend)
               vifThreshold: 10,
               sparseMinWeeks: 20, // 비-0 주가 이 미만이면 "데이터 부족" (계수 신뢰 불가)
+              // 절대 개수만 보면 긴 패널에서 구멍이 난다 — 200주 중 20주(10%)가 통과한다.
+              // 통계적 강도와 데이터 커버리지를 **함께** 요구해야 얇은 채널이 높은 신뢰를
+              // 받지 못한다(product-ssot D-18).
+              sparseMinCoverage: 0.2, // 집행 주 비율이 이 미만이면 같은 이유로 데이터 부족
               excludeSparse: false, // ON 시 데이터 부족 채널을 모델에서 제외 (식별 정리; 기본 off=충실)
               hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
             };
@@ -1299,7 +1303,7 @@ export function mmmDataQualityAudit(panel) {
                   coverage: nonzero / arr.length,
                   trailingZero,
                   constantSpend,
-                  sparse: nonzero < (cfg.sparseMinWeeks || 20),
+                  sparse: nonzero < (cfg.sparseMinWeeks || 20) || (nonzero / arr.length) < (cfg.sparseMinCoverage ?? 0.2),
                   observedMin: min,
                   observedMax: max,
                   observedP95: ordered.length ? ordered[Math.min(ordered.length - 1, Math.floor((ordered.length - 1) * 0.95))] : 0,

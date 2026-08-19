@@ -4650,7 +4650,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               "low-information": tx("전체 기간 정보 부족", "limited overall history"),
               "prior-scale-nonconvergence": tx("잔차분산-prior penalty 반복 미수렴", "residual-scale/prior-penalty iteration not converged"),
               "low-positive-probability": tx("양수 확률 80% 미만", "P(positive) below 80%"),
-              "sparse-active-weeks": tx("집행 20주 미만", "fewer than 20 active weeks"),
+              // 게이트는 두 축이다 — 절대 주 수(20주)와 커버리지 비율(20%). 200주 패널에서
+              // 25주는 주 수 하한을 넘지만 12.5%뿐이라 여전히 얇다(D-18). 한쪽만 적어 두면
+              // 비율로 걸린 채널에서 화면이 틀린 이유를 말한다.
+              "sparse-active-weeks": tx("집행 기간이 짧음 (20주 미만 또는 전체의 20% 미만)", "short flight (under 20 active weeks or under 20% of the window)"),
               "constant-spend": tx("지출 변동 부족", "insufficient spend variation"),
               "recently-inactive": tx("최근 8주 미집행", "inactive in the last 8 weeks"),
               "outside-observed-spend-range": tx("증액 후 지속 주간 노출이 관측 adstock 범위 밖", "sustained post-increment exposure exceeds observed adstock range"),
