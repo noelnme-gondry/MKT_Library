@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -354,46 +355,31 @@ export default function LtvTab({ locale = "ko" } = {}) {
     <div className="tab-pane active" id="tab-ltv">
       <section className="block" id="s-ctl">
         <h2 className="section-title">{T.s1Title}</h2>
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{T.unitLabel}</span>
-          {availFields.map(f => {
+        <PillGroup
+          label={T.unitLabel}
+          value={unitField}
+          onChange={setUnitField}
+          options={availFields.map((f) => {
             const avail = mappedFields.has(f.k);
-            return (
-              <button
-                key={f.k}
-                className={`ab-pill ${unitField === f.k ? "active" : ""} ${!avail ? "disabled" : ""}`}
-                onClick={() => avail && setUnitField(f.k)}
-                disabled={!avail}
-              >
-                {f.l}{!avail && " 🔒"}
-              </button>
-            );
+            return { value: f.k, label: <>{f.l}{!avail && " 🔒"}</>, disabled: !avail };
           })}
-        </div>
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{T.ltvHorizonLabel}</span>
-          {[7, 14, 30, 90, 180, 360].map(d => (
-            <button key={d} className={`ab-pill ${ltvHorizon === d ? "active" : ""}`} onClick={() => setLtvHorizon(d)}>
-              D{d}
-            </button>
-          ))}
-        </div>
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label" title={T.denomTitle}>{T.denomLabel}</span>
-          {[["installs", T.installsOpt], ["actions", T.actionsOpt]].map(([k, l]) => {
+        />
+        <PillGroup
+          label={T.ltvHorizonLabel}
+          value={ltvHorizon}
+          onChange={setLtvHorizon}
+          options={[7, 14, 30, 90, 180, 360].map((d) => ({ value: d, label: `D${d}` }))}
+        />
+        <PillGroup
+          label={T.denomLabel}
+          labelTitle={T.denomTitle}
+          value={effBasis}
+          onChange={setDenomBasis}
+          options={[["installs", T.installsOpt], ["actions", T.actionsOpt]].map(([k, l]) => {
             const avail = k === "installs" ? hasInstalls : hasActions;
-            return (
-              <button
-                key={k}
-                className={`ab-pill ${effBasis === k ? "active" : ""} ${!avail ? "disabled" : ""}`}
-                onClick={() => avail && setDenomBasis(k)}
-                disabled={!avail}
-              >
-                {l}{!avail && " 🔒"}
-              </button>
-            );
+            return { value: k, label: <>{l}{!avail && " 🔒"}</>, disabled: !avail };
           })}
-        </div>
+        />
       </section>
 
       <section className="block" id="s-table">
@@ -456,23 +442,17 @@ export default function LtvTab({ locale = "ko" } = {}) {
       <section className="block" id="s-mat">
         <h2 className="section-title">{T.s4Title}</h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", alignItems: "flex-start", marginBottom: "14px" }}>
-          <div className="ab-pillgroup">
-            <span className="ab-pillgroup-label">{T.unitLabel}</span>
-            {[["_all", T.unitFilterAll], ["channel", T.fChannel], ["campaign_name", T.fCampaign]].map(([k, l]) => {
+          <PillGroup
+            label={T.unitLabel}
+            value={matUnit}
+            onChange={setMatUnit}
+            options={[["_all", T.unitFilterAll], ["channel", T.fChannel], ["campaign_name", T.fCampaign]].map(([k, l]) => {
               const av = k === "_all" || (maturation && maturation.mappedKeys.has(k));
-              return (
-                <button
-                  key={k}
-                  className={`ab-pill ${matUnit === k ? "active" : ""} ${!av ? "disabled" : ""}`}
-                  onClick={() => av && setMatUnit(k)}
-                  disabled={!av}
-                >
-                  {l}{!av && " 🔒"}
-                </button>
-              );
+              return { value: k, label: <>{l}{!av && " 🔒"}</>, disabled: !av };
             })}
-          </div>
-          <div className="ab-pillgroup">
+          />
+          {/* 여러 기준일을 동시에 켤 수 있다 — radiogroup이 아니라 토글 묶음이다(D-05). */}
+          <div className="ab-pillgroup" data-pillgroup="multi" role="group" aria-label={T.anchorLabel}>
             <span className="ab-pillgroup-label">{T.anchorLabel} <small style={{ opacity: 0.6, fontWeight: 400 }}>{T.anchorSub}</small></span>
             {MATURATION_MATH.ALL_DNS.filter((d) => isDnMapped(d)).map((d) => {
               const avail = maturation && maturation.availDns.includes(d);
@@ -488,7 +468,8 @@ export default function LtvTab({ locale = "ko" } = {}) {
               );
             })}
           </div>
-          <div className="ab-pillgroup">
+          {/* 곡선과 실측을 동시에 켤 수 있다 — 서로 배타가 아니다(D-05). */}
+          <div className="ab-pillgroup" data-pillgroup="multi" role="group" aria-label={T.methodLabel}>
             <span className="ab-pillgroup-label">{T.methodLabel}</span>
             <button className={`ab-pill ${matShowCurve ? "active" : ""}`} style={{ color: "var(--accent)" }} onClick={() => setMatShowCurve((v) => !v)}>{T.curveFit}</button>
             <button className={`ab-pill ${matShowEmpirical ? "active" : ""}`} style={{ color: "#9ece6a" }} onClick={() => setMatShowEmpirical((v) => !v)}>{T.empirical}</button>
@@ -570,11 +551,13 @@ export default function LtvTab({ locale = "ko" } = {}) {
         <h3 style={{ margin: "20px 0 10px", fontSize: "13px", fontWeight: 600 }}>
           {T.suffTitle}
           <small style={{ opacity: 0.6, fontWeight: 400, marginLeft: "8px" }}>{T.suffSub(matHorizon)}</small>
-          <span className="ab-pillgroup" style={{ display: "inline-flex", marginLeft: "14px", verticalAlign: "middle" }}>
-            {[90, 180, 360].map((h) => (
-              <button key={h} className={`ab-pill ${matHorizon === h ? "active" : ""}`} onClick={() => setMatHorizon(h)}>D{h}</button>
-            ))}
-          </span>
+          <PillGroup
+            ariaLabel={T.suffTitle}
+            style={{ display: "inline-flex", marginLeft: "14px", verticalAlign: "middle" }}
+            value={matHorizon}
+            onChange={setMatHorizon}
+            options={[90, 180, 360].map((h) => ({ value: h, label: `D${h}` }))}
+          />
         </h3>
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "12px" }}>

@@ -1382,27 +1382,23 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 { value: "rolling7", label: tr("최근 7일", "Last 7 days") },
               ]}
             />
-            <div className="ab-pillgroup">
-              <span className="ab-pillgroup-label">{tr("비교 기준", "Comparison basis")}</span>
-              {[1, 2, 3].map((lb) => {
+            <PillGroup
+              label={tr("비교 기준", "Comparison basis")}
+              value={cache?.lockState?.[lookback] ? null : lookback}
+              onChange={setLookback}
+              options={[1, 2, 3].map((lb) => {
                 const locked = cache?.lockState?.[lb];
-                return (
-                  <button
-                    key={lb}
-                    className={`ab-pill ${lookback === lb && !locked ? "active" : ""}`}
-                    disabled={!!locked}
-                    style={{ opacity: locked ? 0.5 : 1, cursor: locked ? "default" : "pointer" }}
-                    onClick={() => !locked && setLookback(lb)}
-                  >
-                    {locked ? "🔒 " : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}
-                  </button>
-                );
+                return {
+                  value: lb,
+                  disabled: !!locked,
+                  label: <>{locked ? "🔒 " : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}</>,
+                };
               })}
-              {/* 잠긴 기준의 사유가 title에만 있으면 터치·키보드에서 알 수 없다(§5.4 · D-04). */}
-              <BlockedOptionsNote items={[1, 2, 3]
-                .filter((lb) => cache?.lockState?.[lb])
-                .map((lb) => ({ label: tr(`${lb}주`, `${lb}w`), reason: tr("데이터가 더 필요합니다", "needs more data") }))} />
-            </div>
+            />
+            {/* 잠긴 기준의 사유가 title에만 있으면 터치·키보드에서 알 수 없다(§5.4 · D-04). */}
+            <BlockedOptionsNote items={[1, 2, 3]
+              .filter((lb) => cache?.lockState?.[lb])
+              .map((lb) => ({ label: tr(`${lb}주`, `${lb}w`), reason: tr("데이터가 더 필요합니다", "needs more data") }))} />
           </>}
         </div>
         </div>
@@ -1708,21 +1704,27 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCreative}</strong></div></div>
         ) : (
           <>
-            <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-              <span className="ab-pillgroup-label">{C.levelChannel}</span>
-              <button className={`ab-pill ${crIsAll ? "active" : ""}`} onClick={() => { setCrChannel("__all__"); setCrCampaign(null); setCrPage(1); }}>{tr("전체", "All")}</button>
-              {channelRows.map((ch) => (
-                <button key={ch.key} className={`ab-pill ${!crIsAll && ch.key === crSelCh ? "active" : ""}`} onClick={() => { setCrChannel(ch.key); setCrCampaign(null); setCrPage(1); }}>{ch.key || unspec}</button>
-              ))}
-            </div>
+            <PillGroup
+              style={{ marginBottom: "8px" }}
+              label={C.levelChannel}
+              value={crIsAll ? "__all__" : crSelCh}
+              onChange={(next) => { setCrChannel(next); setCrCampaign(null); setCrPage(1); }}
+              options={[
+                { value: "__all__", label: tr("전체", "All") },
+                ...channelRows.map((ch) => ({ value: ch.key, label: ch.key || unspec })),
+              ]}
+            />
             {cache.campaignMapped && !crIsAll && (
-              <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-                <span className="ab-pillgroup-label">{C.levelCampaign}</span>
-                <button className={`ab-pill ${crSelCmp === null ? "active" : ""}`} onClick={() => { setCrCampaign(null); setCrPage(1); }}>{tr("전체", "All")}</button>
-                {campaignsInCh.map((cmp) => (
-                  <button key={cmp} className={`ab-pill ${cmp === crSelCmp ? "active" : ""}`} onClick={() => { setCrCampaign(cmp || null); setCrPage(1); }}>{cmp || unspec}</button>
-                ))}
-              </div>
+              <PillGroup
+                style={{ marginBottom: "10px" }}
+                label={C.levelCampaign}
+                value={crSelCmp ?? "__all__"}
+                onChange={(next) => { setCrCampaign(next === "__all__" ? null : (next || null)); setCrPage(1); }}
+                options={[
+                  { value: "__all__", label: tr("전체", "All") },
+                  ...campaignsInCh.map((cmp) => ({ value: cmp, label: cmp || unspec })),
+                ]}
+              />
             )}
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>

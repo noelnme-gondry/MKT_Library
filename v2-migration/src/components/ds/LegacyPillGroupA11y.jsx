@@ -13,6 +13,16 @@ function optionButtons(group) {
 }
 
 function syncGroup(group) {
+  // 다중선택 그룹에 radiogroup을 씌우면 "여럿 켜져 있는데 하나만 선택됨"으로 읽힌다 —
+  // ARIA가 없는 것보다 나쁘다. DOM만으로는 단일/다중을 가를 수 없으므로(한 개만 켜진
+  // 순간의 다중선택 그룹은 단일과 구분되지 않는다) 마크업이 말하게 한다.
+  // (2026-08-19: LtvTab의 성숙 기준일·표시 방법 두 그룹이 실제로 잘못 표기되고 있었다.)
+  if (group.dataset.pillgroup === "multi") {
+    for (const button of optionButtons(group)) {
+      button.setAttribute("aria-pressed", String(button.classList.contains("active")));
+    }
+    return;
+  }
   const buttons = optionButtons(group);
   if (buttons.length < 2) return;
   const label = group.querySelector(":scope > .ab-pillgroup-label");

@@ -3499,10 +3499,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <span className="muted" style={{ fontSize: "11px" }}>{selectedSourceCurrency
                 ? tx("원본 단위입니다. 선택하면 화면 표시도 같은 통화로 맞춥니다.", "This is the source unit. Selecting it also aligns the display currency.")
                 : tx("⚠ 숫자만으로 통화를 알 수 없어 환산하지 않습니다. 반드시 선택하세요.", "⚠ Currency cannot be inferred from bare numbers, so no conversion is applied. Select it first.")}</span>
-              <div className="ab-pillgroup" style={{ margin: 0 }}>
-                <button className={`ab-pill ${selectedSourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("KRW")}>{tx("원 ₩", "KRW ₩")}</button>
-                <button className={`ab-pill ${selectedSourceCurrency === "USD" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("USD")}>{tx("달러 $", "USD $")}</button>
-              </div>
+              <PillGroup
+                style={{ margin: 0 }}
+                ariaLabel={tx("원본 CSV 통화", "Source CSV currency")}
+                value={selectedSourceCurrency}
+                onChange={setMmmSourceCurrency}
+                options={[
+                  { value: "KRW", label: tx("원 ₩", "KRW ₩") },
+                  { value: "USD", label: tx("달러 $", "USD $") },
+                ]}
+              />
             </div>
           </div>
         )}
@@ -3510,10 +3516,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           <div className="analysis-local-controls__inner">
             <span className="analysis-local-controls__label">{tx("일별 데이터 주 묶음", "Daily-data week grouping")}</span>
             <span className="muted" style={{ fontSize: "11px" }}>{tx("날짜 컬럼을 매핑한 일별 CSV에만 적용됩니다. 기존 주별 CSV는 바뀌지 않습니다.", "Applies only to daily CSVs with a mapped date column; already-weekly CSVs are unchanged.")}</span>
-            <div className="ab-pillgroup" style={{ margin: 0 }}>
-              <button className={`ab-pill ${mmmWeekStart === "sunday" ? "active" : ""}`} onClick={() => changeMmmWeekStart("sunday")}>{tx("일요일 시작 (일~토)", "Sunday start (Sun–Sat)")}</button>
-              <button className={`ab-pill ${mmmWeekStart === "monday" ? "active" : ""}`} onClick={() => changeMmmWeekStart("monday")}>{tx("월요일 시작 (월~일)", "Monday start (Mon–Sun)")}</button>
-            </div>
+            <PillGroup
+              style={{ margin: 0 }}
+              ariaLabel={tx("주 시작 요일", "Week start day")}
+              value={mmmWeekStart}
+              onChange={changeMmmWeekStart}
+              options={[
+                { value: "sunday", label: tx("일요일 시작 (일~토)", "Sunday start (Sun–Sat)") },
+                { value: "monday", label: tx("월요일 시작 (월~일)", "Monday start (Mon–Sun)") },
+              ]}
+            />
           </div>
         </div>
         <h3 style={{ fontSize: "14px", margin: "12px 0 8px", color: "var(--primary, #adc6ff)" }}>{tx("🗂 컬럼 역할 매핑 (드래그로 지정)", "🗂 Map column roles (assign by dragging)")}</h3>
@@ -3793,38 +3805,39 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           </>
         )}
         {platformTags.length > 0 && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label">{tx("플랫폼", "Platform")}</span>
-            <button className={`ab-pill ${effPlatformFilter === "all" ? "active" : ""}`} onClick={() => {
-              if (effPlatformFilter !== "all") deferMmmUpdate(() => setPlatformFilter("all"));
-            }}>Total</button>
-            {platformTags.includes("android") && (
-              <button className={`ab-pill ${effPlatformFilter === "android" ? "active" : ""}`} onClick={() => {
-                if (effPlatformFilter !== "android") deferMmmUpdate(() => setPlatformFilter("android"));
-              }}>Android</button>
-            )}
-            {platformTags.includes("ios") && (
-              <button className={`ab-pill ${effPlatformFilter === "ios" ? "active" : ""}`} onClick={() => {
-                if (effPlatformFilter !== "ios") deferMmmUpdate(() => setPlatformFilter("ios"));
-              }}>iOS</button>
-            )}
-          </div>
+          <PillGroup
+            style={{ margin: 0 }}
+            label={tx("플랫폼", "Platform")}
+            value={effPlatformFilter}
+            onChange={(next) => {
+              if (effPlatformFilter !== next) deferMmmUpdate(() => setPlatformFilter(next));
+            }}
+            options={[
+              { value: "all", label: "Total" },
+              ...(platformTags.includes("android") ? [{ value: "android", label: "Android" }] : []),
+              ...(platformTags.includes("ios") ? [{ value: "ios", label: "iOS" }] : []),
+            ]}
+          />
         )}
         {segmentSel && segmentSel.values.length > 0 && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label" title={tx(`나눠보기: ${segmentSel.col}`, `Break down by: ${segmentSel.col}`)}>🔀 {segmentSel.col}</span>
-            <button className={`ab-pill ${effPlatformFilter === "all" ? "active" : ""}`} onClick={() => {
-              if (effPlatformFilter !== "all") deferMmmUpdate(() => setPlatformFilter("all"));
-            }}>{tx("전체", "All")}</button>
-            {segmentSel.values.map((v) => (
-              <button key={v.value} className={`ab-pill ${effPlatformFilter === v.value ? "active" : ""}`} onClick={() => {
-                if (effPlatformFilter !== v.value) deferMmmUpdate(() => setPlatformFilter(v.value));
-              }} title={tx(`${v.count.toLocaleString()}행`, `${v.count.toLocaleString()} rows`)}>
-                {v.value}
-              </button>
-            ))}
-            {segmentSel.truncated && <span style={{ fontSize: "11px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span>}
-          </div>
+          <PillGroup
+            style={{ margin: 0 }}
+            label={<>🔀 {segmentSel.col}</>}
+            labelTitle={tx(`나눠보기: ${segmentSel.col}`, `Break down by: ${segmentSel.col}`)}
+            value={effPlatformFilter}
+            onChange={(next) => {
+              if (effPlatformFilter !== next) deferMmmUpdate(() => setPlatformFilter(next));
+            }}
+            options={[
+              { value: "all", label: tx("전체", "All") },
+              ...segmentSel.values.map((v) => ({
+                value: v.value,
+                label: v.value,
+                title: tx(`${v.count.toLocaleString()}행`, `${v.count.toLocaleString()} rows`),
+              })),
+            ]}
+            extra={segmentSel.truncated ? <span style={{ fontSize: "11px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span> : null}
+          />
         )}
         {contributionFilterDates.length > 0 && stage === "mmm" && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
@@ -3852,18 +3865,23 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         )}
         {/* T1: Bayesian 모드 정보 prior 토글 + 적합도 신뢰 칩 (모델 차이 비교) */}
         {stage === "mmm" && mmm && !mmm.empty && mmmMode === "bayesian" && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label" title={tx(
+          <PillGroup
+            style={{ margin: 0 }}
+            label={<>{tx("정보 prior", "Informative prior")} ⓘ</>}
+            labelTitle={tx(
               "지출점유 기반 약정보 prior입니다. 관측이 약한 채널을 지출비중 쪽으로 수축하고, 데이터가 충분하면 likelihood가 지배합니다. 실험·국가 prior와 병합됩니다. 인과·증분 효과 보장이 아닙니다.",
               "A spend-share weakly-informative prior. It shrinks weakly-observed channels toward their spend share; with enough data the likelihood dominates. It merges with experiment/country priors. Not causal or incremental proof.",
-            )}>{tx("정보 prior", "Informative prior")} ⓘ</span>
-            <button className={`ab-pill ${bayesianUsePrior ? "active" : ""}`} onClick={() => {
-              if (!bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(true));
-            }}>{tx("켜기", "On")}</button>
-            <button className={`ab-pill ${!bayesianUsePrior ? "active" : ""}`} onClick={() => {
-              if (bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(false));
-            }}>{tx("끄기 (평면 OLS)", "Off (flat OLS)")}</button>
-            {mmm.health && (() => {
+            )}
+            value={bayesianUsePrior ? "on" : "off"}
+            onChange={(next) => {
+              const wantPrior = next === "on";
+              if (wantPrior !== bayesianUsePrior) deferMmmUpdate(() => setBayesianUsePrior(wantPrior));
+            }}
+            options={[
+              { value: "on", label: tx("켜기", "On") },
+              { value: "off", label: tx("끄기 (평면 OLS)", "Off (flat OLS)") },
+            ]}
+            extra={mmm.health && (() => {
               const r2 = Number(mmm.health.r2);
               const wmape = Number(mmm.health.wmape);
               const cov = Number(mmm.health.coverage90);
@@ -3883,7 +3901,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 >{tx("적합도", "Fit")}: {label}</span>
               );
             })()}
-          </div>
+          />
         )}
         {mmm && !mmm.empty && (
           <>
@@ -4956,11 +4974,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 {(mmm.panel.externalDefs || []).length > 0 && <p className="mmm-result-note">{tx("업계 현황은 시장 전체 수치가 아니라 평소 대비 상대 변화가 우리 KPI를 설명한 값입니다.", "Industry controls show how relative change from normal explains this KPI, not the market total itself.")}</p>}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                   <strong className="mmm-result-subtitle">{tx("주별 기여 크기", "Weekly contribution magnitude")}</strong>
-                  <div className="ab-pillgroup" style={{ margin: 0 }} aria-label={tx("기본 수요·추세 포함 여부", "Include base demand and trend")}>
-                    <span className="ab-pillgroup-label">{tx("기본 수요·추세", "Base demand · trend")}</span>
-                    <button type="button" className={`ab-pill ${includeBaseDemandInShare ? "active" : ""}`} onClick={() => setIncludeBaseDemandInShare(true)}>{tx("포함", "Include")}</button>
-                    <button type="button" className={`ab-pill ${!includeBaseDemandInShare ? "active" : ""}`} onClick={() => setIncludeBaseDemandInShare(false)}>{tx("제외", "Exclude")}</button>
-                  </div>
+                  <PillGroup
+                    style={{ margin: 0 }}
+                    ariaLabel={tx("기본 수요·추세 포함 여부", "Include base demand and trend")}
+                    label={tx("기본 수요·추세", "Base demand · trend")}
+                    value={includeBaseDemandInShare ? "include" : "exclude"}
+                    onChange={(next) => setIncludeBaseDemandInShare(next === "include")}
+                    options={[
+                      { value: "include", label: tx("포함", "Include") },
+                      { value: "exclude", label: tx("제외", "Exclude") },
+                    ]}
+                  />
                 </div>
                 {shRows.length ? (
                   // 단일 grid — 라벨 열 폭을 전 행 공유(max-content)해 가장 긴 변수명에 맞춰 정렬, 막대 시작점 일치.
@@ -5083,10 +5107,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                       {hasCollinearityGroups && (
-                        <div className="ab-pillgroup" aria-label={tx("공선 채널 보기 전환", "Collinear-channel view")}>
-                          <button className={`ab-pill ${weeklyPerformanceView === "individual" ? "active" : ""}`} onClick={() => setWeeklyPerformanceView("individual")}>{tx("개별 보기", "Individual")}</button>
-                          <button className={`ab-pill ${weeklyPerformanceView === "grouped" ? "active" : ""}`} onClick={() => setWeeklyPerformanceView("grouped")}>{tx("상관 채널 묶음", "Correlated groups")}</button>
-                        </div>
+                        <PillGroup
+                          ariaLabel={tx("공선 채널 보기 전환", "Collinear-channel view")}
+                          value={weeklyPerformanceView}
+                          onChange={setWeeklyPerformanceView}
+                          options={[
+                            { value: "individual", label: tx("개별 보기", "Individual") },
+                            { value: "grouped", label: tx("상관 채널 묶음", "Correlated groups") },
+                          ]}
+                        />
                       )}
                       {highCollinearPairs.length > 0 && (
                         <button
