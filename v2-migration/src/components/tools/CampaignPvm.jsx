@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
+import { efficiencyBridge } from "@/utils/efficiencyBridge";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
@@ -413,7 +414,21 @@ export function buildPvmCache(csvData, state) {
   }
 
   const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+  // 효율이 왜 나빠졌는지는 물량·효율·믹스만으로는 답이 안 된다 — 매체가가 올라서인지
+  // 반응률이 떨어져서인지에 따라 다음에 볼 곳이 다르다(product-ssot D-17).
+  // 노출을 매핑한 경우에만 계산한다. 조건이 안 되면 화면에서도 숨긴다(§12.17).
+  const sumField = (rows, field) => rows.reduce((sum, row) => sum + (PVM_MATH.parseNumericValue(row[field]) || 0), 0);
+  const hasImpressions = rowsP1.some((row) => PVM_MATH.parseNumericValue(row.impressions) > 0)
+    && rowsP2.some((row) => PVM_MATH.parseNumericValue(row.impressions) > 0);
+  const bridge = hasImpressions
+    ? efficiencyBridge(
+      { cost: sumField(rowsP1, "spend"), impressions: sumField(rowsP1, "impressions"), results: sumField(rowsP1, resultField) },
+      { cost: sumField(rowsP2, "spend"), impressions: sumField(rowsP2, "impressions"), results: sumField(rowsP2, resultField) },
+    )
+    : null;
+
   return {
+    efficiencyBridge: bridge,
     insufficientData: !identity.ok,
     analysisStatus: identity.ok ? "COMPLETE" : "NOT_IDENTIFIED",
     reasonCode: identity.ok ? null : "ADDITIVE_IDENTITY_FAILED",
@@ -1517,6 +1532,35 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                   <span className="bl">COST</span>
                   <div className="flow"><span className="p1">{pvmFmtMoney(cache.Cost1, cur)}</span><span className="arr">→</span><span>{pvmFmtMoney(cache.Cost2, cur)}</span></div>
                   <span className={`pvm-chip ${b.cls}`} style={{ marginLeft: "auto" }}>{b.arr} {b.sign}{pvmFmtMoney(b.d, cur)} ({b.sign}{Math.abs(b.pct) < 0.05 ? "0" : b.pct.toFixed(1)}%)</span>
+                </div>
+              );
+            })()}
+            {cache.efficiencyBridge?.ok && (() => {
+              const eb = cache.efficiencyBridge;
+              const signed = (value) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+              const driverText = {
+                "media-price": tr("노출 단가(CPM)가 더 크게 움직였습니다. 입찰·타게팅 폭·게재 지면을 먼저 보세요.", "Media price (CPM) moved more. Look at bidding, targeting breadth, and placements first."),
+                "response-rate": tr("반응률이 더 크게 움직였습니다. 소재·랜딩·오디언스를 먼저 보세요.", "The response rate moved more. Look at creative, landing page, and audience first."),
+                balanced: tr("두 요인이 비슷하게 움직였습니다. 한쪽만 고쳐서는 되돌리기 어렵습니다.", "Both factors moved by a similar amount, so fixing only one is unlikely to reverse it."),
+                unchanged: tr("두 요인 모두 사실상 그대로입니다.", "Neither factor moved materially."),
+              }[eb.driver];
+              return (
+                <div className="pvm-efficiency-bridge" role="note">
+                  <div className="pvm-efficiency-bridge__head">
+                    <strong>{tr("효율이 움직인 이유", "Why efficiency moved")}</strong>
+                    <span>{tr("노출당 비용 × 반응률", "Cost per impression × response rate")}</span>
+                  </div>
+                  <div className="pvm-efficiency-bridge__cells">
+                    <div><small>{tr("전환당 비용", "Cost per result")}</small><strong>{signed(eb.cpa.changePct)}</strong></div>
+                    <div><small>{tr("노출 단가 (CPM)", "Media price (CPM)")}</small><strong>{signed(eb.cpm.changePct)}</strong></div>
+                    <div><small>{tr("반응률 (결과/노출)", "Response rate (results/impressions)")}</small><strong>{signed(eb.responseRate.changePct)}</strong></div>
+                  </div>
+                  <p>{driverText}</p>
+                  {eb.offsetting && (
+                    <p className="pvm-efficiency-bridge__note">
+                      {tr("두 요인이 서로 상쇄돼 전환당 비용은 거의 그대로지만, 안에서는 둘 다 움직였습니다. 한쪽이 돌아오면 합계가 달라집니다.", "The two factors cancelled out, so cost per result barely moved — but both changed underneath. If one reverts, the total will shift.")}
+                    </p>
+                  )}
                 </div>
               );
             })()}

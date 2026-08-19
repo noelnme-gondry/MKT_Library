@@ -1477,6 +1477,10 @@ export const TOOL_OPTIONAL_FIELDS = {
               ],
               "5-21": [
                 {
+                  key: "impressions",
+                  unlocks: "효율 변화를 매체가(CPM)와 반응률로 분해 — 매핑 안 하면 물량·효율·믹스까지만 분해",
+                },
+                {
                   key: "campaign_id",
                   unlocks: "캠페인 단계 분해 — 매핑 안 하면 채널→소재 2단계로 동작",
                 },

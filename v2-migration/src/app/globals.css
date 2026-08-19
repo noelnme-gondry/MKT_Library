@@ -5038,6 +5038,17 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .alloc-hold-low { margin: 10px 0; padding: 9px 11px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
 .alloc-hold-low > label { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: var(--text-primary); cursor: pointer; }
 .alloc-hold-low > p { margin: 6px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.pvm-efficiency-bridge { margin: 10px 0; padding: 11px 13px; border: 1px solid var(--border-subtle); border-radius: 9px; background: var(--surface-container-lowest); }
+.pvm-efficiency-bridge__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pvm-efficiency-bridge__head > strong { color: var(--text-primary); font-size: 12px; }
+.pvm-efficiency-bridge__head > span { color: var(--text-muted); font: 650 9.5px var(--font-mono); letter-spacing: .04em; }
+.pvm-efficiency-bridge__cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 9px; }
+.pvm-efficiency-bridge__cells > div { display: grid; gap: 2px; }
+.pvm-efficiency-bridge__cells small { color: var(--text-muted); font-size: 10px; }
+.pvm-efficiency-bridge__cells strong { color: var(--text-primary); font: 700 15px var(--font-mono); }
+.pvm-efficiency-bridge > p { margin: 9px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.pvm-efficiency-bridge > p.pvm-efficiency-bridge__note { color: var(--warning); }
+@media (max-width: 620px) { .pvm-efficiency-bridge__cells { grid-template-columns: 1fr; } }
 /* 적합도 등급 — 숫자 옆의 평어 한 마디. 색만으로 구분하지 않도록 글자를 함께 둔다
    (product-ssot §6.2). */
 .mmm-fit-grade { display: block; margin-top: 3px; font-size: 10px; font-style: normal; font-weight: 650; letter-spacing: -.01em; }
