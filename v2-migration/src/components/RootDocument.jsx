@@ -5,6 +5,7 @@ import GaPageviews from "@/components/GaPageviews";
 import ConsentBanner from "@/components/ConsentBanner";
 import { consentDefaultSnippet } from "@/lib/consent";
 import SkipLink from "@/components/SkipLink";
+import { BRAND } from "@/lib/brandFacts";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 

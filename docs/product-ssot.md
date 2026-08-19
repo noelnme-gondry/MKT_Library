@@ -34,9 +34,9 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"14개 핵심 분석 도구 + 5개 전문 반응 분석 모듈"** | `getPublishedToolCount()` 파생값 = 14(§4에서 정의 고정) |
+| 도구 수 표기 | **"18개 분석 도구"** | `getPublishedToolCount()` 파생값. PR #696으로 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18) 자체가 목록에서 내려가면서 14 → 18이 됐다(§4.1) |
 
-**도구 수를 손으로 세지 말 것.** 화면 카피는 `getPublishedToolCount()`에서 파생한다(현재 `LandingPage.jsx:56`). 커밋 메시지·기획 문서에서 "17개"처럼 다른 수가 나오는 이유는 subtool 5개를 합산했기 때문이며, **대외 문장에서는 두 수를 섞지 않는다.**
+**도구 수를 손으로 세지 말 것.** 화면 카피는 `getPublishedToolCount()`에서 파생한다(현재 `LandingPage.jsx:56`). 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
@@ -107,12 +107,15 @@
 ### 4.1 도구 수의 정의
 
 ```
-핵심 분석 도구 14 = ROUTES 중 id가 5-/9- 이면서 publication ∉ {subtool, preview}
-전문 반응 모듈  5 = publication === "subtool" (5-18 하위)
-preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
+공개 분석 도구 = ROUTES 중 id가 5-/9- 이면서 publication ∉ {subtool, preview}
+                 → 2026-08-19 기준 18개
+subtool  = 사이드바·목록에서 숨기되 검색 랜딩은 갖는 라우트 (현재 5-18 허브 하나)
+preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 ```
 
-### 4.2 핵심 분석 도구 14개
+**PR #696으로 관계가 뒤집혔다.** 이전에는 5-18(마케팅 반응 분석)이 정식 도구이고 그 아래 다섯 분석이 subtool이었다. 지금은 다섯 분석이 각각 정식 도구이고 **5-18 허브가 subtool**이다 — 사용자가 찾는 단위가 "마케팅 반응 분석"이 아니라 "잠식 진단"·"MMM 기여도"이기 때문이다. 내부 id(`5-18-*`)는 §4.1 규칙대로 불변이다.
+
+### 4.2 공개 분석 도구 18개
 
 | ID | 도구 | URL |
 |---|---|---|
@@ -121,7 +124,11 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | 5-21 | 캠페인 성과 변동 분석 | `/tools/campaign-variance` |
 | 5-22 | 캠페인 포화도 진단 | `/tools/campaign-saturation` |
 | 5-4 | A/B 테스트 분석 | `/tools/experiment-analysis` |
-| 5-18 | 마케팅 반응 분석 | `/tools/marketing-response` |
+| 5-18-paid-organic | Paid·Organic 변화맵 | `/tools/paid-organic-trend` |
+| 5-18-trend | 마케팅 추세 분석 | `/tools/marketing-trend` |
+| 5-18-cannibal | 유료·오가닉 잠식 진단 | `/tools/cannibalization-diagnosis` |
+| 5-18-mmm | MMM 기여도 분석 | `/tools/mmm-contribution` |
+| 5-18-forecast | 마케팅 회귀 예측 | `/tools/marketing-forecast` |
 | 5-20 | 핵심 가치(Aha) 발굴 | `/tools/aha-moment` |
 | 5-23 | 증분 효과 분석 | `/tools/incrementality` |
 | 5-24 | 브랜드 캠페인 증분 분석 | `/tools/brand-campaign-incrementality` |
@@ -131,19 +138,13 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | 9-1 | 콘텐츠 요소 분석 | `/content/element-analysis` |
 | 9-6 | 광고 소재 피로도 분석 | `/content/freshness` |
 
-### 4.3 전문 반응 분석 모듈 5개 (5-18 하위)
+### 4.3 목록에서 내린 허브 (5-18)
 
-| ID | 모듈 | URL |
+| ID | 라우트 | 상태 |
 |---|---|---|
-| 5-18-paid-organic | Paid·Organic 변화맵 | `/tools/paid-organic-trend` |
-| 5-18-trend | 마케팅 추세 분석 | `/tools/marketing-trend` |
-| 5-18-cannibal | 유료·오가닉 잠식 진단 | `/tools/cannibalization-diagnosis` |
-| 5-18-mmm | MMM 기여도 분석 | `/tools/mmm-contribution` |
-| 5-18-forecast | 마케팅 회귀 예측 | `/tools/marketing-forecast` |
+| 5-18 | `/tools/marketing-response` | `publication: "subtool"` — 사이드바·도구 인덱스에서 숨기되 검색 랜딩과 canonical은 유지한다. 위 다섯 도구가 공유하는 CSV·매핑 허브이고, 각 도구는 `<MarketingResponse initialStage=… isolated />`로 렌더된다. |
 
-> 이들은 독립 서비스가 아니라 5-18의 CSV·매핑 허브를 공유하는 전문 경로다. 전체 도구 수를 말할 때 별도 도구로 합산하지 않는다.
-
----
+> **routeMap의 `component`는 파일 이름이 아닐 수 있다.** `5-18-trend`의 `component`는 `MarketingResponseTrend`지만 그런 파일은 없고, 실제 디스패치는 `PageClient`가 `routeId`로 한다. 컴포넌트 파일을 라우트에서 찾는 도구·테스트는 이 사실을 알아야 한다(`ds/downloadEscape.test.js`가 디스패치에서 파생한다).
 
 ## 5. UX 계약
 
@@ -425,6 +426,8 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | ~~**D-06**~~ | 전역 포커스 링을 취소하는 규칙 | `globals.css`에 전역 `:focus-visible { outline: 2px solid var(--primary) }`가 이미 있는데(L4946) **12곳이 그것을 취소**하고 테두리색·밑줄 변화로 대체하고 있었다 | ✅ **2026-08-19 완료**. 12곳에서 `outline: none|0`을 제거해 전역 링이 적용되게 했다(hover 스타일은 그대로). `input` 3곳은 `:where(input…):focus-visible { … !important }`가 덮으므로 예외. `src/app/focusVisible.test.js`가 ① `:focus-visible` 규칙의 취소 ② 전역 규칙보다 뒤에 선언된 기본 규칙의 취소를 CSS에서 파생해 차단하고, input 예외의 **근거 규칙 존재**도 함께 단언한다 |
 | ~~**D-07**~~ | 다운로드 경로 불균일 | 14개 도구 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26·5-18 본체·`PaidOrganicTrend`였다 | ✅ **2026-08-19 완료**. 5-26은 섹션 헤드의 직접 다운로드 버튼을 결론 카드의 `DownloadHub`로 옮겼다(같은 파일이 두 곳에서 다운로드를 주면 어느 쪽이 정본인지 갈린다). 5-18 본체는 CSV·매핑 허브라 산출물을 각 subtool이 소유하므로 맨밑 상세문서 탈출구(claude-ux §6)를 쓰고 사유를 코드에 남겼다. `PaidOrganicTrend`는 판정 한 줄과 수치 3개뿐이라 내보낼 "계산한 인사이트"가 없다(원천 데이터 되돌려주기는 §12.27 금지). `ds/downloadEscape.test.js`가 라우트에서 파생해 강제하고, **예외는 코드에 사유 표식이 있어야 통과**한다 |
 | ~~**D-08**~~ | 첫 행동 과밀(홈·`/start`) | **전제가 낡았다**(2026-08-19 확인). 외부 검토는 커밋 #690~#695 이전 화면 기준이다. 현재 히어로는 목적 CTA 3개 중 하나만 `--primary`(채운 배경·16px·그림자)이고 나머지는 외곽선 14px이며, 보조 진입점은 텍스트 링크다. `/start`도 "업로드 먼저"를 스모크가 이미 강제한다 | ✅ **2026-08-19 완료**. 재설계 대신 **계약을 고정**했다 — `LandingPage.smoke.test.jsx`가 KO/EN 모두에서 primary가 정확히 하나이고, 목적 CTA가 3개를 넘지 않으며, 보조 진입점이 버튼으로 승격되지 않는지 검사한다. 3열 균등 배치는 §12.28에 기록된 의도된 설계이므로 뒤집지 않았다 |
+
+| **D-13** | PR #696으로 승격된 도구의 다운로드 탈출구 | `5-18-trend`·`5-18-forecast`가 독립 도구가 됐는데 허브 안에서 형제 단계가 주던 탈출구 없이 랜딩만 있다. `cannibal`·`mmm`은 상세문서 탈출구를 갖고, `paid-organic`은 내보낼 산출물이 없다는 사유가 있다 | `ds/downloadEscape.test.js`의 `KNOWN_GAPS`가 두 건을 부채로 세고 **늘어나는 것만 막는다**(정당한 예외 `EXEMPT`와 섞지 않는다 — 섞으면 "원래 이런 것"으로 굳는다). 해소하면 목록에서 지운다 |
 
 ### P2 — 측정·문서
 

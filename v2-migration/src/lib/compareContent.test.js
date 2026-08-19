@@ -178,6 +178,9 @@ describe("brandFacts", () => {
       path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "components/RootDocument.jsx"),
       "utf-8",
     );
+    // 값 참조만 확인하면 import가 빠져도 통과한다 — 실제로 그랬고 빌드가 잡았다.
+    // 문자열이 아니라 "동작하는가"에 가까운 것까지 본다.
+    expect(rootDocument).toMatch(/import \{ BRAND \} from "@\/lib\/brandFacts"/);
     expect(rootDocument).toMatch(/name: BRAND\.name/);
     expect(rootDocument, "JSON-LD에 제품명을 리터럴로 다시 적지 말 것").not.toMatch(/name: "Growth/);
   });
