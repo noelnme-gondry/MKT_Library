@@ -5,12 +5,12 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import Script from "next/script";
+import AdSenseScript from "@/components/AdSenseScript";
 
 export default function BlogLayout({ children }) {
   return (
     <>
-      <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3073450406371629" crossOrigin="anonymous" strategy="afterInteractive" />
+      <AdSenseScript />
       <div className="app">
         <Sidebar />
         <div className="main">
