@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
@@ -215,9 +216,17 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             <select value={selected?.key || ""} onChange={(event) => setMetric(event.target.value)} aria-label={locale === "en" ? "Seasonality metric" : "시즈널리티 지표"}>
               {availableMetrics.map((item) => <option key={item.key} value={item.key}>{locale === "en" ? item.en : item.ko}</option>)}
             </select>
-            <div className="ab-pillgroup" aria-label={locale === "en" ? "Seasonality unit" : "시즈널리티 단위"}>
-              {["month", "week"].map((value) => <button key={value} disabled={!availableGrains.includes(value)} className={`ab-pill ${activeGrain === value ? "active" : ""}`} onClick={() => setGrain(value)} title={!availableGrains.includes(value) ? (locale === "en" ? "Not available for this input frequency" : "입력 단위상 정확히 집계할 수 없습니다") : undefined}>{value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별")}</button>)}
-            </div>
+            <PillGroup
+              ariaLabel={locale === "en" ? "Seasonality unit" : "시즈널리티 단위"}
+              value={activeGrain}
+              onChange={setGrain}
+              options={["month", "week"].map((value) => ({
+                value,
+                label: value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별"),
+                disabled: !availableGrains.includes(value),
+                title: !availableGrains.includes(value) ? (locale === "en" ? "Not available for this input frequency" : "입력 단위상 정확히 집계할 수 없습니다") : undefined,
+              }))}
+            />
             {downloadItems.length > 0 && (
               <DownloadHub items={downloadItems} align="right" locale={locale} label={locale === "en" ? "Download" : "데이터 받기"} toolId="5-2" />
             )}

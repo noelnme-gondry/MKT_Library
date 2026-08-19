@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -258,39 +259,45 @@ export default function PacingTab({ locale = "ko" } = {}) {
       <section className="block" id="s-pace">
         <h2 className="section-title">{T.sectionTitle}</h2>
 
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{T.metricLabel}</span>
-          <button className={`ab-pill ${metric === "cost" ? "active" : ""} ${!hasCost ? "disabled" : ""}`} onClick={() => hasCost && setMetric("cost")} disabled={!hasCost}>
-            {T.cost}{!hasCost && T.locked}
-          </button>
-          <button className={`ab-pill ${metric === "installs" ? "active" : ""} ${!hasInstalls ? "disabled" : ""}`} onClick={() => hasInstalls && setMetric("installs")} disabled={!hasInstalls}>
-            {T.installs}{!hasInstalls && T.locked}
-          </button>
-          <button className={`ab-pill ${metric === "actions" ? "active" : ""} ${!hasActions ? "disabled" : ""}`} onClick={() => hasActions && setMetric("actions")} disabled={!hasActions}>
-            {actionLabel}{!hasActions && T.locked}
-          </button>
-        </div>
+        <PillGroup
+          label={T.metricLabel}
+          value={metric}
+          onChange={setMetric}
+          options={[
+            { value: "cost", label: <>{T.cost}{!hasCost && T.locked}</>, disabled: !hasCost },
+            { value: "installs", label: <>{T.installs}{!hasInstalls && T.locked}</>, disabled: !hasInstalls },
+            { value: "actions", label: <>{actionLabel}{!hasActions && T.locked}</>, disabled: !hasActions },
+          ]}
+        />
 
         {!isCost && (
           <>
-            <div className="ab-pillgroup" style={{ marginTop: "8px" }}>
-              <span className="ab-pillgroup-label">{T.forecastMode}</span>
-              <button className={`ab-pill ${!useWd ? "active" : ""}`} onClick={() => setForecastMode("linear")}>{T.linear}</button>
-              <button className={`ab-pill ${useWd ? "active" : ""} ${!wdOk ? "disabled" : ""}`} disabled={!wdOk} onClick={() => setForecastMode("weekday")}>
-                {T.weekday}{!wdOk && T.locked}
-              </button>
-            </div>
+            <PillGroup
+              style={{ marginTop: "8px" }}
+              label={T.forecastMode}
+              value={useWd ? "weekday" : "linear"}
+              onChange={setForecastMode}
+              options={[
+                { value: "linear", label: T.linear },
+                { value: "weekday", label: <>{T.weekday}{!wdOk && T.locked}</>, disabled: !wdOk },
+              ]}
+            />
             {!wdOk && <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>{T.weekdayHint}</p>}
           </>
         )}
 
         {metric === "actions" && (
           <>
-            <div className="ab-pillgroup" style={{ marginTop: "8px" }}>
-              <span className="ab-pillgroup-label">{T.actionDef}</span>
-              <button className={`ab-pill ${actionDef === "registration" ? "active" : ""}`} onClick={() => setActionDef("registration")}>{T.registration}</button>
-              <button className={`ab-pill ${actionDef === "purchase" ? "active" : ""}`} onClick={() => setActionDef("purchase")}>{T.purchase}</button>
-            </div>
+            <PillGroup
+              style={{ marginTop: "8px" }}
+              label={T.actionDef}
+              value={actionDef}
+              onChange={setActionDef}
+              options={[
+                { value: "registration", label: T.registration },
+                { value: "purchase", label: T.purchase },
+              ]}
+            />
             <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>{T.actionDefHint}</p>
           </>
         )}

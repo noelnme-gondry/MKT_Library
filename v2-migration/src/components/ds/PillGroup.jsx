@@ -21,7 +21,9 @@ import React, { useId, useRef } from "react";
  * options: [{ value, label, disabled?, title? }]
  * extra: 선택지가 아닌 부가 버튼(예: "커스텀 지표") — radiogroup 밖에 렌더된다.
  */
-export default function PillGroup({ label, options = [], value, onChange, extra = null, style, className = "" }) {
+// ariaLabel: 보이는 라벨 span을 두지 않는 자리에서 radiogroup의 접근名을 준다.
+// 이름 없는 radiogroup은 보조기술이 "무엇을 고르는 그룹인지" 말하지 못한다.
+export default function PillGroup({ label, labelTitle, ariaLabel, options = [], value, onChange, extra = null, style, className = "" }) {
   const labelId = useId();
   const groupRef = useRef(null);
 
@@ -51,8 +53,10 @@ export default function PillGroup({ label, options = [], value, onChange, extra 
 
   return (
     <div className={`ab-pillgroup ${className}`.trim()} style={style}>
-      {label && <span className="ab-pillgroup-label" id={labelId}>{label}</span>}
-      <div ref={groupRef} role="radiogroup" aria-labelledby={label ? labelId : undefined} style={{ display: "contents" }}>
+      {/* 라벨의 `title`은 `.ab-pillgroup-label[title]` 어포던스 규칙이 걸린 자리라
+          점선 밑줄·cursor:help가 붙는다(product-ssot §6.3). 이관 때 잃지 않게 받는다. */}
+      {label && <span className="ab-pillgroup-label" id={labelId} title={labelTitle}>{label}</span>}
+      <div ref={groupRef} role="radiogroup" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : ariaLabel} style={{ display: "contents" }}>
         {options.map((option, index) => (
           <button
             key={option.value}

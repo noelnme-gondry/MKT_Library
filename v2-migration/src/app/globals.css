@@ -5049,6 +5049,10 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .pvm-efficiency-bridge > p { margin: 9px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
 .pvm-efficiency-bridge > p.pvm-efficiency-bridge__note { color: var(--warning); }
 @media (max-width: 620px) { .pvm-efficiency-bridge__cells { grid-template-columns: 1fr; } }
+/* 비활성 사유 — 못 누르는 버튼 옆에서 무엇을 고치면 되는지 말한다(product-ssot §5.4). */
+.blocked-options-note { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.blocked-options-note > span { display: inline-flex; gap: 5px; }
+.blocked-options-note strong { color: var(--text-secondary); font-weight: 700; }
 /* 적합도 등급 — 숫자 옆의 평어 한 마디. 색만으로 구분하지 않도록 글자를 함께 둔다
    (product-ssot §6.2). */
 .mmm-fit-grade { display: block; margin-top: 3px; font-size: 10px; font-style: normal; font-weight: 650; letter-spacing: -.01em; }

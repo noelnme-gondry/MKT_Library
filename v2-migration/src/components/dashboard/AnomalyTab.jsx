@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import Link from "next/link";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
@@ -265,14 +266,12 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
       <section className="block" id="s-anom">
         <h2 className="section-title">{tr("이상 감지", "Anomaly Detection")}</h2>
 
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
-          {metricOpts.map(([k, l]) => (
-            <button key={k} className={`ab-pill ${metric === k ? "active" : ""}`} onClick={() => setMetric(k)}>
-              {l}
-            </button>
-          ))}
-        </div>
+        <PillGroup
+          label={tr("지표", "Metric")}
+          value={metric}
+          onChange={setMetric}
+          options={metricOpts.map(([k, l]) => ({ value: k, label: l }))}
+        />
 
         <div className="ab-pillgroup">
           <span className="ab-pillgroup-label">{tr("민감도(z)", "Sensitivity (z)")}</span>

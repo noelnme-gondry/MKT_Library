@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Link from "next/link";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
@@ -425,16 +426,26 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <div className="analysis-local-controls" aria-label={tr("실험 조건", "Experiment settings")}>
               <div className="analysis-local-controls__inner">
                 <span className="analysis-local-controls__label">{tr("실험 조건", "Experiment settings")}</span>
-                <div className="ab-pillgroup" style={{ margin: 0 }}>
-                  <span className="ab-pillgroup-label">{tr("테스트 유형", "Test type")}</span>
-                  <button className={`ab-pill ${testType === "binary" ? "active" : ""}`} onClick={() => setTestType("binary")}>{tr("전환율", "Conversion rate")}</button>
-                  <button className={`ab-pill ${testType === "continuous" ? "active" : ""}`} onClick={() => setTestType("continuous")}>{tr("평균값 (CPR·ARPPU·매출)", "Average value")}</button>
-                </div>
-                <div className="ab-pillgroup" style={{ margin: 0 }}>
-                  <span className="ab-pillgroup-label">{tr("통화", "Currency")}</span>
-                  <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩ KRW</button>
-                  <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$ USD</button>
-                </div>
+                <PillGroup
+                  style={{ margin: 0 }}
+                  label={tr("테스트 유형", "Test type")}
+                  value={testType}
+                  onChange={setTestType}
+                  options={[
+                    { value: "binary", label: tr("전환율", "Conversion rate") },
+                    { value: "continuous", label: tr("평균값 (CPR·ARPPU·매출)", "Average value") },
+                  ]}
+                />
+                <PillGroup
+                  style={{ margin: 0 }}
+                  label={tr("통화", "Currency")}
+                  value={currency}
+                  onChange={setDisplayCurrency}
+                  options={[
+                    { value: "KRW", label: "₩ KRW" },
+                    { value: "USD", label: "$ USD" },
+                  ]}
+                />
               </div>
             </div>
 
