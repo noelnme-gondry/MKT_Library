@@ -317,6 +317,7 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | 레거시 pill | `LegacyPillGroupA11y` | **이관 전 호환용.** 신규 화면에서 `.ab-pillgroup` 직접 작성 금지 |
 | 결과 카드 | `ResultActionCard` | §5.5의 4층 + 상세 |
 | 상태·증거 | `AnalysisStatusBadge`·`EvidenceStatusBadge`·`EvidenceHint` | 색 외 라벨·아이콘·텍스트 |
+| 도움말 | `HelpTip` | `<details>` 기반 `ⓘ` — 키보드·터치·SR이 네이티브로 동작. 설명을 `title`에만 두지 않는다 |
 | 업로드 가이드 | `CsvGuide`·`ToolBrief`·`ToolTemplateAction` | 입력 조건·예시·템플릿·키보드 실행·오류 경로 |
 | 표 | `DataTable` | thead 강제·숫자 우측·빈 상태·모바일 대체·다운로드 일치 |
 | 다운로드 | `DownloadHub` + `utils/download.js` | 단일 드롭다운, BOM+CRLF |
@@ -357,7 +358,7 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 
 | 가드 | 강제할 내용 |
 |---|---|
-| `titleAffordance.test.js` | `title`을 가진 인터랙티브·정보 요소가 어포던스 CSS 또는 `ⓘ` 대안을 갖는지 |
+| ~~`titleAffordance.test.js`~~ | ✅ 완료 — 전부를 금지하지 않는다(보조 설명은 정당). **title이 유일한 경로일 때만** 잡는다: 포커스 불가한 `ⓘ` 글리프 + `th`/`td` 어포던스 규칙 존재 |
 | ~~`focusVisible.test.js`~~ | ✅ 완료 — 개수를 세는 대신 **캐스케이드로 유효한 취소**만 잡는다(D-06) |
 | `toolStateCoverage.test.js` | 공개 도구 14개가 §5.4의 상태 8종 문구를 갖는지(파생) |
 | ~~`brandClaimScope.test.js`~~ | ✅ 완료 — 별도 파일을 만들지 않고 계약 주인 파일(`lib/compareContent.test.js`)에 넣었다(같은 계약을 두 파일이 나눠 갖지 않는다) |
@@ -419,7 +420,7 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 |---|---|---|---|
 | ~~**D-02**~~ | 브랜드명 2표기 공존 | 80곳 vs 2곳 | ✅ **2026-08-19 완료**. `BRAND.name`·`ko.shortName`을 확정값으로 교체. `llms.txt` H1을 리터럴 대신 `BRAND.name`에서 파생시켜 재발을 가드. **남은 판단**: `BRAND`/`getBrand()`는 여전히 소비처 0 — 배선할지 제거할지 미결 |
 | ~~**D-03**~~ | F-03 문구가 절대 표현 | `brandFacts.js` privacy | ✅ **2026-08-19 완료**. "브라우저에서 처리되며 원본 행을 서버로 전송·저장하지 않습니다"로 완화 |
-| **D-04** | `title` 단독 어포던스 | 컴포넌트 `title=` **237곳**, 어포던스 CSS는 `.ab-pillgroup-label`·`.chip`·`.seasonality-heatmap__cell` **3개 셀렉터뿐**(전역 `[title]` 규칙 없음) | 전역 규칙 확대 또는 `ⓘ` 이관 + `titleAffordance` 가드. **AGENTS.md §7의 "전역 규칙 1개가 전부를 덮는다"는 서술은 틀렸으므로 함께 정정** |
+| **D-04** | `title` 단독 어포던스 | **부분 완료(2026-08-19)**. 먼저 수를 다시 셌다 — `grep title=` 249곳 중 **58곳은 React 컴포넌트 prop**(`ResultActionCard title=` 등)이라 접근성과 무관하다. 실제 DOM 속성은 **191곳**, 그중 대체 경로 없는 것이 **180곳**. | ✅ **해결**: 화면에 `ⓘ` 하나만 있고 설명 전체가 title에 있던 **6곳**을 `ds/HelpTip`(details 기반 — 키보드·터치·SR이 네이티브로 동작)으로 이관하고 죽은 CSS 3블록을 제거. 표 헤더·셀 **59곳**에 어포던스 규칙(`th[title]`·`td[title]`) 추가. `app/titleAffordance.test.js`가 재발을 차단. ⏳ **남음**: 보이는 글자가 있는 버튼의 부연 설명 55곳 등 — 판단에 필수는 아니라 우선순위 낮음. **AGENTS.md §7의 "전역 규칙 1개가 전부를 덮는다"는 서술은 정정 완료** |
 | **D-05** | legacy pill 이관 미완 | `.ab-pillgroup` **17파일** vs `PillGroup` **6파일** | 신규 코드 100% `PillGroup`, 레거시 이관 후 어댑터 제거 |
 | ~~**D-06**~~ | 전역 포커스 링을 취소하는 규칙 | `globals.css`에 전역 `:focus-visible { outline: 2px solid var(--primary) }`가 이미 있는데(L4946) **12곳이 그것을 취소**하고 테두리색·밑줄 변화로 대체하고 있었다 | ✅ **2026-08-19 완료**. 12곳에서 `outline: none|0`을 제거해 전역 링이 적용되게 했다(hover 스타일은 그대로). `input` 3곳은 `:where(input…):focus-visible { … !important }`가 덮으므로 예외. `src/app/focusVisible.test.js`가 ① `:focus-visible` 규칙의 취소 ② 전역 규칙보다 뒤에 선언된 기본 규칙의 취소를 CSS에서 파생해 차단하고, input 예외의 **근거 규칙 존재**도 함께 단언한다 |
 | **D-07** | 다운로드 경로 불균일 | 14개 도구 전부 `ResultActionCard` 보유(✅). `DownloadHub` 미사용: 5-26(직접 `downloadCsv`), 5-18 본체·`PaidOrganicTrend` | 허브로 통일 또는 "허브 불필요" 사유를 코드 주석으로 명시 |

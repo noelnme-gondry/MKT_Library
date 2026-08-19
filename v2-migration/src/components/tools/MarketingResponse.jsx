@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import HelpTip from "@/components/ds/HelpTip";
 import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -3836,7 +3837,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               if (contributionViewStart && nextEnd && nextEnd < contributionViewStart) setContributionViewStart("");
             }} aria-label={tx("기여 표시 종료일", "Contribution view end date")} title={tx(`${mmmWeekStart === "monday" ? "일요일" : "토요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Sundays" : "Saturdays"} are accepted.`)} />
             {(contributionViewStart || contributionViewEnd) && <button className="ab-pill" onClick={() => { setContributionViewStart(""); setContributionViewEnd(""); }}>{tx("전체", "All")}</button>}
-            <span title={tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
+            <HelpTip label={tx("표시 기간 필터 설명", "About the date filter")}>{tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")}</HelpTip>
           </div>
         )}
         {stage === "mmm" && mmm && !mmm.empty && (
@@ -4798,7 +4799,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               )}
               {health && (
                 <section className="mmm-bayesian-health-detail" aria-label={tx("모델 건강 진단", "Model health diagnostics")}>
-                  <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>{tx("모델 건강", "Model health")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx(`예측 오차 ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · 경고 ${health.flags?.length || 0}건`, `Forecast error ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · ${health.flags?.length || 0} warnings`)}</span><span title={tx(`전문: 전체 wMAPE·시간순 검증 오차·잔차 상관·VIF·채널 상관·계절성 후보·사전분포 이동을 함께 점검합니다.\n쉬운 말: 전체 예측은 맞아도 함께 움직이는 채널은 각자 몫을 정확히 나누기 어렵습니다. 이 값들은 전체 학습 기간 기준입니다.`, `Technical: checks fit error, time-ordered validation, residual correlation, VIF, channel correlation, seasonality candidates, and prior shifts.\nPlain: even a good overall forecast cannot cleanly separate channels that move together. These checks use the full training period.`)} style={{ cursor: "help", color: "var(--primary, #adc6ff)", fontSize: "17px" }}>ⓘ</span></h2>
+                  <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>{tx("모델 건강", "Model health")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx(`예측 오차 ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · 경고 ${health.flags?.length || 0}건`, `Forecast error ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · ${health.flags?.length || 0} warnings`)}</span><HelpTip label={tx("모델 건강 지표 설명", "About model health metrics")}>{tx(`전문: 전체 wMAPE·시간순 검증 오차·잔차 상관·VIF·채널 상관·계절성 후보·사전분포 이동을 함께 점검합니다.\n쉬운 말: 전체 예측은 맞아도 함께 움직이는 채널은 각자 몫을 정확히 나누기 어렵습니다. 이 값들은 전체 학습 기간 기준입니다.`, `Technical: checks fit error, time-ordered validation, residual correlation, VIF, channel correlation, seasonality candidates, and prior shifts.\nPlain: even a good overall forecast cannot cleanly separate channels that move together. These checks use the full training period.`)}</HelpTip></h2>
                   <div style={{ display: "none", gap: "10px", flexWrap: "wrap" }}>
                     <div className="stat-card"><div className="lbl">{tx("전체 wMAPE", "In-sample wMAPE")}</div><div className="val">{Number.isFinite(health.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</div></div>
                     <div className="stat-card"><div className="lbl">{tx("시간순 OOS wMAPE", "Time-ordered OOS wMAPE")}</div><div className="val">{Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"}</div></div>
@@ -4903,14 +4904,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     ))}
                   </div>
                 ) : <p className="muted" style={{ fontSize: "12px" }}>{tx("계산할 수 없어요.", "Can't compute this.")}</p>}
-                    <span
-                      className="mmm-chart-help"
-                      tabIndex="0"
-                      title={includeBaseDemandInShare
+                    <HelpTip label={tx("기여도 차트 해석 도움말", "Contribution-chart interpretation help")}>
+                      {includeBaseDemandInShare
                         ? tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중입니다. 인과 기여율이나 Shapley R²가 아니며, 진한 보라는 광고 채널입니다.", "Each share is the driver's mean squared weekly contribution divided by the total. It is not causal attribution or Shapley R². Dark purple marks ad channels.")
                         : tx("기본 수요·추세를 분모와 표시에서 제외하고, 남은 드라이버만 다시 100%로 정규화했습니다. 모델과 원본 기여값은 바뀌지 않습니다.", "Base demand · trend is removed from both the display and denominator; remaining drivers are re-normalized to 100%. The model and raw contributions do not change.")}
-                      aria-label={tx("기여도 차트 해석 도움말", "Contribution-chart interpretation help")}
-                    >ⓘ</span>
+                    </HelpTip>
               </section>
 
               <section className="mmm-result-step" data-mmm-flow-step="coefficients" aria-labelledby="mmm-bayesian-coef-title">

@@ -162,10 +162,14 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(screen.getAllByText(/다음 테스트에서 무엇을 확인할까/).length).toBeGreaterThan(0);
     expect(screen.getByText(/누적 집행 위험 구간/)).toBeTruthy();
     expect(screen.getAllByText(/현재 위험 구간/).length).toBeGreaterThan(0);
-    // The explanatory sentence is compacted into a hover/focus help icon;
-    // leave the metric controls visible without a full-width description line.
-    expect(container.querySelector(".section-help")?.getAttribute("title")).toContain("분석 기준 지표");
-    expect(screen.queryByText(/후킹 방식.*통계적으로 분석/)).toBeFalsy();
+    // 설명은 전체 폭 문단 대신 ds/HelpTip(details)로 접어 둔다. 예전에는 hover 전용
+    // title이라 터치·키보드로는 열 수 없었고, 이 단언도 "툴팁 속성이 있다"를 확인하며
+    // 그 상태를 고정하고 있었다 — 이제 실제로 열리는 내용을 본다(product-ssot §6.3).
+    const sectionHelp = container.querySelector(".help-tip");
+    expect(sectionHelp).toBeTruthy();
+    expect(sectionHelp.textContent).toContain("분석 기준 지표");
+    // details는 닫혀도 노드가 남는다. 설명이 기본 화면을 차지하지 않는지를 본다.
+    expect(sectionHelp.closest("details").open).toBe(false);
     // The combination section remains present even when the seed produces an honest empty state.
     expect(screen.getAllByText(/어떤 요소 조합이 좋았나/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText(/다음 검토 약속/));

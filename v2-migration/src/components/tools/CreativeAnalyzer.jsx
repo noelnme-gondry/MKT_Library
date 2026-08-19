@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import HelpTip from "@/components/ds/HelpTip";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
@@ -1231,12 +1232,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <h2 className="section-title">
           {tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}
           {hasDecompose && (
-            <span
-              className="section-help"
-              tabIndex="0"
-              title={`${C.decomposeDescPre}${decMeta.desc}${tr("에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.", " statistically. Use the buttons below to switch the metric being analyzed (CTR·CVR·CPA·ROAS).")}`}
-              aria-label={tr("속성별 효과 분석 도움말", "Attribute effect analysis help")}
-            >ⓘ</span>
+            <HelpTip label={tr("속성별 효과 분석 도움말", "Attribute effect analysis help")}>
+              {`${C.decomposeDescPre}${decMeta.desc}${tr("에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.", " statistically. Use the buttons below to switch the metric being analyzed (CTR·CVR·CPA·ROAS).")}`}
+            </HelpTip>
           )}
         </h2>
         {hasDecompose ? (

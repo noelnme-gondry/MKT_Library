@@ -1878,44 +1878,6 @@
         color: var(--on-primary);
         font-weight: 600;
       }
-      .cohort-help {
-        display: inline-grid;
-        place-items: center;
-        width: 14px;
-        height: 14px;
-        margin-left: 5px;
-        border: 1px solid var(--border);
-        border-radius: 50%;
-        color: var(--text-muted);
-        cursor: help;
-        font: 700 9.5px var(--font-mono);
-        vertical-align: 1px;
-        outline: none;
-      }
-      .cohort-help:hover, .cohort-help:focus-visible {
-        border-color: var(--primary);
-        color: var(--primary);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
-      }
-      .section-help {
-        display: inline-grid;
-        place-items: center;
-        width: 14px;
-        height: 14px;
-        margin-left: 6px;
-        border: 1px solid var(--border);
-        border-radius: 50%;
-        color: var(--text-muted);
-        cursor: help;
-        font: 700 9.5px var(--font-mono);
-        vertical-align: 2px;
-        outline: none;
-      }
-      .section-help:hover, .section-help:focus-visible {
-        border-color: var(--primary);
-        color: var(--primary);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
-      }
 
       .nav-divider {
         height: 1px;
@@ -3351,6 +3313,15 @@
       .chip[title]:not(.ab-pill),
       .seasonality-heatmap__cell[title] {
         border-bottom: 1px dotted currentColor;
+        cursor: help;
+      }
+      /* 표 헤더·셀의 약어는 전체 의미가 title에만 있다(실측 59곳). th에는 이미
+         아래 테두리가 있어 border-bottom을 겹치면 선이 두 줄로 보이므로 밑줄로 준다.
+         product-ssot §6.3 · D-04. */
+      th[title],
+      td[title] {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
         cursor: help;
       }
       .ab-pillgroup-label {
@@ -5050,6 +5021,16 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 @media (max-width: 560px) { .sop-editorial__meta { align-items: flex-start; flex-direction: column; gap: 3px; } }
 /* 통계 방법·보조 수치 접기. 결론은 펴고 근거는 접는다(§12.14) — 이 클래스를 쓰는
    자리는 전부 "요약 한 줄 + 펼치면 방법" 구조여야 한다. 새로 만들지 말고 재사용할 것. */
+/* HelpTip — `ⓘ` 도움말. 설명을 title에만 두면 터치·키보드에서 못 연다(product-ssot §6.3).
+   네이티브 details라 조작 계약(Enter/Space·포커스·SR)이 공짜로 따라온다. */
+.help-tip { display: inline-block; vertical-align: baseline; }
+.help-tip > summary.help-tip__toggle { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border); color: var(--text-muted); font-size: 11px; line-height: 1; cursor: help; list-style: none; }
+.help-tip > summary.help-tip__toggle::-webkit-details-marker { display: none; }
+.help-tip[open] > summary.help-tip__toggle, .help-tip > summary.help-tip__toggle:hover { border-color: var(--primary); color: var(--primary); }
+/* 터치 타깃은 시각 크기와 별개로 확보한다(product-ssot §6.4 — 44px 권장). */
+.help-tip > summary.help-tip__toggle::after { content: ""; position: absolute; width: 44px; height: 44px; transform: translate(-13px, -13px); }
+.help-tip > summary.help-tip__toggle { position: relative; }
+.help-tip__body { display: block; max-width: 420px; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-container-lowest); color: var(--text-secondary); font-size: 11px; font-weight: 400; line-height: 1.55; white-space: pre-line; text-align: left; }
 .stat-method { margin: 10px 0 0; }
 .stat-method > summary { color: var(--text-muted); font-size: 11.5px; cursor: pointer; list-style: none; }
 .stat-method > summary::-webkit-details-marker { display: none; }
@@ -5743,9 +5724,6 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-details__technical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 7px; }
 .analysis-details__technical-note { margin: 7px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
 
-/* MMM의 기여도 막대와 토글은 계속 첫 화면에 두고, 방법론 설명만 hover/focus로 분리한다. */
-.mmm-chart-help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-top: 8px; border: 1px solid var(--border); border-radius: 50%; color: var(--text-muted); cursor: help; font: 700 10px var(--font-mono); }
-.mmm-chart-help:hover, .mmm-chart-help:focus-visible { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); }
 
 /* STL trend ledger: 0 기준선에서 양·음 변화를 좌우로 읽는다. */
 .trend-change-ledgers { margin-top: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }

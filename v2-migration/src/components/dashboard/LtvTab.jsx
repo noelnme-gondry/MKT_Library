@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import HelpTip from "@/components/ds/HelpTip";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -340,7 +341,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     { k: "ltv", label: T.colLtv(ltvHorizon), render: (r) => (r.ltvAtHorizon != null ? (
       <>
         {fmtCur(r.ltvAtHorizon)}
-        {r.ltvPredicted && <span style={{ fontSize: "11px", color: "var(--primary)", cursor: "help", marginLeft: "4px" }} title={T.colLtvTooltip(r.maxObsDn, ltvHorizon)}>ⓘ</span>}
+        {r.ltvPredicted && <HelpTip label={T.colLtv(ltvHorizon)} className="help-tip--inline">{T.colLtvTooltip(r.maxObsDn, ltvHorizon)}</HelpTip>}
       </>
     ) : "—") },
     { k: "ratio", label: T.colRatio, cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },
