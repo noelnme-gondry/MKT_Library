@@ -5422,7 +5422,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
               </section>
 
-              {/* ── 맨 밑: 상세 설명 문서 다운로드 ── */}
+              {/* ── 맨 밑: 상세 설명 문서 다운로드 ──
+                  DownloadHub(결과 최상단 드롭다운)을 쓰지 않는 자리다. 5-18은 CSV·매핑
+                  허브이고 실제 분석 산출물은 각 subtool이 소유하므로, 여기 있는 것은
+                  "결과 받기"가 아니라 claude-ux §6의 **맨밑 상세문서 탈출구**다.
+                  드롭다운으로 감싸면 한 항목짜리 메뉴가 되어 클릭만 늘어난다.
+                  (product-ssot §5.5 · D-07) */}
               <div className="mmm-result-download" data-mmm-flow-step="download">
                 <button type="button"
                   onClick={() => textDownload(`${tx("MMM_기여분해_설명", "mmm_contribution_explained")}_${mmm.target}_${_today()}.md`, buildMmmGuideDoc(mmm, tgtKo, locale))}>

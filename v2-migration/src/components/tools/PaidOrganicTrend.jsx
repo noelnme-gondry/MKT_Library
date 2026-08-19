@@ -323,6 +323,10 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                   <small>{C.ctaHint}</small>
                 </div>
               </section>
+              {/* download 없음: 이 화면의 산출물은 판정 한 줄과 수치 3개뿐이라
+                  CSV로 되돌려줄 "계산한 인사이트"가 없다. 원천 데이터를 그대로
+                  내보내는 것은 §12.27이 금지한다. 정밀 진단이 필요하면 잠식 진단
+                  화면으로 넘어가며, 다운로드는 거기가 소유한다. (D-07) */}
               <ResultActionCard
                 tone={verdictCopy[2] === "bad" ? "bad" : verdictCopy[2] === "good" ? "good" : "neutral"}
                 title={locale === "en" ? "Conclusion" : "결론"}

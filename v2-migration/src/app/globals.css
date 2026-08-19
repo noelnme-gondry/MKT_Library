@@ -9077,7 +9077,6 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .asa-tool__summary-grid p { margin:0; }
 .asa-tool__section-head { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px; }
 .asa-tool__section-head p { max-width:690px;margin:5px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.6; }
-.asa-tool__download { flex:0 0 auto;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-1);color:var(--text-primary);font:inherit;font-size:11px;cursor:pointer; }
 .asa-tool__action { color:var(--text-primary);font-size:11px; }.asa-tool__action--raise { color:var(--success); }.asa-tool__action--lower { color:var(--danger); }.asa-tool__action--target_needed,.asa-tool__action--budget_needed { color:var(--warning); }
 .diagnostic-tool__verdict { border-left:4px solid var(--border); }.diagnostic-tool__verdict--ok { border-left-color:var(--success); }.diagnostic-tool__verdict--warn { border-left-color:var(--warning); }.diagnostic-tool__verdict--severe { border-left-color:var(--danger); }
 .diagnostic-tool__verdict strong { color:var(--text-primary);font-size:15px; }.diagnostic-tool__verdict p { margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.65; }

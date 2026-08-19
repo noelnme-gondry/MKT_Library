@@ -5,6 +5,7 @@ import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
@@ -107,9 +108,23 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
               targetDirection: "neutral",
               reviewQuestion: tr("변경한 검색어·CPT 조치가 목표 CPA를 지키면서 소진을 개선했는가?", "Did the changed search terms and CPT actions improve pacing while maintaining target CPA?"),
             } : null}
+            download={recommendations.length ? (
+              <DownloadHub
+                toolId="5-26"
+                locale={locale}
+                label={tr("결과 받기", "Get results")}
+                items={[{
+                  label: tr("권장 조치 (CSV)", "Recommended actions (CSV)"),
+                  desc: tr("검색어별 Exact 승격·CPT 조정·제외 후보", "Exact promotion, CPT changes, and negative candidates by search term"),
+                  icon: "⬇",
+                  analyticsType: "asa_actions",
+                  onSelect: downloadActions,
+                }]}
+              />
+            ) : null}
           /></div>
           <section className="block" id="asa-actions">
-            <div className="asa-tool__section-head"><div><h2 className="section-title">{tr("키워드별 권장 조치", "Recommended keyword actions")}</h2><p>{tr("Exact 승격은 기존 비-Exact 키워드를 멈추라는 뜻이 아닙니다. 중복 경합을 피하려면 승격 뒤 원래 타겟·네거티브 구조를 함께 확인하세요.", "Exact promotion does not mean pausing the original non-Exact target. After promotion, review the original target and negative structure to avoid overlap.")}</p></div><button type="button" className="asa-tool__download" onClick={downloadActions}>{tr("CSV로 받기", "Download CSV")}</button></div>
+            <div className="asa-tool__section-head"><div><h2 className="section-title">{tr("키워드별 권장 조치", "Recommended keyword actions")}</h2><p>{tr("Exact 승격은 기존 비-Exact 키워드를 멈추라는 뜻이 아닙니다. 중복 경합을 피하려면 승격 뒤 원래 타겟·네거티브 구조를 함께 확인하세요.", "Exact promotion does not mean pausing the original non-Exact target. After promotion, review the original target and negative structure to avoid overlap.")}</p></div></div>
             <DataTable columns={columns} rows={recommendations} rowKey={(row) => `${row.term}-${row.campaign}-${row.adgroup}-${row.matchType}`} emptyText={tr("판정할 검색어 행이 없습니다. 검색어·비용·탭·설치 매핑을 확인하세요.", "No searchable term rows. Check the search term, cost, taps, and installs mapping.")} />
           </section>
         </>
