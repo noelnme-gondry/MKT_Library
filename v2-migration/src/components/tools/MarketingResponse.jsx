@@ -15,6 +15,8 @@ import { toLocalDecisionDate } from "@/lib/decisionReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { csvBody, downloadCsv } from "@/utils/download";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import WebRMmmAdvanced from "@/components/tools/WebRMmmAdvanced";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
@@ -4015,6 +4017,57 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       {renderTabs()}
       {(() => {
         const summary = responseStageSummary();
+        // PR #696으로 추세·예측이 독립 도구가 되면서, 허브 안에서 형제 단계가 제공하던
+        // 탈출구 없이 랜딩만 남았다. 각 단계가 **계산한 결과**를 결론 카드에서 바로
+        // 받아갈 수 있게 한다 — 원천 데이터를 그대로 돌려주지는 않는다
+        // (product-ssot §5.5 · D-13 · §12.27).
+        const stageDownloadItems = [];
+        if (stage === "trend" && trend && mmm && !mmm.empty) {
+          const actual = trend.rawTarget || mmm.panel.targets[mmm.target] || [];
+          const labels = mmm.panel.weekLabel || actual.map((_, index) => String(index + 1));
+          const baseline = trend.baselineTarget || actual;
+          const stlTrend = trend.stl?.trend || [];
+          const nonTrend = trendLedger?.stlNonTrend || [];
+          if (actual.length) {
+            stageDownloadItems.push({
+              label: tx("추세 분해 (CSV)", "Trend decomposition (CSV)"),
+              desc: tx("주차별 실제·베이스라인·STL 추세·추세 외 요인", "Weekly actual, baseline, STL trend, and non-trend component"),
+              icon: "⬇",
+              analyticsType: "trend_decomposition",
+              onSelect: () => {
+                const header = ["week", "actual", "baseline_input", "stl_trend", "non_trend"];
+                const rows = actual.map((value, index) => [
+                  labels[index] ?? index + 1,
+                  value ?? "",
+                  baseline[index] ?? "",
+                  stlTrend[index] ?? "",
+                  nonTrend[index] ?? "",
+                ]);
+                downloadCsv(csvBody(header, rows), "marketing_trend_decomposition");
+              },
+            });
+          }
+        }
+        if (stage === "lab" && forecast?.futLabels?.length) {
+          stageDownloadItems.push({
+            label: tx("예측 구간 (CSV)", "Forecast horizon (CSV)"),
+            desc: tx("기간별 예측값과 하한·상한, 채널별 미래 지출", "Forecast with lower/upper bounds and future spend by channel"),
+            icon: "⬇",
+            analyticsType: "forecast_horizon",
+            onSelect: () => {
+              const channels = forecast.chans || [];
+              const header = ["period", "forecast", "lower", "upper", ...channels.map((channel) => `spend_${channel.key}`)];
+              const rows = forecast.futLabels.map((label, index) => [
+                label,
+                forecast.predFut?.[index] ?? "",
+                forecast.lo?.[index] ?? "",
+                forecast.hi?.[index] ?? "",
+                ...channels.map((channel) => forecast.futSpendByKey?.[channel.key]?.[index] ?? ""),
+              ]);
+              downloadCsv(csvBody(header, rows), "marketing_forecast_horizon");
+            },
+          });
+        }
         return (
           <ResultActionCard
             toolId="5-18"
@@ -4027,6 +4080,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             headline={summary.headline}
             stats={summary.stats}
             points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
+            download={stageDownloadItems.length ? (
+              <DownloadHub
+                toolId={stage === "lab" ? "5-18-forecast" : "5-18-trend"}
+                locale={locale}
+                label={tx("결과 받기", "Get results")}
+                items={stageDownloadItems}
+              />
+            ) : null}
             controls={!isolated ? (
               <button className="ab-pill active" onClick={() => setStage(summary.next)}>
                 {summary.nextLabel} →

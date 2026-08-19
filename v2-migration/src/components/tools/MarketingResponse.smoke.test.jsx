@@ -799,6 +799,23 @@ describe("MarketingResponse render smoke", () => {
     expect(links).toContain("/tools/marketing-forecast");
   });
 
+  // PR #696으로 추세·예측이 독립 도구가 됐는데, 허브 안에서 형제 단계가 주던
+  // 탈출구 없이 랜딩만 남아 있었다(D-13). 결론 카드에서 결과를 받아갈 수 있어야 한다.
+  it("offers a download escape on the standalone trend analysis", async () => {
+    seedWithData();
+    const { container } = render(<MarketingResponse initialStage="trend" isolated />);
+    await flushRaf();
+    // 무거운 계산은 분석 게이트 뒤에서만 돈다(§4.4) — 실제 사용자 경로를 밟는다.
+    const run = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("분석하기"));
+    expect(run, "분석 게이트 버튼이 없다").toBeTruthy();
+    fireEvent.click(run);
+    await flushRaf();
+    await flushRaf();
+    const hub = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent.includes("결과 받기"));
+    expect(hub, "추세 분석 결론 카드에 다운로드 허브가 없다").toBeTruthy();
+  });
+
   it("persists the demo mapping when the response hub remounts", async () => {
     // 데모는 자동으로 뜨지 않는다 — 업로드 안내의 "예시로 보기"를 눌러야 들어온다.
     // (도구에 들어가자마자 샘플 화면이 뜨면 내 데이터를 올리는 곳이라는 사실이 가려진다.)

@@ -22,6 +22,20 @@ function withDate(base, ext) {
   return `${base}_${ts}.${ext}`;
 }
 
+// 헤더+행 → RFC4180 CSV 본문. 세 함정을 한 곳에서 막는다(§7):
+//  ① `\n` 조인은 Excel에서 한 행으로 뭉친다 → CRLF
+//  ② BOM이 없으면 한글이 깨진다
+//  ③ 값에 콤마·따옴표·줄바꿈이 있으면 열이 밀린다 → 따옴표 감싸고 " 이스케이프
+// 도구마다 이 조립을 다시 쓰면 셋 중 하나를 빠뜨린다.
+export function csvBody(header, rows) {
+  const cell = (value) => {
+    const text = value == null ? "" : String(value);
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const lines = [header.map(cell).join(","), ...rows.map((row) => row.map(cell).join(","))];
+  return `\uFEFF${lines.join("\r\n")}\r\n`;
+}
+
 // CSV 문자열(이미 BOM/CRLF 포함 가능)을 그대로 저장. 호출자가 BOM을 안 넣었어도
 // 안전하게 저장되도록 charset 지정.
 export function downloadCsv(csvString, baseName = "export") {

@@ -9,7 +9,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
-import { downloadCsv } from "@/utils/download";
+import { csvBody, downloadCsv } from "@/utils/download";
 
 const money = (value, locale) => Number.isFinite(value) ? new Intl.NumberFormat(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 0 }).format(value) : "—";
 const pct = (value) => Number.isFinite(value) ? `${Math.round(value * 100)}%` : "—";
@@ -18,11 +18,6 @@ function actionCopy(code, locale) {
   const ko = { raise: "CPT 증액", lower: "CPT 감액", hold_good: "유지 · 예산 검토", hold_underperforming: "증액 보류", hold: "유지", target_needed: "목표 입력 필요", budget_needed: "예산 입력 필요" };
   const en = { raise: "Raise CPT", lower: "Lower CPT", hold_good: "Hold · review budget", hold_underperforming: "Do not raise", hold: "Hold", target_needed: "Set target", budget_needed: "Set budget" };
   return (locale === "en" ? en : ko)[code] || code;
-}
-
-function csvCell(value) {
-  const text = String(value ?? "");
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
 export default function AsaKeywordFinder({ locale = "ko" } = {}) {
@@ -46,8 +41,9 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
 
   const downloadActions = () => {
     const header = ["search_term", "country", "campaign", "adgroup", "match_type", "action", "recommended_cpt", "actual_cpt", "actual_cpa", "campaign_pace", "exact_candidate", "negative_candidate"];
-    const lines = recommendations.map((row) => [row.term, row.country, row.campaign, row.adgroup, row.matchType, actionCopy(row.action.code, "en"), row.recommendedCpt ?? "", row.cpt ?? "", row.cpa ?? "", row.pace ?? "", row.isExactCandidate ? "yes" : "", row.isNegativeCandidate ? "yes" : ""].map(csvCell).join(","));
-    downloadCsv(`\uFEFF${header.join(",")}\r\n${lines.join("\r\n")}\r\n`, "asa_keyword_actions");
+    // 값 이스케이프·CRLF·BOM은 csvBody가 소유한다(§7). 도구마다 다시 조립하지 않는다.
+    const rows = recommendations.map((row) => [row.term, row.country, row.campaign, row.adgroup, row.matchType, actionCopy(row.action.code, "en"), row.recommendedCpt ?? "", row.cpt ?? "", row.cpa ?? "", row.pace ?? "", row.isExactCandidate ? "yes" : "", row.isNegativeCandidate ? "yes" : ""]);
+    downloadCsv(csvBody(header, rows), "asa_keyword_actions");
   };
 
   const columns = [

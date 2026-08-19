@@ -24,14 +24,12 @@ const COMPONENTS = path.dirname(fileURLToPath(import.meta.url)).replace(/\/ds$/,
 // 허브를 쓰지 않는 것이 **맞는** 도구와 그 이유. 늘리려면 코드에도 사유를 남겨야 한다.
 const EXEMPT = {
   "5-18-paid-organic": "산출물이 판정 한 줄과 수치 3개뿐이라 내보낼 계산 결과가 없다. 원천 데이터 되돌려주기는 §12.27 금지.",
-  "5-18-cannibal": "맨밑 상세문서 탈출구(claude-ux §6)를 쓴다. 한 항목짜리 드롭다운은 클릭만 늘린다.",
-  "5-18-mmm": "맨밑 상세문서 탈출구(claude-ux §6)를 쓴다.",
 };
 
-// 정당한 예외가 아니라 **부채**. PR #696이 5-18 안의 분석 다섯을 개별 도구로 승격하면서,
-// 허브 안에서는 형제 단계가 제공하던 탈출구가 없는 채로 독립 랜딩이 된 자리다.
-// 예외와 섞어 두면 "괜찮은 것"으로 굳으므로 따로 센다 — 이 목록은 줄어들기만 한다.
-const KNOWN_GAPS = ["5-18-trend", "5-18-forecast"];
+// 부채 목록. PR #696 직후에는 5-18-trend·5-18-forecast가 여기 있었고, 결론 카드에
+// 단계별 DownloadHub를 붙여 비웠다(D-13). 새 도구를 예외로 넣기 전에 여기부터 볼 것 —
+// 정당한 예외(EXEMPT)와 섞으면 부채가 "원래 이런 것"으로 굳는다.
+const KNOWN_GAPS = [];
 
 // routeMap의 `component`는 파일 이름이 아닐 수 있다 — 5-18 계열은 PageClient가
 // `<MarketingResponse initialStage="trend" isolated />`로 디스패치하므로 같은 이름의
@@ -97,6 +95,7 @@ describe("download escape", () => {
   // 부채는 늘지 않고 줄어들기만 한다. 고쳤으면 목록에서 지운다 — 남겨 두면
   // 다음 사람이 "원래 이런 것"으로 읽는다.
   it("never grows the known download gaps", () => {
+    expect(KNOWN_GAPS.length, "부채가 늘었다면 고치거나 사유와 함께 EXEMPT로 옮길 것").toBeLessThanOrEqual(0);
     const stillMissing = KNOWN_GAPS.filter((toolId) => {
       const route = publishedTools.find((item) => item.id === toolId);
       if (!route) return false;

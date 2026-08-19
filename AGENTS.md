@@ -151,7 +151,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 
 **데이터·CSV**
 - **CSV 콤마**: `"2,488"` 쌍따옴표 안 콤마. PapaParse 사용(직접 split 금지). **dynamicTyping 없이** → 모든 값 문자열, `Number()`/`parseFloat`.
-- **CSV 다운로드 = CRLF + BOM**: `join("\n")`은 Excel에서 한 행으로 뭉침(RFC4180 위반). **`\r\n` 조인 + BOM + `text/csv;charset=utf-8`**(공용 `utils/download.js`). 콤마는 따옴표 이스케이프. 날짜 문자열 컬럼은 `parseFloat`가 연도만 뽑으므로 원본 라벨 별도 보존(`weekLabel`).
+- **CSV 다운로드 조립은 `utils/download.js`의 `csvBody(header, rows)` 하나**: `join("\n")`은 Excel에서 한 행으로 뭉치고(RFC4180 위반), BOM이 없으면 한글이 깨지고, 값 안의 콤마·따옴표는 열을 밀어낸다 — 도구마다 다시 조립하면 셋 중 하나를 반드시 빠뜨린다(실제로 5-26이 자체 `csvCell`을 갖고 있었다). 골든은 `utils/download.test.js`. 날짜 문자열 컬럼은 `parseFloat`가 연도만 뽑으므로 원본 라벨 별도 보존(`weekLabel`).
 - **`type="number"`는 천단위 콤마 표시 불가**: 금액 입력은 `CommaNumberInput` 재사용. `parseFloat("72,341,057")=72` 함정 — 모든 read 사이트에서 콤마 strip 필수.
 - **CSV 자동매핑은 도구별 필드로 스코프**: 전체 `STANDARD_FIELDS`로 매핑하면 그 도구가 안 쓰는 필드까지 잡아 "매핑됐는데 기능엔 못 씀". `TOOL_REQUIRED_FIELDS`(oneOf 포함)+`TOOL_OPTIONAL_FIELDS` 합집합으로 제한. 주의: `cost`(효율)와 `spend`(Creative)는 별도 키 — 같은 "비용"이라도 grain 따라 다름. **엔진이 어떤 표준키를 읽는지 항상 확인**(PVM/creativeMath는 `r.spend` → `getMappedRows`에서 cost↔spend 양쪽 채움).
 - **헤더명이 아니라 "값"으로 매핑하는 필드는 `valueVocabulary`**(source=광고/오가닉): 헤더/타입 점수 무시하고 값 어휘 매칭만 사용. **숫자 컬럼(`numericRate≥0.8`)은 enum 어휘 후보에서 제외**하고 **짧은 토큰(≤2자)은 정확일치만** — `"850000".includes("0")`으로 비용·설치가 `campaign_on`에 선점되는 사고(PR #603).
