@@ -5,6 +5,7 @@ import GaPageviews from "@/components/GaPageviews";
 import ConsentBanner from "@/components/ConsentBanner";
 import { consentDefaultSnippet } from "@/lib/consent";
 import SkipLink from "@/components/SkipLink";
+import { BRAND } from "@/lib/brandFacts";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
@@ -43,14 +44,14 @@ export default function RootDocument({ children, locale = "ko" }) {
                   "@type": "WebSite",
                   "@id": `${SITE_URL}/#website`,
                   url: isEnglish ? `${SITE_URL}/en` : `${SITE_URL}/`,
-                  name: "Growth Opt Playbook",
+                  name: BRAND.name,
                   description: isEnglish ? "Performance marketing decision workspace" : "퍼포먼스 마케팅 주간 의사결정 워크스페이스",
                   inLanguage: isEnglish ? "en" : "ko-KR",
                 },
                 {
                   "@type": "Organization",
                   "@id": `${SITE_URL}/#org`,
-                  name: "Growth Opt Playbook",
+                  name: BRAND.name,
                   url: `${SITE_URL}/`,
                   logo: `${SITE_URL}/favicon.svg`,
                 },

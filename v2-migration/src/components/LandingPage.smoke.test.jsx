@@ -167,6 +167,25 @@ describe("LandingPage render smoke", () => {
     });
     delete window.gtag;
   });
+  // 첫 화면에서 사용자가 내려야 하는 결정은 하나다(product-ssot §5.1·§5.3). 지금은
+  // 목적 CTA 3개 중 하나만 채운 배경·큰 글자를 갖고 나머지 둘은 외곽선이다.
+  // 금지되는 것은 "CTA가 3개"가 아니라 **셋이 동급으로 보이는 것**이다 — 두 번째
+  // --primary가 붙거나 CTA가 계속 늘면 위계가 사라지므로 여기서 막는다.
+  it("keeps exactly one primary action in the hero", () => {
+    for (const locale of ["ko", "en"]) {
+      const { container, unmount } = render(<LandingPage locale={locale} />);
+      const hero = container.querySelector(".dc-hero__actions");
+      expect(hero, `${locale}: 히어로 행동 영역이 없다`).toBeTruthy();
+      const routes = hero.querySelectorAll(".dc-action-route");
+      const primary = hero.querySelectorAll(".dc-action-route--primary");
+      expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
+      expect(routes.length, `${locale}: 목적 CTA가 늘었다 — 선택 밀도를 다시 볼 것`).toBeLessThanOrEqual(3);
+      // 보조 진입점(예시 보기·데이터 가이드)은 버튼이 아니라 텍스트 링크로 남는다.
+      expect(container.querySelectorAll(".dc-hero__utility-actions .dc-text-link").length).toBeGreaterThan(0);
+      expect(container.querySelectorAll(".dc-hero__utility-actions .dc-action-route").length).toBe(0);
+      unmount();
+    }
+  });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my CSV", "Quick calculations", "Find the cause"]);

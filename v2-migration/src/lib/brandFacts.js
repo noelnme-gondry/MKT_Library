@@ -14,16 +14,19 @@ import { getRouteSeo } from "@/lib/routeSeo";
 //  3) 한계(`BRAND_LIMITS`)를 사실과 같은 급으로 둔다. 못 하는 것을 같이 말하는 쪽이
 //     인용됐을 때 오히려 정확하다.
 
+// 제품명은 `docs/product-ssot.md` §1.1이 정본이다. 코드 80곳·도메인·외부 프로필이
+// 전부 "Growth Opt Playbook"인데 이 객체만 확장형을 쓰고 있었다 — 인용하는 쪽이
+// 어느 표기를 가져갈지가 갈린다. 확장형은 설명 문구로만 쓰고 이름 자리에는 쓰지 않는다.
 export const BRAND = {
-  name: "Growth Optimization Playbook",
+  name: "Growth Opt Playbook",
   url: SITE_URL,
   ko: {
-    shortName: "그로스 최적화 플레이북",
+    shortName: "Growth Opt Playbook",
     definition: "앱·웹 퍼포먼스 마케팅 데이터를 브라우저에서 분석하는 무료 도구 모음입니다.",
     audience: "직접 캠페인을 운영하며 예산·소재·채널을 주 단위로 결정하는 퍼포먼스 마케터",
   },
   en: {
-    shortName: "Growth Optimization Playbook",
+    shortName: "Growth Opt Playbook",
     definition: "A free set of browser-based tools for analyzing app and web performance marketing data.",
     audience: "Performance marketers who run campaigns and decide budget, creative, and channel weekly",
   },
@@ -44,8 +47,10 @@ export const BRAND_FACTS = [
   },
   {
     id: "privacy",
-    ko: { claim: "업로드한 데이터는 브라우저를 벗어나지 않습니다.", detail: "CSV 파싱과 계산이 전부 브라우저에서 실행되고 원본 행은 서버로 전송하거나 저장하지 않습니다." },
-    en: { claim: "Uploaded data never leaves your browser.", detail: "Parsing and computation run client-side, and source rows are never transmitted or stored." },
+    // "벗어나지 않는다"는 브라우저 확장·사용자 네트워크·외부 공개 URL까지 포괄하는
+    // 절대 주장이 된다. 제품이 보장할 수 있는 범위(전송·저장 안 함)로 좁혀 말한다.
+    ko: { claim: "업로드한 CSV는 브라우저에서 처리됩니다.", detail: "파싱과 계산이 전부 브라우저에서 실행되고 원본 행을 서버로 전송하거나 저장하지 않습니다." },
+    en: { claim: "Uploaded CSV data is processed in your browser.", detail: "Parsing and computation run client-side, and source rows are never transmitted to or stored on a server." },
   },
   {
     id: "persistence",
@@ -59,8 +64,12 @@ export const BRAND_FACTS = [
   },
   {
     id: "uncertainty",
-    ko: { claim: "추정값에는 95% 신뢰구간을 함께 표시합니다.", detail: "점추정만 보여주고 불확실성을 숨기지 않습니다." },
-    en: { claim: "Estimates are shown with 95% confidence intervals.", detail: "Point estimates are never displayed without their uncertainty." },
+    // 이 문장은 llms.txt로 그대로 나가 AI 답변에 인용된다. "모든 추정에 95% CI"는
+    // 제품 전체로는 참이 아니다 — PVM 분해·Aha 그리드·ASA 키워드처럼 신뢰구간이
+    // 정의되지 않는 출력이 있다. 보장할 수 있는 원칙(불확실성을 숨기지 않는다)만
+    // 무조건문으로 두고, 95%는 구간이 정의되는 경우로 한정한다(§8 정직성).
+    ko: { claim: "추정 결과는 불확실성과 함께 해석해야 합니다.", detail: "신뢰구간이 정의되는 추정에는 95% 구간을 함께 표시하고, 식별이 안 되면 숫자 대신 그 사유를 보여줍니다." },
+    en: { claim: "Estimates are meant to be read with their uncertainty.", detail: "Where a confidence interval is defined, the 95% interval is shown with the estimate; where identification fails, the reason is shown instead of a number." },
   },
   {
     id: "locale",

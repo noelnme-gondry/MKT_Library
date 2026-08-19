@@ -3,7 +3,7 @@ import sitemap from "@/app/sitemap";
 import { getAllPosts } from "@/lib/blog";
 import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
-import { getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
+import { BRAND, getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
 import { COMPARE_SLUGS } from "@/lib/compareContent";
 import { ROUTES, SITE_URL, hasEnVersion, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
@@ -39,7 +39,10 @@ describe("llms.txt", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(text.startsWith("# Growth Opt Playbook\n")).toBe(true);
+    // 제품명을 여기 리터럴로 적으면 brandFacts의 BRAND.name이 갈라져도 통과한다 —
+    // 실제로 갈라져 있었다(코드 80곳은 "Growth Opt Playbook", BRAND.name만 확장형).
+    // 대외 노출면의 H1과 SSOT 이름이 같은 값인지를 대조한다(product-ssot §1.1).
+    expect(text.startsWith(`# ${BRAND.name}\n`)).toBe(true);
     expect(text).toContain("내 CSV로 분석 시작");
     // 프라이버시 약속은 이제 brandFacts SSOT에서 파생된다. 문자열을 여기 다시 적으면
     // SSOT를 고쳐도 테스트가 옛 문장을 통과시킨다 — 사실 자체를 조회해서 대조한다.

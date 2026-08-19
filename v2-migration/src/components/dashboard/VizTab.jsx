@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
+import HelpTip from "@/components/ds/HelpTip";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
@@ -961,7 +962,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
       {!isContent && (
       <section className="dashboard-cohort-control" id="s-cohort" aria-label={T.cohortSectionTitle}>
-        <span className="dashboard-cohort-control__label">{T.cohortSectionTitle}<span className="cohort-help" tabIndex="0" title={T.cohortDesc(kpi.cohort)} aria-label={locale === "en" ? "Cohort calculation help" : "코호트 계산 기준 도움말"}>ⓘ</span></span>
+        <span className="dashboard-cohort-control__label">{T.cohortSectionTitle}<HelpTip label={locale === "en" ? "Cohort calculation help" : "코호트 계산 기준 도움말"}>{T.cohortDesc(kpi.cohort)}</HelpTip></span>
         <div className="cohort-toggle" id="cohort-toggle">
           <button data-cohort="0" className={selectedCohort === 0 ? "active" : ""} onClick={() => setSelectedCohort(0)}>D0</button>
           <button data-cohort="7" className={selectedCohort === 7 ? "active" : ""} onClick={() => setSelectedCohort(7)}>D7</button>

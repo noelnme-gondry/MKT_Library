@@ -38,6 +38,7 @@
 9. **병렬 사용 환경 동기화 의무**: Codex·Claude·Antigravity 병렬 작동 중 — 작업 시작 전 항상 `git fetch`+`git status`, 리모트와 다르면 사용자에게 "pull 후 진행?" 확인.
 10. **전체 파일 덮어쓰기·임의 포맷팅 금지**: 충돌·작업유실 방지. 무관한 코드 들여쓰기·포맷 임의 변경 금지, 정확히 타겟팅된 부분(Delta)만 수정.
 11. **외부 노출 KR/EN 동시 반영**: UI·카피·CTA·링크·SEO 메타·구조화 데이터·공개 문서·랜딩·도구 흐름을 수정하면 **같은 작업에서 EN도 의미·기능·라우트 기준으로 동등하게** 수정하고 KR/EN 검증을 함께 실행. EN 미지원 페이지는 반쪽 번역 말고 `EN_READY_*` 게이트 유지.
+12. **대외 사실·UX·접근성 계약은 `docs/product-ssot.md`가 정본**: 제품명·도구 수·무료/가입/브라우저 처리·통계 한계(F/L 카드), 화면 상태 8종·결과 카드 4층·키보드/포커스/대비/터치 계약이 거기 있다. 새 문장을 코드나 다른 문서에서 **만들지 말고 거기서 가져올 것**. 계약을 바꿔야 하면 SSOT를 먼저 고치고 코드(`brandFacts.js` 등)를 그 사본으로 맞춘다.
 
 ---
 
@@ -196,13 +197,14 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 
 **렌더·UI**
 - **버튼이 안 보이는 원인은 색이 아니라 캐스케이드일 수 있다**(2026-08-17): 블로그 본문 중간 CTA가 파란 버튼 위 파란 글씨로 나가 드래그해야 읽혔다. 범인은 `.blog-prose a`(특이도 0,1,1)가 `.content-action-panel__cta`(0,1,0)를 이겨 글자색을 배경과 같은 `--primary`로 덮은 것 — **대비 계산기로는 못 잡는다**(규칙만 보면 정상). 컨테이너 요소 셀렉터(`.prose a`)는 그 안에 놓일 컴포넌트를 전부 납치하므로 `a:not([class])`로 원고 링크만 한정할 것. 그리고 `--primary` 배경 위 글자색은 `--on-primary`로 통일 — `--bg-1`·`--surface-base`·raw hex·`white`가 23곳에 흩어져 라이트 3.97~4.40, `white`는 다크 2.30으로 AA 미달이었다(`--on-primary`는 4.64·8.30). `app/buttonContrast.test.js`가 셋 다 파생 검사한다.
+- **전역 규칙이 있어도 개별 규칙이 취소하면 없는 것과 같다 — 개수가 아니라 캐스케이드를 볼 것**(2026-08-19): `globals.css`엔 전역 `:focus-visible { outline: 2px solid var(--primary) }`가 있는데 **12곳이 그걸 `outline:none|0`으로 취소**하고 테두리색·밑줄 변화로 대체하고 있었다(계산기 링크·대시보드 추천·주간 검토 링크…). 키보드 사용자는 1px 색 변화로 현재 위치를 판별해야 했다. `outline:none`을 세면 14곳이 나오지만 그중 **유효한 취소는 12곳**이다 — 전역 규칙보다 앞에 선언된 기본 규칙은 소스 순서로 지고, `input`은 `:where(input…):focus-visible{…!important}`가 따로 덮는다. **취소가 실제로 이기는지는 특이도와 선언 순서로 갈리므로 grep 개수로는 판정할 수 없다.** `app/focusVisible.test.js`가 두 갈래(포커스 규칙의 직접 취소 / 전역보다 뒤의 기본 규칙 취소)를 CSS에서 파생해 막고, **예외의 근거 규칙이 아직 있는지도 함께 단언한다** — 근거가 사라지면 예외도 무너져야 한다.
 - **semantic 토큰에 라이트 오버라이드가 있어도 raw hex를 쓰면 소용없다**(2026-08 감사): `globals.css`에 다크 전용 리터럴이 51곳 있었고 **바로 옆 규칙은 `var(--danger)`를 쓰고 있었다**(한 블록 안에서 규칙이 갈림). 라이트 배경에서 대비 1.9:1(AA 미달). `ds/` 컴포넌트에도 같은 혼재가 있었는데 거긴 다른 도구가 베끼는 기준이라 전파된다. 차트 팔레트도 하드코딩하면 `refreshMountedChartThemes` 대상에서 빠진다 → `CHART_THEME.colors`·`.danger`·`.warning`·`.success`(판정 색 getter). remap Map은 **각 토큰의 다크·라이트 값 + 과거 리터럴을 전부 키로** 가져야 한다 — 하나라도 빠지면 그 데이터셋만 옛 색으로 굳는다. getter 반환값은 리터럴 hex라 `CHART_THEME.danger + "AA"` 알파 접합이 그대로 되고(§7 hex-알파 함정은 `var()`에만 해당), canvas는 `var()`를 못 읽으므로 **데이터셋엔 반드시 getter**를 넘길 것.
   - 토큰화하면 `` `${color}55` `` 같은 **hex 알파 접합이 깨진다**(`var(--danger)55`는 무효 CSS) → `color-mix(in srgb, … 33%, transparent)`.
   - **역으로, 토큰화하면 안 되는 리터럴이 더 많다**(2026-08 실측: `globals.css` raw hex 285 · 인라인 `color` 50 중 안전 치환은 19곳뿐). 금지 4종: ① 브랜드색(YouTube·Naver…) ② **영구 다크 표면 위 텍스트** — `.sidebar{background:#10131a}`엔 `body.light-mode` 재정의가 **일부러 없다**. 여기 hex를 토큰으로 바꾸면 다크 사이드바에 다크 텍스트가 된다(AA 개선이 아니라 파괴) ③ Chart.js 데이터셋에 들어가는 값(canvas는 `var()` 못 읽음 → `CHART_THEME`) ④ 토큰이 없는 색과 짝지은 값(범례↔셀, chip↔dot). **정확히 같은 값의 토큰이 있는 순수 텍스트 색만** 치환할 것.
   - **토큰 값을 대조할 땐 "마지막 정의"를 볼 것 — `:root`와 `body.light-mode`가 파일에 각각 두 번 있다**(§4.1 tokens 레이어의 61~63·142~144, app 레이어의 4821·4889 블록). 앞 블록만 보고 `#f87171`을 "`--danger`와 같은 값"이라 판단하면 틀린다 — **실효값은 `#ff8178`**(`--warning` `#f2b84b`, `--success` `#65d3b3`, `--primary` `#82aaff`). 실제로 이 착각으로 "다크 byte-identical"이라 적고 치환한 적이 있다. 대조는 눈이 아니라 **마지막 정의를 파싱해서** 할 것.
 - **`globals.css`는 캐스케이드 레이어 3단**(`@layer reset, tokens, app;` — 파일 상단 주석 참조): 외부 리셋(Tailwind preflight 등)을 도입하면 `layer(reset)`으로 넣어야 9천 줄이 리셋에 밀리지 않는다. 레이어 **밖** 규칙은 모든 레이어를 이기므로 이 파일 내용은 전부 레이어 안에 있어야 하고, `!important`는 레이어 순서를 뒤집으므로 `tokens`엔 넣지 말 것(현재 0개).
 - **`role="tablist"`가 `role="group"`을 거쳐 `tab`을 소유하면 계약이 끊긴다**(같은 감사): 로빙 tabindex·화살표 키가 멀쩡해도 보조기술이 탭을 탭으로 인식하지 못한다. 그룹이 필요하면 **그룹마다 tablist**를 두고 바깥은 일반 컨테이너로. `role="radio"`도 `radiogroup` 부모가 없으면 같은 문제 + 전 옵션이 탭 순서에 들어간다.
-- **`title` 단독은 어포던스가 아니다 — CSS로 강제할 것**: claude-ux §0이 이름을 지목해 금지했는데도 12곳 이상 살아 있었다. 개별 수정 대신 `[title]` 셀렉터에 점선 밑줄+`cursor:help`를 거는 전역 규칙 1개가 전부를 덮는다.
+- **`title` 단독은 어포던스가 아니다 — 그리고 "전역 규칙 1개로 덮었다"는 이 줄이 틀렸다**(2026-08-19 정정): 실제 `globals.css`의 어포던스 규칙은 `[title]` 전역이 아니라 `.ab-pillgroup-label[title]`·`.chip[title]`·`.seasonality-heatmap__cell[title]` **3개 셀렉터 + `[data-help]`**뿐인데, 컴포넌트의 `title=`은 **191곳**이다(`grep title=` 249곳 중 58곳은 React prop이라 DOM 속성이 아니다 — 처음 적은 237도 그래서 틀린 수였다). 좁은 셀렉터를 적어 놓고 하네스에 "전부를 덮는다"라고 선언한 순간 남은 234곳이 안 보이게 됐다 — §7의 "가드가 있다는 사실이 가드가 없다는 사실을 가린다"가 하네스 문장 자체에서 재발한 사례다. **커버리지를 선언할 땐 셀렉터가 아니라 대상 수를 grep으로 셀 것.** 2026-08-19에 설명 전체가 title에만 있던 `ⓘ` 6곳을 `ds/HelpTip`(details)로 옮기고 `th[title]`·`td[title]` 어포던스를 추가했다. **전부를 금지하는 가드는 만들지 않았다** — 보이는 글자가 있는 버튼의 부연은 정당하므로, `app/titleAffordance.test.js`는 **title이 유일한 경로인 경우만** 잡는다. 나머지는 `docs/product-ssot.md` D-04.
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**: canvas는 `var()`를 못 읽어 불투명 검정 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(`chartUtils.js`)로 렌더타임 해석.
 - **Chart.js v4 커스텀 `generateLabels`는 per-item `fontColor` 자동 주입 안 함** → 다크모드 범례 텍스트 실종(라이트는 멀쩡 → 한쪽만 검증하면 놓침). 부호 구분 색쌍은 명도차 크게(중간톤끼리는 구분 안 됨).
 - **조건부 마운트 캔버스는 최초 폭 0**: 토글·step 전환으로 새로 마운트되는 차트는 부모 레이아웃 전이라 width=0. `new Chart(...)` 직후 `requestAnimationFrame(() => instance.resize())` 1회 필수.
@@ -392,13 +394,14 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 광고 게이트를 어떤 형태로도 되살리지 말 것(`requestAd`는 호출부 호환 no-op만 잔존). 수익화는 이탈·AdSense 데이터 확인 후 별도 결정.
 
 ### 12.27 결론 카드 + 다운로드 허브 공용화
-- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 선언하지 말고 grep으로 확인할 것** — 이 줄에 적힌 미채택 목록은 두 번 연속 낡은 채로 남아 있었다(적힌 4곳이 이미 다 채택돼 있었다). 2026-08-14 실측: 도구 15개 전부 카드 보유, 다운로드는 `PaidOrganicTrend`·`WebRMmmAdvanced` 2곳만 없음(둘 다 subtool/패널).
+- **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **채택 현황은 이 줄에 적지 말 것** — 세 번 연속 낡은 채였다. 최신 실측은 §16, 부채는 `docs/product-ssot.md` D-07.
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
 `LandingPage` = ① **1단 중앙 히어로**(eyebrow+헤드라인+한 줄 데크+목적 CTA 3열 균등+통합 신뢰 1줄) ② `ds/ToolIndex` 전체 도구 인덱스 ③ 주간 결정 루프 3단계 ④ 블로그 | SOP 허브. **목적 선택(②)이 개념 설명(③)보다 앞**(첫 화면에서 바로 도구를 찾게, 스모크가 순서 강제). 구 `ConnectedToolJourney`는 인덱스와 **같은 갈래·같은 도구**를 카드로 또 그려서 삭제됐다 — 되살리지 말 것.
+- **히어로 CTA는 개수가 아니라 위계가 계약이다**(2026-08-19): 외부 검토가 "동급 CTA 3개"를 P0로 지목했지만 실제 코드는 하나만 `--primary`(채운 배경·16px·그림자)이고 나머지는 외곽선 14px이었다 — **진단이 커밋 #690~#695 이전 화면 기준이라 낡았다**. 재설계 대신 `LandingPage.smoke.test.jsx`가 KO/EN 모두에서 primary가 정확히 하나·목적 CTA ≤3·보조는 텍스트 링크임을 강제한다. 외부 감사를 반영할 땐 **그 진단이 어느 커밋 기준인지부터 확인할 것**.
 - **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 가짜 수치를 띄우던 `.dc-instrument`·`.dc-mini-chart`와 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 전부 삭제됐다(PR #644).
 - **질문 카드(②)는 이제 손으로 고른 4장이 아니라 발행 도구 전체 인덱스다**(2026-08-18): 4장만 이름이 노출돼 17개 중 13개는 사이드바를 열어야만 존재를 알 수 있었다. 카드와 별도 카탈로그 두 장치를 하나로 합쳐 **페이지는 짧아지고 보이는 도구는 전부로** 늘었다. 목록을 아래 섹션에 두면 스크롤 밖이라 없는 것과 같다 — 스모크가 위치와 개수를 함께 강제한다.
 - **첫 화면 카피는 중복부터 센다**: 신뢰 배지와 프라이버시 줄이 같은 말을 두 번 하고, 데크가 CTA 힌트를 반복하고 있었다("글이 많다"의 정체). 동급 항목은 나열 대신 **박스로 묶어 균등 grid**(claude-ux §5) — 도구·목적 이름을 줄바꿈으로 줄줄 세우지 말 것.
@@ -459,6 +462,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 13. 참고 파일
 
+- **`docs/product-ssot.md` — 제품 계약 SSOT**(§2.12): 대외 사실·한계(F/L), 도구 카탈로그 정의(14 핵심 + 5 반응 모듈), UX·접근성 계약, 품질 게이트, 실측 부채 백로그(D-01~D-12). 공개 카피·상태 문구·a11y 판단이 걸린 작업은 **여기 먼저**.
 - **`v2-migration/ARCHITECTURE.md` — v2 코드맵**(경로 매핑 ~200줄): 라우트↔컴포넌트↔엔진, SSOT(store), 글로벌 CSS. **큰 작업 착수 전 먼저 읽어 위치 파악**(전체 탐색보다 토큰 절약). 새 도구·엔진·경로·상태 추가/이동 시 **함께 갱신**(§15).
 - `v2-migration/claude-ux.md` — UX 원칙 (§15.5 트리거 시 필독)
 - `docs/v2-migration-tasks.md` — 마이그레이션 이력·결정 로그
@@ -500,16 +504,21 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 15.5 유저 친화적 UI 개선 트리거 (필독) 🎨
 
-사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 착수 전 반드시 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행한다. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑, 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성.) **수학 엔진은 절대 건드리지 않고 렌더층만 재구성.**
+사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 착수 전 반드시 `docs/product-ssot.md` §5~§7과 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행한다. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑, 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성.) **수학 엔진은 절대 건드리지 않고 렌더층만 재구성.**
 
 ---
 
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **263파일·2178 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-18 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **269파일·2226 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
-- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep.
+- ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
+- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep. **2026-08-19 실측: 공개 도구 14개 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26(직접 `downloadCsv`)·5-18 본체·`PaidOrganicTrend`.**
+- **소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다**(2026-08-19, 한 세션에 3회): ① 어댑터 마운트 가드가 `/LegacyPillGroupA11y/`를 찾아 **import 줄**에 걸려 마운트를 지워도 통과 ② 다운로드 가드가 `includes("DownloadHub")`로 **"DownloadHub를 쓰지 않는 이유" 주석**에 걸려 부채 2건을 해결됨으로 오판 ③ 탭 가드가 계약을 설명하는 주석의 `role="tablist"`를 대상으로 잡을 뻔했다. **검사는 사용(`<Comp`·`import … from`)을 찾고, 주석은 먼저 제거할 것.** 같은 이유로 문자열만 보는 가드는 `import` 누락을 못 잡는다 — `name: BRAND.name`은 통과했지만 import가 없어 **빌드가 프리렌더에서 잡았다**(`test:all` 2210 통과·lint 0인 채로). 배선을 바꿨으면 `npm run build`까지 돌릴 것.
+- **한 곳만 빠진 구멍은 전수로 세야 보인다**(2026-08-19): 탭 5개 중 **9-6 하나만** 계약이 통째로 없었다(화살표 키·`aria-controls`·로빙 tabindex·tabpanel 연결 전부). 나머지 넷이 완비돼 있어 훑어보면 "탭은 되어 있다"로 읽힌다. 같은 형태로 `BRAND`의 `en.shortName` 하나만 확장형 제품명으로 남아 있던 것도 가드가 잡았다 — **다수가 맞으면 소수의 예외가 보이지 않으므로, 계약은 표본이 아니라 전수로 검사할 것**(`app/tabContract.test.js`).
+- ⚠ **공개 도구 수는 14 → 18**(PR #696): 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18)가 `subtool`로 내려갔다. **`routeMap`의 `component`가 파일 이름이 아닌 경우가 생겼다** — `5-18-trend`의 `MarketingResponseTrend`는 파일이 없고 `PageClient`가 `routeId`로 디스패치한다. 라우트에서 컴포넌트 파일을 찾는 코드·테스트는 디스패치에서 파생할 것.
+- 🔄 **접근성 부채**(product-ssot §10 — D-01·D-02·D-03·D-06·D-07·D-08·D-09·D-12 해소): 남은 것은 버튼 부연 `title` 55곳(D-04)과 `.ab-pillgroup` 94곳 실제 이관(D-05)뿐. 둘 다 조작은 정상이고 래칫·가드로 증식만 막아 둔 상태.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 

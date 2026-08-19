@@ -1825,7 +1825,10 @@ describe("MarketingResponse render smoke", () => {
     expect(exclude).toBeTruthy();
     fireEvent.click(exclude);
     expect(exclude?.className).toContain("active");
-    expect(document.querySelector(".mmm-chart-help")?.getAttribute("title")).toContain("기본 수요·추세를 분모와 표시에서 제외");
+    // 해석 도움말은 hover 전용 title이 아니라 열리는 HelpTip이어야 한다(product-ssot §6.3).
+    const chartHelp = Array.from(document.querySelectorAll(".help-tip"))
+      .find((node) => node.textContent.includes("기본 수요·추세를 분모와 표시에서 제외"));
+    expect(chartHelp).toBeTruthy();
   });
 
   it("renders the 회귀·미래 예측 (lab) stage without throwing", async () => {
