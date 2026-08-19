@@ -505,7 +505,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep. **2026-08-19 실측: 공개 도구 14개 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26(직접 `downloadCsv`)·5-18 본체·`PaidOrganicTrend`.**
-- 🔄 **접근성 부채**(product-ssot §10): DOM `title=` 191곳 — 설명이 title에만 있던 `ⓘ` 6곳은 `ds/HelpTip` 이관 완료, 버튼 부연 55곳 잔존(D-04) · `.ab-pillgroup` 17파일 대 `PillGroup` 6파일(D-05).
+- 🔄 **접근성 부채**(product-ssot §10): DOM `title=` 191곳 — 설명이 title에만 있던 `ⓘ` 6곳은 `ds/HelpTip` 이관 완료, 버튼 부연 55곳 잔존(D-04) · 손으로 쓴 `.ab-pillgroup` 94곳·13파일 — 전역 어댑터가 계약을 붙여 조작은 정상, 증식만 래칫(`ds/legacyPillRatchet.test.js`)으로 차단(D-05).
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 

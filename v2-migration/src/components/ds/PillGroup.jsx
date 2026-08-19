@@ -14,6 +14,10 @@ import React, { useId, useRef } from "react";
  *  - 로빙 tabindex(선택 항목만 0) → Tab 한 번으로 진입
  *  - Arrow/Home/End 이동, disabled 옵션은 건너뜀
  *
+ * 현재 상태(2026-08-19 실측): 손으로 쓴 `.ab-pillgroup`이 아직 94곳·13파일 남아 있고
+ * 전역 `LegacyPillGroupA11y`가 런타임에 같은 계약을 붙여 준다. **새 화면은 여기를 쓴다** —
+ * `ds/legacyPillRatchet.test.js`가 legacy 마크업이 늘어나는 것을 막는다.
+ *
  * options: [{ value, label, disabled?, title? }]
  * extra: 선택지가 아닌 부가 버튼(예: "커스텀 지표") — radiogroup 밖에 렌더된다.
  */
