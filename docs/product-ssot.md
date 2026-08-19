@@ -238,6 +238,8 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 
 `outline: none`만 적용하거나 포커스 위치를 알 수 없는 미세 색 변화는 허용하지 않는다. 제품 기본값은 **2px 이상 가시 윤곽선 + 상태 대비 3:1 이상**이다.
 
+구현은 `globals.css`의 전역 `:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px }` 하나가 소유하고, 폼 필드는 `:where(input…):focus-visible`이 `!important`로 덮는다. **개별 규칙이 이를 취소하지 않는다** — `outline: none|0`을 다시 넣으면 `app/focusVisible.test.js`가 막는다. "몇 개 남았나"를 세는 검사로는 안 잡힌다: 취소가 실제로 유효한지는 특이도와 소스 순서로 갈린다.
+
 | 대상 | 키보드 계약 | 포커스 계약 |
 |---|---|---|
 | 버튼·링크 | `Tab` 도달, `Enter`/`Space` 실행 | 2px 이상 윤곽선 또는 동등 |
@@ -356,7 +358,7 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | 가드 | 강제할 내용 |
 |---|---|
 | `titleAffordance.test.js` | `title`을 가진 인터랙티브·정보 요소가 어포던스 CSS 또는 `ⓘ` 대안을 갖는지 |
-| `focusVisible.test.js` | `outline: none` 규칙마다 대응하는 `:focus-visible` 규칙 존재 |
+| ~~`focusVisible.test.js`~~ | ✅ 완료 — 개수를 세는 대신 **캐스케이드로 유효한 취소**만 잡는다(D-06) |
 | `toolStateCoverage.test.js` | 공개 도구 14개가 §5.4의 상태 8종 문구를 갖는지(파생) |
 | ~~`brandClaimScope.test.js`~~ | ✅ 완료 — 별도 파일을 만들지 않고 계약 주인 파일(`lib/compareContent.test.js`)에 넣었다(같은 계약을 두 파일이 나눠 갖지 않는다) |
 
@@ -419,7 +421,7 @@ preview 4개(9-2·9-3·9-7 등)는 어느 쪽에도 세지 않는다
 | ~~**D-03**~~ | F-03 문구가 절대 표현 | `brandFacts.js` privacy | ✅ **2026-08-19 완료**. "브라우저에서 처리되며 원본 행을 서버로 전송·저장하지 않습니다"로 완화 |
 | **D-04** | `title` 단독 어포던스 | 컴포넌트 `title=` **237곳**, 어포던스 CSS는 `.ab-pillgroup-label`·`.chip`·`.seasonality-heatmap__cell` **3개 셀렉터뿐**(전역 `[title]` 규칙 없음) | 전역 규칙 확대 또는 `ⓘ` 이관 + `titleAffordance` 가드. **AGENTS.md §7의 "전역 규칙 1개가 전부를 덮는다"는 서술은 틀렸으므로 함께 정정** |
 | **D-05** | legacy pill 이관 미완 | `.ab-pillgroup` **17파일** vs `PillGroup` **6파일** | 신규 코드 100% `PillGroup`, 레거시 이관 후 어댑터 제거 |
-| **D-06** | `outline: none` 잔존 | `globals.css` **14곳** / `focus-visible` 45곳 — 짝 여부 미검증 | 14곳 각각 `:focus-visible` 대응 확인 + `focusVisible` 가드 |
+| ~~**D-06**~~ | 전역 포커스 링을 취소하는 규칙 | `globals.css`에 전역 `:focus-visible { outline: 2px solid var(--primary) }`가 이미 있는데(L4946) **12곳이 그것을 취소**하고 테두리색·밑줄 변화로 대체하고 있었다 | ✅ **2026-08-19 완료**. 12곳에서 `outline: none|0`을 제거해 전역 링이 적용되게 했다(hover 스타일은 그대로). `input` 3곳은 `:where(input…):focus-visible { … !important }`가 덮으므로 예외. `src/app/focusVisible.test.js`가 ① `:focus-visible` 규칙의 취소 ② 전역 규칙보다 뒤에 선언된 기본 규칙의 취소를 CSS에서 파생해 차단하고, input 예외의 **근거 규칙 존재**도 함께 단언한다 |
 | **D-07** | 다운로드 경로 불균일 | 14개 도구 전부 `ResultActionCard` 보유(✅). `DownloadHub` 미사용: 5-26(직접 `downloadCsv`), 5-18 본체·`PaidOrganicTrend` | 허브로 통일 또는 "허브 불필요" 사유를 코드 주석으로 명시 |
 | **D-08** | 첫 행동 과밀(홈·`/start`) | 외부 검토 지적. 최근 커밋(#690~#695)이 이미 인덱스 재구성 진행 중 | primary CTA 1개 + 보조 후순위. 스모크가 순서·개수 강제 |
 

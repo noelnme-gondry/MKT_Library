@@ -57,6 +57,7 @@ tools:
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).
 - CSV 상태는 `TOOL_GROUP` 기반 그룹 스코프 — 읽기(`activeDataGroup`)·쓰기(`groupForRoute`) 그룹이 갈리지 않게(§4.3).
 - 함정 목록: AGENTS.md §7 + `docs/pitfalls.md` 상세. 최신 전면 감사는 `docs/system-audit-2026-08-12.md`.
+- **전역 규칙이 있어도 개별 규칙이 취소하면 없는 것과 같다**: 전역 `:focus-visible` 링을 `outline:none`으로 덮은 곳이 12곳 있었다. 취소가 이기는지는 특이도·선언 순서로 갈리므로 **grep 개수로 판정하지 말 것**(`app/focusVisible.test.js`).
 - **목록 검증 테스트는 SSOT에서 파생**(`ROUTES.filter(isRoutePublished)` 등). 손으로 쓴 배열을 도는 커버리지 가드는 가드가 아니다 — 빠진 도구가 검증에서도 빠진다(§7).
 - **하네스에 "완료"를 적기 전에 grep으로 셀 것.** 틀린 완료 선언은 없는 규칙보다 해롭다(§15).
 
