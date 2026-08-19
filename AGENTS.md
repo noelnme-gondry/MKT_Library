@@ -218,6 +218,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **render throw는 골든이 못 잡는다 → 재현 필수**: 골든은 순수함수만 검증. 단일 render throw가 페이지를 통째로 죽여 "분석하기 무반응"·"탭 멈춤" P0가 된다. 상태 의존 분기는 **전 상태값(전 채널·전 토글)으로** 재현해야 잡힘.
 - **preview 스크린샷은 매우 긴 페이지에서 캡처 아티팩트**(빈 화면·이중노출) — 실제 앱 버그가 아니라 툴 한계. 판정은 접근성 트리나 콘솔 에러로, 스크린샷 하나로 "깨졌다" 결론 금지.
 - **SPA 소프트 내비는 GA4 page_view 자동 전송 안 함**(`gtag('config')`는 최초 1회): `components/GaPageviews.jsx`(`usePathname`+최초 제외 가드)가 경로 변경마다 `gtag('event','page_view')`. GTM 이중 태깅 시 이중카운트 주의.
+- **계측 스크립트에 환경 가드가 없으면 개발자가 곧 트래픽이다**(2026-08-19): GTM·GA4·AdSense가 조건 없이 실려 `npm run dev` 화면 확인이 전부 운영 속성에 쌓이고 있었다. `page_view`만이 아니다 — `analytics.js`의 `window.gtag` 하나를 **제품 이벤트 44종이 공유**하므로 퍼널 지표까지 함께 부풀려진다(통로가 하나라 게이트도 한 곳이면 된다는 뜻이기도 하다). **빌드타임 env로 가르면 안 된다** — 정적 프리렌더라 같은 HTML이 localhost와 운영에 함께 나가고 `build && start`가 프로덕션으로 잡혀 그대로 샌다. 실제로 갈리는 값은 호스트뿐이라 `lib/analyticsHost.js`(정확일치 — 접미사 비교면 `…com.evil.example`이 통과한다) + `useAnalyticsEnabled`(`useSyncExternalStore`, effect-setState 회피)로 판정한다. 광고는 정확도가 아니라 **정책** 문제다(로컬 노출 = 무효 트래픽). `noscript` iframe은 게이트가 클라이언트라 옮길 수 없다 — 옮기면 JS 꺼진 **운영** 방문자에게서도 사라진다.
 - **진입 모션의 "초기 숨김"은 JS가 붙인 클래스로만**(랜딩 anime.js): 스타일시트에 `opacity:0`을 박아두면 JS 청크 로드 실패·모션축소 설정에서 콘텐츠가 **영영 안 보인다**. 성공적으로 부착했을 때만 `.is-motion-armed`를 붙이고, 실패 시 즉시 벗긴다(점진적 향상). **조건부 렌더 섹션은 모션 대상에서 제외** — 마운트 시점에 옵저버를 못 달아 하이드레이션 이후 나타나는 노드가 숨은 채 남는다. 트리거는 anime 스크롤 옵저버보다 네이티브 `IntersectionObserver`가 안전(이미 뷰포트 안인 요소의 발화가 명확).
 - **localStorage 영속 금지**(사용자가 명시적으로 켠 경우만). 새로고침 리셋이 기본.
 
@@ -513,10 +514,10 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **275파일·2261 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **276파일·2268 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
-- 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep. **2026-08-19 실측: 공개 도구 14개 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26(직접 `downloadCsv`)·5-18 본체·`PaidOrganicTrend`.**
+- ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 완료(D-07). **2026-08-19 실측: `ResultActionCard` 17곳·`DownloadHub` 17곳.** 예외는 `ds/downloadEscape.test.js`가 라우트에서 파생해 강제하고 **코드에 사유 표식이 있어야 통과**한다 — 앞으로 개수를 세지 말고 그 가드를 볼 것.
 - **다중선택 그룹에 radiogroup을 씌우면 ARIA가 없느니만 못하다**(2026-08-19): legacy pill 어댑터가 `.ab-pillgroup` 전부를 radiogroup으로 올리는데, LtvTab의 두 그룹은 **여러 개를 동시에 켤 수 있는 토글**이었다 — 보조기술이 "여럿 켜졌는데 하나만 선택됨"으로 읽는다. **DOM만으로는 단일/다중을 가를 수 없다**(한 개만 켜진 순간의 다중선택 그룹은 단일과 구분되지 않는다) → 마크업이 말하게 한다(`data-pillgroup="multi"` → `aria-pressed`). 처음 감사 때 className의 `includes(`만 grep해서 "다중선택 0곳"이라 보고했는데 틀렸다 — **판별식은 상태 변수의 개수로 봐야 한다**(`${a ? "active"}`가 서로 다른 변수 둘이면 다중선택).
 - **신호를 계산해 놓고 판정에 안 쓰는 자리가 반복된다**(2026-08-19, 외부 MMM 대시보드 대조에서 3건): 5-3은 채널 신뢰도를 R²·데이터 점 수 **두 축으로 이미 계산**하고 화면에 칩까지 띄우면서 배분에는 쓰지 않았다(가장 불확실한 곡선으로 예산을 옮기던 상태) · MMM은 커버리지 **비율을 계산**해 두고 sparse 판정은 절대 주 수(20주)만 봤다(200주 중 25주가 통과) · `REG_STATS.ols`의 `regularized` 플래그도 소비처가 1곳뿐이었다(§7). **플래그·점수를 만들었으면 그것을 읽는 곳을 그 자리에서 배선할 것** — 계산과 표시만 있는 신호는 있으나 마나다.
 - **소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다**(2026-08-19, 한 세션에 3회): ① 어댑터 마운트 가드가 `/LegacyPillGroupA11y/`를 찾아 **import 줄**에 걸려 마운트를 지워도 통과 ② 다운로드 가드가 `includes("DownloadHub")`로 **"DownloadHub를 쓰지 않는 이유" 주석**에 걸려 부채 2건을 해결됨으로 오판 ③ 탭 가드가 계약을 설명하는 주석의 `role="tablist"`를 대상으로 잡을 뻔했다. **검사는 사용(`<Comp`·`import … from`)을 찾고, 주석은 먼저 제거할 것.** 같은 이유로 문자열만 보는 가드는 `import` 누락을 못 잡는다 — `name: BRAND.name`은 통과했지만 import가 없어 **빌드가 프리렌더에서 잡았다**(`test:all` 2210 통과·lint 0인 채로). 배선을 바꿨으면 `npm run build`까지 돌릴 것.
