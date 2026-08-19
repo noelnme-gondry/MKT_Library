@@ -2108,6 +2108,34 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.saturationByChannel.meta.budgetEligible).toBe(false);
   });
 
+  // 절대 개수만 보면 긴 패널에서 구멍이 난다 — 200주 중 25주는 20주 하한을 넘지만
+  // 커버리지는 12.5%뿐이다. 통계적 강도와 데이터 커버리지를 **함께** 요구해야
+  // 얇은 채널이 높은 신뢰를 받지 못한다(product-ssot D-18).
+  it("treats a long panel with thin coverage as sparse even above the week floor", () => {
+    const n = 200;
+    // 25주 집행(> sparseMinWeeks 20) · 커버리지 12.5%(< sparseMinCoverage 20%)
+    const thin = Array.from({ length: n }, (_, index) => (index % 8 === 0 && index < 200 ? 1000 + index : 0));
+    // 40주 집행 · 커버리지 20% — 두 하한을 모두 만족한다
+    const broad = Array.from({ length: n }, (_, index) => (index % 5 === 0 ? 900 + index : 0));
+    const coverage = mmmChannelCoverage({
+      week: Array.from({ length: n }, (_, index) => index + 1),
+      ch: { thin, broad },
+      channels: [
+        { key: "thin", label: "Thin", kind: "perf" },
+        { key: "broad", label: "Broad", kind: "perf" },
+      ],
+    }, MMM_METH_CONFIG);
+
+    expect(coverage.thin.nonzero).toBe(25);
+    expect(coverage.thin.nonzero).toBeGreaterThanOrEqual(MMM_METH_CONFIG.sparseMinWeeks);
+    expect(coverage.thin.coverage).toBeCloseTo(0.125, 10);
+    expect(coverage.thin.sparse, "주 수 하한은 넘었지만 커버리지가 얇다").toBe(true);
+
+    expect(coverage.broad.nonzero).toBe(40);
+    expect(coverage.broad.coverage).toBeCloseTo(0.2, 10);
+    expect(coverage.broad.sparse, "두 하한을 모두 만족하면 sparse가 아니다").toBe(false);
+  });
+
   it("withholds per-channel budget use for sparse, constant, or recently inactive spend", () => {
     const n = 64;
     const sparseSpend = Array.from({ length: n }, (_, index) => index >= 46 && index < 56 ? 500 + index * 20 : 0);

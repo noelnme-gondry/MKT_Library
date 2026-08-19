@@ -106,7 +106,8 @@ const COPY = {
     reason: {
       "insufficient-oos-folds": "OOS fold 2개 미만",
       "unstable-fold-coefficient": "fold별 채널 계수 불안정",
-      "sparse-active-weeks": "집행 20주 미만",
+      // 같은 사유 키는 같은 말을 해야 한다 — 게이트가 두 축이므로 둘 다 적는다(D-18).
+      "sparse-active-weeks": "집행 기간이 짧음 (20주 미만 또는 전체의 20% 미만)",
       "recently-inactive-channel": "최근 12주 집행 근거 부족",
       "insufficient-spend-variation": "지출 변동 부족",
       "high-collinearity": "채널 공선성 · 묶음 해석 필요",

@@ -287,11 +287,11 @@ export const IA = [
       },
       {
         id: "5-18-mmm",
-        title: "채널 기여도",
+        title: "채널 기여도 (MMM)",
         seoTitle: "MMM 기여 분해: 광고비, 어디서 벌고 어디서 잃는지",
         seoDescription:
           "마케팅 믹스 모델(MMM)로 채널·기본 수요·이벤트의 성과 기여를 분해합니다. CSV 업로드로 바로 실행하는 무료 MMM 도구.",
-        titleEn: "Channel contribution",
+        titleEn: "Channel contribution (MMM)",
         seoTitleEn: "MMM Contribution: See Where Your Ad Spend Wins",
         seoDescriptionEn:
           "Use marketing mix modeling to decompose channel, base-demand, and event contribution. Free — upload a CSV and run it instantly.",

@@ -168,7 +168,7 @@ function formatNumberK(n, decimals = 0) {
 
 /* 채널 적합 신뢰도(High/Med/Low) — R²(적합 품질) + 데이터 점 수 기반. Bayesian posterior가
    아니라 "적합 품질·데이터 커버리지" 기준임을 라벨/툴팁으로 정직히 고지(§8). wrapper=fitChannel 결과. */
-function allocConfidence(wrapper) {
+export function allocConfidence(wrapper) {
   if (!wrapper || !wrapper.model) return null;
   const r2 = Number(wrapper.r2);
   const n = wrapper.kept ? wrapper.kept.length : 0;
@@ -261,6 +261,22 @@ function fitChannel(pts, adv) {
     r2: model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(kept, model),
   };
 }
+/* 저신뢰 채널을 현재 지출에 고정할 대상 선택(§8.6 · product-ssot D-14).
+   엔진의 잠금 경로(overrides)에 그대로 넣는 값이라, 무엇을 고르는지가 계약이다 —
+   컴포넌트 안에 두면 검증할 수 없어서 순수 함수로 뺐다. */
+export function selectLowConfidenceHolds(modelsMap, historyByCh = {}) {
+  const out = {};
+  if (!modelsMap) return out;
+  for (const [ch, meta] of modelsMap) {
+    if (allocConfidence(meta)?.level !== "low") continue;
+    // 현재 지출을 모르면 고정할 값이 없다. 0으로 고정하면 채널을 끄는 것이 되므로 제외한다.
+    const current = Number(historyByCh?.[ch]?.latestCost);
+    if (!(current > 0)) continue;
+    out[ch] = current;
+  }
+  return out;
+}
+
 export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
   const models = new Map();
   for (const [ch, pts] of byChannel) {
@@ -470,6 +486,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const [budgetAutoDefaulted, setBudgetAutoDefaulted] = useState(false); // 최초 진입 시 최근 일예산 합계로 1회 채움
   const [recentDays, setRecentDays] = useState(7);
   const [allocMode, setAllocMode] = useState("c"); // c | b
+  // 적합이 얇은 채널로 예산을 옮기지 않는다(§8.6 입증책임 비대칭 · product-ssot D-14).
+  // 신뢰도는 이미 R²와 데이터 점 수로 계산하고 있었지만 **표시만** 하고 배분에는
+  // 쓰지 않았다 — 가장 불확실한 추정치로 돈을 옮기는 상태였다. 기본 ON.
+  const [holdLowConfidence, setHoldLowConfidence] = useState(true);
   // 표시 통화(₩/$) — 전역 store가 SSOT, 토글 UI는 Header뿐(도구별 중복 금지).
   const currency = useAppStore((state) => state.displayCurrency);
 
@@ -646,6 +666,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     }
     return out;
   }, [byChannel, rows, unitField, effectiveMetric, recentDays]);
+
+  // 저신뢰 채널을 현재 지출에 고정한다. 엔진의 잠금 경로(overrides)를 그대로 쓰므로
+  // 배분 수학은 건드리지 않는다. 현재 지출을 모르면(0·미상) 고정할 값이 없으므로 제외한다.
+  const lowConfidenceHolds = useMemo(
+    () => (holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}),
+    [holdLowConfidence, modelsMap, historyByCh],
+  );
 
   // 채널/캠페인별이면 국가를 단일로 강제(0·복수·무효 → 최고지출 국가). index.html normalizeAllocCountryFilter 이식.
   // 이벤트 기반: 단위 변경 시 호출(effect 내 setState 회피).
@@ -918,6 +945,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       modelsMap,
       totalBudget: plannedDailyBudget,
       maxSpends: evidenceLimits.maxSpends,
+      overrides: lowConfidenceHolds,
     };
     if (allocMode === "b")
       return calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currency });
@@ -933,6 +961,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     effectiveMetric,
     historyByCh,
     evidenceLimits.maxSpends,
+    lowConfidenceHolds,
   ]);
   const isAllocationFullyFundedPlan = isAllocationFullyFunded({
     allocation,
@@ -2558,6 +2587,29 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <div className="alloc-mode-toggle" role="group" aria-label={tr("배분 방식", "Allocation method")}>
               <button type="button" className={allocMode === "c" ? "active" : ""} aria-pressed={allocMode === "c"} onClick={() => setAllocMode("c")}>{tr("안정적 효율 가중", "Stable efficiency weighting")}</button>
               <button type="button" className={allocMode === "b" ? "active" : ""} aria-pressed={allocMode === "b"} onClick={() => setAllocMode("b")}>{tr("한계효용 그리디", "Marginal-utility greedy")}</button>
+            </div>
+            {/* 자동 판정은 조용하면 안 된다 — 무엇을 왜 고정했는지 말하고 뒤집을 수
+                있어야 사용자가 판단을 되찾는다(§8.8 · product-ssot D-14). */}
+            <div className="alloc-hold-low">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={holdLowConfidence}
+                  onChange={(event) => setHoldLowConfidence(event.target.checked)}
+                />
+                <span>{tr("적합 신뢰도가 낮은 채널은 현재 지출로 고정", "Hold low-confidence channels at their current spend")}</span>
+              </label>
+              <p>
+                {Object.keys(lowConfidenceHolds).length > 0
+                  ? tr(
+                      `지금 ${Object.keys(lowConfidenceHolds).join(", ")} 채널이 여기에 해당합니다. 곡선이 얇게 적합된 채널로 예산을 옮기면 가장 불확실한 추정치에 돈을 거는 셈이라, 기본값은 현재 지출 유지입니다.`,
+                      `Currently ${Object.keys(lowConfidenceHolds).join(", ")}. Moving budget into a thinly fitted curve bets on the least certain estimate, so the default is to keep their current spend.`,
+                    )
+                  : tr(
+                      "지금은 해당하는 채널이 없습니다. 신뢰도는 적합 품질(R²)과 데이터 점 수로 판정합니다.",
+                      "No channel qualifies right now. Confidence comes from fit quality (R²) and the number of data points.",
+                    )}
+              </p>
             </div>
             <p>{tr("PRISM은 각 채널의 관측 최대 지출을 넘지 않도록 자동 배분합니다. 마지막 효율을 관측 밖 비용에 연장해 목표 예산을 부풀리지 않습니다. 이는 관측된 비용·성과 관계를 쓴 시뮬레이션이며 인과 효과 보장은 아닙니다.", "PRISM auto-allocates without exceeding each channel's observed maximum spend. It does not extend the last efficiency beyond observed spend to inflate a target budget. This is a simulation from observed cost-performance relationships, not a causal guarantee.")}</p>
           </div>

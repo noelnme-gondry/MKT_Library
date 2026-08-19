@@ -64,6 +64,36 @@ function seedWithData() {
   });
 }
 
+function seedWithImpressions() {
+  const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Impressions"];
+  const mapping = {
+    Date: "date",
+    Country: "country",
+    Platform: "platform",
+    Channel: "channel",
+    Spend: "cost",
+    Installs: "installs",
+    Impressions: "impressions",
+  };
+  const raw = [];
+  for (let d = 5; d <= 25; d++) {
+    const date = `2026-01-${String(d).padStart(2, "0")}`;
+    for (const ch of ["Google", "Meta"]) {
+      const cost = ch === "Google" ? 100000 + d * 3000 : 80000 + d * 2500;
+      const installs = Math.round(cost / (ch === "Google" ? 5000 : 4200)); // NO Math.random — §8
+      // 후반부로 갈수록 노출 단가가 오르게 둔다(결정론적).
+      const impressions = Math.round(cost / (2 + d * 0.05));
+      raw.push({ Date: date, Country: "KR", Platform: "iOS", Channel: ch, Spend: cost, Installs: installs, Impressions: impressions });
+    }
+  }
+  const slice = { raw, headers, mapping, fileName: "pvm_impressions.csv" };
+  useAppStore.setState({
+    currentRouteId: "5-21",
+    csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+    csvData: slice,
+  });
+}
+
 function zeroResultSlice() {
   const headers = ["Date", "Channel", "Spend", "Installs"];
   const mapping = { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" };
@@ -130,6 +160,25 @@ describe("CampaignPvm render smoke", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     expect(screen.getByLabelText("검증 지표").value).toMatch(/CPI|CPA/);
     expect(view.container.querySelector(".tool-page-shell__main > .summary")).toBeNull();
+  });
+
+  // 효율이 왜 움직였는지는 물량·효율·믹스만으로 답이 안 된다. 노출을 매핑하면
+  // 매체가와 반응률로 갈라 보여준다(product-ssot D-17).
+  it("splits the efficiency move into media price and response rate when impressions are mapped", () => {
+    seedWithImpressions();
+    const { container } = render(<CampaignPvm />);
+    const bridge = container.querySelector(".pvm-efficiency-bridge");
+    expect(bridge, "노출을 매핑했는데 효율 분해가 없다").toBeTruthy();
+    expect(bridge.textContent).toContain("노출 단가");
+    expect(bridge.textContent).toContain("반응률");
+  });
+
+  // 쓸 수 없는 기능은 조건이 갖춰졌을 때만 보여야 한다(§12.17) — 노출이 없으면
+  // 빈 칸이나 0이 아니라 아예 나오지 않는다.
+  it("hides the split entirely when impressions are not mapped", () => {
+    seedWithData();
+    const { container } = render(<CampaignPvm />);
+    expect(container.querySelector(".pvm-efficiency-bridge")).toBeNull();
   });
 
   it("uses dashboard date and comparison ranges as P1 and P2", () => {

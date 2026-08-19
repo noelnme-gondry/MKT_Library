@@ -42,7 +42,7 @@ export const ITEM_TITLE_EN = {
   "5-18-trend": "Trend",
   "5-18-paid-organic": "Paid vs Organic",
   "5-18-cannibal": "Cannibalization",
-  "5-18-mmm": "Channel contribution",
+  "5-18-mmm": "Channel contribution (MMM)",
   "5-18-forecast": "Forecast",
   "5-20": "Aha moment",
   "5-25": "Channel overlap",
