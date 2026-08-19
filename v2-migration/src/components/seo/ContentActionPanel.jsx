@@ -31,8 +31,8 @@ const TOOL_COPY = {
     en: { label: "Cannibalization diagnosis", title: "Check whether paid ads displace organic outcomes", desc: "Review four signals of possible cannibalization by channel.", cta: "Open cannibalization diagnosis" },
   },
   "5-18-mmm": {
-    ko: { label: "채널 기여도", title: "성과를 움직인 요인을 분해하세요", desc: "채널·기본 수요·이벤트의 기여를 MMM으로 나눠 봅니다.", cta: "MMM 기여 분해 열기" },
-    en: { label: "Channel contribution", title: "Decompose what moved performance", desc: "Use MMM to separate channel, base-demand, and event contribution.", cta: "Open MMM contribution" },
+    ko: { label: "채널 기여도 (MMM)", title: "성과를 움직인 요인을 분해하세요", desc: "채널·기본 수요·이벤트의 기여를 MMM으로 나눠 봅니다.", cta: "MMM 기여 분해 열기" },
+    en: { label: "Channel contribution (MMM)", title: "Decompose what moved performance", desc: "Use MMM to separate channel, base-demand, and event contribution.", cta: "Open MMM contribution" },
   },
   "5-18-forecast": {
     ko: { label: "미래 예측", title: "다음 기간 예측을 검증하세요", desc: "예측 전용 회귀와 봉인 OOS 검증으로 다음 기간을 점검합니다.", cta: "회귀 · 미래 예측 열기" },

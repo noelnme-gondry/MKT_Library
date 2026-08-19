@@ -204,8 +204,12 @@ describe("GlobalModals complete tool menu", () => {
     for (const [query, toolId] of [["다중공선성", "5-25"], ["VIF", "5-25"], ["MMM", "5-18-mmm"]]) {
       fireEvent.change(search, { target: { value: query } });
       // 하나만 나오는지가 아니라 "찾히는지"가 계약이다(같은 말로 여러 분석이 잡힌다).
+      // 이름을 정규식으로 그대로 쓰면 "채널 기여도 (MMM)"의 괄호가 캡처 그룹이 되어
+      // 실제로는 "채널 기여도 MMM"을 찾는다 — 이름에 메타문자가 들어온 순간 조용히
+      // 어긋나므로 이스케이프한다.
+      const namePattern = new RegExp(nameOf(toolId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
       expect(
-        screen.queryAllByRole("option", { name: new RegExp(nameOf(toolId)) }).length,
+        screen.queryAllByRole("option", { name: namePattern }).length,
         `"${query}"로 ${toolId}(${nameOf(toolId)})를 못 찾음`,
       ).toBeGreaterThan(0);
     }

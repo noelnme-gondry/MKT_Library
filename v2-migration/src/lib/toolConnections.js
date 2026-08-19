@@ -73,7 +73,9 @@ export const CONNECTED_TOOLS = {
     keywords: { ko: "카니발 잠식 브랜드 검색 오가닉 잠식 유료 광고 대체 그랜저", en: "cannibalization brand search organic displacement paid substitution Granger" },
   },
   "5-18-mmm": {
-    title: { ko: "채널 기여도", en: "Channel contribution" },
+    // MMM은 마케터가 실제로 찾는 고유명사다. 이름에서 빼면 목록을 눈으로 훑을 때
+    // 걸리지 않는다(§12.31의 "괄호 금지"에 대한 명시적 예외).
+    title: { ko: "채널 기여도 (MMM)", en: "Channel contribution (MMM)" },
     question: { ko: "성과 중 각 채널이 만든 몫은 얼마일까?", en: "How much of the outcome did each channel contribute?" },
     keywords: { ko: "MMM 마케팅 믹스 모델 채널 기여도 분해 adstock 포화 기본 수요", en: "MMM marketing mix model channel contribution decomposition adstock saturation base demand" },
   },
