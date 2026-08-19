@@ -9336,11 +9336,31 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   font-size: 12px; line-height: 1.45; color: var(--text-muted); display: -webkit-box;
   -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 1px;
 }
+/* 갈래 수가 열 수로 나누어떨어지지 않으면 **마지막 갈래가 줄에 혼자 남아** 옆이
+   통째로 빈다. 위 주석은 갈래가 6개라 3열 두 줄에 딱 맞는다는 전제로 쓰였는데,
+   기여도 갈래가 늘어 7개가 되면서 그 전제가 깨졌다(3열이면 3+3+1, 2열이면 2+2+2+1).
+   갈래 수를 CSS에 적어 고정하면 다음에 또 어긋나므로, **혼자 남는 경우에만** 줄
+   전체를 쓰게 한다 — 개수와 무관하게 성립한다.
+   혼자 남은 갈래는 세로로 길어지면 다시 균형이 깨지므로 도구를 가로로 편다. */
+.dc-questions .tool-index__stage:last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+.dc-questions .tool-index__stage:last-child:nth-child(3n + 1) .tool-index__list {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 40px;
+}
+
 @media (max-width: 1000px) {
   .dc-questions .tool-index { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 열 수가 바뀌면 "혼자 남는 자리"도 바뀐다 — 3열 기준 규칙을 끄고 2열 기준으로 다시 건다. */
+  .dc-questions .tool-index__stage:last-child:nth-child(3n + 1) { grid-column: auto; }
+  .dc-questions .tool-index__stage:last-child:nth-child(3n + 1) .tool-index__list { display: block; }
+  .dc-questions .tool-index__stage:last-child:nth-child(2n + 1) { grid-column: 1 / -1; }
+  .dc-questions .tool-index__stage:last-child:nth-child(2n + 1) .tool-index__list {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px;
+  }
 }
 @media (max-width: 620px) {
   .dc-questions .tool-index { grid-template-columns: 1fr; }
+  /* 한 열에서는 모두가 "혼자"라 span이 의미 없다. 원래대로 되돌린다. */
+  .dc-questions .tool-index__stage:last-child:nth-child(2n + 1) .tool-index__list { display: block; }
 }
 
 
