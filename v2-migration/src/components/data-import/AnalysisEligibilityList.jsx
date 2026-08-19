@@ -13,7 +13,7 @@ const OUTCOME = {
   "5-22": { ko: "캠페인별 증액 여력과 한계 효율", en: "Scale headroom and marginal efficiency" },
   "5-3": { ko: "채널별 증액·감액 예산 시나리오", en: "Channel-level budget move scenarios" },
   "5-4": { ko: "A/B 차이·신뢰구간·다음 판정", en: "A/B difference, interval, and next decision" },
-  "5-18": { ko: "채널 기여·회귀·미래 예산 시나리오", en: "Channel contribution, regression, and forecast" },
+  "5-18-mmm": { ko: "채널·기본 수요·이벤트의 성과 기여 분해", en: "Contribution split across channels, base demand, and events" },
   "5-23": { ko: "광고가 실제로 추가 만든 순증분", en: "Outcomes advertising truly added" },
   "5-24": { ko: "브랜드 캠페인이 추가 만든 검색·직접유입·가입", en: "Brand-campaign lift in search, direct traffic, or signups" },
   "5-25": { ko: "MMM 전 채널 지출의 중복 움직임과 최대 VIF", en: "Overlapping channel spend and maximum VIF before MMM" },

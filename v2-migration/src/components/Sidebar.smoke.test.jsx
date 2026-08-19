@@ -122,36 +122,18 @@ describe("Sidebar render smoke", () => {
   });
 });
 
-describe("5-18 하위 화면 노출", () => {
-  it("사이드바에서 진단·기여도·예측 세 갈래가 바로 보인다", () => {
-    // 예전에는 5-18이 한 줄뿐이라 들어가야만 안에 화면이 넷이란 걸 알 수 있었다.
+describe("응답 패널 다섯 분석 노출", () => {
+  it("사이드바에 다섯 분석이 각각 항목으로 나온다", () => {
+    // 예전에는 5-18 한 줄뿐이라 들어가야만 안에 분석이 다섯이란 걸 알 수 있었다.
     // 홈은 사이드바가 다른 변형(워크스페이스 4줄)을 그리므로 도구 경로에서 본다.
     pathname = "/dashboard";
     const { container } = render(<Sidebar />);
-    const subnav = container.querySelector(".nav-subnav");
-    expect(subnav).toBeTruthy();
-    for (const label of ["진단", "기여도", "예측"]) {
-      expect([...subnav.querySelectorAll(".nav-subnav__label")].map((n) => n.textContent)).toContain(label);
+    const hrefs = [...container.querySelectorAll(".nav-item")].map((link) => link.getAttribute("href"));
+    for (const slug of ["/tools/marketing-trend", "/tools/paid-organic-trend", "/tools/cannibalization-diagnosis", "/tools/mmm-contribution", "/tools/marketing-forecast"]) {
+      expect(hrefs, slug).toContain(slug);
     }
-    // 네 화면이 전부 링크로 나와야 한다 — 하나라도 빠지면 다시 "들어가야만 보인다".
-    expect(subnav.querySelectorAll(".nav-subnav__item")).toHaveLength(4);
-    for (const link of subnav.querySelectorAll(".nav-subnav__item")) {
-      expect(link.getAttribute("href")).toMatch(/^\/tools\//);
-    }
-    pathname = "/";
-  });
-
-  it("활성 스테이지만 펼치고 나머지는 접는다", () => {
-    // 발견("무엇을 할 수 있나")은 홈·/start 인덱스가 맡는다. 사이드바까지 17개를
-    // 펴면 CSV 올린 화면에서 내비가 벽이 된다 — 실제로 그렇게 보였다.
-    pathname = "/dashboard";
-    const { container } = render(<Sidebar />);
-    const stages = [...container.querySelectorAll(".sidebar-workflow-stage")];
-    const open = stages.filter((stage) => !stage.classList.contains("collapsed"));
-    expect(stages.length).toBeGreaterThan(1);
-    expect(open).toHaveLength(1);
-    // 열린 하나는 현재 도구가 속한 스테이지여야 한다.
-    expect(open[0].querySelector('[data-route="5-2"]')).toBeTruthy();
+    // 하위 화면 전용 서브내비는 필요 없어졌다 — 항목이 곧 분석이다.
+    expect(container.querySelector(".nav-subnav")).toBeNull();
     pathname = "/";
   });
 });

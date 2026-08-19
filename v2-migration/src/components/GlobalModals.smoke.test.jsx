@@ -201,9 +201,9 @@ describe("GlobalModals complete tool menu", () => {
     renderToolMenu();
     fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
     const search = screen.getByRole("combobox", { name: "작업·도구·가이드 검색" });
-    for (const [query, toolId] of [["다중공선성", "5-25"], ["VIF", "5-25"], ["MMM", "5-18"]]) {
+    for (const [query, toolId] of [["다중공선성", "5-25"], ["VIF", "5-25"], ["MMM", "5-18-mmm"]]) {
       fireEvent.change(search, { target: { value: query } });
-      // 하나만 나오는지가 아니라 "찾히는지"가 계약이다(5-18은 하위 화면도 함께 잡힌다).
+      // 하나만 나오는지가 아니라 "찾히는지"가 계약이다(같은 말로 여러 분석이 잡힌다).
       expect(
         screen.queryAllByRole("option", { name: new RegExp(nameOf(toolId)) }).length,
         `"${query}"로 ${toolId}(${nameOf(toolId)})를 못 찾음`,

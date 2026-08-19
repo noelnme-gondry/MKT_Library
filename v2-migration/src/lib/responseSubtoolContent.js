@@ -5,6 +5,9 @@ const CONTENT = {
     ko: {
       h1: "Paid·Organic 변화맵",
       intro: "최근 주차일수록 진해지는 궤적으로 Paid와 Organic의 주간 움직임을 빠르게 확인합니다.",
+      question: "광고를 늘렸는데 오가닉이 줄어든 것 같은데 맞나요?",
+      answer: "Paid↑·Organic↓ 주가 반복되는지 한 궤적에서 봅니다. 한두 주는 근거가 아닙니다.",
+      outputs: ["주간 WoW 궤적", "반대 방향 주차 수", "정밀 진단 필요 여부"],
       eyebrow: "Paid·Organic 변화 가이드",
       title: "정밀 모델을 실행하기 전에 반대 움직임이 반복되는지 먼저 보세요",
       lead: "Paid 성과가 늘고 Organic이 줄어드는 주가 반복되면 측정 이동이나 잠식 가능성을 더 확인할 이유가 생깁니다. 변화맵은 원인을 확정하지 않고, 정밀 진단으로 넘길 패턴을 빠르게 찾는 탐색 도구입니다.",
@@ -22,6 +25,9 @@ const CONTENT = {
     en: {
       h1: "Paid · Organic Movement Map",
       intro: "Use a darker-is-newer weekly path to quickly inspect how Paid and Organic outcomes move together.",
+      question: "Did Organic fall as I scaled Paid?",
+      answer: "See whether Paid-up and Organic-down weeks repeat; one or two weeks prove nothing.",
+      outputs: ["Weekly WoW path", "Opposite-move weeks", "Whether to dig deeper"],
       eyebrow: "Paid and Organic movement guide",
       title: "Look for repeated opposite movement before running a deeper model",
       lead: "Repeated weeks where Paid rises while Organic falls create a reason to inspect attribution movement or displacement. The map is an exploratory handoff, not a causal conclusion.",
@@ -41,6 +47,9 @@ const CONTENT = {
     ko: {
       h1: "마케팅 추세·계절성 분석",
       intro: "광고 효과를 판단하기 전에 자연 추세, 계절성, 이상 주차를 분리해 비교 기준선을 만듭니다.",
+      question: "성과 변화가 광고 때문인지 어떻게 아나요?",
+      answer: "자연 추세와 계절성을 먼저 분리해 기준선을 만들고, 그 위에 남는 변화만 봅니다.",
+      outputs: ["주간 기준선·추세", "반복되는 계절 패턴", "기준 밖 이상 주차"],
       eyebrow: "추세 분석 가이드",
       title: "광고 성과 변화와 원래 움직이던 추세를 먼저 구분하세요",
       lead: "매출이나 전환이 함께 움직였다는 사실만으로 광고 효과를 확정할 수 없습니다. 주간 기준선과 계절성을 먼저 분리하면 이후 잠식 진단·MMM·예측이 같은 일시적 변동을 광고 효과로 오해할 가능성이 줄어듭니다.",
@@ -58,6 +67,9 @@ const CONTENT = {
     en: {
       h1: "Marketing trend and seasonality analysis",
       intro: "Separate baseline trend, seasonality, and unusual weeks before attributing a performance change to advertising.",
+      question: "How do I know whether a change came from marketing?",
+      answer: "Separate trend and seasonality first, then read only what is left above that baseline.",
+      outputs: ["Weekly baseline", "Seasonal pattern", "Outlier weeks"],
       eyebrow: "Trend analysis guide",
       title: "Separate advertising movement from the trend already in motion",
       lead: "A simultaneous change in spend and outcomes does not prove advertising impact. Establishing the weekly baseline and seasonal pattern first reduces the chance that cannibalization, MMM, or forecasting treats a temporary swing as media contribution.",
@@ -77,6 +89,9 @@ const CONTENT = {
     ko: {
       h1: "광고 카니발라이제이션 진단",
       intro: "유료 성과가 늘 때 오가닉·브랜드 성과가 줄었는지 네 가지 신호로 점검하고 검증할 채널을 좁힙니다.",
+      question: "유료 광고가 오가닉 성과를 잠식하고 있나요?",
+      answer: "지출·시차·상관 네 신호로 점검합니다. 신호가 모여도 인과는 홀드아웃으로 확인합니다.",
+      outputs: ["잠식 신호 4종 판정", "채널별 의심 순위", "홀드아웃 후보"],
       eyebrow: "잠식 진단 가이드",
       title: "유료 광고가 신규 성과를 만들었는지 기존 수요를 가져왔는지 점검하세요",
       lead: "네트워크 어트리뷰션이 늘어도 전체 수요가 그대로라면 광고가 원래 발생할 오가닉 성과를 가져왔을 수 있습니다. 이 진단은 시차·반대 움직임·채널 중첩·모델 적합도를 함께 읽어 홀드아웃이 필요한 채널을 선별합니다.",
@@ -94,6 +109,9 @@ const CONTENT = {
     en: {
       h1: "Ad cannibalization diagnosis",
       intro: "Check four signals that paid outcomes may be replacing organic or branded demand, then narrow the channels that need validation.",
+      question: "Is paid advertising displacing organic outcomes?",
+      answer: "Four signals check it; even when they line up, causality needs a holdout test.",
+      outputs: ["Four displacement signals", "Channels ranked by suspicion", "Holdout candidates"],
       eyebrow: "Cannibalization guide",
       title: "Check whether paid media created outcomes or captured existing demand",
       lead: "A lift in attributed conversions can occur while total demand stays flat. This diagnosis combines lag, paid-organic movement, channel overlap, and model fit to prioritize the channels that deserve a holdout test.",
@@ -113,6 +131,9 @@ const CONTENT = {
     ko: {
       h1: "MMM 채널 기여도 분석",
       intro: "채널 지출, 기본 수요, 이벤트가 성과와 어떻게 연결됐는지 마케팅 믹스 모델로 분해합니다.",
+      question: "각 채널이 성과를 얼마나 만들었나요?",
+      answer: "주간 지출·성과 패널에 adstock·포화를 넣어 채널·기본 수요·이벤트 몫으로 나눕니다.",
+      outputs: ["채널별 기여 분해", "기본 수요 대비 몫", "채널별 한계 효율"],
       eyebrow: "MMM 기여 분석 가이드",
       title: "광고 채널과 기본 수요의 기여를 같은 기준으로 분해하세요",
       lead: "MMM은 주간 집계 데이터에서 채널 지출의 잔류효과와 포화를 반영해 성과 기여를 추정합니다. 라스트클릭과 달리 채널·시즌·이벤트를 함께 보지만, 관측 데이터 모델이므로 인과 효과를 확정하지는 않습니다.",
@@ -130,6 +151,9 @@ const CONTENT = {
     en: {
       h1: "MMM channel contribution analysis",
       intro: "Decompose how channel spend, base demand, and events relate to outcomes with a marketing mix model.",
+      question: "How much did each channel contribute to the outcome?",
+      answer: "Adstock and saturation split the panel into channel, base demand, and event shares.",
+      outputs: ["Channel contribution split", "Base-demand share", "Marginal efficiency"],
       eyebrow: "MMM contribution guide",
       title: "Estimate media and base-demand contribution on one consistent basis",
       lead: "MMM uses weekly aggregate data to estimate contribution while accounting for carryover and saturation. It evaluates channels, seasonality, and events together, but remains an observational model rather than causal proof.",
@@ -149,6 +173,9 @@ const CONTENT = {
     ko: {
       h1: "마케팅 회귀·미래예측",
       intro: "과거 데이터로 다음 기간을 예측하고, 학습에 쓰지 않은 봉인 구간에서 오차와 불확실성을 확인합니다.",
+      question: "다음 기간 성과는 얼마나 나올까요?",
+      answer: "예측 전용 회귀로 다음 구간을 추정하고, 봉인 OOS 검증으로 믿을 만한지 함께 냅니다.",
+      outputs: ["기간별 예측값·구간", "봉인 OOS 검증 결과", "시나리오별 비교"],
       eyebrow: "회귀 예측 가이드",
       title: "예측값보다 먼저 학습 밖 데이터에서 오차를 확인하세요",
       lead: "미래예측은 과거 관계가 다음 기간에도 유지된다는 가정 위에 있습니다. 학습 구간과 검증 구간을 분리하고 예측 범위를 함께 제시해, 그럴듯한 한 점 예측보다 실제 운영에 사용할 수 있는 불확실성을 보여줍니다.",
@@ -166,6 +193,9 @@ const CONTENT = {
     en: {
       h1: "Marketing regression and forecasting",
       intro: "Forecast the next period, then inspect error and uncertainty on a sealed window that was not used for training.",
+      question: "What will next period's performance look like?",
+      answer: "Forecast-only regression estimates the next window; sealed OOS validation checks it.",
+      outputs: ["Period forecast and band", "Sealed OOS result", "Scenario comparison"],
       eyebrow: "Forecasting guide",
       title: "Validate error on unseen data before trusting the forecast",
       lead: "A forecast assumes that historical relationships continue into the next period. Separating training and validation windows and showing an interval makes uncertainty usable, instead of presenting one precise-looking number.",

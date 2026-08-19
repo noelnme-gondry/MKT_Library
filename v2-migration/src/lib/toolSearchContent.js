@@ -1,4 +1,5 @@
 import { getResponseSubtoolContent } from "./responseSubtoolContent";
+import { ROUTES, isRoutePublished } from "./routeMap";
 
 // 도구 라우트의 검색 진입면 콘텐츠(SSOT).
 // - 렌더: `components/ToolLongform.jsx` (eyebrow·title·lead·sections·faq)
@@ -569,7 +570,12 @@ const CONTENT = {
   },
 };
 
-export const TOOL_SEARCH_CONTENT_IDS = Object.keys(CONTENT);
+// 검사 대상 목록은 이 파일의 키가 아니라 **발행된 도구 라우트**에서 파생한다.
+// 키로 만들면 여기 없는 도구(구 5-18 하위 다섯처럼 폴백으로 붙은 것)가 AEO·FAQ
+// 가드를 통째로 비켜간다 — 가드가 있다는 사실이 가드가 없다는 사실을 가린다(§7).
+export const TOOL_SEARCH_CONTENT_IDS = ROUTES
+  .filter((route) => isRoutePublished(route) && /^(5|9)-/.test(route.id))
+  .map((route) => route.id);
 
 export function getToolSearchContent(toolId, locale = "ko") {
   const localeKey = locale === "en" ? "en" : "ko";

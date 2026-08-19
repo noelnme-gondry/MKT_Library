@@ -10,7 +10,7 @@ describe("DiagnoseRouter", () => {
     fireEvent.click(screen.getByRole("radio", { name: "유료·오가닉 주간 데이터" }));
     fireEvent.click(screen.getByRole("radio", { name: "광고의 순수 효과 검증하기" }));
     expect(screen.getByText("이 분석부터 시작하세요")).toBeTruthy();
-    expect(screen.getByText("마케팅 반응 분석")).toBeTruthy();
+    expect(screen.getByText("잠식 진단")).toBeTruthy();
     expect(screen.getByText("증분 효과 분석")).toBeTruthy();
     expect(screen.getByText(/인과 판단은 통제 실험/)).toBeTruthy();
   });

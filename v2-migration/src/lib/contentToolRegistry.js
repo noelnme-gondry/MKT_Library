@@ -5,11 +5,11 @@ const BLOG_PRIMARY_TOOL = {
   "ab-testing": "5-4",
   "ad-creative-specs-guide": "9-6",
   "ad-creative-testing": "9-6",
-  "ad-machine-learning": "5-18",
+  "ad-machine-learning": "5-18-mmm",
   "ad-performance-diagnosis": "5-21",
   "aha-event-ad-optimization": "5-20",
   "aha-moment-retention": "5-20",
-  "ai-era-marketer": "5-18",
+  "ai-era-marketer": "5-18-mmm",
   "apple-search-ads-guide": "5-26",
   "asa-keyword-expansion": "5-26",
   "aso-basics-guide": "5-27",
@@ -21,7 +21,7 @@ const BLOG_PRIMARY_TOOL = {
   "budget-marginal-efficiency": "5-3",
   "budget-scaling-limit": "5-22",
   "campaign-anomaly-detection": "5-21",
-  "cannibalization-organic-paid": "5-18",
+  "cannibalization-organic-paid": "5-18-cannibal",
   "cohort-analysis-guide": "5-2",
   "content-element-analysis": "9-1",
   "correlation-vs-causation": "5-23",
@@ -29,13 +29,13 @@ const BLOG_PRIMARY_TOOL = {
   "creative-attribute-regression": "9-1",
   "event-taxonomy-guide": "5-2",
   "funnel-dropoff-analysis": "5-2",
-  "ga4-data-traps": "5-18",
+  "ga4-data-traps": "5-18-trend",
   "google-uac-optimization": "9-6",
   "hook-3-seconds-framework": "9-6",
   "incrementality-measurement": "5-23",
   "ios-att-skan-guide": "5-2",
   "ltv-cac-ratio": "5-2",
-  "marketing-mix-modeling": "5-18",
+  "marketing-mix-modeling": "5-18-mmm",
   "multicollinearity-mmm-guide": "5-25",
   "meta-advantage-plus-guide": "9-6",
   "offline-ad-online-impact": "5-24",
@@ -52,7 +52,7 @@ const BLOG_PRIMARY_TOOL = {
 };
 
 const GLOSSARY_PRIMARY_TOOL = {
-  adstock: "5-18",
+  adstock: "5-18-mmm",
   arpu: "5-2",
   aso: "5-27",
   "custom-product-page": "5-27",
@@ -61,7 +61,7 @@ const GLOSSARY_PRIMARY_TOOL = {
   attribution: "5-23",
   "attribution-window": "5-23",
   cac: "5-2",
-  cannibalization: "5-18",
+  cannibalization: "5-18-cannibal",
   "click-injection": "5-2",
   cohort: "5-2",
   "conversion-value": "5-2",
@@ -85,12 +85,12 @@ const GLOSSARY_PRIMARY_TOOL = {
   lookalike: "5-3",
   ltv: "5-2",
   "marginal-cpa": "5-22",
-  mmm: "5-18",
+  mmm: "5-18-mmm",
   mmp: "5-2",
   multicollinearity: "5-25",
   "payback-period": "5-2",
   postback: "5-2",
-  "probabilistic-attribution": "5-18",
+  "probabilistic-attribution": "5-18-mmm",
   "response-curve": "5-22",
   retargeting: "5-23",
   retention: "5-2",
@@ -103,21 +103,6 @@ const GLOSSARY_PRIMARY_TOOL = {
 
 // 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
 // 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
-const BLOG_RESPONSE_STAGE = {
-  "ad-machine-learning": "mmm",
-  "ai-era-marketer": "mmm",
-  "cannibalization-organic-paid": "diagnose",
-  "ga4-data-traps": "trend",
-  "marketing-mix-modeling": "mmm",
-};
-
-const GLOSSARY_RESPONSE_STAGE = {
-  adstock: "mmm",
-  cannibalization: "diagnose",
-  multicollinearity: "mmm",
-  "probabilistic-attribution": "mmm",
-};
-
 const BLOG_RELATED_GLOSSARY = {
   "ab-testing": ["holdout-test", "uplift"],
   "ad-creative-specs-guide": ["ctr", "cpm"],
@@ -171,11 +156,6 @@ const BLOG_RELATED_GLOSSARY = {
 export function primaryToolForContent(slug, type = "blog") {
   const registry = type === "glossary" ? GLOSSARY_PRIMARY_TOOL : BLOG_PRIMARY_TOOL;
   return registry[slug] || "5-2";
-}
-
-export function primaryResponseStageForContent(slug, type = "blog") {
-  const registry = type === "glossary" ? GLOSSARY_RESPONSE_STAGE : BLOG_RESPONSE_STAGE;
-  return registry[slug] || null;
 }
 
 export function relatedGlossaryForPost(slug) {

@@ -17,7 +17,8 @@ export const ANALYSIS_CONTRACTS = {
   "5-3": { minRows: 8, minPeriods: 7, minEntities: 2, minEntityActivePeriods: 4, minEntitySpendCv: 0.03, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 4 },
   "5-4": { minRows: 2, minPeriods: 0, priority: 5 },
   // MMM은 12~51주를 탐색용으로 열어 두되, 예산 의사결정에 쓸 만한 상태는 52주부터다.
-  "5-18": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
+  // 추천은 매핑 허브가 아니라 실제 분석(기여 분해)을 가리킨다 — 허브는 목록에 없다.
+  "5-18-mmm": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
   "5-23": { minRows: 2, minPeriods: 0, priority: 7 },
   "5-24": { minRows: 28, minPeriods: 28, priority: 8 },
   // VIF는 최소 2개 채널과 채널 수보다 3개 이상 많은 날짜가 있어야 역행렬을
@@ -273,7 +274,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
   }
   const isBlocked = Boolean(foreignGrainGuide) || missing.length || hasMappingConflict || hasRequiredMappingConfirmation || records.length < contract.minRows || hasTooFewPeriods || hasTooFewEntities || hasInsufficientVifVariation || unusableMetrics.length;
   let confidenceTier = "standard";
-  if (!isBlocked && toolId === "5-18") {
+  if (!isBlocked && toolId === "5-18-mmm") {
     const mmm = evaluateMmmConfidence(records, quality, contract);
     confidenceTier = mmm.tier;
     details.push(...mmm.details);

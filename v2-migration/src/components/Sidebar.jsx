@@ -10,8 +10,6 @@ import { localizedHref } from "@/lib/localizedHref";
 import { workspaceNavItems } from "@/lib/workspaceNav";
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
-import { MMM_STAGE_GROUPS, mmmStageDefs } from "@/components/tools/marketingResponseModel";
-import { responseStageHref } from "@/lib/responseStage";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
 
@@ -106,28 +104,6 @@ export default function Sidebar({ locale = "ko" }) {
   const toggleSection = (sectionId, currentlyCollapsed) => {
     setCollapsedSections((prev) => ({ ...prev, [sectionId]: !currentlyCollapsed }));
   };
-
-  // 5-18의 네 화면을 세 갈래로 묶어 사이드바에 편다. 라우트는 이미 있으므로
-  // 새로 만드는 것은 없고, "들어가야만 보이던" 구조를 밖으로 꺼낼 뿐이다.
-  const mmmStages = mmmStageDefs(locale);
-  const mmmSubNav = (
-    <div className="nav-subnav" aria-label={locale === "en" ? "Channel contribution views" : "채널 기여도 화면"}>
-      {MMM_STAGE_GROUPS.map((group) => {
-        const items = mmmStages.filter((item) => item.group === group.id);
-        if (!items.length) return null;
-        return (
-          <div key={group.id} className="nav-subnav__group">
-            <span className="nav-subnav__label">{locale === "en" ? group.en : group.ko}</span>
-            {items.map((item) => (
-              <Link key={item.id} href={responseStageHref(item.id, locale)} className="nav-subnav__item">
-                {item.no}
-              </Link>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
 
   const toggleGroup = (groupId, currentlyCollapsed) => {
     setCollapsedGroups((prev) => ({ ...prev, [groupId]: !currentlyCollapsed }));
@@ -309,9 +285,6 @@ export default function Sidebar({ locale = "ko" }) {
                                 </Link>
                               );
                             })}
-                            {/* 5-18은 한 줄인데 안에 화면이 넷이라 들어가야만 무엇이 있는지
-                                알 수 있었다. 진단·기여도·예측 세 갈래를 여기서 바로 편다. */}
-                            {stage.tools.includes("5-18") && mmmSubNav}
                           </div>
                         </div>
                       );

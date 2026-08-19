@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EN_READY_RESPONSE_SUBTOOL_IDS, EN_READY_TOOL_IDS, ROUTES, hasEnVersion, idToSlug, isRouteIndexable, isRoutePublished } from "./routeMap";
+import { EN_READY_UNLISTED_IDS, EN_READY_TOOL_IDS, ROUTES, hasEnVersion, idToSlug, isRouteIndexable, isRoutePublished } from "./routeMap";
 import { ITEM_TITLE_EN } from "./enNavCopy";
 
 describe("English route registry", () => {
@@ -21,8 +21,8 @@ describe("English route registry", () => {
     }
   });
 
-  it("keeps response subtools hidden from navigation but indexable in search", () => {
-    for (const id of EN_READY_RESPONSE_SUBTOOL_IDS) {
+  it("keeps unlisted routes out of navigation but indexable in search", () => {
+    for (const id of EN_READY_UNLISTED_IDS) {
       expect(isRoutePublished(id), `${id} navigation publication`).toBe(false);
       expect(isRouteIndexable(id), `${id} search indexability`).toBe(true);
       expect(hasEnVersion(id), `${id} EN gate`).toBe(true);

@@ -6,7 +6,7 @@ import { ROUTES, isRoutePublished, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS } from 
 // keywords 없이 나갔다(KR이 주 시장이고 네이버가 meta keywords에 민감한데도).
 // 목록은 ROUTES에서 파생한다 — 손으로 나열하면 다음 도구에서 또 빠진다.
 const publishedToolIds = ROUTES
-  .filter((route) => isRoutePublished(route) && /^(5|9)-\d+$/.test(route.id))
+  .filter((route) => isRoutePublished(route) && /^(5|9)-[\w-]+$/.test(route.id))
   .map((route) => route.id);
 
 // 가이드도 항목 단위 keywords를 갖는다. GROUP_KEYWORDS 폴백만 있으면 같은 그룹의
