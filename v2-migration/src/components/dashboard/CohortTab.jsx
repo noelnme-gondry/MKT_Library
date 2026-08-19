@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -295,11 +296,16 @@ export default function CohortTab({ locale = "ko" } = {}) {
         <h2 className="section-title">{tr("전체 리텐션 곡선", "Overall Retention Curve")}</h2>
 
         {canActions && canInstalls && (
-          <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-            <span className="ab-pillgroup-label">{tr("리텐션 기준", "Retention basis")}</span>
-            <button className={`ab-pill ${wrc.anchor !== "actions" ? "active" : ""}`} onClick={() => setDenomBasis("installs")}>{tr("설치 기준", "By Install")}</button>
-            <button className={`ab-pill ${wrc.anchor === "actions" ? "active" : ""}`} onClick={() => setDenomBasis("actions")}>{tr("가입(액션) 기준", "By Signup (Action)")}</button>
-          </div>
+          <PillGroup
+            style={{ marginBottom: "10px" }}
+            label={tr("리텐션 기준", "Retention basis")}
+            value={wrc.anchor === "actions" ? "actions" : "installs"}
+            onChange={setDenomBasis}
+            options={[
+              { value: "installs", label: tr("설치 기준", "By Install") },
+              { value: "actions", label: tr("가입(액션) 기준", "By Signup (Action)") },
+            ]}
+          />
         )}
 
         <div className="callout" style={{ marginBottom: "10px" }}>
@@ -332,14 +338,20 @@ export default function CohortTab({ locale = "ko" } = {}) {
           </div>
         </div>
 
-        <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-          <span className="ab-pillgroup-label" title={tr(
+        <PillGroup
+          style={{ marginBottom: "10px" }}
+          label={tr("코호트 마감", "Cohort maturity")}
+          labelTitle={tr(
             "아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 데이터 기준일로 D일이 지난 코호트만 분자·분모 양쪽에서 집계.",
             "Recent cohorts that haven't yet reached day D (immature) distort the retention rate. \"Matured only\" aggregates both numerator and denominator using only cohorts that have passed day D as of the data snapshot."
-          )}>{tr("코호트 마감", "Cohort maturity")}</span>
-          <button className={`ab-pill ${!matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(false)}>{tr("전체 포함", "Include All")}</button>
-          <button className={`ab-pill ${matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(true)}>{tr("마감된 코호트만", "Matured Only")}</button>
-        </div>
+          )}
+          value={matureCohortOnly ? "matured" : "all"}
+          onChange={(next) => setMatureCohortOnly(next === "matured")}
+          options={[
+            { value: "all", label: tr("전체 포함", "Include All") },
+            { value: "matured", label: tr("마감된 코호트만", "Matured Only") },
+          ]}
+        />
 
         <AnalysisDetails
           locale={locale}

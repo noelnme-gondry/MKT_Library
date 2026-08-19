@@ -4,6 +4,7 @@ import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
+import PillGroup from "@/components/ds/PillGroup";
 import { efficiencyBridge } from "@/utils/efficiencyBridge";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
@@ -1362,20 +1363,25 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <div className="analysis-local-controls__inner">
           <span className="analysis-local-controls__label">{tr("비교 조건", "Comparison settings")}</span>
           {bothMetricsMapped !== false && (
-            <div className="ab-pillgroup">
-              <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
-              <button className={`ab-pill ${metric === "cpa" ? "active" : ""}`} onClick={() => setMetric("cpa")}>CPA</button>
-              <button className={`ab-pill ${metric === "cpi" ? "active" : ""}`} onClick={() => setMetric("cpi")}>CPI</button>
-            </div>
+            <PillGroup
+              label={tr("지표", "Metric")}
+              value={metric}
+              onChange={setMetric}
+              options={[{ value: "cpa", label: "CPA" }, { value: "cpi", label: "CPI" }]}
+            />
           )}
           {effectivePeriodOverride ? (
             <span className="analysis-control-group__label">{tr("날짜 필터의 비교 기간 적용 중", "Using the date filter comparison")}</span>
           ) : <>
-            <div className="ab-pillgroup">
-              <span className="ab-pillgroup-label">{tr("기준 주", "Week basis")}</span>
-              <button className={`ab-pill ${weekBasis === "calendar" ? "active" : ""}`} onClick={() => setWeekBasis("calendar")}>{tr("마감주(월~일)", "Calendar week (Mon–Sun)")}</button>
-              <button className={`ab-pill ${weekBasis === "rolling7" ? "active" : ""}`} onClick={() => setWeekBasis("rolling7")}>{tr("최근 7일", "Last 7 days")}</button>
-            </div>
+            <PillGroup
+              label={tr("기준 주", "Week basis")}
+              value={weekBasis}
+              onChange={setWeekBasis}
+              options={[
+                { value: "calendar", label: tr("마감주(월~일)", "Calendar week (Mon–Sun)") },
+                { value: "rolling7", label: tr("최근 7일", "Last 7 days") },
+              ]}
+            />
             <div className="ab-pillgroup">
               <span className="ab-pillgroup-label">{tr("비교 기준", "Comparison basis")}</span>
               {[1, 2, 3].map((lb) => {
@@ -1661,12 +1667,13 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCampaign}</strong></div></div>
         ) : (
           <>
-            <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-              <span className="ab-pillgroup-label">{C.levelChannel}</span>
-              {channelRows.map((ch) => (
-                <button key={ch.key} className={`ab-pill ${ch.key === drillSel ? "active" : ""}`} onClick={() => setDrillChannel(ch.key)}>{ch.key || unspec}</button>
-              ))}
-            </div>
+            <PillGroup
+              style={{ marginBottom: "10px" }}
+              label={C.levelChannel}
+              value={drillSel}
+              onChange={setDrillChannel}
+              options={channelRows.map((ch) => ({ value: ch.key, label: ch.key || unspec }))}
+            />
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
                 <thead>{headerWithName(C.levelCampaign, false, "campaign", pvmSortCampaign, setPvmSortCampaign)}</thead>

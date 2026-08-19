@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useCallback } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { segmentMetricValue, buildSegmentGrid } from "@/utils/segmentMath";
@@ -134,38 +135,32 @@ export default function SegmentTab({ locale = "ko" } = {}) {
       <section className="block" id="s-matrix">
         <h2 className="section-title">{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
 
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{tr("행 축", "Row axis")}</span>
-          {availFields.map(f => {
+        <PillGroup
+          label={tr("행 축", "Row axis")}
+          value={rowAxis}
+          onChange={setRowAxis}
+          options={availFields.map((f) => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
-            return (
-              <button key={f.k} className={`ab-pill ${rowAxis === f.k ? "active" : ""} ${!ok ? "disabled" : ""}`} disabled={!ok} onClick={() => ok && setRowAxis(f.k)}>
-                {f.l}{!ok && " 🔒"}
-              </button>
-            );
+            return { value: f.k, label: <>{f.l}{!ok && " 🔒"}</>, disabled: !ok };
           })}
-        </div>
+        />
 
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{tr("열 축", "Column axis")}</span>
-          {availFields.map(f => {
+        <PillGroup
+          label={tr("열 축", "Column axis")}
+          value={colAxis}
+          onChange={setColAxis}
+          options={availFields.map((f) => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
-            return (
-              <button key={f.k} className={`ab-pill ${colAxis === f.k ? "active" : ""} ${!ok ? "disabled" : ""}`} disabled={!ok} onClick={() => ok && setColAxis(f.k)}>
-                {f.l}{!ok && " 🔒"}
-              </button>
-            );
+            return { value: f.k, label: <>{f.l}{!ok && " 🔒"}</>, disabled: !ok };
           })}
-        </div>
+        />
 
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
-          {Object.entries(METRICS).filter(([k]) => k !== "cost").map(([k, v]) => (
-            <button key={k} className={`ab-pill ${metric === k ? "active" : ""}`} onClick={() => setMetric(k)}>
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <PillGroup
+          label={tr("지표", "Metric")}
+          value={metric}
+          onChange={setMetric}
+          options={Object.entries(METRICS).filter(([k]) => k !== "cost").map(([k, v]) => ({ value: k, label: v.label }))}
+        />
 
         {renderMatrix(metric)}
 

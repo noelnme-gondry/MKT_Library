@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -234,25 +235,23 @@ export default function FunnelTab({ locale = "ko" } = {}) {
 
       {/* §2 컨트롤: 전환 단계 · 분리 단위 · 요일 보정 */}
       <section className="block" id="s-funnel-ctl" style={{ padding: "12px 16px" }}>
-        <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-          <span className="ab-pillgroup-label">{tr("전환 단계", "Conversion stage")}</span>
-          {(c.trans || []).map((t) => (
-            <button key={t.i} className={`ab-pill ${c.selStep === t.i ? "active" : ""}`} onClick={() => setCvrStep(t.i)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-          <span className="ab-pillgroup-label">{tr("분리 단위", "Split by")}</span>
-          {unitPills.map(([k, l]) => {
+        <PillGroup
+          style={{ marginBottom: "8px" }}
+          label={tr("전환 단계", "Conversion stage")}
+          value={c.selStep}
+          onChange={setCvrStep}
+          options={(c.trans || []).map((t) => ({ value: t.i, label: t.label }))}
+        />
+        <PillGroup
+          style={{ marginBottom: "8px" }}
+          label={tr("분리 단위", "Split by")}
+          value={unitField}
+          onChange={setUnitField}
+          options={unitPills.map(([k, l]) => {
             const av = k === "_all" || mappedKeys.has(k);
-            return (
-              <button key={k} className={`ab-pill ${unitField === k ? "active" : ""} ${!av ? "disabled" : ""}`} onClick={() => av && setUnitField(k)} disabled={!av}>
-                {l}{!av && " 🔒"}
-              </button>
-            );
+            return { value: k, label: <>{l}{!av && " 🔒"}</>, disabled: !av };
           })}
-        </div>
+        />
         <div className="ab-pillgroup" style={{ margin: 0 }}>
           <span className="ab-pillgroup-label">§3 {tr("요일", "Weekday")}</span>
           {c.weekdayAdjOk ? (

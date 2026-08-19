@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
  * legacy pill 래칫.
  *
  * 배경: 선택형 pill의 정본은 `ds/PillGroup`인데, 손으로 쓴 `.ab-pillgroup` 마크업이
- * **94곳 · 13파일** 남아 있다. 전역 어댑터 `LegacyPillGroupA11y`가 런타임에
+ * **25곳 · 5파일** 남아 있다. 전역 어댑터 `LegacyPillGroupA11y`가 런타임에
  * radiogroup·로빙 tabindex·화살표 이동을 붙여 주므로 지금 당장 조작이 깨지지는
  * 않는다(실측: 옵션은 전부 `button.ab-pill`이고 다중선택 그룹은 없어 어댑터의
  * 단일선택 가정이 성립한다. `<span class="ab-pill">` 10곳은 읽기 전용 표시 칩이라
@@ -24,8 +24,8 @@ import { describe, expect, it } from "vitest";
 const COMPONENTS = path.dirname(fileURLToPath(import.meta.url)).replace(/\/ds$/, "");
 
 // 2026-08-19 실측 기준선. 이관할 때마다 내려간다.
-const BASELINE = 94;
-const BASELINE_FILES = 13;
+const BASELINE = 25;
+const BASELINE_FILES = 5;
 
 function jsxFiles(dir) {
   return readdirSync(dir).flatMap((entry) => {
@@ -38,7 +38,9 @@ function jsxFiles(dir) {
 function legacyGroups() {
   const perFile = new Map();
   for (const file of jsxFiles(COMPONENTS)) {
-    const count = (readFileSync(file, "utf-8").match(/className="ab-pillgroup/g) || []).length;
+    // `ab-pillgroup-label`(라벨 span)까지 세면 안 된다 — 처음 기준선 94는 그 오류였고,
+    // 실제 컨테이너는 45곳이었다. 숫자를 적을 땐 무엇을 세는지부터 확인할 것.
+    const count = (readFileSync(file, "utf-8").match(/className="ab-pillgroup(?:"|\s)/g) || []).length;
     if (count) perFile.set(path.relative(COMPONENTS, file), count);
   }
   return perFile;

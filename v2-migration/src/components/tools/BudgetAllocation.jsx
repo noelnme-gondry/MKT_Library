@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
+import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -2976,12 +2977,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
             <h2 className="section-title" style={{ margin: 0 }}>{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
             {rollupLevels.length > 1 && (
-              <div className="ab-pillgroup" style={{ margin: 0 }}>
-                <span className="ab-pillgroup-label" title={tr("분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).", "Allocation is always calculated at the finest unit — this view just merges it for display (efficiency is recalculated from the totals).")}>{tr("묶어 보기", "Group view")}</span>
-                {rollupLevels.map(([k, l]) => (
-                  <button key={k} className={`ab-pill ${rollupLevel === k ? "active" : ""}`} onClick={() => setRollupLevel(k)}>{l}</button>
-                ))}
-              </div>
+              <PillGroup
+                style={{ margin: 0 }}
+                label={tr("묶어 보기", "Group view")}
+                labelTitle={tr("분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).", "Allocation is always calculated at the finest unit — this view just merges it for display (efficiency is recalculated from the totals).")}
+                value={rollupLevel}
+                onChange={setRollupLevel}
+                options={rollupLevels.map(([k, l]) => ({ value: k, label: l }))}
+              />
             )}
           </div>
           <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 0.5rem" }}>

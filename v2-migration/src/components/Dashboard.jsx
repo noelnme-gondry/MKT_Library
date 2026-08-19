@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
+import PillGroup from "@/components/ds/PillGroup";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CsvUploader from "@/components/CsvUploader";
@@ -332,18 +333,13 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 controls={
-                  <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>
-                    <span className="ab-pillgroup-label">{tr("비교", "Window")}</span>
-                    {[7, 14, 28].map((d) => (
-                      <button
-                        key={d}
-                        className={`ab-pill ${dashWindowDays === d ? "active" : ""}`}
-                        onClick={() => setDashWindowDays(d)}
-                      >
-                        {tr(`${d}일`, `${d}d`)}
-                      </button>
-                    ))}
-                  </div>
+                  <PillGroup
+                    label={tr("비교", "Window")}
+                    style={{ display: "inline-flex", alignItems: "center" }}
+                    value={dashWindowDays}
+                    onChange={setDashWindowDays}
+                    options={[7, 14, 28].map((d) => ({ value: d, label: tr(`${d}일`, `${d}d`) }))}
+                  />
                 }
                 download={
                   <DownloadHub

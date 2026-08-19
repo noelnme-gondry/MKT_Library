@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
+import PillGroup from "@/components/ds/PillGroup";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
@@ -1286,35 +1287,17 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             <div className="analysis-local-controls" aria-label={tr("속성 효과 분석 조건", "Attribute-effect analysis settings")}>
               <div className="analysis-local-controls__inner">
                 <span className="analysis-local-controls__label">{tr("분석 조건", "Analysis settings")}</span>
-              <div className="ab-pillgroup">
-                <span className="ab-pillgroup-label">{tr("분석 기준 지표", "Metric analyzed")}</span>
-                <button className={`ab-pill ${curMetricKey === "ctr" ? "active" : ""}`} onClick={() => setMetric("ctr")}>CTR</button>
-                <button
-                  className={`ab-pill ${curMetricKey === "cvr" ? "active" : ""}`}
-                  disabled={!decompose.cvr || !hasCvrInputs}
-                  style={{ opacity: !decompose.cvr || !hasCvrInputs ? 0.4 : 1 }}
-                  onClick={() => setMetric("cvr")}
-                >
-                  CVR
-                </button>
-                <button
-                  className={`ab-pill ${curMetricKey === "cpa" ? "active" : ""}`}
-                  disabled={!decompose.cpa || !hasCpaInputs}
-                  title={!decompose.cpa || !hasCpaInputs ? undefined : tr("획득당 비용(CPA)은 낮을수록 좋음 — 색 방향 반전", "Lower cost per acquisition (CPA) is better — color direction is reversed")}
-                  style={{ opacity: !decompose.cpa || !hasCpaInputs ? 0.4 : 1 }}
-                  onClick={() => setMetric("cpa")}
-                >
-                  CPA
-                </button>
-                <button
-                  className={`ab-pill ${curMetricKey === "roas" ? "active" : ""}`}
-                  disabled={!decompose.roas || !hasRoasInputs}
-                  style={{ opacity: !decompose.roas || !hasRoasInputs ? 0.4 : 1 }}
-                  onClick={() => setMetric("roas")}
-                >
-                  ROAS
-                </button>
-              </div>
+              <PillGroup
+                label={tr("분석 기준 지표", "Metric analyzed")}
+                value={curMetricKey}
+                onChange={setMetric}
+                options={[
+                  { value: "ctr", label: "CTR" },
+                  { value: "cvr", label: "CVR", disabled: !decompose.cvr || !hasCvrInputs },
+                  { value: "cpa", label: "CPA", disabled: !decompose.cpa || !hasCpaInputs, title: (decompose.cpa && hasCpaInputs) ? tr("획득당 비용(CPA)은 낮을수록 좋습니다", "Cost per action (CPA) — lower is better") : undefined },
+                  { value: "roas", label: "ROAS", disabled: !decompose.roas || !hasRoasInputs },
+                ]}
+              />
               {/* 못 누르는 이유가 title에만 있으면 터치·키보드에서는 알 길이 없다.
                   disabled 버튼은 포커스도 못 받는다(product-ssot §5.4 · D-04). */}
               <BlockedOptionsNote items={[
