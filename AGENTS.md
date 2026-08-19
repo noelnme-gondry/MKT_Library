@@ -513,7 +513,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **273파일·2252 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **275파일·2261 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
 - 🔄 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 — 완료 선언 전 grep. **2026-08-19 실측: 공개 도구 14개 전부 `ResultActionCard` 보유. `DownloadHub` 미사용은 5-26(직접 `downloadCsv`)·5-18 본체·`PaidOrganicTrend`.**
@@ -522,7 +522,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다**(2026-08-19, 한 세션에 3회): ① 어댑터 마운트 가드가 `/LegacyPillGroupA11y/`를 찾아 **import 줄**에 걸려 마운트를 지워도 통과 ② 다운로드 가드가 `includes("DownloadHub")`로 **"DownloadHub를 쓰지 않는 이유" 주석**에 걸려 부채 2건을 해결됨으로 오판 ③ 탭 가드가 계약을 설명하는 주석의 `role="tablist"`를 대상으로 잡을 뻔했다. **검사는 사용(`<Comp`·`import … from`)을 찾고, 주석은 먼저 제거할 것.** 같은 이유로 문자열만 보는 가드는 `import` 누락을 못 잡는다 — `name: BRAND.name`은 통과했지만 import가 없어 **빌드가 프리렌더에서 잡았다**(`test:all` 2210 통과·lint 0인 채로). 배선을 바꿨으면 `npm run build`까지 돌릴 것.
 - **한 곳만 빠진 구멍은 전수로 세야 보인다**(2026-08-19): 탭 5개 중 **9-6 하나만** 계약이 통째로 없었다(화살표 키·`aria-controls`·로빙 tabindex·tabpanel 연결 전부). 나머지 넷이 완비돼 있어 훑어보면 "탭은 되어 있다"로 읽힌다. 같은 형태로 `BRAND`의 `en.shortName` 하나만 확장형 제품명으로 남아 있던 것도 가드가 잡았다 — **다수가 맞으면 소수의 예외가 보이지 않으므로, 계약은 표본이 아니라 전수로 검사할 것**(`app/tabContract.test.js`).
 - ⚠ **공개 도구 수는 14 → 18**(PR #696): 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18)가 `subtool`로 내려갔다. **`routeMap`의 `component`가 파일 이름이 아닌 경우가 생겼다** — `5-18-trend`의 `MarketingResponseTrend`는 파일이 없고 `PageClient`가 `routeId`로 디스패치한다. 라우트에서 컴포넌트 파일을 찾는 코드·테스트는 디스패치에서 파생할 것.
-- ✅ **접근성 부채 D-01~D-13 전부 해소**(2026-08-19). legacy pill은 단일선택 35곳 이관 완료, 남은 10곳은 PillGroup을 쓰면 안 되는 자리(토글·다중선택·복합·비선택 컨테이너)라 가드가 개수 대신 **계약**을 지킨다. D-10(모바일 실기기)·D-11(AEO 실행)은 사람이 해야 하는 부분만 남았다.
+- ✅ **백로그 D-01~D-18 전부 해소**(2026-08-19). legacy pill은 단일선택 35곳 이관 완료, 남은 10곳은 PillGroup을 쓰면 안 되는 자리(토글·다중선택·복합·비선택 컨테이너)라 가드가 개수 대신 **계약**을 지킨다. D-10(모바일 실기기)·D-11(AEO 실행)은 사람이 해야 하는 부분만 남았다.
 - 🔄 **진행 중**: 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천).
 - ⏸ **보류**: 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 
