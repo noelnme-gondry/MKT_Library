@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -1732,7 +1733,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       key={k}
                       className={`ab-pill ${objective === k ? "active" : ""}`}
                       disabled={!ok}
-                      title={ok ? o.desc : tr(`필요 컬럼 매핑 안 됨 (${o.metric})`, `Required column not mapped (${o.metric})`)}
+                      title={ok ? undefined : tr(`필요 컬럼 매핑 안 됨 (${o.metric})`, `Required column not mapped (${o.metric})`)}
                       onClick={() => ok && setObjective(k)}
                       style={{ flexDirection: "column", alignItems: "flex-start", opacity: ok ? 1 : 0.4, cursor: ok ? "pointer" : "not-allowed", textAlign: "left" }}
                     >
@@ -1742,6 +1743,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   );
                 })}
               </div>
+              {/* 잠긴 목표의 사유가 title에만 있으면 터치·키보드에서 알 수 없다(§5.4 · D-04). */}
+              <BlockedOptionsNote items={Object.keys(ALLOC_OBJECTIVES)
+                .filter((k) => !objAvailable[k])
+                .map((k) => ({ label: objI18n[k].short, reason: tr(`${objI18n[k].metric} 컬럼을 매핑하면 활성화`, `map the ${objI18n[k].metric} column to enable`) }))} />
             </div>
             {/* 결과를 읽는 단위 */}
             <div style={{ marginBottom: "14px" }}>
@@ -2366,13 +2371,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       />
     </>
   );
+  const planningObjectiveKeys = ["install", "action", "roas"];
   const planningObjectiveControl = (
+    <>
     <div className="prism-driver__target-choice" role="radiogroup" aria-label={tr("채널 배분 성과 기준", "Channel-allocation performance metric")}>
-      {[
-        "install",
-        "action",
-        "roas",
-      ].map((key) => {
+      {planningObjectiveKeys.map((key) => {
         const meta = objI18n[key];
         const isAvailable = mappedKeys.has(ALLOC_OBJECTIVES[key].metric);
         const isActive = activePlanningObjective === key;
@@ -2384,7 +2387,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             aria-checked={isActive}
             className={isActive ? "active" : ""}
             disabled={!isAvailable}
-            title={isAvailable ? meta.desc : tr("현재 CSV에 이 지표가 없습니다", "This metric is not in the current CSV")}
+            title={isAvailable ? undefined : tr("현재 CSV에 이 지표가 없습니다", "This metric is not in the current CSV")}
             onClick={() => {
               setObjective(key);
               setTargetValue(null);
@@ -2393,6 +2396,11 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         );
       })}
     </div>
+    {/* 잠긴 기준의 사유가 title에만 있으면 터치·키보드에서 알 수 없다(§5.4 · D-04). */}
+    <BlockedOptionsNote items={planningObjectiveKeys
+      .filter((key) => !mappedKeys.has(ALLOC_OBJECTIVES[key].metric))
+      .map((key) => ({ label: objI18n[key].short, reason: tr("현재 CSV에 이 지표가 없습니다", "not present in the current CSV") }))} />
+    </>
   );
 
   return (

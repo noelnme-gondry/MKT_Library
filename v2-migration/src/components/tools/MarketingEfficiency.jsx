@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import { useAppStore } from "@/store/useDataStore";
 import Chart from "@/utils/chartGlobals";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -556,7 +557,6 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <button
               className="ab-pill"
               disabled={!hasCampaign}
-              title={!hasCampaign ? tr("캠페인명(campaign_name) 컬럼을 매핑하면 활성화", "Enable by mapping the campaign name (campaign_name) column") : ""}
               style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
               onClick={() => setSatState(s => ({...s, grain: "campaign", selected: null}))}
             >
@@ -575,13 +575,17 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <button
               className="ab-pill"
               disabled={!revField}
-              title={!revField ? tr("매출(revenue) 컬럼을 매핑하면 활성화", "Enable by mapping the revenue column") : ""}
               style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
               onClick={() => setSatState(s => ({...s, metric: "roas"}))}
             >
               {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
             </button>
           </div>
+          {/* 비활성 사유를 title에만 두면 터치·키보드에서 알 수 없다(product-ssot §5.4 · D-04). */}
+          <BlockedOptionsNote items={[
+            { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
+            { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
+          ]} />
         </div>
 
         {okRows.length > 0 && (

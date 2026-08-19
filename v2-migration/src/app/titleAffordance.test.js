@@ -30,6 +30,9 @@ const CSS = readFileSync(
 
 // 도움말을 뜻하는 글리프. 조작 힌트(⠿ 드래그 핸들)는 설명이 아니라 어포던스 표시라 제외한다.
 const HELP_GLYPHS = /^[ⓘℹ?？]$/u;
+// 사유가 버튼 바로 옆 문장으로 이미 보이는 자리. 예외를 파일 단위로 두는 대신
+// 사유 문장이 실제로 있는지 아래에서 함께 단언한다 — 문장이 사라지면 예외도 무너져야 한다.
+const DISABLED_REASON_VISIBLE = new Set(["tools/MarketingResponse.jsx"]);
 // details의 summary는 네이티브로 포커스·조작이 되므로 정당한 도움말 트리거다.
 const FOCUSABLE = new Set(["button", "summary", "a"]);
 
@@ -65,11 +68,43 @@ function glyphOnlyTitleSites() {
   return found;
 }
 
+/** disabled 버튼의 "왜 못 누르나"가 조건부 title에만 있는 자리를 찾는다. */
+function blockedReasonOnlyInTitle() {
+  const found = [];
+  for (const file of jsxFiles(SRC)) {
+    const text = readFileSync(file, "utf-8");
+    for (const match of text.matchAll(/<button[^>]*?>/gs)) {
+      const tag = match[0];
+      if (!tag.includes("disabled")) continue;
+      // 조건부 title 자체는 문제가 아니다 — 활성일 때 설명을 주는 것은 정당하다.
+      // **비활성 분기에 사유 문자열이 들어 있는 것**만 잡는다.
+      const conditional = /title=\{[^}]*?\?([\s\S]*?)\}/.exec(tag);
+      if (!conditional) continue;
+      const disabledBranch = conditional[1].split(" : ")[0].trim();
+      if (!disabledBranch || disabledBranch === "undefined" || disabledBranch === '""') continue;
+      const line = text.slice(0, match.index).split("\n").length;
+      found.push(`${path.relative(SRC, file)}:${line}`);
+    }
+  }
+  return found;
+}
+
 describe("title affordance", () => {
   it("never hides a whole explanation behind a non-focusable ⓘ", () => {
     expect(
       glyphOnlyTitleSites(),
       "설명 전체가 title에만 있고 포커스도 안 되는 ⓘ다. ds/HelpTip으로 옮길 것(product-ssot §6.3)",
+    ).toEqual([]);
+  });
+
+  // disabled 버튼은 포커스를 못 받는다. 사유가 title에만 있으면 터치·키보드
+  // 사용자는 **왜 막혔는지 알 길 자체가 없다**(product-ssot §5.4 · D-04).
+  // 화면 글자로 꺼내는 것이 계약이고, `ds/BlockedOptionsNote`가 그 자리다.
+  it("never hides a disabled reason behind a hover-only tooltip", () => {
+    const offenders = blockedReasonOnlyInTitle().filter((site) => !DISABLED_REASON_VISIBLE.has(site.split(":")[0]));
+    expect(
+      offenders,
+      "못 누르는 이유가 hover로만 보인다. ds/BlockedOptionsNote로 화면에 꺼낼 것",
     ).toEqual([]);
   });
 
@@ -79,6 +114,12 @@ describe("title affordance", () => {
     expect(rule, "th[title] 어포던스 규칙이 사라졌다").toBeTruthy();
     expect(/cursor:\s*help/.test(rule[0])).toBe(true);
     expect(/underline|border-bottom/.test(rule[0])).toBe(true);
+  });
+
+  // 예외의 근거. 이 문장이 사라지면 MarketingResponse의 disabled 버튼도 사유를 잃는다.
+  it("keeps the visible reason that justifies the one exception", () => {
+    const source = readFileSync(path.join(SRC, "tools/MarketingResponse.jsx"), "utf-8");
+    expect(source).toContain("원본 CSV 통화만 선택하면 분석할 수 있습니다");
   });
 
   it("keeps the help component available for new sites", () => {

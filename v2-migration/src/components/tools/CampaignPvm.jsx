@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
+import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import { efficiencyBridge } from "@/utils/efficiencyBridge";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
@@ -1384,7 +1385,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                     key={lb}
                     className={`ab-pill ${lookback === lb && !locked ? "active" : ""}`}
                     disabled={!!locked}
-                    title={locked ? tr("데이터가 더 필요합니다", "More data required") : ""}
                     style={{ opacity: locked ? 0.5 : 1, cursor: locked ? "default" : "pointer" }}
                     onClick={() => !locked && setLookback(lb)}
                   >
@@ -1392,6 +1392,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                   </button>
                 );
               })}
+              {/* 잠긴 기준의 사유가 title에만 있으면 터치·키보드에서 알 수 없다(§5.4 · D-04). */}
+              <BlockedOptionsNote items={[1, 2, 3]
+                .filter((lb) => cache?.lockState?.[lb])
+                .map((lb) => ({ label: tr(`${lb}주`, `${lb}w`), reason: tr("데이터가 더 필요합니다", "needs more data") }))} />
             </div>
           </>}
         </div>
