@@ -1,7 +1,6 @@
-import Script from "next/script";
 import { DM_Sans, JetBrains_Mono, Noto_Sans_KR, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
-import GaPageviews from "@/components/GaPageviews";
+import AnalyticsScripts from "@/components/AnalyticsScripts";
 import ConsentBanner from "@/components/ConsentBanner";
 import { consentDefaultSnippet } from "@/lib/consent";
 import SkipLink from "@/components/SkipLink";
@@ -59,6 +58,9 @@ export default function RootDocument({ children, locale = "ko" }) {
             }),
           }}
         />
+        {/* noscript 경로는 호스트 게이트를 못 건다 — 게이트가 클라이언트 컴포넌트라
+            JS가 꺼진 브라우저에서는 렌더 자체가 안 되고, 그러면 운영에서도 이 iframe이
+            사라진다. JS 없는 로컬 브라우징은 사실상 없으므로 여기는 그대로 둔다. */}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-T6C7QW75"
@@ -73,14 +75,7 @@ export default function RootDocument({ children, locale = "ko" }) {
           id="consent-default"
           dangerouslySetInnerHTML={{ __html: consentDefaultSnippet() }}
         />
-        <Script id="gtm" strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-T6C7QW75');`}
-        </Script>
-        <Script src="https://www.googletagmanager.com/gtag/js?id=G-DK12TNR0GW" strategy="afterInteractive" />
-        <Script id="ga4" strategy="afterInteractive">
-          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-DK12TNR0GW',{send_page_view:false});`}
-        </Script>
-        <GaPageviews />
+        <AnalyticsScripts />
         {children}
         <ConsentBanner locale={locale} />
         <Footer />
