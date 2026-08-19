@@ -5031,6 +5031,16 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .help-tip > summary.help-tip__toggle::after { content: ""; position: absolute; width: 44px; height: 44px; transform: translate(-13px, -13px); }
 .help-tip > summary.help-tip__toggle { position: relative; }
 .help-tip__body { display: block; max-width: 420px; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-container-lowest); color: var(--text-secondary); font-size: 11px; font-weight: 400; line-height: 1.55; white-space: pre-line; text-align: left; }
+.mmm-reading-limits > ul { margin: 8px 0 0; padding-left: 0; list-style: none; display: grid; gap: 9px; }
+.mmm-reading-limits > ul > li { display: grid; gap: 3px; padding-left: 11px; border-left: 2px solid var(--border-subtle); }
+.mmm-reading-limits > ul > li > strong { color: var(--text-primary); font-size: 11.5px; }
+.mmm-reading-limits > ul > li > span { color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+/* 적합도 등급 — 숫자 옆의 평어 한 마디. 색만으로 구분하지 않도록 글자를 함께 둔다
+   (product-ssot §6.2). */
+.mmm-fit-grade { display: block; margin-top: 3px; font-size: 10px; font-style: normal; font-weight: 650; letter-spacing: -.01em; }
+.mmm-fit-grade.is-good { color: var(--success); }
+.mmm-fit-grade.is-neutral { color: var(--text-muted); }
+.mmm-fit-grade.is-bad { color: var(--danger); }
 .stat-method { margin: 10px 0 0; }
 .stat-method > summary { color: var(--text-muted); font-size: 11.5px; cursor: pointer; list-style: none; }
 .stat-method > summary::-webkit-details-marker { display: none; }

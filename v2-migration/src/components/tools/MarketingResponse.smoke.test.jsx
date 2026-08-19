@@ -12,6 +12,7 @@
 // name (week→week, Regs→reg, *_spend→channel). Channels must vary INDEPENDENTLY
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { getMmmInterpretationLimits } from "@/lib/mmmInterpretationLimits";
 import { render, fireEvent, act, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
@@ -1846,6 +1847,15 @@ describe("MarketingResponse render smoke", () => {
     const chartHelp = Array.from(document.querySelectorAll(".help-tip"))
       .find((node) => node.textContent.includes("기본 수요·추세를 분모와 표시에서 제외"));
     expect(chartHelp).toBeTruthy();
+
+    // 결론 옆에 구조적 한계가 붙어 있어야 "퍼포먼스가 브랜드보다 N배 효율"이
+    // 그대로 예산 결정이 되지 않는다(D-16). 문장은 SSOT에서 조회해 대조한다 —
+    // 여기 복사해 두면 SSOT를 고쳐도 옛 문장이 통과한다(§7).
+    const limits = getMmmInterpretationLimits("ko");
+    expect(limits.length).toBeGreaterThan(0);
+    for (const limit of limits) {
+      expect(container.textContent, `${limit.id} 한계가 화면에 없다`).toContain(limit.claim);
+    }
   });
 
   it("renders the 회귀·미래 예측 (lab) stage without throwing", async () => {

@@ -17,6 +17,8 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { csvBody, downloadCsv } from "@/utils/download";
+import { fitGrade, isFitInverted } from "@/utils/modelFitGrade";
+import { getMmmInterpretationLimits } from "@/lib/mmmInterpretationLimits";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import WebRMmmAdvanced from "@/components/tools/WebRMmmAdvanced";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
@@ -4800,12 +4802,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                   {dateScopedDecomp ? <>
                     <div className="mmm-metric-grid">
-                      <div className="mmm-metric-card"><small>{tx("학습 WMAPE", "Training WMAPE")}</small><strong>{Number.isFinite(health?.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</strong></div>
-                      <div className="mmm-metric-card is-primary"><small>{tx("시간순 OOS WMAPE", "Time-ordered OOS WMAPE")}</small><strong>{Number.isFinite(health?.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"}</strong></div>
+                      <div className="mmm-metric-card"><small>{tx("학습 WMAPE", "Training WMAPE")}</small><strong>{Number.isFinite(health?.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</strong><em className={`mmm-fit-grade is-${fitGrade(health?.wmape).tone}`}>{tx(fitGrade(health?.wmape).ko, fitGrade(health?.wmape).en)}</em></div>
+                      <div className="mmm-metric-card is-primary"><small>{tx("시간순 OOS WMAPE", "Time-ordered OOS WMAPE")}</small><strong>{Number.isFinite(health?.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"}</strong><em className={`mmm-fit-grade is-${fitGrade(health?.oos?.wmape).tone}`}>{tx(fitGrade(health?.oos?.wmape).ko, fitGrade(health?.oos?.wmape).en)}</em></div>
                       <div className="mmm-metric-card"><small>{tx("RMSE", "RMSE")}</small><strong>{targetValueLabel(dateScopedDecomp.rmse)}</strong></div>
                       <div className="mmm-metric-card"><small>{tx("모델 경고", "Model warnings")}</small><strong>{health?.flags?.length || 0}</strong><em>{budgetEligible ? tx("예산 판단 가능", "Budget decision allowed") : tx("예산 판단 보류", "Budget decision held")}</em></div>
                     </div>
                     <div className="chart-container mmm-result-chart"><canvas ref={fitRef}></canvas></div>
+                    {isFitInverted(health?.wmape, health?.oos?.wmape) && (
+                      <div className="callout warn" role="note"><div className="ico">!</div><div className="body">
+                        <strong>{tx("학습 오차가 미래 구간 오차보다 큽니다", "Training error is larger than out-of-sample error")}</strong>
+                        <p>{tx("보통은 학습 구간을 더 잘 맞춥니다. 순서가 뒤집혔다면 적합값 자체가 어긋났을 가능성이 있으니, 이 결과로 예산을 옮기기 전에 매핑과 기간을 다시 확인하세요.", "A model usually fits the training window better. When the order flips, the fitted values themselves may be off — recheck the mapping and period before moving budget on this result.")}</p>
+                      </div></div>
+                    )}
                     <p className="mmm-result-note">{tx("학습 적합도는 과거 설명력이고 OOS 오차는 미래 구간 예측력입니다. 어느 지표도 채널의 인과효과를 확정하지 않습니다.", "Training fit describes historical explanation; OOS error measures future-window prediction. Neither identifies a channel's causal effect.")}</p>
                   </> : <div className="required-banner"><p>{tx("실제값과 적합값을 계산할 수 없습니다.", "Actual and fitted values are unavailable.")}</p></div>}
                 </section>
@@ -5482,6 +5490,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   </div>
               </section>
+
+              {/* 결과를 읽을 때 반드시 감안할 구조적 한계. 결론 옆에 두지 않으면
+                  "퍼포먼스가 브랜드보다 N배 효율"이 그대로 예산 결정이 된다(D-16). */}
+              <details className="stat-method mmm-reading-limits">
+                <summary>{tx("이 숫자를 읽을 때 감안할 것 3가지", "Three things to keep in mind when reading these numbers")}</summary>
+                <ul>
+                  {getMmmInterpretationLimits(locale).map((limit) => (
+                    <li key={limit.id}>
+                      <strong>{limit.claim}</strong>
+                      <span>{limit.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
 
               {/* ── 맨 밑: 상세 설명 문서 다운로드 ──
                   DownloadHub(결과 최상단 드롭다운)을 쓰지 않는 자리다. 5-18은 CSV·매핑
