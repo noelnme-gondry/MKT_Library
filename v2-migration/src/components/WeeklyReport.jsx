@@ -49,6 +49,7 @@ export default function WeeklyReport({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
   const draft = useAppStore((state) => state.reportDraft);
   const csvData = useAppStore((state) => state.csvData);
+  const csvGroups = useAppStore((state) => state.csvGroups);
   const setReportMeta = useAppStore((state) => state.setReportMeta);
   const setReportNote = useAppStore((state) => state.setReportNote);
   const removeReportBlock = useAppStore((state) => state.removeReportBlock);
@@ -93,7 +94,9 @@ export default function WeeklyReport({ locale = "ko" }) {
             <article className="weekly-review-record" key={block.id}>
               <div className="weekly-review-record__top">
                 <span>{block.toolTitle}</span>
-                {block.inputSignature !== currentSig && <em className="weekly-review-record__status due">{t.stale}</em>}
+                {block.inputSignature !== computeAnalyzeSig(csvGroups[block.dataGroup] || csvData) && (
+                  <em className="weekly-review-record__status due">{t.stale}</em>
+                )}
               </div>
               <h2>{block.headline}</h2>
               {block.stats.length > 0 && (

@@ -117,6 +117,7 @@ export default function ResultActionCard({
     stats,
     inputSignature,
     locale,
+    dataGroup: TOOL_GROUP[toolId],
     scope: resultScope,
   }), [reportBlock, toolId, shareToolTitle, headline, points, stats, inputSignature, locale, resultScope]);
   const generatedFinding = useMemo(() => findingFromResultCard({
@@ -130,6 +131,9 @@ export default function ResultActionCard({
     dataGroup: TOOL_GROUP[toolId],
     scope: resultScope,
   }), [toolId, tone, headline, points, stats, inputSignature, locale, resultScope]);
+  // 보고서는 판단 가능한 결과만 수집한다. 표본 부족·차단·미결론 결과를
+  // "결론"으로 보관하면 다음 주 검토에서 실제 판단처럼 보이기 때문이다.
+  const canCollectReport = Boolean(generatedReportBlock && resultState === "ready");
   const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(decisionPrefill), [decisionPrefill]);
   const hasDecisionPrefill = Boolean(
     decisionPrefill
@@ -221,7 +225,7 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || generatedReportBlock || canShareDecision || canDownloadDetails) && (
+        {(controls || download || canCollectReport || canShareDecision || canDownloadDetails) && (
           <div className="result-action-card__controls">
             {controls}
             {canShareDecision && (
@@ -245,7 +249,7 @@ export default function ResultActionCard({
                 {locale === "en" ? "Download details" : "상세 문서 받기"}
               </button>
             )}
-            {generatedReportBlock && (
+            {canCollectReport && (
               reportAdded ? (
                 <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
                   {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}

@@ -739,17 +739,10 @@ export const useAppStore = create(persist((set, get) => ({
   activeDataGroup: "efficiency",
   // Writes the ACTIVE group's slice AND updates the mirror to the SAME object
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
-  // Also RESETS the group's analyze gate whenever the confirmed sig would change
-  // (new upload / mapping edit): drop the stored sig so results re-hide until the
-  // user presses 분석하기 again. Sig-equality in isGroupAnalyzed already handles
-  // this, but clearing here keeps analyzedByGroup from holding stale sigs.
+  // A changed signature keeps the last confirmed signature so the UI can say
+  // "stale" rather than silently falling back to the pre-analysis state.
   setCsvData: (data) => set((state) => {
     const g = groupForRoute(state.currentRouteId);
-    const nextSig = computeAnalyzeSig(data);
-    const analyzedByGroup =
-      state.analyzedByGroup[g] && state.analyzedByGroup[g] !== nextSig
-        ? { ...state.analyzedByGroup, [g]: null }
-        : state.analyzedByGroup;
     // Any non-empty write (real upload or explicit demo load) clears the
     // manual-clear flag below — it only needs to suppress auto-demo-reload
     // while the group is genuinely empty.
@@ -763,7 +756,7 @@ export const useAppStore = create(persist((set, get) => ({
     return {
       csvGroups: { ...state.csvGroups, [g]: data },
       csvData: data,
-      analyzedByGroup,
+      analyzedByGroup: state.analyzedByGroup,
       csvClearedByGroup,
       responseMappingSession,
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
@@ -849,6 +842,11 @@ export const useAppStore = create(persist((set, get) => ({
     const stored = state.analyzedByGroup[g];
     if (!stored) return false;
     return stored === computeAnalyzeSig(state.csvData);
+  },
+  isGroupStale: (routeId) => {
+    const state = get();
+    const stored = state.analyzedByGroup[groupForRoute(routeId)];
+    return Boolean(stored && stored !== computeAnalyzeSig(state.csvData));
   },
 
   // CSV 업로드 및 파싱 (PapaParse). Currently unused (CsvUploader has its own

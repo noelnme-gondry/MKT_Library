@@ -16,6 +16,7 @@ describe("weekly report contract", () => {
 
   it("표시 결과를 구조화 블록으로 만든다", () => {
     expect(block.blockKind).toBe("summary");
+    expect(block.dataGroup).toBe("");
     expect(block.stats[0].displayValue).toBe("+₩2,000");
   });
 

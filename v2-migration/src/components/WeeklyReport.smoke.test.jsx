@@ -16,7 +16,17 @@ describe("WeeklyReport", () => {
   });
 
   it("EN 수집 블록을 렌더한다", () => {
+    const varianceCsv = {
+      raw: [{ Date: "2026-08-01", Cost: "100", Installs: "10" }],
+      headers: ["Date", "Cost", "Installs"],
+      mapping: { Date: "date", Cost: "cost", Installs: "installs" },
+      fileName: "variance.csv",
+    };
+    const activeCsv = { raw: [{ Date: "2026-08-01" }], headers: ["Date"], mapping: { Date: "date" }, fileName: "other.csv" };
+    const signature = "variance.csv|1|cost:Cost|date:Date|installs:Installs";
     useAppStore.setState({
+      csvData: activeCsv,
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: varianceCsv },
       reportDraft: {
         schemaVersion: 1,
         title: "Weekly",
@@ -27,18 +37,19 @@ describe("WeeklyReport", () => {
           id: "b1",
           toolId: "5-21",
           toolTitle: "Campaign Variance",
+          dataGroup: "efficiency",
           blockKind: "summary",
           headline: "CPA increased",
           points: [],
           stats: [],
           scope: {},
-          inputSignature: "sig",
+          inputSignature: signature,
           locale: "en",
         }],
       },
     });
     render(<WeeklyReport locale="en" />);
     expect(screen.getByText("CPA increased")).toBeTruthy();
+    expect(screen.queryByText("This result was created from an earlier data input.")).toBeNull();
   });
 });
-
