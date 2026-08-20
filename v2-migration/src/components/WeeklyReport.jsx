@@ -24,6 +24,8 @@ const COPY = {
     markdown: "Markdown 받기",
     print: "인쇄 / PDF",
     privacy: "브라우저 세션에서만 유지됩니다. 원본 데이터는 저장하거나 내보내지 않습니다.",
+    mixedPeriods: "수집한 결과의 분석 기간이 서로 다릅니다. 공유 전 각 결론의 기간을 확인하세요.",
+    analysisPeriod: "분석 기간",
   },
   en: {
     eyebrow: "WEEKLY REPORT",
@@ -42,8 +44,16 @@ const COPY = {
     markdown: "Download Markdown",
     print: "Print / PDF",
     privacy: "Kept only for this browser session. Source data is neither stored nor exported.",
+    mixedPeriods: "Collected results use different analysis periods. Check each conclusion’s period before sharing.",
+    analysisPeriod: "Analysis period",
   },
 };
+
+function reportPeriodKey(block) {
+  const start = block?.scope?.dateStart;
+  const end = block?.scope?.dateEnd;
+  return start && end ? `${start}~${end}` : null;
+}
 
 export default function WeeklyReport({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
@@ -56,6 +66,7 @@ export default function WeeklyReport({ locale = "ko" }) {
   const moveReportBlock = useAppStore((state) => state.moveReportBlock);
   const currentSig = computeAnalyzeSig(csvData);
   const title = draft.title || t.defaultTitle;
+  const hasMixedPeriods = new Set(draft.blocks.map(reportPeriodKey).filter(Boolean)).size > 1;
   const download = () => {
     const safe = serializeReportDraft({ ...draft, title });
     downloadText(renderReportMarkdown(safe, locale), locale === "en" ? "weekly-performance-report" : "주간-성과-보고서", "md", locale);
@@ -89,11 +100,12 @@ export default function WeeklyReport({ locale = "ko" }) {
         </div>
       ) : (
         <section className="weekly-review-page__ledger" aria-label={title}>
-          <h1 className="print-only">{title}</h1>
+          <div className="print-only weekly-report-page__print-title">{title}</div>
+          {hasMixedPeriods && <p className="weekly-report-page__period-warning" role="status">{t.mixedPeriods}</p>}
           {draft.blocks.map((block, index) => (
             <article className="weekly-review-record" key={block.id}>
               <div className="weekly-review-record__top">
-                <span>{block.toolTitle}</span>
+                <span>{block.toolTitle}{reportPeriodKey(block) && <> · {t.analysisPeriod} {reportPeriodKey(block).replace("~", " ~ ")}</>}</span>
                 {block.inputSignature !== computeAnalyzeSig(csvGroups[block.dataGroup] || csvData) && (
                   <em className="weekly-review-record__status due">{t.stale}</em>
                 )}
