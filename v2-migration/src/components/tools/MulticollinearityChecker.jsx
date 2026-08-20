@@ -48,6 +48,16 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
     : [];
   const maxVif = result?.vif?.maxVif;
   const formattedMaxVif = Number.isFinite(maxVif) ? maxVif.toFixed(2) : verdict === "severe" ? "∞" : tr("계산 불가", "Not computable");
+  const robustnessLabel = (value) => value === "consistent"
+    ? tr("두 방법 일치", "Methods agree")
+    : value === "direction_conflict"
+      ? tr("방향 불일치", "Direction differs")
+      : value === "magnitude_conflict"
+        ? tr("크기 차이", "Magnitude differs")
+        : value === "significance_conflict"
+          ? tr("판정 불일치", "Significance differs")
+          : tr("계산 불가", "Not computable");
+  const robustnessWarnings = (result?.pairs || []).filter((pair) => pair.robustness && pair.robustness !== "consistent" && pair.robustness !== "not_identified");
   const canSaveDecision = result?.vif && verdict !== "not_applicable" && verdict !== "unknown";
   const decisionPrefill = canSaveDecision && !isDemo ? {
     conclusion: tr(`최대 VIF ${formattedMaxVif} · ${verdict === "ok" ? "심한 중복 신호 없음" : "채널 분리 변동 필요"}`, `Maximum VIF ${formattedMaxVif} · ${verdict === "ok" ? "no severe overlap signal" : "independent channel variation needed"}`),
@@ -74,15 +84,19 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
       const text = value == null ? "" : String(value);
       return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
     };
-    const header = ["channel_a", "channel_b", "r", "ci_low_95_pointwise", "ci_high_95_pointwise", "raw_p", "holm_p", "moves_together"];
+    const header = ["channel_a", "channel_b", "pearson_r", "spearman_r", "ci_low_95_pointwise", "ci_high_95_pointwise", "pearson_raw_p", "pearson_holm_p", "spearman_raw_p_approx", "spearman_holm_p_approx", "robustness", "moves_together"];
     const lines = [header, ...(result?.pairs || []).map((row) => [
       row.left,
       row.right,
       Number.isFinite(row.r) ? row.r : "",
+      Number.isFinite(row.spearmanR) ? row.spearmanR : "",
       Number.isFinite(row.ciLow) ? row.ciLow : "",
       Number.isFinite(row.ciHigh) ? row.ciHigh : "",
       Number.isFinite(row.rawP) ? row.rawP : "",
       Number.isFinite(row.holmP) ? row.holmP : "",
+      Number.isFinite(row.spearmanRawP) ? row.spearmanRawP : "",
+      Number.isFinite(row.spearmanHolmP) ? row.spearmanHolmP : "",
+      row.robustness || "not_identified",
       Number.isFinite(row.r) ? (row.isSignificant ? "yes" : "no") : "not_computable",
     ])].map((line) => line.map(cell).join(","));
     downloadCsv(`\uFEFF${lines.join("\r\n")}\r\n`, "channel-correlation-holm");
@@ -118,19 +132,25 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
             { key: "left", label: tr("채널 A", "Channel A") },
             { key: "right", label: tr("채널 B", "Channel B") },
             { key: "r", label: tr("함께 움직인 정도", "How closely they moved"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : tr("계산 불가", "Not computable") },
+            { key: "spearmanR", label: tr("순위 기준", "Rank-based"), align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : tr("계산 불가", "Not computable") },
+            { key: "robustness", label: tr("강건성", "Robustness"), fmt: (value) => robustnessLabel(value) },
             { key: "isSignificant", label: tr("판정", "Verdict"), fmt: (value, row) => !Number.isFinite(row.r) ? tr("계산 불가", "Not computable") : value ? tr("함께 움직임", "Moves together") : tr("근거 부족", "Not established") },
           ]}
           rows={result?.pairs || []}
           rowKey={(row) => `${row.left}-${row.right}`}
           emptyText={tr("비교할 쌍이 없습니다.", "No pairs to compare.")}
         />
+        {robustnessWarnings.length > 0 && <p className="required-banner" style={{ marginTop: "12px" }}>{tr(
+          `Pearson과 순위 기반 상관이 일치하지 않는 채널쌍 ${robustnessWarnings.length}건이 있습니다. 일부 극단값·비선형 단조 관계의 영향일 수 있으므로, Pearson만으로 MMM의 채널 분리를 판단하지 마세요.`,
+          `${robustnessWarnings.length} channel pair(s) differ between Pearson and rank-based correlation. Outliers or nonlinear monotonic movement may be involved, so do not use Pearson alone to decide MMM channel separation.`,
+        )}</p>}
         {(result?.pairs || []).length > 0 && (
           <details className="stat-method">
             <summary>{tr("판정 근거 숫자 보기", "Show the numbers behind the verdict")}</summary>
             <div>
               <p style={{ margin: "0 0 8px" }}>{tr(
-                `채널쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강하게 움직인 쌍이 섞일 수 있습니다. 그 몫을 덜어낸 값(Holm 보정 p)으로 판정했습니다. 95% 구간은 각 쌍을 따로 본 구간입니다.`,
-                `With ${result?.correlation?.comparisons ?? 0} pairs, some will move together by chance. The verdict uses p-values adjusted for that (Holm). The 95% intervals are per-pair, not multiplicity-adjusted.`,
+                `채널쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강하게 움직인 쌍이 섞일 수 있습니다. 그 몫을 덜어낸 값(Holm 보정 p)으로 판정했습니다. 95% 구간은 각 쌍을 따로 본 구간입니다. Pearson이 주 판정이고, 순위 기준 p는 동률을 보정한 t 근사로 강건성만 점검합니다.`,
+                `With ${result?.correlation?.comparisons ?? 0} pairs, some will move together by chance. The verdict uses p-values adjusted for that (Holm). The 95% intervals are per-pair, not multiplicity-adjusted. Pearson is the primary test; rank-based p-values are tie-corrected t approximations used as a robustness check.`,
               )}</p>
               <DataTable
                 columns={[
@@ -138,6 +158,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
                   { key: "right", label: tr("채널 B", "Channel B") },
                   { key: "ciLow", label: tr("95% 구간", "95% interval"), align: "right", fmt: (_, row) => Number.isFinite(row.ciLow) && Number.isFinite(row.ciHigh) ? `${row.ciLow.toFixed(2)} ~ ${row.ciHigh.toFixed(2)}` : "—" },
                   { key: "holmP", label: tr("보정 p", "Adjusted p"), align: "right", fmt: (value) => Number.isFinite(value) ? (value < 0.001 ? "<0.001" : value.toFixed(3)) : "—" },
+                  { key: "spearmanHolmP", label: tr("순위 보정 p", "Rank adjusted p"), align: "right", fmt: (value) => Number.isFinite(value) ? (value < 0.001 ? "<0.001" : value.toFixed(3)) : "—" },
                 ]}
                 rows={result?.pairs || []}
                 rowKey={(row) => `${row.left}-${row.right}-detail`}

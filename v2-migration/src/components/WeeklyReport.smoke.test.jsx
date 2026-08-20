@@ -51,5 +51,23 @@ describe("WeeklyReport", () => {
     render(<WeeklyReport locale="en" />);
     expect(screen.getByText("CPA increased")).toBeTruthy();
     expect(screen.queryByText("This result was created from an earlier data input.")).toBeNull();
+    expect(document.querySelectorAll("main h1")).toHaveLength(1);
+  });
+
+  it("서로 다른 분석 기간을 수집하면 공유 전 경고한다", () => {
+    useAppStore.setState({
+      reportDraft: {
+        schemaVersion: 1,
+        title: "",
+        period: null,
+        notes: [],
+        blocks: [
+          { schemaVersion: 1, id: "a", toolId: "5-2", toolTitle: "Dashboard", headline: "A", points: [], stats: [], scope: { dateStart: "2026-08-01", dateEnd: "2026-08-07" }, inputSignature: "a" },
+          { schemaVersion: 1, id: "b", toolId: "5-21", toolTitle: "PVM", headline: "B", points: [], stats: [], scope: { dateStart: "2026-08-08", dateEnd: "2026-08-14" }, inputSignature: "b" },
+        ],
+      },
+    });
+    render(<WeeklyReport />);
+    expect(screen.getByRole("status").textContent).toContain("수집한 결과의 분석 기간이 서로 다릅니다");
   });
 });
