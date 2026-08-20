@@ -20,4 +20,16 @@ describe("semantic mapping baseline", () => {
       expect.objectContaining({ sourceColumn: "fb_amt", canonicalKey: null, role: "UNKNOWN", decision: "UNKNOWN" }),
     ]));
   });
+
+  it("uses registered legacy aliases globally without a tool-scoped candidate list", () => {
+    const result = mapDataset({
+      headers: ["광고비", "Source Type", "Total Downloads"],
+      rows: [{ 광고비: "₩100", "Source Type": "App Store Search", "Total Downloads": "3" }],
+    });
+    expect(result.bindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceColumn: "광고비", canonicalKey: "media_spend" }),
+      expect.objectContaining({ sourceColumn: "Source Type", canonicalKey: "store_source" }),
+      expect.objectContaining({ sourceColumn: "Total Downloads", canonicalKey: "outcome_installs" }),
+    ]));
+  });
 });
