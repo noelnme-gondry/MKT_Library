@@ -236,7 +236,7 @@ test("입력 매핑이 바뀌면 이전 주간 보고서 블록을 stale로 표�
   await expect(page).toHaveURL(/\/dashboard$/);
 
   await openDetails(page.locator(".dashboard-data-disclosure"));
-  const mappingBlock = page.locator(".csv-mapping-block");
+  const mappingBlock = page.locator(".csv-mapping-block:not(.semantic-mapping-block)");
   await openDetails(mappingBlock);
   await page.getByRole("combobox", { name: "Installs: 표준 필드" }).selectOption("actions");
   await expect(page.locator(".dashboard-briefing .result-action-card")).toHaveCount(0);
