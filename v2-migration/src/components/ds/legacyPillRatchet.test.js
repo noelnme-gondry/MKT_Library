@@ -100,11 +100,11 @@ describe("legacy pill ratchet", () => {
 
   it("relies on an adapter that is actually mounted", () => {
     // 기준선을 유지하는 근거는 "어댑터가 계약을 붙여 준다"는 것이다. 어댑터가
-    // 앱 셸에서 빠지면 94곳이 통째로 키보드 조작을 잃으므로 함께 단언한다.
+    // 앱 셸에서 빠지면 잔여 10곳이 통째로 키보드 조작을 잃으므로 함께 단언한다.
     // 이름만 찾으면 import 줄에 걸려 마운트를 지워도 통과한다(실제로 그랬다).
     // JSX 사용을 찾아야 계약을 검사하는 것이 된다.
     const mounted = jsxFiles(COMPONENTS)
       .some((file) => /<LegacyPillGroupA11y[\s/>]/.test(readFileSync(file, "utf-8")));
-    expect(mounted, "LegacyPillGroupA11y가 어디에도 마운트돼 있지 않다 — 94곳이 키보드 조작을 잃는다").toBe(true);
+    expect(mounted, "LegacyPillGroupA11y가 어디에도 마운트돼 있지 않다 — 잔여 10곳이 키보드 조작을 잃는다").toBe(true);
   });
 });

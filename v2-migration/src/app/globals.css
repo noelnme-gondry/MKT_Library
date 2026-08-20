@@ -8950,6 +8950,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .page-sticky-bar { margin-inline: -24px; padding-inline: 24px; }
   .tool-page-shell.has-toc .tool-page-shell__main { padding-right: 0; }
   .tool-page-shell__toc { display: none; }
+  .site-footer--app .site-footer__inner { grid-template-columns: minmax(220px, 1fr) minmax(120px, .7fr); }
 }
 @media (max-width: 760px) {
   :root { --topbar-h: 60px; }

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 let labelSequence = 0;
 
-// P1-15의 남은 legacy `.ab-pillgroup` 46곳을 위한 호환 어댑터.
+// P1-15의 남은 legacy `.ab-pillgroup` 컨테이너 10곳을 위한 호환 어댑터.
 // 각 도구의 조건부 버튼·상태 계산은 그대로 두고, 선택형 pill 집합에만 표준
 // radiogroup/roving-tabindex 계약을 부여한다. 새 화면은 PillGroup을 직접 쓴다.
 function optionButtons(group) {

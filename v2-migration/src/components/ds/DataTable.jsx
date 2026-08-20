@@ -31,7 +31,7 @@ export default function DataTable({
   const joinClasses = (...names) => names.filter(Boolean).join(" ");
 
   return (
-    <div className={joinClasses("table-wrap", "data-table-wrap", "ds-data-table-wrap", wrapperClassName)} style={style}>
+    <div className={joinClasses("table-wrap", "data-table-wrap", "ds-data-table-wrap", wrapperClassName)} style={style} tabIndex={0} role="region" aria-label={ariaLabel}>
       <table className={joinClasses("data", "data-table", "ds-data-table", className)} aria-label={ariaLabel} style={tableStyle}>
         {caption ? <caption className="sr-only data-table__caption">{caption}</caption> : null}
         <thead className={joinClasses("data-table__head", stickyHeader && "is-sticky")}>

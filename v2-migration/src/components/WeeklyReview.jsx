@@ -447,7 +447,7 @@ export default function WeeklyReview({ locale = "ko" }) {
 
       <section className="weekly-review-page__toolbar" aria-label={t.title}>
         <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
-        <input ref={importRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={importRecords} />
+        <input ref={importRef} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t.import} onChange={importRecords} />
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadCsv(serializeDecisionReviewCsv(records), "weekly_decision_review")}>{t.export}</button>
         <button type="button" className="btn small" disabled={!records.length} onClick={() => downloadText(buildBrief(sortedRecords, t, locale), "weekly_operating_brief", "md", locale)}>{t.brief}</button>
         {/* 리마인더는 저장 직후 프롬프트에만 있어, 정작 원장을 검토하는 이 화면에서

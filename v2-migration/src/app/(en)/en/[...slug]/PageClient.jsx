@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect } from "react";
+import { use, useLayoutEffect } from "react";
 import { notFound, redirect, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -57,7 +57,10 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
   if (!hasEnVersion(routeId)) redirect(idToPath(routeId));
 
   const setCurrentRouteId = useAppStore((state) => state.setCurrentRouteId);
-  useEffect(() => {
+  // Keep the URL-derived data group in sync before the first interactive paint.
+  // A normal effect leaves a small window where a fast upload writes to the
+  // previous route's CSV group and disappears when the mirror swaps.
+  useLayoutEffect(() => {
     if (useAppStore.getState().currentRouteId !== routeId) {
       setCurrentRouteId(routeId);
     }

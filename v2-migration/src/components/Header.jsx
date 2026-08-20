@@ -151,7 +151,7 @@ export default function Header({ locale = "ko" }) {
     <header className="topbar operator-header" role="banner">
       <div className="topbar-context">
         <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
-          <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb">
+          <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" aria-label="Growth Opt Playbook">
             <BrandMark size={26} label="Growth Opt Playbook" />
             <span className="brand-crumb__label">Growth Opt Playbook</span>
           </Link>

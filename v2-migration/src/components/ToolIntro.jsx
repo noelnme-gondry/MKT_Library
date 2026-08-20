@@ -33,6 +33,10 @@ const INTRO = {
     ko: ["ASA 키워드 발굴 · CPT 조정", "검색어를 Exact로 승격할 후보와 예산 소진·성과에 맞춘 CPT 조치를 한 번에 정리합니다."],
     en: ["ASA keyword finder · CPT actions", "Find Exact-promotion candidates and CPT actions from search-term pacing and performance."],
   },
+  "5-27": {
+    ko: ["ASO 스토어 전환 분석", "스토어 전환 변화가 제품 페이지 효율 때문인지 유입 소스 구성 때문인지 나눠 봅니다."],
+    en: ["ASO store conversion analysis", "Separate store conversion changes into product-page efficiency and traffic-source mix."],
+  },
   "9-1": {
     ko: ["콘텐츠 요소 분석", "후킹·형식·길이·메시지 중 어떤 요소가 성과와 연결되는지 통제변수와 함께 봅니다."],
     en: ["Content element analysis", "Estimate how hooks, formats, length, and message angles relate to results while controlling for other factors."],

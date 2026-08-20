@@ -1,7 +1,7 @@
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
 
-const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "creative_name", "creative_id", "country", "platform"]);
+const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "creative_name", "creative_id", "country", "platform", "store_source"]);
 const EMPTY = (value) => value == null || String(value).trim() === "";
 
 function normalizeFieldValue(value, field) {

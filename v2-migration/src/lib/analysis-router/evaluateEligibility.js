@@ -25,7 +25,7 @@ export const ANALYSIS_CONTRACTS = {
   // 안정적으로 계산할 수 있다. 결과 지표 없이 날짜·비용·채널만으로 판정한다.
   "5-25": { minRows: 10, minPeriods: 5, minEntities: 2, blockBelowMinEntities: true, minPeriodsOverEntities: 3, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], priority: 5 },
   // 앞뒤 기간을 갈라 비교하므로 날짜 4일 + 소스 2개가 최소 조건이다.
-  "5-27": { minRows: 8, minPeriods: 4, minEntities: 2, blockBelowMinEntities: true, entityFields: ["source"], priority: 6 },
+  "5-27": { minRows: 8, minPeriods: 4, minEntities: 2, blockBelowMinEntities: true, entityFields: ["store_source"], priority: 6 },
   // 검색어 리포트와 소재 일별 리포트는 일반 운영 CSV와 구조가 달라, /start에서
   // 개별 도구의 매핑 계약으로 별도 판정해야 한다.
   "5-26": { minRows: 1, minPeriods: 1, priority: 2 },

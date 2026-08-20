@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker, rankRecommendedAnalyses } from "./evaluateEligibility";
 import { ROUTES, isRoutePublished } from "@/lib/routeMap";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 
 const isoDay = (index) => new Date(Date.UTC(2026, 6, index + 1)).toISOString().slice(0, 10);
 const canonicalData = {
@@ -81,6 +82,26 @@ describe("analysis eligibility", () => {
     });
     expect(creative).toMatchObject({ status: "ready", recommendationScore: 110 });
     expect(creative.recommendationReason).toContain("소재별 노출");
+  });
+
+  it("accepts the store-specific source axis after a real store-console mapping", () => {
+    const headers = ["Date", "Source Type", "Product Page Views", "Total Downloads"];
+    const mapping = { Date: "date", "Source Type": "store_source", "Product Page Views": "product_page_views", "Total Downloads": "installs" };
+    const raw = Array.from({ length: 4 }, (_, day) => ["App Store Search", "App Store Browse"].map((storeSource, index) => ({
+      Date: isoDay(day),
+      "Source Type": storeSource,
+      "Product Page Views": String(1000 + day * 20 + index * 100),
+      "Total Downloads": String(300 + day * 5 + index * 20),
+    }))).flat();
+    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+    const result = evaluateEligibility({
+      toolId: "5-27",
+      mapping,
+      canonicalData,
+    });
+    expect(canonicalData.records[0].dimensions.store_source).toBe("App Store Search");
+    expect(result).toMatchObject({ status: "ready", periodCount: 4 });
+    expect(result.entityCoverage.entities).toHaveLength(2);
   });
 
   it("offers VIF when channel spend has enough independent periods", () => {
