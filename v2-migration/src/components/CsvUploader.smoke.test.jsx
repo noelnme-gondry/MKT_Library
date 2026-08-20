@@ -19,6 +19,10 @@ function seedNoData() {
     currentRouteId: "5-2",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    analyzedByGroup: {
+      ...useAppStore.getState().analyzedByGroup,
+      efficiency: null,
+    },
     demoDisabled: false,
     csvClearedByGroup: {},
   });

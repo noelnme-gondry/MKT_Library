@@ -24,7 +24,7 @@ function containsForbidden(value, seen = new Set()) {
   return Object.entries(value).some(([key, child]) => FORBIDDEN_KEYS.has(key) || containsForbidden(child, seen));
 }
 
-export function reportBlockFromResultCard({ toolId, toolTitle, headline, points, stats, inputSignature, locale, scope = {} }) {
+export function reportBlockFromResultCard({ toolId, toolTitle, headline, points, stats, inputSignature, locale, dataGroup = "", scope = {} }) {
   const title = plain(headline);
   if (!REPORT_SUPPORTED_TOOL_IDS.has(toolId) || !title || !inputSignature) return null;
   const block = {
@@ -32,6 +32,7 @@ export function reportBlockFromResultCard({ toolId, toolTitle, headline, points,
     id: `${toolId}:${inputSignature}:summary`,
     toolId,
     toolTitle: plain(toolTitle) || toolId,
+    dataGroup: plain(dataGroup) || "",
     blockKind: "summary",
     headline: title.slice(0, 240),
     points: (points || []).map(plainPoint).filter(Boolean).slice(0, 8),

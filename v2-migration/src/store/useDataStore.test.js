@@ -302,6 +302,16 @@ describe("useDataStore · 구조화 세션 상태", () => {
     expect([...state.dashboardFilterGroups.efficiency.channels]).toEqual(["Google"]);
     expect(state.analyzedByGroup.efficiency).toBeNull();
   });
+
+  it("입력 시그니처가 바뀌면 이전 결과를 stale로 보존한다", () => {
+    const initial = useAppStore.getInitialState();
+    useAppStore.setState({ ...initial, currentRouteId: "5-2" });
+    useAppStore.getState().setCsvData({ raw: [{ date: "2026-08-01", cost: "100", installs: "10" }], headers: ["date", "cost", "installs"], mapping: { date: "date", cost: "cost", installs: "installs" }, fileName: "a.csv" });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    useAppStore.getState().setCsvData({ raw: [{ date: "2026-08-01", cost: "100", installs: "10" }], headers: ["date", "cost", "installs"], mapping: { date: "date", cost: "cost", installs: "actions" }, fileName: "a.csv" });
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
+    expect(useAppStore.getState().isGroupStale("5-2")).toBe(true);
+  });
 });
 
 // 그룹별 맵은 TOOL_GROUP에서 파생된다(buildGroupMap). 손으로 나열하면 어긋나고,

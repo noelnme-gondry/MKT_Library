@@ -62,6 +62,19 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(screen.getByRole("button", { name: "상세 문서 받기" })).toBeTruthy();
   });
 
+  it("does not offer an insufficient result as a report conclusion", () => {
+    render(
+      <ResultActionCard
+        toolId="5-3"
+        headline="Not enough data"
+        resultState="insufficient"
+        analysisBasis={false}
+        decisionReview={false}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "보고서에 추가" })).toBeNull();
+  });
+
   it("passes an explicit decision prefill without inferring from generic points or stats", () => {
     const { container } = render(
       <ResultActionCard

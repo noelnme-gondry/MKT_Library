@@ -231,6 +231,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   // store here (not a memoized selector) so the boolean recomputes on any
   // csvData / analyzedByGroup change — the same slice the tools render from.
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
+  const isStale = useAppStore((s) => s.isGroupStale(toolId));
   const fileInputRef = useRef(null);
   const isHydrated = useSyncExternalStore(subscribeHydration, hydratedClientSnapshot, hydratedServerSnapshot);
   const [isDragging, setIsDragging] = useState(false);
@@ -747,6 +748,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     hasData: !!hasFile,
     hasRequiredMapping: missing.length === 0 && !analysisBlocked,
     isAnalyzed,
+    isStale,
   });
   const confirmAnalysis = () => {
     if (analysisBlocked) return;
