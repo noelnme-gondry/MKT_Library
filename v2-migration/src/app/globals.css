@@ -5659,6 +5659,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-report-page .weekly-review-page__toolbar { align-items: end; }
 .weekly-report-page .weekly-review-page__toolbar label { display: grid; gap: 4px; color: var(--text-muted); font-size: 10px; }
 .weekly-report-page .weekly-review-page__toolbar label:nth-child(2) { grid-template-columns: auto 1fr 1fr; align-items: center; }
+.weekly-report-page__print-title { margin: 0 0 14px; color: var(--text-primary); font: 650 24px/1.25 var(--font-display); letter-spacing: -.03em; }
+.weekly-report-page__period-warning { margin: 0; padding: 9px 11px; border-left: 3px solid var(--warning); background: color-mix(in srgb, var(--warning) 8%, var(--surface-container-low)); color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
 .weekly-report-page .weekly-review-page__toolbar input,
 .weekly-report-page__note textarea { box-sizing: border-box; min-height: 34px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-container-lowest); color: var(--text-primary); font: inherit; }
 .weekly-report-page__note { display: grid; gap: 6px; margin-top: 14px; color: var(--text-muted); font-size: 11px; }
@@ -8364,7 +8366,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .date-range-popover {
   z-index: 90;
   width: min(820px,calc(100vw - 24px));
-  max-height: min(720px,calc(100vh - 24px));
+  max-height: min(720px,var(--radix-popover-content-available-height,calc(100vh - 24px)));
   overflow: auto;
   border: 1px solid var(--operator-line-strong);
   border-radius: 10px;
@@ -8427,7 +8429,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   border-left: 1px solid var(--operator-line);
 }
 @media (max-width: 720px) {
-  .date-range-popover { max-height: calc(100vh - 18px); }
+  .date-range-popover { max-height: var(--radix-popover-content-available-height,calc(100vh - 18px)); }
   .date-range-layout { display: block; min-height: 0; }
   .date-range-presets { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--operator-line); }
   .date-range-presets > button { width: auto; min-height: 34px; padding: 7px 10px; border-radius: 5px; }
