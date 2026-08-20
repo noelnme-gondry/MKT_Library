@@ -26,7 +26,7 @@ import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from
 import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
 import { prepareRateInput, runWebRRateRegression } from "@/lib/analysis/webr/rateRegression";
 import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/countRegression";
-import { chooseOutcomeModel } from "@/utils/outcomeType";
+import { ANALYSIS_DESIGN, ANALYSIS_INTENT, ANALYSIS_METHOD_IDS, routeAnalysisMethods } from "@/lib/analysis-router/analysisMethodRouter";
 import { prepareMixedInput, runWebRMixedModel } from "@/lib/analysis/webr/mixedModel";
 import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 
@@ -448,20 +448,29 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   // 둘 다 OLS 가정이 깨지는 자료다(utils/outcomeType.js, 골든으로 고정).
   const advancedModel = useMemo(() => {
     if (!fit || fit.error || !fit.y?.length) return null;
-    const choice = chooseOutcomeModel(fit.y);
+    const route = routeAnalysisMethods({
+      intent: ANALYSIS_INTENT.REGRESSION,
+      outcome: { key: outcome, values: fit.y },
+      // 콘텐츠 1건이 기본 관측 단위다. 같은 단위 반복은 아래의 사용자가 고른
+      // 반복 단위 열로만 별도 혼합모형을 실행하며, 여기서 추측하지 않는다.
+      design: { design: ANALYSIS_DESIGN.INDEPENDENT },
+      diagnostics: { validN: fit.y.length, predictorCount: fit.terms.length - 1 },
+    });
+    const choice = { model: route.outcome.model, classification: route.outcome, reason: route.outcome.reason };
+    const analysisId = route.candidates.find((candidate) => candidate.status !== "BLOCKED")?.analysisId;
     const shared = { X: fit.X, y: fit.y, terms: fit.terms };
-    if (choice.model === "binomial") {
+    if (analysisId === ANALYSIS_METHOD_IDS.BINARY_LOGISTIC_REGRESSION) {
       return { family: "binomial", choice, input: prepareLogisticInput(shared), run: runWebRLogisticRegression, analysisType: "webr_logistic_regression" };
     }
-    if (choice.model === "beta") {
+    if (analysisId === ANALYSIS_METHOD_IDS.RATE_BETA_REGRESSION) {
       return { family: "beta", choice, input: prepareRateInput(shared), run: runWebRRateRegression, analysisType: "webr_beta_regression" };
     }
-    if (choice.model === "poisson" || choice.model === "negbin") {
+    if (analysisId === ANALYSIS_METHOD_IDS.COUNT_REGRESSION) {
       return { family: "count", choice, input: prepareCountInput(shared), run: runWebRCountRegression, analysisType: "webr_count_regression" };
     }
     // 연속형은 기존 OLS 결과가 맞는 모형이라 고급 분석을 붙이지 않는다.
     return null;
-  }, [fit]);
+  }, [fit, outcome]);
   const logisticInput = advancedModel?.input || null;
 
   // 군집 후보 = 숫자가 아니면서 **실제로 값이 반복되는** 열. 반복이 없으면 혼합모형을
