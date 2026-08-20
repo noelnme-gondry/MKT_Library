@@ -12,7 +12,7 @@ import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 import { applyCompatibleMemory, buildMappingMemoryRecord, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
-import { clearMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
+import { clearMappingMemory, confirmMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { decodeCsvBuffer } from "@/lib/data-import/decodeCsv";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
@@ -800,7 +800,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       const profiles = Object.fromEntries((csvData.semanticMapping?.profile?.columns || []).map((profile) => [profile.header, profile]));
       const context = { representation: csvData.semanticMapping?.profile?.representation || "tabular", roleFamilies: (csvData.mappingBindingsV2 || []).map((binding) => binding.role).filter(Boolean) };
       const confirmed = (csvData.mappingBindingsV2 || []).filter((binding) => binding.source === "user" && binding.canonicalKey).map((binding) => buildMappingMemoryRecord({ normalizedColumnName: binding.sourceColumn, canonicalKey: binding.canonicalKey, profile: profiles[binding.sourceColumn], context }));
-      Promise.all(confirmed.map(putMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords).catch(() => {});
+      Promise.all(confirmed.map(confirmMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords).catch(() => {});
     }
     saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
     requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
@@ -1010,12 +1010,14 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       {!isRouterMode && <MappingMemorySettings
         enabled={isMappingMemoryEnabled}
         count={mappingMemoryRecords.length}
+        records={mappingMemoryRecords}
         locale={locale}
         onEnabledChange={(enabled) => {
           setMappingMemoryEnabled(enabled);
           setIsMappingMemoryEnabled(enabled);
           if (enabled) listMappingMemory().then(setMappingMemoryRecords).catch(() => setMappingMemoryRecords([]));
         }}
+        onImport={(records) => Promise.all(records.map(putMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords)}
         onClear={() => clearMappingMemory().then(() => setMappingMemoryRecords([])).catch(() => {})}
       />}
 

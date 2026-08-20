@@ -34,6 +34,24 @@ export async function putMappingMemory(record) {
   }).finally(() => db.close());
 }
 
+export async function confirmMappingMemory(record) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const store = db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME);
+    const read = store.get(record.normalizedColumnName);
+    read.onsuccess = () => {
+      const previous = read.result;
+      const next = previous && previous.canonicalKey === record.canonicalKey
+        ? { ...record, confirmationCount: (previous.confirmationCount || 0) + 1 }
+        : record;
+      const write = store.put(next);
+      write.onsuccess = () => resolve(next);
+      write.onerror = () => reject(write.error || new Error("MAPPING_MEMORY_WRITE_FAILED"));
+    };
+    read.onerror = () => reject(read.error || new Error("MAPPING_MEMORY_READ_FAILED"));
+  }).finally(() => db.close());
+}
+
 export async function clearMappingMemory() {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
