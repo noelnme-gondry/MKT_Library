@@ -15,6 +15,52 @@ async function uploadCsv(page, fileName) {
   await expect(page.locator(".csv-uploader .file-state")).toBeVisible();
 }
 
+async function downloadBuffer(download) {
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
+async function openDetails(details) {
+  if (!await details.evaluate((node) => node.open)) {
+    await details.locator("> summary").click();
+  }
+}
+
+async function addVisibleResultToReport(page) {
+  const card = page.locator(".result-action-card").filter({ visible: true }).first();
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "보고서에 추가" }).click();
+}
+
+async function setComparableEfficiencyWindow(page) {
+  await page.getByRole("button", { name: "날짜 범위" }).click();
+  const fields = page.locator(".date-range-popover input[type=\"date\"]");
+  await fields.nth(0).fill("2026-08-05");
+  await fields.nth(1).fill("2026-08-08");
+  await page.getByRole("switch", { name: "비교" }).click();
+  await page.locator(".date-range-popover").getByRole("button", { name: "적용" }).click();
+}
+
+async function navigateToTool(page, href, section, query) {
+  const link = page.locator(`a[href="${href}"]`).first();
+  if (!await link.isVisible()) {
+    const sectionButton = page.getByRole("button", { name: section });
+    if (await sectionButton.isVisible()) {
+      await sectionButton.click();
+    } else {
+      await page.getByRole("button", { name: "전체 도구" }).click();
+      await page.getByRole("combobox").fill(query);
+      await page.locator("#cmdk").getByRole("option").first().click();
+      await expect(page).toHaveURL(new RegExp(`${href}$`));
+      return;
+    }
+  }
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`${href}$`));
+}
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.clear();
@@ -86,4 +132,116 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   await expect(page.locator(".weekly-review-record")).toHaveCount(1);
   await expectPageHierarchy(page, { primaryRegion: ".weekly-review-page" });
   await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용하고 분석을 자동 실행하지 않는다", async ({ page }) => {
+  await page.goto("/dashboard");
+  await uploadCsv(page, "efficiency.csv");
+
+  const confirmations = page.getByRole("button", { name: "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+
+  const utilities = page.locator(".header-utility-menu");
+  await openDetails(utilities);
+  const projectSettings = utilities.locator(".project-settings");
+  await openDetails(projectSettings);
+
+  const downloadPromise = page.waitForEvent("download");
+  await projectSettings.getByRole("button", { name: "설정 내보내기" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^growthopt-project_\d{4}-\d{2}-\d{2}\.gop\.json$/);
+  const exportedProject = await downloadBuffer(download);
+  const exportedText = exportedProject.toString("utf8");
+  expect(exportedText).toContain('"headerFingerprint"');
+  expect(exportedText).not.toContain("efficiency.csv");
+
+  await utilities.getByRole("button", { name: "CSV 변경" }).click();
+  await expect(page.locator(".header-data-context")).toHaveCount(0);
+
+  await openDetails(utilities);
+  await openDetails(projectSettings);
+  const chooserPromise = page.waitForEvent("filechooser");
+  await projectSettings.getByRole("button", { name: "설정 가져오기" }).click();
+  const chooser = await chooserPromise;
+  const importRequests = [];
+  const captureImportRequest = (request) => {
+    if (["fetch", "xhr"].includes(request.resourceType())) importRequests.push(request.url());
+  };
+  page.on("request", captureImportRequest);
+  try {
+    await chooser.setFiles({
+      name: "growthopt-project.gop.json",
+      mimeType: "application/json",
+      buffer: exportedProject,
+    });
+    await expect(projectSettings.getByRole("status")).toHaveText("설정 파일을 확인했습니다. 분석은 자동 실행하지 않습니다.");
+    await page.waitForTimeout(100);
+    expect(importRequests).toEqual([]);
+  } finally {
+    page.off("request", captureImportRequest);
+  }
+  await expect(projectSettings.getByText("efficiency — CSV 재선택 필요")).toBeVisible();
+
+  await utilities.locator("> summary").click();
+  await uploadCsv(page, "efficiency.csv");
+  while (await confirmations.count()) await confirmations.first().click();
+
+  await openDetails(utilities);
+  await openDetails(projectSettings);
+  await expect(projectSettings.getByText("efficiency — 헤더 일치 · 적용 가능")).toBeVisible();
+  await projectSettings.getByRole("button", { name: "호환 설정 적용" }).click();
+
+  await expect(page.locator(".dashboard-briefing .result-action-card")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "데이터 분석하기" })).toBeVisible();
+});
+
+test("4개 핵심 도구의 결과를 한 주간 보고서로 수집한다", async ({ page }) => {
+  await page.goto("/dashboard");
+  await uploadCsv(page, "efficiency.csv");
+
+  const confirmations = page.getByRole("button", { name: "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+  await page.getByRole("button", { name: "데이터 분석하기" }).click();
+  await addVisibleResultToReport(page);
+  await setComparableEfficiencyWindow(page);
+
+  for (const { href, section, query } of [
+    { href: "/tools/campaign-variance", section: "01 이번 주 점검", query: "성과 변동" },
+    { href: "/tools/campaign-saturation", section: "03 예산 조정", query: "포화도" },
+    { href: "/tools/budget-allocation", section: "03 예산 조정", query: "예산 배분" },
+  ]) {
+    await navigateToTool(page, href, section, query);
+    await addVisibleResultToReport(page);
+  }
+
+  await page.getByRole("link", { name: "✓ 보고서 열기" }).click();
+  await expect(page).toHaveURL(/\/weekly-report$/);
+  await expect(page.locator(".weekly-review-record")).toHaveCount(4);
+  await expectPageHierarchy(page, { primaryRegion: ".weekly-report-page__ledger" });
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("입력 매핑이 바뀌면 이전 주간 보고서 블록을 stale로 표시한다", async ({ page }) => {
+  await page.goto("/dashboard");
+  await uploadCsv(page, "efficiency.csv");
+
+  const confirmations = page.getByRole("button", { name: "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+  await page.getByRole("button", { name: "데이터 분석하기" }).click();
+  await addVisibleResultToReport(page);
+
+  await page.getByRole("link", { name: "✓ 보고서 열기" }).click();
+  await expect(page).toHaveURL(/\/weekly-report$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await openDetails(page.locator(".dashboard-data-disclosure"));
+  const mappingBlock = page.locator(".csv-mapping-block");
+  await openDetails(mappingBlock);
+  await page.getByRole("combobox", { name: "Installs: 표준 필드" }).selectOption("actions");
+  await expect(page.locator(".dashboard-briefing .result-action-card")).toHaveCount(0);
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/weekly-report$/);
+  await expect(page.getByText("입력 데이터가 바뀐 뒤 만들어진 이전 결과입니다.")).toBeVisible();
 });
