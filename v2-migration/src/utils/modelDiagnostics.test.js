@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REG_STATS } from "./regMath";
-import { computeOlsDiagnostics, computeVif } from "./modelDiagnostics";
+import { averageRanks, computeOlsDiagnostics, computeVif, correlationMatrix, spearmanCorrelation } from "./modelDiagnostics";
 
 function buildSeries({ n = 48, rho = 0, outlierAt = -1, outlierValue = 0 } = {}) {
   let previous = 0;
@@ -61,5 +61,22 @@ describe("modelDiagnostics", () => {
 
   it("handles degenerate input honestly without throwing", () => {
     expect(computeOlsDiagnostics(null, [])).toMatchObject({ dw: null, leverages: [], cooksD: [] });
+  });
+
+  it("uses average ranks for ties and keeps Pearson/Spearman robustness separately testable", () => {
+    expect(averageRanks([10, 20, 20, 40])).toEqual([1, 2.5, 2.5, 4]);
+    const tied = spearmanCorrelation([1, 2, 2, 4], [4, 3, 3, 1]);
+    expect(tied.r).toBeCloseTo(-1, 12);
+
+    const correlation = correlationMatrix([
+      { name: "linear", values: [1, 2, 3, 4, 5, 6] },
+      { name: "outlier", values: [1, 2, 3, 4, 5, 100] },
+    ]);
+    expect(correlation.pairs[0]).toMatchObject({
+      pearsonR: expect.any(Number),
+      spearmanR: expect.any(Number),
+      spearmanHolmP: expect.any(Number),
+    });
+    expect(correlation.pairs[0].robustness).toBe("magnitude_conflict");
   });
 });
