@@ -54,6 +54,21 @@ test("App Store Connect CSV를 5-27 결과로 연결한다", async ({ page }) =>
   await expectNoSeriousAccessibilityViolations(page);
 });
 
+test("Apple Ads 검색어 CSV를 5-26 권장 조치까지 연결한다", async ({ page }) => {
+  await page.goto("/tools/asa-keyword-finder");
+  await expect(page.locator('.tool-page-shell[data-tool-id="5-26"]')).toBeVisible();
+  await uploadCsv(page, "apple-ads-search-terms.csv");
+
+  const confirmations = page.getByRole("button", { name: "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+  await page.getByRole("button", { name: "데이터 분석하기" }).click();
+
+  await expect(page.locator(".asa-tool__setup + .csv-uploader + #asa-summary .result-action-card")).toBeVisible();
+  await expect(page.getByText("sample planner", { exact: true })).toBeVisible();
+  await expectPageHierarchy(page, { primaryRegion: "#asa-summary" });
+  await expectNoSeriousAccessibilityViolations(page);
+});
+
 test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본다", async ({ page }) => {
   await page.goto("/dashboard");
   await uploadCsv(page, "efficiency.csv");
