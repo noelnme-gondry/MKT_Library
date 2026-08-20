@@ -4,6 +4,7 @@ import {
   prepareImportedData,
   shouldUseDataPreparationWorker,
 } from "./dataPreparationWorkerClient";
+import { evaluateV2Eligibility } from "./schema/toolDataRequirements";
 
 describe("data preparation worker client", () => {
   it("uses a deterministic size gate", () => {
@@ -21,5 +22,7 @@ describe("data preparation worker client", () => {
     expect(result.insights.mapping).toMatchObject({ date: "date", cost: "cost", installs: "installs" });
     expect(result.canonicalData.summary.outputRows).toBe(1);
     expect(result.mappedRows[0].spend).toBe("100");
+    expect(result.canonicalDataV2.records[0].measures.media_spend[0].value).toBe(100);
+    expect(evaluateV2Eligibility({ toolId: "5-2", bindings: result.semanticMapping.bindings }).status).toBe("ready");
   });
 });

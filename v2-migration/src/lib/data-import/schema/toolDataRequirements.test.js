@@ -25,4 +25,10 @@ describe("V2 tool data requirements", () => {
     expect(result.status).toBe("blocked");
     expect(result.missing).toHaveLength(1);
   });
+
+  it("has an explicit canonical role for every running V1 required field", () => {
+    for (const contract of Object.values(TOOL_DATA_REQUIREMENTS_V2)) {
+      expect(contract.unmigratedLegacyKeys, contract.toolId).toEqual([]);
+    }
+  });
 });

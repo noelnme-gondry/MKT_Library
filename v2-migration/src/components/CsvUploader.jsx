@@ -10,7 +10,11 @@ import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/compon
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
+import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
+import { projectSemanticBindingsToLegacyMapping, semanticBindingsFromLegacyMapping } from "@/lib/data-import/canonical-v2/legacyProjection";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
+import { canonicalFieldForLegacyKey } from "@/lib/data-import/schema/legacyFieldMigration";
+import { evaluateV2Eligibility } from "@/lib/data-import/schema/toolDataRequirements";
 import { applyCompatibleMemory, buildMappingMemoryRecord, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
 import { clearMappingMemory, confirmMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
@@ -20,7 +24,6 @@ import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
-import { mapRowsToStandard } from "@/utils/mappedRows";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
 import { assertCsvFileSize, csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
@@ -124,6 +127,7 @@ const CSV_COPY = {
     mappingBlockedTitle: "⚠ 필수 매핑을 확인해야 분석을 시작할 수 있습니다",
     mappingBlockedConflict: "같은 표준 필드에 여러 CSV 컬럼이 선택됐습니다. 하나만 남겨 주세요.",
     mappingBlockedConfirm: "'확인 필요' 상태인 필수 컬럼을 확인해 주세요.",
+    semanticBlocked: "전역 역할이 확인되지 않은 필수 컬럼이 있습니다. Semantic Mapper V2에서 역할을 확인해 주세요.",
     signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
     wideWarning: "기간이 열로 펼쳐진 형식입니다. 날짜 열을 행으로 바꾼 뒤 값의 의미를 직접 매핑해 주세요.",
     wideTransformTitle: "날짜 열 전개형 보고서를 찾았습니다",
@@ -199,6 +203,7 @@ const CSV_COPY = {
     mappingBlockedTitle: "⚠ Confirm required mappings before analysis",
     mappingBlockedConflict: "Multiple CSV columns are assigned to the same standard field. Keep only one.",
     mappingBlockedConfirm: "Confirm every required column marked “Confirmation needed.”",
+    semanticBlocked: "A required canonical role is unresolved. Confirm it in Semantic Mapper V2.",
     signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
     wideWarning: "This is a period-as-columns report. Convert date columns to rows, then map the value meaning yourself.",
     wideTransformTitle: "Date-column report detected",
@@ -318,9 +323,9 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     const recipe = await getTransformRecipe(headers).catch(() => null);
     const hasValidRecipe = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header));
     const mapping = hasValidRecipe ? recipe.mapping : insights.selections;
-    const canonicalData = hasValidRecipe ? buildCanonicalDataset({ raw, headers, mapping }) : prepared.canonicalData;
-    const mappedRows = hasValidRecipe ? mapRowsToStandard(raw, mapping) : prepared.mappedRows;
     const semanticMapping = isMappingMemoryEnabled ? applyCompatibleMemory(prepared.semanticMapping, mappingMemoryRecords) : prepared.semanticMapping;
+    const canonicalData = hasValidRecipe ? buildCanonicalDataset({ raw, headers, mapping }) : prepared.canonicalData;
+    const mappedRows = buildLegacyRows({ raw, legacyMapping: mapping, semanticBindings: semanticMapping?.bindings || [], toolId });
     const canonicalDataV2 = buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping?.bindings || [], valueBindingRecipes: semanticMapping?.valueBindingRecipes || [], representation: semanticMapping?.profile?.representation || "tabular" });
     const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
 
@@ -532,11 +537,24 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
   const handleMappingChange = (header, value) => {
     const mapping = { ...csvData.mapping, [header]: value };
+    const migration = canonicalFieldForLegacyKey(value);
+    const bindings = (csvData.mappingBindingsV2 || []).map((binding) => binding.sourceColumn === header ? {
+      ...binding,
+      canonicalKey: migration?.canonicalKey || null,
+      role: migration?.canonicalKey ? CANONICAL_FIELDS[migration.canonicalKey]?.family || "UNKNOWN" : "UNKNOWN",
+      decision: migration?.canonicalKey ? "SUGGEST" : "UNKNOWN",
+      evidence: migration?.canonicalKey ? [{ kind: "legacy_user", code: "USER_SELECTED_LEGACY_ROLE" }] : [],
+      source: "user",
+      member: migration?.memberHint ? { kind: migration.memberHint } : null,
+      window: migration?.window || null,
+    } : binding);
     setCsvData({
       ...csvData,
       mapping,
       canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
-      mappedRows: mapRowsToStandard(csvData.raw, mapping),
+      mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping: mapping, semanticBindings: bindings, toolId }),
+      mappingBindingsV2: bindings,
+      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
     });
     setConfirmedHeaders((previous) => new Set([...previous, header]));
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
@@ -554,9 +572,13 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       evidence: field ? [{ kind: "manual", code: "USER_SELECTED_CANONICAL_ROLE" }] : [],
       source: "user",
     } : binding);
+    const mapping = projectSemanticBindingsToLegacyMapping({ toolId, legacyMapping: csvData.mapping, bindings });
     setCsvData({
       ...csvData,
+      mapping,
       mappingBindingsV2: bindings,
+      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
+      mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping: mapping, semanticBindings: bindings, toolId }),
       canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
     });
     setPreviewOpen(true);
@@ -574,7 +596,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group, locale);
-    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: mapRowsToStandard(demo.raw, demo.mapping) });
+    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: buildLegacyRows({ raw: demo.raw, legacyMapping: demo.mapping, toolId }) });
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
   };
@@ -668,6 +690,10 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     if (!ANALYSIS_CONTRACTS[toolId] || !csvData.canonicalData) return null;
     return evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, locale });
   }, [toolId, csvData.mapping, csvData.canonicalData, locale]);
+  const semanticBindings = csvData.mappingBindingsV2?.length
+    ? csvData.mappingBindingsV2
+    : semanticBindingsFromLegacyMapping(csvData.mapping);
+  const semanticEligibility = evaluateV2Eligibility({ toolId, bindings: semanticBindings });
 
   if (!hasFile) {
     return (
@@ -772,7 +798,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   const mappedCount = Object.values(csvData.mapping || {}).filter((value) => value && value !== "__ignore__").length;
   const needsReview = mappingAssessments.filter((assessment) => assessment.state === "review" || assessment.state === "must_confirm").length;
   const mappingBlocked = mappingConflicts.length > 0 || hasRequiredMustConfirm;
-  const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked);
+  const semanticBlocked = !isDemo && semanticEligibility.status === "blocked";
+  const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked || semanticBlocked);
   const analysisSource = isDemo ? "demo" : isSheetSourced ? "google_sheets" : csvData?.importSource || "csv";
   const blockedState = missing.length > 0
     ? "missing_required"
@@ -782,6 +809,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         ? "mapping_confirmation"
         : dataEligibility?.status === "blocked"
           ? dataEligibility?.blockers?.[0]?.code || "data_eligibility"
+          : semanticBlocked
+            ? "semantic_mapping"
           : null;
   const analysisStatus = deriveAnalysisStatus({
     hasData: !!hasFile,
@@ -922,9 +951,9 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         </div>
       ) : analysisBlocked ? (
         <div className="required-banner">
-          <strong>{mappingBlocked ? T.mappingBlockedTitle : T.dataBlockedTitle}</strong>
+          <strong>{mappingBlocked || semanticBlocked ? T.mappingBlockedTitle : T.dataBlockedTitle}</strong>
           <p className="required-banner__description">
-            {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : formatEligibilityBlocker(dataEligibility, locale) || T.dataBlockedHint}
+            {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : semanticBlocked ? T.semanticBlocked : formatEligibilityBlocker(dataEligibility, locale) || T.dataBlockedHint}
           </p>
         </div>
       ) : (
@@ -1006,7 +1035,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           })}
         </div>
       </details>}
-      {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} />}
+      {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       {!isRouterMode && <MappingMemorySettings
         enabled={isMappingMemoryEnabled}
         count={mappingMemoryRecords.length}

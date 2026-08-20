@@ -42,6 +42,10 @@ export const CANONICAL_FIELDS = Object.freeze({
 
   outcome_installs: field("outcome_installs", "OUTCOME", "설치수", "Installs", { repeatable: true }),
   outcome_signups: field("outcome_signups", "OUTCOME", "가입수", "Sign-ups", { repeatable: true }),
+  outcome_registrations: field("outcome_registrations", "OUTCOME", "가입·등록수", "Registrations", { repeatable: true }),
+  outcome_reactivations: field("outcome_reactivations", "OUTCOME", "재활성화 수", "Reactivations", { repeatable: true }),
+  outcome_brand_searches: field("outcome_brand_searches", "OUTCOME", "브랜드 검색량", "Brand searches", { repeatable: true }),
+  outcome_direct_traffic: field("outcome_direct_traffic", "OUTCOME", "직접 유입", "Direct traffic", { repeatable: true }),
   outcome_purchases: field("outcome_purchases", "OUTCOME", "구매·결제수", "Purchases", { repeatable: true, windowSupport: true }),
   outcome_revenue: field("outcome_revenue", "OUTCOME", "매출", "Revenue", { unitFamily: "currency", repeatable: true, windowSupport: true }),
   outcome_retention: field("outcome_retention", "OUTCOME", "리텐션", "Retention", { unitFamily: "rate", aggregation: "weighted_mean", repeatable: true, windowSupport: true }),
@@ -51,6 +55,17 @@ export const CANONICAL_FIELDS = Object.freeze({
   control_promotion: field("control_promotion", "CONTROL", "프로모션 통제", "Promotion control", { unitFamily: "binary_or_index", repeatable: true }),
   control_holiday: field("control_holiday", "CONTROL", "휴일 통제", "Holiday control", { unitFamily: "binary_or_index", repeatable: true }),
   control_market_index: field("control_market_index", "CONTROL", "시장 수요 지수", "Market demand index", { unitFamily: "index", repeatable: true }),
+  control_campaign_active: field("control_campaign_active", "CONTROL", "캠페인 집행 여부", "Campaign active", { unitFamily: "binary_or_index", repeatable: true }),
+
+  experiment_arm: field("experiment_arm", "IDENTIFIER", "실험군", "Experiment arm", { valueType: "string", unitFamily: "identifier", aggregation: "none", cardinalityHint: "low" }),
+  experiment_id: field("experiment_id", "IDENTIFIER", "실험 식별자", "Experiment identifier", { valueType: "string", unitFamily: "identifier", aggregation: "none", cardinalityHint: "many" }),
+  experiment_metric: field("experiment_metric", "IDENTIFIER", "실험 지표", "Experiment metric", { valueType: "string", unitFamily: "identifier", aggregation: "none", cardinalityHint: "many" }),
+  experiment_numerator: field("experiment_numerator", "OUTCOME", "실험 분자", "Experiment numerator", { repeatable: true }),
+  experiment_denominator: field("experiment_denominator", "OUTCOME", "실험 분모", "Experiment denominator", { repeatable: true }),
+  cohort_size: field("cohort_size", "IDENTIFIER", "코호트 규모", "Cohort size", { valueType: "number", unitFamily: "count", aggregation: "sum" }),
+  cohort_day_offset: field("cohort_day_offset", "TIME", "코호트 경과일", "Cohort day offset", { valueType: "number", unitFamily: "day", aggregation: "none", cardinalityHint: "low" }),
+  holdout_group: field("holdout_group", "IDENTIFIER", "홀드아웃 그룹", "Holdout group", { valueType: "string", unitFamily: "identifier", aggregation: "none", cardinalityHint: "low" }),
+  asa_search_term: field("asa_search_term", "DIMENSION", "ASA 검색어", "ASA search term", { valueType: "string", unitFamily: "category", aggregation: "none", cardinalityHint: "many" }),
 
   row_id: field("row_id", "IDENTIFIER", "행 식별자", "Row identifier", { valueType: "string", unitFamily: "identifier", aggregation: "none", cardinalityHint: "many", repeatable: true }),
 

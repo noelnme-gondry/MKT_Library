@@ -9,12 +9,12 @@ const copy = {
 
 const label = (field, locale) => locale === "en" ? field.labelEn : field.label;
 
-export default function SemanticMappingTable({ bindings = [], semanticMapping = null, locale = "ko", onBindingChange }) {
+export default function SemanticMappingTable({ bindings = [], semanticMapping = null, locale = "ko", onBindingChange, open = false }) {
   const t = copy[locale] || copy.ko;
   const candidates = semanticMapping?.candidatesByHeader || {};
   if (!bindings.length) return null;
   return (
-    <details className="csv-mapping-block semantic-mapping-block">
+    <details className="csv-mapping-block semantic-mapping-block" open={open || undefined}>
       <summary className="csv-mapping-header"><strong className="csv-mapping-title">{t.title}</strong></summary>
       <div className="table-wrap">
         <table>

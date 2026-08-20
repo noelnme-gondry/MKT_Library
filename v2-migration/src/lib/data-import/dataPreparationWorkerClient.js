@@ -23,7 +23,7 @@ function prepareOnMainThread({ headers = [], raw = [], toolId, source = "csv" } 
   return {
     insights: { ...mappingContract, selections: mapping, signature: detectDatasetSignature(headers, raw) },
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
-    mappedRows: buildLegacyRows({ raw, legacyMapping: mapping }),
+    mappedRows: buildLegacyRows({ raw, legacyMapping: mapping, semanticBindings: semanticMapping.bindings, toolId }),
     semanticMapping,
     canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
     parityReport,
