@@ -4,7 +4,7 @@ import { detectDatasetSignature } from "./detectDatasetSignature";
 import { buildCanonicalDatasetV2 } from "./canonical-v2/buildCanonicalDatasetV2";
 import { buildMappingParityReport } from "./canonical-v2/buildMappingParityReport";
 import { mapDataset } from "./semantic-mapper/mapDataset";
-import { mapRowsToStandard } from "@/utils/mappedRows";
+import { buildLegacyRows } from "./canonical-v2/buildLegacyRows";
 
 // Mapping and canonicalization are import-time work, not model math. Keep small
 // files synchronous to avoid worker startup overhead; move large files off the
@@ -23,7 +23,7 @@ function prepareOnMainThread({ headers = [], raw = [], toolId, source = "csv" } 
   return {
     insights: { ...mappingContract, selections: mapping, signature: detectDatasetSignature(headers, raw) },
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
-    mappedRows: mapRowsToStandard(raw, mapping),
+    mappedRows: buildLegacyRows({ raw, legacyMapping: mapping }),
     semanticMapping,
     canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
     parityReport,

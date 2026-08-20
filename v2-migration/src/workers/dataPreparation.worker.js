@@ -4,7 +4,7 @@ import { detectDatasetSignature } from "../lib/data-import/detectDatasetSignatur
 import { buildCanonicalDatasetV2 } from "../lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { buildMappingParityReport } from "../lib/data-import/canonical-v2/buildMappingParityReport";
 import { mapDataset } from "../lib/data-import/semantic-mapper/mapDataset";
-import { mapRowsToStandard } from "../utils/mappedRows";
+import { buildLegacyRows } from "../lib/data-import/canonical-v2/buildLegacyRows";
 
 globalThis.onmessage = (event) => {
   const { headers = [], raw = [], toolId, source = "csv" } = event.data || {};
@@ -17,7 +17,7 @@ globalThis.onmessage = (event) => {
       ok: true,
       insights: { ...mappingContract, selections: mapping, signature: detectDatasetSignature(headers, raw) },
       canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
-      mappedRows: mapRowsToStandard(raw, mapping),
+      mappedRows: buildLegacyRows({ raw, legacyMapping: mapping }),
       semanticMapping,
       canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
       parityReport,

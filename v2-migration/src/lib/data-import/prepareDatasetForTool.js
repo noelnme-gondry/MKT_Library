@@ -1,6 +1,6 @@
 import { buildCanonicalDataset } from "./buildCanonicalDataset";
 import { buildMappingContract } from "./mappingContract";
-import { mapRowsToStandard } from "@/utils/mappedRows";
+import { buildLegacyRows } from "./canonical-v2/buildLegacyRows";
 import { buildCanonicalDatasetV2 } from "./canonical-v2/buildCanonicalDatasetV2";
 import { mapDataset } from "./semantic-mapper/mapDataset";
 
@@ -28,7 +28,7 @@ export function prepareDatasetForTool({ raw = [], headers = [], toolId, source =
     importInsights: { ...mappingContract, selections: mapping, handoff: true },
     mappingContract,
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
-    mappedRows: mapRowsToStandard(raw, mapping),
+    mappedRows: buildLegacyRows({ raw, legacyMapping: mapping }),
     mappingBindingsV2: semanticMapping.bindings,
     canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
   };
