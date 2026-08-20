@@ -99,7 +99,7 @@ v2-migration/
 | (공통) | `chartUtils.js`·`format.js`·`download.js`·`toolGuide.js`·`demoData.js`(seededNoise)·`testFixtures` | 차트·표시포맷·CSV출력·업로드 설명·픽스처 SSOT |
 | (지표/커스텀) | `utils/metrics/`: `metricRegistry.js`(파생지표 SSOT)·`customMetric.js`(N항 조립, eval 없음)·`chartBuilder.js`·`metricView.js`(hidden/order/sizes) | UI=`ds/CustomMetricBuilder`·`CustomChartBuilder`·`InlineCardEditor`·`MetricConfigPanel`. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |
-| (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지 |
+| (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | V1 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지. V2=`data-import/schema/*`(전역 canonical registry·legacy migration·파생 도구 인벤토리) → `profiler/*` → `semantic-mapper/*` → `canonical-v2/*`; 업로드 시 병행 생성하지만 V1 엔진 입력은 아직 불변 |
 | (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위. `foreignGrain` 계약(5-20·9-1)은 grain이 달라 항상 차단하되 필요한 컬럼을 `TOOL_GUIDE`에서 파생해 안내 |
 | (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. `rateRegression`(betareg·0~1 비율)·`countRegression`(MASS·Poisson→과산포면 negbin)·`mixedModel`(lme4·random intercept, **가장 무거운 다운로드 — 자동 실행 금지**). 척도 판별은 `utils/outcomeType.js`. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
 | (결정 검토) | `lib/decisionReview.js`·`decisionComparableActual.js`·`decisionComparisonScope.js`·`forecastReview.js` | 결정 기록 스키마·기준일+N일 비교 후보·데이터 범위 스코프 |

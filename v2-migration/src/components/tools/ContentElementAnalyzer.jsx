@@ -23,6 +23,7 @@ import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
 import { prepareRateInput, runWebRRateRegression } from "@/lib/analysis/webr/rateRegression";
 import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/countRegression";
@@ -301,7 +302,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale });
           return;
         }
-        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name });
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: "9-1", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: "parse_error", locale }),

@@ -34,7 +34,19 @@ describe(".gop.json project settings", () => {
 
   it("prototype pollution 키와 미래 버전을 거부한다", () => {
     expect(() => parseProjectText('{"schemaVersion":1,"product":"growthopt-playbook","__proto__":{"polluted":true}}')).toThrow("PROJECT_UNSAFE_KEY");
-    expect(() => validateProjectFile({ schemaVersion: 2, product: "growthopt-playbook" })).toThrow("PROJECT_FUTURE_VERSION");
+    expect(() => validateProjectFile({ schemaVersion: 3, product: "growthopt-playbook" })).toThrow("PROJECT_FUTURE_VERSION");
+  });
+
+  it("migrates a V1 mapping to reviewable V2 bindings without source rows", () => {
+    const project = validateProjectFile({
+      schemaVersion: 1,
+      product: "growthopt-playbook",
+      groups: { efficiency: { mapping: { Cost: "cost", Actions: "actions" } } },
+    });
+    expect(project).toMatchObject({ schemaVersion: 2 });
+    expect(project.groups.efficiency.mappingBindingsV2).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceColumn: "Cost", canonicalKey: "media_spend", decision: "SUGGEST" }),
+      expect.objectContaining({ sourceColumn: "Actions", canonicalKey: "outcome_generic", decision: "SUGGEST" }),
+    ]));
   });
 });
-

@@ -17,6 +17,7 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
+import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 
 const num = (v) => {
   if (v == null || String(v).trim() === "") return NaN;
@@ -134,7 +135,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
           return;
         }
         const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
-        setCsvData({ raw: rows, headers, mapping, fileName: file.name });
+        setCsvData({ raw: rows, headers, mapping, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: "5-23", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: "parse_error", locale }),
