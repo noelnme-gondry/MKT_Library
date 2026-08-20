@@ -1,6 +1,7 @@
 import { CANONICAL_FIELDS } from "../schema/canonicalFields";
 
 export const MAPPING_MEMORY_SCHEMA_VERSION = 1;
+export const MAPPING_MEMORY_ENABLED_KEY = "gop_semantic_mapping_memory_enabled";
 const UNSAFE_NAME = /^(?:__proto__|prototype|constructor)$/i;
 
 const safeText = (value) => String(value || "").normalize("NFKC").trim().toLowerCase().replace(/[\s_-]+/g, "_");
@@ -45,4 +46,34 @@ export function findCompatibleMemory(records = [], input = {}) {
   return records
     .filter((record) => isMemoryCompatible(record, input))
     .sort((left, right) => right.confirmationCount - left.confirmationCount || right.confirmedAt - left.confirmedAt)[0] || null;
+}
+
+export function applyCompatibleMemory(semanticMapping, records = []) {
+  if (!semanticMapping?.profile?.columns || !semanticMapping.bindings) return semanticMapping;
+  const profileByHeader = Object.fromEntries(semanticMapping.profile.columns.map((profile) => [profile.header, profile]));
+  const context = { representation: semanticMapping.profile.representation };
+  const bindings = semanticMapping.bindings.map((binding) => {
+    // Personal memory is a tie-breaker for abstained columns, never an override
+    // for a current global semantic decision.
+    if (binding.decision !== "UNKNOWN") return binding;
+    const record = findCompatibleMemory(records, { normalizedColumnName: binding.sourceColumn, profile: profileByHeader[binding.sourceColumn], context });
+    return record ? {
+      ...binding,
+      canonicalKey: record.canonicalKey,
+      role: CANONICAL_FIELDS[record.canonicalKey].family,
+      decision: "SUGGEST",
+      confidence: 0.7,
+      evidence: [{ kind: "memory", code: "COMPATIBLE_PERSONAL_CONFIRMATION" }],
+      source: "personal_memory",
+    } : binding;
+  });
+  return { ...semanticMapping, bindings };
+}
+
+export function mappingMemoryEnabled() {
+  return typeof localStorage !== "undefined" && localStorage.getItem(MAPPING_MEMORY_ENABLED_KEY) === "true";
+}
+
+export function setMappingMemoryEnabled(enabled) {
+  if (typeof localStorage !== "undefined") localStorage.setItem(MAPPING_MEMORY_ENABLED_KEY, enabled ? "true" : "false");
 }

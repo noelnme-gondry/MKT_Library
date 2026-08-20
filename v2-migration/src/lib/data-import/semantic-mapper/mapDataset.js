@@ -2,6 +2,8 @@ import { profileDatasetV2 } from "../profiler/profileDataset";
 import { canonicalFieldForLegacyKey } from "../schema/legacyFieldMigration";
 import { resolveSemanticBindings } from "./resolveBindings";
 import { scoreSemanticCandidates } from "./scoreCandidates";
+import { detectLongFormatBindings } from "./longFormatBindings";
+import { detectDerivedMetricBindings } from "./derivedMetricDetector";
 
 const normalizeHeaderKey = (header) => String(header || "")
   .normalize("NFKC")
@@ -14,14 +16,19 @@ const normalizeHeaderKey = (header) => String(header || "")
 export function mapDataset({ headers = [], rows = [] } = {}) {
   const profile = profileDatasetV2({ headers, rows });
   const candidatesByHeader = Object.fromEntries(profile.columns.map((column) => [column.header, scoreSemanticCandidates(column, profile.columns)]));
-  const bindings = resolveSemanticBindings({ headers, candidatesByHeader }).map((binding) => {
-    const migration = canonicalFieldForLegacyKey(normalizeHeaderKey(binding.sourceColumn));
+  const valueBindingRecipes = detectLongFormatBindings({ headers, rows, representation: profile.representation });
+  const resolvedBindings = resolveSemanticBindings({ headers, candidatesByHeader });
+  const derivedBindings = detectDerivedMetricBindings({ headers, rows, bindings: resolvedBindings });
+  const bindings = resolvedBindings.map((binding) => {
+    const derived = derivedBindings.find((candidate) => candidate.sourceColumn === binding.sourceColumn);
+    const selected = derived || binding;
+    const migration = canonicalFieldForLegacyKey(normalizeHeaderKey(selected.sourceColumn));
     return {
       schemaVersion: 2,
-      ...binding,
-      member: migration?.canonicalKey === binding.canonicalKey && migration.memberHint ? { kind: migration.memberHint } : null,
+      ...selected,
+      member: migration?.canonicalKey === selected.canonicalKey && migration.memberHint ? { kind: migration.memberHint } : null,
       unit: null,
-      window: migration?.canonicalKey === binding.canonicalKey ? migration.window || null : null,
+      window: migration?.canonicalKey === selected.canonicalKey ? migration.window || null : null,
       source: "semantic_mapper_v0",
       modelVersion: "semantic-mapper-0.1.0",
     };
@@ -31,6 +38,7 @@ export function mapDataset({ headers = [], rows = [] } = {}) {
     schemaVersion: 2,
     profile,
     candidatesByHeader,
+    valueBindingRecipes,
     bindings,
     unresolvedHeaders: bindings.filter((binding) => binding.decision === "UNKNOWN").map((binding) => binding.sourceColumn),
   };

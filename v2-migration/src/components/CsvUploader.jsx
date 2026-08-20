@@ -11,6 +11,8 @@ import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
+import { applyCompatibleMemory, buildMappingMemoryRecord, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
+import { clearMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { decodeCsvBuffer } from "@/lib/data-import/decodeCsv";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
@@ -29,6 +31,7 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } fro
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
+import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -249,6 +252,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   const [refreshingSheet, setRefreshingSheet] = useState(false);
   const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
   const [confirmedHeaders, setConfirmedHeaders] = useState(() => new Set());
+  const [isMappingMemoryEnabled, setIsMappingMemoryEnabled] = useState(() => mappingMemoryEnabled());
+  const [mappingMemoryRecords, setMappingMemoryRecords] = useState([]);
   // XLSX는 여러 시트가 흔하므로 임의로 합치지 않는다. 먼저 사용자가 하나를 선택하게
   // 하고, 날짜 열 전개형도 변환 전에 의미를 확인할 수 있도록 별도 대기 상태로 둔다.
   const [pendingWorkbook, setPendingWorkbook] = useState(null);
@@ -262,6 +267,13 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     state,
     locale,
   });
+
+  useEffect(() => {
+    if (!isMappingMemoryEnabled) return undefined;
+    let active = true;
+    listMappingMemory().then((records) => { if (active) setMappingMemoryRecords(records); }).catch(() => { if (active) setMappingMemoryRecords([]); });
+    return () => { active = false; };
+  }, [isMappingMemoryEnabled]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -308,6 +320,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     const mapping = hasValidRecipe ? recipe.mapping : insights.selections;
     const canonicalData = hasValidRecipe ? buildCanonicalDataset({ raw, headers, mapping }) : prepared.canonicalData;
     const mappedRows = hasValidRecipe ? mapRowsToStandard(raw, mapping) : prepared.mappedRows;
+    const semanticMapping = isMappingMemoryEnabled ? applyCompatibleMemory(prepared.semanticMapping, mappingMemoryRecords) : prepared.semanticMapping;
+    const canonicalDataV2 = buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping?.bindings || [], valueBindingRecipes: semanticMapping?.valueBindingRecipes || [], representation: semanticMapping?.profile?.representation || "tabular" });
     const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
 
     setCsvData({
@@ -322,9 +336,9 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
       mappedRows,
-      mappingBindingsV2: prepared.semanticMapping?.bindings || [],
-      canonicalDataV2: prepared.canonicalDataV2 || null,
-      semanticMapping: prepared.semanticMapping || null,
+      mappingBindingsV2: semanticMapping?.bindings || [],
+      canonicalDataV2,
+      semanticMapping: semanticMapping || null,
       ...(prepared.parityReport ? { semanticParityReport: prepared.parityReport } : {}),
     });
     setConfirmedHeaders(new Set());
@@ -543,7 +557,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     setCsvData({
       ...csvData,
       mappingBindingsV2: bindings,
-      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
+      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
     });
     setPreviewOpen(true);
   };
@@ -782,6 +796,12 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     const event = { tool_id: eventToolId, source: analysisSource, row_count: csvData?.raw?.length || 0, analysis_type: analysisType, mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length, locale };
     trackProductEvent("mapping_confirmed", event);
     trackProductEventOnce("analysis_started", analysisResultEventKey(eventToolId, analysisType, computeAnalyzeSig(csvData), "", locale), event);
+    if (isMappingMemoryEnabled) {
+      const profiles = Object.fromEntries((csvData.semanticMapping?.profile?.columns || []).map((profile) => [profile.header, profile]));
+      const context = { representation: csvData.semanticMapping?.profile?.representation || "tabular", roleFamilies: (csvData.mappingBindingsV2 || []).map((binding) => binding.role).filter(Boolean) };
+      const confirmed = (csvData.mappingBindingsV2 || []).filter((binding) => binding.source === "user" && binding.canonicalKey).map((binding) => buildMappingMemoryRecord({ normalizedColumnName: binding.sourceColumn, canonicalKey: binding.canonicalKey, profile: profiles[binding.sourceColumn], context }));
+      Promise.all(confirmed.map(putMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords).catch(() => {});
+    }
     saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
     requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
   };
@@ -987,6 +1007,17 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         </div>
       </details>}
       {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} />}
+      {!isRouterMode && <MappingMemorySettings
+        enabled={isMappingMemoryEnabled}
+        count={mappingMemoryRecords.length}
+        locale={locale}
+        onEnabledChange={(enabled) => {
+          setMappingMemoryEnabled(enabled);
+          setIsMappingMemoryEnabled(enabled);
+          if (enabled) listMappingMemory().then(setMappingMemoryRecords).catch(() => setMappingMemoryRecords([]));
+        }}
+        onClear={() => clearMappingMemory().then(() => setMappingMemoryRecords([])).catch(() => {})}
+      />}
 
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
           사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}

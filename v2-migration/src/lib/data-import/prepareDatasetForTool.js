@@ -30,6 +30,6 @@ export function prepareDatasetForTool({ raw = [], headers = [], toolId, source =
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
     mappedRows: mapRowsToStandard(raw, mapping),
     mappingBindingsV2: semanticMapping.bindings,
-    canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, representation: semanticMapping.profile.representation }),
+    canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
   };
 }

@@ -26,4 +26,13 @@ describe("Canonical Dataset V2", () => {
     });
     expect(JSON.stringify(result)).not.toContain("private-row-value");
   });
+
+  it("uses an explicit long-format recipe for a metric/value column", () => {
+    const result = buildCanonicalDatasetV2({
+      headers: ["metric", "value"], raw: [{ metric: "spend", value: "100" }],
+      valueBindingRecipes: [{ metricColumn: "metric", valueColumn: "value", when: { equals: "spend" }, canonicalKey: "media_spend" }],
+      bindings: [], representation: "long",
+    });
+    expect(result.records[0].measures.media_spend).toEqual([{ value: 100, member: null, window: null, sourceColumn: "value" }]);
+  });
 });

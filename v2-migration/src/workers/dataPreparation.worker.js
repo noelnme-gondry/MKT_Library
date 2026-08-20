@@ -19,7 +19,7 @@ globalThis.onmessage = (event) => {
       canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
       mappedRows: mapRowsToStandard(raw, mapping),
       semanticMapping,
-      canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, representation: semanticMapping.profile.representation }),
+      canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, valueBindingRecipes: semanticMapping.valueBindingRecipes, representation: semanticMapping.profile.representation }),
       parityReport,
     });
   } catch (error) {
