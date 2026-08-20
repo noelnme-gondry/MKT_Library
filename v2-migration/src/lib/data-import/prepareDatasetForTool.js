@@ -1,6 +1,8 @@
 import { buildCanonicalDataset } from "./buildCanonicalDataset";
 import { buildMappingContract } from "./mappingContract";
 import { mapRowsToStandard } from "@/utils/mappedRows";
+import { buildCanonicalDatasetV2 } from "./canonical-v2/buildCanonicalDatasetV2";
+import { mapDataset } from "./semantic-mapper/mapDataset";
 
 export function toolFieldKeys(toolId) {
   const keys = new Set();
@@ -17,6 +19,7 @@ export function toolFieldKeys(toolId) {
 export function prepareDatasetForTool({ raw = [], headers = [], toolId, source = "handoff" } = {}) {
   const mappingContract = buildMappingContract({ toolId, headers, rows: raw, source });
   const mapping = mappingContract.mapping;
+  const semanticMapping = mapDataset({ headers, rows: raw });
   return {
     raw,
     headers,
@@ -26,5 +29,7 @@ export function prepareDatasetForTool({ raw = [], headers = [], toolId, source =
     mappingContract,
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
     mappedRows: mapRowsToStandard(raw, mapping),
+    mappingBindingsV2: semanticMapping.bindings,
+    canonicalDataV2: buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping.bindings, representation: semanticMapping.profile.representation }),
   };
 }

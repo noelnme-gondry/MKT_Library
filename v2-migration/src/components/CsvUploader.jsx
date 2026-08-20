@@ -319,6 +319,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
       mappedRows,
+      mappingBindingsV2: prepared.semanticMapping?.bindings || [],
+      canonicalDataV2: prepared.canonicalDataV2 || null,
     });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
