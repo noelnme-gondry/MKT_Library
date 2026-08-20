@@ -24,6 +24,7 @@ import WebRMmmAdvanced from "@/components/tools/WebRMmmAdvanced";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
 import { STATISTICAL_STATUS } from "@/lib/analysis-router/statisticalStatus";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
+import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, colMapRoles, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
 import { auditClassicNoPriorRun, classicNoPriorConfig, classicNoPriorFitOptions } from "@/utils/classicMmmPolicy";
@@ -406,7 +407,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         }
         setMmmUploadError(null);
         const headers = res.meta?.fields || [];
-        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name });
+        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: res.data, headers }) });
         trackProductEvent("data_import_success", { tool_id: "5-18", source: "csv", row_count: res.data.length, column_count: headers.length, locale });
       },
       error: () => {
