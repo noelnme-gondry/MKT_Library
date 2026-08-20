@@ -86,7 +86,7 @@ export const STANDARD_FIELDS = {
               },
               current_cpt: {
                 label: "현재 CPT(ASA)",
-                aliases: ["current cpt", "current_cpt", "cpt bid", "bid amount", "bid", "현재cpt", "현재 cpt", "입찰가"],
+                aliases: ["current cpt", "current_cpt", "avg cpt", "average cpt", "cpt bid", "bid amount", "bid", "현재cpt", "현재 cpt", "입찰가"],
                 type: "number",
                 required: false,
                 group: "ASA",
@@ -117,7 +117,7 @@ export const STANDARD_FIELDS = {
               cost: {
                 label: "비용",
                 labelEn: "Spend",
-                aliases: ["spend", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
+                aliases: ["spend", "total cost", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
                 type: "number",
                 required: true,
                 group: "단일 지표",
@@ -133,7 +133,7 @@ export const STANDARD_FIELDS = {
               clicks: {
                 label: "클릭수",
                 labelEn: "Clicks",
-                aliases: ["click", "클릭", "클릭수"],
+                aliases: ["click", "taps", "tap", "클릭", "클릭수"],
                 type: "number",
                 required: false,
                 group: "단일 지표",
