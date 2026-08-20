@@ -9,6 +9,8 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
+import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { decodeCsvBuffer } from "@/lib/data-import/decodeCsv";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
@@ -26,6 +28,7 @@ import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTe
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
+import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -321,6 +324,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
       mappedRows,
       mappingBindingsV2: prepared.semanticMapping?.bindings || [],
       canonicalDataV2: prepared.canonicalDataV2 || null,
+      semanticMapping: prepared.semanticMapping || null,
+      ...(prepared.parityReport ? { semanticParityReport: prepared.parityReport } : {}),
     });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
@@ -522,6 +527,24 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     setConfirmedHeaders((previous) => new Set([...previous, header]));
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
     // the user re-checks the columns before pressing 분석하기 again.
+    setPreviewOpen(true);
+  };
+
+  const handleSemanticBindingChange = (sourceColumn, canonicalKey) => {
+    const field = canonicalKey ? CANONICAL_FIELDS[canonicalKey] : null;
+    const bindings = (csvData.mappingBindingsV2 || []).map((binding) => binding.sourceColumn === sourceColumn ? {
+      ...binding,
+      canonicalKey: field?.key || null,
+      role: field?.family || "UNKNOWN",
+      decision: field ? "SUGGEST" : "UNKNOWN",
+      evidence: field ? [{ kind: "manual", code: "USER_SELECTED_CANONICAL_ROLE" }] : [],
+      source: "user",
+    } : binding);
+    setCsvData({
+      ...csvData,
+      mappingBindingsV2: bindings,
+      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
+    });
     setPreviewOpen(true);
   };
 
@@ -963,6 +986,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           })}
         </div>
       </details>}
+      {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} />}
 
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
           사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}

@@ -11,6 +11,7 @@ import {
   sanitizeDecisionReviewRecords,
 } from "@/lib/decisionReview";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
+import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 
 export { TOOL_GROUP, groupForRoute };
 
@@ -695,7 +696,24 @@ export const useAppStore = create(persist((set, get) => ({
       const safeMapping = Object.fromEntries(Object.entries(config.mapping || {}).filter(([header, field]) =>
         headers.has(header) && (field === "__ignore__" || Boolean(STANDARD_FIELDS[field]))
       ));
-      csvGroups[group] = { ...csvGroups[group], mapping: safeMapping };
+      const safeBindingsV2 = (config.mappingBindingsV2 || []).filter((binding) =>
+        binding
+        && headers.has(binding.sourceColumn)
+        && (binding.canonicalKey == null || Boolean(CANONICAL_FIELDS[binding.canonicalKey]))
+        && (binding.decision === "SUGGEST" || binding.decision === "UNKNOWN")
+      ).map((binding) => ({
+        schemaVersion: 2,
+        sourceColumn: binding.sourceColumn,
+        canonicalKey: binding.canonicalKey,
+        role: binding.role,
+        decision: binding.decision,
+        member: binding.member || null,
+        unit: binding.unit || null,
+        window: binding.window || null,
+        source: "project_v2",
+        modelVersion: binding.modelVersion || "semantic-mapper-0.1.0",
+      }));
+      csvGroups[group] = { ...csvGroups[group], mapping: safeMapping, mappingBindingsV2: safeBindingsV2 };
       const filters = config.filters || {};
       dashboardFilterGroups[group] = {
         dateStart: filters.dateStart || null,

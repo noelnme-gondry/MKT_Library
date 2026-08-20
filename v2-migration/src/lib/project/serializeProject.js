@@ -1,5 +1,20 @@
 import { validateProjectFile } from "./projectSchema";
 
+function serializeBindings(bindings = []) {
+  return bindings.map((binding) => ({
+    schemaVersion: 2,
+    sourceColumn: String(binding.sourceColumn || ""),
+    canonicalKey: binding.canonicalKey || null,
+    role: binding.role || "UNKNOWN",
+    decision: binding.decision === "UNKNOWN" ? "UNKNOWN" : "SUGGEST",
+    member: binding.member || null,
+    unit: binding.unit || null,
+    window: binding.window || null,
+    source: "project_v2",
+    modelVersion: String(binding.modelVersion || "semantic-mapper-0.1.0"),
+  }));
+}
+
 function normalizedHeaders(headers) {
   return (headers || []).map((header) => String(header).trim().normalize("NFKC").toLowerCase()).sort();
 }
@@ -34,11 +49,12 @@ export async function serializeProject(state, locale = "ko") {
     groups[group] = {
       headerFingerprint: await headerFingerprint(slice.headers || Object.keys(mapping)),
       mapping: Object.fromEntries(Object.entries(mapping).map(([key, value]) => [String(key), String(value)])),
+      mappingBindingsV2: serializeBindings(slice.mappingBindingsV2 || []),
       filters: filterToJson(state.dashboardFilterGroups?.[group]),
     };
   }
   return validateProjectFile({
-    schemaVersion: 1,
+    schemaVersion: 2,
     product: "growthopt-playbook",
     locale: locale === "en" ? "en" : "ko",
     exportedAt: new Date().toISOString(),
