@@ -29,6 +29,14 @@ describe("ToolIntro heading and locale contract", () => {
     expect(container.querySelector(".tool-instrument-header__next")).toBeNull();
   });
 
+  it("keeps the ASO route's sole h1 in the shared intro", () => {
+    const { rerender } = render(<ToolIntro toolId="5-27" />);
+    expect(screen.getByRole("heading", { level: 1, name: "ASO 스토어 전환 분석" })).toBeTruthy();
+
+    rerender(<ToolIntro toolId="5-27" locale="en" />);
+    expect(screen.getByRole("heading", { level: 1, name: "ASO store conversion analysis" })).toBeTruthy();
+  });
+
   it("gives every response subtool a unique Korean and English heading", () => {
     const { rerender } = render(<ToolIntro toolId="5-18-cannibal" />);
     expect(screen.getByRole("heading", { level: 1, name: "광고 카니발라이제이션 진단" })).toBeTruthy();

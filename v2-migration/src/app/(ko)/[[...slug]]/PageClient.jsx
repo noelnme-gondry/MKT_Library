@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect } from "react";
+import { use, useLayoutEffect } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -64,7 +64,10 @@ export default function PageClient({ params, evidenceLinks = [] }) {
   // that still read store.currentRouteId (tool internals) stay in sync on every
   // navigation, incl. browser back/forward. Store is NOT the render source here.
   const setCurrentRouteId = useAppStore((state) => state.setCurrentRouteId);
-  useEffect(() => {
+  // CSV 업로더가 첫 페인트 직후에도 현재 도구 그룹에 쓰도록, 브라우저가 상호작용을
+  // 허용하기 전에 URL→store 미러를 맞춘다. 일반 effect면 아주 빠른 파일 선택이
+  // 이전 그룹에 기록됐다가 route mirror 교체 때 사라질 수 있다.
+  useLayoutEffect(() => {
     if (useAppStore.getState().currentRouteId !== routeId) {
       setCurrentRouteId(routeId);
     }

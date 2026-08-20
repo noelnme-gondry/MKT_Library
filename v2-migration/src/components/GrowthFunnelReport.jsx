@@ -124,7 +124,7 @@ export default function GrowthFunnelReport({ locale = "ko" }) {
         <button className="btn primary" type="button" onClick={() => inputRef.current?.click()}>{t.upload}</button>
         <button className="btn ghost" type="button" onClick={loadSample}>{t.demo}</button>
         <button className="btn text" type="button" onClick={downloadTemplate}>{t.template}</button>
-        <input ref={inputRef} className="sr-only" type="file" accept=".csv,text/csv" onChange={(event) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
+        <input ref={inputRef} className="sr-only" type="file" accept=".csv,text/csv" aria-label={t.upload} onChange={(event) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
       </div>
       {error && <p role="alert" className="csv-upload-error">{error}</p>}
     </section> : <>

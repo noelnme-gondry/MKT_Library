@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, useSyncExternalStore } from "react";
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -33,6 +33,10 @@ const STANDARD_FIELD_EN_LABELS = {
   country: "Country", source: "Source (paid / organic)", cost: "Cost", impressions: "Impressions",
   clicks: "Clicks", installs: "Installs", actions: "Actions / signups",
 };
+
+const subscribeHydration = () => () => {};
+const hydratedClientSnapshot = () => true;
+const hydratedServerSnapshot = () => false;
 
 function localizedStandardFieldLabel(key, locale) {
   if (locale !== "en") return STANDARD_FIELDS[key]?.label || key;
@@ -228,6 +232,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   // csvData / analyzedByGroup change — the same slice the tools render from.
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const fileInputRef = useRef(null);
+  const isHydrated = useSyncExternalStore(subscribeHydration, hydratedClientSnapshot, hydratedServerSnapshot);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importAnnouncement, setImportAnnouncement] = useState("");
@@ -626,7 +631,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
   if (!hasFile) {
     return (
-      <div className="csv-uploader" data-analysis-status={ANALYSIS_STATUS.EMPTY}>
+      <div className="csv-uploader" data-analysis-status={ANALYSIS_STATUS.EMPTY} data-hydrated={isHydrated ? "true" : "false"}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
@@ -673,8 +678,8 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          disabled={isImporting}
-          aria-busy={isImporting}
+          disabled={!isHydrated || isImporting}
+          aria-busy={!isHydrated || isImporting}
         >
           <div className="csv-drop-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -686,7 +691,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
         </button>
-        <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
+        <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} disabled={!isHydrated || isImporting} />
         {toolId === "start-gate" && hasToolTemplate(toolId) && (
           <div className="csv-upload-quick-actions">
             <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId)}>{T.starterTemplateBtn}</button>
@@ -765,7 +770,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   const mappingNeedsAttention = missing.length > 0 || analysisBlocked || needsReview > 0 || mappingConflicts.length > 0;
 
   return (
-    <div className="csv-uploader" data-analysis-status={analysisStatus}>
+    <div className="csv-uploader" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
       {isDemo && (
         <div className="required-banner csv-demo-banner">
@@ -884,7 +889,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
-      {!isRouterMode && <details className="csv-mapping-block" defaultOpen={mappingNeedsAttention}>
+      {!isRouterMode && <details className="csv-mapping-block" open={mappingNeedsAttention || undefined}>
         <summary className="csv-mapping-header">
           <div className="csv-mapping-heading">
             <strong className="csv-mapping-title">{T.mappingHeader}</strong>
