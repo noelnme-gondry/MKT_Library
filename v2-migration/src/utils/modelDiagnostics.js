@@ -14,6 +14,7 @@ export const DIAG_THRESHOLDS = Object.freeze({
   inferenceAlpha: 0.05,
   // 상관행렬 판정 임계 — Holm 보정 후 p와 비교한다(§8.6 임계값은 config로).
   correlationAlpha: 0.05,
+  correlationRobustnessDelta: 0.2,
 });
 
 const EMPTY = Object.freeze({
@@ -181,7 +182,19 @@ export function correlationMatrix(columns = []) {
   const pairs = [];
   for (let i = 0; i < usable.length; i += 1) {
     for (let j = i + 1; j < usable.length; j += 1) {
-      pairs.push({ left: usable[i].name, right: usable[j].name, ...pearsonInference(usable[i].values, usable[j].values, n) });
+      const pearson = pearsonInference(usable[i].values, usable[j].values, n);
+      const spearman = spearmanInference(usable[i].values, usable[j].values, n);
+      pairs.push({
+        left: usable[i].name,
+        right: usable[j].name,
+        // 기존 소비처·내보내기 계약은 r/rawP/holmP를 Pearson으로 유지한다.
+        ...pearson,
+        pearsonR: pearson.r,
+        spearmanR: spearman.r,
+        spearmanRawP: spearman.rawP,
+        spearmanHolmP: null,
+        spearmanIsSignificant: false,
+      });
     }
   }
   // 계산 불가(분산 0 등)는 p=1로 밀어 넣지 않고 보정 대상에서 뺀다 — 넣으면
@@ -198,8 +211,68 @@ export function correlationMatrix(columns = []) {
       pair.isSignificant = false;
     }
   });
+  const spearmanTestable = pairs.filter((pair) => Number.isFinite(pair.spearmanRawP));
+  const spearmanAdjusted = holmAdjustLocal(spearmanTestable.map((pair) => pair.spearmanRawP));
+  spearmanTestable.forEach((pair, index) => {
+    pair.spearmanHolmP = spearmanAdjusted[index];
+    pair.spearmanIsSignificant = spearmanAdjusted[index] < DIAG_THRESHOLDS.correlationAlpha;
+  });
+  pairs.forEach((pair) => {
+    pair.robustness = correlationRobustness(pair);
+  });
   pairs.sort((left, right) => Math.abs(right.r ?? 0) - Math.abs(left.r ?? 0));
-  return { n, pairs, adjustment: "holm", ciKind: "pointwise", comparisons: testable.length, reason: null };
+  return {
+    n,
+    pairs,
+    adjustment: "holm",
+    ciKind: "pointwise",
+    comparisons: testable.length,
+    spearmanComparisons: spearmanTestable.length,
+    reason: null,
+  };
+}
+
+// 평균 순위(tie correction)를 사용한다. 동률에 임의 순서를 주면 같은 CSV도 정렬
+// 순서에 따라 Spearman 값이 바뀌므로, ties가 많은 지출 패널에서 특히 위험하다.
+export function averageRanks(values = []) {
+  const sorted = values.map((value, index) => ({ value, index })).sort((left, right) => left.value - right.value);
+  const ranks = new Array(values.length).fill(null);
+  let start = 0;
+  while (start < sorted.length) {
+    let end = start;
+    while (end + 1 < sorted.length && sorted[end + 1].value === sorted[start].value) end += 1;
+    const rank = (start + 1 + end + 1) / 2;
+    for (let index = start; index <= end; index += 1) ranks[sorted[index].index] = rank;
+    start = end + 1;
+  }
+  return ranks;
+}
+
+export function spearmanCorrelation(valuesA = [], valuesB = []) {
+  const pairs = valuesA.map((value, index) => [value, valuesB[index]])
+    .filter(([left, right]) => Number.isFinite(left) && Number.isFinite(right));
+  if (pairs.length < 3) return null;
+  const leftRanks = averageRanks(pairs.map(([left]) => left));
+  const rightRanks = averageRanks(pairs.map(([, right]) => right));
+  return pearsonInference(leftRanks, rightRanks, pairs.length);
+}
+
+function spearmanInference(valuesA, valuesB, n) {
+  const result = spearmanCorrelation(valuesA, valuesB);
+  if (!result) return { r: null, rawP: null };
+  // ties 보정 순위의 r을 t 근사로 읽는다. exact p는 작은 표본·동률에서 별도
+  // 구현이 필요하므로 여기서는 Holm 보정 전후 모두 근사임을 표시층에 보존한다.
+  return { r: result.r, rawP: result.rawP, n };
+}
+
+export function correlationRobustness(pair = {}, threshold = DIAG_THRESHOLDS.correlationRobustnessDelta) {
+  const pearson = pair.pearsonR ?? pair.r;
+  const spearman = pair.spearmanR;
+  if (!Number.isFinite(pearson) || !Number.isFinite(spearman)) return "not_identified";
+  if (pearson !== 0 && spearman !== 0 && Math.sign(pearson) !== Math.sign(spearman)) return "direction_conflict";
+  if (Math.abs(pearson - spearman) >= threshold) return "magnitude_conflict";
+  if (pair.isSignificant !== pair.spearmanIsSignificant) return "significance_conflict";
+  return "consistent";
 }
 
 function pearsonInference(a, b, n) {
