@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { getMappedRows } from "@/utils/dashboardAggregator";
+import { storeFunnel } from "@/utils/asoStoreMath";
+import { evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 
 /**
  * 스토어 콘솔이 실제로 내보내는 CSV가 5-27에서 자동매핑되는지 검사한다.
@@ -46,5 +50,28 @@ describe("5-27 스토어 콘솔 CSV 자동매핑", () => {
     // organic·paid 값 어휘가 스토어 소스 값을 잡지 못한다.
     const { mapping } = buildMappingContract({ toolId: "5-27", ...CASES["App Store Connect (소스 유형 리포트)"] });
     expect(Object.values(mapping)).not.toContain("source");
+  });
+
+  it.each(Object.entries(CASES))("%s를 canonical 데이터와 스토어 퍼널 입력까지 변환한다", (_name, testCase) => {
+    // 5-27은 앞뒤 기간 비교 도구이므로, 실제 export의 열 형태를 보존한 4일 합성
+    // fixture로 eligibility까지 통과시킨다. 계정·앱 정보는 넣지 않는다.
+    const pipelineRows = [...testCase.rows, ...testCase.rows.map((row, index) => ({
+      ...row,
+      Date: `2026-03-0${index < 2 ? 3 : 4}`,
+    }))];
+    const { mapping } = buildMappingContract({ toolId: "5-27", headers: testCase.headers, rows: pipelineRows });
+    const canonical = buildCanonicalDataset({ raw: pipelineRows, headers: testCase.headers, mapping });
+    const mappedRows = getMappedRows({ raw: pipelineRows, mapping });
+    const engineRows = mappedRows.map((row) => ({
+      source: row.store_source,
+      views: row.product_page_views,
+      installs: row.installs,
+    }));
+
+    expect(canonical.summary).toMatchObject({ inputRows: pipelineRows.length, outputRows: pipelineRows.length, invalidValueCount: 0 });
+    expect(canonical.records.every((row) => row.date && row.dimensions.store_source && row.metrics.product_page_views > 0 && row.metrics.installs > 0)).toBe(true);
+    expect(mappedRows.every((row) => row.store_source && row.product_page_views && row.installs)).toBe(true);
+    expect(storeFunnel(engineRows)).toMatchObject({ views: expect.any(Number), installs: expect.any(Number), viewToInstall: expect.any(Number) });
+    expect(evaluateEligibility({ toolId: "5-27", mapping, canonicalData: canonical }).status).not.toBe("blocked");
   });
 });

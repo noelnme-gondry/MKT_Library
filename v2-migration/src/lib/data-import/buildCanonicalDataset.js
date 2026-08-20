@@ -1,7 +1,9 @@
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
 
-const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "creative_name", "creative_id", "country", "platform", "store_source"]);
+// 범주/식별 차원은 수치 품질 검사 대상이 아니다. 검색어·매치 타입을 지표로 남기면
+// Apple Ads export가 "유효한 핵심 지표 없음"으로 차단된다.
+const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "adgroup_name", "creative_name", "creative_id", "country", "platform", "store_source", "search_term", "match_type"]);
 const EMPTY = (value) => value == null || String(value).trim() === "";
 
 function normalizeFieldValue(value, field) {
