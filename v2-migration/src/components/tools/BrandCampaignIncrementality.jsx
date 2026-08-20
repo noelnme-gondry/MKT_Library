@@ -14,6 +14,7 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
 import { fmtNum, parseNum } from "@/utils/format";
+import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 
 const tx = (locale, ko, en) => locale === "en" ? en : ko;
 const isNumericColumn = (rows, header) => rows.slice(0, 100).filter((row) => Number.isFinite(parseNum(row?.[header]))).length >= Math.min(3, rows.length);
@@ -108,7 +109,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       header === "date" ? "date" : header === "campaign_on" ? "campaign_on" : header === "brand_search" ? "brand_search" : "__ignore__",
     ]));
     if (isDemo) setDemoDisabled(false);
-    setCsvData({ raw: rows, headers, mapping, fileName });
+    setCsvData({ raw: rows, headers, mapping, fileName, ...prepareSemanticParallelData({ raw: rows, headers }) });
     setAnalysisSignature("");
     setError("");
   };

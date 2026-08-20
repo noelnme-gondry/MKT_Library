@@ -19,6 +19,7 @@ import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumn
 import { resolveAhaCopy } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
@@ -446,7 +447,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "parse_error", locale });
           return;
         }
-        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name });
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: C.guideToolId, source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => {
