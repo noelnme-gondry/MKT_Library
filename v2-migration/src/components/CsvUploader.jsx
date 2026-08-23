@@ -244,6 +244,7 @@ export default function CsvUploader({
   sheetInitiallyOpen = false,
   onImportStart = null,
   onPrepared = null,
+  onImportFailed = null,
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   const isRouterMode = toolId === "start-gate";
@@ -288,6 +289,11 @@ export default function CsvUploader({
     state,
     locale,
   });
+  const reportImportFailure = ({ message, source, state }) => {
+    setErrorMsg(message);
+    trackImportFailure(source, state);
+    onImportFailed?.({ source, state });
+  };
 
   useEffect(() => {
     if (!isMappingMemoryEnabled) return undefined;
@@ -324,8 +330,7 @@ export default function CsvUploader({
 
   const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null, fileModifiedAt = null }) => {
     if (!headers.length || !raw.length) {
-      setErrorMsg(T.emptyCsv);
-      trackImportFailure(source, "empty_file");
+      reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
       return;
     }
     const requestId = ++preparationRequestRef.current;
@@ -384,8 +389,7 @@ export default function CsvUploader({
         const sheets = await parseXlsxFile(file);
         if (taskId !== importTaskRef.current) return;
         if (!sheets.length) {
-          setErrorMsg(T.emptyCsv);
-          trackImportFailure(source, "empty_file");
+          reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
         } else if (sheets.length === 1) {
           await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name, fileModifiedAt: file.lastModified });
         } else {
@@ -394,10 +398,11 @@ export default function CsvUploader({
         }
       } catch (error) {
         if (taskId !== importTaskRef.current) return;
-        setErrorMsg(error?.code
-          ? xlsxImportErrorMessage(error.code, locale)
-          : `${T.parseError}${error.message}`);
-        trackImportFailure(source, xlsxFailureState(error));
+        reportImportFailure({
+          message: error?.code ? xlsxImportErrorMessage(error.code, locale) : `${T.parseError}${error.message}`,
+          source,
+          state: xlsxFailureState(error),
+        });
       } finally {
         if (taskId === importTaskRef.current) setIsImporting(false);
       }
@@ -409,8 +414,7 @@ export default function CsvUploader({
     try {
       assertCsvFileSize(file.size);
     } catch (error) {
-      setErrorMsg(csvImportErrorMessage(error?.code, locale));
-      trackImportFailure(source, csvFailureState(error));
+      reportImportFailure({ message: csvImportErrorMessage(error?.code, locale), source, state: csvFailureState(error) });
       setIsImporting(false);
       return;
     }
@@ -432,29 +436,25 @@ export default function CsvUploader({
         if (taskId !== importTaskRef.current) return;
         try {
           if (!results.data || results.data.length === 0) {
-            setErrorMsg(T.emptyCsv);
-            trackImportFailure(source, "empty_file");
+            reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
           }
           const { headers, raw } = tableToRecords(results.data);
           if (!headers.length || !raw.length) {
-            setErrorMsg(T.emptyCsv);
-            trackImportFailure(source, "empty_file");
+            reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
           }
           if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source, fileModifiedAt: file.lastModified });
         } catch (error) {
           if (taskId !== importTaskRef.current) return;
-          setErrorMsg(`${T.parseError}${error.message}`);
-          trackImportFailure(source, "parse_error");
+          reportImportFailure({ message: `${T.parseError}${error.message}`, source, state: "parse_error" });
         } finally {
           if (taskId === importTaskRef.current) setIsImporting(false);
         }
       },
       error: (err) => {
         if (taskId !== importTaskRef.current) return;
-        setErrorMsg(T.parseError + err.message);
-        trackImportFailure(source, "parse_error");
+        reportImportFailure({ message: T.parseError + err.message, source, state: "parse_error" });
         setIsImporting(false);
       },
     });
@@ -469,8 +469,7 @@ export default function CsvUploader({
       await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name, fileModifiedAt: pendingWorkbook.fileModifiedAt });
       setPendingWorkbook(null);
     } catch (error) {
-      setErrorMsg(`${T.parseError}${error.message}`);
-      trackImportFailure(pendingWorkbook.source, "parse_error");
+      reportImportFailure({ message: `${T.parseError}${error.message}`, source: pendingWorkbook.source, state: "parse_error" });
     } finally {
       setIsImporting(false);
     }
@@ -491,8 +490,7 @@ export default function CsvUploader({
         fileModifiedAt: pendingWideImport.fileModifiedAt,
       });
     } catch (error) {
-      setErrorMsg(`${T.parseError}${error.message}`);
-      trackImportFailure(pendingWideImport.source, "transform_error");
+      reportImportFailure({ message: `${T.parseError}${error.message}`, source: pendingWideImport.source, state: "transform_error" });
     } finally {
       setIsImporting(false);
     }
@@ -511,6 +509,7 @@ export default function CsvUploader({
     setIsImporting(false);
     setErrorMsg("");
     setImportAnnouncement("");
+    onImportFailed?.({ source: "csv", state: "cancelled" });
   };
 
   // 시트도 일반 업로드와 같은 prepare 경로를 탄다. 즉, 같은 헤더의 이전 매핑 recipe를
@@ -518,13 +517,17 @@ export default function CsvUploader({
   // 있고, sheetUrl만 별도 브라우저 기록에 남는다.
   const handleSheetLoaded = async ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
-    await applyImportedTable({ headers, raw, fileName, sheetUrl, source: "google_sheets" });
-    setSheetChangeOpen(false);
+    try {
+      await applyImportedTable({ headers, raw, fileName, sheetUrl, source: "google_sheets" });
+      setSheetChangeOpen(false);
+    } catch (error) {
+      reportImportFailure({ message: `${T.parseError}${error.message}`, source: "google_sheets", state: "parse_error" });
+    }
   };
 
   const handleSheetError = (message, state = null) => {
-    setErrorMsg(message);
-    if (message && state) trackImportFailure("google_sheets", state);
+    if (message && state) reportImportFailure({ message, source: "google_sheets", state });
+    else setErrorMsg(message);
   };
 
   // "🔄 최신 데이터 불러오기" — 저장해둔 sheetUrl로 재조회, URL 재입력 없음. 매핑은

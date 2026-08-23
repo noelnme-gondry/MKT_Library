@@ -15,6 +15,8 @@ faq:
     a: "Someone taps an ad for a specific product and, after installing, lands on the home screen instead. They have to search for that product again, and the path from ad click to purchase breaks at exactly that point. The more specific the creative, the more this costs."
   - q: "Why would a deep link fail on only one channel?"
     a: "The most common cause is URL scheme or universal link configuration entered differently per platform. Routing broken by an app update, or iOS privacy changes affecting deferred deep link accuracy differently by platform, are the other two. Tapping the link on a real device per channel is the fastest check."
+  - q: "Should I check deferred deep links for Brand Search ads too?"
+    a: "A Brand Search ad that ends on the web has no app-install handoff to test. If a campaign sends people through install and first launch to a product or offer screen, test the full path on a real device for each channel: ad click, store, install, first launch, and destination. Checking only that a URL opens can miss the last drop-off."
 ---
 
 ## In one line
