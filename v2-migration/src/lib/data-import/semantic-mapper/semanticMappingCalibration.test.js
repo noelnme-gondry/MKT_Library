@@ -74,6 +74,20 @@ const FIXTURES = [
       "Pricing Plan": "subscription_plan",
     },
   },
+  {
+    name: "generic action survival export",
+    toolId: "5-28",
+    headers: ["Action Start Date", "Action Exit Date", "Data Extracted At", "Action Survival Duration", "Dropout Observed", "Event Type"],
+    rows: [{ "Action Start Date": "2026-01-15", "Action Exit Date": "2026-02-18", "Data Extracted At": "2026-03-01", "Action Survival Duration": "34", "Dropout Observed": "1", "Event Type": "no action for 14 days" }],
+    expected: {
+      "Action Start Date": "subscription_start_date",
+      "Action Exit Date": "subscription_churn_date",
+      "Data Extracted At": "subscription_observation_end_date",
+      "Action Survival Duration": "subscription_tenure",
+      "Dropout Observed": "churn_event",
+      "Event Type": "event_type",
+    },
+  },
 ];
 
 describe("semantic mapper calibration fixtures", () => {

@@ -15,7 +15,7 @@ const csvData = {
 };
 const signatures = { inputSignature: "input-v1", mappingSignature: "mapping-v1" };
 
-describe("Dochi subscription-survival adapter", () => {
+describe("Dochi action-survival adapter", () => {
   it("registers the independent 5-28 baseline adapter", () => {
     expect(SUBSCRIPTION_ANALYSIS_TOOL_IDS).toEqual(["5-28"]);
     expect(subscriptionAdapterFor("5-28")).toBeTruthy();
@@ -37,7 +37,7 @@ describe("Dochi subscription-survival adapter", () => {
     expect(result.manifest).not.toHaveProperty("headers");
   });
 
-  it("withholds a survival estimate when no churn event is observed", () => {
+  it("withholds a survival estimate when no exit event is observed", () => {
     const result = runSubscriptionAnalysis({
       toolId: "5-28",
       csvData: { ...csvData, raw: raw.map((row) => ({ ...row, Churned: "0" })) },
@@ -46,5 +46,22 @@ describe("Dochi subscription-survival adapter", () => {
     expect(result.status).toBe("not_computable");
     expect(result.verdict.evidenceState).toBe("not_computable");
     expect(result.visualizations).toEqual([]);
+  });
+
+  it("accepts generic action duration and dropout aliases", () => {
+    const result = runSubscriptionAnalysis({
+      toolId: "5-28",
+      csvData: {
+        ...csvData,
+        raw: [
+          { "Action Survival Duration": "3", "Dropout Observed": "1" },
+          { "Action Survival Duration": "5", "Dropout Observed": "0" },
+        ],
+        mapping: { "Action Survival Duration": "tenure_periods", "Dropout Observed": "event_observed" },
+      },
+      ...signatures,
+    });
+    expect(result.status).toBe("success");
+    expect(result.verdict.headline).toMatch(/action survival|생존/i);
   });
 });

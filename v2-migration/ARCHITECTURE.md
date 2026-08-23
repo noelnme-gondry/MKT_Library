@@ -92,7 +92,7 @@ v2-migration/
 | MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`·`correlationMatrix`) | MMM 전 지출 패널의 VIF·Pearson/Spearman 상관 강건성 진단. 높은 VIF는 기여도 분리 거부 신호 |
 | AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
 | AsoStoreConversion.jsx (5-27) | `asoStoreMath.js` → `pvmMath.js` | 조회=cost·설치=result로 PVM에 위임. 스토어 전환율 변화를 트래픽 구성(mix) vs 소스별 효율(rate)로 분해 + `dailyConversionSeries` 추이 차트. 유입 소스는 `store_source`(광고/오가닉 `source`와 다른 축) |
-| SubscriptionSurvivalAnalysis.jsx (5-28) | `subscriptionSurvivalMath.js` | 구독 에피소드별 Kaplan–Meier·Greenwood 구간·이산 해저드·RMST·log-rank·관측기간 LTV. 중도절단을 반영하며 분류 모델이나 장기 외삽은 하지 않음 |
+| SubscriptionSurvivalAnalysis.jsx (5-28) | `subscriptionSurvivalMath.js` | 핵심 액션 관측 에피소드별 Kaplan–Meier·Greenwood 구간·이산 해저드·RMST·log-rank·관측기간 반복 가치. 구독은 입력 프리셋 중 하나이며, 중도절단을 반영하고 분류 모델이나 장기 외삽은 하지 않음 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` + `lib/analysis/webr/mmmElasticNet.js` | UI/상태와 모델·차트·export 분리. WebR glmnet은 동일 시간창의 **예측 챌린저**일 뿐 기여·인과 모델을 자동 대체하지 않음 |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
 | ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `utils/outcomeType.js` + `lib/analysis/webr/logisticRegression.js`·`rateRegression.js`·`countRegression.js`·`mixedModel.js`·`randomForest.js` | **종속변수 척도로 모형을 고른다**: 0/1=binomial · 0~1 비율=beta(로짓) · 카운트=Poisson→과산포면 negbin · 그 외=기존 JS HC3·BH. 반복 단위 열을 고르면 lme4 random intercept(수동 실행). 100행+이면 Random Forest와 동일 교차검증으로 예측력 비교. RF 승리는 예측 레이어 후보일 뿐 회귀 추론은 유지 |

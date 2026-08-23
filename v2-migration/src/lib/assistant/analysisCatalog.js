@@ -35,9 +35,9 @@ const DECLARATIONS = Object.freeze({
   "5-25": { runMode: "baseline", executionCost: "light", priority: 35, grains: ["channel_spend_timeseries"], decisionQuestion: "채널 지출이 서로 너무 같이 움직이는가" },
   "5-26": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["asa_keyword_daily"], decisionQuestion: "어떤 검색어를 Exact로 승격하거나 CPT를 조정할 것인가" },
   "5-27": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["store_funnel_daily"], decisionQuestion: "스토어 전환 변화는 구성과 효율 중 무엇 때문인가" },
-  // 구독 생존은 비교 분석이 아니다. 한 행=한 구독 에피소드의 시간-사건 분석으로
-  // 별도 grain을 둬 compare/증분 도구 후보로 섞이지 않게 한다.
-  "5-28": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["subscription_episode"], decisionQuestion: "구독이 유지되는 기간과 이탈 위험은 어떻게 변하는가" },
+  // 핵심 액션 생존은 비교 분석이 아니다. 한 행=한 개체의 시간-사건 관측 에피소드로
+  // 별도 grain을 둬 compare/증분 도구 후보로 섞이지 않게 한다. 구독은 이 계약의 한 사례다.
+  "5-28": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["action_survival_episode"], decisionQuestion: "핵심 액션은 얼마나 유지되고 이탈·종료 위험은 언제 높아지는가" },
   "9-1": { runMode: "confirm_model", executionCost: "heavy", priority: 90, grains: ["content_item"], decisionQuestion: "콘텐츠 요소와 성과의 관측 연관은 무엇인가", confirmationRequirements: ["outcome_numeric", "features"] },
   "9-6": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["creative_daily"], decisionQuestion: "피로한 소재와 교체 후보는 무엇인가" },
 });

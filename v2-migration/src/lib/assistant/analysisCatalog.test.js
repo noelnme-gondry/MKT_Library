@@ -10,11 +10,11 @@ describe("Dochi analysis catalog", () => {
     expect(validateAnalysisCatalog()).toEqual({ missing: [], orphaned: [], duplicateToolIds: [] });
   });
 
-  it("keeps subscription survival as a dedicated episode analysis, not a comparison tool", () => {
-    const subscription = analysisCatalogEntry("5-28");
-    expect(subscription.supportedGrains).toEqual(["subscription_episode"]);
-    expect(subscription.runMode).toBe("baseline");
-    expect(subscription.decisionQuestion).toMatch(/구독/);
+  it("keeps action survival as a dedicated episode analysis, not a comparison tool", () => {
+    const actionSurvival = analysisCatalogEntry("5-28");
+    expect(actionSurvival.supportedGrains).toEqual(["action_survival_episode"]);
+    expect(actionSurvival.runMode).toBe("baseline");
+    expect(actionSurvival.decisionQuestion).toMatch(/핵심 액션/);
   });
 
   it("only marks lightweight baseline tools as candidates for automatic execution", () => {

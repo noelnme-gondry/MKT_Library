@@ -21,13 +21,13 @@ const READY_ROWS = Array.from({ length: 12 }, (_, index) => ({
 }));
 
 const DATE_ROWS = [
-  { subscription_start_date: "2026-01-01", churn_date: "2026-02-01", channel: "Paid" },
-  { subscription_start_date: "2026-01-01", observation_end_date: "2026-03-01", channel: "Organic" },
-  { subscription_start_date: "2026-01-01", churn_date: "2026-02-15", channel: "Organic" },
+  { action_start_date: "2026-01-01", action_exit_date: "2026-02-01", channel: "Paid" },
+  { action_start_date: "2026-01-01", action_observation_end_date: "2026-03-01", channel: "Organic" },
+  { action_start_date: "2026-01-01", action_exit_date: "2026-02-15", channel: "Organic" },
 ];
 
-function confirmChurnDefinition(locale = "ko") {
-  fireEvent.change(screen.getByLabelText(locale === "en" ? "Churn definition" : "이탈 정의"), {
+function confirmEventDefinition(locale = "ko") {
+  fireEvent.change(screen.getByLabelText(locale === "en" ? "Dropout or exit event definition" : "이탈·종료 이벤트 정의"), {
     target: { value: locale === "en" ? "Access ended" : "접근 종료" },
   });
 }
@@ -36,7 +36,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
   it("keeps the result behind an explicit analysis action and renders survival evidence", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     expect(container.querySelector("#subscription-survival-result")).toBeNull();
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
     expect(container.querySelector("#subscription-survival-curve canvas")).toBeTruthy();
@@ -47,9 +47,9 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
   it("does not render a fake zero or infinity median when no event is observed", () => {
     const censored = ROWS.map((row) => ({ ...row, event_observed: "0" }));
     const { container } = render(<SubscriptionSurvivalAnalysis rows={censored} analyzed locale="en" />);
-    confirmChurnDefinition("en");
+    confirmEventDefinition("en");
     fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
-    expect(container.textContent).toContain("No churn event was observed");
+    expect(container.textContent).toContain("No dropout or exit event was observed");
     expect(container.textContent).toContain("Median survival was not reached");
     expect(container.textContent).not.toContain("Infinity");
     expect(container.textContent).not.toContain("NaN");
@@ -57,8 +57,8 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
 
   it("withholds CAC economics and the decision handoff when evidence or CAC coverage is incomplete", () => {
     render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
-    confirmChurnDefinition();
-    fireEvent.change(screen.getByLabelText("기간 ARPU (선택)"), { target: { value: "100" } });
+    confirmEventDefinition();
+    fireEvent.change(screen.getByLabelText("기간당 반복 가치 (선택)"), { target: { value: "100" } });
     fireEvent.change(screen.getByLabelText("매출총이익률 % (선택)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
@@ -66,7 +66,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
 
   it("marks a changed horizon as stale until the user re-runs it", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     const horizon = screen.getByLabelText("관측 horizon");
     fireEvent.change(horizon, { target: { value: "2" } });
@@ -78,7 +78,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
 
   it("offers aggregated risk-set and segment CSVs without exporting source rows", () => {
     render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
     expect(screen.getByText("생존곡선 CSV")).toBeTruthy();
@@ -105,11 +105,11 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
       decisionRecords: [],
     });
     render(<SubscriptionSurvivalAnalysis rows={READY_ROWS} analyzed />);
-    confirmChurnDefinition();
-    fireEvent.change(screen.getByLabelText("기간 ARPU (선택)"), { target: { value: "100" } });
+    confirmEventDefinition();
+    fireEvent.change(screen.getByLabelText("기간당 반복 가치 (선택)"), { target: { value: "100" } });
     fireEvent.change(screen.getByLabelText("매출총이익률 % (선택)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
-    expect(screen.getByText("관측기간 내 페이백은 2기간에 도달했습니다.")).toBeTruthy();
+    expect(screen.getByText("관측기간 내 비용 회수는 2기간에 도달했습니다.")).toBeTruthy();
     expect(screen.getByText("다음 검토 약속 만들기")).toBeTruthy();
   });
 
@@ -119,18 +119,18 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(screen.getByRole("alert").textContent).toContain("관측 종료일");
     fireEvent.change(screen.getByLabelText("관측 종료일"), { target: { value: "2026-03-31" } });
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
-    expect(container.textContent).toContain("이탈 정의는 “접근 종료”으로 기록했습니다.");
+    expect(container.textContent).toContain("이탈·종료 이벤트 정의는 “접근 종료”으로 기록했습니다.");
   });
 
   it("renders an accessible segment curve only for a bounded segment comparison", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.change(screen.getByLabelText("세그먼트"), { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
-    expect(screen.getByRole("img", { name: "세그먼트별 구독 생존곡선" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "세그먼트별 핵심 액션 생존곡선" })).toBeTruthy();
     expect(container.querySelector("#subscription-segment-curves-note")).toBeTruthy();
   });
 
@@ -139,7 +139,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
       tenure_periods: String(index + 1), event_observed: "1", channel: `channel-${index}`,
     }));
     const { container } = render(<SubscriptionSurvivalAnalysis rows={manySegments} analyzed />);
-    confirmChurnDefinition();
+    confirmEventDefinition();
     fireEvent.change(screen.getByLabelText("세그먼트"), { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(container.textContent).toContain("세그먼트가 6개를 넘어 비교를 보류했습니다");
