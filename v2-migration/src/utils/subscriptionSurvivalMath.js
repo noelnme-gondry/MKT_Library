@@ -333,7 +333,6 @@ export function logRankTest(groups = []) {
     rows: Array.isArray(group?.rows) ? group.rows : [],
   })).filter((group) => group.rows.length > 0);
   if (usable.length < 2) return { ok: false, reason: "two_groups_required" };
-  if (usable.some((group) => group.rows.every((row) => row.event !== 1))) return { ok: false, reason: "group_without_events" };
   const times = [...new Set(usable.flatMap((group) => group.rows.filter((row) => row.event === 1).map((row) => row.time)))].sort((left, right) => left - right);
   const count = usable.length;
   const observed = Array(count).fill(0);

@@ -16,6 +16,9 @@ export function prepareSvmInput({ X = [], y = [], terms = [], numericFeatureCoun
   }
   const predictorCount = X[0].length - 1;
   if (terms.length !== predictorCount + 1) return { ok: false, reason: "invalid_term_contract" };
+  if (y.length > DEFINITION.maxObservations) {
+    return { ok: false, reason: "too_many_observations", predictorCount, n: y.length, maxObservations: DEFINITION.maxObservations };
+  }
   if (predictorCount > DEFINITION.maxPredictors) {
     return { ok: false, reason: "too_many_predictors", predictorCount, maxPredictors: DEFINITION.maxPredictors, n: y.length };
   }
@@ -73,10 +76,12 @@ function svmRCode(predictorCount) {
         probabilities <- attr(predicted, "probabilities")
         svm_prediction[test] <- probabilities[, "1"]
         baseline_fit <- suppressWarnings(glm(model_y[train] ~ ., data=model_x[train, , drop=FALSE], family=binomial()))
+        if (!isTRUE(baseline_fit$converged) || any(!is.finite(coef(baseline_fit))) || any(abs(coef(baseline_fit)) > 25)) stop("baseline_regression_not_estimable")
         baseline_prediction[test] <- predict(baseline_fit, model_x[test, , drop=FALSE], type="response")
       } else {
         svm_prediction[test] <- predict(tuned$best.model, model_x[test, , drop=FALSE])
         baseline_fit <- lm(model_y[train] ~ ., data=model_x[train, , drop=FALSE])
+        if (any(!is.finite(coef(baseline_fit)))) stop("baseline_regression_not_estimable")
         baseline_prediction[test] <- predict(baseline_fit, model_x[test, , drop=FALSE])
       }
     }

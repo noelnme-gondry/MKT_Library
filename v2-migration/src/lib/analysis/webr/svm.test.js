@@ -17,6 +17,14 @@ describe("prepareSvmInput", () => {
     expect(prepareSvmInput(regressionInput(119, 8))).toMatchObject({ ok: false, reason: "insufficient_observations", requiredObservations: 120 });
     expect(prepareSvmInput(regressionInput(160, 8))).toMatchObject({ ok: true, n: 160, predictorCount: 8 });
   });
+
+  it("bounds browser-side tuning work before a large file can freeze the tab", () => {
+    expect(prepareSvmInput(regressionInput(1001, 8))).toMatchObject({
+      ok: false,
+      reason: "too_many_observations",
+      maxObservations: 1000,
+    });
+  });
 });
 
 describe("normalizeSvmResult", () => {

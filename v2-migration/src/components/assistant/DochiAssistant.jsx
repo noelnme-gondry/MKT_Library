@@ -59,6 +59,12 @@ export default function DochiAssistant({ locale = "ko" }) {
     journeyStartedRef.current = Date.now();
     setPhase("reading");
   };
+  const recoverFromImportFailure = () => {
+    timersRef.current.forEach((timer) => window.clearTimeout(timer));
+    timersRef.current = [];
+    journeyStartedRef.current = 0;
+    setPhase("welcome");
+  };
   const finishReading = () => {
     const elapsed = Date.now() - journeyStartedRef.current;
     const hasReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -83,7 +89,9 @@ export default function DochiAssistant({ locale = "ko" }) {
       <div className="dochi-home-assistant__speech" aria-live="polite">
         <p className="dochi-home-assistant__hello">{copy.greeting}</p>
         <p>{status || copy.prompt}</p>
-        {phase === "welcome" && <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" sheetInitiallyOpen onImportStart={beginReading} onPrepared={finishReading} />}
+        <div hidden={phase === "sorting"}>
+          <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" sheetInitiallyOpen onImportStart={beginReading} onPrepared={finishReading} onImportFailed={recoverFromImportFailure} />
+        </div>
         <small>{copy.privacy}</small>
       </div>
       {phase === "welcome" ? <div className="dochi-home-assistant__stage" aria-hidden="true"><DochiSprite /></div> : <DochiJourney phase={phase} />}
