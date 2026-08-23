@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
+import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -77,6 +78,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
+            {routeId === "dochi-result" && <DochiResultWorkspace locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
             {routeId === "5-21" && <CampaignPvm locale="en" />}
@@ -103,12 +105,12 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               <SopContent routeId={routeId} locale="en" initialData={initialSopData} />
             </>}
             {/* KR과 동일한 하단 마감 계층(§12.30) */}
-            <ToolPageOutro
+            {routeId !== "dochi-result" && <ToolPageOutro
               toolId={routeId}
               locale="en"
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
-            />
+            />}
             </article>
           </main>
         </div>
