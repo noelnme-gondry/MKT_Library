@@ -164,11 +164,13 @@ describe("log-rank and evidence guards", () => {
     expect(result.pValue).toBeCloseTo(0.5637028616507731, 12);
   });
 
-  it("withholds a difference test when a comparison group has no events", () => {
-    expect(logRankTest([
+  it("keeps a group with no observed exits in the log-rank score when covariance is estimable", () => {
+    const result = logRankTest([
       { name: "event", rows: [{ time: 1, event: 1, entry: 0 }] },
       { name: "censored", rows: [{ time: 2, event: 0, entry: 0 }] },
-    ])).toMatchObject({ ok: false, reason: "group_without_events" });
+    ]);
+    expect(result).toMatchObject({ ok: true, df: 1 });
+    expect(result.chiSquare).toBeCloseTo(1, 12);
   });
 
   it("keeps an event-free dataset in an abstain state rather than calling it healthy", () => {

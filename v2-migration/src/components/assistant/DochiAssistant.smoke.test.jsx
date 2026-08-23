@@ -6,10 +6,11 @@ const push = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/components/CsvUploader", () => ({
-  default: ({ onImportStart, onPrepared }) => (
-    <button type="button" onClick={() => { onImportStart?.({ source: "csv" }); onPrepared?.({ source: "csv" }); }}>
-      파일 또는 공개 시트 전달
-    </button>
+  default: ({ onImportStart, onPrepared, onImportFailed }) => (
+    <>
+      <button type="button" onClick={() => { onImportStart?.({ source: "csv" }); onPrepared?.({ source: "csv" }); }}>파일 또는 공개 시트 전달</button>
+      <button type="button" onClick={() => { onImportStart?.({ source: "csv" }); onImportFailed?.({ source: "csv", state: "parse_error" }); }}>실패한 파일 또는 공개 시트 전달</button>
+    </>
   ),
 }));
 
@@ -68,5 +69,15 @@ describe("DochiAssistant home intake", () => {
     fireEvent.click(screen.getByRole("button", { name: "파일 또는 공개 시트 전달" }));
     act(() => vi.advanceTimersByTime(4650));
     expect(push).toHaveBeenCalledWith("/en/start");
+  });
+
+  it("restores the uploader after an import failure instead of trapping the intake journey", () => {
+    render(<DochiAssistant />);
+
+    fireEvent.click(screen.getByRole("button", { name: "실패한 파일 또는 공개 시트 전달" }));
+
+    expect(document.querySelector(".dochi-home-assistant").getAttribute("data-phase")).toBe("welcome");
+    expect(screen.getByRole("button", { name: "실패한 파일 또는 공개 시트 전달" })).toBeTruthy();
+    expect(push).not.toHaveBeenCalled();
   });
 });

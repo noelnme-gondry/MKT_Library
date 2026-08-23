@@ -27,6 +27,14 @@ describe("WebR Random Forest challenger adapter", () => {
     });
   });
 
+  it("bounds browser-side fitting work before a large file can freeze the tab", () => {
+    expect(prepareRandomForestInput(input(1001))).toMatchObject({
+      ok: false,
+      reason: "too_many_observations",
+      maxObservations: 1000,
+    });
+  });
+
   it("marks Random Forest as a prediction candidate only above the 5% error gate", () => {
     const prepared = prepareRandomForestInput(input());
     const rows = [

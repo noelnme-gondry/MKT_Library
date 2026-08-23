@@ -29,7 +29,7 @@ function buildEfficiency() {
   const headers = [
     "date", "country", "platform", "channel", "campaign_name", "creative_id",
     "cost", "impressions", "clicks", "installs", "actions",
-    "revenue_d0", "revenue_d7", "revenue_d14", "pu_d7", "pu_d14", "ret_d7", "ret_d14",
+    "revenue_d0", "revenue_d7", "revenue_d14", "pu_d7", "pu_d14", "ret_d7", "ret_d14", "source", "snapshot_date",
   ];
   // Channels differ in base efficiency (→ realloc opportunity in 5-3) and
   // saturation exponent (→ 5-22 marginal vs avg CPA spread).
@@ -78,6 +78,8 @@ function buildEfficiency() {
             cost: round(cost), impressions, clicks, installs, actions,
             revenue_d0: revenueD0, revenue_d7: revenue, revenue_d14: revenueD14,
             pu_d7: pu, pu_d14: puD14, ret_d7: ret, ret_d14: retD14,
+            source: ci === 2 ? "organic" : "paid",
+            snapshot_date: dates[Math.min(d + 14, dates.length - 1)],
           });
         }
       }
@@ -97,7 +99,7 @@ function buildEfficiency() {
 // 그래서 "전체만 내려갔는데 소스별은 그대로"인 구간과 "소스별이 같이 움직인"
 // 구간이 한 데이터 안에 다 들어 있다.
 function buildAsoStore() {
-  const headers = ["date", "store_source", "impressions", "product_page_views", "installs", "event", "event_type"];
+  const headers = ["date", "country", "store_source", "impressions", "product_page_views", "installs", "event", "event_type"];
   const dates = generateDates(84, "2025-03-01");
   const EVENTS = {
     20: { label: "스크린샷 1번 교체", type: "creative" },
@@ -122,17 +124,17 @@ function buildAsoStore() {
     const event = EVENTS[index];
     const tag = (position) => (event && position === 0 ? { event: event.label, event_type: event.type } : { event: "", event_type: "" });
     raw.push(
-      { date, store_source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * searchCvr), ...tag(0) },
-      { date, store_source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * browseCvr), ...tag(1) },
-      { date, store_source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * referrerCvr), ...tag(2) },
-      { date, store_source: "Web Referrer", impressions: webViews * 5, product_page_views: webViews, installs: Math.round(webViews * webCvr), ...tag(3) },
+      { date, country: "KR", store_source: "App Store Search", impressions: searchViews * 3, product_page_views: searchViews, installs: Math.round(searchViews * searchCvr), ...tag(0) },
+      { date, country: "KR", store_source: "App Store Browse", impressions: browseViews * 11, product_page_views: browseViews, installs: Math.round(browseViews * browseCvr), ...tag(1) },
+      { date, country: "US", store_source: "App Referrer", impressions: referrerViews * 4, product_page_views: referrerViews, installs: Math.round(referrerViews * referrerCvr), ...tag(2) },
+      { date, country: "US", store_source: "Web Referrer", impressions: webViews * 5, product_page_views: webViews, installs: Math.round(webViews * webCvr), ...tag(3) },
     );
   });
   return {
     raw,
     headers,
     mapping: {
-      date: "date", store_source: "store_source", impressions: "impressions",
+      date: "date", country: "country", store_source: "store_source", impressions: "impressions",
       product_page_views: "product_page_views", installs: "installs", event: "event", event_type: "event_type",
     },
     fileName: "demo_aso_store.csv",
@@ -170,24 +172,32 @@ function buildActionSurvival() {
     "Channel", "Action Type", "Campaign Name", "Acquisition Cost",
   ];
   const raw = [];
-  const observationEndDate = "2025-12-01";
+  const observationEndDate = "2025-12-31";
   ["Organic", "Meta", "ASA"].forEach((channel, channelIndex) => {
     for (let index = 0; index < 36; index += 1) {
       const actionType = index % 3 === 0 ? "첫 구매" : index % 3 === 1 ? "주간 핵심 기능 사용" : "14일 내 재방문";
-      const churnAtRiskPoint = index % 3 !== 0 && index % 5 !== 0;
-      const tenure = churnAtRiskPoint ? 2 + ((index + channelIndex) % 5) : 7 + ((index * 3 + channelIndex) % 8);
-      const churned = churnAtRiskPoint && index % 4 !== 0 ? 1 : 0;
-      const actionStart = new Date(Date.UTC(2025, 11 - tenure, 1)).toISOString().slice(0, 10);
+      const campaign = index % 2 === 0 ? "온보딩 개선" : "리마인드 캠페인";
+      const tenure = 2 + ((index * 7 + channelIndex * 3) % 13);
+      const channelRisk = [24, 50, 36][channelIndex];
+      const actionRisk = [4, 12, -5][index % 3];
+      const campaignRisk = campaign === "리마인드 캠페인" ? 6 : 0;
+      const churned = ((index * 37 + channelIndex * 19 + (index % 3) * 11) % 100) < channelRisk + actionRisk + campaignRisk ? 1 : 0;
+      const actionEnd = new Date(Date.UTC(2025, 11, 31));
+      if (churned) actionEnd.setUTCMonth(actionEnd.getUTCMonth() - (1 + ((index * 5 + channelIndex) % 6)));
+      const actionStartDate = new Date(actionEnd);
+      actionStartDate.setUTCMonth(actionStartDate.getUTCMonth() - tenure);
+      const actionStart = actionStartDate.toISOString().slice(0, 10);
+      const entryPeriod = tenure > 3 && index % 11 === 0 ? 1 + (channelIndex % 2) : 0;
       raw.push({
         "Action Survival Duration": tenure,
         "Dropout Observed": churned,
         "Action Start Date": actionStart,
-        "Action Exit Date": churned ? observationEndDate : "",
+        "Action Exit Date": churned ? actionEnd.toISOString().slice(0, 10) : "",
         "Action Observation End Date": observationEndDate,
-        "Observation Entry": index % 9 === 0 ? 1 : 0,
+        "Observation Entry": entryPeriod,
         Channel: channel,
         "Action Type": actionType,
-        "Campaign Name": index % 2 === 0 ? "온보딩 개선" : "리마인드 캠페인",
+        "Campaign Name": campaign,
         "Acquisition Cost": 8000 + channelIndex * 13000 + (index % 6) * 1200,
       });
     }
@@ -216,7 +226,7 @@ function buildActionSurvival() {
 // 일일 예산은 현재 엔진의 검색어 단위 판정 예시값이며, 실데이터에서는 캠페인
 // 예산과 검색어 성과를 분리해 해석해야 한다.
 function buildAsaKeyword() {
-  const headers = ["date", "campaign_name", "adgroup_name", "search_term", "match_type", "cost", "clicks", "installs", "daily_budget", "target_cpa", "current_cpt"];
+  const headers = ["date", "country", "campaign_name", "adgroup_name", "search_term", "match_type", "cost", "clicks", "installs", "daily_budget", "target_cpa", "current_cpt", "target_cpt"];
   const dates = generateDates(14, "2025-04-01");
   const configs = [
     { term: "가계부", campaign: "ASA KR Discovery", match: "Search Match", cost: 420, clicks: 42, installs: 8, budget: 1000, targetCpa: 80, cpt: 10 },
@@ -225,6 +235,7 @@ function buildAsaKeyword() {
   ];
   const raw = dates.flatMap((date, day) => configs.map((config) => ({
     date,
+    country: day % 3 === 0 ? "US" : "KR",
     campaign_name: config.campaign,
     adgroup_name: "Discovery",
     search_term: config.term,
@@ -235,13 +246,14 @@ function buildAsaKeyword() {
     daily_budget: config.budget,
     target_cpa: config.targetCpa,
     current_cpt: config.cpt,
+    target_cpt: Math.round(config.cpt * 0.9),
   })));
   return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_asa_keyword.csv" };
 }
 
 // ── brand incrementality (5-24) ────────────────────────────────────────────
 function buildBrandIncrementality() {
-  const headers = ["date", "brand_search", "campaign_on"];
+  const headers = ["date", "brand_search", "campaign_on", "cost", "country", "channel"];
   const start = Date.UTC(2025, 0, 1);
   const raw = Array.from({ length: 49 }, (_, index) => {
     const date = new Date(start + index * 86400000).toISOString().slice(0, 10);
@@ -250,6 +262,9 @@ function buildBrandIncrementality() {
       date,
       brand_search: Math.round(180 + index * 1.6 + weekdayPattern + (index >= 35 ? 42 : 0)),
       campaign_on: index >= 35 ? "on" : "off",
+      cost: index >= 35 ? 78000 + (index % 5) * 4000 : 0,
+      country: "KR",
+      channel: "Brand Search",
     };
   });
   return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_brand_incrementality.csv" };
@@ -262,9 +277,10 @@ function buildBrandIncrementality() {
 function buildCreative() {
   const headers = [
     "creative_id", "date", "channel", "impressions", "clicks", "installs",
-    "spend", "revenue_d7", "video_3s_views", "video_completions",
+    "actions", "spend", "revenue_d7", "video_3s_views", "video_completions",
     "message_angle", "format", "hook_type", "cta_style", "first_3s",
-    "duration_bucket", "has_text_overlay",
+    "duration_bucket", "has_text_overlay", "duration_seconds", "text_length",
+    "scene_cut_count", "face_screen_ratio", "speech_rate",
   ];
   // 속성 어휘 + CTR/CVR 효과 (합성 신호)
   const angles = [
@@ -324,23 +340,60 @@ function buildCreative() {
           const clicks = round(impressions * ctr);
           const cvr = clamp01(cCvr * (1 + rnd() * 0.15));
           const installs = round(clicks * cvr);
+          const actions = Math.max(1, round(installs * (0.42 + rnd() * 0.08)));
           const cpc = 380 + rnd() * 160;
           const spend = round(clicks * cpc);
           const pu = installs * (0.5 + rnd() * 0.15);
           const revenue = round(pu * arppu * (1 + rnd() * 0.2));
           const v3s = fmt.isVideo ? round(impressions * (0.55 + rnd() * 0.15)) : 0;
           const vcomp = fmt.isVideo ? round(v3s * (0.25 + rnd() * 0.15)) : 0;
+          const durationSeconds = fmt.isVideo ? 7 + ((cIdx * 7 + k) % 39) : 5 + (cIdx % 4);
+          const textLength = 12 + ((cIdx * 11 + k * 3) % 64);
+          const sceneCutCount = fmt.isVideo ? 3 + ((cIdx * 5 + k) % 24) : 1 + (cIdx % 3);
+          const faceScreenRatio = Number((0.08 + ((cIdx * 13 + k) % 65) / 100).toFixed(2));
+          const speechRate = fmt.isVideo ? 2.1 + ((cIdx * 3 + k) % 20) / 10 : 0;
           raw.push({
             creative_id: id, date: dates[d], channel: ch,
-            impressions, clicks, installs, spend, revenue_d7: revenue,
+            impressions, clicks, installs, actions, spend, revenue_d7: revenue,
             video_3s_views: v3s, video_completions: vcomp,
             message_angle: ang.v, format: fmt.v, hook_type: hook,
             cta_style: cta, first_3s: f3, duration_bucket: dur,
-            has_text_overlay: overlay,
+            has_text_overlay: overlay, duration_seconds: durationSeconds,
+            text_length: textLength, scene_cut_count: sceneCutCount,
+            face_screen_ratio: faceScreenRatio, speech_rate: speechRate,
           });
         }
       }
     }
+  }
+  // 예측 비교는 일별 행이 아니라 고유 소재 단위로 적합한다. 매트릭스의 부족·미관측
+  // 셀은 보존하고, 이미 검증된 조합에만 추가 소재를 넣어 RF/SVM을 실제로 실행한다.
+  for (let index = cIdx; index < 480; index += 1) {
+    cIdx += 1;
+    const rnd = seededNoise((seed += 23));
+    const fmt = formats[index % 2];
+    const ang = angles[1];
+    const impressions = round(28000 + rnd() * 9000);
+    const ctr = clamp01(baseCtr + ang.ctr + fmt.ctr + rnd() * 0.003);
+    const clicks = Math.max(1, round(impressions * ctr));
+    const installs = Math.max(1, round(clicks * clamp01(baseCvr + ang.cvr + rnd() * 0.02)));
+    const actions = Math.max(1, round(installs * (0.42 + rnd() * 0.08)));
+    const v3s = fmt.isVideo ? round(impressions * (0.55 + rnd() * 0.15)) : 0;
+    raw.push({
+      creative_id: `cr_${String(cIdx).padStart(3, "0")}_${fmt.v}_${ang.v}`,
+      date: dates[index % dates.length], channel: channels[index % channels.length],
+      impressions, clicks, installs, actions, spend: round(clicks * (410 + rnd() * 110)),
+      revenue_d7: round(actions * baseArppu * (0.52 + rnd() * 0.12)),
+      video_3s_views: v3s, video_completions: fmt.isVideo ? round(v3s * (0.28 + rnd() * 0.12)) : 0,
+      message_angle: ang.v, format: fmt.v, hook_type: hooks[index % hooks.length],
+      cta_style: ctas[index % ctas.length], first_3s: first3[index % first3.length],
+      duration_bucket: fmt.isVideo ? durations[index % durations.length] : "<10s",
+      has_text_overlay: index % 2,
+      duration_seconds: fmt.isVideo ? 8 + (index % 37) : 5 + (index % 3),
+      text_length: 14 + (index % 62), scene_cut_count: fmt.isVideo ? 4 + (index % 22) : 1 + (index % 3),
+      face_screen_ratio: Number((0.1 + (index % 62) / 100).toFixed(2)),
+      speech_rate: fmt.isVideo ? 2.2 + (index % 19) / 10 : 0,
+    });
   }
   const mapping = {};
   headers.forEach((h) => { mapping[h] = h; });
@@ -695,14 +748,14 @@ function buildContentAttr() {
   const raw = [];
   for (let i = 0; i < n; i++) {
     const hasNum = rnd() + 0.5 > 0.5 ? 1 : 0;
-    const titleLen = round(20 + rnd() * 45); // 20..65자
+    const titleLen = round(20 + (rnd() + 0.5) * 45); // 20..65자
     const emoji = rnd() + 0.5 > 0.5 ? 1 : 0;
     const bright = rnd() + 0.5 > 0.5 ? 1 : 0;
     const listicle = rnd() + 0.5 > 0.6 ? 1 : 0;
     let ctr =
       2.4 +
       hasNum * 1.35 +
-      (titleLen - 40) * -0.012 +
+      (titleLen - 42.5) * -0.012 +
       emoji * 0.03 + // ≈ 무유의(노이즈에 묻힘)
       bright * 0.7 +
       listicle * 0.5 +

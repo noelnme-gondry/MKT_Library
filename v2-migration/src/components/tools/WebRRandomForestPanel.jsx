@@ -11,7 +11,7 @@ const COPY = {
     run: "Random Forest 다시 실행",
     loading: "Random Forest 500그루와 교차검증을 실행 중입니다. 첫 실행은 R 엔진을 불러와 10~20초 걸릴 수 있습니다.",
     blocked: (n, required) => `현재 완전한 행은 ${n || 0}개입니다. 선택한 요소 수 기준으로 최소 ${required || 100}개가 필요합니다.`,
-    failed: "Random Forest 비교를 완료하지 못했습니다. 기존 회귀 결과에는 영향이 없습니다.",
+    failed: "Random Forest 비교를 완료하지 못했습니다. 기존 회귀 결과에는 영향이 없습니다.", baselineUnavailable: "기준 회귀가 일부 교차검증 분할에서 수렴하지 않아 비교를 보류했습니다. Random Forest 우위로 해석하지 않습니다.",
     whyBlocked: "왜 Random Forest 분석이 안 되나요?",
     requirements: "필요 데이터 기준",
     requirementsBody: (required) => `콘텐츠 1건당 1행, 숫자 성과 1개, 숫자 요소 1개 이상, 빈칸 없는 행 최소 ${required || 100}개가 필요합니다. 0/1 성과라면 0과 1이 각각 20행 이상이어야 합니다.`,
@@ -39,7 +39,7 @@ const COPY = {
     run: "Retry Random Forest",
     loading: "Running a 500-tree Random Forest and cross-validation. The first run can take 10–20 seconds while the R engine loads.",
     blocked: (n, required) => `${n || 0} complete rows are available. The selected feature count requires at least ${required || 100}.`,
-    failed: "The Random Forest comparison did not complete. The existing regression result is unchanged.",
+    failed: "The Random Forest comparison did not complete. The existing regression result is unchanged.", baselineUnavailable: "The baseline regression did not converge in at least one validation fold, so the comparison is withheld. This is not evidence that Random Forest is better.",
     whyBlocked: "Why isn't Random Forest available?",
     requirements: "Data requirements",
     requirementsBody: (required) => `Use one row per content item, one numeric outcome, at least one numeric feature, and at least ${required || 100} complete rows. For a binary outcome, both 0 and 1 need at least 20 rows.`,
@@ -73,7 +73,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   const T = COPY[locale] || COPY.ko;
   const requestRef = useRef(0);
   const autoSignatureRef = useRef(null);
-  const [run, setRun] = useState({ status: "idle", signature: null, result: null });
+  const [run, setRun] = useState({ status: "idle", signature: null, result: null, error: null });
   const [selectedModel, setSelectedModel] = useState("baseline");
   const input = useMemo(() => prepareRandomForestInput({ X: fit?.X, y: fit?.y, terms: fit?.terms }), [fit]);
   const predictorCount = input.predictorCount ?? Math.max(0, (fit?.terms?.length || 1) - 1);
@@ -87,7 +87,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   const execute = useCallback(async () => {
     if (!input.ok) return;
     const requestId = ++requestRef.current;
-    setRun({ status: "loading", signature, result: null });
+    setRun({ status: "loading", signature, result: null, error: null });
     setSelectedModel("baseline");
     trackProductEvent("analysis_started", {
       tool_id: "9-1", source, row_count: input.n, analysis_type: "webr_random_forest", locale,
@@ -95,14 +95,14 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
     try {
       const result = await runWebRRandomForest(input);
       if (requestId !== requestRef.current) return;
-      setRun({ status: "complete", signature, result });
+      setRun({ status: "complete", signature, result, error: null });
       setSelectedModel(result.recommendation === "random_forest_candidate" ? "random_forest" : "baseline");
       trackProductEvent("analysis_completed", {
         tool_id: "9-1", source, row_count: input.n, analysis_type: "webr_random_forest", result_state: result.status, locale,
       });
-    } catch {
+    } catch (error) {
       if (requestId !== requestRef.current) return;
-      setRun({ status: "failed", signature, result: null });
+      setRun({ status: "failed", signature, result: null, error: String(error?.message || "") });
       trackProductEvent("analysis_completed", {
         tool_id: "9-1", source, row_count: input.n, analysis_type: "webr_random_forest", result_state: "failed", locale,
       });
@@ -136,7 +136,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
     );
   }
 
-  const visible = run.signature === signature ? run : { status: "idle", result: null };
+  const visible = run.signature === signature ? run : { status: "idle", result: null, error: null };
   const result = visible.result;
   const recommendation = result?.recommendation;
   const baselineLabel = result?.outcomeType === "classification" ? T.logistic : T.ols;
@@ -174,7 +174,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
       </details>
       <>
           {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "12px" }}>{T.loading}</p>}
-          {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
+          {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{visible.error.includes("baseline_regression_not_estimable") ? T.baselineUnavailable : T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
             <div style={{ marginTop: "14px" }}>
               <div className={`callout ${verdict.tone}`}>

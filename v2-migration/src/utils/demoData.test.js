@@ -6,9 +6,12 @@ import { TOOL_REQUIRED_FIELDS } from "./csvConstants";
 import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
 import { CREATIVE_STATS } from "./creativeMath";
+import { buildCreativePredictiveInput } from "./creativePredictiveModel";
 import { INCR_MATH } from "./incrMath";
 import { MMM_METH_CONFIG, mmmBayesianHealth, mmmBayesianLikeRun, mmmResolveAbsorb } from "./mmmMath";
-import { discreteHazard, kaplanMeier, normalizeDateSurvivalRows, normalizeSurvivalRows } from "./subscriptionSurvivalMath";
+import { discreteHazard, kaplanMeier, logRankTest, normalizeDateSurvivalRows, normalizeSurvivalRows } from "./subscriptionSurvivalMath";
+import { prepareRandomForestInput } from "@/lib/analysis/webr/randomForest";
+import { prepareSvmInput } from "@/lib/analysis/webr/svm";
 
 const DEMO_MINIMUM_ROWS = Object.freeze({
   efficiency: 2000,
@@ -77,6 +80,18 @@ describe("demo sanity", () => {
     expect(new Set(mapped.map((row) => row.channel)).size).toBe(3);
     expect(new Set(mapped.map((row) => row.event_type)).size).toBeGreaterThanOrEqual(3);
     expect(new Set(mapped.map((row) => row.campaign_name)).size).toBe(2);
+
+    ["channel", "event_type", "campaign_name"].forEach((field) => {
+      const groups = [...new Set(mapped.map((row) => row[field]))].map((name) => ({
+        name,
+        rows: periods.validRows.filter((row) => row.source?.[field] === name),
+      }));
+      expect(groups.every((group) => group.rows.some((row) => row.event === 1)), `${field} needs an observed exit in every demo segment`).toBe(true);
+      expect(logRankTest(groups).ok, `${field} comparison must be estimable in the demo`).toBe(true);
+    });
+
+    const hazard = discreteHazard(kaplanMeier(periods.validRows)).rows;
+    expect(hazard.filter((row) => row.time >= 7 && row.events > 0).length).toBeGreaterThan(0);
   });
 
   it("efficiency: retention < 설치·가입 both (리텐션 ≤ 100% 어느 분모든)", () => {
@@ -109,6 +124,35 @@ describe("demo sanity", () => {
     expect(statuses.has("insufficient")).toBe(true);
     expect(statuses.has("empty")).toBe(true);
     expect(statuses.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("creative: demo supplies enough independent creatives and production features for RF and SVM", () => {
+    const demo = buildDemoCsv("creative");
+    const metrics = CREATIVE_STATS.deriveMetrics(getMappedRows(demo));
+    const numericFeatures = ["duration_seconds", "text_length", "scene_cut_count", "face_screen_ratio", "speech_rate"];
+    const design = buildCreativePredictiveInput({
+      metrics,
+      attributes: ["message_angle", "format", "hook_type", "cta_style", "first_3s", "has_text_overlay", "duration_bucket"],
+      numericFeatures,
+      metric: "ctr",
+    });
+    expect(metrics.length).toBeGreaterThanOrEqual(480);
+    expect(design.ok).toBe(true);
+    expect(prepareRandomForestInput(design)).toMatchObject({ ok: true });
+    expect(prepareSvmInput({ ...design, numericFeatureCount: design.numericFeatureCount })).toMatchObject({ ok: true });
+    expect(metrics.every((row) => Number(row.actions) > 0)).toBe(true);
+  });
+
+  it("demo quality guards keep user-visible optional paths and physical value ranges available", () => {
+    const efficiency = buildDemoCsv("efficiency");
+    expect(new Set(efficiency.raw.map((row) => row.source))).toEqual(new Set(["paid", "organic"]));
+    expect(efficiency.raw.every((row) => row.snapshot_date)).toBe(true);
+    expect(buildDemoCsv("asa_keyword").raw.every((row) => row.country && Number(row.target_cpt) > 0)).toBe(true);
+    expect(buildDemoCsv("brand_incrementality").raw.every((row) => row.country && row.channel && Number(row.cost) >= 0)).toBe(true);
+    expect(buildDemoCsv("aso_store").raw.every((row) => row.country)).toBe(true);
+    const titleLengths = buildDemoCsv("content_attr").raw.map((row) => Number(row.title_len));
+    expect(Math.min(...titleLengths)).toBeGreaterThanOrEqual(20);
+    expect(Math.max(...titleLengths)).toBeLessThanOrEqual(65);
   });
 
   it("uses English categorical values for English demo surfaces", () => {

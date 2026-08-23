@@ -16,6 +16,9 @@ export function prepareRandomForestInput({ X = [], y = [], terms = [] } = {}) {
   }
   const predictorCount = X[0].length - 1;
   if (terms.length !== predictorCount + 1 || predictorCount < 1) return { ok: false, reason: "invalid_term_contract" };
+  if (y.length > DEFINITION.maxObservations) {
+    return { ok: false, reason: "too_many_observations", n: y.length, maxObservations: DEFINITION.maxObservations, predictorCount };
+  }
   if (new Set(y).size < 2) return { ok: false, reason: "constant_outcome" };
   const outcomeType = y.every((value) => value === 0 || value === 1) ? "classification" : "regression";
   const requiredObservations = Math.max(
@@ -115,6 +118,7 @@ function randomForestRCode(predictorCount) {
         rf_prediction[test] <- predict(rf_fit, model_x[test, , drop=FALSE], type="prob")[, "1"]
         baseline_data <- data.frame(y=model_y[train], model_x[train, , drop=FALSE])
         baseline_fit <- suppressWarnings(glm(y ~ ., data=baseline_data, family=binomial()))
+        if (!isTRUE(baseline_fit$converged) || any(!is.finite(coef(baseline_fit))) || any(abs(coef(baseline_fit)) > 25)) stop("baseline_regression_not_estimable")
         baseline_prediction[test] <- predict(baseline_fit, model_x[test, , drop=FALSE], type="response")
       } else {
         rf_fit <- randomForest::randomForest(
@@ -127,6 +131,7 @@ function randomForestRCode(predictorCount) {
         rf_prediction[test] <- predict(rf_fit, model_x[test, , drop=FALSE])
         baseline_data <- data.frame(y=model_y[train], model_x[train, , drop=FALSE])
         baseline_fit <- lm(y ~ ., data=baseline_data)
+        if (any(!is.finite(coef(baseline_fit)))) stop("baseline_regression_not_estimable")
         baseline_prediction[test] <- predict(baseline_fit, model_x[test, , drop=FALSE])
       }
     }

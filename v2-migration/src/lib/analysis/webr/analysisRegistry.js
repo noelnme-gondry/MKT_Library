@@ -25,6 +25,7 @@ export const WEBR_ANALYSES = Object.freeze({
     packages: Object.freeze(["randomForest"]),
     minObservations: 100,
     minObservationsPerPredictor: 20,
+    maxObservations: 1000,
     resultKind: "predictive-challenger",
   }),
   [WEBR_ANALYSIS_IDS.SVM_CHALLENGER]: Object.freeze({
@@ -34,6 +35,7 @@ export const WEBR_ANALYSES = Object.freeze({
     packages: Object.freeze(["e1071"]),
     minObservations: 120,
     minObservationsPerPredictor: 10,
+    maxObservations: 1000,
     maxPredictors: 80,
     resultKind: "predictive-challenger",
   }),

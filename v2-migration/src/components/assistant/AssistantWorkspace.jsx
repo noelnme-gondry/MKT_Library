@@ -13,6 +13,7 @@ import { runSpecialAnalysis, specialAdapterFor } from "@/lib/assistant/specialAn
 import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant/subscriptionAnalysisAdapters";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
+import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 
 const COPY = {
@@ -183,17 +184,27 @@ function detectedGrain(entry, fields) {
   return "unknown";
 }
 
-function profileFor(entry, prepared) {
-  const records = prepared.canonicalData?.records || [];
-  const fields = mappedKeys(prepared.mapping);
+function profileFor(entry, { raw = [], headers = [], mapping = {} } = {}) {
+  const fields = mappedKeys(mapping);
+  const headerFor = (field) => headers.find((header) => mapping[header] === field);
+  const dateHeader = headerFor("date") || headerFor("iso_week_start");
+  const tenureHeader = headerFor("tenure_periods");
   return {
-    rowCount: records.length,
-    periodCount: distinctPeriodCount(records),
+    rowCount: raw.length,
+    periodCount: dateHeader ? new Set(raw.map((row) => row?.[dateHeader]).filter(Boolean)).size : 0,
     grain: detectedGrain(entry, fields),
     validEpisodeCount: entry.toolId === "5-28"
-      ? prepared.mappedRows.filter((row) => Number.isFinite(Number(row.tenure_periods))).length
+      ? raw.filter((row) => Number.isFinite(Number(row?.[tenureHeader]))).length
       : undefined,
   };
+}
+
+function mergedToolMapping(mappingContract, globalMapping = {}) {
+  const mapping = { ...(mappingContract?.mapping || {}) };
+  Object.entries(globalMapping).forEach(([header, field]) => {
+    if (field && field !== "__ignore__") mapping[header] = field;
+  });
+  return mapping;
 }
 
 function applyGlobalMapping(prepared, globalMapping, toolId) {
@@ -498,26 +509,43 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const currentMappingSignature = useMemo(() => JSON.stringify(csvData.mapping || {}), [csvData.mapping]);
   const previousSignatureRef = useRef(`${currentInputSignature}:${currentMappingSignature}`);
   const autoStartedSignatureRef = useRef("");
+  const handoffPreparationCacheRef = useRef(new Map());
 
-  const preparations = useMemo(() => {
-    const automatic = ANALYSIS_CATALOG.map((entry) => [entry.toolId, prepareDatasetForTool({
-      raw: csvData.raw,
-      headers: csvData.headers,
-      toolId: entry.toolId,
-      source: csvData.fileName || "dataset",
-    })]);
-    return Object.fromEntries(automatic.map(([toolId, prepared]) => [toolId, applyGlobalMapping(prepared, csvData.mapping, toolId)]));
-  }, [csvData.fileName, csvData.headers, csvData.mapping, csvData.raw]);
+  // 첫 렌더에서는 매핑 계약만으로 후보를 판정한다. 각 도구의 canonical/legacy 행
+  // 재구성은 실제 상세 진입 시에만 만들며, 19개 카탈로그를 한꺼번에 순회하지 않는다.
+  const mappingContracts = useMemo(() => Object.fromEntries(ANALYSIS_CATALOG.map((entry) => [entry.toolId,
+    buildMappingContract({ toolId: entry.toolId, headers: csvData.headers, rows: csvData.raw, source: csvData.fileName || "dataset" }),
+  ])), [csvData.fileName, csvData.headers, csvData.raw]);
+
+  const mappingsByTool = useMemo(() => Object.fromEntries(ANALYSIS_CATALOG.map((entry) => [entry.toolId,
+    mergedToolMapping(mappingContracts[entry.toolId], csvData.mapping),
+  ])), [csvData.mapping, mappingContracts]);
 
   const eligibility = useMemo(() => rankRecommendedAnalyses(ANALYSIS_CATALOG.map((entry) => {
-    const prepared = preparations[entry.toolId];
+    const mappingContract = mappingContracts[entry.toolId];
+    const mapping = mappingsByTool[entry.toolId];
     return evaluateAnalysisEligibility({
       toolId: entry.toolId,
-      mapping: prepared.mapping,
-      mappingContract: prepared.mappingContract,
-      profile: profileFor(entry, prepared),
+      mapping,
+      mappingContract,
+      profile: profileFor(entry, { raw: csvData.raw, headers: csvData.headers, mapping }),
     });
-  })), [preparations]);
+  })), [csvData.headers, csvData.raw, mappingContracts, mappingsByTool]);
+
+  const prepareHandoffForTool = useCallback((toolId) => {
+    const cacheKey = `${currentInputSignature}:${currentMappingSignature}:${toolId}`;
+    const cached = handoffPreparationCacheRef.current.get(cacheKey);
+    if (cached) return cached;
+    const prepared = applyGlobalMapping(prepareDatasetForTool({
+      raw: csvData.raw,
+      headers: csvData.headers,
+      toolId,
+      source: csvData.fileName || "dataset",
+    }), csvData.mapping, toolId);
+    handoffPreparationCacheRef.current.clear();
+    handoffPreparationCacheRef.current.set(cacheKey, prepared);
+    return prepared;
+  }, [csvData.fileName, csvData.headers, csvData.mapping, csvData.raw, currentInputSignature, currentMappingSignature]);
 
   useEffect(() => {
     const signature = `${currentInputSignature}:${currentMappingSignature}`;
@@ -534,9 +562,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const recommended = eligibility.find((result) => result.status !== "blocked") || null;
   const mappedCount = [...mappedKeys(csvData.mapping)].length;
   const naturalCandidates = useMemo(() => detectBudgetInterruptionCandidates({
-    records: preparations["5-2"]?.canonicalData?.records || [],
+    // 업로드 직후에는 store가 이미 만든 canonical 레코드를 그대로 쓴다. 테스트나
+    // 직접 진입처럼 그 슬라이스가 없는 경우에만 자연실험 후보 카드용으로 한 번 만든다.
+    records: csvData.canonicalData?.records || buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping: csvData.mapping }).records,
     unitKeys: ["channel", "campaign_name", "country"],
-  }).candidates, [preparations]);
+  }).candidates, [csvData.canonicalData, csvData.headers, csvData.mapping, csvData.raw]);
   const naturalOutcomeOptions = ["installs", "actions", "revenue"]
     .filter((field) => mappedKeys(csvData.mapping).has(field));
 
@@ -548,10 +578,10 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const decisionFocus = [...currentResults].reverse().find(({ queueItem }) => queueItem.result.status === "success")
     || currentResults.at(-1)
     || null;
-  const openTool = (toolId) => onOpenTool?.(toolId, preparations[toolId]);
+  const openTool = (toolId) => onOpenTool?.(toolId, prepareHandoffForTool(toolId));
   const openNaturalExperiment = (handoff) => onOpenTool?.(
     handoff.targetToolId,
-    preparations[handoff.targetToolId],
+    prepareHandoffForTool(handoff.targetToolId),
     { naturalExperiment: handoff },
   );
   const queueSignature = `${currentInputSignature}:${currentMappingSignature}`;
@@ -586,7 +616,6 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         return;
       }
       try {
-        const prepared = preparations[activeQueueItem.toolId];
         const run = efficiencyAdapter
           ? runEfficiencyAnalysis
           : optimizationAdapter
@@ -598,7 +627,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
                 : runSubscriptionAnalysis;
         const result = run({
           toolId: activeQueueItem.toolId,
-          csvData: { ...csvData, mapping: prepared.mapping },
+          csvData: { ...csvData, mapping: mappingsByTool[activeQueueItem.toolId] },
           inputSignature: currentInputSignature,
           mappingSignature: currentMappingSignature,
           locale,
@@ -614,15 +643,20 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         setAnnouncement(C.adapterError);
       }
     };
+    let innerFrame = null;
     const frame = typeof window.requestAnimationFrame === "function"
-      ? window.requestAnimationFrame(execute)
-      : window.setTimeout(execute, 0);
+      ? window.requestAnimationFrame(() => { innerFrame = window.requestAnimationFrame(execute); })
+      : window.setTimeout(() => { innerFrame = window.setTimeout(execute, 0); }, 0);
     return () => {
       cancelled = true;
       if (typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(frame);
       else window.clearTimeout(frame);
+      if (innerFrame != null) {
+        if (typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(innerFrame);
+        else window.clearTimeout(innerFrame);
+      }
     };
-  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, locale, preparations, queue?.signature, queueSignature]);
+  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, locale, mappingsByTool, queue?.signature, queueSignature]);
 
   const startNext = useCallback(() => {
     const canContinue = queue
