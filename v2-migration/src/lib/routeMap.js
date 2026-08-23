@@ -65,6 +65,9 @@ export const ROUTES = [
   { id: "guide-index", slug: "/guide", component: "GuideIndex" },
   // "내 데이터로 분석 시작" 게이트(데모 없이 도구 선택). 자체 주소 `/start`.
   { id: "start-gate", slug: "/start", component: "StartGate" },
+  // 도치가 받은 파일의 매핑·결과 전용 작업대. 사용자 데이터가 브라우저 메모리에만
+  // 있으므로 검색 랜딩이 아닌 일회성 화면(publication: preview)으로 둔다.
+  { id: "dochi-result", slug: "/dochi-result", component: "DochiResult", publication: "preview" },
   // ── Legacy id aliases (redirect-only; share 5-4's slug; excluded from sitemap) ──
   { id: "5-7", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
   { id: "5-15", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
@@ -152,7 +155,7 @@ export const EN_READY_GUIDE_IDS = new Set([
 
 export function hasEnVersion(id) {
   // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
-  return id === "home" || id === "guide-index" || id === "start-gate" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
+  return id === "home" || id === "guide-index" || id === "start-gate" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null

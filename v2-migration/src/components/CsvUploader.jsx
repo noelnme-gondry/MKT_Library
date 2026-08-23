@@ -240,6 +240,7 @@ export default function CsvUploader({
   showMappingCoach = false,
   mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
+  mappingReviewActionLabel = "",
   entryVariant = "default",
   sheetInitiallyOpen = false,
   onImportStart = null,
@@ -1074,6 +1075,13 @@ export default function CsvUploader({
         isLeaving={mappingCoachLeaving}
         onReview={onMappingReviewConfirmed}
       />}
+      {mappingReviewActionLabel && onMappingReviewConfirmed && (
+        <div className="csv-mapping-review-action">
+          <button type="button" className="ab-button" onClick={onMappingReviewConfirmed} disabled={analysisBlocked}>
+            {mappingReviewActionLabel}
+          </button>
+        </div>
+      )}
       {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       {!isRouterMode && <MappingMemorySettings
         enabled={isMappingMemoryEnabled}
