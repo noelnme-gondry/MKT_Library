@@ -1,6 +1,7 @@
 export const WEBR_ANALYSIS_IDS = Object.freeze({
   BINARY_LOGISTIC_REGRESSION: "binary_logistic_regression",
   RANDOM_FOREST_CHALLENGER: "random_forest_challenger",
+  SVM_CHALLENGER: "svm_challenger",
   MMM_ELASTIC_NET_CHALLENGER: "mmm_elastic_net_challenger",
   // 0/1이 아닌 성과변수가 전부 OLS로 가던 경로를 나눈다(utils/outcomeType.js).
   RATE_BETA_REGRESSION: "rate_beta_regression",
@@ -24,6 +25,16 @@ export const WEBR_ANALYSES = Object.freeze({
     packages: Object.freeze(["randomForest"]),
     minObservations: 100,
     minObservationsPerPredictor: 20,
+    resultKind: "predictive-challenger",
+  }),
+  [WEBR_ANALYSIS_IDS.SVM_CHALLENGER]: Object.freeze({
+    id: WEBR_ANALYSIS_IDS.SVM_CHALLENGER,
+    engine: "webr",
+    kind: "advanced",
+    packages: Object.freeze(["e1071"]),
+    minObservations: 120,
+    minObservationsPerPredictor: 10,
+    maxPredictors: 80,
     resultKind: "predictive-challenger",
   }),
   [WEBR_ANALYSIS_IDS.MMM_ELASTIC_NET_CHALLENGER]: Object.freeze({

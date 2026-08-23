@@ -141,6 +141,10 @@ export const ROUTE_SEO = {
     ko: { title: "ASO 스토어 전환 분석 | 소스별 분해", description: "스토어 콘솔 CSV로 노출→제품페이지→설치 퍼널을 세우고, 전환율 변화를 트래픽 구성과 소스별 효율로 나눠 봅니다." },
     en: { title: "ASO Store Conversion Analysis", description: "Build the impression-to-install funnel from a store console CSV and split conversion change into traffic mix and per-source efficiency." },
   },
+  "5-28": {
+    ko: { title: "구독 생존·이탈 분석 | 위험 시점과 LTV", description: "구독기간과 이탈 여부 CSV로 생존율·위험 구간·세그먼트 차이·관측기간 LTV를 계산합니다. 중도절단을 반영하며 브라우저에서만 처리합니다." },
+    en: { title: "Subscription Survival & Churn Analysis", description: "Estimate survival, hazard timing, segment differences, and observed-horizon LTV from censored subscription data in your browser." },
+  },
   "9-1": {
     ko: {
       title: "콘텐츠 요소 분석 | 회귀로 성과 기여 비교",

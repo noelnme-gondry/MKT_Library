@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import GoogleSheetConnect from "./GoogleSheetConnect";
+import GoogleSheetConnect, { fetchSheetTable } from "./GoogleSheetConnect";
 import { listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
 vi.mock("@/lib/data-import/localHistory", () => ({
@@ -46,5 +46,20 @@ describe("GoogleSheetConnect import outcome", () => {
     await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1));
     expect(rememberSheetSource).toHaveBeenCalledTimes(1);
     expect(onError).not.toHaveBeenCalledWith(expect.any(String), "sheet_fetch");
+  });
+
+  it("reads an anyone-with-link spreadsheet through its browser CSV export when no API key is configured", async () => {
+    delete process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+    globalThis.fetch = vi.fn(async () => ({
+      status: 200,
+      ok: true,
+      text: async () => "Date,Spend\n2026-01-01,100\n",
+    }));
+
+    const result = await fetchSheetTable(undefined, "https://docs.google.com/spreadsheets/d/public-sheet/edit#gid=7");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith("https://docs.google.com/spreadsheets/d/public-sheet/export?format=csv&gid=7");
+    expect(result.headers).toEqual(["Date", "Spend"]);
+    expect(result.raw).toEqual([{ Date: "2026-01-01", Spend: "100" }]);
   });
 });

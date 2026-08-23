@@ -652,6 +652,11 @@ export const CREATIVE_STATS = {
           has_text_overlay: r.has_text_overlay,
           cta_style: r.cta_style,
           duration_bucket: r.duration_bucket,
+          duration_seconds: r.duration_seconds,
+          text_length: r.text_length,
+          scene_cut_count: r.scene_cut_count,
+          face_screen_ratio: r.face_screen_ratio,
+          speech_rate: r.speech_rate,
           audience_segment: r.audience_segment,
           dates: new Set(),
         });
@@ -672,6 +677,11 @@ export const CREATIVE_STATS = {
       }
       if (r.revenue_d7 != null && r.revenue_d7 !== "") {
         b.revenue_d7 = (b.revenue_d7 || 0) + (Number(r.revenue_d7) || 0);
+      }
+      for (const key of ["duration_seconds", "text_length", "scene_cut_count", "face_screen_ratio", "speech_rate"]) {
+        if ((b[key] == null || b[key] === "") && r[key] != null && r[key] !== "" && Number.isFinite(Number(r[key]))) {
+          b[key] = Number(r[key]);
+        }
       }
       if (r.date) b.dates.add(r.date);
     }

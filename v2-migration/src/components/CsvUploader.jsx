@@ -35,6 +35,7 @@ import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/ana
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
+import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -229,7 +230,21 @@ function xlsxFailureState(error) {
   return /^xlsx_[a-z_]+$/.test(code) ? code : "xlsx_parse_failed";
 }
 
-export default function CsvUploader({ toolId, analyticsToolId = toolId, locale = "ko", afterFileSummary = null }) {
+export default function CsvUploader({
+  toolId,
+  analyticsToolId = toolId,
+  locale = "ko",
+  afterFileSummary = null,
+  showMappingReview = false,
+  collapseMappingReview = false,
+  showMappingCoach = false,
+  mappingCoachLeaving = false,
+  onMappingReviewConfirmed = null,
+  entryVariant = "default",
+  sheetInitiallyOpen = false,
+  onImportStart = null,
+  onPrepared = null,
+}) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   const isRouterMode = toolId === "start-gate";
   const eventToolId = analyticsToolId || toolId;
@@ -244,6 +259,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const isStale = useAppStore((s) => s.isGroupStale(toolId));
   const fileInputRef = useRef(null);
+  const mappingDetailsRef = useRef(null);
   const isHydrated = useSyncExternalStore(subscribeHydration, hydratedClientSnapshot, hydratedServerSnapshot);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -351,6 +367,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     trackProductEvent("data_import_success", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length, locale });
     trackProductEvent("data_profile_completed", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length, locale });
     setPreviewOpen(true);
+    onPrepared?.({ fileName: displayName, rowCount: raw.length, columnCount: headers.length, source });
   };
 
   const processFile = async (file) => {
@@ -360,6 +377,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     const taskId = ++importTaskRef.current;
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
+    onImportStart?.({ fileName: file.name, source });
     trackProductEvent("data_import_start", { tool_id: eventToolId, source, locale });
     if (isWorkbook) {
       try {
@@ -641,11 +659,17 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
     // Determine allowKeys
     const allowed = new Set();
-    reqs.forEach((r) => {
-      if (typeof r === "string") allowed.add(r);
-      else if (r.oneOf) r.oneOf.forEach((k) => allowed.add(k));
-    });
-    opts.forEach((o) => allowed.add(o.key));
+    if (isRouterMode && showMappingReview) {
+      // /start는 특정 도구의 좁은 계약이 아니라, 입력 데이터의 공용 역할을
+      // 검토하는 곳이다. 효율 필드만 허용하면 다른 분석의 매핑을 바로잡을 수 없다.
+      Object.keys(STANDARD_FIELDS).forEach((key) => allowed.add(key));
+    } else {
+      reqs.forEach((r) => {
+        if (typeof r === "string") allowed.add(r);
+        else if (r.oneOf) r.oneOf.forEach((k) => allowed.add(k));
+      });
+      opts.forEach((o) => allowed.add(o.key));
+    }
 
     const groups = {};
     for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
@@ -664,7 +688,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
     }
 
     return { missing: missingKeys, reqLabels: labels, fieldGroups: groups, allowKeys: allowed };
-  }, [toolId, csvData.mapping, T, locale]);
+  }, [toolId, csvData.mapping, T, locale, isRouterMode, showMappingReview]);
 
   // --- Data preview (#6): first ~8 rows × MAPPED columns so the user maps with
   // context. Ignored columns are dropped; each header shows its standard-field
@@ -697,11 +721,11 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
   if (!hasFile) {
     return (
-      <div className="csv-uploader" data-analysis-status={ANALYSIS_STATUS.EMPTY} data-hydrated={isHydrated ? "true" : "false"}>
+      <div className={`csv-uploader ${entryVariant === "dochi" ? "csv-uploader--dochi" : ""}`} data-analysis-status={ANALYSIS_STATUS.EMPTY} data-hydrated={isHydrated ? "true" : "false"}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
-        <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />
+        {entryVariant !== "dochi" && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />}
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
@@ -766,10 +790,14 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
         <GoogleSheetConnect
           onLoaded={handleSheetLoaded}
-          onImportStart={() => trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale })}
+          onImportStart={() => {
+            onImportStart?.({ source: "google_sheets" });
+            trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale });
+          }}
           onError={handleSheetError}
           locale={locale}
           toolId={sheetSourceScope}
+          initialOpen={sheetInitiallyOpen}
         />
           </>
         )}
@@ -876,7 +904,6 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
           </button>
         )}
       </div>
-      {afterFileSummary}
       {csvData.importInsights?.recipeApplied && (
         <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
       )}
@@ -965,7 +992,12 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
 
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
-      {!isRouterMode && <details className="csv-mapping-block" open={mappingNeedsAttention || undefined}>
+      {(!isRouterMode || showMappingReview) && <details
+        className={`csv-mapping-block${showMappingCoach ? " is-dochi-highlighted" : ""}`}
+        ref={mappingDetailsRef}
+        aria-describedby={showMappingCoach ? "dochi-mapping-coach-title" : undefined}
+        open={collapseMappingReview ? undefined : isRouterMode || mappingNeedsAttention || undefined}
+      >
         <summary className="csv-mapping-header">
           <div className="csv-mapping-heading">
             <strong className="csv-mapping-title">{T.mappingHeader}</strong>
@@ -1034,7 +1066,13 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
             );
           })}
         </div>
+        {isRouterMode && showMappingReview && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       </details>}
+      {showMappingCoach && <DochiMappingCoach
+        locale={locale}
+        isLeaving={mappingCoachLeaving}
+        onReview={onMappingReviewConfirmed}
+      />}
       {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       {!isRouterMode && <MappingMemorySettings
         enabled={isMappingMemoryEnabled}
@@ -1049,6 +1087,7 @@ export default function CsvUploader({ toolId, analyticsToolId = toolId, locale =
         onImport={(records) => Promise.all(records.map(putMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords)}
         onClear={() => clearMappingMemory().then(() => setMappingMemoryRecords([])).catch(() => {})}
       />}
+      {afterFileSummary}
 
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
           사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}

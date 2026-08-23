@@ -326,6 +326,15 @@ export const IA = [
         seoDescriptionEn: "Build the store funnel from a console CSV and split conversion change into traffic mix and per-source efficiency.",
       },
       {
+        id: "5-28",
+        title: "구독 생존",
+        titleEn: "Subscription survival",
+        seoTitle: "구독 생존·이탈 분석: 위험 시점과 LTV 계산",
+        seoDescription: "구독기간과 이탈 여부 CSV로 생존율·위험 구간·관측기간 LTV를 계산합니다. 중도절단을 반영하며 브라우저에서만 처리합니다.",
+        seoTitleEn: "Subscription Survival & Churn Analysis",
+        seoDescriptionEn: "Estimate survival, hazard timing, segment differences, and observed-horizon LTV from censored subscription data in your browser.",
+      },
+      {
         id: "5-25",
         title: "채널 중복 점검",
         titleEn: "Channel overlap",
