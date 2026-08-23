@@ -15,6 +15,7 @@ import { downloadCsv } from "@/utils/download";
 import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
 import { fmtNum, parseNum } from "@/utils/format";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
+import { buildDemoCsv } from "@/utils/demoData";
 
 const tx = (locale, ko, en) => locale === "en" ? en : ko;
 const isNumericColumn = (rows, header) => rows.slice(0, 100).filter((row) => Number.isFinite(parseNum(row?.[header]))).length >= Math.min(3, rows.length);
@@ -23,16 +24,6 @@ function findHeader(headers, mapping, field, patterns) {
   const mapped = headers.find((header) => mapping?.[header] === field);
   if (mapped) return mapped;
   return headers.find((header) => patterns.some((pattern) => pattern.test(String(header)))) || "";
-}
-
-function brandDemo() {
-  const start = Date.UTC(2025, 0, 1);
-  return Array.from({ length: 49 }, (_, index) => {
-    const date = new Date(start + index * 86400000).toISOString().slice(0, 10);
-    const weekdayPattern = [5, 2, -3, 1, 4, 8, 12][index % 7];
-    const campaignOn = index >= 35 ? "on" : "off";
-    return { date, brand_search: Math.round(180 + index * 1.6 + weekdayPattern + (index >= 35 ? 42 : 0)), campaign_on: campaignOn };
-  });
 }
 
 function formatValue(value, locale) {
@@ -242,7 +233,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       <h2 className="section-title">{tx(locale, "ITS 데이터 준비", "Prepare ITS data")}</h2>
       {/* 업로드 안내는 공용 CsvGuide 계약(§12.21 ④)을 쓴다. 예전에는 이 자리에
           같은 내용이 손으로 적혀 있어 TOOL_GUIDE와 갈라질 수 있었다. */}
-      <CsvGuide toolId="5-24" onDownloadTemplate={downloadTemplate} onTryExample={() => { trackProductEvent("example_run_started", { tool_id: "5-24", source: "tool", placement: "guide", locale }); loadRows(brandDemo(), "demo_brand_campaign_its.csv", { isDemo: true }); }} locale={locale} />
+      <CsvGuide toolId="5-24" onDownloadTemplate={downloadTemplate} onTryExample={() => { const demo = buildDemoCsv("brand_incrementality", locale); trackProductEvent("example_run_started", { tool_id: "5-24", source: "tool", placement: "guide", locale }); loadRows(demo.raw, demo.fileName, { isDemo: true }); }} locale={locale} />
       {!hasData ? <div className="csv-uploader">
         <div className="csv-dropzone" role="button" tabIndex={0} onClick={() => inputRef.current?.click()} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") inputRef.current?.click(); }}>
           <div className="csv-drop-icon">⇧</div><div className="csv-drop-text">{tx(locale, "CSV 파일 드래그 & 드롭", "Drag & drop a CSV")}</div><div className="csv-drop-sub">{tx(locale, "또는 클릭하여 선택", "or click to choose a file")}</div>

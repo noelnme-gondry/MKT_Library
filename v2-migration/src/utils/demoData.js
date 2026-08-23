@@ -159,29 +159,56 @@ function buildCollinearity() {
   return { raw, headers, mapping: { date: "date", channel: "channel", cost: "cost" }, fileName: "demo_collinearity.csv" };
 }
 
-// ── subscription_survival (5-28) ─────────────────────────────────────────
-// 활성 구독(중도절단)과 이탈 구독을 함께 넣고, 월간 플랜의 3개월 차 위험이
-// 높아지는 패턴을 심어 생존곡선·해저드·세그먼트 비교가 모두 실제로 보이게 한다.
-function buildSubscriptionSurvival() {
-  const headers = ["tenure_periods", "event_observed", "channel", "plan", "promo", "cac"];
+// ── action survival (5-28) ───────────────────────────────────────────────
+// 5-28은 구독 전용이 아니라 한 개체의 핵심 액션 유지·이탈 관측 에피소드를
+// 분석한다. 기간형과 날짜형 입력을 한 세트에 함께 넣어 두 모드, 중도절단,
+// 좌측절단, 세그먼트 비교, 관측기간 반복 가치까지 모두 직접 체험할 수 있게 한다.
+function buildActionSurvival() {
+  const headers = [
+    "Action Survival Duration", "Dropout Observed", "Action Start Date",
+    "Action Exit Date", "Action Observation End Date", "Observation Entry",
+    "Channel", "Action Type", "Campaign Name", "Acquisition Cost",
+  ];
   const raw = [];
+  const observationEndDate = "2025-12-01";
   ["Organic", "Meta", "ASA"].forEach((channel, channelIndex) => {
     for (let index = 0; index < 36; index += 1) {
-      const plan = index % 3 === 0 ? "annual" : "monthly";
-      const churnAtRiskPoint = plan === "monthly" && index % 5 !== 0;
+      const actionType = index % 3 === 0 ? "첫 구매" : index % 3 === 1 ? "주간 핵심 기능 사용" : "14일 내 재방문";
+      const churnAtRiskPoint = index % 3 !== 0 && index % 5 !== 0;
       const tenure = churnAtRiskPoint ? 2 + ((index + channelIndex) % 5) : 7 + ((index * 3 + channelIndex) % 8);
       const churned = churnAtRiskPoint && index % 4 !== 0 ? 1 : 0;
+      const actionStart = new Date(Date.UTC(2025, 11 - tenure, 1)).toISOString().slice(0, 10);
       raw.push({
-        tenure_periods: tenure,
-        event_observed: churned,
-        channel,
-        plan,
-        promo: index % 4 === 0 ? "intro_offer" : "none",
-        cac: 8000 + channelIndex * 13000 + (index % 6) * 1200,
+        "Action Survival Duration": tenure,
+        "Dropout Observed": churned,
+        "Action Start Date": actionStart,
+        "Action Exit Date": churned ? observationEndDate : "",
+        "Action Observation End Date": observationEndDate,
+        "Observation Entry": index % 9 === 0 ? 1 : 0,
+        Channel: channel,
+        "Action Type": actionType,
+        "Campaign Name": index % 2 === 0 ? "온보딩 개선" : "리마인드 캠페인",
+        "Acquisition Cost": 8000 + channelIndex * 13000 + (index % 6) * 1200,
       });
     }
   });
-  return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_subscription_survival.csv" };
+  return {
+    raw,
+    headers,
+    mapping: {
+      "Action Survival Duration": "tenure_periods",
+      "Dropout Observed": "event_observed",
+      "Action Start Date": "subscription_start_date",
+      "Action Exit Date": "churn_date",
+      "Action Observation End Date": "observation_end_date",
+      "Observation Entry": "entry_period",
+      Channel: "channel",
+      "Action Type": "event_type",
+      "Campaign Name": "campaign_name",
+      "Acquisition Cost": "cac",
+    },
+    fileName: "demo_action_survival.csv",
+  };
 }
 
 // ── ASA keyword finder (5-26) ──────────────────────────────────────────────
@@ -820,7 +847,7 @@ const BUILDERS = {
   incrementality: buildIncrSuppressionDemo,
   brand_incrementality: buildBrandIncrementality,
   aso_store: buildAsoStore,
-  subscription_survival: buildSubscriptionSurvival,
+  subscription_survival: buildActionSurvival,
   collinearity: buildCollinearity,
   asa_keyword: buildAsaKeyword,
   content_aha: buildContentAha,

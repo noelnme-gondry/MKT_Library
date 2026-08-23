@@ -8,6 +8,25 @@ import { AHA_STATS } from "./ahaMath";
 import { CREATIVE_STATS } from "./creativeMath";
 import { INCR_MATH } from "./incrMath";
 import { MMM_METH_CONFIG, mmmBayesianHealth, mmmBayesianLikeRun, mmmResolveAbsorb } from "./mmmMath";
+import { discreteHazard, kaplanMeier, normalizeDateSurvivalRows, normalizeSurvivalRows } from "./subscriptionSurvivalMath";
+
+const DEMO_MINIMUM_ROWS = Object.freeze({
+  efficiency: 2000,
+  creative: 1000,
+  experiment: 200,
+  response: 120,
+  aha: 2000,
+  incrementality: 80,
+  brand_incrementality: 45,
+  aso_store: 300,
+  subscription_survival: 100,
+  collinearity: 160,
+  asa_keyword: 40,
+  content_aha: 2000,
+  content_attr: 250,
+  content_traffic: 300,
+  content_dashboard: 300,
+});
 
 describe("demo sanity", () => {
   it("every data group has its own valid demo instead of a fallback dataset", () => {
@@ -16,6 +35,7 @@ describe("demo sanity", () => {
       expect(demo.fileName).toMatch(/^demo_/);
       expect(demo.raw.length).toBeGreaterThan(0);
       expect(demo.headers.length).toBeGreaterThan(0);
+      expect(demo.raw.length, `${group} demo needs enough depth to expose its result views`).toBeGreaterThanOrEqual(DEMO_MINIMUM_ROWS[group]);
     });
 
     // These three groups were previously sent to the efficiency fallback.
@@ -30,6 +50,33 @@ describe("demo sanity", () => {
         if (typeof field !== "string" && !field.oneOf.some((key) => mapped.has(key))) throw new Error(`${toolId} demo is missing one of: ${field.oneOf.join(", ")}`);
       });
     });
+  });
+
+  it("action survival: generic action demo supports both duration and date modes", () => {
+    const demo = buildDemoCsv("subscription_survival");
+    expect(demo.fileName).toBe("demo_action_survival.csv");
+    expect(demo.headers).toEqual(expect.arrayContaining([
+      "Action Survival Duration", "Dropout Observed", "Action Start Date",
+      "Action Exit Date", "Action Observation End Date", "Observation Entry",
+      "Action Type", "Campaign Name",
+    ]));
+
+    const mapped = getMappedRows(demo);
+    const periods = normalizeSurvivalRows(mapped, { timeUnit: "month" });
+    const dates = normalizeDateSurvivalRows(mapped, { timeUnit: "month", observationEndDate: "2025-12-31" });
+    for (const prepared of [periods, dates]) {
+      expect(prepared.excludedRows).toEqual([]);
+      expect(prepared.validRows.length).toBeGreaterThanOrEqual(100);
+      expect(prepared.eventCount).toBeGreaterThan(20);
+      expect(prepared.censoredCount).toBeGreaterThan(20);
+      expect(prepared.leftTruncatedCount).toBeGreaterThan(0);
+      const table = kaplanMeier(prepared.validRows);
+      expect(table.length).toBeGreaterThan(4);
+      expect(discreteHazard(table).maxHazard).toEqual(expect.objectContaining({ time: expect.any(Number) }));
+    }
+    expect(new Set(mapped.map((row) => row.channel)).size).toBe(3);
+    expect(new Set(mapped.map((row) => row.event_type)).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(mapped.map((row) => row.campaign_name)).size).toBe(2);
   });
 
   it("efficiency: retention < 설치·가입 both (리텐션 ≤ 100% 어느 분모든)", () => {
