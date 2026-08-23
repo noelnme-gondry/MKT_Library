@@ -26,6 +26,9 @@ export const WEBR_ANALYSES = Object.freeze({
     minObservations: 100,
     minObservationsPerPredictor: 20,
     maxObservations: 1000,
+    // p×20 하한이 1,000행 상한을 넘으면 어떤 입력도 실행할 수 없다. 40개에서
+    // 멈춰 최대 하한을 800으로 제한한다.
+    maxPredictors: 40,
     resultKind: "predictive-challenger",
   }),
   [WEBR_ANALYSIS_IDS.SVM_CHALLENGER]: Object.freeze({

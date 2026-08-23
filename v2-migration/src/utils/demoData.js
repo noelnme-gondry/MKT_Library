@@ -78,13 +78,32 @@ function buildEfficiency() {
             cost: round(cost), impressions, clicks, installs, actions,
             revenue_d0: revenueD0, revenue_d7: revenue, revenue_d14: revenueD14,
             pu_d7: pu, pu_d14: puD14, ret_d7: ret, ret_d14: retD14,
-            source: ci === 2 ? "organic" : "paid",
+            // 이 루프는 매체의 유료 캠페인만 만든다. Lookalike는 캠페인 유형이지
+            // 오가닉 유입이 아니므로 source를 바꾸면 유료 비용이 오가닉 성과로 섞인다.
+            source: "paid",
             snapshot_date: dates[Math.min(d + 14, dates.length - 1)],
           });
         }
       }
     }
   }
+  // 오가닉은 유료 캠페인 행에 라벨만 덧씌우지 않는다. 비용 0인 별도 관측으로
+  // 만들어 Paid/Organic 필터와 리텐션 마감 판정 모두를 실제로 체험할 수 있게 한다.
+  dates.forEach((date, index) => {
+    const installs = 110 + ((index * 17) % 42);
+    const actions = Math.round(installs * (0.34 + (index % 5) * 0.01));
+    const paidUsers = Math.round(actions * 0.62);
+    const revenue = paidUsers * 14500;
+    raw.push({
+      date, country: "KR", platform: "Organic", channel: "Organic Search",
+      campaign_name: "Organic acquisition", creative_id: "organic_search_listing",
+      cost: 0, impressions: installs * 46, clicks: installs * 5, installs, actions,
+      revenue_d0: Math.round(revenue * 0.38), revenue_d7: revenue, revenue_d14: Math.round(revenue * 1.4),
+      pu_d7: paidUsers, pu_d14: Math.round(paidUsers * 1.15),
+      ret_d7: Math.round(installs * 0.17), ret_d14: Math.round(installs * 0.12),
+      source: "organic", snapshot_date: dates[Math.min(index + 14, dates.length - 1)],
+    });
+  });
   const mapping = {};
   headers.forEach((h) => { mapping[h] = h; }); // all headers are canonical std keys
   return { raw, headers, mapping, fileName: "demo_efficiency.csv" };
@@ -178,7 +197,9 @@ function buildActionSurvival() {
       const actionType = index % 3 === 0 ? "첫 구매" : index % 3 === 1 ? "주간 핵심 기능 사용" : "14일 내 재방문";
       const campaign = index % 2 === 0 ? "온보딩 개선" : "리마인드 캠페인";
       const tenure = 2 + ((index * 7 + channelIndex * 3) % 13);
-      const channelRisk = [24, 50, 36][channelIndex];
+      // 채널별로 의도적인 위험 차이를 넣어, 데모의 세그먼트 비교가 계산만 되는
+      // 빈 차트가 아니라 실제 관측 차이 신호를 보여 주도록 한다.
+      const channelRisk = [15, 70, 35][channelIndex];
       const actionRisk = [4, 12, -5][index % 3];
       const campaignRisk = campaign === "리마인드 캠페인" ? 6 : 0;
       const churned = ((index * 37 + channelIndex * 19 + (index % 3) * 11) % 100) < channelRisk + actionRisk + campaignRisk ? 1 : 0;

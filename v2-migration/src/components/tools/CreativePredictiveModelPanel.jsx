@@ -16,6 +16,8 @@ const COPY = {
     sample: "독립 소재", predictors: "인코딩 변수", numeric: "연속형 제작 특성", ready: "실행 가능", blocked: "데이터 기준 미달",
     rfNeed: (required) => `RF는 현재 변수 수 기준 독립 소재 ${required || 100}개 이상이 필요합니다.`,
     svmNeed: (required) => `SVM은 독립 소재 ${required || 120}개 이상과 성과 결과가 아닌 연속형 제작 특성 2개 이상이 필요합니다.`,
+    tooManyObservations: (max) => `독립 소재가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 기간·세그먼트·속성을 좁혀 다시 실행하세요.`,
+    tooManyPredictors: (max) => `인코딩 변수가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 속성·레벨을 줄여 다시 실행하세요.`,
     running: "같은 5-fold 조건에서 기준 회귀·Random Forest·SVM을 비교하고 있습니다. 첫 실행은 브라우저 R 엔진을 받아 시간이 걸릴 수 있습니다.",
     failed: "예측 모델 비교를 완료하지 못했습니다. 기존 WLS 결과와 Shapley R² 분해에는 영향이 없습니다.", baselineUnavailable: "기준 회귀가 일부 교차검증 분할에서 수렴하지 않아 비교를 보류했습니다. RF·SVM 우위로 해석하지 않습니다.", retry: "예측 모델 다시 실행",
     comparison: "동일 검증 성능", baseline: "기준 회귀", lower: "오차(낮을수록 좋음)", gain: "기준 대비 오차 개선", noWinner: "승자 보류", winner: "예측 후보", keep: "기준 유지",
@@ -29,6 +31,8 @@ const COPY = {
     sample: "Independent creatives", predictors: "Encoded predictors", numeric: "Continuous production features", ready: "Eligible", blocked: "Below data threshold",
     rfNeed: (required) => `RF needs at least ${required || 100} independent creatives for the current feature count.`,
     svmNeed: (required) => `SVM needs at least ${required || 120} independent creatives and two continuous production features that are not outcome components.`,
+    tooManyObservations: (max) => `Independent creatives exceed the browser R safety limit (${max}). Narrow the period, segment, or attributes and try again.`,
+    tooManyPredictors: (max) => `Encoded predictors exceed the browser R safety limit (${max}). Reduce attributes or levels and try again.`,
     running: "Comparing baseline regression, Random Forest, and SVM under the same five-fold validation. The first browser R runtime load can take a while.",
     failed: "The predictive comparison did not complete. Existing WLS results and Shapley R² are unchanged.", baselineUnavailable: "The baseline regression did not converge in at least one validation fold, so the comparison is withheld. This is not evidence that RF or SVM is better.", retry: "Retry predictive models",
     comparison: "Same-fold performance", baseline: "Baseline regression", lower: "error (lower is better)", gain: "error gain vs baseline", noWinner: "Winner withheld", winner: "Prediction candidate", keep: "Keep baseline",
@@ -51,6 +55,12 @@ function groupedImportance(result) {
 
 function EligibilityCard({ label, input, body, C }) {
   return <article className={`creative-model-router__eligibility ${input.ok ? "is-ready" : "is-blocked"}`}><span>{input.ok ? C.ready : C.blocked}</span><strong>{label}</strong><p>{body}</p></article>;
+}
+
+function eligibilityMessage(input, model, C) {
+  if (input.reason === "too_many_observations") return C.tooManyObservations(input.maxObservations);
+  if (input.reason === "too_many_predictors") return C.tooManyPredictors(input.maxPredictors);
+  return model === "rf" ? C.rfNeed(input.requiredObservations) : C.svmNeed(input.requiredObservations);
 }
 
 export default function CreativePredictiveModelPanel({ metrics = [], attributes = [], metric = "ctr", mappedKeys = new Set(), signature, locale = "ko", source = "csv" }) {
@@ -107,7 +117,7 @@ export default function CreativePredictiveModelPanel({ metrics = [], attributes 
   return <section className="block creative-model-router" id="s-creative-predictive-models">
     <h2 className="section-title"><span className="ix">ADV</span>{C.title}</h2><p className="muted creative-model-router__deck">{C.deck}</p>
     <dl className="creative-model-router__profile"><div><dt>{C.sample}</dt><dd>{design.n || 0}</dd></div><div><dt>{C.predictors}</dt><dd>{design.predictorCount || 0}</dd></div><div><dt>{C.numeric}</dt><dd>{design.numericFeatureCount || 0}</dd></div></dl>
-    <div className="creative-model-router__eligibility-grid"><EligibilityCard label="Random Forest" input={rfInput} body={C.rfNeed(rfInput.requiredObservations)} C={C} /><EligibilityCard label="SVM (RBF)" input={svmInput} body={C.svmNeed(svmInput.requiredObservations)} C={C} /></div>
+    <div className="creative-model-router__eligibility-grid"><EligibilityCard label="Random Forest" input={rfInput} body={eligibilityMessage(rfInput, "rf", C)} C={C} /><EligibilityCard label="SVM (RBF)" input={svmInput} body={eligibilityMessage(svmInput, "svm", C)} C={C} /></div>
     {canRun && (visible.status === "idle" || visible.status === "loading") && <p className="creative-model-router__loading" role="status">{C.running}</p>}
     {visible.status === "failed" && <div className="required-banner"><p>{visible.error.includes("baseline_regression_not_estimable") ? C.baselineUnavailable : C.failed}</p><button type="button" className="ab-button" onClick={execute}>{C.retry}</button></div>}
     {candidates.length > 1 && <section className="creative-model-router__comparison" aria-labelledby="creative-model-comparison-title"><header><h3 id="creative-model-comparison-title">{C.comparison}</h3><span>{rf?.primaryMetric || svm?.primaryMetric} · {C.lower}</span></header><div>{candidates.map((candidate) => <article className={best?.id === candidate.id ? "is-selected" : ""} key={candidate.id}><span>{best?.id === candidate.id ? (candidate.id === "baseline" ? C.keep : C.winner) : C.noWinner}</span><strong>{candidate.label}</strong><b>{fmt(candidate.primary)}</b><small>{C.gain}: {candidate.id === "baseline" ? "—" : `${fmt(candidate.gain * 100, 1)}%`}</small></article>)}</div></section>}

@@ -543,14 +543,12 @@ export default function CsvUploader({
     try {
       const result = await fetchSheetTable(apiKey, csvData.sheetUrl);
       if (result.error) {
-        setErrorMsg(sheetErrorMessage(result.error, locale));
-        trackImportFailure("google_sheets", `sheet_${result.error}`);
+        reportImportFailure({ message: sheetErrorMessage(result.error, locale), source: "google_sheets", state: `sheet_${result.error}` });
       } else {
         await handleSheetLoaded(result);
       }
     } catch {
-      setErrorMsg(sheetErrorMessage("fetch", locale));
-      trackImportFailure("google_sheets", "sheet_fetch");
+      reportImportFailure({ message: sheetErrorMessage("fetch", locale), source: "google_sheets", state: "sheet_fetch" });
     } finally {
       setRefreshingSheet(false);
     }

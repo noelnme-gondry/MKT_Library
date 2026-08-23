@@ -81,14 +81,17 @@ describe("demo sanity", () => {
     expect(new Set(mapped.map((row) => row.event_type)).size).toBeGreaterThanOrEqual(3);
     expect(new Set(mapped.map((row) => row.campaign_name)).size).toBe(2);
 
-    ["channel", "event_type", "campaign_name"].forEach((field) => {
+    const comparisons = ["channel", "event_type", "campaign_name"].map((field) => {
       const groups = [...new Set(mapped.map((row) => row[field]))].map((name) => ({
         name,
         rows: periods.validRows.filter((row) => row.source?.[field] === name),
       }));
       expect(groups.every((group) => group.rows.some((row) => row.event === 1)), `${field} needs an observed exit in every demo segment`).toBe(true);
-      expect(logRankTest(groups).ok, `${field} comparison must be estimable in the demo`).toBe(true);
+      const comparison = logRankTest(groups);
+      expect(comparison.ok, `${field} comparison must be estimable in the demo`).toBe(true);
+      return comparison;
     });
+    expect(comparisons.some((comparison) => comparison.pValue < 0.05), "at least one demo segment must show an observed difference signal").toBe(true);
 
     const hazard = discreteHazard(kaplanMeier(periods.validRows)).rows;
     expect(hazard.filter((row) => row.time >= 7 && row.events > 0).length).toBeGreaterThan(0);
@@ -146,6 +149,7 @@ describe("demo sanity", () => {
   it("demo quality guards keep user-visible optional paths and physical value ranges available", () => {
     const efficiency = buildDemoCsv("efficiency");
     expect(new Set(efficiency.raw.map((row) => row.source))).toEqual(new Set(["paid", "organic"]));
+    expect(efficiency.raw.filter((row) => row.source === "organic").every((row) => Number(row.cost) === 0)).toBe(true);
     expect(efficiency.raw.every((row) => row.snapshot_date)).toBe(true);
     expect(buildDemoCsv("asa_keyword").raw.every((row) => row.country && Number(row.target_cpt) > 0)).toBe(true);
     expect(buildDemoCsv("brand_incrementality").raw.every((row) => row.country && row.channel && Number(row.cost) >= 0)).toBe(true);
