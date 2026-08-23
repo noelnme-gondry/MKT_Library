@@ -1,4 +1,5 @@
 import { profileDatasetV2 } from "../profiler/profileDataset";
+import { CANONICAL_FIELDS } from "../schema/canonicalFields";
 import { canonicalFieldForLegacyKey } from "../schema/legacyFieldMigration";
 import { resolveSemanticBindings } from "./resolveBindings";
 import { scoreSemanticCandidates } from "./scoreCandidates";
@@ -31,6 +32,7 @@ export function mapDataset({ headers = [], rows = [] } = {}) {
       window: migration?.canonicalKey === selected.canonicalKey ? migration.window || null : null,
       source: "semantic_mapper_v0",
       modelVersion: "semantic-mapper-0.1.0",
+      requiresConfirmation: Boolean(CANONICAL_FIELDS[selected.canonicalKey]?.requiresConfirmation),
     };
   });
 

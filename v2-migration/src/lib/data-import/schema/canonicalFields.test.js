@@ -36,10 +36,39 @@ describe("Semantic Mapper V2 registry baseline", () => {
       canonicalKey: "outcome_generic",
       requiresConfirmation: true,
     });
+    expect(canonicalFieldForLegacyKey("group")).toMatchObject({
+      canonicalKey: "intervention_group",
+      requiresConfirmation: true,
+    });
     expect(canonicalFieldForLegacyKey("revenue_d7")).toMatchObject({
       canonicalKey: "outcome_revenue",
       window: { kind: "cohort_day", value: 7 },
     });
+  });
+
+  it("promotes catalogued V1 fields without replacing their legacy keys", () => {
+    expect(canonicalFieldForLegacyKey("daily_budget")?.canonicalKey).toBe("media_daily_budget");
+    expect(canonicalFieldForLegacyKey("current_cpt")?.canonicalKey).toBe("media_current_cpt");
+    expect(canonicalFieldForLegacyKey("video_3s_views")?.canonicalKey).toBe("media_video_3s_views");
+    expect(canonicalFieldForLegacyKey("hook_type")?.canonicalKey).toBe("creative_hook_type");
+    expect(canonicalFieldForLegacyKey("d_seollal")).toMatchObject({
+      canonicalKey: "control_holiday",
+      memberHint: "lunar_new_year",
+    });
+    expect(canonicalFieldForLegacyKey("mmm_platform")).toMatchObject({
+      canonicalKey: "platform",
+      memberHint: "weekly_panel",
+    });
+    expect(canonicalFieldForLegacyKey("subscription_start_date")?.canonicalKey).toBe("subscription_start_date");
+    expect(canonicalFieldForLegacyKey("churn_date")?.canonicalKey).toBe("subscription_churn_date");
+    expect(canonicalFieldForLegacyKey("observation_end_date")?.canonicalKey).toBe("subscription_observation_end_date");
+  });
+
+  it("marks tool-owned and intervention semantics as confirmation-required", () => {
+    for (const key of ["intervention_cutoff", "intervention_group", "user_id", "content_id", "outcome_binary", "outcome_numeric", "numeric_feature"]) {
+      expect(CANONICAL_FIELDS[key]?.requiresConfirmation, key).toBe(true);
+    }
+    expect(CANONICAL_FIELDS.creative_hook_type.semanticGroup).toBe("creative_attribute");
   });
 
   it("does not let an override name a missing legacy or canonical field", () => {

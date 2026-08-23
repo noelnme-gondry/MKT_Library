@@ -488,6 +488,46 @@ const CONTENT = {
       ],
     },
   },
+  "5-28": {
+    ko: {
+      eyebrow: "도구 사용 가이드",
+      title: "이탈 위험이 큰 갱신 시점과 고객군을 먼저 찾습니다",
+      question: "고객은 얼마나 오래 남고, 언제 이탈 위험이 커지나요?",
+      answer: "중도절단을 반영한 생존곡선과 구간별 위험률로 위험한 갱신 시점과 관측기간 고객가치를 확인합니다.",
+      outputs: ["생존곡선과 95% 신뢰구간", "갱신 구간별 이탈 위험", "관측기간 RMST·LTV"],
+      lead: "구독 생존·이탈 분석은 구독 에피소드별 기간과 이탈 여부를 사용해, 아직 이탈하지 않은 고객을 중도절단으로 올바르게 반영합니다. 개별 고객의 이탈을 예측하거나 채널·플랜 차이의 원인을 확정하지는 않습니다.",
+      detailsLabel: "계산 조건과 해석 한계 보기",
+      sections: [
+        ["언제 써야 하나", "월간·주간·일간 구독에서 어느 갱신 구간에 리텐션 개입을 설계할지 정할 때 씁니다. 1행이 한 번의 구독 에피소드여야 하며, 구독 기간과 이탈 관측 여부가 필요합니다."],
+        ["무엇을 계산하나", "Kaplan–Meier 생존율과 Greenwood 95% 구간, 구간별 조건부 이탈 위험, 중앙 생존기간과 관측 범위 안의 제한평균 생존기간(RMST)을 계산합니다. ARPU와 매출총이익률을 입력하면 관측기간 LTV도 함께 봅니다."],
+        ["결과를 어떻게 쓰나", "위험이 커지기 전의 온보딩·가격·리텐션 개입 가설을 만들고 A/B 또는 홀드아웃으로 검증하세요. 세그먼트 차이는 관측된 연관일 뿐 원인이 아니며, 관측 범위 밖 생존율과 LTV를 외삽하지 않습니다."],
+      ],
+      faq: [
+        { q: "아직 활성인 구독도 넣어야 하나요?", a: "넣어야 합니다. 활성 구독은 이탈하지 않은 것이 아니라 관측이 끝난 시점까지 남아 있던 중도절단 사례이며, 이를 빼면 생존율이 과소추정됩니다." },
+        { q: "세그먼트 생존율이 다르면 원인이라고 볼 수 있나요?", a: "아닙니다. 채널·플랜·프로모션에 따른 고객 구성과 시점이 함께 다를 수 있으므로 관측된 차이로만 해석하고, 개입 효과는 실험으로 확인해야 합니다." },
+        { q: "이탈 확률을 고객별로 예측하나요?", a: "아닙니다. 이 도구는 집계된 시간별 생존과 위험을 요약합니다. 개별 고객 스코어링이나 분류 모델은 별도 문제입니다." },
+      ],
+    },
+    en: {
+      eyebrow: "Tool guide",
+      title: "Find the renewal interval and customer group that deserve retention work first",
+      question: "How long do customers stay, and when does churn risk peak?",
+      answer: "Estimate survival, hazard, and observed value while retaining censored subscriptions.",
+      outputs: ["Survival curve with 95% interval", "Churn risk by renewal interval", "Observed-horizon RMST and LTV"],
+      lead: "Subscription survival and churn analysis uses one row per subscription episode and keeps customers who are still active as censored observations. It does not predict individual churn or establish why channel, plan, or promotion groups differ.",
+      detailsLabel: "See the calculation conditions and limits",
+      sections: [
+        ["When to use it", "Use it to decide which renewal interval should receive a retention intervention. Each row must be one subscription episode with a duration and a clearly observed churn status."],
+        ["What it calculates", "It calculates Kaplan–Meier survival, Greenwood 95% intervals, interval hazard, median survival, and restricted mean survival time within the observed horizon. ARPU and gross margin optionally produce observed-horizon LTV."],
+        ["How to act", "Form an onboarding, pricing, or retention hypothesis before the risk interval, then validate it with an A/B test or holdout. Segment differences are associations, and neither survival nor LTV is extrapolated beyond observed data."],
+      ],
+      faq: [
+        { q: "Should active subscriptions be included?", a: "Yes. They are censored observations, not customers who never churned. Excluding them biases survival downward." },
+        { q: "Does a segment difference prove a cause?", a: "No. Channel, plan, customer mix, and timing can differ together. Treat it as a directional observation until an intervention is tested." },
+        { q: "Does this predict churn for individual customers?", a: "No. It summarizes time-based survival and hazard for subscription episodes. Individual churn scoring is a separate modeling problem." },
+      ],
+    },
+  },
   "5-26": {
     ko: {
       eyebrow: "도구 사용 가이드",

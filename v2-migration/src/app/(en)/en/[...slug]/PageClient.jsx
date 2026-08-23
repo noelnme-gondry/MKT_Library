@@ -9,12 +9,10 @@ import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
-import DmNudge from "@/components/DmNudge";
 import UiSemantics from "@/components/ds/UiSemantics";
 import GuideAnswer from "@/components/GuideAnswer";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
-import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
@@ -35,11 +33,12 @@ const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCa
 const MulticollinearityChecker = dyn(() => import("@/components/tools/MulticollinearityChecker"));
 const AsoStoreConversion = dyn(() => import("@/components/tools/AsoStoreConversion"));
 const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
+const SubscriptionSurvivalAnalysis = dyn(() => import("@/components/tools/SubscriptionSurvivalAnalysis"));
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 // EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
 // 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
 const SopContent = dyn(() => import("@/components/sops/SopContent"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
@@ -96,6 +95,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "5-25" && <MulticollinearityChecker locale="en" />}
             {routeId === "5-27" && <AsoStoreConversion locale="en" />}
             {routeId === "5-26" && <AsaKeywordFinder locale="en" />}
+            {routeId === "5-28" && <SubscriptionSurvivalAnalysis locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <>
               {/* 가이드가 답하는 질문·한 문장 답은 본문 위, 접기 바깥(§12.29). */}
@@ -109,14 +109,11 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} locale="en" />}
             </article>
           </main>
         </div>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
-      {/* 데이터 준비를 어려워하는 유저용 1:1 상담 넛지(세션 1회, 스크롤 후 노출) */}
-      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge locale="en" />}
       <GlobalModals locale="en" />
       <UiSemantics />
     </>

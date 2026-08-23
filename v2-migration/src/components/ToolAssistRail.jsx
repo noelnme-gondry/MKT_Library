@@ -212,7 +212,7 @@ function getSections(toolId, { hasDashboardResults = true, isDashboardDemo = fal
   return ASSIST_SECTIONS[toolId] || [{ id: "s-prep", title: ["데이터 준비", "Prepare data"], body: ["입력 항목을 확인한 뒤 분석을 시작하세요.", "Confirm the input fields before starting analysis."] }];
 }
 
-export default function ToolAssistRail({ toolId, locale = "ko" }) {
+export default function ToolAssistRail({ toolId, locale = "ko", embedded = false, onRequestClose }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const isDashboardTool = Boolean(DASHBOARD_SETUP_SECTIONS[toolId]);
@@ -317,7 +317,8 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const scrollToSection = (id, source) => {
     const target = document.getElementById(id);
     if (!target) return;
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     trackProductEvent("tool_assist_jump", { tool_id: toolId, section_id: id, source, locale: lang });
   };
 
@@ -331,9 +332,71 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
     if (!requestDecisionReviewOpen(toolId, "tool_assist_rail")) return;
     setIsOpen(false);
     setHasNewContext(false);
+    onRequestClose?.();
   };
 
   if (!sourceTool) return null;
+
+  const panel = (
+    <>
+      <header>
+        <strong>{sourceTool.title}</strong>
+      </header>
+      <div className="tool-assist-rail__context">
+        <h2>{primaryFinding?.headline || insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
+        <p>{primaryFinding?.detail || insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
+        {primaryFinding?.evidence?.length > 0 && (
+          <div className="tool-assist-rail__primary-action">
+            <small>{T.why}</small>
+            {primaryFinding.evidence.map((item) => <strong key={item.label}>{item.label}: {item.displayValue}</strong>)}
+          </div>
+        )}
+        {primaryAction && (
+          <div className="tool-assist-rail__primary-action">
+            <small>{T.action}</small>
+            <strong>{primaryAction}</strong>
+          </div>
+        )}
+        <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
+      </div>
+      <div className="tool-assist-rail__actions">
+        {decisionReviewTargetId && (
+          <button className="tool-assist-rail__review-action" type="button" aria-controls={decisionReviewTargetId} onClick={openDecisionReview}>
+            <span>{T.review}</span>
+            <b aria-hidden="true">→</b>
+          </button>
+        )}
+        {primaryFinding && findingTarget && targetHref && (
+          <>
+            {targetGroup !== group && <p className="muted">{T.newData}</p>}
+            <Link href={targetHref} onClick={() => trackProductEvent("tool_assist_finding_next", { tool_id: findingTarget.toolId, source_tool_id: toolId, locale: lang })}>
+              <span>{findingTarget.actionLabel}</span>
+              <strong>{findingTarget.reason}</strong>
+              <b aria-hidden="true">→</b>
+            </Link>
+          </>
+        )}
+        {!primaryFinding && !activeInsight && (
+          <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
+            {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
+          </button>
+        )}
+        {!primaryFinding && !activeInsight && (
+          nextTool && !isDashboardDemo ? (
+            <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
+              <span>{T.next}</span>
+              <strong>{nextTool.title}</strong>
+              <b aria-hidden="true">→</b>
+            </Link>
+          ) : <p>{T.noNext}</p>
+        )}
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return <section className="tool-assist-rail tool-assist-rail--embedded" aria-label={T.open}>{panel}</section>;
+  }
 
   return (
     <aside className={`tool-assist-rail ${isOpen ? "is-open" : ""}`} aria-label={T.open}>
@@ -342,60 +405,7 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
         <b><small>{isOpen ? T.close : T.current}</small>{isOpen ? "" : copyFor(activeSection.title, lang)}</b>
         {hasNewContext && !isOpen && <i>{T.resultReady}</i>}
       </button>
-      <div className="tool-assist-rail__panel" id={`tool-assist-${toolId}`} aria-hidden={!isOpen}>
-        <header>
-          <strong>{sourceTool.title}</strong>
-        </header>
-        <div className="tool-assist-rail__context">
-          <h2>{primaryFinding?.headline || insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
-          <p>{primaryFinding?.detail || insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
-          {primaryFinding?.evidence?.length > 0 && (
-            <div className="tool-assist-rail__primary-action">
-              <small>{T.why}</small>
-              {primaryFinding.evidence.map((item) => <strong key={item.label}>{item.label}: {item.displayValue}</strong>)}
-            </div>
-          )}
-          {primaryAction && (
-            <div className="tool-assist-rail__primary-action">
-              <small>{T.action}</small>
-              <strong>{primaryAction}</strong>
-            </div>
-          )}
-          <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
-        </div>
-        <div className="tool-assist-rail__actions">
-          {decisionReviewTargetId && (
-            <button className="tool-assist-rail__review-action" type="button" aria-controls={decisionReviewTargetId} onClick={openDecisionReview}>
-              <span>{T.review}</span>
-              <b aria-hidden="true">→</b>
-            </button>
-          )}
-          {primaryFinding && findingTarget && targetHref && (
-            <>
-              {targetGroup !== group && <p className="muted">{T.newData}</p>}
-              <Link href={targetHref} onClick={() => trackProductEvent("tool_assist_finding_next", { tool_id: findingTarget.toolId, source_tool_id: toolId, locale: lang })}>
-                <span>{findingTarget.actionLabel}</span>
-                <strong>{findingTarget.reason}</strong>
-                <b aria-hidden="true">→</b>
-              </Link>
-            </>
-          )}
-          {!primaryFinding && !activeInsight && (
-            <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
-              {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
-            </button>
-          )}
-          {!primaryFinding && !activeInsight && (
-            nextTool && !isDashboardDemo ? (
-              <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
-                <span>{T.next}</span>
-                <strong>{nextTool.title}</strong>
-                <b aria-hidden="true">→</b>
-              </Link>
-            ) : <p>{T.noNext}</p>
-          )}
-        </div>
-      </div>
+      <div className="tool-assist-rail__panel" id={`tool-assist-${toolId}`} aria-hidden={!isOpen}>{panel}</div>
     </aside>
   );
 }

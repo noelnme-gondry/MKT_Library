@@ -75,11 +75,21 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
   await expectKeyboardFocusVisible(page);
 
   await uploadCsv(page, "efficiency.csv");
-  const recommendation = page.locator(".analysis-recommendations__primary");
-  await expect(recommendation).toBeVisible();
-  await recommendation.getByRole("button", { name: /분석 시작/ }).click();
+  const mapping = page.locator('.csv-mapping-block[aria-describedby="dochi-mapping-coach-title"]');
+  await expect(mapping).toBeVisible();
+  await expect(mapping).not.toHaveAttribute("open");
+  await page.locator(".dochi-mapping-coach").getByRole("button", { name: "확인" }).click();
+
+  const workspace = page.getByRole("region", { name: "도치가 찾은 분석 지도" });
+  await expect(workspace).toBeVisible();
+  const dashboardCard = workspace.locator(".dochi-workspace__card").filter({
+    has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
+  });
+  await expect(dashboardCard.getByRole("region", { name: "이 화면에서 계산한 요약" })).toBeVisible();
+  await dashboardCard.getByRole("button", { name: /추가 차트·상세 분석 열기/ }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.getByRole("button", { name: "데이터 분석하기" }).click();
   await expect(page.locator(".result-action-card")).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: ".dashboard-briefing" });
   await expectNoSeriousAccessibilityViolations(page);

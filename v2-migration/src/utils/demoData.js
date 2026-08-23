@@ -159,6 +159,31 @@ function buildCollinearity() {
   return { raw, headers, mapping: { date: "date", channel: "channel", cost: "cost" }, fileName: "demo_collinearity.csv" };
 }
 
+// ── subscription_survival (5-28) ─────────────────────────────────────────
+// 활성 구독(중도절단)과 이탈 구독을 함께 넣고, 월간 플랜의 3개월 차 위험이
+// 높아지는 패턴을 심어 생존곡선·해저드·세그먼트 비교가 모두 실제로 보이게 한다.
+function buildSubscriptionSurvival() {
+  const headers = ["tenure_periods", "event_observed", "channel", "plan", "promo", "cac"];
+  const raw = [];
+  ["Organic", "Meta", "ASA"].forEach((channel, channelIndex) => {
+    for (let index = 0; index < 36; index += 1) {
+      const plan = index % 3 === 0 ? "annual" : "monthly";
+      const churnAtRiskPoint = plan === "monthly" && index % 5 !== 0;
+      const tenure = churnAtRiskPoint ? 2 + ((index + channelIndex) % 5) : 7 + ((index * 3 + channelIndex) % 8);
+      const churned = churnAtRiskPoint && index % 4 !== 0 ? 1 : 0;
+      raw.push({
+        tenure_periods: tenure,
+        event_observed: churned,
+        channel,
+        plan,
+        promo: index % 4 === 0 ? "intro_offer" : "none",
+        cac: 8000 + channelIndex * 13000 + (index % 6) * 1200,
+      });
+    }
+  });
+  return { raw, headers, mapping: Object.fromEntries(headers.map((header) => [header, header])), fileName: "demo_subscription_survival.csv" };
+}
+
 // ── ASA keyword finder (5-26) ──────────────────────────────────────────────
 // Search Match 승격·저소진 증액·과소진 감액·제외 검토가 모두 보이도록 구성.
 // 일일 예산은 현재 엔진의 검색어 단위 판정 예시값이며, 실데이터에서는 캠페인
@@ -795,6 +820,7 @@ const BUILDERS = {
   incrementality: buildIncrSuppressionDemo,
   brand_incrementality: buildBrandIncrementality,
   aso_store: buildAsoStore,
+  subscription_survival: buildSubscriptionSurvival,
   collinearity: buildCollinearity,
   asa_keyword: buildAsaKeyword,
   content_aha: buildContentAha,

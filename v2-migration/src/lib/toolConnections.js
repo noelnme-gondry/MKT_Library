@@ -52,6 +52,11 @@ export const CONNECTED_TOOLS = {
     question: { ko: "스토어 전환율이 떨어진 게 페이지 탓일까, 유입 구성이 바뀐 탓일까?", en: "Did store conversion fall because of the page, or because the traffic mix shifted?" },
     keywords: { ko: "ASO 스토어 전환율 하락 제품 페이지 조회 설치 전환 유입 소스 Search Browse 앱스토어 최적화 스크린샷 아이콘", en: "ASO store conversion rate drop product page views installs traffic source Search Browse app store optimization screenshots icon" },
   },
+  "5-28": {
+    title: { ko: "구독 생존·이탈 분석", en: "Subscription survival & churn" },
+    question: { ko: "고객은 언제 가장 많이 이탈하고, 어느 군을 먼저 실험할까?", en: "When does churn risk peak, and which group should be tested first?" },
+    keywords: { ko: "구독 이탈 생존분석 해저드 갱신 리텐션 중도절단 LTV 고객가치", en: "subscription churn survival analysis hazard renewal retention censoring LTV customer value" },
+  },
   "5-26": {
     title: { ko: "ASA 키워드 발굴", en: "ASA keyword finder" },
     question: { ko: "어떤 검색어를 Exact로 옮기고 CPT를 조정할까?", en: "Which terms should move to Exact and receive a CPT change?" },
@@ -141,7 +146,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "06 · PROOF", en: "06 · PROOF" },
     title: { ko: "효과 검증", en: "Proof" },
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
-    tools: ["5-4", "5-23", "5-24"],
+    tools: ["5-4", "5-23", "5-24", "5-28"],
   },
   {
     id: "contribution",
@@ -167,7 +172,8 @@ export const NEXT_TOOL_IDS = {
   "5-25": ["5-18-mmm", "5-4", "5-23"],
   "5-26": ["5-22", "5-3", "5-27"],
   "5-27": ["5-26", "5-2", "5-23"],
-  "5-20": ["9-1", "5-4", "5-2"],
+  "5-28": ["5-20", "5-4", "5-23"],
+  "5-20": ["5-28", "9-1", "5-4"],
   "9-1": ["9-6", "5-4", "5-20"],
   // 같은 패널 CSV를 쓰는 다섯 — 추세로 기준선을 잡고, 반대 움직임을 보고,
   // 잠식을 진단하고, 기여를 나눈 뒤 예측으로 넘어간다.

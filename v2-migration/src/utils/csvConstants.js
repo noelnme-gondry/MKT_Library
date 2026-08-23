@@ -154,6 +154,81 @@ export const STANDARD_FIELDS = {
                 required: false,
                 group: "디멘션",
               },
+              tenure_periods: {
+                label: "구독 기간",
+                labelEn: "Subscription duration",
+                aliases: ["tenure", "tenure_periods", "subscription_tenure", "subscription tenure", "subscription duration", "observation duration", "tenure months", "months subscribed", "구독기간", "구독 기간", "이용기간"],
+                type: "number",
+                required: false,
+                group: "구독 생존",
+              },
+              event_observed: {
+                label: "이탈 관측 여부 (0/1)",
+                labelEn: "Churn observed (0/1)",
+                aliases: ["event_observed", "churn_event", "churn observed", "observed churn", "churned", "is_churned", "cancelled", "이탈여부", "이탈 여부", "해지여부", "해지 여부"],
+                type: "number",
+                required: false,
+                group: "구독 생존",
+              },
+              subscription_start_date: {
+                label: "구독 시작일",
+                labelEn: "Subscription start date",
+                aliases: ["subscription_start_date", "subscription start date", "subscription started at", "subscription_start", "start date", "started at", "구독시작일", "구독 시작일", "가입일", "시작일"],
+                type: "date",
+                required: false,
+                group: "구독 생존",
+              },
+              churn_date: {
+                label: "이탈·해지일",
+                labelEn: "Churn or cancellation date",
+                aliases: ["churn_date", "churn date", "subscription churn date", "cancel date", "cancellation date", "cancelled at", "canceled at", "ended at", "이탈일", "해지일", "해지 일자", "구독 종료일"],
+                type: "date",
+                required: false,
+                group: "구독 생존",
+              },
+              observation_end_date: {
+                label: "관측 종료일",
+                labelEn: "Observation end date",
+                aliases: ["observation_end_date", "observation end date", "subscription end date", "observed until", "as of date", "snapshot date", "data extract date", "data extracted at", "관측종료일", "관측 종료일", "추출 기준일", "데이터 추출일", "기준일"],
+                type: "date",
+                required: false,
+                group: "구독 생존",
+              },
+              entry_period: {
+                label: "관측 진입 기간",
+                labelEn: "Observation entry period",
+                // 구독 export는 "Observation Entry"처럼 기간의 기준점을 제목에
+                // 풀어 쓰는 경우가 있다. 날짜형 entry가 아니라 0 이상 기간 수인
+                // survival 계약에만 매핑한다.
+                aliases: ["entry_period", "subscription_entry", "entry time", "entry period", "observation entry", "observation entry period", "observation start", "관측진입", "관측 진입", "관측 시작"],
+                type: "number",
+                required: false,
+                group: "구독 생존",
+              },
+              plan: {
+                label: "구독 플랜",
+                labelEn: "Subscription plan",
+                aliases: ["plan", "subscription_plan", "pricing_plan", "요금제", "구독플랜", "구독 플랜"],
+                type: "string",
+                required: false,
+                group: "구독 생존",
+              },
+              promo: {
+                label: "프로모션",
+                labelEn: "Promotion",
+                aliases: ["promo", "promotion", "promotion_type", "프로모션", "할인유형", "할인 유형"],
+                type: "string",
+                required: false,
+                group: "구독 생존",
+              },
+              cac: {
+                label: "고객 획득비용",
+                labelEn: "Customer acquisition cost",
+                aliases: ["cac", "customer_acquisition_cost", "acquisition cost", "획득비용", "고객획득비용", "고객 획득비용"],
+                type: "number",
+                required: false,
+                group: "구독 생존",
+              },
               store_source: {
                 // 스토어 유입 소스(App Store Search·Browse·Referrer / Play 검색·둘러보기).
                 // `source`(광고/오가닉)와 다른 축이다 — 같은 키를 쓰면 매핑 화면 라벨이
@@ -572,7 +647,9 @@ export const STANDARD_FIELDS = {
               spend: {
                 label: "비용(Creative)",
                 labelEn: "Spend (creative)",
-                aliases: ["광고비", "spend", "creative spend", "cost", "비용"],
+                // Meta 등 소재 성과 export의 실제 표시 헤더. `cost`에도 같은 별칭이
+                // 있지만 도구 스코프가 9-6의 spend를 선택해 기존 엔진 키를 보존한다.
+                aliases: ["광고비", "spend", "creative spend", "amount spent", "cost", "비용"],
                 type: "number",
                 required: false,
                 group: "Creative",
@@ -644,6 +721,46 @@ export const STANDARD_FIELDS = {
                 label: "영상 길이대",
                 aliases: ["duration", "length", "길이대", "영상길이"],
                 type: "string",
+                required: false,
+                group: "Creative",
+              },
+              duration_seconds: {
+                label: "실제 영상 길이(초)",
+                labelEn: "Video duration (seconds)",
+                aliases: ["duration seconds", "duration_seconds", "video duration", "video_duration_seconds", "영상 길이 초", "영상길이초"],
+                type: "number",
+                required: false,
+                group: "Creative",
+              },
+              text_length: {
+                label: "화면 텍스트 글자수",
+                labelEn: "On-screen text length",
+                aliases: ["text length", "text_length", "ocr character count", "ocr_text_length", "텍스트 글자수", "자막 글자수"],
+                type: "number",
+                required: false,
+                group: "Creative",
+              },
+              scene_cut_count: {
+                label: "장면 전환수",
+                labelEn: "Scene cut count",
+                aliases: ["scene cut count", "scene_cut_count", "shot count", "cut count", "장면 전환수", "컷 수"],
+                type: "number",
+                required: false,
+                group: "Creative",
+              },
+              face_screen_ratio: {
+                label: "인물 화면 비율",
+                labelEn: "Face screen ratio",
+                aliases: ["face screen ratio", "face_screen_ratio", "face area ratio", "인물 화면 비율", "얼굴 비중"],
+                type: "number",
+                required: false,
+                group: "Creative",
+              },
+              speech_rate: {
+                label: "말하기 속도",
+                labelEn: "Speech rate",
+                aliases: ["speech rate", "speech_rate", "words per minute", "wpm", "말하기 속도", "발화 속도"],
+                type: "number",
                 required: false,
                 group: "Creative",
               },
@@ -754,6 +871,17 @@ export const STANDARD_FIELDS = {
                   "노출그룹",
                   "홀드아웃",
                 ],
+                type: "string",
+                required: false,
+                group: "Incrementality",
+              },
+              // `group`만으로는 처리·대조군인지 일반 분류 차원인지 판별할 수 없다.
+              // 따라서 이 키는 5-23의 명시적 역할 선택에서만 쓰이며, V2에서도
+              // confirmation-required intervention_group으로만 승격한다.
+              group: {
+                label: "처리/대조 그룹",
+                labelEn: "Treatment/control group",
+                aliases: ["treatment_group", "treatment group", "experiment_group", "experiment group", "처리군", "대조군", "처리 대조군"],
                 type: "string",
                 required: false,
                 group: "Incrementality",
@@ -1184,6 +1312,13 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
               "5-27": ["date", "store_source", "product_page_views", "installs"],
               "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
+              // 구독 생존은 두 입력 경로를 지원한다. 기존 기간+이탈 플래그는 그대로
+              // 유지하고, 날짜 경로는 시작일과 (이탈일 또는 관측 종료일)로 사건·중도
+              // 절단을 복원한다. 날짜만으로 기간 기반 엔진 입력을 꾸며내지 않는다.
+              "5-28": [
+                { oneOf: ["tenure_periods", "subscription_start_date"] },
+                { oneOf: ["event_observed", "churn_date", "observation_end_date"] },
+              ],
               // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
               // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
               // 5-21과 동일, 화면 라벨만 콘텐츠 도메인(유입경로/카테고리/콘텐츠).
@@ -1256,6 +1391,14 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "target_cpa", unlocks: "성과 기준 CPT 조정" },
                 { key: "target_cpt", unlocks: "CPT 권장값 기준" },
                 { key: "current_cpt", unlocks: "현재 CPT에서 증감액 계산" },
+              ],
+              "5-28": [
+                { key: "entry_period", unlocks: "관측 진입 시점이 다른 구독의 위험집합 보정" },
+                { key: "channel", unlocks: "획득 채널별 관측 생존 비교" },
+                { key: "plan", unlocks: "구독 플랜별 관측 생존 비교" },
+                { key: "promo", unlocks: "프로모션별 관측 생존 비교" },
+                { key: "event_type", unlocks: "이탈 유형을 원본 의미 그대로 보존해 후속 해석에 사용" },
+                { key: "cac", unlocks: "관측기간 LTV와 획득비용의 함께 확인" },
               ],
               "5-4": [
                 { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },
@@ -1362,6 +1505,11 @@ export const TOOL_OPTIONAL_FIELDS = {
                 },
                 { key: "cta_style", unlocks: "Decompose: CTA 스타일별 효과" },
                 { key: "duration_bucket", unlocks: "Decompose: 길이대별 효과" },
+                { key: "duration_seconds", unlocks: "SVM: 실제 길이 기반 연속형 제작 특성" },
+                { key: "text_length", unlocks: "SVM: 화면 텍스트 밀도 특성" },
+                { key: "scene_cut_count", unlocks: "SVM: 장면 전환 빈도 특성" },
+                { key: "face_screen_ratio", unlocks: "SVM: 인물 노출 비율 특성" },
+                { key: "speech_rate", unlocks: "SVM: 발화 속도 특성" },
                 {
                   key: "actions",
                   unlocks: "CPA decompose (installs 대신 액션 기준)",
@@ -1554,6 +1702,11 @@ export const TOOL_OPTIONAL_FIELDS = {
                 },
                 { key: "cta_style", unlocks: "Decompose: CTA 스타일별 효과" },
                 { key: "duration_bucket", unlocks: "Decompose: 길이대별 효과" },
+                { key: "duration_seconds", unlocks: "SVM: 실제 길이 기반 연속형 제작 특성" },
+                { key: "text_length", unlocks: "SVM: 화면 텍스트 밀도 특성" },
+                { key: "scene_cut_count", unlocks: "SVM: 장면 전환 빈도 특성" },
+                { key: "face_screen_ratio", unlocks: "SVM: 인물 노출 비율 특성" },
+                { key: "speech_rate", unlocks: "SVM: 발화 속도 특성" },
                 {
                   key: "actions",
                   unlocks: "전환당비용 decompose (installs 대신 액션 기준)",

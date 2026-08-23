@@ -11,13 +11,12 @@ import GuideAnswer from "@/components/GuideAnswer";
 import GuideIndex from "@/components/GuideIndex";
 import StartGate from "@/components/StartGate";
 import LandingPage from "@/components/LandingPage";
+import DochiAssistant from "@/components/assistant/DochiAssistant";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
-import DmNudge from "@/components/DmNudge";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
-import ToolAssistRail from "@/components/ToolAssistRail";
 import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
@@ -37,13 +36,14 @@ const BrandCampaignIncrementality = dyn(() => import("@/components/tools/BrandCa
 const MulticollinearityChecker = dyn(() => import("@/components/tools/MulticollinearityChecker"));
 const AsoStoreConversion = dyn(() => import("@/components/tools/AsoStoreConversion"));
 const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
+const SubscriptionSurvivalAnalysis = dyn(() => import("@/components/tools/SubscriptionSurvivalAnalysis"));
 // Content Analytics (콘텐츠 도메인 — 엔진 재사용, 라벨만 신규)
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -86,7 +86,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
-            {routeId === "home" && <LandingPage />}
+            {routeId === "home" && <><LandingPage /><DochiAssistant /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
 
@@ -107,6 +107,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId === "5-25" && <MulticollinearityChecker />}
             {routeId === "5-27" && <AsoStoreConversion />}
             {routeId === "5-26" && <AsaKeywordFinder />}
+            {routeId === "5-28" && <SubscriptionSurvivalAnalysis />}
 
             {routeId === "9-1" && <ContentElementAnalyzer />}
             {routeId === "9-2" && <KillerContentFinder />}
@@ -134,15 +135,12 @@ export default function PageClient({ params, evidenceLinks = [] }) {
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
             />
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} />}
             </article>
           </main>
         </div>
       </div>
       {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}
-      {/* 데이터 준비를 어려워하는 유저용 1:1 상담 넛지(세션 1회, 스크롤 후 노출) */}
-      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge />}
       <GlobalModals />
       <UiSemantics />
     </>

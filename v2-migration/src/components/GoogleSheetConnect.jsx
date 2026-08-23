@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import Papa from "papaparse";
 import { parseGoogleSheetUrl, sheetValuesToTable, resolveSheetRange } from "@/utils/googleSheets";
 import { forgetSheetSource, listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
 // 구글 시트 불러오기 — CsvUploader 빈 드롭존의 대체 입력 경로(§CsvUploader.jsx 연동).
-// API 키 방식(OAuth 아님) — 로그인 팝업·동의화면 없이 브라우저가 Sheets API를 바로
-// 호출한다. 대신 시트가 "링크가 있는 모든 사용자에게 공개(보기)"로 설정돼 있어야
-// 한다(비공개 시트는 API 키만으론 못 읽음 — 그건 OAuth가 필요한데, 그 무게가
-// "그냥 링크 하나 붙이는" 이 기능의 UX와 안 맞아 1차 범위에서 뺌). 우리 서버는 이
-// 데이터를 전혀 거치지 않는다(§2.2 원칙 유지 — CSV 업로드와 동일한 신뢰 경계).
+// 전체 공개 시트는 브라우저가 CSV export 주소를 직접 읽고, API 키가 있으면 Sheets
+// API로 탭 이름까지 확인하는 향상 경로를 쓴다. 로그인·OAuth·서버 중계는 없으므로
+// "링크가 있는 모든 사용자" 보기 권한이 필요하다. 우리 서버는 데이터를 전혀
+// 거치지 않는다(§2.2 원칙 유지 — CSV 업로드와 동일한 신뢰 경계).
 //
 // 필요 설정(코드로 못 채우는 부분, 1회성): Google Cloud Console에서
 // 1) 프로젝트 생성 → APIs & Services → Library에서 "Google Sheets API" 활성화
@@ -67,6 +67,26 @@ export async function fetchSheetTable(apiKey, url) {
   const parsed = parseGoogleSheetUrl(url);
   if (!parsed) return { error: "invalid_url" };
 
+  // 공개 시트는 API 키가 없어도 Google의 CSV export 주소를 브라우저에서 바로
+  // 읽을 수 있다. 이 경로는 사용자가 요구한 “전체 공개 링크 하나”를 위한 기본값이며,
+  // 기존 API 키 경로는 탭 이름·메타데이터를 더 정확히 가져오는 향상 경로로 남긴다.
+  if (!apiKey) {
+    const gid = parsed.gid ? `&gid=${encodeURIComponent(parsed.gid)}` : "";
+    const response = await fetch(`https://docs.google.com/spreadsheets/d/${parsed.spreadsheetId}/export?format=csv${gid}`);
+    if (response.status === 403 || response.status === 404) return { error: "forbidden" };
+    if (!response.ok) return { error: "fetch" };
+    const parsedCsv = Papa.parse(await response.text(), { skipEmptyLines: "greedy" });
+    if (parsedCsv.errors?.length) return { error: "fetch" };
+    const { headers: cols, raw } = sheetValuesToTable(parsedCsv.data);
+    if (cols.length === 0 || raw.length === 0) return { error: "empty" };
+    return {
+      headers: cols,
+      raw,
+      fileName: `구글시트 — ${parsed.spreadsheetId}`,
+      sheetUrl: url,
+    };
+  }
+
   const metaRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${parsed.spreadsheetId}?key=${apiKey}&fields=properties.title,sheets.properties`,
   );
@@ -110,9 +130,6 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
 
   const refreshRecentSources = () => listSheetSources(toolId).then(setRecentSources).catch(() => {});
   useEffect(() => { refreshRecentSources(); }, [toolId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 설정(API 키) 전에는 아예 노출하지 않음 — 반쪽짜리 버튼을 유저에게 보여주지 않기 위해.
-  if (!apiKey) return null;
 
   const loadSheet = async (sheetUrl) => {
     onImportStart?.();

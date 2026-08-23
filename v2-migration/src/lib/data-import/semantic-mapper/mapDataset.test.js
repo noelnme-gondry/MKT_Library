@@ -32,4 +32,18 @@ describe("semantic mapping baseline", () => {
       expect.objectContaining({ sourceColumn: "Total Downloads", canonicalKey: "outcome_installs" }),
     ]));
   });
+
+  it("suggests named tool-owned roles, but keeps generic numeric columns unknown and intervention groups confirmation-bound", () => {
+    const result = mapDataset({
+      headers: ["User ID", "Converted", "Content ID", "behaviour_count", "group"],
+      rows: [{ "User ID": "u-1", Converted: "1", "Content ID": "post-1", behaviour_count: "4", group: "treatment" }],
+    });
+    const actual = Object.fromEntries(result.bindings.map((binding) => [binding.sourceColumn, binding]));
+
+    expect(actual["User ID"]).toMatchObject({ canonicalKey: "user_id", decision: "SUGGEST", requiresConfirmation: true });
+    expect(actual.Converted).toMatchObject({ canonicalKey: "outcome_binary", decision: "SUGGEST", requiresConfirmation: true });
+    expect(actual["Content ID"]).toMatchObject({ canonicalKey: "content_id", decision: "SUGGEST", requiresConfirmation: true });
+    expect(actual.behaviour_count).toMatchObject({ canonicalKey: null, decision: "UNKNOWN" });
+    expect(actual.group).toMatchObject({ canonicalKey: "intervention_group", decision: "SUGGEST", requiresConfirmation: true });
+  });
 });

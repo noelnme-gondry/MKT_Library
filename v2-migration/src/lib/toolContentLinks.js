@@ -25,6 +25,7 @@ const SUPPLEMENTARY_BLOG_BY_TOOL = {
   "5-18-paid-organic": ["cannibalization-organic-paid", "offline-ad-online-impact"],
   "5-18-forecast": ["marketing-mix-modeling", "budget-marginal-efficiency"],
   "5-18-trend": ["campaign-anomaly-detection"],
+  "5-28": ["incrementality-measurement", "uplift-holdout-guide"],
 };
 
 const SUPPLEMENTARY_GLOSSARY_BY_TOOL = {
@@ -33,6 +34,7 @@ const SUPPLEMENTARY_GLOSSARY_BY_TOOL = {
   "5-18-paid-organic": ["cannibalization"],
   "5-18-forecast": ["response-curve", "adstock"],
   "5-18-trend": ["mmm"],
+  "5-28": ["retention", "ltv"],
 };
 
 function mergeIndex(base, supplementary) {

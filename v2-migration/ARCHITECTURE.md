@@ -26,6 +26,7 @@ v2-migration/
 │  ├─ workers/                      # dataPreparation·xlsxParse·dashboardVerdict·forecastSelection
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
+│     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
 │     ├─ tools/                     # route별 도구 1 컴포넌트
 │     ├─ dashboard/                 # 5-2 운영 대시보드 9탭 + 필터바 + 커스텀차트
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)
@@ -84,13 +85,14 @@ v2-migration/
 | BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) | fitBest·predictSafeCpr·removeOutliers |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup |
-| CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA) |
+| CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve·`fisherExact2x2`(저전환 구간에서 판정 기준을 정확검정으로 이동)·`holmAdjust` |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군) + `incrPrePostMath.js`(전후·DiD·Welch) | 3방법 탭, CSV 그룹 독립 |
 | BrandCampaignIncrementality.jsx (5-24) | `brandIncrementalityMath.js` | ITS·AR(1) 추론·HAC 소표본 보정·rho 프로파일 구간 |
 | MulticollinearityChecker.jsx (5-25) | `modelDiagnostics.js` (`computeVif`·`correlationMatrix`) | MMM 전 지출 패널의 VIF·Pearson/Spearman 상관 강건성 진단. 높은 VIF는 기여도 분리 거부 신호 |
 | AsaKeywordFinder.jsx (5-26) | `asaKeywordMath.js` | 검색어별 Exact 승격·제외 검토, 예산 소진률·목표 CPA 기반 CPT 증감 후보 |
 | AsoStoreConversion.jsx (5-27) | `asoStoreMath.js` → `pvmMath.js` | 조회=cost·설치=result로 PVM에 위임. 스토어 전환율 변화를 트래픽 구성(mix) vs 소스별 효율(rate)로 분해 + `dailyConversionSeries` 추이 차트. 유입 소스는 `store_source`(광고/오가닉 `source`와 다른 축) |
+| SubscriptionSurvivalAnalysis.jsx (5-28) | `subscriptionSurvivalMath.js` | 구독 에피소드별 Kaplan–Meier·Greenwood 구간·이산 해저드·RMST·log-rank·관측기간 LTV. 중도절단을 반영하며 분류 모델이나 장기 외삽은 하지 않음 |
 | MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(기여분해+`mmmForecast`)·`regMath.js`·`regForecastMath.js`·`responseCannibRank.js`·`mmmPriorMath.js`·`mmmBusinessSeasonality.js` + `lib/analysis/webr/mmmElasticNet.js` | UI/상태와 모델·차트·export 분리. WebR glmnet은 동일 시간창의 **예측 챌린저**일 뿐 기여·인과 모델을 자동 대체하지 않음 |
 | AhaMomentFinder.jsx (5-20·9-2) | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop로 공용 |
 | ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) + `utils/outcomeType.js` + `lib/analysis/webr/logisticRegression.js`·`rateRegression.js`·`countRegression.js`·`mixedModel.js`·`randomForest.js` | **종속변수 척도로 모형을 고른다**: 0/1=binomial · 0~1 비율=beta(로짓) · 카운트=Poisson→과산포면 negbin · 그 외=기존 JS HC3·BH. 반복 단위 열을 고르면 lme4 random intercept(수동 실행). 100행+이면 Random Forest와 동일 교차검증으로 예측력 비교. RF 승리는 예측 레이어 후보일 뿐 회귀 추론은 유지 |
@@ -102,7 +104,7 @@ v2-migration/
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | V1 프로파일·정규화·**도구 스코프 매핑 후보/충돌**·xlsx·wide→long·헤더행 탐지. V2=`data-import/schema/*`(전역 canonical registry·legacy migration·파생 도구 인벤토리) → `profiler/*` → `semantic-mapper/*` → `canonical-v2/*`; 업로드 시 병행 생성하지만 V1 엔진 입력은 아직 불변 |
 | (분석 라우터) | `lib/analysis-router/*` | 도구별 필수 개념·행수·기간 계약 → 가능/주의/불가 + 추천 우선순위. `analysisMethodRouter.js`는 canonical outcome profile·사용자 선언 설계·추정대상에서 방법 후보/명시 실행 WebR 메타를 고르며, `toolId`·원본 헤더로 설계를 추측하지 않는다. `foreignGrain` 계약(5-20·9-1)은 grain이 달라 항상 차단하되 필요한 컬럼을 `TOOL_GUIDE`에서 파생해 안내 |
-| (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. `rateRegression`(betareg·0~1 비율)·`countRegression`(MASS·Poisson→과산포면 negbin)·`mixedModel`(lme4·random intercept, **가장 무거운 다운로드 — 자동 실행 금지**). 척도 판별은 `utils/outcomeType.js`. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
+| (WebR 고급 분석) | `lib/analysis/webr/*` | `kind:"advanced"` registry만 허용. `rateRegression`(betareg·0~1 비율)·`countRegression`(MASS·Poisson→과산포면 negbin)·`mixedModel`(lme4·random intercept, **가장 무거운 다운로드 — 자동 실행 금지**). 척도 판별은 `utils/outcomeType.js`. 단일 lazy R/Wasm runtime+직렬 작업 큐. `sandwich` 로지스틱·`randomForest` 예측 챌린저·`svm` RBF 비선형 챌린저·`glmnet` MMM 시간순 챌린저. 같은 검증창에서 5%+ 개선과 복수 fold가 있어야 예측 교체 **후보**, 기여·인과 엔진은 불변 |
 | (결정 검토) | `lib/decisionReview.js`·`decisionComparableActual.js`·`decisionComparisonScope.js`·`forecastReview.js` | 결정 기록 스키마·기준일+N일 비교 후보·데이터 범위 스코프 |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
@@ -121,6 +123,7 @@ v2-migration/
 - **타입**: DM Sans(body)+Space Grotesk(display)+JetBrains Mono(data), `next/font` 변수만.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만.
+- **홈 전용 도치 데이터 접수**: KR/EN 랜딩만 `assistant/DochiAssistant`를 mount한다. 도치는 CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽는 시작 장면이며, 실제 입력 준비 뒤에만 `/start` 통합 작업대로 handoff한다. 이동 장면은 `public/assets/dochi/`의 투명 PNG 포즈 세트(첫 인사·좌우 측면 A/B·후면 A/B·차트 운반·결과 제시·매핑 안내)를 `assistant/DochiSprite`가 선택하며, 교차 발걸음으로 화면을 대각선 탐색한 뒤 추상 차트 묶음과 화면 wipe를 이용해 `/start` 도착 모션으로 이어진다. `/start` 도착 장면에서도 운반·결과 제시 포즈가 차트 묶음과 함께 이어져 화면 전환과 캐릭터 동작이 분리되지 않는다. 홈 handoff에서만 현재 매핑으로 안전하게 실행 가능한 light baseline 어댑터를 자동 시작하며 확인·설계가 필요한 분석은 실행하지 않는다. `/start`는 데이터 접수 상태 바로 아래에 전역 매핑을 접힌 단일 토글로 먼저 두고, 도치가 토글을 하이라이트해 안내한다. 대화창의 확인은 매핑을 강제 확정하거나 토글을 여는 동작이 아니라 도치만 퇴장시키며, 이후 토글 상태는 사용자가 제어한다. 매핑이 바뀌면 기존 결과를 stale 처리하고 사용자가 다시 실행할 때 새 매핑으로 가능한 baseline 분석 전체와 반환 시각화를 다시 구성한다. `prefers-reduced-motion`에서는 장거리 이동·wipe와 반복 강조를 생략한다. `/start`는 연결된 어댑터에서 안전하게 계산 가능한 요약·표·차트를 모두 가져오는 분석 지도이며 고급 모형 설정과 추가 진단은 각 상세 분석 화면으로 넘긴다. 도구 화면에는 도치가 남지 않으며, 기존 `ToolAssistRail`은 도구별 보조 문맥으로 유지한다.
 - **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개(점검·추세잠식·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다.
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
 - **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.

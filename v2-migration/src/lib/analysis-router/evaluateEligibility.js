@@ -26,6 +26,9 @@ export const ANALYSIS_CONTRACTS = {
   "5-25": { minRows: 10, minPeriods: 5, minEntities: 2, blockBelowMinEntities: true, minPeriodsOverEntities: 3, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], priority: 5 },
   // 앞뒤 기간을 갈라 비교하므로 날짜 4일 + 소스 2개가 최소 조건이다.
   "5-27": { minRows: 8, minPeriods: 4, minEntities: 2, blockBelowMinEntities: true, entityFields: ["store_source"], priority: 6 },
+  // 한 행이 한 구독 에피소드라 날짜 축을 요구하지 않는다. 기간과 이탈 여부의
+  // 유효성·중도절단 구성은 5-28 순수 엔진이 별도로 검증한다.
+  "5-28": { minRows: 2, minPeriods: 0, priority: 9 },
   // 검색어 리포트와 소재 일별 리포트는 일반 운영 CSV와 구조가 달라, /start에서
   // 개별 도구의 매핑 계약으로 별도 판정해야 한다.
   "5-26": { minRows: 1, minPeriods: 1, priority: 2 },

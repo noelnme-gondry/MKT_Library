@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
@@ -22,7 +22,48 @@ describe("StartGate render smoke", () => {
     window.gtag = vi.fn();
   });
 
-  afterEach(() => { delete window.gtag; });
+  afterEach(() => { delete window.gtag; window.sessionStorage.clear(); vi.useRealTimers(); });
+
+  it("continues a recent home handoff with a chart-delivery arrival transition", () => {
+    vi.useFakeTimers();
+    const slice = {
+      raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
+      headers: ["date", "cost", "installs"],
+      mapping: { date: "date", cost: "cost", installs: "installs" },
+      fileName: "weekly.csv",
+      canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
+      mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
+    };
+    useAppStore.setState({
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+    window.sessionStorage.setItem("dochi_analysis_handoff", JSON.stringify({ locale: "ko", startedAt: Date.now() }));
+    render(<StartGate />);
+    act(() => vi.advanceTimersByTime(0));
+    expect(document.querySelector(".dochi-arrival .dochi-chart-bundle")).toBeTruthy();
+    expect(document.querySelector('.dochi-arrival__runner img[src*="dochi-delivery.png"]')).toBeTruthy();
+    expect(document.querySelector('.dochi-arrival__presenter img[src*="dochi-present-results.png"]')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1500));
+    expect(document.querySelector(".dochi-arrival")).toBeNull();
+    expect(screen.getByText("컬럼을 확인해 주세요!")).toBeTruthy();
+    const mapping = document.querySelector(".csv-mapping-block");
+    expect(mapping.open).toBe(false);
+    expect(mapping.classList.contains("is-dochi-highlighted")).toBe(true);
+    const coach = document.querySelector(".dochi-mapping-coach");
+    expect(coach.querySelector('img[src*="dochi-point-up.png"]')).toBeTruthy();
+    expect(mapping.compareDocumentPosition(coach) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "확인" }));
+    expect(mapping.open).toBe(false);
+    expect(document.querySelector(".dochi-mapping-coach").classList.contains("is-leaving")).toBe(true);
+    act(() => vi.advanceTimersByTime(360));
+    expect(document.querySelector(".dochi-mapping-coach")).toBeNull();
+    expect(mapping.classList.contains("is-dochi-highlighted")).toBe(false);
+    fireEvent.click(mapping.querySelector("summary"));
+    expect(mapping.open).toBe(true);
+    fireEvent.click(mapping.querySelector("summary"));
+    expect(mapping.open).toBe(false);
+  });
 
   it("mounts with upload first, direct no-file actions, and tool browser", () => {
     expect(() => render(<StartGate />)).not.toThrow();
@@ -75,7 +116,7 @@ describe("StartGate render smoke", () => {
     expect(g.aha.raw.length).toBe(1); // 실제 업로드 → 보존
   });
 
-  it("shows analysis eligibility immediately after a real file is prepared", () => {
+  it("shows the Dochi workspace and mapping review immediately after a real file is prepared", () => {
     const slice = {
       raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
       headers: ["date", "cost", "installs"],
@@ -90,11 +131,16 @@ describe("StartGate render smoke", () => {
       csvData: slice,
     });
     render(<StartGate />);
-    expect(document.querySelector(".analysis-recommendations")).toBeTruthy();
-    expect(screen.getByText(/자동 매핑을 마쳤습니다/)).toBeTruthy();
+    const workspace = document.querySelector(".dochi-workspace");
+    const mapping = document.querySelector(".csv-mapping-block");
+    expect(workspace).toBeTruthy();
+    expect(screen.getByText(/도치가 찾은 분석 지도/)).toBeTruthy();
+    expect(mapping).toBeTruthy();
+    expect(mapping.open).toBe(false);
+    expect(mapping.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("uses per-tool eligibility without showing a contradictory generic mapping gate", () => {
+  it("uses one parsed input for detailed-tool handoff while keeping the workspace mapping review visible", () => {
     const raw = Array.from({ length: 5 }, (_, day) => ["Google", "Meta"].map((channel, index) => ({
       date: `2026-08-0${day + 1}`,
       channel,
@@ -116,11 +162,10 @@ describe("StartGate render smoke", () => {
 
     const startView = render(<StartGate />);
 
-    expect(screen.getByRole("heading", { name: new RegExp(nameOf("5-25")) })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "추천 분석 결과" })).toBeTruthy();
+    expect(screen.getByText(/도치가 찾은 분석 지도/)).toBeTruthy();
     expect(document.querySelector(".data-journey")).toBeNull();
     expect(screen.queryByText(/필수 컬럼이 매핑되지 않았습니다/)).toBeNull();
-    expect(document.querySelector(".csv-mapping-block")).toBeNull();
+    expect(document.querySelector(".csv-mapping-block")).toBeTruthy();
 
     // 인덱스에서 도구를 고르면 올린 CSV가 그 도구용으로 다시 매핑돼 따라가야 한다.
     // 평범한 링크 이동이 되면 도구가 빈 상태로 열린다.
