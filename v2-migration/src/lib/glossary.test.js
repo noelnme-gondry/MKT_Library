@@ -21,6 +21,14 @@ describe("glossary entity and SEO titles", () => {
     expect(term.term).toBe("Uplift");
     expect(term.seoTitle).toBe("What Is Uplift? Measure Incremental Ad Impact with a Holdout");
   });
+
+  it("keeps Korean search spelling variants on the matching definitions", () => {
+    const holdout = getTermBySlug("holdout-test");
+    const deepLink = getTermBySlug("deep-link");
+
+    expect(`${holdout.seoTitle} ${holdout.keywords} ${holdout.html}`).toContain("홀드 아웃");
+    expect(`${deepLink.seoTitle} ${deepLink.keywords} ${deepLink.html}`).toContain("디퍼드딥링크");
+  });
 });
 
 describe.each(["ko", "en"])("glossary SERP budget (%s)", (locale) => {

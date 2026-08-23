@@ -1,9 +1,9 @@
 ---
 title: "Event Taxonomy: Naming Rules for GA4 and MMP"
-description: "A practical event taxonomy guide for names, parameters, user properties, platform mapping, versioning, and developer QA."
+description: "A practical event taxonomy guide for SDK event names, parameters, user properties, platform mapping, versioning, and developer QA."
 date: "2026-07-18"
 slug: "event-taxonomy-guide"
-keywords: "event taxonomy, event naming convention, in-app event design, GA4 events, MMP events, event parameters, event QA"
+keywords: "event taxonomy, marketing taxonomy, SDK events, event naming convention, in-app event design, GA4 events, MMP events, event parameters, event QA"
 tags: ["Measurement", "Metrics Basics"]
 draft: false
 ogImage: "/blog-assets/event-taxonomy-guide/og.svg"
@@ -25,7 +25,7 @@ faq:
 ---
 An event name describes the **user action**. Parameters describe its **context and value**. Keep that split: do not turn one event into a bag of screen, product, and payment details. It is how GA4, your MMP, ad platforms, and internal reports can read the same action with the same meaning.
 
-An event taxonomy is not a screen inventory. It is the operating contract for event names, parameters, user properties, and firing conditions.
+An event taxonomy is not a screen inventory. It is the operating contract for event names, parameters, user properties, and firing conditions. SDK events need that same contract so that GA4, the MMP, and ad platforms do not attach different meanings to one conversion.
 
 ## Separate action, context, and user state
 

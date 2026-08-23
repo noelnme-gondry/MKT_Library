@@ -124,12 +124,14 @@ describe("editorial SEO registries", () => {
         "cohort-analysis-guide": "D30 리텐션",
         "aso-basics-guide": "ASO 전략",
         "cannibalization-organic-paid": "내부 카니발라이제이션",
+        "event-taxonomy-guide": "SDK 이벤트",
       },
       en: {
         "budget-marginal-efficiency": "marketing budget allocation",
         "cohort-analysis-guide": "d30 retention",
         "aso-basics-guide": "aso strategy",
         "cannibalization-organic-paid": "internal cannibalisation",
+        "event-taxonomy-guide": "sdk event",
       },
     };
     for (const [locale, entries] of Object.entries(coverage)) {
