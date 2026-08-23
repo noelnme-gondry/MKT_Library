@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { normalizeRandomForestResult, prepareRandomForestInput } from "./randomForest";
 
-function input(n = 120) {
+function input(n = 120, predictorCount = 2) {
   return {
-    X: Array.from({ length: n }, (_, index) => [1, index % 2, index % 7]),
+    X: Array.from({ length: n }, (_, index) => [1, ...Array.from({ length: predictorCount }, (_, featureIndex) => (index + featureIndex) % 7)]),
     y: Array.from({ length: n }, (_, index) => index % 3 === 0 ? 1 : 0),
-    terms: ["(Intercept)", "hook", "length"],
+    terms: ["(Intercept)", ...Array.from({ length: predictorCount }, (_, index) => ["hook", "length"][index] || `feature_${index}`)],
   };
 }
 
@@ -32,6 +32,14 @@ describe("WebR Random Forest challenger adapter", () => {
       ok: false,
       reason: "too_many_observations",
       maxObservations: 1000,
+    });
+  });
+
+  it("caps predictors so the minimum-row rule never exceeds the browser row cap", () => {
+    expect(prepareRandomForestInput(input(1000, 41))).toMatchObject({
+      ok: false,
+      reason: "too_many_predictors",
+      maxPredictors: 40,
     });
   });
 

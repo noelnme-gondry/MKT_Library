@@ -6135,6 +6135,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .dochi-workspace__head dt { color:var(--text-muted);font:650 9.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase; }
 .dochi-workspace__head dd { max-width:150px;margin:3px 0 0;overflow:hidden;color:var(--text-primary);font:650 11px var(--font-sans);text-overflow:ellipsis;white-space:nowrap; }
 .dochi-workspace__mapping-note { margin:12px 0 0;padding:9px 11px;border-left:2px solid var(--primary);background:var(--surface-container-low);color:var(--text-secondary);font-size:11px;line-height:1.5; }
+.dochi-workspace__handoff-loading { margin:10px 0 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--primary) 42%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--primary) 7%,var(--surface-container-lowest));color:var(--text-secondary);font-size:11px; }
 .dochi-workspace__scope-note { display:flex;align-items:baseline;gap:9px;margin:14px 0 0;padding:10px 12px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);color:var(--text-secondary);font-size:11px;line-height:1.5; }
 .dochi-workspace__scope-note strong { flex:0 0 auto;color:var(--primary);font:750 9.5px var(--font-mono);letter-spacing:.08em;text-transform:uppercase; }
 .dochi-workspace__recommended { max-width:720px;margin-top:18px;padding:15px;border:1px solid color-mix(in srgb,var(--primary) 48%,var(--border));border-radius:10px;background:var(--surface-container-low); }
@@ -7787,16 +7788,15 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
   .dochi-assistant__trigger .dochi-assistant__mascot { animation:none !important; }
 }
 
-/* 홈의 도치는 전역 도움말이 아니라, CSV·공개 시트 접수를 맡는 한 번의 시작 장면이다.
-   업로드가 끝나면 /start 작업대로 넘겨서 캐릭터와 결과가 한 화면에서 경쟁하지 않는다. */
-.dochi-home-assistant { position:fixed;right:28px;bottom:22px;z-index:24;width:min(498px,calc(100vw - 32px));min-height:214px;pointer-events:none; }
+/* 홈의 도치는 CSV 접수→매핑→동일 페이지의 실제 결과까지 이어지는 시작 장면이다. */
+.dochi-home-assistant { position:fixed;right:28px;bottom:22px;z-index:24;display:grid;grid-template-columns:minmax(0,1fr) 156px;align-items:end;width:min(498px,calc(100vw - 32px));min-height:174px;pointer-events:none; }
 .dochi-home-assistant :is(button,input,a) { pointer-events:auto; }
-.dochi-home-assistant__speech { position:relative;width:min(388px,calc(100% - 104px));min-height:154px;padding:18px 19px 15px;border:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-radius:18px;background:var(--surface-container-lowest);box-shadow:0 14px 0 color-mix(in srgb,var(--primary) 12%,transparent),0 22px 42px color-mix(in srgb,var(--bg-1) 25%,transparent);color:var(--text-secondary);pointer-events:auto; }
-.dochi-home-assistant__speech::after { position:absolute;right:58px;bottom:-15px;width:25px;height:25px;border-right:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-bottom:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));background:var(--surface-container-lowest);content:"";transform:rotate(45deg); }
+.dochi-home-assistant__speech { position:relative;z-index:1;grid-column:1;min-height:154px;padding:16px 17px 13px;border:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-radius:18px;background:var(--surface-container-lowest);box-shadow:0 14px 0 color-mix(in srgb,var(--primary) 12%,transparent),0 22px 42px color-mix(in srgb,var(--bg-1) 25%,transparent);color:var(--text-secondary);pointer-events:auto; }
+.dochi-home-assistant__speech::after { position:absolute;right:22px;bottom:-15px;width:25px;height:25px;border-right:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-bottom:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));background:var(--surface-container-lowest);content:"";transform:rotate(45deg); }
 .dochi-home-assistant__speech p { margin:0;font-size:13px;line-height:1.55;letter-spacing:-.018em; }
 .dochi-home-assistant__speech .dochi-home-assistant__hello { margin-bottom:4px;color:var(--text-primary);font:750 15px var(--font-sans); }
 .dochi-home-assistant__speech small { position:relative;z-index:1;display:block;margin-top:8px;color:var(--text-muted);font-size:9.5px;line-height:1.4; }
-.dochi-home-assistant__stage { position:absolute;right:0;bottom:-5px;width:178px;height:178px;pointer-events:none;transform-origin:50% 90%; }
+.dochi-home-assistant__stage { position:relative;z-index:2;grid-column:2;width:156px;height:156px;margin-bottom:-5px;pointer-events:none;transform-origin:50% 90%; }
 .dochi-home-assistant__stage .dochi-sprite { width:100%;height:100%;filter:drop-shadow(0 12px 10px color-mix(in srgb,var(--bg-1) 27%,transparent)); }
 .dochi-home-assistant[data-phase="welcome"] .dochi-home-assistant__stage .dochi-sprite { animation:dochi-home-breathe 3.8s ease-in-out infinite; }
 .dochi-sprite { position:relative;display:block;overflow:visible;transform-origin:center; }
@@ -7805,18 +7805,14 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-sprite__frame--a { animation:dochi-sprite-frame-a .24s steps(1,end) infinite; }
 .dochi-sprite__frame--b { animation:dochi-sprite-frame-b .24s steps(1,end) infinite; }
 .dochi-sprite.is-left { transform:scaleX(-1); }
-.dochi-journey { position:fixed;inset:0;z-index:26;overflow:hidden;pointer-events:none;isolation:isolate; }
+.dochi-journey { position:fixed;inset:0;z-index:26;overflow:hidden;pointer-events:none;isolation:isolate;background:color-mix(in srgb,var(--text-muted) 42%,var(--surface-container-lowest)); }
 .dochi-journey__route-grid { position:absolute;inset:0;z-index:0;opacity:0;background-image:linear-gradient(color-mix(in srgb,var(--primary) 8%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--primary) 8%,transparent) 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(90deg,transparent 4%,#000 32%,#000 78%,transparent 98%); }
-.dochi-journey.is-reading .dochi-journey__route-grid { animation:dochi-route-grid 3.2s ease both; }
+.dochi-journey.is-running .dochi-journey__route-grid { animation:dochi-route-grid 1.85s ease both; }
 .dochi-journey__runner { position:absolute;top:0;left:0;z-index:3;width:152px;height:152px;opacity:0;filter:drop-shadow(0 10px 8px color-mix(in srgb,var(--bg-1) 24%,transparent));will-change:transform,opacity; }
 .dochi-journey__runner .dochi-sprite { width:100%;height:100%; }
-.dochi-journey.is-reading .dochi-journey__runner--left { animation:dochi-route-left 3.2s linear both; }
-.dochi-journey.is-reading .dochi-journey__runner--back { animation:dochi-route-back 3.2s linear both; }
-.dochi-journey.is-reading .dochi-journey__runner--right { animation:dochi-route-right 3.2s linear both; }
-.dochi-journey.is-sorting .dochi-journey__runner--delivery { animation:dochi-route-delivery 1.35s cubic-bezier(.3,.15,.28,1) both; }
-.dochi-journey.is-sorting .dochi-journey__runner--results { animation:dochi-route-results .52s .82s cubic-bezier(.2,1.2,.45,1) both; }
-.dochi-journey__curtain { position:absolute;inset:-2px;z-index:2;opacity:0;background:color-mix(in srgb,var(--surface-container-lowest) 94%,var(--primary));clip-path:circle(0 at 18% 73%); }
-.dochi-journey.is-sorting .dochi-journey__curtain { animation:dochi-handoff-curtain 1.45s cubic-bezier(.65,0,.2,1) both; }
+.dochi-journey.is-running .dochi-journey__runner--crossing { animation:dochi-route-crossing 1.15s cubic-bezier(.18,.76,.28,1) both; }
+.dochi-journey.is-running .dochi-journey__runner--delivery { animation:dochi-route-delivery 1.18s .62s cubic-bezier(.3,.15,.28,1) both; }
+.dochi-journey > p { position:absolute;left:50%;bottom:12vh;z-index:4;margin:0;color:var(--text-secondary);font:750 11px var(--font-mono);letter-spacing:.08em;transform:translateX(-50%);animation:dochi-journey-label 1.85s ease both; }
 
 .dochi-chart-bundle { position:absolute;width:224px;height:106px; }
 .dochi-journey__runner--delivery .dochi-chart-bundle { top:18px;left:116px;transform-origin:left center; }
@@ -7834,6 +7830,23 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-chart-bundle__card.is-kpi strong { height:23px;background:color-mix(in srgb,var(--primary) 64%,#fff); }
 .dochi-chart-bundle__card.is-kpi i { height:23px; }
 .dochi-chart-bundle__card.is-kpi b { grid-column:1/-1;width:82%;height:4px; }
+
+.dochi-home-mapping,.dochi-home-results { width:min(1040px,100%);margin:26px auto;padding:20px;border:1px solid var(--border);border-radius:16px;background:var(--surface-container-lowest);box-shadow:0 18px 42px color-mix(in srgb,var(--bg-1) 10%,transparent); }
+.dochi-home-mapping > header { margin-bottom:16px; }
+.dochi-home-mapping > header > span,.dochi-home-results summary > span { display:block;color:var(--primary);font:750 9.5px var(--font-mono);letter-spacing:.12em; }
+.dochi-home-mapping h2 { margin:5px 0 4px;color:var(--text-primary);font-size:21px;letter-spacing:-.03em; }
+.dochi-home-mapping > header p,.dochi-home-results > details > p { margin:0;color:var(--text-secondary);font-size:12px;line-height:1.55; }
+.dochi-home-results > details > summary { display:grid;grid-template-columns:1fr auto;gap:4px 18px;align-items:center;cursor:pointer;list-style:none; }
+.dochi-home-results > details > summary::-webkit-details-marker { display:none; }
+.dochi-home-results summary > span { grid-column:1/-1; }
+.dochi-home-results summary > h2 { margin:0;color:var(--text-primary);font-size:20px;letter-spacing:-.03em; }
+.dochi-home-results summary > i { color:var(--text-muted);font-size:11px;font-style:normal; }
+.dochi-home-results > details > p { margin:10px 0 16px; }
+.dochi-workspace--embedded { margin:0; }
+.dochi-workspace--embedded .dochi-workspace__grid { grid-template-columns:1fr; }
+.dochi-workspace__embedded-result { margin-top:12px; }
+.dochi-workspace__embedded-result > summary { color:var(--text-muted);font-size:11px;cursor:pointer; }
+.dochi-workspace__embedded-loading { margin:0;padding:20px;border:1px dashed var(--border);border-radius:10px;color:var(--text-muted);font-size:12px; }
 
 .dochi-arrival { position:fixed;inset:0;z-index:60;overflow:hidden;pointer-events:none;background:color-mix(in srgb,var(--surface-container-lowest) 94%,var(--primary));animation:dochi-arrival-reveal 1.5s cubic-bezier(.65,0,.2,1) both; }
 .dochi-arrival__grid { position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--primary) 9%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--primary) 9%,transparent) 1px,transparent 1px);background-size:48px 48px; }
@@ -7922,6 +7935,13 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
   97% { opacity:1;transform:translate(calc(100vw - 172px),34vh) rotate(10deg); }
   100% { opacity:0;transform:translate(calc(100vw - 172px),34vh) rotate(10deg); }
 }
+@keyframes dochi-route-crossing {
+  0% { opacity:0;transform:translate(-150px,calc(100vh - 170px)) rotate(-8deg) scale(.9); }
+  8% { opacity:1; }
+  45% { opacity:1;transform:translate(43vw,43vh) rotate(8deg) scale(1); }
+  88% { opacity:1;transform:translate(calc(100vw - 170px),7vh) rotate(12deg) scale(.96); }
+  100% { opacity:0;transform:translate(calc(100vw - 130px),-80px) rotate(12deg) scale(.92); }
+}
 @keyframes dochi-route-delivery {
   0% { opacity:0;transform:translate(calc(100vw - 188px),10vh) rotate(-8deg) scale(.9); }
   8% { opacity:1; }
@@ -7934,6 +7954,7 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
   from { opacity:0;transform:translate(63vw,46vh) scale(.65) rotate(-8deg); }
   to { opacity:1;transform:translate(69vw,58vh) scale(1) rotate(0); }
 }
+@keyframes dochi-journey-label { 0%,18% { opacity:0;transform:translate(-50%,10px); } 34%,78% { opacity:1;transform:translate(-50%,0); } 100% { opacity:0;transform:translate(-50%,-8px); } }
 @keyframes dochi-handoff-curtain { 0%,42% { opacity:0;clip-path:circle(0 at 18% 73%); } 48% { opacity:1; } 100% { opacity:1;clip-path:circle(160% at 18% 73%); } }
 @keyframes dochi-arrival-reveal { 0%,18% { opacity:1;clip-path:circle(160% at 50% 52%); } 100% { opacity:0;clip-path:circle(0 at 50% 52%);visibility:hidden; } }
 @keyframes dochi-arrival-runner { 0% { opacity:0;transform:translate(calc(100vw - 190px),8vh) rotate(-8deg) scale(.86); } 10% { opacity:1; } 48% { opacity:1;transform:translate(62vw,27vh) rotate(8deg) scale(1); } 88% { opacity:1;transform:translate(calc(50vw - 310px),calc(48vh - 80px)) rotate(-5deg) scale(1.02); } 100% { opacity:0;transform:translate(calc(50vw - 260px),calc(48vh - 78px)) rotate(0) scale(.96); } }
@@ -7944,13 +7965,11 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 @keyframes dochi-mapping-focus { 0%,100% { box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent),0 12px 30px color-mix(in srgb,var(--primary) 8%,transparent); } 50% { box-shadow:0 0 0 6px color-mix(in srgb,var(--primary) 22%,transparent),0 18px 42px color-mix(in srgb,var(--primary) 16%,transparent); } }
 body:has(.consent-banner) .dochi-home-assistant { display:none; }
 @media (max-width:700px) {
-  .dochi-home-assistant { right:16px;bottom:max(18px,env(safe-area-inset-bottom));width:calc(100vw - 32px);min-height:196px; }
-  .dochi-home-assistant__speech { width:calc(100% - 62px);min-height:152px;padding:15px 14px 13px; }
+  .dochi-home-assistant { right:16px;bottom:max(18px,env(safe-area-inset-bottom));grid-template-columns:minmax(0,1fr) 104px;width:calc(100vw - 32px);min-height:152px; }
+  .dochi-home-assistant__speech { min-height:152px;padding:15px 14px 13px; }
   .dochi-home-assistant__speech p { font-size:12px; }
-  .dochi-home-assistant__stage { right:-12px;bottom:-4px;width:132px;height:132px; }
-  .dochi-home-assistant__speech::after { right:37px; }
-  .dochi-home-assistant[data-phase="reading"] .dochi-home-assistant__stage { animation:dochi-home-run-mobile 1.2s ease-in-out infinite; }
-  .dochi-home-assistant[data-phase="sorting"] .dochi-home-assistant__stage { animation:dochi-home-return-mobile 1.3s ease-out both; }
+  .dochi-home-assistant__stage { width:108px;height:108px;margin-bottom:-4px; }
+  .dochi-home-assistant__speech::after { right:16px; }
   .dochi-journey__runner { width:124px;height:124px; }
   .dochi-journey__runner--delivery .dochi-chart-bundle { top:12px;left:94px;transform:scale(.72); }
   .dochi-arrival__bundle { transform-origin:center; }
@@ -7960,6 +7979,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   .dochi-mapping-coach { min-height:170px;padding-right:80px; }
   .dochi-mapping-coach__speech { padding:14px 14px 13px; }
   .dochi-mapping-coach__sprite { right:-12px;width:108px;height:108px; }
+  .dochi-home-mapping,.dochi-home-results { margin:18px 0;padding:15px;border-radius:12px; }
   .dochi-workspace__chart svg { min-height:170px;aspect-ratio:4/3; }
 }
 @keyframes dochi-home-run-mobile { 0%,100% { transform:translateX(0); } 50% { transform:translateX(calc(-1 * min(55vw,300px))); } }

@@ -19,6 +19,9 @@ export function prepareRandomForestInput({ X = [], y = [], terms = [] } = {}) {
   if (y.length > DEFINITION.maxObservations) {
     return { ok: false, reason: "too_many_observations", n: y.length, maxObservations: DEFINITION.maxObservations, predictorCount };
   }
+  if (predictorCount > DEFINITION.maxPredictors) {
+    return { ok: false, reason: "too_many_predictors", n: y.length, predictorCount, maxPredictors: DEFINITION.maxPredictors };
+  }
   if (new Set(y).size < 2) return { ok: false, reason: "constant_outcome" };
   const outcomeType = y.every((value) => value === 0 || value === 1) ? "classification" : "regression";
   const requiredObservations = Math.max(

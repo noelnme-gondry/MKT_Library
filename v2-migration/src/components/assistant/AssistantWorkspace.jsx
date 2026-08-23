@@ -45,6 +45,7 @@ const COPY = {
     design: "설계 확인 필요",
     blocked: "추가 데이터 필요",
     details: "추가 차트·상세 분석 열기",
+    preparingDetails: "상세 분석 화면을 준비하고 있습니다.",
     adapterPending: "상세 분석에서 실행",
     adapterPendingDetail: "이 분석은 이 화면에서 실행하거나 결과를 만들지 않았습니다. 상세 분석에서 차트와 분석 조건을 확인해 주세요.",
     stale: "매핑 또는 입력이 바뀌어 이전 실행 대기열을 오래된 상태로 표시했습니다. 현재 매핑으로 다시 시작하세요.",
@@ -73,6 +74,8 @@ const COPY = {
     caveats: "해석 한계",
     primaryView: "요약 결과",
     detailsView: "해석 한계 보기",
+    resultToggle: "결과 펼치기/접기",
+    embeddedRunning: "도치가 실제 데이터를 계산하고 있습니다.",
     staleResult: "이 결과는 이전 입력 또는 매핑에서 생성됐습니다. 현재 데이터의 결과로 표시하지 않습니다.",
     adapterError: "분석 실행 중 결과를 만들지 못했습니다. 상세 도구에서 조건을 확인해 주세요.",
     approve: "승인하고 상세 도구에서 계속",
@@ -117,6 +120,7 @@ const COPY = {
     design: "Design confirmation needed",
     blocked: "More data needed",
     details: "Open extra charts and details",
+    preparingDetails: "Preparing the detailed analysis.",
     adapterPending: "Run in detailed analysis",
     adapterPendingDetail: "This screen did not run the analysis or create a result. Review its charts and analysis conditions in the detailed analysis.",
     stale: "A mapping or input changed, so the previous run queue is marked stale. Start again with the current mapping.",
@@ -145,6 +149,8 @@ const COPY = {
     caveats: "Interpretation limits",
     primaryView: "Summary result",
     detailsView: "Show interpretation limits",
+    resultToggle: "Show or hide result",
+    embeddedRunning: "Dochi is calculating your actual data.",
     staleResult: "This result was created from a previous input or mapping. It is not shown as a result for the current data.",
     adapterError: "The workspace could not produce a result. Review the conditions in the detailed tool.",
     approve: "Approve and continue in detailed tool",
@@ -470,8 +476,9 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   </article>;
 }
 
-function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false }) {
+function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full" }) {
   const C = COPY[locale] || COPY.ko;
+  const isEmbedded = presentation === "embedded";
   const entry = analysisCatalogEntry(result.toolId);
   const isBlocked = result.status === "blocked";
   const queueState = queueItem?.state || null;
@@ -484,27 +491,34 @@ function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueIt
   const isApprovedHandoff = queueState === "handoff";
   return (
     <article className={`dochi-workspace__card is-${result.status}${isDecisionFocus ? " is-focused" : ""}${hasCurrentResult ? " has-current-result" : ""}`}>
-      <div className="dochi-workspace__card-top">
+      {!isEmbedded && <div className="dochi-workspace__card-top">
         <span>{entry?.toolId}</span>
         <em>{queueStateLabel(queueState, C, C.status[result.status])}</em>
-      </div>
+      </div>}
       <h3>{titleFor(result.toolId, getTitle)}</h3>
-      <p>{isBlocked ? blockersText(result, locale) : result.recommendationReason}</p>
-      {!isBlocked && result.requiresConfirmation?.length > 0 && <small>{C.requires}: {result.requiresConfirmation.join(", ")}</small>}
-      {hasCurrentResult && !isDecisionFocus && <AnalysisResultOutput result={workspaceResult} locale={locale} />}
-      {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
-      {queueState === "failed" && <div className="dochi-workspace__adapter-note"><strong>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPending : C.resultError}</strong><span>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPendingDetail : C.adapterError}</span></div>}
-      {isApprovedHandoff && <div className="dochi-workspace__adapter-note"><strong>{C.handoff}</strong><span>{C.approvedHandoff}</span></div>}
-      {needsApproval && !isApprovedHandoff && <button type="button" className="ab-button" onClick={() => onConfirm?.(result)}>{C.approve}<span aria-hidden="true"> →</span></button>}
-      <button type="button" className="ab-pill" onClick={() => onOpenTool(result.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>
+      {!isEmbedded && <>
+        <p>{isBlocked ? blockersText(result, locale) : result.recommendationReason}</p>
+        {!isBlocked && result.requiresConfirmation?.length > 0 && <small>{C.requires}: {result.requiresConfirmation.join(", ")}</small>}
+      </>}
+      {hasCurrentResult && !isDecisionFocus && (isEmbedded
+        ? <details className="dochi-workspace__embedded-result" open={result.toolId === "5-2"}><summary>{C.resultToggle}</summary><AnalysisResultOutput result={workspaceResult} locale={locale} /></details>
+        : <AnalysisResultOutput result={workspaceResult} locale={locale} />)}
+      {!isEmbedded && <>
+        {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
+        {queueState === "failed" && <div className="dochi-workspace__adapter-note"><strong>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPending : C.resultError}</strong><span>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPendingDetail : C.adapterError}</span></div>}
+        {isApprovedHandoff && <div className="dochi-workspace__adapter-note"><strong>{C.handoff}</strong><span>{C.approvedHandoff}</span></div>}
+        {needsApproval && !isApprovedHandoff && <button type="button" className="ab-button" onClick={() => onConfirm?.(result)}>{C.approve}<span aria-hidden="true"> →</span></button>}
+        <button type="button" className="ab-pill" onClick={() => onOpenTool(result.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>
+      </>}
     </article>
   );
 }
 
-export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, autoStart = false }) {
+export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, autoStart = false, presentation = "full" }) {
   const C = COPY[locale] || COPY.ko;
   const [queue, setQueue] = useState(null);
   const [announcement, setAnnouncement] = useState("");
+  const [isPreparingHandoff, setIsPreparingHandoff] = useState(false);
   const currentInputSignature = useMemo(() => analysisInputSignature(csvData), [csvData]);
   const currentMappingSignature = useMemo(() => JSON.stringify(csvData.mapping || {}), [csvData.mapping]);
   const previousSignatureRef = useRef(`${currentInputSignature}:${currentMappingSignature}`);
@@ -578,12 +592,35 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const decisionFocus = [...currentResults].reverse().find(({ queueItem }) => queueItem.result.status === "success")
     || currentResults.at(-1)
     || null;
-  const openTool = (toolId) => onOpenTool?.(toolId, prepareHandoffForTool(toolId));
-  const openNaturalExperiment = (handoff) => onOpenTool?.(
-    handoff.targetToolId,
-    prepareHandoffForTool(handoff.targetToolId),
-    { naturalExperiment: handoff },
-  );
+  const deferHandoff = useCallback((callback) => {
+    setIsPreparingHandoff(true);
+    let innerFrame = null;
+    const frame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        try {
+          callback();
+        } finally {
+          setIsPreparingHandoff(false);
+        }
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (innerFrame != null) window.cancelAnimationFrame(innerFrame);
+    };
+  }, []);
+  const openTool = (toolId) => {
+    if (!onOpenTool) return;
+    deferHandoff(() => onOpenTool(toolId, prepareHandoffForTool(toolId)));
+  };
+  const openNaturalExperiment = (handoff) => {
+    if (!onOpenTool) return;
+    deferHandoff(() => onOpenTool(
+      handoff.targetToolId,
+      prepareHandoffForTool(handoff.targetToolId),
+      { naturalExperiment: handoff },
+    ));
+  };
   const queueSignature = `${currentInputSignature}:${currentMappingSignature}`;
   const activeQueueItem = queue?.items.find((item) => item.state === "running") || null;
 
@@ -706,6 +743,14 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     return <section className="dochi-workspace dochi-workspace--empty" aria-labelledby="dochi-workspace-title"><h2 id="dochi-workspace-title">{C.title}</h2><p>{C.empty}</p></section>;
   }
 
+  if (presentation === "embedded") {
+    return <section className="dochi-workspace dochi-workspace--embedded" aria-live="polite">
+      {currentResults.length ? <div className="dochi-workspace__grid">
+        {currentResults.map(({ result, queueItem }) => <AnalysisCard key={result.toolId} result={result} locale={locale} getTitle={getTitle} queueItem={queueItem} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} presentation="embedded" />)}
+      </div> : <p className="dochi-workspace__embedded-loading">{baseline.length ? C.embeddedRunning : C.noBaseline}</p>}
+    </section>;
+  }
+
   return (
     <section className="dochi-workspace" aria-labelledby="dochi-workspace-title">
       <header className="dochi-workspace__head">
@@ -715,6 +760,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <p className="dochi-workspace__scope-note"><strong>{C.scopeLabel}</strong>{C.scopeNote}</p>
       <p className="dochi-workspace__mapping-note">{C.mappingReview}</p>
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
+      {isPreparingHandoff && <p className="dochi-workspace__handoff-loading" role="status">{C.preparingDetails}</p>}
 
       {recommended && <section className="dochi-workspace__judgment" aria-labelledby="dochi-recommended-title">
         <div className="dochi-workspace__judgment-copy"><span>{C.judgment}</span><h3 id="dochi-recommended-title">{titleFor(recommended.toolId, getTitle)}</h3><p><b>{C.reason}</b>{recommended.recommendationReason}</p><small>{C.judgmentReview}</small></div>
