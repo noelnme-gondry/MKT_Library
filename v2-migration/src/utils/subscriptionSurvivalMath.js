@@ -1,6 +1,6 @@
-// Subscription survival / churn MVP. This is deliberately an episode-level,
+// Action survival / drop-off engine. This is deliberately an episode-level,
 // non-parametric engine: it estimates observed survival timing, not individual
-// churn probabilities or causal effects.
+// drop-off probabilities or causal effects.
 import { _Z975, chi2Cdf } from "./statPrimitives";
 
 const EVENT_VALUES = new Map([

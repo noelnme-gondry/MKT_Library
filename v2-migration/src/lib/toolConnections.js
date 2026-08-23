@@ -53,9 +53,9 @@ export const CONNECTED_TOOLS = {
     keywords: { ko: "ASO 스토어 전환율 하락 제품 페이지 조회 설치 전환 유입 소스 Search Browse 앱스토어 최적화 스크린샷 아이콘", en: "ASO store conversion rate drop product page views installs traffic source Search Browse app store optimization screenshots icon" },
   },
   "5-28": {
-    title: { ko: "구독 생존·이탈 분석", en: "Subscription survival & churn" },
-    question: { ko: "고객은 언제 가장 많이 이탈하고, 어느 군을 먼저 실험할까?", en: "When does churn risk peak, and which group should be tested first?" },
-    keywords: { ko: "구독 이탈 생존분석 해저드 갱신 리텐션 중도절단 LTV 고객가치", en: "subscription churn survival analysis hazard renewal retention censoring LTV customer value" },
+    title: { ko: "핵심 액션 생존·이탈 분석", en: "Action survival & drop-off" },
+    question: { ko: "핵심 액션은 언제 가장 자주 끊기고, 어느 군을 먼저 실험할까?", en: "When does a key action drop off, and which group should be tested first?" },
+    keywords: { ko: "핵심 액션 이탈 생존분석 해저드 리텐션 중도절단 반복가치 구독", en: "action survival drop-off analysis hazard retention censoring recurring value subscription" },
   },
   "5-26": {
     title: { ko: "ASA 키워드 발굴", en: "ASA keyword finder" },

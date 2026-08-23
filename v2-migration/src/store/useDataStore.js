@@ -327,12 +327,12 @@ export const IA = [
       },
       {
         id: "5-28",
-        title: "구독 생존",
-        titleEn: "Subscription survival",
-        seoTitle: "구독 생존·이탈 분석: 위험 시점과 LTV 계산",
-        seoDescription: "구독기간과 이탈 여부 CSV로 생존율·위험 구간·관측기간 LTV를 계산합니다. 중도절단을 반영하며 브라우저에서만 처리합니다.",
-        seoTitleEn: "Subscription Survival & Churn Analysis",
-        seoDescriptionEn: "Estimate survival, hazard timing, segment differences, and observed-horizon LTV from censored subscription data in your browser.",
+        title: "액션 생존·이탈",
+        titleEn: "Action survival",
+        seoTitle: "핵심 액션 생존·이탈 분석: 위험 시점과 반복 가치",
+        seoDescription: "정의한 핵심 액션의 유지 기간과 이탈·종료 여부 CSV로 생존율·위험 구간·관측기간 반복 가치를 계산합니다. 중도절단을 반영하며 브라우저에서만 처리합니다.",
+        seoTitleEn: "Action Survival & Drop-off Analysis",
+        seoDescriptionEn: "Estimate survival, drop-off timing, segment differences, and observed-horizon recurring value from censored action data in your browser.",
       },
       {
         id: "5-25",

@@ -55,7 +55,7 @@ describe("CSV tool inventory", () => {
     ]));
   });
 
-  it("covers the 18 catalogued public tools and separate subscription survival contract", () => {
+  it("covers the 18 catalogued public tools and the independent action-survival contract", () => {
     const publicTools = inventory.filter((tool) => tool.isPublicAnalysisTool);
     expect(publicTools.map((tool) => tool.toolId).sort()).toEqual([
       "5-2", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-3", "5-4",
@@ -86,9 +86,9 @@ describe("CSV tool inventory", () => {
     }
   });
 
-  it("keeps subscription episode event types in the optional input contract", () => {
-    const subscription = inventory.find((item) => item.toolId === "5-28");
-    expect(subscription?.optionalFields).toEqual(expect.arrayContaining([
+  it("keeps action-episode event types in the optional input contract", () => {
+    const actionSurvival = inventory.find((item) => item.toolId === "5-28");
+    expect(actionSurvival?.optionalFields).toEqual(expect.arrayContaining([
       expect.objectContaining({ legacyKey: "event_type" }),
     ]));
     expect(canonicalFieldForLegacyKey("event_type")?.canonicalKey).toBe("event_type");

@@ -81,13 +81,15 @@ export const CANONICAL_FIELDS = Object.freeze({
   outcome_retention: field("outcome_retention", "OUTCOME", "리텐션", "Retention", { unitFamily: "rate", aggregation: "weighted_mean", repeatable: true, windowSupport: true }),
   outcome_generic: field("outcome_generic", "OUTCOME", "구체화되지 않은 성과", "Unspecified outcome", { repeatable: true, validationRules: ["requires_user_outcome_confirmation"] }),
   store_product_page_views: field("store_product_page_views", "OUTCOME", "제품 페이지 조회", "Product page views", { repeatable: true }),
-  subscription_tenure: field("subscription_tenure", "OUTCOME", "구독 관측 기간", "Subscription observation duration", { unitFamily: "period", aggregation: "none", cardinalityHint: "many" }),
-  churn_event: field("churn_event", "OUTCOME", "이탈 관측 여부", "Observed churn event", { unitFamily: "binary", aggregation: "sum", cardinalityHint: "low", validationRules: ["binary_values"] }),
-  subscription_start_date: field("subscription_start_date", "TIME", "구독 시작일", "Subscription start date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "many", validationRules: ["utc_date"] }),
-  subscription_churn_date: field("subscription_churn_date", "TIME", "구독 이탈·해지일", "Subscription churn or cancellation date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "many", validationRules: ["utc_date"] }),
-  subscription_observation_end_date: field("subscription_observation_end_date", "TIME", "구독 관측 종료일", "Subscription observation end date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "one", validationRules: ["utc_date"] }),
-  subscription_entry: field("subscription_entry", "TIME", "구독 관측 진입 기간", "Subscription observation entry period", { unitFamily: "period", aggregation: "none", cardinalityHint: "many" }),
-  customer_acquisition_cost: field("customer_acquisition_cost", "MEDIA", "고객 획득비용", "Customer acquisition cost", { unitFamily: "currency", aggregation: "none", cardinalityHint: "many" }),
+  // Legacy identifiers remain stable for V1/V2 migration compatibility. 5-28
+  // uses them for any defined action-observation episode, not subscriptions alone.
+  subscription_tenure: field("subscription_tenure", "OUTCOME", "생존 관측 기간", "Survival observation duration", { unitFamily: "period", aggregation: "none", cardinalityHint: "many" }),
+  churn_event: field("churn_event", "OUTCOME", "이탈·종료 이벤트 관측", "Observed dropout or exit event", { unitFamily: "binary", aggregation: "sum", cardinalityHint: "low", validationRules: ["binary_values"] }),
+  subscription_start_date: field("subscription_start_date", "TIME", "관측 시작일", "Observation start date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "many", validationRules: ["utc_date"] }),
+  subscription_churn_date: field("subscription_churn_date", "TIME", "이탈·종료 이벤트일", "Dropout or exit event date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "many", validationRules: ["utc_date"] }),
+  subscription_observation_end_date: field("subscription_observation_end_date", "TIME", "관측 종료일", "Observation end date", { valueType: "date", unitFamily: "date", aggregation: "none", cardinalityHint: "one", validationRules: ["utc_date"] }),
+  subscription_entry: field("subscription_entry", "TIME", "관측 진입 기간", "Observation entry period", { unitFamily: "period", aggregation: "none", cardinalityHint: "many" }),
+  customer_acquisition_cost: field("customer_acquisition_cost", "MEDIA", "개체 획득·유지비", "Entity acquisition or maintenance cost", { unitFamily: "currency", aggregation: "none", cardinalityHint: "many" }),
 
   control_promotion: field("control_promotion", "CONTROL", "프로모션 통제", "Promotion control", { unitFamily: "binary_or_index", repeatable: true }),
   control_holiday: field("control_holiday", "CONTROL", "휴일 통제", "Holiday control", { unitFamily: "binary_or_index", repeatable: true }),

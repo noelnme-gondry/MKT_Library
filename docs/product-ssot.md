@@ -34,7 +34,7 @@
 | 한국어 표기 | **Growth Opt Playbook**(원문 유지) | "그로스 최적화 플레이북"은 **설명 문구로만** 사용. 제품명 자리에 쓰지 않는다 |
 | 공식 도메인 | `https://growthoptplaybook.com` | `routeMap.js` `SITE_URL` |
 | 제품 범주 | 앱·웹 퍼포먼스 마케팅용 **브라우저 기반 분석·의사결정 지원 도구** | — |
-| 도구 수 표기 | **"19개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18) 자체가 목록에서 내려간 뒤, 5-28 구독 생존·이탈 분석이 공개 도구로 추가됐다(§4.1). |
+| 도구 수 표기 | **"19개 분석 도구"** | `getPublishedToolCount()` 파생값. 5-18 안의 분석 다섯이 개별 도구로 승격되고 허브(5-18) 자체가 목록에서 내려간 뒤, 5-28 핵심 액션 생존·이탈 분석이 공개 도구로 추가됐다(§4.1). |
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `getPublishedToolCount()`에서 파생한다(현재 `LandingPage.jsx:56`). 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
@@ -135,7 +135,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 5-25 | VIF 다중공선성 진단 | `/tools/vif-multicollinearity` |
 | 5-26 | ASA 키워드·CPT 진단 | `/tools/asa-keyword-finder` |
 | 5-27 | ASO 스토어 전환 분석 | `/tools/aso-store-conversion` |
-| 5-28 | 구독 생존·이탈 분석 | `/tools/subscription-survival` |
+| 5-28 | 핵심 액션 생존·이탈 분석 | `/tools/subscription-survival` (기존 URL 유지) |
 | 9-1 | 콘텐츠 요소 분석 | `/content/element-analysis` |
 | 9-6 | 광고 소재 피로도 분석 | `/content/freshness` |
 

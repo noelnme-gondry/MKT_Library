@@ -155,55 +155,55 @@ export const STANDARD_FIELDS = {
                 group: "디멘션",
               },
               tenure_periods: {
-                label: "구독 기간",
-                labelEn: "Subscription duration",
-                aliases: ["tenure", "tenure_periods", "subscription_tenure", "subscription tenure", "subscription duration", "observation duration", "tenure months", "months subscribed", "구독기간", "구독 기간", "이용기간"],
+                label: "생존 관측 기간",
+                labelEn: "Survival observation duration",
+                aliases: ["tenure", "tenure_periods", "survival_duration", "action survival duration", "time_to_event", "time to event", "duration_to_dropout", "subscription_tenure", "subscription tenure", "subscription duration", "observation duration", "tenure months", "months subscribed", "관측기간", "관측 기간", "구독기간", "구독 기간", "이용기간"],
                 type: "number",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               event_observed: {
-                label: "이탈 관측 여부 (0/1)",
-                labelEn: "Churn observed (0/1)",
-                aliases: ["event_observed", "churn_event", "churn observed", "observed churn", "churned", "is_churned", "cancelled", "이탈여부", "이탈 여부", "해지여부", "해지 여부"],
+                label: "이탈·종료 이벤트 관측 (0/1)",
+                labelEn: "Dropout or exit event observed (0/1)",
+                aliases: ["event_observed", "event_occurred", "event occurred", "dropout_observed", "dropout observed", "exit_event", "exit observed", "churn_event", "churn observed", "observed churn", "churned", "is_churned", "cancelled", "이탈여부", "이탈 여부", "종료이벤트", "종료 이벤트", "해지여부", "해지 여부"],
                 type: "number",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               subscription_start_date: {
-                label: "구독 시작일",
-                labelEn: "Subscription start date",
-                aliases: ["subscription_start_date", "subscription start date", "subscription started at", "subscription_start", "start date", "started at", "구독시작일", "구독 시작일", "가입일", "시작일"],
+                label: "관측 시작일",
+                labelEn: "Observation start date",
+                aliases: ["action_start_date", "action start date", "action_started_at", "cohort_start_date", "cohort start date", "subscription_start_date", "subscription start date", "subscription started at", "subscription_start", "start date", "started at", "핵심액션시작일", "핵심 액션 시작일", "관측시작일", "관측 시작일", "구독시작일", "구독 시작일", "가입일", "시작일"],
                 type: "date",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               churn_date: {
-                label: "이탈·해지일",
-                labelEn: "Churn or cancellation date",
-                aliases: ["churn_date", "churn date", "subscription churn date", "cancel date", "cancellation date", "cancelled at", "canceled at", "ended at", "이탈일", "해지일", "해지 일자", "구독 종료일"],
+                label: "이탈·종료 이벤트일",
+                labelEn: "Dropout or exit event date",
+                aliases: ["action_exit_date", "action exit date", "action_event_date", "action event date", "dropout_date", "dropout date", "inactivity_date", "churn_date", "churn date", "subscription churn date", "cancel date", "cancellation date", "cancelled at", "canceled at", "ended at", "이탈일", "종료일", "종료 이벤트일", "해지일", "해지 일자", "구독 종료일"],
                 type: "date",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               observation_end_date: {
                 label: "관측 종료일",
                 labelEn: "Observation end date",
-                aliases: ["observation_end_date", "observation end date", "subscription end date", "observed until", "as of date", "snapshot date", "data extract date", "data extracted at", "관측종료일", "관측 종료일", "추출 기준일", "데이터 추출일", "기준일"],
+                aliases: ["action_observation_end_date", "action observation end date", "observation_end_date", "observation end date", "subscription end date", "observed until", "as of date", "snapshot date", "data extract date", "data extracted at", "관측종료일", "관측 종료일", "추출 기준일", "데이터 추출일", "기준일"],
                 type: "date",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               entry_period: {
                 label: "관측 진입 기간",
                 labelEn: "Observation entry period",
-                // 구독 export는 "Observation Entry"처럼 기간의 기준점을 제목에
+                // 액션 생존 export는 "Observation Entry"처럼 기간의 기준점을 제목에
                 // 풀어 쓰는 경우가 있다. 날짜형 entry가 아니라 0 이상 기간 수인
-                // survival 계약에만 매핑한다.
-                aliases: ["entry_period", "subscription_entry", "entry time", "entry period", "observation entry", "observation entry period", "observation start", "관측진입", "관측 진입", "관측 시작"],
+                // 생존 계약에만 매핑한다.
+                aliases: ["entry_period", "observation_entry_period", "subscription_entry", "entry time", "entry period", "observation entry", "observation entry period", "observation start", "관측진입", "관측 진입", "관측 시작"],
                 type: "number",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               plan: {
                 label: "구독 플랜",
@@ -211,7 +211,7 @@ export const STANDARD_FIELDS = {
                 aliases: ["plan", "subscription_plan", "pricing_plan", "요금제", "구독플랜", "구독 플랜"],
                 type: "string",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               promo: {
                 label: "프로모션",
@@ -219,15 +219,15 @@ export const STANDARD_FIELDS = {
                 aliases: ["promo", "promotion", "promotion_type", "프로모션", "할인유형", "할인 유형"],
                 type: "string",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               cac: {
-                label: "고객 획득비용",
-                labelEn: "Customer acquisition cost",
-                aliases: ["cac", "customer_acquisition_cost", "acquisition cost", "획득비용", "고객획득비용", "고객 획득비용"],
+                label: "개체 획득·유지비",
+                labelEn: "Entity acquisition or maintenance cost",
+                aliases: ["cac", "entity_cost", "entity acquisition cost", "customer_acquisition_cost", "acquisition cost", "maintenance cost", "획득비용", "유지비", "고객획득비용", "고객 획득비용"],
                 type: "number",
                 required: false,
-                group: "구독 생존",
+                group: "핵심 액션 생존",
               },
               store_source: {
                 // 스토어 유입 소스(App Store Search·Browse·Referrer / Play 검색·둘러보기).
@@ -1312,8 +1312,8 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
               "5-27": ["date", "store_source", "product_page_views", "installs"],
               "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
-              // 구독 생존은 두 입력 경로를 지원한다. 기존 기간+이탈 플래그는 그대로
-              // 유지하고, 날짜 경로는 시작일과 (이탈일 또는 관측 종료일)로 사건·중도
+              // 핵심 액션 생존은 두 입력 경로를 지원한다. 기간+이탈 플래그 또는
+              // 날짜 경로의 시작일과 (이벤트일 또는 관측 종료일)로 사건·중도
               // 절단을 복원한다. 날짜만으로 기간 기반 엔진 입력을 꾸며내지 않는다.
               "5-28": [
                 { oneOf: ["tenure_periods", "subscription_start_date"] },
@@ -1393,12 +1393,12 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "current_cpt", unlocks: "현재 CPT에서 증감액 계산" },
               ],
               "5-28": [
-                { key: "entry_period", unlocks: "관측 진입 시점이 다른 구독의 위험집합 보정" },
-                { key: "channel", unlocks: "획득 채널별 관측 생존 비교" },
-                { key: "plan", unlocks: "구독 플랜별 관측 생존 비교" },
-                { key: "promo", unlocks: "프로모션별 관측 생존 비교" },
-                { key: "event_type", unlocks: "이탈 유형을 원본 의미 그대로 보존해 후속 해석에 사용" },
-                { key: "cac", unlocks: "관측기간 LTV와 획득비용의 함께 확인" },
+                { key: "entry_period", unlocks: "관측 진입 시점이 다른 개체의 위험집합 보정" },
+                { key: "channel", unlocks: "채널별 핵심 액션 생존 비교" },
+                { key: "plan", unlocks: "플랜·제도별 관측 생존 비교" },
+                { key: "promo", unlocks: "프로모션·처리별 관측 생존 비교" },
+                { key: "event_type", unlocks: "이탈·종료 이벤트 유형을 원본 의미 그대로 보존" },
+                { key: "cac", unlocks: "관측기간 반복 가치와 개체 획득·유지비 함께 확인" },
               ],
               "5-4": [
                 { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },
