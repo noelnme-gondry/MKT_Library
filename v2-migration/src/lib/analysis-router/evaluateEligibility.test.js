@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker, rankRecommendedAnalyses } from "./evaluateEligibility";
+import { RESPONSE_SUBTOOL_IDS } from "@/lib/responseSubtoolContent";
 import { ROUTES, isRoutePublished } from "@/lib/routeMap";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 
@@ -291,6 +292,13 @@ describe("analysis contract coverage", () => {
   it("declares a contract for every published analysis tool", () => {
     const missing = publishedToolIds.filter((id) => !ANALYSIS_CONTRACTS[id]);
     expect(missing).toEqual([]);
+  });
+
+  it("keeps every response subtool on the same uploader eligibility path as /start", () => {
+    const missing = RESPONSE_SUBTOOL_IDS.filter((toolId) => !ANALYSIS_CONTRACTS[toolId]);
+    expect(missing).toEqual([]);
+    expect(ANALYSIS_CONTRACTS["5-18-paid-organic"]).toMatchObject({ minRows: 2, minPeriods: 2 });
+    expect(ANALYSIS_CONTRACTS["5-18-forecast"]).toMatchObject({ minRows: 12, minPeriods: 12 });
   });
 
   it("blocks foreign-grain tools with the columns they actually need", () => {

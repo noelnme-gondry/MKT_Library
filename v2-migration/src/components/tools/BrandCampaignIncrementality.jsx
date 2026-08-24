@@ -16,6 +16,8 @@ import { parseCampaignFlag, runBrandInterruptedTimeSeries } from "@/utils/brandI
 import { fmtNum, parseNum } from "@/utils/format";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import { buildDemoCsv } from "@/utils/demoData";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 
 const tx = (locale, ko, en) => locale === "en" ? en : ko;
 const isNumericColumn = (rows, header) => rows.slice(0, 100).filter((row) => Number.isFinite(parseNum(row?.[header]))).length >= Math.min(3, rows.length);
@@ -104,11 +106,19 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     setAnalysisSignature("");
     setError("");
   };
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     setError("");
     trackProductEvent("data_import_start", { tool_id: "5-24", source: "csv", locale });
-    Papa.parse(file, {
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      trackProductEvent("data_import_failed", { tool_id: "5-24", source: "csv", state: csvFailureState(error), locale });
+      setError(csvImportErrorMessage(error?.code, locale));
+      return;
+    }
+    Papa.parse(parseInput, {
       header: true,
       skipEmptyLines: true,
       worker: true,

@@ -18,7 +18,7 @@ import { evaluateV2Eligibility } from "@/lib/data-import/schema/toolDataRequirem
 import { applyCompatibleMemory, buildMappingMemoryRecord, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
 import { clearMappingMemory, confirmMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
-import { decodeCsvBuffer } from "@/lib/data-import/decodeCsv";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
 import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
@@ -26,13 +26,14 @@ import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
-import { assertCsvFileSize, csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
+import { csvImportErrorMessage, csvFailureState } from "@/lib/data-import/csvImportPolicy";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
+import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
@@ -268,6 +269,10 @@ export default function CsvUploader({
   const isHydrated = useSyncExternalStore(subscribeHydration, hydratedClientSnapshot, hydratedServerSnapshot);
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  // 분석 결과 컴포넌트의 무거운 useMemo는 그룹 게이트가 열리는 순간 실행된다.
+  // 먼저 이 상태를 렌더하고 두 프레임 뒤에 게이트를 열어, 클릭이 멈춤으로 보이지
+  // 않게 한다. 개별 도구마다 같은 패턴을 복사하지 않는 공용 진입점이다.
+  const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
   const [importAnnouncement, setImportAnnouncement] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   // Preview table is auto-shown while mapping and collapsed after analysis.
@@ -412,24 +417,15 @@ export default function CsvUploader({
       }
       return;
     }
-    // 크기 상한 — XLSX만 막혀 있고 CSV는 무방비였다. 파일이 arrayBuffer → UTF-16
-    // 문자열 → 워커 복제 → 객체 배열로 여러 벌 상주하므로, 과대 파일은 탭 프로세스를
-    // 죽인다(error.js가 못 잡는 유일한 실패). 읽기 전에 차단한다.
+    // 공용·도구별 업로더가 같은 크기 상한과 CP949 복원을 쓰게 한다. 자체 드롭존만
+    // 빠지면 한국 Excel CSV가 "성공"한 채 헤더가 깨지는 경로가 다시 생긴다.
+    let parseInput;
     try {
-      assertCsvFileSize(file.size);
+      parseInput = await prepareCsvParseInput(file);
     } catch (error) {
       reportImportFailure({ message: csvImportErrorMessage(error?.code, locale), source, state: csvFailureState(error) });
       setIsImporting(false);
       return;
-    }
-    // 한국 Excel 기본 CSV 인코딩(CP949/EUC-KR) 자동 복원 — UTF-8로만 읽으면 한글 헤더가
-    // 치환문자로 깨진 채 파싱은 "성공"해 매핑이 전멸한다. 바이트를 먼저 디코딩해 텍스트로 파싱.
-    let parseInput = file;
-    try {
-      const buf = await file.arrayBuffer();
-      parseInput = decodeCsvBuffer(buf).text;
-    } catch {
-      parseInput = file; // arrayBuffer 미지원 등 → 기존 방식(파일 직접 파싱)으로 폴백
     }
     // 취소는 아래 complete 콜백의 taskId 가드가 처리한다(여기서 조기 반환하면 취소 후
     // 늦게 도착하는 워커 콜백 무시 경로가 사라진다).
@@ -873,7 +869,7 @@ export default function CsvUploader({
     isStale,
   });
   const confirmAnalysis = () => {
-    if (analysisBlocked) return;
+    if (analysisBlocked || isStartingAnalysis) return;
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
     const analysisType = productAnalysisType(eventToolId);
     const event = { tool_id: eventToolId, source: analysisSource, row_count: csvData?.raw?.length || 0, analysis_type: analysisType, mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length, locale };
@@ -886,7 +882,17 @@ export default function CsvUploader({
       Promise.all(confirmed.map(confirmMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords).catch(() => {});
     }
     saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
-    requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    setIsStartingAnalysis(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        requestAd(() => {
+          setGroupAnalyzed(toolId);
+          setPreviewOpen(false);
+          setIsStartingAnalysis(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+    });
   };
   const mappingStatusLabel = {
     confirmed: T.mappingConfirmed,
@@ -914,7 +920,12 @@ export default function CsvUploader({
 
   return (
     <div className="csv-uploader" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : isStartingAnalysis ? (locale === "en" ? "Starting analysis…" : "분석을 시작하는 중…") : importAnnouncement}</div>
+      <AnalyzingOverlay
+        show={isStartingAnalysis}
+        title={locale === "en" ? "Analyzing…" : "분석 중…"}
+        sub={locale === "en" ? `Preparing ${Number(csvData?.raw?.length || 0).toLocaleString()} rows` : `${Number(csvData?.raw?.length || 0).toLocaleString()}행을 준비하는 중`}
+      />
       {isDemo && (
         <div className="required-banner csv-demo-banner">
           <div className="csv-demo-banner__copy">
@@ -1198,13 +1209,13 @@ export default function CsvUploader({
           <div className="csv-analysis-cta-row is-analyzed">
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
             <span className="csv-analysis-hint">{T.analyzedHint}</span>
-            <button className="ab-pill csv-analysis-action" onClick={confirmAnalysis}>{T.reanalyzeBtn}</button>
+            <button className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div className="csv-analysis-cta-row is-ready">
             <span className="csv-analysis-status">{T.checkMapping}</span>
             <span className="csv-analysis-hint">{T.checkMappingHint}</span>
-            <button className="ab-button csv-analysis-action" onClick={confirmAnalysis}>{T.analyzeBtn}</button>
+            <button className="ab-button csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.analyzeBtn}</button>
           </div>
         )
       )}

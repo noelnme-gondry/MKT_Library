@@ -43,7 +43,7 @@ describe("csvImportPolicy", () => {
 
   it("실패 상태를 계측용으로 구분한다", () => {
     expect(csvFailureState({ code: "csv_file_too_large" })).toBe("file_too_large");
-    expect(csvFailureState({ code: "csv_empty_file" })).toBe("parse_error");
+    expect(csvFailureState({ code: "csv_empty_file" })).toBe("empty_file");
     expect(csvFailureState(null)).toBe("parse_error");
   });
 });

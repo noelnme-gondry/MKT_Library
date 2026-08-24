@@ -17,7 +17,7 @@
 // Deterministic — NO Math.random (harness §3). mapping is a pass-through mirror
 // of the real upload shape but is unused by this component's engine.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
@@ -102,6 +102,7 @@ describe("AhaMomentFinder render smoke", () => {
     const upload = () => view.container.querySelector('input[type="file"]');
 
     fireEvent.change(upload(), { target: { files: [new File(["private_action,secret_value"], "confidential-users.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(queued).toHaveLength(1));
     await act(async () => queued[0].options.complete({
       data: [{ private_action: "classified", secret_value: "999" }],
       errors: [],
@@ -112,7 +113,7 @@ describe("AhaMomentFinder render smoke", () => {
     seedNoData();
     view = render(<AhaMomentFinder />);
     fireEvent.change(upload(), { target: { files: [new File([""], "empty-secret.csv", { type: "text/csv" })] } });
-    await act(async () => queued[1].options.complete({ data: [], errors: [], meta: { fields: [] } }));
+    await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "data_import_failed", expect.objectContaining({ tool_id: "5-20", state: "empty_file" })));
 
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
     expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-20", source: "csv", row_count: 1, column_count: 2 })]);

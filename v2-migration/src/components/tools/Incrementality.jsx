@@ -18,6 +18,9 @@ import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
+import { showToast } from "@/utils/toast";
 
 const num = (v) => {
   if (v == null || String(v).trim() === "") return NaN;
@@ -113,10 +116,18 @@ export default function Incrementality({ locale = "ko" } = {}) {
     window.requestAnimationFrame(() => document.getElementById(`incrementality-tab-${nextMethod}`)?.focus());
   }, [METHODS, selectMethod]);
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     trackProductEvent("data_import_start", { tool_id: "5-23", source: "csv", locale });
-    Papa.parse(file, {
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: csvFailureState(error), locale });
+      showToast({ variant: "error", title: locale === "en" ? "CSV upload failed" : "CSV 업로드 실패", body: csvImportErrorMessage(error?.code, locale) });
+      return;
+    }
+    Papa.parse(parseInput, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
         const rows = Array.isArray(res.data) ? res.data : [];

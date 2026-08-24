@@ -7,7 +7,7 @@
 // columns + an outcome column). Deterministic signal so the fit succeeds and the
 // forest plot + table render. NO Math.random (harness §3).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
@@ -174,6 +174,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     const upload = () => view.container.querySelector('input[type="file"]');
 
     fireEvent.change(upload(), { target: { files: [new File(["private_hook,secret_ctr"], "confidential-content.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(queued).toHaveLength(1));
     await act(async () => queued[0].options.complete({
       data: [{ private_hook: "classified", secret_ctr: "9.99" }],
       errors: [],
@@ -185,6 +186,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     useAppStore.setState({ demoDisabled: true });
     view = render(<ContentElementAnalyzer />);
     fireEvent.change(upload(), { target: { files: [new File(["broken"], "broken-secret.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(queued).toHaveLength(2));
     await act(async () => queued[1].options.error(new Error("parse")));
 
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");

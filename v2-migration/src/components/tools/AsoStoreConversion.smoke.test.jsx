@@ -68,4 +68,12 @@ describe("AsoStoreConversion render smoke", () => {
     const { container } = render(<AsoStoreConversion />);
     expect(container.textContent).toContain("트래픽 구성 변화가 주도");
   });
+
+  it("실데이터 분해 결과에는 다음 주 검토용 판단 초안을 붙인다", () => {
+    const demo = buildDemoCsv("aso_store");
+    seed({ ...demo, fileName: "uploaded-aso-store.csv" });
+    useAppStore.getState().setGroupAnalyzed("5-27");
+    const { container } = render(<AsoStoreConversion />);
+    expect(container.querySelector('[data-decision-review-tool="5-27"]')).toBeTruthy();
+  });
 });

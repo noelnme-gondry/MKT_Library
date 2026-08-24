@@ -7,6 +7,8 @@ import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { getCssVar } from "@/utils/chartUtils";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import {
   buildPaidOrganicTrend,
   buildPaidOrganicTrendDemo,
@@ -110,6 +112,7 @@ function fmtNumber(value) {
 
 export default function PaidOrganicTrend({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
@@ -128,10 +131,17 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
     [csvData?.raw, mapping],
   );
 
-  const readFile = (file) => {
+  const readFile = async (file) => {
     if (!file) return;
     setUploadError("");
-    Papa.parse(file, {
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      setUploadError(csvImportErrorMessage(error?.code, locale));
+      return;
+    }
+    Papa.parse(parseInput, {
       header: true,
       skipEmptyLines: true,
       worker: true,
@@ -249,6 +259,21 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
     : result.verdict === "co-growth"
       ? [C.growthTitle, C.growthBody, "growth"]
       : [C.mixedTitle, C.mixedBody, "mixed"];
+  const decisionPrefill = result.points.length > 0
+    ? {
+        conclusion: verdictCopy[0],
+        action: result.verdict === "watch"
+          ? tr("지출·계절성·시차를 포함한 카니발 정밀 진단을 실행한다", "Run the detailed cannibalization diagnosis with spend, seasonality, and lag evidence")
+          : tr("다음 4주도 Paid·Organic 변화 방향을 같은 기준으로 다시 확인한다", "Recheck Paid and Organic movement on the same basis over the next four weeks"),
+        hypothesis: verdictCopy[1],
+        metric: tr("최근 4주 Paid·Organic 변화", "Latest four-week Paid and Organic movement"),
+        baseline: `${C.recentOrganic} ${fmtPct(result.recentOrganicChange)} · ${C.recentPaid} ${fmtPct(result.recentPaidChange)}`,
+        sourcePeriod: tr("최근 4주", "Latest four weeks"),
+        reviewQuestion: result.verdict === "watch"
+          ? tr("정밀 진단에서도 Paid 증가와 Organic 감소의 반복 신호가 남는가?", "Does the detailed diagnosis still show repeated Paid-up and Organic-down evidence?")
+          : tr("다음 4주에 같은 방향의 변화가 반복되는가?", "Does the same movement repeat in the next four weeks?"),
+      }
+    : null;
 
   return (
     <div className="paid-organic-tool">
@@ -342,7 +367,8 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                 analysisKey={`${result.recentOrganicChange}:${result.recentPaidChange}:${result.oppositeCount}`}
                 locale={locale}
                 analysisBasis={false}
-                decisionReview={false}
+                decisionReview={Boolean(decisionPrefill)}
+                decisionPrefill={decisionPrefill}
               />
             </>
           ) : (

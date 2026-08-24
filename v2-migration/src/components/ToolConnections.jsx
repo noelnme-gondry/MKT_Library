@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
+import { hasToolTemplate } from "@/components/ds/csvTemplate";
 import { trackProductEvent } from "@/lib/analytics";
 import { getJourneyContext, getNextTools, localizedTool } from "@/lib/toolConnections";
 
@@ -19,6 +20,9 @@ const COPY = {
     cycle: "다음 운영 주기",
     mapDeck: "전체 분석 여정",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
+    prepareNow: "새 CSV 준비부터",
+    prepareTitle: (title) => `${title}용 매핑 템플릿`,
+    prepareDeck: "지금 데이터로 이어지지 않는 분석입니다. 먼저 필요한 컬럼을 내려받아 원본을 준비하세요.",
     expand: "전체 여정",
     heading: "다음 단계",
   },
@@ -34,6 +38,9 @@ const COPY = {
     cycle: "Next operating cycle",
     mapDeck: "Full analysis journey",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
+    prepareNow: "Prepare new data first",
+    prepareTitle: (title) => `Mapping template for ${title}`,
+    prepareDeck: "This analysis needs a different dataset. Download the required columns before preparing the source file.",
     expand: "Full journey",
     heading: "Next step",
   },
@@ -48,9 +55,14 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   const T = COPY[lang];
   const isVerdictDependent = toolId === "5-25";
   const templateTarget = nextTools.find((tool) => !tool.isSameData);
+  const needsPreparationShortcut = Boolean(
+    templateTarget
+    && nextTools.slice(0, 2).every((tool) => !tool.isSameData)
+    && hasToolTemplate(templateTarget.id),
+  );
   // 상단 레일은 "바로 갈 곳" 두 개만 보여주고, 나머지 경로는 접어서 제공한다.
   // 고정 폭 카드 3개가 좁은 도구 셸 밖으로 밀리던 문제를 없애며 선택 부담도 줄인다.
-  const visibleNextTools = nextTools.slice(0, 2);
+  const visibleNextTools = needsPreparationShortcut ? nextTools.slice(0, 1) : nextTools.slice(0, 2);
 
   return (
     <section className="tool-connections tool-connections--rail" aria-labelledby={`tool-connections-${toolId}`}>
@@ -63,6 +75,22 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         )}
       </header>
       <div className="tool-connections__grid">
+        {needsPreparationShortcut && (
+          <aside className="tool-connection-card tool-connection-card--prepare">
+            <div className="tool-connection-card__meta">
+              <span>{T.prepareNow}</span>
+              <em>{T.newData}</em>
+            </div>
+            <strong>{T.prepareTitle(templateTarget.title)}</strong>
+            <p>{T.prepareDeck}</p>
+            <ToolTemplateAction
+              toolId={templateTarget.id}
+              locale={lang}
+              compact
+              source={`connection_from_${toolId}`}
+            />
+          </aside>
+        )}
         {visibleNextTools.map((tool, index) => (
           <Link
             className={`tool-connection-card ${index === 0 && !isVerdictDependent ? "is-recommended" : ""}`}

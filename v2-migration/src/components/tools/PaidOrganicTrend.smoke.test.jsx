@@ -44,6 +44,13 @@ describe("PaidOrganicTrend render smoke", () => {
     expect(container.querySelector("canvas")).toBeTruthy();
   });
 
+  it("offers a real-data movement-map decision for the weekly review loop", () => {
+    const demo = buildPaidOrganicTrendDemo();
+    seed({ ...demo, fileName: "uploaded-paid-organic.csv" });
+    const { container } = render(<PaidOrganicTrend />);
+    expect(container.querySelector('[data-decision-review-tool="5-18-paid-organic"]')).toBeTruthy();
+  });
+
   it("keeps KR and EN routes functionally equivalent", () => {
     seed(buildPaidOrganicTrendDemo("en"));
     render(<PaidOrganicTrend locale="en" />);

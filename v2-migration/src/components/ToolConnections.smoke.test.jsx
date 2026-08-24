@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 
 import ToolConnections from "@/components/ToolConnections";
+import { getNextTools, NEXT_TOOL_IDS } from "@/lib/toolConnections";
+import { hasToolTemplate } from "@/components/ds/csvTemplate";
 
 describe("ToolConnections", () => {
   it("keeps the rail to two immediate KR next steps with the full journey tucked away", () => {
@@ -21,6 +23,32 @@ describe("ToolConnections", () => {
     expect(container.textContent).not.toContain("Current stage");
     expect(container.textContent).not.toContain("CONNECTED TOOLS");
     expect(container.textContent).toContain("Prepare a new dataset");
+  });
+
+  it("puts a mapping template ahead of a second re-upload route when no top path shares the CSV", () => {
+    const { container } = render(<ToolConnections toolId="5-27" />);
+    const cards = [...container.querySelectorAll(".tool-connection-card")];
+    expect(cards).toHaveLength(2);
+    expect(cards[0].classList.contains("tool-connection-card--prepare")).toBe(true);
+    expect(cards[0].textContent).toContain("ASA 키워드 발굴용 매핑 템플릿");
+    expect(cards[0].textContent).toContain("매핑 CSV 받기");
+    expect(cards.filter((card) => card.tagName === "A")).toHaveLength(1);
+  });
+
+  it("never leaves two re-upload routes at the top when a template can prepare the first one", () => {
+    const noSharedTop = Object.keys(NEXT_TOOL_IDS).filter((toolId) => (
+      getNextTools(toolId).slice(0, 2).every((tool) => !tool.isSameData)
+    ));
+    expect(noSharedTop.length).toBeGreaterThan(0);
+
+    noSharedTop.forEach((toolId) => {
+      const firstTarget = getNextTools(toolId)[0];
+      expect(hasToolTemplate(firstTarget.id), toolId).toBe(true);
+      const view = render(<ToolConnections toolId={toolId} />);
+      expect(view.container.querySelector(".tool-connection-card--prepare"), toolId).toBeTruthy();
+      expect(view.container.querySelectorAll(".tool-connection-card[href]"), toolId).toHaveLength(1);
+      view.unmount();
+    });
   });
 
   it("does not recommend MMM before the VIF verdict is known", () => {
