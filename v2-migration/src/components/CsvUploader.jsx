@@ -240,6 +240,10 @@ export default function CsvUploader({
   showMappingCoach = false,
   mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
+  mappingReviewActionLabel = "",
+  mappingReviewFallbackLabel = "",
+  mappingReviewStage = "combined",
+  onMappingReviewNeedsSemanticFallback = null,
   entryVariant = "default",
   sheetInitiallyOpen = false,
   onImportStart = null,
@@ -543,14 +547,12 @@ export default function CsvUploader({
     try {
       const result = await fetchSheetTable(apiKey, csvData.sheetUrl);
       if (result.error) {
-        setErrorMsg(sheetErrorMessage(result.error, locale));
-        trackImportFailure("google_sheets", `sheet_${result.error}`);
+        reportImportFailure({ message: sheetErrorMessage(result.error, locale), source: "google_sheets", state: `sheet_${result.error}` });
       } else {
         await handleSheetLoaded(result);
       }
     } catch {
-      setErrorMsg(sheetErrorMessage("fetch", locale));
-      trackImportFailure("google_sheets", "sheet_fetch");
+      reportImportFailure({ message: sheetErrorMessage("fetch", locale), source: "google_sheets", state: "sheet_fetch" });
     } finally {
       setRefreshingSheet(false);
     }
@@ -603,6 +605,27 @@ export default function CsvUploader({
       canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
     });
     setPreviewOpen(true);
+  };
+
+  const applySemanticFallback = () => {
+    // 2단계는 화면을 하나 더 여는 대신, 확인된 semantic 후보를 같은 CSV 매핑표에
+    // 투영한다. 사용자는 한 가지 매핑 UI에서만 최종 값을 확인·수정한다.
+    const bindings = (csvData.mappingBindingsV2 || []).map((binding) => (
+      binding.canonicalKey && binding.decision !== "UNKNOWN"
+        ? { ...binding, source: "user" }
+        : binding
+    ));
+    const mapping = projectSemanticBindingsToLegacyMapping({ toolId, legacyMapping: csvData.mapping, bindings });
+    setErrorMsg("");
+    setCsvData({
+      ...csvData,
+      mapping,
+      mappingBindingsV2: bindings,
+      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
+      mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping: mapping, semanticBindings: bindings, toolId }),
+      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
+    });
+    onMappingReviewNeedsSemanticFallback?.();
   };
 
   const handleReset = () => {
@@ -875,6 +898,19 @@ export default function CsvUploader({
   };
   const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
   const mappingNeedsAttention = missing.length > 0 || analysisBlocked || needsReview > 0 || mappingConflicts.length > 0;
+  const isSemanticFallbackStage = mappingReviewStage === "semantic";
+  const shouldOfferSemanticFallback = mappingReviewStage === "legacy" && (
+    missing.length > 0 || mappingBlocked || semanticBlocked
+  );
+  const handleMappingReviewAction = () => {
+    if (isSemanticFallbackStage) {
+      if (!analysisBlocked) onMappingReviewConfirmed?.();
+    } else if (shouldOfferSemanticFallback) {
+      applySemanticFallback();
+    } else if (!analysisBlocked) {
+      onMappingReviewConfirmed?.();
+    }
+  };
 
   return (
     <div className="csv-uploader" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
@@ -1069,13 +1105,20 @@ export default function CsvUploader({
             );
           })}
         </div>
-        {isRouterMode && showMappingReview && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
+        {isRouterMode && showMappingReview && mappingReviewStage === "combined" && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       </details>}
       {showMappingCoach && <DochiMappingCoach
         locale={locale}
         isLeaving={mappingCoachLeaving}
         onReview={onMappingReviewConfirmed}
       />}
+      {mappingReviewActionLabel && onMappingReviewConfirmed && (
+        <div className="csv-mapping-review-action">
+          <button type="button" className="ab-button" onClick={handleMappingReviewAction} disabled={!shouldOfferSemanticFallback && analysisBlocked}>
+            {shouldOfferSemanticFallback ? mappingReviewFallbackLabel || mappingReviewActionLabel : mappingReviewActionLabel}
+          </button>
+        </div>
+      )}
       {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       {!isRouterMode && <MappingMemorySettings
         enabled={isMappingMemoryEnabled}

@@ -84,6 +84,58 @@ describe("CsvUploader render smoke", () => {
     expect(screen.getByText("x.csv")).toBeTruthy();
   });
 
+  it("uses semantic mapping only as a second stage, projected back into the same CSV mapping UI", () => {
+    const headers = ["week", "ad_cost", "registrations"];
+    const raw = [{ week: "2026-01-05", ad_cost: "100", registrations: "10" }];
+    const bindings = [
+      { sourceColumn: "week", canonicalKey: "date", role: "TIME", decision: "SUGGEST" },
+      { sourceColumn: "ad_cost", canonicalKey: "media_spend", role: "MEDIA", decision: "SUGGEST" },
+      { sourceColumn: "registrations", canonicalKey: "outcome_installs", role: "OUTCOME", decision: "SUGGEST" },
+    ];
+    const slice = {
+      raw,
+      headers,
+      mapping: Object.fromEntries(headers.map((header) => [header, "__ignore__"])),
+      mappingBindingsV2: bindings,
+      semanticMapping: { bindings, candidatesByHeader: {} },
+      fileName: "fallback.csv",
+    };
+    useAppStore.setState({
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+    const needsSemantic = vi.fn();
+    const view = render(<CsvUploader
+      toolId="start-gate"
+      showMappingReview
+      mappingReviewStage="legacy"
+      mappingReviewActionLabel="결과 열기"
+      mappingReviewFallbackLabel="의미 매핑으로 계속"
+      onMappingReviewNeedsSemanticFallback={needsSemantic}
+      onMappingReviewConfirmed={vi.fn()}
+    />);
+
+    expect(document.querySelector(".mapping-grid")).toBeTruthy();
+    expect(screen.queryByText("Semantic Mapper V2 미리보기")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "의미 매핑으로 계속" }));
+    expect(needsSemantic).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().csvData.mapping).toMatchObject({ week: "date", ad_cost: "cost", registrations: "installs" });
+
+    const semanticConfirmed = vi.fn();
+    view.rerender(<CsvUploader
+      toolId="start-gate"
+      showMappingReview
+      mappingReviewStage="semantic"
+      mappingReviewActionLabel="의미 매핑 확정"
+      onMappingReviewConfirmed={semanticConfirmed}
+    />);
+    expect(document.querySelector(".mapping-grid")).toBeTruthy();
+    expect(screen.queryByText("Semantic Mapper V2 미리보기")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "의미 매핑 확정" }));
+    expect(semanticConfirmed).toHaveBeenCalledTimes(1);
+  });
+
   it("tracks one typed analysis start for repeated confirmation of the same input", () => {
     seedWithData();
     window.gtag = vi.fn();

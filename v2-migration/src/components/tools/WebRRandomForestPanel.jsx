@@ -11,6 +11,8 @@ const COPY = {
     run: "Random Forest 다시 실행",
     loading: "Random Forest 500그루와 교차검증을 실행 중입니다. 첫 실행은 R 엔진을 불러와 10~20초 걸릴 수 있습니다.",
     blocked: (n, required) => `현재 완전한 행은 ${n || 0}개입니다. 선택한 요소 수 기준으로 최소 ${required || 100}개가 필요합니다.`,
+    tooManyObservations: (max) => `완전한 행이 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 기간·세그먼트·요소를 좁혀 다시 실행하세요.`,
+    tooManyPredictors: (max) => `선택한 요소가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 요소를 줄여 다시 실행하세요.`,
     failed: "Random Forest 비교를 완료하지 못했습니다. 기존 회귀 결과에는 영향이 없습니다.", baselineUnavailable: "기준 회귀가 일부 교차검증 분할에서 수렴하지 않아 비교를 보류했습니다. Random Forest 우위로 해석하지 않습니다.",
     whyBlocked: "왜 Random Forest 분석이 안 되나요?",
     requirements: "필요 데이터 기준",
@@ -39,6 +41,8 @@ const COPY = {
     run: "Retry Random Forest",
     loading: "Running a 500-tree Random Forest and cross-validation. The first run can take 10–20 seconds while the R engine loads.",
     blocked: (n, required) => `${n || 0} complete rows are available. The selected feature count requires at least ${required || 100}.`,
+    tooManyObservations: (max) => `Complete rows exceed the browser R safety limit (${max}). Narrow the period, segment, or features and try again.`,
+    tooManyPredictors: (max) => `Selected features exceed the browser R safety limit (${max}). Reduce the features and try again.`,
     failed: "The Random Forest comparison did not complete. The existing regression result is unchanged.", baselineUnavailable: "The baseline regression did not converge in at least one validation fold, so the comparison is withheld. This is not evidence that Random Forest is better.",
     whyBlocked: "Why isn't Random Forest available?",
     requirements: "Data requirements",
@@ -120,6 +124,10 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   if (!input.ok) {
     const reason = input.reason === "constant_outcome"
       ? T.constant
+      : input.reason === "too_many_observations"
+        ? T.tooManyObservations(input.maxObservations)
+        : input.reason === "too_many_predictors"
+          ? T.tooManyPredictors(input.maxPredictors)
       : input.reason === "insufficient_class_support"
         ? T.classSupport(input.minorityCount, input.requiredMinority)
         : input.reason === "insufficient_observations"

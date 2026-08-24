@@ -67,13 +67,14 @@ describe("Dochi analysis workspace", () => {
     expect(screen.getByText(/Additional model confirmation/)).toBeTruthy();
   });
 
-  it("shows mapping-backed eligibility and hands off the same prepared source", () => {
+  it("shows mapping-backed eligibility and paints a handoff state before preparing the same source", async () => {
     const onOpenTool = vi.fn();
     render(<AssistantWorkspace csvData={slice()} getTitle={(toolId) => `도구 ${toolId}`} onOpenTool={onOpenTool} />);
     expect(screen.getByText(/표준 역할 매핑/)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "이 화면에서 계산 가능한 요약" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: /추가 차트·상세 분석 열기/ })[0]);
-    expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw }));
+    expect(screen.getByText("상세 분석 화면을 준비하고 있습니다.")).toBeTruthy();
+    await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
   });
 
   it("marks old results stale and rebuilds every available analysis when the user reruns after a mapping change", async () => {
@@ -131,6 +132,15 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace autoStart csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     await waitFor(() => expect(screen.getAllByText("완료").length).toBe(4));
     expect(screen.getAllByText("분석 결과").length).toBeGreaterThan(0);
+  });
+
+  it("shows only actual completed results in the embedded home view, with dashboard open first", async () => {
+    const { container } = render(<AssistantWorkspace autoStart presentation="embedded" csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} />);
+    const workspace = container.querySelector(".dochi-workspace--embedded");
+    await waitFor(() => expect(workspace.querySelectorAll(".dochi-workspace__embedded-result").length).toBeGreaterThan(0));
+    expect(workspace.querySelector(".dochi-workspace__embedded-result").open).toBe(true);
+    expect(screen.queryByRole("button", { name: /추가 차트·상세 분석 열기/ })).toBeNull();
+    expect(screen.queryByText("현재 판단 상태")).toBeNull();
   });
 
   it("does not queue or run a design-confirmation analysis until the user approves its detailed-tool handoff", async () => {

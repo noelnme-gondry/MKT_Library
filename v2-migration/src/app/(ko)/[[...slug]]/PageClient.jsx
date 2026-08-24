@@ -43,6 +43,7 @@ const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFi
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
+const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
 const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
@@ -89,6 +90,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId === "home" && <><LandingPage /><DochiAssistant /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
+            {routeId === "dochi-result" && <DochiResultWorkspace />}
 
             {routeId === "5-2" && <Dashboard />}
             {routeId === "5-3" && <BudgetAllocation />}
@@ -120,6 +122,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId !== "home" &&
              routeId !== "guide-index" &&
              routeId !== "start-gate" &&
+             routeId !== "dochi-result" &&
              !routeId.startsWith("5-") &&
              !routeId.startsWith("9-") && (
               <>
@@ -130,11 +133,11 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}
-            <ToolPageOutro
+            {routeId !== "dochi-result" && <ToolPageOutro
               toolId={routeId}
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
-            />
+            />}
             </article>
           </main>
         </div>
