@@ -65,6 +65,9 @@ describe("DochiResultWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
     expect(document.querySelector(".dochi-journey.is-running")).toBeTruthy();
     expect(document.querySelector(".dochi-journey__mascot .dochi-sprite.is-delivery")).toBeTruthy();
+    expect(document.querySelectorAll(".dochi-journey__books i")).toHaveLength(3);
+    expect(document.querySelector(".dochi-journey__data-card")).toBeTruthy();
+    expect(document.querySelector(".dochi-journey__chart-card")).toBeTruthy();
     expect(screen.getByText("아하!")).toBeTruthy();
     expect(document.querySelector(".dochi-journey__runner")).toBeNull();
     act(() => vi.advanceTimersByTime(1100));

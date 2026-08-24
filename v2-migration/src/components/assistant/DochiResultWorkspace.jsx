@@ -69,9 +69,13 @@ const TOOL_VIEWS = [
 function DochiJourney({ label, insight }) {
   return <div className="dochi-journey is-running" aria-hidden="true">
     <div className="dochi-journey__scene">
-      <div className="dochi-journey__data-tag"><span>CSV</span><i /><i /><i /></div>
+      <div className="dochi-journey__floor" />
+      <div className="dochi-journey__books"><i /><i /><i /></div>
+      <div className="dochi-journey__data-card"><span>DATA</span><i /><i /><i /></div>
+      <div className="dochi-journey__chart-card"><span /><div><i /><i /><i /><i /></div><b /></div>
       <div className="dochi-journey__mascot"><DochiSprite pose="delivery" direction="right" /></div>
       <div className="dochi-journey__insight">
+        <i /><i /><i /><i />
         <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7a13 13 0 0 0-8 23.2c1.8 1.4 2.8 3.4 2.8 5.6h10.4c0-2.2 1-4.2 2.8-5.6A13 13 0 0 0 24 7Z" /><path d="M19 40h10M20.5 44h7" /></svg>
         <strong>{insight}</strong>
       </div>
