@@ -51,6 +51,9 @@ export default function DochiAssistant({ locale = "ko" }) {
         <p>{status || copy.prompt}</p>
         <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" sheetInitiallyOpen onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
         <small>{copy.privacy}</small>
+        <span className="dochi-home-assistant__speech-tail" aria-hidden="true">
+          <svg viewBox="0 0 54 40" preserveAspectRatio="none"><path d="M0 1L52 20L0 39Z" /></svg>
+        </span>
       </div>
       <div className="dochi-home-assistant__stage" aria-hidden="true"><DochiSprite /></div>
       <h2 className="sr-only">{copy.heading}</h2>

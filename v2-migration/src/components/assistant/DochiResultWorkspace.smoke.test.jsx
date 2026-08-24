@@ -74,10 +74,15 @@ describe("DochiResultWorkspace", () => {
     act(() => vi.advanceTimersByTime(1100));
     await act(async () => { await Promise.resolve(); });
 
-    expect(screen.getByRole("heading", { name: "도치가 정리한 분석 요약" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "도치가 찾은 분석 지도" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
+    expect(screen.getByText("원본 대시보드")).toBeTruthy();
+    const openToolButtons = screen.getAllByRole("button", { name: "해당 분석으로 가기" });
+    expect(openToolButtons).toHaveLength(4);
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
     expect(useAppStore.getState().dochiAnalysisSession.analyses.some((analysis) => analysis.toolId === "5-2")).toBe(true);
+    fireEvent.click(openToolButtons[0]);
+    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(useAppStore.getState().csvGroups.efficiency).toBe(DATA);
   });
 
   it("returns to the remembered summary instead of restarting mapping after a detailed-tool visit", () => {
@@ -89,7 +94,7 @@ describe("DochiResultWorkspace", () => {
     });
     render(<DochiResultWorkspace />);
 
-    expect(screen.getByRole("heading", { name: "도치가 정리한 분석 요약" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "컬럼을 확인해 주세요" })).toBeNull();
   });
 });
