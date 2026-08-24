@@ -107,8 +107,8 @@ test("App Store Connect CSV를 5-27 결과로 연결한다", async ({ page }) =>
 
   const resultCard = page.locator("#aso-result .result-action-card");
   await expect(resultCard).toBeVisible();
-  // 태블릿에서는 결과가 첫 화면 아래라 content-visibility가 내부 제목을 아직
-  // 렌더하지 않을 수 있다. 사용자가 결과를 읽는 위치로 이동한 뒤 검증한다.
+  // 태블릿에서는 결과가 첫 화면 아래로 밀릴 수 있으므로, 사용자가 결과를
+  // 읽는 위치에서 내부 제목을 검증한다.
   await resultCard.scrollIntoViewIfNeeded();
   const resultHeading = resultCard.getByRole("heading", { level: 2, name: /트래픽 구성|소스별 전환율|구성과 효율|의미 있는 변화|판단 보류/ });
   await expect(resultHeading).toBeVisible();
