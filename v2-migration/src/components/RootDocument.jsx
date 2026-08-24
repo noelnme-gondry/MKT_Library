@@ -31,11 +31,6 @@ export default function RootDocument({ children, locale = "ko" }) {
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title={isEnglish ? "Growth Opt Playbook — English" : "Growth Opt Playbook"} href={isEnglish ? "/en/rss.xml" : "/rss.xml"} />
         <link rel="alternate" type="text/plain" title="Growth Opt Playbook for AI readers" href="/llms.txt" />
-        {/* 검색 크롤러·구형 브라우저까지 같은 도치 마크를 보도록 PNG와 ICO를 함께 고지. */}
-        <link rel="icon" type="image/png" href="/icons/dochi-favicon-64.png" sizes="64x64" />
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
-        <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
