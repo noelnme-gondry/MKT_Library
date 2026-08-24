@@ -12,6 +12,7 @@ import GuideIndex from "@/components/GuideIndex";
 import StartGate from "@/components/StartGate";
 import LandingPage from "@/components/LandingPage";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
+import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -144,6 +145,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
       </div>
       {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}
+      {routeId !== "home" && routeId !== "dochi-result" && <DochiAnalysisDock />}
       <GlobalModals />
       <UiSemantics />
     </>

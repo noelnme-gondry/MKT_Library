@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * 포커스 링 가드.
@@ -23,10 +24,10 @@ import { describe, expect, it } from "vitest";
  * 대상 목록은 CSS에서 파생한다. 손으로 쓴 셀렉터 배열을 두지 말 것.
  */
 
-const CSS = readFileSync(
+const CSS = stripSourceComments(readFileSync(
   path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "app/globals.css"),
   "utf-8",
-);
+));
 const LINES = CSS.split("\n");
 
 const CANCELS_OUTLINE = /outline:\s*(none|0)\b/;

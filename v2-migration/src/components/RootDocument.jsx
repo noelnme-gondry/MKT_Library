@@ -1,4 +1,5 @@
-import { DM_Sans, JetBrains_Mono, Noto_Sans_KR, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import Footer from "@/components/Footer";
 import AnalyticsScripts from "@/components/AnalyticsScripts";
 import ConsentBanner from "@/components/ConsentBanner";
@@ -8,10 +9,15 @@ import { BRAND } from "@/lib/brandFacts";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
-const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
+const pretendard = localFont({
+  src: "../../public/fonts/PretendardVariable.woff2",
+  variable: "--font-pretendard",
+  weight: "45 920",
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "Arial", "sans-serif"],
+});
 const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
-const notoSansKr = Noto_Sans_KR({ weight: "variable", variable: "--font-noto-sans-kr", display: "swap", preload: false });
 
 const SITE_URL = "https://growthoptplaybook.com";
 
@@ -19,16 +25,17 @@ export default function RootDocument({ children, locale = "ko" }) {
   const isEnglish = locale === "en";
   const language = isEnglish ? "en" : "ko";
   return (
-    <html lang={language} suppressHydrationWarning className={`${dmSans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} ${notoSansKr.variable} dark`}>
+    <html lang={language} suppressHydrationWarning className={`${pretendard.variable} ${jetBrainsMono.variable} dark`}>
       <head>
         <meta name="theme-color" content="#11141b" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title={isEnglish ? "Growth Opt Playbook — English" : "Growth Opt Playbook"} href={isEnglish ? "/en/rss.xml" : "/rss.xml"} />
         <link rel="alternate" type="text/plain" title="Growth Opt Playbook for AI readers" href="/llms.txt" />
-        {/* SVG를 못 읽는 크롤러(검색결과 파비콘 수집기 포함)를 위해 .ico를 함께 고지. */}
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        {/* 검색 크롤러·구형 브라우저까지 같은 도치 마크를 보도록 PNG와 ICO를 함께 고지. */}
+        <link rel="icon" type="image/png" href="/icons/dochi-favicon-64.png" sizes="64x64" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+        <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
@@ -52,7 +59,7 @@ export default function RootDocument({ children, locale = "ko" }) {
                   "@id": `${SITE_URL}/#org`,
                   name: BRAND.name,
                   url: `${SITE_URL}/`,
-                  logo: `${SITE_URL}/favicon.svg`,
+                  logo: `${SITE_URL}/icons/dochi-512.png`,
                 },
               ],
             }),

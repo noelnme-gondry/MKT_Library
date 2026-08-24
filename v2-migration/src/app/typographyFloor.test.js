@@ -2,8 +2,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const CSS = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
+const CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
 
 // 이 가드는 오래도록 globals.css **한 파일만** 훑었다. 그런데 앱에는 인라인
 // `style={{ fontSize: ... }}`이 581곳 있고, 거기 적힌 크기는 CSS 파일에 나타나지
@@ -73,7 +74,7 @@ describe("inline style typography floor", () => {
   it("keeps every inline fontSize readable", () => {
     const offenders = [];
     for (const file of collectJsxFiles(SRC_ROOT)) {
-      for (const hit of collectUndersizedInlineSizes(readFileSync(file, "utf8"))) {
+      for (const hit of collectUndersizedInlineSizes(stripSourceComments(readFileSync(file, "utf8")))) {
         offenders.push(`${path.relative(SRC_ROOT, file)}: ${hit}`);
       }
     }

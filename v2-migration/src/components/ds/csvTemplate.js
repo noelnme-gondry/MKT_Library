@@ -30,7 +30,7 @@ const ROLE_MAPPING_TEMPLATE_FIELDS = {
 // 템플릿을 가진 라우트(/start 등)는 "통합 템플릿" 버튼 대상이 아니므로 제외한다.
 // ROLE_MAPPING_TEMPLATE_FIELDS 뒤에 선언해야 TDZ를 피한다(§7 자기참조 함정).
 export const TEMPLATE_FAMILY = Object.keys(TOOL_GROUP)
-  .filter((id) => TOOL_GROUP[id] === "efficiency" && !ROLE_MAPPING_TEMPLATE_FIELDS[id]);
+  .filter((id) => /^([59])-/.test(id) && TOOL_GROUP[id] === "efficiency" && !ROLE_MAPPING_TEMPLATE_FIELDS[id]);
 
 const canonHeader = (key) => (key === "creative_id" ? "creative_name" : key);
 

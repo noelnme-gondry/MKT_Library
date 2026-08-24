@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * 도구에 들어가자마자 샘플 데이터가 뜨면 두 가지가 동시에 가려진다 — "여기가 내
@@ -25,7 +26,7 @@ describe("도구 진입 시 데모 자동 로드 금지", () => {
 
   it("마운트 시 데모를 자동으로 불러오는 코드가 없다", () => {
     const offenders = files.filter((file) => {
-      const source = fs.readFileSync(file, "utf8");
+      const source = stripSourceComments(fs.readFileSync(file, "utf8"));
       // `if (!hasData && !demoDisabled) loadDemo()` 형태 — 진입 자동 로드의 서명.
       return /!\s*hasData\s*&&\s*!\s*demoDisabled/.test(source);
     });
@@ -35,7 +36,7 @@ describe("도구 진입 시 데모 자동 로드 금지", () => {
   it("demoDisabled를 읽는 곳은 store와 진입 게이트뿐이다", () => {
     // 도구 컴포넌트가 이 값을 읽는다면 자동 로드 분기를 다시 만들었다는 뜻이다.
     const readers = files
-      .filter((file) => /state\.demoDisabled|s\.demoDisabled/.test(fs.readFileSync(file, "utf8")))
+      .filter((file) => /state\.demoDisabled|s\.demoDisabled/.test(stripSourceComments(fs.readFileSync(file, "utf8"))))
       .map((file) => path.relative(SRC, file));
     expect(readers).toEqual([]);
   });

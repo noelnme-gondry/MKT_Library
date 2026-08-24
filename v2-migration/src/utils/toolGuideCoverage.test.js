@@ -16,6 +16,7 @@ describe("TOOL_GUIDE 커버리지", () => {
     "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast", // 5-18 stage 진입
     "5-23", // 방법별 데이터가 달라 "5-23:<method>" 서브키를 쓴다(Incrementality.jsx:249)
     "5-24", // 자체 dropzone 사용, CsvGuide 미사용(BrandCampaignIncrementality.jsx:201)
+    "dochi-result", // 업로드가 아니라 이미 확인한 매핑을 결과 작업대로 이어 주는 라우트
   ]);
 
   const guideIds = Object.keys(TOOL_GROUP).filter((id) => !NO_UPLOAD_GUIDE.has(id));

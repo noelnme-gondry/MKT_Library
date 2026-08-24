@@ -320,7 +320,17 @@ function invertMatrix(matrix) {
       for (let index = 0; index < size * 2; index += 1) augmented[row][index] -= factor * augmented[column][index];
     }
   }
-  return augmented.map((row) => row.slice(size));
+  const inverse = augmented.map((row) => row.slice(size));
+  let maxResidual = 0;
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      const product = matrix[row].reduce((sum, value, index) => sum + value * inverse[index][column], 0);
+      const residual = Math.abs(product - (row === column ? 1 : 0));
+      if (!Number.isFinite(residual)) return null;
+      maxResidual = Math.max(maxResidual, residual);
+    }
+  }
+  return maxResidual <= 1e-6 ? inverse : null;
 }
 
 /**

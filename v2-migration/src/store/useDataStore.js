@@ -653,6 +653,11 @@ export const useAppStore = create(persist((set, get) => ({
   analysisHandoff: null,
   setAnalysisHandoff: (handoff) => set({ analysisHandoff: handoff }),
   clearAnalysisHandoff: () => set({ analysisHandoff: null }),
+  // 도치가 확인한 원본·매핑과 이어서 열 수 있는 분석 목록. 원본 행은 persist 대상이
+  // 아니므로 새로고침 뒤에는 남지 않으며, 브라우저 메모리 안의 페이지 이동에서만 쓴다.
+  dochiAnalysisSession: null,
+  setDochiAnalysisSession: (session) => set({ dochiAnalysisSession: session }),
+  clearDochiAnalysisSession: () => set({ dochiAnalysisSession: null }),
   findingsByGroup: {},
   publishFinding: (finding) => set((state) => {
     if (!validateFinding(finding)) return {};
@@ -788,6 +793,7 @@ export const useAppStore = create(persist((set, get) => ({
       responseMappingSession,
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
+      dochiAnalysisSession: null,
     };
   }),
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
@@ -822,6 +828,7 @@ export const useAppStore = create(persist((set, get) => ({
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: true },
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
+      dochiAnalysisSession: null,
     };
   }),
 
@@ -843,6 +850,7 @@ export const useAppStore = create(persist((set, get) => ({
       csvGroups: groups,
       analyzedByGroup: analyzed,
       csvData: groups[groupForRoute(state.currentRouteId)] || EMPTY_SLICE(),
+      dochiAnalysisSession: null,
     };
   }),
 

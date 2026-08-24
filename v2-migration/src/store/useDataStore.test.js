@@ -230,6 +230,19 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     useAppStore.getState().setCurrentRouteId("start-gate");
     expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: uploaded });
   });
+
+  it("도치 결과 업로드도 읽기·쓰기 모두 효율 슬라이스를 사용", () => {
+    const uploaded = { raw: [{ week: "2026-08-03" }], headers: ["week"], mapping: { week: "date" }, fileName: "dochi.csv" };
+    useAppStore.getState().setCurrentRouteId("5-28");
+    useAppStore.getState().setCurrentRouteId("dochi-result");
+    useAppStore.getState().setCsvData(uploaded);
+
+    expect(groupForRoute("dochi-result")).toBe("efficiency");
+    expect(useAppStore.getState().csvGroups.efficiency).toEqual(uploaded);
+    useAppStore.getState().setCurrentRouteId("weekly-review");
+    useAppStore.getState().setCurrentRouteId("dochi-result");
+    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: uploaded });
+  });
 });
 
 describe("useDataStore · 구조화 세션 상태", () => {

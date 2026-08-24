@@ -9,6 +9,7 @@ import { OPEN_GRAPH_SITE_NAME } from "./openGraph";
 import { PUBLISHER_NAME } from "./authorProfile";
 import { ROUTES, isRoutePublished } from "./routeMap";
 import { getRouteSeo } from "./routeSeo";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 const LOCALES = ["ko", "en"];
 
@@ -174,10 +175,10 @@ describe("brandFacts", () => {
   it("derives the machine-readable identity from the single source", () => {
     expect(OPEN_GRAPH_SITE_NAME).toBe(BRAND.name);
     expect(PUBLISHER_NAME).toBe(BRAND.name);
-    const rootDocument = readFileSync(
+    const rootDocument = stripSourceComments(readFileSync(
       path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "components/RootDocument.jsx"),
       "utf-8",
-    );
+    ));
     // 값 참조만 확인하면 import가 빠져도 통과한다 — 실제로 그랬고 빌드가 잡았다.
     // 문자열이 아니라 "동작하는가"에 가까운 것까지 본다.
     expect(rootDocument).toMatch(/import \{ BRAND \} from "@\/lib\/brandFacts"/);
@@ -195,7 +196,7 @@ describe("brandFacts", () => {
     });
     const legacyName = ["Growth", "Optimization", "Playbook"].join(" "); // 이 파일 자신이 걸리지 않게 조립한다
     const offenders = walk(root)
-      .filter((file) => readFileSync(file, "utf-8").includes(legacyName))
+      .filter((file) => stripSourceComments(readFileSync(file, "utf-8")).includes(legacyName))
       .map((file) => path.relative(root, file));
     expect(offenders, "확장형 제품명이 남아 있다(product-ssot §1.1)").toEqual([]);
   });

@@ -514,7 +514,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **276파일·2268 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-19 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **318파일·2492 통과**(1 skipped) · eslint 0 · `next build` ✓ (2026-08-24 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
 - ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 완료(D-07). **2026-08-19 실측: `ResultActionCard` 17곳·`DownloadHub` 17곳.** 예외는 `ds/downloadEscape.test.js`가 라우트에서 파생해 강제하고 **코드에 사유 표식이 있어야 통과**한다 — 앞으로 개수를 세지 말고 그 가드를 볼 것.

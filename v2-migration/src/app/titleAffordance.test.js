@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * `title` 어포던스 가드.
@@ -23,10 +24,10 @@ import { describe, expect, it } from "vitest";
  */
 
 const SRC = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "components");
-const CSS = readFileSync(
+const CSS = stripSourceComments(readFileSync(
   path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "app/globals.css"),
   "utf-8",
-);
+));
 
 // 도움말을 뜻하는 글리프. 조작 힌트(⠿ 드래그 핸들)는 설명이 아니라 어포던스 표시라 제외한다.
 const HELP_GLYPHS = /^[ⓘℹ?？]$/u;
@@ -48,7 +49,7 @@ function jsxFiles(dir) {
 function glyphOnlyTitleSites() {
   const found = [];
   for (const file of jsxFiles(SRC)) {
-    const text = readFileSync(file, "utf-8");
+    const text = stripSourceComments(readFileSync(file, "utf-8"));
     for (const match of text.matchAll(/\btitle=/g)) {
       const open = text.lastIndexOf("<", match.index);
       const tagMatch = open >= 0 ? /^<([a-z][\w]*)/.exec(text.slice(open)) : null;
@@ -72,7 +73,7 @@ function glyphOnlyTitleSites() {
 function blockedReasonOnlyInTitle() {
   const found = [];
   for (const file of jsxFiles(SRC)) {
-    const text = readFileSync(file, "utf-8");
+    const text = stripSourceComments(readFileSync(file, "utf-8"));
     for (const match of text.matchAll(/<button[^>]*?>/gs)) {
       const tag = match[0];
       if (!tag.includes("disabled")) continue;
@@ -118,12 +119,12 @@ describe("title affordance", () => {
 
   // 예외의 근거. 이 문장이 사라지면 MarketingResponse의 disabled 버튼도 사유를 잃는다.
   it("keeps the visible reason that justifies the one exception", () => {
-    const source = readFileSync(path.join(SRC, "tools/MarketingResponse.jsx"), "utf-8");
+    const source = stripSourceComments(readFileSync(path.join(SRC, "tools/MarketingResponse.jsx"), "utf-8"));
     expect(source).toContain("원본 CSV 통화만 선택하면 분석할 수 있습니다");
   });
 
   it("keeps the help component available for new sites", () => {
-    const component = readFileSync(path.join(SRC, "ds/HelpTip.jsx"), "utf-8");
+    const component = stripSourceComments(readFileSync(path.join(SRC, "ds/HelpTip.jsx"), "utf-8"));
     // details 기반이라 키보드·터치·SR 계약이 네이티브로 따라온다. 이걸 span으로
     // 되돌리면 D-04가 그대로 재발한다.
     expect(component).toMatch(/<details/);
