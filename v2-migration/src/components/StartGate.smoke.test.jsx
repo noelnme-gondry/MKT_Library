@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
@@ -140,6 +140,56 @@ describe("StartGate render smoke", () => {
     expect(mapping.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("dims tools blocked by the uploaded data while keeping eligible tools available", async () => {
+    const slice = {
+      raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
+      headers: ["date", "cost", "installs"],
+      mapping: { date: "date", cost: "cost", installs: "installs" },
+      fileName: "daily.csv",
+      canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
+      mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
+    };
+    useAppStore.setState({
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+
+    render(<StartGate />);
+    const itemFor = (toolId) => [...document.querySelectorAll(".tool-index__item")]
+      .find((item) => item.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
+
+    await waitFor(() => {
+      expect(itemFor("5-2").classList.contains("is-dim")).toBe(false);
+      expect(itemFor("5-27").classList.contains("is-dim")).toBe(true);
+    });
+  });
+
+  it("opens an eligible start recommendation with the same analyzed gate as the Dochi dock", async () => {
+    const slice = {
+      raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
+      headers: ["date", "cost", "installs"],
+      mapping: { date: "date", cost: "cost", installs: "installs" },
+      fileName: "daily.csv",
+      canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
+      mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
+    };
+    useAppStore.setState({
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+
+    render(<StartGate />);
+    const pickTool = (toolId) => [...document.querySelectorAll(".tool-index__link")]
+      .find((link) => link.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
+
+    await waitFor(() => expect(pickTool("5-2").closest(".tool-index__item").classList.contains("is-dim")).toBe(false));
+    fireEvent.click(pickTool("5-2"));
+    act(() => useAppStore.getState().setCurrentRouteId("5-2"));
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+  });
+
   it("uses one parsed input for detailed-tool handoff while keeping the workspace mapping review visible", () => {
     const raw = Array.from({ length: 5 }, (_, day) => ["Google", "Meta"].map((channel, index) => ({
       date: `2026-08-0${day + 1}`,
@@ -173,15 +223,19 @@ describe("StartGate render smoke", () => {
       .find((link) => link.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
 
     fireEvent.click(pickTool("5-23"));
-    expect(useAppStore.getState().analyzedByGroup[TOOL_GROUP["5-23"]]).toBeNull();
+    // handoff는 대상 그룹에 먼저 쓰고, 실제 페이지 전환이 csvData 미러를 대상
+    // 그룹으로 바꾼다. 이 진입 경로까지 밟아야 분석 게이트를 올바르게 검증한다.
+    act(() => useAppStore.getState().setCurrentRouteId("5-23"));
+    expect(useAppStore.getState().isGroupAnalyzed("5-23")).toBe(false);
 
+    act(() => useAppStore.getState().setCurrentRouteId("start-gate"));
     fireEvent.click(pickTool("5-26"));
+    act(() => useAppStore.getState().setCurrentRouteId("5-26"));
     expect(useAppStore.getState().csvGroups.asa_keyword.raw).toHaveLength(raw.length);
     expect(useAppStore.getState().csvGroups.asa_keyword.fileName).toContain("channel_spend.csv");
-    expect(useAppStore.getState().analyzedByGroup.asa_keyword).toBeNull();
+    expect(useAppStore.getState().isGroupAnalyzed("5-26")).toBe(false);
 
     startView.unmount();
-    useAppStore.getState().setCurrentRouteId("5-26");
     const { container } = render(<AsaKeywordFinder />);
     expect(screen.getByText(/필수 컬럼이 매핑되지 않았습니다/)).toBeTruthy();
     expect(container.querySelector(".asa-tool__summary-grid")).toBeNull();

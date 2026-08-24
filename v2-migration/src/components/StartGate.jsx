@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
@@ -70,6 +70,7 @@ export default function StartGate({ locale = "ko" }) {
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
   const [isDochiArrival, setIsDochiArrival] = useState(false);
   const [mappingCoachPhase, setMappingCoachPhase] = useState("hidden");
+  const [eligibilitySnapshot, setEligibilitySnapshot] = useState(null);
   const mappingCoachTimerRef = useRef(null);
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
@@ -110,6 +111,24 @@ export default function StartGate({ locale = "ko" }) {
   const groups = IA.filter((g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
+  // 업로드 뒤의 도구 목록은 도치 작업대와 같은 자격 판정을 쓴다. 이전 파일의
+  // 판정이 새 파일 위에 잠깐 남으면 "지금 가능"이라는 약속이 거짓이 되므로,
+  // 원본·헤더·매핑 참조가 모두 같은 판정만 표시한다.
+  const isEligibilityCurrent = hasPreparedData
+    && eligibilitySnapshot?.raw === csvData.raw
+    && eligibilitySnapshot?.headers === csvData.headers
+    && eligibilitySnapshot?.mapping === csvData.mapping;
+  const eligibleIds = isEligibilityCurrent
+    ? eligibilitySnapshot.ids
+    : hasPreparedData ? [] : null;
+  const rememberEligibility = useCallback((eligibility) => {
+    setEligibilitySnapshot({
+      raw: csvData.raw,
+      headers: csvData.headers,
+      mapping: csvData.mapping,
+      ids: eligibility.filter((result) => result.status !== "blocked").map((result) => result.toolId),
+    });
+  }, [csvData.headers, csvData.mapping, csvData.raw]);
   const getTitle = (id) => {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
     return meta ? trItemTitle(id, locale, meta.title) : id;
@@ -117,7 +136,10 @@ export default function StartGate({ locale = "ko" }) {
   const openRecommended = (id, preparedOverride = null) => {
     trackProductEvent("analysis_recommended", { tool_id: id, source: "start" });
     const prepared = preparedOverride || prepareDatasetForTool({ raw: csvData.raw, headers: csvData.headers, toolId: id, source: csvData.fileName || "dataset" });
-    handoffCsvToRoute(id, prepared, { markAnalyzed: false });
+    // 추천·자격 통과 도구는 도치 독과 같은 분석 완료 상태로 연다. 반대로 목록에
+    // 흐리게 보이는 도구까지 완료 처리하면 부족한 컬럼인데도 기본 결과·결정 기록이
+    // 열릴 수 있으므로, 그 경우에는 상세 화면의 정직한 업로드 게이트를 유지한다.
+    handoffCsvToRoute(id, prepared, { markAnalyzed: Boolean(isEligibilityCurrent && eligibleIds.includes(id)) });
     goTool(id);
   };
   const finishMappingReview = () => {
@@ -148,7 +170,7 @@ export default function StartGate({ locale = "ko" }) {
           onMappingReviewConfirmed={finishMappingReview}
           onPrepared={showMappingCoach}
           afterFileSummary={hasPreparedData ? (
-            <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} autoStart={isDochiArrival || mappingCoachPhase !== "hidden"} />
+            <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart={isDochiArrival || mappingCoachPhase !== "hidden"} />
           ) : null}
         />
       </section>
@@ -188,7 +210,7 @@ export default function StartGate({ locale = "ko" }) {
         <ToolIndex
           locale={locale}
           density="full"
-          eligibleIds={null}
+          eligibleIds={eligibleIds}
           onSelect={(toolId) => (hasPreparedData ? openRecommended(toolId) : goTool(toolId))}
         />
       </section>
