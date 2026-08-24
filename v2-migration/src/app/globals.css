@@ -6416,6 +6416,10 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .tool-page-shell.has-toc .tool-page-shell__main, .dashboard-shell.has-results .dashboard-shell__main { padding-right: 0; }
   .tool-page-shell__toc { display: none; }
   .app.is-analysis .tool-context-header { margin-right: 0; }
+  /* 이 폭에서는 사이드바 때문에 본문이 더 좁다. 결과 카드의 보조 동작이
+     제목 열을 0px로 밀지 않도록 다음 행으로 보낸다. */
+  .result-action-card__head { grid-template-columns: 34px minmax(0, 1fr); }
+  .result-action-card__controls { grid-column: 1 / -1; justify-content: flex-start; }
   .analysis-pathway__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .analysis-recommendations__grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .dochi-workspace__grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
