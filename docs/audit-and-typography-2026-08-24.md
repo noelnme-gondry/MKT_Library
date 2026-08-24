@@ -1,101 +1,162 @@
-# 오딧 방법론 + 한글 타이포그래피 실행 스펙
+# 오딧 결과 + 한글 타이포그래피 실행 스펙
 
 > 2026-08-24 · **Codex 핸드오프 스펙** (AGENTS.md §9 "설계 스펙 먼저, 구현은 핸드오프")
-> 대상: Growth Opt Playbook / `v2-migration/`
-> 작성 시점 기준 **코드 변경 없음.** 본 문서는 자체완결 스펙이며, 아래 §0 결정이 채워지면 그대로 실행 가능하다.
+> 대상: Growth Opt Playbook / `v2-migration/` · 감사 범위: 커밋 **#690~#722**
+> PART 1은 Claude가 실행한 감사 결과(§6.2), PART 2~4는 미실행 스펙이다. **코드 변경 없음.**
 
 ---
 
-# §0 미결정 4건 — 실행 전 여기부터 채울 것
-
-**Codex는 이 표가 비어 있으면 PART 3(폰트 구현)을 시작하지 말 것.**
-§2.7(모호한 결정 임의 확정 금지)에 해당하는 항목들이다.
+# §0 미결정 3건 — 실행 전 여기부터 채울 것
 
 | # | 항목 | 선택지 | 결정 |
 |---|---|---|---|
-| **D1** | 오딧 범위 | `A` L0~L2 + 신규도구 L3 **(추천)** / `B` A + 전 도구 L3 / `C` B + L4 재현 스크립트 / `D` 특정 PR만 | ☐ |
-| **D2** | 오딧 산출 | `보고서만` / `발견을 바로 고쳐 PR까지` | ☐ |
-| **D3** | 폰트 | `P` Pretendard **(추천)** / `I` IBM Plex Sans KR / `C` 응급 처치만 | ☐ |
-| **D4** | mono 범위 | `ⓐ` 폴백만 추가(CSS 1줄) / `ⓑ` 한글 라벨을 sans로 이관 **(권장)** | ☐ |
+| **D1** | 폰트 | `P` Pretendard **(추천)** / `I` IBM Plex Sans KR / `C` 응급 처치만 | ☐ |
+| **D2** | mono 범위 | `ⓐ` 폴백만 추가(CSS 1줄) / `ⓑ` 한글 라벨을 sans로 이관 **(권장)** | ☐ |
+| **D3** | F-1 수정 방식 | `등록` dochi-result를 TOOL_GROUP에 등록 / `전용그룹` 새 그룹 신설 | ☐ |
 
-**단, D3·D4가 미결정이어도 PART 3 §3.1 "응급 처치"는 단독 선행 가능하다** — 어떤 선택지에서도 되돌릴 필요가 없는 변경이다.
-
-**의존 관계**: D4=ⓑ는 D3와 무관하게 독립 수행 가능. D3=P는 self-host 자산 추가가 선행된다.
+**결정 없이 선행 가능한 것** (어떤 선택지에서도 되돌릴 필요가 없다):
+- PART 3 §3.1 폰트 응급 처치 (mono 한글 폴백 + preload)
+- PART 1 F-1 회귀 가드 추가 (수정 방식과 무관하게 계약을 고정)
 
 ---
 
-# PART 1 — 웹사이트 오딧 방법론
+# PART 1 — 감사 결과 (실행 완료)
 
-AGENTS.md §6.2(감사 흐름) 기준. **위→아래로 갈수록 비용이 커진다. 위 계층에서 걸린 게 있으면 거기서 멈추고 보고할 것.**
+## 1.1 L0 기준선 — 실측 (2026-08-24)
 
-## 1.1 대상 범위 — 커밋 #690~#722
-
-| 영역 | 커밋 |
+| 검사 | 결과 |
 |---|---|
-| 도치(Dochi) 워크벤치 | #712 · #717~#722 |
-| 의미기반 CSV 매핑 엔진 V2 | #709 |
-| 5-28 핵심 액션 생존 분석 | #712 · #713 |
-| 계측·광고 호스트 게이트 | #703 · #704 |
-| E2E·브라우저 품질 하네스 | #705 · #706 · #707 |
-| 분석 라우터·운영 흐름 검증 | #711 · #714 |
-| 홈 인덱스·도구 갈래 재구성 | #691~#700 |
+| `npm run test:all` | ✅ **312 파일 · 2468 통과 · 1 skipped** |
+| `npm run lint` | ✅ **0 errors** |
+| `npm run build` | ✅ 성공 (exit 0) |
 
-## 1.2 5계층
+> ⚠ **AGENTS.md §16의 "276파일·2268 통과"는 낡았다.** 위 실측값으로 갱신할 것.
 
-| 계층 | 무엇을 보나 | 도구 | 잡히는 것 |
-|---|---|---|---|
-| **L0 기준선** | `test:all` · `lint` · `build` **실제 실행** | npm | 하네스가 지금 실제로 초록인지 (§16 수치가 낡았을 수 있음) |
-| **L1 주장 검증** | PR 본문 vs 실제 diff | `git show` | "고쳤다"가 코드에 있는지, 가드가 진짜 가드인지 |
-| **L2 배선 정합** | SSOT ↔ 파생 레지스트리 | grep 전수 | 신규 도구가 20~25곳 배선 중 빠뜨린 곳 |
-| **L3 정직성** | 화면 숫자 = 실제 계산인가 | 재현 스크립트 | 거짓 숫자 · "미상→좋은 등급" · 무유의 단정 |
-| **L4 실사용** | 실제 CSV로 업로드→매핑→분석 | node repro / e2e | 골든이 못 보는 render throw · 매핑 실패 |
+## 1.2 🔴 F-1 (P1) — `/dochi-result`의 읽기·쓰기 그룹 비대칭
 
-## 1.3 계층별 검사 항목
+**PR #603→#604와 정확히 같은 사고가 신규 라우트에서 재발했다.**
 
-### L0 — 기준선
-```bash
-cd v2-migration && npm run test:all && npm run lint && npm run build
+### 근거
+
+`dochi-result`는 `routeMap.js:70`에 등록된 라우트인데 **`TOOL_GROUP`에 없다.**
+그런데 이 라우트는 CSV를 **읽고 쓴다**:
+
+| 동작 | 코드 | 그룹 결정 |
+|---|---|---|
+| **읽기** | `useDataStore.js:529-530` `TOOL_GROUP[id] \|\| state.activeDataGroup` | **sticky** — 마지막 도구 그룹 유지 |
+| **쓰기** | `useDataStore.js:772` `groupForRoute(state.currentRouteId)` → `TOOL_GROUP[id] \|\| "efficiency"` | **efficiency로 강제** |
+
+`DochiResultWorkspace.jsx:122` 가 `csvData`를 읽고,
+`DochiResultWorkspace.jsx:~152` 가 `<CsvUploader toolId="start-gate" …/>` 를 렌더해 쓴다.
+
+**두 경로가 서로 다른 그룹을 고른다** — `activeDataGroup ≠ "efficiency"`인 모든 경우.
+
+### 재현 (3/3 통과 — 예측대로 재현됨)
+
 ```
-> §16의 "276파일·2268 통과"는 2026-08-19 실측이다. **수치를 인용하지 말고 다시 돌려서 적을 것.**
-
-### L1 — 주장 검증
-- 새 가드 테스트가 **하드코딩 배열이 아니라 SSOT 파생**인지
-  (§7 *"가드가 있다는 사실이 가드가 없다는 사실을 가린다"*)
-- 테스트 안 `foo?.()` / 조건부 `if` 안의 단언 → **조용히 삭제된 검사**
-- 소스를 `includes("X")`로 검사 → **주석·import 줄에 걸려 통과**하는 가짜 가드
-  (§16에 한 세션 3회 재발 기록)
-
-```bash
-# 가짜 가드 후보 추출
-grep -rn "?\.\(" v2-migration/src --include=*.test.js --include=*.test.jsx
-grep -rn 'includes("' v2-migration/src --include=*.test.js | grep -i "source\|readFileSync"
+1) setCurrentRouteId("5-28")        → activeDataGroup = "subscription_survival"
+2) setCurrentRouteId("dochi-result") → sticky, 그룹 유지 (미러 = subscription 슬라이스)
+3) setCsvData(DATA)                  → csvGroups.efficiency 에 저장됨 ⚠
+                                       csvGroups.subscription_survival 은 빈 채
+4) 다른 라우트 갔다가 /dochi-result 재진입
+   기대: 방금 올린 CSV
+   실제: csvData.fileName === ""  ← 업로드 소실
 ```
 
-### L2 — 배선 정합 (신규 도구가 있을 때 최우선)
-- `TOOL_GROUP` ↔ store `csvGroups` ↔ `TEMPLATE_FAMILY` **3맵 파생 여부**
-  → 미등록 = 업로드 소실(#603/#604) 또는 렌더 throw(#608/#610)
-- **형제 id grep 전수** — §12.1의 10단계는 최소집합이지 전부가 아니다(실측 25곳)
-  ```bash
-  grep -rn "5-28" v2-migration/src | cut -d: -f1 | sort -u
-  ```
-- **KR/EN 대칭**(§2.11) — EN 짝파일 · `EN_*_SLUGS` 누락
-- 가드 정규식이 새 id 형태를 건너뛰지 않는지 (`^(5|9)-\d+$` 류가 하이픈 id를 통째로 스킵한 전례)
+**동반 결함**: `DochiResultWorkspace.jsx:124`의 `setGroupAnalyzed("dochi-result")`도
+`groupForRoute` 경유라 **무관한 `efficiency` 그룹의 분석 게이트를 연다.**
+게다가 그 시그니처는 미러(= 다른 그룹의 데이터)에서 계산된다
+(`useDataStore.js:859-862`) — 5-2 대시보드 등이 사용자가 "분석하기"를 누르지 않았는데
+열린 상태가 된다.
 
-### L3 — 정직성 (§8)
-- 적합 실패를 좋은 값으로 접는 자리 (`r2=0 → VIF=1`, `null → "포화"`)
-- **학습 오차 > OOS 오차** 부등식 → 적합값이 점예측이 아니라는 신호
-- 계산해 놓고 판정에 안 쓰는 플래그 (§16 *"신호를 계산해 놓고 안 쓰는 자리"* 실측 3건)
-- 무유의를 "효과 없음"으로 단정하지 않는지 / 데이터 없는 상태를 날조하지 않는지
+### 왜 하네스가 못 잡았나
 
-### L4 — 실사용
-- 데모 픽스처가 아니라 **실제 플랫폼 export 컬럼명**으로 자동매핑
-  (§7 *"데모 픽스처가 표준키를 헤더로 쓰면 자동매핑은 검사된 적이 없다"*)
-- 신규 화면(도치 워크벤치)의 **진입 경로 자체를 밟는** 스모크가 있는지
-  → `beforeEach` 상태 주입은 `setCurrentRouteId` → 미러 스왑을 우회한다
+- `dochi-result`를 보는 테스트는 `DochiResultWorkspace.smoke.test.jsx` ·
+  `DochiAssistant.smoke.test.jsx` **둘뿐**이고,
+  둘 다 `csvGroups.efficiency`를 **직접 주입**한다(라인 41·58).
+- 즉 **하필 폴백 그룹으로만 검사**해서 비대칭이 상쇄된다.
+- §7 *"스모크 `beforeEach`의 상태 주입이 진입 경로를 우회한다"* 가 그대로 재발.
+  `setCurrentRouteId` → 미러 스왑을 밟는 케이스가 없다.
 
-## 1.4 보고 형식
+### 전수 확인 — 이 라우트 하나만 빠져 있다
 
-발견은 **재현 가능한 형태로**: `입력 → 기대 → 실제`. 심각도 순 정렬. **추측은 추측이라고 명시.**
+`TOOL_GROUP` 미등록 라우트 18개 중 CSV를 소비하는 것은 `dochi-result` **하나뿐**이다
+(나머지는 SOP 문서 15개 · `home` · `guide-index`).
+`start-gate`는 `toolGroups.js:10`에 **등록돼 있다** — #604의 교훈이 적용된 자리다.
+
+> §16 *"다수가 맞으면 소수의 예외가 보이지 않는다"* — 계약은 표본이 아니라 전수로 검사할 것.
+
+### 수정 방향 (D3)
+
+- **`등록`**: `toolGroups.js`에 `"dochi-result": "efficiency"` 추가.
+  가장 작다. 단 도치가 효율 CSV만 다룬다는 전제가 맞아야 한다.
+- **`전용그룹`**: `"dochi-result": "dochi"` 신설. 슬라이스가 격리되지만
+  도치가 여러 grain을 넘나드는 설계라면 오히려 어긋난다.
+
+**어느 쪽이든 회귀 가드는 지금 추가할 것** — `TOOL_GROUP` 미등록 라우트 중
+`csvData`를 읽거나 `CsvUploader`를 렌더하는 것이 없음을 **라우트에서 파생해** 단언.
+목록을 손으로 적으면 다음 라우트에서 또 어긋난다(§7).
+
+## 1.3 🟡 F-2 (P2, 미확인) — `invertMatrix`의 절대 pivot 임계
+
+`subscriptionSurvivalMath.js:313`
+```js
+if (!(magnitude > Number.EPSILON * 100)) return null;   // ≈ 2.2e-14, 절대 임계
+```
+
+§7에 이미 기록된 함정이다 — *"Gauss-Jordan inverse는 절대 pivot 임계로
+rank-deficiency를 못 잡는다. `maxErr = max|I·M−δ| > 1e-6`이면 null 반환"*.
+`REG_STATS.ols`는 잔차 기반으로 판정하는데 **이 신규 코드는 절대 임계로 되돌아갔다.**
+log-rank 공분산은 위험집합 카운트 기반이라 대용량에서 스케일이 커진다.
+
+**정직하게 남긴다: 재현하지 못했다.** 스케일 1e0·1e3·1e5의 준특이 행렬을 넣어
+봤으나 잔차 `max|I−M·M⁻¹|`가 0~1.2e-7로, 부동소수점이 감당해 가비지가 나오지 않았다.
+실제 log-rank 공분산에서 도달 가능한 입력을 구성하지 못했으므로 **구조적 위험이지
+확인된 버그가 아니다.** 판정 기준을 잔차 기반으로 맞추는 것은 정상 입력에서 no-op이라
+골든 byte-identical로 넣을 수 있다.
+
+## 1.4 ✅ 정상 확인된 것 (회귀 없음)
+
+| 항목 | 결과 |
+|---|---|
+| **3맵 파생** (`csvGroups`·`analyzedByGroup`·`dashboardFilterGroups`) | ✅ `buildGroupMap(DATA_GROUPS)`로 파생. #608/#610 교훈 적용됨 |
+| **5-28 배선** | ✅ 31개 파일. IA·routeMap·toolGroups·routeSeo·toolOg·csvConstants·toolGuide·demoData 전부 |
+| **`toolIndex`·`sitemap`** | ✅ 5-28 문자열이 없지만 **정상** — `ROUTES.filter(isRoutePublished)`로 파생(§12.31) |
+| **KR/EN 대칭** (§2.11) | ✅ 5-28·dochi-result 모두 EN PageClient·`EN_READY_TOOL_IDS`에 등록 |
+| **5-28 정직성** (§8) | ✅ `status:"unavailable"` + `reason` 구조, `ok:false, reason:"covariance_not_estimable"`, 지평 밖 외삽 거부(`survivalBasedLtv`가 `null`), CAC 부분결측을 평균내지 않음. **"계산 불가를 좋은 등급으로 접는" 패턴 없음** |
+| **테스트 내 `?.()`** | ✅ 검사를 무력화하는 자리 없음. `MulticollinearityChecker.smoke.test.jsx:22`에 과거 사고가 주석으로 기록돼 있음 |
+
+## 1.5 🟡 F-3 (P2, 체계) — 소스 문자열 가드가 주석을 안 벗긴다
+
+`readFileSync`로 소스를 읽어 문자열 검사하는 가드 **20개 중 18개가 주석을 제거하지 않는다.**
+§16에 *"소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다"* 로
+**한 세션에 3회** 기록된 클래스인데, 고친 2개(`downloadEscape`·`tabContract`) 외에는
+같은 형태로 남아 있다.
+
+> §7 *"교훈을 적용할 땐 같은 패턴의 파일을 전부 grep해서 한 번에 고칠 것 —
+> 한 곳만 고치면 교훈이 기록됐다는 사실이 남은 구멍을 가린다."*
+
+**전수 목록**: `toolDemoEntry` · `legacyPillRatchet` · `titleAffordance` ·
+`appShellSemantics` · `mobileTaskIntegrity` · `privacy` · `buttonContrast` ·
+`mmmResultWorkflow` · `dashboardKpiLayout` · `typographyFloor` · `focusVisible` ·
+`cardCopyLayout` · `contentLinks` · `compareContent` · `blogFormatting` ·
+`contentAssets` · `sopBlocks` · `mmmBusinessSeasonality`
+
+**주의**: 전부가 위험한 건 아니다. **"없어야 한다"를 검사하는 가드**와
+**"있으면 배선된 것으로 친다"는 가드**만 주석에 속는다. 공용 `stripComments` 하나를
+만들어 그 부류부터 통과시키는 게 맞다 — 18개를 일괄 수정하는 건 과잉이다.
+
+## 1.6 감사 요약
+
+| 심각도 | 건수 | 항목 |
+|---|---|---|
+| 🔴 P1 | 1 | F-1 `/dochi-result` 그룹 비대칭 (재현 완료) |
+| 🟡 P2 | 2 | F-2 절대 pivot 임계(미확인) · F-3 주석 미제거 가드 18개 |
+| ✅ | 6 | 3맵 파생 · 5-28 배선 · 파생 목록 · KR/EN · 5-28 정직성 · 테스트 무력화 없음 |
+
+**전반적으로 #690~#722의 배선 품질은 높다.** 과거 사고(#603·#608·#610)의 교훈이
+실제로 코드에 남아 동작하고 있고, 5-28 엔진의 통계적 정직성은 §8 기준을 만족한다.
+**단, 새로 생긴 라우트 하나(`dochi-result`)가 바로 그 교훈의 사각지대에 떨어졌다.**
 
 ---
 
@@ -110,7 +171,7 @@ grep -rn 'includes("' v2-migration/src --include=*.test.js | grep -i "source\|re
 
 | 위치 | 레이어 | 승패 |
 |---|---|---|
-| `globals.css:19` `:root` | `tokens` (17행 시작) | ❌ **app 레이어에 짐 → 전체 사문화** |
+| `globals.css:19` `:root` | `tokens` (17행 시작) | ❌ **app에 짐 → 전체 사문화** |
 | `globals.css:4796` `:root` | `app` (188행 시작) | △ mono만 실효 |
 | `globals.css:8347` `:root` | `app` | ✅ sans·body·display 실효 (소스 순서 뒤) |
 
@@ -125,8 +186,8 @@ grep -rn 'includes("' v2-migration/src --include=*.test.js | grep -i "source\|re
 --font-mono:    var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
 ```
 
-> ⚠ `globals.css:86-88`의 `--font-sans: "Inter", …`는 **`tokens` 레이어라 app에 지고, 게다가 Inter는 로드조차 되지 않는다.** 죽은 선언이다.
-> §7 *"토큰 값을 대조할 땐 마지막 정의를 볼 것"* + 레이어까지 함께 봐야 하는 사례.
+> ⚠ `globals.css:86-88`의 `--font-sans: "Inter", …`는 **`tokens` 레이어라 app에 지고,
+> 게다가 Inter는 로드조차 되지 않는다.** 이중으로 죽은 선언이다.
 
 ## 2.2 로드되는 폰트 4종 (`src/components/RootDocument.jsx:11-14`)
 
@@ -143,13 +204,12 @@ grep -rn 'includes("' v2-migration/src --include=*.test.js | grep -i "source\|re
 
 **사용량 실측** (2026-08-24, `globals.css`):
 
-| 토큰 | 사용처 수 |
+| 토큰 | 사용처 |
 |---|---|
 | `var(--font-mono)` | **399** |
 | `var(--font-display)` | 71 |
 | `var(--font-sans)` | 34 |
 
-앱 텍스트의 압도적 다수가 mono인데, 그 체인 어디에도 한글이 없다.
 mono가 걸린 셀렉터 — **전부 한글 라벨이다**:
 
 ```
@@ -175,13 +235,13 @@ code.inline  pre
 
 ## 2.4 ⚠ 원인 2 — 한 줄 안에서 폰트가 갈린다
 
-`--font-display`(Space Grotesk)는 KPI 숫자·결과 카드 수치에 쓰인다:
+`--font-display`(Space Grotesk)가 쓰이는 곳:
 - `globals.css:5126` `.kpi-card .value`
 - `globals.css:5435` `.result-action-card__stats strong`
 
-한 줄 안에서 **숫자·영문 → Space Grotesk / 한글 → Noto Sans KR**로 갈린다.
+한 줄에서 **숫자·영문 → Space Grotesk / 한글 → Noto Sans KR**로 갈린다.
 획 굵기·x-height·베이스라인이 서로 다르다 → **"촌스럽다"의 물리적 근거.**
-Space Grotesk는 본래 헤드라인용 display face이지 데이터 표시용이 아니다.
+Space Grotesk는 헤드라인용 display face이지 데이터 표시용이 아니다.
 
 ## 2.5 ⚠ 원인 3 — 크기
 
@@ -200,9 +260,9 @@ Noto Sans KR은 x-height가 낮아 13px 이하 한글에서 획이 뭉갠다.
 
 # PART 3 — 실행 스펙 (Codex)
 
-## 3.1 응급 처치 — **D3·D4와 무관하게 선행 가능**
+## 3.1 응급 처치 — **D1·D2와 무관하게 선행 가능**
 
-어떤 폰트를 고르든 되돌릴 필요가 없다. **이 두 줄이 399곳을 고친다.**
+**이 두 줄이 399곳을 고친다.**
 
 **① `v2-migration/src/app/globals.css:4860`**
 ```css
@@ -219,11 +279,9 @@ Noto Sans KR은 x-height가 낮아 13px 이하 한글에서 획이 뭉갠다.
 /* after  */ preload: true
 ```
 
-**검증**: `npm run test:all` · `lint` · `build` + Windows Chrome에서 데이터 표 헤더 육안 확인.
+**검증**: `test:all` · `lint` · `build` + **Windows Chrome**에서 데이터 표 헤더 육안 확인.
 
----
-
-## 3.2 D3 = `P` (Pretendard) 경로
+## 3.2 D1 = `P` (Pretendard) 경로
 
 | | |
 |---|---|
@@ -233,17 +291,16 @@ Noto Sans KR은 x-height가 낮아 13px 이하 한글에서 획이 뭉갠다.
 | 근거 | 라틴이 Inter 기반 = 데이터 대시보드 1순위 폰트의 판독성 + **한글이 같은 파일** |
 
 **절차:**
-1. `v2-migration/public/fonts/PretendardVariable.woff2` **self-host**
-   (CDN 링크 금지 — 가용성·성능 리스크)
-2. `RootDocument.jsx`에서 `next/font/local`로 로드, **`weight: "45 920"` 명시**
+1. `v2-migration/public/fonts/PretendardVariable.woff2` **self-host** (CDN 금지)
+2. `RootDocument.jsx`에서 `next/font/local`, **`weight: "45 920"` 명시**
    > ⚠ 생략 시 **WebKit에서 굵기가 어긋나는 알려진 이슈**
 3. `DM_Sans` · `Space_Grotesk` · `Noto_Sans_KR` import 제거 +
-   `RootDocument.jsx:22`의 `<html className>` 변수 목록 동반 수정
+   **`RootDocument.jsx:22`의 `<html className>` 변수 목록 동반 수정**
 4. **`globals.css`의 `:root` 3블록 전부** 갱신 — 19 · 4796 · 8347행
-   > ⚠ 하나만 고치면 안 된다(§2.1). 19행 블록은 이 기회에 **삭제**가 맞다(사문화된 죽은 선언)
+   > ⚠ 하나만 고치면 안 된다(§2.1). 19행 블록은 이 기회에 **삭제**가 맞다
 5. KR/EN 양쪽 확인 (§2.11)
-6. `npm run test:all` + `lint` + **`build`**
-   > §16 — 배선을 바꿨으면 build까지. 문자열만 보는 가드는 import 누락을 못 잡는다
+6. `test:all` + `lint` + **`build`**
+   > 문자열만 보는 가드는 import 누락을 못 잡는다 — build까지 돌릴 것(§16)
 
 **목표 스택:**
 ```css
@@ -254,7 +311,7 @@ Noto Sans KR은 x-height가 낮아 13px 이하 한글에서 획이 뭉갠다.
                 "Pretendard Variable", Pretendard, monospace;
 ```
 
-## 3.3 D3 = `I` (IBM Plex Sans KR) 경로 — 최소 비용
+## 3.3 D1 = `I` (IBM Plex Sans KR) 경로 — 최소 비용
 
 | | |
 |---|---|
@@ -262,41 +319,38 @@ Noto Sans KR은 x-height가 낮아 13px 이하 한글에서 획이 뭉갠다.
 | 굵기 | 7~8종, **Google Fonts 제공** |
 | 근거 | UI 환경 전용 설계 + **`IBM Plex Mono`와 한 가족** → mono 399곳 페어링이 자동으로 맞음 |
 
-`RootDocument.jsx` import 교체만. self-host 불필요.
 ```js
 import { IBM_Plex_Sans_KR, IBM_Plex_Mono } from "next/font/google";
 ```
-이후 §3.2의 4~6단계(토큰 3블록 · KR/EN · 검증)는 동일하게 수행.
+self-host 불필요. 이후 §3.2의 4~6단계는 동일.
 
-## 3.4 D4 = `ⓑ` (mono 범위 축소) 경로
+## 3.4 D2 = `ⓑ` (mono 범위 축소) 경로
 
 mono 399곳 중 상당수가 **숫자가 아니라 한글 라벨**이다.
-고정폭은 숫자 정렬에는 맞지만 **한글 라벨에는 아무 이득이 없고 판독만 나빠진다.**
+고정폭은 숫자 정렬에는 맞지만 **한글 라벨에는 이득이 없고 판독만 나빠진다.**
 
 | 안 | 내용 | 규모 | 위험 |
 |---|---|---|---|
-| **ⓐ** | mono 체인에 한글 폴백만 추가 (= §3.1 ①) | CSS 1줄 | 없음 |
-| **ⓑ** | 한글 라벨 셀렉터를 `--font-sans`로 이관, mono는 **숫자·코드 전용**으로 축소 | 수십 곳 | **폭 변화 → 레이아웃 회귀** |
+| **ⓐ** | mono 체인에 한글 폴백만 (= §3.1 ①) | CSS 1줄 | 없음 |
+| **ⓑ** | 한글 라벨을 `--font-sans`로 이관, mono는 **숫자·코드 전용** | 수십 곳 | 폭 변화 → 레이아웃 회귀 |
 
-**ⓑ 수행 시 — 목록을 손으로 적지 말고 파생할 것** (§7):
+**ⓑ 수행 시 — 목록을 손으로 적지 말고 파생할 것**(§7):
 ```bash
 grep -n -B3 "var(--font-mono)" v2-migration/src/app/globals.css | grep "{"
 ```
-→ 나온 셀렉터를 **"숫자/코드를 담는가"** 기준으로 분류.
-- **mono 유지**: `pre` · `code.inline` · `table.data td .mono` · `.kpi-card .value` 등 숫자·코드
-- **sans 이관**: `table.data thead th` · `.kpi-card .label` · `.pill` · `.toc-title` · `.card-eyebrow` 등 한글 라벨
+- **mono 유지**: `pre` · `code.inline` · `table.data td .mono` · `.kpi-card .value` (숫자·코드)
+- **sans 이관**: `table.data thead th` · `.kpi-card .label` · `.pill` · `.toc-title` · `.card-eyebrow`
 
-**⚠ 필수 회귀 확인**: 폰트 폭이 바뀌면 `white-space: nowrap` + `min-width` 자리가 잘린다.
-`.dashboard-top-stat`(`globals.css:7574`, `min-width:72px`)를 포함해 전수 확인.
+**⚠ 필수 회귀 확인**: 폰트 폭이 바뀌면 `white-space:nowrap` + `min-width` 자리가 잘린다.
+`.dashboard-top-stat`(`globals.css:7574`, `min-width:72px`) 포함 전수.
 
 ## 3.5 공통 — 어느 경로든 반드시 함께
 
-1. **`--font-display` 폐지.** 위계는 폰트가 아니라 **굵기(현재 이미 650~690 사용) + letter-spacing**으로.
+1. **`--font-display` 폐지.** 위계는 폰트가 아니라 **굵기(현재 650~690) + letter-spacing**으로.
 2. **`--font-mono` 체인에 한글 폴백.** (원인 1)
-3. **`font-variant-numeric: tabular-nums`** — 현재 **17곳**뿐이다.
-   mono 399곳 중 숫자를 담는 자리에 전수 적용됐는지 확인.
+3. **`font-variant-numeric: tabular-nums`** — 현재 **17곳**뿐. 숫자 자리 전수 확인.
 4. **한글 라벨 최소 11~12px.** `--type-meta: 10px`은 한글에서 사실상 판독 불가.
-   > ⚠ 인라인 `fontSize`가 jsx에 **600곳** 있다. `globals.css`만 고치면 우회로가 남는다(§12.30 전례).
+   > ⚠ 인라인 `fontSize`가 jsx에 **600곳**. `globals.css`만 고치면 우회로가 남는다(§12.30 전례).
 
 ---
 
@@ -305,13 +359,13 @@ grep -n -B3 "var(--font-mono)" v2-migration/src/app/globals.css | grep "{"
 | # | 확인 항목 | 방법 |
 |---|---|---|
 | 1 | **Pretendard `tnum` 실지원** | 실제 표에 `tabular-nums` 적용 후 자릿수 다른 숫자 정렬 육안 확인 |
-| 2 | 13px 한글 판독 | `--type-body`로 데이터 표 렌더 후 **Windows Chrome**에서 확인 |
+| 2 | 13px 한글 판독 | 데이터 표 렌더 후 **Windows Chrome**에서 확인 |
 | 3 | 다크/라이트 양쪽 | 다크에서 굵기가 도드라짐 — 필요 시 `-webkit-font-smoothing` 조정 |
 | 4 | 번들 증가 | variable woff2 self-host 시 초기 로드 증가량 실측 |
-| 5 | 레이아웃 회귀 | `white-space:nowrap` + `min-width` 자리 잘림 전수 (§3.4) |
+| 5 | 레이아웃 회귀 | `white-space:nowrap` + `min-width` 잘림 전수 (§3.4) |
 
-> ⚠ **#1은 미확인 사항이다.** Pretendard 공식 README에 `tnum` 지원이 **명시돼 있지 않다.**
-> Inter 기반이라 있을 가능성이 높지만 **추정이며, 채택 전 실측이 필요하다**(§8 정직성).
+> ⚠ **#1은 미확인이다.** Pretendard 공식 README에 `tnum` 지원이 **명시돼 있지 않다.**
+> Inter 기반이라 있을 가능성이 높지만 **추정이며 채택 전 실측이 필요하다**(§8).
 
 ---
 
@@ -319,8 +373,8 @@ grep -n -B3 "var(--font-mono)" v2-migration/src/app/globals.css | grep "{"
 
 | 선택 | 언제 |
 |---|---|
-| **Pretendard** | "깔끔하고 촌스럽지 않게"가 목표라면. 한국 실무 표준 + Inter 기반 데이터 판독성. self-host 필요 |
-| **IBM Plex Sans KR** | 변경 비용 최소화 + mono 페어링까지 한 가족으로 맞추고 싶다면 |
+| **Pretendard** | "깔끔하고 촌스럽지 않게"가 목표라면. 한국 실무 표준 + Inter 기반 판독성. self-host 필요 |
+| **IBM Plex Sans KR** | 변경 비용 최소화 + mono 페어링을 한 가족으로 맞추고 싶다면 |
 | **응급 처치만** | 폰트 교체는 나중에, 지금 어지러움만 줄이고 싶다면 (§3.1) |
 
 > **어느 쪽이든 §3.5의 4가지가 실제 원인이다.
