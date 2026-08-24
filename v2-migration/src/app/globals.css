@@ -7901,7 +7901,7 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-home-assistant .csv-uploader--dochi form label,.dochi-home-assistant .csv-uploader--dochi form > span { font-size:9.5px !important; }
 .dochi-home-assistant .csv-uploader--dochi form input { min-height:38px;font-size:11px !important; }
 .dochi-home-assistant .csv-uploader--dochi form .ab-button { min-height:38px;padding:7px 10px;font-size:10.5px; }
-.dochi-result-workspace,.dochi-result-empty { width:min(1480px,100%);margin:0 auto;padding:clamp(18px,2.5vw,38px); }
+.dochi-result-workspace,.dochi-result-empty { width:min(1480px,calc(100% - clamp(32px,6vw,120px)));margin:0 auto;padding:clamp(26px,3.2vw,54px) 0 clamp(42px,5vw,82px); }
 .dochi-result-workspace__header { margin:0 0 20px; }
 .dochi-result-workspace__header > span,.dochi-result-empty > span { display:block;color:var(--primary);font:750 10px var(--font-mono);letter-spacing:.12em; }
 .dochi-result-workspace__header h1,.dochi-result-empty h1 { margin:6px 0 7px;color:var(--text-primary);font-size:clamp(25px,3vw,38px);letter-spacing:-.04em;word-break:keep-all;overflow-wrap:normal; }
@@ -7913,19 +7913,29 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-result-workspace .csv-mapping-review-action .ab-button { min-height:44px; }
 .dochi-result-tools { display:grid;gap:16px; }
 .dochi-result-tool { overflow:hidden;border:1px solid var(--border);border-radius:16px;background:var(--surface-container-lowest);box-shadow:0 10px 26px color-mix(in srgb,var(--bg-1) 7%,transparent); }
-.dochi-result-tool > summary { display:flex;align-items:center;justify-content:space-between;gap:18px;padding:17px 20px;cursor:pointer;list-style:none;color:var(--text-primary); }
+.dochi-result-tool > summary { display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 18px;cursor:pointer;list-style:none;color:var(--text-primary); }
 .dochi-result-tool > summary::-webkit-details-marker { display:none; }
 .dochi-result-tool > summary strong { font-size:16px;letter-spacing:-.025em;word-break:keep-all; }
-.dochi-result-tool > summary span { color:var(--text-muted);font-size:12px;white-space:nowrap; }
-.dochi-result-tool__view { min-width:0;border-top:1px solid var(--border); }
+.dochi-result-tool__actions { display:flex;align-items:center;gap:8px;white-space:nowrap; }
+.dochi-result-tool__actions button { min-height:30px;padding:5px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface-container-lowest);color:var(--text-secondary);font:650 11px var(--font-sans);cursor:pointer; }
+.dochi-result-tool__actions button:hover,.dochi-result-tool__actions button:focus-visible { border-color:var(--primary);color:var(--primary); }
+.dochi-result-tool__actions .dochi-result-tool__open { border-color:color-mix(in srgb,var(--primary) 34%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--surface-container-lowest));color:var(--primary); }
+.dochi-result-tool__view { min-width:0;padding:clamp(18px,2.4vw,34px);border-top:1px solid var(--border);background:color-mix(in srgb,var(--bg-1) 72%,var(--surface-container-lowest)); }
 .dochi-result-tool__view .tool-page-shell,.dochi-result-tool__view .dashboard { max-width:none; }
 .dochi-result-tool__view .tool-page-shell.has-toc .tool-page-shell__main,.dochi-result-tool__view .dashboard-shell.has-results .dashboard-shell__main { padding-right:0; }
 .dochi-result-tool__view .tool-page-shell__toc,.dochi-result-tool__view .tool-assist-rail,.dochi-result-tool__view .dashboard-data-disclosure { display:none; }
+.dochi-result-tool__view .tool-instrument-header,.dochi-result-tool__view .tool-brief,.dochi-result-tool__view .tool-page-shell__main > .summary,.dochi-result-tool__view .dashboard-next-actions,.dochi-result-tool__view .dashboard-support-tools { display:none; }
+.dochi-result-tool__view .dashboard-sticky-context { display:none; }
+.dochi-result-tool__view .page-sticky-bar { position:static;top:auto;margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border);border-radius:0;background:transparent;backdrop-filter:none; }
+.dochi-result-tool__view .dashboard-content { margin-top:0; }
 .dochi-result-loading { margin:0;padding:30px;color:var(--text-muted);font-size:13px; }
 @media (max-width:700px) {
-  .dochi-result-workspace,.dochi-result-empty { padding:18px 14px; }
+  .dochi-result-workspace,.dochi-result-empty { width:100%;padding:22px 14px 44px; }
   .dochi-result-workspace__header h1,.dochi-result-empty h1 { font-size:26px; }
-  .dochi-result-tool > summary { padding:15px; }
+  .dochi-result-tool > summary { align-items:flex-start;padding:14px; }
+  .dochi-result-tool__actions { flex-wrap:wrap;justify-content:flex-end;gap:6px; }
+  .dochi-result-tool__actions button { min-height:28px;padding:4px 7px;font-size:10px; }
+  .dochi-result-tool__view { padding:16px 12px; }
   .dochi-result-workspace .csv-mapping-review-action { bottom:8px;padding:9px; }
 }
 @keyframes dochi-home-breathe { 0%,100% { transform:translateY(0) scale(1); } 50% { transform:translateY(-3px) scale(1.015); } }
