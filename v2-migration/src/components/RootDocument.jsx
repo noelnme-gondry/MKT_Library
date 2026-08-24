@@ -9,10 +9,10 @@ import { BRAND } from "@/lib/brandFacts";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
-const pretendard = localFont({
-  src: "../../public/fonts/PretendardVariable.woff2",
-  variable: "--font-pretendard",
-  weight: "45 920",
+const wantedSans = localFont({
+  src: "../../public/fonts/WantedSansVariable.woff2",
+  variable: "--font-wanted-sans",
+  weight: "400 1000",
   display: "swap",
   preload: true,
   fallback: ["system-ui", "Arial", "sans-serif"],
@@ -25,7 +25,7 @@ export default function RootDocument({ children, locale = "ko" }) {
   const isEnglish = locale === "en";
   const language = isEnglish ? "en" : "ko";
   return (
-    <html lang={language} suppressHydrationWarning className={`${pretendard.variable} ${jetBrainsMono.variable} dark`}>
+    <html lang={language} suppressHydrationWarning className={`${wantedSans.variable} ${jetBrainsMono.variable} dark`}>
       <head>
         <meta name="theme-color" content="#11141b" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />

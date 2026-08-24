@@ -19,14 +19,24 @@ const shellFiles = [
 ];
 
 const appDirectory = fileURLToPath(new URL(".", import.meta.url));
+const readAppSource = (relativePath) => stripSourceComments(readFileSync(`${appDirectory}${relativePath}`, "utf8"));
 
 describe("shared application-shell semantics", () => {
   it.each(shellFiles)("keeps the global banner outside main in %s", (relativePath) => {
-    const source = stripSourceComments(readFileSync(`${appDirectory}${relativePath}`, "utf8"));
+    const source = readAppSource(relativePath);
     const headerIndex = source.indexOf("<Header");
     const mainIndex = source.indexOf('<main id="main-content" tabIndex="-1"');
     expect(source).not.toMatch(/<main[^>]*className="main"/);
     expect(headerIndex).toBeGreaterThan(-1);
     expect(mainIndex).toBeGreaterThan(headerIndex);
+  });
+
+  it("keeps the English Dochi intake, result workspace, and remembered-analysis dock reachable", () => {
+    const homeSource = readAppSource("(en)/en/page.js");
+    const routeSource = readAppSource("(en)/en/[...slug]/PageClient.jsx");
+
+    expect(homeSource).toContain('<DochiAssistant locale="en" />');
+    expect(routeSource).toContain('<DochiResultWorkspace locale="en" />');
+    expect(routeSource).toContain('<DochiAnalysisDock locale="en" />');
   });
 });
