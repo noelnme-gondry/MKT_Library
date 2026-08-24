@@ -554,6 +554,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     [csvData, denomBasis],
   );
   const basisObjective = effBasis === "actions" ? "action" : "install";
+  // 공유 CSV 기준 토글은 이 도구의 로컬 목표보다 우선한다. 대시보드에서
+  // 설치↔가입을 바꿔도 이전 목표가 남아 전파가 끊기지 않게 기본값으로 되돌린다.
+  const [lastBasisObjective, setLastBasisObjective] = useState(basisObjective);
+  if (basisObjective !== lastBasisObjective) {
+    setLastBasisObjective(basisObjective);
+    setObjective(null);
+    setTargetValue(null);
+  }
   // KPI는 예산/목표 모드가 공유하는 하나의 계획 기준이다. 목표 모드에서 ROAS를 고른 뒤
   // 총 예산으로 돌아왔을 때 CPI로 조용히 바뀌지 않게, 상세 필터의 objective도 같은 상태를 쓴다.
   const requestedObjective = objective || basisObjective;

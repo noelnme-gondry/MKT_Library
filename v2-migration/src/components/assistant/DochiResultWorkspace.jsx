@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
-import { DochiChartBundle } from "@/components/assistant/DochiHandoffMotion";
 import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
 
@@ -24,6 +23,7 @@ const COPY = {
     mappingDeck: "이 파일에서 찾은 역할입니다. 필요한 열만 고친 뒤 결과를 열어 주세요.",
     mappingAction: "확인하고 결과 가져오기",
     running: "도치가 분석 화면을 가져오는 중",
+    insight: "아하!",
     resultsTitle: "같은 데이터로 바로 보는 분석 결과",
     resultsDeck: "각 섹션은 원래 분석 도구와 같은 화면입니다. 필요한 것만 접고 펼칠 수 있어요.",
     noDataTitle: "먼저 도치에게 CSV를 맡겨 주세요",
@@ -43,6 +43,7 @@ const COPY = {
     mappingDeck: "These are the roles found in your file. Fix only what is needed, then open the results.",
     mappingAction: "Confirm and open results",
     running: "Dochi is bringing in the analysis views",
+    insight: "Aha!",
     resultsTitle: "Analysis results from this same data",
     resultsDeck: "Each section is the original analysis-tool view. Collapse anything you do not need.",
     noDataTitle: "Give Dochi a CSV first",
@@ -65,11 +66,16 @@ const TOOL_VIEWS = [
   { id: "5-3", key: "allocation", Component: BudgetAllocation },
 ];
 
-function DochiJourney({ label }) {
+function DochiJourney({ label, insight }) {
   return <div className="dochi-journey is-running" aria-hidden="true">
-    <div className="dochi-journey__route-grid" />
-    <div className="dochi-journey__runner dochi-journey__runner--crossing"><DochiSprite pose="run" direction="right" /></div>
-    <div className="dochi-journey__runner dochi-journey__runner--delivery"><DochiSprite pose="delivery" direction="left" /><DochiChartBundle /></div>
+    <div className="dochi-journey__scene">
+      <div className="dochi-journey__data-tag"><span>CSV</span><i /><i /><i /></div>
+      <div className="dochi-journey__mascot"><DochiSprite pose="delivery" direction="right" /></div>
+      <div className="dochi-journey__insight">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 7a13 13 0 0 0-8 23.2c1.8 1.4 2.8 3.4 2.8 5.6h10.4c0-2.2 1-4.2 2.8-5.6A13 13 0 0 0 24 7Z" /><path d="M19 40h10M20.5 44h7" /></svg>
+        <strong>{insight}</strong>
+      </div>
+    </div>
     <p>{label}</p>
   </div>;
 }
@@ -122,7 +128,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     const hasReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     setGroupAnalyzed("dochi-result");
     setPhase("running");
-    const timer = window.setTimeout(() => setPhase("results"), hasReducedMotion ? 0 : 1850);
+    const timer = window.setTimeout(() => setPhase("results"), hasReducedMotion ? 0 : 1100);
     timersRef.current.push(timer);
   };
 
@@ -136,7 +142,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   }
 
   return <section className="dochi-result-workspace" data-phase={phase} aria-labelledby="dochi-result-title">
-    {phase === "running" && <DochiJourney label={C.running} />}
+    {phase === "running" && <DochiJourney label={C.running} insight={C.insight} />}
     {phase === "mapping" && <>
       <header className="dochi-result-workspace__header">
         <span>{C.eyebrow}</span>

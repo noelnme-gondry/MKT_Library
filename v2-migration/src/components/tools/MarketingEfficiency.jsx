@@ -147,6 +147,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   // basis-aware metricField를 직접 산출해 satBuildPoints로 점 생성(satAvailableFields는 revField만 재사용).
   // effectiveDenomBasis가 요청 basis 미매핑 시 installs→actions 자동 폴백(효율 패밀리 공통 규칙).
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
+  const costMetricLabel = effBasis === "actions" ? "CPA" : "CPI";
   const basisMetricField = mappedKeys.has(effBasis)
     ? effBasis
     : mappedKeys.has("installs")
@@ -219,8 +220,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     const primary = getCssVar("--primary") || "#7aa2f7";
     const text = getCssVar("--text-muted") || "#9ca3af";
     const grid = getCssVar("--border") || "#2a2a2a";
-    const obsLabel = isRoas ? tr("일별 관측 (Cost vs ROAS)", "Daily observations (Cost vs ROAS)") : tr("일별 관측 (Cost vs CPA)", "Daily observations (Cost vs CPA)");
-    const yTitle = isRoas ? tr("ROAS (Revenue/Cost, 높을수록 좋음)", "ROAS (Revenue/Cost, higher is better)") : tr("CPA (Cost/결과, 낮을수록 좋음)", "CPA (Cost/result, lower is better)");
+    const obsLabel = isRoas ? tr("일별 관측 (Cost vs ROAS)", "Daily observations (Cost vs ROAS)") : tr(`일별 관측 (Cost vs ${costMetricLabel})`, `Daily observations (Cost vs ${costMetricLabel})`);
+    const yTitle = isRoas ? tr("ROAS (Revenue/Cost, 높을수록 좋음)", "ROAS (Revenue/Cost, higher is better)") : tr(`${costMetricLabel} (Cost/결과, 낮을수록 좋음)`, `${costMetricLabel} (Cost/result, lower is better)`);
 
     if (chartInstance.current) {
       chartInstance.current.destroy();
@@ -294,7 +295,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       }
     };
     // isDarkMode dep: re-evaluate getCssVar theme colors on light/dark toggle
-  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale, tr]);
+  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale, tr, costMetricLabel]);
 
   if (!hasData) {
     return (
@@ -338,7 +339,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   // --- Rendering Helpers ---
   const isRoas = effectiveMetric === "roas";
   const grainLabel = effectiveGrain === "campaign" ? tr("캠페인", "campaign") : tr("채널", "channel");
-  const metricLabel = isRoas ? "ROAS" : "CPA";
+  const metricLabel = isRoas ? "ROAS" : costMetricLabel;
   const sat = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "saturated");
   const scale = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "scale");
   const scaleCandidate = [...scale].sort((a, b) => satActiveIndex(a, effectiveMetric) - satActiveIndex(b, effectiveMetric))[0] || null;
@@ -410,15 +411,15 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       summary={
         <>
           <p>{tr(
-            "지금 더 늘릴 곳과 멈출 곳을 한계 CPA/ROAS로 나눕니다.",
-            "Separate where to scale from where to stop using marginal CPA/ROAS.",
+            `지금 더 늘릴 곳과 멈출 곳을 한계 ${costMetricLabel}/ROAS로 나눕니다.`,
+            `Separate where to scale from where to stop using marginal ${costMetricLabel}/ROAS.`,
           )}</p>
           <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
             <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
               {tr(
-                "포화지수 = 한계 CPA ÷ 평균 CPA(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.",
-                "Saturation index = marginal CPA ÷ average CPA (for ROAS, average ÷ marginal). Above 1 means the next dollar costs more than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable."
+                `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
+                `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means the next dollar costs more than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`
               )}
             </div>
           </details>
@@ -531,7 +532,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               sampleSize={{ value: rows.reduce((sum, row) => sum + (row.raw || 0), 0), label: tr("관측 행", "Observed rows"), detail: tr(`${grainLabel}별 최소 ${SAT_CONFIG.minPoints}개 관측 필요`, `At least ${SAT_CONFIG.minPoints} observations per ${grainLabel} are required`) }}
               method="saturation-curve-fit"
               version="sat-v1"
-              metricDefinition={tr("CPA는 Cost/성과, ROAS는 Revenue/Cost 기준입니다.", "CPA uses Cost/results; ROAS uses Revenue/Cost.")}
+              metricDefinition={tr(`${costMetricLabel}는 Cost/성과, ROAS는 Revenue/Cost 기준입니다.`, `${costMetricLabel} uses Cost/results; ROAS uses Revenue/Cost.`)}
               warnings={[
                 ...(badRows.length ? [tr(`${badRows.length}개 대상은 표본·변동성 부족으로 판정에서 제외됐습니다.`, `${badRows.length} target(s) were excluded because of insufficient sample or variation.`)] : []),
                 tr("관측 지출 범위 밖의 외삽은 추천 근거로 사용하지 않습니다.", "Extrapolation beyond observed spend is not used as recommendation evidence."),
@@ -570,7 +571,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               style={effectiveMetric === "cpa" ? activeStyle : {}}
               onClick={() => setSatState(s => ({...s, metric: "cpa"}))}
             >
-              {tr("CPA (낮을수록 좋음)", "CPA (lower is better)")}
+              {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
             </button>
             <button
               className="ab-pill"
@@ -600,7 +601,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                   {isRoas ? (
                     <><th className="tnum">{tr("평균 ROAS", "Avg ROAS")}</th><th className="tnum">{tr("한계 ROAS", "Marginal ROAS")}</th></>
                   ) : (
-                    <><th className="tnum">{tr("평균 CPA", "Avg CPA")}</th><th className="tnum">{tr("한계 CPA", "Marginal CPA")}</th></>
+                    <><th className="tnum">{tr(`평균 ${costMetricLabel}`, `Avg ${costMetricLabel}`)}</th><th className="tnum">{tr(`한계 ${costMetricLabel}`, `Marginal ${costMetricLabel}`)}</th></>
                   )}
                   <th className="tnum" title={tr("한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈", "Marginal efficiency ÷ average efficiency. Above 1 means the next dollar costs more than average")}>{tr("포화지수", "Saturation index")}</th>
                   <th>{tr("판정", "Verdict")}</th>
