@@ -26,9 +26,9 @@ import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
 const DATA = {
-  raw: [{ Date: "2026-08-01", Channel: "Search", Spend: "100", Installs: "10" }],
-  headers: ["Date", "Channel", "Spend", "Installs"],
-  mapping: { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" },
+  raw: [{ Date: "2026-08-01", Channel: "Search", Spend: "100", Installs: "10", Actions: "2" }],
+  headers: ["Date", "Channel", "Spend", "Installs", "Actions"],
+  mapping: { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs", Actions: "actions" },
   fileName: "campaign.csv",
 };
 
@@ -41,6 +41,8 @@ afterEach(() => {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY },
     analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
     dochiAnalysisSession: null,
+    denomBasis: "installs",
+    displayCurrency: "KRW",
   });
   document.body.innerHTML = "";
 });
@@ -76,6 +78,11 @@ describe("DochiResultWorkspace", () => {
 
     expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
     expect(screen.getByText("원본 대시보드")).toBeTruthy();
+    expect(screen.getByLabelText("모든 분석에 같이 적용")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "가입" }));
+    expect(useAppStore.getState().denomBasis).toBe("actions");
+    fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
+    expect(useAppStore.getState().displayCurrency).toBe("USD");
     const openToolButtons = screen.getAllByRole("button", { name: "해당 분석으로 가기" });
     expect(openToolButtons).toHaveLength(4);
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
