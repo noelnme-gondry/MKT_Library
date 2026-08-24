@@ -1,26 +1,32 @@
 # 오딧 결과 + 한글 타이포그래피 실행 스펙
 
 > 2026-08-24 · **Codex 핸드오프 스펙** (AGENTS.md §9 "설계 스펙 먼저, 구현은 핸드오프")
-> 대상: Growth Opt Playbook / `v2-migration/` · 감사 범위: 커밋 **#690~#722**
-> PART 1은 Claude가 실행한 감사 결과(§6.2), PART 2~4는 미실행 스펙이다. **코드 변경 없음.**
+> 대상: Growth Opt Playbook / `v2-migration/` · 감사 범위: **앱 전역**(특정 커밋 아님)
+> PART 1은 Claude가 실행한 전체 감사 결과(§6.2), PART 2~5는 미실행 스펙이다. **코드 변경 없음.**
 
 ---
 
-# §0 미결정 3건 — 실행 전 여기부터 채울 것
+# §0 미결정 4건 — 실행 전 여기부터 채울 것
 
 | # | 항목 | 선택지 | 결정 |
 |---|---|---|---|
 | **D1** | 폰트 | `P` Pretendard **(추천)** / `I` IBM Plex Sans KR / `C` 응급 처치만 | ☐ |
 | **D2** | mono 범위 | `ⓐ` 폴백만 추가(CSS 1줄) / `ⓑ` 한글 라벨을 sans로 이관 **(권장)** | ☐ |
 | **D3** | F-1 수정 방식 | `등록` dochi-result를 TOOL_GROUP에 등록 / `전용그룹` 새 그룹 신설 | ☐ |
+| **D4** | F-2 수정 우선순위 | `즉시` 필드 계약 3건 채우고 빈 스코프를 차단 **(추천)** / `보류` | ☐ |
 
 **결정 없이 선행 가능한 것** (어떤 선택지에서도 되돌릴 필요가 없다):
 - PART 3 §3.1 폰트 응급 처치 (mono 한글 폴백 + preload)
-- PART 1 F-1 회귀 가드 추가 (수정 방식과 무관하게 계약을 고정)
+- PART 1 F-1·F-2 회귀 가드 추가 (수정 방식과 무관하게 계약을 고정)
+- PART 1 F-5 차트 hex → `CHART_THEME` 교체 (5곳, 렌더층)
 
 ---
 
-# PART 1 — 감사 결과 (실행 완료)
+# PART 1 — 전체 감사 결과 (실행 완료)
+
+> 범위: 특정 커밋이 아니라 **앱 전역**. L0 기준선 → 전 발행 도구 배선 전수 →
+> 정직성 → 함정 패턴 스윕. 발견은 전부 **재현 또는 실측**으로 확인했고,
+> 확인 못 한 것은 미확인이라고 표시했다.
 
 ## 1.1 L0 기준선 — 실측 (2026-08-24)
 
@@ -32,72 +38,115 @@
 
 > ⚠ **AGENTS.md §16의 "276파일·2268 통과"는 낡았다.** 위 실측값으로 갱신할 것.
 
-## 1.2 🔴 F-1 (P1) — `/dochi-result`의 읽기·쓰기 그룹 비대칭
+## 1.2 발견 요약
+
+| ID | 심각도 | 항목 | 상태 |
+|---|---|---|---|
+| **F-1** | 🔴 P1 | `/dochi-result` 읽기·쓰기 그룹 비대칭 → CSV 소실 | **재현 완료** |
+| **F-2** | 🔴 P1 | 5-20·5-23·9-1 매핑 스코프 부재 → 못 쓰는 도구를 "적격"으로 판정 | **재현 완료** |
+| **F-3** | 🟡 P2 | `invertMatrix` 절대 pivot 임계 | 미확인(구조적 위험) |
+| **F-4** | 🟡 P2 | 소스 문자열 가드 18개가 주석을 안 벗김 | 실측 |
+| **F-5** | 🟡 P2 | 차트 데이터셋 하드코딩 hex 5곳 → 테마 리프레시 누락 | 실측 |
+| **F-6** | 🟢 P3 | CSV 조립기 3벌 병존 | 실측(현재 미파손) |
+
+---
+
+## 1.3 🔴 F-1 (P1) — `/dochi-result`의 읽기·쓰기 그룹 비대칭
 
 **PR #603→#604와 정확히 같은 사고가 신규 라우트에서 재발했다.**
 
-### 근거
-
-`dochi-result`는 `routeMap.js:70`에 등록된 라우트인데 **`TOOL_GROUP`에 없다.**
+`dochi-result`는 `routeMap.js:70`에 등록됐는데 **`TOOL_GROUP`에 없다.**
 그런데 이 라우트는 CSV를 **읽고 쓴다**:
 
 | 동작 | 코드 | 그룹 결정 |
 |---|---|---|
 | **읽기** | `useDataStore.js:529-530` `TOOL_GROUP[id] \|\| state.activeDataGroup` | **sticky** — 마지막 도구 그룹 유지 |
-| **쓰기** | `useDataStore.js:772` `groupForRoute(state.currentRouteId)` → `TOOL_GROUP[id] \|\| "efficiency"` | **efficiency로 강제** |
+| **쓰기** | `useDataStore.js:772` `groupForRoute(currentRouteId)` → `TOOL_GROUP[id] \|\| "efficiency"` | **efficiency 강제** |
 
-`DochiResultWorkspace.jsx:122` 가 `csvData`를 읽고,
-`DochiResultWorkspace.jsx:~152` 가 `<CsvUploader toolId="start-gate" …/>` 를 렌더해 쓴다.
+`DochiResultWorkspace.jsx:122`가 `csvData`를 읽고, `:152`가
+`<CsvUploader toolId="start-gate" …/>`를 렌더해 쓴다.
+**`activeDataGroup ≠ "efficiency"`인 모든 경우 두 경로가 다른 그룹을 고른다.**
 
-**두 경로가 서로 다른 그룹을 고른다** — `activeDataGroup ≠ "efficiency"`인 모든 경우.
-
-### 재현 (3/3 통과 — 예측대로 재현됨)
+### 재현 (3/3 통과)
 
 ```
-1) setCurrentRouteId("5-28")        → activeDataGroup = "subscription_survival"
-2) setCurrentRouteId("dochi-result") → sticky, 그룹 유지 (미러 = subscription 슬라이스)
-3) setCsvData(DATA)                  → csvGroups.efficiency 에 저장됨 ⚠
+1) setCurrentRouteId("5-28")         → activeDataGroup = "subscription_survival"
+2) setCurrentRouteId("dochi-result") → sticky, 그룹 유지
+3) setCsvData(DATA)                  → csvGroups.efficiency 에 저장 ⚠
                                        csvGroups.subscription_survival 은 빈 채
-4) 다른 라우트 갔다가 /dochi-result 재진입
-   기대: 방금 올린 CSV
-   실제: csvData.fileName === ""  ← 업로드 소실
+4) 재진입
+   기대: 방금 올린 CSV / 실제: csvData.fileName === ""   ← 업로드 소실
 ```
 
 **동반 결함**: `DochiResultWorkspace.jsx:124`의 `setGroupAnalyzed("dochi-result")`도
-`groupForRoute` 경유라 **무관한 `efficiency` 그룹의 분석 게이트를 연다.**
-게다가 그 시그니처는 미러(= 다른 그룹의 데이터)에서 계산된다
-(`useDataStore.js:859-862`) — 5-2 대시보드 등이 사용자가 "분석하기"를 누르지 않았는데
-열린 상태가 된다.
+`groupForRoute` 경유라 **무관한 `efficiency` 게이트를 열고**, 그 시그니처를
+**다른 그룹의 데이터**로 계산한다(`useDataStore.js:859-862`).
 
 ### 왜 하네스가 못 잡았나
 
-- `dochi-result`를 보는 테스트는 `DochiResultWorkspace.smoke.test.jsx` ·
-  `DochiAssistant.smoke.test.jsx` **둘뿐**이고,
-  둘 다 `csvGroups.efficiency`를 **직접 주입**한다(라인 41·58).
-- 즉 **하필 폴백 그룹으로만 검사**해서 비대칭이 상쇄된다.
-- §7 *"스모크 `beforeEach`의 상태 주입이 진입 경로를 우회한다"* 가 그대로 재발.
-  `setCurrentRouteId` → 미러 스왑을 밟는 케이스가 없다.
+`dochi-result`를 보는 테스트는 스모크 2개뿐인데 **둘 다 `csvGroups.efficiency`를
+직접 주입**한다(`DochiResultWorkspace.smoke.test.jsx:41,58`).
+하필 **폴백 그룹으로만 검사**해서 비대칭이 상쇄된다 —
+§7 *"스모크 `beforeEach`의 상태 주입이 진입 경로를 우회한다"*의 재발이다.
 
-### 전수 확인 — 이 라우트 하나만 빠져 있다
+### 전수 확인
 
-`TOOL_GROUP` 미등록 라우트 18개 중 CSV를 소비하는 것은 `dochi-result` **하나뿐**이다
-(나머지는 SOP 문서 15개 · `home` · `guide-index`).
-`start-gate`는 `toolGroups.js:10`에 **등록돼 있다** — #604의 교훈이 적용된 자리다.
+`TOOL_GROUP` 미등록 라우트 18개 중 CSV를 소비하는 것은 `dochi-result` **하나뿐**
+(나머지는 SOP 15개 · `home` · `guide-index`). `start-gate`는 `toolGroups.js:10`에
+**등록돼 있다** — #604의 교훈이 적용된 자리다.
 
-> §16 *"다수가 맞으면 소수의 예외가 보이지 않는다"* — 계약은 표본이 아니라 전수로 검사할 것.
+> §16 *"다수가 맞으면 소수의 예외가 보이지 않는다"* — 계약은 전수로 검사할 것.
 
-### 수정 방향 (D3)
+---
 
-- **`등록`**: `toolGroups.js`에 `"dochi-result": "efficiency"` 추가.
-  가장 작다. 단 도치가 효율 CSV만 다룬다는 전제가 맞아야 한다.
-- **`전용그룹`**: `"dochi-result": "dochi"` 신설. 슬라이스가 격리되지만
-  도치가 여러 grain을 넘나드는 설계라면 오히려 어긋난다.
+## 1.4 🔴 F-2 (P1) — 매핑 스코프가 없는 도구 3개가 "무엇이든 적격"이 된다
 
-**어느 쪽이든 회귀 가드는 지금 추가할 것** — `TOOL_GROUP` 미등록 라우트 중
-`csvData`를 읽거나 `CsvUploader`를 렌더하는 것이 없음을 **라우트에서 파생해** 단언.
-목록을 손으로 적으면 다음 라우트에서 또 어긋난다(§7).
+`mappingContract.js:4-12`의 `fieldKeysForTool`은
+`TOOL_REQUIRED_FIELDS[toolId]` + `TOOL_OPTIONAL_FIELDS[toolId]`로 `allowedKeys`를 만든다.
+**둘 다 없으면 빈 배열이 되고, 빈 `allowedKeys`는 "제한 없음"으로 동작한다.**
 
-## 1.3 🟡 F-2 (P2, 미확인) — `invertMatrix`의 절대 pivot 임계
+`TOOL_REQUIRED_FIELDS`에 **5-20 · 5-23 · 9-1이 없다**(복합키로도 없음).
+
+### 재현 — 효율 CSV 1장을 19개 도구 전부에 물린 결과
+
+헤더 `date, campaign, cost, impressions, clicks, installs, revenue`
+
+| 도구 | 필수필드 | 매핑됨 | `requiredMissing` |
+|---|---|---|---|
+| 5-2 | 3 | 6/7 | `[]` |
+| 5-4 | 3 | 1/7 | `["numerator","denominator","is_control/arm_id"]` |
+| 5-18-mmm | 3 | 0/7 | `["week","mmm_reg/mmm_react",…]` |
+| 5-28 | 2 | 1/7 | `["event_observed/churn_date/…"]` |
+| 9-6 | 7 | 5/7 | `["creative_id","channel"]` |
+| **5-20** | **❌ 없음** | **7/7** | **`[]`** |
+| **5-23** | **❌ 없음** | **7/7** | **`[]`** |
+| **9-1** | **❌ 없음** | **7/7** | **`[]`** |
+
+**스코프가 제대로 걸린 도구는 전부 부분집합만 잡고 부족분을 정직하게 보고한다.
+스코프가 없는 3개만 전 컬럼을 잡고 "부족한 필드 없음"이라고 답한다.**
+
+### 실제 영향 — 도치(assistant)
+
+`analysisCatalog.js:73`이 `toolId: route.id`로 **발행 도구 전체**를 순회하고,
+`AssistantWorkspace.jsx:531`이 각 도구로 `buildMappingContract`를 부른다.
+따라서 효율 CSV 한 장을 올리면 **5-20(Aha·이벤트 CSV 필요) · 5-23(증분·홀드아웃 필요) ·
+9-1(콘텐츠 CSV 필요)이 "필요 컬럼 전부 충족"으로 판정된다.**
+
+→ §7 *"전체 `STANDARD_FIELDS`로 매핑하면 그 도구가 안 쓰는 필드까지 잡아
+'매핑됐는데 기능엔 못 씀'"* 그대로이며,
+**§8 정직성 위반**이다 — 쓸 수 없는 도구를 쓸 수 있다고 화면이 말한다.
+역설적으로 **배선이 빠진 도구일수록 적격도가 높아 보인다.**
+
+### 수정 방향
+
+`TOOL_REQUIRED_FIELDS`/`TOOL_OPTIONAL_FIELDS`에 세 도구를 채우고,
+**빈 `allowedKeys`를 "제한 없음"이 아니라 "계약 없음"으로 취급**해
+게이트가 통과되지 않게 한다. 가드는 발행 라우트에서 파생해
+**전 도구가 필드 계약을 갖는다**를 단언할 것(하드코딩 배열 금지).
+
+---
+
+## 1.5 🟡 F-3 (P2, 미확인) — `invertMatrix`의 절대 pivot 임계
 
 `subscriptionSurvivalMath.js:313`
 ```js
@@ -105,58 +154,94 @@ if (!(magnitude > Number.EPSILON * 100)) return null;   // ≈ 2.2e-14, 절대 �
 ```
 
 §7에 이미 기록된 함정이다 — *"Gauss-Jordan inverse는 절대 pivot 임계로
-rank-deficiency를 못 잡는다. `maxErr = max|I·M−δ| > 1e-6`이면 null 반환"*.
-`REG_STATS.ols`는 잔차 기반으로 판정하는데 **이 신규 코드는 절대 임계로 되돌아갔다.**
-log-rank 공분산은 위험집합 카운트 기반이라 대용량에서 스케일이 커진다.
+rank-deficiency를 못 잡는다. `maxErr = max|I·M−δ| > 1e-6`이면 null 반환."*
+`REG_STATS.ols`는 잔차 기반인데 **이 신규 코드는 절대 임계로 되돌아갔다.**
 
-**정직하게 남긴다: 재현하지 못했다.** 스케일 1e0·1e3·1e5의 준특이 행렬을 넣어
-봤으나 잔차 `max|I−M·M⁻¹|`가 0~1.2e-7로, 부동소수점이 감당해 가비지가 나오지 않았다.
-실제 log-rank 공분산에서 도달 가능한 입력을 구성하지 못했으므로 **구조적 위험이지
-확인된 버그가 아니다.** 판정 기준을 잔차 기반으로 맞추는 것은 정상 입력에서 no-op이라
+**정직하게 남긴다: 재현하지 못했다.** 스케일 1e0·1e3·1e5의 준특이 행렬을 넣었으나
+잔차가 0~1.2e-7로 부동소수점이 감당해 가비지가 나오지 않았다. 실제 log-rank
+공분산에서 도달 가능한 입력을 구성하지 못했으므로 **구조적 위험이지 확인된
+버그가 아니다.** 잔차 기반으로 맞추는 것은 정상 입력에서 no-op이라
 골든 byte-identical로 넣을 수 있다.
 
-## 1.4 ✅ 정상 확인된 것 (회귀 없음)
+---
 
-| 항목 | 결과 |
-|---|---|
-| **3맵 파생** (`csvGroups`·`analyzedByGroup`·`dashboardFilterGroups`) | ✅ `buildGroupMap(DATA_GROUPS)`로 파생. #608/#610 교훈 적용됨 |
-| **5-28 배선** | ✅ 31개 파일. IA·routeMap·toolGroups·routeSeo·toolOg·csvConstants·toolGuide·demoData 전부 |
-| **`toolIndex`·`sitemap`** | ✅ 5-28 문자열이 없지만 **정상** — `ROUTES.filter(isRoutePublished)`로 파생(§12.31) |
-| **KR/EN 대칭** (§2.11) | ✅ 5-28·dochi-result 모두 EN PageClient·`EN_READY_TOOL_IDS`에 등록 |
-| **5-28 정직성** (§8) | ✅ `status:"unavailable"` + `reason` 구조, `ok:false, reason:"covariance_not_estimable"`, 지평 밖 외삽 거부(`survivalBasedLtv`가 `null`), CAC 부분결측을 평균내지 않음. **"계산 불가를 좋은 등급으로 접는" 패턴 없음** |
-| **테스트 내 `?.()`** | ✅ 검사를 무력화하는 자리 없음. `MulticollinearityChecker.smoke.test.jsx:22`에 과거 사고가 주석으로 기록돼 있음 |
+## 1.6 🟡 F-4 (P2) — 소스 문자열 가드 18개가 주석을 안 벗긴다
 
-## 1.5 🟡 F-3 (P2, 체계) — 소스 문자열 가드가 주석을 안 벗긴다
-
-`readFileSync`로 소스를 읽어 문자열 검사하는 가드 **20개 중 18개가 주석을 제거하지 않는다.**
-§16에 *"소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다"* 로
+`readFileSync`로 소스를 읽어 문자열 검사하는 가드 **20개 중 18개가 주석을 제거하지
+않는다.** §16에 *"소스를 문자열 포함으로 검사하면 자기 설명 주석에 속는다"*로
 **한 세션에 3회** 기록된 클래스인데, 고친 2개(`downloadEscape`·`tabContract`) 외에는
 같은 형태로 남아 있다.
 
 > §7 *"교훈을 적용할 땐 같은 패턴의 파일을 전부 grep해서 한 번에 고칠 것 —
 > 한 곳만 고치면 교훈이 기록됐다는 사실이 남은 구멍을 가린다."*
 
-**전수 목록**: `toolDemoEntry` · `legacyPillRatchet` · `titleAffordance` ·
-`appShellSemantics` · `mobileTaskIntegrity` · `privacy` · `buttonContrast` ·
-`mmmResultWorkflow` · `dashboardKpiLayout` · `typographyFloor` · `focusVisible` ·
-`cardCopyLayout` · `contentLinks` · `compareContent` · `blogFormatting` ·
-`contentAssets` · `sopBlocks` · `mmmBusinessSeasonality`
+**전부가 위험한 건 아니다.** *"없어야 한다"*를 검사하는 가드와
+*"있으면 배선된 것으로 친다"*는 가드만 주석에 속는다.
+공용 `stripComments` 하나로 그 부류부터 통과시키는 게 맞다 — 18개 일괄 수정은 과잉.
 
-**주의**: 전부가 위험한 건 아니다. **"없어야 한다"를 검사하는 가드**와
-**"있으면 배선된 것으로 친다"는 가드**만 주석에 속는다. 공용 `stripComments` 하나를
-만들어 그 부류부터 통과시키는 게 맞다 — 18개를 일괄 수정하는 건 과잉이다.
+---
 
-## 1.6 감사 요약
+## 1.7 🟡 F-5 (P2) — 차트 데이터셋 하드코딩 hex 5곳
 
-| 심각도 | 건수 | 항목 |
-|---|---|---|
-| 🔴 P1 | 1 | F-1 `/dochi-result` 그룹 비대칭 (재현 완료) |
-| 🟡 P2 | 2 | F-2 절대 pivot 임계(미확인) · F-3 주석 미제거 가드 18개 |
-| ✅ | 6 | 3맵 파생 · 5-28 배선 · 파생 목록 · KR/EN · 5-28 정직성 · 테스트 무력화 없음 |
+`CHART_THEME` getter를 안 쓰고 리터럴을 넣으면 `refreshMountedChartThemes`
+대상에서 빠져 **테마를 바꿔도 그 데이터셋만 옛 색으로 굳는다**(§7).
 
-**전반적으로 #690~#722의 배선 품질은 높다.** 과거 사고(#603·#608·#610)의 교훈이
-실제로 코드에 남아 동작하고 있고, 5-28 엔진의 통계적 정직성은 §8 기준을 만족한다.
-**단, 새로 생긴 라우트 하나(`dochi-result`)가 바로 그 교훈의 사각지대에 떨어졌다.**
+| 파일 | 색 |
+|---|---|
+| `tools/AhaMomentFinder.jsx` | `#facc15` (pointBorderColor) |
+| `tools/Incrementality.jsx` | `#22c55e` / `#ef4444` (borderColor) |
+| `tools/marketingResponseModel.jsx` | `#7F77DD` (borderColor) |
+| `tools/AbTestHoldout.jsx` | `#fbbf24`, `#22c55e` (backgroundColor) |
+| `dashboard/ScorecardTab.jsx` | `#fbbf24`, `#adc6ff` (borderColor) |
+
+→ `CHART_THEME.warning` · `.success` · `.danger` · `.colors`로 교체.
+
+---
+
+## 1.8 🟢 F-6 (P3) — CSV 조립기 3벌 병존
+
+골든은 `utils/download.js:30` `csvBody` 하나인데, 같은 로직이 두 곳에 더 있다:
+
+| 위치 | BOM | CRLF | 인용 | 판정 |
+|---|---|---|---|---|
+| `utils/download.js:30` `csvBody` | ✅ | ✅ | ✅ | **골든** |
+| `tools/BrandCampaignIncrementality.jsx:160` | ✅ | ✅ | ✅ | 중복(정상) |
+| `utils/storeEvents.js:146` `eventsToCsv` | ❌ | ✅ | ✅ | **BOM을 호출부가 붙임** |
+
+`storeEvents`는 `StoreEventLog.jsx:166`이 `` downloadCsv(`\ufeff${eventsToCsv(...)}`) ``로
+BOM을 직접 붙여 **현재는 깨지지 않는다.** 다만 조립과 BOM이 분리돼 있어
+두 번째 호출자가 생기면 §7의 "한글 깨짐"이 그대로 재현된다.
+
+---
+
+## 1.9 ✅ 정상 확인 (회귀 없음)
+
+| 항목 | 결과 |
+|---|---|
+| **결정론**(§8.3) | ✅ `Math.random` 실사용 **0곳**(전부 "쓰지 않는다"는 주석) |
+| **Chart.js 전역 셋업** | ✅ `chart.js/auto` 직접 import 0(테스트 1건 제외) |
+| **Chart에 CSS `var()` 전달** | ✅ 0곳 — 검출된 `var()`는 전부 DOM 인라인 스타일 |
+| **UTC 요일**(§7) | ✅ `getDay()` 0곳 |
+| **3맵 파생** | ✅ `buildGroupMap(DATA_GROUPS)`. #608/#610 교훈 적용됨 |
+| **`TOOL_GUIDE` 커버리지** | ✅ 5-23은 `5-23:suppression/on/off` 복합키, 5-18-* 는 허브 `5-18` 공유 — **처음엔 6개 누락으로 보였으나 오탐이었다** |
+| **5-18-* 승격 배선**(#696) | ✅ 5개 전부 `TOOL_REQUIRED/OPTIONAL_FIELDS`·`routeSeo`·`toolSearchContent` 보유 |
+| **KR/EN 대칭**(§2.11) | ✅ 발행 도구 19개 전부 KO/EN `searchContent`·`routeSeo`·FAQ 보유(개수도 일치) |
+| **5-28 정직성**(§8) | ✅ `status:"unavailable"`+`reason`, `ok:false, reason:"covariance_not_estimable"`, 지평 밖 외삽 거부, CAC 부분결측 평균 안 냄 |
+| **`localStorage`**(§2.2) | ✅ 5종뿐 — theme·locale·consent·1회 플래그·**사용자가 명시적으로 켜는** 매핑 메모리. **사용자 CSV 영속 0** |
+| **DS 채택**(§12.21·§12.27) | ✅ `ResultActionCard` 18 · `DownloadHub` 17 |
+| **테스트 무력화** | ✅ 검사를 지우는 `?.()` 없음. 과거 사고는 `MulticollinearityChecker.smoke.test.jsx:22`에 주석으로 보존 |
+
+## 1.10 총평
+
+**배선 품질은 전반적으로 높다.** 과거 사고(#603·#608·#610)의 교훈이 실제 코드에
+살아 동작하고, 5-28 같은 신규 엔진의 통계적 정직성은 §8 기준을 만족한다.
+결정론·차트 셋업·UTC·데이터 영속 같은 절대 규칙은 **위반 0**이다.
+
+**문제는 전부 "계약이 없는 자리"에서 나왔다.**
+F-1은 `TOOL_GROUP`에 없는 라우트, F-2는 필드 계약이 없는 도구 3개다.
+둘 다 *"없으면 폴백"*이 *"없으면 통과"*로 동작하면서, **빠진 쪽이 오히려
+더 관대하게 판정되는** 같은 형태다. 가드를 추가할 때는 개수가 아니라
+**전 라우트·전 도구가 계약을 갖는지**를 파생으로 단언해야 한다.
 
 ---
 
