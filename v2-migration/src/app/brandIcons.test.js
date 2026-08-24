@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import manifest from "./manifest";
 
 const ROOT = process.cwd();
+const rootDocument = readFileSync(path.join(ROOT, "src/components/RootDocument.jsx"), "utf8");
 
 function pngMetadata(relativePath) {
   const buffer = readFileSync(path.join(ROOT, relativePath));
@@ -16,16 +17,36 @@ function pngMetadata(relativePath) {
   };
 }
 
-describe("Dochi brand icons", () => {
+function icoSizes(relativePath) {
+  const icon = readFileSync(path.join(ROOT, relativePath));
+  expect(icon.readUInt16LE(0)).toBe(0);
+  expect(icon.readUInt16LE(2)).toBe(1);
+  const count = icon.readUInt16LE(4);
+  return Array.from({ length: count }, (_, index) => {
+    const offset = 6 + index * 16;
+    return icon[offset] || 256;
+  });
+}
+
+describe("Growth Opt brand icons", () => {
   it.each([
+    ["public/assets/brand/dochi-app-icon.png", 1254],
+    ["public/icons/dochi-favicon-64.png", 64],
     ["public/icons/dochi-192.png", 192],
     ["public/icons/dochi-512.png", 512],
     ["public/icons/dochi-maskable-512.png", 512],
     ["public/apple-touch-icon.png", 180],
     ["src/app/apple-icon.png", 180],
-    ["src/app/icon.png", 512],
   ])("keeps %s square at %ipx", (file, size) => {
     expect(pngMetadata(file)).toMatchObject({ width: size, height: size });
+  });
+
+  it("keeps the modern browser SVG and stable public fallback identical", () => {
+    const appIcon = readFileSync(path.join(ROOT, "src/app/icon.svg"), "utf8");
+    const publicIcon = readFileSync(path.join(ROOT, "public/favicon.svg"), "utf8");
+    expect(appIcon).toBe(publicIcon);
+    expect(appIcon).toContain("#1f60d2");
+    expect(appIcon).toContain('fill="#fff"');
   });
 
   it("keeps the shared in-app mark transparent", () => {
@@ -42,12 +63,11 @@ describe("Dochi brand icons", () => {
     ]));
   });
 
-  it("keeps a real 32px Windows favicon", () => {
-    const icon = readFileSync(path.join(ROOT, "src/app/favicon.ico"));
-    expect(icon.readUInt16LE(0)).toBe(0);
-    expect(icon.readUInt16LE(2)).toBe(1);
-    expect(icon.readUInt16LE(4)).toBeGreaterThan(0);
-    expect(icon[6]).toBe(32);
-    expect(icon[7]).toBe(32);
+  it("publishes pixel-fit Windows favicon sizes including Google's 48px recommendation", () => {
+    expect(icoSizes("src/app/favicon.ico")).toEqual([16, 32, 48, 64]);
+  });
+
+  it("lets Next.js own icon, Apple, and manifest metadata without duplicate head links", () => {
+    expect(rootDocument).not.toMatch(/rel="(?:icon|apple-touch-icon|manifest)"/);
   });
 });
