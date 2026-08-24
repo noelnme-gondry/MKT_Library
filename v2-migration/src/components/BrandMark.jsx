@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-// Growth Opt Playbook brand mark — shared by the app shell and Dochi dock.
+// Growth Opt Playbook brand mark — shared by the app shell and analysis dock.
 export default function BrandMark({ size = 28, className = "brand-mark", label = "" }) {
   return (
     <span
@@ -9,7 +9,7 @@ export default function BrandMark({ size = 28, className = "brand-mark", label =
       aria-hidden={label ? undefined : true}
     >
       <Image
-        src="/assets/brand/dochi-mark.png"
+        src="/favicon.svg"
         alt={label}
         width={size}
         height={size}

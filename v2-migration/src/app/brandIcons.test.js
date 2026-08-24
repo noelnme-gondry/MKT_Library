@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,6 +6,7 @@ import manifest from "./manifest";
 
 const ROOT = process.cwd();
 const rootDocument = readFileSync(path.join(ROOT, "src/components/RootDocument.jsx"), "utf8");
+const brandMark = readFileSync(path.join(ROOT, "src/components/BrandMark.jsx"), "utf8");
 
 function pngMetadata(relativePath) {
   const buffer = readFileSync(path.join(ROOT, relativePath));
@@ -49,9 +50,10 @@ describe("Growth Opt brand icons", () => {
     expect(appIcon).toContain('fill="#fff"');
   });
 
-  it("keeps the shared in-app mark transparent", () => {
-    // PNG color type 6 = RGBA. A generated checkerboard without alpha must fail.
-    expect(pngMetadata("public/assets/brand/dochi-mark.png").colorType).toBe(6);
+  it("uses the favicon vector as the shared in-app brand mark", () => {
+    expect(brandMark).toContain('src="/favicon.svg"');
+    expect(brandMark).not.toContain("dochi-mark.png");
+    expect(existsSync(path.join(ROOT, "public/assets/brand/dochi-mark.png"))).toBe(false);
   });
 
   it("publishes any and maskable PWA variants", () => {
