@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import { DochiChartBundle } from "@/components/assistant/DochiHandoffMotion";
 import { useAppStore } from "@/store/useDataStore";
+import { idToPath } from "@/lib/routeMap";
 
 const Loading = () => <p className="dochi-result-loading">결과 화면을 여는 중…</p>;
 const Dashboard = dynamic(() => import("@/components/Dashboard"), { ssr: false, loading: Loading });
@@ -28,6 +30,8 @@ const COPY = {
     noDataDeck: "파일은 브라우저 안에서만 읽고, 이 화면에서 매핑과 결과를 이어서 보여드립니다.",
     backHome: "홈에서 CSV 올리기",
     collapse: "접기",
+    expand: "펼치기",
+    openTool: "해당 분석으로 가기",
     dashboard: "운영 대시보드",
     pvm: "캠페인 성과 변동",
     saturation: "캠페인 포화도 진단",
@@ -45,6 +49,8 @@ const COPY = {
     noDataDeck: "Your file is read only in this browser. Mapping and results continue here.",
     backHome: "Upload a CSV from home",
     collapse: "Collapse",
+    expand: "Expand",
+    openTool: "Open this analysis",
     dashboard: "Operations dashboard",
     pvm: "Campaign performance variance",
     saturation: "Campaign saturation analysis",
@@ -68,15 +74,35 @@ function DochiJourney({ label }) {
   </div>;
 }
 
-function ToolView({ title, Component, locale, open = false, collapseLabel }) {
+function ToolView({ id, title, Component, locale, open = false, collapseLabel, expandLabel, openToolLabel }) {
   const [hasOpened, setHasOpened] = useState(open);
   const [isOpen, setIsOpen] = useState(open);
+  const router = useRouter();
+  const openTool = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const path = idToPath(id);
+    router.push(locale === "en" ? `/en${path}` : path);
+  };
+  const togglePanel = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (nextOpen) setHasOpened(true);
+  };
   return <details className="dochi-result-tool" open={isOpen} onToggle={(event) => {
     const nextOpen = event.currentTarget.open;
     setIsOpen(nextOpen);
     if (nextOpen) setHasOpened(true);
   }}>
-    <summary><strong>{title}</strong><span>{collapseLabel}</span></summary>
+    <summary>
+      <strong>{title}</strong>
+      <span className="dochi-result-tool__actions">
+        <button type="button" onClick={togglePanel}>{isOpen ? collapseLabel : expandLabel}</button>
+        <button type="button" className="dochi-result-tool__open" onClick={openTool}>{openToolLabel} <span aria-hidden="true">↗</span></button>
+      </span>
+    </summary>
     {hasOpened && <div className="dochi-result-tool__view"><Component locale={locale} /></div>}
   </details>;
 }
@@ -86,6 +112,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   const csvData = useAppStore((state) => state.csvData);
   const setGroupAnalyzed = useAppStore((state) => state.setGroupAnalyzed);
   const [phase, setPhase] = useState("mapping");
+  const [mappingStage, setMappingStage] = useState("legacy");
   const timersRef = useRef([]);
   const hasPreparedData = Boolean(csvData?.raw?.length && csvData?.headers?.length);
 
@@ -116,7 +143,17 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
         <h1 id="dochi-result-title">{C.mappingTitle}</h1>
         <p>{C.mappingDeck}</p>
       </header>
-      <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview={false} mappingReviewActionLabel={C.mappingAction} onMappingReviewConfirmed={openResults} />
+      <CsvUploader
+        toolId="start-gate"
+        locale={locale}
+        showMappingReview
+        collapseMappingReview={false}
+        mappingReviewStage={mappingStage}
+        mappingReviewActionLabel={C.mappingAction}
+        mappingReviewFallbackLabel={locale === "en" ? "Let Dochi complete the mapping" : "도치가 매핑 보완하기"}
+        onMappingReviewNeedsSemanticFallback={() => setMappingStage("semantic")}
+        onMappingReviewConfirmed={openResults}
+      />
     </>}
     {phase === "results" && <>
       <header className="dochi-result-workspace__header">
@@ -125,7 +162,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
         <p>{C.resultsDeck}</p>
       </header>
       <div className="dochi-result-tools">
-        {TOOL_VIEWS.map(({ id, key, Component, open }) => <ToolView key={id} title={C[key]} Component={Component} locale={locale} open={open} collapseLabel={C.collapse} />)}
+        {TOOL_VIEWS.map(({ id, key, Component, open }) => <ToolView key={id} id={id} title={C[key]} Component={Component} locale={locale} open={open} collapseLabel={C.collapse} expandLabel={C.expand} openToolLabel={C.openTool} />)}
       </div>
     </>}
   </section>;

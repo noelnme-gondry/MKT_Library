@@ -3,9 +3,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 vi.mock("@/components/CsvUploader", () => ({
-  default: ({ mappingReviewActionLabel, onMappingReviewConfirmed }) => (
-    <button type="button" onClick={onMappingReviewConfirmed}>{mappingReviewActionLabel}</button>
+  default: ({ mappingReviewActionLabel, mappingReviewStage, onMappingReviewConfirmed, onMappingReviewNeedsSemanticFallback }) => (
+    <button
+      type="button"
+      onClick={mappingReviewStage === "legacy" ? onMappingReviewNeedsSemanticFallback : onMappingReviewConfirmed}
+    >
+      {mappingReviewActionLabel}
+    </button>
   ),
 }));
 vi.mock("@/components/Dashboard", () => ({ default: () => <div>원본 대시보드</div> }));
@@ -25,6 +34,7 @@ const DATA = {
 
 afterEach(() => {
   vi.useRealTimers();
+  push.mockReset();
   useAppStore.setState({
     currentRouteId: "home",
     csvData: EMPTY,
@@ -40,7 +50,7 @@ describe("DochiResultWorkspace", () => {
     expect(screen.getByRole("heading", { name: "먼저 도치에게 CSV를 맡겨 주세요" })).toBeTruthy();
   });
 
-  it("keeps mapping on the dedicated page, then opens original tool views after confirmation", async () => {
+  it("keeps one CSV mapping UI while using semantic mapping only as an internal fallback", async () => {
     vi.useFakeTimers();
     useAppStore.setState({
       currentRouteId: "dochi-result",
@@ -51,6 +61,8 @@ describe("DochiResultWorkspace", () => {
 
     expect(screen.getByRole("heading", { name: "컬럼을 확인해 주세요" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
+    expect(screen.getByRole("button", { name: "확인하고 결과 가져오기" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
     expect(document.querySelector(".dochi-journey.is-running")).toBeTruthy();
     act(() => vi.advanceTimersByTime(1850));
     await act(async () => { await Promise.resolve(); });
@@ -58,5 +70,7 @@ describe("DochiResultWorkspace", () => {
     expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
     expect(screen.getByText("원본 대시보드")).toBeTruthy();
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+    fireEvent.click(screen.getAllByRole("button", { name: "해당 분석으로 가기" })[0]);
+    expect(push).toHaveBeenCalledWith("/dashboard");
   });
 });
