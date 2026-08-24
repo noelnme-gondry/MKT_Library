@@ -24,6 +24,9 @@ import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTe
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
+import { showToast } from "@/utils/toast";
 import { prepareLogisticInput, runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
 import { prepareRateInput, runWebRRateRegression } from "@/lib/analysis/webr/rateRegression";
 import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/countRegression";
@@ -281,10 +284,18 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [mixedRun, setMixedRun] = useState({ status: "idle", signature: null, result: null });
   const mixedRequestRef = useRef(0);
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     trackProductEvent("data_import_start", { tool_id: "9-1", source: "csv", locale });
-    Papa.parse(file, {
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      trackProductEvent("data_import_failed", { tool_id: "9-1", source: "csv", state: csvFailureState(error), locale });
+      showToast({ variant: "error", title: tr("CSV 업로드 실패", "CSV upload failed"), body: csvImportErrorMessage(error?.code, locale) });
+      return;
+    }
+    Papa.parse(parseInput, {
       header: true, skipEmptyLines: true,
       complete: (res) => {
         const rows = Array.isArray(res.data) ? res.data : [];

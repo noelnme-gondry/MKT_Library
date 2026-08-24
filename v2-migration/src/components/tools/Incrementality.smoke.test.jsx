@@ -5,7 +5,7 @@
 // (suppression + pre/post on/off), across method tab switches. Golden covers the
 // pure math (incrPrePostMath / incrMath); this catches render-throw (§7).
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import Incrementality from "@/components/tools/Incrementality";
@@ -45,6 +45,7 @@ describe("Incrementality render smoke", () => {
     const upload = () => view.container.querySelector('input[type="file"]');
 
     fireEvent.change(upload(), { target: { files: [new File(["private_group,secret_metric"], "confidential-holdout.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(queued).toHaveLength(1));
     await act(async () => queued[0].options.complete({
       data: [{ private_group: "classified", secret_metric: "777" }],
       errors: [],
@@ -56,6 +57,7 @@ describe("Incrementality render smoke", () => {
     useAppStore.setState({ demoDisabled: true });
     view = render(<Incrementality />);
     fireEvent.change(upload(), { target: { files: [new File(["broken"], "broken-secret.csv", { type: "text/csv" })] } });
+    await waitFor(() => expect(queued).toHaveLength(2));
     await act(async () => queued[1].options.complete({
       data: [{ private_group: "classified", secret_metric: "777" }],
       errors: [{ type: "Quotes", code: "MissingQuotes", row: 0 }],

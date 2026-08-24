@@ -42,5 +42,7 @@ export function csvImportErrorMessage(code, locale = "ko", limits = CSV_IMPORT_L
 }
 
 export function csvFailureState(error) {
-  return error?.code === "csv_file_too_large" ? "file_too_large" : "parse_error";
+  if (error?.code === "csv_file_too_large") return "file_too_large";
+  if (error?.code === "csv_empty_file") return "empty_file";
+  return "parse_error";
 }

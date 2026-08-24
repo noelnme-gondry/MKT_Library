@@ -20,6 +20,8 @@ import { resolveAhaCopy } from "@/utils/contentDomain";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
@@ -420,13 +422,22 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const requestAd = useAppStore((state) => state.requestAd);
   const ahaFileRef = useRef(null);
   const [isParsing, setIsParsing] = useState(false);
-  const handleAhaFile = (file) => {
+  const handleAhaFile = async (file) => {
     if (!file) return;
     trackProductEvent("data_import_start", { tool_id: C.guideToolId, source: "csv", locale });
     setIsParsing(true);
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      setIsParsing(false);
+      trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: csvFailureState(error), locale });
+      showToast({ variant: "error", title: tr("CSV 업로드 실패", "CSV upload failed"), body: csvImportErrorMessage(error?.code, locale) });
+      return;
+    }
     // worker:true → 파싱을 워커 스레드에서 수행해 큰 파일(10~20만행) 업로드 시 메인 스레드
     // 멈춤 방지(§7 성능). complete는 메인에서 콜백.
-    Papa.parse(file, {
+    Papa.parse(parseInput, {
       header: true,
       skipEmptyLines: true,
       worker: true,

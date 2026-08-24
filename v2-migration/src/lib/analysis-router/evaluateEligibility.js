@@ -4,6 +4,11 @@ import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport
 import { buildVifSpendPanel } from "./vifReadiness";
 import { deriveStatisticalStatus } from "./statisticalStatus";
 
+// 5-18 서브도구는 같은 주간 패널 매핑 계약을 공유한다. 화면별 계산 가능 수준은
+// 각 엔진이 더 엄격하게 판정하지만, 공용 업로더의 최소 컬럼·기간 게이트 자체가
+// 빠지면 /start와 직접 진입이 서로 다른 파일을 "가능"이라고 말하게 된다.
+const RESPONSE_PANEL_BASE_CONTRACT = Object.freeze({ minRows: 1, minPeriods: 1 });
+
 export const ANALYSIS_CONTRACTS = {
   "5-2": { minRows: 1, minPeriods: 1, priority: 1 },
   // PVM은 비교할 두 기간이 필요하다. 2주는 차단 기준, 각 채널의 8일 미만 관측은
@@ -18,7 +23,12 @@ export const ANALYSIS_CONTRACTS = {
   "5-4": { minRows: 2, minPeriods: 0, priority: 5 },
   // MMM은 12~51주를 탐색용으로 열어 두되, 예산 의사결정에 쓸 만한 상태는 52주부터다.
   // 추천은 매핑 허브가 아니라 실제 분석(기여 분해)을 가리킨다 — 허브는 목록에 없다.
+  "5-18-trend": { ...RESPONSE_PANEL_BASE_CONTRACT, priority: 4 },
+  // 변화맵은 최소 두 관측 기간이 있어야 WoW 방향을 만들 수 있다.
+  "5-18-paid-organic": { ...RESPONSE_PANEL_BASE_CONTRACT, minRows: 2, minPeriods: 2, priority: 5 },
+  "5-18-cannibal": { ...RESPONSE_PANEL_BASE_CONTRACT, priority: 6 },
   "5-18-mmm": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
+  "5-18-forecast": { minRows: 12, minPeriods: 12, priority: 7 },
   "5-23": { minRows: 2, minPeriods: 0, priority: 7 },
   "5-24": { minRows: 28, minPeriods: 28, priority: 8 },
   // VIF는 최소 2개 채널과 채널 수보다 3개 이상 많은 날짜가 있어야 역행렬을

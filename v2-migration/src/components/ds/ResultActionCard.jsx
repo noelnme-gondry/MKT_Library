@@ -142,6 +142,10 @@ export default function ResultActionCard({
       && String(decisionPrefill.action || "").trim(),
   );
   const canScheduleDecision = Boolean(decisionReview && toolId && hasDecisionPrefill && !String(csvData?.fileName || "").startsWith("demo_"));
+  // 결과를 읽은 자리가 판단 기록 루프의 출발점이다. 레일처럼 별도 화면에만
+  // 두면 결과→재방문 이음매가 끊기므로, 실제 데이터 결과에는 항상 주간 검토
+  // 진입점을 함께 둔다. 데모는 가짜 판단을 남기지 않도록 제외한다.
+  const canOpenDecisionReview = Boolean(toolId && !String(csvData?.fileName || "").startsWith("demo_"));
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -225,7 +229,7 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || canCollectReport || canShareDecision || canDownloadDetails) && (
+        {(controls || download || canCollectReport || canShareDecision || canDownloadDetails || canOpenDecisionReview) && (
           <div className="result-action-card__controls">
             {controls}
             {canShareDecision && (
@@ -259,6 +263,11 @@ export default function ResultActionCard({
                   {locale === "en" ? "Add to report" : "보고서에 추가"}
                 </button>
               )
+            )}
+            {canOpenDecisionReview && (
+              <Link className="btn ghost" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>
+                {locale === "en" ? "Review decisions" : "지난 판단 검토"}
+              </Link>
             )}
             {download}
           </div>

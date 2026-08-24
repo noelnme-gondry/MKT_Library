@@ -44,4 +44,12 @@ describe("ToolIntro heading and locale contract", () => {
     rerender(<ToolIntro toolId="5-18-cannibal" locale="en" />);
     expect(screen.getByRole("heading", { level: 1, name: "Ad cannibalization diagnosis" })).toBeTruthy();
   });
+
+  it("renders the action-survival route introduction instead of returning null", () => {
+    const { rerender } = render(<ToolIntro toolId="5-28" />);
+    expect(screen.getByRole("heading", { level: 1, name: "핵심 액션 생존·이탈 분석" })).toBeTruthy();
+
+    rerender(<ToolIntro toolId="5-28" locale="en" />);
+    expect(screen.getByRole("heading", { level: 1, name: "Action survival and drop-off analysis" })).toBeTruthy();
+  });
 });

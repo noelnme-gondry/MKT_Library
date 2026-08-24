@@ -6,6 +6,8 @@ import { useAppStore } from "@/store/useDataStore";
 import { downloadCsv } from "@/utils/download";
 import { EVENT_TYPES, eventsFromEventRows, eventsToCsv, parseEventText } from "@/utils/storeEvents";
 import { eventMarkerColor } from "@/utils/chartEventMarkers";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
+import { csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 
 /**
  * 액션 로그 패널 — 세 경로로 들어온 이벤트를 한 목록에서 보여준다.
@@ -53,10 +55,18 @@ export default function StoreEventLog({ locale = "ko", csvEvents = [], mergedEve
     setNotice(tr(`${parsed.length}건을 추가했습니다.`, `Added ${parsed.length} event(s).`));
   };
 
-  const onFile = (changeEvent) => {
+  const onFile = async (changeEvent) => {
     const file = changeEvent.target.files?.[0];
     if (!file) return;
-    Papa.parse(file, {
+    let parseInput;
+    try {
+      parseInput = await prepareCsvParseInput(file);
+    } catch (error) {
+      setNotice(csvImportErrorMessage(error?.code, locale));
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    Papa.parse(parseInput, {
       header: true,
       skipEmptyLines: true,
       transformHeader: (header) => String(header).trim().toLowerCase(),

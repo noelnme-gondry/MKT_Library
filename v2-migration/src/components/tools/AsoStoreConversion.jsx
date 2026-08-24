@@ -183,6 +183,24 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
               "Decomposition needs installs in both halves and at least four distinct dates. Extend the period and re-check.",
             );
 
+  const decisionPrefill = decomposed && ["mix", "efficiency", "mixed", "flat"].includes(verdict)
+    ? {
+        conclusion: headline,
+        action: verdict === "mix"
+          ? tr("유입 소스별 집행·피처링 변화를 확인하고 저전환 소스 비중을 조정한다", "Inspect source-level media or featuring changes and adjust the share of low-converting sources")
+          : verdict === "efficiency"
+            ? tr("제품 페이지 요소 한 가지를 바꾼 뒤 같은 기간 정의로 전환율을 다시 비교한다", "Change one product-page element, then compare conversion again using the same period definition")
+            : verdict === "mixed"
+              ? tr("유입 구성과 제품 페이지 변화의 가설을 각각 한 가지씩 분리해 검증한다", "Test one traffic-mix hypothesis and one product-page hypothesis separately")
+              : tr("다음 비교 기간에 같은 소스·퍼널 기준으로 전환 변화를 다시 확인한다", "Recheck conversion in the next comparison window using the same source and funnel definition"),
+        hypothesis: copy,
+        metric: tr("조회→설치 전환율", "View-to-install conversion"),
+        baseline: pct(result?.overall?.viewToInstall),
+        sourcePeriod: tr("앞·뒤 비교 기간", "Earlier vs later comparison periods"),
+        reviewQuestion: tr("다음 비교 기간에도 전체 전환율 변화의 주된 원인이 같은가?", "In the next comparison window, is the same factor still the main driver of total conversion change?"),
+      }
+    : null;
+
   const sourceRows = (decomposed?.entities || []).map((entity) => ({
     source: entity.key,
     // PVM의 cost/result는 여기서 조회/설치다. CPA는 "설치 1건당 조회 수"라 역수가 전환율.
@@ -249,6 +267,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
           analysisKey={`${verdict || "unknown"}:${result.overall.installs}`}
           resultState={decomposed ? "ready" : "blocked"}
           locale={locale}
+          decisionReview={Boolean(decisionPrefill)}
+          decisionPrefill={decisionPrefill}
           download={decomposed ? <DownloadHub toolId={TOOL_ID} locale={locale} label={tr("결과 받기", "Download results")} items={[
             { icon: "⬇", analyticsType: "csv", label: tr("소스별 분해 (CSV)", "Per-source decomposition (CSV)"), desc: tr("소스별 전환율·비중과 믹스·효율 기여", "Per-source conversion, share, and mix/efficiency contribution"), onSelect: downloadSourceCsv },
           ]} /> : null}

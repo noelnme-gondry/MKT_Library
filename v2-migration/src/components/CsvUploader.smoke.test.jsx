@@ -153,6 +153,29 @@ describe("CsvUploader render smoke", () => {
       locale: "ko",
     })]]);
   });
+  it("shows analysis feedback before opening the shared analysis gate", () => {
+    seedWithData();
+    const frames = [];
+    const requestFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    render(<CsvUploader toolId="5-2" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "데이터 분석하기" }));
+    expect(screen.getByText("분석 중…")).toBeTruthy();
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
+
+    act(() => frames.shift()());
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
+    act(() => frames.shift()());
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+    expect(screen.queryByText("분석 중…")).toBeNull();
+
+    requestFrame.mockRestore();
+    scrollTo.mockRestore();
+  });
   it("keeps one live status node across upload branch transition", () => {
     useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
     const { container } = render(<CsvUploader toolId="5-2" />);

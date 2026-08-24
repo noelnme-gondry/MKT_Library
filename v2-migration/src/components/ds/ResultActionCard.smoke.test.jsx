@@ -123,6 +123,16 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
+  it("keeps a real result connected to weekly decision review even without a prefilled action", () => {
+    useAppStore.setState({ csvData: { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: {}, fileName: "uploaded.csv" } });
+    const { rerender } = render(<ResultActionCard toolId="5-3" headline="Result" analysisBasis={false} decisionReview={false} />);
+    expect(screen.getByRole("link", { name: "지난 판단 검토" }).getAttribute("href")).toBe("/weekly-review");
+
+    useAppStore.setState({ csvData: { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: {}, fileName: "demo_efficiency.csv" } });
+    rerender(<ResultActionCard toolId="5-3" headline="Result" analysisBasis={false} decisionReview={false} />);
+    expect(screen.queryByRole("link", { name: "지난 판단 검토" })).toBeNull();
+  });
+
   it("moves the folded data basis into the result header", () => {
     const mappedRows = [{ date: "2026-07-01", cost: "100", installs: "10" }];
     useAppStore.setState({ csvData: {

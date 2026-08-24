@@ -7470,6 +7470,8 @@ body.light-mode .app:not(.is-home) .main {
   border-bottom-color:color-mix(in srgb,var(--primary) 78%,var(--border));
   box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--primary) 38%,transparent);
 }
+.tool-connections--rail .tool-connection-card--prepare { display:flex; flex-direction:column; }
+.tool-connections--rail .tool-connection-card--prepare .tool-template-action { margin-top:auto; }
 .app.is-analysis .page-sticky-bar { margin-top:-18px; }
 .tool-connections--rail .tool-connection-card:hover { transform:none; }
 .tool-connections--rail .tool-connection-card__meta { order:2;margin-left:auto;min-width:0; }
