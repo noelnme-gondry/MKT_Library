@@ -9,18 +9,18 @@ const rootDocument = stripSourceComments(readFileSync(path.join(ROOT, "src/compo
 const css = stripSourceComments(readFileSync(path.join(ROOT, "src/app/globals.css"), "utf8"));
 
 describe("Korean typography contract", () => {
-  it("self-hosts one Pretendard variable font with an explicit weight range", () => {
+  it("self-hosts one Wanted Sans variable font with an explicit weight range", () => {
     expect(rootDocument).toContain('import localFont from "next/font/local"');
-    expect(rootDocument).toContain('src: "../../public/fonts/PretendardVariable.woff2"');
-    expect(rootDocument).toContain('variable: "--font-pretendard"');
-    expect(rootDocument).toContain('weight: "45 920"');
+    expect(rootDocument).toContain('src: "../../public/fonts/WantedSansVariable.woff2"');
+    expect(rootDocument).toContain('variable: "--font-wanted-sans"');
+    expect(rootDocument).toContain('weight: "400 1000"');
     expect(rootDocument).not.toMatch(/DM_Sans|Space_Grotesk|Noto_Sans_KR/);
-    expect(existsSync(path.join(ROOT, "public/fonts/PretendardVariable.woff2"))).toBe(true);
-    expect(readFileSync(path.join(ROOT, "public/fonts/Pretendard-OFL.txt"), "utf8")).toContain("SIL OPEN FONT LICENSE Version 1.1");
+    expect(existsSync(path.join(ROOT, "public/fonts/WantedSansVariable.woff2"))).toBe(true);
+    expect(readFileSync(path.join(ROOT, "public/fonts/WantedSans-OFL.txt"), "utf8")).toContain("SIL Open Font License");
   });
 
-  it("uses Pretendard for body and display hierarchy", () => {
-    expect(css).toContain("--font-sans: var(--font-pretendard)");
+  it("uses Wanted Sans for body and display hierarchy", () => {
+    expect(css).toContain("--font-sans: var(--font-wanted-sans)");
     expect(css).not.toMatch(/--font-display\s*:/);
     expect(css).not.toMatch(/var\(--font-display\)/);
   });

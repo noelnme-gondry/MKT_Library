@@ -83,8 +83,8 @@
         --section-gap: 2rem;
         --chart-h: 320px;
 
-        --font-sans: var(--font-pretendard), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        --font-mono: var(--font-jetbrains-mono), var(--font-pretendard), ui-monospace, Menlo, Consolas, monospace;
+        --font-sans: var(--font-wanted-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: var(--font-jetbrains-mono), var(--font-wanted-sans), ui-monospace, Menlo, Consolas, monospace;
       }
 
       /* 한글 어절 단위 줄바꿈 — keep-all 없으면 브라우저가 글자 단위로 끊어
@@ -4859,9 +4859,9 @@ body:not(.light-mode) .moon-icon {
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
-  --font-sans: var(--font-pretendard), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-wanted-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: var(--font-sans);
-  --font-mono: var(--font-jetbrains-mono), var(--font-pretendard), ui-monospace, Menlo, Consolas, monospace;
+  --font-mono: var(--font-jetbrains-mono), var(--font-wanted-sans), ui-monospace, Menlo, Consolas, monospace;
   --shadow-float: 0 24px 70px rgba(0,0,0,.24);
   --shadow-sm: 0 8px 24px rgba(0,0,0,.16);
 }
@@ -7798,7 +7798,7 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-home-assistant { position:fixed;right:28px;bottom:22px;z-index:24;display:grid;grid-template-columns:minmax(0,1fr) 156px;align-items:end;width:min(498px,calc(100vw - 32px));min-height:174px;pointer-events:none; }
 .dochi-home-assistant :is(button,input,a) { pointer-events:auto; }
 .dochi-home-assistant__speech { position:relative;z-index:1;grid-column:1;min-height:154px;padding:16px 17px 13px;border:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-radius:18px;background:var(--surface-container-lowest);box-shadow:0 14px 0 color-mix(in srgb,var(--primary) 12%,transparent),0 22px 42px color-mix(in srgb,var(--bg-1) 25%,transparent);color:var(--text-secondary);pointer-events:auto; }
-.dochi-home-assistant__speech::after { position:absolute;right:22px;bottom:-15px;width:25px;height:25px;border-right:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-bottom:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));background:var(--surface-container-lowest);content:"";transform:rotate(45deg); }
+.dochi-home-assistant__speech::after { position:absolute;right:-28px;bottom:-2px;width:25px;height:25px;border-right:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-bottom:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));background:var(--surface-container-lowest);content:"";transform:rotate(45deg); }
 .dochi-home-assistant__speech p { margin:0;font-size:13px;line-height:1.55;letter-spacing:-.018em; }
 .dochi-home-assistant__speech .dochi-home-assistant__hello { margin-bottom:4px;color:var(--text-primary);font:750 15px var(--font-sans); }
 .dochi-home-assistant__speech small { position:relative;z-index:1;display:block;margin-top:8px;color:var(--text-muted);font-size:9.5px;line-height:1.4; }
@@ -7879,7 +7879,7 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-arrival > p { position:absolute;left:50%;top:calc(48% + 126px);z-index:2;margin:0;color:var(--text-secondary);font:700 11px var(--font-sans);letter-spacing:.08em;transform:translateX(-50%);animation:dochi-arrival-label 1.15s ease both; }
 .dochi-mapping-coach { position:relative;display:flex;align-items:flex-end;justify-content:flex-end;min-height:152px;margin:18px 0 8px;padding-right:116px; }
 .dochi-mapping-coach__speech { position:relative;width:min(100%,460px);padding:16px 18px;border:1.5px solid var(--text-secondary);border-radius:15px;background:var(--surface-container-lowest);box-shadow:0 14px 34px color-mix(in srgb,var(--text-primary) 9%,transparent); }
-.dochi-mapping-coach__speech::after { content:"";position:absolute;right:42px;bottom:-13px;width:22px;height:22px;border-right:1.5px solid var(--text-secondary);border-bottom:1.5px solid var(--text-secondary);background:var(--surface-container-lowest);transform:rotate(45deg); }
+.dochi-mapping-coach__speech::after { content:"";position:absolute;right:-17px;bottom:-2px;width:22px;height:22px;border-right:1.5px solid var(--text-secondary);border-bottom:1.5px solid var(--text-secondary);background:var(--surface-container-lowest);transform:rotate(45deg); }
 .dochi-mapping-coach__speech strong { display:block;color:var(--text-primary);font-size:16px;letter-spacing:-.02em; }
 .dochi-mapping-coach__speech p { margin:5px 0 12px;color:var(--text-secondary);font-size:12px;line-height:1.5; }
 .dochi-mapping-coach__speech .ab-button { position:relative;z-index:1;min-height:40px; }
@@ -8001,7 +8001,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   .dochi-home-assistant__speech { min-height:152px;padding:15px 14px 13px; }
   .dochi-home-assistant__speech p { font-size:12px; }
   .dochi-home-assistant__stage { width:108px;height:108px;margin-bottom:-4px; }
-  .dochi-home-assistant__speech::after { right:16px; }
+  .dochi-home-assistant__speech::after { right:-18px;bottom:-2px; }
   .dochi-journey__scene { transform:scale(.8); }
   .dochi-arrival__bundle { transform-origin:center; }
   .dochi-arrival__runner,.dochi-arrival__presenter { width:128px;height:128px; }
@@ -8379,7 +8379,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   --type-body: 14px;
   --type-meta: 11px;
   --work-surface: color-mix(in srgb, var(--surface-container-lowest) 97%, transparent);
-  --font-sans: var(--font-pretendard), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-wanted-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: var(--font-sans);
 }
 body.light-mode {
@@ -9948,7 +9948,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .inner-workspace-label--stacked { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
 /* 2026-08 Korean typography contract
-   Pretendard가 제목·본문·라벨을 한 파일에서 맡고, 고정폭은 숫자·코드에만 남긴다. */
+   Wanted Sans가 제목·본문·라벨을 한 파일에서 맡고, 고정폭은 숫자·코드에만 남긴다. */
 :where(pre, code, kbd, samp, .mono, .tnum, .kpi-card .value) {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
