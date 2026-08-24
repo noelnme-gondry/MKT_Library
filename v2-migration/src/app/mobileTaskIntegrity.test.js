@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * 모바일에서 핵심 과업이 사라지지 않는지.
@@ -14,10 +15,10 @@ import { describe, expect, it } from "vitest";
  * "규칙으로 명시적으로 지운 것"만 잡는다 — 겹침·잘림은 사람이 봐야 한다(§8.3).
  */
 
-const CSS = readFileSync(
+const CSS = stripSourceComments(readFileSync(
   path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "app/globals.css"),
   "utf-8",
-);
+));
 
 // 이 클래스들이 사라지면 그 화면에서 과업이 끝나지 않는다. 장식이 아니라 행동이다.
 const CORE_ACTIONS = [

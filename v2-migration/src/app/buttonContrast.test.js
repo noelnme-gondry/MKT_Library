@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * 버튼 글자색 가드.
@@ -21,10 +22,10 @@ import { describe, expect, it } from "vitest";
  * 규칙 목록은 CSS에서 파생한다 — 손으로 쓴 셀렉터 배열을 두지 말 것(§7).
  */
 
-const CSS = readFileSync(
+const CSS = stripSourceComments(readFileSync(
   path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "app/globals.css"),
   "utf8",
-);
+));
 
 // §7: `:root`·`body.light-mode`가 파일에 여러 번 나온다 → 마지막 정의가 실효값.
 function tokensFor(selector) {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 const shellFiles = [
   "(ko)/[[...slug]]/PageClient.jsx",
@@ -21,7 +22,7 @@ const appDirectory = fileURLToPath(new URL(".", import.meta.url));
 
 describe("shared application-shell semantics", () => {
   it.each(shellFiles)("keeps the global banner outside main in %s", (relativePath) => {
-    const source = readFileSync(`${appDirectory}${relativePath}`, "utf8");
+    const source = stripSourceComments(readFileSync(`${appDirectory}${relativePath}`, "utf8"));
     const headerIndex = source.indexOf("<Header");
     const mainIndex = source.indexOf('<main id="main-content" tabIndex="-1"');
     expect(source).not.toMatch(/<main[^>]*className="main"/);

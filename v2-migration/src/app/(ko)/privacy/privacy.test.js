@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const koSource = readFileSync(fileURLToPath(new URL("./page.js", import.meta.url)), "utf8");
-const enSource = readFileSync(fileURLToPath(new URL("../../(en)/en/privacy/page.js", import.meta.url)), "utf8");
+const koSource = stripSourceComments(readFileSync(fileURLToPath(new URL("./page.js", import.meta.url)), "utf8"));
+const enSource = stripSourceComments(readFileSync(fileURLToPath(new URL("../../(en)/en/privacy/page.js", import.meta.url)), "utf8"));
 
 describe("decision-review privacy contract", () => {
   it("states the Korean opt-in, exclusion, opt-out, and deletion rules", () => {

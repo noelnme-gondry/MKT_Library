@@ -82,7 +82,7 @@ export function publisherNode(locale = "ko") {
     "@id": `${SITE_URL}/#org`,
     name: PUBLISHER_NAME,
     url: `${SITE_URL}/`,
-    logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
+    logo: { "@type": "ImageObject", url: `${SITE_URL}/icons/dochi-512.png` },
     knowsAbout: knowsAbout(lang),
     ...(omitEmpty(AUTHOR.sameAs) ? { sameAs: AUTHOR.sameAs } : {}),
   };

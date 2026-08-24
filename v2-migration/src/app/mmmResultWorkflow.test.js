@@ -1,10 +1,12 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const css = fs.readFileSync(new URL("./globals.css", import.meta.url), "utf8");
-const marketingResponse = fs.readFileSync(new URL("../components/tools/MarketingResponse.jsx", import.meta.url), "utf8");
-const webRPanel = fs.readFileSync(new URL("../components/tools/WebRMmmAdvanced.jsx", import.meta.url), "utf8");
-const randomForestPanel = fs.readFileSync(new URL("../components/tools/WebRRandomForestPanel.jsx", import.meta.url), "utf8");
+const source = (url) => stripSourceComments(fs.readFileSync(url, "utf8"));
+const css = source(new URL("./globals.css", import.meta.url));
+const marketingResponse = source(new URL("../components/tools/MarketingResponse.jsx", import.meta.url));
+const webRPanel = source(new URL("../components/tools/WebRMmmAdvanced.jsx", import.meta.url));
+const randomForestPanel = source(new URL("../components/tools/WebRRandomForestPanel.jsx", import.meta.url));
 
 describe("MMM result workflow UI contract", () => {
   it("recreates Bayesian charts when the selected result model changes", () => {

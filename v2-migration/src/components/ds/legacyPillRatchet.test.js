@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
 /**
  * legacy pill 래칫.
@@ -41,12 +42,14 @@ function jsxFiles(dir) {
   });
 }
 
+const sourceOf = (file) => stripSourceComments(readFileSync(file, "utf-8"));
+
 function legacyGroups() {
   const perFile = new Map();
   for (const file of jsxFiles(COMPONENTS)) {
     // `ab-pillgroup-label`(라벨 span)까지 세면 안 된다 — 처음 기준선 94는 그 오류였고,
     // 실제 컨테이너는 45곳이었다. 숫자를 적을 땐 무엇을 세는지부터 확인할 것.
-    const count = (readFileSync(file, "utf-8").match(/className="ab-pillgroup(?:"|\s)/g) || []).length;
+    const count = (sourceOf(file).match(/className="ab-pillgroup(?:"|\s)/g) || []).length;
     if (count) perFile.set(path.relative(COMPONENTS, file), count);
   }
   return perFile;
@@ -74,7 +77,7 @@ describe("legacy pill ratchet", () => {
   it("never hand-writes a new single-select radio group", () => {
     const offenders = [];
     for (const file of jsxFiles(COMPONENTS)) {
-      const lines = readFileSync(file, "utf-8").split("\n");
+      const lines = sourceOf(file).split("\n");
       lines.forEach((line, index) => {
         if (!/className="ab-pillgroup(?:"|\s)/.test(line)) return;
         // 컨테이너의 닫는 </div>까지를 그룹으로 본다.
@@ -104,7 +107,7 @@ describe("legacy pill ratchet", () => {
     // 이름만 찾으면 import 줄에 걸려 마운트를 지워도 통과한다(실제로 그랬다).
     // JSX 사용을 찾아야 계약을 검사하는 것이 된다.
     const mounted = jsxFiles(COMPONENTS)
-      .some((file) => /<LegacyPillGroupA11y[\s/>]/.test(readFileSync(file, "utf-8")));
+      .some((file) => /<LegacyPillGroupA11y[\s/>]/.test(sourceOf(file)));
     expect(mounted, "LegacyPillGroupA11y가 어디에도 마운트돼 있지 않다 — 잔여 10곳이 키보드 조작을 잃는다").toBe(true);
   });
 });

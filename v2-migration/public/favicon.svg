@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
-  <defs>
-    <linearGradient id="goGrad" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#adc6ff"/>
-      <stop offset="1" stop-color="#2b4c80"/>
-    </linearGradient>
-  </defs>
-  <rect width="48" height="48" rx="11" fill="url(#goGrad)"/>
-  <path d="M12 32 21.5 23 28 28l8-13" fill="none" stroke="#12131a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M29.5 15H36v6.5" fill="none" stroke="#12131a" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 25c5 1 6 5 1 8 4 3 2 7-4 8-5 1-10 1-15 0C12 39 7 33 8 25 9 16 16 9 25 8c7-1 10 3 8 7 6-2 10 1 7 5 5-1 7 2 0 5Z" fill="#1f60d2"/>
+  <path d="M9 27c0-7 5-13 12-13 7 0 12 5 12 12 0 8-5 14-12 14S9 35 9 27Z" fill="#ffd2aa"/>
+  <path d="M9 37l4-2 3 5-4 2Zm8 3 5-4 3 5-5 2Z" fill="#fff" stroke="#d9dce2" stroke-width=".7"/>
+  <circle cx="21" cy="26" r="7.5" fill="none" stroke="#2d3035" stroke-width="2.8"/>
+  <path d="M28.5 26.5 33 28" fill="none" stroke="#2d3035" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M13.5 24.5c-4-3-7 0-5 4" fill="none" stroke="#2d3035" stroke-width="2.8" stroke-linecap="round"/>
+  <ellipse cx="20.5" cy="26" rx="3.2" ry="4.2" fill="#083a87"/>
+  <circle cx="19.5" cy="24.6" r="1" fill="#fff"/>
+  <path d="M13.5 32.5c1 .8 2 .8 3 0" fill="none" stroke="#8b6249" stroke-width="1.4" stroke-linecap="round"/>
 </svg>

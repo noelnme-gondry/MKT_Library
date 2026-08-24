@@ -8,6 +8,9 @@ export const TOOL_GROUP = {
   // setCsvData는 efficiency에 쓰기 때문에, 업로드 직후 재진입 시 미러가 빈
   // 슬라이스를 가리켜 방금 올린 CSV가 사라진다(읽기·쓰기 그룹 불일치).
   "start-gate": "efficiency",
+  // 도치 결과 작업대도 CSV를 읽고 분석 게이트를 연다. fallback에 우연히 기대지
+  // 않도록 시작 화면과 같은 효율 그룹을 명시한다.
+  "dochi-result": "efficiency",
   // 5-6 is a defensive alias: 9-6 is the published route, while the creative
   // uploader still uses 5-6 for its demo/guide contract.
   "5-6": "creative",

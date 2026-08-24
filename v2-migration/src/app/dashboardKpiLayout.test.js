@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const CSS = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
+const CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
 
 function ruleFor(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

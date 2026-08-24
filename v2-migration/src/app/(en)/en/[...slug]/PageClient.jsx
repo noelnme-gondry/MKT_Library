@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
+import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -116,6 +117,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
         </div>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
+      {routeId !== "dochi-result" && <DochiAnalysisDock locale="en" />}
       <GlobalModals locale="en" />
       <UiSemantics />
     </>

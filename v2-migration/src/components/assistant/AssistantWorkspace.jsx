@@ -12,9 +12,8 @@ import { responseAdapterFor, runResponseAnalysis } from "@/lib/assistant/respons
 import { runSpecialAnalysis, specialAdapterFor } from "@/lib/assistant/specialAnalysisAdapters";
 import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant/subscriptionAnalysisAdapters";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
-import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
-import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
+import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
 
 const COPY = {
   ko: {
@@ -211,19 +210,6 @@ function mergedToolMapping(mappingContract, globalMapping = {}) {
     if (field && field !== "__ignore__") mapping[header] = field;
   });
   return mapping;
-}
-
-function applyGlobalMapping(prepared, globalMapping, toolId) {
-  const mapping = { ...prepared.mapping };
-  Object.entries(globalMapping || {}).forEach(([header, field]) => {
-    if (field && field !== "__ignore__") mapping[header] = field;
-  });
-  return {
-    ...prepared,
-    mapping,
-    canonicalData: buildCanonicalDataset({ raw: prepared.raw, headers: prepared.headers, mapping }),
-    mappedRows: buildLegacyRows({ raw: prepared.raw, legacyMapping: mapping, semanticBindings: prepared.mappingBindingsV2, toolId }),
-  };
 }
 
 function fingerprintStep(hash, value) {
@@ -514,7 +500,7 @@ function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueIt
   );
 }
 
-export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, autoStart = false, presentation = "full" }) {
+export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full" }) {
   const C = COPY[locale] || COPY.ko;
   const [queue, setQueue] = useState(null);
   const [announcement, setAnnouncement] = useState("");
@@ -550,16 +536,15 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     const cacheKey = `${currentInputSignature}:${currentMappingSignature}:${toolId}`;
     const cached = handoffPreparationCacheRef.current.get(cacheKey);
     if (cached) return cached;
-    const prepared = applyGlobalMapping(prepareDatasetForTool({
-      raw: csvData.raw,
-      headers: csvData.headers,
-      toolId,
-      source: csvData.fileName || "dataset",
-    }), csvData.mapping, toolId);
+    const prepared = prepareAnalysisHandoff(csvData, toolId);
     handoffPreparationCacheRef.current.clear();
     handoffPreparationCacheRef.current.set(cacheKey, prepared);
     return prepared;
-  }, [csvData.fileName, csvData.headers, csvData.mapping, csvData.raw, currentInputSignature, currentMappingSignature]);
+  }, [csvData, currentInputSignature, currentMappingSignature]);
+
+  useEffect(() => {
+    onEligibilityChange?.(eligibility);
+  }, [eligibility, onEligibilityChange]);
 
   useEffect(() => {
     const signature = `${currentInputSignature}:${currentMappingSignature}`;
