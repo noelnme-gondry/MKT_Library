@@ -33,6 +33,7 @@ describe("DochiAssistant home intake", () => {
     expect(useAppStore.getState().demoDisabled).toBe(true);
     expect(document.querySelector(".dochi-home-assistant__speech")).toBeTruthy();
     expect(document.querySelector(".dochi-home-assistant__stage")).toBeTruthy();
+    expect(document.querySelector(".dochi-home-assistant__speech-tail svg")).toBeTruthy();
   });
 
   it("opens the dedicated mapping and results workspace after import", () => {

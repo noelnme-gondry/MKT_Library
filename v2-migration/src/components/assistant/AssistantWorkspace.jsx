@@ -728,6 +728,8 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     return <section className="dochi-workspace dochi-workspace--empty" aria-labelledby="dochi-workspace-title"><h2 id="dochi-workspace-title">{C.title}</h2><p>{C.empty}</p></section>;
   }
 
+  if (presentation === "catalog") return null;
+
   if (presentation === "embedded") {
     return <section className="dochi-workspace dochi-workspace--embedded" aria-live="polite">
       {currentResults.length ? <div className="dochi-workspace__grid">
