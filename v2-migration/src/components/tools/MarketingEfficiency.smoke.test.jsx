@@ -24,7 +24,7 @@ function seedNoData() {
 // cost>0 & result>0 to fit a response curve, so span 12 days × 2 channels.
 // mapping = { origHeader: standardKey }.
 function seedWithData() {
-  const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs"];
+  const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Actions"];
   const mapping = {
     Date: "date",
     Country: "country",
@@ -32,6 +32,7 @@ function seedWithData() {
     Channel: "channel",
     Spend: "cost",
     Installs: "installs",
+    Actions: "actions",
   };
   const raw = [];
   const channels = ["Google", "Meta"];
@@ -41,7 +42,7 @@ function seedWithData() {
       const cost = ch === "Google" ? 100000 + d * 6000 : 80000 + d * 5000;
       // deterministic diminishing returns (result grows sub-linearly with cost) — §8, no Math.random
       const installs = Math.round(Math.pow(cost, 0.85) / (ch === "Google" ? 40 : 34));
-      raw.push({ Date: date, Country: "KR", Platform: "iOS", Channel: ch, Spend: cost, Installs: installs });
+      raw.push({ Date: date, Country: "KR", Platform: "iOS", Channel: ch, Spend: cost, Installs: installs, Actions: Math.max(1, Math.round(installs * 0.35)) });
     }
   }
   const slice = { raw, headers, mapping, fileName: "sat.csv" };
@@ -53,7 +54,10 @@ function seedWithData() {
 }
 
 describe("MarketingEfficiency render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    seedNoData();
+    useAppStore.setState({ denomBasis: "installs" });
+  });
 
   it("mounts without throwing in the no-data state (upload screen)", () => {
     expect(() => render(<MarketingEfficiency />)).not.toThrow();
@@ -88,8 +92,18 @@ describe("MarketingEfficiency render smoke", () => {
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
-    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+    expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
+  });
+
+  it("follows the shared install/signup basis after it has already mounted", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency />);
+
+    expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
+    act(() => useAppStore.getState().setDenomBasis("actions"));
+    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
   });
 });

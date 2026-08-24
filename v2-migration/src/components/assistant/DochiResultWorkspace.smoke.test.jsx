@@ -64,7 +64,10 @@ describe("DochiResultWorkspace", () => {
     expect(screen.getByRole("button", { name: "확인하고 결과 가져오기" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
     expect(document.querySelector(".dochi-journey.is-running")).toBeTruthy();
-    act(() => vi.advanceTimersByTime(1850));
+    expect(document.querySelector(".dochi-journey__mascot .dochi-sprite.is-delivery")).toBeTruthy();
+    expect(screen.getByText("아하!")).toBeTruthy();
+    expect(document.querySelector(".dochi-journey__runner")).toBeNull();
+    act(() => vi.advanceTimersByTime(1100));
     await act(async () => { await Promise.resolve(); });
 
     expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
