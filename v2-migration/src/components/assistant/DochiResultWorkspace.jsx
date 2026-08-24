@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
+import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
 
@@ -27,6 +28,7 @@ const COPY = {
     insight: "아하!",
     resultsTitle: "같은 데이터로 바로 보는 분석 결과",
     resultsDeck: "핵심 그래프와 표만 모았습니다. 더 깊게 볼 때는 해당 분석으로 바로 이어집니다.",
+    sharedControls: "모든 분석에 같이 적용",
     noDataTitle: "먼저 도치에게 CSV를 맡겨 주세요",
     noDataDeck: "파일은 브라우저 안에서만 읽고, 이 화면에서 매핑과 결과를 이어서 보여드립니다.",
     backHome: "홈에서 CSV 올리기",
@@ -47,6 +49,7 @@ const COPY = {
     insight: "Aha!",
     resultsTitle: "Analysis results from this same data",
     resultsDeck: "Only the essential charts and tables are shown here. Open the analysis when you need to go deeper.",
+    sharedControls: "Applies to every analysis",
     noDataTitle: "Give Dochi a CSV first",
     noDataDeck: "Your file is read only in this browser. Mapping and results continue here.",
     backHome: "Upload a CSV from home",
@@ -183,6 +186,10 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
         <span>{C.eyebrow}</span>
         <h1 id="dochi-result-title">{C.resultsTitle}</h1>
         <p>{C.resultsDeck}</p>
+        <div className="dochi-result-workspace__global-controls" aria-label={C.sharedControls}>
+          <strong>{C.sharedControls}</strong>
+          <BasisCurrencyToggleBar locale={locale} />
+        </div>
       </header>
       <AssistantWorkspace csvData={csvData} locale={locale} presentation="catalog" onEligibilityChange={rememberAvailableAnalyses} />
       <div className="dochi-result-tools">

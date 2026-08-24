@@ -7931,6 +7931,11 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
 .dochi-result-workspace__header > span,.dochi-result-empty > span { display:block;color:var(--primary);font:750 10px var(--font-sans);letter-spacing:.12em; }
 .dochi-result-workspace__header h1,.dochi-result-empty h1 { margin:6px 0 7px;color:var(--text-primary);font-size:clamp(25px,3vw,38px);letter-spacing:-.04em;word-break:keep-all;overflow-wrap:normal; }
 .dochi-result-workspace__header p,.dochi-result-empty p { max-width:680px;margin:0;color:var(--text-secondary);font-size:14px;line-height:1.55;word-break:keep-all;overflow-wrap:normal; }
+.dochi-result-workspace__global-controls { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:12px;background:color-mix(in srgb,var(--surface-container-lowest) 74%,var(--bg-1)); }
+.dochi-result-workspace__global-controls > strong { margin-right:2px;color:var(--text-secondary);font-size:11px;font-weight:700;letter-spacing:-.015em; }
+.dochi-result-workspace__global-controls .analysis-control-group { display:flex;align-items:center;gap:5px; }
+.dochi-result-workspace__global-controls .analysis-control-group__label { color:var(--text-muted);font-size:10px;white-space:nowrap; }
+.dochi-result-workspace__global-controls .ab-pill { min-height:29px;padding:4px 8px;font-size:10.5px; }
 .dochi-result-empty { margin-top:8vh;max-width:720px; }
 .dochi-result-empty .ab-button { display:inline-flex;margin-top:18px; }
 .dochi-result-workspace .csv-mapping-block { margin-top:18px; }
@@ -7978,6 +7983,9 @@ body:has(.dochi-assistant) .tool-assist-rail:not(.tool-assist-rail--embedded) { 
   .dochi-result-tool__actions { flex-wrap:wrap;justify-content:flex-end;gap:6px; }
   .dochi-result-tool__actions button { min-height:28px;padding:4px 7px;font-size:10px; }
   .dochi-result-tool__view { padding:16px 12px; }
+  .dochi-result-workspace__global-controls { align-items:flex-start;gap:7px;padding:9px 10px; }
+  .dochi-result-workspace__global-controls > strong { width:100%; }
+  .dochi-result-workspace__global-controls .analysis-control-group { flex-wrap:wrap; }
   .dochi-result-workspace .csv-mapping-review-action { bottom:8px;padding:9px; }
   .dochi-analysis-dock { right:12px;bottom:max(12px,env(safe-area-inset-bottom)); }.dochi-analysis-dock__panel { right:0;bottom:72px; }
 }
