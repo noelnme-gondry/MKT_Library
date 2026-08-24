@@ -89,7 +89,8 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
   await dashboardCard.getByRole("button", { name: /추가 차트·상세 분석 열기/ }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await page.getByRole("button", { name: "데이터 분석하기" }).click();
+  // /start에서 자격 통과한 추천을 열면 도치 작업대와 같은 분석 완료 상태를
+  // 넘긴다. 다시 "데이터 분석하기"를 누르게 하면 추천→결과 여정이 한 단계 끊긴다.
   await expect(page.locator(".result-action-card")).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: ".dashboard-briefing" });
   await expectNoSeriousAccessibilityViolations(page);

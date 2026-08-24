@@ -1,3 +1,5 @@
+import { RESPONSE_SUBTOOL_IDS } from "@/lib/responseSubtoolContent";
+
 // ── Per-tool CSV upload guidance (design-system baseline §1.4) ──────────────
 // Powers <CsvGuide>: the always-visible 1-line summary + the "왜 이 데이터가
 //필요한가요?" modal. Non-technical marketers should understand WHEN to use the
@@ -706,6 +708,14 @@ export const TOOL_GUIDE_EN = {
     example: "date,campaign_name,adgroup_name,search_term,match_type,cost,clicks,installs,daily_budget,target_cpa,current_cpt\n2026-08-01,Generic,Discovery,budget planner,Search Match,4000,250,42,12000,140,18\n2026-08-01,Generic,Broad,free budget app,Broad,15000,610,58,12000,140,22",
   },
 };
+
+// 응답 패널의 다섯 하위 도구는 주간 패널 CSV를 공유한다. 진입 라우트가 각자
+// CsvGuide를 요청하므로, 허브(5-18) 가이드를 이 목록에서 파생해 모두 제공한다.
+// 한 곳만 누락되면 업로드 안내·템플릿·예시가 조용히 사라진다.
+for (const toolId of RESPONSE_SUBTOOL_IDS) {
+  TOOL_GUIDE[toolId] = TOOL_GUIDE["5-18"];
+  TOOL_GUIDE_EN[toolId] = TOOL_GUIDE_EN["5-18"];
+}
 
 export function getToolGuide(toolId, locale = "ko") {
   if (locale === "en" && TOOL_GUIDE_EN[toolId]) return TOOL_GUIDE_EN[toolId];
