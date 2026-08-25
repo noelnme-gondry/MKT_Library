@@ -37,6 +37,10 @@ const INTRO = {
     ko: ["ASO 스토어 전환 분석", "스토어 전환 변화가 제품 페이지 효율 때문인지 유입 소스 구성 때문인지 나눠 봅니다."],
     en: ["ASO store conversion analysis", "Separate store conversion changes into product-page efficiency and traffic-source mix."],
   },
+  "5-29": {
+    ko: ["세그먼트 구성 변화 분석", "전체 지표가 움직였을 때 어떤 사용자 구성이 바뀌었는지 보고, 단위 간 이동과 내부 변화로 나눕니다."],
+    en: ["Segment composition change analysis", "See which audience composition changed and split it into movement between units and change inside them."],
+  },
   "5-28": {
     ko: ["핵심 액션 생존·이탈 분석", "핵심 행동이 언제 끊기는지와 먼저 검증할 군을 시간 흐름으로 확인합니다."],
     en: ["Action survival and drop-off analysis", "See when a key action drops off over time and which group should be tested first."],

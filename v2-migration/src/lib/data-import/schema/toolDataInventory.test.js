@@ -55,10 +55,10 @@ describe("CSV tool inventory", () => {
     ]));
   });
 
-  it("covers the 18 catalogued public tools and the independent action-survival contract", () => {
+  it("covers the 19 catalogued public tools and the independent action-survival contract", () => {
     const publicTools = inventory.filter((tool) => tool.isPublicAnalysisTool);
     expect(publicTools.map((tool) => tool.toolId).sort()).toEqual([
-      "5-2", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-3", "5-4",
+      "5-2", "5-20", "5-21", "5-22", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "5-3", "5-4",
       "5-18-cannibal", "5-18-forecast", "5-18-mmm", "5-18-paid-organic", "5-18-trend", "9-1", "9-6",
     ].sort());
 

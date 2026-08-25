@@ -23,6 +23,9 @@ export const TOOL_GROUP = {
   "5-26": "asa_keyword",
   "5-27": "aso_store",
   "5-28": "subscription_survival",
+  // 세그먼트 breakdown 행은 멤버 수만큼 비용·모수가 반복된다. 효율 슬라이스에
+  // 섞이면 5-2·5-21·5-3의 합계가 배수로 부푼다 → 독립 그룹.
+  "5-29": "segment_composition",
   "9-1": "content_attr",
   "9-2": "content_aha",
   "9-3": "content_traffic",

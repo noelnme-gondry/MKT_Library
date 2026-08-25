@@ -52,6 +52,11 @@ export const CONNECTED_TOOLS = {
     question: { ko: "스토어 전환율이 떨어진 게 페이지 탓일까, 유입 구성이 바뀐 탓일까?", en: "Did store conversion fall because of the page, or because the traffic mix shifted?" },
     keywords: { ko: "ASO 스토어 전환율 하락 제품 페이지 조회 설치 전환 유입 소스 Search Browse 앱스토어 최적화 스크린샷 아이콘", en: "ASO store conversion rate drop product page views installs traffic source Search Browse app store optimization screenshots icon" },
   },
+  "5-29": {
+    title: { ko: "구성 변화 분석", en: "Composition change" },
+    question: { ko: "전체 지표가 움직였을 때 어떤 사용자 구성이 바뀌었나?", en: "When the overall metric moved, which audience composition changed?" },
+    keywords: { ko: "세그먼트 구성 변화 오디언스 믹스 비중 성별 연령 플랜 이동 분해", en: "segment composition change audience mix share gender age plan movement decomposition" },
+  },
   "5-28": {
     title: { ko: "핵심 액션 생존·이탈 분석", en: "Action survival & drop-off" },
     question: { ko: "핵심 액션은 언제 가장 자주 끊기고, 어느 군을 먼저 실험할까?", en: "When does a key action drop off, and which group should be tested first?" },
@@ -111,7 +116,7 @@ export const TOOL_JOURNEY = [
     label: { ko: "01 · CHECK", en: "01 · CHECK" },
     title: { ko: "이번 주 점검", en: "This week" },
     description: { ko: "어디가 흔들렸고 왜 그런지 봅니다.", en: "See what moved and why." },
-    tools: ["5-2", "5-21"],
+    tools: ["5-2", "5-21", "5-29"],
   },
   {
     id: "baseline",
@@ -162,7 +167,7 @@ export const TOOL_JOURNEY = [
 // CSV로 이어서 볼 수 있는 질문을 다음 단계로 잇는 것이 이 맵의 목적이다.
 export const NEXT_TOOL_IDS = {
   "5-2": ["5-21", "5-22", "5-3"],
-  "5-21": ["5-22", "5-3", "5-4"],
+  "5-21": ["5-29", "5-22", "5-3"],
   "5-22": ["5-3", "5-26", "9-6"],
   "5-3": ["5-22", "5-18-mmm", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
@@ -173,6 +178,8 @@ export const NEXT_TOOL_IDS = {
   "5-26": ["5-22", "5-3", "5-27"],
   "5-27": ["5-26", "5-2", "5-23"],
   "5-28": ["5-20", "5-4", "5-23"],
+  // 구성이 움직인 것을 확인했으면 성과 단가 변동(5-21)과 증분 검증(5-23)으로 넘어간다.
+  "5-29": ["5-21", "5-23", "5-2"],
   "5-20": ["5-28", "9-1", "5-4"],
   "9-1": ["9-6", "5-4", "5-20"],
   // 같은 패널 CSV를 쓰는 다섯 — 추세로 기준선을 잡고, 반대 움직임을 보고,

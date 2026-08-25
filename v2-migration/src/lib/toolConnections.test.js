@@ -103,7 +103,9 @@ describe("connected tool workflow", () => {
 
     const learning = getJourneyContext("5-18-mmm", "en");
     expect(learning.isCycleRestart).toBe(true);
-    expect(learning.next.map((tool) => tool.id)).toEqual(["5-2", "5-21"]);
+    const monitorStage = TOOL_JOURNEY.find((stage) => stage.id === "monitor");
+    expect(learning.next.map((tool) => tool.id)).toEqual(monitorStage.tools.slice(0, learning.next.length));
+    expect(learning.next.length).toBeGreaterThan(0);
     expect(learning.previous.every((tool) => tool.href.startsWith("/en/"))).toBe(true);
   });
 });

@@ -24,6 +24,7 @@ export const TOOL_OG_CONFIG = {
   "5-27": { accent: "#2dd4bf", glyph: "STORE", metrics: { ko: ["스토어 전환", "소스 믹스", "페이지 효율"], en: ["STORE CVR", "SOURCE MIX", "PAGE EFFICIENCY"] } },
   "5-26": { accent: "#2dd4bf", glyph: "ASA", metrics: { ko: ["검색어", "Exact 승격", "CPT 조정"], en: ["SEARCH TERM", "EXACT PROMOTION", "CPT BID"] } },
   "5-28": { accent: "#a78bfa", glyph: "LIFE", metrics: { ko: ["생존율", "이탈·종료 위험", "관측 반복 가치"], en: ["SURVIVAL", "DROP-OFF RISK", "OBSERVED VALUE"] } },
+  "5-29": { accent: "#2dd4bf", glyph: "MIX", metrics: { ko: ["구성 이동 크기", "단위 간 이동", "단위 내부 변화"], en: ["SHIFT SIZE", "MIX", "RATE"] } },
 };
 
 export function getToolOgData(toolId, locale = "ko") {

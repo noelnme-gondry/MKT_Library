@@ -38,6 +38,11 @@ const DECLARATIONS = Object.freeze({
   // 핵심 액션 생존은 비교 분석이 아니다. 한 행=한 개체의 시간-사건 관측 에피소드로
   // 별도 grain을 둬 compare/증분 도구 후보로 섞이지 않게 한다. 구독은 이 계약의 한 사례다.
   "5-28": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["action_survival_episode"], decisionQuestion: "핵심 액션은 얼마나 유지되고 이탈·종료 위험은 언제 높아지는가" },
+  // 구성 변화는 세그먼트 breakdown 행(기간×단위×세그먼트 값)이라 campaign_daily와
+  // grain이 다르다. 같은 grain으로 두면 효율 CSV 후보로 섞여 비용이 멤버 수만큼 부푼다.
+  // 자동 실행 대상이 아니다. 어떤 컬럼이 세그먼트 축인지와 비교할 두 기간은 사용자가
+  // 선언해야 하고(헤더만으로는 확정할 수 없다) 그 선언이 곧 분석 설계다.
+  "5-29": { runMode: "confirm_design", executionCost: "light", priority: 45, grains: ["segment_composition_period"], decisionQuestion: "전체 지표가 움직였을 때 어떤 사용자 구성이 바뀌었는가", confirmationRequirements: ["segment_axis", "comparison_periods"] },
   "9-1": { runMode: "confirm_model", executionCost: "heavy", priority: 90, grains: ["content_item"], decisionQuestion: "콘텐츠 요소와 성과의 관측 연관은 무엇인가", confirmationRequirements: ["outcome_numeric", "features"] },
   "9-6": { runMode: "baseline", executionCost: "light", priority: 20, grains: ["creative_daily"], decisionQuestion: "피로한 소재와 교체 후보는 무엇인가" },
 });

@@ -9985,4 +9985,21 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
   font-size: 11px;
 }
 
+
+/* ── 구성 변화 분석(5-29) 역할 매퍼 ─────────────────────────────────────────
+   세그먼트 축은 사용자가 파일마다 다르게 선언하므로, 고정 표가 아니라 후보 목록과
+   선언 목록 두 덩어리로 읽힌다. 색은 전부 semantic 토큰 — 라이트/다크 양쪽에서
+   같은 규칙이 성립해야 한다(§7 raw hex 금지). */
+.segment-role-mapper { display: flex; flex-direction: column; gap: 16px; }
+.segment-role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.segment-role-row { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.segment-role-row select { width: 100%; }
+.segment-role-fieldset { border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+.segment-role-fieldset legend { font-size: 12px; color: var(--text-secondary); padding: 0 4px; }
+.segment-role-check { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 12px; }
+.segment-candidate-list, .segment-declared-list { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.segment-candidate-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.segment-candidate-name { font-weight: 600; color: var(--text-primary); }
+.segment-declared-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-1); }
+
 } /* @layer app 끝 */
