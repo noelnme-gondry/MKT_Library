@@ -5,6 +5,7 @@ import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
+import { getToolGuide } from "@/utils/toolGuide";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
@@ -252,6 +253,8 @@ export default function CsvUploader({
   onImportFailed = null,
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
+  // 가이드가 있으면 예시 데이터 버튼은 가이드가 소유한다(아래 중복 블록 차단).
+  const showGuide = entryVariant !== "dochi" && Boolean(getToolGuide(toolId, locale));
   const isRouterMode = toolId === "start-gate";
   const eventToolId = analyticsToolId || toolId;
   const csvData = useAppStore((s) => s.csvData);
@@ -747,7 +750,7 @@ export default function CsvUploader({
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
-        {entryVariant !== "dochi" && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />}
+        {showGuide && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />}
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
@@ -775,7 +778,10 @@ export default function CsvUploader({
           </section>
         ) : (
           <>
-        {toolId !== "start-gate" && (
+        {/* 예시 데이터 진입점은 화면에 하나만 둔다. CsvGuide가 이미 같은 버튼을
+            그리고 있으면 여기서 또 그리지 않는다 — 나란히 놓인 같은 동작의 버튼 둘은
+            "무엇이 다른가"를 먼저 묻게 만든다(제품 SSOT §5.3 위계 없는 CTA). */}
+        {toolId !== "start-gate" && !showGuide && (
           <div className="csv-entry-actions">
             <button type="button" className="csv-entry-actions__demo" onClick={handleLoadDemo}>
               {T.entryDemoBtn}

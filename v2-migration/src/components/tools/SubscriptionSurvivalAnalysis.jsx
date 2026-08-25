@@ -367,11 +367,9 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
   const availableSegments = SEGMENTS.filter((key) => sourceRows.some((row) => firstDefined(row, [key]) != null));
 
   return <ToolPageShell toolId={TOOL_ID} title={tx(locale, "핵심 액션 생존·이탈 분석", "Action Survival & Drop-off Analysis")} locale={locale} summary={<p>{tx(locale, "특정 핵심 액션을 계속 유지하는지, 언제 이탈·종료하는지 중도절단을 반영해 봅니다. 구독은 하나의 입력 예시일 뿐이며, 개별 이탈을 예측하거나 원인을 확정하지는 않습니다.", "Measure whether an entity keeps a defined key action and when it exits or drops off with censoring handled. Subscription is only one input example; this does not predict individual drop-off or establish causes.")}</p>} toc={[{ id: "subscription-survival-result", title: tx(locale, "결론", "Conclusion") }, { id: "subscription-survival-curve", title: tx(locale, "생존곡선", "Survival") }, { id: "subscription-hazard", title: tx(locale, "위험 구간", "Risk") }]}>
-    {!hasRows && <section className="block" aria-labelledby="subscription-empty-title">
-      <h2 id="subscription-empty-title" className="section-title">{tx(locale, "데이터를 준비하세요", "Prepare your data")}</h2>
-      <p>{tx(locale, "1행이 한 개체의 핵심 액션 유지·이탈 관측 에피소드가 되도록 기간과 이벤트 여부를 준비해 주세요. 파일은 이 브라우저에서만 처리됩니다.", "Use one row per entity's key-action observation episode with duration and event status. The file is processed only in this browser.")}</p>
-      <CsvUploader toolId={TOOL_ID} locale={locale} />
-    </section>}
+    {/* 빈 상태 문구는 CsvUploader/CsvGuide가 소유한다 — 도구가 같은 말을 다시 쓰면
+        업로드 화면에 같은 문장이 두 번 나온다(제품 SSOT §5.3). */}
+    {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
     {hasRows && !gateOpen && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /><p className="muted">{tx(locale, "매핑을 확인한 뒤 ‘데이터 분석하기’를 눌러 결과를 계산하세요.", "Confirm the mapping, then choose Analyze data to calculate results.")}</p></section>}
     {hasRows && gateOpen && <section className="block" aria-label={tx(locale, "분석 설정", "Analysis settings")}>
       <div className="form-row">
