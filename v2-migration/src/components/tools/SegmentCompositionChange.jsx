@@ -541,26 +541,29 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">
       <h2 id="segment-composition-compare" className="section-title">{tx(locale, "비교 조건", "Comparison")}</h2>
-      <div className="form-row">
+      {/* 도구 안 필터는 `.analysis-local-controls`가 공용 패턴이다(5-4·5-18·5-20·5-21·9-6).
+          `.form-row`는 globals.css에 정의가 없어 스타일이 아예 붙지 않는다. */}
+      <div className="analysis-local-controls"><div className="analysis-local-controls__inner">
+        <span className="analysis-local-controls__label">{tx(locale, "비교 기간", "Periods")}</span>
         <label>{tx(locale, "이전 기간", "Earlier period")}
-          <select value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
+          <select className="map-select" value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
           </select>
         </label>
         <label>{tx(locale, "이후 기간", "Later period")}
-          <select value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
+          <select className="map-select" value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
           </select>
         </label>
         {scopeValues.length ? <label>{tx(locale, "경쟁 범위", "Scope")}
-          <select value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
+          <select className="map-select" value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
             <option value="">{tx(locale, "전체", "All")}</option>
             {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
         </label> : null}
-      </div>
+      </div></div>
       {!gateOpen ? <p className="muted">{tx(locale, "업로드 화면의 ‘데이터 분석하기’를 누르면 결과가 나옵니다.", "Choose Analyze data on the upload panel to see results.")}</p> : null}
       {gateOpen && !ready ? <p className="muted">{tx(locale, "서로 다른 두 기간이 있어야 비교할 수 있습니다.", "Two different periods are needed to compare.")}</p> : null}
     </section>}
@@ -685,26 +688,27 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
             "먼저 위에서 OS·국가 같은 컬럼을 경쟁 범위로 지정해 주세요. 처리군과 대조군은 그 값에서 고릅니다.",
             "First declare a column such as OS or country as the competition scope. Treated and control groups are picked from its values.")}</p>
         ) : (
-          <div className="form-row">
+          <div className="analysis-local-controls"><div className="analysis-local-controls__inner">
+            <span className="analysis-local-controls__label">{tx(locale, "개입 설계", "Design")}</span>
             <label>{tx(locale, "개입 시점", "Intervention date")}
-              <select value={design.cutoff} onChange={(event) => setDesign((value) => ({ ...value, cutoff: event.target.value }))}>
+              <select className="map-select" value={design.cutoff} onChange={(event) => setDesign((value) => ({ ...value, cutoff: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {periods.map((period) => <option key={period} value={period}>{period}</option>)}
               </select>
             </label>
             <label>{tx(locale, "처리 범위", "Treated scope")}
-              <select value={design.treated} onChange={(event) => setDesign((value) => ({ ...value, treated: event.target.value }))}>
+              <select className="map-select" value={design.treated} onChange={(event) => setDesign((value) => ({ ...value, treated: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </label>
             <label>{tx(locale, "대조 범위", "Control scope")}
-              <select value={design.control} onChange={(event) => setDesign((value) => ({ ...value, control: event.target.value }))}>
+              <select className="map-select" value={design.control} onChange={(event) => setDesign((value) => ({ ...value, control: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </label>
-          </div>
+          </div></div>
         )}
 
         {causal ? <>
