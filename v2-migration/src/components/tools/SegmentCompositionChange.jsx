@@ -493,6 +493,9 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
 
   return <ToolPageShell
     toolId={TOOL_ID}
+    // 페이지 h1은 상단 ToolIntro가 갖는다. 여기서 제목을 또 그리면 같은 화면에
+    // h1이 둘이 되고 이름도 둘로 갈린다(5-25·5-26·5-27이 이미 쓰는 방식).
+    titleLevel={0}
     title={tx(locale, "구성 변화 분석", "Composition change")}
     locale={locale}
     toc={[
