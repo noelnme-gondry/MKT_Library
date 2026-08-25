@@ -56,11 +56,13 @@ describe("CsvUploader render smoke", () => {
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("");
   });
 
-  it("예시 버튼이 눈에 띄는 자리에 있고 누르면 그때 로드된다", () => {
+  it("예시 버튼은 화면에 하나만 있고 누르면 그때 로드된다", () => {
     render(<CsvUploader toolId="5-2" />);
-    const demo = document.querySelector(".csv-entry-actions__demo");
-    expect(demo).toBeTruthy();
-    fireEvent.click(demo);
+    // 가이드가 있는 도구는 가이드가 예시 버튼을 소유한다. 두 곳에서 그리면 같은 동작의
+    // 버튼이 나란히 둘 놓여 "무엇이 다른가"를 먼저 묻게 만든다.
+    const demoButtons = document.querySelectorAll(".csv-entry-actions__demo, .csv-guide-example-btn");
+    expect(demoButtons).toHaveLength(1);
+    fireEvent.click(demoButtons[0]);
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
   });
 

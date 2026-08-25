@@ -13,6 +13,7 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { csvBody, downloadCsv } from "@/utils/download";
 import { fmtNum, fmtPct } from "@/utils/format";
 import { buildSegmentPanel, PANEL_STATUS } from "@/lib/segment-composition/segmentPanel";
+import { autoDeclare, defaultPeriods } from "@/lib/segment-composition/autoDeclare";
 import { segmentMappingSignature } from "@/lib/segment-composition/mappingSignature";
 import {
   compareDistribution, decomposeMixRate, netNewProfile, rankDimensions,
@@ -181,9 +182,18 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
   const hasRows = rows.length > 0;
   const gateOpen = analyzedOverride ?? isStoreAnalyzed;
 
-  const [mapping, setMapping] = useState(EMPTY_MAPPING);
+  /* 기본값은 "다 잡아서 다 돌린다"이다. 마케터가 세그먼트를 보러 와서 매핑을 먼저
+   * 공부해야 하는 화면은 쓸 수 없다 — 자동으로 선언하고, 틀린 것만 고치게 한다.
+   * 사용자가 매퍼를 한 번이라도 건드리면 그때부터 자동 선언은 멈춘다. */
+  const auto = useMemo(() => autoDeclare({ headers, rows }), [headers, rows]);
+  const [manualMapping, setManualMapping] = useState(null);
+  // 참조를 고정하지 않으면 렌더마다 새 객체가 되어 아래 무거운 패널 빌드가 매번 다시 돈다.
+  const mapping = useMemo(
+    () => manualMapping || { roles: { ...EMPTY_MAPPING.roles, ...auto.roles }, dimensions: auto.dimensions },
+    [manualMapping, auto],
+  );
+  const setMapping = (next) => setManualMapping(next);
   const [draft, setDraft] = useState({ pre: "", post: "", scopeValue: "", dimensionId: "", memberId: "" });
-  const [applied, setApplied] = useState(null);
   // 인과 확인은 탐색 토글이 아니라 **설계 선언**이다. 매핑 서명과 분리해 두되,
   // 선언이 비어 있으면 섹션 자체가 열리지 않는다.
   const [design, setDesign] = useState({ cutoff: "", treated: "", control: "" });
@@ -195,7 +205,21 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
   );
 
   // 선언이 바뀌면 이전 결과를 그대로 두지 않는다 — 화면과 근거가 어긋나는 상태가 제일 나쁘다.
-  const active = gateOpen && applied?.signature === signature ? applied : null;
+  const autoCountColumn = auto.notes.find((note) => note.role === "count")?.column || "";
+  const autoPeriods = useMemo(() => defaultPeriods(rows, mapping.roles.time), [rows, mapping.roles.time]);
+  const pre = draft.pre || autoPeriods.pre;
+  const post = draft.post || autoPeriods.post;
+  const scopeColumn = mapping.roles.scope?.[0] || "";
+
+  /* 분석 실행 버튼을 따로 두지 않는다. 업로드부의 "데이터 분석하기"가 이미 명시적
+   * 행동이고(§12.5 게이트), 그 뒤에 버튼을 하나 더 두면 같은 확인을 두 번 받는다. */
+  const ready = Boolean(gateOpen && mapping.roles.time && mapping.dimensions.length && pre && post && pre !== post);
+  const active = useMemo(
+    () => (ready
+      ? { signature, pre, post, scopeColumn, scopeValue: draft.scopeValue, dimensionId: draft.dimensionId, memberId: draft.memberId }
+      : null),
+    [ready, signature, pre, post, scopeColumn, draft.scopeValue, draft.dimensionId, draft.memberId],
+  );
 
   const panel = useMemo(() => {
     if (!active) return null;
@@ -245,20 +269,6 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     const study = eventStudy({ ...shared, eligibility });
     return { eligibility, study, placebo: placeboTest({ eligibility }), mediation: mediationAvailability() };
   }, [panel, analysis, mapping.roles.scope, design]);
-
-  const canRun = Boolean(mapping.roles.time && mapping.dimensions.length && draft.pre && draft.post && draft.pre !== draft.post);
-  const run = () => {
-    if (!canRun) return;
-    setApplied({
-      signature,
-      pre: draft.pre,
-      post: draft.post,
-      scopeColumn: mapping.roles.scope?.[0] || "",
-      scopeValue: draft.scopeValue,
-      dimensionId: draft.dimensionId,
-      memberId: draft.memberId,
-    });
-  };
 
   const scopeValues = useMemo(() => {
     const column = mapping.roles.scope?.[0];
@@ -372,6 +382,16 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
   const points = () => {
     if (!analysis) return [];
     const list = [];
+    // 축을 하나만 보여 주면 "다른 건 안 봤나"가 남는다. 함께 확인한 축을 먼저 말한다.
+    const others = analysis.ranked.filter((entry) => entry.dimensionId !== selected?.dimensionId);
+    if (others.length) {
+      const summary = others
+        .map((entry) => `${entry.label} ${entry.totalVariation == null ? tx(locale, "계산 안 함", "not computed") : fmtPct(entry.totalVariation)}`)
+        .join(" · ");
+      list.push(tx(locale,
+        `축 ${analysis.ranked.length}개를 함께 확인했습니다 — ${summary}.`,
+        `${analysis.ranked.length} axes were checked together — ${summary}.`));
+    }
     const decomposition = analysis.decomposition;
     if (decomposition?.available) {
       const mixShare = Math.abs(decomposition.totals.mix);
@@ -475,9 +495,6 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     toolId={TOOL_ID}
     title={tx(locale, "구성 변화 분석", "Composition change")}
     locale={locale}
-    summary={<p>{tx(locale,
-      "전체 지표가 움직였을 때 어떤 사용자 구성이 바뀌었는지 보고, 그 변화가 분석 단위 간 볼륨 이동인지 단위 내부 변화인지 나눕니다. 관측된 분해이지 원인 확정이 아닙니다.",
-      "See which audience composition changed when an overall metric moved, and split that change into movement between units and change inside them. This is an observed decomposition, not a cause.")}</p>}
     toc={[
       { id: "segment-composition-result", title: tx(locale, "결론", "Conclusion") },
       { id: "segment-composition-ranking", title: tx(locale, "변화한 축", "Axes") },
@@ -486,37 +503,50 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       { id: "segment-composition-causal", title: tx(locale, "인과 확인", "Causal check") },
     ]}
   >
-    {!hasRows && <section className="block" aria-labelledby="segment-composition-empty">
-      <h2 id="segment-composition-empty" className="section-title">{tx(locale, "데이터를 준비하세요", "Prepare your data")}</h2>
-      <p>{tx(locale,
-        "기간과 세그먼트별 인원수가 있는 CSV를 올려 주세요. 값별 인원수(long)든 값마다 컬럼이 나뉜 형태(wide)든, 비율과 전체 모수를 함께 준 형태든 괜찮습니다. 파일은 이 브라우저에서만 처리됩니다.",
-        "Upload a CSV with periods and per-segment head counts. Long, wide, or rates with a total column all work. The file is processed only in this browser.")}</p>
-      <CsvUploader toolId={TOOL_ID} locale={locale} />
-    </section>}
+    {/* 빈 상태 문구는 CsvUploader/CsvGuide가 소유한다. 도구가 같은 말을 다시 쓰면
+        업로드 화면에 같은 문장이 세 번 나온다(제품 SSOT §5.3 "설명 카드와 입력이 같은 내용 반복"). */}
+    {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-mapping">
-      <h2 id="segment-composition-mapping" className="section-title">{tx(locale, "데이터·역할 매핑", "Data and roles")}</h2>
-      <SegmentRoleMapper
-        headers={headers}
-        rows={rows}
-        value={mapping}
-        onChange={setMapping}
-        quality={panel?.quality || null}
-        locale={locale}
-      />
+      <h2 id="segment-composition-mapping" className="section-title">{tx(locale, "이렇게 읽었습니다", "How this file was read")}</h2>
+      {manualMapping ? (
+        <p className="muted">{tx(locale, "직접 지정한 매핑을 씁니다.", "Using the mapping you set.")}</p>
+      ) : auto.ok ? (
+        <p>{tx(locale,
+          `기간은 ${auto.roles.time}, 인원수는 ${autoCountColumn}, 세그먼트 축은 ${auto.dimensions.map((dimension) => dimension.label).join(" · ")}으로 읽었습니다. 축은 전부 함께 분석해 많이 움직인 순서로 보여 줍니다.`,
+          `Period ${auto.roles.time}, head count ${autoCountColumn}, and segment axes ${auto.dimensions.map((dimension) => dimension.label).join(" · ")}. Every axis is analyzed together and ranked by how much it moved.`)}</p>
+      ) : (
+        <p className="callout">{tx(locale,
+          "이 파일에서는 자동으로 읽지 못했습니다. 아래에서 기간 컬럼과 세그먼트 축을 지정해 주세요.",
+          "This file could not be read automatically. Set the period column and a segment axis below.")}</p>
+      )}
+      {auto.review.length && !manualMapping ? <p className="muted">{tx(locale,
+        `확인이 필요해 자동으로 넣지 않은 컬럼: ${auto.review.map((item) => item.header).join(", ")}`,
+        `Left out pending your check: ${auto.review.map((item) => item.header).join(", ")}`)}</p> : null}
+      <details className="segment-mapping-edit">
+        <summary>{tx(locale, "다르게 읽혔다면 여기서 고치기", "Read it wrong? Fix it here")}</summary>
+        <SegmentRoleMapper
+          headers={headers}
+          rows={rows}
+          value={mapping}
+          onChange={setMapping}
+          quality={panel?.quality || null}
+          locale={locale}
+        />
+      </details>
     </section>}
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">
       <h2 id="segment-composition-compare" className="section-title">{tx(locale, "비교 조건", "Comparison")}</h2>
       <div className="form-row">
         <label>{tx(locale, "이전 기간", "Earlier period")}
-          <select value={draft.pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
+          <select value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
           </select>
         </label>
         <label>{tx(locale, "이후 기간", "Later period")}
-          <select value={draft.post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
+          <select value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
           </select>
@@ -527,10 +557,9 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
             {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
         </label> : null}
-        <button type="button" className="btn primary" disabled={!canRun} onClick={run}>{tx(locale, "분석하기", "Analyze")}</button>
       </div>
-      {!gateOpen ? <p className="muted">{tx(locale, "매핑을 확인한 뒤 업로드 화면의 ‘데이터 분석하기’를 눌러 주세요.", "Confirm the mapping, then choose Analyze data on the upload panel.")}</p> : null}
-      {gateOpen && !canRun ? <p className="muted">{tx(locale, "기간 컬럼·세그먼트 축·서로 다른 두 기간을 고르면 분석할 수 있습니다.", "Pick a period column, at least one axis, and two different periods.")}</p> : null}
+      {!gateOpen ? <p className="muted">{tx(locale, "업로드 화면의 ‘데이터 분석하기’를 누르면 결과가 나옵니다.", "Choose Analyze data on the upload panel to see results.")}</p> : null}
+      {gateOpen && !ready ? <p className="muted">{tx(locale, "서로 다른 두 기간이 있어야 비교할 수 있습니다.", "Two different periods are needed to compare.")}</p> : null}
     </section>}
 
     {analysis && selected ? <>
@@ -540,7 +569,10 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           toolId={TOOL_ID}
           tone={STATUS_TONE[selected.status] || "neutral"}
           headline={conclusion()}
-          points={points()}
+          /* ResultActionCard의 계약은 `{text}` 객체다. 문자열을 넘기면 렌더는
+             통과하지만 `<li>`가 빈 줄로 나가고 상세 문서에는 "—"만 찍힌다 —
+             화면에 아무것도 안 보여서 눈으로는 못 잡는 종류의 어긋남이다. */
+          points={points().map((text) => ({ text }))}
           stats={[
             { label: tx(locale, "이전 인원", "Before"), value: fmtNum(selected.periods.pre.population) },
             { label: tx(locale, "이후 인원", "After"), value: fmtNum(selected.periods.post.population) },
