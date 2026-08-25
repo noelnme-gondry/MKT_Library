@@ -366,7 +366,8 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
 
   const availableSegments = SEGMENTS.filter((key) => sourceRows.some((row) => firstDefined(row, [key]) != null));
 
-  return <ToolPageShell toolId={TOOL_ID} title={tx(locale, "핵심 액션 생존·이탈 분석", "Action Survival & Drop-off Analysis")} locale={locale} summary={<p>{tx(locale, "특정 핵심 액션을 계속 유지하는지, 언제 이탈·종료하는지 중도절단을 반영해 봅니다. 구독은 하나의 입력 예시일 뿐이며, 개별 이탈을 예측하거나 원인을 확정하지는 않습니다.", "Measure whether an entity keeps a defined key action and when it exits or drops off with censoring handled. Subscription is only one input example; this does not predict individual drop-off or establish causes.")}</p>} toc={[{ id: "subscription-survival-result", title: tx(locale, "결론", "Conclusion") }, { id: "subscription-survival-curve", title: tx(locale, "생존곡선", "Survival") }, { id: "subscription-hazard", title: tx(locale, "위험 구간", "Risk") }]}>
+  // 페이지 h1은 상단 ToolIntro가 갖는다(§ 5-25·5-26·5-27과 동일).
+  return <ToolPageShell toolId={TOOL_ID} titleLevel={0} title={tx(locale, "핵심 액션 생존·이탈 분석", "Action Survival & Drop-off Analysis")} locale={locale} summary={<p>{tx(locale, "특정 핵심 액션을 계속 유지하는지, 언제 이탈·종료하는지 중도절단을 반영해 봅니다. 구독은 하나의 입력 예시일 뿐이며, 개별 이탈을 예측하거나 원인을 확정하지는 않습니다.", "Measure whether an entity keeps a defined key action and when it exits or drops off with censoring handled. Subscription is only one input example; this does not predict individual drop-off or establish causes.")}</p>} toc={[{ id: "subscription-survival-result", title: tx(locale, "결론", "Conclusion") }, { id: "subscription-survival-curve", title: tx(locale, "생존곡선", "Survival") }, { id: "subscription-hazard", title: tx(locale, "위험 구간", "Risk") }]}>
     {/* 빈 상태 문구는 CsvUploader/CsvGuide가 소유한다 — 도구가 같은 말을 다시 쓰면
         업로드 화면에 같은 문장이 두 번 나온다(제품 SSOT §5.3). */}
     {!hasRows && <section className="block"><CsvUploader toolId={TOOL_ID} locale={locale} /></section>}
