@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p $PORT",
+    "generate:icons": "node scripts/generate-brand-icons.mjs",
     "lint": "eslint",
     "test": "vitest run --project golden",
     "test:smoke": "vitest run --project smoke",

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { buildBrandIconAssets } from "../../scripts/generate-brand-icons.mjs";
 import manifest from "./manifest";
 
 const ROOT = process.cwd();
@@ -48,6 +49,15 @@ describe("Growth Opt brand icons", () => {
     expect(appIcon).toBe(publicIcon);
     expect(appIcon).toContain("#1f60d2");
     expect(appIcon).toContain('fill="#fff"');
+    expect(appIcon).toContain('data-brand-shape="dochi-right"');
+  });
+
+  it("keeps every raster and Windows icon generated from the shared SVG", async () => {
+    const generated = await buildBrandIconAssets(ROOT);
+    generated.pngAssets.forEach(({ path: relativePath, buffer }) => {
+      expect(readFileSync(path.join(ROOT, relativePath)).equals(buffer)).toBe(true);
+    });
+    expect(readFileSync(path.join(ROOT, "src/app/favicon.ico")).equals(generated.ico)).toBe(true);
   });
 
   it("uses the favicon vector as the shared in-app brand mark", () => {
