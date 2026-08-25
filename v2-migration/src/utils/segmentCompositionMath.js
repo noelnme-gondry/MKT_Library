@@ -90,6 +90,9 @@ export function foldCells(records) {
         time: record.time,
         entity: record.entity,
         entityKey: entityKeyOf(record.entity),
+        // 범위(OS·국가)는 셀 키에 이미 들어가 있다. 소비처가 값을 되찾으려고 원본
+        // 레코드를 다시 뒤지지 않도록 셀에 그대로 싣는다(추가 필드, 기존 소비처 무영향).
+        scope: record.scope,
         denominator: record.denominator,
         members: new Map(),
         isEstimated: false,

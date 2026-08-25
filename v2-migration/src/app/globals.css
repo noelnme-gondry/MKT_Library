@@ -10002,4 +10002,8 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .segment-candidate-name { font-weight: 600; color: var(--text-primary); }
 .segment-declared-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-1); }
 
+/* 인과 확인 자격 심사 — 통과·미통과를 색만으로 가르지 않고 기호와 문장을 함께 둔다. */
+.segment-causal-checks { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.segment-causal-checks li[data-ok="false"] { color: var(--text-secondary); }
+
 } /* @layer app 끝 */

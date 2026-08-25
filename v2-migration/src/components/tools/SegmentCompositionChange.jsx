@@ -22,11 +22,40 @@ import {
   spendShiftFingerprint, costVolumeQuadrants, scanPeriodShifts, repeatabilityByMagnitude,
   COST_VOLUME_QUADRANT, OPS_REASON,
 } from "@/utils/segmentOpsMath";
+import {
+  evaluateCausalEligibility, eventStudy, placeboTest, mediationAvailability,
+  CAUSAL_REASON, CAUSAL_STATUS,
+} from "@/utils/segmentCausalMath";
 
 const TOOL_ID = "5-29";
 const tx = (locale, ko, en) => (locale === "en" ? en : ko);
 
 const EMPTY_MAPPING = { roles: { time: "", entity: [], scope: [], population: "", measures: {} }, dimensions: [] };
+
+const CHECK_LABEL = {
+  ko: {
+    cutoff_declared: "개입 시점을 선언했다",
+    cutoff_in_range: "개입 시점이 관측 기간 안에 있다",
+    enough_pre: "개입 전 기간이 충분하다",
+    enough_post: "개입 후 기간이 충분하다",
+    has_treated: "처리 범위 단위가 충분하다",
+    has_control: "대조 범위가 있다",
+    enough_clusters: "견고 표준오차를 쓸 만큼 단위가 있다",
+    outcome_varies: "결과변수가 움직인다",
+  },
+  en: {
+    cutoff_declared: "An intervention date is declared",
+    cutoff_in_range: "The date falls inside the observed range",
+    enough_pre: "Enough periods before the intervention",
+    enough_post: "Enough periods after the intervention",
+    has_treated: "Enough treated units",
+    has_control: "A control scope exists",
+    enough_clusters: "Enough units for robust standard errors",
+    outcome_varies: "The outcome actually varies",
+  },
+};
+
+const checkLabel = (id, locale) => (CHECK_LABEL[locale] || CHECK_LABEL.ko)[id] || id;
 
 const STATUS_TONE = {
   [DIMENSION_STATUS.READY]: "neutral",
@@ -65,6 +94,20 @@ const reasonLabel = (reason, locale) => ({
   [OPS_REASON.NOT_ENOUGH_PERIODS]: tx(locale, "기간이 적어 반복 여부를 말할 수 없습니다", "Too few periods to say whether this repeats"),
   [OPS_REASON.MULTIPLE_COMPARISONS]: tx(locale, "여러 기간을 전부 훑어 가장 큰 변동을 고른 결과입니다. 우연히 커 보일 수 있습니다", "This picks the largest move after scanning every period pair, so some of it can be chance"),
   [OPS_REASON.DIRECTION_MIXED]: tx(locale, "방향이 갈립니다 — 한쪽으로 몰아 읽지 마세요", "Directions disagree — do not read it as one trend"),
+  [CAUSAL_REASON.NO_CUTOFF]: tx(locale, "개입 시점을 아직 고르지 않았습니다", "No intervention date picked yet"),
+  [CAUSAL_REASON.CUTOFF_OUT_OF_RANGE]: tx(locale, "개입 시점이 관측 기간 밖입니다", "The intervention date is outside the observed range"),
+  [CAUSAL_REASON.NOT_ENOUGH_PRE]: tx(locale, "개입 전 기간이 모자랍니다", "Not enough periods before the intervention"),
+  [CAUSAL_REASON.NOT_ENOUGH_POST]: tx(locale, "개입 후 기간이 모자랍니다", "Not enough periods after the intervention"),
+  [CAUSAL_REASON.NO_TREATED]: tx(locale, "처리 범위로 선언한 단위가 부족합니다", "Too few units declared as treated"),
+  [CAUSAL_REASON.NO_CONTROL]: tx(locale, "대조 범위가 없습니다. 대조군 없이 전후 차이를 개입 효과라고 부를 수 없습니다", "No control scope. Without a control group a before-after difference is not an intervention effect"),
+  [CAUSAL_REASON.TOO_FEW_CLUSTERS]: tx(locale, "단위가 너무 적어 견고 표준오차를 믿을 수 없습니다", "Too few units for the robust standard errors to be trustworthy"),
+  [CAUSAL_REASON.FEW_CLUSTERS]: tx(locale, "단위가 적어 구간을 넓게 읽어야 합니다", "Few units — read the intervals as wider than they look"),
+  [CAUSAL_REASON.UNBALANCED_PANEL]: tx(locale, "일부 단위·기간 칸이 비어 있습니다", "Some unit-period cells are missing"),
+  [CAUSAL_REASON.NO_OUTCOME_VARIANCE]: tx(locale, "결과변수가 전혀 움직이지 않습니다", "The outcome does not vary at all"),
+  [CAUSAL_REASON.NOT_ESTIMABLE]: tx(locale, "자유도가 모자라 추정할 수 없습니다", "Not estimable — not enough degrees of freedom"),
+  [CAUSAL_REASON.PRE_TREND_VIOLATED]: tx(locale, "개입 전부터 두 군의 격차가 이미 벌어지고 있었습니다. 평행 추세 가정이 깨져 이 결과를 효과로 읽을 수 없습니다", "The gap was already widening before the intervention. Parallel trends fails, so this cannot be read as an effect"),
+  [CAUSAL_REASON.PLACEBO_FAILED]: tx(locale, "가짜 개입 시점에서도 효과가 나왔습니다. 설계가 개입이 아닌 다른 것을 잡고 있습니다", "A fake intervention date also produced an effect, so the design is capturing something other than the intervention"),
+  [CAUSAL_REASON.MEDIATION_NOT_IDENTIFIED]: tx(locale, "매개 경로는 임의의 세그먼트 CSV로 식별할 수 없어 제공하지 않습니다", "Mediation paths cannot be identified from arbitrary segment CSVs, so they are not offered"),
   [SEGMENT_REASON.MIX_RATE_UNAVAILABLE]: tx(locale, "전체 모수나 분석 단위가 없어 이동·내부 변화를 나눌 수 없습니다", "Without a total population or analysis unit, movement cannot be separated"),
 }[reason] || reason);
 
@@ -141,6 +184,9 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
   const [mapping, setMapping] = useState(EMPTY_MAPPING);
   const [draft, setDraft] = useState({ pre: "", post: "", scopeValue: "", dimensionId: "", memberId: "" });
   const [applied, setApplied] = useState(null);
+  // 인과 확인은 탐색 토글이 아니라 **설계 선언**이다. 매핑 서명과 분리해 두되,
+  // 선언이 비어 있으면 섹션 자체가 열리지 않는다.
+  const [design, setDesign] = useState({ cutoff: "", treated: "", control: "" });
 
   const periods = useMemo(() => periodsOf(rows, mapping.roles.time), [rows, mapping.roles.time]);
   const signature = useMemo(
@@ -181,6 +227,24 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       repeatability: scan ? repeatabilityByMagnitude(scan) : null,
     };
   }, [panel, active]);
+
+  const causal = useMemo(() => {
+    if (!panel || !analysis?.selected || !analysis.memberId) return null;
+    const scopeColumn = mapping.roles.scope?.[0] || "";
+    if (!scopeColumn || !design.treated || !design.control || design.treated === design.control) return null;
+    const shared = {
+      panel,
+      dimensionId: analysis.selected.dimensionId,
+      memberId: analysis.memberId,
+      scopeColumn,
+      treatedValues: [design.treated],
+      controlValues: [design.control],
+      cutoff: design.cutoff,
+    };
+    const eligibility = evaluateCausalEligibility(shared);
+    const study = eventStudy({ ...shared, eligibility });
+    return { eligibility, study, placebo: placeboTest({ eligibility }), mediation: mediationAvailability() };
+  }, [panel, analysis, mapping.roles.scope, design]);
 
   const canRun = Boolean(mapping.roles.time && mapping.dimensions.length && draft.pre && draft.post && draft.pre !== draft.post);
   const run = () => {
@@ -386,6 +450,13 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     { key: "isLarge", label: tx(locale, "큰 변동", "Large"), align: "left", fmt: (value) => (value ? "●" : "") },
   ];
 
+  const eventColumns = [
+    { key: "relative", label: tx(locale, "개입 기준 상대 기간", "Periods from intervention"), align: "right", fmt: (value) => (value >= 0 ? `+${value}` : String(value)) },
+    { key: "estimate", label: tx(locale, "처리군 추가 변화", "Extra change in treated"), align: "right", fmt: (value) => `${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value))}` },
+    { key: "ciLow", label: tx(locale, "95% 구간", "95% interval"), align: "right", fmt: (value, row) => `${fmtPct(value)} ~ ${fmtPct(row.ciHigh)}` },
+    { key: "pValue", label: "p", align: "right", fmt: (value) => (value == null ? "—" : value < 0.001 ? "<0.001" : value.toFixed(3)) },
+  ];
+
   const repeatSentence = () => {
     const large = analysis?.repeatability?.strata?.find((stratum) => stratum.label === "large");
     if (!large) return null;
@@ -412,6 +483,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       { id: "segment-composition-ranking", title: tx(locale, "변화한 축", "Axes") },
       { id: "segment-composition-detail", title: tx(locale, "선택 축 상세", "Detail") },
       { id: "segment-composition-ops", title: tx(locale, "운영 지문", "Fingerprints") },
+      { id: "segment-composition-causal", title: tx(locale, "인과 확인", "Causal check") },
     ]}
   >
     {!hasRows && <section className="block" aria-labelledby="segment-composition-empty">
@@ -565,6 +637,75 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           {repeatSentence() ? <p>{repeatSentence()}</p> : null}
           <p className="muted">{[...new Set([...(analysis.scan.reasons || []), ...(analysis.repeatability?.reasons || [])])].map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>
         </> : <p className="muted">{(analysis.scan?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
+      </section>
+
+      <section className="block" id="segment-composition-causal">
+        <h2 className="section-title">{tx(locale, "인과 확인", "Causal check")}</h2>
+        <p className="muted">{tx(locale,
+          "개입 시점과 대조 범위를 선언했을 때만 열립니다. 대조군 없이 전후 차이를 개입 효과라고 부를 수 없기 때문입니다 — 같은 시점의 계절성·시장 변화와 구분할 방법이 없습니다.",
+          "This opens only when you declare an intervention date and a control scope. Without a control group a before-after difference is not an intervention effect — nothing separates it from seasonality or market change at the same time.")}</p>
+
+        {!mapping.roles.scope?.length ? (
+          <p className="muted">{tx(locale,
+            "먼저 위에서 OS·국가 같은 컬럼을 경쟁 범위로 지정해 주세요. 처리군과 대조군은 그 값에서 고릅니다.",
+            "First declare a column such as OS or country as the competition scope. Treated and control groups are picked from its values.")}</p>
+        ) : (
+          <div className="form-row">
+            <label>{tx(locale, "개입 시점", "Intervention date")}
+              <select value={design.cutoff} onChange={(event) => setDesign((value) => ({ ...value, cutoff: event.target.value }))}>
+                <option value="">{tx(locale, "선택", "Select")}</option>
+                {periods.map((period) => <option key={period} value={period}>{period}</option>)}
+              </select>
+            </label>
+            <label>{tx(locale, "처리 범위", "Treated scope")}
+              <select value={design.treated} onChange={(event) => setDesign((value) => ({ ...value, treated: event.target.value }))}>
+                <option value="">{tx(locale, "선택", "Select")}</option>
+                {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label>{tx(locale, "대조 범위", "Control scope")}
+              <select value={design.control} onChange={(event) => setDesign((value) => ({ ...value, control: event.target.value }))}>
+                <option value="">{tx(locale, "선택", "Select")}</option>
+                {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+        )}
+
+        {causal ? <>
+          <h3 className="section-title">{tx(locale, "자격 심사", "Eligibility")}</h3>
+          <ul className="segment-causal-checks">
+            {causal.eligibility.checks.map((check) => (
+              <li key={check.id} data-ok={check.ok ? "true" : "false"}>
+                {check.ok ? "✓" : "✗"} {checkLabel(check.id, locale)}
+                {check.reason ? <span className="muted"> — {reasonLabel(check.reason, locale)}</span> : null}
+              </li>
+            ))}
+          </ul>
+
+          {causal.study.available && causal.study.status !== CAUSAL_STATUS.BLOCKED ? <>
+            <h3 className="section-title">{tx(locale, "개입 전후 궤적", "Trajectory around the intervention")}</h3>
+            <DataTable
+              columns={eventColumns}
+              rows={causal.study.coefficients}
+              rowKey={(row) => String(row.relative)}
+              ariaLabel={tx(locale, "상대 기간별 처리 효과", "Treatment effect by relative period")}
+            />
+            <p className="muted">{tx(locale,
+              `상대 기간 −1을 기준으로 잡고, 단위 ${causal.study.clusters}개를 군집으로 견고 표준오차를 계산했습니다. 개입 전 계수가 0 근처에 머물러야 이 결과를 효과로 읽을 수 있습니다.`,
+              `Period −1 is the reference, and standard errors are clustered by ${causal.study.clusters} units. The pre-intervention coefficients must stay near zero for this to be read as an effect.`)}</p>
+            {causal.placebo?.available ? (
+              <p>{causal.placebo.passed
+                ? tx(locale, `위약 검정 통과: 가짜 개입 시점(${causal.placebo.fakeCutoff})에서는 효과가 나오지 않았습니다.`, `Placebo passed: a fake intervention date (${causal.placebo.fakeCutoff}) produced no effect.`)
+                : reasonLabel(CAUSAL_REASON.PLACEBO_FAILED, locale)}</p>
+            ) : <p className="muted">{tx(locale, "위약 검정: ", "Placebo test: ")}{(causal.placebo?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
+          </> : (
+            <p className="callout">{[...new Set([...(causal.eligibility.reasons || []), ...(causal.study.reasons || [])])]
+              .map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>
+          )}
+
+          <p className="muted">{reasonLabel(CAUSAL_REASON.MEDIATION_NOT_IDENTIFIED, locale)}</p>
+        </> : null}
       </section>
 
       <section className="block" aria-labelledby="segment-composition-limits">
