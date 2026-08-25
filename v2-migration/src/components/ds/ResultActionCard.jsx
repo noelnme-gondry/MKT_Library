@@ -10,6 +10,9 @@ import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
 import { encodeSharePayload, shareUrlFromPayload } from "@/lib/decisionShare";
 import { localizedTool } from "@/lib/toolConnections";
 import { downloadText } from "@/utils/download";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
+import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -82,6 +85,7 @@ export default function ResultActionCard({
   decisionPrefill = null,
   analysisBasis = true,
   reportBlock = null,
+  workbookExport = null,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
@@ -196,6 +200,32 @@ export default function ResultActionCard({
   }, [generatedFinding, publishFinding]);
   const canShareDecision = Boolean(toolId && typeof headline === "string" && headline.trim());
   const canDownloadDetails = Boolean(toolId && typeof headline === "string" && headline.trim());
+  const canExportWorkbook = Boolean(toolId && headline);
+  const analysisExport = useMemo(() => ({
+    toolId,
+    locale,
+    buildPayload: (manifest = null) => buildAnalysisExportPayload({
+      toolId,
+      toolTitle: shareToolTitle,
+      locale,
+      headline,
+      points,
+      stats,
+      resultState,
+      analysisType: resolvedAnalysisType,
+      inputSignature,
+      source: {
+        fileName: csvData?.fileName,
+        headers: csvData?.headers,
+        rows: csvData?.raw,
+        mapping: csvData?.mapping,
+      },
+      scope: resultScope,
+      manifest,
+      addon: workbookExport,
+      generatedAt: new Date().toISOString(),
+    }),
+  }), [csvData?.fileName, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport]);
   const copyShareLink = async () => {
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
     const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
@@ -216,6 +246,7 @@ export default function ResultActionCard({
     trackProductEvent("weekly_report_block_added", { tool_id: toolId, locale });
   };
   return (
+    <AnalysisExportProvider value={canExportWorkbook ? analysisExport : null}>
     <section ref={cardRef} className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">
         <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
@@ -229,7 +260,7 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || canCollectReport || canShareDecision || canDownloadDetails || canOpenDecisionReview) && (
+        {(controls || download || canExportWorkbook || canCollectReport || canShareDecision || canDownloadDetails || canOpenDecisionReview) && (
           <div className="result-action-card__controls">
             {controls}
             {canShareDecision && (
@@ -269,7 +300,14 @@ export default function ResultActionCard({
                 {locale === "en" ? "Review decisions" : "지난 판단 검토"}
               </Link>
             )}
-            {download}
+            {download || (canExportWorkbook && (
+              <DownloadHub
+                toolId={toolId}
+                locale={locale}
+                align="right"
+                label={locale === "en" ? "Download results" : "결과 받기"}
+              />
+            ))}
           </div>
         )}
         {(analysisMeta || (analysisBasis && toolId)) && (
@@ -341,5 +379,6 @@ export default function ResultActionCard({
       {analysisDetails}
       {children}
     </section>
+    </AnalysisExportProvider>
   );
 }

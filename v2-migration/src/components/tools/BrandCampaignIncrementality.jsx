@@ -71,6 +71,41 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const profileRate = profileCounterfactual ? profileEstimate / Math.abs(profileCounterfactual) : null;
   const directionalVerdictWithheld = !profileReady || profile.hitsBoundary || result.diagnostics.ar1EvidenceTier === "exploratory";
   const hasProfileLiftSignal = !directionalVerdictWithheld && result.profileInterval[0] > 0;
+  const brandWorkbookExport = useMemo(() => {
+    if (!result?.ok) return null;
+    const hasProfileTrend = Number.isFinite(result.profileTrend?.intercept) && Number.isFinite(result.profileTrend?.slope);
+    return {
+      calculationMode: "hybrid_engine_output",
+      calculationTables: [{
+        name: "BRAND_ITS_SERIES",
+        title: tx(locale, "기간별 실제·반사실", "Actual and counterfactual series"),
+        note: tx(locale, "AR(1) 적합은 엔진 출력, 반사실 선과 기간별 차이는 수식", "AR(1) fit is engine output; counterfactual line and period differences are formulas"),
+        rows: [
+          [tx(locale, "엔진 파라미터", "Engine parameter"), tx(locale, "값", "Value")],
+          ["profile_intercept", hasProfileTrend ? result.profileTrend.intercept : ""],
+          ["profile_slope", hasProfileTrend ? result.profileTrend.slope : ""],
+          [],
+          [tx(locale, "날짜", "Date"), tx(locale, "시간 인덱스", "Time index"), tx(locale, "실제", "Actual"), tx(locale, "캠페인 없었을 예상", "Expected without campaign"), tx(locale, "차이", "Difference")],
+          ...result.points.map((point, index) => {
+            const excelRow = index + 6;
+            return [
+              point.date,
+              point.time,
+              point.value,
+              hasProfileTrend ? { formula: `=$B$2+$B$3*B${excelRow}` } : point.counterfactual,
+              { formula: `=C${excelRow}-D${excelRow}` },
+            ];
+          }),
+        ],
+      }],
+      method: {
+        name: "Interrupted time series with AR(1) profile interval",
+        version: "brand-its-ar1-profile",
+        assumptions: [tx(locale, "한 번의 연속 캠페인 구간과 사전 추세를 사용합니다.", "Uses one continuous campaign window and the pre-period trend.")],
+        limitations: [tx(locale, "AR(1) 적합·프로파일 구간은 브라우저 엔진 출력이며, 원본 변경만으로 재학습되지 않습니다.", "AR(1) fitting and the profile interval are browser-engine outputs and are not refit by editing raw cells."), tx(locale, "대조군이 없어 계절성·PR·프로모션 교란을 분리하지 못합니다.", "Without a control, seasonality, PR, and promotion confounding are not separated.")],
+      },
+    };
+  }, [locale, result]);
 
   useEffect(() => {
     if (!result?.ok || !chartRef.current) return undefined;
@@ -274,6 +309,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           { label: tx(locale, "캠페인 없었을 예상", "Expected without campaign"), value: formatValue(profileCounterfactual, locale), detail: tx(locale, `${result.prePeriods}개 사전 기간`, `${result.prePeriods} pre periods`) },
           { label: tx(locale, "95% AR(1) 프로파일 구간", "95% AR(1) profile interval"), value: profileReady ? `${formatValue(result.profileInterval[0], locale)} ~ ${formatValue(result.profileInterval[1], locale)}` : "—" },
         ]}
+        workbookExport={brandWorkbookExport}
         download={<DownloadHub
           toolId="5-24"
           locale={locale}

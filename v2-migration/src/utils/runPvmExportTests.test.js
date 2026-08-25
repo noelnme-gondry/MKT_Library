@@ -102,6 +102,7 @@ describe("buildPvmResultCsv", () => {
     expect(/=Q\d+\+R\d+\+S\d+/.test(csv)).toBe(true);
     // scorecard delta formula
     expect(/=D\d+-C\d+/.test(csv)).toBe(true);
+    expect(csv).not.toContain("==");
   });
 
   it("skips CAMPAIGN block when campaign not mapped", () => {

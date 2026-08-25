@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
@@ -1459,6 +1460,27 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               { label: tr("가장 큰 원인", "Top cause"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
               { label: tr("분석 채널", "Channels"), value: channelRows.length },
             ]}
+            workbookExport={() => ({
+              calculationMode: "exact_after_preprocessing",
+              calculationTables: [{
+                name: "PVM_DECOMPOSITION",
+                title: tr("PVM 무잔차 분해", "PVM identity-checked decomposition"),
+                note: tr("최소 grain 집계 이후 mix·rate·impact와 상위 rollup 수식", "Mix, rate, impact, and rollup formulas after finest-grain aggregation"),
+                rows: Papa.parse(buildPvmResultCsv(cache, ml, locale), { skipEmptyLines: false }).data,
+                formulaRules: [
+                  { whenColumn: 0, equals: "SCORECARD", columns: [4] },
+                  { whenColumn: 0, equals: "CREATIVE_FULL", columns: [13, 15, 16, 17, 18, 19] },
+                  { whenColumn: 0, equals: "CAMPAIGN", columns: [5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19] },
+                  { whenColumn: 0, equals: "CHANNEL", columns: [5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19] },
+                ],
+              }],
+              method: {
+                name: "PVM finest-grain rollup",
+                version: "pvm-identity-checked",
+                assumptions: [tr("채널×캠페인×소재 최소 grain에서 한 번 분해한 뒤 합산", "Decomposed once at channel × campaign × creative grain, then rolled up")],
+                limitations: [tr("관측 연관 분해이며 인과 효과가 아닙니다.", "Observed association decomposition; not a causal effect.")],
+              },
+            })}
             points={pvmTopCauses.map((cause, index) => ({
               text: tr(
                 `${index + 1}위 ${cause.key || unspec} · ${ml} ${cause.contribution >= 0 ? "+" : ""}${pvmFmtMoney(cause.contribution, cur)}`,

@@ -69,8 +69,8 @@ export function buildPvmResultCsv(c, ml, locale = "ko") {
   const push = (arr) => lines.push(arr.map(q).join(","));
   const rowNum = () => lines.length + 1; // 다음 push의 스프레드시트 행번호(1-indexed)
   const Cbar = (c.CPA1 + c.CPA2) / 2; // 전체 평균 CPA(centering 기준)
-  const sumF = (col, rows) =>
-    rows.length ? "=" + rows.map((r) => col + r).join("+") : "0";
+  const sumExpr = (col, rows) => rows.length ? rows.map((r) => col + r).join("+") : "0";
+  const sumF = (col, rows) => `=${sumExpr(col, rows)}`;
 
   // META — 공식 정의 + 상수(Cbar, 총 result) 노출
   push(["section", "key", "value"]);
@@ -149,7 +149,7 @@ export function buildPvmResultCsv(c, ml, locale = "ko") {
         `=H${r}/${r0(c.Result1)}`, `=I${r}/${r0(c.Result2)}`,
         `=(J${r}+K${r})/2`, r1(Cbar), `=(L${r}+M${r})/2`,
         `=(N${r}-O${r})*(M${r}-L${r})`,
-        `=${sumF("Q", childCreatives)}-Q${r}`,
+        `=${sumExpr("Q", childCreatives)}-Q${r}`,
         `=P${r}*(K${r}-J${r})`, `=Q${r}+R${r}+S${r}`,
       ]);
       if (!cmpRowNums.has(e.chKey)) cmpRowNums.set(e.chKey, []);
@@ -166,9 +166,9 @@ export function buildPvmResultCsv(c, ml, locale = "ko") {
     const r = rowNum();
     const childCreatives = chRows.get(e.key) || [];
     const childCampaigns = cmpRowNums.get(e.key) || [];
-    const mixWithinFormula =
+      const mixWithinFormula =
       c.campaignMapped && childCampaigns.length
-        ? `=${sumF("Q", childCampaigns)}+${sumF("R", childCampaigns)}-Q${r}`
+        ? `=${sumExpr("Q", childCampaigns)}+${sumExpr("R", childCampaigns)}-Q${r}`
         : "0";
     push([
       "CHANNEL", e.key, "", "", "",

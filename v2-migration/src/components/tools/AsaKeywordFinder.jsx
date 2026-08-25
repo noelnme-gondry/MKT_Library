@@ -90,6 +90,37 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
               { label: tr("CPT 감액", "Lower CPT"), value: String(lowers.length), detail: tr("과소진 + 목표 미달", "Over-paced + misses target") },
               { label: tr("제외 검토", "Review negatives"), value: String(negatives.length), detail: tr("고비용 저성과", "High-cost underperformance") },
             ]}
+            workbookExport={() => ({
+              calculationMode: "exact_after_preprocessing",
+              calculationTables: [{
+                name: "ASA_ACTIONS",
+                title: tr("검색어별 CPT 계산", "CPT calculation by search term"),
+                note: tr("검색어·캠페인 집계 입력 이후 pace·CPT·CPA·조정률·권장 CPT 수식", "Pacing, CPT, CPA, adjustment, and recommended-CPT formulas after search-term and campaign aggregation"),
+                rows: [
+                  ["search_term", "country", "campaign", "match_type", "cost_input", "taps_input", "installs_input", "expected_spend_input", "target_cpa_input", "target_cpt_input", "current_cpt_input", "pace", "actual_cpt", "actual_cpa", "meets_target", "action_pct", "recommended_cpt", "action_code", "exact_candidate", "negative_candidate"],
+                  ...recommendations.map((row, index) => {
+                    const excelRow = index + 2;
+                    return [
+                      row.term, row.country, row.campaign, row.matchType,
+                      row.cost, row.taps, row.installs, row.expectedSpend, row.targetCpa, row.targetCpt, row.currentCpt,
+                      { formula: `=IFERROR(E${excelRow}/H${excelRow},\"\")`, numberFormat: "0.0%" },
+                      { formula: `=IFERROR(E${excelRow}/F${excelRow},\"\")` },
+                      { formula: `=IFERROR(E${excelRow}/G${excelRow},\"\")` },
+                      { formula: `=IF(I${excelRow}>0,--(AND(N${excelRow}>0,N${excelRow}<=I${excelRow})),IF(J${excelRow}>0,--(AND(M${excelRow}>0,M${excelRow}<=J${excelRow})),0))` },
+                      { formula: `=IF(OR(H${excelRow}<=0,AND(I${excelRow}<=0,J${excelRow}<=0)),0,IF(AND(L${excelRow}<0.7,O${excelRow}=1),IF(L${excelRow}<0.4,0.15,0.1),IF(AND(L${excelRow}>1.1,O${excelRow}=0),IF(L${excelRow}>1.4,-0.15,-0.1),0)))`, numberFormat: "0.0%" },
+                      { formula: `=IF(P${excelRow}=0,0,IF(K${excelRow}>0,K${excelRow},IF(J${excelRow}>0,J${excelRow},M${excelRow}))*(1+P${excelRow}))` },
+                      row.action.code, row.isExactCandidate ? 1 : 0, row.isNegativeCandidate ? 1 : 0,
+                    ];
+                  }),
+                ],
+              }],
+              method: {
+                name: "ASA pacing and CPT operating rules",
+                version: "asa-keyword-rules-v1",
+                assumptions: [tr("검색어 집계와 캠페인 예산 범위는 브라우저 분석 시점의 전처리 입력입니다.", "Search-term aggregation and campaign budget scope are preprocessing inputs from the browser analysis.")],
+                limitations: [tr("Exact·제외 후보 플래그는 엔진 판정값이며 실제 Apple Ads 변경을 자동 실행하지 않습니다.", "Exact and negative-candidate flags are engine decisions and do not automatically change Apple Ads.")],
+              },
+            })}
             toolId="5-26"
             analysisType="asa_keyword"
             analysisKey={`${exact.length}:${raises.length}:${lowers.length}:${negatives.length}`}
