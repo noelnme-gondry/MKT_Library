@@ -29,7 +29,7 @@ function fixture() {
         name: "BRAND_ITS_OUTPUT",
         rows: [
           ["section", "actual", "counterfactual", "difference", "note", "rate", "decision"],
-          ["SERIES", 120, 110, "=B2-C2", "=A1", { formula: "=IFERROR((B2-C2)/ABS(C2),\"\")", numberFormat: "0.0%" }, { formula: "=IF(OR(B2<=0,AND(C2>0,D2=1)),0,1)" }],
+          ["SERIES", 120, 110, "=B2-C2", "=A1", { formula: "=IFERROR((B2-C2)/ABS(C2),\"\")", numberFormat: "0.0%" }, { formula: "=IF(OR(B2<=0,AND(C2>0,D2=1)),0,1)" }, { formula: "=ERFC(ABS(B2/SQRT(C2))/SQRT(2))" }],
         ],
         formulaRules: [{ whenColumn: 0, equals: "SERIES", columns: [3] }],
       }],
@@ -49,6 +49,7 @@ describe("analysis workbook", () => {
     expect(workbook.Sheets.BRAND_ITS_OUTPUT.D2.f).toBe("B2-C2");
     expect(workbook.Sheets.BRAND_ITS_OUTPUT.F2.f).toBe('IFERROR((B2-C2)/ABS(C2),"")');
     expect(workbook.Sheets.BRAND_ITS_OUTPUT.G2.f).toBe("IF(OR(B2<=0,AND(C2>0,D2=1)),0,1)");
+    expect(workbook.Sheets.BRAND_ITS_OUTPUT.H2.f).toBe("ERFC(ABS(B2/SQRT(C2))/SQRT(2))");
   });
 
   it("never promotes source strings or non-formula table cells into formulas", () => {

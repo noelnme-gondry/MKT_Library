@@ -1231,6 +1231,40 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
                 { label: tr("Top Lift", "Top lift"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? `F1 ${topAction.holdout.F1.toFixed(2)}` : "" },
               ]}
+              workbookExport={() => ({
+                calculationMode: "hybrid_engine_output",
+                calculationTables: [{
+                  name: "AHA_CANDIDATES",
+                  title: tr("행동 후보별 홀드아웃 성능", "Holdout performance by action candidate"),
+                  note: tr("윈도우×횟수 탐색과 train/holdout 분할은 엔진 출력이고 F1·과적합 격차·지지도 통과는 수식", "Window × frequency search and train/holdout split are engine outputs; F1, overfit gap, and support pass are formulas"),
+                  rows: [
+                    ["action", "best_window_engine", "best_frequency_engine", "holdout_support_engine", "holdout_precision_engine", "holdout_recall_engine", "holdout_f1_formula", "lift_engine", "train_f1_engine", "train_holdout_gap", "minimum_support_input", "support_pass"],
+                    ...sortedResults.map((result, index) => {
+                      const row = index + 2;
+                      return [
+                        result.action,
+                        result.bestWindow === Infinity ? "all" : result.bestWindow,
+                        result.bestK,
+                        result.holdout.support,
+                        result.holdout.P,
+                        result.holdout.R,
+                        { formula: `=IFERROR(2*E${row}*F${row}/(E${row}+F${row}),0)` },
+                        result.lift ?? "",
+                        result.train.F1,
+                        { formula: `=I${row}-G${row}` },
+                        minSupport,
+                        { formula: `=IF(D${row}>=K${row},1,0)` },
+                      ];
+                    }),
+                  ],
+                }],
+                method: {
+                  name: "deterministic-grid-search + train/holdout",
+                  version: "aha-v1",
+                  assumptions: [tr("사용자·행동 집계와 홀드아웃 분할은 현재 매핑·세그먼트·최소 지지도 설정을 반영합니다.", "User-action aggregation and the holdout split reflect current mapping, segment, and minimum-support settings.")],
+                  limitations: [tr("가장 좋은 윈도우·횟수 선택은 워크북에서 다시 탐색되지 않으며, Lift는 관측 연관이지 인과효과가 아닙니다.", "The best window and frequency are not searched again in the workbook; lift is an observed association, not a causal effect.")],
+                },
+              })}
               points={topAction ? [] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
               controls={topAction ? (
                 <button

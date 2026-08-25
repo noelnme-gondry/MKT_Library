@@ -37,7 +37,7 @@ export default function DownloadHub({
       try {
         const payload = analysisExport.buildPayload(manifest);
         const bytes = await createAnalysisWorkbook(payload);
-        downloadXlsx(bytes, workbookFileBase(toolId || analysisExport.toolId));
+        downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
       } catch {
         setExportError(locale === "en"
           ? "The workbook could not be created. Reduce the file size or try again."

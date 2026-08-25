@@ -2765,6 +2765,42 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             { label: tr("조정 기준", "Planning basis"), value: planningBasis === "target" ? `${getCostMetricLabel(effectiveMetric)} ${fmtGoalMetric(plannedTargetValue, effectiveMetric, currency)}` : tr("총 예산", "Total budget") },
             { label: tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`), value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}` },
           ]}
+          workbookExport={() => {
+            const lastRow = items.length + 1;
+            return {
+              calculationMode: "hybrid_engine_output",
+              calculationTables: [{
+                name: "BUDGET_PLAN",
+                title: tr("채널별 현재·추천 예산", "Current and recommended budget by channel"),
+                note: tr("추천 비용·성과는 곡선 적합과 제약 배분 엔진 출력이고, 효율·증감·비중은 수식", "Recommended spend and results are curve-fit and constrained-allocation engine outputs; efficiency, deltas, and shares are formulas"),
+                rows: [
+                  ["channel", "current_daily_cost_input", "current_daily_results_input", "recommended_daily_cost_engine", "recommended_daily_results_engine", "current_cost_per_result", "recommended_cost_per_result", "cost_delta", "result_delta", "recommended_spend_share"],
+                  ...items.map((item, index) => {
+                    const row = index + 2;
+                    const history = historyByCh[item.channel] || {};
+                    return [
+                      item.channel,
+                      history.totalCost || 0,
+                      history.totalResults || 0,
+                      item.cost || 0,
+                      item.results || 0,
+                      { formula: `=IFERROR(B${row}/C${row},0)` },
+                      { formula: `=IFERROR(D${row}/E${row},0)` },
+                      { formula: `=D${row}-B${row}` },
+                      { formula: `=E${row}-C${row}` },
+                      { formula: `=IFERROR(D${row}/SUM($D$2:$D$${lastRow}),0)`, numberFormat: "0.0%" },
+                    ];
+                  }),
+                ],
+              }],
+              method: {
+                name: allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy",
+                version: "budget-allocation-v1",
+                assumptions: [tr("채널별 현재값은 선택한 최근 기간의 일평균입니다.", "Current channel values are daily averages over the selected recent window.")],
+                limitations: [tr("추천 비용·성과를 바꾸려면 사이트에서 곡선을 다시 적합하고 배분해야 합니다. 관측 연관 시뮬레이션이며 인과 증분이 아닙니다.", "Changing recommended spend and results requires refitting curves and reallocating on the site. This is an observational simulation, not causal incrementality.")],
+              },
+            };
+          }}
           analysisDetails={(
             <AnalysisDetails
               locale={locale}
