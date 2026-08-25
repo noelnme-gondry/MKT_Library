@@ -75,6 +75,49 @@ describe("SegmentCompositionChange render smoke", () => {
     expect(container.querySelector("#segment-composition-result")).toBeNull();
   });
 
+  it("운영 지문을 원인이 아니라 가설 좁히기로 표시한다", () => {
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    // 비용을 역할로 지정해야 비용 이동 지문이 열린다. OS를 경쟁 범위로 선언하지 않으면
+    // 한 칸에 OS별로 다른 비용이 섞여 도구가 정직하게 합산을 거부한다.
+    fireEvent.change(screen.getByLabelText("비용"), { target: { value: "cost" } });
+    const scopeGroup = screen.getByRole("group", { name: "경쟁 범위 (OS·국가)" });
+    fireEvent.click(within(scopeGroup).getByLabelText("platform"));
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    const ops = container.querySelector("#segment-composition-ops");
+    expect(ops).toBeTruthy();
+    expect(ops.textContent).toContain("원인이 아니라 가설을 좁히는 관측 신호");
+    // 사분면이 실제로 그려지고, 경쟁 완화로 단정하지 않는다.
+    expect(ops.textContent).toContain("볼륨과 1명당 비용");
+    expect(ops.textContent).toContain("이 표만으로는 가릴 수 없습니다");
+    // 여러 기간을 훑었다는 사실을 숨기지 않는다.
+    expect(ops.textContent).toContain("여러 기간을 전부 훑어");
+  });
+
+  it("비용 역할이 없으면 비용 지문을 숫자 대신 사유로 답한다", () => {
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    const ops = container.querySelector("#segment-composition-ops");
+    expect(ops.textContent).toContain("비용 컬럼이 없거나 0이라");
+  });
+
+  it("한 칸에 서로 다른 비용이 섞이면 합산하지 않고 사유를 말한다", () => {
+    // 데모는 OS별로 비용이 다르다. OS를 경쟁 범위로 선언하지 않으면 (일자×캠페인)
+    // 한 칸에 두 비용이 들어오는데, 그때 둘 중 하나를 고르거나 더하면 거짓 숫자가 된다.
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    fireEvent.change(screen.getByLabelText("비용"), { target: { value: "cost" } });
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    const ops = container.querySelector("#segment-composition-ops");
+    expect(ops.textContent).toContain("비용 컬럼이 없거나 0이라");
+    expect(container.querySelector("[aria-labelledby='segment-quality-title']").textContent)
+      .toContain("멤버마다 비용이 달라");
+  });
+
   it("결과에 인과 한계를 함께 말한다", () => {
     const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
     declareGenderAxis();
