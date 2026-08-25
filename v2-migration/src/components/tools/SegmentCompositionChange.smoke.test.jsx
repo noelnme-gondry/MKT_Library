@@ -118,6 +118,48 @@ describe("SegmentCompositionChange render smoke", () => {
       .toContain("멤버마다 비용이 달라");
   });
 
+  it("설계를 선언하기 전에는 인과 확인이 숫자를 내지 않는다", () => {
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    const causal = container.querySelector("#segment-composition-causal");
+    expect(causal.textContent).toContain("개입 시점과 대조 범위를 선언했을 때만");
+    expect(causal.querySelector(".segment-causal-checks")).toBeNull();
+  });
+
+  it("대조군 없이 전후 차이를 효과라고 부르지 않는다", () => {
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    const scopeGroup = screen.getByRole("group", { name: "경쟁 범위 (OS·국가)" });
+    fireEvent.click(within(scopeGroup).getByLabelText("platform"));
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    // 처리군만 고르고 대조군을 비워 두면 섹션이 열리지 않는다.
+    fireEvent.change(screen.getByLabelText("개입 시점"), { target: { value: PERIODS[4] } });
+    fireEvent.change(screen.getByLabelText("처리 범위"), { target: { value: "Android" } });
+    expect(container.querySelector(".segment-causal-checks")).toBeNull();
+    // 대조군까지 선언하면 심사표가 열리고, 통과 여부가 항목별로 보인다.
+    fireEvent.change(screen.getByLabelText("대조 범위"), { target: { value: "iOS" } });
+    const checks = container.querySelector(".segment-causal-checks");
+    expect(checks).toBeTruthy();
+    expect(checks.textContent).toContain("대조 범위가 있다");
+  });
+
+  it("매개 경로는 식별 불가라고 명시한다", () => {
+    const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
+    declareGenderAxis();
+    const scopeGroup = screen.getByRole("group", { name: "경쟁 범위 (OS·국가)" });
+    fireEvent.click(within(scopeGroup).getByLabelText("platform"));
+    pickPeriods();
+    fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
+    fireEvent.change(screen.getByLabelText("개입 시점"), { target: { value: PERIODS[4] } });
+    fireEvent.change(screen.getByLabelText("처리 범위"), { target: { value: "Android" } });
+    fireEvent.change(screen.getByLabelText("대조 범위"), { target: { value: "iOS" } });
+    expect(container.querySelector("#segment-composition-causal").textContent)
+      .toContain("매개 경로는 임의의 세그먼트 CSV로 식별할 수 없어");
+  });
+
   it("결과에 인과 한계를 함께 말한다", () => {
     const { container } = render(<SegmentCompositionChange rows={DEMO.raw} headers={HEADERS} analyzed />);
     declareGenderAxis();
