@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import * as XLSX from "xlsx";
 import {
   expectKeyboardFocusVisible,
   expectNoSeriousAccessibilityViolations,
@@ -94,6 +95,41 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
   await expect(page.locator(".result-action-card")).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: ".dashboard-briefing" });
   await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("운영 대시보드 결과에서 원본·수식이 든 XLSX를 받는다", async ({ page }) => {
+  await page.goto("/dashboard");
+  await uploadCsv(page, "efficiency.csv");
+  const confirmations = page.getByRole("button", { name: "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+  await page.getByRole("button", { name: "데이터 분석하기" }).click();
+
+  const resultCard = page.locator(".dashboard-briefing .result-action-card");
+  await expect(resultCard).toBeVisible();
+  const exportRequests = [];
+  const captureRequest = (request) => {
+    if (["fetch", "xhr"].includes(request.resourceType())) exportRequests.push(request.url());
+  };
+  page.on("request", captureRequest);
+  try {
+    await resultCard.getByRole("button", { name: "결과 받기" }).click();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: /상세 워크북 \(XLSX\)/ }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^5-2_analysis_workbook_\d{4}-\d{2}-\d{2}\.xlsx$/);
+    const bytes = await downloadBuffer(download);
+    const workbook = XLSX.read(bytes, { type: "buffer", cellFormula: true });
+    expect(workbook.SheetNames.slice(0, 9)).toEqual([
+      "00_README", "01_SUMMARY", "02_RAW_DATA", "03_MAPPING", "04_SCOPE",
+      "05_CALCULATIONS", "06_ENGINE_OUTPUT", "07_RESULTS", "08_METHOD_LIMITS",
+    ]);
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets["02_RAW_DATA"], { header: 1 }).length).toBeGreaterThan(2);
+    expect(workbook.Sheets["05_CALCULATIONS"].C2.f).toMatch(/^MAX\('02_RAW_DATA'!/);
+    expect(workbook.Sheets.DASHBOARD_METRICS.D2.f).toContain("IFERROR");
+    expect(exportRequests).toEqual([]);
+  } finally {
+    page.off("request", captureRequest);
+  }
 });
 
 test("App Store Connect CSV를 5-27 결과로 연결한다", async ({ page }) => {

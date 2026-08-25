@@ -262,6 +262,45 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             { label: tr("앞 기간", "Earlier half"), value: pct(decomposed?.funnelBefore?.viewToInstall) },
             { label: tr("뒤 기간", "Later half"), value: pct(decomposed?.funnelAfter?.viewToInstall) },
           ]}
+          workbookExport={decomposed ? () => ({
+            calculationMode: "exact_after_preprocessing",
+            calculationTables: [{
+              name: "ASO_DECOMPOSITION",
+              title: tr("소스별 구성·효율 분해", "Source-level mix and efficiency decomposition"),
+              note: tr("앞·뒤 기간 소스 집계 입력에서 전환율·비중·mix·efficiency를 수식으로 재현", "Formula reproduction of conversion, share, mix, and efficiency from source aggregates for both periods"),
+              rows: [
+                ["parameter", "value"],
+                ["Cbar", (decomposed.CPA1 + decomposed.CPA2) / 2],
+                ["total_installs_before", decomposed.Result1],
+                ["total_installs_after", decomposed.Result2],
+                [],
+                ["source", "views_before_input", "installs_before_input", "views_after_input", "installs_after_input", "cvr_before", "cvr_after", "views_per_install_before", "views_per_install_after", "install_share_before", "install_share_after", "cpa_bar", "share_bar", "mix_effect", "efficiency_effect", "impact"],
+                ...(decomposed.entities || []).map((entity, index) => {
+                  const excelRow = index + 7;
+                  return [
+                    entity.key, entity.cost1, entity.result1, entity.cost2, entity.result2,
+                    { formula: `=IFERROR(C${excelRow}/B${excelRow},\"\")`, numberFormat: "0.0%" },
+                    { formula: `=IFERROR(E${excelRow}/D${excelRow},\"\")`, numberFormat: "0.0%" },
+                    { formula: `=IFERROR(B${excelRow}/C${excelRow},\"\")` },
+                    { formula: `=IFERROR(D${excelRow}/E${excelRow},\"\")` },
+                    { formula: `=IFERROR(C${excelRow}/$B$3,\"\")`, numberFormat: "0.0%" },
+                    { formula: `=IFERROR(E${excelRow}/$B$4,\"\")`, numberFormat: "0.0%" },
+                    { formula: `=(H${excelRow}+I${excelRow})/2` },
+                    { formula: `=(J${excelRow}+K${excelRow})/2` },
+                    { formula: `=(L${excelRow}-$B$2)*(K${excelRow}-J${excelRow})` },
+                    { formula: `=M${excelRow}*(I${excelRow}-H${excelRow})` },
+                    { formula: `=N${excelRow}+O${excelRow}` },
+                  ];
+                }),
+              ],
+            }],
+            method: {
+              name: "PVM finest-grain store conversion decomposition",
+              version: "aso-store-pvm-v1",
+              assumptions: [tr("날짜를 앞·뒤 두 기간으로 나눈 소스별 조회·설치 집계가 계산 입력입니다.", "Source-level views and installs aggregated over earlier and later periods are the calculation inputs.")],
+              limitations: [tr("구성·효율 분해는 관측 산술이며 스토어 요소 변경의 인과 효과가 아닙니다.", "The mix/efficiency decomposition is observational arithmetic, not a causal effect of store-page changes.")],
+            },
+          }) : null}
           toolId={TOOL_ID}
           analysisType="aso_store_conversion"
           analysisKey={`${verdict || "unknown"}:${result.overall.installs}`}

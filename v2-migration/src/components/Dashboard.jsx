@@ -130,6 +130,33 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const verdict = useDashboardWorker
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
+  const dashboardWorkbookExport = useMemo(() => {
+    if (!verdict || verdict.insufficient) return null;
+    const workbookTr = (ko, en) => locale === "en" ? en : ko;
+    return {
+      calculationMode: "exact_after_preprocessing",
+      calculationTables: [{
+        name: "DASHBOARD_METRICS",
+        title: workbookTr("기간 비교 지표", "Period comparison metrics"),
+        note: workbookTr("브라우저에서 필터·매핑한 기간 집계값 이후의 WoW 수식", "WoW formulas after browser-filtered and mapped period aggregates"),
+        rows: [
+          [workbookTr("지표", "Metric"), workbookTr("직전 기간 입력", "Prior-period input"), workbookTr("최근 기간 입력", "Recent-period input"), workbookTr("증감률", "Change rate")],
+          ...verdict.metricRows.map((row, index) => [
+            row.label,
+            Number.isFinite(row.prev) ? row.prev : "",
+            Number.isFinite(row.recent) ? row.recent : "",
+            { formula: `=IFERROR((C${index + 2}-B${index + 2})/ABS(B${index + 2}),\"\")`, numberFormat: "0.0%" },
+          ]),
+        ],
+      }],
+      method: {
+        name: workbookTr("기간 집계 비교", "Period aggregate comparison"),
+        version: "dashboard-verdict",
+        assumptions: [workbookTr(`최근 ${dashWindowDays}일과 직전 ${dashWindowDays}일을 비교`, `Compares the last ${dashWindowDays} days with the prior ${dashWindowDays} days`)],
+        limitations: [workbookTr("필터·컬럼 매핑·기간 집계는 브라우저 분석 시점의 전처리 스냅샷입니다.", "Filters, column mapping, and period aggregation are preprocessing snapshots from the browser analysis.")],
+      },
+    };
+  }, [dashWindowDays, locale, verdict]);
   const dashboardRecommendations = useMemo(() => buildDashboardRecommendations({
     verdict,
     mapping: csvData?.mapping,
@@ -292,6 +319,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 points={verdict.keyPoints}
                 stats={verdict.stats}
                 locale={locale}
+                workbookExport={dashboardWorkbookExport}
                 decisionPrefill={{
                   conclusion: verdict.headline,
                   action: verdict.tone === "bad"

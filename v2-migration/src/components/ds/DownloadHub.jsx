@@ -2,7 +2,10 @@
 import React, { useState } from "react";
 import { DropdownMenu } from "radix-ui";
 import { trackProductEvent } from "@/lib/analytics";
-import { downloadJson } from "@/utils/download";
+import { downloadJson, downloadXlsx } from "@/utils/download";
+import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
+import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
+import { workbookFileBase } from "@/lib/analysis-export/exportContract";
 
 // 결과 다운로드 허브 — Radix 포털과 roving focus를 사용해 glass/sticky 조상과
 // 무관하게 메뉴를 배치하고 키보드 동작을 표준화한다.
@@ -17,6 +20,33 @@ export default function DownloadHub({
   locale = "ko",
 }) {
   const [open, setOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const analysisExport = useAnalysisExport();
+  const workbookItem = analysisExport?.buildPayload ? {
+    label: locale === "en" ? "Detailed workbook (XLSX)" : "상세 워크북 (XLSX)",
+    desc: locale === "en"
+      ? "Complete raw data · mapping · formulas · engine boundary · result evidence"
+      : "원본 전체 · 매핑 · 계산식 · 엔진 경계 · 결과 근거",
+    icon: "▦",
+    analyticsType: "xlsx",
+    onSelect: async () => {
+      if (isExporting) return;
+      setIsExporting(true);
+      setExportError("");
+      try {
+        const payload = analysisExport.buildPayload(manifest);
+        const bytes = await createAnalysisWorkbook(payload);
+        downloadXlsx(bytes, workbookFileBase(toolId || analysisExport.toolId));
+      } catch {
+        setExportError(locale === "en"
+          ? "The workbook could not be created. Reduce the file size or try again."
+          : "워크북을 만들지 못했습니다. 파일 크기를 줄이거나 다시 시도해 주세요.");
+      } finally {
+        setIsExporting(false);
+      }
+    },
+  } : null;
   const manifestItem = manifest ? {
     label: locale === "en" ? "Run details (JSON)" : "실행 정보(JSON)",
     desc: locale === "en"
@@ -26,20 +56,22 @@ export default function DownloadHub({
     analyticsType: "manifest",
     onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
   } : null;
-  const usable = [...items, manifestItem].filter((item) => item?.onSelect);
+  const usable = [workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
 
   if (usable.length === 0) return null;
 
   return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
     <DropdownMenu.Root open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
           className={`ab-pill ${className}`.trim()}
           aria-label={label}
+          disabled={isExporting}
           style={{ fontWeight: 600, ...buttonStyle }}
         >
-          ⬇ {label} ▾
+          ⬇ {isExporting ? (locale === "en" ? "Building XLSX…" : "XLSX 생성 중…") : label} ▾
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -61,7 +93,7 @@ export default function DownloadHub({
               key={`${item.analyticsType || "item"}-${item.label}`}
               onSelect={() => {
                 trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" });
-                item.onSelect();
+                Promise.resolve(item.onSelect()).catch(() => {});
               }}
               style={{
                 display: "block",
@@ -92,5 +124,7 @@ export default function DownloadHub({
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+    {exportError && <span role="alert" style={{ maxWidth: "260px", fontSize: "11px", color: "var(--danger, #c94c4c)" }}>{exportError}</span>}
+    </span>
   );
 }
