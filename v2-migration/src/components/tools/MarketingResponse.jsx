@@ -160,6 +160,17 @@ import {
   withMmmViewSpend, MMM_STAGE_GROUPS } from "@/components/tools/marketingResponseModel";
 export * from "@/components/tools/marketingResponseModel";
 
+function workbookColumn(index) {
+  let value = Number(index) + 1;
+  let column = "";
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    column = String.fromCharCode(65 + remainder) + column;
+    value = Math.floor((value - 1) / 26);
+  }
+  return column;
+}
+
 export default function MarketingResponse({ locale = "ko", initialStage = "trend", isolated = false }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
@@ -4038,6 +4049,134 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       {renderTabs()}
       {(() => {
         const summary = responseStageSummary();
+        const stageToolId = {
+          trend: "5-18-trend",
+          diagnose: "5-18-cannibal",
+          mmm: "5-18-mmm",
+          lab: "5-18-forecast",
+        }[stage] || "5-18";
+        const stageToolTitle = {
+          trend: tx("추세 분석", "Trend analysis"),
+          diagnose: tx("잠식 진단", "Cannibalization diagnosis"),
+          mmm: tx("채널 기여도", "Channel contribution"),
+          lab: tx("미래 예측", "Marketing forecast"),
+        }[stage] || tx("마케팅 반응 분석", "Marketing response analysis");
+        const stageWorkbookExport = () => {
+          if (stage === "trend") {
+            const actual = trend?.rawTarget || mmm?.panel?.targets?.[mmm?.target] || [];
+            const labels = mmm?.panel?.weekLabel || actual.map((_, index) => String(index + 1));
+            const baseline = trend?.baselineTarget || actual;
+            const stlTrend = trend?.stl?.trend || [];
+            const nonTrend = trendLedger?.stlNonTrend || [];
+            return {
+              toolId: stageToolId,
+              toolTitle: stageToolTitle,
+              calculationMode: "hybrid_engine_output",
+              calculationTables: [{
+                name: "TREND_DECOMPOSITION",
+                title: tx("주별 추세 분해", "Weekly trend decomposition"),
+                note: tx("MMM Performance 제거·STL 분해는 엔진 출력이고 차이·재결합 검사는 수식", "Performance removal and STL decomposition are engine outputs; differences and reconciliation checks are formulas"),
+                rows: [
+                  ["week", "actual_engine", "baseline_input_engine", "stl_trend_engine", "non_trend_engine", "actual_minus_baseline", "baseline_reconciliation_gap"],
+                  ...actual.map((value, index) => {
+                    const row = index + 2;
+                    return [labels[index] ?? index + 1, value ?? "", baseline[index] ?? "", stlTrend[index] ?? "", nonTrend[index] ?? "", { formula: `=B${row}-C${row}` }, { formula: `=C${row}-D${row}-E${row}` }];
+                  }),
+                ],
+              }],
+              method: {
+                name: "Performance-excluded baseline + STL",
+                version: "marketing-trend-v1",
+                limitations: [tx("Performance 기여 제거와 STL은 워크북에서 다시 적합되지 않으며 Branding이 남아 있어 완전한 미디어 0 반사실이 아닙니다.", "Performance removal and STL are not refit in the workbook; Branding remains, so this is not a fully media-zero counterfactual.")],
+              },
+            };
+          }
+          if (stage === "diagnose") {
+            const ranks = cannib?.cannibRank || [];
+            return {
+              toolId: stageToolId,
+              toolTitle: stageToolTitle,
+              calculationMode: "hybrid_engine_output",
+              calculationTables: [{
+                name: "CANNIBALIZATION_SIGNALS",
+                title: tx("채널별 잠식 진단 신호", "Cannibalization signals by channel"),
+                note: tx("탈추세·차분·순증분·시차 검정과 CEI는 엔진 출력이고 절댓값·활성 비율·구간 폭은 수식", "Detrended, differenced, net-incrementality, lag tests, and CEI are engine outputs; absolute values, active share, and interval width are formulas"),
+                rows: [
+                  ["channel", "eligible_engine", "active_weeks", "total_weeks", "detrended_r_engine", "first_difference_r_engine", "net_elasticity_engine", "net_ci_low_engine", "net_ci_high_engine", "cei_engine", "against_votes_engine", "absolute_detrended_r", "active_week_share", "net_ci_width"],
+                  ...ranks.map((rank, index) => {
+                    const row = index + 2;
+                    return [rank.label || rank.key, rank.eligible ? 1 : 0, rank.nActive, rank.total, rank.rDet ?? "", rank.rDiff ?? "", rank.netElast ?? "", rank.netCiLo ?? "", rank.netCiHi ?? "", rank.cei ?? "", rank.againstCount ?? 0, { formula: `=ABS(E${row})` }, { formula: `=IFERROR(C${row}/D${row},0)`, numberFormat: "0.0%" }, { formula: `=I${row}-H${row}` }];
+                  }),
+                ],
+              }],
+              method: {
+                name: "four-signal cannibalization diagnosis",
+                version: "cannibalization-v1",
+                limitations: [tx("관측 패널의 잠식 후보 진단이며 인과 확정이 아닙니다. 검정과 랭킹은 워크북에서 다시 추정되지 않습니다.", "This diagnoses candidates in an observational panel and is not causal proof. Tests and ranking are not re-estimated in the workbook.")],
+              },
+            };
+          }
+          if (stage === "mmm") {
+            const groupNames = decomp?.groupNames || [];
+            return {
+              toolId: stageToolId,
+              toolTitle: stageToolTitle,
+              calculationMode: "hybrid_engine_output",
+              calculationTables: [{
+                name: "MMM_WEEKLY_CONTRIBUTION",
+                title: tx("주별 MMM 기여 분해", "Weekly MMM contribution decomposition"),
+                note: tx("적합·변환·기여값은 엔진 출력이고 주별 기여 합·적합값 재결합·항등식 차이는 수식", "Fit, transforms, and contributions are engine outputs; weekly contribution sum, fitted reconstruction, and identity gap are formulas"),
+                rows: [
+                  ["week", "actual_engine", "fitted_engine", "lower_engine", "upper_engine", "residual_engine", "baseline_engine", ...groupNames, "contribution_sum", "reconstructed_fitted", "identity_gap"],
+                  ...(decomp?.weeks || []).map((week, index) => {
+                    const row = index + 2;
+                    const contributionRange = groupNames.length
+                      ? `H${row}:${workbookColumn(6 + groupNames.length)}${row}`
+                      : null;
+                    const sumExpression = contributionRange ? `SUM(${contributionRange})` : "0";
+                    return [
+                      week.week || mmm?.panel?.weekLabel?.[index] || index + 1,
+                      week.actual ?? "", week.fitted ?? "", week.lo ?? "", week.hi ?? "", week.residual ?? "", week.baseline ?? 0,
+                      ...groupNames.map((name) => week.contrib?.[name] ?? 0),
+                      { formula: `=${sumExpression}` },
+                      { formula: `=G${row}+${sumExpression}` },
+                      { formula: `=C${row}-(G${row}+${sumExpression})` },
+                    ];
+                  }),
+                ],
+              }],
+              method: {
+                name: mmm?.run?.methodLabel || "Bayesian MMM",
+                version: mmm?.run?.engine || "mmm-v1",
+                limitations: [tx("원본 변경만으로 MMM이 재학습되지 않습니다. 기여는 모델 기반 관측 연관이며 홀드아웃 전 인과·증분 확정이 아닙니다.", "Editing raw data does not refit MMM. Contribution is model-based observational association, not causal or incremental proof before a holdout.")],
+              },
+            };
+          }
+          const channels = forecast?.chans || [];
+          return {
+            toolId: stageToolId,
+            toolTitle: stageToolTitle,
+            calculationMode: "hybrid_engine_output",
+            calculationTables: [{
+              name: "FORECAST_HORIZON",
+              title: tx("기간별 예측·참고범위", "Forecast and reference range by period"),
+              note: tx("회귀·모델 선택·구간은 엔진 출력이고 구간 폭·미래 지출 합계는 수식", "Regression, model selection, and intervals are engine outputs; interval width and future-spend total are formulas"),
+              rows: [
+                ["period", "forecast_engine", "lower_engine", "upper_engine", "interval_width", ...channels.map((channel) => `spend_${channel.key}_input`), "future_spend_total"],
+                ...(forecast?.futLabels || []).map((label, index) => {
+                  const row = index + 2;
+                  const spendRefs = channels.map((_, channelIndex) => `${workbookColumn(5 + channelIndex)}${row}`);
+                  return [label, forecast.predFut?.[index] ?? "", forecast.lo?.[index] ?? "", forecast.hi?.[index] ?? "", { formula: `=D${row}-C${row}` }, ...channels.map((channel) => forecast.futSpendByKey?.[channel.key]?.[index] ?? ""), { formula: spendRefs.length ? `=SUM(${spendRefs.join(",")})` : "=0" }];
+                }),
+              ],
+            }],
+            method: {
+              name: "sealed-OOS forecast regression",
+              version: "marketing-forecast-v1",
+              limitations: [tx("모델 선택·백테스트·예측 구간은 워크북에서 다시 적합되지 않습니다. 새 데이터는 사이트에서 다시 분석해야 합니다.", "Model selection, backtesting, and intervals are not refit in the workbook. New data must be re-analyzed on the site.")],
+            },
+          };
+        };
         // PR #696으로 추세·예측이 독립 도구가 되면서, 허브 안에서 형제 단계가 제공하던
         // 탈출구 없이 랜딩만 남았다. 각 단계가 **계산한 결과**를 결론 카드에서 바로
         // 받아갈 수 있게 한다 — 원천 데이터를 그대로 돌려주지는 않는다
@@ -4101,6 +4240,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             headline={summary.headline}
             stats={summary.stats}
             points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
+            workbookExport={stageWorkbookExport}
             download={stageDownloadItems.length ? (
               <DownloadHub
                 toolId={stage === "lab" ? "5-18-forecast" : "5-18-trend"}

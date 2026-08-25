@@ -43,4 +43,14 @@ describe("analysis export contract", () => {
   it("keeps filenames stable and free of route punctuation", () => {
     expect(workbookFileBase("5-18/mmm")).toBe("5-18-mmm_analysis_workbook");
   });
+
+  it("allows an isolated stage to identify only its workbook without changing the result card", () => {
+    const payload = buildAnalysisExportPayload({
+      toolId: "5-18",
+      toolTitle: "Marketing Response",
+      addon: { toolId: "5-18-forecast", toolTitle: "Marketing Forecast" },
+    });
+    expect(payload.toolId).toBe("5-18-forecast");
+    expect(payload.toolTitle).toBe("Marketing Forecast");
+  });
 });

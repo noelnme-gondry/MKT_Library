@@ -1027,6 +1027,42 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
           { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
         ]}
+        workbookExport={() => ({
+          calculationMode: "hybrid_engine_output",
+          calculationTables: [{
+            name: "CREATIVE_METRICS",
+            title: tr("소재별 집계 지표", "Aggregated metrics by creative"),
+            note: tr("소재 집계 입력에서 CTR·CVR·IPM·CPI·ROAS를 수식으로 재현", "Recalculates CTR, CVR, IPM, CPI, and ROAS from creative aggregate inputs"),
+            rows: [
+              ["creative_id", "channel", "days", "impressions_input", "clicks_input", "installs_input", "spend_input", "revenue_d7_input", "ctr", "cvr", "ipm", "cpi", "roas"],
+              ...metrics.map((metricRow, index) => {
+                const row = index + 2;
+                return [
+                  metricRow.creative_id, metricRow.channel || "", metricRow.days || 0, metricRow.impressions || 0, metricRow.clicks || 0, metricRow.installs || 0, metricRow.spend || 0, metricRow.revenue_d7 || 0,
+                  { formula: `=IFERROR(E${row}/D${row},0)`, numberFormat: "0.00%" },
+                  { formula: `=IFERROR(F${row}/E${row},0)`, numberFormat: "0.00%" },
+                  { formula: `=IFERROR(F${row}*1000/D${row},0)` },
+                  { formula: `=IFERROR(G${row}/F${row},0)` },
+                  { formula: `=IFERROR(H${row}/G${row},0)` },
+                ];
+              }),
+            ],
+          }, {
+            name: "CREATIVE_FATIGUE",
+            title: tr("피로도 엔진 출력", "Fatigue engine output"),
+            note: tr("추세·위험 프로파일은 브라우저 엔진 출력이며 점수 구성요소를 함께 보존", "Trend and risk profiles are browser-engine outputs with their score components preserved"),
+            rows: [
+              ["creative_id", "days", "fatigue_score_engine", "alert_engine", "ctr_trend_per_day_engine", "impression_trend_per_day_engine", "cpm_trend_per_day_engine", "eta_days_engine"],
+              ...(fatigueAlerts || []).map((row) => [row.creative_id, row.days || 0, row.score ?? "", row.alert ? 1 : 0, row.ctrTrendPctPerDay ?? "", row.impressionTrendPctPerDay ?? "", row.cpmTrendPctPerDay ?? "", row.etaDays ?? ""]),
+            ],
+          }],
+          method: {
+            name: "creative-fatigue-and-attribute-analysis",
+            version: CREATIVE_CONFIG.version,
+            assumptions: [tr("소재별 합계는 현재 매핑과 필터를 반영한 전처리 입력입니다.", "Creative totals are preprocessing inputs from the current mapping and filters.")],
+            limitations: [tr("피로 추세·속성 분해는 워크북에서 다시 적합되지 않으며 관측 우선순위이지 인과 판정이 아닙니다.", "Fatigue trends and attribute decomposition are not refit in the workbook; they are observational priorities, not causal verdicts.")],
+          },
+        })}
         analysisDetails={(
           <AnalysisDetails
             locale={locale}

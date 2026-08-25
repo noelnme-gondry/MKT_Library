@@ -496,6 +496,35 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
           headline={head.replace(/<[^>]+>/g, "")}
+          workbookExport={() => ({
+            calculationMode: "hybrid_engine_output",
+            calculationTables: [{
+              name: "SATURATION_DIAGNOSTICS",
+              title: tr("대상별 포화도 진단", "Saturation diagnostics by entity"),
+              note: tr("곡선 적합·한계효율은 엔진 출력이고 포화지수는 수식", "Curve fit and marginal efficiency are engine outputs; the saturation index is a formula"),
+              rows: [
+                ["entity", "observations", "model", "r_squared_engine", "current_daily_cost", "average_efficiency_engine", "marginal_efficiency_engine", "saturation_index", "verdict_engine"],
+                ...okRows.map((row, index) => {
+                  const excelRow = index + 2;
+                  const average = isRoas ? row.roas?.avgRoas : row.avgCpr;
+                  const marginal = isRoas ? row.roas?.marginalRoas : row.marginalCpr;
+                  return [
+                    row.name, row.raw || row.n || 0, row.modelType || "", row.r2 ?? "", row.currentCost || 0,
+                    Number.isFinite(average) ? average : "",
+                    Number.isFinite(marginal) ? marginal : "",
+                    { formula: isRoas ? `=IFERROR(F${excelRow}/G${excelRow},0)` : `=IFERROR(G${excelRow}/F${excelRow},0)` },
+                    satActiveVerdict(row, effectiveMetric) || "",
+                  ];
+                }),
+              ],
+            }],
+            method: {
+              name: "saturation-curve-fit",
+              version: "sat-v1",
+              assumptions: [tr("평균·한계효율은 선택한 분석 단위와 관측 지출 범위 기준입니다.", "Average and marginal efficiency follow the selected grain and observed spend range.")],
+              limitations: [tr("곡선 적합은 워크북에서 재학습되지 않으며 인과효과가 아닙니다.", "The curve is not refit in the workbook and is not a causal effect.")],
+            },
+          })}
           download={(
             <DownloadHub
               toolId="5-22"

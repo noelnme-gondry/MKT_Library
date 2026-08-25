@@ -117,6 +117,30 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
         resultState={canSaveDecision ? "ready" : "blocked"}
         locale={locale}
         decisionPrefill={decisionPrefill}
+        workbookExport={() => ({
+          calculationMode: "hybrid_engine_output",
+          calculationTables: [{
+            name: "COLLINEARITY_DIAGNOSTICS",
+            title: tr("VIF·채널쌍 상관 진단", "VIF and channel-pair correlation diagnostics"),
+            note: tr("회귀·Holm 보정은 엔진 출력이고 절댓값·임계치 초과 여부는 수식", "Regression and Holm adjustment are engine outputs; absolute values and threshold flags are formulas"),
+            rows: [
+              ["kind", "channel_a", "channel_b", "engine_value", "adjusted_p_engine", "absolute_value", "warn_threshold", "threshold_exceeded"],
+              ...vifRows.map((row, index) => {
+                const excelRow = index + 2;
+                return ["VIF", row.channel, "", Number.isFinite(row.vif) ? row.vif : "", "", { formula: `=ABS(D${excelRow})` }, DIAG_THRESHOLDS.vifWarn, { formula: `=IF(F${excelRow}>=G${excelRow},1,0)` }];
+              }),
+              ...(result?.pairs || []).map((row, index) => {
+                const excelRow = vifRows.length + index + 2;
+                return ["CORRELATION", row.left, row.right, Number.isFinite(row.r) ? row.r : "", Number.isFinite(row.holmP) ? row.holmP : "", { formula: `=ABS(D${excelRow})` }, 0.8, { formula: `=IF(F${excelRow}>=G${excelRow},1,0)` }];
+              }),
+            ],
+          }],
+          method: {
+            name: "VIF + Pearson/Spearman + Holm",
+            version: "collinearity-v1",
+            limitations: [tr("VIF와 상관은 식별 진단이며 공선성을 해결한 인과 추정이 아닙니다.", "VIF and correlation are identification diagnostics, not causal estimates with collinearity resolved.")],
+          },
+        })}
         download={<DownloadHub toolId="5-25" locale={locale} label={tr("결과 받기", "Download results")} items={[
           { icon: "⬇", analyticsType: "csv", label: tr("VIF 결과 (CSV)", "VIF results (CSV)"), desc: tr("채널별 VIF 원자료", "Channel-level VIF values"), onSelect: downloadVifCsv },
           { icon: "⬇", analyticsType: "csv", label: tr("채널쌍 상관 (CSV)", "Channel-pair correlation (CSV)"), desc: tr("채널쌍별 상관과 판정 근거 숫자", "Correlation and the numbers behind each verdict"), onSelect: downloadCorrelationCsv },

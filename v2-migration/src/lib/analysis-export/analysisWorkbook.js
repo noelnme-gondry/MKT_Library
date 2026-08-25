@@ -48,7 +48,7 @@ function isSafeInternalFormula(value) {
   const remainder = formula.slice(1)
     .replace(/'(?:[^']|''){1,31}'!/g, "")
     .replace(/""/g, "")
-    .replace(/\b(?:IF|AND|OR|IFERROR|ABS|COUNTA|COUNT|MAX|MIN|SUM|SUMIFS|AVERAGE|SUMPRODUCT|INDEX|MATCH|VALUE|SUBSTITUTE)\b/g, "")
+    .replace(/\b(?:ERFC|IF|AND|OR|IFERROR|ABS|SQRT|COUNTA|COUNT|MAX|MIN|SUM|SUMIFS|AVERAGE|SUMPRODUCT|INDEX|MATCH|VALUE|SUBSTITUTE)\b/g, "")
     .replace(/\$?[A-Z]{1,3}:\$?[A-Z]{1,3}/g, "")
     .replace(/\$?[A-Z]{1,3}\$?\d+/g, "")
     .replace(/-?\d+(?:\.\d+)?/g, "")

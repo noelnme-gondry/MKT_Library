@@ -862,6 +862,32 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString(), detail: T.excludedRows(fit.n, fit.inputRows) },
                 { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
               ]}
+              workbookExport={() => ({
+                calculationMode: "hybrid_engine_output",
+                calculationTables: [{
+                  name: "CONTENT_ELEMENT_EFFECTS",
+                  title: tr("콘텐츠 요소별 연관 계수", "Association coefficients by content element"),
+                  note: tr("WLS/OLS·HC3·BH는 엔진 출력이고 t·구간 폭·유의 플래그는 수식", "WLS/OLS, HC3, and BH are engine outputs; t, interval width, and significance flag are formulas"),
+                  rows: [
+                    ["element", "coefficient_engine", "hc3_se_engine", "raw_p_engine", "bh_p_engine", "ci_low_engine", "ci_high_engine", "t_formula", "ci_width_formula", "significant_bh_5pct"],
+                    ...fit.rows.map((row, index) => {
+                      const excelRow = index + 2;
+                      return [
+                        row.name, row.coef, row.se, row.rawP, row.p, row.ciLo, row.ciHi,
+                        { formula: `=IFERROR(B${excelRow}/C${excelRow},0)` },
+                        { formula: `=G${excelRow}-F${excelRow}` },
+                        { formula: `=IF(E${excelRow}<0.05,1,0)` },
+                      ];
+                    }),
+                  ],
+                }],
+                method: {
+                  name: "WLS/OLS + HC3 + Benjamini-Hochberg",
+                  version: "content-elements-v1",
+                  assumptions: [tr("성과·요소 행렬과 제외 행은 현재 매핑의 전처리 결과입니다.", "The outcome-feature matrix and excluded rows are preprocessing results from the current mapping.")],
+                  limitations: [tr("회귀·강건 표준오차·다중비교 보정은 워크북에서 다시 적합되지 않으며 관측 연관이지 인과효과가 아닙니다.", "Regression, robust standard errors, and multiplicity adjustment are not refit in the workbook and describe association, not causation.")],
+                },
+              })}
               download={<DownloadHub
                 toolId="9-1"
                 locale={locale}

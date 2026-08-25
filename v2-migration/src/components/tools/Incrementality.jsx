@@ -572,6 +572,34 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           headline={card.headline}
           points={card.points}
           stats={card.stats}
+          workbookExport={() => ({
+            calculationMode: "exact_after_preprocessing",
+            calculationTables: [{
+              name: "HOLDOUT_INCREMENTALITY",
+              title: tr("홀드아웃 증분 계산", "Holdout incrementality calculation"),
+              note: tr("그룹·기간 집계 입력에서 전환율·반사실·증분·iROAS를 수식으로 재현", "Recalculates rates, counterfactual, incrementality, and iROAS from grouped period inputs"),
+              rows: [
+                ["control_conversions_input", "control_denominator_input", "exposed_conversions_input", "exposed_denominator_input", "exposed_spend_input", "exposed_revenue_input", "control_rate", "exposed_rate", "counterfactual_conversions", "incremental_conversions", "relative_lift", "incremental_revenue", "cost_per_incremental_conversion", "iroas"],
+                [
+                  win.cN, win.cD, win.tN, win.tD, win.sp || 0, Number.isFinite(win.incr?.incrementalRev) && Math.abs(win.incr?.incrementalConv || 0) > 1e-12 && win.tN > 0 ? (win.incr.incrementalRev / win.incr.incrementalConv) * win.tN : 0,
+                  { formula: "=IFERROR(A2/B2,0)", numberFormat: "0.00%" },
+                  { formula: "=IFERROR(C2/D2,0)", numberFormat: "0.00%" },
+                  { formula: "=D2*G2" },
+                  { formula: "=C2-I2" },
+                  { formula: "=IFERROR(H2/G2-1,0)", numberFormat: "0.0%" },
+                  { formula: "=IFERROR(J2*(F2/C2),0)" },
+                  { formula: "=IFERROR(E2/J2,0)" },
+                  { formula: "=IFERROR(L2/E2,0)" },
+                ],
+              ],
+            }],
+            method: {
+              name: "control-group-holdout",
+              version: "incrementality-suppression",
+              assumptions: [tr("그룹·홀드아웃 기간 집계는 브라우저 분석 시점의 전처리 입력입니다.", "Group and holdout-window totals are preprocessing inputs from the browser analysis.")],
+              limitations: [tr("무작위 배정이 아니면 인과효과로 확정할 수 없습니다. 신뢰구간·유의성은 브라우저 엔진 출력입니다.", "Without random assignment, this cannot confirm a causal effect. Confidence intervals and significance are browser-engine outputs.")],
+            },
+          })}
           decisionReview={Boolean(decisionPrefill)}
           decisionPrefill={decisionPrefill}
           analysisDetails={
@@ -990,6 +1018,36 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               headline={card.headline}
               points={card.points}
               stats={card.stats}
+              workbookExport={() => ({
+                calculationMode: "exact_after_preprocessing",
+                calculationTables: [{
+                  name: "PREPOST_INCREMENTALITY",
+                  title: tr("전후·DiD 증분 계산", "Pre/post and DiD incrementality calculation"),
+                  note: tr("공통 날짜 집계 입력에서 처리군 변화·대조군 변화·순효과·기간 합계를 수식으로 재현", "Recalculates treatment change, control change, net effect, and period total from common-date aggregate inputs"),
+                  rows: [
+                    ["is_did", "treatment_pre_mean_input", "treatment_post_mean_input", "control_pre_mean_input", "control_post_mean_input", "post_periods_input", "treatment_delta", "control_delta", "net_effect", "period_total_effect", "significance_p_engine"],
+                    [
+                      isDiD ? 1 : 0,
+                      displayPreMean ?? 0,
+                      displayPostMean ?? 0,
+                      isDiD ? r.did.ctrlPreMean : 0,
+                      isDiD ? r.did.ctrlPostMean : 0,
+                      displayPostN || 0,
+                      { formula: "=C2-B2" },
+                      { formula: "=IF(A2=1,E2-D2,0)" },
+                      { formula: "=G2-H2" },
+                      { formula: "=I2*F2" },
+                      Number.isFinite(sigP) ? sigP : "",
+                    ],
+                  ],
+                }],
+                method: {
+                  name: isDiD ? "difference-in-differences" : "pre-post",
+                  version: "incrementality-prepost",
+                  assumptions: [tr("전후 평균은 현재 컷오프와 공통 날짜 매칭을 반영한 전처리 입력입니다.", "Pre/post means are preprocessing inputs reflecting the current cutoff and common-date matching.")],
+                  limitations: [tr("단순 전후는 계절성·추세와 섞일 수 있고, DiD도 평행추세를 증명하지 않습니다. 유의성은 엔진 출력입니다.", "Simple pre/post can mix seasonality and trend; DiD does not prove parallel trends. Significance is an engine output.")],
+                },
+              })}
               decisionReview={Boolean(decisionPrefill)}
               decisionPrefill={decisionPrefill}
               analysisDetails={

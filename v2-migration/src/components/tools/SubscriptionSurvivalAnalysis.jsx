@@ -391,7 +391,32 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
       {isStale && <p className="callout">{tx(locale, "설정이 바뀌었습니다. 현재 결과는 최신 설정과 다를 수 있습니다.", "Settings changed. The current result may not match them.")} <button type="button" className="ab-pill" onClick={run}>{tx(locale, "다시 분석", "Re-analyze")}</button></p>}
     </section>}
     {result && !isStale && <>
-      <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, locale })} decisionPrefill={decisionPrefill} download={download} stats={[
+      <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, locale })} decisionPrefill={decisionPrefill} download={download} workbookExport={() => ({
+        calculationMode: "exact_after_preprocessing",
+        calculationTables: [{
+          name: "SURVIVAL_CURVE",
+          title: tx(locale, "Kaplan–Meier 생존·위험 계산", "Kaplan–Meier survival and hazard calculation"),
+          note: tx(locale, "위험집합 입력에서 hazard와 누적 생존율을 수식으로 재현. 신뢰구간은 엔진 출력", "Recalculates hazard and cumulative survival from risk-set inputs. Confidence intervals are engine outputs"),
+          rows: [
+            ["time", "at_risk_input", "events_input", "censored_input", "survival_engine", "ci_low_engine", "ci_high_engine", "hazard_formula", "survival_formula", "engine_formula_difference"],
+            ...result.hazard.rows.map((row, index) => {
+              const excelRow = index + 2;
+              return [
+                row.time, row.atRisk, row.events, row.censored, row.survival, row.ciLow, row.ciHigh,
+                { formula: `=IFERROR(C${excelRow}/B${excelRow},0)`, numberFormat: "0.0%" },
+                { formula: index === 0 ? `=1*(1-H${excelRow})` : `=I${excelRow - 1}*(1-H${excelRow})`, numberFormat: "0.0%" },
+                { formula: `=I${excelRow}-E${excelRow}` },
+              ];
+            }),
+          ],
+        }],
+        method: {
+          name: "Kaplan-Meier + discrete hazard",
+          version: "action-survival-v1",
+          assumptions: [tx(locale, "위험집합·사건·중도절단 수는 현재 이벤트 정의와 관측 종료 규칙의 전처리 입력입니다.", "Risk sets, events, and censoring counts are preprocessing inputs from the current event definition and observation-end rule.")],
+          limitations: [tx(locale, "Greenwood·log-log 신뢰구간과 세그먼트 log-rank는 엔진 출력이며 관측 범위 밖으로 외삽하지 않습니다.", "Greenwood log-log intervals and segment log-rank are engine outputs; nothing is extrapolated beyond observed support.")],
+        },
+      })} stats={[
         { label: tx(locale, "이탈·종료", "Exit events"), value: fmtNum(result.prepared.eventCount) },
         { label: tx(locale, "중도절단", "Censored"), value: fmtNum(result.prepared.censoredCount) },
         { label: tx(locale, `${result.horizon}기간 생존율`, `${result.horizon}-period survival`), value: fmtPct(result.table.length ? result.table.filter((row) => row.time <= result.horizon).at(-1)?.survival : null) },

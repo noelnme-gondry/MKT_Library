@@ -366,6 +366,32 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                 shareTitle={locale === "en" ? "Paid · Organic Movement Map" : "Paid·Organic 변화맵"}
                 analysisKey={`${result.recentOrganicChange}:${result.recentPaidChange}:${result.oppositeCount}`}
                 locale={locale}
+                workbookExport={() => ({
+                  calculationMode: "exact_after_preprocessing",
+                  calculationTables: [{
+                    name: "PAID_ORGANIC_WOW",
+                    title: tr("주별 Paid·Organic 변화", "Weekly Paid and Organic movement"),
+                    note: tr("주간 집계 입력 이후 WoW와 의미 있는 움직임 여부를 수식으로 재현", "Recalculates WoW and meaningful-movement flags from weekly aggregate inputs"),
+                    rows: [
+                      ["week", "paid_weekly_input", "organic_weekly_input", "paid_wow", "organic_wow", "meaningful_move"],
+                      ...result.levels.map((level, index) => {
+                        const row = index + 2;
+                        return [
+                          level.week, level.paid, level.organic,
+                          { formula: index === 0 ? "=0" : `=IFERROR((B${row}-B${row - 1})/ABS(B${row - 1}),0)`, numberFormat: "0.0%" },
+                          { formula: index === 0 ? "=0" : `=IFERROR((C${row}-C${row - 1})/ABS(C${row - 1}),0)`, numberFormat: "0.0%" },
+                          { formula: `=IF(OR(ABS(D${row})>=0.01,ABS(E${row})>=0.01),1,0)` },
+                        ];
+                      }),
+                    ],
+                  }],
+                  method: {
+                    name: "weekly-paid-organic-movement",
+                    version: "paid-organic-trend-v1",
+                    assumptions: [tr("일별 원본은 월요일 시작 주간 합계로 전처리됩니다.", "Daily source rows are preprocessed into Monday-start weekly totals.")],
+                    limitations: [tr("반대 방향 움직임은 잠식의 인과 증거가 아닙니다.", "Opposite movement is not causal evidence of cannibalization.")],
+                  },
+                })}
                 analysisBasis={false}
                 decisionReview={Boolean(decisionPrefill)}
                 decisionPrefill={decisionPrefill}

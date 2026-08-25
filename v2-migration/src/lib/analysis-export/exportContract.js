@@ -116,8 +116,8 @@ export function buildAnalysisExportPayload({
     : "hybrid_engine_output";
   return {
     schemaVersion: "analysis-workbook-v1",
-    toolId: plain(toolId),
-    toolTitle: plain(toolTitle, plain(toolId)),
+    toolId: plain(resolvedAddon.toolId, plain(toolId)),
+    toolTitle: plain(resolvedAddon.toolTitle, plain(toolTitle, plain(toolId))),
     locale: locale === "en" ? "en" : "ko",
     generatedAt: plain(generatedAt),
     resultState: plain(resultState, "ready"),

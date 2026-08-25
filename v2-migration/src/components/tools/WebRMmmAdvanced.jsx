@@ -593,6 +593,33 @@ export default function WebRMmmAdvanced({
                   { label: T.webr, value: Number.isFinite(result.wmape) ? `${result.wmape.toFixed(1)}%` : "—", detail: T.oosWmape },
                   { label: T.oosFoldRange, value: String(result.folds || "—") },
                 ]}
+                workbookExport={() => ({
+                  toolId: "5-18-mmm",
+                  toolTitle: locale === "en" ? "MMM model comparison" : "MMM 모델 비교",
+                  calculationMode: "hybrid_engine_output",
+                  calculationTables: [{
+                    name: "MMM_MODEL_COMPARISON",
+                    title: locale === "en" ? "Bayesian vs WebR OOS comparison" : "Bayesian·WebR OOS 비교",
+                    note: locale === "en" ? "Model fitting and OOS scores are engine outputs; the score gap is a formula" : "모델 적합과 OOS 점수는 엔진 출력이고 오차 차이는 수식",
+                    rows: [
+                      ["bayesian_wmape_engine", "webr_wmape_engine", "webr_minus_bayesian", "folds", "horizon", "alpha_engine", "lambda_factor_engine", "nonzero_features_engine"],
+                      [bayesianWmape ?? "", result.wmape ?? "", { formula: "=B2-A2" }, result.folds || 0, result.horizon || 0, result.alpha ?? "", result.lambdaFactor ?? "", result.nonzeroFeatures ?? ""],
+                    ],
+                  }, {
+                    name: "WEBR_DRIVER_OUTPUT",
+                    title: locale === "en" ? "WebR driver contribution output" : "WebR 동인 기여 출력",
+                    note: locale === "en" ? "Driver coefficients and contributions are engine outputs" : "동인 계수·기여는 엔진 출력",
+                    rows: [
+                      ["driver", "kind", "weekly_mean_contribution_engine", "rms_contribution_engine", "rms_share_engine"],
+                      ...driverRows.map((driver) => [driver.name, driver.kind, driver.meanContribution ?? "", driver.rmsContribution ?? "", driver.rmsShare ?? ""]),
+                    ],
+                  }],
+                  method: {
+                    name: "Bayesian MMM vs WebR elastic-net challenger",
+                    version: "mmm-model-comparison-v1",
+                    limitations: [locale === "en" ? "Neither model is refit in the workbook; lower OOS error does not establish causality." : "두 모델 모두 워크북에서 재학습되지 않으며 낮은 OOS 오차가 인과성을 뜻하지 않습니다."],
+                  },
+                })}
                 toolId="5-18"
                 analysisType="webr-mmm-comparison"
                 analysisKey={`${signature}:${result.wmape}:${bayesianWmape}`}

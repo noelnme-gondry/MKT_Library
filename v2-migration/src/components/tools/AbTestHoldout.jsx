@@ -929,6 +929,41 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         { label: tr("상대 Lift", "Relative lift"), value: `${s.liftRel >= 0 ? "+" : ""}${(s.liftRel * 100).toFixed(2)}%` },
                         { label: "p-value", value: s.pValue.toFixed(4), detail: s.pValue < 0.05 ? tr("차이 후보", "Difference candidate") : tr("판정 보류", "Inconclusive") },
                       ]}
+                      workbookExport={() => ({
+                        calculationMode: "exact_after_preprocessing",
+                        calculationTables: [{
+                          name: "AB_READOUT",
+                          title: tr("Control·Test 두 비율 검정", "Control vs Test two-proportion test"),
+                          note: tr("그룹 집계 입력에서 전환율·Lift·z·양측 p를 수식으로 재현", "Recalculates rates, lift, z, and the two-sided p-value from aggregated arm inputs"),
+                          rows: [
+                            ["control_conversions_input", "control_denominator_input", "test_conversions_input", "test_denominator_input", "control_rate", "test_rate", "absolute_difference", "relative_lift", "pooled_rate", "z_score", "two_sided_p_value"],
+                            [
+                              readoutData.cNum, readoutData.cDen, readoutData.tNum, readoutData.tDen,
+                              { formula: "=IFERROR(A2/B2,0)", numberFormat: "0.00%" },
+                              { formula: "=IFERROR(C2/D2,0)", numberFormat: "0.00%" },
+                              { formula: "=F2-E2", numberFormat: "0.00%" },
+                              { formula: "=IFERROR(F2/E2-1,0)", numberFormat: "0.00%" },
+                              { formula: "=IFERROR((A2+C2)/(B2+D2),0)", numberFormat: "0.00%" },
+                              { formula: "=IFERROR(G2/SQRT(I2*(1-I2)*(1/B2+1/D2)),0)" },
+                              { formula: "=ERFC(ABS(J2)/SQRT(2))" },
+                            ],
+                          ],
+                        }, ...(readoutData.mass?.rows?.length ? [{
+                          name: "AB_ARM_OUTPUT",
+                          title: tr("arm별 엔진 출력", "Engine output by arm"),
+                          note: tr("다중 비교의 Holm 보정과 Bayesian 승률은 브라우저 엔진 출력", "Holm adjustment and Bayesian win probability are browser-engine outputs"),
+                          rows: [
+                            ["arm", "is_control", "sample_size", "conversion_rate_engine", "relative_lift_engine", "z_engine", "holm_p_engine", "ci_low_engine", "ci_high_engine", "bayesian_win_probability_engine"],
+                            ...readoutData.mass.rows.map((row) => [row.name, row.isControl ? 1 : 0, row.n, row.rate, row.liftRel ?? "", row.z ?? "", row.pValue ?? "", row.ciLow95 ?? "", row.ciHigh95 ?? "", row.probBWins ?? ""]),
+                          ],
+                        }] : [])],
+                        method: {
+                          name: "two-proportion-z-test",
+                          version: "ab-readout-v1",
+                          assumptions: [tr("그룹 합계는 현재 매핑과 arm 선택을 반영한 전처리 입력입니다.", "Arm totals are preprocessing inputs from the current mapping and arm selection.")],
+                          limitations: [tr("비유의는 효과 없음이 아니라 현재 표본에서 판단 보류입니다. arm별 Holm 보정과 Bayesian 값은 엔진 출력입니다.", "Non-significance means inconclusive for the current sample, not no effect. Per-arm Holm and Bayesian values are engine outputs.")],
+                        },
+                      })}
                     >
                       <details className="result-action-card__details">
                         <summary>{tr("통계 원값 보기", "View raw statistics")}</summary>

@@ -38,6 +38,10 @@ function usesResultActionCard(source) {
   return /<ResultActionCard[\s/>]/.test(source) && /from "@\/components\/ds\/ResultActionCard"/.test(source);
 }
 
+function usesTypedWorkbookAdapter(source) {
+  return /workbookExport=/.test(source);
+}
+
 function findComponent(name) {
   const walk = (dir) => readdirSync(dir).flatMap((entry) => {
     const full = path.join(dir, entry);
@@ -74,5 +78,17 @@ describe("download escape", () => {
     const source = readFileSync(path.join(COMPONENTS, "ds/ResultActionCard.jsx"), "utf-8");
     expect(source).toContain("<AnalysisExportProvider");
     expect(source).toContain("<DownloadHub");
+  });
+
+  it("keeps a typed calculation adapter on every published analysis surface", () => {
+    const missing = [];
+    for (const route of publishedTools) {
+      const componentName = findComponent(route.component) ? route.component : dispatchedComponent(route.id);
+      const file = componentName && findComponent(componentName);
+      expect(file, `${route.id}(${route.component}) 컴포넌트를 찾지 못했다`).toBeTruthy();
+      if (usesTypedWorkbookAdapter(readFileSync(file, "utf-8"))) continue;
+      missing.push(`${route.id} ${route.component}`);
+    }
+    expect(missing, "도구별 XLSX 계산 어댑터가 없다(product-ssot §5.5.1)").toEqual([]);
   });
 });
