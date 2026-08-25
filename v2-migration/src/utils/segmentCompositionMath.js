@@ -79,7 +79,7 @@ export function selectsPeriod(time, selector) {
 
 /* 레코드를 셀 단위로 접는다. 분모·비용은 셀 속성이라 멤버 레코드마다 반복돼 있다 —
  * 레코드를 그대로 합치면 멤버 수만큼 모수가 부풀어 오른다. */
-function foldCells(records) {
+export function foldCells(records) {
   const cells = new Map();
   records.forEach((record) => {
     const key = `${record.time}${ENTITY_SEPARATOR}${entityKeyOf(record.entity)}${ENTITY_SEPARATOR}${entityKeyOf(record.scope)}`;

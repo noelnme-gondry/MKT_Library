@@ -18,6 +18,10 @@ import {
   compareDistribution, decomposeMixRate, netNewProfile, rankDimensions,
   DIMENSION_STATUS, SEGMENT_REASON,
 } from "@/utils/segmentCompositionMath";
+import {
+  spendShiftFingerprint, costVolumeQuadrants, scanPeriodShifts, repeatabilityByMagnitude,
+  COST_VOLUME_QUADRANT, OPS_REASON,
+} from "@/utils/segmentOpsMath";
 
 const TOOL_ID = "5-29";
 const tx = (locale, ko, en) => (locale === "en" ? en : ko);
@@ -56,6 +60,11 @@ const reasonLabel = (reason, locale) => ({
   [SEGMENT_REASON.POPULATION_NOT_GROWN]: tx(locale, "전체 인원이 늘지 않아 순증 구간을 계산하지 않습니다", "The population did not grow, so the net-new slice is not computed"),
   [SEGMENT_REASON.NET_INCREASE_TOO_SMALL]: tx(locale, "증가분이 너무 작아 순증 구간 구성을 신뢰할 수 없습니다", "The increase is too small to profile"),
   [SEGMENT_REASON.NET_RATE_OUT_OF_RANGE]: tx(locale, "일부 값의 순증 비율이 0~100% 밖이라 해석할 수 없습니다", "Some net-new shares fall outside 0–100% and cannot be read"),
+  [OPS_REASON.NO_SPEND]: tx(locale, "비용 컬럼이 없거나 0이라 비용 흐름과 함께 볼 수 없습니다", "No usable spend column, so spend flow cannot be compared"),
+  [OPS_REASON.LOW_ENTITY_POPULATION]: tx(locale, "일부 단위의 모수가 작아 단가가 크게 흔들립니다", "Some units have small populations, so unit cost is unstable"),
+  [OPS_REASON.NOT_ENOUGH_PERIODS]: tx(locale, "기간이 적어 반복 여부를 말할 수 없습니다", "Too few periods to say whether this repeats"),
+  [OPS_REASON.MULTIPLE_COMPARISONS]: tx(locale, "여러 기간을 전부 훑어 가장 큰 변동을 고른 결과입니다. 우연히 커 보일 수 있습니다", "This picks the largest move after scanning every period pair, so some of it can be chance"),
+  [OPS_REASON.DIRECTION_MIXED]: tx(locale, "방향이 갈립니다 — 한쪽으로 몰아 읽지 마세요", "Directions disagree — do not read it as one trend"),
   [SEGMENT_REASON.MIX_RATE_UNAVAILABLE]: tx(locale, "전체 모수나 분석 단위가 없어 이동·내부 변화를 나눌 수 없습니다", "Without a total population or analysis unit, movement cannot be separated"),
 }[reason] || reason);
 
@@ -157,12 +166,19 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     const distribution = compareDistribution({ panel, dimensionId: selected.dimensionId, ...selector, scopeFilter });
     const topMember = active.memberId
       || [...distribution.members].sort((a, b) => Math.abs(b.shareDelta ?? 0) - Math.abs(a.shareDelta ?? 0))[0]?.memberId;
+    const opsArgs = { panel, dimensionId: selected.dimensionId, memberId: topMember, ...selector, scopeFilter };
+    const scan = topMember ? scanPeriodShifts({ panel, dimensionId: selected.dimensionId, memberId: topMember, scopeFilter }) : null;
     return {
       ranked,
       selected: distribution,
       memberId: topMember,
-      decomposition: topMember ? decomposeMixRate({ panel, dimensionId: selected.dimensionId, memberId: topMember, ...selector, scopeFilter }) : null,
+      decomposition: topMember ? decomposeMixRate(opsArgs) : null,
       netNew: netNewProfile(distribution),
+      // 운영 지문은 "무엇이 움직였나" 다음 질문이라 같은 분석 게이트 뒤에서 함께 만든다.
+      spendShift: topMember ? spendShiftFingerprint(opsArgs) : null,
+      quadrants: topMember ? costVolumeQuadrants(opsArgs) : null,
+      scan,
+      repeatability: scan ? repeatabilityByMagnitude(scan) : null,
     };
   }, [panel, active]);
 
@@ -338,6 +354,52 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     { key: "total", label: tx(locale, "합", "Total"), align: "right", fmt: (value) => fmtPct(value) },
   ];
 
+  const spendColumns = [
+    { key: "entityKey", label: tx(locale, "분석 단위", "Unit"), align: "left" },
+    { key: "spendShareDelta", label: tx(locale, "비용 비중 변화", "Spend share change"), align: "right", fmt: (value) => `${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value))}` },
+    { key: "memberShareDelta", label: tx(locale, "구성 비중 변화", "Composition share change"), align: "right", fmt: (value) => `${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value))}` },
+    { key: "sameDirection", label: tx(locale, "같은 방향인가", "Same direction"), align: "left", fmt: (value) => (value == null ? "—" : value ? tx(locale, "예", "Yes") : tx(locale, "아니오", "No")) },
+    { key: "elasticity", label: tx(locale, "비용 1% 대비 인원 변화", "Count change per 1% spend"), align: "right", fmt: (value) => (value == null ? "—" : value.toFixed(2)) },
+  ];
+
+  const quadrantLabel = (value) => ({
+    [COST_VOLUME_QUADRANT.SCALE_EFFICIENT]: tx(locale, "볼륨↑ 단가↓", "Volume up, cost down"),
+    [COST_VOLUME_QUADRANT.SCALE_COSTLY]: tx(locale, "볼륨↑ 단가↑", "Volume up, cost up"),
+    [COST_VOLUME_QUADRANT.SHRINK_EFFICIENT]: tx(locale, "볼륨↓ 단가↓", "Volume down, cost down"),
+    [COST_VOLUME_QUADRANT.SHRINK_COSTLY]: tx(locale, "볼륨↓ 단가↑", "Volume down, cost up"),
+  }[value] || value);
+
+  const quadrantColumns = [
+    { key: "entityKey", label: tx(locale, "분석 단위", "Unit"), align: "left" },
+    { key: "quadrant", label: tx(locale, "사분면", "Quadrant"), align: "left", fmt: quadrantLabel },
+    { key: "volumePre", label: tx(locale, "이전 인원", "Before"), align: "right", fmt: (value) => fmtNum(value) },
+    { key: "volumePost", label: tx(locale, "이후 인원", "After"), align: "right", fmt: (value) => fmtNum(value) },
+    { key: "costPerMemberPre", label: tx(locale, "이전 1명당 비용", "Cost per head before"), align: "right", fmt: (value) => fmtNum(Math.round(value)) },
+    { key: "costPerMemberPost", label: tx(locale, "이후 1명당 비용", "Cost per head after"), align: "right", fmt: (value) => fmtNum(Math.round(value)) },
+  ];
+
+  const scanColumns = [
+    { key: "to", label: tx(locale, "기간", "Period"), align: "left", fmt: (value, row) => `${row.from} → ${value}` },
+    { key: "shareBefore", label: tx(locale, "이전 비중", "Before"), align: "right", fmt: (value) => fmtPct(value) },
+    { key: "shareAfter", label: tx(locale, "이후 비중", "After"), align: "right", fmt: (value) => fmtPct(value) },
+    { key: "delta", label: tx(locale, "변화", "Change"), align: "right", fmt: (value) => `${value >= 0 ? "+" : "−"}${fmtPct(Math.abs(value))}` },
+    { key: "isLarge", label: tx(locale, "큰 변동", "Large"), align: "left", fmt: (value) => (value ? "●" : "") },
+  ];
+
+  const repeatSentence = () => {
+    const large = analysis?.repeatability?.strata?.find((stratum) => stratum.label === "large");
+    if (!large) return null;
+    if (!large.count) return tx(locale, "임계를 넘는 큰 변동은 없었습니다. 구성은 완만하게 움직였습니다.", "No shift crossed the large-move threshold; composition moved gradually.");
+    if (large.isRepeated) {
+      return tx(locale,
+        `큰 변동이 ${large.count}번, 모두 같은 방향으로 반복됐습니다. 한 번의 사건보다는 지속되는 흐름에 가깝습니다.`,
+        `${large.count} large moves, all in the same direction. This looks more like a sustained trend than a one-off event.`);
+    }
+    return tx(locale,
+      `큰 변동이 ${large.count}번 있었지만 방향이 갈립니다. 한 번의 사건으로 읽지 마세요.`,
+      `${large.count} large moves with disagreeing directions. Do not read this as one event.`);
+  };
+
   return <ToolPageShell
     toolId={TOOL_ID}
     title={tx(locale, "구성 변화 분석", "Composition change")}
@@ -349,6 +411,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       { id: "segment-composition-result", title: tx(locale, "결론", "Conclusion") },
       { id: "segment-composition-ranking", title: tx(locale, "변화한 축", "Axes") },
       { id: "segment-composition-detail", title: tx(locale, "선택 축 상세", "Detail") },
+      { id: "segment-composition-ops", title: tx(locale, "운영 지문", "Fingerprints") },
     ]}
   >
     {!hasRows && <section className="block" aria-labelledby="segment-composition-empty">
@@ -458,11 +521,58 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         </> : <p className="muted">{(analysis.decomposition?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
       </section>
 
+      <section className="block" id="segment-composition-ops">
+        <h2 className="section-title">{tx(locale, "운영 지문", "Operational fingerprints")}</h2>
+        <p className="muted">{tx(locale,
+          "여기부터는 원인이 아니라 가설을 좁히는 관측 신호입니다. 같은 모양이 소재·타게팅·계절성으로도 생기므로, 어느 것도 개입의 직접 증거로 쓰지 마세요.",
+          "From here these are observed signals that narrow hypotheses, not causes. The same pattern can come from creative, targeting, or seasonality, so none of it is direct evidence of an intervention.")}</p>
+
+        <h3 className="section-title">{tx(locale, "비용은 어디로 옮겨 갔나", "Where did spend move")}</h3>
+        {analysis.spendShift?.available ? <>
+          <DataTable
+            columns={spendColumns}
+            rows={analysis.spendShift.entities}
+            rowKey={(row) => row.entityKey}
+            ariaLabel={tx(locale, "단위별 비용 이동과 구성 이동", "Spend and composition movement by unit")}
+          />
+          <p className="muted">{tx(locale,
+            "‘비용 1% 대비 인원 변화’는 두 기간의 로그 변화비일 뿐 반응 곡선이 아닙니다. 부호가 뒤집힌 단위를 찾는 용도로만 보세요.",
+            "The per-1%-spend column is a two-point log ratio, not a response curve. Use it only to spot units whose sign flipped.")}</p>
+        </> : <p className="muted">{(analysis.spendShift?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
+
+        <h3 className="section-title">{tx(locale, "볼륨과 1명당 비용", "Volume and cost per head")}</h3>
+        {analysis.quadrants?.available ? <>
+          <DataTable
+            columns={quadrantColumns}
+            rows={analysis.quadrants.rows}
+            rowKey={(row) => row.entityKey}
+            ariaLabel={tx(locale, "단위별 볼륨·단가 사분면", "Volume and unit-cost quadrant by unit")}
+          />
+          <p className="muted">{tx(locale,
+            "볼륨이 늘면서 1명당 비용이 내려간 단위는 경쟁이 느슨해졌을 수도, 단순히 소재나 타게팅이 맞아떨어진 것일 수도 있습니다. 이 표만으로는 가릴 수 없습니다.",
+            "A unit with more volume at a lower cost per head may face easier competition, or may simply have found a creative or targeting fit. This table cannot separate the two.")}</p>
+          {analysis.quadrants.reasons.length ? <p className="muted">{analysis.quadrants.reasons.map((reason) => reasonLabel(reason, locale)).join(" · ")}</p> : null}
+        </> : <p className="muted">{(analysis.quadrants?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
+
+        <h3 className="section-title">{tx(locale, "언제 움직였나", "When did it move")}</h3>
+        {analysis.scan?.available ? <>
+          <DataTable
+            columns={scanColumns}
+            rows={analysis.scan.steps}
+            rowKey={(row) => `${row.from}-${row.to}`}
+            ariaLabel={tx(locale, "기간 쌍별 구성 변화", "Composition change by period pair")}
+          />
+          {repeatSentence() ? <p>{repeatSentence()}</p> : null}
+          <p className="muted">{[...new Set([...(analysis.scan.reasons || []), ...(analysis.repeatability?.reasons || [])])].map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>
+        </> : <p className="muted">{(analysis.scan?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
+      </section>
+
       <section className="block" aria-labelledby="segment-composition-limits">
         <h2 id="segment-composition-limits" className="section-title">{tx(locale, "이 결과로 말할 수 없는 것", "What this cannot say")}</h2>
         <ul>
           <li>{tx(locale, "구성이 바뀐 이유는 이 분해로 알 수 없습니다. 무엇이 얼마나 움직였는지까지입니다.", "This decomposition does not say why the composition changed — only what moved and by how much.")}</li>
           <li>{tx(locale, "순증 구간 구성은 두 기간을 뺀 추정치이며, 증분 유저를 실제로 관측한 값이 아닙니다.", "The net-new profile is arithmetic between two periods, not an observation of incremental users.")}</li>
+          <li>{tx(locale, "운영 지문(비용 이동·사분면·기간 스캔)은 가설을 좁힐 뿐, 어느 것도 개입의 직접 증거가 아닙니다.", "The operational fingerprints narrow hypotheses; none of them is direct evidence of an intervention.")}</li>
           <li>{tx(locale, "개입 효과를 확인하려면 증분 분석이나 실험으로 넘어가야 합니다.", "To test an intervention, move on to incrementality analysis or an experiment.")}</li>
         </ul>
       </section>
