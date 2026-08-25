@@ -48,6 +48,7 @@ export const ITEM_TITLE_EN = {
   "5-25": "Channel overlap",
   "5-27": "Store conversion",
   "5-28": "Action survival",
+  "5-29": "Composition change",
   "9-1": "Content elements",
   "9-2": "Top content",
   "9-3": "Content shifts",

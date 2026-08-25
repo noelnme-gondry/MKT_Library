@@ -488,6 +488,46 @@ const CONTENT = {
       ],
     },
   },
+  "5-29": {
+    ko: {
+      eyebrow: "도구 사용 가이드",
+      title: "전체 지표가 움직였을 때 어떤 구성이 바뀌었는지 찾습니다",
+      question: "전체 가입 중 특정 세그먼트 비중이 왜 바뀌었나요?",
+      answer: "두 기간의 세그먼트 비중을 비교해 단위 간 이동과 단위 내부 변화로 나눠 보여 줍니다.",
+      outputs: ["변화한 세그먼트 축 랭킹", "값별 비중 변화와 인원수", "단위 간 이동 vs 단위 내부 변화 분해"],
+      lead: "구성 변화 분석은 기간별 세그먼트 인원수를 받아 두 기간의 구성 차이를 계산하고, 그 차이를 캠페인 간 볼륨 이동(Mix)과 캠페인 내부 구성 변화(Rate)로 나눕니다. 성별·연령 같은 이름을 미리 정해 두지 않고, 파일에 있는 컬럼에 역할만 지정하면 됩니다. 관측된 분해이지 원인 확정이 아닙니다.",
+      detailsLabel: "계산 조건과 해석 한계 보기",
+      sections: [
+        ["언제 써야 하나", "전체 CPA·가입·전환이 움직였는데 캠페인별 숫자만으로는 이유가 안 보일 때 씁니다. 늘어난 가입이 기존과 다른 구성인지, 특정 캠페인이 데려오는 사람이 달라진 것인지, 아니면 예산이 다른 캠페인으로 옮겨 간 결과인지를 갈라 줍니다."],
+        ["무엇을 계산하나", "축별로 두 기간의 멤버 비중과 전체 구성 이동 크기(TVD), 멤버별 비중 변화와 실제 인원수를 계산합니다. 분석 단위를 지정하면 비율 변화를 단위 간 이동·단위 내부 변화·상호작용 세 항으로 나누며, 세 항의 합은 전체 변화와 정확히 일치합니다. 전체 인원이 늘었다면 늘어난 구간의 구성 추정치도 함께 봅니다."],
+        ["결과를 어떻게 쓰나", "이동이 크면 예산 배분을, 내부 변화가 크면 타게팅·소재·랜딩을 먼저 확인하세요. 표본이 작거나 배타적이지 않은 축은 숫자를 내지 않고 사유를 표시합니다. 개입 효과를 확인하려면 증분 분석이나 실험으로 넘어가야 합니다."],
+      ],
+      faq: [
+        { q: "성별·연령 컬럼 이름이 파일마다 다른데 괜찮나요?", a: "괜찮습니다. 컬럼 이름을 표준키로 맞출 필요가 없고, 도구 안에서 어떤 컬럼이 세그먼트 축이고 어떤 컬럼이 인원수인지 역할만 지정하면 됩니다." },
+        { q: "늘어난 사용자의 구성을 알 수 있나요?", a: "전체 인원이 늘었다면 두 기간을 뺀 순증 구간의 구성 추정치를 보여 줍니다. 다만 이것은 산술 결과이지 증분 유저를 실제로 관측한 인과적 프로필이 아닙니다." },
+        { q: "한 사람이 여러 태그를 가지는 축도 되나요?", a: "값별 보유율 변화는 볼 수 있지만 전체 구성 이동 크기는 계산하지 않습니다. 합이 100퍼센트가 아닌 축에 구성 거리를 적용하면 숫자가 거짓이 됩니다." },
+      ],
+    },
+    en: {
+      eyebrow: "Tool guide",
+      title: "Find which composition changed when the overall metric moved",
+      question: "Why did a segment's share of total signups change?",
+      answer: "Compare two periods' segment shares and split the shift into movement vs internal change.",
+      outputs: ["Ranking of axes that moved", "Share change and head counts per value", "Movement between units vs change inside them"],
+      lead: "Composition change analysis takes per-period segment head counts, measures how the distribution differs between two periods, and splits that difference into volume moving between campaigns (mix) and composition changing inside them (rate). Nothing about gender or age is hard-coded — you declare roles for whatever columns your file has. It is an observed decomposition, not a cause.",
+      detailsLabel: "See calculation conditions and limits",
+      sections: [
+        ["When to use it", "Use it when overall CPA, signups, or conversions moved and per-campaign numbers alone do not explain it. It separates whether the added users look different from before, whether a campaign started bringing different people, or whether budget simply moved between campaigns."],
+        ["What it computes", "Per axis it computes member shares for both periods, the total distribution shift, and each member's percentage-point change with real head counts. With an analysis unit declared it splits the change into mix, rate, and interaction, and the three terms add up exactly to the total change. When the population grew it also profiles the added slice."],
+        ["How to use the result", "If movement dominates, look at budget allocation first; if internal change dominates, look at targeting, creative, and landing. Axes with small samples or without exclusivity return a reason instead of a number. To test an intervention, move on to incrementality analysis or an experiment."],
+      ],
+      faq: [
+        { q: "My gender and age columns are named differently in every file. Is that a problem?", a: "No. Column names do not need to match a standard schema; inside the tool you declare which column is the segment axis and which one carries head counts." },
+        { q: "Can I see the composition of the users who were added?", a: "If the population grew, the tool profiles the net-new slice by subtracting the two periods. That is arithmetic between periods, not a causal profile of incremental users." },
+        { q: "Does it work for axes where one person can hold several tags?", a: "You can read per-value adoption change, but the overall distribution shift is not computed. Applying a distribution distance where shares do not add to 100 percent would make the number false." },
+      ],
+    },
+  },
   "5-28": {
     ko: {
       eyebrow: "도구 사용 가이드",

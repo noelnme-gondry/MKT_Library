@@ -1312,6 +1312,11 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-25": ["date", "cost", { oneOf: ["channel", "campaign_name"] }],
               "5-27": ["date", "store_source", "product_page_views", "installs"],
               "5-26": ["date", "search_term", "cost", "clicks", { oneOf: ["installs", "actions"] }],
+              // 구성 변화는 세그먼트 축이 사용자마다 달라 표준키로 고정할 수 없다.
+              // 여기서는 기간만 계약으로 두고, 세그먼트·분석 단위·모수 역할은
+              // 도구 안 SegmentRoleMapper가 원본 컬럼 이름 그대로 선언받는다
+              // (전역 STANDARD_FIELDS에 사용자별 세그먼트를 계속 늘리지 않는다).
+              "5-29": ["date"],
               // 핵심 액션 생존은 두 입력 경로를 지원한다. 기간+이탈 플래그 또는
               // 날짜 경로의 시작일과 (이벤트일 또는 관측 종료일)로 사건·중도
               // 절단을 복원한다. 날짜만으로 기간 기반 엔진 입력을 꾸며내지 않는다.
@@ -1391,6 +1396,13 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "target_cpa", unlocks: "성과 기준 CPT 조정" },
                 { key: "target_cpt", unlocks: "CPT 권장값 기준" },
                 { key: "current_cpt", unlocks: "현재 CPT에서 증감액 계산" },
+              ],
+              "5-29": [
+                { key: "campaign_name", unlocks: "캠페인 간 볼륨 이동과 캠페인 내부 변화 분해" },
+                { key: "channel", unlocks: "채널 단위 이동·내부 변화 분해" },
+                { key: "platform", unlocks: "OS별로 섞이지 않게 비교 범위 분리" },
+                { key: "country", unlocks: "국가별로 섞이지 않게 비교 범위 분리" },
+                { key: "cost", unlocks: "구성 변화와 비용 흐름 함께 확인" },
               ],
               "5-28": [
                 { key: "entry_period", unlocks: "관측 진입 시점이 다른 개체의 위험집합 보정" },

@@ -35,6 +35,7 @@ export const ITEM_KEYWORDS = {
   "5-25": "다중공선성, VIF, 분산팽창지수, 채널 상관관계, MMM 사전 점검, 기여도 분리",
   "5-27": "ASO, 앱스토어 최적화, 스토어 전환율, 제품 페이지 조회, 유입 소스별 전환, 스토어 퍼널, ASO 분석 도구",
   "5-26": "Apple Search Ads, ASA 키워드, Exact 승격, CPT 입찰 조정, 검색어 리포트, 앱스토어 검색광고",
+  "5-29": "세그먼트 구성 변화, 오디언스 구성, 믹스 효과, 성별 연령 비중 변화, 캠페인 볼륨 이동, 구성 분해, 순증 구간",
   "5-28": "핵심 액션 생존분석, 이탈 분석, Kaplan-Meier, 해저드, 중도절단, RMST, 반복 가치, 구독, 리텐션 실험",
   // 가이드도 항목 단위. GROUP_KEYWORDS만 있으면 같은 그룹의 3~4개 페이지가 제목만
   // 다르고 keywords·description이 통째로 같아져 서로 잡아먹는다(그룹 01은 4페이지가
@@ -80,6 +81,7 @@ export const ITEM_KEYWORDS_EN = {
   "5-25": "multicollinearity, VIF, variance inflation factor, channel correlation, MMM pre-check, contribution separability",
   "5-27": "ASO, app store optimization, store conversion rate, product page views, conversion by traffic source, store funnel, ASO analysis tool",
   "5-26": "Apple Search Ads, ASA keywords, exact match promotion, CPT bid adjustment, search terms report, app store search ads",
+  "5-29": "segment composition change, audience mix shift, mix vs rate decomposition, campaign volume shift, share change analysis",
   "5-28": "action survival analysis, drop-off analysis, Kaplan-Meier, hazard, censoring, RMST, recurring value, subscription, retention experiment",
   "1-1": "MMP SDK integration, technical PRD, deep link routing, mobile attribution QA",
   "1-2": "event taxonomy, in-app event spec, event naming convention, GA4 events, conversion parameters",

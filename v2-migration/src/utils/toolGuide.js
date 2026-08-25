@@ -325,6 +325,16 @@ export const TOOL_GUIDE = {
     ],
     example: "Date,Source Type,Impressions,Product Page Views,Total Downloads\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
   },
+  "5-29": {
+    when: "전체 지표가 움직였을 때 어떤 사용자 구성이 바뀌었는지 보고, 그 변화가 캠페인 간 볼륨 이동인지 캠페인 내부 변화인지 나눠 볼 때 씁니다.",
+    grain: "1행 = 기간 × (캠페인 등 분석 단위) × 세그먼트 값의 인원수. 값마다 컬럼이 나뉜 형태나 비율+전체 모수 형태도 됩니다.",
+    needs: [
+      { col: "date", label: "기간", why: "두 기간을 비교하는 도구라 날짜 또는 주차가 반드시 필요합니다", required: true },
+      { col: "(세그먼트 컬럼)", label: "세그먼트 축", why: "성별·연령·플랜처럼 이름이 무엇이든, 도구 안에서 역할만 지정하면 됩니다", required: true },
+      { col: "(인원수 컬럼)", label: "인원수 또는 비율+모수", why: "비중을 계산할 분자와 분모", required: true },
+      { col: "campaign_name", label: "분석 단위", why: "단위 간 이동과 단위 내부 변화를 나누려면 필요합니다(선택)", required: false },
+    ],
+  },
   "5-28": {
     when: "정의한 핵심 액션이 어느 기간까지 유지되고 이탈·종료 위험이 높아지는 시점을 중도절단까지 반영해 확인합니다.",
     grain: "1행 = 한 개체의 액션 시작부터 이탈·종료 또는 관측 종료까지의 액션 관측 에피소드 1건",
@@ -668,6 +678,16 @@ export const TOOL_GUIDE_EN = {
       "Page-to-install conversion still computes without an impressions column.",
     ],
     example: "Date,Source Type,Impressions,Product Page Views,Total Downloads\n2026-07-01,App Store Search,12000,4200,1900\n2026-07-01,App Store Browse,30000,3000,290\n2026-07-02,App Store Search,11500,4000,1820\n2026-07-02,App Store Browse,31000,3100,300",
+  },
+  "5-29": {
+    when: "Use it when an overall metric moved and you need to know which audience composition changed, and whether that came from volume moving between campaigns or from change inside them.",
+    grain: "1 row = period × analysis unit (campaign) × segment value head count. Member-per-column (wide) and rate-with-total layouts also work.",
+    needs: [
+      { col: "date", label: "Period", why: "This tool compares two periods, so a date or week is required", required: true },
+      { col: "(segment column)", label: "Segment axis", why: "Whatever the column is called, you declare its role inside the tool", required: true },
+      { col: "(count column)", label: "Head count, or rate with a total", why: "The numerator and denominator behind each share", required: true },
+      { col: "campaign_name", label: "Analysis unit", why: "Needed to split movement between units from change inside them (optional)", required: false },
+    ],
   },
   "5-28": {
     when: "Measure how long a defined key action persists and when drop-off or exit risk rises while retaining censored observations.",

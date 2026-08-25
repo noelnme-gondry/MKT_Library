@@ -326,6 +326,15 @@ export const IA = [
         seoDescriptionEn: "Build the store funnel from a console CSV and split conversion change into traffic mix and per-source efficiency.",
       },
       {
+        id: "5-29",
+        title: "구성 변화",
+        titleEn: "Composition change",
+        seoTitle: "세그먼트 구성 변화 분석: 이동인가 내부 변화인가",
+        seoDescription: "두 기간의 사용자 구성 변화를 세그먼트 축별로 보고, 캠페인 간 볼륨 이동과 캠페인 내부 변화로 나눕니다. 브라우저에서만 처리합니다.",
+        seoTitleEn: "Segment Composition Change Analysis",
+        seoDescriptionEn: "Compare two periods to see which audience segment shifted, then split it into movement between campaigns and change inside them, in your browser.",
+      },
+      {
         id: "5-28",
         title: "액션 생존·이탈",
         titleEn: "Action survival",

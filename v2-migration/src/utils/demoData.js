@@ -912,6 +912,59 @@ function buildContentDashboard() {
   return { raw, headers, mapping, fileName: "demo_content_dashboard.csv" };
 }
 
+// ── segment_composition (5-29) ─────────────────────────────────────────────
+// 전체 여성 비중이 21%에서 36%로 오르는데, 그 원인이 캠페인 간 볼륨 이동과
+// 캠페인 내부 구성 변화에 **둘 다** 들어 있게 설계했다. 한쪽만 넣으면 분해 표가
+// 늘 한 열만 커져서 도구가 무엇을 가르는지 데모로 보이지 않는다(§12.16).
+//   BRAND  볼륨이 커지고(이동) 내부 여성 비중도 50%→70%로 오른다(내부 변화)
+//   CPS    볼륨은 줄지만 내부 여성 비중은 8.6%→13.3%로 오른다
+// 연령 축은 같은 파일에 함께 두어 "축이 여러 개일 때 무엇이 더 움직였나"를 본다.
+function buildSegmentComposition() {
+  const headers = ["date", "campaign", "platform", "gender", "age_band", "signups", "cost"];
+  const dates = generateDates(78, "2025-03-03").filter((_, index) => index % 7 === 0); // 주 단위 12주
+  const raw = [];
+  // OS는 경쟁 범위(scope) 역할의 데모다. iOS는 성별 구성이 거의 움직이지 않게 두어
+  // "범위를 나눠 보면 결론이 달라진다"를 한 파일 안에서 확인할 수 있게 한다.
+  const PLATFORMS = [
+    { name: "Android", scale: 1, femaleLift: 1 },
+    { name: "iOS", scale: 0.45, femaleLift: 0 },
+  ];
+  dates.forEach((date, index) => {
+    const t = index / (dates.length - 1); // 0 → 1
+    // 캠페인별 볼륨: BRAND가 점점 커진다(이동).
+    const cpsTotal = 1400 - 300 * t + ((index * 37) % 5) * 12;
+    const brandTotal = 600 + 400 * t + ((index * 53) % 5) * 9;
+    // 연령은 완만하게만 움직여 "성별이 더 크게 움직였다"가 랭킹에서 드러나게 한다.
+    const youngRate = 0.62 - 0.04 * t;
+    PLATFORMS.forEach((platform) => {
+      const rows = [
+        { campaign: "CPS", total: cpsTotal, femaleRate: 0.086 + 0.047 * t * platform.femaleLift, cost: 2800000 + index * 25000 },
+        { campaign: "BRAND", total: brandTotal, femaleRate: 0.50 + 0.20 * t * platform.femaleLift, cost: 1200000 + index * 160000 },
+      ];
+      rows.forEach((row) => {
+        const total = Math.round(row.total * platform.scale);
+        const female = Math.round(total * row.femaleRate);
+        const male = total - female;
+        const split = (count) => {
+          const young = Math.round(count * youngRate);
+          return [young, count - young];
+        };
+        const [femaleYoung, femaleOld] = split(female);
+        const [maleYoung, maleOld] = split(male);
+        const cost = String(Math.round(row.cost * platform.scale));
+        raw.push(
+          { date, campaign: row.campaign, platform: platform.name, gender: "Female", age_band: "29세 이하", signups: String(femaleYoung), cost },
+          { date, campaign: row.campaign, platform: platform.name, gender: "Female", age_band: "30대 이상", signups: String(femaleOld), cost },
+          { date, campaign: row.campaign, platform: platform.name, gender: "Male", age_band: "29세 이하", signups: String(maleYoung), cost },
+          { date, campaign: row.campaign, platform: platform.name, gender: "Male", age_band: "30대 이상", signups: String(maleOld), cost },
+        );
+      });
+    });
+  });
+  // 세그먼트 축은 사용자가 선언하는 값이라 표준키 매핑에는 날짜만 둔다.
+  return { raw, headers, mapping: { date: "date" }, fileName: "demo_segment_composition.csv" };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
@@ -922,6 +975,7 @@ const BUILDERS = {
   brand_incrementality: buildBrandIncrementality,
   aso_store: buildAsoStore,
   subscription_survival: buildActionSurvival,
+  segment_composition: buildSegmentComposition,
   collinearity: buildCollinearity,
   asa_keyword: buildAsaKeyword,
   content_aha: buildContentAha,

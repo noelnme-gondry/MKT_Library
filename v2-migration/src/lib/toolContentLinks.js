@@ -26,6 +26,7 @@ const SUPPLEMENTARY_BLOG_BY_TOOL = {
   "5-18-forecast": ["marketing-mix-modeling", "budget-marginal-efficiency"],
   "5-18-trend": ["campaign-anomaly-detection"],
   "5-28": ["incrementality-measurement", "uplift-holdout-guide"],
+  "5-29": ["cohort-analysis-guide", "ad-performance-diagnosis"],
 };
 
 const SUPPLEMENTARY_GLOSSARY_BY_TOOL = {
@@ -35,6 +36,7 @@ const SUPPLEMENTARY_GLOSSARY_BY_TOOL = {
   "5-18-forecast": ["response-curve", "adstock"],
   "5-18-trend": ["mmm"],
   "5-28": ["retention", "ltv"],
+  "5-29": ["cvr", "funnel"],
 };
 
 function mergeIndex(base, supplementary) {

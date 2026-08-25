@@ -38,6 +38,7 @@ const MulticollinearityChecker = dyn(() => import("@/components/tools/Multicolli
 const AsoStoreConversion = dyn(() => import("@/components/tools/AsoStoreConversion"));
 const AsaKeywordFinder = dyn(() => import("@/components/tools/AsaKeywordFinder"));
 const SubscriptionSurvivalAnalysis = dyn(() => import("@/components/tools/SubscriptionSurvivalAnalysis"));
+const SegmentCompositionChange = dyn(() => import("@/components/tools/SegmentCompositionChange"));
 // Content Analytics (콘텐츠 도메인 — 엔진 재사용, 라벨만 신규)
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
@@ -45,7 +46,7 @@ const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTraff
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
 const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -111,6 +112,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId === "5-27" && <AsoStoreConversion />}
             {routeId === "5-26" && <AsaKeywordFinder />}
             {routeId === "5-28" && <SubscriptionSurvivalAnalysis />}
+            {routeId === "5-29" && <SegmentCompositionChange />}
 
             {routeId === "9-1" && <ContentElementAnalyzer />}
             {routeId === "9-2" && <KillerContentFinder />}
