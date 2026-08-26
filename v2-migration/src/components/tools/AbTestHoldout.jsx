@@ -16,6 +16,7 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { localizedTool } from "@/lib/toolConnections";
 import { downloadCsv } from "@/utils/download";
 import { CHART_THEME } from "@/utils/chartUtils";
+import { obfSequentialPlan } from "@/utils/sequentialTest";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -105,6 +106,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const [planPower, setPlanPower] = useState("0.80");
   const [planCprA, setPlanCprA] = useState("2500");
   const [planCprB, setPlanCprB] = useState("");
+  const [sequentialLooks, setSequentialLooks] = useState("4");
 
   // ---- Analyze mode inputs ----
   const [anNa, setAnNa] = useState("10000");
@@ -163,6 +165,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     const cprB = cprBraw === "" ? null : num(cprBraw);
     return STATS.budgetForTest({ nPerArm: planResult.n, cprA, cprB });
   }, [planResult, planCprA, planCprB]);
+  const sequentialPlan = useMemo(() => testType === "binary" && planResult?.totalN
+    ? obfSequentialPlan({ alpha: num(planAlpha), looks: num(sequentialLooks), plannedTotal: planResult.totalN })
+    : null, [planAlpha, planResult?.totalN, sequentialLooks, testType]);
 
   // ============================================================
   //  Analyze mode compute (§2)
@@ -542,6 +547,30 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                     </>
                   )}
                 </div>
+
+                {testType === "binary" && planResult && !planResult.invalid && <section className="ab-result" aria-labelledby="ab-sequential-plan-title" style={{ marginTop: "14px" }}>
+                  <h3 className="sub-title" id="ab-sequential-plan-title" style={{ marginTop: 0 }}>{tr("중간 판독 계획 · O’Brien–Fleming", "Interim-read plan · O’Brien–Fleming")}</h3>
+                  <p style={{ margin: "6px 0 10px", color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.55 }}>{tr("실험 시작 전에 중간 판독 횟수를 정하면, 초반에는 훨씬 엄격한 기준으로만 중단을 검토합니다. 계획 밖의 수시 확인에는 이 표를 적용하지 않습니다.", "Set the number of interim looks before launch. Early looks use much stricter boundaries; this table does not validate unplanned peeks.")}</p>
+                  <div className="ab-field" style={{ maxWidth: "280px" }}>
+                    <label>{tr("사전 계획한 판독 횟수", "Pre-planned number of looks")}</label>
+                    <select value={sequentialLooks} onChange={(event) => setSequentialLooks(event.target.value)}>
+                      {[2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}{tr("회", " looks")}</option>)}
+                    </select>
+                  </div>
+                  {sequentialPlan && <DataTable
+                    rows={sequentialPlan}
+                    rowKey={(row) => row.look}
+                    emptyText="—"
+                    columns={[
+                      { key: "look", label: tr("판독", "Look"), align: "right" },
+                      { key: "informationFraction", label: tr("목표 정보량", "Target information"), align: "right", fmt: (value) => `${(value * 100).toFixed(0)}%` },
+                      { key: "plannedTotal", label: tr("누적 표본", "Cumulative sample"), align: "right", fmt: (value) => value.toLocaleString() },
+                      { key: "boundaryZ", label: "|z| boundary", align: "right", fmt: (value) => value.toFixed(3) },
+                      { key: "nominalP", label: tr("이 시점 명목 p 경계", "Nominal p boundary"), align: "right", fmt: (value) => value < 0.0001 ? "< 0.0001" : value.toFixed(4) },
+                    ]}
+                  />}
+                  <p className="muted" style={{ margin: "10px 0 0", fontSize: "11px" }}>{tr("이 표는 양측 이진 전환율 z-검정의 O’Brien–Fleming형 경계 안내입니다. 적응형 중단·연속 모니터링·다른 지표에는 적용하지 않습니다.", "This is an O’Brien–Fleming-style boundary guide for a two-sided binary conversion z-test. It does not cover adaptive stopping, continuous monitoring, or other metrics.")}</p>
+                </section>}
 
                 <h3 className="sub-title" style={{ marginTop: "1.5rem" }}>{tr("예산 계산기", "Budget calculator")}</h3>
                 <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
