@@ -38,6 +38,7 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
+import HelpTip from "@/components/ds/HelpTip";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -1130,7 +1131,7 @@ export default function CsvUploader({
                 <div className={`map-status ${assessment.state}`} data-mapping-status>
                   {mappingStatusLabel[assessment.state]}
                   {!isUnmapped && assessment.reasons.length > 0 && (
-                    <span className="data-confidence-hint" role="img" tabIndex={0} aria-label={T.colHeaderStatus} data-tooltip={assessment.reasons.join(" · ")}>ⓘ</span>
+                    <HelpTip compact label={assessment.reasons.join(" · ")}>{assessment.reasons.join(" · ")}</HelpTip>
                   )}
                   {assessment.state === "must_confirm" && (
                     <button type="button" className="map-status-confirm" onClick={() => confirmHeader(h)}>{T.mappingConfirmBtn}</button>
@@ -1233,13 +1234,13 @@ export default function CsvUploader({
           <div className="csv-analysis-cta-row is-analyzed">
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
             <span className="csv-analysis-hint">{T.analyzedHint}</span>
-            <button className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
+            <button data-mobile-task=".csv-analysis-action" className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div className="csv-analysis-cta-row is-ready">
             <span className="csv-analysis-status">{T.checkMapping}</span>
             <span className="csv-analysis-hint">{T.checkMappingHint}</span>
-            <button className="ab-button csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.analyzeBtn}</button>
+            <button data-mobile-task=".csv-analysis-action" className="ab-button csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.analyzeBtn}</button>
           </div>
         )
       )}

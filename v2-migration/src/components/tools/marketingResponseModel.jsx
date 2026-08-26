@@ -13,6 +13,7 @@ import { mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
 import { mmmParseNumericValue } from "@/utils/mmmInputUtils";
 import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
 import { CHART_THEME as GLOBAL_CHART_THEME } from "@/utils/chartUtils";
+import HelpTip from "@/components/ds/HelpTip";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -1010,7 +1011,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "12px", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "18px", fontWeight: 720, color: "#7F77DD" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span style={{ fontSize: "18px", fontWeight: 720, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
         <span className="muted" style={{ fontSize: "11px" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
@@ -1517,15 +1518,7 @@ export function forecastScenarioReasonLabel(reason, tx) {
 
 export function ForecastHint({ label }) {
   return (
-    <span
-      className="data-confidence-hint"
-      tabIndex={0}
-      role="img"
-      aria-label={label}
-      data-tooltip={label}
-    >
-      ⓘ
-    </span>
+    <HelpTip compact label={label}>{label}</HelpTip>
   );
 }
 

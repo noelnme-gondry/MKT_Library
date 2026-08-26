@@ -33,6 +33,7 @@ function enhanceTable(table) {
 }
 
 function enhanceToggle(button) {
+  if (button.dataset.uiSemanticsToggle !== "true") return;
   if (button.hasAttribute("aria-selected") || button.hasAttribute("aria-checked")) return;
   if (button.hasAttribute("aria-pressed") && !button.hasAttribute("data-ui-semantics-toggle")) return;
   button.setAttribute("data-ui-semantics-toggle", "true");
@@ -43,10 +44,10 @@ function enhance(root) {
   const scope = root instanceof Element ? root : document;
   if (scope.matches?.("canvas")) enhanceCanvas(scope);
   if (scope.matches?.("table")) enhanceTable(scope);
-  if (scope.matches?.("button.ab-pill")) enhanceToggle(scope);
+  if (scope.matches?.("button.ab-pill[data-ui-semantics-toggle]")) enhanceToggle(scope);
   scope.querySelectorAll?.("canvas").forEach(enhanceCanvas);
   scope.querySelectorAll?.("table").forEach(enhanceTable);
-  scope.querySelectorAll?.("button.ab-pill").forEach(enhanceToggle);
+  scope.querySelectorAll?.("button.ab-pill[data-ui-semantics-toggle]").forEach(enhanceToggle);
 }
 
 export default function UiSemantics() {

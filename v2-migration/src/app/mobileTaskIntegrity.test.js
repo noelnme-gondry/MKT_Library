@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -20,15 +20,18 @@ const CSS = stripSourceComments(readFileSync(
   "utf-8",
 ));
 
-// 이 클래스들이 사라지면 그 화면에서 과업이 끝나지 않는다. 장식이 아니라 행동이다.
-const CORE_ACTIONS = [
-  { pattern: /\.dc-action-route--primary\b/, why: "홈의 주 진입 행동" },
-  { pattern: /\.result-action-card\b(?![-_])/, why: "결론 카드 — 결과 확인" },
-  { pattern: /\.csv-guide-example-btn\b/, why: "예시 데이터로 시작" },
-  { pattern: /\.ab-button\b/, why: "분석 실행" },
-  { pattern: /\.tool-index__link\b/, why: "도구 진입" },
-  { pattern: /\.blocked-options-note\b/, why: "막힌 이유 안내" },
-];
+function componentFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const target = path.join(dir, entry.name);
+    if (entry.isDirectory()) return componentFiles(target);
+    return entry.name.endsWith(".jsx") ? [target] : [];
+  });
+}
+
+// 핵심 행동의 정본은 컴포넌트 마크업이다. data-mobile-task가 붙은 실제 화면 요소만
+// 검사하므로 새 행동을 만들 때 가드 대상도 그 자리에서 선언된다.
+const CORE_ACTIONS = [...new Set(componentFiles(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "components"))
+  .flatMap((file) => [...readFileSync(file, "utf8").matchAll(/data-mobile-task="([^"]+)"/g)].map((match) => match[1])))];
 
 /** 모바일 미디어쿼리(≤820px) 안에서 display:none 되는 셀렉터를 모은다. */
 function hiddenOnMobile() {
@@ -52,6 +55,10 @@ function hiddenOnMobile() {
 }
 
 describe("mobile task integrity", () => {
+  it("derives its core-task targets from rendered component contracts", () => {
+    expect(CORE_ACTIONS, "data-mobile-task가 선언된 핵심 행동이 없다").toHaveLength(6);
+  });
+
   it("never hides a core action at a mobile width", () => {
     const hidden = hiddenOnMobile();
     // 대상이 0이면 스캐너가 깨진 것이다 — 규칙은 실제로 존재한다.
@@ -67,8 +74,8 @@ describe("mobile task integrity", () => {
         const target = one.trim().split(/[>+~]|\s+/).filter(Boolean).pop() || "";
         const withoutNot = target.replace(/:not\([^)]*\)/g, "");
         for (const action of CORE_ACTIONS) {
-          if (action.pattern.test(withoutNot)) {
-            offenders.push(`≤${rule.width}px "${one.trim()}" — ${action.why}`);
+          if (withoutNot.includes(action)) {
+            offenders.push(`≤${rule.width}px "${one.trim()}" — ${action}`);
           }
         }
       }

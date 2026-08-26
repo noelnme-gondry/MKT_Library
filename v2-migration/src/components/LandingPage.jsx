@@ -175,6 +175,7 @@ export default function LandingPage({ locale = "ko" }) {
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
               className="dc-action-route dc-action-route--primary"
+              data-mobile-task=".dc-action-route--primary"
               href={lang === "en" ? "/en/start" : "/start"}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >

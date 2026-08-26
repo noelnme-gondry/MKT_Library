@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { STATISTICAL_STATUS, statisticalStatusLabel } from "@/lib/analysis-router/statisticalStatus";
+import HelpTip from "@/components/ds/HelpTip";
 
 const DETAIL = {
   ko: {
@@ -39,17 +40,16 @@ export default function EvidenceStatusBadge({ status, locale = "ko", detail = ""
     <>
       <span aria-hidden>●</span>
       <strong>{statisticalStatusLabel(status, lang)}</strong>
-      <span className="evidence-status-badge__info" aria-hidden>ⓘ</span>
     </>
   );
   const className = `evidence-status-badge is-${TONE[status] || "caution"}`;
-  return glossarySlug ? (
-    <Link className={className} href={`${lang === "en" ? "/en" : ""}/glossary/${glossarySlug}`} aria-label={`${statisticalStatusLabel(status, lang)}. ${explanation}`} data-tooltip={explanation}>
-      {content}
-    </Link>
-  ) : (
-    <span className={className} role="status" tabIndex={0} aria-label={`${statisticalStatusLabel(status, lang)}. ${explanation}`} data-tooltip={explanation}>
-      {content}
+  const label = `${statisticalStatusLabel(status, lang)}. ${explanation}`;
+  return (
+    <span className={className} role="status" aria-label={label}>
+      {glossarySlug ? (
+        <Link href={`${lang === "en" ? "/en" : ""}/glossary/${glossarySlug}`} aria-label={label}>{content}</Link>
+      ) : <span aria-label={label}>{content}</span>}
+      <HelpTip compact label={label}>{explanation}</HelpTip>
     </span>
   );
 }

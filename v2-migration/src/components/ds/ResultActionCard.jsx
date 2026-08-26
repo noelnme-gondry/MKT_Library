@@ -247,7 +247,7 @@ export default function ResultActionCard({
   };
   return (
     <AnalysisExportProvider value={canExportWorkbook ? analysisExport : null}>
-    <section ref={cardRef} className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
+    <section ref={cardRef} data-mobile-task=".result-action-card" className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">
         <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
         <div className="result-action-card__copy">

@@ -58,16 +58,16 @@ function PvBadge({ p, locale = "ko" }) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   if (!isFinite(p)) return <span style={{ color: "var(--text-muted)" }}>—</span>;
   if (p < 0.01)
-    return <span className="pill tier-1" style={{ color: "#22c55e" }}>p &lt; 0.01</span>;
+    return <span className="pill tier-1" style={{ color: "var(--success)" }}>p &lt; 0.01</span>;
   if (p < 0.05)
-    return <span className="pill tier-2" style={{ color: "#22c55e" }}>p &lt; 0.05</span>;
+    return <span className="pill tier-2" style={{ color: "var(--success)" }}>p &lt; 0.05</span>;
   return <span className="pill tier-3" style={{ color: "var(--text-muted)" }}>{tr("p ≥ 0.05 (비유의)", "p ≥ 0.05 (not significant)")}</span>;
 }
 
 /* verdict 색: sig+ green / sig- red / non-sig gray */
 function verdictColor(p, liftPositive) {
   if (!isFinite(p) || p >= 0.05) return "var(--text-muted)";
-  return liftPositive ? "#22c55e" : "#ef4444";
+  return liftPositive ? "var(--success)" : "var(--danger)";
 }
 
 export default function AbTestHoldout({ locale = "ko" } = {}) {

@@ -2064,13 +2064,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                           >
                             {r.ch}
                           </span>
-                          <span style={{ whiteSpace: "nowrap", fontSize: "12px", fontWeight: r.isVerified ? 600 : 400, color: r.isVerified ? "#5ad19a" : "var(--text-secondary)" }}>
+                          <span style={{ whiteSpace: "nowrap", fontSize: "12px", fontWeight: r.isVerified ? 600 : 400, color: r.isVerified ? "var(--success)" : "var(--text-secondary)" }}>
                             {r.isVerified ? tr("✓ 확인됨", "✓ Confirmed") : tr("대기중", "Pending")}
                           </span>
                         </div>
                         <div>
                           {r.problemReason && (
-                            <div style={{ color: "#f0917e", fontSize: "11.5px", fontWeight: 600, marginBottom: "2px" }}>⚠ {r.problemReason}</div>
+                            <div style={{ color: "var(--danger)", fontSize: "11.5px", fontWeight: 600, marginBottom: "2px" }}>⚠ {r.problemReason}</div>
                           )}
                           <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                             {tr("선택된 모델:", "Selected model:")} <strong>{r.modelLabel}</strong>{r.r2 != null ? ` · R² ${r.r2.toFixed(2)}` : ""} · n={r.n}
@@ -2132,9 +2132,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   {selectedRow.r2 != null ? <> · R² <strong className="tnum">{selectedRow.r2.toFixed(3)}</strong></> : null}
                   {" "}· {tr(`데이터 ${selectedRow.n}개${selectedRow.removed > 0 ? ` (이상치 ${selectedRow.removed}개 제외)` : ""}`, `${selectedRow.n} data points${selectedRow.removed > 0 ? ` (${selectedRow.removed} outliers excluded)` : ""}`)}
                   {selectedRow.problemReason ? (
-                    <span style={{ color: "#f0917e" }}> · ⚠ {selectedRow.problemReason}</span>
+                    <span style={{ color: "var(--danger)" }}> · ⚠ {selectedRow.problemReason}</span>
                   ) : (
-                    <span style={{ color: "#5ad19a" }}> · {tr("통과", "Passed")}</span>
+                    <span style={{ color: "var(--success)" }}> · {tr("통과", "Passed")}</span>
                   )}
                 </div>
               )}

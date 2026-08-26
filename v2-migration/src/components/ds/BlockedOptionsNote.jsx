@@ -15,7 +15,7 @@ export default function BlockedOptionsNote({ items = [], className = "" }) {
   const blocked = items.filter((item) => item && item.reason);
   if (!blocked.length) return null;
   return (
-    <p className={`blocked-options-note ${className}`.trim()} role="note">
+    <p data-mobile-task=".blocked-options-note" className={`blocked-options-note ${className}`.trim()} role="note">
       {blocked.map((item, index) => (
         <span key={item.label || index}>
           {item.label ? <strong>{item.label}</strong> : null}
