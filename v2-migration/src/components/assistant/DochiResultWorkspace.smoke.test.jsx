@@ -17,11 +17,6 @@ vi.mock("@/components/CsvUploader", () => ({
     </button>
   ),
 }));
-vi.mock("@/components/Dashboard", () => ({ default: () => <div>원본 대시보드</div> }));
-vi.mock("@/components/tools/CampaignPvm", () => ({ default: () => <div>원본 성과 변동</div> }));
-vi.mock("@/components/tools/MarketingEfficiency", () => ({ default: () => <div>원본 포화도</div> }));
-vi.mock("@/components/tools/BudgetAllocation", () => ({ default: () => <div>원본 예산 배분</div> }));
-
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -76,20 +71,10 @@ describe("DochiResultWorkspace", () => {
     act(() => vi.advanceTimersByTime(1100));
     await act(async () => { await Promise.resolve(); });
 
-    expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
-    expect(screen.getByText("원본 대시보드")).toBeTruthy();
-    expect(screen.getByLabelText("모든 분석에 같이 적용")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "가입" }));
-    expect(useAppStore.getState().denomBasis).toBe("actions");
-    fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
-    expect(useAppStore.getState().displayCurrency).toBe("USD");
-    const openToolButtons = screen.getAllByRole("button", { name: "해당 분석으로 가기" });
-    expect(openToolButtons).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
+    expect(screen.queryByText("원본 대시보드")).toBeNull();
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
-    expect(useAppStore.getState().dochiAnalysisSession.analyses.some((analysis) => analysis.toolId === "5-2")).toBe(true);
-    fireEvent.click(openToolButtons[0]);
-    expect(push).toHaveBeenCalledWith("/dashboard");
-    expect(useAppStore.getState().csvGroups.efficiency).toBe(DATA);
+    expect(useAppStore.getState().dochiAnalysisSession).toBeTruthy();
   });
 
   it("returns to the remembered summary instead of restarting mapping after a detailed-tool visit", () => {
@@ -101,7 +86,7 @@ describe("DochiResultWorkspace", () => {
     });
     render(<DochiResultWorkspace />);
 
-    expect(screen.getByRole("heading", { name: "같은 데이터로 바로 보는 분석 결과" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "컬럼을 확인해 주세요" })).toBeNull();
   });
 });

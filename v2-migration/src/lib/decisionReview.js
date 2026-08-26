@@ -2,9 +2,10 @@
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
 import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 
-export const DECISION_REVIEW_SCHEMA_VERSION = 7;
+export const DECISION_REVIEW_SCHEMA_VERSION = 8;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -27,6 +28,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "baselineDate",
   "comparisonWindowDays",
   "comparisonScope",
+  "datasetSnapshot",
   "reviewQuestion",
   "reviewDate",
   "sourcePeriod",
@@ -59,6 +61,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "baseline_date",
   "comparison_window_days",
   "comparison_scope",
+  "dataset_snapshot",
   "review_question",
   "review_date",
   "source_period",
@@ -82,6 +85,7 @@ const FIELD_LIMITS = Object.freeze({
   metric: 120,
   baseline: 160,
   comparisonScope: 5000,
+  datasetSnapshot: 1200,
   reviewQuestion: 500,
   sourcePeriod: 160,
   actual: 500,
@@ -357,6 +361,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     baselineDate: asDate(field(row, "baselineDate", "baseline_date")),
     comparisonWindowDays: asComparisonWindowDays(field(row, "comparisonWindowDays", "comparison_window_days")),
     comparisonScope: normalizeDecisionComparisonScope(field(row, "comparisonScope", "comparison_scope")),
+    datasetSnapshot: serializeDatasetContinuitySnapshot(readDatasetContinuitySnapshot(field(row, "datasetSnapshot", "dataset_snapshot"))),
     reviewQuestion: asText(field(row, "reviewQuestion", "review_question"), FIELD_LIMITS.reviewQuestion),
     reviewDate: asDate(field(row, "reviewDate", "review_date")),
     sourcePeriod: asText(field(row, "sourcePeriod", "source_period"), FIELD_LIMITS.sourcePeriod),
@@ -406,6 +411,7 @@ export function serializeDecisionReviewCsv(records = []) {
     record.baselineDate,
     record.comparisonWindowDays,
     record.comparisonScope,
+    record.datasetSnapshot,
     record.reviewQuestion,
     record.reviewDate,
     record.sourcePeriod,

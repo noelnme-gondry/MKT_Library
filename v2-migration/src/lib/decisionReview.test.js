@@ -85,6 +85,26 @@ describe("decision review CSV contract", () => {
     expect(getDecisionReviewStatus({ reviewedAt: "2026-08-01T00:00:00.000Z" })).toBe("reviewed");
   });
 
+  it("keeps only a valid local dataset continuity snapshot", () => {
+    const [record] = normalizeDecisionReviewRows([{
+      action: "예산 유지",
+      dataset_snapshot: JSON.stringify({
+        version: 1,
+        dataGroup: "efficiency",
+        dateStart: "2026-08-01",
+        dateEnd: "2026-08-07",
+        dateCount: 7,
+        grain: "day",
+        mappingSignature: "abc",
+        dateDigest: "def",
+        rawValues: "must not survive",
+      }),
+    }]);
+    expect(record.datasetSnapshot).toContain('"dateDigest":"def"');
+    expect(record.datasetSnapshot).not.toContain("rawValues");
+    expect(normalizeDecisionReviewRows([{ action: "나쁜 스냅샷", dataset_snapshot: "{not-json" }])[0].datasetSnapshot).toBe("");
+  });
+
   it("preserves only a valid internal source route and labels the later review method honestly", () => {
     const [record] = normalizeDecisionReviewRows([{
       tool_id: "5-18",
