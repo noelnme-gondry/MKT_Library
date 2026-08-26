@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
+import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { useAppStore } from "@/store/useDataStore";
 
 const COPY = {
@@ -40,6 +41,14 @@ export default function DochiAssistant({ locale = "ko" }) {
   useEffect(() => {
     startMyData();
   }, [startMyData]);
+  useEffect(() => {
+    if (!savedDatasets.length) return;
+    trackProductEventOnce(
+      "workspace_resume_prompt_viewed",
+      productEventKey("dochi_home", locale),
+      { source: "workspace_storage", placement: "dochi_home", state: "available", locale },
+    );
+  }, [locale, savedDatasets.length]);
 
   const beginImport = () => setPhase("importing");
   const openResultWorkspace = () => {
@@ -58,7 +67,10 @@ export default function DochiAssistant({ locale = "ko" }) {
       <div className="dochi-home-assistant__speech" aria-live="polite">
         <p className="dochi-home-assistant__hello">{copy.greeting}</p>
         <p>{status || copy.prompt}</p>
-        {phase !== "importing" && savedDatasets.length > 0 && <button type="button" className="dochi-home-assistant__resume" onClick={() => router.push(locale === "en" ? "/en/storage" : "/storage")}>{copy.resume} →</button>}
+        {phase !== "importing" && savedDatasets.length > 0 && <button type="button" className="dochi-home-assistant__resume" onClick={() => {
+          trackProductEvent("workspace_resume_clicked", { source: "workspace_storage", placement: "dochi_home", state: "available", locale });
+          router.push(locale === "en" ? "/en/storage" : "/storage");
+        }}>{copy.resume} →</button>}
         <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" sheetInitiallyOpen onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
         <small>{copy.privacy}</small>
         <span className="dochi-home-assistant__speech-tail" aria-hidden="true">

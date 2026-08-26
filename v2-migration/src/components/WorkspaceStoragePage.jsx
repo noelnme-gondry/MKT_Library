@@ -7,6 +7,7 @@ import { findMeta, useAppStore } from "@/store/useDataStore";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { hasEnVersion, idToPath } from "@/lib/routeMap";
 import { workspaceResumeRouteId } from "@/lib/workspaceResume";
+import { trackProductEvent } from "@/lib/analytics";
 
 const COPY = {
   ko: {
@@ -97,7 +98,15 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
     const routeId = workspaceResumeRouteId(dataset.group);
     if (!routeId || openingGroup) return;
     setOpeningGroup(dataset.group);
+    trackProductEvent("workspace_resume_clicked", { source: "workspace_storage", placement: "storage_list", state: "available", locale });
     await restore();
+    const didRestoreGroup = Boolean(useAppStore.getState().csvGroups[dataset.group]?.raw?.length);
+    if (!didRestoreGroup) {
+      trackProductEvent("workspace_restore_completed", { source: "workspace_storage", placement: "storage_list", state: "failed", locale });
+      setOpeningGroup(null);
+      return;
+    }
+    trackProductEvent("workspace_restore_completed", { source: "workspace_storage", placement: "storage_list", state: "success", locale });
     const path = idToPath(routeId);
     router.push(locale === "en" && hasEnVersion(routeId) ? `/en${path}` : path);
   };
