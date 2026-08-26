@@ -88,6 +88,8 @@ describe("AbTestHoldout render smoke", () => {
     // Default tab is "design" — exercises plan compute, threshold matrix, power curve chart.
     expect(() => render(<AbTestHoldout />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
+    expect(screen.getByText("중간 판독 계획 · O’Brien–Fleming")).toBeTruthy();
+    expect(screen.getByText(/계획 밖의 수시 확인에는 이 표를 적용하지 않습니다/)).toBeTruthy();
   });
 
   it("describes continuous readout with the same Student-t contract used by the engine", () => {
