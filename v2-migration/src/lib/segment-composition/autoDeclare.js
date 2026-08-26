@@ -11,7 +11,8 @@
  *  - 자동 선언은 사용자가 손대는 순간 멈춘다(호출부 책임).
  * ============================================================ */
 
-import { profileSegmentCandidates, CANDIDATE_STATUS, CANDIDATE_REASON } from "@/lib/segment-composition/profileSegmentCandidates";
+import { profileSegmentCandidates, CANDIDATE_REASON } from "@/lib/segment-composition/profileSegmentCandidates";
+import { normalizePeriod } from "@/lib/segment-composition/segmentPanel";
 
 export const AUTO_LIMITS = {
   maxAxes: 6,        // 축이 이보다 많으면 랭킹이 아니라 벽이 된다
@@ -78,11 +79,21 @@ export function autoDeclare({ headers = [], rows = [], limits = AUTO_LIMITS } = 
   if (spendColumn) take(spendColumn, "spend", "비용으로 읽히는 컬럼");
   if (totalColumn) take(totalColumn, "population", "전체 모수로 읽히는 컬럼");
 
-  // ③ 분석 단위·경쟁 범위 — 축 후보 중 이름이 캠페인·OS 계열인 것.
-  const candidates = profile.candidates.filter((column) => !used.has(column.header));
-  const entity = candidates.filter((column) => PATTERNS.entity.test(column.header)).slice(0, limits.maxEntities);
+  /* ③ 분석 단위·경쟁 범위 — 세그먼트 축의 cardinality 제한을 역할 컬럼에
+   * 재사용하지 않는다. 캠페인이 20개를 넘는다는 이유로 분석 단위가 사라지면
+   * 핵심인 캠페인 간 이동 vs 내부 변화 분해가 잠긴다. */
+  const roleCandidates = profile.columns.filter((column) => (
+    !used.has(column.header)
+    && !column.reasons.includes(CANDIDATE_REASON.DATE_COLUMN)
+    && !column.reasons.includes(CANDIDATE_REASON.MEASURE_LIKE)
+  ));
+  const entity = roleCandidates.filter((column) => PATTERNS.entity.test(column.header)).slice(0, limits.maxEntities);
   entity.forEach((column) => take(column.header, "entity", "캠페인·채널로 읽히는 컬럼"));
-  const scope = candidates.filter((column) => !used.has(column.header) && PATTERNS.scope.test(column.header)).slice(0, limits.maxScopes);
+  const scope = roleCandidates.filter((column) => (
+    !used.has(column.header)
+    && !column.reasons.includes(CANDIDATE_REASON.SINGLE_VALUE)
+    && PATTERNS.scope.test(column.header)
+  )).slice(0, limits.maxScopes);
   scope.forEach((column) => take(column.header, "scope", "OS·국가처럼 섞으면 안 되는 범위"));
 
   // ④ 남은 후보 전부가 세그먼트 축이다. 하나만 고르라고 하지 않는다 — 엔진이 랭킹한다.
@@ -147,8 +158,15 @@ export function autoDeclare({ headers = [], rows = [], limits = AUTO_LIMITS } = 
 
 /** 최근 기간 vs 직전 기간 — 사용자가 고르기 전의 기본 비교. */
 export function defaultPeriods(rows, timeColumn) {
-  if (!timeColumn) return { pre: "", post: "" };
-  const periods = [...new Set(rows.map((row) => String(row?.[timeColumn] ?? "").trim()).filter(Boolean))].sort();
+  const periods = periodKeys(rows, timeColumn);
   if (periods.length < 2) return { pre: "", post: "" };
   return { pre: periods[periods.length - 2], post: periods[periods.length - 1] };
+}
+
+/** 패널과 같은 기간 키를 써 필터 선택값과 정규화 레코드가 어긋나지 않게 한다. */
+export function periodKeys(rows, timeColumn) {
+  if (!timeColumn) return [];
+  return [...new Set(rows
+    .map((row) => normalizePeriod(row?.[timeColumn])?.key || "")
+    .filter(Boolean))].sort();
 }

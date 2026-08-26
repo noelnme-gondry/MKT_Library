@@ -8,12 +8,13 @@ import SegmentRoleMapper from "@/components/data-import/SegmentRoleMapper";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DataTable from "@/components/ds/DataTable";
 import DownloadHub from "@/components/ds/DownloadHub";
+import AnalysisFilterField from "@/components/ds/AnalysisFilterField";
 import { useAppStore } from "@/store/useDataStore";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { csvBody, downloadCsv } from "@/utils/download";
 import { fmtNum, fmtPct } from "@/utils/format";
 import { buildSegmentPanel, PANEL_STATUS } from "@/lib/segment-composition/segmentPanel";
-import { autoDeclare, defaultPeriods } from "@/lib/segment-composition/autoDeclare";
+import { autoDeclare, defaultPeriods, periodKeys } from "@/lib/segment-composition/autoDeclare";
 import { segmentMappingSignature } from "@/lib/segment-composition/mappingSignature";
 import {
   compareDistribution, decomposeMixRate, netNewProfile, rankDimensions,
@@ -112,16 +113,6 @@ const reasonLabel = (reason, locale) => ({
   [SEGMENT_REASON.MIX_RATE_UNAVAILABLE]: tx(locale, "전체 모수나 분석 단위가 없어 이동·내부 변화를 나눌 수 없습니다", "Without a total population or analysis unit, movement cannot be separated"),
 }[reason] || reason);
 
-const periodsOf = (rows, timeColumn) => {
-  if (!timeColumn) return [];
-  const values = new Set();
-  rows.forEach((row) => {
-    const value = String(row?.[timeColumn] ?? "").trim();
-    if (value) values.add(value);
-  });
-  return [...values].sort();
-};
-
 export function buildCompositionChartData(distribution, locale) {
   const members = distribution.members.filter((member) => member.preShare != null || member.postShare != null);
   return {
@@ -198,7 +189,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
   // 선언이 비어 있으면 섹션 자체가 열리지 않는다.
   const [design, setDesign] = useState({ cutoff: "", treated: "", control: "" });
 
-  const periods = useMemo(() => periodsOf(rows, mapping.roles.time), [rows, mapping.roles.time]);
+  const periods = useMemo(() => periodKeys(rows, mapping.roles.time), [rows, mapping.roles.time]);
   const signature = useMemo(
     () => segmentMappingSignature({ fileName: csvData?.fileName || "", rowCount: rows.length, ...mapping }),
     [csvData?.fileName, rows.length, mapping],
@@ -221,10 +212,11 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     [ready, signature, pre, post, scopeColumn, draft.scopeValue, draft.dimensionId, draft.memberId],
   );
 
+  const canBuildPanel = Boolean(gateOpen && mapping.roles.time && mapping.dimensions.length);
   const panel = useMemo(() => {
-    if (!active) return null;
+    if (!canBuildPanel) return null;
     return buildSegmentPanel({ rows, roles: mapping.roles, dimensions: mapping.dimensions });
-  }, [active, rows, mapping.roles, mapping.dimensions]);
+  }, [canBuildPanel, rows, mapping.roles, mapping.dimensions]);
 
   const analysis = useMemo(() => {
     if (!panel || !active) return null;
@@ -541,25 +533,21 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">
       <h2 id="segment-composition-compare" className="section-title">{tx(locale, "비교 조건", "Comparison")}</h2>
-      <div className="form-row">
-        <label>{tx(locale, "이전 기간", "Earlier period")}
-          <select value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
+      <div className="analysis-local-controls">
+        <div className="analysis-local-controls__inner">
+          <AnalysisFilterField label={tx(locale, "이전 기간", "Earlier period")} value={pre} onChange={(event) => setDraft((value) => ({ ...value, pre: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
-          </select>
-        </label>
-        <label>{tx(locale, "이후 기간", "Later period")}
-          <select value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
+          </AnalysisFilterField>
+          <AnalysisFilterField label={tx(locale, "이후 기간", "Later period")} value={post} onChange={(event) => setDraft((value) => ({ ...value, post: event.target.value }))}>
             <option value="">{tx(locale, "선택", "Select")}</option>
             {periods.map((period) => <option key={period} value={period}>{period}</option>)}
-          </select>
-        </label>
-        {scopeValues.length ? <label>{tx(locale, "경쟁 범위", "Scope")}
-          <select value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
+          </AnalysisFilterField>
+          {scopeValues.length ? <AnalysisFilterField label={tx(locale, "경쟁 범위", "Scope")} value={draft.scopeValue} onChange={(event) => setDraft((value) => ({ ...value, scopeValue: event.target.value }))}>
             <option value="">{tx(locale, "전체", "All")}</option>
             {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
-        </label> : null}
+          </AnalysisFilterField> : null}
+        </div>
       </div>
       {!gateOpen ? <p className="muted">{tx(locale, "업로드 화면의 ‘데이터 분석하기’를 누르면 결과가 나옵니다.", "Choose Analyze data on the upload panel to see results.")}</p> : null}
       {gateOpen && !ready ? <p className="muted">{tx(locale, "서로 다른 두 기간이 있어야 비교할 수 있습니다.", "Two different periods are needed to compare.")}</p> : null}
@@ -685,25 +673,21 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
             "먼저 위에서 OS·국가 같은 컬럼을 경쟁 범위로 지정해 주세요. 처리군과 대조군은 그 값에서 고릅니다.",
             "First declare a column such as OS or country as the competition scope. Treated and control groups are picked from its values.")}</p>
         ) : (
-          <div className="form-row">
-            <label>{tx(locale, "개입 시점", "Intervention date")}
-              <select value={design.cutoff} onChange={(event) => setDesign((value) => ({ ...value, cutoff: event.target.value }))}>
+          <div className="analysis-local-controls">
+            <div className="analysis-local-controls__inner">
+              <AnalysisFilterField label={tx(locale, "개입 시점", "Intervention date")} value={design.cutoff} onChange={(event) => setDesign((value) => ({ ...value, cutoff: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {periods.map((period) => <option key={period} value={period}>{period}</option>)}
-              </select>
-            </label>
-            <label>{tx(locale, "처리 범위", "Treated scope")}
-              <select value={design.treated} onChange={(event) => setDesign((value) => ({ ...value, treated: event.target.value }))}>
+              </AnalysisFilterField>
+              <AnalysisFilterField label={tx(locale, "처리 범위", "Treated scope")} value={design.treated} onChange={(event) => setDesign((value) => ({ ...value, treated: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </label>
-            <label>{tx(locale, "대조 범위", "Control scope")}
-              <select value={design.control} onChange={(event) => setDesign((value) => ({ ...value, control: event.target.value }))}>
+              </AnalysisFilterField>
+              <AnalysisFilterField label={tx(locale, "대조 범위", "Control scope")} value={design.control} onChange={(event) => setDesign((value) => ({ ...value, control: event.target.value }))}>
                 <option value="">{tx(locale, "선택", "Select")}</option>
                 {scopeValues.map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </label>
+              </AnalysisFilterField>
+            </div>
           </div>
         )}
 

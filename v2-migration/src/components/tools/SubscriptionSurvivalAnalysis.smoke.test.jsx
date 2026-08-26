@@ -33,6 +33,13 @@ function confirmEventDefinition(locale = "ko") {
 }
 
 describe("SubscriptionSurvivalAnalysis render smoke", () => {
+  it("uses the shared local-control filter appearance", () => {
+    const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
+    expect(container.querySelector(".analysis-local-controls__inner")).toBeTruthy();
+    expect(container.querySelector(".form-row")).toBeNull();
+    expect(container.querySelectorAll(".mon-filter-item")).toHaveLength(9);
+  });
+
   it("keeps the result behind an explicit analysis action and renders survival evidence", () => {
     const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     expect(container.querySelector("#subscription-survival-result")).toBeNull();

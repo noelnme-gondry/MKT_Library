@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 import React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { buildSegmentPanel } from "@/lib/segment-composition/segmentPanel";
 import SegmentCompositionChange from "@/components/tools/SegmentCompositionChange";
 import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
+
+vi.mock("@/lib/segment-composition/segmentPanel", async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, buildSegmentPanel: vi.fn(actual.buildSegmentPanel) };
+});
 
 const DEMO = buildDemoCsv("segment_composition");
 const HEADERS = DEMO.headers;
@@ -59,11 +65,42 @@ describe("SegmentCompositionChange render smoke", () => {
     expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
   });
 
+  it("비제로패딩 날짜도 정규화 패널의 기간과 연결한다", () => {
+    const rows = DEMO.raw.map((row) => ({ ...row, date: row.date.replace(/-0(\d)/g, "-$1") }));
+    const { container } = render(<SegmentCompositionChange rows={rows} headers={HEADERS} analyzed />);
+
+    expect(screen.getByLabelText("이전 기간").value).toBe(PERIODS[PERIODS.length - 2]);
+    expect(screen.getByLabelText("이후 기간").value).toBe(PERIODS[PERIODS.length - 1]);
+    expect(container.querySelector("#segment-composition-result")).toBeTruthy();
+    expect(container.querySelector("#segment-composition-result").textContent).not.toContain("비교할 세그먼트 축이 없습니다");
+  });
+
   it("기간을 바꾸면 결과가 따라 바뀐다", () => {
     const { container } = mount();
     const before = container.querySelector("#segment-composition-result").textContent;
     fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } });
     expect(container.querySelector("#segment-composition-result").textContent).not.toBe(before);
+  });
+
+  it("기간·범위 필터를 바꿔도 정규화 패널을 다시 만들지 않는다", () => {
+    buildSegmentPanel.mockClear();
+    mount();
+    expect(buildSegmentPanel).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByLabelText("이전 기간"), { target: { value: PERIODS[0] } });
+    fireEvent.change(screen.getByLabelText("경쟁 범위"), { target: { value: "Android" } });
+    expect(buildSegmentPanel).toHaveBeenCalledTimes(1);
+  });
+
+  it("비교·인과 필터가 공용 로컬 컨트롤 모양을 쓴다", () => {
+    const { container } = mount();
+    const comparison = container.querySelector("[aria-labelledby='segment-composition-compare']");
+    const causal = container.querySelector("#segment-composition-causal");
+
+    expect(comparison.querySelector(".analysis-local-controls__inner")).toBeTruthy();
+    expect(causal.querySelector(".analysis-local-controls__inner")).toBeTruthy();
+    expect(container.querySelector(".form-row")).toBeNull();
+    expect(container.querySelectorAll(".mon-filter-select").length).toBeGreaterThanOrEqual(6);
   });
 
   it("매핑을 고치는 경로는 접어 두되 사라지지 않는다", () => {
