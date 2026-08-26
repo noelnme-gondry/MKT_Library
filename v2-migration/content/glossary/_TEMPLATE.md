@@ -10,12 +10,18 @@ term: "예시 용어"                      # (필수) 화면 표시용 용어명
 shortDef: "이 용어를 한 문장으로 정의"    # (필수) 목록/카드/메타 설명에 쓰이는 한 줄 정의
 description: "검색 meta description. shortDef보다 조금 길어도 됨(80자 이내 권장)"
 date: "2026-07-18"                    # (필수) ISO 형식
+updated: "2026-08-26"                 # (선택) 본문·링크·구조화 데이터가 실제로 크게 바뀐 날만 기록
 slug: "example-term"                  # (필수) URL 경로 → /glossary/example-term
 keywords: "용어 뜻, 용어 정의, 관련 검색어"  # (필수)
 category: "기초 지표"                  # (필수, 없으면 "기타"로 폴백) 필터 UI용.
                                         # 기존 카테고리: 기초 지표 / 측정·분석 방법론 / 예산·최적화 / 트래킹·기술
                                         # (새 카테고리를 만들면 EN 파일에도 영문명 맞춰 추가)
 relatedPosts: ["marketing-mix-modeling"]  # (선택) 이 용어를 깊게 다루는 기존 블로그 글 slug
+reviewedAt: "2026-08-26"              # (선택) 사실·링크를 마지막으로 검토한 날
+reviewer: "Growth Opt Playbook"        # (선택) 실제 검토 책임자 또는 역할
+# sources:                              # (선택) 정의·계산법을 확인한 1차·권위 출처
+#   - title: "공식 출처 제목"
+#     url: "https://example.com/reference"
 draft: true                           # (선택) true면 미발행
 #
 # EN 버전: content/glossary-en/<같은 slug>.md 로 같이 작성(카테고리 영문명 매핑:

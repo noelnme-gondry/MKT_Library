@@ -39,6 +39,15 @@ describe.each(["ko", "en"])("glossary SERP budget (%s)", (locale) => {
     expect(terms.length).toBeGreaterThan(0);
   });
 
+  it("normalizes freshness and editorial metadata for every term", () => {
+    for (const term of terms) {
+      expect(typeof term.updated).toBe("string");
+      expect(typeof term.reviewedAt).toBe("string");
+      expect(typeof term.reviewer).toBe("string");
+      expect(Array.isArray(term.sources)).toBe(true);
+    }
+  });
+
   // seoTitle이 비면 라우트가 "term 뜻 — 용어사전" 폴백을 쓰는데, 그러면 정식
   // 엔티티명(영문 풀네임 괄호 포함)이 그대로 제목 앞자리를 먹어 잘린다.
   it.each(terms.map((t) => [t.slug, t]))("%s keeps its search title within budget", (_slug, term) => {

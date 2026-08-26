@@ -16,6 +16,11 @@ const routeLastModified = (routeId) => {
   return value ? new Date(`${value}T00:00:00Z`) : undefined;
 };
 
+export const contentLastModified = (item) => {
+  const value = item?.updated || item?.date;
+  return value ? new Date(value) : undefined;
+};
+
 // Next 16 auto-serves this at /sitemap.xml. Tool/SOP URLs derive from the routeMap
 // SSOT (no drift when tools change). Blog는 routeMap 밖(fs 기반)이라 getAllPosts로
 // 직접 추가 — 목록(/blog) + 발행 글별(/blog/<slug>). 0편이면 /blog 목록만.
@@ -51,7 +56,7 @@ export default function sitemap() {
     { url: `${BASE}/blog`, lastModified: latestDate(posts), changeFrequency: "weekly", priority: 0.7 },
     ...posts.map((p) => ({
       url: `${BASE}/blog/${p.slug}`,
-      lastModified: p.updated || p.date ? new Date(p.updated || p.date) : undefined,
+      lastModified: contentLastModified(p),
       changeFrequency: "weekly",
       priority: 0.7,
     })),
@@ -120,7 +125,7 @@ export default function sitemap() {
     { url: `${BASE}/glossary`, lastModified: latestDate(glossaryTerms), changeFrequency: "weekly", priority: 0.6 },
     ...glossaryTerms.map((t) => ({
       url: `${BASE}/glossary/${t.slug}`,
-      lastModified: t.date ? new Date(t.date) : undefined,
+      lastModified: contentLastModified(t),
       changeFrequency: "monthly",
       priority: 0.5,
     })),
@@ -140,7 +145,7 @@ export default function sitemap() {
     { url: `${BASE}/en/blog`, lastModified: latestDate(enPosts), changeFrequency: "weekly", priority: 0.7 },
     ...enPosts.map((p) => ({
       url: `${BASE}/en/blog/${p.slug}`,
-      lastModified: p.updated || p.date ? new Date(p.updated || p.date) : undefined,
+      lastModified: contentLastModified(p),
       changeFrequency: "weekly",
       priority: 0.7,
     })),
@@ -161,7 +166,7 @@ export default function sitemap() {
     { url: `${BASE}/en/glossary`, lastModified: latestDate(enGlossaryTerms), changeFrequency: "weekly", priority: 0.6 },
     ...enGlossaryTerms.map((t) => ({
       url: `${BASE}/en/glossary/${t.slug}`,
-      lastModified: t.date ? new Date(t.date) : undefined,
+      lastModified: contentLastModified(t),
       changeFrequency: "monthly",
       priority: 0.5,
     })),

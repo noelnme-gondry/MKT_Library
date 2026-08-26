@@ -5,6 +5,7 @@ import { getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import EditorialTrust from "@/components/seo/EditorialTrust";
 
 export function generateStaticParams() {
   return getAllTerms().map((t) => ({ slug: t.slug }));
@@ -31,6 +32,8 @@ export async function generateMetadata({ params }) {
       title: term.seoTitle || `${term.term} 뜻`,
       description: term.description,
       url: canonical,
+      publishedTime: term.date || undefined,
+      modifiedTime: term.updated || term.date || undefined,
       images: [`${SITE_URL}/og-card.png`],
     }),
   };
@@ -105,6 +108,13 @@ export default async function GlossaryTermPage({ params }) {
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
 
       <ContentActionPanel term={term} />
+
+      <EditorialTrust
+        reviewer={term.reviewer}
+        reviewedAt={term.reviewedAt}
+        sources={term.sources}
+        contentType="glossary"
+      />
 
       {term.faq.length > 0 && (
         <section className="blog-faq" aria-label="자주 묻는 질문">
