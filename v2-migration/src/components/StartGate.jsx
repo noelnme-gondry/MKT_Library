@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
@@ -12,6 +12,9 @@ import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import ToolIndex from "@/components/ds/ToolIndex";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
 import { DOCHI_HANDOFF_KEY, DochiArrivalTransition } from "@/components/assistant/DochiHandoffMotion";
+import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
+import { buildDatasetContinuitySnapshot, classifyDatasetContinuity } from "@/lib/dataContinuity";
+import { groupForRoute } from "@/lib/toolGroups";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
@@ -67,11 +70,13 @@ export default function StartGate({ locale = "ko" }) {
   const router = useRouter();
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
+  const decisionRecords = useAppStore((s) => s.decisionRecords);
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
   const [isDochiArrival, setIsDochiArrival] = useState(false);
   const [mappingCoachPhase, setMappingCoachPhase] = useState("hidden");
   const [eligibilitySnapshot, setEligibilitySnapshot] = useState(null);
   const mappingCoachTimerRef = useRef(null);
+  const workspaceRef = useRef(null);
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
@@ -111,6 +116,19 @@ export default function StartGate({ locale = "ko" }) {
   const groups = IA.filter((g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
+  // 사용자가 비교 방식이나 데이터 상태를 다시 판정할 필요 없도록, 같은 데이터
+  // 그룹에서 가장 최근에 저장한 판단 하나를 현재 업로드와 먼저 대조한다. 원본 행은
+  // 결정 기록에 남지 않으며, 이 비교도 날짜 범위와 비가역 지문만 사용한다.
+  const continuity = useMemo(() => {
+    if (!hasPreparedData) return null;
+    const group = groupForRoute("start-gate");
+    const previousRecord = [...decisionRecords]
+      .filter((record) => record.datasetSnapshot?.dataGroup === group)
+      .sort((left, right) => Date.parse(right.updatedAt || right.createdAt || 0) - Date.parse(left.updatedAt || left.createdAt || 0))[0];
+    if (!previousRecord) return null;
+    const current = buildDatasetContinuitySnapshot(csvData.canonicalData, { dataGroup: group, mapping: csvData.mapping });
+    return classifyDatasetContinuity(previousRecord.datasetSnapshot, current);
+  }, [csvData.canonicalData, csvData.mapping, decisionRecords, hasPreparedData]);
   // 업로드 뒤의 도구 목록은 도치 작업대와 같은 자격 판정을 쓴다. 이전 파일의
   // 판정이 새 파일 위에 잠깐 남으면 "지금 가능"이라는 약속이 거짓이 되므로,
   // 원본·헤더·매핑 참조가 모두 같은 판정만 표시한다.
@@ -151,6 +169,7 @@ export default function StartGate({ locale = "ko" }) {
     window.clearTimeout(mappingCoachTimerRef.current);
     setMappingCoachPhase("showing");
   };
+  const continueWithNewAnalysis = () => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
@@ -170,7 +189,12 @@ export default function StartGate({ locale = "ko" }) {
           onMappingReviewConfirmed={finishMappingReview}
           onPrepared={showMappingCoach}
           afterFileSummary={hasPreparedData ? (
-            <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart={isDochiArrival || mappingCoachPhase !== "hidden"} />
+            <>
+              <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
+              <div ref={workspaceRef}>
+                <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart={isDochiArrival || mappingCoachPhase !== "hidden"} />
+              </div>
+            </>
           ) : null}
         />
       </section>

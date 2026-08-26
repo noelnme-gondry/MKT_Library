@@ -5,6 +5,7 @@ import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import { PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
+import { buildDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 
 // 이름은 레지스트리에서 — 손으로 적으면 리네임마다 깨진다.
 const nameOf = (id, locale = "ko") => toolIndexEntry(id, locale).name;
@@ -18,6 +19,7 @@ describe("StartGate render smoke", () => {
       csvGroups: { ...useAppStore.getState().csvGroups, efficiency: empty },
       csvData: empty,
       analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
+      decisionRecords: [],
     });
     window.gtag = vi.fn();
   });
@@ -138,6 +140,28 @@ describe("StartGate render smoke", () => {
     expect(mapping).toBeTruthy();
     expect(mapping.open).toBe(false);
     expect(mapping.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("guides an identical upload back to its prior decision instead of making the user choose", () => {
+    const slice = {
+      raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
+      headers: ["date", "cost", "installs"],
+      mapping: { date: "date", cost: "cost", installs: "installs" },
+      fileName: "closed-week.csv",
+      canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
+      mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
+    };
+    const datasetSnapshot = buildDatasetContinuitySnapshot(slice.canonicalData, { dataGroup: "efficiency", mapping: slice.mapping });
+    useAppStore.setState({
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+      decisionRecords: [{ id: "decision-1", toolId: "5-2", datasetSnapshot, createdAt: "2026-08-02T00:00:00.000Z", updatedAt: "2026-08-02T00:00:00.000Z" }],
+    });
+
+    render(<StartGate />);
+    expect(screen.getByRole("heading", { name: "같은 데이터입니다. 새 분석 대신 지난 판단을 확인하세요." })).toBeTruthy();
+    expect(document.querySelector('.decision-data-update-guide a[href="/weekly-review"]')).toBeTruthy();
   });
 
   it("dims tools blocked by the uploaded data while keeping eligible tools available", async () => {
