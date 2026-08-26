@@ -38,6 +38,7 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
+import HelpTip from "@/components/ds/HelpTip";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -86,6 +87,9 @@ const CSV_COPY = {
     changeCsvBtn: "⟳ CSV 변경",
     sheetConnectedLabel: "구글 시트 연동됨",
     savedMappingApplied: "이 브라우저에 기억된 컬럼 매핑을 적용했습니다",
+    storingOnDevice: "이 기기에 저장하는 중…",
+    storedOnDevice: "이 기기에 저장됨 · 90일",
+    storageUnavailable: "이 기기에 저장하지 못했습니다. 분석은 그대로 됩니다.",
     refreshSheetBtn: "🔄 최신 데이터 불러오기",
     refreshingSheet: "불러오는 중…",
     changeSheetBtn: "🔗 시트 변경",
@@ -162,6 +166,9 @@ const CSV_COPY = {
     changeCsvBtn: "⟳ Change CSV",
     sheetConnectedLabel: "Connected to Google Sheets",
     savedMappingApplied: "Applied the column mapping remembered in this browser",
+    storingOnDevice: "Saving on this device…",
+    storedOnDevice: "Saved on this device · 90 days",
+    storageUnavailable: "This file could not be stored on this device. Analysis still works.",
     refreshSheetBtn: "🔄 Fetch latest data",
     refreshingSheet: "Fetching…",
     changeSheetBtn: "🔗 Change sheet",
@@ -258,6 +265,9 @@ export default function CsvUploader({
   const isRouterMode = toolId === "start-gate";
   const eventToolId = analyticsToolId || toolId;
   const csvData = useAppStore((s) => s.csvData);
+  const workspaceDatasetSummaries = useAppStore((s) => s.workspaceDatasetSummaries);
+  const workspaceStorageError = useAppStore((s) => s.workspaceStorageError);
+  const deviceStorageEnabled = useAppStore((s) => s.decisionPersistenceEnabled);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
@@ -340,7 +350,7 @@ export default function CsvUploader({
     e.target.value = null;
   };
 
-  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null, fileModifiedAt = null }) => {
+  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null, fileModifiedAt = null, workspaceSource = null }) => {
     if (!headers.length || !raw.length) {
       reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
       return;
@@ -350,7 +360,7 @@ export default function CsvUploader({
     if (requestId !== preparationRequestRef.current) return;
     const insights = prepared.insights;
     if (insights.signature.needsWideToLong) {
-      setPendingWideImport({ headers, raw, fileName, source, worksheetName, fileModifiedAt, insights });
+      setPendingWideImport({ headers, raw, fileName, source, worksheetName, fileModifiedAt, workspaceSource, insights });
       return;
     }
     const recipe = await getTransformRecipe(headers).catch(() => null);
@@ -371,6 +381,7 @@ export default function CsvUploader({
       worksheetName,
       ...(sheetUrl ? { sheetUrl } : {}),
       ...(fileModifiedAt != null ? { fileModifiedAt } : {}),
+      ...(workspaceSource ? { workspaceSource } : {}),
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
       mappedRows,
@@ -403,9 +414,9 @@ export default function CsvUploader({
         if (!sheets.length) {
           reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
         } else if (sheets.length === 1) {
-          await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name, fileModifiedAt: file.lastModified });
+          await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name, fileModifiedAt: file.lastModified, workspaceSource: { blob: file.slice(), kind: "xlsx", originalFileName: file.name } });
         } else {
-          setPendingWorkbook({ fileName: file.name, source, sheets, fileModifiedAt: file.lastModified });
+          setPendingWorkbook({ fileName: file.name, source, sheets, fileModifiedAt: file.lastModified, workspaceSource: { blob: file.slice(), kind: "xlsx", originalFileName: file.name } });
           setSelectedWorkbookSheet(sheets[0].name);
         }
       } catch (error) {
@@ -447,7 +458,7 @@ export default function CsvUploader({
             reportImportFailure({ message: T.emptyCsv, source, state: "empty_file" });
             return;
           }
-          if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source, fileModifiedAt: file.lastModified });
+          if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source, fileModifiedAt: file.lastModified, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name } });
         } catch (error) {
           if (taskId !== importTaskRef.current) return;
           reportImportFailure({ message: `${T.parseError}${error.message}`, source, state: "parse_error" });
@@ -469,7 +480,7 @@ export default function CsvUploader({
     setErrorMsg("");
     setIsImporting(true);
     try {
-      await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name, fileModifiedAt: pendingWorkbook.fileModifiedAt });
+      await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name, fileModifiedAt: pendingWorkbook.fileModifiedAt, workspaceSource: pendingWorkbook.workspaceSource });
       setPendingWorkbook(null);
     } catch (error) {
       reportImportFailure({ message: `${T.parseError}${error.message}`, source: pendingWorkbook.source, state: "parse_error" });
@@ -491,6 +502,7 @@ export default function CsvUploader({
         source: pendingWideImport.source,
         worksheetName: pendingWideImport.worksheetName,
         fileModifiedAt: pendingWideImport.fileModifiedAt,
+        workspaceSource: pendingWideImport.workspaceSource,
       });
     } catch (error) {
       reportImportFailure({ message: `${T.parseError}${error.message}`, source: pendingWideImport.source, state: "transform_error" });
@@ -650,6 +662,8 @@ export default function CsvUploader({
   // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
   // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
   const sheetSourceScope = TOOL_GROUP[toolId] || "efficiency";
+  const currentWorkspaceDataset = workspaceDatasetSummaries.find((entry) => entry.group === sheetSourceScope && entry.fileName === csvData?.fileName && entry.rowCount === csvData?.raw?.length);
+  const isWorkspaceSavePending = deviceStorageEnabled && !!csvData?.workspaceSource && !currentWorkspaceDataset;
   // 자동 로드하지 않는다. 예전에는 도구에 들어가면 곧장 샘플 분석 화면이 떠서,
   // "내 데이터를 올리는 곳"이라는 사실도 "이 도구가 뭘 보여주는지"도 가려졌다.
   // 이제 빈 화면 대신 브리프(질문·답·볼 수 있는 것)와 눈에 띄는 예시 버튼을 준다.
@@ -963,6 +977,11 @@ export default function CsvUploader({
       {csvData.importInsights?.recipeApplied && (
         <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
       )}
+      {!isDemo && !isSheetSourced && deviceStorageEnabled && csvData?.workspaceSource && (
+        <div className={`csv-memory-note${workspaceStorageError ? " is-error" : ""}`}>
+          ◉ {workspaceStorageError ? T.storageUnavailable : isWorkspaceSavePending ? T.storingOnDevice : T.storedOnDevice}
+        </div>
+      )}
 
       {/* 구글 시트 연동 상태 UX(§요청): 시트에서 온 데이터는 CSV와 다르게, "재조회"와
           "다른 시트로 교체"를 한 번의 재업로드 없이 바로 할 수 있어야 함. CSV 업로드로
@@ -1112,7 +1131,7 @@ export default function CsvUploader({
                 <div className={`map-status ${assessment.state}`} data-mapping-status>
                   {mappingStatusLabel[assessment.state]}
                   {!isUnmapped && assessment.reasons.length > 0 && (
-                    <span className="data-confidence-hint" role="img" tabIndex={0} aria-label={T.colHeaderStatus} data-tooltip={assessment.reasons.join(" · ")}>ⓘ</span>
+                    <HelpTip compact label={assessment.reasons.join(" · ")}>{assessment.reasons.join(" · ")}</HelpTip>
                   )}
                   {assessment.state === "must_confirm" && (
                     <button type="button" className="map-status-confirm" onClick={() => confirmHeader(h)}>{T.mappingConfirmBtn}</button>
@@ -1215,13 +1234,13 @@ export default function CsvUploader({
           <div className="csv-analysis-cta-row is-analyzed">
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
             <span className="csv-analysis-hint">{T.analyzedHint}</span>
-            <button className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
+            <button data-mobile-task=".csv-analysis-action" className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div className="csv-analysis-cta-row is-ready">
             <span className="csv-analysis-status">{T.checkMapping}</span>
             <span className="csv-analysis-hint">{T.checkMappingHint}</span>
-            <button className="ab-button csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.analyzeBtn}</button>
+            <button data-mobile-task=".csv-analysis-action" className="ab-button csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.analyzeBtn}</button>
           </div>
         )
       )}

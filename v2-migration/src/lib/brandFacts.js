@@ -54,8 +54,8 @@ export const BRAND_FACTS = [
   },
   {
     id: "persistence",
-    ko: { claim: "새로고침하면 데이터가 사라집니다.", detail: "분석 결과를 서버나 브라우저 저장소에 남기지 않는 것이 기본 동작입니다." },
-    en: { claim: "Refreshing the page clears your data.", detail: "Results are not persisted to a server or browser storage by default." },
+    ko: { claim: "데이터는 이 기기에만 저장돼요.", detail: "올린 파일은 이 브라우저 안에서 열리고 계산돼요. 인터넷으로 어디에도 보내지 않으며, 90일 뒤 자동으로 지워지고 언제든 직접 지울 수 있어요." },
+    en: { claim: "Your data is stored on this device only.", detail: "Your file is opened and calculated inside this browser. It is never sent anywhere, is erased after 90 days, and can be removed whenever you choose." },
   },
   {
     id: "determinism",

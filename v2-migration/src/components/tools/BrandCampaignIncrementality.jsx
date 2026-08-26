@@ -131,13 +131,13 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     return () => chartInstance.current?.destroy();
   }, [locale, result]);
 
-  const loadRows = (rows, fileName, { isDemo = false } = {}) => {
+  const loadRows = (rows, fileName, { isDemo = false, workspaceSource = null } = {}) => {
     const headers = Object.keys(rows[0] || {});
     const mapping = Object.fromEntries(headers.map((header) => [header,
       header === "date" ? "date" : header === "campaign_on" ? "campaign_on" : header === "brand_search" ? "brand_search" : "__ignore__",
     ]));
     if (isDemo) setDemoDisabled(false);
-    setCsvData({ raw: rows, headers, mapping, fileName, ...prepareSemanticParallelData({ raw: rows, headers }) });
+    setCsvData({ raw: rows, headers, mapping, fileName, ...(workspaceSource ? { workspaceSource } : {}), ...prepareSemanticParallelData({ raw: rows, headers }) });
     setAnalysisSignature("");
     setError("");
   };
@@ -165,7 +165,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           setError(tx(locale, "CSV를 읽지 못했습니다. 날짜·성과·집행 여부 열이 있는 파일인지 확인하세요.", "We could not read this CSV. Confirm it contains date, outcome, and campaign-status columns."));
           return;
         }
-        loadRows(rows, file.name);
+        loadRows(rows, file.name, { workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name } });
         trackProductEvent("data_import_success", { tool_id: "5-24", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => {

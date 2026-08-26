@@ -84,11 +84,11 @@ export default function WeeklyReport({ locale = "ko" }) {
           <span>{t.reportTitle}</span>
           <input value={draft.title} placeholder={t.defaultTitle} onChange={(event) => setReportMeta({ title: event.target.value })} />
         </label>
-        <label>
-          <span>{t.period}</span>
-          <input type="date" value={draft.period?.start || ""} onChange={(event) => setReportMeta({ period: { ...(draft.period || {}), start: event.target.value } })} />
-          <input type="date" value={draft.period?.end || ""} onChange={(event) => setReportMeta({ period: { ...(draft.period || {}), end: event.target.value } })} />
-        </label>
+        <fieldset className="weekly-report-page__period-fieldset">
+          <legend>{t.period}</legend>
+          <label><span>{locale === "en" ? "Start date" : "시작일"}</span><input type="date" value={draft.period?.start || ""} onChange={(event) => setReportMeta({ period: { ...(draft.period || {}), start: event.target.value } })} /></label>
+          <label><span>{locale === "en" ? "End date" : "종료일"}</span><input type="date" value={draft.period?.end || ""} onChange={(event) => setReportMeta({ period: { ...(draft.period || {}), end: event.target.value } })} /></label>
+        </fieldset>
         <button className="btn primary" type="button" disabled={!draft.blocks.length} onClick={download}>{t.markdown}</button>
         <button className="btn ghost" type="button" disabled={!draft.blocks.length} onClick={() => window.print()}>{t.print}</button>
       </section>

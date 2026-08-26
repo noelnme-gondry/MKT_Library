@@ -12,11 +12,22 @@ import {
 } from "@/lib/decisionReview";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
+import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
+import {
+  clearWorkspaceDatasets,
+  listWorkspaceDatasets,
+  readWorkspaceDataset,
+  removeWorkspaceDataset,
+  saveWorkspaceDataset,
+  sweepExpiredWorkspaceDatasets,
+} from "@/lib/workspace-storage";
 
 export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
-const APP_PERSIST_VERSION = 3;
+const APP_PERSIST_VERSION = 4;
 let decisionFallbackSequence = 0;
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
@@ -71,6 +82,63 @@ function canUseDecisionStorage() {
   } catch {
     return false;
   }
+}
+
+function toolIdForGroup(group) {
+  return Object.keys(TOOL_GROUP).find((id) => TOOL_GROUP[id] === group) || "";
+}
+
+function parseWorkspaceCsv(text, storedHeaders = []) {
+  return new Promise((resolve, reject) => {
+    Papa.parse(text, {
+      header: true,
+      skipEmptyLines: "greedy",
+      worker: typeof Worker !== "undefined",
+      complete: (result) => {
+        if (result.errors?.some((error) => error.type === "Quotes" || error.code === "TooManyFields")) {
+          reject(new Error("WORKSPACE_DATASET_PARSE_FAILED"));
+          return;
+        }
+        const parsedHeaders = result.meta?.fields || [];
+        // 첫 업로드에서 확정된 헤더(공백 trim·인코딩 복원 포함)를 우선한다. 파일을
+        // 다시 읽을 때 Papa의 원문 헤더만 쓰면 저장해둔 mapping key와 달라질 수 있다.
+        const headers = storedHeaders.length === parsedHeaders.length ? storedHeaders : parsedHeaders;
+        const raw = (Array.isArray(result.data) ? result.data : []).map((row) => Object.fromEntries(headers.map((header, index) => [header, row?.[parsedHeaders[index]]])));
+        resolve({ raw, headers });
+      },
+      error: reject,
+    });
+  });
+}
+
+async function restoreWorkspaceSlice(entry) {
+  if (!entry?.sourceBlob) throw new Error("WORKSPACE_DATASET_MISSING_SOURCE");
+  let table;
+  if (entry.sourceKind === "xlsx") {
+    const { parseXlsxFile } = await import("@/lib/data-import/xlsxWorkerClient");
+    const sheets = await parseXlsxFile(entry.sourceBlob);
+    const sheet = sheets.find((item) => item.name === entry.worksheetName) || sheets[0];
+    table = { raw: sheet?.raw || [], headers: sheet?.headers || [] };
+  } else {
+    table = await parseWorkspaceCsv(await entry.sourceBlob.text(), entry.headers || []);
+  }
+  if (!table.headers.length || !table.raw.length) throw new Error("WORKSPACE_DATASET_EMPTY");
+  const mapping = entry.mapping && typeof entry.mapping === "object" ? entry.mapping : {};
+  const mappingBindingsV2 = Array.isArray(entry.mappingBindingsV2) ? entry.mappingBindingsV2 : [];
+  const toolId = toolIdForGroup(entry.group);
+  return {
+    raw: table.raw,
+    headers: table.headers,
+    mapping,
+    fileName: entry.fileName,
+    importSource: "device_storage",
+    worksheetName: entry.worksheetName || null,
+    workspaceSource: { blob: entry.sourceBlob, kind: entry.sourceKind || "csv", originalFileName: entry.fileName },
+    canonicalData: buildCanonicalDataset({ raw: table.raw, headers: table.headers, mapping }),
+    mappedRows: buildLegacyRows({ raw: table.raw, legacyMapping: mapping, semanticBindings: mappingBindingsV2, toolId }),
+    mappingBindingsV2,
+    canonicalDataV2: buildCanonicalDatasetV2({ raw: table.raw, headers: table.headers, bindings: mappingBindingsV2 }),
+  };
 }
 
 // ── Analyze-gate signature (index.html toolAnalyzeSig 이식, §12.5) ───────────
@@ -487,6 +555,9 @@ export const persistPartialize = (state) => {
     // 분석가 모드는 표시 설정만 저장한다. 원본 CSV·매핑·필터는 포함하지 않는다.
     analystMode: state.analystMode === true,
     decisionPersistenceEnabled: state.decisionPersistenceEnabled === true,
+    // v4부터 이 값은 마이그레이션 판별에 쓰인다. 이전에는 세션 값이라 명시적
+    // 거절과 "한 번도 묻지 않음"을 구별할 수 없어 기본값 전환 때 선택을 덮었다.
+    decisionPersistencePreferenceSet: state.decisionPersistencePreferenceSet === true,
     eventMarkers: sanitizeEventMarkers(state.eventMarkers),
   };
   if (state.decisionPersistenceEnabled === true) {
@@ -505,12 +576,27 @@ export function persistMigrate(persistedState, version) {
   const state = persistedState && typeof persistedState === "object" ? { ...persistedState } : {};
   // v3 전 payload에는 분석가 모드가 없었다. 기존 마케터 UX를 보존하기 위해 off가 기본이다.
   state.analystMode = version >= 3 && state.analystMode === true;
-  // v3 adds only analystMode. v2's explicitly opted-in decision summaries remain valid.
-  if (version < 2 || state.decisionPersistenceEnabled !== true) {
-    delete state.decisionRecords;
-    return { ...state, decisionPersistenceEnabled: false };
+  if (version < 2) {
+    // v1에는 결정 기록 동의 기능 자체가 없었다. 우연히 같은 키가 있어도
+    // 동의로 해석하지 않는다.
+    state.decisionPersistenceEnabled = false;
+  } else if (version < 4) {
+    // v1~v3은 opt-in인데 "거절" 신호를 영속하지 않아, 기존 false가 명시 거절인지
+    // 미선택인지 소급 판별할 수 없다. 이 상태에서 ON으로 올리면 거절자를 조용히
+    // 뒤집을 수 있으므로 기존 사용자는 OFF로 보수적으로 유지한다. 새 설치만 초기
+    // 상태(true)를 받아 기본 ON이 된다.
+    state.decisionPersistenceEnabled = state.decisionPersistenceEnabled === true;
   }
-  return { ...state, decisionPersistenceEnabled: true, decisionRecords: sanitizeDecisionReviewRecords(state.decisionRecords) };
+  if (state.decisionPersistenceEnabled !== true) {
+    delete state.decisionRecords;
+    return { ...state, decisionPersistenceEnabled: false, decisionPersistencePreferenceSet: state.decisionPersistencePreferenceSet === true };
+  }
+  return {
+    ...state,
+    decisionPersistenceEnabled: true,
+    decisionPersistencePreferenceSet: state.decisionPersistencePreferenceSet === true,
+    decisionRecords: sanitizeDecisionReviewRecords(state.decisionRecords),
+  };
 }
 
 export const useAppStore = create(persist((set, get) => ({
@@ -567,11 +653,6 @@ export const useAppStore = create(persist((set, get) => ({
   mobileNudgeDismissed: false,
   dismissMobileNudge: () => set({ mobileNudgeDismissed: true }),
 
-  // DM 상담 유도 사이드 팝업(도구 내부, 라이브 데모 후 스크롤 시 우하단) — 세션 한정
-  // dismiss. mobileNudgeDismissed와 동일: persist 미포함 → 새로고침 시 리셋, 매 세션 재노출.
-  dmNudgeDismissed: false,
-  dismissDmNudge: () => set({ dmNudgeDismissed: true }),
-
   // 기존 호출부 호환용 분석 실행 래퍼. 전면 광고 게이트는 제거했고 즉시 실행한다.
   requestAd: (cb) => { if (cb) cb(); },
 
@@ -585,7 +666,8 @@ export const useAppStore = create(persist((set, get) => ({
   // 경우에만 persistPartialize가 allowlist 요약을 localStorage에 포함한다. 원본 CSV,
   // 매핑, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다. 단, 사용자가
   // 선택한 비교 범위(차원 필터)만 결정 검증을 위해 축약해 저장할 수 있다.
-  decisionPersistenceEnabled: false,
+  decisionPersistenceEnabled: true,
+  decisionPersistencePreferenceSet: false,
   decisionPersistencePromptSeen: false,
   decisionSessionRecordIds: new Set(),
   decisionRecords: [],
@@ -593,7 +675,14 @@ export const useAppStore = create(persist((set, get) => ({
   setDecisionPersistenceEnabled: (enabled) => {
     const shouldEnable = enabled === true;
     if (shouldEnable && !canUseDecisionStorage()) return false;
-    set({ decisionPersistenceEnabled: shouldEnable });
+    set({ decisionPersistenceEnabled: shouldEnable, decisionPersistencePreferenceSet: true });
+    if (!shouldEnable) {
+      // localStorage의 결정 요약은 partialize 조건이 제거하는 반면, 원본 파일은
+      // 별도 IndexedDB에 있다. 둘을 같은 선택에서 함께 지워야 "저장 끄기"가
+      // 실제로 사생활 통제가 된다. 현재 세션 기록은 의도적으로 남긴다.
+      clearWorkspaceDatasets().catch(() => {});
+      set({ workspaceDatasetSummaries: [], workspaceStorageError: null });
+    }
     return true;
   },
   addDecisionRecord: (draft) => set((state) => {
@@ -769,6 +858,87 @@ export const useAppStore = create(persist((set, get) => ({
   // Consumers keep reading `s.csvData` unchanged; scoping happens by storing
   // per-group and swapping the mirror on route change (see setCurrentRouteId).
   csvGroups: buildGroupMap(EMPTY_SLICE),
+  // 원본 파일은 Zustand persist에 넣지 않는다. IndexedDB 전용 모듈이 Blob을 소유하고,
+  // 여기에는 목록·복원 상태만 둔다. 그래서 localStorage 용량/SSR hydration과 섞이지 않는다.
+  workspaceDatasetSummaries: [],
+  workspaceRestoreStatus: "idle",
+  workspaceStorageError: null,
+  workspaceExpiredCount: 0,
+  refreshWorkspaceDatasets: async () => {
+    try {
+      const datasets = await listWorkspaceDatasets();
+      set({ workspaceDatasetSummaries: datasets, workspaceStorageError: null });
+      return datasets;
+    } catch (error) {
+      set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
+      return [];
+    }
+  },
+  restoreWorkspaceDatasets: async () => {
+    if (get().decisionPersistenceEnabled !== true) return [];
+    set({ workspaceRestoreStatus: "loading", workspaceStorageError: null });
+    try {
+      const sweep = await sweepExpiredWorkspaceDatasets();
+      const summaries = sweep.keep;
+      const restored = await Promise.all(summaries.map(async (summary) => {
+        const entry = await readWorkspaceDataset(summary.group);
+        return entry ? [summary.group, await restoreWorkspaceSlice(entry)] : null;
+      }));
+      set((state) => {
+        const csvGroups = { ...state.csvGroups };
+        restored.filter(Boolean).forEach(([group, slice]) => {
+          // 현재 세션에서 사용자가 이미 올린 파일을 늦은 복원이 덮지 않는다.
+          if (!(csvGroups[group]?.raw || []).length) csvGroups[group] = slice;
+        });
+        return {
+          csvGroups,
+          csvData: csvGroups[state.activeDataGroup] || EMPTY_SLICE(),
+          workspaceDatasetSummaries: summaries,
+          workspaceRestoreStatus: "ready",
+          workspaceExpiredCount: sweep.expired.length,
+        };
+      });
+      return summaries;
+    } catch (error) {
+      set({ workspaceRestoreStatus: "failed", workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
+      return [];
+    }
+  },
+  removeWorkspaceDataset: async (group) => {
+    try {
+      await removeWorkspaceDataset(group);
+      set((state) => {
+        const isActive = state.activeDataGroup === group;
+        return {
+          workspaceDatasetSummaries: state.workspaceDatasetSummaries.filter((entry) => entry.group !== group),
+          csvGroups: { ...state.csvGroups, [group]: EMPTY_SLICE() },
+          csvData: isActive ? EMPTY_SLICE() : state.csvData,
+          analyzedByGroup: { ...state.analyzedByGroup, [group]: null },
+          csvClearedByGroup: { ...state.csvClearedByGroup, [group]: true },
+        };
+      });
+      return true;
+    } catch (error) {
+      set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
+      return false;
+    }
+  },
+  clearWorkspaceDatasets: async () => {
+    try {
+      await clearWorkspaceDatasets();
+      set({
+        workspaceDatasetSummaries: [],
+        csvGroups: buildGroupMap(EMPTY_SLICE),
+        csvData: EMPTY_SLICE(),
+        analyzedByGroup: buildGroupMap(() => null),
+        csvClearedByGroup: buildGroupMap(() => true),
+      });
+      return true;
+    } catch (error) {
+      set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
+      return false;
+    }
+  },
   // Mirror of the ACTIVE group's slice. Initial currentRouteId is "home" →
   // "efficiency", so the initial mirror is the (empty) efficiency slice.
   csvData: {
@@ -782,8 +952,11 @@ export const useAppStore = create(persist((set, get) => ({
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
   // A changed signature keeps the last confirmed signature so the UI can say
   // "stale" rather than silently falling back to the pre-analysis state.
-  setCsvData: (data) => set((state) => {
+  setCsvData: (data) => {
+    let group = "efficiency";
+    set((state) => {
     const g = groupForRoute(state.currentRouteId);
+    group = g;
     // Any non-empty write (real upload or explicit demo load) clears the
     // manual-clear flag below — it only needs to suppress auto-demo-reload
     // while the group is genuinely empty.
@@ -804,7 +977,25 @@ export const useAppStore = create(persist((set, get) => ({
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
       dochiAnalysisSession: null,
     };
-  }),
+    });
+    const source = data?.workspaceSource;
+    if (source?.blob instanceof Blob && data?.raw?.length && !String(data.fileName || "").startsWith("demo_") && get().decisionPersistenceEnabled === true) {
+      saveWorkspaceDataset({
+        group,
+        fileName: data.fileName,
+        sourceBlob: source.blob,
+        sourceKind: source.kind || "csv",
+        headers: data.headers,
+        rowCount: data.raw.length,
+        mapping: data.mapping,
+        mappingBindingsV2: data.mappingBindingsV2,
+        worksheetName: data.worksheetName,
+      }).then((saved) => set((state) => ({
+        workspaceDatasetSummaries: [saved, ...state.workspaceDatasetSummaries.filter((entry) => entry.group !== saved.group)],
+        workspaceStorageError: null,
+      }))).catch((error) => set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }));
+    }
+  },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
   handoffCsvToRoute: (routeId, data, { markAnalyzed = true } = {}) => set((state) => {

@@ -50,7 +50,7 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
     // eventMarkers는 사용자가 직접 입력한 날짜 + 짧은 라벨이라 원본 CSV가 아니다(§2.2 비대상).
     // 저장하지 않으면 새로고침마다 사라져 "왜 이랬는지" 기록 장치가 매번 증발했다.
-    expect(Object.keys(persisted).sort()).toEqual(["analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "eventMarkers", "viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "decisionPersistencePreferenceSet", "eventMarkers", "viewConfig"]);
     expect(persisted.eventMarkers).toEqual([{ id: "m1", date: "2026-01-05", label: "브랜드 캠페인 시작" }]);
     expect(persisted.analystMode).toBe(false);
     expect(persisted.decisionPersistenceEnabled).toBe(false);
@@ -69,18 +69,24 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
 
   it("persistMigrate — 현재 스키마는 안전한 결정 요약만 통과", () => {
     const persisted = { viewConfig: { s1: { hidden: ["a"], order: [] } }, customMetrics: {}, customCharts: {} };
-    expect(persistMigrate(persisted, 2)).toEqual({ ...persisted, analystMode: false, decisionPersistenceEnabled: false });
+    expect(persistMigrate(persisted, 2)).toEqual({ ...persisted, analystMode: false, decisionPersistenceEnabled: false, decisionPersistencePreferenceSet: false });
   });
 
   it("구 스키마와 opt-out 상태에서는 결정 기록을 영속 payload에서 제거", () => {
     const persisted = { decisionPersistenceEnabled: true, decisionRecords: [{ action: "A", raw: [{ secret: 1 }] }] };
-    expect(persistMigrate(persisted, 1)).toEqual({ analystMode: false, decisionPersistenceEnabled: false });
+    expect(persistMigrate(persisted, 1)).toEqual({ analystMode: false, decisionPersistenceEnabled: false, decisionPersistencePreferenceSet: false });
   });
 
   it("analystMode는 설정으로만 영속되고 구 payload는 기본 off", () => {
     expect(persistPartialize({ viewConfig: {}, customMetrics: {}, customCharts: {}, analystMode: true })).toMatchObject({ analystMode: true });
     expect(persistMigrate({ analystMode: true }, 2).analystMode).toBe(false);
     expect(persistMigrate({ analystMode: true }, 3).analystMode).toBe(true);
+  });
+
+  it("새 설치는 기기 저장을 기본 ON으로 시작하고, 구 opt-out은 보수적으로 유지", () => {
+    expect(useAppStore.getState().decisionPersistenceEnabled).toBe(true);
+    expect(persistMigrate({ decisionPersistenceEnabled: false }, 3).decisionPersistenceEnabled).toBe(false);
+    expect(persistMigrate({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] }, 3)).toMatchObject({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] });
   });
 
   it("명시적 opt-in 때도 allowlist 결정 요약만 저장", () => {

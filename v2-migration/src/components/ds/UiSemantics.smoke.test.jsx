@@ -10,7 +10,7 @@ function Fixture() {
   return <main id="main-content">
     <section><h2>실제와 모델 비교</h2><canvas /></section>
     <section><h2>채널 성과</h2><table><thead><tr><th>채널</th></tr></thead><tbody><tr><th>검색</th></tr></tbody></table></section>
-    <button type="button" className={`ab-pill ${active ? "active" : ""}`} onClick={() => setActive((value) => !value)}>기준선 포함</button>
+    <button type="button" data-ui-semantics-toggle="true" className={`ab-pill ${active ? "active" : ""}`} onClick={() => setActive((value) => !value)}>기준선 포함</button>
     <UiSemantics />
   </main>;
 }
@@ -26,5 +26,11 @@ describe("UiSemantics", () => {
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle.getAttribute("aria-pressed")).toBe("true"));
+  });
+
+  it("does not turn a one-shot pill action into a toggle", async () => {
+    render(<main id="main-content"><button type="button" className="ab-pill">닫기</button><UiSemantics /></main>);
+    const close = await screen.findByRole("button", { name: "닫기" });
+    expect(close.getAttribute("aria-pressed")).toBeNull();
   });
 });

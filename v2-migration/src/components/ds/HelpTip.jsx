@@ -13,14 +13,15 @@
  * 팝오버로 띄우면 `backdrop-filter` 조상 안에서 위치가 어긋나고(§7) body 포털이
  * 필요해진다 — 설명 한 문단에 그만한 기계는 필요 없다.
  */
-export default function HelpTip({ label, children, className = "" }) {
+export default function HelpTip({ label, children, className = "", compact = false }) {
+  const classes = ["help-tip", className, compact ? "data-confidence-hint" : ""].filter(Boolean).join(" ");
   return (
-    <details className={`help-tip ${className}`.trim()}>
+    <details className={classes}>
       {/* summary가 접근名을 가져야 스크린리더가 "무엇에 대한 도움말"인지 읽는다. */}
       <summary className="help-tip__toggle" aria-label={label}>
         <span aria-hidden="true">ⓘ</span>
       </summary>
-      <span className="help-tip__body" role="note">{children}</span>
+      <span className={`help-tip__body${compact ? " data-confidence-hint__tooltip" : ""}`} role="note">{children}</span>
     </details>
   );
 }

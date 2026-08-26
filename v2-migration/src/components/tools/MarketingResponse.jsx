@@ -418,7 +418,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         }
         setMmmUploadError(null);
         const headers = res.meta?.fields || [];
-        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: res.data, headers }) });
+        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: res.data, headers }) });
         trackProductEvent("data_import_success", { tool_id: "5-18", source: "csv", row_count: res.data.length, column_count: headers.length, locale });
       },
       error: () => {
@@ -1164,9 +1164,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             labels: baseline.backtest.labels,
             actual: baseline.backtest.actual,
             variants: [
-              { label: tx("기본 모델(국가 미적용)", "Base model (no market prior)"), predicted: baseline.backtest.predicted, color: "#94a3b8", dash: [2, 3] },
+              { label: tx("기본 모델(국가 미적용)", "Base model (no market prior)"), predicted: baseline.backtest.predicted, color: CHART_THEME.muted, dash: [2, 3] },
               ...candidatePriors.filter((candidate) => candidate.backtest).map((candidate) => ({ label: candidate.country, predicted: candidate.backtest.predicted })),
-              { label: tx(`추천 세트: ${selectedCountrySet.country}`, `Recommended: ${selectedCountrySet.country}`), predicted: selectedCountrySet.backtest.predicted, color: "#2563eb", dash: [], recommended: true },
+              { label: tx(`추천 세트: ${selectedCountrySet.country}`, `Recommended: ${selectedCountrySet.country}`), predicted: selectedCountrySet.backtest.predicted, color: CHART_THEME.primary, dash: [], recommended: true },
             ],
           };
         }
@@ -3142,7 +3142,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               nonTrend: {
                 position: "right",
                 title: { display: true, text: tx("추세 외 변화량", "Non-trend change"), color: CHART_THEME.muted, font: { size: 10, weight: "600" } },
-                ticks: { color: "#5DCAA5", font: { size: 10 }, callback: (value) => targetValueLabel(value, { sign: true }) },
+                ticks: { color: CHART_THEME.secondary, font: { size: 10 }, callback: (value) => targetValueLabel(value, { sign: true }) },
                 grid: { drawOnChartArea: false },
               },
             },
@@ -3848,7 +3848,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 title: tx(`${v.count.toLocaleString()}행`, `${v.count.toLocaleString()} rows`),
               })),
             ]}
-            extra={segmentSel.truncated ? <span style={{ fontSize: "11px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span> : null}
+            extra={segmentSel.truncated ? <span style={{ fontSize: "11px", color: "var(--warning)" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span> : null}
           />
         )}
         {contributionFilterDates.length > 0 && stage === "mmm" && (
@@ -4347,9 +4347,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       )}
                     </p>
                     <div className="trend-chart-explainer__legend">
-                      <span><i style={{ background: "#f59e0b" }} />{tx("왼쪽 축: Performance 제외 베이스라인 입력", "Left axis: Performance-excluded baseline input")}</span>
-                      <span><i style={{ background: "#38bdf8" }} />{tx("왼쪽 축: 순수 베이스라인 추세", "Left axis: pure baseline trend")}</span>
-                      <span><i style={{ background: "#5DCAA5" }} />{tx("오른쪽 축: 베이스라인 추세 외 변화량(0 기준)", "Right axis: baseline non-trend change (zero-centered)")}</span>
+                      <span><i style={{ background: "var(--warning)" }} />{tx("왼쪽 축: Performance 제외 베이스라인 입력", "Left axis: Performance-excluded baseline input")}</span>
+                      <span><i style={{ background: "var(--chart-secondary)" }} />{tx("왼쪽 축: 순수 베이스라인 추세", "Left axis: pure baseline trend")}</span>
+                      <span><i style={{ background: "var(--chart-tertiary)" }} />{tx("오른쪽 축: 베이스라인 추세 외 변화량(0 기준)", "Right axis: baseline non-trend change (zero-centered)")}</span>
                     </div>
                   </div>
                 )}
@@ -4634,7 +4634,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 {mmm.validate?.warnings?.length ? (
                   <details style={{ marginTop: "8px" }}>
                     <summary style={{ cursor: "pointer", fontSize: "11px", color: "var(--warning)" }}>{tx(`⚠ 데이터 위생 경고 ${mmm.validate.warnings.length}건 (펼치기)`, `⚠ ${mmm.validate.warnings.length} data hygiene warnings (expand)`)}</summary>
-                    <ul style={{ fontSize: "11px", color: "#e0af68", marginTop: "4px" }}>
+                    <ul style={{ fontSize: "11px", color: "var(--warning)", marginTop: "4px" }}>
                       {mmm.validate.warnings.map((w, i) => (<li key={i}>{w}</li>))}
                     </ul>
                   </details>
@@ -5503,7 +5503,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                   const noteKey = `${mmm.target}|${s.week}`;
                                   const noteNum = dateScopedDecomp.spikes.filter((n) => (spikeNotes[`${mmm.target}|${n.week}`] || "").trim()).findIndex((n) => n.week === s.week) + 1;
                                   const clsLabel = s.cls === "channel"
-                                    ? { txt: tx("채널 스파크", "Channel spike"), color: "#7aa2f7" }
+                                    ? { txt: tx("채널 스파크", "Channel spike"), color: "var(--chart-primary)" }
                                     : s.cls === "baseline"
                                       ? { txt: tx("기준선·계절 변동", "Baseline/seasonal swing"), color: "var(--success)" }
                                       : { txt: tx("모델 밖(원인 입력 권장)", "Outside the model (please record a cause)"), color: "var(--warning)" };
@@ -5514,7 +5514,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={s.week}>
                                       <td>
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "#f59e0b", color: "#fff", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>{noteNum}</span>}
+                                          {noteNum > 0 && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16px", height: "16px", borderRadius: "50%", background: "var(--warning)", color: "var(--on-warning)", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>{noteNum}</span>}
                                           <b style={{ fontSize: "12px" }}>{lbl != null ? String(lbl) : tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</b>
                                         </span>
                                         {lbl != null && <span style={{ fontSize: "11px", color: MUTED, display: "block" }}>{tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</span>}
@@ -6273,7 +6273,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           : tx(`봉인 ${fcHorizon}주 wMAPE ${Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"} · 인증 기준 10% 미만.`, `Sealed-${fcHorizon}-week wMAPE ${Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"} · certification requires below 10%.`)}</p>
                       </div></div>}
                       <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill" style={{ borderColor: "var(--warning)", color: "var(--warning)" }}>{tx(`${fcHorizon}주 전체: 학습 제외`, `All ${fcHorizon} weeks: held out`)}</span></div>
-                      <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
+                      <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: CHART_THEME.primary, dash: [] }]} formatValue={targetValueLabel} />
                     </Card>
                   )}
                   {!recentBacktest && !forecast.isAnnualAnalog && (
@@ -6367,7 +6367,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     {forecast.chans.length > 0 && <button className="ab-pill" onClick={() => { setFcBudget({}); setFcStepOff({}); }}>{tx("↺ 최근 평균으로 초기화", "↺ Reset to recent average")}</button>}
                     <button
                       className="ab-pill"
-                      style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7" }}
+                      style={{ background: "var(--primary)", color: "var(--on-primary)", fontWeight: 700, borderColor: "var(--primary)" }}
                       title={forecastDownloadTitle(forecast, locale)}
                       onClick={() => csvDownload(
                         `mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`,

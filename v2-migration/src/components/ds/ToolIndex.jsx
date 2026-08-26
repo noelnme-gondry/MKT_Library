@@ -48,6 +48,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
                       핸드오프가 사라져 도구가 빈 상태로 열린다. */}
                   <Link
                     className="tool-index__link"
+                    data-mobile-task=".tool-index__link"
                     href={localizedHref(tool.href, locale)}
                     // onSelect는 이동을 가로채고(업로드 화면의 재매핑 핸드오프),
                     // onItemClick은 평범한 이동에 곁들이는 기록용이다.

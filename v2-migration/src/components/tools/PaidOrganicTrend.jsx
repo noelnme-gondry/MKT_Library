@@ -151,7 +151,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
           setUploadError(locale === "en" ? "The CSV could not be read. Check its header row and quotes." : "CSV를 읽지 못했습니다. 헤더 행과 따옴표 형식을 확인하세요.");
           return;
         }
-        setCsvData({ raw: parsed.data, headers, mapping: {}, fileName: file.name });
+        setCsvData({ raw: parsed.data, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name } });
       },
       error: () => setUploadError(locale === "en" ? "The file could not be opened." : "파일을 열지 못했습니다."),
     });

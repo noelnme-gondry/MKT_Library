@@ -6,6 +6,7 @@ import ConsentBanner from "@/components/ConsentBanner";
 import { consentDefaultSnippet } from "@/lib/consent";
 import SkipLink from "@/components/SkipLink";
 import { BRAND } from "@/lib/brandFacts";
+import WorkspaceStorageBootstrap from "@/components/WorkspaceStorageBootstrap";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
@@ -35,6 +36,7 @@ export default function RootDocument({ children, locale = "ko" }) {
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
         <SkipLink />
+        <WorkspaceStorageBootstrap />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

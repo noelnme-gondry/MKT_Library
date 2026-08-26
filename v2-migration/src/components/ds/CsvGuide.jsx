@@ -98,7 +98,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>
         </div>
         <div className="csv-guide-actions">
-          {onTryExample && <button type="button" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
+          {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}
           </button>

@@ -203,7 +203,7 @@ function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragC
           : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
       </div>
       {single && cols.length > 1 && (
-        <div style={{ fontSize: "11px", color: "#f59e0b", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
+        <div style={{ fontSize: "11px", color: "var(--warning)", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
       )}
     </div>
   );

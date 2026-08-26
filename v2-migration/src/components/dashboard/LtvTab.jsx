@@ -472,7 +472,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           <div className="ab-pillgroup" data-pillgroup="multi" role="group" aria-label={T.methodLabel}>
             <span className="ab-pillgroup-label">{T.methodLabel}</span>
             <button className={`ab-pill ${matShowCurve ? "active" : ""}`} style={{ color: "var(--accent)" }} onClick={() => setMatShowCurve((v) => !v)}>{T.curveFit}</button>
-            <button className={`ab-pill ${matShowEmpirical ? "active" : ""}`} style={{ color: "#9ece6a" }} onClick={() => setMatShowEmpirical((v) => !v)}>{T.empirical}</button>
+            <button className={`ab-pill ${matShowEmpirical ? "active" : ""}`} style={{ color: "var(--success)" }} onClick={() => setMatShowEmpirical((v) => !v)}>{T.empirical}</button>
           </div>
         </div>
 
@@ -512,7 +512,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                     const curve = matShowCurve ? curvePred(d) : null;
                     const emp = matShowEmpirical ? empPred(d) : null;
                     if (curve != null) parts.push(<span key="c" style={{ color: "var(--accent)" }}>{matPctFmt(curve)}</span>);
-                    if (emp != null) parts.push(<em key="e" style={{ color: "#9ece6a" }}>{matPctFmt(emp)}</em>);
+                    if (emp != null) parts.push(<em key="e" style={{ color: "var(--success)" }}>{matPctFmt(emp)}</em>);
                     if (!parts.length) return <span style={{ color: "var(--text-muted)" }}>—</span>;
                     return parts.reduce((acc, el, i) => (i === 0 ? [el] : [...acc, <br key={"br" + i} />, el]), []);
                   };
@@ -542,7 +542,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
             <div className="ico">i</div>
             <div className="body">
               <p style={{ margin: 0, fontSize: "12px" }}>
-                <strong style={{ color: "#9ece6a" }}>{T.empiricalCalloutStrong}</strong>: {T.empiricalCalloutBody(maturation.empiricalBase)}
+                <strong style={{ color: "var(--success)" }}>{T.empiricalCalloutStrong}</strong>: {T.empiricalCalloutBody(maturation.empiricalBase)}
               </p>
             </div>
           </div>
@@ -578,7 +578,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                     <td className="tnum">{s.chg != null ? (s.chg * 100).toFixed(1) + "%" : "—"}</td>
                     <td>
                       {s.converged ? (
-                        <span style={{ color: "#9ece6a", fontWeight: 600 }}>{T.converged}</span>
+                        <span style={{ color: "var(--success)", fontWeight: 600 }}>{T.converged}</span>
                       ) : i === maturation.suffData.steps.length - 1 && !maturation.suffData.convergedAt ? (
                         <span style={{ color: "var(--text-muted)" }}>{T.needMoreData}</span>
                       ) : (
@@ -600,7 +600,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
         {maturation && maturation.suffData && (
           maturation.suffData.convergedAt ? (
             <div className="callout" style={{ marginTop: "8px", borderColor: "rgba(158,206,106,0.4)", background: "rgba(158,206,106,0.05)" }}>
-              <div className="ico" style={{ color: "#9ece6a" }}>✓</div>
+              <div className="ico" style={{ color: "var(--success)" }}>✓</div>
               <div className="body">
                 <p style={{ margin: 0, fontSize: "12px" }}>
                   <strong>{T.convergedStrong(maturation.suffData.convergedAt.map((d) => "D" + d).join(", "), matHorizon)}</strong>{T.convergedRest}

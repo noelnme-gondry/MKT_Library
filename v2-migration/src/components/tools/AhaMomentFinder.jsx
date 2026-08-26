@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -243,8 +244,8 @@ function ahaAnalyzeSig(colMap, fileName) {
 const MUTED = "var(--text-muted)";
 /* 상태 배지 톤 (5-18 BADGE_TONE 규칙 재사용 — 위험=red 아니라 여기선 강함=green) */
 const AHA_TONE = {
-  strong: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.45)", color: "#22c55e" },
-  maybe: { bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.4)", color: "#fbbf24" },
+  strong: { bg: "color-mix(in srgb, var(--success) 12%, transparent)", border: "color-mix(in srgb, var(--success) 45%, transparent)", color: "var(--success)" },
+  maybe: { bg: "color-mix(in srgb, var(--warning) 10%, transparent)", border: "color-mix(in srgb, var(--warning) 40%, transparent)", color: "var(--warning)" },
   weak: { bg: "var(--surface-container-low)", border: "var(--border)", color: MUTED },
 };
 
@@ -458,7 +459,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "parse_error", locale });
           return;
         }
-        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: C.guideToolId, source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => {
@@ -1102,7 +1103,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     </button>
                   );
                 })}
-                {s.truncated && <span style={{ fontSize: "11px", color: "#f59e0b" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
+                {s.truncated && <span style={{ fontSize: "11px", color: "var(--warning)" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
               </React.Fragment>
             ))}
             {validSeg && (
@@ -1189,7 +1190,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         ) : analyzed ? (
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
+            <span style={{ color: "var(--success)", fontSize: "12px", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runAhaAnalysis}>↻ {tr("다시 분석", "Re-analyze")}</button>
           </div>
@@ -1338,24 +1339,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <strong>{C.causationTitle}</strong>
                 <p style={{ margin: ".25rem 0 0" }}>{C.causationBody}</p>
                 <p style={{ margin: ".25rem 0 0" }}>{tr("확정은", "Confirm it with a")}{" "}
-                  <a
+                  <Link
                     href={
                       locale === "en" && hasEnVersion("5-4")
                         ? `/en${idToSlug["5-4"] || ""}`
                         : idToSlug["5-4"] || "/tools/experiment-analysis"
                     }
-                    onClick={(e) => {
-                      e.preventDefault();
-                      router.push(
-                        locale === "en" && hasEnVersion("5-4")
-                          ? `/en${idToSlug["5-4"] || ""}`
-                          : idToSlug["5-4"] || "/tools/experiment-analysis"
-                      );
-                    }}
                     style={{ color: "var(--primary)", textDecoration: "underline", cursor: "pointer" }}
                   >
                     {tr("홀드아웃 실험(5-4)", "holdout experiment (5-4)")}
-                  </a>
+                  </Link>
                   {tr("으로 검증하세요.", ".")}</p>
               </div>
             </div>
@@ -1552,8 +1545,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 </div>
                 <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
                   {tr(
-                    <>파랑 실선 = 그 횟수를 기준으로 잡았을 때 예측 정확도(F1) · 초록 점선 = 전체 유저 중 그 횟수 이상을 실제로 하는 비율(%). <span style={{ color: "#facc15" }}>●</span> 금색 점 = 자동으로 고른 최적 횟수(≥{drillResult.bestK}). 300회처럼 기준을 높이면 F1은 오르내릴 수 있지만 그만큼 해당하는 유저(초록선)는 줄어들어요.</>,
-                    <>Blue solid line = accuracy (F1) when using that count as the threshold · green dashed line = % of all users who actually did it that many times or more. <span style={{ color: "#facc15" }}>●</span> Gold dot = the auto-selected optimal count (≥{drillResult.bestK}). Raising the bar (e.g. to 300) can move F1 up or down, but the users who qualify (green line) shrink accordingly.</>,
+                    <>파랑 실선 = 그 횟수를 기준으로 잡았을 때 예측 정확도(F1) · 초록 점선 = 전체 유저 중 그 횟수 이상을 실제로 하는 비율(%). <span style={{ color: "var(--warning)" }}>●</span> 금색 점 = 자동으로 고른 최적 횟수(≥{drillResult.bestK}). 300회처럼 기준을 높이면 F1은 오르내릴 수 있지만 그만큼 해당하는 유저(초록선)는 줄어들어요.</>,
+                    <>Blue solid line = accuracy (F1) when using that count as the threshold · green dashed line = % of all users who actually did it that many times or more. <span style={{ color: "var(--warning)" }}>●</span> Gold dot = the auto-selected optimal count (≥{drillResult.bestK}). Raising the bar (e.g. to 300) can move F1 up or down, but the users who qualify (green line) shrink accordingly.</>,
                   )}
                 </p>
                 <div className="chart-container" style={{ height: "220px" }}>
@@ -1604,8 +1597,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
               <p className="muted aha-scatter-intro">{tr(
-                <>색상 칩을 눌러 이벤트를 비교하세요. <span style={{ color: "#facc15" }}>●</span> 금색 테두리는 자동으로 고른 기준입니다.</>,
-                <>Use the color chips to compare events. <span style={{ color: "#facc15" }}>●</span> A gold ring marks the auto-selected threshold.</>,
+                <>색상 칩을 눌러 이벤트를 비교하세요. <span style={{ color: "var(--warning)" }}>●</span> 금색 테두리는 자동으로 고른 기준입니다.</>,
+                <>Use the color chips to compare events. <span style={{ color: "var(--warning)" }}>●</span> A gold ring marks the auto-selected threshold.</>,
               )}</p>
               {allActionNames.length > 0 && (
                 <div className="aha-scatter-toolbar">
@@ -1683,18 +1676,18 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                               <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                                 <input type="checkbox" checked={isSel(r.action)} onChange={() => toggleSel(r.action)} title={tr("산점도에 표시", "Show in scatter")} />
                               </td>
-                              <td style={{ cursor: "pointer", textAlign: "center", color: MUTED }} onClick={() => toggleExpand(r.action)} title={tr("달성률 구간별 상세", "Reach-bucket detail")}>{isExpanded ? "▾" : "▸"}</td>
-                              <td style={{ cursor: "pointer" }} onClick={() => toggleExpand(r.action)}>
+                              <td style={{ textAlign: "center", color: MUTED }}><button type="button" className="aha-result-row__expand" onClick={() => toggleExpand(r.action)} aria-expanded={isExpanded} aria-label={tr(`${r.action} 달성률 구간별 상세 ${isExpanded ? "접기" : "펼치기"}`, `Toggle reach-bucket detail for ${r.action}`)}>{isExpanded ? "▾" : "▸"}</button></td>
+                              <td>
                                 <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: color, marginRight: "6px", verticalAlign: "middle" }}></span>
                                 {r.action}{lowSupport ? " ⊘" : ""}
                               </td>
                               <td className="tnum">{r.bestWindow === Infinity ? tr("전체", "All") : "d" + r.bestWindow}</td>
                               <td className="tnum">≥{r.bestK}</td>
                               <td className="tnum">{(r.allSupport || 0).toLocaleString()}{tr("명", "")} <span style={{ color: MUTED, fontSize: "11px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
-                              <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
+                              <td className="tnum" style={{ color: overfit ? "var(--danger)" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.P.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.R.toFixed(3)}</td>
-                              <td className="tnum" style={{ color: liftStrong ? "#22c55e" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
+                              <td className="tnum" style={{ color: liftStrong ? "var(--success)" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
                               <td className="tnum">{r.holdout.support.toLocaleString()}{lowSupport ? " ⊘" : ""}</td>
                               <td className="tnum">{r.train.F1.toFixed(3)}</td>
                             </tr>
@@ -1704,8 +1697,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                                   <div style={{ padding: "10px 12px 12px 40px", borderLeft: `3px solid ${color}` }}>
                                     <div style={{ fontSize: "11.5px", color: MUTED, marginBottom: "6px" }}>
                                       {tr(
-                                        <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — 기준({r.bestWindow === Infinity ? "전체 기간" : `d${r.bestWindow}`})을 느슨하게(달성률↑)~빡빡하게(달성률↓) 바꿨을 때 구간별 데이터. <span style={{ color: "#facc15" }}>★</span> = 자동으로 고른 최적 지점.</>,
-                                        <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — bucketed data as the threshold ({r.bestWindow === Infinity ? "the whole period" : `d${r.bestWindow}`}) is loosened (reach↑) to tightened (reach↓). <span style={{ color: "#facc15" }}>★</span> = the auto-selected optimal point.</>,
+                                        <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — 기준({r.bestWindow === Infinity ? "전체 기간" : `d${r.bestWindow}`})을 느슨하게(달성률↑)~빡빡하게(달성률↓) 바꿨을 때 구간별 데이터. <span style={{ color: "var(--warning)" }}>★</span> = 자동으로 고른 최적 지점.</>,
+                                        <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — bucketed data as the threshold ({r.bestWindow === Infinity ? "the whole period" : `d${r.bestWindow}`}) is loosened (reach↑) to tightened (reach↓). <span style={{ color: "var(--warning)" }}>★</span> = the auto-selected optimal point.</>,
                                       )}
                                     </div>
                                     {bks.length === 0 ? (
@@ -1732,7 +1725,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                                               <td className="tnum">{(b.P * 100).toFixed(0)}%</td>
                                               <td className="tnum">{(b.R * 100).toFixed(0)}%</td>
                                               <td className="tnum">{b.F1.toFixed(3)}</td>
-                                              <td className="tnum" style={{ color: b.lift != null && b.lift >= 1.5 ? "#22c55e" : undefined }}>{b.lift == null ? "—" : b.lift.toFixed(2) + "×"}</td>
+                                              <td className="tnum" style={{ color: b.lift != null && b.lift >= 1.5 ? "var(--success)" : undefined }}>{b.lift == null ? "—" : b.lift.toFixed(2) + "×"}</td>
                                             </tr>
                                           ))}
                                         </tbody>
