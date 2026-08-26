@@ -1714,6 +1714,27 @@ export function mmmDataQualityAudit(panel) {
                   }
                 }
               }
+              for (const [key, values] of Object.entries(panel.external || {})) {
+                const label = panel.externalDefs?.find((item) => item.key === key)?.label || key;
+                const missing = values.filter((value) => !Number.isFinite(value)).length;
+                const finite = values.filter(Number.isFinite);
+                const unique = new Set(finite.map((value) => String(value))).size;
+                if (missing) rep.issues.push(
+                  isEn
+                    ? `Continuous control '${label}' has ${missing} missing week(s). Supply the observed value or unmap the control; the model does not impute controls.`
+                    : `연속형 컨트롤 '${label}'에 결측 주차가 ${missing}개 있습니다. 실제 관측값을 채우거나 컨트롤 매핑을 해제하세요. 모델은 컨트롤을 임의 보간하지 않습니다.`,
+                );
+                if (finite.length && unique < 2) rep.warnings.push(
+                  isEn
+                    ? `Continuous control '${label}' has no variation and will be excluded from the fit.`
+                    : `연속형 컨트롤 '${label}'은 값의 변화가 없어 적합에서 제외됩니다.`,
+                );
+                else if (finite.length && unique === 2) rep.warnings.push(
+                  isEn
+                    ? `Continuous control '${label}' has only two values. Map a 0/1 event as an event dummy unless this is truly a continuous level.`
+                    : `연속형 컨트롤 '${label}'은 값이 2종뿐입니다. 실제 연속 수준이 아니라 0/1 사건이면 이벤트 더미로 매핑하세요.`,
+                );
+              }
               return rep;
             }
 
@@ -5862,6 +5883,7 @@ export function mmmDataQualityAudit(panel) {
                   : "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
                 params,
                 names,
+                droppedFeatures: controls.dropped || [],
                 featureMeans: colMean,
                 featureScales: colScale,
                 rawFeatureHistory: Xraw,

@@ -72,4 +72,26 @@ describe("MmmColumnMapper interaction", () => {
     expect(clear.style.minWidth).toBe("44px");
     expect(clear.style.minHeight).toBe("44px");
   });
+
+  it("guides mapped continuous controls without presenting them as causal media", () => {
+    const { container } = render(
+      <MmmColumnMapper
+        headers={["week", "revenue", "paid_spend", "market_index"]}
+        rows={[{ week: "2025-W01", revenue: "100", paid_spend: "10", market_index: "95" }]}
+        colMap={{
+          week: { role: "week" },
+          revenue: { role: "revenue" },
+          paid_spend: { role: "channel" },
+          market_index: { role: "external" },
+        }}
+        onChange={() => {}}
+        locale="en"
+      />,
+    );
+
+    expect(container.querySelector("[data-mmm-control-contract]")).toBeTruthy();
+    expect(screen.getByText("Continuous-control input contract")).toBeTruthy();
+    expect(container.textContent).toContain("not causal proof");
+    expect(container.textContent).toContain("never treated as channel contribution, ROAS, or budget candidates");
+  });
 });

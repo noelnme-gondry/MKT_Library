@@ -1,4 +1,4 @@
-import { getToolTemplateFields, hasToolTemplate, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
+import { getToolTemplateFields, hasToolTemplate, ROLE_MAPPING_TEMPLATE_FIELD_META, ROLE_MAPPING_TEMPLATE_REQUIRED, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
 import { idToSlug, isRoutePublished, ROUTES } from "@/lib/routeMap";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 
@@ -13,6 +13,7 @@ function requiredKeySet(toolId) {
     if (typeof field === "string") keys.add(field);
     else if (field?.oneOf) for (const key of field.oneOf) keys.add(key);
   }
+  for (const key of ROLE_MAPPING_TEMPLATE_REQUIRED[toolId] || []) keys.add(key);
   return keys;
 }
 
@@ -37,7 +38,7 @@ export function getTemplatePage(slug) {
   if (!page) return null;
   const required = requiredKeySet(page.toolId);
   const fields = getToolTemplateFields(page.toolId).map((key) => {
-    const field = STANDARD_FIELDS[key] || {};
+    const field = STANDARD_FIELDS[key] || ROLE_MAPPING_TEMPLATE_FIELD_META[key] || {};
     return {
       key: CANON_HEADER(key),
       label: field.label || "",

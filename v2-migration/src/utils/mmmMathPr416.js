@@ -4669,6 +4669,7 @@ import {
                 methodLabel: "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
                 params,
                 names,
+                droppedFeatures: controls.dropped || [],
                 featureMeans: colMean,
                 featureScales: colScale,
                 rawFeatureHistory: Xraw,

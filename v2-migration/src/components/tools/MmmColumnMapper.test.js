@@ -348,6 +348,19 @@ describe("MMM column mapping", () => {
     })]);
   });
 
+  it("maps the published MMM template's control roles without treating them as media", () => {
+    const headers = ["date", "revenue", "google_spend", "market_index", "event_dummy", "regime_step"];
+    const rows = [
+      { date: "2025-01-06", revenue: "100", google_spend: "20", market_index: "98", event_dummy: "0", regime_step: "0" },
+      { date: "2025-01-13", revenue: "110", google_spend: "25", market_index: "101", event_dummy: "1", regime_step: "1" },
+    ];
+    const map = autoGuessColMap(headers, rows, false);
+    expect(map.market_index.role).toBe("external");
+    expect(map.event_dummy.role).toBe("dummy");
+    expect(map.regime_step.role).toBe("step");
+    expect(map.google_spend.role).toBe("channel");
+  });
+
   it("auto-detects row OS and Revenue, then filters the panel", () => {
     const headers = ["week", "os", "revenue", "google_spend"];
     const rows = [

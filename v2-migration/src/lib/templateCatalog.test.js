@@ -24,6 +24,9 @@ describe("templateCatalog", () => {
     const dashboard = getTemplatePage("dashboard");
     expect(dashboard.requiredCount).toBeGreaterThan(0);
     expect(dashboard.fields.find((field) => field.key === "date")?.required).toBe(true);
+    const mmm = getTemplatePage("mmm-contribution");
+    expect(mmm.fields.find((field) => field.key === "market_index")).toMatchObject({ label: "Market index", required: false });
+    expect(mmm.fields.find((field) => field.key === "google_spend")).toMatchObject({ label: "Google spend", required: true });
   });
 
   it("returns null for unknown slugs instead of throwing", () => {
