@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoDeclare, defaultPeriods } from "@/lib/segment-composition/autoDeclare";
+import { autoDeclare, defaultPeriods, periodKeys } from "@/lib/segment-composition/autoDeclare";
 import { buildSegmentPanel } from "@/lib/segment-composition/segmentPanel";
 import { rankDimensions } from "@/utils/segmentCompositionMath";
 import { buildDemoCsv } from "@/utils/demoData";
@@ -52,6 +52,21 @@ describe("한글 헤더도 같은 규칙으로 잡는다", () => {
     expect(result.roles.scope).toEqual([]);
     expect(result.roles.measures.spend).toBe("광고비");
     expect(result.dimensions.map((dimension) => dimension.id).sort()).toEqual(["성별", "연령대"]);
+  });
+});
+
+describe("역할 컬럼은 세그먼트 cardinality 제한과 분리한다", () => {
+  it("캠페인이 20개를 넘어도 분석 단위로 선언한다", () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      date: index < 15 ? "2026-07-01" : "2026-08-01",
+      campaign: `campaign-${index + 1}`,
+      gender: index % 2 ? "F" : "M",
+      signups: "10",
+    }));
+    const result = autoDeclare({ headers: Object.keys(rows[0]), rows });
+
+    expect(result.roles.entity).toEqual(["campaign"]);
+    expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
   });
 });
 
@@ -111,6 +126,12 @@ describe("기본 비교 기간", () => {
 
   it("기간이 하나뿐이면 비교하지 않는다", () => {
     expect(defaultPeriods([{ date: "2026-07-01" }], "date")).toEqual({ pre: "", post: "" });
+  });
+
+  it("비제로패딩 날짜도 패널과 같은 ISO 키로 정규화한다", () => {
+    const rows = [{ date: "2026-7-1" }, { date: "2026-8-1" }];
+    expect(periodKeys(rows, "date")).toEqual(["2026-07-01", "2026-08-01"]);
+    expect(defaultPeriods(rows, "date")).toEqual({ pre: "2026-07-01", post: "2026-08-01" });
   });
 });
 
