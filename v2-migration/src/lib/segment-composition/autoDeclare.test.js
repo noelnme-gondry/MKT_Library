@@ -83,10 +83,36 @@ describe("역할 컬럼은 세그먼트 cardinality 제한과 분리한다", () 
     expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
   });
 
+  it("숫자가 섞인 긴 자유 텍스트도 분석 단위로 쓰지 않는다", () => {
+    const rows = Array.from({ length: 120 }, (_, index) => ({
+      date: index < 60 ? "2026-07-01" : "2026-08-01",
+      creative_copy: `Creative ${index + 1} audience insight and experiment summary for cohort ${index + 1}`,
+      gender: index % 2 ? "F" : "M",
+      signups: "10",
+    }));
+    const result = autoDeclare({ headers: Object.keys(rows[0]), rows });
+
+    expect(result.roles.entity).toEqual([]);
+    expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
+  });
+
   it("캠페인이 20개를 넘어도 분석 단위로 선언한다", () => {
     const rows = Array.from({ length: 30 }, (_, index) => ({
       date: index < 15 ? "2026-07-01" : "2026-08-01",
       campaign: `campaign-${index + 1}`,
+      gender: index % 2 ? "F" : "M",
+      signups: "10",
+    }));
+    const result = autoDeclare({ headers: Object.keys(rows[0]), rows });
+
+    expect(result.roles.entity).toEqual(["campaign"]);
+    expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
+  });
+
+  it("숫자 접미사가 있는 120개 캠페인도 분석 단위로 선언한다", () => {
+    const rows = Array.from({ length: 120 }, (_, index) => ({
+      date: index < 60 ? "2026-07-01" : "2026-08-01",
+      campaign: `Campaign ${index + 1}`,
       gender: index % 2 ? "F" : "M",
       signups: "10",
     }));

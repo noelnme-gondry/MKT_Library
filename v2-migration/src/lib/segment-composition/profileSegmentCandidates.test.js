@@ -82,6 +82,17 @@ describe("자동 확정하면 안 되는 컬럼", () => {
     expect(reasonsOf(result, "memo")).toContain(CANDIDATE_REASON.FREE_TEXT);
   });
 
+  it("통화·퍼센트 표기는 지표로 유지한다", () => {
+    const formattedMetrics = [
+      { date: "2026-07-01", spend: "₩1,200,000", rate: "12.5%" },
+      { date: "2026-08-01", spend: "1,350,000원", rate: "10.0%" },
+    ];
+    const metrics = profileSegmentCandidates({ headers: ["date", "spend", "rate"], rows: formattedMetrics });
+
+    expect(reasonsOf(metrics, "spend")).toContain(CANDIDATE_REASON.MEASURE_LIKE);
+    expect(reasonsOf(metrics, "rate")).toContain(CANDIDATE_REASON.MEASURE_LIKE);
+  });
+
   it("정수로 코딩된 등급은 날짜로 오인해 버리지 않는다", () => {
     // 공용 프로파일러는 `new Date("1")`이 2001-01-01로 파싱되는 탓에 맨 정수를
     // 날짜로 본다. 여기서 날짜로 걸러 내면 정수 코드 세그먼트가 통째로 사라진다.
