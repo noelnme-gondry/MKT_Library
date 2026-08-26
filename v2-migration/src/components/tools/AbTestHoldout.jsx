@@ -167,7 +167,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   }, [planResult, planCprA, planCprB]);
   const sequentialPlan = useMemo(() => testType === "binary" && planResult?.totalN
     ? obfSequentialPlan({ alpha: num(planAlpha), looks: num(sequentialLooks), plannedTotal: planResult.totalN })
-    : null, [planAlpha, planResult?.totalN, sequentialLooks, testType]);
+    : null, [planAlpha, planResult, sequentialLooks, testType]);
 
   // ============================================================
   //  Analyze mode compute (§2)

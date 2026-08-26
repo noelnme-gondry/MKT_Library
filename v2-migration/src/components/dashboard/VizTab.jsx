@@ -17,6 +17,8 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
+import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
+import { alignEventsToAxis } from "@/utils/storeEvents";
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
@@ -201,45 +203,6 @@ const VIZ_DASH_COPY_EN = {
   },
 };
 
-// 차트에 이벤트 마커 세로선 + 라벨을 그리는 Chart.js 플러그인(§12.18 event marker draw).
-// category x축(날짜 라벨)에서 marker.date에 매칭되는 x 픽셀에 점선을 그림.
-function makeEventMarkerPlugin(markers) {
-  return {
-    id: "monEventMarkers",
-    afterDatasetsDraw(chart) {
-      if (!markers || !markers.length) return;
-      const xScale = chart.scales.x;
-      if (!xScale || !xScale.getLabels) return;
-      const labels = xScale.getLabels();
-      const { ctx, chartArea } = chart;
-      if (!chartArea) return;
-      ctx.save();
-      for (const m of markers) {
-        const idx = labels.indexOf(m.matchLabel);
-        if (idx < 0) continue;
-        const x = xScale.getPixelForValue(idx);
-        if (x == null || !isFinite(x)) continue;
-        ctx.beginPath();
-        ctx.moveTo(x, chartArea.top);
-        ctx.lineTo(x, chartArea.bottom);
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "#f7b955";
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.font = "10px Inter, sans-serif";
-        ctx.fillStyle = "#f7b955";
-        ctx.textAlign = "left";
-        ctx.save();
-        ctx.translate(x + 3, chartArea.top + 4);
-        ctx.fillText(String(m.label).slice(0, 16), 0, 0);
-        ctx.restore();
-      }
-      ctx.restore();
-    },
-  };
-}
-
 export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const router = useRouter();
   const C = resolveDashCopy(domain);
@@ -344,9 +307,9 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const trendOutcomeLabel = D.trendOutcome(effBasis);
 
   // 이벤트 마커를 일별 차트 라벨(_key = YYYY-MM-DD)에 매칭할 형태로 준비.
-  const preparedMarkers = useMemo(
-    () => (eventMarkers || []).map((m) => ({ label: m.label, matchLabel: m.date })),
-    [eventMarkers]
+  const dailyMarkerEvents = useMemo(
+    () => alignEventsToAxis(eventMarkers, dailyAgg.map((row) => row._key)).onAxis,
+    [dailyAgg, eventMarkers]
   );
 
   // 2. Formatters
@@ -535,6 +498,10 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       ],
     };
   }, [activeMetric, customMetrics, filteredRows, selectedCohort, effBasis, locale, metricValue]);
+  const detailMarkerEvents = useMemo(
+    () => alignEventsToAxis(eventMarkers, detailSeries?.labels).onAxis,
+    [detailSeries?.labels, eventMarkers]
+  );
 
   useEffect(() => {
     if (detailChartRef.current) detailChartRef.current.destroy();
@@ -542,12 +509,13 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     if (!canvas || !activeMetric || !detailSeries) return undefined;
     detailChartRef.current = new Chart(canvas.getContext("2d"), {
       type: "line",
-      plugins: [makeEventMarkerPlugin(preparedMarkers)],
+      plugins: [eventMarkersPlugin],
       data: detailSeries,
       options: {
         ...chartCommonOpts(),
         plugins: {
           ...chartCommonOpts().plugins,
+          eventMarkers: { events: detailMarkerEvents },
           legend: { ...chartCommonOpts().plugins.legend, labels: { color: CHART_THEME.text, usePointStyle: true } },
           tooltip: activeMetric === "retention"
             ? {
@@ -571,7 +539,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     });
     requestAnimationFrame(() => detailChartRef.current?.resize());
     return () => detailChartRef.current?.destroy();
-  }, [activeMetric, activeMetricLabel, detailSeries, preparedMarkers]);
+  }, [activeMetric, activeMetricLabel, detailMarkerEvents, detailSeries]);
 
   // 3. Chart Rendering Effect
   useEffect(() => {
@@ -587,7 +555,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     if (canvasRefs.current.ts) {
       instances.ts = new Chart(canvasRefs.current.ts.getContext("2d"), {
         type: "line",
-        plugins: [makeEventMarkerPlugin(preparedMarkers)],
+        plugins: [eventMarkersPlugin],
         data: {
           labels: dailyAgg.map((d) => d._key),
           datasets: [
@@ -617,6 +585,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         },
         options: {
           ...chartCommonOpts(),
+          plugins: { ...chartCommonOpts().plugins, eventMarkers: { events: dailyMarkerEvents } },
           scales: {
             x: { ...chartCommonOpts().scales.x },
             y: {
@@ -818,7 +787,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
     // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
+  }, [dailyAgg, byChannel, totals, dailyMarkerEvents, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
 
   // KPI 카드는 빠른 스캔용 미니 차트이자 아래 탐색 차트의 지표 선택기다. PVM 결과를
   // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
