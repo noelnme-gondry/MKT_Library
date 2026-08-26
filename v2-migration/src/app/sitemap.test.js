@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import sitemap from "./sitemap";
+import sitemap, { contentLastModified } from "./sitemap";
 import { EN_READY_GUIDE_IDS, EN_READY_UNLISTED_IDS, EN_READY_TOOL_IDS, SITE_URL, idToPath } from "@/lib/routeMap";
 import { getPublicRouteLastModified } from "@/lib/publicationDates";
 
 describe("sitemap", () => {
+  it("prefers a truthful content update date over the publication date", () => {
+    expect(contentLastModified({ date: "2026-07-18", updated: "2026-08-26" }).toISOString().slice(0, 10)).toBe("2026-08-26");
+    expect(contentLastModified({ date: "2026-07-18" }).toISOString().slice(0, 10)).toBe("2026-07-18");
+    expect(contentLastModified({})).toBeUndefined();
+  });
+
   it("emits unique canonical URLs and only truthful modification dates", () => {
     const entries = sitemap();
     const urls = entries.map((entry) => entry.url);

@@ -49,6 +49,14 @@ function parseFile(fileName, locale) {
     shortDef: data.shortDef || "",
     description: data.description || data.shortDef || "",
     date: data.date || "",
+    // 발행일과 실제 갱신일을 분리한다. sitemap lastmod는 significant update만
+    // 반영해야 하므로, 단순 배포일을 updated로 위장하지 않는다.
+    updated: data.updated || "",
+    reviewedAt: data.reviewedAt || "",
+    reviewer: data.reviewer || "",
+    sources: Array.isArray(data.sources)
+      ? data.sources.filter((item) => item?.title && item?.url).map((item) => ({ title: String(item.title), url: String(item.url) }))
+      : [],
     keywords: data.keywords || "",
     // 카테고리(필터용) — 없으면 "기타"로 폴백(누락 방지, §정직).
     category: data.category || (locale === "en" ? "Other" : "기타"),

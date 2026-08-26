@@ -22,4 +22,14 @@ describe("EditorialTrust", () => {
     expect(screen.getByText("Reviewed by Analytics editor")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Official reference" }).getAttribute("href")).toBe("https://example.com/reference");
   });
+
+  it("labels glossary sources as definition sources", () => {
+    render(
+      <EditorialTrust
+        contentType="glossary"
+        sources={[{ title: "공식 정의", url: "https://example.com/definition" }]}
+      />,
+    );
+    expect(screen.getByText("이 용어 설명에서 인용한 1차 출처")).toBeTruthy();
+  });
 });
