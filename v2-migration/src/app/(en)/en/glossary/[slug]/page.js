@@ -6,6 +6,8 @@ import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
+import SearchIntentLinks from "@/components/seo/SearchIntentLinks";
+import { intentLinksFor } from "@/lib/searchIntentRegistry";
 
 // EN 용어 상세 — /glossary/[slug]/page.js(KR)의 EN 미러.
 export function generateStaticParams() {
@@ -114,6 +116,8 @@ export default async function EnGlossaryTermPage({ params }) {
         sources={term.sources}
         contentType="glossary"
       />
+
+      <SearchIntentLinks locale="en" links={intentLinksFor("glossary", term.slug, "en")} />
 
       {term.faq.length > 0 && (
         <section className="blog-faq" aria-label="Frequently asked questions">

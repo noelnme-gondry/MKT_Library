@@ -10,6 +10,7 @@ import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
 import RelatedGuideList from "@/components/seo/RelatedGuideList";
 import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
 import AuthorCard from "@/components/seo/AuthorCard";
+import SearchIntentLinks from "@/components/seo/SearchIntentLinks";
 import { clusterLinksFor } from "@/lib/topicClusters";
 import { getBlogSeo } from "@/lib/blogSeo";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
@@ -17,6 +18,7 @@ import { guidesForPost } from "@/lib/guideSearchContent";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { idToPath } from "@/lib/routeMap";
 import { getAllTerms } from "@/lib/glossary";
+import { intentLinksFor } from "@/lib/searchIntentRegistry";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -205,6 +207,8 @@ export default async function EnBlogPostPage({ params }) {
         reviewedAt={post.reviewedAt}
         sources={post.sources}
       />
+
+      <SearchIntentLinks locale="en" links={intentLinksFor("blog", post.slug, "en")} />
 
       <TopicClusterLinks
         links={clusterLinksFor(post.slug)}

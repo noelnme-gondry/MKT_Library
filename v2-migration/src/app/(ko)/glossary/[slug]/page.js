@@ -6,6 +6,8 @@ import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
+import SearchIntentLinks from "@/components/seo/SearchIntentLinks";
+import { intentLinksFor } from "@/lib/searchIntentRegistry";
 
 export function generateStaticParams() {
   return getAllTerms().map((t) => ({ slug: t.slug }));
@@ -115,6 +117,8 @@ export default async function GlossaryTermPage({ params }) {
         sources={term.sources}
         contentType="glossary"
       />
+
+      <SearchIntentLinks links={intentLinksFor("glossary", term.slug, "ko")} />
 
       {term.faq.length > 0 && (
         <section className="blog-faq" aria-label="자주 묻는 질문">
