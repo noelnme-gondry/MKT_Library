@@ -24,7 +24,7 @@ const KO_TITLES = {
   "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 평균이 숨기는 이탈 읽는 법",
   "content-element-analysis": "콘텐츠 요소 분석: 후킹·길이·형식 중 뭐가 성과를 만드나",
   "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
-  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 비용 지표 읽는 법",
+  "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이와 계산법: 어떤 지표를 봐야 할까",
   "creative-attribute-regression": "썸네일·제목을 A/B 없이 비교하는 법",
   "event-taxonomy-guide": "이벤트 택소노미(텍소노미)·SDK 오류 진단: 이름 충돌·누락",
   "funnel-dropoff-analysis": "전환율(CVR) 개선: 퍼널 이탈 진단부터 A/B 검증까지",
@@ -39,7 +39,7 @@ const KO_TITLES = {
   "meta-advantage-plus-guide": "Meta Advantage+ 성과 진단: iOS·안드로이드 차이 읽기",
   "offline-ad-online-impact": "TV·오프라인 광고의 온라인 효과 측정법",
   "performance-marketer-skills": "퍼포먼스 마케터 필요 역량: 실무 스킬 쌓는 순서",
-  "performance-marketing-metrics": "퍼포먼스 마케팅 지표: 처음 볼 4개부터 CPA·ROAS 진단까지",
+  "performance-marketing-metrics": "퍼포먼스 마케팅 지표 보는 순서: CPA·ROAS 진단법",
   "performance-marketing-analysis-order": "퍼포먼스 마케팅 분석 순서: 데이터에 맞는 첫 분석 고르기",
   "postback-integration-guide": "포스트백 오류 진단: 설치 0·전환 누락 원인 찾기",
   "retargeting-reengagement-guide": "리타겟팅 성과가 좋아 보이는 이유: UA 혼입 진단",
@@ -65,7 +65,7 @@ const EN_TITLES = {
   "marketing-mix-modeling": "Marketing Mix Modeling: Measure Channel Contribution",
   "multicollinearity-mmm-guide": "Multicollinearity Before MMM: How to Read High VIF",
   "performance-marketer-skills": "Performance Marketer Skills: What to Learn, In Order",
-  "performance-marketing-metrics": "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS",
+  "performance-marketing-metrics": "Performance Marketing Metrics: Diagnose CPA, ROAS, and LTV",
   "performance-marketing-analysis-order": "Performance Marketing Analysis: Pick the Right First Method",
   "aha-moment-retention": "How to Find the Aha Moment: Early Actions and Retention",
   "apple-search-ads-guide": "Apple Search Ads Terms: Find Wasted Keywords",
@@ -81,7 +81,7 @@ const EN_TITLES = {
   "campaign-anomaly-detection": "Campaign Anomaly Detection: Find CPA and Conversion Drops",
   "cannibalization-organic-paid": "Ad Cannibalization: Measure Paid and Organic Overlap",
   "cohort-analysis-guide": "Cohort Analysis: Reading D1, D7, and D30 Retention Cohorts",
-  "cpi-cpa-cpm-difference": "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained",
+  "cpi-cpa-cpm-difference": "CPM vs CPC vs CPI vs CPA: Which Cost Metric to Use?",
   "event-taxonomy-guide": "Event Taxonomy & SDK Errors: Names, Gaps, and QA",
   "funnel-dropoff-analysis": "Conversion Rate: Diagnose Funnel Drop-off and Test Fixes",
   "google-uac-optimization": "When Google UAC Slips: Diagnose Learning and Bids",
@@ -109,10 +109,14 @@ const DESCRIPTION_OVERRIDES = {
   ko: {
     "ad-creative-testing": "테스트 예산과 목표 CPA로 적정 소재 수를 계산하고 가설 설정부터 승자·보류·탈락 판정까지 정리합니다.",
     "cannibalization-organic-paid": "내부 카니발라이제이션과 유료·오가닉 잠식을 구분하고 측정하는 방법입니다.",
+    "cpi-cpa-cpm-difference": "CPM·CPC·CPI·CPA의 계산식과 쓰는 시점을 비교하고, CPC 상승 원인을 경매·소재로 나누는 법을 설명합니다.",
+    "performance-marketing-metrics": "CTR·CVR·CPA·ROAS를 보는 순서와, CPA·ROAS가 흔들릴 때 문제 위치를 찾는 방법을 정리합니다.",
   },
   en: {
     "ad-creative-testing": "Calculate how many ad creatives your budget can support, define one hypothesis, and classify winners, holds, and losers without relying on CTR alone.",
     "cannibalization-organic-paid": "Measure internal cannibalisation and separate paid impact from organic demand.",
+    "cpi-cpa-cpm-difference": "Compare CPM, CPC, CPI, and CPA formulas, then separate auction pressure from creative response when CPC rises.",
+    "performance-marketing-metrics": "Review CTR, CVR, CPA, and ROAS in order to locate whether a performance problem sits before or after conversion.",
   },
 };
 const UPDATED_TODAY = new Set([
@@ -146,6 +150,9 @@ const UPDATED_2026_08_14 = new Set([
   "ad-creative-specs-guide", "apple-search-ads-guide", "event-taxonomy-guide", "google-uac-optimization",
   "meta-advantage-plus-guide", "postback-integration-guide", "retargeting-reengagement-guide",
 ]);
+const UPDATED_2026_08_26 = new Set([
+  "cpi-cpa-cpm-difference", "performance-marketing-metrics",
+]);
 
 export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug] || DRAFT_TITLES[locale]?.[slug];
@@ -162,7 +169,9 @@ export function getBlogSeo(locale, slug, source = {}) {
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
-    updated: source.updated || (UPDATED_2026_08_14.has(slug)
+    updated: source.updated || (UPDATED_2026_08_26.has(slug)
+      ? "2026-08-26"
+      : UPDATED_2026_08_14.has(slug)
       ? "2026-08-14"
       : UPDATED_2026_08_06[locale]?.has(slug)
       ? "2026-08-06"

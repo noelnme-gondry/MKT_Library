@@ -60,13 +60,13 @@ export const TOPIC_CLUSTERS = [
   },
   {
     id: "measurement",
-    pillar: "attribution-data-mismatch",
-    ko: { title: "측정 인프라", blurb: "숫자를 믿을 수 있게 만드는 배관 작업이에요." },
-    en: { title: "Measurement plumbing", blurb: "The work that makes the numbers trustworthy in the first place." },
+    pillar: "ios-att-skan-guide",
+    ko: { title: "iOS 측정과 SKAN", blurb: "ATT·SKAN·포스트백을 기준으로 iOS 성과 데이터를 읽는 글 모음이에요." },
+    en: { title: "iOS measurement and SKAN", blurb: "Reading iOS performance data through ATT, SKAN, and postbacks." },
     members: [
+      "attribution-data-mismatch",
       "event-taxonomy-guide",
       "ga4-data-traps",
-      "ios-att-skan-guide",
       "postback-integration-guide",
       "skan-conversion-value-schema",
       "skan-vs-mmp-attribution",
