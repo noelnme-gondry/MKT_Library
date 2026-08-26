@@ -23,7 +23,22 @@ const ROLE_MAPPING_TEMPLATE_FIELDS = {
   "5-20": ["user_id", "target", "invite_d1", "invite_d7", "share_d7"],
   "5-23": ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"],
   "5-24": ["date", "brand_search", "campaign_on"],
+  "5-18-mmm": ["date", "revenue", "google_spend", "meta_spend", "market_index", "event_dummy", "regime_step"],
   "9-1": ["content_id", "outcome", "has_hook", "text_overlay", "video_length"],
+};
+
+// 자유 역할 매핑 템플릿은 STANDARD_FIELDS의 고정 필드 계약 밖에 있으므로,
+// 공개 템플릿 페이지가 실제 최소 계약과 라벨을 잃지 않게 같은 SSOT에서 제공한다.
+export const ROLE_MAPPING_TEMPLATE_REQUIRED = {
+  "5-18-mmm": ["date", "revenue", "google_spend"],
+};
+
+export const ROLE_MAPPING_TEMPLATE_FIELD_META = {
+  google_spend: { label: "Google spend", type: "number", group: "media" },
+  meta_spend: { label: "Meta spend", type: "number", group: "media" },
+  market_index: { label: "Market index", type: "number", group: "control" },
+  event_dummy: { label: "Event dummy (0/1)", type: "number", group: "control" },
+  regime_step: { label: "Regime step (0/1)", type: "number", group: "control" },
 };
 
 // 효율&예산 4총사 — 같은 grain(TOOL_GROUP === "efficiency") 공유 도구. 자체 예시

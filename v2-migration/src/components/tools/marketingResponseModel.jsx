@@ -509,7 +509,7 @@ export function mmmEvidenceTreatmentContrast(rows, spendHeader, {
 export const MMM_COUNTRY_HEADER_PATTERN = /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i;
 export const MMM_EVIDENCE_SPEND_HEADER_PATTERN = /(^|[_\s])(spend|cost|budget|expense)([_\s]|$)|(?:spend|cost|budget|expense)$|비용|지출|예산/i;
 export const MMM_EVIDENCE_TIME_HEADER_PATTERN = /(^|[_\s])(date|day|ds|week|wk|time)([_\s]|$)|(?:date|day|ds|week|wk|time)$|날짜|일자|주차|주인덱스/i;
-export const MMM_TEMPLATE_CSV = "﻿country,date,traffic,registrations,reactivations,purchasers,revenue,google_spend,meta_spend,tiktok_spend,brand_spend\r\nKR,2024-01-01,1200,310,85,42,8400000,4200000,3100000,1200000,900000\r\nKR,2024-01-02,1260,325,88,45,8950000,4400000,3000000,1350000,920000\r\n";
+export const MMM_TEMPLATE_CSV = "﻿country,date,traffic,registrations,reactivations,purchasers,revenue,google_spend,meta_spend,tiktok_spend,brand_spend,market_index,event_dummy,regime_step\r\nKR,2024-01-01,1200,310,85,42,8400000,4200000,3100000,1200000,900000,98,0,0\r\nKR,2024-01-08,1260,325,88,45,8950000,4400000,3000000,1350000,920000,101,1,0\r\nKR,2024-01-15,1180,302,82,39,8100000,3900000,3200000,1100000,880000,99,0,1\r\n";
 export const MMM_EXPERIMENT_ONOFF_TEMPLATE_CSV = `﻿type,week,treatment_state,registrations,meta_spend\r\n${Array.from({ length: 16 }, (_, index) => {
   const block = Math.floor(index / 4);
   const isOn = block % 2 === 1;

@@ -28,6 +28,7 @@ import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticPa
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, colMapRoles, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
 import { auditClassicNoPriorRun, classicNoPriorConfig, classicNoPriorFitOptions } from "@/utils/classicMmmPolicy";
+import { mmmControlFitRows } from "@/utils/mmmControlContract";
 import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
@@ -4818,6 +4819,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               "outside-observed-spend-range": tx("증액 후 지속 주간 노출이 관측 adstock 범위 밖", "sustained post-increment exposure exceeds observed adstock range"),
             }[reason] || reason)).join(" · ");
             const health = mmm.health || mmmBayesianHealth(mmm.run);
+            const controlFitRows = mmmControlFitRows(mmm.panel, mmm.run);
             const identification = mmm.run.identification || {};
             const unresolvedCollinearity = (mmm.absorb?.notices || []).some((notice) => !notice.dropped);
             const budgetEligible = identification.budgetEligible !== false && !unresolvedCollinearity;
@@ -5112,7 +5114,33 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <p>{headline}</p>
                   </div>
                 </div>
-                {(mmm.panel.externalDefs || []).length > 0 && <p className="mmm-result-note">{tx("업계 현황은 시장 전체 수치가 아니라 평소 대비 상대 변화가 우리 KPI를 설명한 값입니다.", "Industry controls show how relative change from normal explains this KPI, not the market total itself.")}</p>}
+                {controlFitRows.length > 0 && (
+                  <details className="mmm-result-note" data-mmm-control-fit>
+                    <summary>{tx(`연속형 컨트롤 ${controlFitRows.length}개 적용 상태`, `${controlFitRows.length} continuous-control status`)}</summary>
+                    <p>{tx(
+                      "컨트롤은 평소 대비 상대 변화로 바꿔 광고와 함께 추정합니다. 관측된 연관을 조정하는 변수이며 인과효과를 보장하지 않습니다. 채널 기여·ROAS·예산 추천에는 포함하지 않습니다.",
+                      "Controls are converted to change relative to their typical level and estimated jointly with media. They adjust observed associations but do not prove causality, and are excluded from channel contribution, ROAS, and budget recommendations.",
+                    )}</p>
+                    <div className="table-wrap">
+                      <table className="data" style={{ fontSize: "11.5px" }}>
+                        <thead><tr><th>{tx("컨트롤", "Control")}</th><th>{tx("모델 상태", "Model status")}</th><th>{tx("변환", "Transform")}</th></tr></thead>
+                        <tbody>{controlFitRows.map((row) => <tr key={row.key}>
+                          <td>{row.label}</td>
+                          <td>{row.status === "included"
+                            ? tx("공동 적합에 포함", "Included in joint fit")
+                            : row.status === "dropped-collinear"
+                              ? tx("독립 변화 부족으로 제외", "Excluded: no independent variation")
+                              : tx("적합에 사용되지 않음", "Not used in fit")}</td>
+                          <td>{row.transformMode === "log-relative"
+                            ? tx("기준 대비 로그 변화", "Log change vs. reference")
+                            : row.transformMode === "linear-relative"
+                              ? tx("기준 대비 선형 변화", "Linear change vs. reference")
+                              : "—"}</td>
+                        </tr>)}</tbody>
+                      </table>
+                    </div>
+                  </details>
+                )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                   <strong className="mmm-result-subtitle">{tx("주별 기여 크기", "Weekly contribution magnitude")}</strong>
                   <PillGroup

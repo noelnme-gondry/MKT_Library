@@ -1366,7 +1366,7 @@ const ZONES = [
   ["geo", "🌍 GEO (선택 · 없으면 National-level)", "🌍 GEO (optional · National-level fallback)", false, false],
   ["reach", "👥 Reach (선택 · RF)", "👥 Reach (optional · RF)", false, true],
   ["frequency", "🔁 Frequency (선택 · RF)", "🔁 Frequency (optional · RF)", false, true],
-  ["external", "📊 업계 수요 지수 (MMM 전용 · 상대 변화로 변환 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · converted to relative change · many · platform)", false, true],
+  ["external", "📊 연속형 컨트롤 (시장 수요·가격 지수 등 · 여러 개 · 플랫폼)", "📊 Continuous controls (market demand, price index, etc. · many · platform)", false, true],
   ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
   ["step", "📐 구조변화 step (상태열 또는 경계 pulse · 중단+재개 단일쌍은 기간 자동 생성)", "📐 Structural step (state or boundary pulse · one shutdown/reopen pair derives the interval)", false, true],
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
@@ -1396,7 +1396,7 @@ function roleSelectLabel(role, locale) {
     paid: ["Paid 가입 Regs", "Paid regs"], react: ["재활성 React", "Reactivation"],
     traffic: ["총유입 Traffic", "Total traffic"], purchasers: ["구매자", "Purchasers"],
     revenue: ["매출", "Revenue"], channel: ["채널 spend", "Channel spend"],
-    external: ["업계 수요 지수", "Industry demand"], dummy: ["더미/이벤트", "Dummy/event"],
+    external: ["연속형 컨트롤", "Continuous control"], dummy: ["더미/이벤트", "Dummy/event"],
     step: ["구조변화 step", "Structural step"], platform: ["세그먼트/플랫폼", "Segment/platform"],
     geo: ["GEO", "GEO"], reach: ["Reach", "Reach"], frequency: ["Frequency", "Frequency"],
   };
@@ -1559,6 +1559,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   const hasGeo = inRole("geo").length > 0;
   const hasReach = inRole("reach").length > 0;
   const hasFrequency = inRole("frequency").length > 0;
+  const hasContinuousControls = inRole("external").length > 0;
   const forecastInputWarnings = mmmForecastInputWarnings(headers, rows, cm, locale);
 
   return (
@@ -1605,6 +1606,22 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
           <Zone key={role} role={role} label={tr(koLabel, enLabel)} withKind={withKind} withPlat={withPlat} />
         ))}
       </div>
+      {hasContinuousControls && (
+        <div className="callout" style={{ marginTop: "10px" }} data-mmm-control-contract>
+          <div className="ico">i</div>
+          <div className="body">
+            <strong>{tr("연속형 컨트롤 입력 계약", "Continuous-control input contract")}</strong>
+            <p>{tr(
+              "시장 수요·가격 지수·검색량처럼 매체 지출이 아닌 주간 수준값만 넣으세요. 타깃과 같은 기간·주기로 빈칸 없이 관측돼야 합니다. 0/1 사건은 더미/이벤트, 변경 후 계속 유지되는 상태는 구조변화 step이 맞습니다.",
+              "Use weekly level measures outside media spend, such as market demand, a price index, or search volume. They must cover the same periods and cadence as the target with no gaps. Use Dummy/event for 0/1 events and Structural step for a persistent post-change state.",
+            )}</p>
+            <p>{tr(
+              "모델은 각 컨트롤을 평소 대비 상대 변화로 바꿔 광고와 함께 추정합니다. 이 변수는 교란 가능성을 줄이는 관측 통제일 뿐 인과효과를 보장하지 않으며, 채널 기여·ROAS·예산 후보로 취급하지 않습니다.",
+              "The model converts each control to change relative to its typical level and estimates it jointly with media. This is observational adjustment, not causal proof, and controls are never treated as channel contribution, ROAS, or budget candidates.",
+            )}</p>
+          </div>
+        </div>
+      )}
       <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-muted)" }}>
         {tr(`Meridian 입력 상태 · GEO: ${hasGeo ? "매핑됨" : "없음 → National-level"} · Reach: ${hasReach ? "매핑됨" : "없음"} · Frequency: ${hasFrequency ? "매핑됨" : "없음"}`, `Meridian inputs · GEO: ${hasGeo ? "mapped" : "missing → National-level"} · Reach: ${hasReach ? "mapped" : "missing"} · Frequency: ${hasFrequency ? "mapped" : "missing"}`)}
       </div>
