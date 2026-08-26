@@ -15,6 +15,7 @@ describe("WeeklyReport", () => {
     expect(screen.getByText(/원본 데이터는 저장하거나 내보내지 않습니다/)).toBeTruthy();
     expect(screen.getByLabelText("시작일")).toBeTruthy();
     expect(screen.getByLabelText("종료일")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "XLSX 받기" })).toBeTruthy();
   });
 
   it("EN 수집 블록을 렌더한다", () => {
@@ -54,6 +55,7 @@ describe("WeeklyReport", () => {
     expect(screen.getByText("CPA increased")).toBeTruthy();
     expect(screen.queryByText("This result was created from an earlier data input.")).toBeNull();
     expect(document.querySelectorAll("main h1")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Download XLSX" })).toBeTruthy();
   });
 
   it("서로 다른 분석 기간을 수집하면 공유 전 경고한다", () => {

@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { serializeReportDraft } from "@/lib/reports/reportSchema";
 import { renderReportMarkdown } from "@/lib/reports/renderMarkdown";
 import { downloadText } from "@/utils/download";
+import { downloadXlsx } from "@/utils/download";
+import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
+import { trackProductEvent } from "@/lib/analytics";
 
 const COPY = {
   ko: {
@@ -22,6 +26,7 @@ const COPY = {
     down: "아래로",
     remove: "제거",
     markdown: "Markdown 받기",
+    workbook: "XLSX 받기",
     print: "인쇄 / PDF",
     privacy: "브라우저 세션에서만 유지됩니다. 원본 데이터는 저장하거나 내보내지 않습니다.",
     mixedPeriods: "수집한 결과의 분석 기간이 서로 다릅니다. 공유 전 각 결론의 기간을 확인하세요.",
@@ -42,6 +47,7 @@ const COPY = {
     down: "Move down",
     remove: "Remove",
     markdown: "Download Markdown",
+    workbook: "Download XLSX",
     print: "Print / PDF",
     privacy: "Kept only for this browser session. Source data is neither stored nor exported.",
     mixedPeriods: "Collected results use different analysis periods. Check each conclusion’s period before sharing.",
@@ -65,11 +71,24 @@ export default function WeeklyReport({ locale = "ko" }) {
   const removeReportBlock = useAppStore((state) => state.removeReportBlock);
   const moveReportBlock = useAppStore((state) => state.moveReportBlock);
   const currentSig = computeAnalyzeSig(csvData);
+  const [isWorkbookExporting, setIsWorkbookExporting] = useState(false);
   const title = draft.title || t.defaultTitle;
   const hasMixedPeriods = new Set(draft.blocks.map(reportPeriodKey).filter(Boolean)).size > 1;
   const download = () => {
     const safe = serializeReportDraft({ ...draft, title });
     downloadText(renderReportMarkdown(safe, locale), locale === "en" ? "weekly-performance-report" : "주간-성과-보고서", "md", locale);
+  };
+  const downloadWorkbook = async () => {
+    if (isWorkbookExporting) return;
+    setIsWorkbookExporting(true);
+    try {
+      const safe = serializeReportDraft({ ...draft, title });
+      const bytes = await createWeeklyReportWorkbook(safe, locale);
+      downloadXlsx(bytes, locale === "en" ? "weekly-performance-report" : "주간-성과-보고서");
+      trackProductEvent("result_downloaded", { source: "weekly_report", download_type: "xlsx", locale });
+    } finally {
+      setIsWorkbookExporting(false);
+    }
   };
 
   return (
@@ -90,6 +109,7 @@ export default function WeeklyReport({ locale = "ko" }) {
           <label><span>{locale === "en" ? "End date" : "종료일"}</span><input type="date" value={draft.period?.end || ""} onChange={(event) => setReportMeta({ period: { ...(draft.period || {}), end: event.target.value } })} /></label>
         </fieldset>
         <button className="btn primary" type="button" disabled={!draft.blocks.length} onClick={download}>{t.markdown}</button>
+        <button className="btn ghost" type="button" disabled={!draft.blocks.length || isWorkbookExporting} onClick={downloadWorkbook}>{isWorkbookExporting ? "XLSX…" : t.workbook}</button>
         <button className="btn ghost" type="button" disabled={!draft.blocks.length} onClick={() => window.print()}>{t.print}</button>
       </section>
       <p className="weekly-review-page__privacy">{t.privacy}</p>
