@@ -225,7 +225,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **SPA 소프트 내비는 GA4 page_view 자동 전송 안 함**(`gtag('config')`는 최초 1회): `components/GaPageviews.jsx`(`usePathname`+최초 제외 가드)가 경로 변경마다 `gtag('event','page_view')`. GTM 이중 태깅 시 이중카운트 주의.
 - **계측 스크립트에 환경 가드가 없으면 개발자가 곧 트래픽이다**(2026-08-19): GTM·GA4·AdSense가 조건 없이 실려 `npm run dev` 화면 확인이 전부 운영 속성에 쌓이고 있었다. `page_view`만이 아니다 — `analytics.js`의 `window.gtag` 하나를 **제품 이벤트 44종이 공유**하므로 퍼널 지표까지 함께 부풀려진다(통로가 하나라 게이트도 한 곳이면 된다는 뜻이기도 하다). **빌드타임 env로 가르면 안 된다** — 정적 프리렌더라 같은 HTML이 localhost와 운영에 함께 나가고 `build && start`가 프로덕션으로 잡혀 그대로 샌다. 실제로 갈리는 값은 호스트뿐이라 `lib/analyticsHost.js`(정확일치 — 접미사 비교면 `…com.evil.example`이 통과한다) + `useAnalyticsEnabled`(`useSyncExternalStore`, effect-setState 회피)로 판정한다. 광고는 정확도가 아니라 **정책** 문제다(로컬 노출 = 무효 트래픽). `noscript` iframe은 게이트가 클라이언트라 옮길 수 없다 — 옮기면 JS 꺼진 **운영** 방문자에게서도 사라진다.
 - **진입 모션의 "초기 숨김"은 JS가 붙인 클래스로만**(랜딩 anime.js): 스타일시트에 `opacity:0`을 박아두면 JS 청크 로드 실패·모션축소 설정에서 콘텐츠가 **영영 안 보인다**. 성공적으로 부착했을 때만 `.is-motion-armed`를 붙이고, 실패 시 즉시 벗긴다(점진적 향상). **조건부 렌더 섹션은 모션 대상에서 제외** — 마운트 시점에 옵저버를 못 달아 하이드레이션 이후 나타나는 노드가 숨은 채 남는다. 트리거는 anime 스크롤 옵저버보다 네이티브 `IntersectionObserver`가 안전(이미 뷰포트 안인 요소의 발화가 명확).
-- **localStorage 영속 금지**(사용자가 명시적으로 켠 경우만). 새로고침 리셋이 기본.
+- **원본 CSV는 Zustand/localStorage persist에 넣지 않는다**. 직접 업로드한 원본은 사용자 제어·90일 만료·삭제 화면이 함께 있는 IndexedDB 워크스페이스에만 저장하며, 서버 전송은 금지.
 
 ---
 

@@ -458,7 +458,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           trackProductEvent("data_import_failed", { tool_id: C.guideToolId, source: "csv", state: "parse_error", locale });
           return;
         }
-        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
+        setCsvData({ raw: rows, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: C.guideToolId, source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => {

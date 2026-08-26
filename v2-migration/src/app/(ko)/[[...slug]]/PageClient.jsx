@@ -10,6 +10,7 @@ import SopContent from "@/components/sops/SopContent";
 import GuideAnswer from "@/components/GuideAnswer";
 import GuideIndex from "@/components/GuideIndex";
 import StartGate from "@/components/StartGate";
+import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import LandingPage from "@/components/LandingPage";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
 import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
@@ -92,6 +93,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId === "home" && <><LandingPage /><DochiAssistant /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
+            {routeId === "storage" && <WorkspaceStoragePage />}
             {routeId === "dochi-result" && <DochiResultWorkspace />}
 
             {routeId === "5-2" && <Dashboard />}
@@ -125,6 +127,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {routeId !== "home" &&
              routeId !== "guide-index" &&
              routeId !== "start-gate" &&
+             routeId !== "storage" &&
              routeId !== "dochi-result" &&
              !routeId.startsWith("5-") &&
              !routeId.startsWith("9-") && (
@@ -136,7 +139,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}
-            {routeId !== "dochi-result" && <ToolPageOutro
+            {routeId !== "dochi-result" && routeId !== "storage" && <ToolPageOutro
               toolId={routeId}
               evidenceLinks={evidenceLinks}
               withConnections={(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute}
@@ -147,7 +150,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
       </div>
       {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}
-      {routeId !== "home" && routeId !== "dochi-result" && <DochiAnalysisDock />}
+      {routeId !== "home" && routeId !== "dochi-result" && routeId !== "storage" && <DochiAnalysisDock />}
       <GlobalModals />
       <UiSemantics />
     </>

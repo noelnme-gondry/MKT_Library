@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
+import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
@@ -80,6 +81,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
+            {routeId === "storage" && <WorkspaceStoragePage locale="en" />}
             {routeId === "dochi-result" && <DochiResultWorkspace locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
@@ -108,7 +110,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               <SopContent routeId={routeId} locale="en" initialData={initialSopData} />
             </>}
             {/* KR과 동일한 하단 마감 계층(§12.30) */}
-            {routeId !== "dochi-result" && <ToolPageOutro
+            {routeId !== "dochi-result" && routeId !== "storage" && <ToolPageOutro
               toolId={routeId}
               locale="en"
               evidenceLinks={evidenceLinks}
@@ -119,7 +121,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
         </div>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
-      {routeId !== "dochi-result" && <DochiAnalysisDock locale="en" />}
+      {routeId !== "dochi-result" && routeId !== "storage" && <DochiAnalysisDock locale="en" />}
       <GlobalModals locale="en" />
       <UiSemantics />
     </>

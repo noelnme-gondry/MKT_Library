@@ -66,6 +66,9 @@ export const ROUTES = [
   { id: "guide-index", slug: "/guide", component: "GuideIndex" },
   // "내 데이터로 분석 시작" 게이트(데모 없이 도구 선택). 자체 주소 `/start`.
   { id: "start-gate", slug: "/start", component: "StartGate" },
+  // 브라우저 저장 원본의 삭제·만료·설정을 다루는 공개 주소. 데이터가 있는 상태로만
+  // 볼 수 있는 무주소 게이트가 아니라, 언제나 열 수 있는 noindex 사생활 화면이다.
+  { id: "storage", slug: "/storage", component: "WorkspaceStoragePage", publication: "preview" },
   // 도치가 받은 파일의 매핑·결과 전용 작업대. 사용자 데이터가 브라우저 메모리에만
   // 있으므로 검색 랜딩이 아닌 일회성 화면(publication: preview)으로 둔다.
   { id: "dochi-result", slug: "/dochi-result", component: "DochiResult", publication: "preview" },
@@ -156,7 +159,7 @@ export const EN_READY_GUIDE_IDS = new Set([
 
 export function hasEnVersion(id) {
   // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
-  return id === "home" || id === "guide-index" || id === "start-gate" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
+  return id === "home" || id === "guide-index" || id === "start-gate" || id === "storage" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null

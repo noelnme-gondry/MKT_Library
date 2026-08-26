@@ -418,7 +418,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         }
         setMmmUploadError(null);
         const headers = res.meta?.fields || [];
-        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name, ...prepareSemanticParallelData({ raw: res.data, headers }) });
+        setCsvData({ raw: res.data, headers, mapping: {}, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: res.data, headers }) });
         trackProductEvent("data_import_success", { tool_id: "5-18", source: "csv", row_count: res.data.length, column_count: headers.length, locale });
       },
       error: () => {

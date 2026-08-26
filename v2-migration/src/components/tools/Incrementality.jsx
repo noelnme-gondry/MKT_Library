@@ -146,7 +146,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
           return;
         }
         const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
-        setCsvData({ raw: rows, headers, mapping, fileName: file.name, ...prepareSemanticParallelData({ raw: rows, headers }) });
+        setCsvData({ raw: rows, headers, mapping, fileName: file.name, workspaceSource: { blob: file.slice(), kind: "csv", originalFileName: file.name }, ...prepareSemanticParallelData({ raw: rows, headers }) });
         trackProductEvent("data_import_success", { tool_id: "5-23", source: "csv", row_count: rows.length, column_count: headers.length, locale });
       },
       error: () => trackProductEvent("data_import_failed", { tool_id: "5-23", source: "csv", state: "parse_error", locale }),

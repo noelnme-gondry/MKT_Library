@@ -30,6 +30,7 @@ const HEADER_COPY = {
     decisionInboxAria: (count, name) => `${name}${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
     dataContext: "현재 데이터",
     utilities: "기타 설정",
+    storage: "이 기기에 저장된 것",
     analystMode: "분석가 모드",
     analystModeOn: "분석가 모드 켜짐",
     analystModeOff: "분석가 모드 꺼짐",
@@ -50,6 +51,7 @@ const HEADER_COPY = {
     decisionInboxAria: (count, name) => `${name}${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
     dataContext: "Current data",
     utilities: "More settings",
+    storage: "Stored on this device",
     analystMode: "Analyst mode",
     analystModeOn: "Analyst mode on",
     analystModeOff: "Analyst mode off",
@@ -230,6 +232,7 @@ export default function Header({ locale = "ko" }) {
             </summary>
             <div className="header-utility-menu__panel">
               <ProjectSettingsMenu locale={locale} />
+              <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>
               <button className="btn ghost header-analyst-mode-menu" type="button" aria-pressed={analystMode} onClick={() => { setAnalystMode(!analystMode); closeUtilityMenu(); }}>
                 {analystMode ? "✓ " : ""}{T.analystMode}
               </button>

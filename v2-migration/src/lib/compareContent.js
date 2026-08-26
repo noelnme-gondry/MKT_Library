@@ -227,7 +227,7 @@ const CONTENT = {
       ],
       faq: [
         { q: "스프레드시트로도 변동 분해를 할 수 있나요?", a: "가능합니다. 다만 단계마다 따로 분해하면 상위 합계가 어긋나기 쉽습니다. 최소 단위에서 한 번만 분해하고 상위는 단순 합산해야 어느 단계에서 보든 합이 맞습니다." },
-        { q: "CSV를 올리면 데이터가 어디에 저장되나요?", a: "저장되지 않습니다. 파싱과 계산이 브라우저 안에서만 실행되고 원본 행은 서버로 전송하거나 보관하지 않습니다. 새로고침하면 사라집니다." },
+        { q: "CSV를 올리면 데이터가 어디에 저장되나요?", a: "직접 올린 파일과 매핑은 이 브라우저에 최대 90일 저장될 수 있습니다. 파싱과 계산은 브라우저 안에서 실행되고 원본 행은 서버로 전송하거나 보관하지 않습니다. 저장 화면에서 언제든 지우거나 저장을 끌 수 있습니다." },
         { q: "광고 계정에 직접 연동되나요?", a: "연동되지 않습니다. 각 매체에서 내려받은 CSV를 올리는 방식입니다. 실시간 API 연결은 제공하지 않습니다." },
       ],
     },
@@ -257,7 +257,7 @@ const CONTENT = {
       ],
       faq: [
         { q: "Can a spreadsheet do variance decomposition?", a: "Yes, but decomposing separately at each level makes upper-level totals disagree. Decompose once at the finest grain and sum upward so the identity holds at every level." },
-        { q: "Where is my CSV stored after upload?", a: "It is not stored. Parsing and computation run in your browser, and source rows are never transmitted or retained. Refreshing the page clears them." },
+        { q: "Where is my CSV stored after upload?", a: "Files you upload directly and their mappings can stay in this browser for up to 90 days. Parsing and computation run in your browser, and source rows are never sent to or retained on a server. You can remove them or turn storage off at any time." },
         { q: "Does it connect directly to my ad accounts?", a: "No. You upload a CSV exported from each platform. Live API integrations are not provided." },
       ],
     },
