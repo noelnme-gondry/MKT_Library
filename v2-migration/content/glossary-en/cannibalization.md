@@ -4,10 +4,14 @@ seoTitle: "Cannibalization: Is Paid Stealing Your Organic?"
 shortDef: "When paid ads steal conversions that would have happened organically anyway"
 description: "Cannibalization is paid advertising taking conversions that would have arrived organically. Why it inflates measured efficiency, and how to check."
 date: "2026-07-18"
+updated: "2026-08-26"
 slug: "cannibalization"
 keywords: "cannibalization, cannibalization meaning, organic paid cannibalization, ad cannibalization"
 category: "Measurement & Methodology"
 relatedPosts: ["cannibalization-organic-paid"]
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
 draft: false
 faq:
   - q: "How do you check for cannibalization?"
@@ -31,6 +35,16 @@ Performance reports credit every conversion to the ad that touched it last. If s
 ## How to confirm it
 
 Observation alone can't prove cannibalization exists. A [holdout test](/glossary/holdout-test) — randomly turning the ad off for part of your audience and comparing total conversions — is the real way to confirm it.
+
+> **Cannibalization rate = organic conversions gained after pausing ÷ paid conversions lost**
+
+If paid conversions fall by 100 while organic rises by 70, the observed cannibalization rate is 70% and the remaining net increment is 30 conversions. Without random assignment or a comparable control, treat that rate as a diagnostic signal rather than a causal estimate.
+
+| Observation | What it may mean | Decision use |
+| --- | --- | --- |
+| Paid falls while total stays flat | Organic substitution is plausible | Pause scaling and design a holdout |
+| Total conversions also fall | Some net increment may exist | Recalculate incremental CPA or ROAS |
+| Interval crosses zero | Current data cannot distinguish the effect | Do not translate it as no effect |
 
 ## Go deeper
 

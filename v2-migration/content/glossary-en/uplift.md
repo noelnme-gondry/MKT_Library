@@ -4,10 +4,14 @@ seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
 description: "Uplift is the difference between an exposed group and a holdout — the outcome ads actually caused. Why it differs from CPA and ROAS, and how to find it."
 date: "2026-08-09"
+updated: "2026-08-26"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement", "uplift-holdout-guide"]
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
 draft: false
 faq:
   - q: "How is uplift different from ROAS?"
@@ -36,7 +40,15 @@ CPA and ROAS only tell you what happened among people who saw the ad — they ca
 
 ## How is uplift calculated?
 
-Start with the conversion-rate difference between a randomized exposed group and holdout group. If the exposed group converts at 8% and the holdout at 5%, uplift is 3 percentage points. If assignment was not randomized, or the groups differ in audience or timing, that difference alone is not proof of ad impact. Use the [Incrementality Analysis tool](/tools/incrementality) to choose a holdout, launch, or shutdown method that matches your data.
+Start with the conversion-rate difference between a randomized exposed group and holdout group. If the exposed group converts at 8% and the holdout at 5%, **absolute uplift is 3 percentage points**, while **relative uplift is (8%−5%)÷5%=60%**. Those are different units and should be labelled as `pp` and `%` in a report.
+
+| Metric | Calculation | Example |
+| --- | --- | --- |
+| Absolute uplift | Exposed rate − holdout rate | 3pp |
+| Relative uplift | Absolute gap ÷ holdout rate | 60% |
+| Incremental conversions | Absolute uplift × exposed population | Depends on population |
+
+If assignment was not randomized, or the groups differ in audience or timing, that difference alone is not proof of ad impact. Use the [Incrementality Analysis tool](/tools/incrementality) to choose a holdout, launch, or shutdown method that matches your data.
 
 ## Go deeper
 

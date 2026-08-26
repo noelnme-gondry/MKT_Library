@@ -2,11 +2,16 @@
 title: "광고 카니발라이제이션이란? 유료·오가닉 잠식 측정"
 description: "내부 카니발라이제이션(유료 광고가 오가닉 전환을 잠식하는 현상)을 진단하고, 연관과 인과를 구분하는 법을 정리했습니다."
 date: "2026-07-15"
-updated: "2026-08-17"
+updated: "2026-08-26"
 slug: "cannibalization-organic-paid"
 keywords: "카니발라이제이션, 내부 카니발라이제이션, 오가닉 잠식, 유료 광고 오가닉, 페이드 오가닉, 브랜드 검색 광고, 증분성, 잠식 진단, 오가닉 전환 감소, 브랜드 키워드 광고 효과"
 tags: ["분석", "증분"]
 draft: false
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 faq:
   - q: "잠식이 있으면 광고를 꺼야 하나요?"
     a: "아닙니다. 잠식은 정도의 문제라 일부 있어도 순증분이 남으면 계속할 이유가 됩니다. 필요한 건 온오프가 아니라 보정된 ROAS로 다시 판단하는 것입니다."
@@ -58,7 +63,7 @@ faq:
 
 관측만으로는 "광고 때문에 오가닉이 줄었다"를 단정 못 해요. 둘 다 다른 요인(시즌 종료 등)으로 같이 움직였을 수 있거든요.
 
-진짜 잠식 여부는 [증분 분석](/tools/incrementality)으로 봐야 해요. 브랜드 광고를 일부 지역·유저에서 무작위로 끄고(홀드아웃), 그 그룹의 **전체 전환**이 안 끄는 그룹과 얼마나 차이 나는지 보는 거죠. 차이가 거의 없으면 그 광고의 증분이 없다 = 잠식이 크다는 강한 증거예요.
+진짜 잠식 여부는 [증분 분석](/tools/incrementality)으로 봐야 해요. 브랜드 광고를 일부 지역·유저에서 무작위로 끄고(홀드아웃), 그 그룹의 **전체 전환**이 안 끄는 그룹과 얼마나 차이 나는지 보는 거죠. 점추정치가 비슷한 것만으로는 부족하고, 신뢰구간이 충분히 좁아 실무상 의미 있는 효과까지 배제할 때 잠식이 크다는 근거가 됩니다.
 
 실험을 설계할 때 자주 틀리는 지점 셋만 짚을게요.
 

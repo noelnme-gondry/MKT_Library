@@ -2,10 +2,16 @@
 title: "Incrementality: Validate Ad Lift With Holdouts and DiD"
 description: "Dashboard ROAS should only be half-trusted. Incrementality measurement and three holdout designs for measuring what ads actually create."
 date: "2026-07-09"
+updated: "2026-08-26"
 slug: "incrementality-measurement"
 keywords: "incrementality measurement, holdout experiment, difference-in-differences, DiD, iROAS, attribution, conversion lift, incrementality vs attribution, holdout group test, what is incrementality, measuring ad effectiveness, proving ad impact, what is a holdout test"
 tags: ["Incrementality Analysis", "Performance Marketing"]
 draft: false
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 faq:
   - q: "Is a holdout required to measure incrementality?"
     a: "It is the most reliable method but not the only one. When a randomized holdout is impractical, use control regions or on/off pre-post comparison — and label the result an estimate rather than causal proof."

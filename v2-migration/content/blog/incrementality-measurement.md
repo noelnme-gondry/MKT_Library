@@ -2,10 +2,16 @@
 title: "증분성 측정이란? 홀드아웃·DiD로 광고 효과 검증"
 description: "대시보드 ROAS는 반쯤만 믿어야 합니다. 광고가 진짜 만든 성과만 재는 증분성 측정과 홀드아웃 실험 3가지를 정리했어요."
 date: "2026-07-09"
+updated: "2026-08-26"
 slug: "incrementality-measurement"
 keywords: "증분성 측정, incrementality, 홀드아웃 실험, 이중차분, DiD, iROAS, 어트리뷰션, conversion lift, 증분 측정, 인과추론 마케팅, 홀드아웃 테스트, 마케팅 실험 설계, 증분이란, 광고 효과 측정, 광고 효과 증명, 홀드아웃이란"
 tags: ["증분 분석", "퍼포먼스 마케팅"]
 draft: false
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 faq:
   - q: "증분 측정에 꼭 홀드아웃이 필요한가요?"
     a: "가장 신뢰도가 높은 방법이지만 유일한 방법은 아닙니다. 무작위 홀드아웃이 어려우면 지역 대조군이나 켜고 끄기 전후 비교를 쓰되, 결과를 인과 확정이 아니라 추정으로 표기해야 합니다."
@@ -19,7 +25,7 @@ faq:
 
 ## 어트리뷰션은 '공 나누기', 증분은 '진짜 효과'
 
-먼저 자주 헷갈리는 두 개념을 구분할게요.
+먼저 자주 헷갈리는 두 개념을 구분할게요. `인크리멘탈 뜻`을 찾는 경우도 보통 광고가 실제로 더 만든 순증분, 즉 인크리멘탈리티를 묻는 것입니다.
 
 어트리뷰션(기여 배분)은 이미 일어난 전환 하나를 놓고 "이건 어느 채널의 공인지"를 나눠요. 라스트클릭이든, 퍼스트클릭이든 발생한 크레딧을 채널에 배분하는 일이죠. 그런데 여기엔 못 푸는 질문이 하나 있어요.
 

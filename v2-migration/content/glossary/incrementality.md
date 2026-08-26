@@ -4,10 +4,14 @@ seoTitle: "인크리멘탈리티 뜻 | CPA·ROAS로는 안 보이는 것"
 shortDef: "광고가 실제로 추가로 만들어낸 순수 성과 — 증분성"
 description: "인크리멘탈리티는 광고가 실제로 추가로 만들어낸 성과입니다. 측정법과 CPA·ROAS만 볼 때의 한계."
 date: "2026-07-18"
+updated: "2026-08-26"
 slug: "incrementality"
-keywords: "인크리멘탈리티, 인크리멘탈리티 뜻, Incrementality, 증분성, 증분 측정, 증분 분석"
+keywords: "인크리멘탈리티, 인크리멘탈리티 뜻, 인크리멘탈 뜻, Incrementality, 증분성, 증분 측정, 증분 분석"
 category: "측정·분석 방법론"
 relatedPosts: ["incrementality-measurement"]
+sources:
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 draft: false
 faq:
   - q: "인크리멘탈리티와 어트리뷰션은 뭐가 다른가요?"
@@ -20,11 +24,17 @@ faq:
 
 ## 한 줄로
 
-전환수가 100건이라고 다 광고 덕은 아닙니다. 광고가 없었어도 어차피 왔을 사람을 빼고 남는 몫, 그게 인크리멘탈리티(Incrementality, 증분성)예요.
+전환수가 100건이라고 다 광고 덕은 아닙니다. 광고가 없었어도 어차피 왔을 사람을 빼고 남는 몫, 그게 인크리멘탈리티(Incrementality, 증분성)예요. `인크리멘탈 뜻`을 찾는 경우도 보통 이 순증분 개념을 묻는 것입니다.
+
+| 개념 | 답하는 질문 | 대표 출력 |
+| --- | --- | --- |
+| 어트리뷰션 | 이미 생긴 전환의 공은 누구에게 줄까? | 매체별 기여 전환 |
+| 업리프트 | 노출군과 대조군의 성과 차이는 얼마인가? | 전환율 차이(%p·%) |
+| 인크리멘탈리티 | 광고가 없었으면 사라질 성과는 얼마인가? | 증분 전환·iCPA·iROAS |
 
 ## 어떻게 재나
 
-가장 신뢰도 높은 방법은 [홀드아웃 테스트](/glossary/holdout-test)예요. 무작위로 나눈 두 그룹 중 한쪽에는 광고를 노출하고 다른 쪽(홀드아웃)엔 노출하지 않은 뒤, 두 그룹의 전환율 차이(=[업리프트](/glossary/uplift))를 봐요.
+가장 신뢰도 높은 방법은 [홀드아웃 테스트](/glossary/holdout-test)예요. 무작위로 나눈 두 그룹 중 한쪽에는 광고를 노출하고 다른 쪽(홀드아웃)엔 노출하지 않은 뒤, 두 그룹의 전환율 차이(=[업리프트](/glossary/uplift))를 봐요. 무작위 실험이 어렵다면 지역 대조군, 신규 켜기, 종료 후 이중차분 순으로 검토하되 설계가 약해질수록 인과 표현도 낮춰야 합니다.
 
 ## 왜 CPA·ROAS만 보면 안 되나
 

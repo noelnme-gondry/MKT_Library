@@ -2,10 +2,16 @@
 title: "How to Measure Advertising Uplift: Read Net Lift with a Holdout Test"
 description: "Measure advertising uplift with a holdout test, learn when good CPA or ROAS is not enough to scale, and interpret net lift in order."
 date: "2026-08-09"
+updated: "2026-08-26"
 slug: "uplift-holdout-guide"
 keywords: "uplift, uplift meaning, advertising uplift, holdout test, incrementality, net lift, incremental ROAS, iROAS, ad effectiveness measurement"
 tags: ["Incrementality", "Performance Marketing"]
 draft: false
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
+  - title: "Google Ads: Set up Conversion Lift"
+    url: "https://support.google.com/google-ads/answer/12005564?hl=en"
 faq:
   - q: "Are uplift and incrementality the same?"
     a: "In marketing practice they are often used for the outcome advertising truly added. Uplift can also refer specifically to a relative change such as the conversion-rate difference between exposed and holdout groups."
@@ -20,7 +26,7 @@ The question is not “how many conversions did this ad receive?” It is **“h
 
 ## Uplift is the difference between two worlds
 
-If an exposed group converts at 8% and a holdout group converts at 5%, observed uplift is 3 percentage points. That 3pp is the candidate outcome the ad added.
+If an exposed group converts at 8% and a holdout group converts at 5%, absolute uplift is 3 percentage points while relative uplift against the holdout is 60%. They are different units; label `pp` and `%` explicitly. That gap is the candidate outcome the ad added.
 
 > **Uplift = exposed-group conversion rate − holdout-group conversion rate**
 
@@ -46,6 +52,8 @@ Choose a real decision: keep Brand Search on, or increase retargeting budget by 
 ### 2. Split exposed and holdout groups
 
 Use a platform Conversion Lift product or user-level random holdout when possible. Otherwise keep a regional, audience, or campaign-level comparison group. Check that the groups followed a similar trend before the test.
+
+Do not choose the holdout share from a rule of thumb. Derive it from the minimum detectable effect, baseline conversion rate, available duration, and opportunity cost. Leave enough observation time for delayed conversions to mature.
 
 ### 3. Write success criteria before launch
 
@@ -86,7 +94,7 @@ With exposed and holdout numbers, new-ON data, or shutdown data, use [Incrementa
 
 **One.** List your campaigns by reported CPA and look at the **best** one. Ask what share of its conversions would have happened anyway. Brand search and retargeting sit at the top of most reports precisely because they harvest existing intent — the best-looking campaign is often the least incremental.
 
-**Two.** Pick one campaign and carve out a **5–10% holdout** starting this week. Write the success criterion down before it runs. Even a rough holdout answers a question that no amount of attribution analysis can.
+**Two.** Pick one campaign and calculate the smallest holdout that can detect the effect you care about within the available window. Write the success criterion down before it runs. A deliberately sized holdout answers a question that attribution analysis cannot.
 
 ## Let's be honest
 
