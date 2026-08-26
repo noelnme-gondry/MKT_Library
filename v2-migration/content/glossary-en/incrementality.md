@@ -4,10 +4,14 @@ seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
 description: "Incrementality is the performance advertising actually added on top of what would have happened anyway. How to measure it, and why CPA and ROAS mislead."
 date: "2026-07-18"
+updated: "2026-08-26"
 slug: "incrementality"
 keywords: "incrementality, incrementality meaning, incrementality measurement, incrementality testing"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement"]
+sources:
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 draft: false
 faq:
   - q: "How is incrementality different from attribution?"
@@ -22,9 +26,15 @@ faq:
 
 A hundred conversions does not mean advertising caused a hundred conversions. Subtract the people who would have arrived anyway and what remains is incrementality.
 
+| Concept | Question it answers | Typical output |
+| --- | --- | --- |
+| Attribution | Who gets credit for a conversion that happened? | Attributed conversions by channel |
+| Uplift | How far apart are exposed and control outcomes? | Rate difference in pp or % |
+| Incrementality | What outcome would disappear without the ad? | Incremental conversions, iCPA, iROAS |
+
 ## How it's measured
 
-The most reliable method is a [holdout test](/glossary/holdout-test): randomly split users into an exposed group and a holdout group, then compare conversion rates. The difference is [uplift](/glossary/uplift).
+The most reliable method is a [holdout test](/glossary/holdout-test): randomly split users into an exposed group and a holdout group, then compare conversion rates. The difference is [uplift](/glossary/uplift). When randomization is not feasible, consider a geo control, a new launch, or a shutdown with difference-in-differences, and weaken causal claims as the design gets weaker.
 
 ## Why CPA/ROAS alone isn't enough
 

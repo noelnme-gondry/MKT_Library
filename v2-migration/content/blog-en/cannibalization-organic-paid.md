@@ -2,11 +2,16 @@
 title: "Paid vs Organic Cannibalization: How to Measure It"
 description: "Diagnose internal cannibalization — paid ads eating organic conversions — and tell correlation apart from causation."
 date: "2026-07-15"
-updated: "2026-08-17"
+updated: "2026-08-26"
 slug: "cannibalization-organic-paid"
 keywords: "cannibalization, internal cannibalization, organic cannibalization, paid vs organic, brand search advertising, incrementality, cannibalization rate, organic conversion decline, brand keyword bidding"
 tags: ["Analysis", "Incrementality Analysis"]
 draft: false
+sources:
+  - title: "Google Ads: About lift studies"
+    url: "https://support.google.com/google-ads/answer/16104408?hl=en"
+  - title: "Google Ads: Incremental conversions and attributed conversions"
+    url: "https://support.google.com/google-ads/answer/14102450?hl=en-GB"
 faq:
   - q: "If cannibalization exists, should I turn ads off?"
     a: "No. It is a matter of degree — some cannibalization can coexist with real net lift. What you need is a corrected ROAS to decide with, not an on/off switch."
@@ -58,7 +63,7 @@ Scanning for these patterns is what the cannibalization diagnosis in [marketing 
 
 Observation alone can't declare "the ad caused the organic drop." The two may have moved together by coincidence, driven by a different factor (season ending, an app update, a competitor promo).
 
-The real test is [incrementality analysis](/tools/incrementality). Turn brand ads off for a random subset of regions or users (holdout) and compare that group's total conversions against the un-held group. If the difference is near zero, the ad has no incremental lift — strong evidence of heavy cannibalization. If the held-out group's total conversions clearly drop, the ad is pulling its weight.
+The real test is [incrementality analysis](/tools/incrementality). Turn brand ads off for a random subset of regions or users (holdout) and compare that group's total conversions against the un-held group. Similar point estimates are not enough: the interval must be narrow enough to rule out a business-relevant effect before calling cannibalization heavy. If the held-out group's total conversions clearly drop, the ad is pulling its weight.
 
 Three design mistakes come up repeatedly.
 

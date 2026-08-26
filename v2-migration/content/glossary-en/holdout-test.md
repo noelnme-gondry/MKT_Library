@@ -4,10 +4,14 @@ seoTitle: "Holdout Test: Measuring an Ad's Real Effect"
 shortDef: "Randomly withholding ads from part of an audience to measure true incrementality"
 description: "A holdout test randomly withholds ads from part of an audience and compares outcomes. Why it is needed and how to read the result honestly."
 date: "2026-07-18"
+updated: "2026-08-26"
 slug: "holdout-test"
 keywords: "holdout test, holdout meaning, incrementality test, ad holdout experiment"
 category: "Measurement & Methodology"
 relatedPosts: ["incrementality-measurement"]
+sources:
+  - title: "Google Ads: Set up Conversion Lift"
+    url: "https://support.google.com/google-ads/answer/12005564?hl=en"
 draft: false
 faq:
   - q: "How large should the holdout group be?"
@@ -17,7 +21,7 @@ faq:
   - q: "Can incrementality be measured without a holdout?"
     a: "You can estimate it from before-and-after comparisons or a time-series baseline, but those cannot separate other changes in the same window. Use them as estimates and stop short of calling them causal."
   - q: "How do you read a holdout result?"
-    a: "The gap in conversion rate between the two groups is the uplift. 8% in the exposed group against 5% in the holdout is 3pp of uplift. An interval crossing zero means not yet distinguishable rather than no effect, and holdouts are typically sized around 5–10% to balance detection against the revenue you give up."
+    a: "The gap in conversion rate between the two groups is the uplift. 8% in the exposed group against 5% in the holdout is 3pp of uplift. An interval crossing zero means not yet distinguishable rather than no effect. Holdout share has no universal answer; derive it from the minimum detectable effect, conversion volume, duration, and opportunity cost."
 ---
 
 ## In one line
@@ -30,7 +34,15 @@ Observational data alone can't prove an ad caused a lift in conversions. Compari
 
 ## How to interpret it
 
-If the two groups' conversion rates are nearly identical, that's strong evidence the ad had little incremental effect — possibly a sign of [cannibalization](/glossary/cannibalization). A clear gap means the ad is genuinely driving results.
+Similar point estimates alone are not strong evidence of no increment. The interval must be narrow enough to rule out an effect that matters to the business. A wide interval crossing zero means the sample cannot yet distinguish the effect. A precise near-zero result can support investigating [cannibalization](/glossary/cannibalization).
+
+## Design checklist
+
+- Lock the primary metric and minimum detectable effect before launch.
+- Derive holdout share from conversion volume, duration, and opportunity cost; a platform's allowed range is not a recommendation.
+- Include the full conversion-lag window.
+- Check contamination from other campaigns and movement across geo cells.
+- Do not move the end date or swap metrics after seeing interim results.
 
 ## Go deeper
 
