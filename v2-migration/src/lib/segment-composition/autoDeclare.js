@@ -86,12 +86,16 @@ export function autoDeclare({ headers = [], rows = [], limits = AUTO_LIMITS } = 
     !used.has(column.header)
     && !column.reasons.includes(CANDIDATE_REASON.DATE_COLUMN)
     && !column.reasons.includes(CANDIDATE_REASON.MEASURE_LIKE)
+    // #749가 풀려던 것은 cardinality 상한뿐이다. 식별자·자유 텍스트·단일값까지
+    // 역할로 올리면 사람이 읽을 수 없는 분석이 된다.
+    && !column.reasons.includes(CANDIDATE_REASON.IDENTIFIER_LIKE)
+    && !column.reasons.includes(CANDIDATE_REASON.FREE_TEXT)
+    && !column.reasons.includes(CANDIDATE_REASON.SINGLE_VALUE)
   ));
   const entity = roleCandidates.filter((column) => PATTERNS.entity.test(column.header)).slice(0, limits.maxEntities);
   entity.forEach((column) => take(column.header, "entity", "캠페인·채널로 읽히는 컬럼"));
   const scope = roleCandidates.filter((column) => (
     !used.has(column.header)
-    && !column.reasons.includes(CANDIDATE_REASON.SINGLE_VALUE)
     && PATTERNS.scope.test(column.header)
   )).slice(0, limits.maxScopes);
   scope.forEach((column) => take(column.header, "scope", "OS·국가처럼 섞으면 안 되는 범위"));

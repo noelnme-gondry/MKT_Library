@@ -56,6 +56,33 @@ describe("한글 헤더도 같은 규칙으로 잡는다", () => {
 });
 
 describe("역할 컬럼은 세그먼트 cardinality 제한과 분리한다", () => {
+  it("식별자 컬럼보다 사람이 읽는 캠페인명을 분석 단위로 고른다", () => {
+    const rows = [
+      { date: "2026-07-01", campaign_id: "c-8f3a91", campaign: "Brand", gender: "F", signups: "10" },
+      { date: "2026-07-01", campaign_id: "c-51bd02", campaign: "Prospecting", gender: "M", signups: "12" },
+      { date: "2026-08-01", campaign_id: "c-8f3a91", campaign: "Brand", gender: "F", signups: "11" },
+      { date: "2026-08-01", campaign_id: "c-51bd02", campaign: "Prospecting", gender: "M", signups: "13" },
+    ];
+    const result = autoDeclare({ headers: Object.keys(rows[0]), rows });
+
+    expect(result.roles.entity).toEqual(["campaign"]);
+    expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
+    expect(result.review.map((column) => column.header)).not.toContain("campaign_id");
+  });
+
+  it("긴 자유 텍스트는 이름이 역할 어휘에 걸려도 분석 단위로 쓰지 않는다", () => {
+    const rows = [
+      { date: "2026-07-01", creative_copy: "여름 할인 혜택을 자세히 설명하는 매우 긴 광고 문구입니다 A", gender: "F", signups: "10" },
+      { date: "2026-07-01", creative_copy: "신규 가입 혜택을 자세히 설명하는 매우 긴 광고 문구입니다 B", gender: "M", signups: "12" },
+      { date: "2026-08-01", creative_copy: "재방문 고객 혜택을 자세히 설명하는 매우 긴 광고 문구입니다 C", gender: "F", signups: "11" },
+      { date: "2026-08-01", creative_copy: "브랜드 프로모션을 자세히 설명하는 매우 긴 광고 문구입니다 D", gender: "M", signups: "13" },
+    ];
+    const result = autoDeclare({ headers: Object.keys(rows[0]), rows });
+
+    expect(result.roles.entity).toEqual([]);
+    expect(result.dimensions.map((dimension) => dimension.id)).toEqual(["gender"]);
+  });
+
   it("캠페인이 20개를 넘어도 분석 단위로 선언한다", () => {
     const rows = Array.from({ length: 30 }, (_, index) => ({
       date: index < 15 ? "2026-07-01" : "2026-08-01",
