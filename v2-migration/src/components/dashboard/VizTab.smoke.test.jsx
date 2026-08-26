@@ -132,12 +132,12 @@ describe("VizTab render smoke", () => {
     expect(screen.getByText("현재 필터 기준 전체값")).toBeTruthy();
   });
 
-  // #11 이벤트 마커 — store.eventMarkers 시딩이 시계열 차트(makeEventMarkerPlugin)
+  // 이벤트 마커 — store.eventMarkers 시딩이 공용 eventMarkersPlugin
   // 재생성 경로를 죽이지 않는지(destroy+recreate+draw 전부 무해) 확인.
   it("mounts without throwing when an event marker is seeded", () => {
     seedWithData();
     useAppStore.setState({
-      eventMarkers: [{ id: "m1", date: "2026-01-05", label: "테스트 마커" }],
+      eventMarkers: [{ id: "m1", date: "2026-01-05", label: "테스트 마커", type: "campaign" }],
     });
     expect(() => render(<VizTab />)).not.toThrow();
     expect(document.getElementById("tab-viz")).toBeTruthy();

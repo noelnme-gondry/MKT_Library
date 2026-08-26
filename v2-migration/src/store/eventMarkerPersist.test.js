@@ -4,11 +4,11 @@ import { persistPartialize, sanitizeEventMarkers } from "@/store/useDataStore";
 // 이벤트 마커는 상태·액션·차트 플러그인·전용 UI가 모두 구현돼 있었는데
 // persist 화이트리스트에만 빠져서, 찍어도 새로고침이면 사라졌다.
 describe("sanitizeEventMarkers", () => {
-  it("날짜·라벨만 남기고 알 수 없는 필드는 버린다", () => {
+  it("날짜·라벨·종류만 남기고 알 수 없는 필드는 버린다", () => {
     const out = sanitizeEventMarkers([
-      { id: "m1", date: "2026-01-05", label: "브랜드 시작", secret: "csv-row-value" },
+      { id: "m1", date: "2026-01-05", label: "브랜드 시작", type: "campaign", secret: "csv-row-value" },
     ]);
-    expect(out).toEqual([{ id: "m1", date: "2026-01-05", label: "브랜드 시작" }]);
+    expect(out).toEqual([{ id: "m1", date: "2026-01-05", label: "브랜드 시작", type: "campaign" }]);
     expect(JSON.stringify(out)).not.toContain("csv-row-value");
   });
 
@@ -34,7 +34,7 @@ describe("sanitizeEventMarkers", () => {
       csvData: { raw: [{ secret: 2 }] },
       eventMarkers: [{ id: "m1", date: "2026-02-01", label: "가격 인상" }],
     });
-    expect(persisted.eventMarkers).toEqual([{ id: "m1", date: "2026-02-01", label: "가격 인상" }]);
+    expect(persisted.eventMarkers).toEqual([{ id: "m1", date: "2026-02-01", label: "가격 인상", type: "other" }]);
     expect(persisted.csvGroups).toBeUndefined();
     expect(persisted.csvData).toBeUndefined();
     expect(JSON.stringify(persisted)).not.toContain("secret");

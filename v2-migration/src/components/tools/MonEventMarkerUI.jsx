@@ -1,11 +1,12 @@
 "use client";
 import React, { useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
+import { EVENT_TYPES } from "@/utils/storeEvents";
 
 const COPY = {
   ko: {
     title: "📌 주요 이벤트 마커",
-    hint: "(캠페인 런칭·프로모션·매체 이슈 등 — 새로고침 시 초기화)",
+    hint: "(캠페인 런칭·프로모션·매체 이슈 등 — 이 기기에 저장)",
     labelPlaceholder: "라벨 (예: 신규 프로모션 시작)",
     addBtn: "+ 마커 추가",
     deleteBtn: "삭제",
@@ -13,7 +14,7 @@ const COPY = {
   },
   en: {
     title: "📌 Key event markers",
-    hint: "(campaign launches, promos, media issues, etc. — resets on refresh)",
+    hint: "(campaign launches, promos, media issues, etc. — saved on this device)",
     labelPlaceholder: "Label (e.g. New promo starts)",
     addBtn: "+ Add marker",
     deleteBtn: "Delete",
@@ -29,10 +30,11 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
 
   const [date, setDate] = useState("");
   const [label, setLabel] = useState("");
+  const [type, setType] = useState("campaign");
 
   const handleAdd = () => {
     if (!date || !label.trim()) return;
-    addEventMarker({ date, label: label.trim() });
+    addEventMarker({ date, label: label.trim(), type });
     setDate("");
     setLabel("");
   };
@@ -88,6 +90,9 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
             borderRadius: "4px",
           }}
         />
+        <select aria-label={locale === "en" ? "Event type" : "이벤트 종류"} value={type} onChange={(event) => setType(event.target.value)} style={{ padding: "6px 8px", fontSize: "12px", background: "var(--bg-1)", color: "var(--text-1)", border: "1px solid var(--border)", borderRadius: "4px" }}>
+          {EVENT_TYPES.map((entry) => <option key={entry.value} value={entry.value}>{locale === "en" ? entry.en : entry.ko}</option>)}
+        </select>
         <input
           type="text"
           placeholder={T.labelPlaceholder}
@@ -141,6 +146,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
                 {m.date}
               </span>
               <span style={{ flex: 1 }}>{m.label}</span>
+              <small style={{ color: "var(--text-muted)" }}>{(EVENT_TYPES.find((entry) => entry.value === m.type) || EVENT_TYPES.at(-1))[locale === "en" ? "en" : "ko"]}</small>
               <button
                 className="ab-pill"
                 type="button"

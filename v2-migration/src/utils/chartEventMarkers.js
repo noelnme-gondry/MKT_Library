@@ -13,6 +13,7 @@ import { CHART_THEME } from "@/utils/chartUtils";
 // 종류별 색. CHART_THEME getter라 다크/라이트 전환에 따라간다(§7 — canvas는 var()를 못 읽음).
 export function eventMarkerColor(type) {
   switch (type) {
+    case "listing": return CHART_THEME.primary;
     case "creative": return CHART_THEME.primary;
     case "price": return CHART_THEME.success;
     case "campaign": return CHART_THEME.tertiary;
