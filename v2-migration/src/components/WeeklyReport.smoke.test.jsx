@@ -56,6 +56,7 @@ describe("WeeklyReport", () => {
     expect(screen.queryByText("This result was created from an earlier data input.")).toBeNull();
     expect(document.querySelectorAll("main h1")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Download XLSX" })).toBeTruthy();
+    expect(document.querySelector('input[name="tag"][value="product-en-weekly_report"]')).toBeTruthy();
   });
 
   it("서로 다른 분석 기간을 수집하면 공유 전 경고한다", () => {

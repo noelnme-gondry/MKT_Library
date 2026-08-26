@@ -7,6 +7,7 @@ import BrandMark from "@/components/BrandMark";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { idToPath } from "@/lib/routeMap";
 import { useAppStore } from "@/store/useDataStore";
+import { getDecisionReviewBucket } from "@/lib/decisionReview";
 
 const COPY = {
   ko: {
@@ -18,6 +19,9 @@ const COPY = {
     confirm_design: "설계 확인",
     manual: "수동 설정",
     preparing: "도치가 자료를 꺼내고 있어요…",
+    hub: "도치 결과함 전체 보기",
+    current: "지금 보는 분석",
+    pending: (count) => `이 분석의 검토 대기 ${count}건`,
   },
   en: {
     trigger: "Open analyses Dochi remembers",
@@ -28,6 +32,9 @@ const COPY = {
     confirm_design: "Confirm design",
     manual: "Manual setup",
     preparing: "Dochi is bringing your data over…",
+    hub: "Open all Dochi results",
+    current: "Current analysis",
+    pending: (count) => `${count} pending review${count === 1 ? "" : "s"} from this analysis`,
   },
 };
 
@@ -35,10 +42,16 @@ export default function DochiAnalysisDock({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
   const router = useRouter();
   const session = useAppStore((state) => state.dochiAnalysisSession);
+  const currentRouteId = useAppStore((state) => state.currentRouteId);
+  const decisionRecords = useAppStore((state) => state.decisionRecords);
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const [isOpen, setIsOpen] = useState(false);
   const [preparingToolId, setPreparingToolId] = useState(null);
   const analyses = session?.analyses || [];
+  const currentAnalysis = analyses.find((analysis) => analysis.toolId === currentRouteId);
+  const pendingForCurrent = currentAnalysis
+    ? decisionRecords.filter((record) => record.toolId === currentRouteId && getDecisionReviewBucket(record) !== "reviewed").length
+    : 0;
 
   if (!session?.sourceData?.raw?.length || !analyses.length) return null;
 
@@ -60,11 +73,17 @@ export default function DochiAnalysisDock({ locale = "ko" }) {
         <small>{session.sourceData.fileName}</small>
       </header>
       <p>{C.deck}</p>
+      {currentAnalysis && <div className="dochi-analysis-dock__context">
+        <span>{C.current}</span>
+        <strong>{toolIndexEntry(currentRouteId, locale)?.name || currentRouteId}</strong>
+        <small>{C.pending(pendingForCurrent)}</small>
+      </div>}
+      <button type="button" className="dochi-analysis-dock__hub" onClick={() => router.push(locale === "en" ? "/en/dochi-result" : "/dochi-result")}>{C.hub} →</button>
       <ul>
         {analyses.map((analysis) => {
           const entry = toolIndexEntry(analysis.toolId, locale);
           return <li key={analysis.toolId}>
-            <button type="button" onClick={() => openTool(analysis.toolId)} disabled={Boolean(preparingToolId)}>
+            <button type="button" aria-current={analysis.toolId === currentRouteId ? "page" : undefined} onClick={() => openTool(analysis.toolId)} disabled={Boolean(preparingToolId)}>
               <span><b>{entry?.name || analysis.toolId}</b><small>{entry?.question || analysis.recommendationReason}</small></span>
               <em>{preparingToolId === analysis.toolId ? C.preparing : C[analysis.status]}</em>
             </button>
