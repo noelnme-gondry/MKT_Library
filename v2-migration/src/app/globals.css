@@ -6162,6 +6162,17 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .analysis-recommendations__more[open] > summary { color: var(--primary); }
 .analysis-recommendations__more .analysis-recommendations__grid { padding-top: 4px; }
 .start-upload-panel { margin-top: 28px; }
+.decision-data-update-guide { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px 18px; margin-top:18px; padding:15px 16px; border:1px solid color-mix(in srgb,var(--primary) 48%,var(--border)); border-radius:10px; background:color-mix(in srgb,var(--primary) 5%,var(--surface-container-low)); scroll-margin-top:18px; }
+.decision-data-update-guide > span { grid-column:1 / -1; color:var(--primary); font:750 9.5px var(--font-sans); letter-spacing:.1em; text-transform:uppercase; }
+.decision-data-update-guide h2 { margin:0; color:var(--text-primary); font:650 16px var(--font-sans); letter-spacing:-.025em; }
+.decision-data-update-guide > p { grid-column:1 / -1; margin:0; color:var(--text-secondary); font-size:11px; line-height:1.55; }
+.decision-data-update-guide dl { display:flex; flex-wrap:wrap; gap:7px; margin:0; }
+.decision-data-update-guide dl div { padding:6px 8px; border:1px solid var(--border-subtle); border-radius:6px; background:var(--surface-container-lowest); }
+.decision-data-update-guide dt { color:var(--text-muted); font:650 9.5px var(--font-sans); letter-spacing:.06em; text-transform:uppercase; }
+.decision-data-update-guide dd { margin:2px 0 0; color:var(--text-secondary); font:600 10px var(--font-sans); }
+.decision-data-update-guide > small { align-self:center; color:var(--warning); font-size:10px; }
+.decision-data-update-guide > .btn { align-self:end; margin:0; }
+@media (max-width: 620px) { .decision-data-update-guide { grid-template-columns:1fr; } .decision-data-update-guide > .btn { justify-self:start; } }
 .dochi-workspace { margin-top:24px;padding-top:22px;border-top:1px solid var(--border); }
 .dochi-workspace--empty { max-width:680px; }
 .dochi-workspace--empty h2 { margin:0;color:var(--text-primary);font:650 21px var(--font-sans);letter-spacing:-.03em; }
