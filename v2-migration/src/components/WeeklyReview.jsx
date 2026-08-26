@@ -23,6 +23,7 @@ import { groupForRoute } from "@/lib/toolGroups";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
 import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 const COPY = {
   ko: {
@@ -637,6 +638,7 @@ export default function WeeklyReview({ locale = "ko" }) {
             </article>;
           })}
         </section>}
+      {sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
     </article>
   );
 }

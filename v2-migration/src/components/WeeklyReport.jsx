@@ -9,6 +9,7 @@ import { downloadText } from "@/utils/download";
 import { downloadXlsx } from "@/utils/download";
 import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
 import { trackProductEvent } from "@/lib/analytics";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 const COPY = {
   ko: {
@@ -151,6 +152,7 @@ export default function WeeklyReport({ locale = "ko" }) {
           {draft.notes?.[0]?.text && <blockquote>{draft.notes[0].text}</blockquote>}
         </section>
       )}
+      {draft.blocks.length > 0 && <div className="no-print"><NewsletterSignup locale={locale} source="product" placement="weekly_report" /></div>}
     </main>
   );
 }

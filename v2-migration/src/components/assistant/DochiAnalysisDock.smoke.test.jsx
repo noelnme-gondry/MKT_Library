@@ -19,7 +19,7 @@ const SOURCE = {
 
 afterEach(() => {
   push.mockReset();
-  useAppStore.setState({ dochiAnalysisSession: null });
+  useAppStore.setState({ dochiAnalysisSession: null, decisionRecords: [], currentRouteId: "home" });
   document.body.innerHTML = "";
 });
 
@@ -59,5 +59,23 @@ describe("DochiAnalysisDock", () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard"));
     expect(useAppStore.getState().csvGroups.efficiency.mapping.Date).toBe("date");
     window.requestAnimationFrame = requestAnimationFrame;
+  });
+
+  it("shows the current analysis and its pending review, then returns to the full result workspace", () => {
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      decisionRecords: [{ id: "d1", toolId: "5-2", action: "Hold budget", status: "pending", reviewDate: "2099-01-01" }],
+      dochiAnalysisSession: {
+        sourceData: SOURCE,
+        analyses: [{ toolId: "5-2", status: "ready", recommendationReason: "현재 성과를 확인합니다" }],
+      },
+    });
+    render(<DochiAnalysisDock />);
+    fireEvent.click(screen.getByRole("button", { name: "도치가 기억한 분석 열기" }));
+    expect(screen.getByText("지금 보는 분석")).toBeTruthy();
+    expect(screen.getByText("이 분석의 검토 대기 1건")).toBeTruthy();
+    expect(document.querySelector('button[aria-current="page"]')).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /도치 결과함 전체 보기/ }));
+    expect(push).toHaveBeenCalledWith("/dochi-result");
   });
 });
