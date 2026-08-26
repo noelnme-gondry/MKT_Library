@@ -10,7 +10,7 @@ const node = (kind, id, role, koLabel, enLabel) => ({
 
 // 검색어 변형마다 새 페이지를 만들지 않고, 한 주제 안에서 URL의 책임을 나눈다.
 // primary는 검색 질문에 바로 답하는 단 하나의 URL이고 supports는 더 깊은 진단과
-// 실행 경로다. 화면 링크와 커버리지 테스트가 이 목록에서 함께 파생된다.
+// 실행 경로다. 용어집·블로그 상세의 화면 링크와 커버리지 테스트가 이 목록에서 함께 파생된다.
 export const SEARCH_INTENT_CLUSTERS = [
   {
     id: "cannibalization",

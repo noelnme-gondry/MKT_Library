@@ -10,6 +10,7 @@ import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
 import RelatedGuideList from "@/components/seo/RelatedGuideList";
 import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
 import AuthorCard from "@/components/seo/AuthorCard";
+import SearchIntentLinks from "@/components/seo/SearchIntentLinks";
 import { clusterLinksFor } from "@/lib/topicClusters";
 import { getBlogSeo } from "@/lib/blogSeo";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
@@ -17,6 +18,7 @@ import { guidesForPost } from "@/lib/guideSearchContent";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { idToPath } from "@/lib/routeMap";
 import { getAllTerms } from "@/lib/glossary";
+import { intentLinksFor } from "@/lib/searchIntentRegistry";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -212,6 +214,8 @@ export default async function BlogPostPage({ params }) {
         reviewedAt={post.reviewedAt}
         sources={post.sources}
       />
+
+      <SearchIntentLinks links={intentLinksFor("blog", post.slug, "ko")} />
 
       <TopicClusterLinks
         links={clusterLinksFor(post.slug)}
