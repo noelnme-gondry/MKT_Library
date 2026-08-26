@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { findMeta, useAppStore } from "@/store/useDataStore";
 import { TOOL_GROUP } from "@/lib/toolGroups";
+import { hasEnVersion, idToPath } from "@/lib/routeMap";
+import { workspaceResumeRouteId } from "@/lib/workspaceResume";
 
 const COPY = {
   ko: {
@@ -16,6 +19,8 @@ const COPY = {
     empty: "저장된 업로드 파일이 없어요.",
     remove: "지우기",
     removeAll: "전부 지우기",
+    resume: "이어 분석하기",
+    resuming: "불러오는 중…",
     removeOneConfirm: "이 그룹의 저장 파일을 지울까요? 현재 화면의 데이터도 함께 비워집니다.",
     removeAllConfirm: "이 기기에 저장된 업로드 파일을 모두 지울까요? 현재 화면의 데이터도 함께 비워집니다.",
     rows: (count) => `${count.toLocaleString()}행`,
@@ -36,6 +41,8 @@ const COPY = {
     empty: "There are no saved upload files.",
     remove: "Remove",
     removeAll: "Remove all",
+    resume: "Continue analysis",
+    resuming: "Restoring…",
     removeOneConfirm: "Remove this saved dataset? The data currently open for this group will also be cleared.",
     removeAllConfirm: "Remove every saved upload on this device? The data currently open will also be cleared.",
     rows: (count) => `${count.toLocaleString()} rows`,
@@ -66,11 +73,14 @@ function formatDate(value, locale) {
 
 export default function WorkspaceStoragePage({ locale = "ko" }) {
   const T = COPY[locale] || COPY.ko;
+  const router = useRouter();
+  const [openingGroup, setOpeningGroup] = useState(null);
   const enabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const datasets = useAppStore((state) => state.workspaceDatasetSummaries);
   const expiredCount = useAppStore((state) => state.workspaceExpiredCount);
   const error = useAppStore((state) => state.workspaceStorageError);
   const refresh = useAppStore((state) => state.refreshWorkspaceDatasets);
+  const restore = useAppStore((state) => state.restoreWorkspaceDatasets);
   const remove = useAppStore((state) => state.removeWorkspaceDataset);
   const clear = useAppStore((state) => state.clearWorkspaceDatasets);
   const setEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
@@ -82,6 +92,14 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
   };
   const removeAll = async () => {
     if (window.confirm(T.removeAllConfirm)) await clear();
+  };
+  const resumeDataset = async (dataset) => {
+    const routeId = workspaceResumeRouteId(dataset.group);
+    if (!routeId || openingGroup) return;
+    setOpeningGroup(dataset.group);
+    await restore();
+    const path = idToPath(routeId);
+    router.push(locale === "en" && hasEnVersion(routeId) ? `/en${path}` : path);
   };
   const errorCopy = error === "WORKSPACE_STORAGE_QUOTA" ? T.quota : error ? T.unavailable : null;
 
@@ -107,7 +125,10 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
           <span>{dataset.fileName}</span>
           <small>{T.rows(dataset.rowCount)} · {formatBytes(dataset.byteSize, locale)} · {T.lastUsed} {formatDate(dataset.lastUsedAt, locale)} · {T.remaining(dataset.remainingDays)}</small>
         </div>
-        <button type="button" className="btn ghost" onClick={() => removeOne(dataset.group)}>{T.remove}</button>
+        <span className="workspace-storage-page__dataset-actions">
+          {workspaceResumeRouteId(dataset.group) && <button type="button" className="btn" disabled={Boolean(openingGroup)} onClick={() => resumeDataset(dataset)}>{openingGroup === dataset.group ? T.resuming : T.resume}</button>}
+          <button type="button" className="btn ghost" disabled={Boolean(openingGroup)} onClick={() => removeOne(dataset.group)}>{T.remove}</button>
+        </span>
       </article>)}
     </section>
     {datasets.length > 0 && <button type="button" className="btn ghost workspace-storage-page__clear" onClick={removeAll}>{T.removeAll}</button>}

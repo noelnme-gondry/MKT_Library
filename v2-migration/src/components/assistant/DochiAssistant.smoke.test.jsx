@@ -19,7 +19,7 @@ import { useAppStore } from "@/store/useDataStore";
 
 afterEach(() => {
   push.mockReset();
-  useAppStore.setState({ demoDisabled: false });
+  useAppStore.setState({ demoDisabled: false, workspaceDatasetSummaries: [] });
   document.body.innerHTML = "";
 });
 
@@ -55,5 +55,14 @@ describe("DochiAssistant home intake", () => {
 
     expect(document.querySelector(".dochi-home-assistant").getAttribute("data-phase")).toBe("welcome");
     expect(screen.getByRole("button", { name: "파일 전달" })).toBeTruthy();
+  });
+
+  it("offers a saved-workspace return path before asking for another upload", () => {
+    useAppStore.setState({ workspaceDatasetSummaries: [{ group: "efficiency", fileName: "saved.csv", rowCount: 20 }] });
+    render(<DochiAssistant />);
+
+    expect(screen.getByText(/저장된 작업 1개를 찾았어요/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /저장된 분석 이어보기/ }));
+    expect(push).toHaveBeenCalledWith("/storage");
   });
 });

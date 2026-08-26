@@ -5588,6 +5588,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .workspace-storage-page__dataset span, .workspace-storage-page__dataset small { overflow: hidden; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
 .workspace-storage-page__dataset span { font-size: 13px; }
 .workspace-storage-page__dataset small { font-size: 11px; }
+.workspace-storage-page__dataset .workspace-storage-page__dataset-actions { display:flex;flex:0 0 auto;gap:8px;overflow:visible; }
+@media (max-width:640px) { .workspace-storage-page__dataset { align-items:stretch;flex-direction:column; } .workspace-storage-page__dataset .workspace-storage-page__dataset-actions { flex-wrap:wrap; } }
 .workspace-storage-page__empty { margin: 0; padding: 30px 18px; color: var(--text-secondary); text-align: center; }
 .workspace-storage-page__clear { margin-top: 14px; color: var(--danger); }
 .workspace-storage-page__privacy { margin-top: 25px; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
@@ -7803,6 +7805,7 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
 .dochi-home-assistant__speech p { margin:0;font-size:13px;line-height:1.55;letter-spacing:-.018em; }
 .dochi-home-assistant__speech .dochi-home-assistant__hello { margin-bottom:4px;color:var(--text-primary);font:750 15px var(--font-sans); }
 .dochi-home-assistant__speech small { position:relative;z-index:1;display:block;margin-top:8px;color:var(--text-muted);font-size:9.5px;line-height:1.4; }
+.dochi-home-assistant__resume { display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin:10px 0 7px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--primary) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--primary) 8%,var(--surface-container-lowest));color:var(--primary);font:750 11.5px var(--font-sans);cursor:pointer; }
 .dochi-home-assistant__stage { position:relative;z-index:2;grid-column:2;width:156px;height:156px;margin-bottom:-5px;pointer-events:none;transform-origin:50% 90%; }
 .dochi-home-assistant__stage .dochi-sprite { width:100%;height:100%;filter:drop-shadow(0 12px 10px color-mix(in srgb,var(--bg-1) 27%,transparent)); }
 .dochi-home-assistant[data-phase="welcome"] .dochi-home-assistant__stage .dochi-sprite { animation:dochi-home-breathe 3.8s ease-in-out infinite; }
