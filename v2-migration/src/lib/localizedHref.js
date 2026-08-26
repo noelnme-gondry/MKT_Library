@@ -8,6 +8,7 @@ export const EN_BLOG_SLUGS = new Set([
   "ad-creative-specs-guide",
   "ad-creative-testing",
   "ad-machine-learning",
+  "adattributionkit-transition",
   "ad-performance-diagnosis",
   "aha-event-ad-optimization",
   "aha-moment-retention",
@@ -36,6 +37,7 @@ export const EN_BLOG_SLUGS = new Set([
   "hook-3-seconds-framework",
   "incrementality-measurement",
   "ios-att-skan-guide",
+  "ios-skan-campaign-structure",
   "ltv-cac-ratio",
   "marketing-mix-modeling",
   "meta-advantage-plus-guide",
@@ -50,6 +52,11 @@ export const EN_BLOG_SLUGS = new Set([
   "uplift-holdout-guide",
   "skan4-migration-guide",
   "skan-conversion-value-schema",
+  "skan-conversion-value-ltv",
+  "skan-crowd-anonymity-tiers",
+  "skan-network-differences",
+  "skan-null-redacted-postbacks",
+  "skan-schema-validation",
   "skan-vs-mmp-attribution",
 ]);
 

@@ -5,6 +5,7 @@ const KO_ANSWERS = {
   "ad-creative-specs-guide": "소재가 반려되거나 크롭되는 이유는 대개 매체별 비율(1:1·9:16 등)·최소 해상도·용량 제한이 서로 다르기 때문입니다. 하나의 파일로 통일하지 말고 집행 전에 매체별 규격과 실제 미리보기를 함께 확인하세요.",
   "ad-creative-testing": "동시에 돌릴 광고 소재 수는 '한 번에 3개'처럼 고정할 수 없고, 테스트 배치 예산을 소재당 판정 예산으로 나눈 뒤 소수점을 버려 정합니다. 이 값은 운영 가능한 슬롯 수이지 통계적 표본 크기가 아니며, 목적도 이번 주 CTR 1등 찾기가 아닙니다.",
   "ad-machine-learning": "광고 머신러닝의 학습 단계는 메타 기준 '7일 이내 최적화 이벤트 50건'으로 끝납니다. 그 안에 예산·타겟·소재를 바꾸면 학습이 리셋되므로, 변경은 한 번에 하나씩 하고 학습이 안정될 때까지 평가를 미루세요.",
+  "adattributionkit-transition": "AdAttributionKit 전환은 SDK 이름만 바꾸는 일이 아닙니다. 광고 서명, conversion value 갱신, winning postback 수신·검증의 책임자가 각각 누구인지 먼저 고정하고, 전환 전후 보고를 같은 숫자로 이어 붙이지 마세요.",
   "ad-performance-diagnosis": "광고 성과가 하락하면 소재부터 갈지 말고 집계 기준 → 전환량 → 트래픽 품질 → 소재 순으로 좁히세요. 광고 관리자·GA4·MMP·결제 DB의 전환 수가 함께 떨어졌는지 비교하면 측정 문제인지 실제 성과 문제인지가 한 번에 갈립니다.",
   "adjust-vs-appsflyer": "Adjust와 AppsFlyer 중 하나가 모든 팀에 절대적으로 낫지는 않습니다. 필요한 측정 범위, 연동 매체, 데이터 접근 방식(로그 수준 export 가능 여부), 운영 지원을 실제 요구사항에 맞춰 비교하고, 사양은 계약 전 각 사에 직접 확인하세요.",
   "aha-event-ad-optimization": "광고 플랫폼에는 설치 1건으로 똑같이 잡히지만 10초 뒤 이탈한 유저와 핵심 기능을 쓰고 돌아온 유저는 가치가 다릅니다. 설치 CPA는 낮은데 Aha Event 도달률과 D7 리텐션이 같이 낮다면, 그건 싸게 유저를 산 게 아니라 싸게 이탈을 산 것입니다.",
@@ -34,6 +35,7 @@ const KO_ANSWERS = {
   "hook-3-seconds-framework": "영상 광고의 이탈은 첫 3초 안에 일어나므로, 그 안에 '이게 나랑 무슨 상관인지'를 납득시키지 못하면 뒤 내용은 아무도 보지 않습니다. 다만 모든 소재에 같은 후킹 공식이 통하지는 않으니, 타깃의 문제·메시지·형식을 바꾼 소재를 실제 이탈률로 비교해 검증하세요.",
   "incrementality-measurement": "증분성은 리포트에 찍힌 전환이 아니라 광고가 없었다면 사라졌을 전환입니다 — 마케팅 전환 500건 중 실제 증분은 120건이고 나머지 380건은 원래 올 손님이었을 수 있습니다. ROAS 800%가 찍혀도 증분이 낮으면 증액 근거가 되지 않으므로, 무작위 홀드아웃으로 확인하는 것이 가장 확실합니다.",
   "ios-att-skan-guide": "iOS 성과가 반토막으로 보이면 캠페인보다 측정을 먼저 의심하세요 — ATT 거부는 광고 노출이 아니라 유저 단위 측정을 막습니다. SKAN 4는 0~2일·3~7일·8~35일 세 창에서 포스트백을 주지만 정밀한 fine 값(0~63)은 첫 창에서 개인정보 임계를 넘을 때만 오고, 나머지는 low·medium·high 세 단계뿐입니다.",
+  "ios-skan-campaign-structure": "SKAN 4 source identifier는 네 자리로 설계해도 privacy tier에 따라 두·세·네 자리만 돌아올 수 있습니다. 두 자리만 남아도 예산 결정을 할 수 있는 단위를 앞자리에 두고, 세부 가설은 뒤 자리에 배치하세요.",
   "ltv-cac-ratio": "LTV:CAC는 3:1이 흔한 기준선이지만, 그 비율을 보기 전에 계산이 맞는지부터 확인해야 합니다. 결제 고객 획득에 5,000만 원을 써서 500명을 데려왔다면 CAC는 10만 원이고, 이들이 월 2만 원씩 평균 12개월 남으면 LTV는 24만 원이라 2.4:1인데, 분모에 무엇을 넣었는지(광고비만인지 인건비 포함인지)에 따라 이 값이 통째로 달라집니다.",
   "marketing-mix-modeling": "MMM(마케팅 믹스 모델링)은 주별 채널 지출과 매출을 놓고 '매출 = 베이스라인 + 채널별 기여 + 외부요인'을 추정하는 방법입니다. 결과는 '다음 달 1억' 같은 점 예측이 아니라 95% 구간으로 읽어야 하고, 관측 데이터 기반이라 연관이지 인과가 아닙니다.",
   "multicollinearity-mmm-guide": "MMM에서 특정 채널 기여도가 음수로 나오면 모델 고장보다 다중공선성을 먼저 의심하세요. 검색과 소셜 예산을 늘 같이 올리고 내렸다면 모델은 둘 중 누가 결과를 만들었는지 구분할 근거가 없고, 이때 VIF가 높게 나오는 것은 '효과가 없다'가 아니라 '이 데이터로는 분리할 수 없다'는 뜻입니다.",
@@ -48,6 +50,11 @@ const KO_ANSWERS = {
   "uplift-holdout-guide": "업리프트는 광고를 본 그룹과 홀드아웃 그룹의 전환율 차이입니다 — 노출군 8%, 홀드아웃 5%면 업리프트는 3%p입니다. 무작위 배정이 아니거나 두 그룹의 기간·대상이 다르면 이 차이를 광고 효과로 볼 수 없고, 구간이 0을 걸치면 '효과 없음'이 아니라 '아직 구분 안 됨'으로 읽어야 합니다.",
   "skan4-migration-guide": "SKAN 4 전환은 첫 창(0~2일) 컨버전 밸류 스키마부터 확정하고, 그다음 캠페인 구조를 iOS 기준으로 합친 뒤, 창 2·3은 필요해질 때 붙이는 순서가 안전합니다. 창 2·3은 low·medium·high 세 단계뿐이라 나중에 붙여도 손실이 적지만, 첫 창 매핑을 바꾸면 그 전후 데이터 비교가 끊깁니다.",
   "skan-conversion-value-schema": "SKAN 컨버전 밸류는 6비트 64칸이고, 담고 싶은 걸 다 넣으면 칸당 볼륨이 무너집니다. 하루 설치 500건을 64칸으로 쪼개면 칸당 평균 8건이라 노이즈가 신호를 덮으므로, '이 값이 달라지면 다른 행동을 하는가'를 기준으로 판단이 갈리는 지점만 나누세요.",
+  "skan-conversion-value-ltv": "SKAN conversion value는 앱이 정의한 초기 행동 라벨이지 LTV 그 자체가 아닙니다. 값·coarse 구간별로 나중 코호트 매출을 연결하고, 스키마가 바뀌면 같은 코드라도 새로 보정하세요.",
+  "skan-crowd-anonymity-tiers": "SKAN 4의 postback data tier가 낮으면 source identifier 자릿수와 conversion value 해상도가 줄거나 빠질 수 있습니다. 값이 없다는 사실과 이벤트 구현 실패를 같은 뜻으로 읽지 말고, fine·coarse·미제공을 분리해 보세요.",
+  "skan-network-differences": "SKAN window·privacy tier·postback 파라미터는 Apple 표준이지만 conversion value를 누가 갱신하고 어디서 스키마를 관리하는지는 매체·MMP마다 다릅니다. 하나의 앱에는 최종 value updater를 하나만 두세요.",
+  "skan-null-redacted-postbacks": "SKAN postback이 아예 오지 않은 것과 postback은 왔지만 세부 value가 privacy 때문에 제공되지 않은 것은 다른 사건입니다. version·window·did-win·identifier 자릿수부터 분리해 확인하세요.",
+  "skan-schema-validation": "SKAN 스키마 변경은 update 호출 로그만으로 끝나지 않습니다. 앱 호출, 서명·버전 조건, postback 서명·중복·did-win, 새 스키마 집계를 각각 검증해야 합니다.",
   "skan-vs-mmp-attribution": "SKAN 어트리뷰션과 MMP 숫자는 원래 안 맞습니다 — 집계 단위(캠페인 vs 유저), 도착 시점(무작위 지연 vs 실시간), ATT 거부 유저 포함 여부가 다르기 때문입니다. 합치려 하지 말고 유저 단위 분석은 MMP, iOS 캠페인 간 비교는 SKAN, 실제 기여는 증분 분석으로 나누세요.",
 };
 
@@ -56,6 +63,7 @@ const EN_ANSWERS = {
   "ad-creative-specs-guide": "Creatives get rejected or cropped because aspect ratios (1:1, 9:16), minimum resolutions, and file-size caps differ by platform. Do not ship one universal file — check each platform's spec and an actual preview before launch.",
   "ad-creative-testing": "You cannot fix the number of creatives at 'three at a time'; divide the test batch budget by the per-creative decision budget and round down. That result is how many operational slots you have, not a statistical sample size, and the goal is not to crown this week's CTR winner.",
   "ad-machine-learning": "The ad learning phase ends at roughly 50 optimization events within 7 days on Meta. Changing budget, targeting, or creative inside that window restarts learning, so make one change at a time and delay judgement until delivery stabilises.",
+  "adattributionkit-transition": "An AdAttributionKit transition is not an SDK rename. Assign ownership for ad signing, conversion-value updates, and winning-postback receipt and verification, then avoid joining before-and-after reporting as one unchanged series.",
   "ad-performance-diagnosis": "When ad performance drops, do not swap creative first — narrow in this order: measurement setup, conversion volume, traffic quality, then creative. Comparing conversion counts across the ads manager, GA4, your MMP, and the payment database separates a tracking problem from a real performance problem in one step.",
   "adjust-vs-appsflyer": "Neither Adjust nor AppsFlyer is absolutely better for every team. Compare them against your actual requirements — measurement scope, network integrations, data access such as log-level export, and support — and confirm specifications with each vendor before signing.",
   "aha-event-ad-optimization": "Two users both register as one install, but one leaves after 10 seconds and the other uses a core feature and returns days later. When install CPA is low while Aha-event reach and D7 retention are also low, you did not buy users cheaply — you bought churn cheaply.",
@@ -85,6 +93,7 @@ const EN_ANSWERS = {
   "hook-3-seconds-framework": "Video ad drop-off happens inside the first 3 seconds, so if the viewer cannot see what it has to do with them in that window, nothing after it gets watched. No single hook formula fits every creative, though — compare variants that change the audience problem, message, and format against actual drop-off data.",
   "incrementality-measurement": "Incrementality is not the conversions in your report but the ones that would disappear without the ad — of 500 marketing conversions, only 120 may be incremental while 380 were coming anyway. A reported ROAS of 800% is not a scaling case if lift is low, and a randomized holdout is the only design that settles it.",
   "ios-att-skan-guide": "If iOS looks cut in half, suspect measurement before the campaign — declining ATT blocks user-level measurement, not delivery. SKAN 4 returns postbacks in three windows (days 0–2, 3–7, 8–35), but the fine value (0–63) arrives only in the first window and only above the privacy threshold; everything else is low, medium, or high.",
+  "ios-skan-campaign-structure": "A SKAN 4 source identifier can be designed with four digits but may return only two, three, or four by privacy tier. Put a budget decision that survives two digits in the lead positions and reserve later digits for optional detail.",
   "ltv-cac-ratio": "LTV:CAC of 3:1 is a common reference line, but check the arithmetic before trusting the ratio. Spending $50,000 to acquire 500 paying customers gives CAC of $100, and if they spend $20 a month for 12 months LTV is $240 — a 2.4:1 ratio that shifts entirely depending on whether the denominator holds media spend alone or headcount too.",
   "marketing-mix-modeling": "Marketing mix modeling (MMM) takes weekly channel spend and revenue and estimates revenue = baseline + per-channel contribution + external factors. Read the output as a 95% interval rather than a point forecast like 'next month is $1M', and treat it as association from observational data, not causation.",
   "multicollinearity-mmm-guide": "When an MMM channel comes back with a negative coefficient, suspect multicollinearity before assuming the model broke. If search and social budgets always rose and fell together, the model has no basis to separate them, and a high VIF means 'this data cannot separate these channels' — not 'this channel does not work'.",
@@ -99,6 +108,11 @@ const EN_ANSWERS = {
   "uplift-holdout-guide": "Uplift is the conversion-rate gap between an exposed group and a holdout — 8% exposed against 5% held out is 3pp of uplift. Without random assignment, or when the two groups differ in period or audience, that gap is not ad effect, and an interval crossing zero means 'not yet distinguishable', not 'no effect'.",
   "skan4-migration-guide": "SKAN 4 migration is safest in this order: lock the first window (days 0–2) conversion-value schema, consolidate campaign structure for iOS, then add windows 2 and 3 when you need them. The later windows return only low, medium, or high, so adding them late costs little — but remapping the first window breaks comparison across the change.",
   "skan-conversion-value-schema": "The SKAN conversion value is six bits — 64 slots — and encoding everything collapses volume per slot. Splitting 500 daily installs across 64 slots averages eight each, where noise buries signal, so split only where the value changes what you would actually do.",
+  "skan-conversion-value-ltv": "A SKAN conversion value is an app-defined early-behavior label, not LTV itself. Link each value or coarse band to later cohort revenue and recalibrate when the schema changes, even if a numeric code stays the same.",
+  "skan-crowd-anonymity-tiers": "A lower SKAN 4 postback data tier can shorten source identifiers and limit conversion-value detail. Do not treat an unavailable value as the same thing as failed event implementation; separate fine, coarse, and unavailable states.",
+  "skan-network-differences": "SKAN windows, privacy tiers, and postback parameters are Apple’s standard, while schema ownership and conversion-value updates vary by network and MMP. Keep one final conversion-value updater per app.",
+  "skan-null-redacted-postbacks": "A SKAN postback that never arrived and a postback whose detailed value is privacy-limited are different events. Separate version, window, did-win, and returned identifier length before investigating.",
+  "skan-schema-validation": "A SKAN schema change is not complete when an update call appears in logs. Validate the app call, signing and version eligibility, postback signature and deduplication, and new-schema reporting separately.",
   "skan-vs-mmp-attribution": "SKAN attribution and MMP numbers are supposed to disagree: they differ in unit (campaign versus user), arrival (randomised delay versus real time), and whether ATT-declined users are included. Rather than reconciling them, use the MMP for user-level analysis, SKAN for comparing iOS campaigns, and incrementality for actual contribution.",
 };
 
@@ -111,6 +125,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "content-element-analysis": "creative", "creative-attribute-regression": "creative", "asa-keyword-expansion": "platform",
   "adjust-vs-appsflyer": "platform", "apple-search-ads-guide": "platform", "aso-basics-guide": "platform",
   "google-uac-optimization": "platform", "ios-att-skan-guide": "platform", "meta-advantage-plus-guide": "platform",
+  "adattributionkit-transition": "platform", "ios-skan-campaign-structure": "platform",
   "postback-integration-guide": "platform", "ad-performance-diagnosis": "measurement", "attribution-data-mismatch": "measurement",
   "campaign-anomaly-detection": "measurement", "cohort-analysis-guide": "measurement", "cpi-cpa-cpm-difference": "measurement",
   "event-taxonomy-guide": "measurement", "funnel-dropoff-analysis": "measurement", "ga4-data-traps": "measurement",
@@ -122,6 +137,7 @@ const CONDITION_GROUP_BY_SLUG = {
   "uplift-holdout-guide": "causal",
   "store-conversion-drop-diagnosis": "measurement", "store-listing-experiment": "experiment",
   "skan4-migration-guide": "measurement", "skan-conversion-value-schema": "measurement", "skan-vs-mmp-attribution": "measurement",
+  "skan-conversion-value-ltv": "measurement", "skan-crowd-anonymity-tiers": "measurement", "skan-network-differences": "platform", "skan-null-redacted-postbacks": "measurement", "skan-schema-validation": "platform",
 };
 
 const CONDITIONS = {
