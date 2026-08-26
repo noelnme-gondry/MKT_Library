@@ -1,22 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
-import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
-
-const Loading = () => <p className="dochi-result-loading">결과 화면을 여는 중…</p>;
-const Dashboard = dynamic(() => import("@/components/Dashboard"), { ssr: false, loading: Loading });
-const CampaignPvm = dynamic(() => import("@/components/tools/CampaignPvm"), { ssr: false, loading: Loading });
-const MarketingEfficiency = dynamic(() => import("@/components/tools/MarketingEfficiency"), { ssr: false, loading: Loading });
-const BudgetAllocation = dynamic(() => import("@/components/tools/BudgetAllocation"), { ssr: false, loading: Loading });
 
 const COPY = {
   ko: {
@@ -26,19 +18,14 @@ const COPY = {
     mappingAction: "확인하고 결과 가져오기",
     running: "도치가 분석 화면을 가져오는 중",
     insight: "아하!",
-    resultsTitle: "같은 데이터로 바로 보는 분석 결과",
-    resultsDeck: "핵심 그래프와 표만 모았습니다. 더 깊게 볼 때는 해당 분석으로 바로 이어집니다.",
-    sharedControls: "모든 분석에 같이 적용",
+    resultsTitle: "도치 결과함",
+    resultsDeck: "이 파일로 지금 확인할 수 있는 판단을 순서대로 보여드립니다. 상세 화면은 필요한 분석만 여세요.",
     noDataTitle: "먼저 도치에게 CSV를 맡겨 주세요",
     noDataDeck: "파일은 브라우저 안에서만 읽고, 이 화면에서 매핑과 결과를 이어서 보여드립니다.",
     backHome: "홈에서 CSV 올리기",
     collapse: "접기",
     expand: "펼치기",
     openTool: "해당 분석으로 가기",
-    dashboard: "운영 대시보드",
-    pvm: "캠페인 성과 변동",
-    saturation: "캠페인 포화도 진단",
-    allocation: "예산 배분 시뮬레이터",
   },
   en: {
     eyebrow: "DOCHI RESULT",
@@ -47,9 +34,8 @@ const COPY = {
     mappingAction: "Confirm and open results",
     running: "Dochi is bringing in the analysis views",
     insight: "Aha!",
-    resultsTitle: "Analysis results from this same data",
-    resultsDeck: "Only the essential charts and tables are shown here. Open the analysis when you need to go deeper.",
-    sharedControls: "Applies to every analysis",
+    resultsTitle: "Dochi results",
+    resultsDeck: "See the decisions this file can support in order, then open only the detailed analysis you need.",
     noDataTitle: "Give Dochi a CSV first",
     noDataDeck: "Your file is read only in this browser. Mapping and results continue here.",
     backHome: "Upload a CSV from home",
@@ -58,13 +44,6 @@ const COPY = {
     openTool: "Open this analysis",
   },
 };
-
-const TOOL_VIEWS = [
-  { id: "5-2", key: "dashboard", Component: Dashboard, open: true },
-  { id: "5-21", key: "pvm", Component: CampaignPvm },
-  { id: "5-22", key: "saturation", Component: MarketingEfficiency },
-  { id: "5-3", key: "allocation", Component: BudgetAllocation },
-];
 
 function DochiJourney({ label, insight }) {
   return <div className="dochi-journey is-running" aria-hidden="true">
@@ -82,38 +61,6 @@ function DochiJourney({ label, insight }) {
     </div>
     <p>{label}</p>
   </div>;
-}
-
-function ToolView({ id, title, Component, locale, open = false, collapseLabel, expandLabel, openToolLabel, onOpenTool }) {
-  const [hasOpened, setHasOpened] = useState(open);
-  const [isOpen, setIsOpen] = useState(open);
-  const togglePanel = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const nextOpen = !isOpen;
-    setIsOpen(nextOpen);
-    if (nextOpen) setHasOpened(true);
-  };
-  const openTool = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onOpenTool(id);
-  };
-
-  return <details className="dochi-result-tool" open={isOpen} onToggle={(event) => {
-    const nextOpen = event.currentTarget.open;
-    setIsOpen(nextOpen);
-    if (nextOpen) setHasOpened(true);
-  }}>
-    <summary>
-      <strong>{title}</strong>
-      <span className="dochi-result-tool__actions">
-        <button type="button" onClick={togglePanel}>{isOpen ? collapseLabel : expandLabel}</button>
-        <button type="button" className="dochi-result-tool__open" onClick={openTool}>{openToolLabel} <span aria-hidden="true">↗</span></button>
-      </span>
-    </summary>
-    {hasOpened && <div className="dochi-result-tool__view" data-dochi-visual-view="true"><Component locale={locale} /></div>}
-  </details>;
 }
 
 export default function DochiResultWorkspace({ locale = "ko" }) {
@@ -140,8 +87,8 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     const timer = window.setTimeout(() => setPhase("results"), hasReducedMotion ? 0 : 1100);
     timersRef.current.push(timer);
   };
-  const openTool = useCallback((toolId) => {
-    handoffCsvToRoute(toolId, csvData);
+  const openTool = useCallback((toolId, prepared = csvData) => {
+    handoffCsvToRoute(toolId, prepared);
     const path = idToPath(toolId);
     router.push(locale === "en" ? `/en${path}` : path);
   }, [csvData, handoffCsvToRoute, locale, router]);
@@ -186,26 +133,8 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
         <span>{C.eyebrow}</span>
         <h1 id="dochi-result-title">{C.resultsTitle}</h1>
         <p>{C.resultsDeck}</p>
-        <div className="dochi-result-workspace__global-controls" aria-label={C.sharedControls}>
-          <strong>{C.sharedControls}</strong>
-          <BasisCurrencyToggleBar locale={locale} />
-        </div>
       </header>
-      <AssistantWorkspace csvData={csvData} locale={locale} presentation="catalog" onEligibilityChange={rememberAvailableAnalyses} />
-      <div className="dochi-result-tools">
-        {TOOL_VIEWS.map(({ id, key, Component, open }) => <ToolView
-          key={id}
-          id={id}
-          title={C[key]}
-          Component={Component}
-          locale={locale}
-          open={open}
-          collapseLabel={C.collapse}
-          expandLabel={C.expand}
-          openToolLabel={C.openTool}
-          onOpenTool={openTool}
-        />)}
-      </div>
+      <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart />
     </>}
   </section>;
 }

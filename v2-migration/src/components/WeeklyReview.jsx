@@ -17,6 +17,7 @@ import {
 } from "@/lib/decisionReview";
 import { assessForecastActual } from "@/lib/forecastReview";
 import { buildComparableDecisionActual } from "@/lib/decisionComparableActual";
+import { buildDatasetContinuitySnapshot, classifyDatasetContinuity } from "@/lib/dataContinuity";
 import { localizedTool } from "@/lib/toolConnections";
 import { groupForRoute } from "@/lib/toolGroups";
 import { trackProductEvent } from "@/lib/analytics";
@@ -93,6 +94,15 @@ const COPY = {
     candidateMissingBasis: "기준일과 지원 지표(CPA·CPI·ROAS)를 입력하면 같은 기간으로 자동 비교할 수 있습니다.",
     candidateMissingScope: "이전 기록에는 데이터 범위가 저장되지 않아 자동 비교하지 않습니다. 같은 범위에서 새 검토를 저장하세요.",
     candidateDatasetMismatch: "이 결정에 쓴 데이터가 이 기기에 없거나 범위가 달라 자동 비교하지 않습니다. 원본 도구에서 같은 범위의 데이터를 올려 확인하세요.",
+    continuity: "업로드 데이터 확인",
+    continuityDuplicate: "이전 판단과 같은 기간·같은 데이터입니다. 새 결과를 만들지 않고 기존 판단을 다시 엽니다.",
+    continuityRevised: "같은 기간의 값이 이전 파일과 달라졌습니다. 수정된 마감 데이터일 수 있으니 기존 판단을 갱신해 확인하세요.",
+    continuityNext: "다음 기간 데이터입니다. 지난 판단의 후속 기간으로 검토할 수 있습니다.",
+    continuityGap: "이전 기간 뒤에 데이터 공백이 있습니다. 분석은 가능하지만 연속된 후속 검토로 읽지 않습니다.",
+    continuityPartial: "이전 기간과 일부 겹칩니다. 잠정치·백필·수정 데이터일 수 있으니 비교 범위를 확인하세요.",
+    continuityBackfill: "이전 판단보다 과거 기간 데이터입니다. 후속 결과가 아닌 별도 분석으로 처리합니다.",
+    continuityChanged: "이전 판단과 컬럼 역할이 달라 자동 비교하지 않습니다.",
+    continuityProvisional: "최근 기간이라 집계가 더 바뀔 수 있습니다.",
     candidatePeriod: "비교 기간",
     useCandidate: "이 값으로 검토하기",
     completeReview: "검토 완료로 저장",
@@ -193,6 +203,15 @@ const COPY = {
     candidateMissingBasis: "Add a baseline date and a supported metric (CPA, CPI, or ROAS) to compare the same window automatically.",
     candidateMissingScope: "This older record did not save its data scope, so it is not compared automatically. Save a new review from the same scope.",
     candidateDatasetMismatch: "The CSV currently open is not the dataset used for this decision, so it is not compared automatically.",
+    continuity: "Uploaded-data check",
+    continuityDuplicate: "This is the same period and same data as the prior decision. Reopen the existing decision instead of creating a new result.",
+    continuityRevised: "Values changed for the same period. This may be revised final data, so review the prior decision against this update.",
+    continuityNext: "This is the next period of data and can be reviewed as the follow-up to the prior decision.",
+    continuityGap: "There is a gap after the prior period. Analysis remains available, but this is not read as a continuous follow-up review.",
+    continuityPartial: "This file partly overlaps the prior period. It may be provisional, backfilled, or revised data; check the comparison range.",
+    continuityBackfill: "This file predates the prior decision. It is treated as a separate historical analysis, not a follow-up outcome.",
+    continuityChanged: "Column roles changed from the prior decision, so no automatic comparison is made.",
+    continuityProvisional: "This is a recent period and its totals may still change.",
     candidatePeriod: "Comparison period",
     useCandidate: "Review with this value",
     completeReview: "Mark review complete",
@@ -326,6 +345,15 @@ export default function WeeklyReview({ locale = "ko" }) {
       dataGroup: recordGroup,
     })];
   })), [activeDataGroup, csvData, csvGroups, records, todayKey]);
+  const continuityByRecord = useMemo(() => new Map(records.map((record) => {
+    const recordGroup = groupForRoute(record.toolId);
+    const slice = csvGroups?.[recordGroup] || (recordGroup === activeDataGroup ? csvData : null);
+    const current = buildDatasetContinuitySnapshot(slice?.canonicalData, {
+      dataGroup: recordGroup,
+      mapping: slice?.mapping,
+    });
+    return [record.id, classifyDatasetContinuity(record.datasetSnapshot, current)];
+  })), [activeDataGroup, csvData, csvGroups, records]);
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
     const assessment = assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
@@ -502,6 +530,7 @@ export default function WeeklyReview({ locale = "ko" }) {
                 ? t.outsideRangeHint
               : t.pointOnlyHint;
             const comparableCandidate = comparableCandidates.get(record.id);
+            const continuity = continuityByRecord.get(record.id);
             const sourceHref = sourceToolHref(record, locale);
             const followUpMode = decisionReviewFollowUpMode(record);
             const isPeriodComparison = followUpMode === "period_auto" || followUpMode === "period_setup";
@@ -558,6 +587,23 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <strong>{t[followUpMode]}</strong>
                 <p>{t[`${followUpMode}Hint`]}</p>
               </div>
+              {!isForecastReview && continuity && !["missing_previous_snapshot", "missing_current_snapshot"].includes(continuity.state) && <div className={`weekly-review-record__candidate continuity-${continuity.state}`}>
+                <span>{t.continuity}</span>
+                <p>{continuity.state === "duplicate"
+                  ? t.continuityDuplicate
+                  : continuity.state === "revised_period"
+                    ? t.continuityRevised
+                    : continuity.state === "next_period"
+                      ? t.continuityNext
+                      : continuity.state === "gap"
+                        ? t.continuityGap
+                        : continuity.state === "partial_overlap"
+                          ? t.continuityPartial
+                          : continuity.state === "historical_backfill"
+                            ? t.continuityBackfill
+                            : t.continuityChanged}</p>
+                {continuity.maturity === "provisional" && <small>{t.continuityProvisional}</small>}
+              </div>}
               {!isForecastReview && isPeriodComparison && status !== "reviewed" && comparableCandidate && <div className={`weekly-review-record__candidate ${comparableCandidate.state}`}>
                 <span>{t.dataCandidate}</span>
                 {comparableCandidate.state === "ready" ? <>

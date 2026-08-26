@@ -9,6 +9,7 @@ import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { latestDecisionDataDate } from "@/lib/decisionComparableActual";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+import { buildDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
 
@@ -327,6 +328,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       baselineDate: draft.baselineDate,
       comparisonWindowDays: draft.comparisonWindowDays,
       comparisonScope: createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter }),
+      datasetSnapshot: serializeDatasetContinuitySnapshot(buildDatasetContinuitySnapshot(csvData?.canonicalData, {
+        dataGroup: activeDataGroup,
+        mapping: csvData?.mapping,
+      })),
       reviewQuestion: draft.reviewQuestion.trim(),
       reviewDate: draft.reviewDate,
       sourcePeriod: draft.sourcePeriod.trim(),
