@@ -34,11 +34,11 @@ function contrast(a, b) {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
-function jsxFiles(dir) {
+function componentSourceFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const target = path.join(dir, entry.name);
-    if (entry.isDirectory()) return jsxFiles(target);
-    return entry.name.endsWith(".jsx") ? [target] : [];
+    if (entry.isDirectory()) return componentSourceFiles(target);
+    return /\.(js|jsx)$/.test(entry.name) && !entry.name.includes(".test.") ? [target] : [];
   });
 }
 
@@ -57,15 +57,15 @@ describe("테마 대비와 인라인 색", () => {
   });
 
   it("JSX의 상태 텍스트·배경은 테마 토큰을 거친다", () => {
-    const offenders = jsxFiles(path.join(SRC_DIR, "components")).flatMap((file) =>
-      [...readFileSync(file, "utf8").matchAll(/(?:color|background|borderColor|backgroundColor):\s*"#[0-9a-fA-F]{3,8}"/g)]
+    const offenders = componentSourceFiles(path.join(SRC_DIR, "components")).flatMap((file) =>
+      [...readFileSync(file, "utf8").matchAll(/(?:color|background|backgroundColor|border|borderColor|borderLeftColor|boxShadow|fill|stroke)\s*:\s*["'`]#[0-9a-fA-F]{3,8}["'`]/g)]
         .map((match) => `${path.relative(SRC_DIR, file)}: ${match[0]}`),
     );
     expect(offenders, `테마를 우회한 인라인 hex:\n${offenders.join("\n")}`).toEqual([]);
   });
 
   it("설명 속성 대신 키보드·터치가 가능한 도움말을 쓴다", () => {
-    const offenders = jsxFiles(path.join(SRC_DIR, "components")).flatMap((file) =>
+    const offenders = componentSourceFiles(path.join(SRC_DIR, "components")).flatMap((file) =>
       [...readFileSync(file, "utf8").matchAll(/data-tooltip=/g)].map(() => path.relative(SRC_DIR, file)),
     );
     expect(offenders, `data-tooltip은 화면에 설명을 렌더하지 않는다:\n${offenders.join("\n")}`).toEqual([]);

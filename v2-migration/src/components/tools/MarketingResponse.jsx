@@ -29,6 +29,7 @@ import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, 
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
 import { auditClassicNoPriorRun, classicNoPriorConfig, classicNoPriorFitOptions } from "@/utils/classicMmmPolicy";
 import { mmmControlFitRows } from "@/utils/mmmControlContract";
+import MmmControlFitTable from "@/components/tools/MmmControlFitTable";
 import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
@@ -3759,7 +3760,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     };
   };
   const demoBanner = isDemo && (
-    <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+    <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
       <div>
         <strong>{tx("🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다", "🧪 You're viewing sample (example) data")}</strong>
         <p style={{ margin: "0.25rem 0 0" }}>{tx("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to a server. Upload your own CSV to replace it instantly.")}</p>
@@ -5121,24 +5122,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       "컨트롤은 평소 대비 상대 변화로 바꿔 광고와 함께 추정합니다. 관측된 연관을 조정하는 변수이며 인과효과를 보장하지 않습니다. 채널 기여·ROAS·예산 추천에는 포함하지 않습니다.",
                       "Controls are converted to change relative to their typical level and estimated jointly with media. They adjust observed associations but do not prove causality, and are excluded from channel contribution, ROAS, and budget recommendations.",
                     )}</p>
-                    <div className="table-wrap">
-                      <table className="data" style={{ fontSize: "11.5px" }}>
-                        <thead><tr><th>{tx("컨트롤", "Control")}</th><th>{tx("모델 상태", "Model status")}</th><th>{tx("변환", "Transform")}</th></tr></thead>
-                        <tbody>{controlFitRows.map((row) => <tr key={row.key}>
-                          <td>{row.label}</td>
-                          <td>{row.status === "included"
-                            ? tx("공동 적합에 포함", "Included in joint fit")
-                            : row.status === "dropped-collinear"
-                              ? tx("독립 변화 부족으로 제외", "Excluded: no independent variation")
-                              : tx("적합에 사용되지 않음", "Not used in fit")}</td>
-                          <td>{row.transformMode === "log-relative"
-                            ? tx("기준 대비 로그 변화", "Log change vs. reference")
-                            : row.transformMode === "linear-relative"
-                              ? tx("기준 대비 선형 변화", "Linear change vs. reference")
-                              : "—"}</td>
-                        </tr>)}</tbody>
-                      </table>
-                    </div>
+                    <MmmControlFitTable rows={controlFitRows} locale={locale} />
                   </details>
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
