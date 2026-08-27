@@ -9028,10 +9028,14 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .date-range-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 16px; border-top: 1px solid var(--operator-line); background: var(--surface-container); }
 .dashboard-filter-bar__display {
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
   margin-left: auto;
   padding-left: 12px;
   border-left: 1px solid var(--operator-line);
 }
+.dashboard-filter-bar__display .blocked-options-note { width: 100%;min-width: 0; }
+.dashboard-filter-bar__display .blocked-options-note > span { min-width: 0;white-space: normal;overflow-wrap: anywhere; }
 @media (max-width: 720px) {
   .date-range-popover { max-height: var(--radix-popover-content-available-height,calc(100vh - 18px)); }
   .date-range-layout { display: block; min-height: 0; }
