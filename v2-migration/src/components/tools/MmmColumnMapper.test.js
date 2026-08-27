@@ -817,4 +817,19 @@ describe("MMM column mapping", () => {
     expect(first.ch.c_구글_비용).toEqual([80]);
     expect(second.ch).toEqual(first.ch);
   });
+
+  it("preserves monthly calendar input as consecutive months instead of inventing missing weeks", () => {
+    const headers = ["dt", "regs", "spend"];
+    const rows = Array.from({ length: 6 }, (_, index) => ({
+      dt: `2026-${String(index + 1).padStart(2, "0")}-15`,
+      regs: String(100 + index * 10),
+      spend: String(1000 + index * 100),
+    }));
+    const map = { dt: { role: "date" }, regs: { role: "reg" }, spend: { role: "channel", kind: "perf", plat: "common" } };
+    const panel = buildPanelFromColMap(headers, rows, map, "all", "ko", null, { periodUnit: "monthly" }).panel;
+    expect(panel.weekLabel).toEqual(["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01"]);
+    expect(panel.calendarGaps).toMatchObject({ count: 0, unit: "monthly" });
+    expect(panel.granularity).toEqual({ months: 1, unit: "monthly" });
+    expect(mmmValidate(panel, "ko", "Regs").issues).toEqual([]);
+  });
 });

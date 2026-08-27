@@ -27,6 +27,16 @@ describe("evaluateAnalysisEligibility", () => {
     expect(result.requiresConfirmation).toEqual(expect.arrayContaining(["outcome", "model_limit"]));
   });
 
+  it("accepts a confirmed calendar-date mapping wherever the response panel requires week", () => {
+    const result = evaluateAnalysisEligibility({
+      toolId: "5-18-trend",
+      mapping: { dt: "date", Signups: "mmm_reg", Spend: "ch_meta" },
+      profile: { rowCount: 90, periodCount: 13, grain: "weekly_panel", cadence: "daily" },
+    });
+    expect(result.status).toBe("ready");
+    expect(result.blockers).toEqual([]);
+  });
+
   it("keeps tool-owned user/event and content analyses as design confirmation", () => {
     const aha = evaluateAnalysisEligibility({
       toolId: "5-20",

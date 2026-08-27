@@ -2,6 +2,39 @@ import { DERIVED_METRICS, computeMetrics } from "./metrics/metricRegistry.js";
 import { mapRowsToStandard } from "./mappedRows";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
+const DENOM_AVAILABILITY_CACHE = new WeakMap();
+
+function usableNumber(value) {
+  const normalized = typeof value === "string" ? value.replace(/[\s,]/g, "") : value;
+  const number = Number(normalized);
+  return Number.isFinite(number) && number > 0;
+}
+
+function denomAvailability(csvData) {
+  const raw = csvData?.raw;
+  const mapping = csvData?.mapping;
+  if (!Array.isArray(raw) || !mapping || typeof mapping !== "object") return { installs: false, actions: false };
+
+  let byMapping = DENOM_AVAILABILITY_CACHE.get(raw);
+  if (!byMapping) {
+    byMapping = new WeakMap();
+    DENOM_AVAILABILITY_CACHE.set(raw, byMapping);
+  }
+  const cached = byMapping.get(mapping);
+  if (cached && cached.mappedRows === csvData.mappedRows) return cached.availability;
+
+  const mapped = new Set(Object.values(mapping));
+  const availability = { installs: false, actions: false };
+  if (mapped.has("installs") || mapped.has("actions")) {
+    for (const row of getMappedRows(csvData)) {
+      if (!availability.installs && mapped.has("installs")) availability.installs = usableNumber(row?.installs);
+      if (!availability.actions && mapped.has("actions")) availability.actions = usableNumber(row?.actions);
+      if (availability.installs && availability.actions) break;
+    }
+  }
+  byMapping.set(mapping, { mappedRows: csvData.mappedRows, availability });
+  return availability;
+}
 
 /**
  * 값 크기별 자릿수 적응 통화 포맷 — index.html fmtCurrencyPrecise 이식(§7 0-뭉개짐 방지).
@@ -45,10 +78,18 @@ export function fmtCurrencyCompact(value, currency = "KRW", locale = "ko") {
 export function effectiveDenomBasis(csvData, requested) {
   const mapped = new Set(Object.values((csvData && csvData.mapping) || {}));
   let b = requested || "installs";
-  if (!mapped.has(b)) {
-    b = mapped.has("installs") ? "installs" : mapped.has("actions") ? "actions" : b;
-  }
+  const availability = denomAvailability(csvData);
+  const usable = new Set(["installs", "actions"].filter((basis) => availability[basis]));
+  if (!usable.has(b)) b = usable.has("installs") ? "installs" : usable.has("actions") ? "actions" : b;
+  if (!usable.size && !mapped.has(b)) b = mapped.has("installs") ? "installs" : mapped.has("actions") ? "actions" : b;
   return b;
+}
+
+// 분모 컬럼이 매핑됐다는 사실만으로는 성과 기준으로 쓸 수 없다. 설치가 전부 0인
+// 가입 캠페인처럼 실제 양의 모수가 하나도 없으면 사용 가능한 다른 기준으로 넘긴다.
+export function hasUsableDenomBasis(csvData, basis) {
+  if (!["installs", "actions"].includes(basis)) return false;
+  return denomAvailability(csvData)[basis];
 }
 
 /**

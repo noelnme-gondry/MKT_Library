@@ -57,6 +57,11 @@ function weekStartTimestamp(timestamp, weekStart) {
   return date.getTime();
 }
 
+function monthStartTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
+}
+
 function formatWeekStart(timestamp) {
   const date = new Date(timestamp);
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -573,7 +578,7 @@ export function mmmForecastInputWarnings(headers, rows, colMap, locale = "ko") {
 
 // GEO 원자료를 national 집계와 별도로 보존한다. 현재 national MMM은 기존
 // panel을 사용하고, Meridian 계층 적합은 이 geoPanel의 geo-week 행을 사용한다.
-function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
+function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart, periodUnit = "weekly") {
   if (!roles.geo) return null;
   const tagMode = !roles.platform && (headers || []).some((header) => /(?:android|ios|aos|iphone|ipad)/i.test(String(header)));
   const P = platform === "all" ? null : platform;
@@ -597,7 +602,7 @@ function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
     const parsed = mappedTimeKey(row[roles.date || roles.week[0]?.header]);
     if (!geo || !parsed) continue;
     const period = parsed.source === "calendar-date" && roles.date
-      ? weekStartTimestamp(parsed.value, weekStart)
+      ? periodUnit === "monthly" ? monthStartTimestamp(parsed.value) : weekStartTimestamp(parsed.value, weekStart)
       : parsed.value;
     const segment = roles.platform ? normalizePlatformValue(row[roles.platform]) : "";
     const key = `${geo}\u0001${parsed.kind}:${period}\u0001${segment}`;
@@ -887,8 +892,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   const pivoted = pivotLongFormat(headers, rows, colMap);
   if (pivoted) return buildPanelFromColMap(pivoted.headers, pivoted.rows, pivoted.colMap, platform, locale, pivoted.diagnostics, options);
   const weekStart = options.weekStart === "sunday" ? "sunday" : "monday";
+  const periodUnit = options.periodUnit === "monthly" ? "monthly" : "weekly";
   const r = colMapRoles(headers, colMap);
-  const geoPanels = buildGeoPanelFromRows(headers, rows, r, platform, weekStart);
+  const geoPanels = buildGeoPanelFromRows(headers, rows, r, platform, weekStart, periodUnit);
   const tagMode = !r.platform && mmmPlatformTags(headers, colMap).length > 0;
   const P = platform === "all" ? null : platform;
   const normalizedPlatform = P ? normalizePlatformValue(P) : null;
@@ -924,6 +930,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     mixedPlatformCadence: false,
     platformCoverage: null,
     weekStart,
+    periodUnit,
     issues: [],
     warnings: [],
   };
@@ -974,7 +981,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       // ISO week는 이미 주 단위 입력이며 항상 ISO 월요일 라벨을 유지한다. 일자형
       // 원자료만 일요일 시작 또는 월요일 시작으로 다시 묶는다.
       const shouldRegroupDate = parsedTime.kind === "date" && parsedTime.source !== "iso-week";
-      const periodValue = shouldRegroupDate ? weekStartTimestamp(parsedTime.value, weekStart) : parsedTime.value;
+      const periodValue = shouldRegroupDate
+        ? periodUnit === "monthly" ? monthStartTimestamp(parsedTime.value) : weekStartTimestamp(parsedTime.value, weekStart)
+        : parsedTime.value;
       const normalizedTime = parsedTime.kind === "date" ? formatWeekStart(periodValue) : String(periodValue);
       const key = `${parsedTime.kind}:${periodValue}`;
       let item = groups.get(key);
@@ -1092,7 +1101,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     });
     let groupedRows = [...groups.values()].sort((a, b) => a.__mmmPeriodValue - b.__mmmPeriodValue);
     const boundaryDrops = new Set();
-    if (r.date) {
+    if (r.date && periodUnit === "weekly") {
       const counts = groupedRows.map((item) => item.__mmmDistinctDates.size);
       const expectedDays = expectedDailyCadence(counts);
       timeDiagnostics.expectedDaysPerWeek = expectedDays;
@@ -1110,7 +1119,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     }
     if (r.platform && expectedSegments.length) {
       const inferredDaysBySegment = {};
-      if (r.date) {
+      if (r.date && periodUnit === "weekly") {
         expectedSegments.forEach((segment) => {
           inferredDaysBySegment[segment] = expectedDailyCadence(groupedRows.map((item) => item.__mmmDatesBySegment.get(segment)?.size || 0));
         });
@@ -1121,7 +1130,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       const details = [];
       groupedRows.forEach((item, index, all) => {
         const missingSegments = expectedSegments.filter((segment) => !item.__mmmSegments.has(segment));
-        const incompleteSegments = r.date && sharedExpectedDays
+        const incompleteSegments = r.date && periodUnit === "weekly" && sharedExpectedDays
           ? expectedSegments.flatMap((segment) => {
             const observed = item.__mmmDatesBySegment.get(segment)?.size || 0;
             return observed === sharedExpectedDays ? [] : [{ segment, observed, expected: sharedExpectedDays }];
@@ -1320,15 +1329,18 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       const previous = canonicalTimes[i - 1], current = canonicalTimes[i];
       if (previous.kind !== current.kind) continue;
       const distance = current.kind === "date"
-        ? Math.round((current.value - previous.value) / (7 * MMM_DAY_MS))
+        ? periodUnit === "monthly"
+          ? (new Date(current.value).getUTCFullYear() - new Date(previous.value).getUTCFullYear()) * 12
+            + new Date(current.value).getUTCMonth() - new Date(previous.value).getUTCMonth()
+          : Math.round((current.value - previous.value) / (7 * MMM_DAY_MS))
         : Math.round(current.value - previous.value);
-      const missingWeeks = Math.max(0, distance - 1);
-      if (missingWeeks) gaps.push({ after: panel.weekLabel[i - 1], before: panel.weekLabel[i], missingWeeks });
+      const missingPeriods = Math.max(0, distance - 1);
+      if (missingPeriods) gaps.push({ after: panel.weekLabel[i - 1], before: panel.weekLabel[i], missingWeeks: missingPeriods, missingPeriods });
     }
-    panel.calendarGaps = { count: gaps.reduce((sum, gap) => sum + gap.missingWeeks, 0), gaps };
+    panel.calendarGaps = { count: gaps.reduce((sum, gap) => sum + gap.missingPeriods, 0), gaps, unit: periodUnit };
     if (kinds.size === 1 && canonicalTimes[0].kind === "date") {
       panel.dates = canonicalTimes.map((item) => new Date(item.value));
-      panel.granularity = { days: 7, unit: "weekly" };
+      panel.granularity = periodUnit === "monthly" ? { months: 1, unit: "monthly" } : { days: 7, unit: "weekly" };
     }
   }
   if (timeDiagnostics.droppedInvalidRows) timeDiagnostics.issues.push({ code: "invalid-time-row", count: timeDiagnostics.droppedInvalidRows, messageKo: `날짜/주차를 해석할 수 없는 ${timeDiagnostics.droppedInvalidRows}개 행을 제외했습니다. 원자료를 고친 뒤 다시 분석하세요.`, messageEn: `${timeDiagnostics.droppedInvalidRows} row(s) with blank or unparseable dates/weeks were dropped. Fix the source data before analysis.` });

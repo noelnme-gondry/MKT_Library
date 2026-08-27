@@ -14,6 +14,9 @@ import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
+import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
+import { useAppStore } from "@/store/useDataStore";
+import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
 
 const COPY = {
   ko: {
@@ -74,6 +77,7 @@ const COPY = {
     action: "다음 행동",
     caveats: "해석 한계",
     primaryView: "요약 결과",
+    exactTable: "정확한 수치 표 보기",
     detailsView: "해석 한계 보기",
     resultToggle: "결과 펼치기/접기",
     embeddedRunning: "도치가 실제 데이터를 계산하고 있습니다.",
@@ -151,6 +155,7 @@ const COPY = {
     action: "Next action",
     caveats: "Interpretation limits",
     primaryView: "Summary result",
+    exactTable: "View exact values",
     detailsView: "Show interpretation limits",
     resultToggle: "Show or hide result",
     embeddedRunning: "Dochi is calculating your actual data.",
@@ -176,16 +181,15 @@ function mappedKeys(mapping = {}) {
   return new Set(Object.values(mapping).filter((value) => value && value !== "__ignore__"));
 }
 
-function distinctPeriodCount(records = []) {
-  return new Set(records.map((record) => record.date || record.week).filter(Boolean)).size;
-}
-
-function detectedGrain(entry, fields) {
+function detectedGrain(entry, fields, cadence) {
   const has = (key) => fields.has(key);
   if (has("tenure_periods") && has("event_observed")) return "subscription_episode";
   if (has("search_term")) return "asa_keyword_daily";
   if (has("creative_id") && has("impressions")) return "creative_daily";
   if (has("store_source") && has("product_page_views")) return "store_funnel_daily";
+  if (entry.supportedGrains.includes("weekly_panel")
+    && (has("week") || has("date") || has("iso_week_start"))
+    && ["daily", "weekly", "monthly"].includes(cadence)) return "weekly_panel";
   if (has("iso_week_start") || has("mmm_reg") || [...fields].some((key) => key.startsWith("ch_"))) return "weekly_panel";
   if (has("is_control") || has("arm_id")) return "experiment_aggregate";
   if (entry.toolId === "5-25" && has("date") && has("cost") && (has("channel") || has("campaign_name"))) return "channel_spend_timeseries";
@@ -195,13 +199,17 @@ function detectedGrain(entry, fields) {
 
 function profileFor(entry, { raw = [], headers = [], mapping = {} } = {}) {
   const fields = mappedKeys(mapping);
+  const cadence = inferMappedDateCadence({ raw, headers, mapping });
   const headerFor = (field) => headers.find((header) => mapping[header] === field);
-  const dateHeader = headerFor("date") || headerFor("iso_week_start");
   const tenureHeader = headerFor("tenure_periods");
+  const periodCount = entry.supportedGrains.includes("weekly_panel") && cadence.cadence === "daily"
+    ? cadence.weeklyPeriodCount
+    : cadence.periodCount;
   return {
     rowCount: raw.length,
-    periodCount: dateHeader ? new Set(raw.map((row) => row?.[dateHeader]).filter(Boolean)).size : 0,
-    grain: detectedGrain(entry, fields),
+    periodCount,
+    cadence: cadence.cadence,
+    grain: detectedGrain(entry, fields, cadence.cadence),
     validEpisodeCount: entry.toolId === "5-28"
       ? raw.filter((row) => Number.isFinite(Number(row?.[tenureHeader]))).length
       : undefined,
@@ -312,12 +320,39 @@ function ResultBars({ visualization, locale }) {
   const y = visualization.options?.y || "value";
   const numeric = rows.map((row) => Number(row?.[y])).filter(Number.isFinite);
   const max = Math.max(...numeric.map((value) => Math.abs(value)), 0);
-  if (!rows.length || !(max > 0)) return null;
-  return <ul className="dochi-workspace__result-bars" aria-label={visualization.question}>{rows.slice(0, 8).map((row, index) => {
+  if (!rows.length) return null;
+  if (!(max > 0)) return visualization.table?.rows?.length ? <ResultTable visualization={visualization} locale={locale} /> : null;
+  const bars = <ul className="dochi-workspace__result-bars" aria-label={visualization.question}>{rows.slice(0, 8).map((row, index) => {
     const value = Number(row?.[y]);
     const width = Number.isFinite(value) ? Math.max(2, Math.round((Math.abs(value) / max) * 100)) : 0;
     return <li key={`${visualization.id}-${index}`}><span>{formatResultValue(row?.[x], locale)}</span><i className={value < 0 ? "is-negative" : ""} style={{ "--dochi-result-bar-size": `${width}%` }} /><b>{formatResultValue(row?.[y], locale)}</b></li>;
   })}</ul>;
+  if (!visualization.table?.rows?.length) return bars;
+  return <>{bars}<details className="dochi-workspace__exact-table"><summary>{(COPY[locale] || COPY.ko).exactTable}</summary><ResultTable visualization={visualization} locale={locale} /></details></>;
+}
+
+function ResultPeriodComparison({ visualization, locale }) {
+  const rows = (visualization.data || visualization.table?.rows || [])
+    .filter((row) => Number.isFinite(Number(row?.prior)) || Number.isFinite(Number(row?.recent)))
+    .slice(0, 8);
+  if (!rows.length) return <ResultTable visualization={visualization} locale={locale} />;
+  return <>
+    <figure className="dochi-workspace__period-comparison" role="img" aria-label={visualization.question}>
+      <figcaption><i className="is-prior">{locale === "en" ? "Prior" : "직전"}</i><i className="is-recent">{locale === "en" ? "Recent" : "최근"}</i></figcaption>
+      <ul>{rows.map((row, index) => {
+        const prior = chartNumber(row.prior);
+        const recent = chartNumber(row.recent);
+        const max = Math.max(Math.abs(prior) || 0, Math.abs(recent) || 0, 1);
+        const change = chartNumber(row.change);
+        return <li key={`${visualization.id}-${row.metric || index}`}>
+          <div><strong>{row.label || row.metric}</strong><em className={change < 0 ? "is-negative" : change > 0 ? "is-positive" : ""}>{Number.isFinite(change) ? `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%` : "—"}</em></div>
+          <span className="is-prior" style={{ "--dochi-period-size": `${Math.max(2, Math.abs(prior) / max * 100)}%` }}><b>{formatResultValue(row.prior, locale)}</b></span>
+          <span className="is-recent" style={{ "--dochi-period-size": `${Math.max(2, Math.abs(recent) / max * 100)}%` }}><b>{formatResultValue(row.recent, locale)}</b></span>
+        </li>;
+      })}</ul>
+    </figure>
+    <details className="dochi-workspace__exact-table"><summary>{(COPY[locale] || COPY.ko).exactTable}</summary><ResultTable visualization={visualization} locale={locale} /></details>
+  </>;
 }
 
 function numericDomain(values) {
@@ -400,6 +435,7 @@ function ResultScatterChart({ visualization, locale }) {
 }
 
 function ResultVisualization({ visualization, locale }) {
+  if (visualization.kind === "bar" && visualization.options?.variant === "period-comparison") return <ResultPeriodComparison visualization={visualization} locale={locale} />;
   if (visualization.kind === "bar") return <ResultBars visualization={visualization} locale={locale} />;
   if (visualization.kind === "line") return <ResultLineChart visualization={visualization} locale={locale} />;
   if (visualization.kind === "scatter") return <ResultScatterChart visualization={visualization} locale={locale} />;
@@ -466,7 +502,7 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   </article>;
 }
 
-function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full" }) {
+function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false }) {
   const C = COPY[locale] || COPY.ko;
   const isEmbedded = presentation === "embedded";
   const entry = analysisCatalogEntry(result.toolId);
@@ -491,7 +527,7 @@ function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueIt
         {!isBlocked && result.requiresConfirmation?.length > 0 && <small>{C.requires}: {result.requiresConfirmation.join(", ")}</small>}
       </>}
       {hasCurrentResult && !isDecisionFocus && (isEmbedded
-        ? <details className="dochi-workspace__embedded-result" open={result.toolId === "5-2"}><summary>{C.resultToggle}</summary><AnalysisResultOutput result={workspaceResult} locale={locale} /></details>
+        ? <details className="dochi-workspace__embedded-result" open={defaultOpen || result.toolId === "5-2"}><summary>{C.resultToggle}</summary><AnalysisResultOutput result={workspaceResult} locale={locale} /></details>
         : <AnalysisResultOutput result={workspaceResult} locale={locale} />)}
       {!isEmbedded && <>
         {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
@@ -504,13 +540,20 @@ function AnalysisCard({ result, locale, getTitle, onOpenTool, onConfirm, queueIt
   );
 }
 
-export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full" }) {
+export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true }) {
   const C = COPY[locale] || COPY.ko;
+  const denomBasis = useAppStore((state) => state.denomBasis);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
   const [queue, setQueue] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const [isPreparingHandoff, setIsPreparingHandoff] = useState(false);
   const currentInputSignature = useMemo(() => analysisInputSignature(csvData), [csvData]);
-  const currentMappingSignature = useMemo(() => JSON.stringify(csvData.mapping || {}), [csvData.mapping]);
+  const resolvedDenomBasis = useMemo(() => effectiveDenomBasis(csvData, denomBasis), [csvData, denomBasis]);
+  const currentMappingSignature = useMemo(() => JSON.stringify({
+    mapping: csvData.mapping || {},
+    denomBasis: resolvedDenomBasis,
+    displayCurrency,
+  }), [csvData.mapping, displayCurrency, resolvedDenomBasis]);
   const previousSignatureRef = useRef(`${currentInputSignature}:${currentMappingSignature}`);
   const autoStartedSignatureRef = useRef("");
   const handoffPreparationCacheRef = useRef(new Map());
@@ -658,6 +701,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           inputSignature: currentInputSignature,
           mappingSignature: currentMappingSignature,
           locale,
+          options: { denomBasis: resolvedDenomBasis, displayCurrency },
         });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, result })
@@ -683,7 +727,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         else window.clearTimeout(innerFrame);
       }
     };
-  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, locale, mappingsByTool, queue?.signature, queueSignature]);
+  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, displayCurrency, locale, mappingsByTool, queue?.signature, queueSignature, resolvedDenomBasis]);
 
   const startNext = useCallback(() => {
     const canContinue = queue
@@ -738,19 +782,19 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   if (presentation === "embedded") {
     return <section className="dochi-workspace dochi-workspace--embedded" aria-live="polite">
       {currentResults.length ? <div className="dochi-workspace__grid">
-        {currentResults.map(({ result, queueItem }) => <AnalysisCard key={result.toolId} result={result} locale={locale} getTitle={getTitle} queueItem={queueItem} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} presentation="embedded" />)}
+        {currentResults.map(({ result, queueItem }, index) => <AnalysisCard key={result.toolId} result={result} locale={locale} getTitle={getTitle} queueItem={queueItem} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} presentation="embedded" defaultOpen={index === 0} />)}
       </div> : <p className="dochi-workspace__embedded-loading">{baseline.length ? C.embeddedRunning : C.noBaseline}</p>}
     </section>;
   }
 
   return (
-    <section className="dochi-workspace" aria-labelledby="dochi-workspace-title">
-      <header className="dochi-workspace__head">
+    <section className="dochi-workspace" aria-labelledby={showContextHeader ? "dochi-workspace-title" : undefined} aria-label={showContextHeader ? undefined : C.title}>
+      {showContextHeader && <><header className="dochi-workspace__head">
         <div><span>{C.eyebrow}</span><h2 id="dochi-workspace-title">{C.title}</h2><p>{C.deck}</p></div>
         <dl className="dochi-workspace__data-lane"><div><dt>{C.source}</dt><dd>{csvData.fileName}</dd></div><div><dt>{C.rows}</dt><dd>{csvData.raw.length.toLocaleString()}</dd></div><div><dt>{C.columns}</dt><dd>{csvData.headers.length.toLocaleString()}</dd></div><div><dt>{C.mapped}</dt><dd>{mappedCount}/{csvData.headers.length}</dd></div></dl>
       </header>
       <p className="dochi-workspace__scope-note"><strong>{C.scopeLabel}</strong>{C.scopeNote}</p>
-      <p className="dochi-workspace__mapping-note">{C.mappingReview}</p>
+      <p className="dochi-workspace__mapping-note">{C.mappingReview}</p></>}
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       {isPreparingHandoff && <p className="dochi-workspace__handoff-loading" role="status">{C.preparingDetails}</p>}
 

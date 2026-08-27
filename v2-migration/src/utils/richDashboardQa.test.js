@@ -3,6 +3,7 @@ import {
   calculateKPIs,
   computeWeightedRetention,
   effectiveDenomBasis,
+  hasUsableDenomBasis,
   getMappedRows,
   getMonFilteredRows,
 } from "./dashboardAggregator.js";
@@ -41,6 +42,16 @@ describe("rich dashboard CSV QA", () => {
     });
     expect(google).toHaveLength(2);
     expect(google.reduce((sum, row) => sum + Number(row.cost), 0)).toBe(9000);
+  });
+
+  it("falls back from an all-zero install column to usable actions", () => {
+    const csvData = {
+      raw: [{ Installs: "0", Actions: "1,200" }, { Installs: "0", Actions: "8" }],
+      mapping: { Installs: "installs", Actions: "actions" },
+    };
+    expect(hasUsableDenomBasis(csvData, "installs")).toBe(false);
+    expect(hasUsableDenomBasis(csvData, "actions")).toBe(true);
+    expect(effectiveDenomBasis(csvData, "installs")).toBe("actions");
   });
 
   it("keeps KPI totals and the installs/actions denominator toggle mathematically consistent", () => {

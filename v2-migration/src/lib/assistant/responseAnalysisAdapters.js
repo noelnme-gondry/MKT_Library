@@ -1,6 +1,7 @@
 import { autoGuessColMap, buildPanelFromColMap, colMapMissing } from "@/components/tools/MmmColumnMapper";
 import { MMM_METH_CONFIG, mmmDataQualityAudit, mmmTrendExistence, mmmValidate } from "@/utils/mmmMath";
 import { buildPaidOrganicTrend, guessPaidOrganicColumns } from "@/utils/paidOrganicTrend";
+import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
 
@@ -90,9 +91,13 @@ function responsePanel(csvData, locale) {
   const raw = Array.isArray(csvData?.raw) ? csvData.raw : [];
   if (!headers.length || !raw.length) return { reason: "no_rows" };
   const colMap = buildResponseAdapterColMap(csvData);
+  const cadence = inferMappedDateCadence(csvData);
   const missing = colMapMissing(headers, colMap, locale);
   if (missing.length) return { reason: "mapping", missing };
-  const built = buildPanelFromColMap(headers, raw, colMap, "all", locale, null, { weekStart: "monday" });
+  const built = buildPanelFromColMap(headers, raw, colMap, "all", locale, null, {
+    weekStart: "monday",
+    periodUnit: cadence.cadence === "monthly" ? "monthly" : "weekly",
+  });
   if (built.missing?.length) return { reason: "mapping", missing: built.missing };
   const panel = built.panel;
   const target = TARGET_PRIORITY.find((name) => (
@@ -103,7 +108,7 @@ function responsePanel(csvData, locale) {
   if (!quality.valid) return { reason: "quality", quality };
   const validation = mmmValidate(panel, locale, target);
   if (validation.issues?.length) return { reason: "validation", validation };
-  return { panel, target, colMap, quality, validation };
+  return { panel, target, colMap, quality, validation, cadence: cadence.cadence };
 }
 
 function trendHeadline(locale, verdict) {
@@ -148,7 +153,11 @@ function trendAdapter(input) {
   }
   let trend;
   try {
-    trend = mmmTrendExistence(prepared.panel, { ...MMM_METH_CONFIG, absorbed: new Set() }, prepared.target, locale);
+    trend = mmmTrendExistence(prepared.panel, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: prepared.cadence === "monthly" ? [12] : MMM_METH_CONFIG.seasonalityPeriods,
+      absorbed: new Set(),
+    }, prepared.target, locale);
   } catch {
     return noResult({
       toolId: "5-18-trend", inputSignature, mappingSignature, locale,
@@ -178,7 +187,7 @@ function trendAdapter(input) {
       stats: [
         { id: "trend-change-pct", label: tr(locale, "STL 추세 변화", "STL trend change"), value: finite(trend.stl_pct), unit: "%" },
         { id: "deseasonalized-mk-p", label: tr(locale, "계절 제거 MK p", "Deseasonalized MK p"), value: finite(trend.mk_deseason?.[1]) },
-        { id: "observed-weeks", label: tr(locale, "관측 주차", "Observed weeks"), value: prepared.quality.n },
+        { id: "observed-periods", label: tr(locale, prepared.cadence === "monthly" ? "관측 월" : "관측 주차", prepared.cadence === "monthly" ? "Observed months" : "Observed weeks"), value: prepared.quality.n },
       ],
       action: tr(locale, "계절·집행 변화와 함께 상세 추세 화면에서 기간을 확인합니다.", "Inspect the period with seasonality and spend changes in the detailed trend view."),
       caveats: [tr(locale, "이 결과는 관측된 시계열의 기술적 추세이며, 광고의 인과 효과나 자연 증분을 증명하지 않습니다.", "This is a descriptive time-series trend; it does not prove causal media impact or organic incrementality.")],
@@ -195,6 +204,7 @@ function trendAdapter(input) {
       status: "COMPLETE",
       target: prepared.target,
       observedWeekCount: prepared.quality.n,
+      sourceCadence: prepared.cadence,
       trendMethod: trend.stl?.method || null,
       evidenceState: "descriptive",
     },
