@@ -65,7 +65,7 @@ describe("DecisionReview", () => {
     openDecisionReview(container);
     expect(document.body.textContent).not.toMatch(/[가-힣]/);
     expect(screen.getByRole("button", { name: "Save for next review" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Keep decision summaries on this device" }).checked).toBe(false);
+    expect(screen.getByRole("switch", { name: "Store source files and decision records on this device" }).checked).toBe(false);
   });
 
   it("prefills explicit fields and shares a saved action with Weekly Review", () => {
@@ -118,7 +118,7 @@ describe("DecisionReview", () => {
   it("persists sanitized summaries only after opt-in and removes the stored copy on opt-out", () => {
     const { container } = render(<DecisionReview toolId="5-2" decisionPrefill={{ action: "Search 점검", metric: "CPA", raw: [{ secret: "row" }] }} />);
     openDecisionReview(container);
-    const retentionSwitch = screen.getByRole("switch", { name: "이 기기에 결정 요약 저장" });
+    const retentionSwitch = screen.getByRole("switch", { name: "원본 파일과 결정 기록을 이 기기에 저장" });
     fireEvent.click(retentionSwitch);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
 
@@ -139,7 +139,7 @@ describe("DecisionReview", () => {
     });
     const { container } = render(<DecisionReview toolId="5-2" />);
     openDecisionReview(container);
-    const retentionSwitch = screen.getByRole("switch", { name: "이 기기에 결정 요약 저장" });
+    const retentionSwitch = screen.getByRole("switch", { name: "원본 파일과 결정 기록을 이 기기에 저장" });
     fireEvent.click(retentionSwitch);
 
     expect(retentionSwitch.checked).toBe(false);

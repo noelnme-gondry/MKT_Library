@@ -27,7 +27,7 @@ import {
 export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
-const APP_PERSIST_VERSION = 4;
+const APP_PERSIST_VERSION = 5;
 let decisionFallbackSequence = 0;
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
@@ -575,6 +575,7 @@ const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => 
 // payload에 우연히 같은 키가 있어도 동의로 간주하지 않고 제거한다.
 export function persistMigrate(persistedState, version) {
   const state = persistedState && typeof persistedState === "object" ? { ...persistedState } : {};
+  const needsExpandedStorageConsent = version >= 2 && version < 5 && state.decisionPersistenceEnabled === true;
   // v3 전 payload에는 분석가 모드가 없었다. 기존 마케터 UX를 보존하기 위해 off가 기본이다.
   state.analystMode = version >= 3 && state.analystMode === true;
   if (version < 2) {
@@ -587,6 +588,17 @@ export function persistMigrate(persistedState, version) {
     // 뒤집을 수 있으므로 기존 사용자는 OFF로 보수적으로 유지한다. 새 설치만 초기
     // 상태(true)를 받아 기본 ON이 된다.
     state.decisionPersistenceEnabled = state.decisionPersistenceEnabled === true;
+  }
+  if (needsExpandedStorageConsent) {
+    // v2~v4의 ON은 "결정 요약" 저장 동의였다. 원본 CSV/XLSX까지 저장하는 현재
+    // 계약으로 소급 확대하지 않는다. 기존 요약은 이번 세션에만 복원하고, 사용자가
+    // 새 범위를 직접 켜기 전에는 다음 persist payload에서 제거한다.
+    return {
+      ...state,
+      decisionPersistenceEnabled: false,
+      decisionPersistencePreferenceSet: false,
+      decisionRecords: sanitizeDecisionReviewRecords(state.decisionRecords),
+    };
   }
   if (state.decisionPersistenceEnabled !== true) {
     delete state.decisionRecords;
@@ -1020,9 +1032,15 @@ export const useAppStore = create(persist((set, get) => ({
   // Clears the ACTIVE group's slice + marks it manually-cleared (see above).
   // Header.jsx and CsvUploader.jsx's own reset button both call this instead
   // of setCsvData(EMPTY_SLICE()) directly.
-  clearCsvGroup: () => set((state) => {
-    const g = groupForRoute(state.currentRouteId);
-    return {
+  clearCsvGroup: async () => {
+    const g = groupForRoute(get().currentRouteId);
+    let storageError = null;
+    try {
+      await removeWorkspaceDataset(g);
+    } catch (error) {
+      storageError = error?.code || "WORKSPACE_STORAGE_UNKNOWN";
+    }
+    set((state) => ({
       csvGroups: { ...state.csvGroups, [g]: EMPTY_SLICE() },
       csvData: EMPTY_SLICE(),
       analyzedByGroup: { ...state.analyzedByGroup, [g]: null },
@@ -1030,8 +1048,13 @@ export const useAppStore = create(persist((set, get) => ({
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
       dochiAnalysisSession: null,
-    };
-  }),
+      workspaceDatasetSummaries: storageError
+        ? state.workspaceDatasetSummaries
+        : state.workspaceDatasetSummaries.filter((entry) => entry.group !== g),
+      workspaceStorageError: storageError,
+    }));
+    return storageError == null;
+  },
 
   // "내 데이터로 시작"(StartGate) 진입 — 데모 자동로드 억제 + 이미 로드된 데모
   // 슬라이스(fileName "demo_")만 비운다(실제 업로드는 보존). csvData 미러도 활성

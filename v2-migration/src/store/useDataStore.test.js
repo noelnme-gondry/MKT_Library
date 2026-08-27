@@ -83,10 +83,18 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     expect(persistMigrate({ analystMode: true }, 3).analystMode).toBe(true);
   });
 
-  it("새 설치는 기기 저장을 기본 ON으로 시작하고, 구 opt-out은 보수적으로 유지", () => {
+  it("새 설치는 기본 ON이고, 구 결정-요약 동의는 원본 파일 동의로 확대하지 않는다", () => {
     expect(useAppStore.getState().decisionPersistenceEnabled).toBe(true);
     expect(persistMigrate({ decisionPersistenceEnabled: false }, 3).decisionPersistenceEnabled).toBe(false);
-    expect(persistMigrate({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] }, 3)).toMatchObject({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] });
+    expect(persistMigrate({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] }, 4)).toMatchObject({
+      decisionPersistenceEnabled: false,
+      decisionPersistencePreferenceSet: false,
+      decisionRecords: [{ id: "d1", action: "A" }],
+    });
+    expect(persistMigrate({ decisionPersistenceEnabled: true, decisionRecords: [{ id: "d1", action: "A" }] }, 5)).toMatchObject({
+      decisionPersistenceEnabled: true,
+      decisionRecords: [{ id: "d1", action: "A" }],
+    });
   });
 
   it("명시적 opt-in 때도 allowlist 결정 요약만 저장", () => {

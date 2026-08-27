@@ -237,7 +237,7 @@ export default function Header({ locale = "ko" }) {
                 {analystMode ? "✓ " : ""}{T.analystMode}
               </button>
               {hasCsv && (
-                <button className="btn ghost header-csv-change" type="button" title={T.csvChangeTitle} onClick={() => { resetCsv(); closeUtilityMenu(); }}>
+                <button className="btn ghost header-csv-change" type="button" title={T.csvChangeTitle} onClick={async () => { await resetCsv(); closeUtilityMenu(); }}>
                   {T.csvChangeBtn}
                 </button>
               )}
