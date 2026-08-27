@@ -420,6 +420,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
   const requestAd = useAppStore((state) => state.requestAd);
   const ahaFileRef = useRef(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -475,7 +476,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     setDemoPending(true);
     setCsvData(buildDemoCsv(C.demoGroup, locale));
   };
-  const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+  const resetCsv = () => clearCsvGroup();
   const [minSupport, setMinSupport] = useState(30);
   const [holdoutOn, setHoldoutOn] = useState(true);
   const [sortBy, setSortBy] = useState("f1");

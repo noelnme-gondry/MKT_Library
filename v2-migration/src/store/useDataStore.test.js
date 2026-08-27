@@ -97,6 +97,21 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     });
   });
 
+  it("구 동의 결정 기록은 새 저장 범위를 선택할 때까지 보존하고 거절 뒤 제거한다", () => {
+    const migrated = persistMigrate({
+      viewConfig: {}, customMetrics: {}, customCharts: {},
+      decisionPersistenceEnabled: true,
+      decisionRecords: [{ id: "d1", toolId: "5-2", action: "기존 결정" }],
+    }, 4);
+    const pendingChoice = persistPartialize(migrated);
+    expect(pendingChoice.decisionPersistenceEnabled).toBe(false);
+    expect(pendingChoice.decisionPersistencePreferenceSet).toBe(false);
+    expect(pendingChoice.decisionRecords).toEqual([expect.objectContaining({ id: "d1", action: "기존 결정" })]);
+
+    const declined = persistPartialize({ ...migrated, decisionPersistencePreferenceSet: true });
+    expect(declined.decisionRecords).toBeUndefined();
+  });
+
   it("명시적 opt-in 때도 allowlist 결정 요약만 저장", () => {
     const fakeState = {
       viewConfig: {}, customMetrics: {}, customCharts: {}, decisionPersistenceEnabled: true,

@@ -260,6 +260,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const analystMode = useAppStore((s) => s.analystMode);
   const requestAd = useAppStore((s) => s.requestAd);
   const fileRef = useRef(null);
@@ -320,7 +321,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     });
   };
   const handleLoadDemo = () => { setDemoPending(true); setCsvData(buildDemoCsv(C.demoGroup, locale)); };
-  const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+  const resetCsv = () => clearCsvGroup();
 
   // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
   // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.

@@ -21,6 +21,9 @@ export const CHART_THEME = {
   get tertiary() { return getCssVar("--chart-tertiary") || "#ffc56e"; },
   get quaternary() { return getCssVar("--secondary") || "#8fb1ff"; },
   get accent() { return getCssVar("--chart-accent") || "#ff8d7e"; },
+  get markerViolet() { return getCssVar("--chart-marker-violet") || "#c084fc"; },
+  get markerCyan() { return getCssVar("--chart-marker-cyan") || "#22d3ee"; },
+  get markerNeutral() { return getCssVar("--chart-marker-neutral") || "#e2e8f0"; },
   bg: "transparent",
   // 채널/카테고리 비교용 팔레트 — 구 버전은 전부 파랑·인디고 계열이라 채널 3~4개만
   // 써도(파이·막대) 색이 거의 구분 안 됐음. 서로 다른 색상(hue)으로 교체, 다크/라이트
@@ -171,14 +174,20 @@ export function refreshMountedChartThemes(ChartCtor) {
    index.html downloadChartAsPNG 이식(§7 dark 배경 명시 합성). */
 export function downloadChartAsPNG(canvas, fileName) {
   if (typeof document === "undefined" || !canvas) return false;
+  const footerHeight = 24;
   const tmp = document.createElement("canvas");
   tmp.width = canvas.width;
-  tmp.height = canvas.height;
+  tmp.height = canvas.height + footerHeight;
   const ctx = tmp.getContext("2d");
   const bg = getCssVar("--bg-1") || "#121212";
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, tmp.width, tmp.height);
   ctx.drawImage(canvas, 0, 0);
+  ctx.fillStyle = CHART_THEME.muted;
+  ctx.font = `10px ${CHART_FONT_STACK}`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", tmp.width - 10, canvas.height + footerHeight / 2);
 
   const url = tmp.toDataURL("image/png");
   const a = document.createElement("a");

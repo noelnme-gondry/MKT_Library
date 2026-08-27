@@ -11,13 +11,13 @@ import { CHART_THEME } from "@/utils/chartUtils";
  * ============================================================ */
 
 const EVENT_MARKER_STYLE = Object.freeze({
-  listing: { colorRole: "primary", dash: [] },
-  creative: { colorRole: "accent", dash: [4, 3] },
-  price: { colorRole: "success", dash: [2, 2] },
-  campaign: { colorRole: "tertiary", dash: [8, 3] },
-  release: { colorRole: "secondary", dash: [1, 3] },
-  external: { colorRole: "danger", dash: [10, 3, 2, 3] },
-  other: { colorRole: "muted", dash: [6, 4] },
+  listing: { colorRole: "primary", colorToken: "--chart-primary", dash: [] },
+  creative: { colorRole: "markerViolet", colorToken: "--chart-marker-violet", dash: [4, 3] },
+  price: { colorRole: "tertiary", colorToken: "--chart-tertiary", dash: [2, 2] },
+  campaign: { colorRole: "markerCyan", colorToken: "--chart-marker-cyan", dash: [8, 3] },
+  release: { colorRole: "secondary", colorToken: "--chart-secondary", dash: [10, 3, 2, 3] },
+  external: { colorRole: "danger", colorToken: "--danger", dash: [1, 3] },
+  other: { colorRole: "markerNeutral", colorToken: "--chart-marker-neutral", dash: [6, 4] },
 });
 
 // 색만으로 종류를 가르지 않는다. 비슷한 테마 색이나 색각 차이가 있어도 dash 패턴으로 구분한다.

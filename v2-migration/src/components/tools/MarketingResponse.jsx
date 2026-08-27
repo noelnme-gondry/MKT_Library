@@ -226,6 +226,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
   const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
   const responseMappingSession = useAppStore((state) => state.responseMappingSession);
@@ -3765,7 +3766,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         <strong>{tx("🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다", "🧪 You're viewing sample (example) data")}</strong>
         <p style={{ margin: "0.25rem 0 0" }}>{tx("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to a server. Upload your own CSV to replace it instantly.")}</p>
       </div>
-      <button className="ab-button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{tx("📁 내 CSV 업로드하기", "📁 Upload my CSV")}</button>
+      <button className="ab-button" onClick={clearCsvGroup}>{tx("📁 내 CSV 업로드하기", "📁 Upload my CSV")}</button>
     </div>
   );
   const targetLabel = (value) => value === "Traffic" ? tx("총유입", "Traffic")

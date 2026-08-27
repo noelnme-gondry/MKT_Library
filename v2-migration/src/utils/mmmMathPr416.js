@@ -2994,6 +2994,7 @@ import {
                 names: keep.map((i) => built.names[i]),
                 X: built.X.map((row) => keep.map((i) => row[i])),
                 externalTransforms: built.externalTransforms || {},
+                dropped: built.dropped || [],
               };
             }
 
