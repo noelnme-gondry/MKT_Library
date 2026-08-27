@@ -16,7 +16,7 @@ describe("WeeklyReview", () => {
     expect(screen.getByRole("heading", { name: "이번 주 결정 인박스" })).toBeTruthy();
     expect(screen.getByText(/현재 세션에서만/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "결정 기록 CSV 불러오기" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "이 기기에 결정 요약 저장" }).checked).toBe(false);
+    expect(screen.getByRole("switch", { name: "원본 파일과 결정 기록을 이 기기에 저장" }).checked).toBe(false);
     expect(screen.getByRole("heading", { name: "첫 결정을 이렇게 쌓습니다" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "내 데이터로 첫 분석" }).getAttribute("href")).toBe("/start");
     expect(screen.getByRole("link", { name: "필요한 분석부터 진단" }).getAttribute("href")).toBe("/diagnose");

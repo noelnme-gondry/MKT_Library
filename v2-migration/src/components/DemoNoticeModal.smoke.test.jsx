@@ -53,6 +53,7 @@ describe("DemoNoticeModal", () => {
     expect(document.body.textContent).not.toMatch(forbidden);
     fireEvent.click(screen.getByRole("button", { name: action }));
 
+    await waitFor(() => expect(useAppStore.getState().csvData.raw).toEqual([]));
     const state = useAppStore.getState();
     expect(state.csvData).toMatchObject({ raw: [], headers: [], fileName: "" });
     expect(state.csvGroups.efficiency).toMatchObject({ raw: [], headers: [], fileName: "" });

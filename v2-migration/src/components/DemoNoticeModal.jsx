@@ -60,8 +60,8 @@ export default function DemoNoticeModal({ locale = "ko" }) {
   }, [isDemo, seen, setSeen]);
 
   const close = () => setOpen(false);
-  const useMyCsv = () => {
-    clearCsvGroup();
+  const useMyCsv = async () => {
+    await clearCsvGroup();
     setOpen(false);
     scheduleDataPrepFocus();
   };

@@ -639,8 +639,8 @@ export default function CsvUploader({
     onMappingReviewNeedsSemanticFallback?.();
   };
 
-  const handleReset = () => {
-    clearCsvGroup();
+  const handleReset = async () => {
+    await clearCsvGroup();
     setImportAnnouncement("");
     setPreviewOpen(true);
   };
