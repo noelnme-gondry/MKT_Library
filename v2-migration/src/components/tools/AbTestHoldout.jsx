@@ -569,7 +569,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       { key: "nominalP", label: tr("이 시점 명목 p 경계", "Nominal p boundary"), align: "right", fmt: (value) => value < 0.0001 ? "< 0.0001" : value.toFixed(4) },
                     ]}
                   />}
-                  <p className="muted" style={{ margin: "10px 0 0", fontSize: "11px" }}>{tr("이 표는 양측 이진 전환율 z-검정의 O’Brien–Fleming형 경계 안내입니다. 적응형 중단·연속 모니터링·다른 지표에는 적용하지 않습니다.", "This is an O’Brien–Fleming-style boundary guide for a two-sided binary conversion z-test. It does not cover adaptive stopping, continuous monitoring, or other metrics.")}</p>
+                  <p className="muted" style={{ margin: "10px 0 0", fontSize: "11px" }}>{tr("계획한 모든 판독을 합친 양측 1종 오류가 입력한 α가 되도록 경계를 조정합니다. 따라서 마지막 시점의 명목 p 경계도 α보다 작을 수 있습니다. 적응형 중단·연속 모니터링·다른 지표에는 적용하지 않습니다.", "Boundaries are calibrated so the combined two-sided Type I error across all planned looks equals the entered α. The final nominal p boundary can therefore be below α. This does not cover adaptive stopping, continuous monitoring, or other metrics.")}</p>
                 </section>}
 
                 <h3 className="sub-title" style={{ marginTop: "1.5rem" }}>{tr("예산 계산기", "Budget calculator")}</h3>
