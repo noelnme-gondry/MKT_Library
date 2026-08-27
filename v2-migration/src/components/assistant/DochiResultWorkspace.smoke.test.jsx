@@ -72,6 +72,10 @@ describe("DochiResultWorkspace", () => {
     await act(async () => { await Promise.resolve(); });
 
     expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
+    expect(document.querySelector(".dochi-result-workspace__header.is-results")).toBeTruthy();
+    expect(screen.getByText("모든 효율 분석에 같이 적용")).toBeTruthy();
+    expect(screen.getByText("판정할 날짜 부족")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "도치가 찾은 분석 지도" })).toBeNull();
     expect(screen.queryByText("원본 대시보드")).toBeNull();
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
     expect(useAppStore.getState().dochiAnalysisSession).toBeTruthy();
@@ -88,5 +92,23 @@ describe("DochiResultWorkspace", () => {
 
     expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "컬럼을 확인해 주세요" })).toBeNull();
+  });
+
+  it("shows the automatic signup-basis fallback when installs are mapped but all zero", () => {
+    const signupData = {
+      ...DATA,
+      raw: DATA.raw.map((row) => ({ ...row, Installs: "0", Actions: "12" })),
+    };
+    useAppStore.setState({
+      currentRouteId: "dochi-result",
+      csvData: signupData,
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: signupData },
+      dochiAnalysisSession: { sourceData: signupData, analyses: [{ toolId: "5-2", status: "ready" }] },
+    });
+    render(<DochiResultWorkspace />);
+
+    expect(screen.getByRole("button", { name: "설치" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "가입" }).classList.contains("active")).toBe(true);
+    expect(screen.getByText("양수 값이 없어 가입 기준을 자동 적용했습니다")).toBeTruthy();
   });
 });

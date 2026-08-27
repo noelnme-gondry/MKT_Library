@@ -106,7 +106,7 @@ function vifAdapter(input) {
       caveats: [tr(locale, "VIF와 상관은 관측 진단이며 인과 효과를 식별하지 않습니다.", "VIF and correlation are observational diagnostics, not causal identification.")],
     },
     visualizations: [
-      { id: "vif-by-entity", kind: "table", question: tr(locale, "채널별 지출 중복은 어느 수준인가?", "How much does spend overlap by channel?"), table: { columns: ["entity", "vif", "isComputable"], rows: vifRows } },
+      { id: "vif-by-entity", kind: "bar", question: tr(locale, "채널별 지출 중복은 어느 수준인가?", "How much does spend overlap by channel?"), data: vifRows, options: { x: "entity", y: "vif" }, table: { columns: ["entity", "vif", "isComputable"], rows: vifRows } },
       {
         id: "vif-correlation-pairs",
         kind: "table",

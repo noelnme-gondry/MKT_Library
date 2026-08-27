@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
+import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import { useAppStore } from "@/store/useDataStore";
-import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { effectiveDenomBasis, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
 
 // 기준(설치/가입) + 표시 통화(₩/$) 토글 — 원래 DashboardFilterBar(5-2) 전용이었으나
 // 전역 denomBasis/displayCurrency는 효율 CSV 공유 도구(5-3/5-21/5-22)에도 적용되는데
@@ -19,9 +20,8 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
 
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return null;
 
-  const mapped = new Set(Object.values(csvData.mapping || {}));
-  const hasInstalls = mapped.has("installs");
-  const hasActions = mapped.has("actions");
+  const hasInstalls = hasUsableDenomBasis(csvData, "installs");
+  const hasActions = hasUsableDenomBasis(csvData, "actions");
 
   return (
     <>
@@ -29,36 +29,44 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
           <div className="analysis-control-group">
             <span className="analysis-control-group__label">{tr("성과 기준", "Performance basis")}</span>
             <button
+              type="button"
               className={`ab-pill ${effectiveDenomBasis(csvData, denomBasis) !== "actions" ? "active" : ""} ${!hasInstalls ? "disabled" : ""}`}
               disabled={!hasInstalls}
               onClick={() => hasInstalls && setDenomBasis("installs")}
             >
-              {tr("설치", "Installs")}{!hasInstalls ? " 🔒" : ""}
+              {tr("설치", "Installs")}
             </button>
             <button
+              type="button"
               className={`ab-pill ${effectiveDenomBasis(csvData, denomBasis) === "actions" ? "active" : ""} ${!hasActions ? "disabled" : ""}`}
               disabled={!hasActions}
               onClick={() => hasActions && setDenomBasis("actions")}
             >
-              {tr("가입", "Actions")}{!hasActions ? " 🔒" : ""}
+              {tr("가입", "Actions")}
             </button>
           </div>
         )}
         <div className="analysis-control-group">
           <span className="analysis-control-group__label">{tr("표시 통화", "Display currency")}</span>
           <button
+            type="button"
             className={`ab-pill ${displayCurrency === "KRW" ? "active" : ""}`}
             onClick={() => setDisplayCurrency("KRW")}
           >
             {tr("원 ₩", "KRW ₩")}
           </button>
           <button
+            type="button"
             className={`ab-pill ${displayCurrency === "USD" ? "active" : ""}`}
             onClick={() => setDisplayCurrency("USD")}
           >
             {tr("달러 $", "USD $")}
           </button>
         </div>
+        <BlockedOptionsNote items={[
+          { label: tr("설치", "Installs"), reason: !hasInstalls ? (hasActions ? tr("양수 값이 없어 가입 기준을 자동 적용했습니다", "No positive values; Actions was applied automatically") : tr("사용 가능한 양수 값이 없습니다", "No usable positive values")) : "" },
+          { label: tr("가입", "Actions"), reason: !hasActions ? tr("사용 가능한 양수 값이 없습니다", "No usable positive values") : "" },
+        ]} />
     </>
   );
 }

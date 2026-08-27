@@ -111,8 +111,10 @@ function dashboardAdapter(input) {
     },
     visualizations: [{
       id: "dashboard-period-comparison",
-      kind: "table",
+      kind: "bar",
       question: tr(locale, "직전 기간과 최근 기간 사이에 무엇이 변했는가?", "What changed between the prior and recent periods?"),
+      data: metricRows,
+      options: { variant: "period-comparison" },
       table: { columns: ["metric", "label", "prior", "recent", "change"], rows: metricRows },
     }],
     manifest: {
@@ -288,8 +290,10 @@ function saturationAdapter(input) {
     },
     visualizations: [{
       id: "saturation-ranking",
-      kind: "table",
+      kind: "bar",
       question: tr(locale, "어디에 증액 위험 또는 여유 신호가 있는가?", "Where are the signals of scaling risk or headroom?"),
+      data: table,
+      options: { x: "entity", y: "saturationIndex" },
       table: { columns: Object.keys(table[0] || {}), rows: table },
     }],
     manifest: { engine: "SAT_MATH", status: "COMPLETE", grain, metric, resultField: metricField, candidateCount: entities.length, analyzableCount: usable.length, evidenceState: "descriptive" },

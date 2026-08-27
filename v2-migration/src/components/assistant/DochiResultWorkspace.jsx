@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation";
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
+import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
+import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 
 const COPY = {
   ko: {
@@ -26,6 +28,10 @@ const COPY = {
     collapse: "접기",
     expand: "펼치기",
     openTool: "해당 분석으로 가기",
+    sharedControls: "모든 효율 분석에 같이 적용",
+    cadence: "날짜 해석",
+    cadenceLabels: { daily: "일별 · 주간 분석은 자동 집계", weekly: "주간 그대로 사용", monthly: "월간 그대로 사용", irregular: "불규칙 간격 · 상세 확인 필요", unknown: "판정할 날짜 부족" },
+    scope: "한 번 읽은 원본에서 안전하게 계산한 핵심 판단과 차트를 먼저 보여드립니다. 고급 모형과 추가 진단만 상세 분석에서 이어집니다.",
   },
   en: {
     eyebrow: "DOCHI RESULT",
@@ -42,6 +48,10 @@ const COPY = {
     collapse: "Collapse",
     expand: "Expand",
     openTool: "Open this analysis",
+    sharedControls: "Applies to all efficiency analyses",
+    cadence: "Date cadence",
+    cadenceLabels: { daily: "Daily · weekly analyses auto-aggregate", weekly: "Weekly as provided", monthly: "Monthly as provided", irregular: "Irregular · review needed", unknown: "Not enough dates" },
+    scope: "See the key decisions and charts that can be computed safely from one read of the source. Only advanced models and extra diagnostics continue in detailed analyses.",
   },
 };
 
@@ -77,6 +87,8 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   const [mappingStage, setMappingStage] = useState("legacy");
   const timersRef = useRef([]);
   const hasPreparedData = Boolean(csvData?.raw?.length && csvData?.headers?.length);
+  const cadence = inferMappedDateCadence(csvData);
+  const mappedCount = new Set(Object.values(csvData?.mapping || {}).filter((value) => value && value !== "__ignore__")).size;
 
   useEffect(() => () => timersRef.current.forEach((timer) => window.clearTimeout(timer)), []);
 
@@ -129,12 +141,18 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
       />
     </>}
     {phase === "results" && <>
-      <header className="dochi-result-workspace__header">
-        <span>{C.eyebrow}</span>
-        <h1 id="dochi-result-title">{C.resultsTitle}</h1>
-        <p>{C.resultsDeck}</p>
+      <header className="dochi-result-workspace__header is-results">
+        <div className="dochi-result-workspace__intro"><span>{C.eyebrow}</span><h1 id="dochi-result-title">{C.resultsTitle}</h1><p>{C.resultsDeck}</p><small>{C.scope}</small></div>
+        <dl className="dochi-result-workspace__context">
+          <div><dt>{locale === "en" ? "Data" : "데이터"}</dt><dd title={csvData.fileName}>{csvData.fileName}</dd></div>
+          <div><dt>{locale === "en" ? "Rows" : "행"}</dt><dd>{csvData.raw.length.toLocaleString()}</dd></div>
+          <div><dt>{locale === "en" ? "Columns" : "컬럼"}</dt><dd>{csvData.headers.length.toLocaleString()}</dd></div>
+          <div><dt>{locale === "en" ? "Mapped" : "표준 역할"}</dt><dd>{mappedCount}/{csvData.headers.length}</dd></div>
+          <div><dt>{C.cadence}</dt><dd>{C.cadenceLabels[cadence.cadence]}</dd></div>
+        </dl>
+        <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>
       </header>
-      <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart />
+      <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
     </>}
   </section>;
 }

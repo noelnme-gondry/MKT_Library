@@ -11,11 +11,18 @@ function mappedFields(mapping = {}) {
   return new Set(Object.values(mapping).filter((value) => value && value !== "__ignore__"));
 }
 
+function hasCompatibleField(fields, field) {
+  if (fields.has(field)) return true;
+  if (field === "week") return fields.has("date") || fields.has("iso_week_start");
+  if (field === "date") return fields.has("week") || fields.has("iso_week_start");
+  return false;
+}
+
 function missingRequiredGroups(groups = [], fields) {
   return groups.flatMap((group) => {
-    if (typeof group === "string") return fields.has(group) ? [] : [[group]];
+    if (typeof group === "string") return hasCompatibleField(fields, group) ? [] : [[group]];
     const candidates = group?.oneOf || [];
-    return candidates.some((field) => fields.has(field)) ? [] : [candidates];
+    return candidates.some((field) => hasCompatibleField(fields, field)) ? [] : [candidates];
   });
 }
 

@@ -29,6 +29,7 @@ describe("Dochi efficiency analysis adapters", () => {
     const actual = runEfficiencyAnalysis({ toolId: "5-2", ...input });
     expect(actual.status).toBe("success");
     expect(actual.verdict.headline).toBe(expected.headline);
+    expect(actual.visualizations[0]).toMatchObject({ kind: "bar", options: { variant: "period-comparison" } });
     expect(actual.visualizations[0].table.rows.find((row) => row.metric === "cost")).toMatchObject({
       prior: expected.metricRows.find((row) => row.key === "cost").prev,
       recent: expected.metricRows.find((row) => row.key === "cost").recent,
@@ -52,6 +53,8 @@ describe("Dochi efficiency analysis adapters", () => {
     const actual = runEfficiencyAnalysis({ toolId: "5-22", ...input });
     expect(actual.status).toBe("success");
     expect(actual.verdict.stats).toContainEqual(expect.objectContaining({ id: "analyzable", value: expected }));
+    expect(actual.visualizations[0]).toMatchObject({ kind: "bar", options: { x: "entity", y: "saturationIndex" } });
+    expect(actual.visualizations[0].table.rows).toHaveLength(expected);
   });
 
   it("returns a safe estimated baseline allocation and never puts CSV rows in its manifest", () => {

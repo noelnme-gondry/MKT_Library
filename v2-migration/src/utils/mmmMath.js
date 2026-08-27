@@ -1650,10 +1650,11 @@ export function mmmDataQualityAudit(panel) {
                   isEn ? `Week index is not consecutive (${nonContig} gaps) — the Week column may contain dates/years. Analysis uses row order (t=1…N).` : `주 인덱스가 1씩 증가하지 않음(${nonContig}곳) — Week 컬럼이 날짜/연도일 수 있음. 분석은 행 순서(t=1…N)로 진행.`,
                 );
               if (panel.calendarGaps?.count > 0) {
+                const isMonthly = panel.calendarGaps.unit === "monthly";
                 rep.issues.push(
                   isEn
-                    ? `${panel.calendarGaps.count} calendar week(s) are missing. Add explicit rows with the correct weekly KPI/spend; carryover and seasonality must not compress time gaps.`
-                    : `달력 주차 ${panel.calendarGaps.count}개가 비어 있습니다. 해당 주의 실제 KPI·지출 행을 추가하세요. 잔효·계절 모델은 빈 시간을 압축해 계산하면 안 됩니다.`,
+                    ? `${panel.calendarGaps.count} calendar ${isMonthly ? "month" : "week"}(s) are missing. Add explicit rows with the correct ${isMonthly ? "monthly" : "weekly"} KPI/spend; carryover and seasonality must not compress time gaps.`
+                    : `달력 ${isMonthly ? "월" : "주차"} ${panel.calendarGaps.count}개가 비어 있습니다. 해당 ${isMonthly ? "월" : "주"}의 실제 KPI·지출 행을 추가하세요. 잔효·계절 모델은 빈 시간을 압축해 계산하면 안 됩니다.`,
                 );
               }
               for (const [nm, arr] of Object.entries(panel.targets)) {

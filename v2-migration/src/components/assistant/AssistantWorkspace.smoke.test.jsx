@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import AssistantWorkspace, { analysisInputSignature } from "@/components/assistant/AssistantWorkspace";
+import { useAppStore } from "@/store/useDataStore";
 
 const raw = [
   { date: "2026-08-01", channel: "Meta", cost: "100", installs: "10" },
@@ -10,7 +11,7 @@ const raw = [
   { date: "2026-08-03", channel: "Google", cost: "110", installs: "11" },
 ];
 
-const completeRaw = Array.from({ length: 14 }, (_, index) => ({
+const completeRaw = Array.from({ length: 28 }, (_, index) => ({
   date: `2026-08-${String(index + 1).padStart(2, "0")}`,
   channel: index % 2 ? "Meta" : "Google",
   cost: String(100 + index * 10),
@@ -39,6 +40,10 @@ function slice(mapping = { date: "date", channel: "channel", cost: "cost", insta
 }
 
 describe("Dochi analysis workspace", () => {
+  beforeEach(() => {
+    useAppStore.setState({ denomBasis: "installs", displayCurrency: "KRW" });
+  });
+
   it("uses a structural fingerprint instead of carrying source headers or values in the result signature", () => {
     const source = {
       raw: [{ "Private Account": "secret-123", installs: "10" }],
@@ -77,6 +82,28 @@ describe("Dochi analysis workspace", () => {
     await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
   });
 
+  it("treats a mapped dt column as a daily source and makes weekly analyses available without a week header", async () => {
+    const onEligibilityChange = vi.fn();
+    const records = completeRaw.map((row) => ({ dt: row.date, signup: row.installs, meta_spend: row.cost }));
+    render(<AssistantWorkspace
+      csvData={{
+        raw: records,
+        headers: ["dt", "signup", "meta_spend"],
+        mapping: { dt: "date", signup: "mmm_reg", meta_spend: "ch_meta" },
+        fileName: "daily-response.csv",
+      }}
+      getTitle={(toolId) => toolId}
+      onEligibilityChange={onEligibilityChange}
+    />);
+    await waitFor(() => expect(onEligibilityChange).toHaveBeenCalled());
+    const latest = onEligibilityChange.mock.calls.at(-1)[0];
+    expect(latest.find((item) => item.toolId === "5-18-trend")).toMatchObject({ status: "ready", blockers: [] });
+    expect(latest.find((item) => item.toolId === "5-18-mmm")).toMatchObject({
+      status: "blocked",
+      blockers: expect.arrayContaining([expect.objectContaining({ code: "min_periods" })]),
+    });
+  });
+
   it("marks old results stale and rebuilds every available analysis when the user reruns after a mapping change", async () => {
     const view = render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     const start = screen.queryByRole("button", { name: /요약 분석 실행/ });
@@ -100,6 +127,8 @@ describe("Dochi analysis workspace", () => {
     expect(document.querySelectorAll(".dochi-workspace__findings-summary li").length).toBeGreaterThan(0);
     expect(screen.getByText("현재 근거")).toBeTruthy();
     expect(screen.getByText("해석 한계 보기")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("img", { name: "직전 기간과 최근 기간 사이에 무엇이 변했는가?" })).toBeTruthy());
+    fireEvent.click(screen.getByText("정확한 수치 표 보기"));
     expect(screen.getByRole("table")).toBeTruthy();
   });
 
@@ -139,10 +168,25 @@ describe("Dochi analysis workspace", () => {
   it("shows only actual completed results in the embedded home view, with dashboard open first", async () => {
     const { container } = render(<AssistantWorkspace autoStart presentation="embedded" csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} />);
     const workspace = container.querySelector(".dochi-workspace--embedded");
-    await waitFor(() => expect(workspace.querySelectorAll(".dochi-workspace__embedded-result").length).toBeGreaterThan(0));
-    expect(workspace.querySelector(".dochi-workspace__embedded-result").open).toBe(true);
+    await waitFor(() => expect(workspace.querySelector(".dochi-workspace__embedded-result")?.open).toBe(true));
     expect(screen.queryByRole("button", { name: /추가 차트·상세 분석 열기/ })).toBeNull();
     expect(screen.queryByText("현재 판단 상태")).toBeNull();
+  });
+
+  it("uses actions automatically when mapped installs are all zero and reruns when the shared controls change", async () => {
+    const records = completeRaw.map((row) => ({ ...row, installs: "0", actions: String(Number(row.installs) * 2) }));
+    const data = {
+      raw: records,
+      headers: ["date", "channel", "cost", "installs", "actions"],
+      mapping: { date: "date", channel: "channel", cost: "cost", installs: "installs", actions: "actions" },
+      fileName: "signup-campaign.csv",
+    };
+    useAppStore.setState({ denomBasis: "installs", displayCurrency: "KRW" });
+    render(<AssistantWorkspace autoStart csvData={data} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
+    await waitFor(() => expect(screen.getAllByText(/CPA/).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/CPI 변화/)).toBeNull();
+    useAppStore.getState().setDisplayCurrency("USD");
+    await waitFor(() => expect(screen.getAllByText(/\$/).length).toBeGreaterThan(0));
   });
 
   it("does not queue or run a design-confirmation analysis until the user approves its detailed-tool handoff", async () => {
