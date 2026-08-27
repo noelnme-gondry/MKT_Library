@@ -10,17 +10,24 @@ import { CHART_THEME } from "@/utils/chartUtils";
  * index는 x축 라벨 배열의 위치다(alignEventsToAxis가 붙여 준다).
  * ============================================================ */
 
-// 종류별 색. CHART_THEME getter라 다크/라이트 전환에 따라간다(§7 — canvas는 var()를 못 읽음).
+const EVENT_MARKER_STYLE = Object.freeze({
+  listing: { colorRole: "primary", dash: [] },
+  creative: { colorRole: "accent", dash: [4, 3] },
+  price: { colorRole: "success", dash: [2, 2] },
+  campaign: { colorRole: "tertiary", dash: [8, 3] },
+  release: { colorRole: "secondary", dash: [1, 3] },
+  external: { colorRole: "danger", dash: [10, 3, 2, 3] },
+  other: { colorRole: "muted", dash: [6, 4] },
+});
+
+// 색만으로 종류를 가르지 않는다. 비슷한 테마 색이나 색각 차이가 있어도 dash 패턴으로 구분한다.
+export function eventMarkerStyle(type) {
+  const style = EVENT_MARKER_STYLE[type] || EVENT_MARKER_STYLE.other;
+  return { ...style, color: CHART_THEME[style.colorRole] };
+}
+
 export function eventMarkerColor(type) {
-  switch (type) {
-    case "listing": return CHART_THEME.primary;
-    case "creative": return CHART_THEME.primary;
-    case "price": return CHART_THEME.success;
-    case "campaign": return CHART_THEME.tertiary;
-    case "release": return CHART_THEME.secondary;
-    case "external": return CHART_THEME.danger;
-    default: return CHART_THEME.muted;
-  }
+  return eventMarkerStyle(type).color;
 }
 
 export const eventMarkersPlugin = {
@@ -42,10 +49,11 @@ export const eventMarkersPlugin = {
     for (const event of events) {
       const x = xScale.getPixelForValue(event.index);
       if (!Number.isFinite(x) || x < area.left - 1 || x > area.right + 1) continue;
-      const color = eventMarkerColor(event.type);
+      const style = eventMarkerStyle(event.type);
+      const color = style.color;
 
       ctx.beginPath();
-      ctx.setLineDash([4, 3]);
+      ctx.setLineDash(style.dash);
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = color;
       ctx.moveTo(x, area.top);

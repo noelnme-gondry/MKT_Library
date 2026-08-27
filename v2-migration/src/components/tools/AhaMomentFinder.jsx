@@ -1115,7 +1115,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         </section>
       )}
       {isDemo && (
-        <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
             <strong>🧪 {tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're viewing sample (demo) data")}</strong>
             <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.")}</p>

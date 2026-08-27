@@ -318,7 +318,7 @@ const CONTENT = {
       answer: "한 행이 하나의 관측이 되게 정리하고, 날짜·비용·성과 컬럼을 표준 이름에 매핑합니다.",
       faq: [
         { q: "컬럼 이름을 꼭 영어로 바꿔야 하나요?", a: "아닙니다. 한글 헤더도 자동 매핑되며, 자동으로 못 잡으면 업로드 화면에서 직접 지정할 수 있습니다." },
-        { q: "업로드한 CSV가 서버로 전송되나요?", a: "전송되지 않습니다. 파싱과 계산 모두 브라우저 안에서 실행됩니다. 직접 올린 파일은 이 브라우저에 최대 90일 저장될 수 있으며, 서버에는 저장되지 않습니다." },
+        { q: "업로드한 CSV가 서버로 전송되나요?", a: "전송되지 않습니다. 파싱과 계산 모두 브라우저 안에서 실행됩니다. 직접 올린 파일은 이 브라우저에 마지막 사용 후 90일까지 저장될 수 있으며, 서버에는 저장되지 않습니다." },
       ],
     },
     en: {
@@ -326,7 +326,7 @@ const CONTENT = {
       answer: "Make one row one observation, then map date, cost, and outcome columns to standard keys.",
       faq: [
         { q: "Do column names have to be in English?", a: "No. Korean headers are auto-mapped too, and anything the mapper misses can be assigned by hand on the upload screen." },
-        { q: "Is the uploaded CSV sent to a server?", a: "No. Parsing and calculation both run inside the browser, and the original rows are never stored." },
+        { q: "Is the uploaded CSV sent to a server?", a: "No. Parsing and calculation both run inside the browser. Files you upload directly can stay in this browser until 90 days after their last use, and source rows are never stored on a server." },
       ],
     },
   },

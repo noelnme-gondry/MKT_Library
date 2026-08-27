@@ -1,13 +1,20 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import WeeklyReport from "./WeeklyReport";
 import { useAppStore } from "@/store/useDataStore";
 
+const reportWorkbookMock = vi.hoisted(() => ({ create: vi.fn() }));
+vi.mock("@/lib/reports/reportWorkbook", () => ({ createWeeklyReportWorkbook: reportWorkbookMock.create }));
+
 describe("WeeklyReport", () => {
-  beforeEach(() => useAppStore.setState({
-    reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] },
-  }));
+  beforeEach(() => {
+    reportWorkbookMock.create.mockReset();
+    reportWorkbookMock.create.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    useAppStore.setState({
+      reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] },
+    });
+  });
 
   it("KR 빈 상태와 원본 비저장 안내를 렌더한다", () => {
     render(<WeeklyReport />);
@@ -74,5 +81,37 @@ describe("WeeklyReport", () => {
     });
     render(<WeeklyReport />);
     expect(screen.getByRole("status").textContent).toContain("수집한 결과의 분석 기간이 서로 다릅니다");
+  });
+
+  it("XLSX 생성 실패를 삼키지 않고 다시 시도할 수 있게 알린다", async () => {
+    reportWorkbookMock.create.mockRejectedValueOnce(new Error("worker failed"));
+    useAppStore.setState({
+      reportDraft: {
+        schemaVersion: 1,
+        title: "",
+        period: null,
+        notes: [],
+        blocks: [{
+          schemaVersion: 1,
+          id: "failed-export",
+          toolId: "5-2",
+          toolTitle: "Dashboard",
+          dataGroup: "efficiency",
+          blockKind: "summary",
+          headline: "CPA increased",
+          points: [],
+          stats: [],
+          scope: {},
+          inputSignature: "input",
+          locale: "ko",
+        }],
+      },
+    });
+
+    render(<WeeklyReport />);
+    fireEvent.click(screen.getByRole("button", { name: "XLSX 받기" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("XLSX를 만들지 못했습니다");
+    await waitFor(() => expect(screen.getByRole("button", { name: "XLSX 받기" }).disabled).toBe(false));
   });
 });

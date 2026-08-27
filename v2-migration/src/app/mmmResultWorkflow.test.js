@@ -56,8 +56,8 @@ describe("MMM result workflow UI contract", () => {
   });
 
   it("wires fitted continuous-control status into the result without calling it causal media", () => {
-    expect(marketingResponse).toContain("mmmControlFitRows(mmm.panel, mmm.run)");
     expect(marketingResponse).toContain("data-mmm-control-fit");
+    expect(marketingResponse).toContain("<MmmControlFitTable rows={controlFitRows} locale={locale} />");
     expect(marketingResponse).toContain("채널 기여·ROAS·예산 추천에는 포함하지 않습니다");
     expect(marketingResponse).toContain("Controls are converted to change relative to their typical level");
   });

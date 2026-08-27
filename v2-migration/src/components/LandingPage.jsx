@@ -45,7 +45,7 @@ const COPY = {
     reopenTool: "원본 도구 다시 열기",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
-    loopDeck: "직접 올린 파일과 결정 기록은 이 기기에만 최대 90일 남고, 언제든 지우거나 저장을 끌 수 있습니다.",
+    loopDeck: "직접 올린 파일과 결정 기록은 이 기기에만 마지막 사용 후 90일까지 남고, 언제든 지우거나 저장을 끌 수 있습니다.",
     loop: [
       { id: "start", label: "01 · START", title: "내 데이터 진단", desc: "CSV나 Google Sheets를 가져오면 가능한 분석과 가장 먼저 볼 질문을 추천합니다.", cta: "데이터로 시작" },
       { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "결론, 근거, 다음 행동 순서로 보고 유지·감액·증액·교체 중 하나를 정합니다.", cta: "샘플 판단 보기" },
@@ -95,7 +95,7 @@ const COPY = {
     reopenTool: "Reopen source tool",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
-    loopDeck: "Files you upload directly and decision records stay on this device for up to 90 days. You can remove them or turn storage off at any time.",
+    loopDeck: "Files you upload directly and decision records stay on this device until 90 days after their last use. You can remove them or turn storage off at any time.",
     loop: [
       { id: "start", label: "01 · START", title: "Diagnose my data", desc: "Bring a CSV or Google Sheet to see which analyses it supports and which question to check first.", cta: "Start with my data" },
       { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Read the conclusion, evidence, and next action before choosing what to hold, cut, scale, or replace.", cta: "See a sample decision" },

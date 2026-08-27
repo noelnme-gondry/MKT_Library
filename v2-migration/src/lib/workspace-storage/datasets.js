@@ -25,63 +25,81 @@ export async function saveWorkspaceDataset({ group, fileName, sourceBlob, source
     savedAt: now,
     lastUsedAt: now,
   };
-  const transaction = db.transaction("datasets", "readwrite");
-  transaction.objectStore("datasets").put(entry);
-  await transactionComplete(transaction);
-  db.close();
-  return summary(entry);
+  try {
+    const transaction = db.transaction("datasets", "readwrite");
+    transaction.objectStore("datasets").put(entry);
+    await transactionComplete(transaction);
+    return summary(entry);
+  } finally {
+    db.close();
+  }
 }
 
 export async function listWorkspaceDatasets() {
   const db = await openWorkspaceDb();
-  const transaction = db.transaction("datasets", "readonly");
-  const entries = await requestResult(transaction.objectStore("datasets").getAll());
-  db.close();
-  return entries.map(summary).sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+  try {
+    const transaction = db.transaction("datasets", "readonly");
+    const entries = await requestResult(transaction.objectStore("datasets").getAll());
+    return entries.map(summary).sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+  } finally {
+    db.close();
+  }
 }
 
 export async function readWorkspaceDataset(group) {
   const db = await openWorkspaceDb();
-  const transaction = db.transaction("datasets", "readwrite");
-  const store = transaction.objectStore("datasets");
-  const entry = await requestResult(store.get(group));
-  if (entry) {
-    entry.lastUsedAt = Date.now();
-    store.put(entry);
+  try {
+    const transaction = db.transaction("datasets", "readwrite");
+    const store = transaction.objectStore("datasets");
+    const entry = await requestResult(store.get(group));
+    if (entry) {
+      entry.lastUsedAt = Date.now();
+      store.put(entry);
+    }
+    await transactionComplete(transaction);
+    return entry || null;
+  } finally {
+    db.close();
   }
-  await transactionComplete(transaction);
-  db.close();
-  return entry || null;
 }
 
 export async function removeWorkspaceDataset(group) {
   if (!group) return;
   const db = await openWorkspaceDb();
-  const transaction = db.transaction("datasets", "readwrite");
-  transaction.objectStore("datasets").delete(group);
-  await transactionComplete(transaction);
-  db.close();
+  try {
+    const transaction = db.transaction("datasets", "readwrite");
+    transaction.objectStore("datasets").delete(group);
+    await transactionComplete(transaction);
+  } finally {
+    db.close();
+  }
 }
 
 export async function clearWorkspaceDatasets() {
   const db = await openWorkspaceDb();
-  const transaction = db.transaction("datasets", "readwrite");
-  transaction.objectStore("datasets").clear();
-  await transactionComplete(transaction);
-  db.close();
+  try {
+    const transaction = db.transaction("datasets", "readwrite");
+    transaction.objectStore("datasets").clear();
+    await transactionComplete(transaction);
+  } finally {
+    db.close();
+  }
 }
 
 export async function sweepExpiredWorkspaceDatasets(now = Date.now()) {
   const db = await openWorkspaceDb();
-  const read = db.transaction("datasets", "readonly");
-  const entries = await requestResult(read.objectStore("datasets").getAll());
-  const { keep, expired } = partitionByExpiry(entries, now);
-  if (expired.length) {
-    const write = db.transaction("datasets", "readwrite");
-    const store = write.objectStore("datasets");
-    expired.forEach((entry) => store.delete(entry.group));
-    await transactionComplete(write);
+  try {
+    const read = db.transaction("datasets", "readonly");
+    const entries = await requestResult(read.objectStore("datasets").getAll());
+    const { keep, expired } = partitionByExpiry(entries, now);
+    if (expired.length) {
+      const write = db.transaction("datasets", "readwrite");
+      const store = write.objectStore("datasets");
+      expired.forEach((entry) => store.delete(entry.group));
+      await transactionComplete(write);
+    }
+    return { keep: keep.map(summary), expired: expired.map(summary) };
+  } finally {
+    db.close();
   }
-  db.close();
-  return { keep: keep.map(summary), expired: expired.map(summary) };
 }

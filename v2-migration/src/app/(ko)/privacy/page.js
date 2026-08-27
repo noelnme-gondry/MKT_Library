@@ -17,7 +17,7 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <PolicyPage
-      updated="2026-08-01"
+      updated="2026-08-27"
       eyebrow="PRIVACY"
       alternateHref="/en/privacy"
       title="개인정보처리방침"
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         },
         {
           title: "브라우저에 저장되는 정보",
-          content: <p>테마·언어·표시 설정, 컬럼 매핑 레시피, 최근 연결한 공개 Google Sheets 주소 등 일부 정보는 편의를 위해 이 기기의 localStorage 또는 IndexedDB에 저장될 수 있습니다. 기본 설정에서는 사용자가 직접 올린 CSV·XLSX 원본 파일, 파일명·헤더·매핑과 결정 기록 요약을 이 브라우저의 IndexedDB/localStorage에 최대 90일 보관합니다. 원본은 서버로 전송하지 않습니다. 저장을 끄면 저장된 원본 파일과 결정 기록의 영속 사본을 즉시 지우며, 현재 세션 기록은 화면을 닫거나 새로고침하기 전까지 남을 수 있습니다. <Link href="/storage">이 기기에 저장된 것</Link>에서 파일별 삭제·전체 삭제와 저장 설정을 관리할 수 있습니다.</p>,
+          content: <p>테마·언어·표시 설정, 컬럼 매핑 레시피, 최근 연결한 공개 Google Sheets 주소 등 일부 정보는 편의를 위해 이 기기의 localStorage 또는 IndexedDB에 저장될 수 있습니다. 기본 설정에서는 사용자가 직접 올린 CSV·XLSX 원본 파일, 파일명·헤더·매핑과 결정 기록 요약을 이 브라우저의 IndexedDB/localStorage에 마지막 사용 후 90일까지 보관합니다. 원본은 서버로 전송하지 않습니다. 저장을 끄면 저장된 원본 파일과 결정 기록의 영속 사본을 즉시 지우며, 현재 세션 기록은 화면을 닫거나 새로고침하기 전까지 남을 수 있습니다. <Link href="/storage">이 기기에 저장된 것</Link>에서 파일별 삭제·전체 삭제와 저장 설정을 관리할 수 있습니다.</p>,
         },
         {
           title: "고급 분석의 외부 요청",

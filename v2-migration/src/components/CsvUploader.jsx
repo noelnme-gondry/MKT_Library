@@ -88,7 +88,7 @@ const CSV_COPY = {
     sheetConnectedLabel: "구글 시트 연동됨",
     savedMappingApplied: "이 브라우저에 기억된 컬럼 매핑을 적용했습니다",
     storingOnDevice: "이 기기에 저장하는 중…",
-    storedOnDevice: "이 기기에 저장됨 · 90일",
+    storedOnDevice: "이 기기에 저장됨 · 마지막 사용 후 90일",
     storageUnavailable: "이 기기에 저장하지 못했습니다. 분석은 그대로 됩니다.",
     refreshSheetBtn: "🔄 최신 데이터 불러오기",
     refreshingSheet: "불러오는 중…",
@@ -167,7 +167,7 @@ const CSV_COPY = {
     sheetConnectedLabel: "Connected to Google Sheets",
     savedMappingApplied: "Applied the column mapping remembered in this browser",
     storingOnDevice: "Saving on this device…",
-    storedOnDevice: "Saved on this device · 90 days",
+    storedOnDevice: "Saved on this device · 90 days after last use",
     storageUnavailable: "This file could not be stored on this device. Analysis still works.",
     refreshSheetBtn: "🔄 Fetch latest data",
     refreshingSheet: "Fetching…",
@@ -781,7 +781,7 @@ export default function CsvUploader({
             </div>
           </section>
         ) : pendingWideImport ? (
-          <section className="required-banner" style={{ borderLeftColor: "#e0af68" }}>
+          <section className="required-banner" style={{ borderLeftColor: "var(--warning)" }}>
             <strong>{T.wideTransformTitle}</strong>
             <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.wideTransformDesc(pendingWideImport.insights.signature.evidence.periodColumns)}</p>
             <p className="muted" style={{ margin: "0 0 12px", fontSize: "11px" }}>{T.wideWarning}</p>

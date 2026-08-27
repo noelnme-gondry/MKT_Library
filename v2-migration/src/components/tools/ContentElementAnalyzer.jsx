@@ -724,7 +724,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   return (
     <div className="tab-pane active">
       {isDemo && (
-        <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
             <strong>{T.demoBannerTitle}</strong>
             <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
