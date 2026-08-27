@@ -36,6 +36,7 @@ function formatValue(value, locale) {
 export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
   const [dataPath, setDataPath] = useState("its");
   const [dateColumn, setDateColumn] = useState("");
@@ -285,7 +286,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         </div>
         <input ref={inputRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }} />
       </div> : <>
-        <div className="file-state"><div className="meta-text"><span className="dot"></span><strong>{csvData.fileName}</strong><span className="csv-loaded-stats">{csvData.raw.length.toLocaleString()}{tx(locale, "행", " rows")}</span></div><button className="ab-pill" type="button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{tx(locale, "CSV 변경", "Change CSV")}</button></div>
+        <div className="file-state"><div className="meta-text"><span className="dot"></span><strong>{csvData.fileName}</strong><span className="csv-loaded-stats">{csvData.raw.length.toLocaleString()}{tx(locale, "행", " rows")}</span></div><button className="ab-pill" type="button" onClick={clearCsvGroup}>{tx(locale, "CSV 변경", "Change CSV")}</button></div>
         <div className="mapping-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "10px", margin: "14px 0" }}>
           {[{ label: tx(locale, "날짜", "Date"), value: resolvedDateColumn, set: setDateColumn, allowed: csvData.headers }, { label: tx(locale, "성과 지표", "Outcome"), value: resolvedOutcomeColumn, set: setOutcomeColumn, allowed: csvData.headers.filter((header) => isNumericColumn(csvData.raw, header)) }, { label: tx(locale, "브랜드 캠페인 집행 여부", "Brand campaign status"), value: resolvedCampaignColumn, set: setCampaignColumn, allowed: csvData.headers }].map((field) => <label key={field.label} style={{ display: "grid", gap: "5px", fontSize: "12px" }}><span>{field.label}</span><select value={field.value} onChange={(event) => { field.set(event.target.value); setAnalysisSignature(""); }}><option value="">{tx(locale, "열 선택", "Select column")}</option>{field.allowed.map((header) => <option key={header} value={header}>{header}</option>)}</select></label>)}
         </div>

@@ -8,6 +8,7 @@ import { TOOL_GROUP } from "@/lib/toolGroups";
 import { hasEnVersion, idToPath } from "@/lib/routeMap";
 import { workspaceResumeRouteId } from "@/lib/workspaceResume";
 import { trackProductEvent } from "@/lib/analytics";
+import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 
 const COPY = {
   ko: {
@@ -120,6 +121,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
     </header>
     {expiredCount > 0 && <p className="workspace-storage-page__notice" role="status">{T.expired(expiredCount)}</p>}
     {errorCopy && <p className="workspace-storage-page__error" role="alert">{errorCopy}</p>}
+    <DecisionStorageConsentNotice locale={locale} source="storage_page_reconsent" />
     <section className="workspace-storage-page__toggle" aria-label={T.enabled}>
       <div><strong>{T.enabled}</strong><p>{enabled ? T.enabledHint : T.disabledHint}</p></div>
       <label>

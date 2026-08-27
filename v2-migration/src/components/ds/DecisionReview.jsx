@@ -12,6 +12,7 @@ import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { buildDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
+import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 
 function nextWeekDate() {
   const date = new Date();
@@ -426,6 +427,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       </summary>
       <div className="decision-review__body">
         <p className="decision-review__helper">{t.helper}</p>
+        <DecisionStorageConsentNotice locale={locale} source="decision_review_reconsent" />
         <div className={`decision-review__persistence ${isPersistenceEnabled ? "is-enabled" : ""}`}>
           <label>
             <input
@@ -524,7 +526,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
               <button type="button" className="btn primary small" onClick={enablePersistenceFromPrompt}>{t.keepOnDevice}</button>
               <button type="button" className="btn small" onClick={() => { exportRecords(); setIsPersistencePromptOpen(false); }}>{t.exportNow}</button>
               <button type="button" className="btn small" onClick={() => exportCalendar()}>{t.addCalendar}</button>
-              <button type="button" className="btn ghost small" onClick={() => setIsPersistencePromptOpen(false)}>{t.keepSession}</button>
+              <button type="button" className="btn ghost small" onClick={() => { setDecisionPersistenceEnabled(false); setIsPersistencePromptOpen(false); }}>{t.keepSession}</button>
             </div>
             <p className="decision-review__save-prompt-privacy">{t.promptPrivacy}</p>
           </section>

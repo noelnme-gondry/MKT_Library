@@ -96,6 +96,8 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /요약 분석 실행/ }));
     await waitFor(() => expect(screen.getByText("분석 결과")).toBeTruthy());
+    expect(screen.getByRole("heading", { name: /도치가 확인한 발견 \d+건/ })).toBeTruthy();
+    expect(document.querySelectorAll(".dochi-workspace__findings-summary li").length).toBeGreaterThan(0);
     expect(screen.getByText("현재 근거")).toBeTruthy();
     expect(screen.getByText("해석 한계 보기")).toBeTruthy();
     expect(screen.getByRole("table")).toBeTruthy();

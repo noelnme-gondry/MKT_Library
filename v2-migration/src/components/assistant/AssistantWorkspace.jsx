@@ -32,6 +32,8 @@ const COPY = {
     judgment: "현재 판단 상태",
     judgmentReady: "현재 데이터에서 바로 실행할 수 있는 분석을 먼저 정리했습니다.",
     judgmentReview: "이 추천은 현재 입력·매핑의 적합성 판단이며, 효과나 인과를 뜻하지 않습니다.",
+    findingsTitle: (count) => `도치가 확인한 발견 ${count}건`,
+    findingsDeck: "같은 원본에서 실제 계산을 마친 결론만 모았습니다. 각 항목의 근거와 해석 한계는 아래 결과에서 확인하세요.",
     reason: "추천 이유",
     baseline: "이 화면에서 계산 가능한 요약",
     baselineDeck: "현재 입력과 매핑으로 기본 실행 후보가 된 분석입니다. 연결된 결과와 차트는 여기서 가져오고, 고급 설정이 필요한 분석만 상세 화면으로 넘깁니다.",
@@ -107,6 +109,8 @@ const COPY = {
     judgment: "Current decision state",
     judgmentReady: "The analyses that can run from the current input are organized first.",
     judgmentReview: "This recommendation reflects fit for the current input and mapping; it does not imply an effect or causality.",
+    findingsTitle: (count) => `${count} finding${count === 1 ? "" : "s"} verified by Dochi`,
+    findingsDeck: "Only conclusions actually calculated from the same source appear here. Review each result below for evidence and interpretation limits.",
     reason: "Why this",
     baseline: "Summaries this screen can calculate",
     baselineDeck: "These are baseline candidates for the current input and mapping. Connected results and charts appear here; only analyses needing advanced settings continue in a detailed view.",
@@ -574,6 +578,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     .filter(({ queueItem }) => queueItem?.state === "complete"
       && queueItem.result?.inputSignature === currentInputSignature
       && queueItem.result?.mappingSignature === currentMappingSignature);
+  const successfulFindings = currentResults.filter(({ queueItem }) => queueItem.result.status === "success");
   const decisionFocus = [...currentResults].reverse().find(({ queueItem }) => queueItem.result.status === "success")
     || currentResults.at(-1)
     || null;
@@ -752,6 +757,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       {recommended && <section className="dochi-workspace__judgment" aria-labelledby="dochi-recommended-title">
         <div className="dochi-workspace__judgment-copy"><span>{C.judgment}</span><h3 id="dochi-recommended-title">{titleFor(recommended.toolId, getTitle)}</h3><p><b>{C.reason}</b>{recommended.recommendationReason}</p><small>{C.judgmentReview}</small></div>
         <div className="dochi-workspace__judgment-action"><em>{C.status[recommended.status]}</em><p>{baseline.length > 0 ? C.judgmentReady : blockersText(recommended, locale)}</p>{baseline.length > 0 ? <button type="button" className="ab-button" onClick={startNext} disabled={Boolean(activeQueueItem)}>{activeQueueItem ? C.queueRunning : queue ? C.rerun : C.start}</button> : <button type="button" className="ab-button" onClick={() => openTool(recommended.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>}</div>
+      </section>}
+
+      {successfulFindings.length > 0 && <section className="dochi-workspace__findings-summary" aria-labelledby="dochi-findings-title">
+        <header><span>FINDINGS</span><h3 id="dochi-findings-title">{C.findingsTitle(successfulFindings.length)}</h3><p>{C.findingsDeck}</p></header>
+        <ol>{successfulFindings.map(({ result, queueItem }) => <li key={result.toolId}><span>{titleFor(result.toolId, getTitle)}</span><strong>{queueItem.result.verdict.headline}</strong></li>)}</ol>
       </section>}
 
       {decisionFocus && <section className="dochi-workspace__decision-focus" aria-labelledby="dochi-decision-focus-title">

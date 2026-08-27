@@ -58,7 +58,8 @@ describe("테마 대비와 인라인 색", () => {
 
   it("JSX의 상태 텍스트·배경은 테마 토큰을 거친다", () => {
     const offenders = componentSourceFiles(path.join(SRC_DIR, "components")).flatMap((file) =>
-      [...readFileSync(file, "utf8").matchAll(/(?:color|background|backgroundColor|border|borderColor|borderLeftColor|boxShadow|fill|stroke)\s*:\s*["'`]#[0-9a-fA-F]{3,8}["'`]/g)]
+      [...readFileSync(file, "utf8").matchAll(/(?:color|background|backgroundColor|border|borderColor|borderLeftColor|boxShadow|fill|stroke)\s*:\s*(["'`])([^"'`\n]*#[0-9a-fA-F]{3,8}[^"'`\n]*)\1/g)]
+        .filter((match) => !match[2].includes("var("))
         .map((match) => `${path.relative(SRC_DIR, file)}: ${match[0]}`),
     );
     expect(offenders, `테마를 우회한 인라인 hex:\n${offenders.join("\n")}`).toEqual([]);

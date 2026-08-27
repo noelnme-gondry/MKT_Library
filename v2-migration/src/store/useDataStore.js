@@ -561,7 +561,14 @@ export const persistPartialize = (state) => {
     decisionPersistencePreferenceSet: state.decisionPersistencePreferenceSet === true,
     eventMarkers: sanitizeEventMarkers(state.eventMarkers),
   };
-  if (state.decisionPersistenceEnabled === true) {
+  const isPendingExpandedConsent = state.decisionPersistenceEnabled !== true
+    && state.decisionPersistencePreferenceSet !== true
+    && Array.isArray(state.decisionRecords)
+    && state.decisionRecords.length > 0;
+  if (state.decisionPersistenceEnabled === true || isPendingExpandedConsent) {
+    // v2~v4에서 이미 동의받아 저장하던 결정 요약은 원본 파일까지 포함하는 새
+    // 범위를 다시 선택할 때까지 보존한다. 사용자가 거절하면 preferenceSet=true가
+    // 되어 다음 persist에서 제거되고 현재 세션 기록만 남는다.
     persisted.decisionRecords = sanitizeDecisionReviewRecords(state.decisionRecords);
   }
   return persisted;
@@ -591,8 +598,8 @@ export function persistMigrate(persistedState, version) {
   }
   if (needsExpandedStorageConsent) {
     // v2~v4의 ON은 "결정 요약" 저장 동의였다. 원본 CSV/XLSX까지 저장하는 현재
-    // 계약으로 소급 확대하지 않는다. 기존 요약은 이번 세션에만 복원하고, 사용자가
-    // 새 범위를 직접 켜기 전에는 다음 persist payload에서 제거한다.
+    // 계약으로 소급 확대하지 않는다. 기존 요약은 종전 동의 범위로 보존하되,
+    // 새 범위를 계속 쓸지 사용자가 직접 선택하도록 preferenceSet을 내린다.
     return {
       ...state,
       decisionPersistenceEnabled: false,

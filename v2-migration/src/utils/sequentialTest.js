@@ -10,7 +10,21 @@ function twoSidedPFromZ(z) {
 
 const OBF_GRID_POINTS = 241;
 const OBF_ROOT_STEPS = 24;
+const OBF_CACHE_LIMIT = 48;
 const boundaryCache = new Map();
+// UI가 제공하는 3개 α × 5개 판독 조합은 아래와 같은 독립 적분·이분탐색으로
+// 미리 산출했다. 렌더 중 241² 격자 적분을 처음 실행하는 비용만 없애며,
+// 다른 프로그래밍 입력은 같은 결정론적 solver로 계산한다.
+const OBF_PRECOMPUTED = new Map([
+  ["0.1:2", 1.67798847950222], ["0.1:3", 1.70965047883283],
+  ["0.1:4", 1.73315300926278], ["0.1:5", 1.75092718260288],
+  ["0.1:6", 1.76496073287176], ["0.05:2", 1.97748342699337],
+  ["0.05:3", 2.00409844397134], ["0.05:4", 2.02436900689869],
+  ["0.05:5", 2.04015688153614], ["0.05:6", 2.05288652451314],
+  ["0.01:2", 2.57967302944277], ["0.01:3", 2.59503572036123],
+  ["0.01:4", 2.60922611982551], ["0.01:5", 2.62131349596723],
+  ["0.01:6", 2.6315210836695],
+]);
 
 function normalPdf(value, standardDeviation) {
   const scaled = value / standardDeviation;
@@ -56,6 +70,8 @@ export function obfBoundaryConstant(alpha, looks) {
   const safeAlpha = Number(alpha);
   const safeLooks = Math.floor(Number(looks));
   if (!(safeAlpha > 0 && safeAlpha < 1) || !(safeLooks >= 2 && safeLooks <= 12)) return NaN;
+  const precomputed = OBF_PRECOMPUTED.get(`${safeAlpha}:${safeLooks}`);
+  if (precomputed != null) return precomputed;
   const cacheKey = `${safeAlpha.toPrecision(12)}:${safeLooks}`;
   if (boundaryCache.has(cacheKey)) return boundaryCache.get(cacheKey);
   let low = STATS.normalInverse(1 - safeAlpha / 2);
@@ -66,6 +82,7 @@ export function obfBoundaryConstant(alpha, looks) {
     else high = midpoint;
   }
   const result = (low + high) / 2;
+  if (boundaryCache.size >= OBF_CACHE_LIMIT) boundaryCache.delete(boundaryCache.keys().next().value);
   boundaryCache.set(cacheKey, result);
   return result;
 }

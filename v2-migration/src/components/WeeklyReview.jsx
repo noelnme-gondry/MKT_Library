@@ -24,6 +24,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
 import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
+import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 
 const COPY = {
   ko: {
@@ -453,6 +454,7 @@ export default function WeeklyReview({ locale = "ko" }) {
         </div>
       </section>}
 
+      <DecisionStorageConsentNotice locale={locale} source="weekly_review_reconsent" />
       <section className={`weekly-review-page__storage ${isPersistenceEnabled ? "is-enabled" : ""}`}>
         <div>
           <strong>{t.persistence}</strong>

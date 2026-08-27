@@ -87,6 +87,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const [method, setMethod] = useState("suppression");
@@ -156,7 +157,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
     if (method === "suppression") setCsvData(buildIncrSuppressionDemo());
     else setCsvData(buildIncrPrepostDemo(method));
   };
-  const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+  const resetCsv = () => clearCsvGroup();
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
 
   // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
