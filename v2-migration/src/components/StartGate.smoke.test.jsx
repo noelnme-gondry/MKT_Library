@@ -5,7 +5,7 @@ import { TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 import { PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
-import { buildDatasetContinuitySnapshot } from "@/lib/dataContinuity";
+import { buildDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 
 // 이름은 레지스트리에서 — 손으로 적으면 리네임마다 깨진다.
 const nameOf = (id, locale = "ko") => toolIndexEntry(id, locale).name;
@@ -151,7 +151,8 @@ describe("StartGate render smoke", () => {
       canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
       mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
     };
-    const datasetSnapshot = buildDatasetContinuitySnapshot(slice.canonicalData, { dataGroup: "efficiency", mapping: slice.mapping });
+    const datasetSnapshot = serializeDatasetContinuitySnapshot(buildDatasetContinuitySnapshot(slice.canonicalData, { dataGroup: "efficiency", mapping: slice.mapping }));
+    expect(typeof datasetSnapshot).toBe("string");
     useAppStore.setState({
       currentRouteId: "start-gate",
       csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },

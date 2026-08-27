@@ -13,7 +13,7 @@ import ToolIndex from "@/components/ds/ToolIndex";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
 import { DOCHI_HANDOFF_KEY, DochiArrivalTransition } from "@/components/assistant/DochiHandoffMotion";
 import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
-import { buildDatasetContinuitySnapshot, classifyDatasetContinuity } from "@/lib/dataContinuity";
+import { buildDatasetContinuitySnapshot, classifyDatasetContinuity, readDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { groupForRoute } from "@/lib/toolGroups";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
@@ -123,7 +123,7 @@ export default function StartGate({ locale = "ko" }) {
     if (!hasPreparedData) return null;
     const group = groupForRoute("start-gate");
     const previousRecord = [...decisionRecords]
-      .filter((record) => record.datasetSnapshot?.dataGroup === group)
+      .filter((record) => readDatasetContinuitySnapshot(record.datasetSnapshot)?.dataGroup === group)
       .sort((left, right) => Date.parse(right.updatedAt || right.createdAt || 0) - Date.parse(left.updatedAt || left.createdAt || 0))[0];
     if (!previousRecord) return null;
     const current = buildDatasetContinuitySnapshot(csvData.canonicalData, { dataGroup: group, mapping: csvData.mapping });
