@@ -832,4 +832,36 @@ describe("MMM column mapping", () => {
     expect(panel.granularity).toEqual({ months: 1, unit: "monthly" });
     expect(mmmValidate(panel, "ko", "Regs").issues).toEqual([]);
   });
+
+  // 주간은 잘린 경계 주를 찾아 드롭하지만(boundaryPartialWeeks), 월 단위 입력은
+  // 하루치 커버리지가 관측되지 않아 같은 판정을 할 수 없다. 판별 못 하는 것을
+  // 조용히 넘기지 않고 사유로 남기는지 고정한다(§8).
+  it("flags that monthly-grain input cannot verify boundary-month completeness", () => {
+    const headers = ["dt", "regs", "spend"];
+    const rows = Array.from({ length: 6 }, (_, index) => ({
+      dt: `2026-${String(index + 1).padStart(2, "0")}-15`,
+      regs: String(100 + index * 10),
+      spend: String(1000 + index * 100),
+    }));
+    const map = { dt: { role: "date" }, regs: { role: "reg" }, spend: { role: "channel", kind: "perf", plat: "common" } };
+    const panel = buildPanelFromColMap(headers, rows, map, "all", "ko", null, { periodUnit: "monthly" }).panel;
+
+    expect(panel.timeDiagnostics.monthlyBoundaryUnverified).toBe(true);
+    const warning = panel.timeDiagnostics.warnings.find((item) => item.code === "unverified-monthly-boundary");
+    expect(warning?.messageKo).toContain("완결된 달인지 확인할 수 없습니다");
+    expect(warning?.messageEn).toContain("cannot confirm");
+  });
+
+  it("does not raise the monthly boundary caveat on weekly input", () => {
+    const headers = ["dt", "regs", "spend"];
+    const rows = Array.from({ length: 28 }, (_, index) => {
+      const day = new Date(Date.UTC(2026, 0, 5 + index));
+      return { dt: day.toISOString().slice(0, 10), regs: String(100 + index), spend: String(1000 + index) };
+    });
+    const map = { dt: { role: "date" }, regs: { role: "reg" }, spend: { role: "channel", kind: "perf", plat: "common" } };
+    const panel = buildPanelFromColMap(headers, rows, map, "all", "ko", null, { weekStart: "monday" }).panel;
+
+    expect(panel.timeDiagnostics.monthlyBoundaryUnverified).toBe(false);
+    expect(panel.timeDiagnostics.warnings.some((item) => item.code === "unverified-monthly-boundary")).toBe(false);
+  });
 });
