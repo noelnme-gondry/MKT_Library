@@ -925,6 +925,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     internalPartialWeeks: 0,
     boundaryPartialWeeks: 0,
     expectedDaysPerWeek: null,
+    monthlyBoundaryUnverified: false,
     internalIncompletePlatformWeeks: 0,
     boundaryIncompletePlatformWeeks: 0,
     mixedPlatformCadence: false,
@@ -1116,6 +1117,16 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
           timeDiagnostics.internalPartialWeeks += 1;
         });
       }
+    }
+    // 월간은 주간처럼 경계 부분 기간을 드롭하지 않는다. 달 길이가 28~31일로 달라
+    // 기대 일수를 모드로 추정할 수 없고, 입력이 월 단위 한 행이면 하루치 커버리지
+    // 자체가 관측되지 않는다(달마다 distinct date 1개). 판별할 수 없는 것을 판별한
+    // 척하는 대신 사유를 남긴다(§8) — 주간 경로는 잘린 경계 주를 조용히 빼 주지만
+    // 월간은 진행 중인 이번 달이 완결된 달로 모델에 들어갈 수 있고, 그 사실은
+    // 사용자만 뒤집을 수 있다.
+    if (r.date && periodUnit === "monthly" && groupedRows.length > 1) {
+      const maxDistinctDates = groupedRows.reduce((max, item) => Math.max(max, item.__mmmDistinctDates.size), 0);
+      timeDiagnostics.monthlyBoundaryUnverified = maxDistinctDates <= 1;
     }
     if (r.platform && expectedSegments.length) {
       const inferredDaysBySegment = {};
@@ -1359,6 +1370,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     const cadence = expectedDays ? ` · 주 ${expectedDays}일` : "";
     timeDiagnostics.issues.push({ code: "incomplete-internal-platform-week", count: timeDiagnostics.internalIncompletePlatformWeeks, messageKo: `내부 ${timeDiagnostics.internalIncompletePlatformWeeks}개 주차에서 필수 플랫폼 행 또는 일자가 빠졌습니다(기대: ${expectedSegments.join(", ")}${cadence}). 원자료를 채우세요.`, messageEn: `${timeDiagnostics.internalIncompletePlatformWeeks} internal week(s) are missing required platform rows or dates (expected: ${expectedSegments.join(", ")}${expectedDays ? ` · ${expectedDays} days/week` : ""}). Complete the source data.` });
   }
+  if (timeDiagnostics.monthlyBoundaryUnverified) timeDiagnostics.warnings.push({ code: "unverified-monthly-boundary", messageKo: "월 단위 입력이라 첫·마지막 달이 완결된 달인지 확인할 수 없습니다. 진행 중인 달이 섞여 있으면 그 달은 낮게 집계된 채 모델에 들어갑니다 — 마지막 행을 빼고 다시 분석하세요.", messageEn: "Monthly-grain input cannot confirm whether the first and last months are complete. If an in-progress month is included it enters the model under-counted \u2014 drop the last row and re-run." });
   if (timeDiagnostics.boundaryIncompletePlatformWeeks) timeDiagnostics.warnings.push({ code: "incomplete-boundary-platform-week", count: timeDiagnostics.boundaryIncompletePlatformWeeks, messageKo: `플랫폼 행 또는 일자가 불완전한 첫/마지막 ${timeDiagnostics.boundaryIncompletePlatformWeeks}개 주차를 제외했습니다.`, messageEn: `${timeDiagnostics.boundaryIncompletePlatformWeeks} first/last week(s) with incomplete platform rows or dates were excluded.` });
   panel.timeDiagnostics = timeDiagnostics;
   return { panel, roles: r, missing: colMapMissing(headers, colMap, locale) };

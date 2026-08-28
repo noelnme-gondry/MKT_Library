@@ -53,6 +53,28 @@ describe("Dochi response analysis adapters", () => {
     expect(actual.visualizations[0].data).toHaveLength(panel.week.length);
   });
 
+  // 월 단위 입력에서는 경계 달의 완결 여부를 확인할 수 없다. 진단만 만들고 카드가
+  // 말하지 않으면 사용자가 뒤집을 근거를 못 받으므로, caveat 도달까지 고정한다(§16).
+  it("tells the reader that a monthly panel cannot verify its boundary months", () => {
+    const monthlyRaw = Array.from({ length: 18 }, (_, index) => ({
+      Date: new Date(Date.UTC(2025, index, 1)).toISOString().slice(0, 10),
+      Registrations: String(900 + index * 23 + (index % 3) * 7),
+      "Meta Spend": String(500 + index * 11),
+    }));
+    const monthlyCsvData = { raw: monthlyRaw, headers: trendCsvData.headers, mapping: trendCsvData.mapping };
+
+    const actual = runResponseAnalysis({ toolId: "5-18-trend", csvData: monthlyCsvData, locale: "ko", ...signatures });
+
+    expect(actual.status).toBe("success");
+    expect(actual.manifest.sourceCadence).toBe("monthly");
+    expect(actual.verdict.caveats.some((text) => text.includes("완결된 달인지 확인할 수 없습니다"))).toBe(true);
+  });
+
+  it("does not add the monthly boundary caveat to a weekly panel", () => {
+    const actual = runResponseAnalysis({ toolId: "5-18-trend", csvData: trendCsvData, locale: "ko", ...signatures });
+    expect(actual.verdict.caveats.some((text) => text.includes("완결된 달인지"))).toBe(false);
+  });
+
   it("keeps the paid-organic movement verdict aligned with the existing movement-map engine", () => {
     const expected = buildPaidOrganicTrend(paidOrganicRaw, guessPaidOrganicColumns(paidOrganicCsvData.headers));
     const actual = runResponseAnalysis({ toolId: "5-18-paid-organic", csvData: paidOrganicCsvData, locale: "en", ...signatures });

@@ -111,6 +111,17 @@ function responsePanel(csvData, locale) {
   return { panel, target, colMap, quality, validation, cadence: cadence.cadence };
 }
 
+// 월간 입력은 경계 달의 완결 여부를 데이터만으로 확인할 수 없다(MmmColumnMapper 참조).
+// 진단만 만들어 두고 결과 카드가 말하지 않으면 사용자는 뒤집을 근거를 못 받는다.
+function boundaryCaveats(prepared, locale) {
+  if (!prepared?.panel?.timeDiagnostics?.monthlyBoundaryUnverified) return [];
+  return [tr(
+    locale,
+    "월 단위 입력이라 첫·마지막 달이 완결된 달인지 확인할 수 없습니다. 진행 중인 달이 섞여 있으면 그 달만 낮게 집계돼 추세가 꺾인 것처럼 보입니다.",
+    "Monthly-grain input cannot confirm whether the first and last months are complete. An in-progress month is under-counted and can look like a downturn.",
+  )];
+}
+
 function trendHeadline(locale, verdict) {
   if (String(verdict).startsWith("NO robust trend")) {
     return tr(locale, "관측 기간에서 견고한 자연 추세 신호를 확인하지 못했습니다.", "No robust natural-trend signal was confirmed in the observed period.");
@@ -190,7 +201,7 @@ function trendAdapter(input) {
         { id: "observed-periods", label: tr(locale, prepared.cadence === "monthly" ? "관측 월" : "관측 주차", prepared.cadence === "monthly" ? "Observed months" : "Observed weeks"), value: prepared.quality.n },
       ],
       action: tr(locale, "계절·집행 변화와 함께 상세 추세 화면에서 기간을 확인합니다.", "Inspect the period with seasonality and spend changes in the detailed trend view."),
-      caveats: [tr(locale, "이 결과는 관측된 시계열의 기술적 추세이며, 광고의 인과 효과나 자연 증분을 증명하지 않습니다.", "This is a descriptive time-series trend; it does not prove causal media impact or organic incrementality.")],
+      caveats: [tr(locale, "이 결과는 관측된 시계열의 기술적 추세이며, 광고의 인과 효과나 자연 증분을 증명하지 않습니다.", "This is a descriptive time-series trend; it does not prove causal media impact or organic incrementality."), ...boundaryCaveats(prepared, locale)],
     },
     visualizations: [{
       id: "response-stl-trend",
