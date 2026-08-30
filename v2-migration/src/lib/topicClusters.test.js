@@ -48,6 +48,12 @@ describe("토픽 클러스터", () => {
     }
   });
 
+  it("measurement 클러스터는 iOS ATT·SKAN 가이드를 필라로 둔다", () => {
+    const measurement = TOPIC_CLUSTERS.find((cluster) => cluster.id === "measurement");
+    expect(measurement?.pillar).toBe("ios-att-skan-guide");
+    expect(measurement?.members).toContain("attribution-data-mismatch");
+  });
+
   // 이 배선의 존재 이유 자체가 "인바운드 0편을 없앤다"이므로, 그 결과를 직접 잰다.
   it("모든 발행 글이 최소 1개의 인바운드 클러스터 링크를 받는다", () => {
     const inbound = Object.fromEntries(publishedSlugs.map((slug) => [slug, 0]));
