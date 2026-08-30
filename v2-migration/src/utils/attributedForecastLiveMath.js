@@ -75,6 +75,20 @@ function wmapeParts(actual, predicted) {
   };
 }
 
+export function buildEventSeries(events, weeks, platform = "total") {
+  const eventSeries = Object.create(null);
+  const relevantEvents = (events || []).filter((event) =>
+    platform === "total" || event.platform === platform || event.platform === "total",
+  );
+  relevantEvents.forEach((event) => {
+    const key = platform === "total" && event.platform !== "total" ? `${event.platform}::${event.key}` : event.key;
+    if (!Object.hasOwn(eventSeries, key)) eventSeries[key] = Array(weeks.length).fill(0);
+    const index = weeks.indexOf(event.week);
+    if (index >= 0 && Math.abs(event.value) > Math.abs(eventSeries[key][index])) eventSeries[key][index] = event.value;
+  });
+  return eventSeries;
+}
+
 function panelFor(dataset, platform = "total") {
   let cached = PANEL_CACHE.get(dataset);
   if (!cached) {
@@ -99,16 +113,7 @@ function panelFor(dataset, platform = "total") {
     else item.costs[record.channel] = (item.costs[record.channel] || 0) + record.cost;
   });
   const rows = dataset.weeks.map((week) => byWeek.get(week));
-  const relevantEvents = (dataset.events || []).filter((event) =>
-    platform === "total" || event.platform === platform || event.platform === "total",
-  );
-  const eventSeries = {};
-  relevantEvents.forEach((event) => {
-    const key = platform === "total" && event.platform !== "total" ? `${event.platform}::${event.key}` : event.key;
-    if (!eventSeries[key]) eventSeries[key] = Array(dataset.weeks.length).fill(0);
-    const index = dataset.weeks.indexOf(event.week);
-    if (index >= 0 && Math.abs(event.value) > Math.abs(eventSeries[key][index])) eventSeries[key][index] = event.value;
-  });
+  const eventSeries = buildEventSeries(dataset.events, dataset.weeks, platform);
   const eventBoundaries = [...new Set(Object.values(eventSeries).flatMap((values) =>
     values.flatMap((value, index) => value !== 0 && (index === 0 || values[index - 1] === 0) ? [index] : []),
   ))].sort((left, right) => left - right);

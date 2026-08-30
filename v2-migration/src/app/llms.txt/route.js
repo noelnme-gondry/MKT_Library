@@ -3,6 +3,7 @@ import { getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import { getAllCalculators } from "@/lib/calculators";
 import { getAllTerms } from "@/lib/glossary";
+import { stripHtmlTags } from "@/lib/htmlText";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { readSopData } from "@/lib/sopData";
@@ -16,7 +17,7 @@ const absoluteUrl = (path, locale = "ko") => {
   return `${SITE_URL}${prefix}${normalized}`;
 };
 
-const plainText = (value) => String(value || "").replace(/<[^>]*>/g, " ");
+const plainText = (value) => stripHtmlTags(value);
 
 const markdownText = (value) => String(value || "")
   .replace(/\s+/g, " ")

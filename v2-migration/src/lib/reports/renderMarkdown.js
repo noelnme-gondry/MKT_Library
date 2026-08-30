@@ -1,5 +1,5 @@
 function escapeCell(value) {
-  return String(value || "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+  return String(value || "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
 
 export function renderReportMarkdown(draft, locale = "ko") {
@@ -22,4 +22,3 @@ export function renderReportMarkdown(draft, locale = "ko") {
   });
   return lines.join("\n").trimEnd() + "\n";
 }
-

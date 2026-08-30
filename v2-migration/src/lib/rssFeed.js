@@ -1,6 +1,7 @@
 import { SITE_URL } from "@/lib/routeMap";
 import { getAllPosts } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
+import { stripHtmlTags } from "@/lib/htmlText";
 
 const PRODUCT_UPDATED_AT = new Date("2026-07-29T00:00:00Z");
 const CONTACT = "gondry.montauk@gmail.com (Growth Opt Playbook)";
@@ -40,7 +41,7 @@ function cdata(value) {
 }
 
 function stripTags(value) {
-  return String(value ?? "").replace(/<[^>]*>/g, "").trim();
+  return stripHtmlTags(value).trim();
 }
 
 export function buildRssFeed(locale = "ko") {

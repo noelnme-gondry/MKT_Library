@@ -26,6 +26,7 @@ import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { stripHtmlTags } from "@/lib/htmlText";
 
 // 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
@@ -467,7 +468,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           locale={locale}
           decisionReview={Boolean(okRows.length)}
           decisionPrefill={decisionTarget ? {
-            conclusion: head.replace(/<[^>]+>/g, ""),
+            conclusion: stripHtmlTags(head),
             action: saturatedCandidate && scaleCandidate
               ? tr(
                 `${saturatedCandidate.name}의 추가 예산 일부를 ${scaleCandidate.name}으로 소규모 이동 시험한다`,
@@ -495,7 +496,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           } : null}
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
-          headline={head.replace(/<[^>]+>/g, "")}
+          headline={stripHtmlTags(head)}
           workbookExport={() => ({
             calculationMode: "hybrid_engine_output",
             calculationTables: [{

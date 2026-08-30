@@ -72,7 +72,7 @@ function rows(locale) {
   return [...toolRows, ...compareRows];
 }
 
-const cell = (value) => String(value ?? "").replace(/\|/g, "\\|");
+const cell = (value) => String(value ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 function table(locale) {
   const header = locale === "en"

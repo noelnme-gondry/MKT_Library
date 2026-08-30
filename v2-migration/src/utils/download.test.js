@@ -19,6 +19,11 @@ describe("download attribution", () => {
     expect(withAttribution(once)).toBe(once);
   });
 
+  it("does not mistake a lookalike URL for the attribution line", () => {
+    const result = withAttribution("참고: https://growthoptplaybook.com.evil.example");
+    expect(result).toContain("생성: Growth Opt Playbook — https://growthoptplaybook.com");
+  });
+
   it("handles empty and nullish input without throwing", () => {
     expect(withAttribution("")).toContain("growthoptplaybook.com");
     expect(withAttribution(null)).toContain("growthoptplaybook.com");

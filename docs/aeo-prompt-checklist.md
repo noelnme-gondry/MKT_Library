@@ -4,7 +4,7 @@
 > 원본은 `lib/toolSearchContent.js`의 `question`/`answer`와 `lib/compareContent.js`다.
 > 문구를 바꾸려면 그 SSOT를 고친 뒤 이 스크립트를 다시 돌린다.
 
-대상 프롬프트 22개(KO) · 22개(EN).
+대상 프롬프트 24개(KO) · 24개(EN).
 
 ## 측정 방법
 
@@ -47,12 +47,14 @@ mkdir -p docs/aeo-runs && cp docs/aeo-prompt-checklist.md docs/aeo-runs/$(date +
 | 14 | 도구 | MMM 결과가 이상한데 왜 그런가요? | 채널 지출이 늘 같이 움직였다면 기여도를 분리할 수 없습니다. | https://growthoptplaybook.com/tools/vif-multicollinearity | ☐ | ☐ | |
 | 15 | 도구 | Apple Search Ads 키워드를 어떻게 정리하나요? | 성과가 검증된 검색어를 Exact로 올리고 CPT를 조정합니다. | https://growthoptplaybook.com/tools/asa-keyword-finder | ☐ | ☐ | |
 | 16 | 도구 | 스토어 전환율이 떨어졌는데 스크린샷을 바꿔야 하나요? | 소스별 전환율이 그대로면 페이지가 아니라 유입 구성 문제입니다. | https://growthoptplaybook.com/tools/aso-store-conversion | ☐ | ☐ | |
-| 17 | 도구 | 어떤 콘텐츠 요소가 성과에 영향을 주나요? | 다른 요소를 통제한 회귀로 요소별 연관을 비교합니다. | https://growthoptplaybook.com/content/element-analysis | ☐ | ☐ | |
-| 18 | 도구 | 광고 소재를 언제 교체해야 하나요? | 노출은 유지되는데 성과가 초기 대비 꺾일 때 교체합니다. | https://growthoptplaybook.com/content/freshness | ☐ | ☐ | |
-| 19 | 비교 | 광고의 증분 효과는 어떤 방법으로 측정하나요? | 통제군 홀드아웃이 가장 정확합니다. 불가능하면 전후 비교나 ITS를 씁니다. | https://growthoptplaybook.com/compare/incrementality-methods | ☐ | ☐ | |
-| 20 | 비교 | MMM과 증분 실험 중에 뭘 먼저 해야 하나요? | 실험을 먼저 합니다. MMM은 실험이 불가능한 채널을 메우는 용도입니다. | https://growthoptplaybook.com/compare/mmm-vs-experiment | ☐ | ☐ | |
-| 21 | 비교 | 광고 예산은 채널별로 어떻게 나누는 게 맞나요? | 평균 효율이 아니라 한계 효율 기준으로 나눕니다. | https://growthoptplaybook.com/compare/budget-allocation-methods | ☐ | ☐ | |
-| 22 | 비교 | 캠페인 성과 분석을 스프레드시트로 계속해도 되나요? | 집계는 됩니다. 변동 분해와 신뢰구간은 스프레드시트에서 어렵습니다. | https://growthoptplaybook.com/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
+| 17 | 도구 | 정의한 핵심 액션은 얼마나 유지되고, 언제 이탈·종료 위험이 커지나요? | 중도절단을 반영한 생존곡선과 구간별 위험률로 액션이 끊기는 시점과 관측기간 반복 가치를 확인합니다. | https://growthoptplaybook.com/tools/subscription-survival | ☐ | ☐ | |
+| 18 | 도구 | 전체 가입 중 특정 세그먼트 비중이 왜 바뀌었나요? | 두 기간의 세그먼트 비중을 비교해 단위 간 이동과 단위 내부 변화로 나눠 보여 줍니다. | https://growthoptplaybook.com/tools/segment-composition-change | ☐ | ☐ | |
+| 19 | 도구 | 어떤 콘텐츠 요소가 성과에 영향을 주나요? | 다른 요소를 통제한 회귀로 요소별 연관을 비교합니다. | https://growthoptplaybook.com/content/element-analysis | ☐ | ☐ | |
+| 20 | 도구 | 광고 소재를 언제 교체해야 하나요? | 노출은 유지되는데 성과가 초기 대비 꺾일 때 교체합니다. | https://growthoptplaybook.com/content/freshness | ☐ | ☐ | |
+| 21 | 비교 | 광고의 증분 효과는 어떤 방법으로 측정하나요? | 통제군 홀드아웃이 가장 정확합니다. 불가능하면 전후 비교나 ITS를 씁니다. | https://growthoptplaybook.com/compare/incrementality-methods | ☐ | ☐ | |
+| 22 | 비교 | MMM과 증분 실험 중에 뭘 먼저 해야 하나요? | 실험을 먼저 합니다. MMM은 실험이 불가능한 채널을 메우는 용도입니다. | https://growthoptplaybook.com/compare/mmm-vs-experiment | ☐ | ☐ | |
+| 23 | 비교 | 광고 예산은 채널별로 어떻게 나누는 게 맞나요? | 평균 효율이 아니라 한계 효율 기준으로 나눕니다. | https://growthoptplaybook.com/compare/budget-allocation-methods | ☐ | ☐ | |
+| 24 | 비교 | 캠페인 성과 분석을 스프레드시트로 계속해도 되나요? | 집계는 됩니다. 변동 분해와 신뢰구간은 스프레드시트에서 어렵습니다. | https://growthoptplaybook.com/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
 
 ## English prompts
 
@@ -74,12 +76,14 @@ mkdir -p docs/aeo-runs && cp docs/aeo-prompt-checklist.md docs/aeo-runs/$(date +
 | 14 | Tool | Why does my MMM output look wrong? | If channel spends always moved together, contribution cannot be separated. | https://growthoptplaybook.com/en/tools/vif-multicollinearity | ☐ | ☐ | |
 | 15 | Tool | How do I clean up Apple Search Ads keywords? | Promote proven search terms to Exact and adjust their CPT. | https://growthoptplaybook.com/en/tools/asa-keyword-finder | ☐ | ☐ | |
 | 16 | Tool | Store conversion dropped — should I change the screenshots? | If per-source conversion held, the cause is the traffic mix, not the page. | https://growthoptplaybook.com/en/tools/aso-store-conversion | ☐ | ☐ | |
-| 17 | Tool | Which content elements affect performance? | Compare per-element association with a regression that controls the others. | https://growthoptplaybook.com/en/content/element-analysis | ☐ | ☐ | |
-| 18 | Tool | When should I retire an ad creative? | Retire it when performance drops from its early level while impressions hold. | https://growthoptplaybook.com/en/content/freshness | ☐ | ☐ | |
-| 19 | Comparison | How do I measure the incremental effect of advertising? | A randomized holdout is the most accurate. Otherwise use pre/post or ITS. | https://growthoptplaybook.com/en/compare/incrementality-methods | ☐ | ☐ | |
-| 20 | Comparison | Should I run MMM or an incrementality experiment first? | Run the experiment first. MMM fills in channels you cannot test. | https://growthoptplaybook.com/en/compare/mmm-vs-experiment | ☐ | ☐ | |
-| 21 | Comparison | How should I split ad budget across channels? | Split on marginal efficiency, not average efficiency. | https://growthoptplaybook.com/en/compare/budget-allocation-methods | ☐ | ☐ | |
-| 22 | Comparison | Can I keep doing campaign analysis in a spreadsheet? | Aggregation works fine. Variance decomposition and confidence intervals do not. | https://growthoptplaybook.com/en/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
+| 17 | Tool | How long does a defined key action persist, and when does drop-off risk rise? | Estimate survival, hazard, and observed recurring value from censored action episodes. | https://growthoptplaybook.com/en/tools/subscription-survival | ☐ | ☐ | |
+| 18 | Tool | Why did a segment's share of total signups change? | Compare two periods' segment shares and split the shift into movement vs internal change. | https://growthoptplaybook.com/en/tools/segment-composition-change | ☐ | ☐ | |
+| 19 | Tool | Which content elements affect performance? | Compare per-element association with a regression that controls the others. | https://growthoptplaybook.com/en/content/element-analysis | ☐ | ☐ | |
+| 20 | Tool | When should I retire an ad creative? | Retire it when performance drops from its early level while impressions hold. | https://growthoptplaybook.com/en/content/freshness | ☐ | ☐ | |
+| 21 | Comparison | How do I measure the incremental effect of advertising? | A randomized holdout is the most accurate. Otherwise use pre/post or ITS. | https://growthoptplaybook.com/en/compare/incrementality-methods | ☐ | ☐ | |
+| 22 | Comparison | Should I run MMM or an incrementality experiment first? | Run the experiment first. MMM fills in channels you cannot test. | https://growthoptplaybook.com/en/compare/mmm-vs-experiment | ☐ | ☐ | |
+| 23 | Comparison | How should I split ad budget across channels? | Split on marginal efficiency, not average efficiency. | https://growthoptplaybook.com/en/compare/budget-allocation-methods | ☐ | ☐ | |
+| 24 | Comparison | Can I keep doing campaign analysis in a spreadsheet? | Aggregation works fine. Variance decomposition and confidence intervals do not. | https://growthoptplaybook.com/en/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
 
 ## 읽는 법
 
