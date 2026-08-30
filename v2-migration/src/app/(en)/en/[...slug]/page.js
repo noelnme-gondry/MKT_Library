@@ -13,6 +13,7 @@ import { blogSlugsForTool, glossarySlugsForTool } from "@/lib/toolContentLinks";
 import { getAllPosts } from "@/lib/blog";
 import { getComparesForTool } from "@/lib/compareContent";
 import { getAllTerms } from "@/lib/glossary";
+import { stripHtmlTags } from "@/lib/htmlText";
 import PageClient from "./PageClient";
 
 // 가이드 → 콘텐츠·도구 역링크. KR 미러(§(ko)/[[...slug]]/page.js)와 같은 계약.
@@ -60,7 +61,7 @@ function buildEvidenceLinks(routeId) {
 // 서버 전용이라 fs 직접 읽기 가능(public/은 그대로 정적 서빙, 여기선 빌드타임 참조만).
 function readEnGuideMeta(routeId) {
   const data = readSopData(routeId, "en");
-  const deck = String(data?.deck || "").replace(/<[^>]+>/g, "");
+  const deck = stripHtmlTags(data?.deck);
   return { title: data?.title || null, description: deck || null };
 }
 
@@ -161,7 +162,7 @@ async function PageWithStructuredData({ params }) {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: initialSopData?.title || routeSeo?.title || meta?.seoTitleEn || meta?.titleEn || meta?.title || routeId,
-    description: initialSopData?.deck?.replace(/<[^>]+>/g, "") || routeSeo?.description || meta?.seoDescriptionEn || meta?.seoDescription || meta?.desc,
+    description: stripHtmlTags(initialSopData?.deck) || routeSeo?.description || meta?.seoDescriptionEn || meta?.seoDescription || meta?.desc,
     url: toolUrl,
     inLanguage: "en",
     dateModified: editorial.reviewedAt,

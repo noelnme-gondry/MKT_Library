@@ -58,7 +58,8 @@ const ATTRIBUTION = {
 export function withAttribution(textString, locale = "ko") {
   const text = String(textString ?? "");
   const line = ATTRIBUTION[locale === "en" ? "en" : "ko"];
-  if (text.includes("https://growthoptplaybook.com")) return text;
+  const hasAttribution = text.split(/\r?\n/).some((candidate) => candidate.trim() === line);
+  if (hasAttribution) return text;
   return `${text.replace(/\s+$/, "")}\n\n---\n${line}\n`;
 }
 

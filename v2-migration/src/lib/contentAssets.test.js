@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { stripHtmlTags } from "@/lib/htmlText";
 
 /**
  * 원고가 참조하는 그림 자산 가드.
@@ -88,7 +89,7 @@ function collectTextNodes(svg) {
     if (tag === "text") {
       const close = svg.indexOf("</text>", tagPattern.lastIndex);
       const inner = close < 0 ? "" : svg.slice(tagPattern.lastIndex, close);
-      const text = inner.replace(/<[^>]+>/g, "").replace(/&#8594;/g, "→").replace(/&\w+;/g, "-").trim();
+      const text = stripHtmlTags(inner).replace(/&#8594;/g, "→").replace(/&\w+;/g, "-").trim();
       // 회전 라벨(축 제목)은 x가 회전 중심이라 가로폭 계산이 성립하지 않는다.
       if (text && !attrs.transform) {
         nodes.push({ text, fontSize: ctx.fontSize, x: Number(attrs.x || 0), anchor: ctx.anchor });

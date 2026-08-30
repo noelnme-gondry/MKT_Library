@@ -51,9 +51,9 @@ describe("weekly report contract", () => {
   });
 
   it("Markdown 표 셀을 escape하고 같은 입력에서 동일 결과를 낸다", () => {
-    const draft = serializeReportDraft({ title: "주간 | 보고", blocks: [{ ...block, stats: [{ label: "A|B", displayValue: "1" }] }], notes: [] });
+    const draft = serializeReportDraft({ title: "주간 | 보고", blocks: [{ ...block, stats: [{ label: "A\\|B", displayValue: "1" }] }], notes: [] });
     const first = renderReportMarkdown(draft, "ko");
-    expect(first).toContain("A\\|B");
+    expect(first).toContain(String.raw`A\\\|B`);
     expect(renderReportMarkdown(draft, "ko")).toBe(first);
   });
 });

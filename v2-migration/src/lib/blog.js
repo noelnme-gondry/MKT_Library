@@ -11,6 +11,7 @@ import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
 import { getBlogSeo } from "@/lib/blogSeo";
 import { getBlogEditorial } from "@/lib/blogEditorial";
+import { decodeTextEntitiesOnce, stripHtmlTags } from "@/lib/htmlText";
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BLOG_DIRS = {
@@ -50,10 +51,8 @@ function extractExternalSources(html) {
   let match;
   while ((match = anchorPattern.exec(html || ""))) {
     const title = match[2]
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, "\"")
-      .trim();
+      ? decodeTextEntitiesOnce(stripHtmlTags(match[2])).trim()
+      : "";
     sources.push({ title: title || match[1], url: match[1] });
   }
   return sources;

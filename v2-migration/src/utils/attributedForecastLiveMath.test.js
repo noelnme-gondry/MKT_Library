@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAttributedForecastDataset } from "./attributedForecastDataset";
-import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "./attributedForecastLiveMath";
+import { buildEventSeries, runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "./attributedForecastLiveMath";
 
 function fixture(length = 120) {
   const start = Date.UTC(2023, 0, 2);
@@ -30,6 +30,19 @@ function datasetFrom(rows, stepFields = []) {
 }
 
 describe("live-condition attributed forecast router", () => {
+  it("프로토타입 이름과 같은 이벤트 키도 독립 시계열로 보존한다", () => {
+    const weeks = [100, 200];
+    const series = buildEventSeries([
+      { week: 100, platform: "total", key: "__proto__", value: 1 },
+      { week: 200, platform: "total", key: "constructor", value: 2 },
+    ], weeks);
+
+    expect(Object.getPrototypeOf(series)).toBeNull();
+    expect(Object.hasOwn(series, "__proto__")).toBe(true);
+    expect(series.__proto__).toEqual([1, 0]);
+    expect(series.constructor).toEqual([0, 2]);
+  });
+
   it("uses a deterministic snapshot fallback and never silently turns missing Paid Cost into zero", () => {
     const rows = fixture(60);
     const firstPaid = rows.find((row) => row.channel === "Meta");
