@@ -44,6 +44,10 @@ const IDENTIFIER_PATTERN = /(^|[_\s-])(id|uuid|guid|key|url|link|email|phone)([_
 const MEASURE_PATTERN = /(비용|광고비|소진|매출|수익|예산|가입|설치|전환|클릭|노출|조회|금액|건수|인원|수량|cost|spend|budget|revenue|sales|install|signup|conversion|click|impression|view|count|amount|rate|ratio)/i;
 const TOTAL_PATTERN = /(^|[_\s-])(전체|합계|총|total|all|overall|sum)/i;
 const MULTI_VALUE_PATTERN = /[,;|]/;
+// 공용 숫자 파서는 통화·퍼센트처럼 실제 지표에 붙는 기호를 관대하게 제거한다.
+// 후보 판정까지 그 관대함을 그대로 쓰면 `Campaign 001`·긴 문장 속 `2026`도 숫자가
+// 된다. 여기서는 알려진 숫자 표기만 허용해 역할·축 판정을 분리한다.
+const NUMERIC_TOKEN_PATTERN = /^(?:(?:krw|usd|eur|jpy)\s*)?[+-]?(?:[₩$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\s*(?:%|원|krw|usd|eur|jpy)?$/i;
 
 const clean = (value) => String(value ?? "").trim();
 
@@ -81,10 +85,11 @@ export function profileSegmentCandidates({ headers = [], rows = [], options = {}
     // 공용 프로파일러의 두 판정이 서로를 오염시킨다.
     //  ① `new Date("1")`이 2001-01-01로 파싱돼 **맨 정수가 날짜로** 잡힌다.
     //  ② `parseFloat("2026-07-01")`이 2026을 뽑아 **날짜가 숫자로** 잡힌다(§7).
-    // 둘을 가르는 신호는 "값이 순수한 숫자 표기인가"뿐이다.
-    const bareNumeric = sample.length > 0 && sample.every((value) => /^-?[\d,]+(\.\d+)?$/.test(value));
-    const looksLikeDate = profile.dateRate >= 0.8 && !bareNumeric;
-    const isNumeric = profile.numericRate >= 0.8 && !looksLikeDate;
+    // 둘을 가르는 신호는 "값이 알려진 숫자 표기인가"뿐이다. 통화·퍼센트 표기는
+    // 지표로 남기되, 숫자가 섞인 캠페인명·자유 텍스트를 숫자로 올리지 않는다.
+    const isNumericToken = sample.length > 0 && sample.every((value) => NUMERIC_TOKEN_PATTERN.test(value));
+    const looksLikeDate = profile.dateRate >= 0.8 && !isNumericToken;
+    const isNumeric = profile.numericRate >= 0.8 && isNumericToken && !looksLikeDate;
 
     if (profile.header === timeColumn || looksLikeDate) reasons.add(CANDIDATE_REASON.DATE_COLUMN);
     if (IDENTIFIER_PATTERN.test(profile.header)) reasons.add(CANDIDATE_REASON.IDENTIFIER_LIKE);
