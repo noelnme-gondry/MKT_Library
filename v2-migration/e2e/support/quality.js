@@ -71,9 +71,7 @@ export async function expectKeyboardFocusVisible(page) {
 }
 
 export async function expectNoSeriousAccessibilityViolations(page) {
-  const results = await new AxeBuilder({ page })
-    .disableRules(["color-contrast"])
-    .analyze();
+  const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter((violation) => ["serious", "critical"].includes(violation.impact));
   expect(serious, serious.map((item) => `${item.id}: ${item.help}`).join("\n")).toEqual([]);
 }

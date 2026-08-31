@@ -62,11 +62,30 @@ async function navigateToTool(page, href, section, query) {
   await expect(page).toHaveURL(new RegExp(`${href}$`));
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const theme = testInfo.project.name === "desktop-light-en" ? "light" : "dark";
+  await page.addInitScript((initialTheme) => {
     window.localStorage.clear();
-    window.localStorage.setItem("mkt-library-theme", "dark");
-  });
+    window.localStorage.setItem("mkt-library-theme", initialTheme);
+  }, theme);
+});
+
+test("@light-en English start upload stays accessible in light mode", async ({ page }) => {
+  await page.goto("/en/start");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Upload data. Get the right first analysis.");
+  await expect(page.locator("body")).toHaveClass(/light-mode/);
+  await expectPageHierarchy(page, { primaryRegion: ".start-upload-panel" });
+  await expectKeyboardFocusVisible(page);
+
+  await uploadCsv(page, "efficiency.csv");
+  const mapping = page.locator('.csv-mapping-block[aria-describedby="dochi-mapping-coach-title"]');
+  await expect(mapping).toBeVisible();
+  await page.locator(".dochi-mapping-coach").getByRole("button", { name: "Got it" }).click();
+
+  const workspace = page.getByRole("region", { name: "The analysis map Dochi found" });
+  await expect(workspace).toBeVisible();
+  await expect(workspace.getByRole("region", { name: "Summary calculated on this screen" }).first()).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
 });
 
 test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간다", async ({ page }) => {

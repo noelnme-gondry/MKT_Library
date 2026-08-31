@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { ahaParseActionWindow } from "@/utils/ahaMath";
+import { normalizeNumericValue } from "@/lib/data-import/normalizeValues";
 
 /* Aha(5-20) 컬럼 매핑 — MmmColumnMapper(5-18)와 같은 드래그앤드롭 존 방식으로
  * 통일(§ 유저 요청: "같은 툴을 쓰라는 게 아니라 방식을 비슷하게"). 5-20 전용
@@ -63,7 +64,7 @@ function winValue(w) {
 function guessRole(col, rows) {
   const name = String(col).toLowerCase();
   const vals = (rows || []).map((r) => r[col]).filter((v) => v != null && String(v).trim() !== "");
-  const nums = vals.map((v) => parseFloat(v)).filter((v) => !isNaN(v));
+  const nums = vals.map((v) => normalizeNumericValue(v)?.value).filter(Number.isFinite);
   const isNum = vals.length > 0 && nums.length >= vals.length * 0.8;
   const uniq = isNum ? [...new Set(nums)] : [];
   const isBin01 = isNum && uniq.length > 0 && uniq.every((v) => v === 0 || v === 1);
@@ -88,7 +89,7 @@ export function ahaAutoMapColumns(headers, rows) {
   if (!Object.values(out).some((d) => d.role === "target")) {
     for (const h of headers || []) {
       const vals = (rows || []).map((r) => r[h]).filter((v) => v != null && String(v).trim() !== "");
-      const nums = vals.map((v) => parseFloat(v)).filter((v) => !isNaN(v));
+      const nums = vals.map((v) => normalizeNumericValue(v)?.value).filter(Number.isFinite);
       const uniq = [...new Set(nums)];
       const isBin01 =
         nums.length >= vals.length * 0.8 && vals.length > 0 && uniq.length > 0 &&

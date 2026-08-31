@@ -1,6 +1,7 @@
 // regForecastMath.js — 범용회귀 미래 투영 엔진 (index.html 페이스풀 포팅)
 // 원본: index.html REG_FORECAST + _mmmParseDate + _mmmFmtDate (VERBATIM)
 import { REG_STATS, REG_TRANSFORMS } from "./regMath";
+import { parseDateValue } from "@/lib/data-import/normalizeValues";
 
 // 날짜 문자열/엑셀 serial → Date(UTC). 실패 시 null. (analysis는 행순서 t로 하되, 표시·예측·단위환산에 사용)
 export function _mmmParseDate(v) {
@@ -8,29 +9,14 @@ export function _mmmParseDate(v) {
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
   const s = String(v).trim();
   if (!s) return null;
-  let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/); // YYYY-MM-DD
-  if (m) {
-    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/); // DD/MM/YYYY 또는 MM/DD/YYYY
-  if (m) {
-    let a = +m[1],
-      b = +m[2];
-    const mo = a > 12 ? b : a,
-      da = a > 12 ? a : b;
-    const d = new Date(Date.UTC(+m[3], mo - 1, da));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  m = s.match(/^(\d{4})[-/.]?(\d{2})$/); // YYYY-MM (월별)
-  if (m && +m[2] >= 1 && +m[2] <= 12)
-    return new Date(Date.UTC(+m[1], +m[2] - 1, 1));
   if (/^\d{5}(\.\d+)?$/.test(s)) {
     const n = parseFloat(s);
     if (n > 20000 && n < 80000)
       return new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
   } // 엑셀 serial
-  return null;
+  // 브라우저/타임존별 Date 문자열 해석과 존재하지 않는 날짜 rollover를 금지한다.
+  // MMM은 오래된 관측도 읽을 수 있게 공통 import 기본범위보다 넓게 허용한다.
+  return parseDateValue(s, { minYear: 1900, maxYear: 2200 })?.date || null;
 }
 
 // 차트·표용 날짜 라벨 (월별이면 YYYY-MM, 그 외 YY-MM-DD)

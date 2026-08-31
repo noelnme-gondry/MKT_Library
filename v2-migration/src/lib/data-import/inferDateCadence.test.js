@@ -23,6 +23,14 @@ describe("inferDateCadence", () => {
     expect(inferDateCadence(["2026-W30", "2026-W31", "2026-W32"]).cadence).toBe("weekly");
   });
 
+  it("uses strict UTC dates for slash formats and rejects calendar rollovers", () => {
+    expect(inferDateCadence(["08/03/2026", "08/10/2026", "08/17/2026"]).cadence).toBe("weekly");
+    expect(inferDateCadence(["02/31/2026", "2026-13", "2024-W99"])).toMatchObject({
+      cadence: "unknown",
+      periodCount: 0,
+    });
+  });
+
   it("keeps numeric week indexes weekly instead of parsing them as calendar months", () => {
     expect(inferMappedDateCadence({
       headers: ["period"],

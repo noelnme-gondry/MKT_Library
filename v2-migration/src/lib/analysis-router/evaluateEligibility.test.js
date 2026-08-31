@@ -279,6 +279,25 @@ describe("analysis eligibility", () => {
     expect(result).toMatchObject({ status: "caution" });
     expect(result.reasonDetails.join(" ")).toContain("지출 변동이 너무 작은");
   });
+
+  it("treats duration and event episodes as a valid no-date survival dataset", () => {
+    const result = evaluateEligibility({
+      toolId: "5-28",
+      mapping: { Duration: "tenure_periods", Event: "event_observed" },
+      canonicalData: {
+        summary: {},
+        records: [
+          { date: null, dimensions: {}, metrics: { tenure_periods: 1, event_observed: 1 } },
+          { date: null, dimensions: {}, metrics: { tenure_periods: 2, event_observed: 0 } },
+        ],
+      },
+    });
+
+    expect(result.blockers).toEqual([]);
+    expect(result).toMatchObject({ status: "ready", statisticalStatus: "READY" });
+    expect(result.quality).toMatchObject({ grade: "ready", requiresDate: false, periodCount: 0 });
+    expect(result.quality.issues.map((issue) => issue.code)).not.toEqual(expect.arrayContaining(["missing_date", "duplicates"]));
+  });
 });
 
 // /start가 어떤 도구를 "평가조차 안 하는지"는 목록에서 빠졌다는 사실로만 드러난다.

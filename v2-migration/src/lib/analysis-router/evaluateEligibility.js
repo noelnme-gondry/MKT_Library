@@ -38,7 +38,7 @@ export const ANALYSIS_CONTRACTS = {
   "5-27": { minRows: 8, minPeriods: 4, minEntities: 2, blockBelowMinEntities: true, entityFields: ["store_source"], priority: 6 },
   // 한 행이 한 핵심 액션 관측 에피소드라 날짜 축을 요구하지 않는다. 기간과 이탈 여부의
   // 유효성·중도절단 구성은 5-28 순수 엔진이 별도로 검증한다.
-  "5-28": { minRows: 2, minPeriods: 0, priority: 9 },
+  "5-28": { minRows: 2, minPeriods: 0, requiresDate: false, priority: 9 },
   // 두 기간을 비교하는 도구라 최소 2개 기간이 필요하다. 세그먼트 축·인원수 컬럼은
   // 사용자마다 이름이 달라 표준 필드로 요구하지 않고 도구 안 역할 매퍼가 검증한다.
   "5-29": { minRows: 4, minPeriods: 2, priority: 8 },
@@ -71,6 +71,12 @@ function requiredMetricKeys(required = [], mapped = new Set(), records = []) {
     if (item?.oneOf) return item.oneOf.filter((field) => mapped.has(field) && presentMetrics.has(field)).slice(0, 1);
     return [];
   }))];
+}
+
+export function analysisRequiresDate(toolId) {
+  const contract = ANALYSIS_CONTRACTS[toolId];
+  if (!contract) return true;
+  return typeof contract.requiresDate === "boolean" ? contract.requiresDate : contract.minPeriods > 0;
 }
 
 function pearson(valuesA, valuesB) {
@@ -215,7 +221,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
   const requiredKeys = new Set(required.flatMap((field) => typeof field === "string" ? [field] : field?.oneOf || []));
   const missing = missingFields(required, mapped);
   const metricKeys = requiredMetricKeys(required, mapped, records);
-  const quality = buildDataQualityReport(canonicalData, { metricKeys });
+  const quality = buildDataQualityReport(canonicalData, { metricKeys, requiresDate: analysisRequiresDate(toolId) });
   const vifPanel = toolId === "5-25" ? buildVifSpendPanel(records.map((record) => ({
     date: record.date,
     entity: record.dimensions?.channel || record.dimensions?.campaign_name,

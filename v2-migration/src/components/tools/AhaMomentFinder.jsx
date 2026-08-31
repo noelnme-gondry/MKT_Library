@@ -23,6 +23,7 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticParallelData";
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
+import { normalizeNumericValue } from "@/lib/data-import/normalizeValues";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
@@ -357,7 +358,7 @@ function buildAhaGuideDoc(cache, sorted, minSupport, C, locale = "ko") {
 /* 무거운 Aha 분석 캐시 계산 (index.html buildAhaCache 이식). 원래 useMemo였으나 colMap이
    바뀔 때마다 20만행을 재계산해 UI가 멈추던 문제(§7) 때문에 모듈 순수 함수로 추출 →
    "분석하기" 클릭 시에만 rAF 디퍼로 호출(매핑 편집 중엔 미실행). 수학·반환 shape 불변. */
-function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
+export function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
   const empty = { n: 0, baseRate: 0, results: [], targetCol: null, groups: {} };
   if (!rows || !rows.length) return empty;
   const targetCol = ahaTargetColumn(colMap);
@@ -388,8 +389,8 @@ function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
       header: c.header,
       window: c.window,
       valuesAll: rows.map((r) => {
-        const v = parseFloat(r[c.header]);
-        return isFinite(v) ? v : 0;
+        const value = normalizeNumericValue(r[c.header])?.value;
+        return Number.isFinite(value) ? value : 0;
       }),
     }));
     const gs = AHA_STATS.gridSearch(windowCols, targets, trainIdx, holdoutIdx, ms);

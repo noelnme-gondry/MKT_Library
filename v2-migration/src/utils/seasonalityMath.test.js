@@ -40,6 +40,14 @@ describe("calendar seasonality", () => {
     expect(detectCalendarGrain([{ date: "2024-01" }, { date: "2024-02" }])).toBe("month");
   });
 
+  it("존재하지 않는 일·월·ISO 주차를 달력 구간으로 rollover하지 않는다", () => {
+    expect(detectCalendarGrain([
+      { date: "2024-02-31" },
+      { date: "2024-13" },
+      { date: "2024-W99" },
+    ])).toBe("unknown");
+  });
+
   it("주별 원본에는 월별 집계를 허용하지 않는다", () => {
     const rows = [{ date: "2024-W01", installs: 100 }, { date: "2025-W01", installs: 110 }];
     expect(buildCalendarSeasonality(rows, { grain: "month" }).reason).toBe("grain_not_supported");

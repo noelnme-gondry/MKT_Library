@@ -1115,32 +1115,6 @@ export const useAppStore = create(persist((set, get) => ({
     return Boolean(stored && stored !== computeAnalyzeSig(state.csvData));
   },
 
-  // CSV 업로드 및 파싱 (PapaParse). Currently unused (CsvUploader has its own
-  // parse path) — kept group-scoped so a future caller can't reintroduce a flat
-  // write that desyncs csvGroups from the mirror.
-  handleAnalyze: (file) => {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (h) => String(h).trim(),
-      complete: (results) => {
-        const data = {
-          raw: results.data,
-          headers: results.meta.fields || [],
-          mapping: {}, // TODO: Auto mapping logic if needed
-          fileName: file.name,
-        };
-        set((state) => {
-          const g = groupForRoute(state.currentRouteId);
-          return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data };
-        });
-      },
-      error: (err) => {
-        alert("CSV 파싱 오류: " + err.message);
-      },
-    });
-  },
-
   // Ops Dashboard State
   dashboardTab: "viz", // viz, scorecard, pacing, anomaly, ltv, cohort, funnel, segment
   setDashboardTab: (tab) => set({ dashboardTab: tab }),

@@ -23,15 +23,17 @@ function seedNoData() {
 
 // A minimal VALID creative CSV: creative_id + date + impressions + clicks (the
 // deriveMetrics/fatigue inputs), plus installs (CVR) and two attribute columns
-// (hook_type, format) with >=30 clean rows so the WLS decompose branch runs.
+// (hook_type, message_angle, format) with >=30 clean rows so the WLS decompose
+// and concept-matrix branches run.
 // mapping = { origHeader: standardKey }.
 function seedWithData() {
-  const headers = ["Date", "Channel", "CreativeID", "Hook", "Format", "Impr", "Clicks", "Installs", "Spend"];
+  const headers = ["Date", "Channel", "CreativeID", "Hook", "MessageAngle", "Format", "Impr", "Clicks", "Installs", "Spend"];
   const mapping = {
     Date: "date",
     Channel: "channel",
     CreativeID: "creative_id",
     Hook: "hook_type",
+    MessageAngle: "message_angle",
     Format: "format",
     Impr: "impressions",
     Clicks: "clicks",
@@ -63,6 +65,7 @@ function seedWithData() {
         Channel: ci % 2 === 0 ? "Google" : "Meta",
         CreativeID: c.id,
         Hook: c.hook,
+        MessageAngle: c.hook,
         Format: c.format,
         Impr: impressions,
         Clicks: clicks,
@@ -193,5 +196,21 @@ describe("CreativeAnalyzer render smoke", () => {
     // Clicking CPA re-renders §4 with 원-unit fmtVal + reversed-sign color path.
     expect(() => fireEvent.click(cpaBtn)).not.toThrow();
     expect(() => fireEvent.click(roasBtn)).not.toThrow();
+  });
+
+  it("uses native buttons to filter the performance table from the concept matrix", () => {
+    seedWithData();
+    render(<CreativeAnalyzer />);
+
+    const cell = screen.getByRole("button", { name: "question × video 조합 필터" });
+    expect(cell.tagName).toBe("BUTTON");
+    expect(cell.tabIndex).toBe(0);
+    expect(cell.getAttribute("aria-pressed")).toBe("false");
+
+    cell.focus();
+    expect(document.activeElement).toBe(cell);
+    fireEvent.click(cell);
+    expect(cell.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: /어떤 소재가 성과를 만들었나.*필터됨/ })).toBeTruthy();
   });
 });

@@ -67,23 +67,27 @@ function buildChannelCoverage(records) {
 
 // 공통 데이터 위생 신호. 도구별로 무엇을 막을지는 analysis-router 계약이 결정한다.
 // 여기서는 사실(결측·연속성·변동성)을 계산만 하고, 브라우저 밖으로 데이터를 보내지 않는다.
-export function buildDataQualityReport(canonicalData, { metricKeys } = {}) {
+export function buildDataQualityReport(canonicalData, { metricKeys, requiresDate = true } = {}) {
   const records = canonicalData?.records || [];
   const summary = canonicalData?.summary || {};
   const duplicateKeys = new Set();
   let duplicateCount = 0;
   let missingDateCount = 0;
-  records.forEach((record) => {
-    if (!record.date) missingDateCount += 1;
-    const key = JSON.stringify([record.date, record.dimensions]);
-    if (duplicateKeys.has(key)) duplicateCount += 1;
-    duplicateKeys.add(key);
-  });
+  if (requiresDate) {
+    records.forEach((record) => {
+      if (!record.date) missingDateCount += 1;
+      const key = JSON.stringify([record.date, record.dimensions]);
+      if (duplicateKeys.has(key)) duplicateCount += 1;
+      duplicateKeys.add(key);
+    });
+  }
 
   const allMetricKeys = [...new Set(records.flatMap((record) => Object.keys(record.metrics || {})))];
   const selectedMetricKeys = metricKeys?.length ? metricKeys : allMetricKeys;
   const metricStats = Object.fromEntries(allMetricKeys.map((key) => [key, metricProfile(records, key)]));
-  const periodStats = buildPeriodStats(records);
+  const periodStats = requiresDate
+    ? buildPeriodStats(records)
+    : { periodCount: 0, expectedIntervalDays: null, gapCount: 0 };
   const issues = [];
   if (missingDateCount) issues.push({ code: "missing_date", count: missingDateCount });
   if (duplicateCount) issues.push({ code: "duplicates", count: duplicateCount });
@@ -97,14 +101,15 @@ export function buildDataQualityReport(canonicalData, { metricKeys } = {}) {
   const outlierFields = selectedMetricKeys.filter((key) => metricStats[key]?.outlierCount > 0);
   if (outlierFields.length) issues.push({ code: "outliers", count: outlierFields.length, fields: outlierFields });
 
-  const grade = records.length === 0 || missingDateCount === records.length ? "unfit" : issues.length ? "caution" : "ready";
+  const grade = records.length === 0 || (requiresDate && missingDateCount === records.length) ? "unfit" : issues.length ? "caution" : "ready";
   return {
     grade,
+    requiresDate,
     rowCount: records.length,
     periodCount: periodStats.periodCount,
     issues,
     periodStats,
     metricStats,
-    channelCoverage: buildChannelCoverage(records),
+    channelCoverage: requiresDate ? buildChannelCoverage(records) : [],
   };
 }

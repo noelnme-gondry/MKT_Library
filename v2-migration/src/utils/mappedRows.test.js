@@ -28,12 +28,33 @@ describe("mapRowsToStandard", () => {
     expect(Number(row.revenue_d7)).toBe(12000.5);
   });
 
+  it("normalizes supported currency wrappers without extracting digits from arbitrary text", () => {
+    const [row] = mapRowsToStandard([{ Cost: "1,350,000원", Clicks: "USD 1,200", Impressions: "abc123" }], {
+      Cost: "cost",
+      Clicks: "clicks",
+      Impressions: "impressions",
+    });
+    expect(row).toMatchObject({ cost: "1350000", spend: "1350000", clicks: "1200", impressions: "abc123" });
+  });
+
   // 디멘션 값은 건드리지 않는다 — 캠페인명이 "1,000"이어도 원본 유지.
   it("leaves non-numeric standard fields untouched", () => {
     expect(mapRowsToStandard([{ C: "1,000", D: "2026-01-01" }], {
       C: "campaign",
       D: "date",
     })).toEqual([{ campaign: "1,000", date: "2026-01-01" }]);
+  });
+
+  it("normalizes valid mapped dates while preserving explicit month grain", () => {
+    expect(mapRowsToStandard([
+      { Date: "08/31/2026" },
+      { Date: "2026-08" },
+      { Date: "02/31/2026" },
+    ], { Date: "date" })).toEqual([
+      { date: "2026-08-31" },
+      { date: "2026-08" },
+      { date: "02/31/2026" },
+    ]);
   });
 
   // percent는 소비처(computeWeightedRetention)가 비율/인원수를 판별한다.
