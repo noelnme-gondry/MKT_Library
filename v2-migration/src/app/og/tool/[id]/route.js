@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getToolOgData } from "@/lib/toolOg";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   const { id } = await params;

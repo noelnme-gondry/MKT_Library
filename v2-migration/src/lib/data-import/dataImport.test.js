@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
+import { normalizeDateLabel, normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
 import { profileColumns } from "./profileColumns";
+import { profileColumnV2 } from "./profiler/profileColumnV2";
 import { assessMappingConfidence, scoreMappingCandidates } from "./scoreMappingCandidates";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 
@@ -12,11 +13,31 @@ describe("data import foundation", () => {
 
   it("normalizes currency, percent, and common date forms", () => {
     expect(normalizeNumericValue("₩1,200,000")).toMatchObject({ value: 1200000, isPercent: false });
+    expect(normalizeNumericValue("1,350,000원")).toMatchObject({ value: 1350000, isPercent: false });
+    expect(normalizeNumericValue("USD 1,200")).toMatchObject({ value: 1200, isPercent: false });
     expect(normalizeNumericValue("12.5%")).toMatchObject({ value: 12.5, isPercent: true });
+    expect(normalizeNumericValue("abc123")).toBeNull();
+    expect(normalizeNumericValue("--123")).toBeNull();
     expect(normalizeDateValue("20260719")).toBe("2026-07-19");
     expect(normalizeDateValue("2026/07/19")).toBe("2026-07-19");
     expect(normalizeDateValue("2026.07.19")).toBe("2026-07-19");
+    expect(normalizeDateValue("08/31/2026")).toBe("2026-08-31");
+    expect(normalizeDateValue("31/08/2026")).toBe("2026-08-31");
     expect(normalizeDateValue("2026-02-30")).toBeNull();
+    expect(normalizeDateValue("02/31/2026")).toBeNull();
+    expect(normalizeDateValue("2026-08-31T99:00:00Z")).toBeNull();
+    expect(normalizeDateValue("1")).toBeNull();
+    expect(normalizeDateLabel("2024-W53")).toBeNull();
+    expect(normalizeDateLabel("2026-08")).toBe("2026-08");
+  });
+
+  it("does not misclassify plain integer codes as dates", () => {
+    const codeRows = [1, 2, 3, 4, 5].map((Code) => ({ Code }));
+    const [legacyProfile] = profileColumns(["Code"], codeRows);
+    const v2Profile = profileColumnV2("Code", codeRows);
+    expect(legacyProfile).toMatchObject({ inferredType: "number", numericRate: 1, dateRate: 0 });
+    expect(v2Profile.inferredType).toBe("number");
+    expect(v2Profile.rates).toMatchObject({ numeric: 1, date: 0 });
   });
 
   it("profiles values without retaining raw rows", () => {

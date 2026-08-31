@@ -648,12 +648,20 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                   return (
                     <tr
                       key={r.name}
-                      onClick={() => setSatState(s => ({...s, selected: r.name}))}
-                      style={{ cursor: "pointer", background: sel ? "rgba(122,162,247,0.08)" : "transparent" }}
-                      title={tr("클릭 → 응답곡선 보기", "Click → view response curve")}
+                      style={{ background: sel ? "rgba(122,162,247,0.08)" : "transparent" }}
                     >
                       <td className="tnum" style={{ color: "var(--text-muted)" }}>{i + 1}</td>
-                      <td><strong>{r.name}</strong></td>
+                      <td>
+                        <button
+                          type="button"
+                          className="saturation-row-select"
+                          aria-label={tr(`${r.name} 응답곡선 보기`, `View response curve for ${r.name}`)}
+                          aria-pressed={sel}
+                          onClick={() => setSatState(s => ({...s, selected: r.name}))}
+                        >
+                          <strong>{r.name}</strong>
+                        </button>
+                      </td>
                       <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                         {r.modelType} <span className="tnum">R²={r.r2 != null ? r.r2.toFixed(2) : "—"}</span>
                       </td>

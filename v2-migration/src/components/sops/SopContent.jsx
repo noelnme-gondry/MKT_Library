@@ -2786,7 +2786,7 @@ function page_8_1() {
         <ul>
           <li><strong>헤더는 1행만</strong> — 엑셀에서 자주 생기는 병합 셀·2행 헤더는 첫 행만 인식되어 나머지가 깨집니다.</li>
           <li><strong>날짜는 텍스트 형식(YYYY-MM-DD)</strong> — 엑셀이 날짜를 시리얼 숫자(예: <code class="inline">45678</code>)로 저장한 채 CSV 내보내면 날짜 컬럼으로 인식되지 않습니다. 저장 전 서식을 "텍스트"로 바꾸거나 <code class="inline">2026-07-07</code> 형식을 직접 입력하세요.</li>
-          <li><strong>숫자 컬럼의 콤마·통화기호는 괜찮음</strong> — <code class="inline">"1,234,000"</code>처럼 따옴표로 감싸진 콤마 숫자는 정상 파싱됩니다. 단 <code class="inline">₩</code>·<code class="inline">$</code> 같은 통화 기호가 섞이면 숫자로 인식되지 않으니 순수 숫자만 남기세요.</li>
+          <li><strong>숫자 컬럼의 콤마·일반 통화 표기는 지원</strong> — <code class="inline">"1,234,000"</code>, <code class="inline">₩1,234,000</code>, <code class="inline">1,234,000원</code>, <code class="inline">USD 1,200</code>을 숫자로 읽습니다. 임의 문자가 섞인 값은 거부하므로 가능하면 순수 숫자를 권장합니다.</li>
           <li><strong>인코딩은 UTF-8</strong> — 한글 헤더·값이 깨져 보이면 엑셀에서 "CSV UTF-8(쉼표로 분리)"로 다시 내보내세요.</li>
           <li><strong>빈 행·합계 행 제거</strong> — 표 맨 아래 "합계"·"평균" 같은 요약 행이 남아있으면 데이터 행으로 잘못 집계됩니다.</li>
         </ul>

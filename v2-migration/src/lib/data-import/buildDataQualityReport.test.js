@@ -29,4 +29,18 @@ describe("buildDataQualityReport", () => {
     expect(report.metricStats.installs.zeroRate).toBe(1);
     expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["period_gaps", "high_missing_rate", "all_zero_metric", "outliers"]));
   });
+
+  it("does not invent missing dates or duplicates for an undated episode dataset", () => {
+    const report = buildDataQualityReport({
+      records: [
+        { date: null, dimensions: {}, metrics: { tenure_periods: 1, event_observed: 1 } },
+        { date: null, dimensions: {}, metrics: { tenure_periods: 2, event_observed: 0 } },
+      ],
+      summary: {},
+    }, { metricKeys: ["tenure_periods", "event_observed"], requiresDate: false });
+
+    expect(report).toMatchObject({ grade: "ready", requiresDate: false, rowCount: 2, periodCount: 0 });
+    expect(report.issues.map((issue) => issue.code)).not.toEqual(expect.arrayContaining(["missing_date", "duplicates", "period_gaps"]));
+    expect(report.channelCoverage).toEqual([]);
+  });
 });

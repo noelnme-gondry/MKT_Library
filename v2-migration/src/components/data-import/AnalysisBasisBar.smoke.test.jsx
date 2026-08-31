@@ -46,4 +46,25 @@ describe("AnalysisBasisBar", () => {
 
     expect(screen.getByRole("tooltip").textContent).toMatch(/Data basis/);
   });
+
+  it("shows an undated survival dataset as usable without a fabricated period count", () => {
+    const canonicalData = {
+      summary: {},
+      records: [
+        { date: null, dimensions: {}, metrics: { tenure_periods: 1, event_observed: 1 } },
+        { date: null, dimensions: {}, metrics: { tenure_periods: 2, event_observed: 0 } },
+      ],
+    };
+    render(<AnalysisBasisBar
+      canonicalData={canonicalData}
+      mappedRows={[{ tenure_periods: "1", event_observed: "1" }, { tenure_periods: "2", event_observed: "0" }]}
+      mapping={{ Duration: "tenure_periods", Event: "event_observed" }}
+      toolId="5-28"
+      locale="en"
+    />);
+
+    expect(screen.getByText("Core checks passed")).toBeTruthy();
+    expect(screen.getByText(/2 rows/).textContent).not.toContain("periods");
+    expect(document.body.textContent).not.toContain("Some rows have no date");
+  });
 });

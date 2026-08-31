@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
-import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
+import { ANALYSIS_CONTRACTS, analysisRequiresDate, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 import { buildRecentPeriodComparison } from "@/lib/analysis-results/periodComparison";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
 import EvidenceHint from "@/components/ds/EvidenceHint";
@@ -69,12 +69,12 @@ function formatDelta(metric, locale) {
   return `${sign}${number(metric.changePct * 100, locale, 1)}%`;
 }
 
-function cachedQualityReport(canonicalData, metricKeys) {
-  if (!canonicalData || typeof canonicalData !== "object") return buildDataQualityReport(canonicalData, { metricKeys });
-  const signature = [...metricKeys].sort().join("|");
+function cachedQualityReport(canonicalData, metricKeys, requiresDate) {
+  if (!canonicalData || typeof canonicalData !== "object") return buildDataQualityReport(canonicalData, { metricKeys, requiresDate });
+  const signature = `${requiresDate ? "dated" : "undated"}|${[...metricKeys].sort().join("|")}`;
   const cache = qualityCache.get(canonicalData) || new Map();
   if (!qualityCache.has(canonicalData)) qualityCache.set(canonicalData, cache);
-  if (!cache.has(signature)) cache.set(signature, buildDataQualityReport(canonicalData, { metricKeys }));
+  if (!cache.has(signature)) cache.set(signature, buildDataQualityReport(canonicalData, { metricKeys, requiresDate }));
   return cache.get(signature);
 }
 
@@ -89,12 +89,15 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
   const metricKeys = useMemo(() => (
     useMappedMetrics ? Object.values(mapping || {}).filter((key) => key && key !== "__ignore__") : []
   ), [mapping, useMappedMetrics]);
-  const report = useMemo(() => cachedQualityReport(canonicalData, metricKeys), [canonicalData, metricKeys]);
   const eligibility = useMemo(() => (
     providedEligibility || (ANALYSIS_CONTRACTS[toolId] && canonicalData
       ? evaluateEligibility({ toolId, mapping, canonicalData })
       : null)
   ), [providedEligibility, toolId, mapping, canonicalData]);
+  const requiresDate = analysisRequiresDate(toolId);
+  const report = useMemo(() => (
+    eligibility?.quality || cachedQualityReport(canonicalData, metricKeys, requiresDate)
+  ), [eligibility, canonicalData, metricKeys, requiresDate]);
   const comparison = useMemo(() => (
     showPeriodComparison ? cachedPeriodComparison(mappedRows) : { available: false }
   ), [mappedRows, showPeriodComparison]);
@@ -114,7 +117,10 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
     const qualityText = issueCount ? `${T.details} ${issueCount}` : T.noIssues;
     const tooltip = [
       `${T.basis}: ${label}`,
-      `${number(report.rowCount, locale)} ${T.rows} · ${number(report.periodCount, locale)} ${T.periods}`,
+      [
+        `${number(report.rowCount, locale)} ${T.rows}`,
+        report.requiresDate ? `${number(report.periodCount, locale)} ${T.periods}` : "",
+      ].filter(Boolean).join(" · "),
       comparisonText,
       qualityText,
     ].filter(Boolean).join(" · ");
@@ -127,7 +133,10 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
         <span className="analysis-basis-bar__signal" aria-hidden>●</span>
         <span className="analysis-basis-bar__label">{T.basis}</span>
         <strong>{label}</strong>
-        <span className="analysis-basis-bar__meta">{number(report.rowCount, locale)} {T.rows} · {number(report.periodCount, locale)} {T.periods}</span>
+        <span className="analysis-basis-bar__meta">
+          {number(report.rowCount, locale)} {T.rows}
+          {report.requiresDate ? ` · ${number(report.periodCount, locale)} ${T.periods}` : ""}
+        </span>
         {status && <EvidenceStatusBadge status={status} locale={locale} />}
       </div>
 

@@ -5,6 +5,7 @@ import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
 // Apple Ads export가 "유효한 핵심 지표 없음"으로 차단된다.
 const DIMENSION_KEYS = new Set(["channel", "campaign_name", "campaign_id", "ad_group", "adgroup_name", "creative_name", "creative_id", "country", "platform", "store_source", "search_term", "match_type"]);
 const EMPTY = (value) => value == null || String(value).trim() === "";
+const SUMMARY_LABEL = /^(?:grand\s+total|sub\s*total|total|subtotal|average|avg|총계|합계|소계|평균)$/i;
 
 function normalizeFieldValue(value, field) {
   if (EMPTY(value)) return null;
@@ -17,9 +18,26 @@ function normalizeFieldValue(value, field) {
   return String(value).trim();
 }
 
-function isSummaryRow(row) {
-  const values = Object.values(row || {}).map((value) => String(value ?? "").trim()).filter(Boolean);
-  return values.length > 0 && values.every((value) => /^(total|subtotal|합계|소계)$/i.test(value));
+export function isSummaryRow(row, { headers = Object.keys(row || {}), mapping = {} } = {}) {
+  const entries = headers
+    .map((header) => ({ header, value: String(row?.[header] ?? "").trim(), standardKey: mapping[header] }))
+    .filter(({ value }) => value !== "");
+  if (!entries.length) return false;
+  if (entries.every(({ value }) => SUMMARY_LABEL.test(value))) return true;
+
+  // 날짜가 유효한 실제 데이터행에서 캠페인명이 "Total"인 경우는 지우지 않는다.
+  // 반대로 날짜 셀 자체가 합계 라벨이면 나머지 지표값이 숫자여도 명백한 summary다.
+  const dateEntry = entries.find(({ standardKey }) => standardKey === "date");
+  if (dateEntry && SUMMARY_LABEL.test(dateEntry.value)) return true;
+  if (dateEntry && normalizeDateValue(dateEntry.value)) return false;
+
+  const labelEntry = entries.find(({ standardKey, value }) => (
+    SUMMARY_LABEL.test(value) && DIMENSION_KEYS.has(standardKey)
+  ));
+  if (!labelEntry) return false;
+  return entries.every(({ value }) => (
+    value === labelEntry.value || SUMMARY_LABEL.test(value) || Boolean(normalizeNumericValue(value))
+  ));
 }
 
 export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } = {}) {
@@ -33,7 +51,7 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
       emptyRowsRemoved += 1;
       return;
     }
-    if (isSummaryRow(row)) {
+    if (isSummaryRow(row, { headers, mapping })) {
       summaryRowsRemoved += 1;
       return;
     }

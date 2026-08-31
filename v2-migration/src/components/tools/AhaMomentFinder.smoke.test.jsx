@@ -20,7 +20,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
-import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
+import AhaMomentFinder, { computeAhaCache } from "@/components/tools/AhaMomentFinder";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -126,6 +126,22 @@ describe("AhaMomentFinder render smoke", () => {
     seedWithData();
     expect(() => render(<AhaMomentFinder />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
+  });
+
+  it("keeps thousands-separated action counts at their full numeric value", () => {
+    const rows = [
+      { retained: "1", purchase: "1,000" },
+      { retained: "1", purchase: "1,200" },
+      { retained: "0", purchase: "10" },
+      { retained: "0", purchase: "20" },
+    ];
+    const cache = computeAhaCache(rows, {
+      retained: { role: "target" },
+      purchase: { role: "feature", action: "purchase", window: 7 },
+    }, 1, false);
+
+    expect(cache.results[0]).toMatchObject({ bestK: 1000 });
+    expect(cache.results[0].train.F1).toBe(1);
   });
 
   it("prefills and stores one controlled action experiment under tool 5-20", async () => {

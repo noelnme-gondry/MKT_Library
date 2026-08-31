@@ -2,19 +2,20 @@
 // detrend=true는 중앙 이동평균(주=13, 월=5)을 추세선으로 사용해
 // value / trend × 100 인덱스로 바꾼다. 완전한 인과 분해가 아니라, 규모 성장·하락을
 // 걷어낸 반복 캘린더 패턴을 읽기 위한 결정론적 STL-lite 보정이다.
+import { parseDateValue } from "@/lib/data-import/normalizeValues";
 
 function periodOf(value) {
   const text = String(value || "").trim();
   if (!text) return null;
-  const weekly = text.match(/^(\d{4})\s*(?:-|\/|\.)?\s*(?:W|week\s*|주\s*)(\d{1,2})(?:주차?)?$/i)
-    || text.match(/^(\d{4})년\s*(\d{1,2})주(?:차)?$/);
-  if (weekly) return { sourceGrain: "week", year: Number(weekly[1]), bucket: Number(weekly[2]) };
-  const monthly = text.match(/^(\d{4})\s*(?:-|\/|\.)\s*(\d{1,2})$/)
-    || text.match(/^(\d{4})년\s*(\d{1,2})월$/);
-  if (monthly) return { sourceGrain: "month", year: Number(monthly[1]), bucket: Number(monthly[2]) };
-  const d = new Date(`${text.slice(0, 10)}T12:00:00Z`);
-  if (Number.isNaN(d.getTime())) return null;
-  return { sourceGrain: "day", date: d, year: d.getUTCFullYear(), bucket: d.getUTCMonth() + 1 };
+  const parsed = parseDateValue(text, { minYear: 1900, maxYear: 2200 });
+  if (!parsed) return null;
+  if (parsed.grain === "week") {
+    return { sourceGrain: "week", year: Number(parsed.canonical.slice(0, 4)), bucket: Number(parsed.canonical.slice(-2)) };
+  }
+  if (parsed.grain === "month") {
+    return { sourceGrain: "month", year: Number(parsed.canonical.slice(0, 4)), bucket: Number(parsed.canonical.slice(-2)) };
+  }
+  return { sourceGrain: "day", date: parsed.date, year: parsed.date.getUTCFullYear(), bucket: parsed.date.getUTCMonth() + 1 };
 }
 
 export function getIsoWeek(date) {

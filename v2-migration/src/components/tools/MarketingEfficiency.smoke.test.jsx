@@ -5,7 +5,7 @@
 // asserts the component MOUNTS without throwing in the no-data and with-data
 // states (including the response-curve chart effect once >=1 fittable entity).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingEfficiency from "@/components/tools/MarketingEfficiency";
 
@@ -105,5 +105,25 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
     act(() => useAppStore.getState().setDenomBasis("actions"));
     expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+  });
+
+  it("uses native buttons to select a response curve from the ranking table", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency />);
+
+    const google = screen.getByRole("button", { name: "Google 응답곡선 보기" });
+    const meta = screen.getByRole("button", { name: "Meta 응답곡선 보기" });
+    expect(google.tagName).toBe("BUTTON");
+    expect(google.tabIndex).toBe(0);
+    const initiallySelected = [google, meta].filter((button) => button.getAttribute("aria-pressed") === "true");
+    expect(initiallySelected).toHaveLength(1);
+    const next = initiallySelected[0] === google ? meta : google;
+
+    next.focus();
+    expect(document.activeElement).toBe(next);
+    fireEvent.click(next);
+    expect(next.getAttribute("aria-pressed")).toBe("true");
+    expect(initiallySelected[0].getAttribute("aria-pressed")).toBe("false");
   });
 });

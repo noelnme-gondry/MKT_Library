@@ -86,7 +86,7 @@ export default async function Page({ params }) {
       <h2>Filling it in</h2>
       <ul className="template-detail__rules">
         <li>Use <code>YYYY-MM-DD</code> for every date. Mixed formats break period comparisons.</li>
-        <li>Numeric columns may contain thousands separators, but no currency symbols or text.</li>
+        <li>Numeric columns may use thousands separators and common currency wrappers such as <code>₩</code>, <code>$</code>, <code>KRW</code>, <code>USD</code>, or <code>원</code>. Arbitrary text is rejected, so plain numbers remain the safest format.</li>
         <li>Rows missing a required column are excluded. Zero and blank are treated differently.</li>
         <li>Extra columns are fine—anything this tool does not use is ignored.</li>
       </ul>

@@ -26,6 +26,20 @@ describe("buildCanonicalDataset", () => {
     expect(dataset.summary).toMatchObject({ outputRows: 1, emptyRowsRemoved: 1, summaryRowsRemoved: 1 });
   });
 
+  it("removes numeric total rows without deleting a real campaign named Total", () => {
+    const dataset = buildCanonicalDataset({
+      headers: ["날짜", "캠페인", "비용"],
+      mapping: { 날짜: "date", 캠페인: "campaign_name", 비용: "cost" },
+      raw: [
+        { 날짜: "합계", 캠페인: "", 비용: "900" },
+        { 날짜: "", 캠페인: "Grand Total", 비용: "900" },
+        { 날짜: "2026-08-31", 캠페인: "Total", 비용: "100" },
+      ],
+    });
+    expect(dataset.summary).toMatchObject({ outputRows: 1, summaryRowsRemoved: 2 });
+    expect(dataset.records[0]).toMatchObject({ date: "2026-08-31", dimensions: { campaign_name: "Total" }, metrics: { cost: 100 } });
+  });
+
   it("keeps invalid values out of metrics and reports them", () => {
     const dataset = buildCanonicalDataset({
       headers: ["날짜", "비용"],

@@ -24,4 +24,16 @@ describe("V2 compatibility adapter", () => {
       semanticBindings: [{ sourceColumn: "Expense", canonicalKey: "row_id", decision: "SUGGEST", source: "user" }],
     })).toEqual([{ date: "2026-01-01", installs: "2" }]);
   });
+
+  it("excludes summary and invalid-date rows from calculations while normalizing valid values", () => {
+    expect(buildLegacyRows({
+      toolId: "5-2",
+      raw: [
+        { Date: "08/31/2026", Cost: "1,350,000원", Actions: "10" },
+        { Date: "not-a-date", Cost: "900", Actions: "90" },
+        { Date: "합계", Cost: "900", Actions: "100" },
+      ],
+      legacyMapping: { Date: "date", Cost: "cost", Actions: "actions" },
+    })).toEqual([{ date: "2026-08-31", cost: "1350000", spend: "1350000", actions: "10" }]);
+  });
 });

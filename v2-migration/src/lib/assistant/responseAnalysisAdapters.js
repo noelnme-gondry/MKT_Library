@@ -12,6 +12,30 @@ function tr(locale, ko, en) {
   return locale === "en" ? en : ko;
 }
 
+function trendPeriodTerms(cadence, locale) {
+  const isMonthly = cadence === "monthly";
+  return {
+    analysisCadence: isMonthly ? "monthly" : "weekly",
+    periodLabel: tr(locale, isMonthly ? "월" : "주차", isMonthly ? "month" : "week"),
+    panelLabel: tr(locale, isMonthly ? "월간 패널" : "주간 패널", isMonthly ? "monthly panel" : "weekly panel"),
+  };
+}
+
+function trendManifest(prepared, observedPeriodCount, details = {}) {
+  const sourceCadence = prepared?.cadence || "unknown";
+  const cadenceCount = sourceCadence === "monthly"
+    ? { observedMonthCount: observedPeriodCount }
+    : sourceCadence === "weekly"
+      ? { observedWeekCount: observedPeriodCount }
+      : {};
+  return {
+    sourceCadence,
+    observedPeriodCount,
+    ...cadenceCount,
+    ...details,
+  };
+}
+
 function resultInput(input = {}) {
   return {
     csvData: input.csvData || {},
@@ -92,23 +116,24 @@ function responsePanel(csvData, locale) {
   if (!headers.length || !raw.length) return { reason: "no_rows" };
   const colMap = buildResponseAdapterColMap(csvData);
   const cadence = inferMappedDateCadence(csvData);
+  const cadenceInfo = { cadence: cadence.cadence, inferredPeriodCount: cadence.periodCount || 0 };
   const missing = colMapMissing(headers, colMap, locale);
-  if (missing.length) return { reason: "mapping", missing };
+  if (missing.length) return { reason: "mapping", missing, ...cadenceInfo };
   const built = buildPanelFromColMap(headers, raw, colMap, "all", locale, null, {
     weekStart: "monday",
     periodUnit: cadence.cadence === "monthly" ? "monthly" : "weekly",
   });
-  if (built.missing?.length) return { reason: "mapping", missing: built.missing };
+  if (built.missing?.length) return { reason: "mapping", missing: built.missing, ...cadenceInfo };
   const panel = built.panel;
   const target = TARGET_PRIORITY.find((name) => (
     Array.isArray(panel.targets?.[name]) && panel.targets[name].some((value) => Number.isFinite(Number(value)))
   ));
-  if (!target) return { reason: "target" };
+  if (!target) return { reason: "target", ...cadenceInfo };
   const quality = mmmDataQualityAudit(panel);
-  if (!quality.valid) return { reason: "quality", quality };
+  if (!quality.valid) return { reason: "quality", quality, ...cadenceInfo };
   const validation = mmmValidate(panel, locale, target);
-  if (validation.issues?.length) return { reason: "validation", validation };
-  return { panel, target, colMap, quality, validation, cadence: cadence.cadence };
+  if (validation.issues?.length) return { reason: "validation", validation, quality, ...cadenceInfo };
+  return { panel, target, colMap, quality, validation, ...cadenceInfo };
 }
 
 // 월간 입력은 경계 달의 완결 여부를 데이터만으로 확인할 수 없다(MmmColumnMapper 참조).
@@ -122,27 +147,37 @@ function boundaryCaveats(prepared, locale) {
   )];
 }
 
-function trendHeadline(locale, verdict) {
+function trendHeadline(locale, verdict, cadence) {
+  const { analysisCadence } = trendPeriodTerms(cadence, locale);
   if (String(verdict).startsWith("NO robust trend")) {
     return tr(locale, "관측 기간에서 견고한 자연 추세 신호를 확인하지 못했습니다.", "No robust natural-trend signal was confirmed in the observed period.");
   }
   if (String(verdict).startsWith("Trend EXISTS") || String(verdict).startsWith("trend EXISTS")) {
-    return tr(locale, "광고 변수와 별개로 남는 주간 추세 신호가 관측됩니다.", "A weekly trend signal remains after the model's media controls.");
+    return tr(
+      locale,
+      `광고 변수와 별개로 남는 ${analysisCadence === "monthly" ? "월간" : "주간"} 추세 신호가 관측됩니다.`,
+      `A ${analysisCadence} trend signal remains after the model's media controls.`,
+    );
   }
-  return tr(locale, "주간 추세 신호가 있으나 계절성 또는 미디어와 분리해 단정할 수 없습니다.", "A weekly trend signal is present, but cannot be separated decisively from seasonality or media.");
+  return tr(
+    locale,
+    `${analysisCadence === "monthly" ? "월간" : "주간"} 추세 신호가 있으나 계절성 또는 미디어와 분리해 단정할 수 없습니다.`,
+    `A ${analysisCadence} trend signal is present, but cannot be separated decisively from seasonality or media.`,
+  );
 }
 
 function trendAdapter(input) {
   const { csvData, inputSignature, mappingSignature, locale } = resultInput(input);
   requireSignatures({ inputSignature, mappingSignature });
   const prepared = responsePanel(csvData, locale);
+  const { analysisCadence, periodLabel, panelLabel } = trendPeriodTerms(prepared.cadence, locale);
   if (!prepared.panel) {
     const messages = {
       no_rows: tr(locale, "추세 분석을 위한 CSV 행이 없습니다.", "There are no CSV rows for trend analysis."),
-      mapping: tr(locale, "추세 분석에는 주차·성과·채널 지출 매핑이 필요합니다.", "Trend analysis needs week, outcome, and channel-spend mappings."),
+      mapping: tr(locale, `추세 분석에는 ${periodLabel}·성과·채널 지출 매핑이 필요합니다.`, `Trend analysis needs ${periodLabel}, outcome, and channel-spend mappings.`),
       target: tr(locale, "추세로 볼 수 있는 유효한 성과 시계열을 찾지 못했습니다.", "No valid outcome time series was found for trend analysis."),
-      quality: tr(locale, "주간 패널에 결측 또는 중복이 있어 추세를 계산하지 않았습니다.", "The weekly panel has missing or duplicate values, so trend was not calculated."),
-      validation: tr(locale, "주간 패널 검증을 통과하지 않아 추세를 계산하지 않았습니다.", "The weekly panel did not pass validation, so trend was not calculated."),
+      quality: tr(locale, `${panelLabel}에 결측 또는 중복이 있어 추세를 계산하지 않았습니다.`, `The ${panelLabel} has missing or duplicate values, so trend was not calculated.`),
+      validation: tr(locale, `${panelLabel} 검증을 통과하지 않아 추세를 계산하지 않았습니다.`, `The ${panelLabel} did not pass validation, so trend was not calculated.`),
     };
     return noResult({
       toolId: "5-18-trend", inputSignature, mappingSignature, locale,
@@ -151,15 +186,19 @@ function trendAdapter(input) {
       manifest: {
         engine: "mmmTrendExistence",
         reason: prepared.reason || "unknown",
-        observedWeekCount: prepared.quality?.n || 0,
+        ...trendManifest(prepared, prepared.quality?.n || prepared.inferredPeriodCount || 0),
       },
     });
   }
   if (prepared.quality.n < 3) {
+    const periodSubjectKo = analysisCadence === "monthly" ? `${periodLabel}이` : `${periodLabel}가`;
     return noResult({
       toolId: "5-18-trend", inputSignature, mappingSignature, locale,
-      headline: tr(locale, "추세를 해석하려면 비교 가능한 주차가 최소 3개 필요합니다.", "At least three comparable weeks are needed to interpret a trend."),
-      manifest: { engine: "mmmTrendExistence", reason: "insufficient_weeks", observedWeekCount: prepared.quality.n },
+      headline: tr(locale, `추세를 해석하려면 비교 가능한 ${periodSubjectKo} 최소 3개 필요합니다.`, `At least three comparable ${periodLabel}s are needed to interpret a trend.`),
+      manifest: {
+        engine: "mmmTrendExistence",
+        ...trendManifest(prepared, prepared.quality.n, { reason: `insufficient_${analysisCadence === "monthly" ? "months" : "weeks"}` }),
+      },
     });
   }
   let trend;
@@ -172,8 +211,8 @@ function trendAdapter(input) {
   } catch {
     return noResult({
       toolId: "5-18-trend", inputSignature, mappingSignature, locale,
-      headline: tr(locale, "추세 검정 엔진이 현재 주간 패널을 계산하지 못했습니다.", "The trend-test engine could not calculate this weekly panel."),
-      manifest: { engine: "mmmTrendExistence", reason: "engine_error", observedWeekCount: prepared.quality.n },
+      headline: tr(locale, `추세 검정 엔진이 현재 ${panelLabel}을 계산하지 못했습니다.`, `The trend-test engine could not calculate this ${panelLabel}.`),
+      manifest: { engine: "mmmTrendExistence", ...trendManifest(prepared, prepared.quality.n, { reason: "engine_error" }) },
     });
   }
   const points = (trend.stl?.trend || []).map((value, index) => ({
@@ -184,7 +223,7 @@ function trendAdapter(input) {
     return noResult({
       toolId: "5-18-trend", inputSignature, mappingSignature, locale,
       headline: tr(locale, "계산 가능한 추세선이 충분하지 않아 결과를 보류했습니다.", "There are not enough computable trend points, so the result was withheld."),
-      manifest: { engine: "mmmTrendExistence", reason: "insufficient_trend_points", observedWeekCount: prepared.quality.n },
+      manifest: { engine: "mmmTrendExistence", ...trendManifest(prepared, prepared.quality.n, { reason: "insufficient_trend_points" }) },
     });
   }
   return createAnalysisResult({
@@ -194,7 +233,7 @@ function trendAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "descriptive",
-      headline: trendHeadline(locale, trend.verdict),
+      headline: trendHeadline(locale, trend.verdict, prepared.cadence),
       stats: [
         { id: "trend-change-pct", label: tr(locale, "STL 추세 변화", "STL trend change"), value: finite(trend.stl_pct), unit: "%" },
         { id: "deseasonalized-mk-p", label: tr(locale, "계절 제거 MK p", "Deseasonalized MK p"), value: finite(trend.mk_deseason?.[1]) },
@@ -214,8 +253,7 @@ function trendAdapter(input) {
       engine: "mmmTrendExistence",
       status: "COMPLETE",
       target: prepared.target,
-      observedWeekCount: prepared.quality.n,
-      sourceCadence: prepared.cadence,
+      ...trendManifest(prepared, prepared.quality.n),
       trendMethod: trend.stl?.method || null,
       evidenceState: "descriptive",
     },

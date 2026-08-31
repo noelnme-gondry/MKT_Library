@@ -5,17 +5,10 @@
 // (content/glossary-en) — 같은 slug로 KR/EN 짝 파일 매칭(blog.js와 동일 규약).
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
-
-const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
-const GLOSSARY_DIRS = {
-  ko: path.resolve(MODULE_DIR, "../../content/glossary"),
-  en: path.resolve(MODULE_DIR, "../../content/glossary-en"),
-};
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -28,14 +21,16 @@ function localizeInternalLinks(html, locale) {
 
 function readDir(locale) {
   try {
-    return fs.readdirSync(GLOSSARY_DIRS[locale]);
+    const directory = locale === "en" ? "glossary-en" : "glossary";
+    return fs.readdirSync(path.join(process.cwd(), "content", directory));
   } catch {
     return [];
   }
 }
 
 function parseFile(fileName, locale) {
-  const filePath = path.join(GLOSSARY_DIRS[locale], fileName);
+  const directory = locale === "en" ? "glossary-en" : "glossary";
+  const filePath = path.join(process.cwd(), "content", directory, fileName);
   const raw = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
   const slug = data.slug || fileName.replace(/\.md$/, "");

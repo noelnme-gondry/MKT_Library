@@ -1803,39 +1803,45 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       {row.map((cell) => {
                         const isSel = selectedCell && selectedCell.row === cell.row && selectedCell.col === cell.col;
                         const clickable = cell.status !== "empty";
+                        const cellContent = (
+                          <>
+                            <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)" }}>
+                              {(MATRIX_STATUS_LABEL[locale] || MATRIX_STATUS_LABEL.ko)[cell.status]}{cell.n ? ` · n=${cell.n}` : ""}{isSel ? tr(" ★ 선택됨", " ★ selected") : ""}
+                            </span>
+                            {cell.status !== "empty" ? (
+                              <>
+                                <span className="tnum" style={{ display: "block" }}>CTR {fmtPct(cell.ctr)}</span>
+                                <span className="tnum" style={{ display: "block", color: "var(--text-muted)" }}>CVR {fmtPct(cell.cvr)}</span>
+                              </>
+                            ) : (
+                              <span style={{ display: "block", color: "var(--text-muted)" }}>—</span>
+                            )}
+                          </>
+                        );
                         return (
                           <td
                             key={`${cell.row}|${cell.col}`}
-                            onClick={
-                              clickable
-                                ? () =>
-                                    setSelectedCell(
-                                      isSel ? null : { row: cell.row, col: cell.col },
-                                    )
-                                : undefined
-                            }
                             style={{
                               background: MATRIX_STATUS_COLOR[cell.status],
-                              padding: "8px",
+                              padding: 0,
                               fontSize: "11px",
                               lineHeight: 1.5,
                               textAlign: "left",
                               verticalAlign: "top",
-                              cursor: clickable ? "pointer" : "default",
-                              outline: isSel ? "2px solid var(--primary, #adc6ff)" : "none",
-                              outlineOffset: isSel ? "-2px" : undefined,
                             }}
                           >
-                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                              {(MATRIX_STATUS_LABEL[locale] || MATRIX_STATUS_LABEL.ko)[cell.status]}{cell.n ? ` · n=${cell.n}` : ""}{isSel ? tr(" ★ 선택됨", " ★ selected") : ""}
-                            </div>
-                            {cell.status !== "empty" ? (
-                              <>
-                                <div className="tnum">CTR {fmtPct(cell.ctr)}</div>
-                                <div className="tnum" style={{ color: "var(--text-muted)" }}>CVR {fmtPct(cell.cvr)}</div>
-                              </>
+                            {clickable ? (
+                              <button
+                                type="button"
+                                className="creative-matrix-cell__button"
+                                aria-label={tr(`${cell.row} × ${cell.col} 조합 필터`, `Filter by ${cell.row} × ${cell.col} combination`)}
+                                aria-pressed={Boolean(isSel)}
+                                onClick={() => setSelectedCell(isSel ? null : { row: cell.row, col: cell.col })}
+                              >
+                                {cellContent}
+                              </button>
                             ) : (
-                              <div style={{ color: "var(--text-muted)" }}>—</div>
+                              <div className="creative-matrix-cell__content">{cellContent}</div>
                             )}
                           </td>
                         );

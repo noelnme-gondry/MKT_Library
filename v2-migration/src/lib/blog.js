@@ -4,7 +4,6 @@
 // locale: "ko"(기본, content/blog) | "en"(content/blog-en) — 같은 slug로 KR/EN 짝 파일 매칭.
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
@@ -13,19 +12,14 @@ import { getBlogSeo } from "@/lib/blogSeo";
 import { getBlogEditorial } from "@/lib/blogEditorial";
 import { decodeTextEntitiesOnce, stripHtmlTags } from "@/lib/htmlText";
 
-const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
-const BLOG_DIRS = {
-  ko: path.resolve(MODULE_DIR, "../../content/blog"),
-  en: path.resolve(MODULE_DIR, "../../content/blog-en"),
-};
-
 // 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
 // 굳이 확장하지 않음). gfm=마크다운 표/자동링크 지원.
 marked.setOptions({ gfm: true, breaks: false });
 
 function readDir(locale) {
   try {
-    return fs.readdirSync(BLOG_DIRS[locale]);
+    const directory = locale === "en" ? "blog-en" : "blog";
+    return fs.readdirSync(path.join(process.cwd(), "content", directory));
   } catch {
     // 디렉토리 없거나 접근 불가 → 글 0편으로 취급.
     return [];
@@ -103,7 +97,8 @@ function consolidateTags(rawTags, locale) {
 }
 
 function parseFile(fileName, locale) {
-  const filePath = path.join(BLOG_DIRS[locale], fileName);
+  const directory = locale === "en" ? "blog-en" : "blog";
+  const filePath = path.join(process.cwd(), "content", directory, fileName);
   const raw = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
   const slug = data.slug || fileName.replace(/\.md$/, "");
