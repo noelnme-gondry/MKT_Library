@@ -106,7 +106,9 @@ function buildEfficiency() {
   });
   const mapping = {};
   headers.forEach((h) => { mapping[h] = h; }); // all headers are canonical std keys
-  return { raw, headers, mapping, fileName: "demo_efficiency.csv" };
+  // 생성 금액은 KRW 스케일이다. 원본 통화가 없으면 표시 토글이 숫자를 다른 통화로
+  // 오해하게 하므로 데모도 실제 업로드와 같은 통화 계약을 갖는다.
+  return { raw, headers, mapping, fileName: "demo_efficiency.csv", currency: "KRW" };
 }
 
 // ── aso_store (5-27) ───────────────────────────────────────────────────────

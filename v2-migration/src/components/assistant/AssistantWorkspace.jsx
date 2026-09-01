@@ -17,6 +17,7 @@ import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { sourceCurrencyOf } from "@/utils/format";
 
 const COPY = {
   ko: {
@@ -544,6 +545,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const C = COPY[locale] || COPY.ko;
   const denomBasis = useAppStore((state) => state.denomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const [queue, setQueue] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const [isPreparingHandoff, setIsPreparingHandoff] = useState(false);
@@ -552,8 +554,8 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const currentMappingSignature = useMemo(() => JSON.stringify({
     mapping: csvData.mapping || {},
     denomBasis: resolvedDenomBasis,
-    displayCurrency,
-  }), [csvData.mapping, displayCurrency, resolvedDenomBasis]);
+    displayCurrency: dataCurrency,
+  }), [csvData.mapping, dataCurrency, resolvedDenomBasis]);
   const previousSignatureRef = useRef(`${currentInputSignature}:${currentMappingSignature}`);
   const autoStartedSignatureRef = useRef("");
   const handoffPreparationCacheRef = useRef(new Map());
@@ -701,7 +703,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           inputSignature: currentInputSignature,
           mappingSignature: currentMappingSignature,
           locale,
-          options: { denomBasis: resolvedDenomBasis, displayCurrency },
+          options: { denomBasis: resolvedDenomBasis, displayCurrency: dataCurrency },
         });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, result })
@@ -727,7 +729,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         else window.clearTimeout(innerFrame);
       }
     };
-  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, displayCurrency, locale, mappingsByTool, queue?.signature, queueSignature, resolvedDenomBasis]);
+  }, [C.adapterError, C.adapterPendingDetail, activeQueueItem, csvData, currentInputSignature, currentMappingSignature, dataCurrency, locale, mappingsByTool, queue?.signature, queueSignature, resolvedDenomBasis]);
 
   const startNext = useCallback(() => {
     const canContinue = queue

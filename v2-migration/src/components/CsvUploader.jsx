@@ -39,6 +39,7 @@ import SemanticMappingTable from "@/components/data-import/SemanticMappingTable"
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
+import { sourceCurrencyOf } from "@/utils/format";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -123,6 +124,9 @@ const CSV_COPY = {
     checkMapping: "⚠ 매핑 확인 필요",
     checkMappingHint: '매핑이 올바른지 확인 후 "분석하기"를 클릭하여 분석을 시작하세요.',
     analyzeBtn: "데이터 분석하기",
+    sourceCurrencyLabel: "원본 데이터 통화",
+    sourceCurrencyHint: "금액 숫자의 단위입니다. 환산하지 않으며, 선택을 바꾸면 분석을 다시 확인해야 합니다.",
+    sourceCurrencyMissing: "금액은 숫자만으로 통화를 알 수 없습니다. 분석 전에 원본 단위를 선택하세요.",
     recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
     recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
     mappingConfirmed: "자동 확정",
@@ -202,6 +206,9 @@ const CSV_COPY = {
     checkMapping: "⚠ Check mapping",
     checkMappingHint: 'Confirm the mapping is correct, then click "Analyze" to start.',
     analyzeBtn: "Analyze data",
+    sourceCurrencyLabel: "Source data currency",
+    sourceCurrencyHint: "This declares the unit of monetary values. No conversion is applied, and changing it requires re-analysis.",
+    sourceCurrencyMissing: "Currency cannot be inferred from bare numbers. Select the source unit before analysis.",
     recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
     recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
     mappingConfirmed: "Auto-confirmed",
@@ -269,6 +276,7 @@ export default function CsvUploader({
   const workspaceStorageError = useAppStore((s) => s.workspaceStorageError);
   const deviceStorageEnabled = useAppStore((s) => s.decisionPersistenceEnabled);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
   const requestAd = useAppStore((s) => s.requestAd);
@@ -652,6 +660,7 @@ export default function CsvUploader({
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group, locale);
     setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: buildLegacyRows({ raw: demo.raw, legacyMapping: demo.mapping, toolId }) });
+    if (demo.currency) setDisplayCurrency(demo.currency);
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
   };
@@ -662,6 +671,17 @@ export default function CsvUploader({
   // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
   // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
   const sheetSourceScope = TOOL_GROUP[toolId] || "efficiency";
+  const mappedCurrencyFields = Object.values(csvData?.mapping || {}).filter((field) =>
+    field === "cost" || field === "spend" || String(field).startsWith("revenue_"));
+  const requiresSourceCurrency = sheetSourceScope === "efficiency" && mappedCurrencyFields.length > 0;
+  const sourceCurrency = sourceCurrencyOf(csvData);
+  const currencyMissing = !isDemo && requiresSourceCurrency && !sourceCurrency;
+  const chooseSourceCurrency = (currency) => {
+    setCsvData({ ...csvData, currency });
+    // 효율 도구 전반은 원본 금액을 환산하지 않는다. 전역 포맷 fallback도 같은
+    // 단위로 맞춰, 다른 화면에서 마지막 표시 통화가 새어 들어오지 않게 한다.
+    setDisplayCurrency(currency);
+  };
   const currentWorkspaceDataset = workspaceDatasetSummaries.find((entry) => entry.group === sheetSourceScope && entry.fileName === csvData?.fileName && entry.rowCount === csvData?.raw?.length);
   const isWorkspaceSavePending = deviceStorageEnabled && !!csvData?.workspaceSource && !currentWorkspaceDataset;
   // 자동 로드하지 않는다. 예전에는 도구에 들어가면 곧장 샘플 분석 화면이 떠서,
@@ -869,15 +889,17 @@ export default function CsvUploader({
   const needsReview = mappingAssessments.filter((assessment) => assessment.state === "review" || assessment.state === "must_confirm").length;
   const mappingBlocked = mappingConflicts.length > 0 || hasRequiredMustConfirm;
   const semanticBlocked = !isDemo && semanticEligibility.status === "blocked";
-  const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked || semanticBlocked);
+  const analysisBlocked = currencyMissing || (missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked || semanticBlocked));
   const analysisSource = isDemo ? "demo" : isSheetSourced ? "google_sheets" : csvData?.importSource || "csv";
   const blockedState = missing.length > 0
     ? "missing_required"
     : mappingConflicts.length > 0
       ? "mapping_conflict"
       : hasRequiredMustConfirm
-        ? "mapping_confirmation"
-        : dataEligibility?.status === "blocked"
+      ? "mapping_confirmation"
+      : currencyMissing
+        ? "source_currency"
+      : dataEligibility?.status === "blocked"
           ? dataEligibility?.blockers?.[0]?.code || "data_eligibility"
           : semanticBlocked
             ? "semantic_mapping"
@@ -974,6 +996,18 @@ export default function CsvUploader({
           </button>
         )}
       </div>
+      {requiresSourceCurrency && !isDemo && (
+        <section className="required-banner" data-currency-scope="declare" style={{ borderLeftColor: currencyMissing ? "var(--warning)" : "var(--primary)" }}>
+          <strong>{T.sourceCurrencyLabel}</strong>
+          <p className="muted" style={{ margin: "0.35rem 0 0.7rem", fontSize: "11.5px" }}>
+            {currencyMissing ? T.sourceCurrencyMissing : T.sourceCurrencyHint}
+          </p>
+          <div className="analysis-control-group" role="group" aria-label={T.sourceCurrencyLabel}>
+            <button type="button" className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} aria-pressed={sourceCurrency === "KRW"} onClick={() => chooseSourceCurrency("KRW")}>{locale === "en" ? "KRW ₩" : "원 ₩"}</button>
+            <button type="button" className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} aria-pressed={sourceCurrency === "USD"} onClick={() => chooseSourceCurrency("USD")}>{locale === "en" ? "USD $" : "달러 $"}</button>
+          </div>
+        </section>
+      )}
       {csvData.importInsights?.recipeApplied && (
         <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
       )}

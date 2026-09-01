@@ -10,6 +10,7 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { downloadXlsx } from "@/utils/download";
 import * as XLSX from "xlsx";
+import { sourceCurrencyOf } from "@/utils/format";
 
 const METRICS = [
   { key: "installs", ko: "설치", en: "Installs", kind: "count" },
@@ -31,6 +32,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const mappedKeys = useMemo(() => new Set(Object.values(csvData?.mapping || {})), [csvData]);
   const availableMetrics = METRICS.filter((metric) => metric.ratio
     ? mappedKeys.has(metric.ratio.numerator) && mappedKeys.has(metric.ratio.denominator)
@@ -62,7 +64,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     const common = chartCommonOpts();
     // 실제값 축 포맷(통화/비율/카운트) — detrend 무관하게 원 단위로 표기.
     const valueTickFormat = (value) => {
-      if (selected?.kind === "currency") return fmtCurrencyPrecise(Number(value), displayCurrency);
+      if (selected?.kind === "currency") return fmtCurrencyPrecise(Number(value), dataCurrency);
       if (selected?.kind === "percent") return `${(Number(value) * 100).toFixed(1)}%`;
       return Math.round(Number(value)).toLocaleString();
     };
@@ -146,7 +148,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     }
     window.requestAnimationFrame(() => Object.values(chartsRef.current).forEach((chart) => chart?.resize()));
     return () => Object.values(chartsRef.current).forEach((chart) => chart?.destroy());
-  }, [result, activeGrain, detrend, locale, displayCurrency, selected?.kind]);
+  }, [result, activeGrain, detrend, locale, dataCurrency, selected?.kind]);
 
   if (!availableMetrics.length) return <p className="muted">{locale === "en" ? "Map a date column and at least one metric (installs, signups, revenue, or spend) to view seasonality." : "날짜와 설치·가입·매출·지출 중 하나를 매핑하면 시즈널리티를 볼 수 있습니다."}</p>;
 

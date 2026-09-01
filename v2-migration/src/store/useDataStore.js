@@ -143,7 +143,7 @@ async function restoreWorkspaceSlice(entry) {
 
 // ── Analyze-gate signature (index.html toolAnalyzeSig 이식, §12.5) ───────────
 // SINGLE source of the "mapping I confirmed by pressing 분석하기" signature.
-// Covers ONLY the column mapping (+ fileName + row count) — NOT exploratory
+// Covers the column mapping + source-currency declaration (+ fileName + row count) — NOT exploratory
 // toggles (target/platform/metric/grain) so users can freely switch AFTER
 // analysis. Changing the mapping changes the sig → the stored analyzed sig no
 // longer matches → the tool auto-hides results until 분석하기 is pressed again
@@ -161,7 +161,12 @@ export const computeAnalyzeSig = (csvData) => {
     .join("|");
   const fileName = (csvData && csvData.fileName) || "";
   const rowCount = ((csvData && csvData.raw) || []).length;
-  return `${fileName}|${rowCount}|${sig}`;
+  const currency = (csvData && csvData.currency) || "";
+  // Keep the pre-currency signature byte-identical when no declaration exists.
+  // This avoids marking legacy saved reports stale until the user actually
+  // declares a source currency; once declared, changing it invalidates results.
+  const currencySig = currency ? `currency:${currency}|` : "";
+  return `${fileName}|${rowCount}|${currencySig}${sig}`;
 };
 
 export const IA = [
@@ -1152,7 +1157,8 @@ export const useAppStore = create(persist((set, get) => ({
   denomBasis: "installs", // "installs" | "actions"
   setDenomBasis: (basis) => set({ denomBasis: basis }),
 
-  // LTV 표시 옵션 — 표시 통화(₩/$) 토글(§12.18). 값 변환이 아니라 표시 단위만.
+  // 통화 UI 상태. 효율 CSV는 원본 데이터 통화 선언과 같은 값으로 맞추고(환산 없음),
+  // 실제 환산을 구현한 5-18만 별도의 화면 표시 통화로 사용한다.
   displayCurrency: "KRW", // "KRW" | "USD"
   setDisplayCurrency: (cur) => set({ displayCurrency: cur }),
 

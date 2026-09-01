@@ -11,6 +11,7 @@ import { buildLtvData, LTV_DNS, LTVCAC_MATH } from "@/utils/ltvMath";
 import { buildMaturationRows, MATURATION_MATH } from "@/utils/cohortMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import { sourceCurrencyOf } from "@/utils/format";
 
 // 지표 뷰 설정 scope — LTV:CAC 표(§2)의 지표 컬럼 표시/순서.
 const LTV_TABLE_SCOPE = "5-2:ltv-table";
@@ -151,6 +152,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
   const denomBasis = useAppStore((state) => state.denomBasis);
   const setDenomBasis = useAppStore((state) => state.setDenomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const ltvTableCfg = useAppStore((state) => state.viewConfig[LTV_TABLE_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
@@ -286,13 +288,13 @@ export default function LtvTab({ locale = "ko" } = {}) {
           tooltip: {
             ...chartCommonOpts().plugins.tooltip,
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtCurrencyPrecise(ctx.parsed.y, displayCurrency)}`,
+              label: (ctx) => `${ctx.dataset.label}: ${fmtCurrencyPrecise(ctx.parsed.y, dataCurrency)}`,
             },
           },
         },
         scales: {
           x: { ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 14 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: getCssVar("--text-muted"), callback: (v) => fmtCurrencyPrecise(v, displayCurrency) }, grid: { color: getCssVar("--border") } }
+          y: { ticks: { color: getCssVar("--text-muted"), callback: (v) => fmtCurrencyPrecise(v, dataCurrency) }, grid: { color: getCssVar("--border") } }
         }
       }
     });
@@ -300,7 +302,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, rows, displayCurrency, isDarkMode, luLabel]);
+  }, [hasData, rows, dataCurrency, isDarkMode, luLabel]);
 
   if (!hasData) {
     return <div className="tab-pane active" id="tab-ltv"><p className="muted">{T.noData}</p></div>;
@@ -308,7 +310,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
 
   const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(0) + "%";
   const fmtX = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(2) + "×";
-  const fmtCur = (v) => fmtCurrencyPrecise(v, displayCurrency);
+  const fmtCur = (v) => fmtCurrencyPrecise(v, dataCurrency);
   const fmtPb = (v) => v == null ? <span style={{ color: "var(--danger)" }}>{T.paybackUnrecovered}</span> : T.paybackDays(v);
 
   const HEALTHY_RATIO = 3;

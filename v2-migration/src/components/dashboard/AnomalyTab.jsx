@@ -9,7 +9,7 @@ import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
-import { fmtCurrency } from "@/utils/format";
+import { fmtCurrency, sourceCurrencyOf } from "@/utils/format";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import { buildAttributionCache } from "@/utils/anomalyAttribution";
@@ -37,6 +37,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const anomalyTableCfg = useAppStore((state) => state.viewConfig[ANOMALY_TABLE_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
@@ -171,9 +172,9 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const formatValue = useCallback((v) => {
     if (v == null) return "—";
     if (["cvr", "ctr", "roas"].includes(metric)) return (v * 100).toFixed(2) + "%";
-    if (["cost", "cpi", "cpm", "cpa"].includes(metric)) return fmtCurrency(v, { currency: displayCurrency });
+    if (["cost", "cpi", "cpm", "cpa"].includes(metric)) return fmtCurrency(v, { currency: dataCurrency });
     return Math.round(v).toLocaleString();
-  }, [metric, displayCurrency]);
+  }, [metric, dataCurrency]);
 
   useEffect(() => {
     if (!hasData || !metricOpts.length || !dailyData.length || !chartRef.current) return;

@@ -5,6 +5,7 @@ import { IA, useAppStore } from "@/store/useDataStore";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { CONNECTED_TOOLS } from "@/lib/toolConnections";
+import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
 // 워크스페이스 목적지 이름은 사이드바·헤더·푸터와 같은 SSOT에서 받는다.
@@ -76,7 +77,10 @@ export default function GlobalModals({ locale = "ko" }) {
   const entries = useMemo(() => {
     const items = IA.flatMap((group) => group.items.filter((item) => !item.hidden).map((item) => {
       const connectedTool = CONNECTED_TOOLS[item.id];
-      const question = connectedTool?.question?.[locale] || connectedTool?.question?.ko || "";
+      // 보이는 힌트는 랜딩·도구 브리프와 같은 질문 SSOT를 쓴다. 연결 흐름용
+      // 질문은 검색 코퍼스에는 남겨 사용자가 어느 표현으로 찾아도 걸리게 한다.
+      const connectedQuestion = connectedTool?.question?.[locale] || connectedTool?.question?.ko || "";
+      const question = getToolSearchContent(item.id, locale)?.question || connectedQuestion;
       const keywords = connectedTool?.keywords?.[locale] || connectedTool?.keywords?.ko || "";
       const title = trItemTitle(item.id, locale, item.title);
       const groupTitle = trGroupTitle(group.id, locale, group.title);
@@ -88,7 +92,7 @@ export default function GlobalModals({ locale = "ko" }) {
       href: locale === "en" && hasEnVersion(item.id) ? `/en${idToSlug[item.id]}` : idToSlug[item.id],
       kind,
       hint: question || groupTitle,
-      searchText: `${title} ${groupTitle} ${kind} ${question} ${keywords} ${item.seoTitle || ""} ${item.seoDescription || ""} ${item.seoTitleEn || ""} ${item.seoDescriptionEn || ""}`,
+      searchText: `${title} ${groupTitle} ${kind} ${question} ${connectedQuestion} ${keywords} ${item.seoTitle || ""} ${item.seoDescription || ""} ${item.seoTitleEn || ""} ${item.seoDescriptionEn || ""}`,
       // 이름에서 뺀 전문용어(VIF·다중공선성·PVM…)가 제목 가중치로 계속 잡히게 한다.
       searchTitleExtra: `${item.seoTitle || ""} ${item.seoTitleEn || ""}`,
     };

@@ -8,7 +8,7 @@ import { buildCustomChartConfig, buildChartFieldOptions, buildCustomScorecardMod
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
-import { convertCurrency } from "@/utils/format";
+import { sourceCurrencyOf } from "@/utils/format";
 
 const CUSTOM_CHARTS_COPY = {
   ko: {
@@ -60,6 +60,7 @@ export default function CustomChartsSection({
   const selectedCohort = useAppStore((s) => s.selectedCohort);
   const denomBasis = useAppStore((s) => s.denomBasis);
   const displayCurrency = useAppStore((s) => s.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((s) => s.isDarkMode);
   const customMetrics = useAppStore((s) => s.customMetrics[metricScope]);
   const customCharts = useAppStore((s) => s.customCharts[chartScope]);
@@ -127,12 +128,9 @@ export default function CustomChartsSection({
       metricUnitOf,
     });
   };
-  const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
   const formatScorecard = (model) => formatCustomScorecardValue(
-    model?.unit === "currency" && model.value != null
-      ? { ...model, value: convertCurrency(Number(model.value), sourceCurrency, displayCurrency) }
-      : model,
-    displayCurrency,
+    model,
+    dataCurrency,
     locale,
   );
 

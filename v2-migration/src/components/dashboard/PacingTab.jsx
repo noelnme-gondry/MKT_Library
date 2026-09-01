@@ -7,6 +7,7 @@ import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { PACING_MATH } from "@/utils/pacingMath";
+import { sourceCurrencyOf } from "@/utils/format";
 
 const PACING_COPY = {
   ko: {
@@ -96,6 +97,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
 
   const [metric, setMetric] = useState("cost");
@@ -145,7 +147,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
   const isCost = metric === "cost";
   const actionLabel = actionDef === "purchase" ? T.purchase : T.registration;
   const metricLabel = { cost: T.cost, installs: T.installs, actions: actionLabel }[metric] || metric;
-  const fmtV = (v) => v != null ? (isCost ? fmtCurrencyPrecise(v, displayCurrency) : Math.round(v).toLocaleString()) : "—";
+  const fmtV = (v) => v != null ? (isCost ? fmtCurrencyPrecise(v, dataCurrency) : Math.round(v).toLocaleString()) : "—";
 
   const useWd = forecastMode === "weekday" && !isCost;
   // 요일 보정 예측: paceWeekday가 fallback 아니면(요일당 최소 3개 관측) 활성.

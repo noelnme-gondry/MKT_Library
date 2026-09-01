@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { segmentMetricValue, buildSegmentGrid } from "@/utils/segmentMath";
 import CustomChartsSection from "./CustomChartsSection";
+import { sourceCurrencyOf } from "@/utils/format";
 
 export default function SegmentTab({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
@@ -13,6 +14,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
 
   const [rowAxis, setRowAxis] = useState("channel");
   const [colAxis, setColAxis] = useState("country");
@@ -47,13 +49,13 @@ export default function SegmentTab({ locale = "ko" } = {}) {
   }, [csvData, dashboardFilter, rowAxis, colAxis, tr]);
 
   const METRICS = {
-    cpi: { label: "CPI", better: "low", val: c => segmentMetricValue(c, "cpi"), fmt: c => { const v = segmentMetricValue(c, "cpi"); return v != null ? fmtCurrencyPrecise(v, displayCurrency) : "—"; } },
-    cpa: { label: "CPA", better: "low", val: c => segmentMetricValue(c, "cpa"), fmt: c => { const v = segmentMetricValue(c, "cpa"); return v != null ? fmtCurrencyPrecise(v, displayCurrency) : "—"; } },
+    cpi: { label: "CPI", better: "low", val: c => segmentMetricValue(c, "cpi"), fmt: c => { const v = segmentMetricValue(c, "cpi"); return v != null ? fmtCurrencyPrecise(v, dataCurrency) : "—"; } },
+    cpa: { label: "CPA", better: "low", val: c => segmentMetricValue(c, "cpa"), fmt: c => { const v = segmentMetricValue(c, "cpa"); return v != null ? fmtCurrencyPrecise(v, dataCurrency) : "—"; } },
     cvr: { label: "CVR", better: "high", val: c => segmentMetricValue(c, "cvr"), fmt: c => { const v = segmentMetricValue(c, "cvr"); return v != null ? (v * 100).toFixed(2) + "%" : "—"; } },
     ctr: { label: "CTR", better: "high", val: c => segmentMetricValue(c, "ctr"), fmt: c => { const v = segmentMetricValue(c, "ctr"); return v != null ? (v * 100).toFixed(2) + "%" : "—"; } },
     // ROAS: index.html은 cost>0 && rev>0일 때만 표시(분자 0이어도 0%가 아니라 "—" — 매출 데이터 자체가 없다는 뜻), 소수 없이 표시.
     roas: { label: "ROAS (D7)", better: "high", val: c => segmentMetricValue(c, "roas"), fmt: c => { const v = segmentMetricValue(c, "roas"); return (c.cost > 0 && c.rev > 0 && v != null) ? (v * 100).toFixed(0) + "%" : "—"; } },
-    cost: { label: "Cost", better: "none", val: c => segmentMetricValue(c, "cost"), fmt: c => fmtCurrencyPrecise(c.cost, displayCurrency) }
+    cost: { label: "Cost", better: "none", val: c => segmentMetricValue(c, "cost"), fmt: c => fmtCurrencyPrecise(c.cost, dataCurrency) }
   };
 
   const renderMatrix = (renderMetric) => {
@@ -102,7 +104,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
                       <td key={ci} className="tnum" style={{ background: getBg(v) }}>
                         {met.fmt(cell)}
                         <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                          {fmtCurrencyPrecise(cell.cost, displayCurrency)}
+                          {fmtCurrencyPrecise(cell.cost, dataCurrency)}
                         </div>
                       </td>
                     );
