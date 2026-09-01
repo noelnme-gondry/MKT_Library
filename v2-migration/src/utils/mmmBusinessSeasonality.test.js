@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
 import {
@@ -14,8 +13,6 @@ import {
   mmmBuildFeatures,
   mmmSeasonalityRegularizationDecision,
 } from "./mmmMath.js";
-
-const csvPath = process.env.MMM_CSV_PATH;
 
 function sundayLabels(count, start = "2024-01-07") {
   const first = new Date(`${start}T00:00:00Z`);
@@ -34,8 +31,68 @@ function recurringResiduals(count) {
   });
 }
 
-function parseRealCsv(path) {
-  const { data: rows, meta } = Papa.parse(fs.readFileSync(path, "utf8"), { header: true, skipEmptyLines: true });
+function diagnosticCsvFixture() {
+  const start = Date.parse("2024-01-07T00:00:00Z");
+  const rows = [];
+  let seed = 246813579;
+  const random = () => {
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    return seed / 4294967296 - 0.5;
+  };
+
+  for (let index = 0; index < 104; index += 1) {
+    const dateLabel = new Date(start + index * 7 * 86400000).toISOString().slice(0, 10);
+    const angle = 2 * Math.PI * index / 52;
+    const brandTv = 1200
+      + 260 * Math.sin(2 * Math.PI * index / 17 + 0.2)
+      + 130 * Math.cos(2 * Math.PI * index / 31)
+      + 2.1 * index;
+    const brandVideo = 900
+      + 210 * Math.sin(2 * Math.PI * index / 23 + 1.1)
+      + 100 * Math.cos(2 * Math.PI * index / 37)
+      - 0.8 * index;
+    const search = 1800
+      + 320 * Math.sin(2 * Math.PI * index / 13 + 2.2)
+      + 170 * Math.cos(2 * Math.PI * index / 29)
+      + 1.4 * index;
+    const social = 1400
+      + 280 * Math.sin(2 * Math.PI * index / 19 + 3.1)
+      + 140 * Math.cos(2 * Math.PI * index / 41)
+      + 0.6 * index;
+    // 외부 통제가 연간 shape를 우연히 흡수하지 않도록 7/9주 고주파를 사용한다.
+    const android = 24000 + 900 * Math.sin(2 * Math.PI * index / 7 + 0.3);
+    const ios = 18000 + 700 * Math.cos(2 * Math.PI * index / 9 + 0.7);
+    const holiday = index % 52 >= 50 ? 1 : 0;
+    const productLaunch = index === 34 || index === 86 ? 1 : 0;
+    const seasonal = 5000 * Math.sin(angle)
+      + 2600 * Math.cos(2 * angle)
+      + 1600 * Math.sin(3 * angle)
+      + 1100 * Math.cos(4 * angle);
+    const rr = 42000 + 18 * index + seasonal
+      + 0.3 * brandTv + 0.25 * brandVideo
+      + 0.18 * search + 0.14 * social
+      + 0.01 * android + 0.008 * ios
+      + 500 * holiday + 350 * productLaunch
+      + 30 * random();
+
+    rows.push({
+      "Week of": dateLabel,
+      RR: Number(rr.toFixed(4)),
+      brand_tv: Number(brandTv.toFixed(4)),
+      brand_video: Number(brandVideo.toFixed(4)),
+      performance_search: Number(search.toFixed(4)),
+      performance_social: Number(social.toFixed(4)),
+      dating_market_downloads_android: Number(android.toFixed(4)),
+      dating_market_downloads_ios: Number(ios.toFixed(4)),
+      holiday,
+      product_launch: productLaunch,
+    });
+  }
+  return Papa.unparse(rows);
+}
+
+function parseCsvText(csvText) {
+  const { data: rows, meta } = Papa.parse(csvText, { header: true, skipEmptyLines: true });
   const headers = meta.fields;
   const clean = (value) => {
     const number = Number(String(value ?? "").replace(/[$,\s]/g, ""));
@@ -63,7 +120,9 @@ function parseRealCsv(path) {
 }
 
 function sumChannels(panel, keys) {
-  return Array.from({ length: panel.week.length }, (_, index) => keys.reduce((sum, key) => sum + panel.ch[key][index], 0));
+  return Array.from({ length: panel.week.length }, (_, index) => (
+    keys.reduce((sum, key) => sum + panel.ch[key][index], 0)
+  ));
 }
 
 function groupedMediaPanel(panel) {
@@ -71,7 +130,10 @@ function groupedMediaPanel(panel) {
   const performance = panel.channels.filter((channel) => channel.kind !== "brand").map((channel) => channel.key);
   return {
     ...panel,
-    ch: { __brand: sumChannels(panel, brand), __performance: sumChannels(panel, performance) },
+    ch: {
+      __brand: sumChannels(panel, brand),
+      __performance: sumChannels(panel, performance),
+    },
     channels: [
       { key: "__brand", label: "Brand", kind: "brand" },
       { key: "__performance", label: "Performance", kind: "perf" },
@@ -79,94 +141,11 @@ function groupedMediaPanel(panel) {
   };
 }
 
-function pearson(left, right) {
-  const pairs = left.map((value, index) => [value, right[index]])
-    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
-  if (pairs.length < 3) return null;
-  const meanA = pairs.reduce((sum, [a]) => sum + a, 0) / pairs.length;
-  const meanB = pairs.reduce((sum, [, b]) => sum + b, 0) / pairs.length;
-  const numerator = pairs.reduce((sum, [a, b]) => sum + (a - meanA) * (b - meanB), 0);
-  const denominator = Math.sqrt(
-    pairs.reduce((sum, [a]) => sum + (a - meanA) ** 2, 0)
-    * pairs.reduce((sum, [, b]) => sum + (b - meanB) ** 2, 0),
-  );
-  return denominator > 1e-12 ? numerator / denominator : null;
-}
-
-function omitPanelRows(panel, omitted) {
-  const keep = panel.week.map((_, index) => index).filter((index) => !omitted.has(index));
-  const pick = (values) => keep.map((index) => values[index]);
-  return {
-    ...panel,
-    week: pick(panel.week),
-    dateLabel: pick(panel.dateLabel),
-    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, pick(values)])),
-    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, pick(values)])),
-    dummy: Object.fromEntries(Object.entries(panel.dummy).map(([key, values]) => [key, pick(values)])),
-    external: Object.fromEntries(Object.entries(panel.external).map(([key, values]) => [key, pick(values)])),
-  };
-}
-
-function fixedSeasonalityRun(panel, candidate) {
-  return mmmBayesianRun(panel, {
-    ...MMM_METH_CONFIG,
-    seasonalityPeriods: candidate.periods,
-    seasonalityBasis: candidate.seasonalityBasis || null,
-    seasonalityPenaltyProfile: candidate.seasonalityPenaltyProfile || null,
-    seasonalityPenaltyStrength: candidate.seasonalityPenaltyStrength || 0,
-  }, "RR", false, {
-    skipTransformUncertainty: true,
-    enableSeasonalitySelection: false,
-    enableBaselineSelection: false,
-    enableMediaPenaltySelection: false,
-  });
-}
-
-function fixedSeasonalityDiagnostics(panel, candidate) {
-  const run = fixedSeasonalityRun(panel, candidate);
-  const seasonal = run.weeks.map((week) => Number(week.contrib?.Seasonality) || 0);
-  const residual = run.weeks.map((week) => Number(week.residual) || 0);
-  const rmse = Math.sqrt(residual.reduce((sum, value) => sum + value ** 2, 0) / residual.length);
-  const blockCorrelations = [];
-  for (let start = 0; start < panel.week.length; start += 4) {
-    const omitted = new Set(Array.from({ length: 4 }, (_, offset) => start + offset).filter((index) => index < panel.week.length));
-    const reducedPanel = omitPanelRows(panel, omitted);
-    const reducedRun = fixedSeasonalityRun(reducedPanel, candidate);
-    const reducedSeasonal = reducedRun.weeks.map((week) => Number(week.contrib?.Seasonality) || 0);
-    const fullKept = seasonal.filter((_, index) => !omitted.has(index));
-    const correlation = pearson(fullKept, reducedSeasonal);
-    if (Number.isFinite(correlation)) blockCorrelations.push(correlation);
-  }
-  const firstYear = seasonal.slice(0, 52);
-  const turningPoints = firstYear.reduce((count, value, index) => {
-    if (index === 0 || index === firstYear.length - 1) return count;
-    const before = value - firstYear[index - 1];
-    const after = firstYear[index + 1] - value;
-    return count + (before * after < 0 ? 1 : 0);
-  }, 0);
-  const extrema = firstYear.map((value, index) => {
-    const before = firstYear[(index - 1 + firstYear.length) % firstYear.length];
-    const after = firstYear[(index + 1) % firstYear.length];
-    if (value > before && value > after) return { week: index + 1, value, type: "peak" };
-    if (value < before && value < after) return { week: index + 1, value, type: "trough" };
-    return null;
-  }).filter(Boolean);
-  return {
-    r2: run.posterior?.r2,
-    rmse,
-    residualAcf1: pearson(residual.slice(1), residual.slice(0, -1)),
-    blockShapeCorrelation: blockCorrelations.reduce((sum, value) => sum + value, 0) / blockCorrelations.length,
-    blockShapeWorst: Math.min(...blockCorrelations),
-    peakWeek: firstYear.indexOf(Math.max(...firstYear)) + 1,
-    troughWeek: firstYear.indexOf(Math.min(...firstYear)) + 1,
-    turningPoints,
-    extrema,
-  };
-}
-
 function observedEvidenceForPanel(panel) {
   const run = mmmBayesianRun(panel, {
     ...MMM_METH_CONFIG,
+    // 강제 계절성 basis가 관측 반복성을 먼저 제거하지 않도록 진단 경로만 분리한다.
+    trendDirectionFirst: false,
     seasonalityPeriods: [],
     seasonalityCandidates: [{ id: "none", periods: [] }],
     baselineKnots: [],
@@ -176,7 +155,10 @@ function observedEvidenceForPanel(panel) {
     enableBaselineSelection: false,
     enableMediaPenaltySelection: false,
   });
-  const shapes = buildObservedYearShapes(panel.dateLabel, run.weeks.map((week) => week.residual));
+  const shapes = buildObservedYearShapes(
+    panel.dateLabel,
+    run.weeks.map((week) => week.residual),
+  );
   const evidence = compareObservedYearShapes(shapes);
   return {
     shapes,
@@ -302,55 +284,68 @@ describe("business seasonality diagnostics", () => {
     expect(decision.evidence.accepted).toBe(true);
   });
 
-  it.skipIf(!csvPath)("reports observed RR year-to-year recurrence from the provided CSV", () => {
-    const panel = parseRealCsv(csvPath);
+  it("reports observed RR year-to-year recurrence from a deterministic CSV fixture", () => {
+    const panel = parseCsvText(diagnosticCsvFixture());
     const variants = [
       ["full", panel],
       ["no-external", { ...panel, external: {}, externalDefs: [] }],
       ["no-events", { ...panel, dummy: {}, useDummies: false }],
-      ["no-external-no-events", { ...panel, external: {}, externalDefs: [], dummy: {}, useDummies: false }],
+      ["no-external-no-events", {
+        ...panel,
+        external: {},
+        externalDefs: [],
+        dummy: {},
+        useDummies: false,
+      }],
       ["grouped-media", groupedMediaPanel(panel)],
     ];
     const results = Object.fromEntries(variants.map(([name, variantPanel]) => {
       const result = observedEvidenceForPanel(variantPanel);
       return [name, {
-        years: result.shapes.map((shape) => ({ year: shape.year, observedWeeks: shape.observedWeeks, missingWeeks: shape.missingWeeks })),
+        years: result.shapes.map((shape) => ({
+          year: shape.year,
+          observedWeeks: shape.observedWeeks,
+          missingWeeks: shape.missingWeeks,
+        })),
         evidence: result.evidence,
         confidence: result.confidence,
       }];
     }));
     const productionRun = mmmBayesianRun(panel, MMM_METH_CONFIG, "RR", false, {
       skipTransformUncertainty: true,
+      enableMediaPenaltySelection: false,
     });
-    const fixedCandidates = Object.fromEntries(MMM_METH_CONFIG.seasonalityCandidates.map((candidate) => [
-      candidate.id,
-      fixedSeasonalityDiagnostics(panel, candidate),
-    ]));
-    console.log(JSON.stringify({
-      observedWeeks: panel.week.length,
-      variants: results,
-      fixedCandidates,
-      productionSelection: {
-        seasonalityPeriods: productionRun.seasonalityPeriods,
-        selected: productionRun.seasonalitySelection?.selected?.id,
-        candidates: productionRun.seasonalitySelection?.candidates?.map((candidate) => ({
-          id: candidate.id,
-          finalBic: candidate.finalBic,
-          rollingWmape: candidate.rollingWmape,
-          rollingFolds: candidate.rollingFolds,
-        })),
-        r2: productionRun.posterior?.r2,
-        rmse: Math.sqrt(productionRun.weeks.reduce((sum, week) => sum + (Number(week.residual) || 0) ** 2, 0) / productionRun.weeks.length),
-        observedConfidence: productionRun.seasonalitySelection?.evidence?.observedConfidence,
-        observedRecurrenceGate: productionRun.seasonalitySelection?.evidence?.observedRecurrenceGate,
-        regularizationSelection: productionRun.seasonalitySelection?.evidence?.regularizationSelection,
-      },
-    }, null, 2));
-    expect(Object.keys(results)).toHaveLength(5);
-    expect(results.full.evidence.available).toBe(true);
-    expect(productionRun.seasonalityPeriods.length).toBeGreaterThan(0);
-    expect(productionRun.seasonalitySelection?.selected?.id).toBe("annual-4");
-    expect(productionRun.seasonalitySelection?.evidence?.regularizationSelection?.accepted).toBe(false);
-    expect(productionRun.seasonalitySelection?.evidence?.observedRecurrenceScale).toBeCloseTo(0.5, 6);
+    expect(panel.week).toHaveLength(104);
+    expect(panel.channels.map((channel) => channel.kind)).toEqual(["brand", "brand", "perf", "perf"]);
+    expect(Object.keys(panel.external)).toEqual(["dating_market_downloads_android", "dating_market_downloads_ios"]);
+    expect(Object.keys(panel.dummy)).toEqual(["holiday", "product_launch"]);
+    expect(Object.keys(results)).toEqual([
+      "full",
+      "no-external",
+      "no-events",
+      "no-external-no-events",
+      "grouped-media",
+    ]);
+    for (const result of Object.values(results)) {
+      expect(result.years).toEqual([
+        { year: 2024, observedWeeks: 52, missingWeeks: 0 },
+        { year: 2025, observedWeeks: 52, missingWeeks: 0 },
+      ]);
+      expect(result.evidence.available).toBe(true);
+      expect(result.evidence.observedYearCorrelation).toBeGreaterThan(0.95);
+      expect(result.evidence.signAgreement).toBeGreaterThan(0.75);
+      expect(result.evidence.peakShiftWeeks).toBeLessThanOrEqual(6);
+      expect(result.evidence.troughShiftWeeks).toBeLessThanOrEqual(6);
+      expect(result.evidence.amplitudeRatio).toBeGreaterThan(0.5);
+      expect(result.evidence.amplitudeRatio).toBeLessThan(2);
+      expect(result.confidence.level).toBe("moderate");
+    }
+    expect(productionRun).not.toBeNull();
+    expect(productionRun.weeks).toHaveLength(104);
+    expect(productionRun.seasonalityPeriods).toEqual([52.18]);
+    expect(productionRun.seasonalitySelection?.selected?.id).toBe("business-pattern-mandatory");
+    expect(productionRun.seasonalitySelection?.selected?.seasonalityBasis).toEqual({ type: "cyclic-rbf", knots: 6 });
+    expect(productionRun.seasonalitySelection?.evidence?.mandatory).toBe(true);
+    expect(productionRun.seasonalitySelection?.evidence?.detectionMode).toBe("trend-direction-first-joint-allocation");
   }, 15000);
 });
