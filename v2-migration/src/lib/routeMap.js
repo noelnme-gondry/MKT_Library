@@ -115,6 +115,13 @@ export function idToPath(id) {
   return idToSlug[id] || "/";
 }
 
+// 발행된 "분석 도구"(SOP 가이드·셸 라우트 제외)의 id 목록 — 화면 카피의 도구 수,
+// 목록·인덱스, 대외 문서 검사가 전부 여기서 파생한다. 같은 필터를 두 벌 두면 하나만
+// 고쳐지므로(실제로 toolIndex와 brandFacts가 따로 세고 있었다) 의존성 없는 이 파일에 둔다.
+export function publishedToolIds() {
+  return ROUTES.filter((route) => isRoutePublished(route) && /^(5-|9-)/.test(route.id)).map((route) => route.id);
+}
+
 export function isRoutePublished(routeOrId) {
   const route = typeof routeOrId === "string" ? ROUTES.find((item) => item.id === routeOrId && !item.legacy) : routeOrId;
   return Boolean(route && !route.legacy && route.publication !== "preview" && route.publication !== "subtool");

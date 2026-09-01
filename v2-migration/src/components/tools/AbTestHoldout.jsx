@@ -441,16 +441,21 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                     { value: "continuous", label: tr("평균값 (CPR·ARPPU·매출)", "Average value") },
                   ]}
                 />
-                <PillGroup
-                  style={{ margin: 0 }}
-                  label={tr("통화", "Currency")}
-                  value={currency}
-                  onChange={setDisplayCurrency}
-                  options={[
-                    { value: "KRW", label: "₩ KRW" },
-                    { value: "USD", label: "$ USD" },
-                  ]}
-                />
+                {/* 이 토글은 입력값의 단위를 선언할 뿐 환산하지 않는다 — 그래서
+                    고정 환율 고지(ds/FixedRateNote) 대상이 아니다. 표식은 주석이
+                    아니라 DOM에 남긴다(주석은 가드가 먼저 지운다). */}
+                <span data-currency-scope="declare">
+                  <PillGroup
+                    style={{ margin: 0 }}
+                    label={tr("데이터 통화", "Data currency")}
+                    value={currency}
+                    onChange={setDisplayCurrency}
+                    options={[
+                      { value: "KRW", label: "₩ KRW" },
+                      { value: "USD", label: "$ USD" },
+                    ]}
+                  />
+                </span>
               </div>
             </div>
 

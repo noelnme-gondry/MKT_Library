@@ -827,7 +827,13 @@ function hl(code, lang) {
             ]);
 
             // locale="en"이면 {id}.en.json을 우선 fetch, 없으면(404/네트워크 오류) 한글 {id}.json으로
-            // 폴백 — 아직 번역 안 된 페이지도 안전. 캐시 키는 locale별로 분리.
+            // 폴백. 캐시 키는 locale별로 분리.
+            //
+            // 주의: 이 폴백은 15개 중 2개(1-1·8-1)에서만 실제로 성공한다 — KO 본문은
+            // JSON이 아니라 PAGE_RENDERERS_MAP(인라인)이 소유하므로 public/content/pages에
+            // {id}.json이 있는 페이지가 그 둘뿐이다. 나머지 13개는 폴백도 404가 나고
+            // null을 반환해 호출부가 not-found 상태로 떨어진다(빈 화면이 아니라 정직한 실패).
+            // "번역 안 된 페이지도 안전"이라고 적혀 있었지만 사실이 아니었다.
             async function loadPageData(id, locale = "ko") {
               const cacheKey = `${id}:${locale}`;
               if (PAGE_DATA_CACHE[cacheKey]) return PAGE_DATA_CACHE[cacheKey];

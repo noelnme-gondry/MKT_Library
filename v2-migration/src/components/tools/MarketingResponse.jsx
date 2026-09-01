@@ -34,6 +34,7 @@ import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import PillGroup from "@/components/ds/PillGroup";
+import FixedRateNote from "@/components/ds/FixedRateNote";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import { allocateFixedMmmGroupTotals, buildMmmAggregateMediaPanel, buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
@@ -3524,6 +3525,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   { value: "USD", label: tx("달러 $", "USD $") },
                 ]}
               />
+              <FixedRateNote sourceCurrency={selectedSourceCurrency} displayCurrency={displayCurrency} locale={locale} />
             </div>
           </div>
         )}
@@ -6335,10 +6337,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                       {fcScenarioOpen && <>
                         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", margin: "8px 0" }}>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("총 주간 예산", "Total weekly budget")} <CommaNumberInput value={fcTotalBudget == null ? "" : Math.round(convertCurrency(fcTotalBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcTotalBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "110px" }} /></label>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최소", "Channel min")} <CommaNumberInput value={Math.round(convertCurrency(fcMinBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMinBudget(value == null ? 0 : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최대", "Channel max")} <CommaNumberInput value={fcMaxBudget == null ? "" : Math.round(convertCurrency(fcMaxBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMaxBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("총 주간 예산", "Total weekly budget")}{` (${currencySym})`} <CommaNumberInput value={fcTotalBudget == null ? "" : Math.round(convertCurrency(fcTotalBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcTotalBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "110px" }} /></label>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최소", "Channel min")}{` (${currencySym})`} <CommaNumberInput value={Math.round(convertCurrency(fcMinBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMinBudget(value == null ? 0 : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최대", "Channel max")}{` (${currencySym})`} <CommaNumberInput value={fcMaxBudget == null ? "" : Math.round(convertCurrency(fcMaxBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMaxBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
                         </div>
+                        {/* 이 입력은 표시 통화로 받아 원본 통화로 되돌려 엔진에 넣는다 —
+                            환산이 걸려 있으면 고정 환율이 배분 제약에 들어가므로 고지한다. */}
+                        <FixedRateNote sourceCurrency={selectedSourceCurrency} displayCurrency={displayCurrency} locale={locale} />
                         <div className="table-wrap"><table className="data" style={{ fontSize: "11.5px" }}><thead><tr><th>{tx("시나리오", "Scenario")}</th><th>{tx("평균/주", "Average/wk")}</th><th>{tx("기준 대비", "vs baseline")}</th><th>{tx("상태", "Status")}</th></tr></thead><tbody>
                           {forecastScenarioResults.results.map((scenario) => <tr key={scenario.key}><td><strong>{tx({ baseline: "기준 예산", "media-off": "미디어 OFF", "plus-10": "+10% 증액", "minus-10": "-10% 감액" }[scenario.key] || scenario.label, scenario.label)}</strong></td><td className="tnum">{scenario.summary?.average == null ? "—" : targetValueLabel(scenario.summary.average, { perWeek: true })}</td><td className="tnum">{scenario.summary?.percentFromBaseline == null ? "—" : `${scenario.summary.percentFromBaseline >= 0 ? "+" : ""}${scenario.summary.percentFromBaseline.toFixed(1)}%`}</td><td>{scenario.key === "baseline" ? tx("표시", "Shown") : forecastScenario.eligible ? tx("참고 시나리오", "Reference scenario") : tx("식별 게이트 잠금", "Identification locked")}</td></tr>)}
                         </tbody></table></div>

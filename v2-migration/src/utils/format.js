@@ -7,8 +7,20 @@ const CURRENCY_SYMBOL = { KRW: "₩", USD: "$" };
 
 // 고정 환율(결정론 — 실시간 조회 없음, §3). 대략적 기준값, 정밀 회계용 아님 —
 // CSV 업로드 시 사용자가 지정한 원본 통화(csvData.currency)와 표시 토글
-// (displayCurrency)이 다를 때 화면 표시 단위만 바꿔주는 용도.
+// (displayCurrency)이 다를 때 표시 단위를 바꿔주는 용도.
+//
+// 이 값이 화면에 고지되지 않으면 §8 "거짓 숫자"가 된다: 사용자는 환산값을 실제
+// 시세로 읽는다. 게다가 5-18 예측의 예산 입력은 표시 통화로 받아 이 환율로
+// 되돌려 엔진에 넣으므로 표시만의 문제도 아니다. 환산이 실제로 일어나는
+// 화면에서는 `ds/FixedRateNote`가 이 상수를 그대로 고지한다 — 상수를 바꾸면
+// 고지 문구도 함께 바뀌도록 여기서만 정의한다.
 export const USD_KRW_RATE = 1400;
+
+// 환산이 실제로 일어나는가(= 고지가 필요한가). from/to 중 하나라도 비었거나
+// 같으면 convertCurrency가 no-op이므로 고지할 것도 없다.
+export function isCurrencyConverted(from, to) {
+  return Boolean(from && to && from !== to && CURRENCY_SYMBOL[from] && CURRENCY_SYMBOL[to]);
+}
 
 // value가 `from` 통화로 기록된 원본이라 가정하고 `to` 통화 표시값으로 변환.
 // from===to면 그대로(불필요한 변환 오차 방지). from/to 미지정·동일 문자열이면 no-op.

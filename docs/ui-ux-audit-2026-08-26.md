@@ -12,6 +12,29 @@
 
 ---
 
+## 해소 상태 (2026-09-01 재실측)
+
+**아래 10건은 전부 해소됐다.** 이 문서는 그대로 감사 기록으로 남기되, 항목별 서술을 현재 상태로
+읽지 말 것 — 각 절의 "실제"는 2026-08-26 시점이다. 재실측 근거:
+
+| # | 항목 | 2026-08-26 | 2026-09-01 재실측 | 확인 방법 |
+|---|---|---|---|---|
+| 1 | JSX 인라인 raw hex | 37곳 / 7파일 | **0곳** | 문서 §1의 grep 그대로 |
+| 2 | `data-tooltip` 미렌더 | 4곳 | **0곳** | `grep -rn data-tooltip src/` |
+| 3 | `pointer: coarse` 없음 | 0건 | **규칙 존재** | `globals.css` |
+| 4 | `--text-muted` AA 미달 | 4개 표면 | **가드로 고정** | `app/themeContrast.test.js:46` |
+| 5 | 확장 행 `<td onClick>` | 2줄 | **0곳** | 남은 1건은 `stopPropagation` 가드(클릭 타깃 아님) |
+| 6 | `UiSemantics` 무차별 `aria-pressed` | 148곳 영향 | **opt-in 전환** | `ds/UiSemantics.jsx` — `data-ui-semantics-toggle`가 있는 pill만 |
+| 7 | 죽은 UI (`DmNudge`·`.tool-assist-rail`) | CSS 72줄 + 컴포넌트 1 | **제거됨** | `grep -rn DmNudge src/` |
+| 8 | 종료일 입력 이름 없음 | 1곳 | 해소 | — |
+| 9 | `forced-colors`/`prefers-contrast` | 0건 | **2블록** | `globals.css` |
+| 10 | `mobileTaskIntegrity` 손 배열 | 가드 1개 | **파생으로 전환** | `app/mobileTaskIntegrity.test.js` |
+
+당시 "검증 한계"로 적힌 `test:all`·`lint`·`build` 미실행도 해소됐다 — 2026-09-01 실측으로
+`test:all` 통과, `lint` 0, `build` 성공, `playwright` 25/25(4개 뷰포트)다.
+
+---
+
 ## 0. 요약
 
 | # | 심각도 | 항목 | 규모 | 계약 |

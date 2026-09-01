@@ -403,8 +403,10 @@ export function runBrandInterruptedTimeSeries(input = {}) {
     confidenceMethod: "ar1_prais_winsten",
     trend: { ...trend, slopePerDay: trend.slope },
     diagnostics: {
+      // cadence의 hasPeriodGaps가 그대로 펼쳐진다. 예전에 hasDateGaps라는 별칭을
+      // 함께 넣어 뒀는데 읽는 곳이 없었다 — 계약이 둘로 보이면 다음 사람이 없는
+      // 쪽을 읽는다(5-24 UI는 hasPeriodGaps를 읽는다).
       ...cadence,
-      hasDateGaps: cadence.hasPeriodGaps,
       ar1EvidenceTier: ar1Uncertainty.evidenceTier,
       ar1InnovationVariance: ar1Uncertainty.innovationVariance,
       ar1ResidualVariance: ar1Uncertainty.residualVariance,
