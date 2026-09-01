@@ -11,8 +11,8 @@ function ruleFor(selector) {
 
 describe("card copy width", () => {
   it.each([
-    ".dc-question-card h3",
-    ".dc-question-card p",
+    ".dc-questions .tool-index__q",
+    ".dc-questions .tool-index__outputs",
     ".dc-library-card p",
     ".content-card.is-featured .card-title",
     ".content-card.is-featured .card-desc",
@@ -24,7 +24,8 @@ describe("card copy width", () => {
     expect(rule).not.toMatch(/max-width\s*:/);
   });
 
-  it("reserves the question card footer for the arrow instead of narrowing copy", () => {
-    expect(ruleFor(".dc-question-card")).toMatch(/padding\s*:\s*20px 20px 52px/);
+  it("checks the live ToolIndex cards instead of the removed legacy question cards", () => {
+    expect(ruleFor(".dc-questions .tool-index__link")).toMatch(/padding\s*:\s*10px 12px/);
+    expect(CSS).not.toContain(".dc-question-card");
   });
 });

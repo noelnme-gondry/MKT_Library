@@ -27,6 +27,7 @@ import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { stripHtmlTags } from "@/lib/htmlText";
+import { sourceCurrencyOf } from "@/utils/format";
 
 // 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
@@ -129,8 +130,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     metric: "cpa", // cpa | roas
     selected: null,
   });
-  // 표시 통화는 전역 store 단일 소스 — 토글 UI는 Header뿐(도구별 중복 금지).
-  const currency = useAppStore((state) => state.displayCurrency);
+  // 포화도 엔진은 원본 금액을 그대로 쓴다. 화면 통화도 업로드 때 선언한 원본
+  // 단위여야 하며, 실제 FX 환산은 이 도구의 계약이 아니다.
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const currency = sourceCurrencyOf(csvData, displayCurrency);
 
   const hasData = csvData && csvData.raw && csvData.raw.length > 0;
 

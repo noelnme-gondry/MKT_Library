@@ -12,8 +12,8 @@ import { localizedHref } from "@/lib/localizedHref";
  * 두되 **밀도만 다르게** 한다. 문장은 toolIndex 하나에서 나온다.
  *
  * density
- *   "compact" — 이름 + 질문 한 줄. 홈처럼 이미 내용이 많은 화면.
- *   "full"    — 질문 + 답 + 필요한 데이터. 업로드 화면·전체 보기.
+ *   "compact" — 질문 + 도구명 + 결과. 홈처럼 이미 내용이 많은 화면.
+ *   "full"    — 질문 + 답 + 도구명 + 결과 + 필요한 데이터. 업로드 화면·전체 보기.
  *
  * 정렬 축은 도구 이름이 아니라 **질문 단계**다. 마케터는 "무엇을 판단해야 하나"로
  * 도구를 찾지 도구 이름을 외워서 찾지 않는다.
@@ -26,6 +26,9 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
+  const labels = locale === "en"
+    ? { tool: "Tool", outputs: "You get", needs: "Needs" }
+    : { tool: "도구", outputs: "결과", needs: "필요 데이터" };
 
   return (
     <div className={`tool-index tool-index--${density}`}>
@@ -56,10 +59,23 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
                       ? (event) => { event.preventDefault(); onSelect(tool.id); }
                       : onItemClick ? () => onItemClick(tool.id) : undefined}
                   >
-                    <span className="tool-index__name">{tool.name}</span>
                     <span className="tool-index__q">{tool.question}</span>
+                    {!isCompact && tool.answer && <span className="tool-index__answer">{tool.answer}</span>}
+                    <span className="tool-index__meta">
+                      <span className="tool-index__meta-label">{labels.tool}</span>
+                      <span className="tool-index__name">{tool.name}</span>
+                    </span>
+                    {tool.outputs.length > 0 && (
+                      <span className="tool-index__outputs">
+                        <span className="tool-index__meta-label">{labels.outputs}</span>
+                        <span>{tool.outputs.slice(0, isCompact ? 2 : tool.outputs.length).join(" · ")}</span>
+                      </span>
+                    )}
                     {!isCompact && tool.needs.length > 0 && (
-                      <span className="tool-index__needs">{tool.needs.join(" · ")}</span>
+                      <span className="tool-index__needs">
+                        <span className="tool-index__meta-label">{labels.needs}</span>
+                        <span>{tool.needs.join(" · ")}</span>
+                      </span>
                     )}
                   </Link>
                 </li>

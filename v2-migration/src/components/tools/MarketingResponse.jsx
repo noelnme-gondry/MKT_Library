@@ -4048,7 +4048,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       {(!panelEmpty || availTargets.length > 0) && (
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">{controlBar()}</div>
-          {(isDemo || selectedSourceCurrency) && <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
+          {(isDemo || selectedSourceCurrency) && <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} currencyMode="convert" /></AnalysisControlBar>}
         </div>
       )}
       {renderTabs()}

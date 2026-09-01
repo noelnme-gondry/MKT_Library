@@ -87,3 +87,19 @@ export function publisherNode(locale = "ko") {
     ...(omitEmpty(AUTHOR.sameAs) ? { sameAs: AUTHOR.sameAs } : {}),
   };
 }
+
+/** /contact가 저자 URL인 사실을 화면·구조화 데이터에서 같은 노드로 설명한다. */
+export function profilePageNode(locale = "ko") {
+  const lang = locale === "en" ? "en" : "ko";
+  const path = `${lang === "en" ? "/en" : ""}${AUTHOR.profilePath}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "@id": `${SITE_URL}${path}#profile`,
+    url: `${SITE_URL}${path}`,
+    name: lang === "en" ? `About the operator of ${AUTHOR.name}` : `${AUTHOR.name} 운영자 소개`,
+    inLanguage: lang === "en" ? "en" : "ko-KR",
+    dateModified: "2026-09-02",
+    mainEntity: authorNode(lang),
+  };
+}

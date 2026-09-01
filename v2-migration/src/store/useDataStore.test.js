@@ -354,6 +354,19 @@ describe("useDataStore · 구조화 세션 상태", () => {
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
     expect(useAppStore.getState().isGroupStale("5-2")).toBe(true);
   });
+
+  it("원본 통화 선언이 바뀌면 이전 분석을 stale로 돌린다", () => {
+    const initial = useAppStore.getInitialState();
+    useAppStore.setState(initial, true);
+    const base = { raw: [{ date: "2026-08-01", cost: "1400", installs: "1" }], headers: ["date", "cost", "installs"], mapping: { date: "date", cost: "cost", installs: "installs" }, fileName: "currency.csv", currency: "KRW" };
+    useAppStore.getState().setCsvData(base);
+    useAppStore.getState().setGroupAnalyzed("5-2");
+
+    useAppStore.getState().setCsvData({ ...base, currency: "USD" });
+
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
+    expect(useAppStore.getState().isGroupStale("5-2")).toBe(true);
+  });
 });
 
 // 그룹별 맵은 TOOL_GROUP에서 파생된다(buildGroupMap). 손으로 나열하면 어긋나고,

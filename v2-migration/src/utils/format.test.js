@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtCurrency, fmtPct, fmtNum, fmtCompact, parseNum, convertCurrency, USD_KRW_RATE } from "./format";
+import { fmtCurrency, fmtPct, fmtNum, fmtCompact, parseNum, convertCurrency, sourceCurrencyOf, USD_KRW_RATE } from "./format";
 
 describe("format", () => {
   it("fmtCurrency: ₩ 0 decimals, $ 2 decimals, precise small", () => {
@@ -44,5 +44,11 @@ describe("format", () => {
     expect(convertCurrency(1000, "KRW", "KRW")).toBe(1000);
     expect(convertCurrency(1000, null, "USD")).toBe(1000);
     expect(convertCurrency(null, "USD", "KRW")).toBe(null);
+  });
+
+  it("sourceCurrencyOf: 선언된 원본 통화만 쓰고 없으면 명시 fallback을 쓴다", () => {
+    expect(sourceCurrencyOf({ currency: "USD" }, "KRW")).toBe("USD");
+    expect(sourceCurrencyOf({ currency: "EUR" }, "KRW")).toBe("KRW");
+    expect(sourceCurrencyOf({}, null)).toBeNull();
   });
 });

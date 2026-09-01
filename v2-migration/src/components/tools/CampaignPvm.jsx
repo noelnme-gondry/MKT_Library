@@ -19,6 +19,7 @@ import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
+import { sourceCurrencyOf } from "@/utils/format";
 
 // 우측 TOC — 현재 결과의 질문 순서만 노출하고 내부 섹션 번호는 숨긴다.
 function buildPvmToc(C, locale) {
@@ -114,7 +115,7 @@ function localizePvmCopy(domain, locale) {
 
 const DAY = 86400000;
 
-// 통화 표시 헬퍼 — index.html pvmFmtMoney 이식 (값 변환 없이 단위 기호만 전환)
+// 통화 표시 헬퍼 — index.html pvmFmtMoney 이식 (원본 값의 선언된 단위를 표시)
 // decimals: usd일 때 소수 자리 강제(CPA/CPI처럼 단가 지표는 1자리 — 예: $19.1).
 // 미지정 시 기존 동작(최대 2자리) 유지.
 function formatPvmMoney(v, cur, decimals, locale = "ko") {
@@ -491,8 +492,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const csvData = useAppStore((state) => state.csvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
-  // 전역 통화(₩/$) SSOT 구독 — 토글 UI는 Header(브레드크럼 옆) 하나뿐(디자인시스템,
-  // 도구별 중복 토글 금지). 여기선 표시 포맷에만 사용.
+  // 전역 값은 구 세션 데이터의 fallback. PVM 숫자는 환산하지 않으므로 업로드 때
+  // 선언한 원본 통화가 포맷 단위다.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const analysisHandoff = useAppStore((state) => state.analysisHandoff);
   const clearAnalysisHandoff = useAppStore((state) => state.clearAnalysisHandoff);
@@ -523,7 +524,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     };
   }, [dashboardFilter.compareEnabled, dashboardFilter.comparisonEnd, dashboardFilter.comparisonStart, dashboardFilter.dateEnd, dashboardFilter.dateStart]);
   const effectivePeriodOverride = periodOverride || dashboardPeriodOverride;
-  const currency = displayCurrency === "USD" ? "usd" : "krw";
+  const currency = sourceCurrencyOf(csvData, displayCurrency) === "USD" ? "usd" : "krw";
 
   const [drillChannel, setDrillChannel] = useState("__all__");
   const [crChannel, setCrChannel] = useState("__all__");

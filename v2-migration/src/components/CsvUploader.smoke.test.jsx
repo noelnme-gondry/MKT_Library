@@ -38,7 +38,7 @@ function seedWithData() {
     const cost = ch === "Google" ? 100000 + d * 3000 : 80000 + d * 2500;
     raw.push({ Date: `2026-01-${String(d).padStart(2, "0")}`, Country: "KR", Platform: "iOS", Channel: ch, Spend: cost, Installs: Math.round(cost / (ch === "Google" ? 5000 : 4200)) });
   }
-  const slice = { raw, headers, mapping, fileName: "x.csv" };
+  const slice = { raw, headers, mapping, fileName: "x.csv", currency: "KRW" };
   useAppStore.setState({ currentRouteId: "5-2", csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice }, csvData: slice });
 }
 
@@ -84,6 +84,26 @@ describe("CsvUploader render smoke", () => {
     expect(document.querySelector(".csv-guide")).toBeNull();
     expect(document.querySelector(".data-journey")).toBeNull();
     expect(screen.getByText("x.csv")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "원본 데이터 통화" })).toBeTruthy();
+  });
+
+  it("금액 데이터는 원본 통화를 고르기 전 분석을 열지 않는다", () => {
+    seedWithData();
+    const withoutCurrency = { ...useAppStore.getState().csvData };
+    delete withoutCurrency.currency;
+    useAppStore.setState({
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: withoutCurrency },
+      csvData: withoutCurrency,
+    });
+    render(<CsvUploader toolId="5-2" />);
+
+    expect(screen.queryByRole("button", { name: "데이터 분석하기" })).toBeNull();
+    expect(screen.getByText(/숫자만으로 통화를 알 수 없습니다/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
+
+    expect(useAppStore.getState().csvData.currency).toBe("USD");
+    expect(useAppStore.getState().displayCurrency).toBe("USD");
+    expect(screen.getByRole("button", { name: "데이터 분석하기" })).toBeTruthy();
   });
 
   it("uses semantic mapping only as a second stage, projected back into the same CSV mapping UI", () => {
@@ -101,6 +121,7 @@ describe("CsvUploader render smoke", () => {
       mappingBindingsV2: bindings,
       semanticMapping: { bindings, candidatesByHeader: {} },
       fileName: "fallback.csv",
+      currency: "KRW",
     };
     useAppStore.setState({
       currentRouteId: "start-gate",

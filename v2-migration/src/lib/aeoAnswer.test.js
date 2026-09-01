@@ -5,8 +5,9 @@ import { getBlogSeo } from "./blogSeo";
 /**
  * AEO 답변 가드.
  *
- * 배경: 블로그 상단 "검색 질문에 대한 짧은 답"(`seoAnswer`)은 AI 검색·발췌가 그대로
- * 인용하는 블록이다. 그런데 답변들이 핵심어를 **일부러 우회해 풀어 쓰고** 있었다 —
+ * 배경: 블로그 상단 "검색 질문에 대한 짧은 답"(`seoAnswer`)은 독자와 검색 시스템이
+ * 페이지의 결론을 빠르게 확인하는 블록이다. 인용·노출을 보장하지는 않는다. 그런데
+ * 답변들이 핵심어를 **일부러 우회해 풀어 쓰고** 있었다 —
  * `correlation-vs-causation`의 답변에는 "상관관계"도 "인과관계"도 없었고
  * (EN도 correlation·causation 둘 다 없음), `asa-keyword-expansion`에는 "ASA"가,
  * `attribution-data-mismatch`에는 "어트리뷰션"이 없었다.

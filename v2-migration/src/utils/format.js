@@ -5,6 +5,14 @@
 
 const CURRENCY_SYMBOL = { KRW: "₩", USD: "$" };
 
+// CSV의 금액 숫자는 통화 코드를 품지 않는다. 업로드 때 사용자가 선언한 원본
+// 통화만 신뢰하고, 없을 때에만 호출자가 명시한 fallback을 쓴다. 효율 도구는
+// 숫자를 환산하지 않으므로 화면 포맷·엔진 step 모두 이 원본 통화를 사용한다.
+export function sourceCurrencyOf(csvData, fallback = null) {
+  const currency = csvData?.currency;
+  return CURRENCY_SYMBOL[currency] ? currency : fallback;
+}
+
 // 고정 환율(결정론 — 실시간 조회 없음, §3). 대략적 기준값, 정밀 회계용 아님 —
 // CSV 업로드 시 사용자가 지정한 원본 통화(csvData.currency)와 표시 토글
 // (displayCurrency)이 다를 때 표시 단위를 바꿔주는 용도.

@@ -17,7 +17,8 @@ import { MOTION, armMotion, canAnimate, collect, disarmMotion, loadAnime } from 
  * 대상에서 제외한다 — 항상 렌더되는 섹션만 관리한다. */
 const REVEAL_GROUPS = [
   ".dc-loop__grid .dc-loop-card",
-  ".dc-question-grid .dc-question-card",
+  // 도구 20개를 하나씩 흔들지 않고 판단 단계 7개만 묶어서 보여준다.
+  ".dc-questions .tool-index__stage",
   ".dc-library__grid .dc-library-card",
   ".dc-resource-strip",
 ];

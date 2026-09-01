@@ -24,12 +24,17 @@ describe("ToolIndex", () => {
     }
   });
 
-  it("compact는 필요 데이터를 접고 full은 편다", () => {
+  it("compact는 질문·결과를 우선하고 full은 답·필요 데이터까지 편다", () => {
     const compact = render(<ToolIndex density="compact" />);
     expect(compact.container.querySelector(".tool-index__needs")).toBeNull();
+    expect(compact.container.querySelector(".tool-index__answer")).toBeNull();
+    expect(compact.container.querySelector(".tool-index__outputs")).toBeTruthy();
+    expect(compact.container.querySelector(".tool-index__link").firstElementChild.classList.contains("tool-index__q")).toBe(true);
     compact.unmount();
     const full = render(<ToolIndex density="full" />);
     expect(full.container.querySelector(".tool-index__needs")).toBeTruthy();
+    expect(full.container.querySelector(".tool-index__answer")).toBeTruthy();
+    expect(full.container.querySelector(".tool-index__outputs")).toBeTruthy();
   });
 
   it("지금 못 쓰는 도구는 숨기지 않고 흐리게 둔다", () => {
@@ -43,6 +48,7 @@ describe("ToolIndex", () => {
     const { container } = render(<ToolIndex locale="en" />);
     expect(container.textContent).not.toMatch(/[가-힣]/);
     expect(container.querySelector(".tool-index__link").getAttribute("href")).toMatch(/^\/en\//);
+    expect(container.textContent).toContain("You get");
   });
 
   it("스테이지 번호를 여정 순서대로 빠짐없이 낸다", () => {

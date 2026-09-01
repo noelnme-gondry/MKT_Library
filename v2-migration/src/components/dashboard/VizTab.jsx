@@ -7,7 +7,7 @@ import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { useRouter } from "next/navigation";
 import { idToPath } from "@/lib/routeMap";
-import { convertCurrency } from "@/utils/format";
+import { sourceCurrencyOf } from "@/utils/format";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
@@ -211,6 +211,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const selectedCohort = useAppStore((state) => state.selectedCohort);
   const setSelectedCohort = useAppStore((state) => state.setSelectedCohort);
@@ -299,10 +300,8 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
   // 불투명 호출로 effBasis를 소비하면 React Compiler가 메모 보존을 못 함).
-  const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
-  const currencyValue = (value) => convertCurrency(Number(value), sourceCurrency, displayCurrency);
-  const compactCurrency = (value) => fmtCurrencyCompact(currencyValue(value), displayCurrency, locale);
-  const preciseCurrency = (value) => fmtCurrencyPrecise(currencyValue(value), displayCurrency);
+  const compactCurrency = (value) => fmtCurrencyCompact(Number(value), dataCurrency, locale);
+  const preciseCurrency = (value) => fmtCurrencyPrecise(Number(value), dataCurrency);
   const acqLabel = D.acqLabel(effBasis);
   const trendOutcomeLabel = D.trendOutcome(effBasis);
 
@@ -912,8 +911,8 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     });
   };
   const formatCustomScorecard = (model) => formatCustomScorecardValue(
-    model?.unit === "currency" && model.value != null ? { ...model, value: currencyValue(model.value) } : model,
-    displayCurrency,
+    model,
+    dataCurrency,
     locale,
   );
   const actionButtons = activeMetric === "acq"

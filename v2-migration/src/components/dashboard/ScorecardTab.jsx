@@ -4,7 +4,7 @@ import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
-import { convertCurrency } from "@/utils/format";
+import { sourceCurrencyOf } from "@/utils/format";
 import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
@@ -83,6 +83,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const scopeCfg = useAppStore((state) => state.viewConfig[SCORECARD_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
@@ -138,10 +139,8 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
 
   const cards = useMemo(() => {
     if (!hasData) return [];
-    const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
-    const currencyValue = (v) => convertCurrency(v, sourceCurrency, displayCurrency);
-    const fmtCurrency = (v) => fmtCurrencyPrecise(currencyValue(v), displayCurrency);
-    const fmtCurrencyCard = (v) => fmtCurrencyCompact(currencyValue(v), displayCurrency, locale);
+    const fmtCurrency = (v) => fmtCurrencyPrecise(v, dataCurrency);
+    const fmtCurrencyCard = (v) => fmtCurrencyCompact(v, dataCurrency, locale);
     const mapped = new Set(Object.values(mapping));
     const hasRev = mapped.has("revenue_d7");
 
@@ -171,7 +170,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     });
 
     return [...base, ...presets, ...customCards];
-  }, [hasData, recent, prev, mapping, displayCurrency, csvData, locale, customMetrics, T, scLabel]);
+  }, [hasData, recent, prev, mapping, dataCurrency, locale, customMetrics, T, scLabel]);
 
   // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
   const builderFields = useMemo(() => {

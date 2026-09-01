@@ -14,6 +14,14 @@ async function uploadCsv(page, fileName) {
   const uploader = page.locator('.csv-uploader input[type="file"][accept*="csv"]').first();
   await uploader.setInputFiles(fixture(fileName));
   await expect(page.locator(".csv-uploader .file-state")).toBeVisible();
+
+  // 효율 CSV의 금액 숫자는 통화를 품지 않는다. 실제 사용자 경로처럼 원본
+  // 통화를 선언해야 분석 버튼이 열리며, 비금액 도구에는 이 컨트롤이 없다.
+  const sourceCurrency = page.locator('.csv-uploader [data-currency-scope="declare"]').first();
+  if (await sourceCurrency.count()) {
+    await expect(sourceCurrency).toBeVisible();
+    await sourceCurrency.getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
+  }
 }
 
 async function downloadBuffer(download) {

@@ -74,6 +74,8 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelectorAll(".dc-questions .tool-index__stage")).toHaveLength(TOOL_JOURNEY.length);
     expect(document.querySelector(".dc-questions details")).toBeNull();
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(document.querySelector(".dc-questions .tool-index__link")?.firstElementChild.classList.contains("tool-index__q")).toBe(true);
+    expect(document.querySelector(".dc-questions .tool-index__outputs")).toBeTruthy();
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();

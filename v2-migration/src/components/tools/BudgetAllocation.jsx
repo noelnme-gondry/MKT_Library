@@ -17,6 +17,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
+import { sourceCurrencyOf } from "@/utils/format";
 import {
   getRowGroupKey,
   allocParseNum,
@@ -492,8 +493,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   // 신뢰도는 이미 R²와 데이터 점 수로 계산하고 있었지만 **표시만** 하고 배분에는
   // 쓰지 않았다 — 가장 불확실한 추정치로 돈을 옮기는 상태였다. 기본 ON.
   const [holdLowConfidence, setHoldLowConfidence] = useState(true);
-  // 표시 통화(₩/$) — 전역 store가 SSOT, 토글 UI는 Header뿐(도구별 중복 금지).
-  const currency = useAppStore((state) => state.displayCurrency);
+  // 효율 CSV 숫자는 환산하지 않는다. 업로드 때 선언한 원본 통화가 포맷과
+  // 최적화 step의 단위이며, 전역 값은 구 세션 데이터용 fallback일 뿐이다.
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const currency = sourceCurrencyOf(csvData, displayCurrency);
 
   // 최적화 목표 (필수) — metric을 파생. install|action|roas
   const [objective, setObjective] = useState(null);
