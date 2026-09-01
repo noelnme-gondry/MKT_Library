@@ -231,8 +231,9 @@ export default function Incrementality({ locale = "ko" } = {}) {
               {isDemo ? <strong>{tr("샘플 데이터로 미리보기 중", "Previewing with sample data")}</strong> : <strong>{csvData.fileName}</strong>}
               <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}{tr("행", " rows")}{isDemo ? tr(" · 실제 데이터 아님", " · not real data") : ""}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("통화", "Currency")}</span>
+            {/* 단위 선언 토글(환산 없음) — ds/FixedRateNote 대상이 아님을 DOM에 남긴다. */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }} data-currency-scope="declare">
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("데이터 통화", "Data currency")}</span>
               <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
               <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
               {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{tr("⟳ CSV 변경", "⟳ Change CSV")}</button>}

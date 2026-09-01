@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
+import FixedRateNote from "@/components/ds/FixedRateNote";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
 
@@ -63,6 +64,11 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
             {tr("달러 $", "USD $")}
           </button>
         </div>
+        <FixedRateNote
+          sourceCurrency={["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : null}
+          displayCurrency={displayCurrency}
+          locale={locale}
+        />
         <BlockedOptionsNote items={[
           { label: tr("설치", "Installs"), reason: !hasInstalls ? (hasActions ? tr("양수 값이 없어 가입 기준을 자동 적용했습니다", "No positive values; Actions was applied automatically") : tr("사용 가능한 양수 값이 없습니다", "No usable positive values")) : "" },
           { label: tr("가입", "Actions"), reason: !hasActions ? tr("사용 가능한 양수 값이 없습니다", "No usable positive values") : "" },

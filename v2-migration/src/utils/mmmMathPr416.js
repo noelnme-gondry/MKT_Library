@@ -1,3 +1,19 @@
+// mmmMathPr416 — PR #416 시점 MMM 모델의 **동결 스냅샷**.
+//
+// 이 파일은 mmmMath.js의 복사본이 아니라 다른 모델이다. MarketingResponse의
+// `mmmMode`가 "classic"·"prism"일 때만 쓰이며, 그 모드의 존재 이유가 당시 수치의
+// 재현이라 핵심 알고리즘(mmmBayesianRun·mmmCannibalization·mmmForecastRollingSelection
+// 등 17개)이 **의도적으로** mmmMath와 다르다.
+//
+// 위험한 점은 나머지다: 두 파일은 module-level 심볼 대부분을 같은 이름·같은 본문으로
+// 들고 있다. `_nonRedundantCols` 버그를 mmmMath에서만 고치면 classic·prism 모드는
+// 조용히 옛 코드를 계속 쓴다 — 화면도 테스트도 아무 말을 하지 않는다.
+//
+// 통합하지 말 것. 비공개 헬퍼까지 포함해 실측하면 안전하게 공유 가능한 부분은
+// 225줄/6,718줄뿐이라 이득이 위험을 못 넘는다. 대신 `mmmEngineDivergence.test.js`가
+// 공유 심볼이 한쪽에서만 바뀌는 것을 감지한다. 여기를 고칠 때는 mmmMath.js도 같이
+// 볼 것(그 반대도 마찬가지).
+
 import { CREATIVE_MATH, CREATIVE_STATS } from "./creativeMath.js";
 import { CANNIBAL_STATS } from "./responseMath.js";
 import { mmmOls, REG_STATS, REG_TRANSFORMS } from "./regMath.js";

@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL, isRoutePublished } from "@/lib/routeMap";
+import { SITE_URL, publishedToolIds } from "@/lib/routeMap";
 import { getRouteSeo } from "@/lib/routeSeo";
 
 // 표준 브랜드 토킹포인트 SSOT.
@@ -120,11 +120,10 @@ export function getBrandLimits(locale = "ko") {
 }
 
 // 공개된 분석 도구 수 — 손으로 센 숫자를 적으면 도구가 늘 때 바로 거짓말이 된다.
+// 세는 규칙은 routeMap이 소유한다. 여기서 필터를 다시 쓰면 두 벌이 되고, 실제로
+// 그렇게 갈려 있었다(랜딩은 toolIndex, 이 함수는 자체 필터 — 소비처도 0이었다).
 export function getPublishedToolCount() {
-  return ROUTES.filter((route) => isRoutePublished(route))
-    .filter((route) => route.id.startsWith("5-") || route.id.startsWith("9-"))
-    .filter((route) => route.publication !== "subtool")
-    .length;
+  return publishedToolIds().length;
 }
 
 // 도구 한 줄 설명은 routeSeo가 SSOT다. 여기서는 조회만 한다.

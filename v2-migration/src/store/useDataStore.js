@@ -682,10 +682,18 @@ export const useAppStore = create(persist((set, get) => ({
   responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
   setResponseMappingSession: (session) => set({ responseMappingSession: session }),
 
-  // 결정·검토 루프는 모든 도구가 공유하는 세션 상태다. 사용자가 아래 opt-in을 켠
-  // 경우에만 persistPartialize가 allowlist 요약을 localStorage에 포함한다. 원본 CSV,
-  // 매핑, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다. 단, 사용자가
-  // 선택한 비교 범위(차원 필터)만 결정 검증을 위해 축약해 저장할 수 있다.
+  // 결정·검토 루프는 모든 도구가 공유하는 세션 상태다. 이 플래그가 켜져 있으면
+  // persistPartialize가 allowlist 요약을 localStorage에 포함하고, CsvUploader가
+  // 업로드 원본을 IndexedDB 워크스페이스에 보관한다(90일 만료 + /storage 삭제 화면).
+  // 원본 CSV, 매핑, inputSignature, 차트 데이터는 **레코드 스키마**에 들어갈 수 없다.
+  // 단, 사용자가 선택한 비교 범위(차원 필터)만 결정 검증을 위해 축약해 저장할 수 있다.
+  //
+  // **기본값은 ON(opt-out)이다.** 여기 "명시적으로 켠 경우에만"이라고 적혀 있었지만
+  // 코드는 반대였고, DecisionStorageConsentNotice는 `!enabled`일 때만 뜨므로 신규
+  // 사용자에게는 아예 렌더되지 않는다(과거 거절 사용자 마이그레이션 전용). 고지는
+  // 저장 후 안내(CsvUploader의 csv-memory-note) + /storage 삭제 화면이 맡는다.
+  // 서버 전송은 어느 경우에도 없다(§2.2). 기본값을 OFF로 바꾸는 것은 제품 결정이며,
+  // 바꾼다면 이 주석과 ARCHITECTURE.md §4의 서술을 함께 고칠 것.
   decisionPersistenceEnabled: true,
   decisionPersistencePreferenceSet: false,
   decisionPersistencePromptSeen: false,

@@ -1,4 +1,4 @@
-import { isRoutePublished, idToPath, ROUTES } from "@/lib/routeMap";
+import { idToPath, publishedToolIds } from "@/lib/routeMap";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { TOOL_REQUIRED_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
@@ -20,9 +20,7 @@ import { trItemTitle } from "@/lib/enNavCopy";
  * 목록에서도 도구 화면에서도 같은 문장을 쓴다 — 두 곳이 다르면 신뢰가 깨진다.
  * ============================================================ */
 
-const PUBLISHED_TOOL_IDS = ROUTES
-  .filter((route) => isRoutePublished(route) && /^(5-|9-)/.test(route.id))
-  .map((route) => route.id);
+const PUBLISHED_TOOL_IDS = publishedToolIds();
 
 // 필요한 컬럼을 사람이 읽는 라벨로. oneOf는 "둘 중 하나"라 슬래시로 잇는다.
 const MAX_NEEDS = 4;
