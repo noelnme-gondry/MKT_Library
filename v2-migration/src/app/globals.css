@@ -7962,6 +7962,52 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
 .dochi-home-assistant .csv-uploader--dochi form label,.dochi-home-assistant .csv-uploader--dochi form > span { font-size:9.5px !important; }
 .dochi-home-assistant .csv-uploader--dochi form input { min-height:38px;font-size:11px !important; }
 .dochi-home-assistant .csv-uploader--dochi form .ab-button { min-height:38px;padding:7px 10px;font-size:10.5px; }
+/* 첫 방문자 인사 오버레이(DochiWelcomeOverlay) — 상시 접수처와 달리 화면을
+   덮는 1회성 안내다. 모바일에서는 전면 대신 하단 시트로 내려 위쪽 콘텐츠가
+   비쳐 보이게 한다(전면 인터스티셜이 모바일 검색에 불리하므로). */
+.dochi-welcome-overlay { position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:24px;background:color-mix(in srgb,var(--bg-1) 72%,transparent);backdrop-filter:blur(3px);animation:dochi-welcome-fade .22s ease-out both; }
+.dochi-welcome { width:min(620px,100%);max-height:calc(100vh - 48px);overflow-y:auto;border:2px solid color-mix(in srgb,var(--text-primary) 40%,var(--border));border-radius:20px;background:var(--surface-container-lowest);box-shadow:0 26px 60px color-mix(in srgb,var(--bg-1) 42%,transparent);animation:dochi-welcome-rise .3s cubic-bezier(.2,1.2,.4,1) both; }
+.dochi-welcome__inner { position:relative;display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-areas:"stage speech" "controls controls";gap:14px 18px;padding:26px 24px 20px; }
+.dochi-welcome__close { position:absolute;top:8px;right:10px;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:var(--text-muted);font-size:22px;line-height:1;cursor:pointer; }
+.dochi-welcome__close:hover { color:var(--text-primary);background:var(--surface-container-low); }
+.dochi-welcome__stage { grid-area:stage;align-self:end;width:150px;height:150px;animation:dochi-welcome-enter .45s cubic-bezier(.2,1.25,.4,1) both; }
+.dochi-welcome__stage .dochi-sprite { width:100%;height:100%;filter:drop-shadow(0 12px 12px color-mix(in srgb,var(--bg-1) 30%,transparent));animation:dochi-welcome-hop .5s ease-out both,dochi-home-breathe 3.8s ease-in-out .5s infinite; }
+.dochi-welcome__speech { grid-area:speech;position:relative;align-self:center;padding:16px 18px;border:2px solid color-mix(in srgb,var(--text-primary) 50%,var(--border));border-radius:16px;background:var(--surface-container-low);animation:dochi-welcome-pop .28s cubic-bezier(.2,1.3,.4,1) both; }
+.dochi-welcome__tail { position:absolute;left:-19px;top:34px;width:20px;height:26px; }
+.dochi-welcome__tail svg { display:block;width:100%;height:100%;overflow:visible; }
+.dochi-welcome__tail path { fill:var(--surface-container-low);stroke:color-mix(in srgb,var(--text-primary) 50%,var(--border));stroke-width:2;stroke-linejoin:round; }
+.dochi-welcome__line { margin:0;color:var(--text-primary);font:650 15px/1.6 var(--font-sans);letter-spacing:-.02em;word-break:keep-all;overflow-wrap:normal; }
+.dochi-welcome__intake { margin-top:14px;padding-top:12px;border-top:1px solid var(--border-subtle); }
+.dochi-welcome__privacy { display:block;margin-top:9px;color:var(--text-muted);font-size:10px;line-height:1.45; }
+.dochi-welcome__controls { grid-area:controls;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-top:12px;border-top:1px solid var(--border-subtle); }
+.dochi-welcome__progress { flex:0 0 auto;margin:0;color:var(--text-muted);font:700 10px var(--font-sans);letter-spacing:.08em; }
+.dochi-welcome__optout { display:inline-flex;flex:1 1 auto;align-items:center;gap:8px;min-height:44px;color:var(--text-secondary);font-size:11.5px;cursor:pointer; }
+.dochi-welcome__optout input { width:16px;height:16px;accent-color:var(--primary);cursor:pointer; }
+.dochi-welcome__next { min-width:104px;min-height:44px;padding:10px 20px;border:0;border-radius:10px;background:var(--primary);color:var(--on-primary);font:750 13px var(--font-sans);cursor:pointer; }
+.dochi-welcome__next:hover { filter:brightness(1.06); }
+.dochi-welcome__skip { min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text-secondary);font:700 12px var(--font-sans);cursor:pointer; }
+.dochi-welcome .csv-uploader--dochi .csv-drop-text { font-size:12px;font-weight:750;line-height:1.4; }
+.dochi-welcome .csv-uploader--dochi .csv-drop-sub { display:block;margin-top:3px;color:var(--text-muted);font-size:10px;line-height:1.4; }
+@keyframes dochi-welcome-fade { from { opacity:0; } to { opacity:1; } }
+@keyframes dochi-welcome-rise { from { opacity:0;transform:translateY(18px) scale(.97); } to { opacity:1;transform:none; } }
+@keyframes dochi-welcome-enter { from { opacity:0;transform:translateY(26px) scale(.9); } to { opacity:1;transform:none; } }
+@keyframes dochi-welcome-hop { 0% { transform:translateY(0); } 42% { transform:translateY(-11px); } 100% { transform:translateY(0); } }
+@keyframes dochi-welcome-pop { from { opacity:0;transform:translateX(-10px) scale(.97); } to { opacity:1;transform:none; } }
+/* 모바일 — 하단 시트. 위쪽 콘텐츠가 비쳐 보이도록 배경을 덜 덮는다. */
+@media (max-width:700px) {
+  .dochi-welcome-overlay { place-items:end center;padding:0;background:color-mix(in srgb,var(--bg-1) 52%,transparent); }
+  .dochi-welcome { width:100%;max-height:80vh;border-width:2px 0 0;border-radius:20px 20px 0 0;animation-name:dochi-welcome-sheet; }
+  .dochi-welcome__inner { grid-template-columns:96px minmax(0,1fr);gap:12px 14px;padding:20px 16px 16px; }
+  .dochi-welcome__stage { width:96px;height:96px; }
+  .dochi-welcome__line { font-size:14px; }
+  .dochi-welcome__controls { gap:8px 10px; }
+  .dochi-welcome__optout { flex-basis:100%;order:3; }
+}
+@keyframes dochi-welcome-sheet { from { opacity:0;transform:translateY(40px); } to { opacity:1;transform:none; } }
+@media (prefers-reduced-motion:reduce) {
+  .dochi-welcome-overlay,.dochi-welcome,.dochi-welcome__stage,.dochi-welcome__speech,.dochi-welcome__stage .dochi-sprite { animation:none; }
+}
+
 .dochi-result-workspace,.dochi-result-empty { width:min(1180px,calc(100% - clamp(32px,6vw,120px)));margin:0 auto;padding:clamp(26px,3.2vw,54px) 0 clamp(42px,5vw,82px); }
 .dochi-result-workspace__header { margin:0 0 20px; }
 .dochi-result-workspace__header > span,.dochi-result-empty > span { display:block;color:var(--primary);font:750 10px var(--font-sans);letter-spacing:.12em; }

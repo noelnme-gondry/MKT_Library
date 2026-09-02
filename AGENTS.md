@@ -437,6 +437,13 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **리다이렉트·앵커 텍스트**: `redirects.test.js`가 301 목적지 실재·sitemap 잔존·체인·permanent를 검증. 관련 글/용어 링크의 앵커는 slug 원문이 아니라 **표시명**을 쓴다.
 - **검토 메타(reviewer/reviewedAt)는 에이전트가 채우지 않는다** — 실제 검토가 있어야 하는 편집 정보다(§8). 인프라만 유지하고 값은 비워 둔다.
 
+### 12.29b 첫 방문자 온보딩 오버레이 (도치 인사)
+홈 첫 진입에서 도치가 4단계로 말을 걸고 마지막에 CSV·공개 시트를 받는다(`assistant/DochiWelcomeOverlay`). 상시 접수처(`DochiAssistant`)는 그대로 남아 닫은 사람도 뒤에 올릴 수 있다.
+- **전면 오버레이는 모바일 검색에 불리하다**(구글 인터스티셜): 닫기 상시 노출·ESC·바깥클릭에 더해 **≤700px에서는 하단 시트**로 내려 위쪽 콘텐츠가 비쳐 보이게 한다. 서버 스냅샷을 항상 "닫힘"으로 두면 프리렌더 HTML에 오버레이가 없어 크롤러는 가려진 화면을 보지 않는다.
+- **1회성 노출 판정은 저장소를 둘로 가른다**: 명시적 "보지 않기"=localStorage(영구), 같은 방문 중 반복 차단=sessionStorage. 하나로 합치면 "세션당 1회"와 "영구 끄기"가 구분되지 않는다. 저장소를 못 쓰면 **노출 쪽으로** 폴백한다(안내가 한 번 더 뜨는 게 영영 못 보는 것보다 낫다).
+- **useSyncExternalStore 스냅샷은 모듈에 굳힐 것**: 오버레이가 열리면서 세션 표식을 남기는데 스냅샷이 저장소를 매번 다시 읽으면 그 직후 false로 뒤집혀 **열려 있던 안내가 스스로 닫힌다**. effect+setState로 여는 경로는 §5(set-state-in-effect)에 걸리고 ref를 렌더에서 읽는 우회도 lint가 막는다 — 열림은 렌더 파생이어야 한다.
+- **단계 모션은 key 리마운트로 재생**: 같은 노드에 CSS 애니메이션을 재적용해도 다시 돌지 않는다. 포즈는 `public/assets/dochi/`에 실재하는 것만 쓰고 스모크가 단계↔포즈를 단언한다.
+
 ### 12.30 하단 마감 영역 = `ToolPageOutro` 한 박스 (2026-08)
 분석 결과 아래 붙는 것(다음 단계·참고 자료·관련 글)은 **전부 `components/ToolPageOutro.jsx` 안**에 있다. KO/EN `PageClient`는 이 하나만 렌더한다.
 - **경계선 소유자는 하나**: "분석 결과는 여기까지"는 outro가 소유하고 자식은 그리지 않는다. 경계가 자식에 있으면 그 위 형제(다음 단계 레일)가 분석 안쪽으로 읽힌다 — 실제로 그랬다.
@@ -527,7 +534,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **356파일·2814 통과**(0 skipped) · eslint 0 errors/0 warnings · `next build` ✓ · `playwright` **25/25**(mobile-320·tablet-768·desktop-1440·light-EN) (2026-09-01 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
+- ✅ 검증 하네스: `npm run test:all` **360파일·2839 통과**(0 skipped) · eslint 0 errors/0 warnings · `next build` ✓ · `playwright` **25/25**(mobile-320·tablet-768·desktop-1440·light-EN) (2026-09-01 실측). **수치를 적을 땐 실제로 돌려서 적을 것**.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
 - ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 완료(D-07). 개수를 적지 말 것 — `ds/downloadEscape.test.js`가 발행 라우트에서 파생해 강제하고 **예외는 코드에 사유 표식이 있어야 통과**한다. 그 가드가 현황이다.
