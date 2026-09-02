@@ -23,6 +23,9 @@ describe("BasisCurrencyToggleBar currency contract", () => {
       csvData: slice,
       displayCurrency: "USD",
       denomBasis: "installs",
+      // 게이트는 다른 케이스의 확정 시그가 남으면 통화만 되돌려도 다시 맞아
+      // 버린다(§7 beforeEach 오염) — 케이스마다 닫힌 상태에서 시작한다.
+      analyzedByGroup: { ...state.analyzedByGroup, efficiency: null },
     });
   });
 
@@ -37,6 +40,29 @@ describe("BasisCurrencyToggleBar currency contract", () => {
     fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
     expect(useAppStore.getState().csvData.currency).toBe("USD");
     expect(useAppStore.getState().displayCurrency).toBe("USD");
+  });
+
+  it("단위 선언을 바꿔도 이미 끝난 분석이 사라지지 않는다", () => {
+    // currency는 computeAnalyzeSig에 들어가므로 선언을 바꾸면 게이트 시그가
+    // 달라진다. 환산이 없는 이 모드에서는 숫자가 한 자리도 안 바뀌는데도
+    // 결과가 통째로 접히던 회귀 — 사용자에겐 "달러 눌렀더니 데이터가 확 바뀜".
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+
+    render(<BasisCurrencyToggleBar />);
+    fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
+
+    expect(useAppStore.getState().csvData.currency).toBe("USD");
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+  });
+
+  it("분석 전이었다면 통화 선언만으로 분석이 끝난 척하지 않는다", () => {
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
+
+    render(<BasisCurrencyToggleBar />);
+    fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
+
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(false);
   });
 
   it("실제 환산 모드에서만 고정 환율을 고지한다", () => {
