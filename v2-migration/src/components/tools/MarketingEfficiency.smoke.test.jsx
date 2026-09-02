@@ -24,15 +24,17 @@ function seedNoData() {
 // cost>0 & result>0 to fit a response curve, so span 12 days × 2 channels.
 // mapping = { origHeader: standardKey }.
 function seedWithData() {
-  const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Actions"];
+  const headers = ["Date", "Country", "Platform", "Channel", "Campaign", "Spend", "Installs", "Actions", "Revenue D7"];
   const mapping = {
     Date: "date",
     Country: "country",
     Platform: "platform",
     Channel: "channel",
+    Campaign: "campaign_name",
     Spend: "cost",
     Installs: "installs",
     Actions: "actions",
+    "Revenue D7": "revenue_d7",
   };
   const raw = [];
   const channels = ["Google", "Meta"];
@@ -42,7 +44,18 @@ function seedWithData() {
       const cost = ch === "Google" ? 100000 + d * 6000 : 80000 + d * 5000;
       // deterministic diminishing returns (result grows sub-linearly with cost) — §8, no Math.random
       const installs = Math.round(Math.pow(cost, 0.85) / (ch === "Google" ? 40 : 34));
-      raw.push({ Date: date, Country: "KR", Platform: "iOS", Channel: ch, Spend: cost, Installs: installs, Actions: Math.max(1, Math.round(installs * 0.35)) });
+      const actions = Math.max(1, Math.round(installs * 0.35));
+      raw.push({
+        Date: date,
+        Country: "KR",
+        Platform: "iOS",
+        Channel: ch,
+        Campaign: `${ch} Brand`,
+        Spend: cost,
+        Installs: installs,
+        Actions: actions,
+        "Revenue D7": actions * (ch === "Google" ? 12000 : 8000),
+      });
     }
   }
   const slice = { raw, headers, mapping, fileName: "sat.csv" };
@@ -91,10 +104,47 @@ describe("MarketingEfficiency render smoke", () => {
     // added via ToolPageShell) — assert at least one match rather than a
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
+    expect(screen.getByText("채널별 증액·감액 우선순위")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /채널 Cost와 CPA 의사결정 지도/ })).toBeTruthy();
+    expect(screen.getByText("평균 효율 vs 다음 예산 투입 시 한계효율")).toBeTruthy();
+    expect(screen.queryByText(/다음 1원/)).toBeNull();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
+  });
+
+  it("switches the decision map between channel/campaign and CPA/ROAS contracts", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency />);
+
+    fireEvent.click(screen.getByRole("button", { name: "캠페인" }));
+    fireEvent.click(screen.getByRole("button", { name: "ROAS (높을수록 좋음)" }));
+    expect(screen.getByText("캠페인별 증액·감액 우선순위")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /캠페인 Cost와 ROAS 의사결정 지도/ })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "캠페인별 평균·한계효율 차이" })).toBeTruthy();
+    expect(screen.queryByText("종료 검토")).toBeNull();
+    expect(screen.getAllByText("관찰·개선").length).toBeGreaterThan(0);
+  });
+
+  it("uses a marginal-gap row to select the matching response curve", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Meta" }));
+    expect(screen.getByRole("button", { name: "Meta 응답곡선 보기" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Meta" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("uses a locale-safe English title without a one-dollar expression", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency locale="en" />);
+
+    expect(screen.getByText("Average efficiency vs. marginal efficiency on the next budget increase")).toBeTruthy();
+    expect(screen.queryByText(/next dollar/i)).toBeNull();
   });
 
   it("follows the shared install/signup basis after it has already mounted", () => {

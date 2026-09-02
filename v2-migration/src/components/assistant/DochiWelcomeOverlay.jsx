@@ -43,8 +43,8 @@ const COPY = {
       ["저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!"],
       [
         "이 홈페이지는 마케터 분들을 위한 분석 사이트 입니다!",
-        "사용된 파일과 링크 속 데이터는 저장되지 않습니다!",
-        "저희는 서버가 없어요!",
+        "브라우저에서 모든 데이터가 처리되며",
+        "원본 행은 서버에 저장되지 않습니다!",
       ],
       [
         "데이터 파일이나 전체 공개된 스프레드 시트 주소를 전달해주시면",
@@ -65,8 +65,8 @@ const COPY = {
       ["I’m Dochi, and I show first-time visitors around!"],
       [
         "This site is an analysis workspace built for marketers!",
-        "The files and linked data you use are never stored!",
-        "We don’t even have a server!",
+        "All data is processed in your browser,",
+        "and source rows are not stored on a server!",
       ],
       [
         "Hand me a data file, or the address of a publicly shared spreadsheet,",
@@ -86,25 +86,28 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
   const copy = COPY[locale] || COPY.ko;
   const router = useRouter();
   const savedDatasets = useAppStore((state) => state.workspaceDatasetSummaries);
+  const decisionPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
+  const workspaceRestoreStatus = useAppStore((state) => state.workspaceRestoreStatus);
   const [closed, setClosed] = useState(false);
   const [step, setStep] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [importing, setImporting] = useState(false);
   const nextButtonRef = useRef(null);
   // 열림 여부는 effect의 setState가 아니라 렌더 파생이다(§5 set-state-in-effect).
-  // 저장소 판정은 스냅샷이 소유하고, 재방문 신호는 마운트 시점 값으로 굳힌다 —
-  // 저장된 작업 목록은 IndexedDB에서 비동기로 채워지므로 이 시점엔 아직 비어
-  // 있을 수 있고, 그때는 인사가 한 번 더 뜬다(세션당 1회라 반복되진 않는다).
+  // 저장소 판정은 스냅샷이 소유한다. 기기 저장이 켜진 경우 IndexedDB 복원이
+  // 끝날 때까지 기다려야 기존 사용자가 1단계로 잠깐 보였다가 4단계로 바뀌지 않는다.
   const storageAllows = useSyncExternalStore(
     subscribeWelcome,
     readDochiWelcomeStorageSnapshot,
     dochiWelcomeServerSnapshot,
   );
-  const [hadSavedWorkOnMount] = useState(() => savedDatasets.length > 0);
+  const isRestoreResolved = decisionPersistenceEnabled !== true
+    || workspaceRestoreStatus === "ready"
+    || workspaceRestoreStatus === "failed";
+  const displayStep = savedDatasets.length > 0 ? STEPS.length - 1 : step;
   const open = shouldShowDochiWelcome({
     dismissed: !storageAllows,
-    hasReturningSignal: hadSavedWorkOnMount,
-  }) && !closed;
+  }) && isRestoreResolved && !closed;
 
   useEffect(() => {
     if (!open) return;
@@ -120,12 +123,12 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
       placement: "home_welcome",
       locale,
       state,
-      rank: step + 1,
+      rank: displayStep + 1,
     });
   };
 
   const goNext = () => {
-    const nextStep = Math.min(step + 1, STEPS.length - 1);
+    const nextStep = Math.min(displayStep + 1, STEPS.length - 1);
     setStep(nextStep);
     trackProductEvent("onboarding_welcome_step", {
       placement: "home_welcome",
@@ -135,7 +138,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
     });
   };
 
-  const isLast = step === STEPS.length - 1;
+  const isLast = displayStep === STEPS.length - 1;
 
   return (
     <ModalDialog
@@ -145,20 +148,20 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
       overlayClassName="dochi-welcome-overlay"
       panelClassName="dochi-welcome"
     >
-      <div className="dochi-welcome__inner" data-step={STEPS[step].id} data-importing={importing ? "true" : "false"}>
+      <div className="dochi-welcome__inner" data-step={STEPS[displayStep].id} data-importing={importing ? "true" : "false"}>
         <button type="button" className="dochi-welcome__close" onClick={() => close("dismissed")} aria-label={copy.close}>
           ×
         </button>
 
         {/* key로 리마운트해 단계가 바뀔 때마다 등장 모션이 다시 재생된다
             (같은 노드에 재적용하면 CSS 애니메이션이 다시 돌지 않는다). */}
-        <div className="dochi-welcome__stage" key={`stage-${step}-${importing}`} aria-hidden="true">
-          <DochiSprite pose={importing ? "run" : STEPS[step].pose} />
+        <div className="dochi-welcome__stage" key={`stage-${displayStep}-${importing}`} aria-hidden="true">
+          <DochiSprite pose={importing ? "run" : STEPS[displayStep].pose} />
         </div>
 
-        <div className="dochi-welcome__speech" key={`speech-${step}`}>
+        <div className="dochi-welcome__speech" key={`speech-${displayStep}`}>
           <div aria-live="polite">
-            {(importing ? [copy.importing] : copy.lines[step]).map((line) => (
+            {(importing ? [copy.importing] : copy.lines[displayStep]).map((line) => (
               <p className="dochi-welcome__line" key={line}>{line}</p>
             ))}
           </div>
@@ -172,6 +175,8 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
                 sheetInitiallyOpen
                 onImportStart={() => setImporting(true)}
                 onPrepared={() => {
+                  // 닫기·건너뛰기로 오버레이가 사라져도 시작된 가져오기는 유지된다.
+                  // 준비 완료 콜백은 그대로 결과 화면으로 보낸다.
                   close("imported");
                   router.push(locale === "en" ? "/en/dochi-result" : "/dochi-result");
                 }}
@@ -183,7 +188,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
         </div>
 
         <div className="dochi-welcome__controls">
-          <p className="dochi-welcome__progress">{copy.progress(step + 1, STEPS.length)}</p>
+          <p className="dochi-welcome__progress">{copy.progress(displayStep + 1, STEPS.length)}</p>
           <label className="dochi-welcome__optout">
             <input
               type="checkbox"

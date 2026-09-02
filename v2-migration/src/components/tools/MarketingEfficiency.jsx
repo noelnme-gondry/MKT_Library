@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import { useAppStore } from "@/store/useDataStore";
 import Chart from "@/utils/chartGlobals";
@@ -28,12 +28,16 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { stripHtmlTags } from "@/lib/htmlText";
 import { sourceCurrencyOf } from "@/utils/format";
+import ScaleDecisionMap from "@/components/tools/ScaleDecisionMap";
+import MarginalEfficiencyGapChart from "@/components/tools/MarginalEfficiencyGapChart";
 
-// 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
+// 우측 TOC — 실제 렌더되는 결과 섹션 순서와 동일.
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
 function buildSatToc(tr) {
   return [
     { id: "s-sat-summary", title: tr("요약", "Summary") },
+    { id: "s-scale-map", title: tr("증액·감액 지도", "Scale decision map") },
+    { id: "s-marginal-gap", title: tr("평균·한계효율", "Average vs. marginal") },
     { id: "s-sat", title: tr("포화도 순위", "Saturation ranking") },
     { id: "s-sat-curve", title: tr("응답곡선", "Response curve") },
   ];
@@ -159,12 +163,12 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       : mappedKeys.has("actions")
         ? "actions"
         : null;
+  const mappedRows = useMemo(() => (hasData ? getMappedRows(csvData) : []), [csvData, hasData]);
 
   const rows = (() => {
     if (!hasData || !basisMetricField) return [];
     const { revField: rev } = satAvailableFields(csvData);
-    const mapped = getMappedRows(csvData);
-    const pointsMap = satBuildPoints(mapped, effectiveGrain, basisMetricField, rev);
+    const pointsMap = satBuildPoints(mappedRows, effectiveGrain, basisMetricField, rev);
     const out = [];
     for (const [name, pts] of pointsMap) {
       const a = SAT_MATH.analyzeEntity(pts, SAT_CONFIG);
@@ -422,8 +426,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
               {tr(
-                `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
-                `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means the next dollar costs more than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`
+                `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁘다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
+                `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means marginal efficiency on the next budget increase is worse than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`
               )}
             </div>
           </details>
@@ -575,52 +579,78 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         />
       </section>
 
+      <div className="saturation-view-toolbar" role="group" aria-label={tr("포화도 결과 표시 기준", "Saturation result display options")}>
+        <strong>{tr("표시 기준", "View by")}</strong>
+        <div>
+          <span>{tr("분석 단위", "Analysis unit")}</span>
+          <button
+            type="button"
+            className="ab-pill"
+            style={effectiveGrain === "channel" ? activeStyle : {}}
+            onClick={() => setSatState(s => ({...s, grain: "channel", selected: null}))}
+          >
+            {tr("채널", "Channel")}
+          </button>
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={!hasCampaign}
+            style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
+            onClick={() => setSatState(s => ({...s, grain: "campaign", selected: null}))}
+          >
+            {tr("캠페인", "Campaign")}
+          </button>
+        </div>
+        <div>
+          <span>{tr("효율 기준", "Efficiency metric")}</span>
+          <button
+            type="button"
+            className="ab-pill"
+            style={effectiveMetric === "cpa" ? activeStyle : {}}
+            onClick={() => setSatState(s => ({...s, metric: "cpa"}))}
+          >
+            {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
+          </button>
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={!revField}
+            style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
+            onClick={() => setSatState(s => ({...s, metric: "roas"}))}
+          >
+            {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
+          </button>
+        </div>
+        <BlockedOptionsNote items={[
+          { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
+          { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
+        ]} />
+      </div>
+
+      <ScaleDecisionMap
+        rows={mappedRows}
+        grain={effectiveGrain}
+        metric={effectiveMetric}
+        resultField={basisMetricField}
+        revenueField={revField}
+        currency={currency}
+        locale={locale}
+        isDarkMode={isDarkMode}
+      />
+
+      <MarginalEfficiencyGapChart
+        rows={okRows}
+        grain={effectiveGrain}
+        metric={effectiveMetric}
+        metricLabel={metricLabel}
+        currency={currency}
+        locale={locale}
+        selectedName={satState.selected || okRows[0]?.name || null}
+        onSelect={(name) => setSatState((state) => ({ ...state, selected: name }))}
+      />
+
       <section className="block" id="s-sat">
         <h2 className="section-title">{tr("포화도 순위", "Saturation ranking")}</h2>
-
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{tr("분석 단위", "Analysis unit")}</span>
-            <button
-              className="ab-pill"
-              style={effectiveGrain === "channel" ? activeStyle : {}}
-              onClick={() => setSatState(s => ({...s, grain: "channel", selected: null}))}
-            >
-              {tr("채널", "Channel")}
-            </button>
-            <button
-              className="ab-pill"
-              disabled={!hasCampaign}
-              style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
-              onClick={() => setSatState(s => ({...s, grain: "campaign", selected: null}))}
-            >
-              {tr("캠페인", "Campaign")}
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{tr("효율 기준", "Efficiency metric")}</span>
-            <button
-              className="ab-pill"
-              style={effectiveMetric === "cpa" ? activeStyle : {}}
-              onClick={() => setSatState(s => ({...s, metric: "cpa"}))}
-            >
-              {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
-            </button>
-            <button
-              className="ab-pill"
-              disabled={!revField}
-              style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
-              onClick={() => setSatState(s => ({...s, metric: "roas"}))}
-            >
-              {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
-            </button>
-          </div>
-          {/* 비활성 사유를 title에만 두면 터치·키보드에서 알 수 없다(product-ssot §5.4 · D-04). */}
-          <BlockedOptionsNote items={[
-            { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
-            { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
-          ]} />
-        </div>
 
         {okRows.length > 0 && (
           <div className="table-wrap">
@@ -636,7 +666,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                   ) : (
                     <><th className="tnum">{tr(`평균 ${costMetricLabel}`, `Avg ${costMetricLabel}`)}</th><th className="tnum">{tr(`한계 ${costMetricLabel}`, `Marginal ${costMetricLabel}`)}</th></>
                   )}
-                  <th className="tnum" title={tr("한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈", "Marginal efficiency ÷ average efficiency. Above 1 means the next dollar costs more than average")}>{tr("포화지수", "Saturation index")}</th>
+                  <th className="tnum" title={tr("한계효율 ÷ 평균효율. 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁨", "Marginal efficiency ÷ average efficiency. Above 1 means marginal efficiency on the next budget increase is worse than average")}>{tr("포화지수", "Saturation index")}</th>
                   <th>{tr("판정", "Verdict")}</th>
                 </tr>
               </thead>

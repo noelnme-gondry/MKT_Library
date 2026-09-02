@@ -11,11 +11,11 @@ export const DOCHI_WELCOME_DISMISSED_KEY = "mkt-library-dochi-welcome-dismissed"
 export const DOCHI_WELCOME_SESSION_KEY = "mkt-library-dochi-welcome-seen";
 
 // 순수 판정 — 저장소·DOM을 보지 않는다(골든으로 고정).
-// hasReturningSignal: 이 기기에 저장된 작업이 있으면 "처음 온 사람"이 아니다.
-export function shouldShowDochiWelcome({ dismissed = false, seenThisSession = false, hasReturningSignal = false } = {}) {
+// 저장된 작업이 있는 기존 사용자에게도 안내는 노출하되, UI에서 마지막 단계부터
+// 시작한다. 여기서는 명시적 옵트아웃과 같은 세션의 중복 노출만 막는다.
+export function shouldShowDochiWelcome({ dismissed = false, seenThisSession = false } = {}) {
   if (dismissed) return false;
   if (seenThisSession) return false;
-  if (hasReturningSignal) return false;
   return true;
 }
 

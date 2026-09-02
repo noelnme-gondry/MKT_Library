@@ -22,7 +22,7 @@ describe("shouldShowDochiWelcome", () => {
   it("stays hidden forever once the visitor opted out", () => {
     expect(shouldShowDochiWelcome({ dismissed: true })).toBe(false);
     // 옵트아웃은 다른 모든 신호를 이긴다.
-    expect(shouldShowDochiWelcome({ dismissed: true, seenThisSession: false, hasReturningSignal: false })).toBe(false);
+    expect(shouldShowDochiWelcome({ dismissed: true, seenThisSession: false })).toBe(false);
   });
 
   it("does not repeat inside one session when the visitor never opted out", () => {
@@ -31,9 +31,6 @@ describe("shouldShowDochiWelcome", () => {
     expect(shouldShowDochiWelcome({ dismissed: false, seenThisSession: false })).toBe(true);
   });
 
-  it("treats a device with saved work as a returning visitor", () => {
-    expect(shouldShowDochiWelcome({ hasReturningSignal: true })).toBe(false);
-  });
 });
 
 describe("dochi welcome storage", () => {
