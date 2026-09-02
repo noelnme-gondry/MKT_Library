@@ -105,6 +105,12 @@ export default function MarginalEfficiencyGapChart({
                   <span className={`marginal-gap__dot is-marginal${point.isUnbounded ? " is-unbounded" : ""}`} aria-hidden="true">
                     {point.isUnbounded ? "∞" : ""}
                   </span>
+                  <span className="marginal-gap__tip" data-side={marginalPos > 55 ? "left" : "right"} aria-hidden="true">
+                    {isEn ? "Average" : "평균"} {formatMetric(point.average, metric, currency)}
+                    {" → "}
+                    {isEn ? "marginal" : "한계"} {formatMetric(point.marginal, metric, currency)}
+                    {" · "}{indexLabel}
+                  </span>
                 </div>
                 <div className="marginal-gap__values">
                   <span><i className="is-average" aria-hidden="true" />{formatMetric(point.average, metric, currency)}</span>
