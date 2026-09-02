@@ -132,8 +132,8 @@ export default function ModelDiagnosticsPanel({ scope, fit, X, labels = [], loca
 
   return (
     <section className="block analyst-model-diagnostics" aria-label={tx(locale, "모델 신뢰도 점검", "Model reliability checks")}>
-      <div style={{ display: "flex", gap: "8px", alignItems: "baseline", flexWrap: "wrap" }}>
-        <h2 className="section-title" style={{ margin: 0 }}>{tx(locale, "모델 신뢰도 점검", "Model reliability checks")}</h2>
+      <div className="section-head" style={{ justifyContent: "flex-start", alignItems: "baseline", gap: "8px" }}>
+        <h2 className="section-title">{tx(locale, "모델 신뢰도 점검", "Model reliability checks")}</h2>
         <span className="ab-pill">{tx(locale, "분석가 모드", "Analyst mode")}</span>
       </div>
       <p style={{ margin: "7px 0 14px", fontSize: "13px", lineHeight: 1.55 }}>{summary}</p>

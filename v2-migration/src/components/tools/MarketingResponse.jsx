@@ -5416,8 +5416,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <div style={{ marginTop: "12px" }}>
                   {dateScopedDecomp ? (
                     <>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
-                        <h3 className="section-title" style={{ fontSize: "13.5px", margin: 0 }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
+                      <div className="section-head" style={{ marginBottom: "6px" }}>
+                        <h3 className="section-title" style={{ fontSize: "13.5px" }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
                         <button
                           className="ab-pill"
                           title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}

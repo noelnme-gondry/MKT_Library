@@ -5018,6 +5018,20 @@ body.light-mode .btn.primary { color: #fff; }
 .block, [id] { scroll-margin-top: var(--sticky-stack-h); }
 .card { padding: 18px; }
 a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(--border); }
+/* 제목이 버튼·칩과 한 줄을 쓰는 머리. 밑줄 소유자는 이 래퍼다 — h2가 flex item이
+   되는 순간 폭이 글자에 맞춰 줄어 밑줄이 이름 밑에서 끊긴다(버튼 있는 섹션만 짧던
+   원인). 래퍼가 선을 그리면 버튼이 있든 없든 같은 자리에서 끝난다. */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 0 0 11px;
+  border-bottom: 1px solid var(--border-stronger);
+}
+.section-head > .section-title { flex: 1 1 auto; margin: 0; padding: 0; border-bottom: 0; }
 .section-title { margin: 0 0 16px; padding: 0 0 11px; border-bottom: 1px solid var(--border-stronger); color: var(--text-primary); font-size: 19px; font-weight: 650; letter-spacing: -.035em; }
 .summary { position: relative; margin: 14px 0 20px; padding: 17px 18px 17px 21px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-lowest); }
 .summary::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--primary); }
@@ -8828,6 +8842,13 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
   border-bottom-color: var(--operator-line-strong);
   font-size: var(--type-title);
 }
+/* 래퍼는 선과 여백만 물려받는다 — font-size까지 주면 옆의 버튼·칩 글자가 같이 커진다. */
+.app.is-analysis .section-head {
+  margin-bottom: 18px;
+  padding-bottom: 10px;
+  border-bottom-color: var(--operator-line-strong);
+}
+.app.is-analysis .section-head > .section-title { margin: 0; padding: 0; }
 /* 클래스 없는 h3의 기본형: 섹션 제목(19px)과 본문(14px) 사이 한 단.
    :where()로 특이도 0이라 컴포넌트별 h3 규칙이 그대로 이긴다. */
 :where(h3:not([class])) {

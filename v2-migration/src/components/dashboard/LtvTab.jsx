@@ -385,7 +385,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       </section>
 
       <section className="block" id="s-table">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="section-head">
           <h2 className="section-title">{T.s2Title(ltvHorizon)}</h2>
           <button className="ab-pill" onClick={() => setLtvCfgOpen(true)} title={T.editColsTitle}>{T.editCols}</button>
         </div>

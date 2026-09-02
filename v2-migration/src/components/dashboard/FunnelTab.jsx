@@ -378,7 +378,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
 
       {/* §5 전체 퍼널 단계 표 */}
       <section className="block" id="s-funnel" style={{ marginTop: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="section-head">
           <h2 className="section-title">{tr("전체 퍼널 단계 표", "Full funnel stage table")}</h2>
           <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>⚙ {tr("컬럼 편집", "Edit columns")}</button>
         </div>

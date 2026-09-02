@@ -751,8 +751,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
       {okRows.length > 0 && (
         <section className="block" id="s-sat-curve">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <h2 className="section-title" style={{ marginBottom: 0 }}>
+          <div className="section-head">
+            <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
             </h2>
             <button

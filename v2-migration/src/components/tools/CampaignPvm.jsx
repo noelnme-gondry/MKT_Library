@@ -1357,8 +1357,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         id="s-pvm-result"
         style={{ background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <h2 className="section-title" style={{ margin: 0 }}>{tr("한눈에 보기", "Overview")}</h2>
+        <div className="section-head">
+          <h2 className="section-title">{tr("한눈에 보기", "Overview")}</h2>
         </div>
 
         <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>

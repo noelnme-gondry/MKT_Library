@@ -2003,8 +2003,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
         >
         <section className="block" id="s-verify">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "8px" }}>
-            <h2 className="section-title" style={{ margin: 0 }}>{tr("데이터가 예산 변화에 반응했나?", "Did performance respond to budget changes?")}</h2>
+          <div className="section-head">
+            <h2 className="section-title">{tr("데이터가 예산 변화에 반응했나?", "Did performance respond to budget changes?")}</h2>
             <div style={{ display: "flex", gap: "8px" }}>
               <button
                 className="btn secondary"
@@ -3021,8 +3021,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
         return (
         <section className="block" id="s-table">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-            <h2 className="section-title" style={{ margin: 0 }}>{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
+          <div className="section-head">
+            <h2 className="section-title">{tr("어떤 채널을 조정할까?", "Which channels should change?")}</h2>
             {rollupLevels.length > 1 && (
               <PillGroup
                 style={{ margin: 0 }}
