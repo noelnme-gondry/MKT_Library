@@ -865,8 +865,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           ) : readoutData && (
             <>
               <section className="block" id="s-readout-sig">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <h2 className="section-title" style={{ marginBottom: 0 }}>{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
+                <div className="section-head">
+                  <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
                   <DownloadHub
                     toolId="5-4"
                     locale={locale}
