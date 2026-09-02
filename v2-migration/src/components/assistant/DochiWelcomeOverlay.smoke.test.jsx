@@ -209,7 +209,11 @@ describe("DochiWelcomeOverlay speech bubble shape", () => {
     expect(tail).toContain("background:var(--dochi-welcome-fill)");
     expect(tail).toContain("border-left:2px solid var(--dochi-welcome-line)");
     expect(tail).toContain("border-bottom:2px solid var(--dochi-welcome-line)");
-    expect(tail).toContain("rotate(-45deg)");
+    // 두 변이 만나는 꼭짓점은 좌하단(-8,+8)이고, 이게 도치 쪽(왼쪽)을 향해야 한다.
+    // CSS rotate 양수는 화면 기준 시계방향이므로 +45deg에서 (-11.3, 0) → 정확히 왼쪽.
+    // -45deg는 같은 꼭짓점을 (0, +11.3)으로 보내 꼬리가 아래를 찌르는 "v"가 된다.
+    expect(tail).toContain("rotate(45deg)");
+    expect(tail).not.toContain("rotate(-45deg)");
   });
 
   it("keeps the mascot and the tail on the same axis so the tail points at Dochi", () => {

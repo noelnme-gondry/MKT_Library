@@ -19,6 +19,9 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
   const setDenomBasis = useAppStore((state) => state.setDenomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
+  const currentRouteId = useAppStore((state) => state.currentRouteId);
+  const isGroupAnalyzed = useAppStore((state) => state.isGroupAnalyzed);
+  const setGroupAnalyzed = useAppStore((state) => state.setGroupAnalyzed);
   const tr = (ko, en) => (locale === "en" ? en : ko);
 
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return null;
@@ -35,8 +38,15 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
     }
     // 효율 패밀리는 전 탭·엔진이 원본 숫자를 그대로 쓴다. 따라서 이 컨트롤은
     // 환산이 아니라 단위 선언이며, 전역 포맷 fallback도 같은 값으로 맞춘다.
+    // 선언은 csvData에 쓰이는데 currency가 분석 게이트 시그(computeAnalyzeSig)에
+    // 들어 있어, 그대로 두면 단위만 바꿔도 게이트가 닫혀 결과가 통째로 사라진다
+    // (사용자에겐 "달러 눌렀더니 데이터가 확 바뀜"으로 보인다). 이 모드에서는
+    // 숫자가 한 자리도 바뀌지 않으므로 분석 상태를 새 시그로 다시 찍어 잇는다.
+    // 저장된 보고서의 최신성 판정은 여전히 시그를 비교하므로 영향받지 않는다.
+    const wasAnalyzed = isGroupAnalyzed(currentRouteId);
     setCsvData({ ...csvData, currency });
     setDisplayCurrency(currency);
+    if (wasAnalyzed) setGroupAnalyzed(currentRouteId);
   };
 
   return (
