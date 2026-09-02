@@ -138,6 +138,19 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByRole("button", { name: "Meta" }).getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("shows the average-to-marginal values as a hover tip on each marginal-gap row", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    const { container } = render(<MarketingEfficiency />);
+
+    const tips = container.querySelectorAll(".marginal-gap__tip");
+    expect(tips.length).toBeGreaterThan(0);
+    tips.forEach((tip) => {
+      expect(tip.textContent).toMatch(/평균 .+ → 한계 .+ · /);
+      expect(["left", "right"]).toContain(tip.getAttribute("data-side"));
+    });
+  });
+
   it("uses a locale-safe English title without a one-dollar expression", () => {
     seedWithData();
     useAppStore.getState().setGroupAnalyzed("5-22");

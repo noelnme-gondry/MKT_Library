@@ -5018,7 +5018,7 @@ body.light-mode .btn.primary { color: #fff; }
 .block, [id] { scroll-margin-top: var(--sticky-stack-h); }
 .card { padding: 18px; }
 a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(--border); }
-.section-title { margin: 0 0 16px; padding: 0 0 11px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 18px; font-weight: 650; letter-spacing: -.035em; }
+.section-title { margin: 0 0 16px; padding: 0 0 11px; border-bottom: 1px solid var(--border-stronger); color: var(--text-primary); font-size: 19px; font-weight: 650; letter-spacing: -.035em; }
 .summary { position: relative; margin: 14px 0 20px; padding: 17px 18px 17px 21px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-lowest); }
 .summary::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--primary); }
 .summary-label { margin-bottom: 5px; color: var(--primary); font: 700 9.5px var(--font-sans); letter-spacing: .13em; text-transform: uppercase; }
@@ -5842,7 +5842,7 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 /* 분석 도구 공통 가독성 가드. 도구별 계산·차트는 건드리지 않고, 긴 보고서형 화면을
    결론(상단) · 조작(탭/필터) · 근거(본문) 순서로 빠르게 훑을 수 있게 밀도만 맞춘다. */
 .is-analysis .tab-pane.active > .block { margin-bottom: 14px; }
-.is-analysis .tab-pane.active .section-title { margin-bottom: 12px; padding-bottom: 9px; font-size: 17px; }
+.is-analysis .tab-pane.active .section-title { margin-bottom: 12px; padding-bottom: 9px; font-size: var(--type-title); }
 .is-analysis .tab-pane.active :where(.block > p, .summary > p, .callout .body > p) { max-width: 780px; }
 .is-analysis .tab-pane.active .ab-tabs,
 .is-analysis .tab-pane.active .ab-pillgroup {
@@ -8496,7 +8496,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   --operator-rail-muted: #8092aa;
   --type-display-xl: clamp(25px, 2.5vw, 38px);
   --type-display-lg: clamp(21px, 2vw, 29px);
-  --type-title: 17px;
+  --type-title: 19px;
   --type-body: 14px;
   --type-meta: 11px;
   --work-surface: color-mix(in srgb, var(--surface-container-lowest) 97%, transparent);
@@ -8825,8 +8825,18 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .app.is-analysis .section-title {
   margin-bottom: 18px;
   padding-bottom: 10px;
-  border-bottom-color: var(--operator-line);
+  border-bottom-color: var(--operator-line-strong);
   font-size: var(--type-title);
+}
+/* 클래스 없는 h3의 기본형: 섹션 제목(19px)과 본문(14px) 사이 한 단.
+   :where()로 특이도 0이라 컴포넌트별 h3 규칙이 그대로 이긴다. */
+:where(h3:not([class])) {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -.02em;
 }
 .app.is-analysis .tool-page-shell__main > .block,
 .app.is-analysis .dashboard-shell__main > .block {
@@ -9351,7 +9361,13 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .marginal-gap__values i.is-average { background: var(--text-secondary); }
 .marginal-gap__legend i.is-marginal,
 .marginal-gap__values i.is-marginal { border: 2px solid var(--primary); background: var(--surface-container-lowest); }
-.marginal-gap__chart { margin-top: 20px; }
+.marginal-gap__chart {
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-container-lowest);
+}
 .marginal-gap__columns,
 .marginal-gap__axis,
 .marginal-gap__row {
@@ -9361,7 +9377,8 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 }
 .marginal-gap__columns {
   align-items: end;
-  padding: 0 12px 7px;
+  padding: 13px 14px 7px;
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
   color: var(--text-muted);
   font-size: 9.5px;
   font-weight: 700;
@@ -9370,7 +9387,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 }
 .marginal-gap__columns span:nth-child(2) { text-align: center; }
 .marginal-gap__columns span:nth-child(n+3) { text-align: right; }
-.marginal-gap__axis { padding: 0 12px 5px; color: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.marginal-gap__axis { padding: 0 14px 7px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--text-primary) 3%, transparent); color: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .marginal-gap__axis span { grid-column: 2; grid-row: 1; }
 .marginal-gap__axis span:nth-child(1) { justify-self: start; }
 .marginal-gap__axis span:nth-child(2) { justify-self: center; }
@@ -9379,10 +9396,10 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   --gap-tone: var(--text-secondary);
   align-items: center;
   min-height: 58px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
+  padding: 8px 14px;
   transition: background-color .15s ease;
 }
+.marginal-gap__row + .marginal-gap__row { border-top: 1px solid var(--border-subtle); }
 .marginal-gap__row[data-verdict="scale"] { --gap-tone: var(--success); }
 .marginal-gap__row[data-verdict="saturated"] { --gap-tone: var(--danger); }
 .marginal-gap__row:hover,
@@ -9442,6 +9459,28 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   font-weight: 800;
   line-height: 1;
 }
+.marginal-gap__tip {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-container-lowest);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity .12s ease;
+  pointer-events: none;
+}
+.marginal-gap__tip[data-side="right"] { left: calc(var(--marginal-position) + 13px); }
+.marginal-gap__tip[data-side="left"] { right: calc(100% - var(--marginal-position) + 13px); }
+.marginal-gap__row:hover .marginal-gap__tip,
+.marginal-gap__row:focus-within .marginal-gap__tip,
+.marginal-gap__row[data-selected="true"] .marginal-gap__tip { opacity: 1; }
 .marginal-gap__values { display: grid; justify-content: end; gap: 4px; color: var(--text-secondary); font-size: 10px; font-variant-numeric: tabular-nums; }
 .marginal-gap__evidence { display: grid; justify-content: end; gap: 4px; color: var(--text-muted); font-size: 9.5px; text-align: right; }
 .marginal-gap__excluded { margin-top: 10px; }
@@ -9450,7 +9489,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .marginal-gap__legend { padding-top: 10px; }
   .marginal-gap__columns,
   .marginal-gap__axis { display: none; }
-  .marginal-gap__row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; padding: 11px 4px; }
+  .marginal-gap__row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; padding: 11px 12px; }
   .marginal-gap__entity { grid-column: 1; }
   .marginal-gap__evidence { grid-column: 2; grid-row: 1; }
   .marginal-gap__track { grid-column: 1 / -1; grid-row: 2; }
