@@ -1,15 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, importControl } = vi.hoisted(() => ({ push: vi.fn(), importControl: { finish: null } }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/components/CsvUploader", () => ({
   default: ({ onImportStart, onPrepared }) => (
-    <button type="button" onClick={() => { onImportStart?.({ source: "csv" }); onPrepared?.({ source: "csv" }); }}>
-      파일 전달
-    </button>
+    <>
+      <button type="button" onClick={() => { onImportStart?.({ source: "csv" }); onPrepared?.({ source: "csv" }); }}>
+        파일 전달
+      </button>
+      <button type="button" onClick={() => {
+        onImportStart?.({ source: "csv" });
+        importControl.finish = () => onPrepared?.({ source: "csv" });
+      }}>
+        지연 파일 전달
+      </button>
+    </>
   ),
 }));
 
@@ -27,8 +35,8 @@ const KO_LINES = [
   ["저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!"],
   [
     "이 홈페이지는 마케터 분들을 위한 분석 사이트 입니다!",
-    "사용된 파일과 링크 속 데이터는 저장되지 않습니다!",
-    "저희는 서버가 없어요!",
+    "브라우저에서 모든 데이터가 처리되며",
+    "원본 행은 서버에 저장되지 않습니다!",
   ],
   [
     "데이터 파일이나 전체 공개된 스프레드 시트 주소를 전달해주시면",
@@ -48,7 +56,12 @@ beforeEach(() => {
   window.sessionStorage.clear();
   // 저장소 스냅샷은 모듈에 한 번 굳으므로 테스트마다 비운다.
   resetDochiWelcomeSnapshot();
-  useAppStore.setState({ workspaceDatasetSummaries: [] });
+  useAppStore.setState({
+    workspaceDatasetSummaries: [],
+    decisionPersistenceEnabled: false,
+    workspaceRestoreStatus: "idle",
+  });
+  importControl.finish = null;
 });
 
 // body를 손으로 비우지 않는다 — Radix 포털을 쓰므로 testing-library의 자동
@@ -101,9 +114,25 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
-  it("stays closed for a device that already has saved work", () => {
+  it("starts at the fourth message for a device that already has saved work", () => {
     useAppStore.setState({ workspaceDatasetSummaries: [{ id: "saved-1" }] });
     render(<DochiWelcomeOverlay />);
+    expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
+    expectLines(KO_LINES[3]);
+    expect(screen.getByText("4단계 중 4단계")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "파일 전달" })).toBeTruthy();
+  });
+
+  it("waits for device-storage restore before choosing the returning-user step", () => {
+    useAppStore.setState({ decisionPersistenceEnabled: true, workspaceRestoreStatus: "loading" });
+    render(<DochiWelcomeOverlay />);
+    expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
+
+    act(() => useAppStore.setState({
+      workspaceDatasetSummaries: [{ id: "restored-1" }],
+      workspaceRestoreStatus: "ready",
+    }));
+    expectLines(KO_LINES[3]);
     expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
@@ -129,10 +158,27 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     expect(screen.queryByText(KO_LINES[3][0])).toBe(null);
   });
 
+  it.each(["안내 닫기", "건너뛰기"])("continues an import and routes after %s", (closeAction) => {
+    render(<DochiWelcomeOverlay />);
+    advanceToLastStep();
+    fireEvent.click(screen.getByRole("button", { name: "지연 파일 전달" }));
+    expect(screen.getByText("파일을 읽고 있어요.")).toBeTruthy();
+    fireEvent.click(closeAction === "안내 닫기"
+      ? screen.getByLabelText(closeAction)
+      : screen.getByRole("button", { name: closeAction }));
+    expect(screen.queryByText("파일을 읽고 있어요.")).toBe(null);
+
+    act(() => importControl.finish?.());
+    expect(push).toHaveBeenCalledWith("/dochi-result");
+  });
+
   it("renders the English script and routes to the English workspace", () => {
     render(<DochiWelcomeOverlay locale="en" />);
     expect(screen.getByText("Hello!")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("All data is processed in your browser,")).toBeTruthy();
+    expect(screen.getByText("and source rows are not stored on a server!")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("checkbox", { name: "Don’t show this again" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/en/dochi-result");
