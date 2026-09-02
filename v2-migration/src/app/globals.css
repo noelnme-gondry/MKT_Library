@@ -5018,7 +5018,7 @@ body.light-mode .btn.primary { color: #fff; }
 .block, [id] { scroll-margin-top: var(--sticky-stack-h); }
 .card { padding: 18px; }
 a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(--border); }
-.section-title { margin: 0 0 16px; padding: 0 0 11px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); font-size: 18px; font-weight: 650; letter-spacing: -.035em; }
+.section-title { margin: 0 0 16px; padding: 0 0 11px; border-bottom: 1px solid var(--border-stronger); color: var(--text-primary); font-size: 19px; font-weight: 650; letter-spacing: -.035em; }
 .summary { position: relative; margin: 14px 0 20px; padding: 17px 18px 17px 21px; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-lowest); }
 .summary::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--primary); }
 .summary-label { margin-bottom: 5px; color: var(--primary); font: 700 9.5px var(--font-sans); letter-spacing: .13em; text-transform: uppercase; }
@@ -5842,7 +5842,7 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 /* 분석 도구 공통 가독성 가드. 도구별 계산·차트는 건드리지 않고, 긴 보고서형 화면을
    결론(상단) · 조작(탭/필터) · 근거(본문) 순서로 빠르게 훑을 수 있게 밀도만 맞춘다. */
 .is-analysis .tab-pane.active > .block { margin-bottom: 14px; }
-.is-analysis .tab-pane.active .section-title { margin-bottom: 12px; padding-bottom: 9px; font-size: 17px; }
+.is-analysis .tab-pane.active .section-title { margin-bottom: 12px; padding-bottom: 9px; font-size: var(--type-title); }
 .is-analysis .tab-pane.active :where(.block > p, .summary > p, .callout .body > p) { max-width: 780px; }
 .is-analysis .tab-pane.active .ab-tabs,
 .is-analysis .tab-pane.active .ab-pillgroup {
@@ -8496,7 +8496,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   --operator-rail-muted: #8092aa;
   --type-display-xl: clamp(25px, 2.5vw, 38px);
   --type-display-lg: clamp(21px, 2vw, 29px);
-  --type-title: 17px;
+  --type-title: 19px;
   --type-body: 14px;
   --type-meta: 11px;
   --work-surface: color-mix(in srgb, var(--surface-container-lowest) 97%, transparent);
@@ -8825,8 +8825,18 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .app.is-analysis .section-title {
   margin-bottom: 18px;
   padding-bottom: 10px;
-  border-bottom-color: var(--operator-line);
+  border-bottom-color: var(--operator-line-strong);
   font-size: var(--type-title);
+}
+/* 클래스 없는 h3의 기본형: 섹션 제목(19px)과 본문(14px) 사이 한 단.
+   :where()로 특이도 0이라 컴포넌트별 h3 규칙이 그대로 이긴다. */
+:where(h3:not([class])) {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -.02em;
 }
 .app.is-analysis .tool-page-shell__main > .block,
 .app.is-analysis .dashboard-shell__main > .block {
