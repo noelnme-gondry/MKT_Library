@@ -20,12 +20,22 @@ import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import { DOCHI_WELCOME_DISMISSED_KEY, DOCHI_WELCOME_SESSION_KEY, resetDochiWelcomeSnapshot } from "@/lib/dochiWelcome";
 import { useAppStore } from "@/store/useDataStore";
 
+// 단계별 줄 구성까지 계약이다 — 카피가 줄바꿈 위치를 소유하므로 줄 수가 바뀌면
+// 여기서 걸린다(브라우저 폭에 맡기면 어디서 끊길지 알 수 없다).
 const KO_LINES = [
-  "안녕하세요!",
-  "저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!",
-  "이 홈페이지는 마케터 분들을 위한 분석 사이트입니다!",
-  "가지고 계신 데이터 파일이나 구글 스프레드시트(전체공개) 주소를 전달해주시면 지금의 문제와 할 수 있는 데이터 분석을 정리해드릴게요!",
+  ["안녕하세요!"],
+  ["저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!"],
+  [
+    "이 홈페이지는 마케터 분들을 위한 분석 사이트 입니다!",
+    "사용된 파일과 링크 속 데이터는 저장되지 않습니다!",
+    "저희는 서버가 없어요!",
+  ],
+  [
+    "데이터 파일이나 전체 공개된 스프레드 시트 주소를 전달해주시면",
+    "발견된 문제, 할 수 있는 데이터 분석을 정리해드릴게요!",
+  ],
 ];
+const expectLines = (lines) => lines.forEach((line) => expect(screen.getByText(line)).toBeTruthy());
 
 const advanceToLastStep = () => {
   for (let i = 0; i < KO_LINES.length - 1; i += 1) {
@@ -51,21 +61,21 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
   it("opens for a first-time visitor and walks the four scripted lines", () => {
     render(<DochiWelcomeOverlay />);
 
-    expect(screen.getByText(KO_LINES[0])).toBeTruthy();
+    expectLines(KO_LINES[0]);
     // 각 단계는 정해진 도치 포즈를 쓴다 — 자산에 실제로 있는 파일만.
     const poseAt = () => document.querySelector(".dochi-welcome__stage .dochi-sprite").className;
     expect(poseAt()).toContain("is-idle");
 
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByText(KO_LINES[1])).toBeTruthy();
+    expectLines(KO_LINES[1]);
     expect(poseAt()).toContain("is-point-up");
 
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByText(KO_LINES[2])).toBeTruthy();
+    expectLines(KO_LINES[2]);
     expect(poseAt()).toContain("is-results");
 
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByText(KO_LINES[3])).toBeTruthy();
+    expectLines(KO_LINES[3]);
     expect(poseAt()).toContain("is-delivery");
     // 마지막 단계에서만 업로드 경로가 열린다.
     expect(screen.getByRole("button", { name: "파일 전달" })).toBeTruthy();
@@ -82,19 +92,19 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
   it("stays closed when the visitor already opted out", () => {
     window.localStorage.setItem(DOCHI_WELCOME_DISMISSED_KEY, "1");
     render(<DochiWelcomeOverlay />);
-    expect(screen.queryByText(KO_LINES[0])).toBe(null);
+    expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
   it("stays closed for the rest of the session once seen", () => {
     window.sessionStorage.setItem(DOCHI_WELCOME_SESSION_KEY, "1");
     render(<DochiWelcomeOverlay />);
-    expect(screen.queryByText(KO_LINES[0])).toBe(null);
+    expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
   it("stays closed for a device that already has saved work", () => {
     useAppStore.setState({ workspaceDatasetSummaries: [{ id: "saved-1" }] });
     render(<DochiWelcomeOverlay />);
-    expect(screen.queryByText(KO_LINES[0])).toBe(null);
+    expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
   it("writes the permanent opt-out only when the checkbox is ticked before closing", () => {
@@ -116,7 +126,7 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     advanceToLastStep();
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/dochi-result");
-    expect(screen.queryByText(KO_LINES[3])).toBe(null);
+    expect(screen.queryByText(KO_LINES[3][0])).toBe(null);
   });
 
   it("renders the English script and routes to the English workspace", () => {
@@ -132,33 +142,35 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
 describe("DochiWelcomeOverlay speech bubble shape", () => {
   const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
 
-  it("draws the tail from the bubble itself, not as a separate node", () => {
+  it("draws the tail as one rotated square, never two stacked triangles", () => {
     render(<DochiWelcomeOverlay />);
-    // 별도 노드로 그리면 삼각형의 말풍선 쪽 변에도 선이 생겨 "박스에 삼각형을
-    // 붙인" 이음매가 보인다. 꼬리는 말풍선의 의사요소여야 한다.
+    // 삼각형을 테두리색+배경색 두 겹으로 쌓으면 둘이 반픽셀만 어긋나도 말풍선
+    // 테두리가 그 틈으로 비쳐 이음매가 보인다. 겹칠 도형이 하나뿐이면 그 실패가
+    // 구조적으로 불가능하다.
     expect(document.querySelector(".dochi-welcome__tail")).toBe(null);
     expect(document.querySelector(".dochi-welcome__speech")).toBeTruthy();
-    expect(css).toContain(".dochi-welcome__speech::before");
+    expect(css).not.toContain(".dochi-welcome__speech::before");
     expect(css).toContain(".dochi-welcome__speech::after");
   });
 
-  it("paints the tail with the same fill and line the bubble uses", () => {
-    // 이음매가 사라지는 근거는 "같은 색"이다. 한쪽만 바뀌면 선이 다시 드러난다.
+  it("gives the tail the bubble's own fill and line so the two read as one shape", () => {
     const rules = css.split("\n").filter((line) => line.startsWith(".dochi-welcome__speech"));
     const bubble = rules.find((line) => line.startsWith(".dochi-welcome__speech {"));
-    const outer = rules.find((line) => line.startsWith(".dochi-welcome__speech::before {"));
-    const inner = rules.find((line) => line.startsWith(".dochi-welcome__speech::after {"));
+    const tail = rules.find((line) => line.startsWith(".dochi-welcome__speech::after {"));
     expect(bubble).toContain("var(--dochi-welcome-line)");
     expect(bubble).toContain("var(--dochi-welcome-fill)");
-    expect(outer).toContain("var(--dochi-welcome-line)");
-    expect(inner).toContain("var(--dochi-welcome-fill)");
+    // 불투명한 배경이 말풍선 테두리를 덮고, 만나는 두 변만 같은 선으로 이어진다.
+    expect(tail).toContain("background:var(--dochi-welcome-fill)");
+    expect(tail).toContain("border-left:2px solid var(--dochi-welcome-line)");
+    expect(tail).toContain("border-bottom:2px solid var(--dochi-welcome-line)");
+    expect(tail).toContain("rotate(-45deg)");
   });
 
   it("keeps the mascot and the tail on the same axis so the tail points at Dochi", () => {
     // 도치가 아래 정렬(align-self:end)이고 꼬리가 위쪽 고정이면 서로 어긋난다.
     // 둘 다 세로 중앙이어야 대사 길이가 변해도 마주본다.
     const stage = css.split("\n").find((line) => line.startsWith(".dochi-welcome__stage {"));
-    const tail = css.split("\n").find((line) => line.startsWith(".dochi-welcome__speech::before,"));
+    const tail = css.split("\n").find((line) => line.startsWith(".dochi-welcome__speech::after {"));
     expect(stage).toContain("align-self:center");
     expect(stage).not.toContain("align-self:end");
     expect(tail).toContain("top:50%");
@@ -169,5 +181,23 @@ describe("DochiWelcomeOverlay speech bubble shape", () => {
     // 안에서는 축소 계약이 있어야 4단계가 화면을 넘기지 않는다.
     expect(css).toContain(".dochi-welcome .csv-uploader--dochi .csv-dropzone {");
     expect(css).toContain(".dochi-welcome .csv-uploader--dochi .csv-drop-icon {");
+  });
+});
+
+describe("DochiWelcomeOverlay bubble sizing", () => {
+  const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  it("stands the starter-template action up as a full-width button", () => {
+    // 링크처럼 붙어 있으면 눌러야 할 것으로 안 읽힌다.
+    const rule = css.split("\n").find((line) => line.startsWith(".dochi-welcome .csv-uploader--dochi .csv-upload-quick-actions .ab-pill {"));
+    expect(rule).toContain("width:100%");
+  });
+
+  it("drops the upload privacy line that step 3 already says out loud", () => {
+    // 3단계가 저장·서버를 직접 말하므로 업로드부의 같은 문구는 높이만 늘린다.
+    render(<DochiWelcomeOverlay />);
+    advanceToLastStep();
+    expect(document.querySelector(".dochi-welcome__privacy")).toBe(null);
+    expect(screen.queryByText(/서버로 보내지 않습니다/)).toBe(null);
   });
 });
