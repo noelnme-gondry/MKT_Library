@@ -63,3 +63,32 @@ describe("GoogleSheetConnect import outcome", () => {
     expect(result.raw).toEqual([{ Date: "2026-01-01", Spend: "100" }]);
   });
 });
+
+describe("GoogleSheetConnect cancel affordance", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listSheetSources.mockResolvedValue([]);
+  });
+
+  it("offers cancel when the visitor opened the form themselves", async () => {
+    render(<GoogleSheetConnect onLoaded={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Google Sheets에서 불러오기/ }));
+    // 스스로 연 폼은 취소하면 원래의 pill 버튼으로 돌아간다 — 갈 곳이 있다.
+    expect(screen.getByRole("button", { name: "취소" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Google Sheets에서 불러오기/ })).toBeTruthy());
+  });
+
+  it("offers cancel when the parent hands back a view to return to", () => {
+    render(<GoogleSheetConnect initialOpen onCancel={() => {}} onLoaded={() => {}} />);
+    expect(screen.getByRole("button", { name: "취소" })).toBeTruthy();
+  });
+
+  it("hides cancel when the form is opened by the parent with nowhere to return to", () => {
+    // 도치 접수처·첫 방문 오버레이가 이 경우다. 눌러도 화면이 달라지지 않는
+    // 버튼은 어포던스가 아니라 노이즈다.
+    render(<GoogleSheetConnect initialOpen onLoaded={() => {}} />);
+    expect(screen.queryByRole("button", { name: "취소" })).toBe(null);
+    expect(screen.getByRole("button", { name: "불러오기" })).toBeTruthy();
+  });
+});

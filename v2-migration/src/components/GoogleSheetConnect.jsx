@@ -118,10 +118,16 @@ export async function fetchSheetTable(apiKey, url) {
 // initialOpen/onCancel: CsvUploader.jsx가 데이터 연동 후 상태에서 "시트 변경" 버튼으로
 // 이 폼을 다시 열 때 사용(그때는 취소 시 pill 버튼이 아니라 부모의 3버튼 뷰로 돌아가야
 // 하므로 onCancel로 위임 — 기본 사용처(빈 드롭존)는 그냥 내부 open 상태로 닫힘).
+//
+// 취소 버튼은 "돌아갈 화면이 있을 때"만 뜻이 있다. 부모가 onCancel로 복귀 뷰를 주거나,
+// 사용자가 pill을 눌러 직접 연 경우(initialOpen=false)가 그렇다. 부모가 이 폼을 처음부터
+// 펼쳐 두고(initialOpen) 복귀 뷰도 주지 않으면 취소가 갈 곳이 없다 — 도치 접수처·첫 방문
+// 오버레이가 그 경우다. 그때는 버튼을 렌더하지 않는다(prop을 새로 받지 않고 파생).
 export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImportStart, initialOpen = false, locale = "ko", toolId = "" }) {
   const T = COPY[locale] || COPY.ko;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
   const [open, setOpen] = useState(initialOpen);
+  const canCancel = Boolean(onCancel) || !initialOpen;
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [recentSources, setRecentSources] = useState([]);
@@ -227,19 +233,21 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
         <button type="submit" className="ab-button" disabled={loading || !url.trim()}>
           {loading ? T.loading : T.submitBtn}
         </button>
-        <button
-          type="button"
-          className="ab-pill"
-          disabled={loading}
-          onClick={() => {
-            setUrl("");
-            onError?.("", null);
-            if (onCancel) onCancel();
-            else setOpen(false);
-          }}
-        >
-          {T.cancelBtn}
-        </button>
+        {canCancel && (
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={loading}
+            onClick={() => {
+              setUrl("");
+              onError?.("", null);
+              if (onCancel) onCancel();
+              else setOpen(false);
+            }}
+          >
+            {T.cancelBtn}
+          </button>
+        )}
       </div>
       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlHint}</span>
       {recentSources.length > 0 && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}

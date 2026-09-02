@@ -167,9 +167,6 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
             </div>
           )}
 
-          <span className="dochi-welcome__tail" aria-hidden="true">
-            <svg viewBox="0 0 54 40" preserveAspectRatio="none"><path d="M54 1L2 20L54 39Z" /></svg>
-          </span>
         </div>
 
         <div className="dochi-welcome__controls">

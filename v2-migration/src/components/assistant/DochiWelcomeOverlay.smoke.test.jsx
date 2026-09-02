@@ -13,6 +13,9 @@ vi.mock("@/components/CsvUploader", () => ({
   ),
 }));
 
+import fs from "node:fs";
+import path from "node:path";
+
 import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import { DOCHI_WELCOME_DISMISSED_KEY, DOCHI_WELCOME_SESSION_KEY, resetDochiWelcomeSnapshot } from "@/lib/dochiWelcome";
 import { useAppStore } from "@/store/useDataStore";
@@ -123,5 +126,48 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     expect(screen.getByRole("checkbox", { name: "Don’t show this again" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/en/dochi-result");
+  });
+});
+
+describe("DochiWelcomeOverlay speech bubble shape", () => {
+  const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  it("draws the tail from the bubble itself, not as a separate node", () => {
+    render(<DochiWelcomeOverlay />);
+    // 별도 노드로 그리면 삼각형의 말풍선 쪽 변에도 선이 생겨 "박스에 삼각형을
+    // 붙인" 이음매가 보인다. 꼬리는 말풍선의 의사요소여야 한다.
+    expect(document.querySelector(".dochi-welcome__tail")).toBe(null);
+    expect(document.querySelector(".dochi-welcome__speech")).toBeTruthy();
+    expect(css).toContain(".dochi-welcome__speech::before");
+    expect(css).toContain(".dochi-welcome__speech::after");
+  });
+
+  it("paints the tail with the same fill and line the bubble uses", () => {
+    // 이음매가 사라지는 근거는 "같은 색"이다. 한쪽만 바뀌면 선이 다시 드러난다.
+    const rules = css.split("\n").filter((line) => line.startsWith(".dochi-welcome__speech"));
+    const bubble = rules.find((line) => line.startsWith(".dochi-welcome__speech {"));
+    const outer = rules.find((line) => line.startsWith(".dochi-welcome__speech::before {"));
+    const inner = rules.find((line) => line.startsWith(".dochi-welcome__speech::after {"));
+    expect(bubble).toContain("var(--dochi-welcome-line)");
+    expect(bubble).toContain("var(--dochi-welcome-fill)");
+    expect(outer).toContain("var(--dochi-welcome-line)");
+    expect(inner).toContain("var(--dochi-welcome-fill)");
+  });
+
+  it("keeps the mascot and the tail on the same axis so the tail points at Dochi", () => {
+    // 도치가 아래 정렬(align-self:end)이고 꼬리가 위쪽 고정이면 서로 어긋난다.
+    // 둘 다 세로 중앙이어야 대사 길이가 변해도 마주본다.
+    const stage = css.split("\n").find((line) => line.startsWith(".dochi-welcome__stage {"));
+    const tail = css.split("\n").find((line) => line.startsWith(".dochi-welcome__speech::before,"));
+    expect(stage).toContain("align-self:center");
+    expect(stage).not.toContain("align-self:end");
+    expect(tail).toContain("top:50%");
+  });
+
+  it("shrinks the upload dropzone so the bubble does not run off the panel", () => {
+    // 기본 드롭존은 min-height 182px · padding 38px · 18px 텍스트다. 말풍선
+    // 안에서는 축소 계약이 있어야 4단계가 화면을 넘기지 않는다.
+    expect(css).toContain(".dochi-welcome .csv-uploader--dochi .csv-dropzone {");
+    expect(css).toContain(".dochi-welcome .csv-uploader--dochi .csv-drop-icon {");
   });
 });
