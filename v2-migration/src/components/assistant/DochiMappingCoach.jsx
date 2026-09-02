@@ -21,7 +21,7 @@ export default function DochiMappingCoach({ locale = "ko", isLeaving = false, on
       <p>{C.body}</p>
       <button type="button" className="ab-button" onClick={onReview}>{C.action}</button>
       <span className="dochi-mapping-coach__speech-tail" aria-hidden="true">
-        <svg viewBox="0 0 48 36" preserveAspectRatio="none"><path d="M0 1L46 18L0 35Z" /></svg>
+        <svg viewBox="0 0 48 36" preserveAspectRatio="none"><path d="M0 1L46 18L0 35" /></svg>
       </span>
     </div>
     <div className="dochi-mapping-coach__sprite" aria-hidden="true"><DochiSprite pose="point-up" /></div>

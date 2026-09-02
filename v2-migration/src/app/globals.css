@@ -7833,7 +7833,7 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
 .dochi-home-assistant { position:fixed;right:28px;bottom:22px;z-index:24;display:grid;grid-template-columns:minmax(0,1fr) 156px;align-items:end;width:min(498px,calc(100vw - 32px));min-height:174px;pointer-events:none; }
 .dochi-home-assistant :is(button,input,a) { pointer-events:auto; }
 .dochi-home-assistant__speech { position:relative;z-index:1;grid-column:1;min-height:154px;padding:16px 17px 13px;border:2px solid color-mix(in srgb,var(--text-primary) 56%,var(--border));border-radius:18px;background:var(--surface-container-lowest);box-shadow:0 14px 0 color-mix(in srgb,var(--primary) 12%,transparent),0 22px 42px color-mix(in srgb,var(--bg-1) 25%,transparent);color:var(--text-secondary);pointer-events:auto; }
-.dochi-home-assistant__speech-tail { position:absolute;right:-53px;bottom:124px;width:54px;height:40px;pointer-events:none; }
+.dochi-home-assistant__speech-tail { position:absolute;right:-54px;bottom:124px;width:54px;height:40px;pointer-events:none; }
 .dochi-home-assistant__speech-tail svg { display:block;width:100%;height:100%;overflow:visible; }
 .dochi-home-assistant__speech-tail path { fill:var(--surface-container-lowest);stroke:color-mix(in srgb,var(--text-primary) 56%,var(--border));stroke-width:2;stroke-linejoin:round; }
 .dochi-home-assistant__speech p { margin:0;font-size:13px;line-height:1.55;letter-spacing:-.018em; }
@@ -7917,7 +7917,7 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
 .dochi-arrival > p { position:absolute;left:50%;top:calc(48% + 126px);z-index:2;margin:0;color:var(--text-secondary);font:700 11px var(--font-sans);letter-spacing:.08em;transform:translateX(-50%);animation:dochi-arrival-label 1.15s ease both; }
 .dochi-mapping-coach { position:relative;display:flex;align-items:flex-end;justify-content:flex-end;min-height:152px;margin:18px 0 8px;padding-right:116px; }
 .dochi-mapping-coach__speech { position:relative;width:min(100%,460px);padding:16px 18px;border:1.5px solid var(--text-secondary);border-radius:15px;background:var(--surface-container-lowest);box-shadow:0 14px 34px color-mix(in srgb,var(--text-primary) 9%,transparent); }
-.dochi-mapping-coach__speech-tail { position:absolute;right:-47px;bottom:48px;width:48px;height:36px;pointer-events:none; }
+.dochi-mapping-coach__speech-tail { position:absolute;right:-48px;bottom:48px;width:48px;height:36px;pointer-events:none; }
 .dochi-mapping-coach__speech-tail svg { display:block;width:100%;height:100%;overflow:visible; }
 .dochi-mapping-coach__speech-tail path { fill:var(--surface-container-lowest);stroke:var(--text-secondary);stroke-width:1.5;stroke-linejoin:round; }
 .dochi-mapping-coach__speech strong { display:block;color:var(--text-primary);font-size:16px;letter-spacing:-.02em; }
@@ -8127,7 +8127,7 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   .dochi-home-assistant__speech { min-height:152px;padding:15px 14px 13px; }
   .dochi-home-assistant__speech p { font-size:12px; }
   .dochi-home-assistant__stage { width:108px;height:108px;margin-bottom:-4px; }
-  .dochi-home-assistant__speech-tail { right:-37px;bottom:44px;width:38px;height:30px; }
+  .dochi-home-assistant__speech-tail { right:-38px;bottom:44px;width:38px;height:30px; }
   .dochi-journey__scene { transform:scale(.8); }
   .dochi-arrival__bundle { transform-origin:center; }
   .dochi-arrival__runner,.dochi-arrival__presenter { width:128px;height:128px; }
