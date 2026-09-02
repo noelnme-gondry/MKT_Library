@@ -10,6 +10,14 @@
 
 export const SITE_URL = "https://growthoptplaybook.com";
 
+// 공용 소셜 카드 한 장. 예전에는 글·도구마다 next/og로 카드를 그렸는데, 그 경로가
+// 빌드 타임에 Google Fonts를 받아 왔고 응답이 잘리면 satori 폰트 파서가 빌드를
+// 통째로 죽였다(PR #790에서 실제 발생). 게다가 한글 폰트를 넘기지 않아 카드의
+// 한글이 제대로 그려지지도 않았다. `scripts/build-og-card.mjs`가 저장소 폰트로
+// 미리 그려 둔 정적 PNG를 전 페이지가 함께 쓴다.
+export const OG_CARD_PATH = "/og-card.png";
+export const OG_CARD_URL = `${SITE_URL}${OG_CARD_PATH}`;
+
 // component tag is documentation-only (the actual dispatch lives in the page).
 export const ROUTES = [
   { id: "home", slug: "/", component: "LandingPage" },

@@ -16,8 +16,8 @@ v2-migration/
 │  │  ├─ (ko|en)/diagnose/·contact/·privacy/·terms/·templates/
 │  │  ├─ (ko|en)/weekly-review/·weekly-report/   # 결정 검토 루프 · 주간 리포트
 │  │  ├─ sitemap.js·rss.xml/·(en)/en/rss.xml/·llms.txt/  # SEO 파생(공개 routeMap + 발행 콘텐츠, 개수 하드코딩 금지)
-│  │  ├─ og-card.png/·og/tool/[id]/              # 전역/도구별 동적 OG 카드
 │  │  ├─ layout.js·global-error.js               # 폰트·SEO 메타·GTM/GA4/AdSense·초기 테마·<GaPageviews/>
+│  │     └ 소셜 카드는 public/og-card.png 한 장 (scripts/build-og-card.mjs로 재생성, 빌드타임 생성 없음)
 │  │  └─ globals.css                             # ★ 전 디자인 시스템 (단일 파일, 쪼개지 말 것)
 │  ├─ store/useDataStore.js         # ★ SSOT: Zustand — IA·csvGroups·csvData 미러·필터·라우트·viewConfig
 │  ├─ utils/                        # ★ 순수 통계엔진 (*Math.js, 수학 불변·골든) + 표시/데이터 헬퍼

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
-import { SITE_URL } from "@/lib/routeMap";
+import { OG_CARD_URL, SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
@@ -42,8 +42,8 @@ export async function generateMetadata({ params }) {
     url: canonical,
     publishedTime: post.date || undefined,
     modifiedTime: post.updated || post.date || undefined,
-    // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입.
-    ...(post.ogImage ? { images: [post.ogImage] } : {}),
+    // 글이 자기 이미지를 선언했으면 그것을, 아니면 공용 카드(routeMap.OG_CARD_URL).
+    images: [post.ogImage || OG_CARD_URL],
   };
   return {
     title: post.title,
@@ -91,7 +91,7 @@ function buildPostJsonLd(post, canonical) {
   const publisher = publisherNode("en");
   const author = authorNode("en");
   const images = extractImages(post.html);
-  const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
+  const articleImages = images.length ? images : [OG_CARD_URL];
   const faqNode = post.faq.length
     ? [
         {

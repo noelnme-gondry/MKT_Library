@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
-import { SITE_URL } from "@/lib/routeMap";
+import { OG_CARD_URL, SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import EditorialTrust from "@/components/seo/EditorialTrust";
@@ -41,9 +41,8 @@ export async function generateMetadata({ params }) {
     url: canonical,
     publishedTime: post.date || undefined,
     modifiedTime: post.updated || post.date || undefined,
-    // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입 —
-    // 여기서 fallback을 강제로 넣으면 그 메커니즘을 덮어써 전 글이 정적 카드로 통일됨.
-    ...(post.ogImage ? { images: [post.ogImage] } : {}),
+    // 글이 자기 이미지를 선언했으면 그것을, 아니면 공용 카드(routeMap.OG_CARD_URL).
+    images: [post.ogImage || OG_CARD_URL],
   };
   return {
     title: post.title,
@@ -52,7 +51,7 @@ export async function generateMetadata({ params }) {
     alternates: { canonical, languages },
     openGraph: withOpenGraphBase(og),
     twitter: {
-      // opengraph-image.js(파일 컨벤션)가 1200×630 카드를 자동 주입 → 항상 큰 카드.
+      // 공용 카드가 1200×630이라 항상 큰 카드로 펼쳐진다.
       card: "summary_large_image",
       title: post.title,
       description: post.description,
@@ -95,7 +94,7 @@ function buildPostJsonLd(post, canonical) {
   const publisher = publisherNode("ko");
   const author = authorNode("ko");
   const images = extractImages(post.html);
-  const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
+  const articleImages = images.length ? images : [OG_CARD_URL];
   const faqNode = post.faq.length
     ? [
         {
