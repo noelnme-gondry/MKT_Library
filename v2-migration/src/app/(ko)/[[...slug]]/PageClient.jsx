@@ -13,6 +13,7 @@ import StartGate from "@/components/StartGate";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import LandingPage from "@/components/LandingPage";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
+import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
@@ -90,7 +91,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
-            {routeId === "home" && <><LandingPage /><DochiAssistant /></>}
+            {routeId === "home" && <><LandingPage /><DochiAssistant /><DochiWelcomeOverlay /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
             {routeId === "storage" && <WorkspaceStoragePage />}

@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import LandingPage from "@/components/LandingPage";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
+import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 
@@ -42,6 +43,7 @@ export default function EnHomePage() {
             <article className="content" id="content">
               <LandingPage locale="en" />
               <DochiAssistant locale="en" />
+              <DochiWelcomeOverlay locale="en" />
             </article>
           </main>
         </div>
