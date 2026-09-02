@@ -155,8 +155,32 @@ describe("Dochi analysis workspace", () => {
   it("automatically advances every baseline item after the first result commits", async () => {
     render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /요약 분석 실행/ }));
-    await waitFor(() => expect(screen.getAllByText("완료").length).toBe(4));
+    // 큐는 setTimeout(0) 사슬로 한 건씩 넘어간다. 기준선은 5건인데 이 테스트는 완료
+    // 4건을 기다리고 있어서, 5번째가 도는 중인 사슬 중간을 "다 끝났다"로 단언하고
+    // 있었다 — DOM이 조금만 무거워지면 깨지는 자리다. 전건 완료(정착 상태)를 기다린
+    // 뒤에 실행 표시가 사라졌는지 본다.
+    await waitFor(() => expect(screen.getAllByText("완료").length).toBe(5));
     expect(screen.queryByText("요약 분석 실행 중")).toBeNull();
+  });
+
+  it("gives every completed result the same workbook escape as the detail tools", async () => {
+    // 발행 도구 20개는 ResultActionCard가 공통 XLSX를 제공하는데(product-ssot §5.5)
+    // 도치 작업대만 결론 카드가 없어 탈출구가 통째로 빠져 있었다 — 도치로 들어온
+    // 사람은 결과를 보고도 가져갈 방법이 없었다.
+    render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /요약 분석 실행/ }));
+    await waitFor(() => expect(screen.getAllByText("완료").length).toBe(5));
+
+    const hubs = screen.getAllByRole("button", { name: "⬇ 결과 받기" });
+    expect(hubs.length).toBe(document.querySelectorAll(".dochi-workspace__result-status").length);
+    expect(hubs.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the workbook escape in English too", async () => {
+    render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} locale="en" getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Run summary analyses/ }));
+    await waitFor(() => expect(screen.getAllByText("Complete").length).toBe(5));
+    expect(screen.getAllByRole("button", { name: "⬇ Get results" }).length).toBeGreaterThan(0);
   });
 
   it("automatically starts only when the home Dochi handoff explicitly requests it", async () => {
