@@ -6701,6 +6701,12 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
   line-height: 1.72;
 }
 .content-answer .content-answer__conditions { margin-top: 11px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border-subtle)); color: var(--text-muted); font-size: 12px; line-height: 1.65; }
+/* 상단 짧은 답 밑 한 줄 행동 링크 — 박스가 아니라 링크다(답을 밀어내지 않는다).
+   .blog-prose 밖이라 원고 링크 규칙(§7 캐스케이드)과 부딪히지 않는다. */
+.content-answer__action { margin: 11px 0 0; font-size: 12.5px; line-height: 1.6; }
+.content-answer__action a { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); text-decoration: none; font-weight: 700; }
+.content-answer__action a:hover { text-decoration: underline; }
+.content-answer__action span { font-size: 14px; }
 .content-answer__conditions strong { display: block; margin-bottom: 3px; color: var(--text-secondary); font: 550 9.5px var(--font-sans); letter-spacing: .05em; text-transform: uppercase; }
 .editorial-trust { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
 .editorial-trust__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--text-muted); font: 520 9.5px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }

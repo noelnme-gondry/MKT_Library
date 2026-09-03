@@ -64,3 +64,46 @@ describe("ContentActionPanel blog conversion paths", () => {
     },
   );
 });
+
+// 회귀 방지 — 이 세 도구는 TOOL_COPY에 없어 `5-2`(운영 대시보드)로 폴백하고 있었다.
+// 글에 적힌 주제와 다른 도구로 보내면 그 세션은 거기서 끝난다.
+describe("previously mis-routed content", () => {
+  afterEach(() => {
+    delete window.gtag;
+  });
+
+  it.each([
+    ["aso-basics-guide", "5-27", "/tools/aso-store-conversion"],
+    ["brand-campaign-lift", "5-24", "/tools/brand-campaign-incrementality"],
+    ["content-element-analysis", "9-1", "/content/element-analysis"],
+  ])("%s reaches %s instead of the dashboard fallback", (slug, toolId, path) => {
+    window.gtag = vi.fn();
+    const { container } = render(<ContentActionPanel toolId={toolId} post={{ slug }} />);
+    const cta = container.querySelector(".content-action-panel__cta");
+    expect(cta?.getAttribute("href")).toBe(path);
+    expect(cta?.getAttribute("href")).not.toBe("/dashboard");
+  });
+});
+
+describe("answer link placement", () => {
+  afterEach(() => {
+    delete window.gtag;
+  });
+
+  it.each(["ko", "en"])("%s renders one plain link, not a second panel box", (locale) => {
+    window.gtag = vi.fn();
+    const { container } = render(
+      <ContentActionPanel locale={locale} toolId="5-3" post={{ slug: "roas-improvement" }} placement="article_answer" />,
+    );
+    expect(container.querySelector(".content-action-panel")).toBeNull();
+    const link = container.querySelector(".content-answer__action a");
+    expect(link?.getAttribute("href")).toBe(locale === "en" ? "/en/tools/budget-allocation" : "/tools/budget-allocation");
+
+    clickWithoutNavigation(link);
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
+      tool_id: "5-3",
+      placement: "article_answer",
+      locale,
+    }));
+  });
+});

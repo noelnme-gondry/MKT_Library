@@ -62,6 +62,18 @@ const TOOL_COPY = {
     ko: { label: "핵심 가치 발굴", title: "리텐션을 예측하는 초기 행동을 찾으세요", desc: "초기 행동의 시점·횟수 조합을 비교해 장기 가치와 연결되는 Aha 후보를 좁힙니다.", cta: "Aha-moment 분석하기" },
     en: { label: "Aha-moment finder", title: "Find the early behavior that predicts retention", desc: "Compare timing and frequency patterns to narrow down early actions associated with long-term value.", cta: "Find an Aha moment" },
   },
+  "5-27": {
+    ko: { label: "스토어 전환", title: "스토어 페이지에서 어디가 새는지 보세요", desc: "노출→제품 페이지→설치 퍼널을 나누고, 효율 변화인지 유입 믹스 변화인지 분해합니다.", cta: "스토어 전환 분해하기" },
+    en: { label: "Store conversion", title: "See where the store page leaks", desc: "Split the impression → product page → install funnel and separate rate changes from traffic-mix changes.", cta: "Break down store conversion" },
+  },
+  "5-24": {
+    ko: { label: "브랜드 증분", title: "브랜드 캠페인이 실제로 밀어올린 몫을 보세요", desc: "개입 시점 전후를 시계열로 나누고 대조군과 사전 추세로 인과 주장을 검증합니다.", cta: "브랜드 증분 분석하기" },
+    en: { label: "Brand incrementality", title: "See what the brand campaign actually lifted", desc: "Model the intervention with interrupted time series, and test the claim against a control and pre-trend.", cta: "Analyze brand lift" },
+  },
+  "9-1": {
+    ko: { label: "콘텐츠 요소 분석", title: "어떤 요소가 성과를 끌어올렸는지 보세요", desc: "제목·형식·소재 속성별 기여를 회귀로 나눠 다음 제작 우선순위를 정합니다.", cta: "콘텐츠 요소 분석하기" },
+    en: { label: "Content element analysis", title: "See which element moved performance", desc: "Regress performance on title, format, and creative attributes to prioritize what to produce next.", cta: "Analyze content elements" },
+  },
   "9-6": {
     ko: { label: "소재 피로도", title: "교체할 소재와 다음 제작을 정리하세요", desc: "성과 하락과 노출 피로 신호를 함께 보고 교체 우선순위를 만듭니다.", cta: "소재 피로도 분석하기" },
     en: { label: "Creative fatigue", title: "Plan what to replace and produce next", desc: "Use performance decline and fatigue signals together to set replacement priority.", cta: "Analyze creative fatigue" },
@@ -80,10 +92,17 @@ const RELATED_TOOL = {
 };
 
 
+// 카피가 있는 도구 목록 — 가드가 "레지스트리가 지정한 도구는 전부 여기 있어야 한다"를
+// 파생 검사한다(개수를 손으로 적으면 다음 도구에서 같은 폴백 사고가 재발한다).
+export const ACTION_COPY_TOOL_IDS = Object.keys(TOOL_COPY);
+
 export default function ContentActionPanel({ locale = "ko", toolId, term, post, placement = "article_post" }) {
   const content = term || post;
   const contentType = term ? "glossary" : "blog";
   const candidate = toolId || content?.primaryTool || primaryToolForContent(content?.slug, contentType);
+  // TOOL_COPY에 없는 도구는 운영 대시보드로 폴백한다. 이 폴백은 오래 누락을 가리고
+  // 있었다 — 레지스트리가 5-27·5-24·9-1을 지정한 글 7편과 용어 3편이 조용히 대시보드로
+  // 떨어졌다. `contentActionPanel.test.js`가 매핑된 도구 전체를 파생 검사한다.
   const resolvedTool = TOOL_COPY[candidate] ? candidate : "5-2";
   const lang = locale === "en" ? "en" : "ko";
   const copy = TOOL_COPY[resolvedTool][lang];
@@ -100,6 +119,16 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     });
   };
   const isInline = placement === "article_mid";
+  // 상단 짧은 답(seoAnswer) 바로 밑의 한 줄 링크. 글 상단에서 이탈하는 독자에게도
+  // 경로를 남기되, 박스를 하나 더 얹어 답을 밀어내지는 않는다(§12.24 마감 영역 원칙).
+  const isAnswerLink = placement === "article_answer";
+  if (isAnswerLink) {
+    return <p className="content-answer__action">
+      <Link href={href} onClick={() => trackClick(resolvedTool, placement)}>
+        {lang === "en" ? "Check this with your own data" : "이 판단을 내 데이터로 확인하기"} · {copy.label} <span aria-hidden>→</span>
+      </Link>
+    </p>;
+  }
   return <aside className={`content-action-panel${isInline ? " content-action-panel--inline" : ""}`}>
     <div>
       <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
