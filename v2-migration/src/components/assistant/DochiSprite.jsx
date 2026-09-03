@@ -21,7 +21,10 @@ const MOTION_POSES = {
   ],
 };
 
-export default function DochiSprite({ pose = "idle", direction = "right", className = "" }) {
+// `priority`는 화면에 곧바로 보이는 자리에서만 켠다. next/image의 기본값은
+// `loading="lazy"`라 브라우저가 레이아웃 이후에야 요청을 시작하고 preload 링크도
+// 없다 — 말풍선(HTML·CSS)은 즉시 뜨는데 도치만 한참 뒤 나타나는 이유가 이것이다.
+export default function DochiSprite({ pose = "idle", direction = "right", className = "", priority = false }) {
   const classes = `dochi-sprite is-${pose} is-${direction} ${className}`.trim();
   const frames = MOTION_POSES[pose];
 
@@ -34,6 +37,7 @@ export default function DochiSprite({ pose = "idle", direction = "right", classN
       width={512}
       height={512}
       sizes="(max-width: 700px) 124px, 178px"
+      priority={priority}
       draggable="false"
     />) : <Image
       className="dochi-sprite__image"
@@ -42,6 +46,7 @@ export default function DochiSprite({ pose = "idle", direction = "right", classN
       width={512}
       height={512}
       sizes="(max-width: 700px) 132px, 178px"
+      priority={priority}
       draggable="false"
     />}
   </span>;

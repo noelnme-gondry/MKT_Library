@@ -95,6 +95,32 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     expect(screen.queryByRole("button", { name: "다음" })).toBe(null);
   });
 
+  // next/image의 기본값은 `loading="lazy"`라 브라우저가 레이아웃 이후에야 요청을
+  // 시작하고 preload 링크도 없다 — 말풍선(HTML·CSS)은 즉시 뜨는데 도치만 한참 뒤
+  // 나타난다(실측 1440 뷰포트: 이미지 응답 2.8초 → priority 적용 후 1.0초).
+  // 값이 아니라 근거를 고정한다: 오버레이의 도치는 절대 lazy면 안 되고,
+  // 무대 밖 예열 블록이 나머지 포즈를 미리 받아 단계 전환에서도 같은 공백이
+  // 반복되지 않아야 한다.
+  it("loads Dochi eagerly and prewarms the other poses so the mascot never lags the bubble", () => {
+    render(<DochiWelcomeOverlay />);
+
+    const stageImage = document.querySelector(".dochi-welcome__stage img");
+    expect(stageImage).toBeTruthy();
+    expect(stageImage.getAttribute("loading")).not.toBe("lazy");
+
+    // 예열은 무대 **밖**에 있어야 단계마다 리마운트되지 않는다.
+    const preload = document.querySelector(".dochi-welcome__preload");
+    expect(preload).toBeTruthy();
+    expect(preload.closest(".dochi-welcome__stage")).toBe(null);
+    expect([...preload.querySelectorAll("img")].every((img) => img.getAttribute("loading") !== "lazy")).toBe(true);
+
+    // 현재 포즈를 뺀 나머지 단계 포즈가 전부 예열된다(달리기는 프레임 2장).
+    const preloaded = new Set([...preload.querySelectorAll(".dochi-sprite")].map((el) => el.className));
+    for (const pose of ["point-up", "results", "delivery", "run"]) {
+      expect([...preloaded].some((cls) => cls.includes(`is-${pose}`))).toBe(true);
+    }
+  });
+
   it("marks the session as seen on open so one visit does not repeat the greeting", () => {
     render(<DochiWelcomeOverlay />);
     expect(window.sessionStorage.getItem(DOCHI_WELCOME_SESSION_KEY)).toBe("1");

@@ -5209,23 +5209,6 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-context-header__flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; color: var(--text-muted); font: 550 9.5px var(--font-sans); }
 .tool-context-header__flow span { padding: 5px 8px; border: 1px solid var(--border-subtle); border-radius: 5px; background: var(--surface-container-lowest); }
 .tool-context-header__flow i { color: var(--border-stronger); font-style: normal; }
-/* 글 하단 관련 용어(용어명 + 짧은 정의) */
-.related-glossary { margin: 28px 0; padding: 18px 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
-.related-glossary__label { color: var(--text-muted); font: 700 10px var(--font-sans); letter-spacing: .09em; text-transform: uppercase; }
-.related-glossary ul { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
-.related-glossary a { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 9px; color: inherit; text-decoration: none; transition: border-color .15s; }
-.related-glossary a:hover { border-color: var(--primary); }
-.related-glossary strong { color: var(--text-primary); font-size: 14.5px; font-weight: 640; }
-.related-glossary small { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
-/* 글 → 가이드 역방향 링크. 관련 용어와 같은 재질을 쓰되 테두리만 강조해 "다음 행동"
-   임을 구분한다(§12.29 역할 분리 — 글은 진단, 가이드는 절차). */
-.related-guide { margin: 28px 0; padding: 18px 20px; border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border-subtle)); border-radius: 12px; background: color-mix(in srgb, var(--primary) 4%, var(--surface-container-lowest)); }
-.related-guide__label { color: var(--text-muted); font: 700 10px var(--font-sans); letter-spacing: .09em; text-transform: uppercase; }
-.related-guide ul { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
-.related-guide a { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 9px; color: inherit; text-decoration: none; transition: border-color .15s; }
-.related-guide a:hover { border-color: var(--primary); }
-.related-guide strong { color: var(--text-primary); font-size: 14.5px; font-weight: 640; }
-.related-guide small { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
 /* 글 하단 저자 소개. 저자 정보가 JSON-LD에만 있으면 사람은 못 본다 —
    같은 사실을 화면에도 둔다. */
 .author-card { margin: 28px 0; padding: 18px 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
@@ -5237,18 +5220,6 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .author-card__links { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
 .author-card__links a { color: var(--primary); font-size: 12.5px; text-decoration: none; }
 .author-card__links a:hover { text-decoration: underline; }
-
-/* 같은 주제 글 묶음(토픽 클러스터). 관련 가이드 블록과 재질을 맞추되 강조를
-   낮춘다 — 여기는 추천이 아니라 내부 링크 구조를 만드는 자리다. */
-.topic-cluster { margin: 28px 0; padding: 18px 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
-.topic-cluster__head { display: grid; gap: 4px; }
-.topic-cluster__label { color: var(--text-muted); font: 700 10px var(--font-sans); letter-spacing: .09em; text-transform: uppercase; }
-.topic-cluster__head small { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
-.topic-cluster ul { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
-.topic-cluster a { display: grid; gap: 3px; padding: 9px 12px; border: 1px solid var(--border-subtle); border-radius: 9px; color: inherit; text-decoration: none; transition: border-color .15s; }
-.topic-cluster a:hover { border-color: var(--primary); }
-.topic-cluster strong { color: var(--text-primary); font-size: 14px; font-weight: 620; }
-.topic-cluster__pin { color: var(--primary); font: 700 9.5px var(--font-sans); letter-spacing: .09em; text-transform: uppercase; }
 
 /* 도구별 CSV 템플릿 상세(/templates/<slug>) */
 .template-detail { max-width: 820px; margin: 0 auto; padding: clamp(2rem, 6vw, 4rem) 1.25rem; }
@@ -6806,7 +6777,7 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
 .content-card.is-featured .card-desc { font-size: 14px; }
 .content-card__featured { margin-right: 10px; padding: 3px 6px; border-radius: 4px; color: var(--on-primary); background: var(--primary); font: 700 9.5px var(--font-sans); letter-spacing: .06em; }
 body.light-mode .content-card__featured { color: #fff; }
-.content-article { width: min(100%, 1040px); margin: 0 auto; padding: clamp(38px,7vw,82px) 24px 72px; }
+.content-article { width: min(100%, 1160px); margin: 0 auto; padding: clamp(38px,7vw,82px) 24px 72px; }
 .content-article__back { display: inline-flex; align-items: center; color: var(--text-muted); text-decoration: none; font: 600 10px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
 .content-article__back:hover { color: var(--primary); }
 .content-article__header { margin: 26px 0 38px; padding-bottom: 30px; border-bottom: 1px solid var(--border); }
@@ -8002,6 +7973,11 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
 .dochi-welcome__close { position:absolute;top:8px;right:10px;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:var(--text-muted);font-size:22px;line-height:1;cursor:pointer; }
 .dochi-welcome__close:hover { color:var(--text-primary);background:var(--surface-container-low); }
 .dochi-welcome__stage { grid-area:stage;align-self:center;width:150px;height:150px;animation:dochi-welcome-enter .45s cubic-bezier(.2,1.25,.4,1) both; }
+/* 다음 단계 포즈 예열. `__inner`는 이름 붙은 grid-area만 배치하므로 흐름에 두면
+   자동 배치돼 레이아웃이 어긋난다 → 절대 위치로 뺀다. `display:none`이 아니라
+   1px+투명인 이유는 요청이 실제로 일어나야 예열이 되기 때문이다. */
+.dochi-welcome__preload { position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none; }
+.dochi-welcome__preload .dochi-sprite { width:1px;height:1px; }
 .dochi-welcome__stage .dochi-sprite { width:100%;height:100%;filter:drop-shadow(0 12px 12px color-mix(in srgb,var(--bg-1) 30%,transparent));animation:dochi-welcome-hop .5s ease-out both,dochi-home-breathe 3.8s ease-in-out .5s infinite; }
 .dochi-welcome__speech { grid-area:speech;position:relative;align-self:center;padding:14px 16px;border:2px solid var(--dochi-welcome-line);border-radius:16px;background:var(--dochi-welcome-fill);animation:dochi-welcome-pop .28s cubic-bezier(.2,1.3,.4,1) both; }
 .dochi-welcome__speech::after { content:"";position:absolute;left:-10px;top:50%;width:16px;height:16px;margin-top:-8px;border-left:2px solid var(--dochi-welcome-line);border-bottom:2px solid var(--dochi-welcome-line);border-bottom-left-radius:4px;background:var(--dochi-welcome-fill);transform:rotate(45deg);pointer-events:none; }
