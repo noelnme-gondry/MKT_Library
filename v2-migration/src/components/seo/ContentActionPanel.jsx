@@ -93,6 +93,14 @@ const RELATED_TOOL = {
 };
 
 
+// 도구별 행동 카피 조회 — 블로그 도치 브리지도 같은 문장을 쓴다. 카피가 두 벌이 되면
+// 글에서 본 약속과 브리지의 약속이 갈린다.
+export function actionCopyFor(toolId, locale = "ko") {
+  const lang = locale === "en" ? "en" : "ko";
+  const resolved = TOOL_COPY[toolId] ? toolId : "5-2";
+  return { toolId: resolved, ...TOOL_COPY[resolved][lang] };
+}
+
 // 카피가 있는 도구 목록 — 가드가 "레지스트리가 지정한 도구는 전부 여기 있어야 한다"를
 // 파생 검사한다(개수를 손으로 적으면 다음 도구에서 같은 폴백 사고가 재발한다).
 export const ACTION_COPY_TOOL_IDS = Object.keys(TOOL_COPY);

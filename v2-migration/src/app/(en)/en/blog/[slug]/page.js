@@ -9,6 +9,7 @@ import AuthorCard from "@/components/seo/AuthorCard";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
+import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -166,6 +167,8 @@ export default async function EnBlogPostPage({ params }) {
         {article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
+
+      <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} locale="en" />
 
       {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이(KO와 동일 구조, §2.11). */}
       <div className="blog-post-outro">

@@ -9,6 +9,7 @@ import AuthorCard from "@/components/seo/AuthorCard";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
+import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -173,6 +174,8 @@ export default async function BlogPostPage({ params }) {
         {article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
+
+      <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} />
 
       {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이.
           FAQ 외의 링크 블록(검토·출처/검색의도/토픽클러스터/관련 가이드·용어)은
