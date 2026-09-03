@@ -31,6 +31,7 @@ v2-migration/
 │     ├─ dashboard/                 # 5-2 운영 대시보드 9탭 + 필터바 + 커스텀차트
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)
 │     ├─ landing/·seo/·calculators/·sops/
+│     ├─ blog/                      # 블로그 읽기 계측(BlogReadTracker) + 본문 끝 도치 브리지(BlogDochiBridge)
 │     ├─ ToolPageOutro.jsx      # ★ 하단 마감 박스 = 경계선 + 다음단계·참고자료·관련글 (§12.30)
 │     ├─ GuideAnswer.jsx        # 가이드 질문·한 문장 답 (본문 위, 접기 바깥)
 │     └─ Header/Sidebar/Footer/CsvUploader/GlobalModals/StartGate/WeeklyReview…  # 셸
@@ -145,6 +146,8 @@ v2-migration/
 - **브랜드 사실 SSOT**: `lib/brandFacts.js`(가격·데이터 처리·결정론 등 `BRAND_FACTS` + 한계 `BRAND_LIMITS`). `llms.txt`가 여기서 파생한다. 도구 이름·설명은 여기 적지 않고 `routeSeo`에서 조회한다.
 - **방법 비교**: `lib/compareContent.js`(KO/EN `question`·`answer`·비교표·`guidance`·FAQ) → `components/ComparePage.jsx` + `/compare[/slug]` KO/EN. sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생. 인바운드는 `getComparesForTool()` 역인덱스 → `buildEvidenceLinks` → `ToolEvidenceLinks`(도구 9개) + 푸터 + ⌘K 개별 항목 + 사이드바 LIBRARY.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25, ASO 글·용어는 5-27로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
+- **블로그 본문 내 전환 경로**: `lib/blogArticleSplit.js`가 본문을 중간 패널 앞뒤로 가른다 — `<!-- CONTENT_ACTION -->` 마커가 있으면 마커, 없으면 최상위 블록 경계에서 파생(KO·EN 페이지 공용). 상단 짧은 답 밑 한 줄 링크는 `ContentActionPanel placement="article_answer"`. 도구별 카피는 `actionCopyFor()` 한 곳에서 조회하고, 매핑된 도구에 카피가 없으면 `contentActionPanel.test.js`가 잡는다(없으면 조용히 5-2로 폴백한다).
+- **블로그 계측·중간 개입**: `components/blog/BlogReadTracker.jsx`(읽기 25/50/75/100%·세션 글 수 — 이벤트만, 렌더 없음) → `components/blog/BlogDochiBridge.jsx`(세션 2편째 + 60% + 30초에 본문 끝 카드, ≤700px 하단 시트). 브리지는 `DochiSprite`만 쓰고 스토어·업로더를 건드리지 않는다(`startMyData` 부작용·번들 유출 방지). 이벤트 정의는 `docs/ga4-product-events.md`.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 
 ## 6. 테스트 & 린트 (배포 게이트)
