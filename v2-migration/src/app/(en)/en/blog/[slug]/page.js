@@ -8,6 +8,7 @@ import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
+import BlogReadTracker from "@/components/blog/BlogReadTracker";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -125,6 +126,7 @@ export default async function EnBlogPostPage({ params }) {
 
   return (
     <div className="content-article">
+      <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}

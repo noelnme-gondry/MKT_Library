@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { idToSlug } from "@/lib/routeMap";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
-import { trackProductEvent } from "@/lib/analytics";
+import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 const TOOL_COPY = {
   "5-2": {
@@ -118,6 +119,30 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
       content_type: contentType,
     });
   };
+  // 노출 계측 — 클릭만 있으면 "안 눌렀다"와 "안 보였다"를 구분할 수 없다. 실제로 중간
+  // 패널은 글 34편에서 렌더조차 되지 않고 있었고(마커 누락), 클릭 0만으로는 그 사실이
+  // 보이지 않았다. 뷰포트에 실제로 들어온 순간 1회만 보낸다.
+  const panelRef = useRef(null);
+  const isPanel = placement !== "article_answer";
+  useEffect(() => {
+    if (!isPanel || !panelRef.current || typeof IntersectionObserver !== "function") return undefined;
+    const target = panelRef.current;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0)) return;
+      trackProductEventOnce("blog_cta_viewed", productEventKey(content?.slug, placement, locale), {
+        tool_id: resolvedTool,
+        source: contentType,
+        content_slug: content?.slug,
+        content_type: contentType,
+        placement,
+        locale,
+      });
+      observer.disconnect();
+    }, { threshold: [0, 0.1] });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [contentType, content?.slug, isPanel, locale, placement, resolvedTool]);
+
   const isInline = placement === "article_mid";
   // 상단 짧은 답(seoAnswer) 바로 밑의 한 줄 링크. 글 상단에서 이탈하는 독자에게도
   // 경로를 남기되, 박스를 하나 더 얹어 답을 밀어내지는 않는다(§12.24 마감 영역 원칙).
@@ -129,7 +154,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
       </Link>
     </p>;
   }
-  return <aside className={`content-action-panel${isInline ? " content-action-panel--inline" : ""}`}>
+  return <aside ref={panelRef} className={`content-action-panel${isInline ? " content-action-panel--inline" : ""}`}>
     <div>
       <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
       <h2>{copy.title}</h2>

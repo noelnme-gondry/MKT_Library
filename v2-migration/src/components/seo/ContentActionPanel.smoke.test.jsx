@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import ContentActionPanel from "./ContentActionPanel";
 
@@ -105,5 +105,48 @@ describe("answer link placement", () => {
       placement: "article_answer",
       locale,
     }));
+  });
+});
+
+// 노출 계측 — 클릭 0이 "안 눌렀다"인지 "안 보였다"인지 가르는 분모다.
+describe("panel impression tracking", () => {
+  const observers = [];
+
+  beforeEach(() => {
+    window.gtag = vi.fn();
+    observers.length = 0;
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(target) { this.target = target; }
+      disconnect() { this.disconnected = true; }
+      trigger() { this.callback([{ target: this.target, isIntersecting: true, intersectionRatio: 1 }]); }
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete window.gtag;
+  });
+
+  it("reports the panel only once it actually enters the viewport", () => {
+    render(<ContentActionPanel toolId="5-22" post={{ slug: "impression-probe" }} placement="article_mid" />);
+    expect(window.gtag).not.toHaveBeenCalled();
+
+    observers[0].trigger();
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_cta_viewed", expect.objectContaining({
+      tool_id: "5-22",
+      content_slug: "impression-probe",
+      placement: "article_mid",
+      content_type: "blog",
+    }));
+    expect(observers[0].disconnected).toBe(true);
+  });
+
+  it("does not observe the plain answer link", () => {
+    render(<ContentActionPanel toolId="5-22" post={{ slug: "answer-probe" }} placement="article_answer" />);
+    expect(observers).toHaveLength(0);
   });
 });
