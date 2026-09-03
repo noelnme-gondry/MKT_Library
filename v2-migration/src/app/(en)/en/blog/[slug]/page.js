@@ -4,21 +4,9 @@ import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { OG_CARD_URL, SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
-import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
-import RelatedGlossaryList from "@/components/seo/RelatedGlossaryList";
-import RelatedGuideList from "@/components/seo/RelatedGuideList";
-import TopicClusterLinks from "@/components/seo/TopicClusterLinks";
 import AuthorCard from "@/components/seo/AuthorCard";
-import SearchIntentLinks from "@/components/seo/SearchIntentLinks";
-import { clusterLinksFor } from "@/lib/topicClusters";
-import { getBlogSeo } from "@/lib/blogSeo";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
-import { guidesForPost } from "@/lib/guideSearchContent";
-import { getRouteSeo } from "@/lib/routeSeo";
-import { idToPath } from "@/lib/routeMap";
-import { getAllTerms } from "@/lib/glossary";
-import { intentLinksFor } from "@/lib/searchIntentRegistry";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -139,18 +127,6 @@ function buildPostJsonLd(post, canonical) {
 export default async function EnBlogPostPage({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug, "en");
-  // 관련 용어의 표시명·짧은 정의는 server 전용 로더에서 읽는다(클라이언트 import 금지).
-  const termBySlug = new Map(getAllTerms("en").map((term) => [term.slug, term]));
-  const relatedTerms = (post?.relatedGlossary || [])
-    .map((termSlug) => termBySlug.get(termSlug))
-    .filter(Boolean)
-    .map((term) => ({ slug: term.slug, term: term.term, shortDef: term.shortDef, href: `/en/glossary/${term.slug}` }));
-  // 같은 주제 가이드 역링크. 이 맵은 `guideSearchContent`의 posts에서 파생하므로
-  // 가이드→글과 글→가이드가 어긋날 수 없다(§12.29 목록은 파생, 하드코딩 금지).
-  const relatedGuides = guidesForPost(slug)
-    .map((guideId) => ({ guideId, seo: getRouteSeo(guideId, "en") }))
-    .filter((item) => item.seo)
-    .map((item) => ({ href: `/en${idToPath(item.guideId)}`, title: item.seo.title, description: item.seo.description }));
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
@@ -197,30 +173,13 @@ export default async function EnBlogPostPage({ params }) {
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 
-      <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
+      {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이(KO와 동일 구조, §2.11). */}
+      <div className="blog-post-outro">
+        <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
+        <NewsletterSignup locale="en" placement="post" />
+      </div>
 
       <AuthorCard locale="en" />
-
-      <EditorialTrust
-        locale="en"
-        reviewer={post.reviewer}
-        reviewedAt={post.reviewedAt}
-        sources={post.sources}
-      />
-
-      <SearchIntentLinks locale="en" links={intentLinksFor("blog", post.slug, "en")} />
-
-      <TopicClusterLinks
-        links={clusterLinksFor(post.slug)}
-        titleFor={(slug) => getBlogSeo("en", slug)?.title || slug}
-        locale="en"
-      />
-
-      <NewsletterSignup locale="en" placement="post" />
-
-      <RelatedGuideList items={relatedGuides} locale="en" />
-
-      <RelatedGlossaryList items={relatedTerms} locale="en" />
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="Frequently asked questions">

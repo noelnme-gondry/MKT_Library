@@ -4555,16 +4555,24 @@ body:not(.light-mode) .moon-icon {
   color: var(--text-primary);
   margin: 1.5rem 0 0.5rem;
 }
+/* 전역 `p { font-size:14px; line-height:22px }`(globals @layer app, 특이도 0,0,1)는
+   `.blog-prose`(0,1,0)가 컨테이너에 건 17px 상속을 이긴다 — 반면 `li`는 font-size
+   선언이 없어 상속받으므로 **문단 14px vs 목록 17px**로 갈렸다. 원고 본문은
+   요소 종류와 무관하게 한 크기여야 하므로 여기서 상속으로 되돌린다. */
 .blog-prose p {
   margin: 0 0 1.1rem;
+  font-size: inherit;
+  line-height: inherit;
 }
 .blog-prose ul,
 .blog-prose ol {
   margin: 0 0 1.1rem;
   padding-left: 1.4rem;
 }
+/* 전역 `li { line-height: 22px }`도 같은 이유로 상속을 끊는다(§ 위 .blog-prose p 주석). */
 .blog-prose li {
   margin-bottom: 0.35rem;
+  line-height: inherit;
 }
 /* 원고(마크다운)가 만든 링크만 — marked는 class를 안 붙이므로 `:not([class])`가
    본문 링크와 컴포넌트 링크를 가른다. 이 한정자가 없으면 `.blog-prose a`(0,1,1)가
@@ -4749,6 +4757,15 @@ body:not(.light-mode) .moon-icon {
 .content-list .card:hover { transform: translateY(-2px); border-color: var(--primary); }
 .content-action-panel { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-top: 2.8rem; padding: 24px; border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border)); background: linear-gradient(110deg, color-mix(in srgb, var(--primary) 12%, var(--surface-container-lowest)), var(--surface-container-lowest)); }
 .blog-prose .content-action-panel--inline { margin: 2.25rem 0; }
+/* 글 마감 영역 — 연결 툴과 구독을 한 줄에 나란히 둔다. 두 부품 모두 내부가
+   가로 배치(패널=제목↔CTA, 구독=카피↔폼)라 절반 폭에서는 겹치므로, 여기서는
+   좁은 화면과 같은 세로 배치로 되돌린다. */
+.blog-post-outro { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; align-items: stretch; margin-top: 2.8rem; }
+.blog-post-outro > * { margin: 0; }
+.blog-post-outro .content-action-panel { align-items: flex-start; flex-direction: column; gap: 16px; }
+.blog-post-outro .content-action-panel__links { justify-content: flex-start; }
+.blog-post-outro .newsletter-signup { align-content: start; grid-template-columns: minmax(0,1fr); }
+@media (max-width: 860px) { .blog-post-outro { grid-template-columns: minmax(0,1fr); } }
 .content-action-panel h2 { margin: 8px 0 0; color: var(--text-primary); font-size: 20px; letter-spacing: -.035em; }
 .content-action-panel p { max-width: 520px; margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .content-action-panel__cta { display: inline-flex; align-items: center; gap: 12px; flex: none; padding: 12px 14px; background: var(--primary); color: var(--on-primary); text-decoration: none; font-size: 13px; font-weight: 800; }
@@ -6789,7 +6806,7 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
 .content-card.is-featured .card-desc { font-size: 14px; }
 .content-card__featured { margin-right: 10px; padding: 3px 6px; border-radius: 4px; color: var(--on-primary); background: var(--primary); font: 700 9.5px var(--font-sans); letter-spacing: .06em; }
 body.light-mode .content-card__featured { color: #fff; }
-.content-article { width: min(100%, 820px); margin: 0 auto; padding: clamp(38px,7vw,82px) 24px 72px; }
+.content-article { width: min(100%, 1040px); margin: 0 auto; padding: clamp(38px,7vw,82px) 24px 72px; }
 .content-article__back { display: inline-flex; align-items: center; color: var(--text-muted); text-decoration: none; font: 600 10px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
 .content-article__back:hover { color: var(--primary); }
 .content-article__header { margin: 26px 0 38px; padding-bottom: 30px; border-bottom: 1px solid var(--border); }
