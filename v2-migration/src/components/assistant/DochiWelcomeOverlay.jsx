@@ -35,6 +35,9 @@ const STEPS = [
   { id: "ask", pose: "delivery" },
 ];
 
+// 단계 포즈 전부 + 가져오기 중 달리기. STEPS에서 파생하므로 단계를 늘려도 어긋나지 않는다.
+const PRELOAD_POSES = [...STEPS.map((step) => step.pose), "run"];
+
 const COPY = {
   ko: {
     label: "도치의 첫 방문 안내",
@@ -156,7 +159,16 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
         {/* key로 리마운트해 단계가 바뀔 때마다 등장 모션이 다시 재생된다
             (같은 노드에 재적용하면 CSS 애니메이션이 다시 돌지 않는다). */}
         <div className="dochi-welcome__stage" key={`stage-${displayStep}-${importing}`} aria-hidden="true">
-          <DochiSprite pose={importing ? "run" : STEPS[displayStep].pose} />
+          <DochiSprite pose={importing ? "run" : STEPS[displayStep].pose} priority />
+        </div>
+
+        {/* 다음 단계·가져오기 포즈를 미리 받아 둔다. 무대는 단계마다 key로 리마운트돼
+            이미지 노드가 새로 생기므로, 미리 받지 않으면 단계를 넘길 때마다 첫 등장과
+            같은 공백이 반복된다. 이 블록은 무대 밖이라 리마운트되지 않는다. */}
+        <div className="dochi-welcome__preload" aria-hidden="true">
+          {PRELOAD_POSES.filter((pose) => pose !== STEPS[displayStep].pose).map((pose) => (
+            <DochiSprite key={pose} pose={pose} priority />
+          ))}
         </div>
 
         <div className="dochi-welcome__speech" key={`speech-${displayStep}`}>
