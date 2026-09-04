@@ -2,7 +2,7 @@
 term: "Uplift"
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
-description: "Uplift is the difference between an exposed group and a holdout — the outcome ads actually caused. Why it differs from CPA and ROAS, and how to find it."
+description: "If the exposed group converts at 8% and the holdout at 5%, uplift is 3pp. How to run the split, and why ROAS can look fine when uplift is near zero."
 date: "2026-08-09"
 updated: "2026-08-26"
 slug: "uplift"

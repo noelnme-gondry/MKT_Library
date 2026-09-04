@@ -95,8 +95,8 @@ const EN_TITLES = {
   "roas-improvement": "How to Improve ROAS: Four Checks Before Cutting Budget",
   "uplift-holdout-guide": "Advertising Uplift: Measure Net Lift With a Holdout Test",
   "ltv-cac-ratio": "LTV:CAC Ratio Explained: How to Calculate It Correctly",
-  "skan4-migration-guide": "SKAN 4 Migration: Which Window to Turn On First",
-  "skan-conversion-value-schema": "SKAN Conversion Value: What Fits in 64 Slots",
+  "skan4-migration-guide": "SKAN 4 Strategy: Which SKAdNetwork 4.0 Window to Open",
+  "skan-conversion-value-schema": "SKAN Conversion Value Schema: What Fits in 64 Slots",
   "skan-vs-mmp-attribution": "Why SKAN Attribution and MMP Numbers Disagree",
 };
 
@@ -109,13 +109,13 @@ const DESCRIPTION_OVERRIDES = {
   ko: {
     "ad-creative-testing": "테스트 예산과 목표 CPA로 적정 소재 수를 계산하고 가설 설정부터 승자·보류·탈락 판정까지 정리합니다.",
     "cannibalization-organic-paid": "내부 카니발라이제이션과 유료·오가닉 잠식을 구분하고 측정하는 방법입니다.",
-    "cpi-cpa-cpm-difference": "CPM·CPC·CPI·CPA의 계산식과 쓰는 시점을 비교하고, CPC 상승 원인을 경매·소재로 나누는 법을 설명합니다.",
+    "cpi-cpa-cpm-difference": "CPM 2,000원·CTR 1%면 CPC는 200원. 네 지표 계산식과 CPC 상승을 경매·소재로 가르는 법.",
     "performance-marketing-metrics": "CTR·CVR·CPA·ROAS를 보는 순서와, CPA·ROAS가 흔들릴 때 문제 위치를 찾는 방법을 정리합니다.",
   },
   en: {
     "ad-creative-testing": "Calculate how many ad creatives your budget can support, define one hypothesis, and classify winners, holds, and losers without relying on CTR alone.",
     "cannibalization-organic-paid": "Measure internal cannibalisation and separate paid impact from organic demand.",
-    "cpi-cpa-cpm-difference": "Compare CPM, CPC, CPI, and CPA formulas, then separate auction pressure from creative response when CPC rises.",
+    "cpi-cpa-cpm-difference": "At a 1% CTR, CPC equals CPM divided by 10. Compare all four formulas, then separate auction pressure from creative response when CPC rises.",
     "performance-marketing-metrics": "Review CTR, CVR, CPA, and ROAS in order to locate whether a performance problem sits before or after conversion.",
   },
 };

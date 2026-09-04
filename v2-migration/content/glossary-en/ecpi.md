@@ -2,7 +2,7 @@
 term: "eCPI (Estimated CPI)"
 seoTitle: "eCPI Meaning | Why It Differs From Your Actual CPI"
 shortDef: "A modeled CPI estimate used when individual installs can't be observed, e.g. under SKAdNetwork"
-description: "eCPI is an estimated CPI networks back into when individual tracking is unavailable. Why it diverges from real CPI and how to read it."
+description: "When SKAdNetwork withholds values below its privacy threshold, networks model the gap. Why eCPI drifts from real CPI and how to cross-check it."
 date: "2026-07-18"
 slug: "ecpi"
 keywords: "eCPI, eCPI meaning, Estimated CPI, SKAN CPI, iOS cost per install"
