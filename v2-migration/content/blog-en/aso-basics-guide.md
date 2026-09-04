@@ -14,6 +14,8 @@ faq:
     a: "If people reach the product page but do not install, visual elements come first. If impressions themselves are low, keywords and title come first. Let conversion rate versus impressions decide."
   - q: "How long before I can judge an ASO change?"
     a: "Store indexing and rank re-settling take time, so allow at least two weeks and preferably four. Judging after a few days confuses weekday variation and natural drift with effect. Record the change date and compare equal-length windows around it."
+  - q: "Which step does store conversion rate refer to?"
+    a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
   - q: "Does ASO improve paid performance too?"
     a: "Yes. Ad clicks still pass through the store page, so a higher store conversion rate produces more installs from the same spend. Moving conversion from 30% to 40% yields about 33% more installs and lowers CPI by the same proportion."
 ---
@@ -39,6 +41,14 @@ For your app to appear when someone searches, the store has to associate you wit
 
 Judging keywords by rank alone creates an illusion. Ranking first for a term nobody searches adds no installs. Real traffic is **volume × your rank × the click rate at that rank**, and mid-tail terms with clear intent often convert better than the crowded head terms.
 
+Narrowing the candidate list in this order wastes less time.
+
+1. **Words that already describe you** — start from terms already in your app name, subtitle, and description. The store needs a reason to associate you with a word before it will rank you for it.
+2. **Words your competitors use** — scanning the names and subtitles of apps solving the same problem reveals the search language of that category.
+3. **Mid-tail terms with clear intent** — "shared budget app" rather than "budget". Lower volume, but you can actually rank, and the people who arrive install at a higher rate.
+
+You do not need to repeat one keyword across the name, subtitle, and keyword field. Every duplicated slot is a keyword you could not fit.
+
 ## 2. Conversion — the store page
 
 Ranking in search is pointless if nobody installs. The conversion rate from impression to install is the other half of ASO.
@@ -50,6 +60,34 @@ Ranking in search is pointless if nobody installs. The conversion rate from impr
 This is the same principle as [CTR and CVR diagnosis](/blog/ad-performance-diagnosis): the chain of "see → get pulled in → act."
 
 Both stores ship experiment tooling (Product Page Optimization on the App Store, store listing experiments on Google Play) that lets you A/B test icons and screenshots on real traffic — far better than picking by taste. The usual [A/B testing](/blog/ab-testing) rules still apply: stop early on a peek at interim results and you will mistake noise for a winner.
+
+### Store conversion is not one number
+
+Collapsing conversion into a single rate stops the diagnosis right there. The store funnel has at least three layers.
+
+| Layer | App Store Connect column | Meaning |
+| --- | --- | --- |
+| Impressions | Impressions | Times your app appeared in search, charts, or featured lists |
+| Product page views | Product Page Views | Times someone tapped through to your product page |
+| Installs | Total Downloads | Times someone actually downloaded |
+
+That gives you two conversion rates, not one.
+
+- **Browse conversion = product page views ÷ impressions** — driven by the icon, app name, and first screenshot thumbnail. The question is whether people tap in the list.
+- **Page conversion = installs ÷ product page views** — driven by the screenshot flow, description, and ratings. The question is whether people install once they are on the page.
+
+With 100,000 impressions, 12,000 product page views, and 3,600 installs, browse conversion is 12% and page conversion is 30%. If installs drop next month while page conversion stays at 30%, the screenshots are not the problem — the browse layer is, meaning the icon or your ranking. Reading the two layers as a single 3.6% erases that distinction entirely.
+
+### Conversion dropped — did it get worse, or did the mix change?
+
+This is the mistake ASO work repeats most often. Store traffic converts very differently by source. Someone who searched your exact app name almost always installs; someone who drifted in from a chart or a featured list installs far less often.
+
+So an overall drop from 30% to 26% has two readings.
+
+1. **Rate decline** — conversion actually fell within each source. The page got worse, or a competitor got better.
+2. **Mix shift** — each source converts exactly as before, but low-converting sources (browse, referral) now make up a larger share.
+
+Read case 2 as case 1 and you rebuild screenshots that were never broken. The way to separate them is to split by source and check whether each source's own rate moved. Decompose the total change into "rate change within sources" and "share change across sources" and the two parts add up with no residual left over.
 
 <!-- CONTENT_ACTION -->
 
@@ -75,8 +113,11 @@ Detailed steps are in the [ASO basics guide](/guide/aso-basics).
 
 Open your store console and read just two numbers: **product page views** and **install conversion rate**.
 
-- Plenty of views but low conversion → a screenshot, icon, or rating problem. Fix the page first.
-- Few views at all → a keyword or rank problem. Start with name and subtitle.
+- Low page conversion (installs ÷ product page views) → a screenshot, description, or rating problem. Fix the page first.
+- Low browse conversion (product page views ÷ impressions) → an icon or app name problem.
+- Few impressions at all → a keyword or rank problem. Start with name and subtitle.
+
+To see all three branches split by source at once, upload your store console CSV to the [ASO store conversion tool](/tools/aso-store-conversion). It calculates the funnel and the mix-versus-rate decomposition together.
 
 That single branch decides what you work on for the next month. Trying to fix both at once, and being unable to attribute either result, is the most common waste in ASO.
 

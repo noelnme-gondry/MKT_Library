@@ -2,7 +2,7 @@
 term: "Incrementality"
 seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
-description: "Incrementality is the performance advertising actually added on top of what would have happened anyway. How to measure it, and why CPA and ROAS mislead."
+description: "Attribution assigns every conversion to a channel; incrementality counts only what disappears without ads — how to measure it and where CPA misleads."
 date: "2026-07-18"
 updated: "2026-08-26"
 slug: "incrementality"

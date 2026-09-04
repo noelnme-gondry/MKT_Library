@@ -80,8 +80,11 @@ const CONTENT = {
   },
   "1-4": {
     tool: "5-23",
-    posts: ["ios-att-skan-guide"],
-    terms: ["probabilistic-attribution", "cpi"],
+    // 이 가이드가 SKAN 질의 노출을 가장 많이 받는데(실측), 정작 그 질의에 정확히
+    // 답하는 전용 글 둘로 나가는 길이 없었다 — 답변이 "컨버전 값 스키마"를 말하면서
+    // 그 글을 링크하지 않고 있었다. 검색엔진에도 독자에게도 다음 단계가 보여야 한다.
+    posts: ["ios-att-skan-guide", "skan4-migration-guide", "skan-conversion-value-schema"],
+    terms: ["probabilistic-attribution", "skan", "cpi"],
     ko: {
       question: "iOS ATT와 SKAN은 무엇부터 준비해야 하나요?",
       answer: "ATT 동의율을 올리는 프롬프트 설계와, KPI에 맞춘 SKAN 컨버전 값 스키마입니다.",

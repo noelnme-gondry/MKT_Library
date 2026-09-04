@@ -2,7 +2,7 @@
 term: "eCPI (Estimated CPI)"
 seoTitle: "eCPI 뜻 | 실제 CPI와 값이 다른 이유"
 shortDef: "SKAdNetwork처럼 개별 유저를 못 볼 때, 집계된 전환값으로 역산한 추정 설치당 비용"
-description: "개별 추적이 안 되는 환경에서 매체가 역산해 보여주는 추정 CPI. 실제 CPI와 다른 이유와 주의점."
+description: "SKAN 임계를 못 넘으면 매체가 빈칸을 채워 추정합니다. 실제 CPI와 벌어지는 이유와 교차 검증법."
 date: "2026-07-18"
 slug: "ecpi"
 keywords: "eCPI, eCPI란, Estimated CPI, SKAN CPI, 추정 CPI, iOS 설치당 비용"
