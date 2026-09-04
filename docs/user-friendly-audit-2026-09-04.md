@@ -212,7 +212,10 @@ max-width 미디어쿼리 57개 / 값 13종: 480 560 620 640 680 700 720 760 780
 grep -rn "findingsByGroup|rankFindings" src --include=*.js --include=*.jsx | grep -v test
 → useDataStore.js 6곳(쓰기) + rankFindings.js 1곳(정의).  읽는 컴포넌트 0곳.
 ```
-- 모든 도구의 `ResultActionCard`가 `findingFromResultCard()`로 결론을 만들어 `publishFinding()`으로 저장한다(`ResultActionCard.jsx:127,209`).
+- `ResultActionCard`가 `findingFromResultCard()`로 결론을 만들어 `publishFinding()`으로 저장한다(`ResultActionCard.jsx:127,209`).
+  **정정**: "모든 도구"가 아니다 — `findingProducers.js`의 `TOOL_KIND`가 5-2·5-21·5-22·5-3 넷만 매핑하고
+  나머지는 `null`을 반환한다. 다만 이 넷은 같은 `efficiency` CSV 그룹을 공유하므로, 도구 사이 모순이
+  실제로 생기는 자리가 바로 여기다.
 - 정렬 로직 `rankFindings()`(severity·tool·kind 3중 정렬)도 이미 있다.
 - **그런데 이 둘을 읽는 화면이 없다.** `/start`의 "도치가 확인한 발견"은 그 화면의 로컬 큐 결과를 쓴다(`AssistantWorkspace.jsx:686`), 저장소가 아니다.
 
@@ -284,3 +287,31 @@ grep -rn "findingsByGroup\|rankFindings" src --include=*.js --include=*.jsx | gr
 # D-3
 grep -rln "기회손실\|손실 금액\|impactKrw\|월 환산" src --include=*.jsx
 ```
+
+---
+
+## G. 처리 결과 (2026-09-04, 같은 날 반영)
+
+이 감사의 §F 착수 순서 1~5를 그대로 실행했다. 각 항목의 검증은 `npm run test:all` ·
+`npm run lint` · `npm run build`이며, 순수 엔진(`*Math.js`)의 기존 수학은 건드리지 않았다.
+
+| 항목 | 처리 | 새 가드 |
+|---|---|---|
+| C-1 | 결론 카드 머리에서 보조 버튼 4개 제거 → 결론·수치·행동 뒤 보조 줄로 | `ResultActionCard.smoke.test.jsx` — 머리에 남는 컨트롤 수와 순서를 계약으로 |
+| A-5 | `color-scheme` 선언, `prefers-color-scheme` 따르기(부팅 스크립트·Header 같은 규칙), `theme-color` media 분리 | — |
+| A-1 | 타입 스케일 토큰 신설 + 1차 표면 85곳을 12px로 | `typographyFloor.test.js` — 선택자 계열 파생 12px 하한 + 규모 단언 |
+| B-2 | 전역 `p` 기본색을 본문색으로 | — |
+| C-5 | 매핑 그리드 상태 정렬 + "확인 필요만 보기" | `CsvUploader.smoke.test.jsx` — 정렬 순서·필터 왕복 |
+| C-4 | `/start` 탈출구를 업로드 뒤에도 유지(위치만 인덱스 아래로) | — |
+| C-2 | 첫 방문 오버레이 4단계 → 2단계 | `DochiWelcomeOverlay.smoke.test.jsx` — 핸드오프까지의 클릭 수 |
+| A-4 | 온보딩 카피 느낌표 정리 | 위와 같음(카피를 컴포넌트에서 파생) |
+| A-3 | 랜딩 장식 eyebrow 4종 제거, 카드 라벨은 화면 언어로. `/start` 하드코딩 영문 3곳 KO/EN 분리 | — |
+| A-2 | 반경 스케일 정리 + `--radius-pill` 신설(리터럴 999px 24곳 치환) | `layoutScale.test.js` |
+| A-6 | 브레이크포인트 13종 → 8종(델타 ≤20px 근접 병합), 760→768로 태블릿 세로 구멍 제거, 짝 min-width 보정 | `layoutScale.test.js` — 스케일 밖 경계·겹침 금지 |
+| E-3 | `utils/efficiencyImpactMath.js`(골든 5) + 5-2 결론에 30일 금액 환산 배선 | 골든 |
+| E-2 | `lib/assist/detectFindingConflicts.js`(골든 7) | 골든 |
+| E-1 | `/weekly-review`에 "이번 주 분석이 말한 것" — `findingsByGroup`·`rankFindings()`의 첫 소비처 | `WeeklyReview.smoke.test.jsx` |
+
+**남긴 것**: C-3(모바일)은 "측정 먼저"라는 이 문서의 판단대로 코드를 바꾸지 않았다.
+뷰포트 구간을 이벤트 속성으로 붙여 누수 규모를 숫자로 만든 뒤 결정한다(§11 — 측정 없이 "개선했다"고 적지 않는다).
+C-6(랜딩에서 결과물 보여주기)도 스크린샷 자산이 필요해 별도 작업으로 남긴다.
