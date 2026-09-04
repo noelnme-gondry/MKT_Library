@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import AnalyticsScripts from "@/components/AnalyticsScripts";
 import ConsentBanner from "@/components/ConsentBanner";
 import { consentDefaultSnippet } from "@/lib/consent";
+import { SIDEBAR_COLLAPSED_CLASS, SIDEBAR_STORAGE_KEY, collapsedByDefaultPaths } from "@/lib/sidebarCollapse";
 import SkipLink from "@/components/SkipLink";
 import { BRAND } from "@/lib/brandFacts";
 import WorkspaceStorageBootstrap from "@/components/WorkspaceStorageBootstrap";
@@ -22,6 +23,10 @@ const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jet
 
 const SITE_URL = "https://growthoptplaybook.com";
 
+// 사이드바 초기 상태는 첫 페인트 전에 정해야 한다 — 마운트 후에 접으면 도구 화면이
+// 열릴 때마다 내비가 한 번 번쩍인다. 경로 목록은 라우트에서 파생한다(§7 손목록 금지).
+const SIDEBAR_DEFAULT_COLLAPSED_PATHS = collapsedByDefaultPaths();
+
 export default function RootDocument({ children, locale = "ko" }) {
   const isEnglish = locale === "en";
   const language = isEnglish ? "en" : "ko";
@@ -38,6 +43,7 @@ export default function RootDocument({ children, locale = "ko" }) {
       </head>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('mkt-library-theme');var d=t?t==='dark':!!(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(!d)document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{var P=${JSON.stringify(SIDEBAR_DEFAULT_COLLAPSED_PATHS)};var v=localStorage.getItem(${JSON.stringify(SIDEBAR_STORAGE_KEY)});var p=(location.pathname||'/').replace(/^\\/en(?=\\/|$)/,'').replace(/\\/+$/,'')||'/';var c=(v==='collapsed'||v==='expanded')?v==='collapsed':P.indexOf(p)>=0;if(c)document.body.classList.add(${JSON.stringify(SIDEBAR_COLLAPSED_CLASS)})}catch(e){}` }} />
         <SkipLink />
         <WorkspaceStorageBootstrap />
         <script

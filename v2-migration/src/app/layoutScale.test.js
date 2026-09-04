@@ -69,3 +69,26 @@ describe("radius scale", () => {
     expect(Number(value) * (unit === "rem" ? 16 : 1)).toBeGreaterThanOrEqual(4);
   });
 });
+
+// ── 사이드바 접기 ──────────────────────────────────────────────────────────
+// 트랙을 0px로 만드는 것만으로는 부족했다: 사이드바가 흐름에서 빠지면 그리드 자식이
+// 하나만 남아 **첫 트랙**에 배치되고, 그 트랙이 0px이라 본문이 통째로 사라졌다
+// (e2e 7건이 "uploader hidden"으로 잡았다). 값이 아니라 그 근거를 고정한다.
+describe("collapsed sidebar layout", () => {
+  it("declares a single column when the sidebar leaves the flow", () => {
+    expect(CSS).toMatch(/body\.is-sidebar-collapsed\s+\.sidebar\s*\{[^}]*display:\s*none/);
+    const singleColumn = CSS.match(/body\.is-sidebar-collapsed\s+\.app\s*\{([^}]*)\}/);
+    expect(singleColumn).toBeTruthy();
+    expect(singleColumn[1]).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  it("zeroes the width token so the gradient and footer indent follow", () => {
+    expect(CSS).toMatch(/body\.is-sidebar-collapsed\s*\{[^}]*--sidebar-width:\s*0px/);
+  });
+
+  it("hides the toggle where there is no sidebar to control", () => {
+    // 홈과 모바일에는 사이드바 자체가 없다 — 가리킬 대상 없는 컨트롤을 남기지 않는다.
+    expect(CSS).toMatch(/\.app\.is-home\s+\.header-sidebar-toggle\s*\{[^}]*display:\s*none/);
+    expect(CSS).toMatch(/@media \(max-width: 768px\) \{[^}]*\.header-sidebar-toggle\s*\{[^}]*display:\s*none/);
+  });
+});

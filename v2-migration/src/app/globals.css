@@ -5494,6 +5494,24 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-page__briefing-list > li > p { margin: 4px 0 0; color: var(--text-secondary); font-size: var(--fs-sm); }
 .weekly-review-page__briefing-list > li > a { display: inline-block; margin-top: 6px; color: var(--primary); font-size: var(--fs-sm); }
 .weekly-review-page__briefing-list > li.is-action > strong { color: var(--danger); }
+/* ── 사이드바 접기 ───────────────────────────────────────────────────────
+   도구 화면에서 좌측 내비 248px + 우측 목차 예약 208px이 상시로 붙어, 1280px
+   노트북에서 분석에 남는 폭이 747px(뷰포트의 58%)뿐이었다. 상태를 body에 두면
+   셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않아도 한 규칙으로 적용된다
+   (§7 "목록을 두 곳에 나열하지 말고 파생시켜라"의 레이아웃판).
+   --sidebar-width를 0으로 만들면 그리드·배경 그라디언트·푸터 들여쓰기가 전부
+   같은 토큰을 읽으므로 함께 따라온다. */
+body.is-sidebar-collapsed { --sidebar-width: 0px; }
+body.is-sidebar-collapsed .sidebar { display: none; }
+/* 사이드바가 흐름에서 빠지면 그리드 자식이 하나만 남아 **첫 트랙**에 배치된다 —
+   폭 0인 트랙에 본문이 들어가 화면이 통째로 사라진다(트랙을 0px로 만드는 것만으로는
+   부족하다). 접힌 상태에서는 열을 하나로 선언한다. */
+body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
+.header-sidebar-toggle { min-width: 34px; min-height: 34px; padding: 0 7px; font-size: var(--fs-md); line-height: 1; }
+/* 홈은 사이드바 자체가 없는 화면이라 토글이 가리킬 대상이 없다. */
+.app.is-home .header-sidebar-toggle { display: none; }
+/* 사이드바가 없는 폭에서도 마찬가지(모바일은 헤더 ☰가 맡는다). */
+@media (max-width: 768px) { .header-sidebar-toggle { display: none; } }
 .mapping-filter { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 .mapping-filter .ab-pill { min-height: 32px; font-size: var(--fs-xs); }
 .result-action-card__utilities { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 12px 0 0 47px; padding-top: 9px; border-top: 1px solid var(--border-subtle); }

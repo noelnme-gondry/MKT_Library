@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
 import { resolvePathToId } from "@/lib/routeMap";
+import { readSidebarSnapshot, setSidebarCollapsed, sidebarServerSnapshot, subscribeSidebar, syncSidebarForPath } from "@/lib/sidebarCollapse";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
@@ -16,6 +17,8 @@ import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 const HEADER_COPY = {
   ko: {
     breadcrumbAria: "페이지 경로",
+    sidebarExpand: "메뉴 펼치기",
+    sidebarCollapse: "메뉴 접기",
     overview: "Overview",
     csvChangeTitle: "현재 CSV를 지우고 다시 업로드 (이 CSV를 공유하는 모든 도구에 적용)",
     csvChangeBtn: "CSV 변경",
@@ -37,6 +40,8 @@ const HEADER_COPY = {
   },
   en: {
     breadcrumbAria: "Breadcrumb",
+    sidebarExpand: "Show navigation",
+    sidebarCollapse: "Hide navigation",
     overview: "Overview",
     csvChangeTitle: "Clear current CSV and re-upload (applies to every tool sharing this data)",
     csvChangeBtn: "Change CSV",
@@ -123,6 +128,12 @@ export default function Header({ locale = "ko" }) {
     };
   }, []);
 
+  // 부팅 인라인 스크립트가 첫 페인트 전에 이미 클래스를 붙여 뒀다 — 렌더는 그것을 읽기만 한다.
+  const sidebarCollapsed = useSyncExternalStore(subscribeSidebar, readSidebarSnapshot, sidebarServerSnapshot);
+  // 소프트 내비게이션에서는 부팅 스크립트가 다시 돌지 않는다. 저장된 선택이 없을
+  // 때만 라우트 기본값을 다시 적용한다(선택이 있으면 그 선택이 항상 이긴다).
+  useEffect(() => { syncSidebarForPath(pathname); }, [pathname]);
+
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {
@@ -157,6 +168,16 @@ export default function Header({ locale = "ko" }) {
   return (
     <header className="topbar operator-header" role="banner">
       <div className="topbar-context">
+        <button
+          type="button"
+          className="btn ghost header-sidebar-toggle"
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="sidebar"
+          aria-label={sidebarCollapsed ? T.sidebarExpand : T.sidebarCollapse}
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+        >
+          <span aria-hidden="true">◧</span>
+        </button>
         <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
           <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" aria-label="Growth Opt Playbook">
             <BrandMark size={26} label="Growth Opt Playbook" />

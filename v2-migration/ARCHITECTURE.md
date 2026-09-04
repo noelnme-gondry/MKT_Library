@@ -158,6 +158,7 @@ v2-migration/
 - `npm run lint`=eslint(0 errors) · `npm run build`(컴파일 게이트).
 
 ## 7. 내비게이션 팁
+- **사이드바 접기 → `src/lib/sidebarCollapse.js`** (노출 판정 SSOT). 상태는 `body.is-sidebar-collapsed` 한 곳에 두어 셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않는다. 저장된 선택이 없을 때만 라우트로 기본값을 정한다(공개 도구 라우트=접힘). 초기 상태는 `RootDocument`의 부팅 인라인 스크립트가 첫 페인트 전에 적용하고, 소프트 내비게이션은 `Header`의 `syncSidebarForPath`가 잇는다. **접힌 상태에서는 `.app`을 1열로 선언해야 한다** — 사이드바가 흐름에서 빠지면 남은 자식이 첫 트랙에 배치돼 본문 폭이 0이 된다.
 - **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
 - **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나다.
 - **수학/통계 → `src/utils/*Math.js`** (수학 변경 시 대응 `*.test.js` 골든 확인 — 원칙적으로 변경 금지).
