@@ -37,6 +37,37 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(points.textContent).toContain("CPI +₩22.6");
   });
 
+  // 카드 머리에는 결과 산출물(다운로드)과 도구별 컨트롤만 둔다. 공유·상세문서·보고서·
+  // 검토는 결론·수치·행동보다 뒤의 보조 줄로 내려간다 — 근거는 §5.3(동급 CTA 여럿 금지)와
+  // §5.5(다음 행동 1개)이고, 값이 아니라 그 근거를 고정한다.
+  it("keeps secondary actions out of the head and below the decision layer", () => {
+    const { container } = render(
+      <ResultActionCard
+        toolId="5-3"
+        headline="결론"
+        stats={[{ label: "즉시 교체", value: "3" }]}
+        analysisBasis={false}
+      />,
+    );
+
+    const head = container.querySelector(".result-action-card__head");
+    const utilities = container.querySelector(".result-action-card__utilities");
+    expect(utilities).toBeTruthy();
+    // 보조 동선은 머리 안에 있으면 안 된다.
+    expect(head.querySelector(".result-action-card__utilities")).toBeNull();
+    for (const label of ["결론 공유", "상세 문서 받기", "보고서에 추가", "지난 판단 검토"]) {
+      const node = screen.getByText(label);
+      expect(utilities.contains(node)).toBe(true);
+      expect(head.contains(node)).toBe(false);
+    }
+    // 머리에 남는 것은 다운로드(그리고 도구별 controls)뿐이다.
+    const headControls = head.querySelector(".result-action-card__controls");
+    if (headControls) expect(headControls.querySelectorAll("button, a").length).toBeLessThanOrEqual(1);
+    // 보조 줄은 수치·근거 뒤에 온다.
+    const stats = container.querySelector(".result-action-card__stats");
+    expect(stats.compareDocumentPosition(utilities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("localizes the key-figure landmark for English", () => {
     const { container } = render(
       <ResultActionCard

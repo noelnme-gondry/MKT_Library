@@ -91,3 +91,62 @@ describe("inline style typography floor", () => {
     expect(collectUndersizedInlineSizes(safe)).toEqual([]);
   });
 });
+
+// ── 1차 표면의 강화된 하한(12px) ──────────────────────────────────────────
+// 전역 하한 9.5px은 "읽히기는 하는가"의 마지노선이고, 사용자가 실제로 결론을 읽고
+// 데이터를 맞추는 표면에는 그것만으로 부족하다. 결론 카드·스코어카드·매핑 화면은
+// 12px을 하한으로 둔다. 대상은 손으로 쓴 목록이 아니라 **선택자 계열**에서 파생한다.
+const PRIMARY_SURFACE = /\.(result-action-card|ab-stat|kpi-card|csv-[a-z-]+|mapping-[a-z-]+|map-[a-z-]+|stat-method|decision-review)/;
+const PRIMARY_FLOOR_PX = 12;
+
+export function collectUndersizedPrimarySurface(css) {
+  const found = [];
+  let selector = "";
+  css.split("\n").forEach((line, index) => {
+    if (line.includes("{")) {
+      const head = line.split("{")[0].trim();
+      if (head && !head.startsWith("@")) selector = head;
+    }
+    if (!PRIMARY_SURFACE.test(selector)) return;
+    const sizes = [
+      ...line.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g),
+      ...line.matchAll(/font:\s*[^;{}]*?(?<![\d.])(\d+(?:\.\d+)?)px/g),
+    ];
+    for (const match of sizes) {
+      if (Number(match[1]) < PRIMARY_FLOOR_PX) found.push(`${index + 1}: ${selector} → ${match[0]}`);
+    }
+  });
+  return found;
+}
+
+describe("primary surface typography floor", () => {
+  it("keeps the conclusion card, scorecard and mapping screens at 12px or larger", () => {
+    expect(collectUndersizedPrimarySurface(CSS)).toEqual([]);
+  });
+
+  it("still scans a meaningful number of rules (a broken scanner must not pass silently)", () => {
+    // 스캐너가 깨지면 0건이 되어 조용히 통과한다 — 규모를 함께 단언한다(§7).
+    const scanned = CSS.split("\n").filter((line) => PRIMARY_SURFACE.test(line.split("{")[0] || "")).length;
+    expect(scanned).toBeGreaterThan(80);
+  });
+
+  it("detects a regression inside a primary surface", () => {
+    const regressed = ".result-action-card__label { font-size: 9.5px; }\n.map-status { font: 700 10px var(--font-sans); }";
+    expect(collectUndersizedPrimarySurface(regressed)).toHaveLength(2);
+  });
+
+  it("leaves other surfaces to the global floor", () => {
+    expect(collectUndersizedPrimarySurface(".sidebar-note { font-size: 10px; }")).toEqual([]);
+  });
+});
+
+// 타입 스케일 토큰이 실재해야 새 화면이 크기를 고를 곳이 생긴다.
+describe("type scale tokens", () => {
+  it("declares a scale with a 12px floor", () => {
+    for (const token of ["--fs-xs", "--fs-sm", "--fs-base", "--fs-md", "--fs-lg", "--fs-xl", "--fs-2xl"]) {
+      expect(CSS).toMatch(new RegExp(`${token}:\\s*\\d`));
+    }
+    const smallest = CSS.match(/--fs-xs:\s*(\d+(?:\.\d+)?)px/);
+    expect(Number(smallest[1])).toBeGreaterThanOrEqual(PRIMARY_FLOOR_PX);
+  });
+});

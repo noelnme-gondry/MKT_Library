@@ -126,7 +126,12 @@ export default function Header({ locale = "ko" }) {
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {
-    const shouldBeDark = localStorage.getItem("mkt-library-theme") === "dark";
+    // 저장값이 없으면 OS 설정을 따른다 — 부팅 인라인 스크립트와 같은 규칙이어야
+    // 마운트 직후 테마가 뒤집히지 않는다.
+    const stored = localStorage.getItem("mkt-library-theme");
+    const shouldBeDark = stored
+      ? stored === "dark"
+      : Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.body.classList.toggle("light-mode", !shouldBeDark);
     if (useAppStore.getState().isDarkMode !== shouldBeDark) toggleTheme();
     hasRestoredTheme.current = true;

@@ -28,30 +28,29 @@ const subscribeWelcome = () => () => {};
 // 보지 않는다.
 //
 // 단계별 포즈는 자산(public/assets/dochi)에 실제로 있는 것만 쓴다.
-const STEPS = [
-  { id: "greeting", pose: "idle" },
+export const DOCHI_WELCOME_STEPS = [
+  // 예전 4단계 중 앞 둘("안녕하세요!" · "저는 도치입니다!")은 §5.7의 네 역할
+  // (상태·행동·오해 방지·오류 해결) 중 아무것도 하지 않으면서 첫 방문자에게
+  // 클릭 두 번을 요구했다. 인사는 1단계 안 한 줄로 접는다.
   { id: "intro", pose: "point-up" },
-  { id: "purpose", pose: "results" },
   { id: "ask", pose: "delivery" },
 ];
 
 // 단계 포즈 전부 + 가져오기 중 달리기. STEPS에서 파생하므로 단계를 늘려도 어긋나지 않는다.
-const PRELOAD_POSES = [...STEPS.map((step) => step.pose), "run"];
+const PRELOAD_POSES = [...DOCHI_WELCOME_STEPS.map((step) => step.pose), "run"];
 
-const COPY = {
+export const DOCHI_WELCOME_COPY = {
   ko: {
     label: "도치의 첫 방문 안내",
     lines: [
-      ["안녕하세요!"],
-      ["저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!"],
       [
-        "이 홈페이지는 마케터 분들을 위한 분석 사이트 입니다!",
-        "브라우저에서 모든 데이터가 처리되며",
-        "원본 행은 서버에 저장되지 않습니다!",
+        "안녕하세요, 안내를 맡은 도치입니다.",
+        "마케터가 캠페인 데이터로 다음 행동을 정하는 곳이에요.",
+        "모든 계산은 브라우저에서 이뤄지고, 원본 행은 서버에 저장되지 않습니다.",
       ],
       [
-        "데이터 파일이나 전체 공개된 스프레드 시트 주소를 전달해주시면",
-        "발견된 문제, 할 수 있는 데이터 분석을 정리해드릴게요!",
+        "데이터 파일이나 전체 공개된 스프레드시트 주소를 주시면",
+        "발견된 문제와 지금 할 수 있는 분석을 정리해 드릴게요.",
       ],
     ],
     next: "다음",
@@ -64,16 +63,14 @@ const COPY = {
   en: {
     label: "Dochi’s welcome for first-time visitors",
     lines: [
-      ["Hello!"],
-      ["I’m Dochi, and I show first-time visitors around!"],
       [
-        "This site is an analysis workspace built for marketers!",
-        "All data is processed in your browser,",
-        "and source rows are not stored on a server!",
+        "Hello — I’m Dochi, your guide here.",
+        "This is where marketers turn campaign data into the next decision.",
+        "Everything is calculated in your browser, and source rows are never stored on a server.",
       ],
       [
         "Hand me a data file, or the address of a publicly shared spreadsheet,",
-        "and I’ll lay out the problems I found and the analyses you can run!",
+        "and I’ll lay out the problems I found and the analyses you can run.",
       ],
     ],
     next: "Next",
@@ -86,7 +83,7 @@ const COPY = {
 };
 
 export default function DochiWelcomeOverlay({ locale = "ko" }) {
-  const copy = COPY[locale] || COPY.ko;
+  const copy = DOCHI_WELCOME_COPY[locale] || DOCHI_WELCOME_COPY.ko;
   const router = useRouter();
   const savedDatasets = useAppStore((state) => state.workspaceDatasetSummaries);
   const decisionPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
@@ -107,7 +104,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
   const isRestoreResolved = decisionPersistenceEnabled !== true
     || workspaceRestoreStatus === "ready"
     || workspaceRestoreStatus === "failed";
-  const displayStep = savedDatasets.length > 0 ? STEPS.length - 1 : step;
+  const displayStep = savedDatasets.length > 0 ? DOCHI_WELCOME_STEPS.length - 1 : step;
   const open = shouldShowDochiWelcome({
     dismissed: !storageAllows,
   }) && isRestoreResolved && !closed;
@@ -131,17 +128,17 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
   };
 
   const goNext = () => {
-    const nextStep = Math.min(displayStep + 1, STEPS.length - 1);
+    const nextStep = Math.min(displayStep + 1, DOCHI_WELCOME_STEPS.length - 1);
     setStep(nextStep);
     trackProductEvent("onboarding_welcome_step", {
       placement: "home_welcome",
       locale,
-      state: STEPS[nextStep].id,
+      state: DOCHI_WELCOME_STEPS[nextStep].id,
       rank: nextStep + 1,
     });
   };
 
-  const isLast = displayStep === STEPS.length - 1;
+  const isLast = displayStep === DOCHI_WELCOME_STEPS.length - 1;
 
   return (
     <ModalDialog
@@ -151,7 +148,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
       overlayClassName="dochi-welcome-overlay"
       panelClassName="dochi-welcome"
     >
-      <div className="dochi-welcome__inner" data-step={STEPS[displayStep].id} data-importing={importing ? "true" : "false"}>
+      <div className="dochi-welcome__inner" data-step={DOCHI_WELCOME_STEPS[displayStep].id} data-importing={importing ? "true" : "false"}>
         <button type="button" className="dochi-welcome__close" onClick={() => close("dismissed")} aria-label={copy.close}>
           ×
         </button>
@@ -159,14 +156,14 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
         {/* key로 리마운트해 단계가 바뀔 때마다 등장 모션이 다시 재생된다
             (같은 노드에 재적용하면 CSS 애니메이션이 다시 돌지 않는다). */}
         <div className="dochi-welcome__stage" key={`stage-${displayStep}-${importing}`} aria-hidden="true">
-          <DochiSprite pose={importing ? "run" : STEPS[displayStep].pose} priority />
+          <DochiSprite pose={importing ? "run" : DOCHI_WELCOME_STEPS[displayStep].pose} priority />
         </div>
 
         {/* 다음 단계·가져오기 포즈를 미리 받아 둔다. 무대는 단계마다 key로 리마운트돼
             이미지 노드가 새로 생기므로, 미리 받지 않으면 단계를 넘길 때마다 첫 등장과
             같은 공백이 반복된다. 이 블록은 무대 밖이라 리마운트되지 않는다. */}
         <div className="dochi-welcome__preload" aria-hidden="true">
-          {PRELOAD_POSES.filter((pose) => pose !== STEPS[displayStep].pose).map((pose) => (
+          {PRELOAD_POSES.filter((pose) => pose !== DOCHI_WELCOME_STEPS[displayStep].pose).map((pose) => (
             <DochiSprite key={pose} pose={pose} priority />
           ))}
         </div>
@@ -200,7 +197,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
         </div>
 
         <div className="dochi-welcome__controls">
-          <p className="dochi-welcome__progress">{copy.progress(displayStep + 1, STEPS.length)}</p>
+          <p className="dochi-welcome__progress">{copy.progress(displayStep + 1, DOCHI_WELCOME_STEPS.length)}</p>
           <label className="dochi-welcome__optout">
             <input
               type="checkbox"

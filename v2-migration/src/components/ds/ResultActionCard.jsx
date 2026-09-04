@@ -260,46 +260,9 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download || canExportWorkbook || canCollectReport || canShareDecision || canDownloadDetails || canOpenDecisionReview) && (
+        {(controls || download || canExportWorkbook) && (
           <div className="result-action-card__controls">
             {controls}
-            {canShareDecision && (
-              <button className="btn ghost" type="button" onClick={copyShareLink}>
-                {shareCopied
-                  ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
-                  : (locale === "en" ? "Share conclusion" : "결론 공유")}
-              </button>
-            )}
-            {canDownloadDetails && (
-              <button
-                className="btn ghost"
-                type="button"
-                onClick={() => downloadText(
-                  detailedDocument({ title: shareToolTitle, headline, stats, points, locale }),
-                  `${toolId}-analysis-details`,
-                  "md",
-                  locale,
-                )}
-              >
-                {locale === "en" ? "Download details" : "상세 문서 받기"}
-              </button>
-            )}
-            {canCollectReport && (
-              reportAdded ? (
-                <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
-                  {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
-                </Link>
-              ) : (
-                <button className="btn ghost" type="button" onClick={collectForReport}>
-                  {locale === "en" ? "Add to report" : "보고서에 추가"}
-                </button>
-              )
-            )}
-            {canOpenDecisionReview && (
-              <Link className="btn ghost" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>
-                {locale === "en" ? "Review decisions" : "지난 판단 검토"}
-              </Link>
-            )}
             {download || (canExportWorkbook && (
               <DownloadHub
                 toolId={toolId}
@@ -374,6 +337,51 @@ export default function ResultActionCard({
           decisionPrefill={decisionPrefill}
           decisionPrefillKey={resolvedDecisionPrefillKey}
         />
+      )}
+
+      {/* 보조 동선은 결론·수치·행동보다 뒤에 둔다. 예전에는 이 넷이 카드 머리의
+          다운로드와 나란히 서서, 결과를 읽는 자리에서 시각적으로 가장 강한 것이
+          유틸리티 버튼 다섯이었다(§5.3 "동급으로 보이는 CTA 여럿" · §5.5 "다음 행동 1개"). */}
+      {(canShareDecision || canDownloadDetails || canCollectReport || canOpenDecisionReview) && (
+        <div className="result-action-card__utilities" role="group" aria-label={locale === "en" ? "More actions for this result" : "이 결과로 더 할 수 있는 것"}>
+          {canShareDecision && (
+            <button className="btn ghost" type="button" onClick={copyShareLink}>
+              {shareCopied
+                ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
+                : (locale === "en" ? "Share conclusion" : "결론 공유")}
+            </button>
+          )}
+          {canDownloadDetails && (
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => downloadText(
+                detailedDocument({ title: shareToolTitle, headline, stats, points, locale }),
+                `${toolId}-analysis-details`,
+                "md",
+                locale,
+              )}
+            >
+              {locale === "en" ? "Download details" : "상세 문서 받기"}
+            </button>
+          )}
+          {canCollectReport && (
+            reportAdded ? (
+              <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
+                {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
+              </Link>
+            ) : (
+              <button className="btn ghost" type="button" onClick={collectForReport}>
+                {locale === "en" ? "Add to report" : "보고서에 추가"}
+              </button>
+            )
+          )}
+          {canOpenDecisionReview && (
+            <Link className="btn ghost" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>
+              {locale === "en" ? "Review decisions" : "지난 판단 검토"}
+            </Link>
+          )}
+        </div>
       )}
 
       {analysisDetails}

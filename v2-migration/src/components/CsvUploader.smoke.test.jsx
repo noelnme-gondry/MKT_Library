@@ -87,6 +87,58 @@ describe("CsvUploader render smoke", () => {
     expect(screen.getByRole("group", { name: "원본 데이터 통화" })).toBeTruthy();
   });
 
+  // 실제 매체 export는 컬럼이 40~100개다. 고칠 두세 개가 그 안에 섞이면 매핑 화면이
+  // 폼이 된다(§9). 새 판정을 만들지 않고 이미 있는 assessment 상태로 정렬·필터만 한다.
+  it("확인이 필요한 컬럼을 위로 올리고 그것만 보게 걸러준다", () => {
+    seedWithData();
+    // 자동 매핑 신뢰도를 명시적으로 심는다 — 조건부 if 안에 단언을 두면 후보가
+    // 하나도 안 잡히는 순간 검사가 조용히 사라진다(§7).
+    const slice = useAppStore.getState().csvData;
+    const candidates = {
+      Date: [{ field: "date", confidence: 0.98, isExactFieldName: true, reasons: [] }],
+      Country: [{ field: "country", confidence: 0.97, isExactFieldName: true, reasons: [] }],
+      Platform: [{ field: "platform", confidence: 0.96, isExactFieldName: true, reasons: [] }],
+      Channel: [{ field: "channel", confidence: 0.95, isExactFieldName: true, reasons: [] }],
+      // 확신이 낮아 확인이 필요한 둘.
+      Spend: [{ field: "cost", confidence: 0.4, reasons: ["별칭 근접"] }],
+      Installs: [{ field: "installs", confidence: 0.72, reasons: ["별칭 근접"] }],
+    };
+    const withInsights = {
+      ...slice,
+      importInsights: { candidates, selections: slice.mapping },
+    };
+    useAppStore.setState({
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: withInsights },
+      csvData: withInsights,
+    });
+    render(<CsvUploader toolId="5-2" />);
+
+    const stateOf = (row) => row.getAttribute("class") || "";
+    const statuses = [...document.querySelectorAll("[data-mapping-status]")].map(stateOf);
+    const attentionIndexes = statuses
+      .map((cls, index) => (/(conflict|must_confirm|review)/.test(cls) ? index : -1))
+      .filter((index) => index >= 0);
+    const settledIndexes = statuses
+      .map((cls, index) => (/(confirmed|ignored|manual)/.test(cls) ? index : -1))
+      .filter((index) => index >= 0);
+    // 셋업이 실제로 "확인 필요"를 만들었는지부터 단언한다.
+    expect(attentionIndexes).toHaveLength(2);
+    expect(settledIndexes.length).toBeGreaterThan(0);
+    // 확인 필요 항목은 정리된 항목보다 항상 앞에 온다.
+    expect(Math.max(...attentionIndexes)).toBeLessThan(Math.min(...settledIndexes));
+
+    // 켜면 그 컬럼만 남는다.
+    const filter = document.querySelector(".mapping-filter button");
+    expect(filter).toBeTruthy();
+    expect(filter.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(filter);
+    expect(filter.getAttribute("aria-pressed")).toBe("true");
+    expect(document.querySelectorAll("[data-mapping-status]")).toHaveLength(attentionIndexes.length);
+    // 다시 누르면 전체로 돌아온다 — 숨긴 컬럼을 영영 못 찾게 두지 않는다.
+    fireEvent.click(filter);
+    expect(document.querySelectorAll("[data-mapping-status]")).toHaveLength(statuses.length);
+  });
+
   it("금액 데이터는 원본 통화를 고르기 전 분석을 열지 않는다", () => {
     seedWithData();
     const withoutCurrency = { ...useAppStore.getState().csvData };

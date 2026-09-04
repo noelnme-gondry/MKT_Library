@@ -28,13 +28,16 @@ export default function RootDocument({ children, locale = "ko" }) {
   return (
     <html lang={language} suppressHydrationWarning className={`${wantedSans.variable} ${jetBrainsMono.variable} dark`}>
       <head>
-        <meta name="theme-color" content="#11141b" />
+        {/* 기본 테마가 라이트인데 theme-color만 다크로 고정돼 있어 모바일 브라우저
+            상단 크롬만 검게 떴다. 실제로 칠해지는 배경(--background)에 맞춘다. */}
+        <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title={isEnglish ? "Growth Opt Playbook — English" : "Growth Opt Playbook"} href={isEnglish ? "/en/rss.xml" : "/rss.xml"} />
         <link rel="alternate" type="text/plain" title="Growth Opt Playbook for AI readers" href="/llms.txt" />
       </head>
       <body suppressHydrationWarning>
-        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
+        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('mkt-library-theme');var d=t?t==='dark':!!(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(!d)document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
         <SkipLink />
         <WorkspaceStorageBootstrap />
         <script

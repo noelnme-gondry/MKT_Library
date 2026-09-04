@@ -32,6 +32,9 @@ const COPY = {
     indexDeck: "판단 단계별로 묶었습니다. 필요한 데이터가 무엇인지도 함께 적혀 있어요.",
     indexDeckWithData: "올리신 파일로 지금 바로 되는 분석을 진하게 표시했습니다. 흐린 것은 컬럼이 더 필요합니다.",
     directEyebrow: "파일 없이 바로",
+    calculatorTag: "빠른 계산",
+    diagnoseTag: "원인 찾기",
+    brandTag: "브랜드 증분",
     directTitle: "업로드하지 않고 시작할 수 있는 작업",
     calculatorTitle: "마케팅 지표 계산기",
     calculatorDesc: "LTV:CAC·ROAS·CPA·A/B 표본수를 숫자만 입력해 계산합니다.",
@@ -52,6 +55,9 @@ const COPY = {
     indexDeck: "Grouped by the decision each one supports, with the columns it needs.",
     indexDeckWithData: "Analyses your file can run right now are shown in full; dimmed ones need more columns.",
     directEyebrow: "START WITHOUT A FILE",
+    calculatorTag: "QUICK MATH",
+    diagnoseTag: "ROOT CAUSE",
+    brandTag: "BRAND LIFT",
     directTitle: "Tasks you can run without uploading data",
     calculatorTitle: "Marketing metric calculators",
     calculatorDesc: "Calculate LTV:CAC, ROAS, CPA, and A/B sample size from a few numbers.",
@@ -199,6 +205,8 @@ export default function StartGate({ locale = "ko" }) {
         />
       </section>
 
+      {/* 업로드 전에만 보이던 세 카드는, 정작 "올렸는데 되는 분석이 없는" 사람에게서
+          사라지고 있었다. 업로드 뒤에도 남기되 도구 인덱스 아래로 순서만 내린다. */}
       {!hasPreparedData && <section className="start-direct-actions" aria-labelledby="start-direct-title">
         <header>
           <span>{C.directEyebrow}</span>
@@ -209,16 +217,16 @@ export default function StartGate({ locale = "ko" }) {
             href={locale === "en" ? "/en/calculator" : "/calculator"}
             onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "after_upload_entry", locale })}
           >
-            <span>QUICK MATH</span><strong>{C.calculatorTitle}</strong><p>{C.calculatorDesc}</p><b>{C.calculatorCta} →</b>
+            <span>{C.calculatorTag}</span><strong>{C.calculatorTitle}</strong><p>{C.calculatorDesc}</p><b>{C.calculatorCta} →</b>
           </Link>
           <Link
             href={locale === "en" ? "/en/diagnose" : "/diagnose"}
             onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "after_upload_entry", locale })}
           >
-            <span>ROOT CAUSE</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
+            <span>{C.diagnoseTag}</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
           </Link>
           <Link href={locale === "en" ? "/en/tools/brand-campaign-incrementality" : "/tools/brand-campaign-incrementality"}>
-            <span>BRAND LIFT</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
+            <span>{C.brandTag}</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
           </Link>
         </div>
       </section>}
@@ -238,6 +246,30 @@ export default function StartGate({ locale = "ko" }) {
           onSelect={(toolId) => (hasPreparedData ? openRecommended(toolId) : goTool(toolId))}
         />
       </section>
+
+      {hasPreparedData && <section className="start-direct-actions" aria-labelledby="start-direct-title-after">
+        <header>
+          <span>{C.directEyebrow}</span>
+          <h2 id="start-direct-title-after">{C.directTitle}</h2>
+        </header>
+        <div className="start-direct-actions__grid">
+          <Link
+            href={locale === "en" ? "/en/calculator" : "/calculator"}
+            onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "after_upload_index", locale })}
+          >
+            <span>{C.calculatorTag}</span><strong>{C.calculatorTitle}</strong><p>{C.calculatorDesc}</p><b>{C.calculatorCta} →</b>
+          </Link>
+          <Link
+            href={locale === "en" ? "/en/diagnose" : "/diagnose"}
+            onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "after_upload_index", locale })}
+          >
+            <span>{C.diagnoseTag}</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
+          </Link>
+          <Link href={locale === "en" ? "/en/tools/brand-campaign-incrementality" : "/tools/brand-campaign-incrementality"}>
+            <span>{C.brandTag}</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
+          </Link>
+        </div>
+      </section>}
     </>
   );
 }
