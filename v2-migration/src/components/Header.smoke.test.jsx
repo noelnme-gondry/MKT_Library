@@ -9,6 +9,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Header from "@/components/Header";
 import { workspaceNavItem } from "@/lib/workspaceNav";
+import { SIDEBAR_COLLAPSED_CLASS, SIDEBAR_STORAGE_KEY, resetSidebarSnapshot } from "@/lib/sidebarCollapse";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -34,6 +35,43 @@ function seedWithData() {
   const slice = { raw, headers, mapping, fileName: "x.csv" };
   useAppStore.setState({ currentRouteId: "5-2", csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice }, csvData: slice });
 }
+
+// 사이드바 접기는 도구 화면의 분석 가용폭을 되찾는 장치다(1280px에서 747 → 955px).
+// 여기서 고정하는 것은 값이 아니라 계약이다: 토글이 body 클래스와 저장소를 함께
+// 바꾸고, aria로 상태를 말하고, 되돌릴 수 있어야 한다.
+describe("Header sidebar toggle", () => {
+  beforeEach(() => {
+    seedNoData();
+    window.localStorage.removeItem(SIDEBAR_STORAGE_KEY);
+    document.body.classList.remove(SIDEBAR_COLLAPSED_CLASS);
+    resetSidebarSnapshot();
+  });
+
+  it("collapses and restores the sidebar, remembering the choice", () => {
+    render(<Header />);
+    const toggle = screen.getByRole("button", { name: "메뉴 접기" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    // 가리키는 대상이 실재해야 aria-controls가 계약이다.
+    expect(toggle.getAttribute("aria-controls")).toBe("sidebar");
+
+    fireEvent.click(toggle);
+    expect(document.body.classList.contains(SIDEBAR_COLLAPSED_CLASS)).toBe(true);
+    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("collapsed");
+    // 라벨과 상태가 함께 바뀐다 — 색이나 아이콘만으로 상태를 말하지 않는다.
+    const reopened = screen.getByRole("button", { name: "메뉴 펼치기" });
+    expect(reopened.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(reopened);
+    expect(document.body.classList.contains(SIDEBAR_COLLAPSED_CLASS)).toBe(false);
+    // 명시적으로 편 것도 선택이다 — 도구 라우트의 기본값이 이걸 덮지 않아야 한다.
+    expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("expanded");
+  });
+
+  it("uses the English labels for the English shell", () => {
+    render(<Header locale="en" />);
+    expect(screen.getByRole("button", { name: "Hide navigation" })).toBeTruthy();
+  });
+});
 
 describe("Header render smoke", () => {
   beforeEach(() => seedNoData());

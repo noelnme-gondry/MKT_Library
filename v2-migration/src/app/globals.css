@@ -86,19 +86,12 @@
         --fs-xl: 26px;
         --fs-2xl: 34px;
 
-        /* 반경 스케일. 예전 기본값 2px 때문에 카드·버튼이 거의 직각이었고,
-           `--radius-full`은 이름이 pill을 뜻하는데 값이 12px이라 그걸 믿고 쓴 자리가
-           의도와 다르게 각졌다(실제 pill은 `border-radius: var(--radius-pill)`를 직접 쓰고 있었다). */
-        --radius-default: 0.375rem; /* 6px — 버튼·입력·칩 */
-        --radius-lg: 0.5rem;        /* 8px */
-        --radius-xl: 0.625rem;      /* 10px — 카드 */
-        --radius-full: 0.75rem;     /* 12px — 큰 패널(이름은 호환용으로 유지) */
-        --radius-pill: 999px;       /* 진짜 pill */
-
-        --sidebar-width: 280px;
-        --container-max: 1280px;
-        --gutter: 1.5rem;
-        --section-gap: 2rem;
+        /* 반경·폭·간격 토큰은 여기서 선언하지 않는다 — app 레이어의 무조건 `:root`
+           (Operator Desk 블록)가 같은 이름을 다시 선언해 항상 이기기 때문이다.
+           예전에는 두 벌이 공존해서 이 블록만 읽으면 값을 틀리게 알았다:
+           `--radius-full`이 12px로 보이지만 실효값은 999px, `--sidebar-width`가
+           280px로 보이지만 실효값은 248px이었다. 정의는 한 곳에만 둔다.
+           `app/designTokenSingleSource.test.js`가 재발을 막는다. */
         --chart-h: 320px;
 
         --font-sans: var(--font-wanted-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -4929,9 +4922,12 @@ body:not(.light-mode) .moon-icon {
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 16px;
-  --radius-full: 999px;
-  --sidebar-width: 264px;
-  --container-max: 1380px;
+  /* 이름이 값과 다르면 다음 사람이 속는다. pill은 pill이라고 부르고,
+     예전 이름(`--radius-full`)은 같은 값을 가리키는 별칭으로만 남긴다. */
+  --radius-pill: 999px;
+  --radius-full: var(--radius-pill);
+  /* --sidebar-width·--container-max는 아래 Operator Desk :root가 소유한다(248/1440).
+     여기서 다시 선언하면 앞 블록을 읽은 사람이 값을 틀리게 안다. */
   --gutter: clamp(18px, 3vw, 42px);
   --section-gap: 32px;
   --sticky-stack-h: 152px;
@@ -5498,6 +5494,24 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-page__briefing-list > li > p { margin: 4px 0 0; color: var(--text-secondary); font-size: var(--fs-sm); }
 .weekly-review-page__briefing-list > li > a { display: inline-block; margin-top: 6px; color: var(--primary); font-size: var(--fs-sm); }
 .weekly-review-page__briefing-list > li.is-action > strong { color: var(--danger); }
+/* ── 사이드바 접기 ───────────────────────────────────────────────────────
+   도구 화면에서 좌측 내비 248px + 우측 목차 예약 208px이 상시로 붙어, 1280px
+   노트북에서 분석에 남는 폭이 747px(뷰포트의 58%)뿐이었다. 상태를 body에 두면
+   셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않아도 한 규칙으로 적용된다
+   (§7 "목록을 두 곳에 나열하지 말고 파생시켜라"의 레이아웃판).
+   --sidebar-width를 0으로 만들면 그리드·배경 그라디언트·푸터 들여쓰기가 전부
+   같은 토큰을 읽으므로 함께 따라온다. */
+body.is-sidebar-collapsed { --sidebar-width: 0px; }
+body.is-sidebar-collapsed .sidebar { display: none; }
+/* 사이드바가 흐름에서 빠지면 그리드 자식이 하나만 남아 **첫 트랙**에 배치된다 —
+   폭 0인 트랙에 본문이 들어가 화면이 통째로 사라진다(트랙을 0px로 만드는 것만으로는
+   부족하다). 접힌 상태에서는 열을 하나로 선언한다. */
+body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
+.header-sidebar-toggle { min-width: 34px; min-height: 34px; padding: 0 7px; font-size: var(--fs-md); line-height: 1; }
+/* 홈은 사이드바 자체가 없는 화면이라 토글이 가리킬 대상이 없다. */
+.app.is-home .header-sidebar-toggle { display: none; }
+/* 사이드바가 없는 폭에서도 마찬가지(모바일은 헤더 ☰가 맡는다). */
+@media (max-width: 768px) { .header-sidebar-toggle { display: none; } }
 .mapping-filter { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
 .mapping-filter .ab-pill { min-height: 32px; font-size: var(--fs-xs); }
 .result-action-card__utilities { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 12px 0 0 47px; padding-top: 9px; border-top: 1px solid var(--border-subtle); }
