@@ -1268,7 +1268,10 @@ function findMeta(id) {
                 toc: [
                   { id: "s-att", title: "ATT 프롬프트 설계" },
                   { id: "s-skan", title: "SKAN 4.0 스키마" },
+                  { id: "s-attribution", title: "어느 광고에 설치를 주는가" },
+                  { id: "s-privacy-threshold", title: "Crowd anonymity" },
                   { id: "s-cvmap", title: "Conversion Value 매핑" },
+                  { id: "s-operating", title: "집계·지연 데이터로 운영하기" },
                   { id: "s-adjust", title: "Adjust 셋업" },
                   { id: "s-trouble", title: "트러블슈팅" },
                 ],
@@ -1334,8 +1337,35 @@ function findMeta(id) {
               </ul>
             </section>
 
+            <section class="block" id="s-attribution">
+              <h2 class="section-title"><span class="ix">§3</span>SKAN은 어느 광고에 설치를 주는가</h2>
+              <p>SKAN 숫자를 두고 벌어지는 논쟁은 사실 대부분 이 단계에 관한 것이다. SKAdNetwork는 기여를 나눠 갖지 않는다 — 애플이 설치 하나당 광고 <strong>하나</strong>만 고르고 나머지는 0을 받는다. 그 승자가 어떻게 정해지는지를 알아야 나중에 마주칠 숫자 차이를 설명할 수 있다.</p>
+              <ul>
+                <li>광고 네트워크가 노출·클릭을 자기 SKAdNetwork 키로 서명해서 내보낸다.</li>
+                <li>설치가 일어나면 <strong>애플이</strong> 어느 서명 광고에 귀속할지 정한다. 네트워크도 MMP도 아니다.</li>
+                <li>클릭이 뷰스루를 이긴다. 같은 종류끼리는 더 최근 것이 이긴다.</li>
+                <li>postback은 이긴 네트워크의 등록 엔드포인트로 간다. 앱이 개발자용 postback URL을 등록해야 사본을 받고, 그 사본은 네트워크가 받는 것보다 정보가 적다.</li>
+              </ul>
+              <h3>postback이 늦게 오는 건 설계다</h3>
+              <p>postback은 윈도우가 닫히는 순간 발송되지 않는다. 애플이 무작위 지연을 얹는다 — 도착 시각으로 사용자를 특정하지 못하게 하려는 것이다. 그래서 <strong>설치와 그 postback은 서로 다른 주에 잡히고</strong>, 월요일에 끈 캠페인이 며칠간 계속 postback을 만든다. 윈도우와 지연의 정확한 값은 버전마다 바뀌었으므로, 블로그에 적힌 숫자(이 문서 포함)를 믿지 말고 <a href="https://developer.apple.com/documentation/storekit/skadnetwork" target="_blank" rel="noopener noreferrer">애플 SKAdNetwork 문서</a>에서 현재 값을 확인한다.</p>
+              <div class="callout warning"><strong>프레임워크 자체가 이동 중이다</strong><br />AdAttributionKit이 SKAdNetwork와 나란히 놓였고 네트워크별 지원이 다르다. 스키마를 다시 짜기 전에 각 네트워크가 실제로 어느 쪽을 읽는지 확인한다.</div>
+              <p>MMP 대시보드와 네트워크 대시보드가, 때로는 크게 어긋나는 이유도 이것이다. 어느 쪽이 거짓말을 하는 게 아니라 서로 다른 것을 서로 다른 시계로 세고 있다. 버그로 올리기 전에 <a href="/blog/skan-vs-mmp-attribution">SKAN 어트리뷰션과 MMP 숫자가 다른 이유</a>에서 각 숫자의 출처를 먼저 확인한다.</p>
+            </section>
+
+            <section class="block" id="s-privacy-threshold">
+              <h2 class="section-title"><span class="ix">§4</span>Crowd anonymity (프라이버시 임계)</h2>
+              <p>Crowd anonymity는 재식별을 막는 애플의 장치다. postback 뒤에 깔린 설치 수가 너무 적으면 애플이 정보를 덜 준다. 스키마를 제대로 짜고도 값이 비어서 오는 가장 흔한 원인이다.</p>
+              <ul>
+                <li>낮은 tier → fine Conversion Value가 아예 오지 않고 Source ID도 가장 거친 형태로 잘린다.</li>
+                <li>높은 tier → fine 값과 Source ID 자릿수가 열린다.</li>
+                <li>tier는 postback 맥락마다 다시 평가된다. 캠페인 구조와 일별 볼륨에 따라 움직이는 값이지 한 번 정해두는 설정이 아니다.</li>
+              </ul>
+              <div class="callout warning"><strong>빈 스키마를 읽는 법</strong><br />구조를 바꾼 뒤 fine 값이 끊겼다면 SDK보다 tier를 먼저 의심한다. 캠페인을 합쳐 볼륨을 회복시키고 다시 확인한 다음에 코드를 건드린다.</div>
+              <p>애플은 tier 임계값을 공개하지 않고 규칙도 버전마다 바뀐다. 구조를 확정하기 전에 <a href="https://developer.apple.com/documentation/storekit/skadnetwork" target="_blank" rel="noopener noreferrer">애플 문서</a>에서 확인한다.</p>
+            </section>
+
             <section class="block" id="s-cvmap">
-              <h2 class="section-title"><span class="ix">§3</span>Conversion Value 매핑 (커머스 앱 예시)</h2>
+              <h2 class="section-title"><span class="ix">§5</span>Conversion Value 매핑 (커머스 앱 예시)</h2>
               <p>매출 누적액 + 핵심 이벤트 발생 여부의 조합으로 64개 슬롯에 매핑한다. 0~2일차에 Fine 64단계, 3~7일차와 8~35일차에 Coarse 3단계만 활용 가능.</p>
               ${dataTable(
                 [
@@ -1403,8 +1433,25 @@ function findMeta(id) {
               )}
             </section>
 
+            <section class="block" id="s-operating">
+              <h2 class="section-title"><span class="ix">§6</span>집계되고 늦게 오는 데이터로 운영하기</h2>
+              <p>SKAN은 데이터를 줄이기만 하는 게 아니라 <strong>판단의 단위</strong>를 바꾼다. 안드로이드를 최적화하던 방식 그대로 iOS 캠페인을 만지면 확신에 찬 오판이 나온다.</p>
+              <h3>지출일이 아니라 설치 코호트로 읽는다</h3>
+              <p>지출은 결제한 날에 잡히고, 짝이 되는 postback은 윈도우가 닫히고 무작위 지연이 지난 뒤에야 온다. 오늘 지출을 오늘 postback으로 나누면 서로 다른 모집단의 CPI가 나온다. 모든 비율을 <strong>설치 코호트</strong>에 붙여 계산하고, 윈도우+지연이 다 지나기 전의 최근 며칠은 미완성으로 둔다.</p>
+              <h3>쪼개기 전에 합친다</h3>
+              <ul>
+                <li>캠페인 하나를 여럿으로 쪼개는 것이 멀쩡한 스키마에서 null이 오기 시작하는 경로다. 조각마다 따로 crowd anonymity tier 아래로 떨어진다.</li>
+                <li>받을 수 없는 세분화는 세분화가 아니다. fine 값이 돌아올 때까지 합치고, 볼륨이 허락하는 만큼만 다시 쪼갠다.</li>
+                <li>구조를 바꿀 때마다 다시 확인한다. tier는 셋업 때 한 번이 아니라 볼륨을 따라 재평가된다.</li>
+              </ul>
+              <h3>실제로 받는 신호에 맞춰 최적화한다</h3>
+              <p>postback 대부분이 coarse 값으로 온다면, fine 값 기반 매출 구간으로 짠 입찰 전략은 대체로 존재하지 않는 데이터를 향해 최적화하고 있는 것이다. 분포부터 확인한다. Conversion Value가 압도적으로 0이면 보통은 유저가 무가치한 게 아니라 <strong>첫 윈도우가 매핑한 이벤트에 도달하기 전에 닫히는</strong> 것이다.</p>
+              <div class="callout warning"><strong>SKAN은 "광고가 그 설치를 만들었는가"에 답하지 못한다</strong><br />집계되고 지연된 라스트터치 postback은 무엇이 귀속됐는지를 말할 뿐 무엇이 증분이었는지는 말하지 않는다. 지출이 수요를 만들었는지를 물어야 한다면 홀드아웃이나 지역 실험이 필요하다 — <a href="/blog/incrementality-measurement">증분 측정 글</a>과 <a href="/tools/incrementality">증분 분석 도구</a>를 참고한다.</div>
+              <p>실무 결론 둘. 변경은 윈도우+지연이 온전히 지난 뒤에 판단한다. 그리고 네트워크 비교는 실제로 받은 postback으로만 하고, 네트워크가 자체 모델링한 설치를 섞어서 비교하지 않는다.</p>
+            </section>
+
             <section class="block" id="s-adjust">
-              <h2 class="section-title"><span class="ix">§4</span>Adjust SKAN 셋업</h2>
+              <h2 class="section-title"><span class="ix">§7</span>Adjust SKAN 셋업</h2>
               <ol>
                 <li>Adjust 대시보드 → App Setup → SKAdNetwork → <code class="inline">Enable SKAN 4.0</code></li>
                 <li><strong>Conversion Value Schema</strong>: Revenue + Events 조합 모드 선택</li>
@@ -1431,7 +1478,7 @@ function findMeta(id) {
             </section>
 
             <section class="block" id="s-trouble">
-              <h2 class="section-title"><span class="ix">§5</span>트러블슈팅</h2>
+              <h2 class="section-title"><span class="ix">§8</span>트러블슈팅</h2>
               <div class="callout danger">
                 <div class="ico">!</div>
                 <div class="body">
