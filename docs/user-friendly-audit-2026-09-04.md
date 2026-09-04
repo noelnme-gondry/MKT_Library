@@ -66,11 +66,11 @@ grep -rhoE 'fontSize: ?"?[0-9.]+px' --include=*.jsx src | wc -l  → 608
 border-radius px 값 종류 → 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18 20 99 999  (19종)
 var(--radius*) 사용       → 107곳  /  하드코딩 border-radius → ~300곳
 ```
-- 토큰은 4개(`--radius-default:2px` / `lg:4px` / `xl:8px` / `full:12px`)인데 실제로는 19종이 쓰인다. 7px·9px·11px·13px처럼 **어떤 스케일에도 없는 값**이 각각 20~30곳이다.
-- `--radius-full`이 **12px**이다. 이름이 pill(9999px)을 뜻하므로, 이 토큰을 믿고 쓴 자리는 의도와 다르게 각진다. 실제로 pill이 필요한 곳은 `border-radius:999px`를 직접 쓴다(18곳).
-- `--radius-default: 0.125rem`(2px)이 기본이라 카드·버튼이 거의 직각이다. 이것이 "각지고 옛날 어드민 같다"는 인상의 직접 원인이다.
+- 하드코딩 `border-radius`가 **19종**이다. 7px·9px·11px·13px처럼 어떤 스케일에도 없는 값이 각각 20~30곳이다. 토큰 사용은 107곳뿐이다.
 
-**개선안**: 반경 4단(`2/6/10/999`)으로 접고 토큰명을 실제 값에 맞게 고친다(`--radius-pill:999px` 신설). 카드 기본을 10px, 버튼 6px로 올리면 코드 한 줄로 인상이 크게 바뀐다.
+**정정(2026-09-04, 같은 날)**: 처음에 "토큰이 `2/4/8/12px`이고 `--radius-full`이 12px이라 pill 자리가 각진다"고 적었는데 **틀렸다.** `globals.css`에는 조건 없는 `:root`가 여러 벌 있고 **뒤가 이긴다** — 실효값은 `default 6px · md 8px · lg 10px · xl 16px · full 999px`였다. 즉 pill은 이미 pill이었고 기본 반경도 이미 6px이었다. AGENTS.md §7이 "토큰 값을 대조할 땐 마지막 정의를 볼 것"이라고 이미 적어 둔 함정에 그대로 걸렸다.
+
+**진짜 결함은 토큰이 두 벌이라는 것 자체다** — 앞 블록을 읽은 사람(이 감사를 쓴 나 포함)이 값을 틀리게 안다. 같은 문제가 `--sidebar-width`(280 → 264 → **248**)·`--container-max`(1280 → 1380 → **1440**)에도 있었다. 지금은 기하 토큰의 정의를 한 곳으로 모으고 `app/designTokenSingleSource.test.js`가 재발을 막는다(색 토큰의 다크/라이트 쌍은 테마 시스템이므로 대상 밖).
 
 ### A-3. [P2] 한국어 화면 위의 영문 대문자 장식 라벨
 
@@ -306,7 +306,7 @@ grep -rln "기회손실\|손실 금액\|impactKrw\|월 환산" src --include=*.j
 | C-2 | 첫 방문 오버레이 4단계 → 2단계 | `DochiWelcomeOverlay.smoke.test.jsx` — 핸드오프까지의 클릭 수 |
 | A-4 | 온보딩 카피 느낌표 정리 | 위와 같음(카피를 컴포넌트에서 파생) |
 | A-3 | 랜딩 장식 eyebrow 4종 제거, 카드 라벨은 화면 언어로. `/start` 하드코딩 영문 3곳 KO/EN 분리 | — |
-| A-2 | 반경 스케일 정리 + `--radius-pill` 신설(리터럴 999px 24곳 치환) | `layoutScale.test.js` |
+| A-2 | `--radius-pill` 신설(리터럴 999px 24곳 치환) + **기하 토큰 중복 정의 제거**. 최초 진단은 틀렸다(위 정정) — 반경 실효값은 이미 6/8/10/16/999px이었고 바뀐 것은 이름과 정의 위치뿐이다 | `layoutScale.test.js` · `designTokenSingleSource.test.js` |
 | A-6 | 브레이크포인트 13종 → 8종(델타 ≤20px 근접 병합), 760→768로 태블릿 세로 구멍 제거, 짝 min-width 보정 | `layoutScale.test.js` — 스케일 밖 경계·겹침 금지 |
 | E-3 | `utils/efficiencyImpactMath.js`(골든 5) + 5-2 결론에 30일 금액 환산 배선 | 골든 |
 | E-2 | `lib/assist/detectFindingConflicts.js`(골든 7) | 골든 |

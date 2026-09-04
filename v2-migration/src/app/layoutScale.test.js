@@ -63,7 +63,9 @@ describe("radius scale", () => {
   });
 
   it("keeps the default radius soft enough to read as a rounded control", () => {
-    const match = CSS.match(/--radius-default:\s*([\d.]+)rem/);
-    expect(Number(match[1]) * 16).toBeGreaterThanOrEqual(4);
+    // 값은 **마지막 정의**에서 읽는다 — 앞 블록을 보고 판단하면 틀린다(§7).
+    const all = [...CSS.matchAll(/--radius-default:\s*([\d.]+)(px|rem)/g)];
+    const [, value, unit] = all.at(-1);
+    expect(Number(value) * (unit === "rem" ? 16 : 1)).toBeGreaterThanOrEqual(4);
   });
 });
