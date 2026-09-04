@@ -24,25 +24,15 @@ vi.mock("@/components/CsvUploader", () => ({
 import fs from "node:fs";
 import path from "node:path";
 
-import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
+import DochiWelcomeOverlay, { DOCHI_WELCOME_COPY, DOCHI_WELCOME_STEPS } from "@/components/assistant/DochiWelcomeOverlay";
 import { DOCHI_WELCOME_DISMISSED_KEY, DOCHI_WELCOME_SESSION_KEY, resetDochiWelcomeSnapshot } from "@/lib/dochiWelcome";
 import { useAppStore } from "@/store/useDataStore";
 
 // 단계별 줄 구성까지 계약이다 — 카피가 줄바꿈 위치를 소유하므로 줄 수가 바뀌면
 // 여기서 걸린다(브라우저 폭에 맡기면 어디서 끊길지 알 수 없다).
-const KO_LINES = [
-  ["안녕하세요!"],
-  ["저는 처음 오신 분들을 안내하는 역할을 맡고 있는 도치라고 합니다!"],
-  [
-    "이 홈페이지는 마케터 분들을 위한 분석 사이트 입니다!",
-    "브라우저에서 모든 데이터가 처리되며",
-    "원본 행은 서버에 저장되지 않습니다!",
-  ],
-  [
-    "데이터 파일이나 전체 공개된 스프레드 시트 주소를 전달해주시면",
-    "발견된 문제, 할 수 있는 데이터 분석을 정리해드릴게요!",
-  ],
-];
+// 카피를 테스트에 다시 적으면 문구를 고칠 때마다 여기가 깨지고, 그때 문구를
+// 옮겨 적으면 계약이 아니라 사본이 된다 — 컴포넌트에서 파생한다.
+const KO_LINES = DOCHI_WELCOME_COPY.ko.lines;
 const expectLines = (lines) => lines.forEach((line) => expect(screen.getByText(line)).toBeTruthy());
 
 const advanceToLastStep = () => {
@@ -71,28 +61,32 @@ afterEach(() => {
 });
 
 describe("DochiWelcomeOverlay first-visit onboarding", () => {
-  it("opens for a first-time visitor and walks the four scripted lines", () => {
+  it("walks every scripted step in order with its own pose", () => {
     render(<DochiWelcomeOverlay />);
 
-    expectLines(KO_LINES[0]);
     // 각 단계는 정해진 도치 포즈를 쓴다 — 자산에 실제로 있는 파일만.
     const poseAt = () => document.querySelector(".dochi-welcome__stage .dochi-sprite").className;
-    expect(poseAt()).toContain("is-idle");
-
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expectLines(KO_LINES[1]);
-    expect(poseAt()).toContain("is-point-up");
-
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expectLines(KO_LINES[2]);
-    expect(poseAt()).toContain("is-results");
-
-    fireEvent.click(screen.getByRole("button", { name: "다음" }));
-    expectLines(KO_LINES[3]);
-    expect(poseAt()).toContain("is-delivery");
+    KO_LINES.forEach((lines, index) => {
+      if (index > 0) fireEvent.click(screen.getByRole("button", { name: "다음" }));
+      expectLines(lines);
+      expect(poseAt()).toContain(`is-${DOCHI_WELCOME_STEPS[index].pose}`);
+    });
     // 마지막 단계에서만 업로드 경로가 열린다.
     expect(screen.getByRole("button", { name: "파일 전달" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "다음" })).toBe(null);
+  });
+
+  // 첫 방문자가 제품 설명에 닿기까지의 클릭 수는 계약이다. 인사만 하는 단계를
+  // 다시 넣으면 여기서 걸린다(§5.7 — 모든 문장은 상태·행동·오해 방지·오류 해결 중 하나).
+  it("reaches the hand-off step within one click", () => {
+    expect(DOCHI_WELCOME_STEPS.length).toBeLessThanOrEqual(2);
+    expect(DOCHI_WELCOME_STEPS.at(-1).id).toBe("ask");
+    for (const locale of ["ko", "en"]) {
+      const lines = DOCHI_WELCOME_COPY[locale].lines;
+      expect(lines).toHaveLength(DOCHI_WELCOME_STEPS.length);
+      // 첫 단계가 제품이 무엇인지와 데이터 처리 위치를 이미 말한다.
+      expect(lines[0].join(" ").length).toBeGreaterThan(40);
+    }
   });
 
   // next/image의 기본값은 `loading="lazy"`라 브라우저가 레이아웃 이후에야 요청을
@@ -116,7 +110,9 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
 
     // 현재 포즈를 뺀 나머지 단계 포즈가 전부 예열된다(달리기는 프레임 2장).
     const preloaded = new Set([...preload.querySelectorAll(".dochi-sprite")].map((el) => el.className));
-    for (const pose of ["point-up", "results", "delivery", "run"]) {
+    // 현재 무대에 선 포즈는 예열 대상에서 빠진다(이미 떠 있다).
+    const currentPose = DOCHI_WELCOME_STEPS[0].pose;
+    for (const pose of [...DOCHI_WELCOME_STEPS.map((step) => step.pose).filter((pose) => pose !== currentPose), "run"]) {
       expect([...preloaded].some((cls) => cls.includes(`is-${pose}`))).toBe(true);
     }
   });
@@ -140,12 +136,12 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
-  it("starts at the fourth message for a device that already has saved work", () => {
+  it("starts at the hand-off message for a device that already has saved work", () => {
     useAppStore.setState({ workspaceDatasetSummaries: [{ id: "saved-1" }] });
     render(<DochiWelcomeOverlay />);
     expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
-    expectLines(KO_LINES[3]);
-    expect(screen.getByText("4단계 중 4단계")).toBeTruthy();
+    expectLines(KO_LINES.at(-1));
+    expect(screen.getByText(DOCHI_WELCOME_COPY.ko.progress(DOCHI_WELCOME_STEPS.length, DOCHI_WELCOME_STEPS.length))).toBeTruthy();
     expect(screen.getByRole("button", { name: "파일 전달" })).toBeTruthy();
   });
 
@@ -158,7 +154,7 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
       workspaceDatasetSummaries: [{ id: "restored-1" }],
       workspaceRestoreStatus: "ready",
     }));
-    expectLines(KO_LINES[3]);
+    expectLines(KO_LINES.at(-1));
     expect(screen.queryByText(KO_LINES[0][0])).toBe(null);
   });
 
@@ -181,7 +177,7 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
     advanceToLastStep();
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/dochi-result");
-    expect(screen.queryByText(KO_LINES[3][0])).toBe(null);
+    expect(screen.queryByText(KO_LINES.at(-1)[0])).toBe(null);
   });
 
   it.each(["안내 닫기", "건너뛰기"])("continues an import and routes after %s", (closeAction) => {
@@ -199,12 +195,13 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
   });
 
   it("renders the English script and routes to the English workspace", () => {
+    const enLines = DOCHI_WELCOME_COPY.en.lines;
     render(<DochiWelcomeOverlay locale="en" />);
-    expect(screen.getByText("Hello!")).toBeTruthy();
-    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByText("All data is processed in your browser,")).toBeTruthy();
-    expect(screen.getByText("and source rows are not stored on a server!")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expectLines(enLines[0]);
+    // 데이터 처리 위치 고지는 첫 화면에서 사라지면 안 된다(F-03).
+    expect(enLines[0].join(" ")).toContain("browser");
+    for (let i = 0; i < enLines.length - 1; i += 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expectLines(enLines.at(-1));
     expect(screen.getByRole("checkbox", { name: "Don’t show this again" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/en/dochi-result");

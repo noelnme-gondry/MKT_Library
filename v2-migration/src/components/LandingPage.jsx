@@ -33,7 +33,6 @@ const COPY = {
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
     assurance: "무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리",
-    continueEyebrow: "CONTINUE ON THIS DEVICE",
     continueTitle: "지난 판단을 이어서 검토하세요",
     continueDeck: "이 브라우저에 남아 있는 결정 요약과 직접 올린 파일을 이어서 보여줍니다. 저장 화면에서 언제든 지울 수 있습니다.",
     dueNow: "지금 검토",
@@ -43,7 +42,6 @@ const COPY = {
     reviewed: "검토 완료",
     openInbox: "결정 검토함 열기",
     reopenTool: "원본 도구 다시 열기",
-    loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
     loopDeck: "직접 올린 파일과 결정 기록은 이 기기에만 마지막 사용 후 90일까지 남고, 언제든 지우거나 저장을 끌 수 있습니다.",
     loop: [
@@ -51,16 +49,14 @@ const COPY = {
       { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "결론, 근거, 다음 행동 순서로 보고 유지·감액·증액·교체 중 하나를 정합니다.", cta: "샘플 판단 보기" },
       { id: "review", label: "03 · REVIEW", title: "다음 주 결과 검토", desc: "저장한 결정의 기준값과 실제값을 대조하고, 배운 점을 다음 판단의 근거로 남깁니다.", cta: "결정 검토함 보기" },
     ],
-    questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
     questionDeck: (count) => `${count}개 분석 전부입니다. 도구 이름이 아니라 판단 상황으로 골라요.`,
-    libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
     libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
-    blogLabel: "MARKETING BLOG",
+    blogLabel: "마케팅 블로그",
     blogTitle: "성과를 해석하는 실무 인사이트",
     blogDesc: "예산·소재·측정 문제를 원인부터 좁히고 실제 분석으로 이어가는 실무 글입니다.",
-    guideLabel: "OPERATING PLAYBOOK",
+    guideLabel: "운영 플레이북",
     guideTitle: "팀이 함께 쓰는 운영 표준",
     guideDesc: "트래킹 셋업부터 캠페인 운영·소재·분석까지 단계별 SOP를 확인합니다.",
     resources: "바로 쓰는 자료와 외부 채널",
@@ -83,7 +79,6 @@ const COPY = {
     demoCta: "Try example data in 30 seconds",
     dataGuideCta: "Prepare CSV columns",
     assurance: "Free · no signup · source data stays in your browser",
-    continueEyebrow: "CONTINUE ON THIS DEVICE",
     continueTitle: "Continue your last decision",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
     dueNow: "Due now",
@@ -93,7 +88,6 @@ const COPY = {
     reviewed: "Reviewed",
     openInbox: "Open decision inbox",
     reopenTool: "Reopen source tool",
-    loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
     loopDeck: "Files you upload directly and decision records stay on this device until 90 days after their last use. You can remove them or turn storage off at any time.",
     loop: [
@@ -101,16 +95,14 @@ const COPY = {
       { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Read the conclusion, evidence, and next action before choosing what to hold, cut, scale, or replace.", cta: "See a sample decision" },
       { id: "review", label: "03 · REVIEW", title: "Review the actual next week", desc: "Compare each saved baseline with the actual outcome and keep the learning for the next decision.", cta: "Open decision inbox" },
     ],
-    questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
     questionDeck: (count) => `All ${count} analyses, grouped by the decision each one supports.`,
-    libraryEyebrow: "PLAYBOOK LIBRARY",
     libraryTitle: "Build evidence for the next decision.",
     libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
-    blogLabel: "MARKETING BLOG",
+    blogLabel: "마케팅 블로그",
     blogTitle: "Practical insight for reading performance",
     blogDesc: "Practical guides that narrow budget, creative, and measurement problems from cause to analysis.",
-    guideLabel: "OPERATING PLAYBOOK",
+    guideLabel: "운영 플레이북",
     guideTitle: "Operating standards your team can share",
     guideDesc: "Step-by-step SOPs from tracking setup to campaign operations, creative, and analysis.",
     resources: "Ready-to-use resources and external channels",
@@ -213,7 +205,7 @@ export default function LandingPage({ locale = "ko" }) {
 
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">
-          <div><span>{T.continueEyebrow}</span><h2 id="dc-return-title">{T.continueTitle}</h2></div>
+          <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>
           <p>{T.continueDeck}</p>
         </header>
         <div className="dc-return__grid">
@@ -252,7 +244,6 @@ export default function LandingPage({ locale = "ko" }) {
       <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
         <header className="dc-section-head">
           <div>
-            <div className="dc-eyebrow">{T.questionEyebrow}</div>
             <h2 id="dc-question-title">{T.questionTitle}</h2>
           </div>
           <p>{T.questionDeck(PUBLISHED_TOOL_IDS.length)}</p>
@@ -273,7 +264,6 @@ export default function LandingPage({ locale = "ko" }) {
       <section className="dc-loop" aria-labelledby="dc-loop-title">
         <header className="dc-section-head">
           <div>
-            <div className="dc-eyebrow">{T.loopEyebrow}</div>
             <h2 id="dc-loop-title">{T.loopTitle}</h2>
           </div>
           <p>{T.loopDeck}</p>
@@ -305,7 +295,6 @@ export default function LandingPage({ locale = "ko" }) {
       <section className="dc-library" id="library" aria-labelledby="dc-library-title">
         <header className="dc-section-head">
           <div>
-            <div className="dc-eyebrow">{T.libraryEyebrow}</div>
             <h2 id="dc-library-title">{T.libraryTitle}</h2>
           </div>
           <p>{T.libraryDeck}</p>

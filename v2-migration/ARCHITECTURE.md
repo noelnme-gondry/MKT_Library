@@ -127,7 +127,7 @@ v2-migration/
 - **타입**: DM Sans(body)+Space Grotesk(display)+JetBrains Mono(data), `next/font` 변수만.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*` 등. **차트 색은 `CHART_THEME` getter**(하드코딩 hex·CSS `var()` 리터럴 금지).
 - **셸 통일**: 전 페이지(도구·SOP·홈·블로그·가이드)가 `Sidebar`+`Header`+`GlobalModals`. 슬림 헤더 재도입 금지. 분석 페이지 `h1`은 `ToolPageShell` 또는 `ToolIntro` 중 하나만.
-- **첫 방문자 인사 오버레이**: KR/EN 홈만 `assistant/DochiWelcomeOverlay`를 mount한다(상시 접수처 `DochiAssistant`와 별개, 둘 다 렌더됨). 도치가 4단계 대사(인사→소개→사이트 설명→데이터 요청)를 말하고 마지막 단계에서 `CsvUploader`(toolId `start-gate`)로 CSV·공개 Google Sheets를 바로 받아 `/dochi-result`로 넘긴다. 노출 판정 SSOT는 `lib/dochiWelcome.js` — 영구 옵트아웃은 localStorage, 같은 방문 안의 반복 노출 차단은 sessionStorage다. 저장된 작업이 있는 기존 사용자도 노출하되 IndexedDB 복원 뒤 4단계에서 시작하며, 가져오기를 시작한 뒤 닫거나 건너뛰어도 완료 시 결과 화면으로 이동한다. 서버 스냅샷이 항상 닫힘이라 프리렌더 HTML에는 오버레이가 없다. 모바일(≤700px)에서는 전면 대신 하단 시트로 내려간다.
+- **첫 방문자 인사 오버레이**: KR/EN 홈만 `assistant/DochiWelcomeOverlay`를 mount한다(상시 접수처 `DochiAssistant`와 별개, 둘 다 렌더됨). 도치가 2단계 대사(사이트 설명+데이터 처리 위치 → 데이터 요청)를 말하고 마지막 단계에서 `CsvUploader`(toolId `start-gate`)로 CSV·공개 Google Sheets를 바로 받아 `/dochi-result`로 넘긴다. 노출 판정 SSOT는 `lib/dochiWelcome.js` — 영구 옵트아웃은 localStorage, 같은 방문 안의 반복 노출 차단은 sessionStorage다. 저장된 작업이 있는 기존 사용자도 노출하되 IndexedDB 복원 뒤 마지막 단계에서 시작하며, 가져오기를 시작한 뒤 닫거나 건너뛰어도 완료 시 결과 화면으로 이동한다. 서버 스냅샷이 항상 닫힘이라 프리렌더 HTML에는 오버레이가 없다. 모바일(≤700px)에서는 전면 대신 하단 시트로 내려간다.
 - **홈 전용 도치 데이터 접수**: KR/EN 랜딩만 `assistant/DochiAssistant`를 mount한다. CSV/XLSX 또는 전체 공개 Google Sheets URL을 브라우저에서 읽고, 입력 준비 뒤에만 `/start` 통합 작업대로 handoff한다(현재 매핑으로 안전한 light baseline만 자동 실행, 매핑 변경 시 결과 stale). 포즈는 `public/assets/dochi/` PNG 세트를 `assistant/DochiSprite`가 고르며 `prefers-reduced-motion`에서 장거리 이동·wipe를 생략한다. 도구 화면에는 도치가 남지 않는다(도구별 보조는 `ToolAssistRail`).
 - **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개(점검·추세잠식·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다.
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
@@ -158,6 +158,8 @@ v2-migration/
 - `npm run lint`=eslint(0 errors) · `npm run build`(컴파일 게이트).
 
 ## 7. 내비게이션 팁
+- **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
+- **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나다.
 - **수학/통계 → `src/utils/*Math.js`** (수학 변경 시 대응 `*.test.js` 골든 확인 — 원칙적으로 변경 금지).
 - **도구 UI → `src/components/tools/<도구>.jsx`** (§2 표에서 route→파일).
 - **대시보드(5-2) 탭 → `src/components/dashboard/<Tab>.jsx`** (viz·scorecard·pacing·anomaly·ltv·cohort·funnel·segment·seasonality).

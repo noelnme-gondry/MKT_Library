@@ -7,6 +7,7 @@ import { getMonFilteredRows, getMappedRows, aggregateByKey, effectiveDenomBasis,
 import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
+import { efficiencyMoneyImpact } from "@/utils/efficiencyImpactMath";
 
 // 통계 검정이 아니라 "주목할 만한 변화" 크기 임계값이다. 한국어 "유의"는 통계적
 // 유의성을 함의해 검정을 한 것처럼 읽힌다(감사 H-6).
@@ -224,6 +225,27 @@ export function buildDashboardVerdict({
 
   const metricRows = M.map((m) => ({ ...m, prev: P[m.key], recent: R[m.key], wow: pct(R[m.key], P[m.key]) }));
 
+  // 효율 변화의 금액 환산 — "CPA가 12% 올랐다"가 얼마짜리 문제인지 말해 준다.
+  // 예측이 아니라 산술 환산이며(§8 L-04) 그 사실을 화면 문구가 함께 말한다.
+  const moneyImpact = effKey
+    ? efficiencyMoneyImpact({
+      priorUnitCost: P[effKey],
+      recentUnitCost: R[effKey],
+      recentConversions: R[convKey],
+      windowDays: w,
+    })
+    : null;
+  if (moneyImpact && moneyImpact.direction !== "flat") {
+    const worse = moneyImpact.direction === "worse";
+    points.push({
+      cls: worse ? "bad" : "good",
+      text: tr(
+        `이 효율 변화가 그대로 유지되면 30일 기준 ${fc(Math.abs(moneyImpact.projectedImpact))}만큼 ${worse ? "더 씁니다" : "덜 씁니다"} — 최근 ${w}일 전환 ${Math.round(moneyImpact.conversions).toLocaleString()}건을 그대로 두고 ${effLabel}만 직전 기간과 비교한 산술 환산이며, 미래 성과 예측이 아닙니다.`,
+        `If this efficiency holds, that is ${fc(Math.abs(moneyImpact.projectedImpact))} ${worse ? "more" : "less"} over 30 days — an arithmetic restatement that holds the last ${w} days' ${Math.round(moneyImpact.conversions).toLocaleString()} conversions fixed and compares ${effLabel} against the prior period. It is not a forecast.`
+      ),
+    });
+  }
+
   // 카드 상단 스트립 = 핵심 4~5개만(지출·전환·효율·ROAS). 나머지는 다운로드로.
   const stripKeys = ["cost", convKey, effKey, "roas"].filter(Boolean);
   const stats = stripKeys
@@ -258,5 +280,5 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w, days: daily.length, conversionKey: convKey, efficiencyKey: effKey, retentionSnapshot };
+  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, moneyImpact, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w, days: daily.length, conversionKey: convKey, efficiencyKey: effKey, retentionSnapshot };
 }

@@ -22,6 +22,8 @@ import { localizedTool } from "@/lib/toolConnections";
 import { groupForRoute } from "@/lib/toolGroups";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
+import { rankFindings } from "@/lib/assist/rankFindings";
+import { detectFindingConflicts } from "@/lib/assist/detectFindingConflicts";
 import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
@@ -29,6 +31,10 @@ import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNot
 const COPY = {
   ko: {
     eyebrow: "WEEKLY REVIEW",
+    briefingTitle: "이번 주 분석이 말한 것",
+    briefingDeck: "이 브라우저에서 같은 데이터로 돌린 분석들의 결론을 한자리에 모았습니다. 새로고침하면 사라지고, 서버로 보내지 않습니다.",
+    briefingConflict: "결론이 엇갈립니다",
+    briefingOpen: "결과 열기 →",
     title: "이번 주 결정 인박스",
     deck: "분석 결과에서 저장한 행동을 검토일 순서로 모았습니다. 실제 결과와 배운 점을 남겨 다음 판단에 다시 쓰세요.",
     import: "결정 기록 CSV 불러오기",
@@ -138,6 +144,10 @@ const COPY = {
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
+    briefingTitle: "What this week’s analyses said",
+    briefingDeck: "Conclusions from the analyses you ran on the same data in this browser. They clear on refresh and are never sent to a server.",
+    briefingConflict: "These conclusions disagree",
+    briefingOpen: "Open the result →",
     title: "This week’s decision inbox",
     deck: "Actions saved from analysis results are ordered by review date. Add the outcome and learning to turn each call into evidence.",
     import: "Import decision CSV",
@@ -306,6 +316,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
+  const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
   const csvGroups = useAppStore((state) => state.csvGroups);
   const activeDataGroup = useAppStore((state) => state.activeDataGroup);
@@ -404,6 +415,17 @@ export default function WeeklyReview({ locale = "ko" }) {
     });
   };
 
+  // 도구들이 결론을 이 저장소에 넣고 있었는데 읽는 화면이 없었다 — 정렬 함수까지
+  // 있는데 소비처가 0이었다(§16 "계산해 놓고 판정에 안 쓰는 신호"). 여기가 그 소비처다.
+  const rankedFindings = useMemo(
+    () => Object.values(findingsByGroup || {}).flatMap((list) => rankFindings(list || [])).slice(0, 8),
+    [findingsByGroup],
+  );
+  const findingConflicts = useMemo(
+    () => Object.values(findingsByGroup || {}).flatMap((list) => detectFindingConflicts(list || [], { locale })),
+    [findingsByGroup, locale],
+  );
+
   return (
     <article className="page-inner weekly-review-page">
       <header className="weekly-review-page__head">
@@ -411,6 +433,35 @@ export default function WeeklyReview({ locale = "ko" }) {
         <h1>{t.title}</h1>
         <p>{t.deck}</p>
       </header>
+
+      {rankedFindings.length > 0 && <section className="weekly-review-page__briefing" aria-labelledby="weekly-briefing-title">
+        <header>
+          <h2 id="weekly-briefing-title">{t.briefingTitle}</h2>
+          <p>{t.briefingDeck}</p>
+        </header>
+        {findingConflicts.length > 0 && <ul className="weekly-review-page__briefing-conflicts">
+          {findingConflicts.map((conflict) => (
+            <li key={conflict.id}>
+              <span>{t.briefingConflict}</span>
+              <strong>{conflict.headline}</strong>
+              <p>{conflict.detail}</p>
+            </li>
+          ))}
+        </ul>}
+        <ol className="weekly-review-page__briefing-list">
+          {rankedFindings.map((finding) => {
+            const href = localizedTool(finding.toolId, locale)?.href || "";
+            return (
+              <li key={finding.id} className={`is-${finding.severity}`}>
+                <span>{toolName(finding.toolId, locale)}</span>
+                <strong>{finding.headline}</strong>
+                {finding.detail && <p>{finding.detail}</p>}
+                {href && <Link href={href}>{t.briefingOpen}</Link>}
+              </li>
+            );
+          })}
+        </ol>
+      </section>}
 
       {sortedRecords.length > 0 && <>
         <section className="weekly-review-page__summary" aria-label={t.inboxSummary}>

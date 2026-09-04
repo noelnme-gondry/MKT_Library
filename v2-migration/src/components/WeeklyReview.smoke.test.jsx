@@ -7,8 +7,45 @@ import { useAppStore } from "@/store/useDataStore";
 
 describe("WeeklyReview", () => {
   beforeEach(() => {
-    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false, decisionSessionRecordIds: new Set() });
+    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false, decisionSessionRecordIds: new Set(), findingsByGroup: {} });
     window.gtag = vi.fn();
+  });
+
+  // 결론 저장소(findingsByGroup)와 정렬 함수는 오래 있었는데 읽는 화면이 없었다.
+  // 이 검사가 그 소비처의 존재를 계약으로 고정한다 — 화면이 사라지면 여기서 걸린다.
+  it("reads stored findings into a briefing and names the conflict between two tools", () => {
+    const base = {
+      schemaVersion: 1,
+      dataGroup: "efficiency",
+      severity: "action",
+      score: 90,
+      evidence: [],
+      scope: {},
+      suggestedTargets: [],
+      inputSignature: "sig",
+      locale: "ko",
+    };
+    useAppStore.setState({
+      findingsByGroup: {
+        efficiency: [
+          { ...base, id: "f1", toolId: "5-22", kind: "saturation", headline: "Meta는 아직 여유가 있어 증액 여력이 있습니다.", detail: "한계 CPA가 평균보다 낮습니다." },
+          { ...base, id: "f2", toolId: "5-3", kind: "allocation", headline: "Meta 예산을 감액하고 Google로 옮기세요.", detail: "한계효용 기준 재배분." },
+        ],
+      },
+    });
+    render(<WeeklyReview />);
+
+    expect(screen.getByRole("heading", { name: "이번 주 분석이 말한 것" })).toBeTruthy();
+    expect(screen.getByText("Meta는 아직 여유가 있어 증액 여력이 있습니다.")).toBeTruthy();
+    expect(screen.getByText("Meta 예산을 감액하고 Google로 옮기세요.")).toBeTruthy();
+    // 모순은 한쪽을 채택하지 않고 확인 순서를 말한다(§8).
+    expect(screen.getByText("결론이 엇갈립니다")).toBeTruthy();
+    expect(screen.getByText(/기간·채널 필터·분모 기준이 서로 같은지 먼저 확인/)).toBeTruthy();
+  });
+
+  it("shows no briefing when nothing has been analysed yet", () => {
+    render(<WeeklyReview />);
+    expect(screen.queryByRole("heading", { name: "이번 주 분석이 말한 것" })).toBeNull();
   });
 
   it("explains the client-only review loop before a CSV is imported", () => {

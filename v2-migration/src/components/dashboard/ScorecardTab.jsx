@@ -375,7 +375,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           </>}
         />
         {editMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{T.editHint}</p>
+          <p className="muted" style={{ fontSize: "12px", margin: "8px 0 0" }}>{T.editHint}</p>
         )}
 
         <div style={{ marginTop: "10px" }}>
@@ -388,7 +388,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
             locale={locale}
           />
         </div>
-        <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
+        <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
           {locale === "en" ? T.scFootnote(windowDays) : C.scFootnote(windowDays)}
         </p>
       </section>
@@ -410,11 +410,11 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
             {T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, Math.min(daily.length, 2 * windowDays))}
           </h3>
-          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>
+          <p className="muted" style={{ fontSize: "12px", margin: "0 0 8px" }}>
             {T.legendHint(windowDays)}
           </p>
           {daily.slice(-2 * windowDays).length < 2 * windowDays && (
-            <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>
+            <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>
               {T.insufficientData(daily.slice(-2 * windowDays).length)}
             </p>
           )}

@@ -105,6 +105,9 @@ const CSV_COPY = {
     mappingHeader: "📋 CSV 컬럼 → 표준 필드 매핑",
     mappingSummaryPrefix: (total) => `전체 ${total}컬럼 · 옵션 매핑 `,
     mappingHint: "자동 + 수동. 드롭다운으로 변경 시 즉시 반영.",
+    mappingFilterAttention: (count) => `확인 필요만 보기 (${count})`,
+    mappingFilterAll: "전체 컬럼 보기",
+    mappingFilterEmpty: "확인이 필요한 컬럼이 없습니다.",
     colHeaderCsv: "CSV 컬럼",
     colHeaderStd: "표준 필드",
     colHeaderStatus: "상태",
@@ -187,6 +190,9 @@ const CSV_COPY = {
     mappingHeader: "📋 CSV column → standard field mapping",
     mappingSummaryPrefix: (total) => `${total} columns total · optional mapped `,
     mappingHint: "Auto + manual. Changing a dropdown applies instantly.",
+    mappingFilterAttention: (count) => `Show only what needs review (${count})`,
+    mappingFilterAll: "Show every column",
+    mappingFilterEmpty: "No column needs review.",
     colHeaderCsv: "CSV column",
     colHeaderStd: "Standard field",
     colHeaderStatus: "Status",
@@ -304,6 +310,7 @@ export default function CsvUploader({
   const [refreshingSheet, setRefreshingSheet] = useState(false);
   const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
   const [confirmedHeaders, setConfirmedHeaders] = useState(() => new Set());
+  const [mappingAttentionOnly, setMappingAttentionOnly] = useState(false);
   const [isMappingMemoryEnabled, setIsMappingMemoryEnabled] = useState(() => mappingMemoryEnabled());
   const [mappingMemoryRecords, setMappingMemoryRecords] = useState([]);
   // XLSX는 여러 시트가 흔하므로 임의로 합치지 않는다. 먼저 사용자가 하나를 선택하게
@@ -804,7 +811,7 @@ export default function CsvUploader({
           <section className="required-banner" style={{ borderLeftColor: "var(--warning)" }}>
             <strong>{T.wideTransformTitle}</strong>
             <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.wideTransformDesc(pendingWideImport.insights.signature.evidence.periodColumns)}</p>
-            <p className="muted" style={{ margin: "0 0 12px", fontSize: "11px" }}>{T.wideWarning}</p>
+            <p className="muted" style={{ margin: "0 0 12px", fontSize: "12px" }}>{T.wideWarning}</p>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button className="ab-button" onClick={handleWideTransform} disabled={isImporting}>{T.wideTransformBtn}</button>
               <button className="ab-pill" onClick={cancelPendingImport}>{T.cancelImportBtn}</button>
@@ -945,6 +952,19 @@ export default function CsvUploader({
     ignored: T.unmapped,
   };
   const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
+  // 실제 매체 export는 컬럼이 40~100개다. 고쳐야 할 두세 개가 그 안에 섞이면
+  // "다 잡아서 다 돌리고, 틀린 것만 고친다"(§9)가 화면에서 성립하지 않는다.
+  // 새 판정을 만들지 않고 이미 계산된 assessment 상태로 정렬·필터만 한다.
+  const MAPPING_STATE_ORDER = { conflict: 0, must_confirm: 1, review: 2, manual: 3, confirmed: 4, ignored: 5 };
+  const mappingStateOf = (header) => (assessmentByHeader[header] || { state: "ignored" }).state;
+  const needsAttentionState = (state) => state === "conflict" || state === "must_confirm" || state === "review";
+  const attentionHeaders = csvData.headers.filter((header) => needsAttentionState(mappingStateOf(header)));
+  const orderedHeaders = [...csvData.headers].sort((left, right) => {
+    const delta = (MAPPING_STATE_ORDER[mappingStateOf(left)] ?? 9) - (MAPPING_STATE_ORDER[mappingStateOf(right)] ?? 9);
+    // 같은 상태 안에서는 원본 컬럼 순서를 지킨다(결정론 — 화면이 흔들리지 않게).
+    return delta || csvData.headers.indexOf(left) - csvData.headers.indexOf(right);
+  });
+  const visibleMappingHeaders = mappingAttentionOnly && attentionHeaders.length > 0 ? attentionHeaders : orderedHeaders;
   const mappingNeedsAttention = missing.length > 0 || analysisBlocked || needsReview > 0 || mappingConflicts.length > 0;
   const isSemanticFallbackStage = mappingReviewStage === "semantic";
   const shouldOfferSemanticFallback = mappingReviewStage === "legacy" && (
@@ -999,7 +1019,7 @@ export default function CsvUploader({
       {requiresSourceCurrency && !isDemo && (
         <section className="required-banner" data-currency-scope="declare" style={{ borderLeftColor: currencyMissing ? "var(--warning)" : "var(--primary)" }}>
           <strong>{T.sourceCurrencyLabel}</strong>
-          <p className="muted" style={{ margin: "0.35rem 0 0.7rem", fontSize: "11.5px" }}>
+          <p className="muted" style={{ margin: "0.35rem 0 0.7rem", fontSize: "12px" }}>
             {currencyMissing ? T.sourceCurrencyMissing : T.sourceCurrencyHint}
           </p>
           <div className="analysis-control-group" role="group" aria-label={T.sourceCurrencyLabel}>
@@ -1034,7 +1054,7 @@ export default function CsvUploader({
             />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
+              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
               <button
                 type="button"
                 className="ab-pill"
@@ -1124,13 +1144,25 @@ export default function CsvUploader({
             {datasetSignature && <div className="csv-recognition-signature">{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
           </div>
         )}
+        {attentionHeaders.length > 0 && (
+          <div className="mapping-filter">
+            <button
+              type="button"
+              className={`ab-pill${mappingAttentionOnly ? " active" : ""}`}
+              aria-pressed={mappingAttentionOnly}
+              onClick={() => setMappingAttentionOnly((previous) => !previous)}
+            >
+              {mappingAttentionOnly ? T.mappingFilterAll : T.mappingFilterAttention(attentionHeaders.length)}
+            </button>
+          </div>
+        )}
         <div className="mapping-grid">
           <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>
           <div className="mapping-header">{T.colHeaderStd}</div>
           <div className="mapping-header mapping-header--status">{T.colHeaderStatus}</div>
           
-          {csvData.headers.map((h) => {
+          {visibleMappingHeaders.map((h) => {
             const sel = csvData.mapping[h] || "__ignore__";
             const isUnmapped = sel === "__ignore__";
             const assessment = assessmentByHeader[h] || { state: "ignored", reasons: [] };
