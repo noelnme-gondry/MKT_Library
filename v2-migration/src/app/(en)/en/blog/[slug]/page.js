@@ -7,6 +7,9 @@ import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
+import { splitArticleForAction } from "@/lib/blogArticleSplit";
+import BlogReadTracker from "@/components/blog/BlogReadTracker";
+import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -65,16 +68,6 @@ function extractImages(html) {
   return out;
 }
 
-function splitAtContentAction(html) {
-  const marker = "<!-- CONTENT_ACTION -->";
-  const index = String(html || "").indexOf(marker);
-  if (index < 0) return { before: html, after: "" };
-  return {
-    before: html.slice(0, index),
-    after: html.slice(index + marker.length),
-  };
-}
-
 function buildPostJsonLd(post, canonical) {
   const publisher = publisherNode("en");
   const author = authorNode("en");
@@ -130,10 +123,11 @@ export default async function EnBlogPostPage({ params }) {
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
-  const article = splitAtContentAction(post.html);
+  const article = splitArticleForAction(post.html);
 
   return (
     <div className="content-article">
+      <BlogReadTracker slug={post.slug} locale="en" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}
@@ -153,6 +147,7 @@ export default async function EnBlogPostPage({ params }) {
             <span className="content-answer__label">{post.searchIntent || "Short answer"}</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>Applies when</strong>{post.conditions}</p>}
+            <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_answer" />
           </aside>
         )}
         <div className="content-article__meta">
@@ -172,6 +167,8 @@ export default async function EnBlogPostPage({ params }) {
         {article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
+
+      <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} locale="en" />
 
       {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이(KO와 동일 구조, §2.11). */}
       <div className="blog-post-outro">

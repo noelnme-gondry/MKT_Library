@@ -12,6 +12,11 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
+| `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `source`, `state=depth_25\|50\|75\|100`, `locale` |
+| `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `source`, `rank`(세션 내 몇 번째), `locale` |
+| `blog_cta_viewed` | 글·용어의 행동 패널이 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|blog_bridge`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_answer\|article_mid\|article_post\|blog_bridge`, `locale` |
+| `blog_bridge_dismissed` | 블로그 도치 브리지를 닫음 | `content_slug`, `content_type`, `source`, `placement=blog_bridge`, `state=session\|permanent`, `locale` |
 | `tool_view` | 분석 도구 URL 진입 | `tool_id`, `source=route`, `locale` |
 | `landing_data_start_clicked` | 랜딩에서 내 데이터 시작(`/start`) 선택 | `source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_review_opened` | 랜딩 주간 루프에서 결정 검토함 선택 | `source=landing`, `placement=weekly_loop`, `locale` |
@@ -61,9 +66,14 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - `locale`
 - `state`
 - `data_continuity`
+- `rank`(이벤트 범위 custom metric)
 
 ## 검증 퍼널
 
+- 블로그→분석: `page_view`(블로그) → `blog_read_depth(depth_75)` → `blog_cta_viewed` → `blog_tool_cta_clicked` → `tool_view` → `data_import_success` → `analysis_completed(result_state=ready)`
+  - `blog_cta_viewed` 없이 `page_view`만 쌓이면 패널이 안 보인 것이고, `blog_cta_viewed`는 있는데 클릭이 없으면 카피·목적지 문제다. 두 원인을 가르는 게 이 이벤트의 존재 이유다.
+  - 도치 브리지는 새 이벤트 이름을 만들지 않는다 — 노출은 `blog_cta_viewed(placement=blog_bridge)`, 클릭은 `blog_tool_cta_clicked(placement=blog_bridge)`로 같은 퍼널에 들어간다. `placement`로만 가른다.
+  - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
 - 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 가져오기 실패: `data_import_start` → `data_import_failed(state별)`

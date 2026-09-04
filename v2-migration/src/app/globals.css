@@ -4776,6 +4776,41 @@ body:not(.light-mode) .moon-icon {
 .content-action-panel__secondary span { font-size: 15px; }
 @media (max-width: 720px) { .landing-shell { padding-left: 1rem; padding-right: 1rem; } .landing-hero { padding-top: 2.5rem; } .landing-hero__title { font-size: clamp(34px, 10vw, 48px); } .landing-hero__accent { white-space: normal; } .landing-preview-stage__status { display: none; } .landing-exit-grid, .search-topic-hub, .content-list { grid-template-columns: 1fr; } .landing-exit-card { grid-template-columns: auto 1fr; } .landing-exit-card__cta { grid-column: 2; } .search-topic-hub { gap: 18px; } .search-topic-hub__grid { grid-template-columns: 1fr; } .content-action-panel { align-items: flex-start; flex-direction: column; gap: 16px; } }
 
+/* 블로그 도치 브리지 — 본문 끝 인라인 카드, 모바일에서는 하단 시트.
+   전면 오버레이는 쓰지 않는다(모바일 검색 인터스티셜 페널티). 시트는 화면을 덮지 않고
+   본문이 위로 비쳐 보이는 높이로만 올라온다. 색은 전부 semantic 토큰 — 라이트 모드에서
+   raw hex를 쓰면 대비가 무너진다(§7). */
+.blog-dochi-bridge { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 16px; margin: 2.6rem 0 0; padding: 18px 18px 16px; border: 1px solid var(--border-stronger); background: var(--surface-container-low); }
+.blog-dochi-bridge__sprite { width: 78px; height: 78px; }
+.blog-dochi-bridge__body { min-width: 0; }
+.blog-dochi-bridge__lead { margin: 0; color: var(--text-muted); font-size: 12px; letter-spacing: -.01em; }
+.blog-dochi-bridge h2 { margin: 6px 0 0; color: var(--text-primary); font-size: 19px; letter-spacing: -.035em; }
+.blog-dochi-bridge__desc { margin: 7px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.blog-dochi-bridge__links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.blog-dochi-bridge__cta { display: inline-flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--primary); color: var(--on-primary); text-decoration: none; font-size: 13px; font-weight: 800; }
+.blog-dochi-bridge__secondary { display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px; border: 1px solid var(--border-stronger); color: var(--text-primary); text-decoration: none; font-size: 12px; font-weight: 750; }
+.blog-dochi-bridge__secondary:hover { border-color: var(--primary); color: var(--primary); }
+.blog-dochi-bridge__note { margin: 11px 0 0; color: var(--text-muted); font-size: 11.5px; line-height: 1.6; }
+/* PC 안내는 좁은 화면에서만 의미가 있다 — 넓은 화면에서는 이미 그 화면이다. */
+.blog-dochi-bridge__note-desktop { display: none; }
+.blog-dochi-bridge__stop { margin-top: 9px; padding: 10px 0; min-height: 44px; border: 0; background: none; color: var(--text-muted); font-size: 11.5px; text-decoration: underline; cursor: pointer; }
+.blog-dochi-bridge__stop:hover { color: var(--text-secondary); }
+/* 아이콘 전용 버튼은 44×44 hit area(product-ssot §6.4) — 보이는 상자는 작게 두고
+   여백으로 타깃을 넓힌다. */
+.blog-dochi-bridge__close { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--border-subtle); background: none; color: var(--text-secondary); font-size: 17px; line-height: 1; cursor: pointer; }
+.blog-dochi-bridge__close:hover { border-color: var(--border-stronger); color: var(--text-primary); }
+@media (max-width: 700px) {
+  .blog-dochi-bridge { position: fixed; inset: auto 0 0; z-index: 60; margin: 0; padding: 14px 14px 16px; border: 0; border-top: 1px solid var(--border-stronger); background: var(--surface-container-lowest); box-shadow: 0 -10px 28px rgb(0 0 0 / .28); gap: 12px; }
+  .blog-dochi-bridge__sprite { width: 52px; height: 52px; }
+  .blog-dochi-bridge h2 { font-size: 16px; }
+  .blog-dochi-bridge__desc { display: none; }
+  .blog-dochi-bridge__note-desktop { display: inline; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .blog-dochi-bridge { animation: blogBridgeIn .28s ease-out both; }
+}
+@keyframes blogBridgeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
 .site-footer { margin-top: 4rem; border-top: 1px solid var(--border-subtle); background: var(--surface-container-lowest); }
 .site-footer__inner { display: grid; grid-template-columns: minmax(240px,1.7fr) repeat(3,minmax(120px,.7fr)); gap: 28px; max-width: 1180px; margin: 0 auto; padding: 38px 1.5rem; }
 .site-footer__brand > a { color: var(--text-primary); text-decoration: none; font-size: 15px; font-weight: 800; letter-spacing: -.025em; }
@@ -6701,6 +6736,12 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
   line-height: 1.72;
 }
 .content-answer .content-answer__conditions { margin-top: 11px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border-subtle)); color: var(--text-muted); font-size: 12px; line-height: 1.65; }
+/* 상단 짧은 답 밑 한 줄 행동 링크 — 박스가 아니라 링크다(답을 밀어내지 않는다).
+   .blog-prose 밖이라 원고 링크 규칙(§7 캐스케이드)과 부딪히지 않는다. */
+.content-answer__action { margin: 11px 0 0; font-size: 12.5px; line-height: 1.6; }
+.content-answer__action a { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); text-decoration: none; font-weight: 700; }
+.content-answer__action a:hover { text-decoration: underline; }
+.content-answer__action span { font-size: 14px; }
 .content-answer__conditions strong { display: block; margin-bottom: 3px; color: var(--text-secondary); font: 550 9.5px var(--font-sans); letter-spacing: .05em; text-transform: uppercase; }
 .editorial-trust { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
 .editorial-trust__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--text-muted); font: 520 9.5px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }

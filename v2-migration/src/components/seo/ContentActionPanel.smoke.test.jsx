@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import ContentActionPanel from "./ContentActionPanel";
 
@@ -63,4 +63,90 @@ describe("ContentActionPanel blog conversion paths", () => {
       });
     },
   );
+});
+
+// 회귀 방지 — 이 세 도구는 TOOL_COPY에 없어 `5-2`(운영 대시보드)로 폴백하고 있었다.
+// 글에 적힌 주제와 다른 도구로 보내면 그 세션은 거기서 끝난다.
+describe("previously mis-routed content", () => {
+  afterEach(() => {
+    delete window.gtag;
+  });
+
+  it.each([
+    ["aso-basics-guide", "5-27", "/tools/aso-store-conversion"],
+    ["brand-campaign-lift", "5-24", "/tools/brand-campaign-incrementality"],
+    ["content-element-analysis", "9-1", "/content/element-analysis"],
+  ])("%s reaches %s instead of the dashboard fallback", (slug, toolId, path) => {
+    window.gtag = vi.fn();
+    const { container } = render(<ContentActionPanel toolId={toolId} post={{ slug }} />);
+    const cta = container.querySelector(".content-action-panel__cta");
+    expect(cta?.getAttribute("href")).toBe(path);
+    expect(cta?.getAttribute("href")).not.toBe("/dashboard");
+  });
+});
+
+describe("answer link placement", () => {
+  afterEach(() => {
+    delete window.gtag;
+  });
+
+  it.each(["ko", "en"])("%s renders one plain link, not a second panel box", (locale) => {
+    window.gtag = vi.fn();
+    const { container } = render(
+      <ContentActionPanel locale={locale} toolId="5-3" post={{ slug: "roas-improvement" }} placement="article_answer" />,
+    );
+    expect(container.querySelector(".content-action-panel")).toBeNull();
+    const link = container.querySelector(".content-answer__action a");
+    expect(link?.getAttribute("href")).toBe(locale === "en" ? "/en/tools/budget-allocation" : "/tools/budget-allocation");
+
+    clickWithoutNavigation(link);
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
+      tool_id: "5-3",
+      placement: "article_answer",
+      locale,
+    }));
+  });
+});
+
+// 노출 계측 — 클릭 0이 "안 눌렀다"인지 "안 보였다"인지 가르는 분모다.
+describe("panel impression tracking", () => {
+  const observers = [];
+
+  beforeEach(() => {
+    window.gtag = vi.fn();
+    observers.length = 0;
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(target) { this.target = target; }
+      disconnect() { this.disconnected = true; }
+      trigger() { this.callback([{ target: this.target, isIntersecting: true, intersectionRatio: 1 }]); }
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete window.gtag;
+  });
+
+  it("reports the panel only once it actually enters the viewport", () => {
+    render(<ContentActionPanel toolId="5-22" post={{ slug: "impression-probe" }} placement="article_mid" />);
+    expect(window.gtag).not.toHaveBeenCalled();
+
+    observers[0].trigger();
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_cta_viewed", expect.objectContaining({
+      tool_id: "5-22",
+      content_slug: "impression-probe",
+      placement: "article_mid",
+      content_type: "blog",
+    }));
+    expect(observers[0].disconnected).toBe(true);
+  });
+
+  it("does not observe the plain answer link", () => {
+    render(<ContentActionPanel toolId="5-22" post={{ slug: "answer-probe" }} placement="article_answer" />);
+    expect(observers).toHaveLength(0);
+  });
 });
