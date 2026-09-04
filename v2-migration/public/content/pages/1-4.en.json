@@ -28,12 +28,20 @@
       "title": "SKAdNetwork 4.0 schema"
     },
     {
+      "id": "s-attribution",
+      "title": "How SKAN decides which ad gets the install"
+    },
+    {
       "id": "s-privacy-threshold",
       "title": "Crowd anonymity (the privacy threshold)"
     },
     {
       "id": "s-cvmap",
       "title": "Conversion Value mapping (commerce app example)"
+    },
+    {
+      "id": "s-operating",
+      "title": "Running campaigns when the data is aggregated and late"
     },
     {
       "id": "s-adjust",
@@ -162,8 +170,47 @@
     },
     {
       "type": "section",
-      "id": "s-privacy-threshold",
+      "id": "s-attribution",
       "ix": "§3",
+      "title": "How SKAN decides which ad gets the install",
+      "content": [
+        {
+          "type": "paragraph",
+          "html": "Most disputes about SKAN numbers are really disputes about this step. SKAdNetwork does not split credit — Apple picks <strong>one</strong> ad per install and everyone else gets nothing. Knowing how that single winner is chosen explains most of the gaps you will argue about later."
+        },
+        {
+          "type": "list",
+          "items": [
+            "The ad network signs each impression or click with its SKAdNetwork keys before it is shown.",
+            "When the install happens, Apple — not the network and not your MMP — decides which signed ad it belongs to.",
+            "A click beats a view-through. Among ads of the same kind, the more recent one wins.",
+            "The postback goes to the winning network's registered endpoint. You only receive a copy if your app registers a developer postback URL, and that copy carries less detail than the network's."
+          ]
+        },
+        {
+          "type": "subheading",
+          "title": "Why the postback arrives late, and why that is deliberate"
+        },
+        {
+          "type": "paragraph",
+          "html": "A postback is not sent when the window closes. Apple adds a randomised delay on top, precisely so the arrival time cannot be used to identify a user. That means <strong>an install and its postback land in different weeks</strong>, and a campaign you paused on Monday keeps producing postbacks for days. Apple has changed the exact windows and delays between versions, so confirm the current values in <a href=\"https://developer.apple.com/documentation/storekit/skadnetwork\">Apple's SKAdNetwork documentation</a> rather than trusting a number you read in a blog post — this one included."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Apple is also moving the framework",
+          "html": "AdAttributionKit now sits alongside SKAdNetwork, and network support differs. Before you rebuild a schema, confirm which framework each of your networks actually reads."
+        },
+        {
+          "type": "paragraph",
+          "html": "This is also why your MMP dashboard and your network dashboard disagree, sometimes badly. Neither is lying — they are counting different things on different clocks. <a href=\"/en/blog/skan-vs-mmp-attribution\">Why SKAN and MMP numbers disagree</a> walks through where each number comes from before you escalate it as a bug."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-privacy-threshold",
+      "ix": "§4",
       "title": "Crowd anonymity (the privacy threshold)",
       "content": [
         {
@@ -193,7 +240,7 @@
     {
       "type": "section",
       "id": "s-cvmap",
-      "ix": "§4",
+      "ix": "§5",
       "title": "Conversion Value mapping (commerce app example)",
       "content": [
         {
@@ -308,8 +355,58 @@
     },
     {
       "type": "section",
+      "id": "s-operating",
+      "ix": "§6",
+      "title": "Running campaigns when the data is aggregated and late",
+      "content": [
+        {
+          "type": "paragraph",
+          "html": "SKAN does not just reduce your data — it changes the unit of decision. Optimising an iOS campaign the way you optimise an Android one produces confident, wrong calls."
+        },
+        {
+          "type": "subheading",
+          "title": "Read by install cohort, not by spend date"
+        },
+        {
+          "type": "paragraph",
+          "html": "Spend lands on the day you paid for it. The matching postback lands days later, after the window closes and the random delay elapses. Divide today's spend by today's postbacks and you get a CPI for two different populations. Anchor every ratio to the <strong>install cohort</strong>, and treat the most recent days as incomplete until the window plus delay has fully passed."
+        },
+        {
+          "type": "subheading",
+          "title": "Consolidate before you segment"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Splitting one campaign into many small ones is how a correct schema starts returning nulls — each slice falls below the crowd anonymity tier separately.",
+            "Granularity you cannot receive is not granularity. Merge campaigns until fine values come back, then split only as far as volume allows.",
+            "Check this again after every restructure, not once at setup: the tier is re-evaluated as your volume moves."
+          ]
+        },
+        {
+          "type": "subheading",
+          "title": "Optimise toward the signal you actually receive"
+        },
+        {
+          "type": "paragraph",
+          "html": "If most of your postbacks carry a coarse value, a bidding strategy built on fine-value revenue tiers is optimising toward data that mostly is not there. Check the distribution first: a conversion value that is overwhelmingly 0 usually means the first window closes before your users reach the events you mapped, not that the users are worthless."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "SKAN cannot answer whether the ads caused the installs",
+          "html": "Aggregated, delayed, last-touch postbacks tell you what was attributed, never what was incremental. When the question is whether spend created demand, that needs a holdout or geo test — see <a href=\"/en/blog/incrementality-measurement\">measuring incrementality</a> and the <a href=\"/en/tools/incrementality\">incrementality tool</a>."
+        },
+        {
+          "type": "paragraph",
+          "html": "Two practical consequences: give changes a full window plus delay before judging them, and compare networks only on postbacks you received, never on a network's own modelled installs mixed in with them."
+        }
+      ]
+    },
+    {
+      "type": "section",
       "id": "s-adjust",
-      "ix": "§5",
+      "ix": "§7",
       "title": "Adjust SKAN setup",
       "content": [
         {
@@ -334,7 +431,7 @@
     {
       "type": "section",
       "id": "s-trouble",
-      "ix": "§6",
+      "ix": "§8",
       "title": "Troubleshooting",
       "content": [
         {

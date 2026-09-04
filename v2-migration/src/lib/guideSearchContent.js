@@ -91,6 +91,8 @@ const CONTENT = {
       faq: [
         { q: "ATT 동의율은 왜 중요한가요?", a: "동의하지 않은 트래픽은 결정론적 어트리뷰션이 끊겨 iOS 성과가 실제보다 낮게 보입니다." },
         { q: "컨버전 값 스키마는 어떻게 정하나요?", a: "SKAN은 값 하나만 돌려주므로, 비즈니스 KPI에 직접 연결되는 지표를 우선순위 위쪽에 배치해야 합니다." },
+        { q: "SKAN은 어느 광고에 설치를 주나요?", a: "애플이 설치 하나당 서명된 광고 하나만 고릅니다. 기여를 나눠 갖지 않고, 클릭이 뷰스루를 이깁니다. MMP 숫자와 어긋나는 이유가 여기서 시작됩니다." },
+        { q: "postback이 늦게 오는데 성과는 언제 판단하나요?", a: "윈도우가 닫히고 무작위 지연까지 지난 뒤입니다. 지출일이 아니라 설치 코호트에 붙여서 봐야 하고, 최근 며칠은 미완성으로 둡니다." },
       ],
     },
     en: {
@@ -99,6 +101,8 @@ const CONTENT = {
       faq: [
         { q: "Why does the ATT opt-in rate matter so much?", a: "Traffic without consent loses deterministic attribution, so iOS performance reads lower than it actually is." },
         { q: "How do you choose a conversion-value schema?", a: "SKAN returns a single value, so the metrics tied most directly to your business KPI have to sit at the top of the priority order." },
+        { q: "How does SKAN decide which ad gets the install?", a: "Apple picks one signed ad per install and gives the rest nothing. A click beats a view-through, and this single-winner rule is where most SKAN-versus-MMP gaps begin." },
+        { q: "When can you judge performance if postbacks arrive late?", a: "Only after the measurement window closes and the randomised delay has passed. Anchor ratios to the install cohort rather than the spend date, and treat the most recent days as incomplete." },
       ],
     },
   },
