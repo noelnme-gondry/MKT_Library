@@ -78,7 +78,11 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-questions .tool-index__outputs")).toBeTruthy();
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
-    expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
+    // 소셜 채널을 사이드바에서 뺀 뒤로 랜딩의 자료·채널 줄이 유일한 도달 경로다
+    // — 여기서 사라지면 채널이 사이트에서 고아가 된다(§12.29 인바운드 링크).
+    for (const host of ["youtube.com", "instagram.com", "facebook.com", "blog.naver.com"]) {
+      expect(document.querySelector(`.dc-resource-strip a[href*="${host}"]`)).toBeTruthy();
+    }
   });
   it("puts the question cards ahead of the weekly-loop explainer", () => {
     render(<LandingPage />);

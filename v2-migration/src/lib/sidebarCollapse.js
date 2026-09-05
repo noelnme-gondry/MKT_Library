@@ -4,32 +4,12 @@
 // 노트북에서 분석에 남는 폭이 747px(뷰포트의 58%)뿐이었다. 분석 중에는 도구 목록을
 // 거의 쓰지 않고, 쓸 때는 ⌘K와 헤더 ☰가 이미 같은 경로를 준다.
 //
-// 저장소는 하나다: 사용자가 한 번이라도 토글하면 그 선택이 전 라우트에 적용되고,
-// 선택이 없을 때만 라우트 종류로 기본값을 정한다(도구=접힘, 그 외=펼침).
-// "기본값"과 "사용자 선택"을 한 값에 섞으면 둘을 구분할 수 없다.
-import { ROUTES, isRoutePublished } from "@/lib/routeMap";
-
+// **기본값은 항상 펼침이다.** 처음에는 도구 라우트를 자동으로 접었는데, 사용자가
+// 화면을 열자마자 "내비가 그냥 사라졌다"로 읽혔다 — 도구 화면의 진짜 문제는 폭이
+// 아니라 사이드바 안이 복잡하다는 것이었고, 자동으로 접는 것은 그 복잡함을 치우는
+// 대신 감춘 것이었다. 접는 시점은 사용자가 정한다.
 export const SIDEBAR_STORAGE_KEY = "mkt-library-sidebar";
 export const SIDEBAR_COLLAPSED_CLASS = "is-sidebar-collapsed";
-
-// 손으로 쓴 경로 목록은 도구가 하나 늘 때마다 어긋난다 — 라우트에서 파생한다.
-export function collapsedByDefaultPaths() {
-  return ROUTES
-    .filter((route) => !route.legacy && /^(5-|9-)/.test(route.id) && isRoutePublished(route))
-    .map((route) => route.slug)
-    .filter(Boolean)
-    .sort();
-}
-
-export function normalizePath(pathname) {
-  const withoutLocale = String(pathname || "/").replace(/^\/en(?=\/|$)/, "");
-  const trimmed = withoutLocale.replace(/\/+$/, "");
-  return trimmed || "/";
-}
-
-export function isCollapsedByDefault(pathname) {
-  return collapsedByDefaultPaths().includes(normalizePath(pathname));
-}
 
 /** 저장된 선택. 없으면 null — "선택 없음"과 "펼침 선택"은 다른 상태다. */
 export function readStoredPreference() {
@@ -41,9 +21,8 @@ export function readStoredPreference() {
   }
 }
 
-export function resolveCollapsed(pathname) {
-  const stored = readStoredPreference();
-  return stored ? stored === "collapsed" : isCollapsedByDefault(pathname);
+export function resolveCollapsed() {
+  return readStoredPreference() === "collapsed";
 }
 
 // ── 렌더가 읽는 스냅샷 ────────────────────────────────────────────────────
@@ -94,12 +73,6 @@ export function setSidebarCollapsed(collapsed) {
     // 저장소를 못 써도 이번 세션 동안의 토글은 동작해야 한다.
   }
   publish(collapsed);
-}
-
-/** 라우트가 바뀌었을 때 — 저장된 선택이 없을 때만 기본값을 다시 적용한다. */
-export function syncSidebarForPath(pathname) {
-  if (readStoredPreference()) return;
-  publish(isCollapsedByDefault(pathname));
 }
 
 // 테스트가 모듈 상태를 비운다(스냅샷이 한 번 굳으므로).

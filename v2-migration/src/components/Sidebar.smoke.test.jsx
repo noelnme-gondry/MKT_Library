@@ -55,14 +55,17 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
     expect(document.body.textContent).toContain(workspaceNavItem("start").desc);
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(5);
-    expect(document.querySelector('.sidebar-library-link[href="/calculator"]')).toBeTruthy();
-    expect(document.querySelector('.sidebar-library-link[href="/compare"]')).toBeTruthy();
-    expect(document.querySelector('.sidebar-channel-blog[href="/blog"]')).toBeTruthy();
+    // 개수 대신 목적지를 단언한다 — 개수를 적으면 항목이 하나 늘 때마다 여기서
+    // 깨지고, 그때 숫자만 고치면 무엇이 들어왔는지는 아무도 안 본다.
+    // 블로그는 별도 블록이 아니라 이 자료실 안에 있다(하단에 블록이 둘 있을 이유가 없다).
+    expect([...document.querySelectorAll(".sidebar-library-link")].map((link) => link.getAttribute("href")))
+      .toEqual(["/blog", "/calculator", "/guide", "/templates", "/glossary", "/compare"]);
     expect(document.body.textContent).toContain("마케팅 지표 계산기");
     expect(document.body.textContent).not.toContain("무CSV 계산기");
-    expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
-    expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
+    // 소셜 채널은 사이드바에서 뺐다 — 도구 목록과 같은 열에 YouTube·Instagram이
+    // 있을 이유가 없다. 도달 경로는 랜딩의 자료·채널 줄이 갖는다(LandingPage 스모크가 강제).
+    expect(document.querySelector(".sidebar-social")).toBe(null);
+    expect(document.querySelector('a[href*="youtube.com"]')).toBe(null);
     expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
@@ -99,7 +102,6 @@ describe("Sidebar render smoke", () => {
     pathname = "/en";
     const { container } = render(<Sidebar locale="en" />);
     expect(container.textContent).toContain("Operating Guide");
-    expect(container.textContent).toContain("Naver Blog");
     expect(container.textContent).toContain(workspaceNavItem("review", "en").name);
     expect(container.textContent).toContain("Marketing metric calculators");
     expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
@@ -135,5 +137,34 @@ describe("응답 패널 다섯 분석 노출", () => {
     // 하위 화면 전용 서브내비는 필요 없어졌다 — 항목이 곧 분석이다.
     expect(container.querySelector(".nav-subnav")).toBeNull();
     pathname = "/";
+  });
+});
+
+// 도구 화면에서 사이드바 안이 복잡하다는 지적을 받고 정리한 결과를 계약으로 고정한다.
+// 값(줄 수)이 아니라 **무엇이 없어야 하는가**를 적는다 — 장식 라벨과 뜻 없는 숫자가
+// 다시 들어오면 여기서 걸린다.
+describe("Sidebar content weight", () => {
+  beforeEach(() => { pathname = "/dashboard"; seedNoData(); });
+
+  it("carries no decorative all-caps English labels on a Korean screen", () => {
+    const { container } = render(<Sidebar />);
+    // §5.7 — 모든 문장은 상태·행동·오해 방지·오류 해결 중 하나를 해야 한다.
+    for (const label of ["QUICK MATH", "SOP", "FILES", "TERMS", "VS", "INSIGHTS", "LOCAL ONLY", "LIBRARY"]) {
+      expect(container.textContent).not.toContain(label);
+    }
+  });
+
+  it("keeps one numbering system out of the tool stages", () => {
+    const { container } = render(<Sidebar />);
+    // 워크스페이스·SOP 그룹까지 번호 체계가 세 벌이라 어느 번호가 무슨 순서인지
+    // 알 수 없었다. 스테이지는 1→6으로 밟는 순서가 아니므로 번호를 달지 않는다.
+    const stageIndexes = container.querySelectorAll(".sidebar-workflow-stage .nav-group-index");
+    expect(stageIndexes).toHaveLength(0);
+  });
+
+  it("does not print a count that disagrees with what is listed", () => {
+    const { container } = render(<Sidebar />);
+    // 링크는 6개인데 뱃지는 "04"라고 적혀 있었다. 개수를 알 필요도 없다.
+    expect(container.querySelector(".sidebar-library-disclosure__count")).toBe(null);
   });
 });

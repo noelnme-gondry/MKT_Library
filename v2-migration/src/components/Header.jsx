@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
 import { resolvePathToId } from "@/lib/routeMap";
-import { readSidebarSnapshot, setSidebarCollapsed, sidebarServerSnapshot, subscribeSidebar, syncSidebarForPath } from "@/lib/sidebarCollapse";
+import { readSidebarSnapshot, setSidebarCollapsed, sidebarServerSnapshot, subscribeSidebar } from "@/lib/sidebarCollapse";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
@@ -130,10 +130,6 @@ export default function Header({ locale = "ko" }) {
 
   // 부팅 인라인 스크립트가 첫 페인트 전에 이미 클래스를 붙여 뒀다 — 렌더는 그것을 읽기만 한다.
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebar, readSidebarSnapshot, sidebarServerSnapshot);
-  // 소프트 내비게이션에서는 부팅 스크립트가 다시 돌지 않는다. 저장된 선택이 없을
-  // 때만 라우트 기본값을 다시 적용한다(선택이 있으면 그 선택이 항상 이긴다).
-  useEffect(() => { syncSidebarForPath(pathname); }, [pathname]);
-
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {

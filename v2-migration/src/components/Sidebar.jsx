@@ -26,7 +26,7 @@ const SIDEBAR_COPY = {
     instagram: "인스타",
     facebook: "페북",
     naverBlog: "네이버 블로그",
-    resourceLabel: "LIBRARY",
+    resourceLabel: "자료실",
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "할 수 있는 분석 전체 →",
     allToolsTitle: "할 수 있는 분석",
@@ -46,7 +46,7 @@ const SIDEBAR_COPY = {
     templates: "Templates",
     glossary: "Glossary",
     compare: "Method comparisons",
-    resourceLabel: "LIBRARY",
+    resourceLabel: "Library",
     youtube: "YouTube",
     instagram: "Instagram",
     facebook: "Facebook",
@@ -241,7 +241,7 @@ export default function Sidebar({ locale = "ko" }) {
                     <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`} aria-current={currentRouteId === "8-1" ? "page" : undefined}>
                       <span>{T.dataGuide}</span>
                     </Link>
-                    {TOOL_JOURNEY.map((stage, stageIndex) => {
+                    {TOOL_JOURNEY.map((stage) => {
                       const hasActive = stage.tools.includes(currentRouteId);
                       const stageKey = `journey-${stage.id}`;
                       // 활성 스테이지만 펼친다. 발견("무엇을 할 수 있나")은 이제 홈과
@@ -259,7 +259,6 @@ export default function Sidebar({ locale = "ko" }) {
                             aria-expanded={!isGroupCollapsed}
                           >
                             <span className="nav-group-title">
-                              <span className="nav-group-index">{String(stageIndex + 1).padStart(2, "0")}</span>
                               <span>{stage.title[locale === "en" ? "en" : "ko"]}</span>
                             </span>
                             <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -342,77 +341,55 @@ export default function Sidebar({ locale = "ko" }) {
       <details className="sidebar-library-disclosure" open={isLibraryRoute || isCalculator}>
         <summary className="sidebar-resource-label">
           <span>{T.resourceLabel}</span>
-          <span className="sidebar-library-disclosure__count" aria-hidden="true">04</span>
         </summary>
         <section className="sidebar-library" data-section="resources">
+        <Link
+          href={locale === "en" ? "/en/blog" : "/blog"}
+          className="sidebar-library-link"
+          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
+        >
+          <span><strong>{T.blog}</strong></span><b>↗</b>
+        </Link>
         <Link
           href={locale === "en" ? "/en/calculator" : "/calculator"}
           className="sidebar-library-link"
           aria-current={isCalculator ? "page" : undefined}
         >
-          <span><strong>{T.calculators}</strong><small>QUICK MATH</small></span><b>↗</b>
+          <span><strong>{T.calculators}</strong></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/guide" : "/guide"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/guide") ? "page" : undefined}
         >
-          <span><strong>{T.guide}</strong><small>SOP</small></span><b>↗</b>
+          <span><strong>{T.guide}</strong></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/templates") ? "page" : undefined}
         >
-          <span><strong>{T.templates}</strong><small>FILES</small></span><b>↗</b>
+          <span><strong>{T.templates}</strong></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/glossary" : "/glossary"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
         >
-          <span><strong>{T.glossary}</strong><small>TERMS</small></span><b>↗</b>
+          <span><strong>{T.glossary}</strong></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/compare" : "/compare"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/compare") ? "page" : undefined}
         >
-          <span><strong>{T.compare}</strong><small>VS</small></span><b>↗</b>
+          <span><strong>{T.compare}</strong></span><b>↗</b>
         </Link>
         </section>
       </details>
 
-      <section className="sidebar-channel-dock" aria-label={locale === "en" ? "Content and channels" : "콘텐츠와 채널"}>
-        <Link
-          href={locale === "en" ? "/en/blog" : "/blog"}
-          className="sidebar-channel-blog"
-          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
-        >
-          <span aria-hidden="true">⌁</span><strong>{T.blog}</strong><small>INSIGHTS</small><b aria-hidden="true">↗</b>
-        </Link>
-        <div className="sidebar-social">
-        <a className="ss-btn ss-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" title={T.youtube}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.11-2.12C19.44 3.5 12 3.5 12 3.5s-7.44 0-9.39.58A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.12C4.56 20.5 12 20.5 12 20.5s7.44 0 9.39-.58a3 3 0 0 0 2.11-2.12A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12Z"/></svg>
-          <span>{T.youtube}</span>
-        </a>
-        <a className="ss-btn ss-instagram" href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" title={T.instagram}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.06 1.97.24 2.43.42a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.18.46.36 1.26.42 2.43.06 1.25.07 1.65.07 4.85s0 3.6-.07 4.85c-.06 1.17-.24 1.97-.42 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.18-1.26.36-2.43.42-1.25.06-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.06-1.97-.24-2.43-.42a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.18-.46-.36-1.26-.42-2.43C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.85c.06-1.17.24-1.97.42-2.43A4.9 4.9 0 0 1 3.84 3c.53-.5 1.12-.9 1.77-1.15.46-.18 1.26-.36 2.43-.42C9.29 1.37 9.69 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.75.06-.96.05-1.48.2-1.82.34a3.1 3.1 0 0 0-1.15.75 3.1 3.1 0 0 0-.75 1.15c-.14.34-.29.86-.34 1.82-.06 1.23-.06 1.6-.06 4.75s0 3.52.06 4.75c.05.96.2 1.48.34 1.82.16.42.38.79.75 1.15.36.36.73.6 1.15.75.34.14.86.29 1.82.34 1.23.06 1.6.06 4.75.06s3.52 0 4.75-.06c.96-.05 1.48-.2 1.82-.34.42-.16.79-.38 1.15-.75.36-.36.6-.73.75-1.15.14-.34.29-.86.34-1.82.06-1.23.06-1.6.06-4.75s0-3.52-.06-4.75c-.05-.96-.2-1.48-.34-1.82a3.1 3.1 0 0 0-.75-1.15 3.1 3.1 0 0 0-1.15-.75c-.34-.14-.86-.29-1.82-.34C15.52 4 15.15 4 12 4Zm0 3.05a4.95 4.95 0 1 1 0 9.9 4.95 4.95 0 0 1 0-9.9Zm0 1.8a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3Zm5.3-3.4a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3Z"/></svg>
-          <span>{T.instagram}</span>
-        </a>
-        <a className="ss-btn ss-facebook" href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer" title={T.facebook}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5.01 3.66 9.16 8.44 9.94v-7.03H7.9v-2.91h2.54V9.79c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.75h-1.26c-1.24 0-1.63.78-1.63 1.58v1.89h2.78l-.44 2.91h-2.34V22c4.78-.78 8.44-4.93 8.44-9.94Z"/></svg>
-          <span>{T.facebook}</span>
-        </a>
-        <a className="ss-btn ss-naver" href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer" title={T.naverBlog}>
-          <span className="social-letter-icon" aria-hidden="true">N</span>
-          <span>{T.naverBlog}</span>
-        </a>
-        </div>
-      </section>
       {isHome && (
         <div className="home-sidebar-local">
-          <b>LOCAL ONLY</b>
           <span>{T.localOnly}</span>
         </div>
       )}
