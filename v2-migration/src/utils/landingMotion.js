@@ -41,10 +41,25 @@ export function runLandingMotion(root) {
   armMotion(root);
 
   let cancelled = false;
+  let settled = false;
   const observers = [];
   const animations = [];
 
+  /* 숨김은 동기로 걸리는데 anime은 비동기로 온다 — 그 사이 랜딩은 투명하다.
+     청크가 **거부되지 않고 지연·중단**되면(느린 모바일 회선에서 흔하다) 프라미스가
+     영원히 settle되지 않고 콘텐츠도 영영 안 보인다. catch는 이 경우를 못 잡는다.
+     모듈 주석이 말하는 "성공했을 때만 숨긴다"를 시간 예산으로 강제한다:
+     예산을 넘기면 연출을 버리고 정적 최종 상태로 확정한다(점진적 향상). */
+  const watchdog = window.setTimeout(() => {
+    if (settled) return;
+    cancelled = true;
+    disarmMotion(root);
+  }, MOTION.armBudget);
+
   loadAnime().then((anime) => {
+    settled = true;
+    window.clearTimeout(watchdog);
+    // 워치독이 이미 정적으로 확정했다면 늦게 도착한 모션으로 화면을 다시 흔들지 않는다.
     if (cancelled) return;
     if (!anime) {
       // 청크 로드 실패 — 모션 없이 최종 상태로 확정하고 조용히 끝낸다.
@@ -114,6 +129,7 @@ export function runLandingMotion(root) {
 
   return () => {
     cancelled = true;
+    window.clearTimeout(watchdog);
     observers.forEach((observer) => observer.disconnect());
     animations.forEach((instance) => {
       // anime v4 인스턴스는 revert()로 인라인 스타일까지 원복된다.
