@@ -18,9 +18,9 @@ const COPY = {
     svmNeed: (required) => `SVM은 독립 소재 ${required || 120}개 이상과 성과 결과가 아닌 연속형 제작 특성 2개 이상이 필요합니다.`,
     tooManyObservations: (max) => `독립 소재가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 기간·세그먼트·속성을 좁혀 다시 실행하세요.`,
     tooManyPredictors: (max) => `인코딩 변수가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 속성·레벨을 줄여 다시 실행하세요.`,
-    running: "같은 5-fold 조건에서 기준 회귀·Random Forest·SVM을 비교하고 있습니다. 첫 실행은 브라우저 R 엔진을 받아 시간이 걸릴 수 있습니다.",
+    running: "같은 교차검증 조건에서 기준 회귀·Random Forest·SVM을 비교하고 있습니다. 겹 수는 표본 크기에 따라 3~5겹으로 정해집니다. 첫 실행은 브라우저 R 엔진을 받아 시간이 걸릴 수 있습니다.",
     failed: "예측 모델 비교를 완료하지 못했습니다. 기존 WLS 결과와 Shapley R² 분해에는 영향이 없습니다.", baselineUnavailable: "기준 회귀가 일부 교차검증 분할에서 수렴하지 않아 비교를 보류했습니다. RF·SVM 우위로 해석하지 않습니다.", retry: "예측 모델 다시 실행",
-    comparison: "동일 검증 성능", baseline: "기준 회귀", lower: "오차(낮을수록 좋음)", gain: "기준 대비 오차 개선", noWinner: "승자 보류", winner: "예측 후보", keep: "기준 유지",
+    comparison: "동일 검증 성능", folds: (count) => `${count}겹 교차검증`, baseline: "기준 회귀", lower: "오차(낮을수록 좋음)", gain: "기준 대비 오차 개선", noWinner: "승자 보류", winner: "예측 후보", keep: "기준 유지",
     importance: "RF 예측 중요도", importanceCaveat: "순열 중요도는 예측에 기여한 정도이며 방향이나 인과효과가 아닙니다.",
     shapley: "속성별 설명력 배분 (Shapley R²)", shapleyDeck: "채널 차이를 먼저 통제한 뒤, 속성을 넣는 모든 순서를 평균해 추가 R²를 배분합니다.",
     shapleyCaveat: "이 값은 관측 데이터의 전역 설명력 배분입니다. 개별 소재 SHAP 값이나 인과 기여도가 아닙니다.", shapleyUnavailable: "현재 속성 조합은 일부 회귀가 식별되지 않아 Shapley R²를 표시하지 않습니다.",
@@ -33,9 +33,9 @@ const COPY = {
     svmNeed: (required) => `SVM needs at least ${required || 120} independent creatives and two continuous production features that are not outcome components.`,
     tooManyObservations: (max) => `Independent creatives exceed the browser R safety limit (${max}). Narrow the period, segment, or attributes and try again.`,
     tooManyPredictors: (max) => `Encoded predictors exceed the browser R safety limit (${max}). Reduce attributes or levels and try again.`,
-    running: "Comparing baseline regression, Random Forest, and SVM under the same five-fold validation. The first browser R runtime load can take a while.",
+    running: "Comparing baseline regression, Random Forest, and SVM under the same cross-validation. The fold count is set from the sample size, between three and five. The first browser R runtime load can take a while.",
     failed: "The predictive comparison did not complete. Existing WLS results and Shapley R² are unchanged.", baselineUnavailable: "The baseline regression did not converge in at least one validation fold, so the comparison is withheld. This is not evidence that RF or SVM is better.", retry: "Retry predictive models",
-    comparison: "Same-fold performance", baseline: "Baseline regression", lower: "error (lower is better)", gain: "error gain vs baseline", noWinner: "Winner withheld", winner: "Prediction candidate", keep: "Keep baseline",
+    comparison: "Same-fold performance", folds: (count) => `${count}-fold cross-validation`, baseline: "Baseline regression", lower: "error (lower is better)", gain: "error gain vs baseline", noWinner: "Winner withheld", winner: "Prediction candidate", keep: "Keep baseline",
     importance: "RF predictive importance", importanceCaveat: "Permutation importance reflects predictive contribution, not direction or causal effect.",
     shapley: "Attribute explanatory allocation (Shapley R²)", shapleyDeck: "After controlling for channel, incremental R² is averaged across every attribute-entry order.",
     shapleyCaveat: "This is a global allocation of observed explanatory power, not per-creative SHAP or causal contribution.", shapleyUnavailable: "Some attribute subsets are not identified, so Shapley R² is withheld.",
@@ -110,6 +110,9 @@ export default function CreativePredictiveModelPanel({ metrics = [], attributes 
     svm && { id: "svm", label: "SVM (RBF)", primary: Number(svm.svm.primary), gain: svm.relativeGain },
   ].filter(Boolean);
   const best = candidates.filter((candidate) => candidate.id !== "baseline" && candidate.gain >= 0.05).sort((left, right) => left.primary - right.primary)[0] || candidates.find((candidate) => candidate.id === "baseline");
+  // 실제 겹 수는 표본 크기에서 정해져(min(5, max(3, n/30))) 엔진이 결과에 담아 보낸다.
+  // 화면이 그 값을 안 쓰고 "5-fold"라고 단정하고 있었다 — 계산해 둔 신호는 표시까지 배선한다.
+  const foldCount = Number(rf?.folds || svm?.folds) || 0;
   const importance = groupedImportance(rf);
   const importanceMax = Math.max(...importance.map((row) => row.importance), 0);
   const shapleyMax = Math.max(...(shapley.rows || []).map((row) => Math.abs(row.contribution)), 0);
@@ -120,7 +123,7 @@ export default function CreativePredictiveModelPanel({ metrics = [], attributes 
     <div className="creative-model-router__eligibility-grid"><EligibilityCard label="Random Forest" input={rfInput} body={eligibilityMessage(rfInput, "rf", C)} C={C} /><EligibilityCard label="SVM (RBF)" input={svmInput} body={eligibilityMessage(svmInput, "svm", C)} C={C} /></div>
     {canRun && (visible.status === "idle" || visible.status === "loading") && <p className="creative-model-router__loading" role="status">{C.running}</p>}
     {visible.status === "failed" && <div className="required-banner"><p>{visible.error.includes("baseline_regression_not_estimable") ? C.baselineUnavailable : C.failed}</p><button type="button" className="ab-button" onClick={execute}>{C.retry}</button></div>}
-    {candidates.length > 1 && <section className="creative-model-router__comparison" aria-labelledby="creative-model-comparison-title"><header><h3 id="creative-model-comparison-title">{C.comparison}</h3><span>{rf?.primaryMetric || svm?.primaryMetric} · {C.lower}</span></header><div>{candidates.map((candidate) => <article className={best?.id === candidate.id ? "is-selected" : ""} key={candidate.id}><span>{best?.id === candidate.id ? (candidate.id === "baseline" ? C.keep : C.winner) : C.noWinner}</span><strong>{candidate.label}</strong><b>{fmt(candidate.primary)}</b><small>{C.gain}: {candidate.id === "baseline" ? "—" : `${fmt(candidate.gain * 100, 1)}%`}</small></article>)}</div></section>}
+    {candidates.length > 1 && <section className="creative-model-router__comparison" aria-labelledby="creative-model-comparison-title"><header><h3 id="creative-model-comparison-title">{C.comparison}</h3><span>{foldCount > 0 ? `${C.folds(foldCount)} · ` : ""}{rf?.primaryMetric || svm?.primaryMetric} · {C.lower}</span></header><div>{candidates.map((candidate) => <article className={best?.id === candidate.id ? "is-selected" : ""} key={candidate.id}><span>{best?.id === candidate.id ? (candidate.id === "baseline" ? C.keep : C.winner) : C.noWinner}</span><strong>{candidate.label}</strong><b>{fmt(candidate.primary)}</b><small>{C.gain}: {candidate.id === "baseline" ? "—" : `${fmt(candidate.gain * 100, 1)}%`}</small></article>)}</div></section>}
     {importance.length > 0 && <section className="creative-model-router__explanation"><header><h3>{C.importance}</h3><p>{C.importanceCaveat}</p></header><ol>{importance.slice(0, 8).map((row) => <li key={row.attribute}><span>{row.attribute}</span><i style={{ "--creative-model-bar": `${importanceMax > 0 ? Math.max(2, row.importance / importanceMax * 100) : 0}%` }} /><b>{fmt(row.importance)}</b></li>)}</ol></section>}
     <section className="creative-model-router__explanation"><header><h3>{C.shapley}</h3><p>{C.shapleyDeck}</p></header>{shapley.status === "complete" ? <><ol>{shapley.rows.map((row) => <li key={row.attribute}><span>{row.attribute}</span><i style={{ "--creative-model-bar": `${shapleyMax > 0 ? Math.max(2, Math.abs(row.contribution) / shapleyMax * 100) : 0}%` }} /><b>{fmt(row.contribution)}</b></li>)}</ol><small>{C.shapleyCaveat} · n={shapley.n} · ΔR²={fmt(shapley.incrementalR2)}</small></> : <p className="muted">{C.shapleyUnavailable}</p>}</section>
   </section>;
