@@ -86,7 +86,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
     return (
       <>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "12px" }}>
             <thead>
               <tr>
                 <th>{availFields.find(f => f.k === rowAxis)?.l} ↓ \ {availFields.find(f => f.k === colAxis)?.l} →</th>
@@ -103,7 +103,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
                     return (
                       <td key={ci} className="tnum" style={{ background: getBg(v) }}>
                         {met.fmt(cell)}
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                           {fmtCurrencyPrecise(cell.cost, dataCurrency)}
                         </div>
                       </td>
@@ -114,7 +114,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
             </tbody>
           </table>
         </div>
-        <p className="muted" style={{ marginTop: "8px", fontSize: "11px" }}>
+        <p className="muted" style={{ marginTop: "8px", fontSize: "12px" }}>
           {tr("셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위.", "The small number under each cell is that combination's cost (scale). Deep green = relatively strong, red = weak.")} {met.better === "none" ? tr("(Cost는 규모 지표라 색 없음)", "(Cost is a scale metric, so no color)") : ""}
         </p>
       </>

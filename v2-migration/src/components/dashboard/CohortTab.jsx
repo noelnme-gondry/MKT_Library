@@ -312,7 +312,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           <div className="ico">◷</div>
           <div className="body">
             <strong>{tr("리텐션 데이터 기준일", "Retention data snapshot")}: {maturitySnapshot.date || "—"}</strong>
-            <p style={{ margin: ".25rem 0 0", fontSize: "11.5px" }}>
+            <p style={{ margin: ".25rem 0 0", fontSize: "12px" }}>
               {tr(
                 <>근거: <strong>{snapshotSourceLabel}</strong> · 신뢰도: <strong>{confidenceLabel}</strong>{maturitySnapshot.perRow ? ` · ${maturitySnapshot.validRowDateCount.toLocaleString()}행별 기준` : ""}</>,
                 <>Source: <strong>{snapshotSourceLabel}</strong> · confidence: <strong>{confidenceLabel}</strong>{maturitySnapshot.perRow ? ` · ${maturitySnapshot.validRowDateCount.toLocaleString()} row-level dates` : ""}</>
@@ -323,14 +323,14 @@ export default function CohortTab({ locale = "ko" } = {}) {
               )}
             </p>
             <details open={maturitySnapshot.source === "unknown"} style={{ marginTop: "8px" }}>
-              <summary style={{ cursor: "pointer", fontSize: "11px", color: "var(--text-muted)" }}>{tr("기준일 수정·확인", "Edit or confirm snapshot date")}</summary>
+              <summary style={{ cursor: "pointer", fontSize: "12px", color: "var(--text-muted)" }}>{tr("기준일 수정·확인", "Edit or confirm snapshot date")}</summary>
               <div style={{ display: "flex", alignItems: "end", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
-                <label style={{ display: "grid", gap: "3px", fontSize: "11px", color: "var(--text-muted)" }}>
+                <label style={{ display: "grid", gap: "3px", fontSize: "12px", color: "var(--text-muted)" }}>
                   {tr("기준일 직접 지정", "Set snapshot date")}
                   <input type="date" value={snapshotDraft} onChange={(event) => setSnapshotDraft(event.target.value)} style={{ minHeight: "32px" }} aria-label={tr("리텐션 데이터 기준일 직접 지정", "Set retention data snapshot date")} />
                 </label>
                 <button className="ab-pill" onClick={saveSnapshotOverride} disabled={!parseSnapshotDate(snapshotDraft)}>{tr("기준일 적용", "Apply date")}</button>
-                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
                   {tr("오늘 날짜를 쓰지 않습니다. 과거 다운로드 파일이면 실제 추출 기준일을 입력하세요.", "Today is never used. For an older export, enter its actual extraction date.")}
                 </span>
               </div>
@@ -399,7 +399,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
         {orderedCohortCols.length === 0 && (
           <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
         )}
-        <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
+        <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
           {tr(
             <>{survLabel} = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.</>,
             <>{survLabel} = Σ(retained users) ÷ Σ(base of {anchorLabel}). If <code>ret_dN</code> is a <strong>0–1 rate</strong>, it&apos;s converted to a headcount (× base); if it&apos;s a <strong>whole number</strong>, it&apos;s summed as a headcount directly (weighted by cohort size — not a simple average). The basis toggle changes the base ({anchorLabel}).</>
@@ -410,7 +410,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
             <div className="ico">!</div>
             <div className="body">
               <strong>{tr("리텐션 값이 1을 넘습니다(예: 30, 50)", "Retention values exceed 1 (e.g. 30, 50)")}</strong>
-              <p style={{ margin: ".25rem 0 0", fontSize: "11.5px" }}>
+              <p style={{ margin: ".25rem 0 0", fontSize: "12px" }}>
                 {tr(
                   <>정수 퍼센트(30=30%)가 아니라 <strong>잔존 인원수</strong>로 해석했습니다. 비율로 넣으려면 0~1(0.3·0.5)로, 인원수면 그대로 두세요.</>,
                   <>These were interpreted as <strong>retained headcount</strong>, not whole-number percentages (30=30%). Use 0–1 (0.3, 0.5) for rates, or leave as-is for headcounts.</>
@@ -456,7 +456,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
                 key: "method",
                 label: tr("방법", "Method"),
                 align: "right",
-                cellStyle: { color: "var(--text-muted)", fontSize: "11px" },
+                cellStyle: { color: "var(--text-muted)", fontSize: "12px" },
                 fmt: () => tr("Power fit 외삽", "Power fit extrapolation"),
               },
             ]}

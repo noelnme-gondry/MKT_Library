@@ -284,7 +284,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
                 { value: "weekday", label: <>{T.weekday}{!wdOk && T.locked}</>, disabled: !wdOk },
               ]}
             />
-            {!wdOk && <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>{T.weekdayHint}</p>}
+            {!wdOk && <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>{T.weekdayHint}</p>}
           </>
         )}
 
@@ -300,7 +300,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
                 { value: "purchase", label: T.purchase },
               ]}
             />
-            <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>{T.actionDefHint}</p>
+            <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>{T.actionDefHint}</p>
           </>
         )}
 

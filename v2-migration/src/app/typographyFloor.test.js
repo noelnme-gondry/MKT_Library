@@ -96,7 +96,10 @@ describe("inline style typography floor", () => {
 // 전역 하한 9.5px은 "읽히기는 하는가"의 마지노선이고, 사용자가 실제로 결론을 읽고
 // 데이터를 맞추는 표면에는 그것만으로 부족하다. 결론 카드·스코어카드·매핑 화면은
 // 12px을 하한으로 둔다. 대상은 손으로 쓴 목록이 아니라 **선택자 계열**에서 파생한다.
-const PRIMARY_SURFACE = /\.(result-action-card|ab-stat|kpi-card|csv-[a-z-]+|mapping-[a-z-]+|map-[a-z-]+|stat-method|decision-review)/;
+// 1차(결론 카드·스코어카드·매핑)에 이어 2차로 대시보드 탭 내부·필터/컨트롤 바·표를
+// 넣는다. 사용자가 "가시성"으로 느끼는 표면이 결론 카드만은 아니다 — 탭을 열면 그
+// 안의 표와 범례가 다시 작아지면 1차에서 올린 의미가 없다.
+const PRIMARY_SURFACE = /\.(result-action-card|ab-stat|kpi-card|csv-[a-z-]+|mapping-[a-z-]+|map-[a-z-]+|stat-method|decision-review|dashboard-[a-z-]+|tab-content|tab-pane|analysis-control[a-z-]*|ab-pill[a-z-]*|filter-[a-z-]+|table-wrap|data-table[a-z-]*|chart-[a-z-]+|viz-[a-z-]+|funnel-[a-z-]+|cohort-[a-z-]+|seg-[a-z-]+|pacing-[a-z-]+|anomaly-[a-z-]+)/;
 const PRIMARY_FLOOR_PX = 12;
 
 export function collectUndersizedPrimarySurface(css) {
@@ -120,14 +123,14 @@ export function collectUndersizedPrimarySurface(css) {
 }
 
 describe("primary surface typography floor", () => {
-  it("keeps the conclusion card, scorecard and mapping screens at 12px or larger", () => {
+  it("keeps the conclusion card, scorecard, mapping and dashboard surfaces at 12px or larger", () => {
     expect(collectUndersizedPrimarySurface(CSS)).toEqual([]);
   });
 
   it("still scans a meaningful number of rules (a broken scanner must not pass silently)", () => {
     // 스캐너가 깨지면 0건이 되어 조용히 통과한다 — 규모를 함께 단언한다(§7).
     const scanned = CSS.split("\n").filter((line) => PRIMARY_SURFACE.test(line.split("{")[0] || "")).length;
-    expect(scanned).toBeGreaterThan(80);
+    expect(scanned).toBeGreaterThan(140);
   });
 
   it("detects a regression inside a primary surface", () => {

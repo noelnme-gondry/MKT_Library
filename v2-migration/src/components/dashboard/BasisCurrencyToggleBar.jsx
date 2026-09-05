@@ -92,7 +92,7 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
         {isConversionMode ? (
           <FixedRateNote sourceCurrency={sourceCurrency} displayCurrency={displayCurrency} locale={locale} />
         ) : (
-          <p className="muted" style={{ fontSize: "11px", margin: "6px 0 0" }}>
+          <p className="muted" style={{ fontSize: "12px", margin: "6px 0 0" }}>
             {tr("원본 금액의 단위만 지정합니다. 숫자는 환산하지 않습니다.", "Declares the unit of the original amounts. Values are not converted.")}
           </p>
         )}

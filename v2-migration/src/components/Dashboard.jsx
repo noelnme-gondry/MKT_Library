@@ -132,6 +132,25 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const verdict = useDashboardWorker
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
+
+  // 결론이 가리키는 탭을 실제 전환 액션으로 만든다. 문장만으로는 사용자가 탭
+  // 아홉 개 앞에서 다시 고르게 된다(§5.5 "다음 행동 1개").
+  const briefingPoints = useMemo(() => (verdict?.keyPoints || []).map((point) => (
+    point.tab
+      ? {
+        ...point,
+        text: (
+          <button
+            type="button"
+            className="dashboard-briefing__next-tab"
+            onClick={() => setDashboardTab(point.tab)}
+          >
+            {point.text}<span aria-hidden="true"> →</span>
+          </button>
+        ),
+      }
+      : point
+  )), [verdict?.keyPoints, setDashboardTab]);
   const dashboardWorkbookExport = useMemo(() => {
     if (!verdict || verdict.insufficient) return null;
     const workbookTr = (ko, en) => locale === "en" ? en : ko;
@@ -282,7 +301,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0, lineHeight: 1.6 }}>
               {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤 ", "After confirming the column mapping above, ")}
               {tr(<><strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요. </>, <>click <strong>&quot;Analyze Data&quot;</strong> to generate the dashboard. </>)}
-              <span style={{ fontSize: "11.5px" }}>{tr("매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.", "Changing the mapping hides the results until you re-analyze.")}</span>
+              <span style={{ fontSize: "12px" }}>{tr("매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.", "Changing the mapping hides the results until you re-analyze.")}</span>
             </p>
           </div>
         )}
@@ -318,7 +337,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}
-                points={verdict.keyPoints}
+                points={briefingPoints}
                 stats={verdict.stats}
                 locale={locale}
                 workbookExport={dashboardWorkbookExport}
