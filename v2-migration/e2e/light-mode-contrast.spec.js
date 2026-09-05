@@ -26,6 +26,15 @@ for (const [path, label] of ROUTES) {
   test(`${label} 라이트 모드에서 본문 대비가 AA를 넘는다`, async ({ page }) => {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
+    // 진입 애니메이션이 도는 중에 재면 중간 opacity가 배경과 섞여 **없는 색**이 나온다.
+    // 실제로 CI에서 `--dc-text-dim`(#5d6f85)이 opacity 0.71로 섞인 #8a97a7으로 잡혀
+    // 위반처럼 보였다. 끝난 상태에서만 재도록 유한 애니메이션을 즉시 종료시킨다
+    // (무한 반복은 finish()가 던지므로 건너뛴다).
+    await page.evaluate(() => {
+      for (const animation of document.getAnimations()) {
+        try { animation.finish(); } catch { /* 무한 반복 — 최종 상태가 없다 */ }
+      }
+    });
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2aa", "wcag21aa"])
       .analyze();
