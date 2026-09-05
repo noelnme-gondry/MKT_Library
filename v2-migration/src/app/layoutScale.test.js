@@ -92,3 +92,42 @@ describe("collapsed sidebar layout", () => {
     expect(CSS).toMatch(/@media \(max-width: 768px\) \{[^}]*\.header-sidebar-toggle\s*\{[^}]*display:\s*none/);
   });
 });
+
+// ── 터치 기기 · 데스크톱 사이트 모드 ───────────────────────────────────────
+// Chrome의 "데스크톱 사이트"는 viewport 메타를 무시하고 레이아웃 폭을 ~980px로
+// 강제한다. 폭만 보고 판단하면 폰에서 사이드바 레일이 그대로 뜨고 화면이 축소돼
+// 읽히지 않는다(제보 2회). 폭은 속일 수 있어도 입력 방식은 못 속인다.
+describe("coarse pointer layout", () => {
+  const block = CSS.match(/@media \(pointer: coarse\) and \(max-width: 1100px\) \{([\s\S]*?)\n\}/);
+
+  it("drops the sidebar rail on touch devices regardless of the reported width", () => {
+    expect(block).toBeTruthy();
+    expect(block[1]).toMatch(/\.app\.is-home \.sidebar \{ display: none/);
+    expect(block[1]).toMatch(/grid-template-columns: minmax\(0, 1fr\)/);
+  });
+
+  it("also drops the right-hand table of contents there", () => {
+    expect(block[1]).toMatch(/\.tool-page-shell__toc \{ display: none/);
+    expect(block[1]).toMatch(/padding-right: 0/);
+  });
+
+  it("keeps the toggle out of a screen that has no sidebar", () => {
+    expect(block[1]).toMatch(/\.header-sidebar-toggle \{ display: none/);
+  });
+});
+
+// ── 랜딩 초기 숨김의 브라우저 레벨 failsafe ────────────────────────────────
+describe("landing motion failsafe", () => {
+  it("lets the browser finish the reveal even if JS never does", () => {
+    // JS가 숨김을 벗겨 주기만 기다리면 JS가 멈춘 순간 랜딩이 영영 투명하다.
+    // 이 애니메이션은 JS와 무관하게 최종 상태를 확정한다.
+    const armed = CSS.match(/\.decision-console-landing\.is-motion-armed :is\([\s\S]*?\) \{([\s\S]*?)\n\}/);
+    expect(armed).toBeTruthy();
+    expect(armed[1]).toMatch(/opacity:0/);
+    const delay = armed[1].match(/animation: dc-motion-failsafe [\d.]+m?s linear ([\d.]+)s forwards/);
+    expect(delay).toBeTruthy();
+    // 늦으면 그만큼 빈 화면을 본다 — 상한을 고정한다.
+    expect(Number(delay[1])).toBeLessThanOrEqual(2);
+    expect(CSS).toMatch(/@keyframes dc-motion-failsafe \{ to \{ opacity:1; \} \}/);
+  });
+});

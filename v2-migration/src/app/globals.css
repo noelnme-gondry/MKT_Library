@@ -7244,7 +7244,15 @@ body.light-mode .app.is-home {
   .dc-questions .tool-index__stage,
   .dc-library__grid .dc-library-card,
   .dc-resource-strip
-) { opacity:0; }
+) {
+  opacity:0;
+  /* 숨김을 JS가 벗겨 주기만 기다리면, JS가 멈춘 순간 랜딩이 영영 투명하게 남는다
+     (실제로 두 번 제보됐다). 이 애니메이션은 **브라우저가** 1.6초 뒤 최종 상태를
+     확정한다 — anime이 정상 동작하면 그보다 먼저 끝나고, 멈추면 콘텐츠가 이긴다.
+     대가는 1.6초 뒤 화면 밖 요소의 등장 연출이 사라지는 것뿐이다. 연출보다 콘텐츠. */
+  animation: dc-motion-failsafe 1ms linear 1.6s forwards;
+}
+@keyframes dc-motion-failsafe { to { opacity:1; } }
 @media (prefers-reduced-motion: reduce) {
   /* 모션을 끈 사용자에게는 arming 자체가 일어나지 않지만, 이중 안전장치. */
   .decision-console-landing.is-motion-armed * { opacity:1 !important; }
@@ -10558,4 +10566,25 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
   :is(.ab-pill.active, [aria-pressed="true"], [aria-selected="true"], [aria-checked="true"]) { outline: 2px solid currentColor; outline-offset: 2px; }
 }
 
+
+
+/* ── 터치 기기에서는 폭이 아니라 입력 방식으로 판단한다 ────────────────────
+   Chrome의 "데스크톱 사이트" 모드는 viewport 메타를 무시하고 레이아웃 폭을
+   ~980px로 강제한다. 폭만 보면 데스크톱이라 사이드바 레일이 그대로 뜨고, 화면은
+   기기 폭에 맞춰 축소돼 글자를 읽을 수 없다(실제 제보). 폭은 속일 수 있어도
+   입력 방식은 못 속이므로 coarse 포인터를 신호로 쓴다 — 마우스가 주 입력인
+   터치 노트북은 `pointer: fine`이라 여기 걸리지 않는다. */
+@media (pointer: coarse) and (max-width: 1100px) {
+  .app .sidebar,
+  .app.is-home .sidebar { display: none; }
+  .app,
+  .app.is-home,
+  .app:not(.is-home) { grid-template-columns: minmax(0, 1fr); }
+  /* 가리킬 사이드바가 없으면 토글도 없다 — 헤더 ☰가 내비를 맡는다. */
+  .header-sidebar-toggle { display: none; }
+  /* 우측 목차 레일도 이 폭에서는 본문을 밀어낼 뿐이다. */
+  .tool-page-shell.has-toc .tool-page-shell__main,
+  .dashboard-shell.has-results .dashboard-shell__main { padding-right: 0; }
+  .tool-page-shell__toc { display: none; }
+}
 } /* @layer app 끝 */
