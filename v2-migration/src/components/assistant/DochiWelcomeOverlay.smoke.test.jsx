@@ -208,6 +208,32 @@ describe("DochiWelcomeOverlay first-visit onboarding", () => {
   });
 });
 
+// 닫기 버튼이 말풍선과 겹쳐 ×가 테두리 위에 앉아 있었다(제보). 원인은 버튼이
+// `position:absolute`라 그리드에서 **자리를 차지하지 않은** 것 — 말풍선 높이에 따라
+// 겹치기도 하고 안 겹치기도 해서, 한 번 눈으로 보고 넘어가면 다시 나온다.
+// 좌표는 jsdom이 못 재므로 레이아웃 **근거**(자리를 차지하는가)를 CSS에서 고정한다.
+describe("DochiWelcomeOverlay close button occupies its own cell", () => {
+  const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+
+  it("gives the close button a grid area instead of floating it over the bubble", () => {
+    const close = css.match(/\.dochi-welcome__close \{([^}]*)\}/);
+    expect(close).toBeTruthy();
+    expect(close[1]).toMatch(/grid-area:\s*close/);
+    // 절대 배치로 되돌리면 다시 겹친다.
+    expect(close[1]).not.toMatch(/position:\s*absolute/);
+  });
+
+  it("reserves a column for it in both the panel and the mobile sheet", () => {
+    const inners = [...css.matchAll(/\.dochi-welcome__inner \{([^}]*)\}/g)].map((m) => m[1]);
+    expect(inners.length).toBeGreaterThanOrEqual(2);
+    for (const inner of inners) {
+      expect(inner).toMatch(/grid-template-columns:[^;]*\b44px/);
+    }
+    // 영역 이름이 실제로 배선돼 있어야 grid-area:close가 자리를 잡는다.
+    expect(inners[0]).toMatch(/grid-template-areas:"stage speech close"/);
+  });
+});
+
 describe("DochiWelcomeOverlay speech bubble shape", () => {
   const css = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
 
