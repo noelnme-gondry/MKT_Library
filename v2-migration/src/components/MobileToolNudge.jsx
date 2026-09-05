@@ -10,10 +10,14 @@ const MOBILE_QUERY = "(max-width: 768px)";
 
 const COPY = {
   ko: {
+    // 예전 문구는 "이 도구는 PC 화면에 최적화돼 있어요"였다. 320·390px에서 다시
+    // 재보니 업로드·매핑·분석 실행·결론 확인이 전부 완결되고 횡스크롤도 없다
+    // (§6.5 320px 핵심 과업). 도착하자마자 제품이 스스로를 깎을 이유가 없다 —
+    // 실제로 넓은 화면이 나은 것은 탭 안의 큰 표·차트뿐이다.
     text: (
       <>
-        📱 이 도구는 PC 화면에 최적화돼 있어요. 지금 화면에서도 쓸 수 있지만, 표·차트는
-        <span style={{ color: "var(--text-primary)" }}> 넓은 화면</span>이 더 편해요.
+        📱 업로드부터 결론 확인까지 이 화면에서 그대로 됩니다. 탭 안의
+        <span style={{ color: "var(--text-primary)" }}> 큰 표·차트</span>만 넓은 화면이 편해요.
       </>
     ),
     dismissAria: "안내 닫기",
@@ -21,8 +25,8 @@ const COPY = {
   en: {
     text: (
       <>
-        📱 This tool is optimized for desktop. It still works here, but tables and charts
-        are easier to read on a <span style={{ color: "var(--text-primary)" }}>wider screen</span>.
+        📱 Uploading through reading the conclusion works right here. Only the large
+        <span style={{ color: "var(--text-primary)" }}> tables and charts</span> inside tabs prefer a wider screen.
       </>
     ),
     dismissAria: "Dismiss notice",

@@ -958,7 +958,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
           </div>
         </div>
         {kpiEditMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>{T.editHint}</p>
+          <p className="muted" style={{ fontSize: "12px", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
         {!kpiEditMode && <p className="kpi-grid__hint">{locale === "en" ? "Showing the five core KPIs. Enable the rest in Edit." : "핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다."}</p>}
         {allKpiCards.length === 0 ? (

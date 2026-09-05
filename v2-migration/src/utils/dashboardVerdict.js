@@ -203,6 +203,21 @@ export function buildDashboardVerdict({
   if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
   else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
 
+  // 결론이 "다음에 이 탭을 보라"고 말은 하는데 그것이 링크가 아니었다 — 탭이 아홉
+  // 개라 문장만으로는 사용자가 다시 고르게 된다. 어느 탭인지 데이터로 넘겨서
+  // 호출부가 실제 전환 액션으로 만든다(9-7 콘텐츠 도메인도 쓰는 탭만 고른다).
+  const nextTab = tone === "bad"
+    ? { tab: "anomaly", name: tr("이상탐지", "Anomaly detection"), why: tr("급변한 날과 채널을 짚습니다", "Pin down the day and channel that spiked") }
+    : { tab: "scorecard", name: tr("스코어카드", "Scorecard"), why: tr("지표별 증감을 한 표에서 봅니다", "See every metric's change in one table") };
+  keyPoints.push({
+    kind: "next-tab",
+    cls: tone === "bad" ? "bad" : "muted",
+    label: tr("다음 확인", "Look at next"),
+    text: nextTab.name,
+    detail: nextTab.why,
+    tab: nextTab.tab,
+  });
+
   // 지표 표(직전→최근, WoW). 컬럼 매핑된 것만(정직). type=값 포맷 방식.
   const asPctStr = (v) => (v == null ? "—" : (v * 100).toFixed(2) + "%");
   const asRoasStr = (v) => (v == null ? "—" : (v * 100).toFixed(0) + "%");

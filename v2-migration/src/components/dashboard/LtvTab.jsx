@@ -349,7 +349,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     ) : "—") },
     { k: "ratio", label: T.colRatio, cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },
     { k: "payback", label: T.colPayback, render: (r) => fmtPb(r.payback) },
-    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "11px" }, render: (r) => r.fitKind },
+    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "12px" }, render: (r) => r.fitKind },
   ];
   const orderedLtvCols = applyMetricView(ltvCols, ltvTableCfg, (c) => c.k);
 
@@ -393,7 +393,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           {T.s2Desc(HEALTHY_RATIO, WARN_RATIO)}
         </p>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "12px" }}>
             <thead>
               <tr>
                 <th>{T.unitTh}</th>
@@ -455,7 +455,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           />
           {/* 여러 기준일을 동시에 켤 수 있다 — radiogroup이 아니라 토글 묶음이다(D-05). */}
           <div className="ab-pillgroup" data-pillgroup="multi" role="group" aria-label={T.anchorLabel}>
-            <span className="ab-pillgroup-label">{T.anchorLabel} <small style={{ opacity: 0.6, fontWeight: 400 }}>{T.anchorSub}</small></span>
+            <span className="ab-pillgroup-label">{T.anchorLabel} <small style={{ color: "var(--text-muted)", fontWeight: 400 }}>{T.anchorSub}</small></span>
             {MATURATION_MATH.ALL_DNS.filter((d) => isDnMapped(d)).map((d) => {
               const avail = maturation && maturation.availDns.includes(d);
               return (
@@ -479,7 +479,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
         </div>
 
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11px" }}>
+          <table className="data" style={{ fontSize: "12px" }}>
             <thead>
               <tr>
                 <th>{T.matUnitTh}</th>
@@ -524,7 +524,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                       <td className="tnum">{fmtCur(u.cost)}</td>
                       {showCols.map((d) => <td key={d} className="tnum">{fmtCell(d)}</td>)}
                       <td className="tnum">{mat != null ? mat.toFixed(2) + "×" : "—"}</td>
-                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "11px" }}>{u.fit?.kind || "—"}</td>
+                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{u.fit?.kind || "—"}</td>
                     </tr>
                   );
                 })
@@ -552,7 +552,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
 
         <h3 style={{ margin: "20px 0 10px", fontSize: "13px", fontWeight: 600 }}>
           {T.suffTitle}
-          <small style={{ opacity: 0.6, fontWeight: 400, marginLeft: "8px" }}>{T.suffSub(matHorizon)}</small>
+          <small style={{ color: "var(--text-muted)", fontWeight: 400, marginLeft: "8px" }}>{T.suffSub(matHorizon)}</small>
           <PillGroup
             ariaLabel={T.suffTitle}
             style={{ display: "inline-flex", marginLeft: "14px", verticalAlign: "middle" }}
@@ -575,7 +575,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
               {maturation && maturation.suffData ? (
                 maturation.suffData.steps.map((s, i) => (
                   <tr key={i} style={s.converged ? { background: "rgba(158,206,106,0.06)" } : {}}>
-                    <td><code style={{ fontSize: "11px" }}>[{s.set.map((d) => "D" + d).join(", ")}]</code></td>
+                    <td><code style={{ fontSize: "12px" }}>[{s.set.map((d) => "D" + d).join(", ")}]</code></td>
                     <td className="tnum"><strong>{s.pred != null ? (s.pred * 100).toFixed(1) + "%" : "—"}</strong></td>
                     <td className="tnum">{s.chg != null ? (s.chg * 100).toFixed(1) + "%" : "—"}</td>
                     <td>

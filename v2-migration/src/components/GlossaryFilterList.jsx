@@ -39,7 +39,7 @@ export default function GlossaryFilterList({ terms, categories, locale = "ko", g
             onClick={() => setActive(null)}
             aria-pressed={!active}
           >
-            {T.all} <span style={{ opacity: 0.6 }}>{terms.length}</span>
+            {T.all} <span style={{ color: "var(--text-muted)" }}>{terms.length}</span>
           </button>
           {categories.map((c) => (
             <button
@@ -49,7 +49,7 @@ export default function GlossaryFilterList({ terms, categories, locale = "ko", g
               onClick={() => setActive(c.category)}
               aria-pressed={active === c.category}
             >
-              {c.category} <span style={{ opacity: 0.6 }}>{c.count}</span>
+              {c.category} <span style={{ color: "var(--text-muted)" }}>{c.count}</span>
             </button>
           ))}
         </div>

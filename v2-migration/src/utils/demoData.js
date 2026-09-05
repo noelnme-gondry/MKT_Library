@@ -25,6 +25,11 @@ const round = (v) => Math.round(v);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // ── efficiency (5-2 / 5-21 / 5-22 / 5-3) ────────────────────────────────────
+// 데모가 결론을 내려면 최근 구간에 읽을 수 있는 변화가 있어야 한다. 흔들 채널을
+// 여기 한 곳에 두어 형제 도구(5-21 top-mover · 5-22 포화도 · 5-3 재배분)가 같은
+// 신호를 가리키게 한다.
+const SIGNAL_CHANNEL = "Meta AAP";
+
 function buildEfficiency() {
   const headers = [
     "date", "country", "platform", "channel", "campaign_name", "creative_id",
@@ -56,9 +61,16 @@ function buildEfficiency() {
         for (let d = 0; d < dates.length; d++) {
           const ramp = 1 + (d / dates.length) * 1.6; // spend grows ~2.6x
           const noise = 1 + rnd() * 0.28;
-          const cost = baseSpend * ramp * noise;
+          // 최근 7일에 한 채널만 눈에 띄게 흔든다 — 지출은 늘고 효율은 나빠진다.
+          // 이 신호가 없으면 데모 결론이 "큰 변화 없습니다"로 끝나서, 처음 온 사람이
+          // 이 도구가 무엇을 잡아내는지 볼 수가 없다(§12.16 "데모에 실제 신호 부여").
+          // 창을 정확히 최근 7일로 잡아야 WoW 비교의 직전 구간이 깨끗하게 남는다.
+          const isRecentWindow = dates.length - 1 - d < 7;
+          const shockSpend = isRecentWindow && ch.name === SIGNAL_CHANNEL ? 1.45 : 1;
+          const shockEfficiency = isRecentWindow && ch.name === SIGNAL_CHANNEL ? 1.34 : 1;
+          const cost = baseSpend * ramp * noise * shockSpend;
           // diminishing installs: installs ∝ cost^satExp / eff
-          const installs = Math.max(1, round((Math.pow(cost, ch.satExp) / (14 * ch.eff)) * (1 + rnd() * 0.18)));
+          const installs = Math.max(1, round((Math.pow(cost, ch.satExp) / (14 * ch.eff * shockEfficiency)) * (1 + rnd() * 0.18)));
           const clicks = round(installs * (9 + rnd() * 4)); // CVR ~8-11%
           const impressions = round(clicks * (38 + rnd() * 20)); // CTR ~2-3%
           const actions = round(installs * ch.cvr * (1 + rnd() * 0.2));

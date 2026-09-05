@@ -192,7 +192,11 @@ export default function LandingPage({ locale = "ko" }) {
             </Link>
           </nav>
           <div className="dc-hero__utility-actions">
-            <button type="button" className="dc-text-link dc-text-link--button" onClick={() => openSample("5-2", "hero_example")}>
+            {/* 예시는 이 제품에서 "무엇이 나오는지"를 볼 유일한 경로다(히어로의 가짜
+                차트를 걷어낸 뒤로 §12.28). 버튼으로 승격하면 목적 CTA와 위계가
+                섞이므로(LandingPage.smoke가 강제) 텍스트 링크는 유지하고 눈에
+                띄는 정도만 올린다. */}
+            <button type="button" className="dc-text-link dc-text-link--button dc-text-link--lead" onClick={() => openSample("5-2", "hero_example")}>
               {T.demoCta} →
             </button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>

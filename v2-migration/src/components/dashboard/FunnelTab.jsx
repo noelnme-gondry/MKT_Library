@@ -162,7 +162,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           return (
             <>
               {fmtPct(step.cvr)}
-              {step.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> ({tr("이탈", "drop")} {(step.drop * 100).toFixed(0)}%)</span>}
+              {step.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "12px" }}> ({tr("이탈", "drop")} {(step.drop * 100).toFixed(0)}%)</span>}
             </>
           );
         },
@@ -215,7 +215,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
               </div>
             )}
             <div className="table-wrap" style={{ marginTop: "10px" }}>
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "12px" }}>
                 <thead><tr><th>{tr("전환 단계", "Stage")}</th><th>{tr("지난 주", "Last week")}</th><th>{tr("이번 주", "This week")}</th><th>{tr("변화", "Change")}</th></tr></thead>
                 <tbody>
                   {c.wow.map((w) => (
@@ -262,7 +262,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
             <button className="ab-pill disabled" disabled title={tr("평일·주말 각 3일 이상 필요", "Needs 3+ weekday and 3+ weekend days")}>{tr("요일 보정", "Weekday adj.")} 🔒</button>
           )}
         </div>
-        <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>
+        <p className="muted" style={{ fontSize: "12px", margin: "8px 0 0" }}>
           {tr(
             <>아래 추이·세그먼트·랭킹은 선택한 <strong>전환 단계({selLbl})</strong> 기준입니다.</>,
             <>The trend, segment, and ranking below are based on the selected <strong>conversion stage ({selLbl})</strong>.</>
@@ -297,7 +297,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
                 <p style={{ margin: "0 0 4px", fontSize: "12px" }}>
                   <strong>{tr(`평균보다 유독 낮았던 날 (−1σ 이하${adjOn ? ", 요일 보정 후" : ""})`, `Days notably below average (−1σ or lower${adjOn ? ", after weekday adj." : ""})`)}</strong>
                 </p>
-                <p className="muted" style={{ margin: "0 0 6px", fontSize: "11px" }}>
+                <p className="muted" style={{ margin: "0 0 6px", fontSize: "12px" }}>
                   {tr(
                     "기간 전체 평균과 비교한 것으로, 전날보다는 올랐지만 여전히 평균보다 낮은 날도 포함됩니다.",
                     "Compared against the full-period average — includes days that rose vs the prior day but were still below average."
@@ -312,11 +312,11 @@ export default function FunnelTab({ locale = "ko" } = {}) {
                     const prevCv = prevRow ? (adjOn ? prevRow.cvrAdj : prevRow.cvr) : null;
                     const vsPrevUp = cv != null && prevCv != null ? cv > prevCv : null;
                     return (
-                      <span key={x.date} className="chip warning" style={{ fontSize: "11px" }}>
+                      <span key={x.date} className="chip warning" style={{ fontSize: "12px" }}>
                         {x.date} · {cv != null ? (cv * 100).toFixed(1) : "—"}%{" "}
-                        <span style={{ opacity: 0.7 }}>({dp != null && dp < 0 ? "" : "+"}{dp != null ? (dp * 100).toFixed(0) : "—"}%)</span>
+                        <span style={{ color: "var(--text-secondary)" }}>({dp != null && dp < 0 ? "" : "+"}{dp != null ? (dp * 100).toFixed(0) : "—"}%)</span>
                         {vsPrevUp != null && (
-                          <span style={{ opacity: 0.7, marginLeft: "4px" }} title={tr("전날 대비", "vs prior day")}>
+                          <span style={{ color: "var(--text-secondary)", marginLeft: "4px" }} title={tr("전날 대비", "vs prior day")}>
                             {vsPrevUp ? tr("↑전일比", "↑ vs prev") : tr("↓전일比", "↓ vs prev")}
                           </span>
                         )}
@@ -343,10 +343,10 @@ export default function FunnelTab({ locale = "ko" } = {}) {
             )}
           </p>
           <div className="table-wrap">
-            <table className="data" style={{ fontSize: "11.5px" }}>
+            <table className="data" style={{ fontSize: "12px" }}>
               <thead><tr><th>{fieldLabel(c.segRank.field) || c.segRank.field}</th><th>{selLbl} CVR</th><th>{tr("평균 대비", "vs average")}</th><th>{tr("분모 볼륨", "Denom. volume")}</th></tr></thead>
               <tbody>
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--success)", fontSize: "11px", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--success)", fontSize: "12px", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.best.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
@@ -358,7 +358,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
                     </tr>
                   );
                 })}
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--danger)", fontSize: "11px", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "var(--danger)", fontSize: "12px", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.worst.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
@@ -384,7 +384,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
         </div>
         <DataTable
           ariaLabel={tr("전체 퍼널 단계", "Full funnel stages")}
-          tableStyle={{ fontSize: "11.5px" }}
+          tableStyle={{ fontSize: "12px" }}
           columns={[
             { key: "unit", label: tr("단위", "Unit"), fmt: (unit) => <strong>{String(unit).slice(0, 24)}</strong> },
             ...orderedFunnelCols.map((col) => ({

@@ -85,7 +85,7 @@ export default function BlogIndexPage() {
               className="chip"
               style={{ textDecoration: "none", cursor: "pointer" }}
             >
-              #{t.tag} <span style={{ opacity: 0.6 }}>{t.count}</span>
+              #{t.tag} <span style={{ color: "var(--text-muted)" }}>{t.count}</span>
             </Link>
           ))}
         </div>
