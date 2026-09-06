@@ -1433,7 +1433,7 @@ export function fmtSignedOne(v) {
 
 export function fmtOne(v) {
   if (v == null || !isFinite(v)) return "—";
-  return Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return Number(v).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 // STL/모델의 "첫 주→마지막 주 변화"를 0 기준 양·음 막대로 보여주는 표시층.

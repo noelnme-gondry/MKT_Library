@@ -314,7 +314,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   // 2. Formatters
   const formatNumber = (num, { decimals = 0 } = {}) => {
     if (num == null || isNaN(num)) return "-";
-    return Number(num).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return Number(num).toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   };
   const formatPercent = (num) => {
     if (num == null || isNaN(num)) return "-";

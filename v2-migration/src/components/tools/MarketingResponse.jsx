@@ -2674,7 +2674,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       ? convertCurrency(Number(value), sourceCurrency, displayCurrency)
       : Number(value);
     const prefix = displayValue < 0 ? "-" : sign && displayValue > 0 ? "+" : "";
-    const number = Math.abs(displayValue).toLocaleString(undefined, {
+    const number = Math.abs(displayValue).toLocaleString("en-US", {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });

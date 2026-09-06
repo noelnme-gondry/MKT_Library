@@ -37,7 +37,7 @@ function fmtCurrency(value, currency) {
   if (value == null || !isFinite(value)) return "—";
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
   const digits = currency === "USD" ? 2 : 0;
-  return sym + value.toLocaleString(undefined, {
+  return sym + value.toLocaleString("en-US", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });

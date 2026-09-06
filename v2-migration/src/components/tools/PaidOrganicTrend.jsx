@@ -107,7 +107,7 @@ function fmtPct(value) {
 }
 
 function fmtNumber(value) {
-  return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 export default function PaidOrganicTrend({ locale = "ko" }) {

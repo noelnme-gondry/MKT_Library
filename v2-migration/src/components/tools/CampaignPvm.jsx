@@ -125,9 +125,9 @@ function formatPvmMoney(v, cur, decimals, locale = "ko") {
     const opts = decimals != null
       ? { minimumFractionDigits: decimals, maximumFractionDigits: decimals }
       : { maximumFractionDigits: 2 };
-    return `${sign}$${abs.toLocaleString(undefined, opts)}`;
+    return `${sign}$${abs.toLocaleString("en-US", opts)}`;
   }
-  return `${sign}${locale === "en" ? "₩" : ""}${Math.round(abs).toLocaleString()}${locale === "en" ? "" : "원"}`;
+  return `${sign}${locale === "en" ? "₩" : ""}${Math.round(abs).toLocaleString("en-US")}${locale === "en" ? "" : "원"}`;
 }
 
 // 월요일(UTC 고정) — 마감주(calendar weekBasis) 계산 기준
