@@ -1,4 +1,3 @@
-import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 
 export const STANDARD_FIELDS = {
               date: {
@@ -1745,13 +1744,6 @@ export const RESPONSE_PANEL_TOOL_IDS = ["5-18-trend", "5-18-paid-organic", "5-18
 for (const id of RESPONSE_PANEL_TOOL_IDS) {
   TOOL_REQUIRED_FIELDS[id] = TOOL_REQUIRED_FIELDS["5-18"];
   TOOL_OPTIONAL_FIELDS[id] = TOOL_OPTIONAL_FIELDS["5-18"];
-}
-
-// CSV 헤더 배열 → {header: 표준필드키|"__ignore__"} 자동매핑. CsvUploader의 CSV 업로드
-// 경로와 구글 시트 임포트 경로가 동일 로직을 공유하도록 추출(원래 CsvUploader.jsx
-// processFile 내부에 있던 걸 이관 — 로직 변경 없음, 재사용을 위한 위치 이동만).
-export function autoMapHeaders(headers, rows = [], allowedKeys) {
-  return scoreMappingCandidates({ headers, rows, allowedKeys, fields: STANDARD_FIELDS }).selections;
 }
 
 // 숫자로 해석되는 표준 필드 키 집합. STANDARD_FIELDS에서 **파생**한다 — 손으로 나열하면

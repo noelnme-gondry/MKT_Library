@@ -1,5 +1,4 @@
 import { ALLOC_MATH } from "./allocationMath";
-import { getMappedRows } from "./dashboardAggregator";
 
 export const SAT_CONFIG = {
   satHigh: 1.3,
@@ -174,18 +173,6 @@ export function satAvailableFields(csvData) {
   const revField = revCandidates.find((k) => mappedKeys.has(k)) || null;
   const hasCampaign = mappedKeys.has("campaign_name");
   return { metricField, revField, hasCampaign };
-}
-
-export function satAnalyzeAll(csvData, state) {
-  const { metricField, revField } = satAvailableFields(csvData);
-  const rows = getMappedRows(csvData);
-  const pointsMap = satBuildPoints(rows, state.grain, metricField, revField);
-  const out = [];
-  for (const [name, pts] of pointsMap) {
-    const a = SAT_MATH.analyzeEntity(pts, SAT_CONFIG);
-    out.push({ name, raw: pts.length, ...a });
-  }
-  return out;
 }
 
 export function satActiveIndex(r, metric) {

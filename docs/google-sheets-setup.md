@@ -60,6 +60,6 @@ Google Sheets API 표준 사용량은 무료(과금 없음, 신용카드 등록�
 
 - `src/utils/googleSheets.js` — 순수 파싱 함수(URL→spreadsheetId/gid, values→table, 시트 탭 range 해석). 골든 테스트 있음(`googleSheets.test.js`).
 - `src/components/GoogleSheetConnect.jsx` — API 키로 Sheets API 직접 호출. 403/404는 "비공개 시트" 안내로 구분 처리.
-- `src/utils/csvConstants.js`의 `autoMapHeaders()` — CSV 업로드와 구글 시트 임포트가 **같은 자동매핑 로직**을 공유(원래 `CsvUploader.jsx` 안에 있던 걸 추출, 로직 변경 없음).
+- `src/lib/data-import/mappingContract.js`의 `buildMappingContract({ toolId, headers, rows, source })` — CSV 업로드(`source:"csv"`)와 구글 시트 임포트(`source:"google_sheets"`)가 **같은 자동매핑 로직**을 공유한다. 점수 계산은 `lib/data-import/scoreMappingCandidates.js`(헤더명 정확일치·별칭·값 어휘·타입 프로파일)가 하고, 후보는 `fieldKeysForTool(toolId)`로 **도구 스코프에 제한**된다 — 전체 `STANDARD_FIELDS`로 매핑하면 그 도구가 안 쓰는 필드까지 잡혀 "매핑됐는데 기능엔 못 씀"이 된다(`docs/pitfalls.md` §자동매핑).
 - 연동 지점은 `CsvUploader.jsx` 단 한 곳 — 이 컴포넌트를 쓰는 도구(운영 대시보드·예산배분·PVM·포화도·소재분석·A/B테스트 등 12개+)에 자동으로 다 퍼진다.
 - API 키는 컴포넌트 로컬 요청에만 쓰이고 Zustand store에 안 들어감 → `persistPartialize`(§2.2 원본데이터 미저장 불변식) 무관.
