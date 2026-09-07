@@ -1,9 +1,10 @@
-import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
+import { toolIndexEntry } from "@/lib/toolIndex";
+import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { TEMPLATE_PAGES, getTemplatePage } from "@/lib/templateCatalog";
 
 // 목록 → 도구별 상세(컬럼 설명) 크롤 경로.
 const templateDetailHref = (toolId) => {
@@ -26,52 +27,26 @@ export async function generateMetadata() {
   };
 }
 
-const GROUPS = [
-  {
-    heading: "Efficiency · budget CSV (daily campaign performance)",
-    note: "These four tools share the same CSV format. Upload it once and use it across all four.",
-    unified: true,
-    items: [
-      ["5-2", "Operations dashboard", "See daily campaign cost, installs, revenue, and retention in scorecards and charts.", "/en/dashboard"],
-      ["5-3", "Budget allocation", "Learn CPR/ROAS response curves by channel and campaign to allocate budget.", "/en/tools/budget-allocation"],
-      ["5-21", "Campaign performance variance", "Decompose performance changes into allocation, mix, and efficiency effects.", "/en/tools/campaign-variance"],
-      ["5-22", "Campaign saturation", "Compare marginal efficiency with the average to identify saturated and available ranges.", "/en/tools/campaign-saturation"],
-    ],
-  },
-  {
-    heading: "Creative CSV",
-    items: [["9-6", "Creative analysis", "Analyze creative CTR, CVR, and fatigue trends statistically.", "/en/content/freshness"]],
-  },
-  {
-    heading: "Experiment CSV",
-    items: [["5-4", "Experiment analysis (A/B test)", "Design A/B tests and read significance and power results.", "/en/tools/experiment-analysis"]],
-  },
-  {
-    heading: "Weekly panel CSV",
-    items: [["5-18", "Weekly panel (shared by five analyses)", "Map once, then trend, paid-vs-organic, cannibalization, channel contribution, and forecast all reuse the same data.", "/en/tools/marketing-response"]],
-  },
-  {
-    heading: "Content CSV",
-    items: [
-      ["9-3", "Content traffic variance", "Decompose traffic changes by source, category, and content.", "/en/content/traffic-variance"],
-      ["9-7", "Content operations dashboard", "Visualize content operations with anomaly detection and scorecards.", "/en/content/dashboard"],
-    ],
-  },
-];
+const GROUPS = TEMPLATE_PAGES.map(({ toolId, toolPath, slug }) => {
+  const entry = toolIndexEntry(toolId, "en");
+  return {
+    heading: entry.name,
+    unified: getTemplatePage(slug).hasUnified,
+    items: [[toolId, entry.name, entry.answer, `/en${toolPath}`]],
+  };
+});
 
 const FAQ = [
   ["Does the template include example data?", "No. It contains only a header row. Fill the rows below with your own data before uploading."],
   ["Can I upload a CSV I already have?", "Yes. Automatic column mapping recognizes most existing headers. Use a template when the mapping is unclear."],
-  ["Is uploaded data sent to a server?", "No. CSV files are processed and discarded in your browser; they are not sent to or stored on a server."],
+  ["Is uploaded data sent to a server?", "No. CSV files are processed in your browser and never sent to a server. Device storage can be managed in Storage."],
   ["How do I use a template in Google Sheets?", "Download a template below, then use File → Import → Upload in Google Sheets. Keep the header row unchanged, fill your data, and connect the shared Viewer link in the app."],
-  ["Why do some tools have no template?", "Aha-moment and incrementality tools use event- or holdout-level data with a different grain, so they are not included here."],
+  ["Which tools have templates?", "Templates are listed for each published tool with a supported CSV schema. Check the column guide for its required data and observation unit."],
 ];
 
 export default function EnglishTemplatesPage() {
   const checklists = ["taxonomy", "postback", "media"];
-  const publishedGroups = GROUPS
-    .map((group) => ({ ...group, items: group.items.filter(([toolId]) => isRoutePublished(toolId)) }))
-    .filter((group) => group.items.length > 0);
+  const publishedGroups = GROUPS;
   return (
     <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>

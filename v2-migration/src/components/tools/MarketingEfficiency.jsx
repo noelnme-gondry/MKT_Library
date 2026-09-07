@@ -391,7 +391,9 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     );
   }
 
-  let head = tr("대부분 적정 구간", "Mostly in the steady zone");
+  let head = okRows.length
+    ? tr("분석 가능한 항목은 적정 구간", "Analyzable items are in the steady zone")
+    : tr("판단 보류 — 분석 가능한 항목 없음", "Abstain — no analyzable items");
   if (sat.length || scale.length) {
     const parts = [];
     if (sat.length) parts.push(`<span style="color:#f87171;">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);

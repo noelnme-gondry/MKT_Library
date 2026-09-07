@@ -84,6 +84,10 @@
 | L-05 | 어트리뷰션 기준의 품질이 결과 해석을 좌우합니다. | 서로 다른 매체 기준을 자동으로 '단일 진실'로 통합하지 않는다. |
 | L-06 | Growth Opt Playbook은 어트리뷰션 플랫폼이나 실시간 광고 운영 시스템이 아닙니다. | 특정 상용 제품의 "대체재"라고 쓰지 않는다. "CSV 기반 통계적 의사결정 지원 레이어"로 설명한다. |
 
+L-02 보조 설명(KO): 표본 부족·변동성·짧은 관찰 기간으로 탐지하지 못할 수 있으며, 유의하지 않다는 사실만으로 효과 없음을 증명하지 않습니다.
+
+L-02 detail(EN): Limited samples, variability, or short observation windows can prevent detection; a non-significant result does not prove the absence of an effect.
+
 ### 3.1 AI 답변·외부 프로필 표현 규칙
 
 | 분류 | 표현 | 규칙 |

@@ -3949,7 +3949,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         {renderTabs()}
         <section className="block" id="s-prep">
           <h2 className="section-title">{tx("데이터 준비", "Data preparation")}</h2>
-          <p className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>{tx("일별 또는 주별 패널 CSV 하나로 카니발 진단 → 기여 분해(MMM) → 회귀·미래예측을 모두 분석합니다. 일별 데이터는 주간으로 자동 정리되고, 매핑한 5개 목표를 언제든 바꿔 볼 수 있습니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.", "One daily or weekly panel CSV powers cannibalization diagnosis → contribution breakdown (MMM) → regression/forecast. Daily data is normalized to weeks automatically, and you can switch among the five mapped targets at any time. Data stays in browser memory only — never sent to a server.")}</p>
+          <p className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>{tx("일별 또는 주별 패널 CSV 하나로 카니발 진단 → 기여 분해(MMM) → 회귀·미래예측을 모두 분석합니다. 일별 데이터는 주간으로 자동 정리되고, 매핑한 5개 목표를 언제든 바꿔 볼 수 있습니다. CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장·삭제는 저장소에서 관리할 수 있습니다.", "One daily or weekly panel CSV powers cannibalization diagnosis → contribution breakdown (MMM) → regression/forecast. Daily data is normalized to weeks automatically, and you can switch among the five mapped targets at any time. CSV data is processed in your browser and never sent to a server. Manage device storage and deletion in Storage.")}</p>
           {mmmDropzone}
         </section>
       </div>

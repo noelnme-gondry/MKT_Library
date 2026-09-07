@@ -87,8 +87,8 @@ export const BRAND_LIMITS = [
   },
   {
     id: "nonsignificance",
-    ko: { claim: "무유의는 '효과 없음'이 아닙니다.", detail: "표본이 부족해 탐지하지 못한 경우와 실제로 효과가 없는 경우를 구분해 표시합니다." },
-    en: { claim: "Non-significant is not the same as no effect.", detail: "Undetected due to sample size and genuinely absent are reported as different outcomes." },
+    ko: { claim: "무유의는 '효과 없음'이 아닙니다.", detail: "표본 부족·변동성·짧은 관찰 기간으로 탐지하지 못할 수 있으며, 유의하지 않다는 사실만으로 효과 없음을 증명하지 않습니다." },
+    en: { claim: "Non-significant is not the same as no effect.", detail: "Limited samples, variability, or short observation windows can prevent detection; a non-significant result does not prove the absence of an effect." },
   },
   {
     id: "identification",
