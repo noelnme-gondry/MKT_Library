@@ -1209,7 +1209,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
 
     const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
-    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale);
+    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale, ml);
 
     let nameNode;
     let isNew = false;
@@ -1615,7 +1615,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <h2 className="section-title">{C.secChannels}</h2>
 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)", outline: "none" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
+          <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
           <div style={{ marginTop: "10px", fontSize: "12px", lineHeight: 1.7, color: "var(--text-muted)" }}>
             {ready
               ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)

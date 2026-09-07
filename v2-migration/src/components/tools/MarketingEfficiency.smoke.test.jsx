@@ -69,7 +69,20 @@ function seedWithData() {
 describe("MarketingEfficiency render smoke", () => {
   beforeEach(() => {
     seedNoData();
+    useAppStore.setState({ analyzedByGroup: useAppStore.getInitialState().analyzedByGroup });
     useAppStore.setState({ denomBasis: "installs" });
+  });
+
+  it.each(["ko", "en"])("abstains when every channel is too sparse (%s)", (locale) => {
+    seedWithData();
+    const data = useAppStore.getState().csvData;
+    const raw = data.raw.map((row, index) => ({ ...row, Channel: `Channel-${index}` }));
+    useAppStore.getState().setCsvData({ ...data, raw });
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    expect(useAppStore.getState().isGroupAnalyzed("5-22")).toBe(true);
+    render(<MarketingEfficiency locale={locale} />);
+    expect(screen.getAllByText(locale === "en" ? "Abstain — no analyzable items" : "판단 보류 — 분석 가능한 항목 없음").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Mostly in the steady zone|대부분 적정 구간/)).toBeNull();
   });
 
   it("mounts without throwing in the no-data state (upload screen)", () => {

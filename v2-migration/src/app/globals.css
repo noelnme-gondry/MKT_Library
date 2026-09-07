@@ -10448,7 +10448,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
    대비가 더 크게 느껴진다. 랜딩의 카드 재질(`--dc-panel` + `--dc-line`)을 그대로
    쓰되 18개가 들어가야 하므로 반경·여백만 줄인다. 갈래 제목의 구분선이 상위 층,
    카드가 하위 층이 되어 위계가 두 단이 된다. */
-.dc-questions .tool-index__list { display: grid; gap: 6px; }
+.dc-questions .tool-index__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .dc-questions .tool-index__item { border-top: 0; }
 .dc-questions .tool-index__link {
   display: block; padding: 10px 12px; margin-left: 0;

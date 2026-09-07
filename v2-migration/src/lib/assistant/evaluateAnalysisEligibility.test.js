@@ -1,3 +1,4 @@
+import { ANALYSIS_CONTRACTS } from "@/lib/analysis-router/evaluateEligibility";
 import { describe, expect, it } from "vitest";
 
 import { ANALYSIS_CATALOG } from "./analysisCatalog";
@@ -67,4 +68,23 @@ describe("evaluateAnalysisEligibility", () => {
     expect(rankRecommendedAnalyses(input).map((item) => item.toolId)).toEqual(["5-2", "5-3", "5-18-mmm"]);
     expect(rankRecommendedAnalyses(input)).toEqual(rankRecommendedAnalyses(input));
   });
+});
+
+it("derives minimum input gates from the direct-tool contract", () => {
+  const contract = ANALYSIS_CONTRACTS["5-21"];
+  const result = evaluateAnalysisEligibility({ toolId: "5-21", mapping: efficiencyMapping, profile: { rowCount: 4, periodCount: 2 } });
+  expect(result.status).toBe("blocked");
+  expect(result.blockers).toEqual(expect.arrayContaining([
+    { code: "min_rows", required: contract.minRows, current: 4 },
+    { code: "min_periods", required: contract.minPeriods, current: 2 },
+  ]));
+});
+it("provides an English question for every published recommendation", () => {
+  for (const entry of ANALYSIS_CATALOG) {
+    const mapping = Object.fromEntries([...entry.requiredFields, ...entry.toolOwnedRoles.map(role => role.canonicalKey)].map(field => [field, field]));
+    const result = evaluateAnalysisEligibility({ toolId: entry.toolId, mapping, locale: "en", profile: { rowCount: 200, periodCount: 100 } });
+    expect(result.status, entry.toolId).not.toBe("blocked");
+    expect(result.recommendationReason, entry.toolId).toBeTruthy();
+    expect(result.recommendationReason, entry.toolId).not.toMatch(/[가-힣]/);
+  }
 });

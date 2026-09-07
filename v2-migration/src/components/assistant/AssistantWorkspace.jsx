@@ -261,6 +261,7 @@ function blockersText(result, locale) {
     : `필요: ${(first.alternatives || []).flat().join(" / ")}`;
   if (first.code === "grain_mismatch") return locale === "en" ? "This file has a different data grain." : "이 파일은 다른 데이터 단위입니다.";
   if (first.code === "no_rows") return locale === "en" ? "No readable rows were found." : "읽을 수 있는 행이 없습니다.";
+  if (first.code === "min_rows") return locale === "en" ? `Needs at least ${first.required} rows (currently ${first.current}).` : `최소 ${first.required}행 필요 (현재 ${first.current}행).`;
   if (first.code === "min_periods") return locale === "en" ? `Needs at least ${first.required} periods.` : `최소 ${first.required}개 기간이 필요합니다.`;
   return locale === "en" ? "This analysis needs additional data or review." : "이 분석에는 추가 데이터 또는 확인이 필요합니다.";
 }
@@ -635,11 +636,12 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     const mapping = mappingsByTool[entry.toolId];
     return evaluateAnalysisEligibility({
       toolId: entry.toolId,
+      locale,
       mapping,
       mappingContract,
       profile: profileFor(entry, { raw: csvData.raw, headers: csvData.headers, mapping }),
     });
-  })), [csvData.headers, csvData.raw, mappingContracts, mappingsByTool]);
+  })), [csvData.headers, csvData.raw, mappingContracts, mappingsByTool, locale]);
 
   const prepareHandoffForTool = useCallback((toolId) => {
     const cacheKey = `${currentInputSignature}:${currentMappingSignature}:${toolId}`;
