@@ -2,7 +2,6 @@
 title: "ASO Strategy: Improve Store Conversion and Keywords"
 description: "ASO fixes both the store conversion after an ad click and search visibility. Icon, screenshots, ratings, then keywords — in order."
 date: "2026-07-15"
-updated: "2026-08-17"
 slug: "aso-basics-guide"
 keywords: "ASO, app store optimization, ASO basics, ASO strategy, learn ASO, app keyword optimization, app store conversion rate, store page conversion, app icon screenshots, app ranking, organic installs, store listing experiments"
 tags: ["ASO", "Metrics Basics"]
@@ -13,13 +12,31 @@ faq:
   - q: "Should I fix screenshots or keywords first?"
     a: "If people reach the product page but do not install, visual elements come first. If impressions themselves are low, keywords and title come first. Let conversion rate versus impressions decide."
   - q: "How long before I can judge an ASO change?"
-    a: "Store indexing and rank re-settling take time, so allow at least two weeks and preferably four. Judging after a few days confuses weekday variation and natural drift with effect. Record the change date and compare equal-length windows around it."
+    a: "There is no fixed passing duration. Record the change date, observation cutoff, and samples by source, and compare matched weekdays. Read platform experiments using their own settings and uncertainty; a before/after comparison does not establish causality."
   - q: "Which step does store conversion rate refer to?"
     a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
   - q: "Does ASO improve paid performance too?"
-    a: "Yes. Ad clicks still pass through the store page, so a higher store conversion rate produces more installs from the same spend. Moving conversion from 30% to 40% yields about 33% more installs and lowers CPI by the same proportion."
+    a: "With identical spend and product page views, conversion moving from 30% to 40% means about 33.3% more installs and 25% lower CPI. This calculation does not hold unchanged if traffic mix or acquisition costs change."
+updated: "2026-09-08"
+reviewedAt: "2026-09-08"
+reviewer: "Codex (AI-assisted editorial audit)"
+sources:
+  - title: "Apple Product Page Optimization"
+    url: "https://developer.apple.com/help/app-store-connect-analytics/acquisition/product-page-optimization"
+  - title: "Google Play store listing experiments"
+    url: "https://support.google.com/googleplay/android-developer/answer/12053285?hl=en"
 ---
 While you're tweaking creative and bids to lower CPI, the store page where users actually decide to install has often sat untouched for months. A tap on your ad still installs on the store, so if store conversion is leaking, ad spend leaks along with it.
+
+## Reproduce the result: a source-mix-only CSV
+
+[Download synthetic App Store Connect-shaped CSV](/examples/aso-mix-only.csv). These eight rows are invented, not customer data.
+
+1. Upload to the [ASO tool](/tools/aso-store-conversion). Confirm Date, Source Type, Product Page Views, and Total Downloads map to date, store source, page views, and installs.
+2. Analyze August 1–2 against August 3–4. Conversion is 34%→16%, a −18-percentage-point change. Search stays at 40% and Browse at 10%, so the within-source rate contribution is zero.
+3. Use Get results to download the decomposition. This is source-mix arithmetic, not evidence of a screenshot treatment effect or paid incrementality.
+
+[ASO templates](/templates) · [CVR definition](/glossary/cvr)
 
 ASO (App Store Optimization) plugs that hole and grows organic installs on top. It has two axes: getting found (visibility) and getting installed (conversion).
 
@@ -29,7 +46,7 @@ Start with how ASO connects directly to ad efficiency. Everyone who clicks an ad
 
 In numbers (illustrative): ads drive 10,000 product page views, and at 30% conversion that is 3,000 installs. Raise conversion to 40% and the same spend produces 4,000. Installs up 33%, CPI down 25%.
 
-Getting the same lift from bids or creative takes far longer. And a store conversion improvement applies to **every channel at once** — paid, organic, and referral traffic all pass through the same page. That is why ASO comes first.
+This example holds spend and page views fixed. Traffic intent and custom product pages may differ by channel, so do not apply one page's improvement equally to every channel.
 
 ## 1. Found — keywords
 
@@ -39,7 +56,7 @@ For your app to appear when someone searches, the store has to associate you wit
 - **Keyword field (iOS) / description text (Android)** — this is where related search terms go.
 - **The rules differ by store** — iOS uses a dedicated keyword field; Google Play matches words in the description. Fill them according to each store's policy.
 
-Judging keywords by rank alone creates an illusion. Ranking first for a term nobody searches adds no installs. Real traffic is **volume × your rank × the click rate at that rank**, and mid-tail terms with clear intent often convert better than the crowded head terms.
+Judging keywords by rank alone creates an illusion. Traffic depends on search volume, actual visibility, and click rate at that position. Multiplying search volume by the numerical rank is not a valid formula. Check search intent and observed install conversion together.
 
 Narrowing the candidate list in this order wastes less time.
 

@@ -27,6 +27,11 @@ function seedNoData() {
   });
 }
 
+function confirmDesign(locale = "ko", share = "50") {
+  fireEvent.change(screen.getByLabelText(locale === "en" ? "Planned Control share (%)" : "계획 Control 배정 비율 (%)"), { target: { value: share } });
+  fireEvent.click(screen.getByRole("checkbox", { name: locale === "en" ? /distinct assigned units/ : /중복 없는 배정 단위/ }));
+}
+
 // A minimal but VALID experiment CSV: readout (is_control/numerator/denominator
 // + arm_id for the mass-readout table) AND holdout (holdout_group/numerator/
 // denominator + spend/revenue_d7) columns coexist so BOTH the "readout" and
@@ -120,6 +125,7 @@ describe("AbTestHoldout render smoke", () => {
     seedWithData({ variantBNumerator: 590, includeVariantC: false });
     render(<AbTestHoldout />);
     fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
+    confirmDesign();
     fireEvent.click(screen.getByText(/다음 검토 약속 만들기/));
 
     expect(screen.getByText("Test 전환율이 Control보다 유의하게 높았습니다")).toBeTruthy();
@@ -155,6 +161,7 @@ describe("AbTestHoldout render smoke", () => {
     seedWithData(numerators);
     render(<AbTestHoldout />);
     fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
+    confirmDesign();
     fireEvent.click(screen.getByText(/다음 검토 약속 만들기/));
 
     expect(screen.getByText(conclusion)).toBeTruthy();
@@ -166,6 +173,7 @@ describe("AbTestHoldout render smoke", () => {
     seedWithData({ variantBNumerator: 500, includeVariantC: false });
     render(<AbTestHoldout locale="en" />);
     fireEvent.click(screen.getByText("② A/B readout · Which side won?"));
+    confirmDesign("en");
     fireEvent.click(screen.getByText(/Schedule the next review/));
 
     expect(screen.getByText("The current sample cannot distinguish the Test and Control conversion rates")).toBeTruthy();
@@ -182,5 +190,15 @@ describe("AbTestHoldout render smoke", () => {
     expect(screen.getByText("대량 검정 (arm_id별)")).toBeTruthy();
     expect(screen.getByText(/2개 variant를 합친 참고값/)).toBeTruthy();
     expect(screen.queryByText(/다음 검토 약속 만들기/)).toBeNull();
+  });
+
+  it.each(["ko", "en"])("withholds the action when observed allocation contradicts the plan (%s)", (locale) => {
+    seedWithData({ variantBNumerator: 590, includeVariantC: false });
+    render(<AbTestHoldout locale={locale} />);
+    fireEvent.click(screen.getByRole("tab", { name: locale === "en" ? /A\/B readout/ : /A\/B 판독/ }));
+    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
+    confirmDesign(locale, "80");
+    expect(screen.getAllByText(locale === "en" ? /Allocation mismatch/ : /배정 비율 이상/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
   });
 });

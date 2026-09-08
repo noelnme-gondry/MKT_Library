@@ -17,6 +17,8 @@ import { localizedTool } from "@/lib/toolConnections";
 import { downloadCsv } from "@/utils/download";
 import { CHART_THEME } from "@/utils/chartUtils";
 import { obfSequentialPlan } from "@/utils/sequentialTest";
+import { sampleRatioMismatch, practicalEquivalence } from "@/utils/experimentQuality";
+import ExperimentDesignCheck from "@/components/ds/ExperimentDesignCheck";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -113,6 +115,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const [anXa, setAnXa] = useState("500");
   const [anNb, setAnNb] = useState("10000");
   const [anXb, setAnXb] = useState("560");
+  const [plannedShare, setPlannedShare] = useState("");
+  const [equivalenceMargin, setEquivalenceMargin] = useState("");
+  const [confirmedDesign, setConfirmedDesign] = useState(null);
   const [ancNa, setAncNa] = useState("2000");
   const [ancMa, setAncMa] = useState("3500");
   const [ancSa, setAncSa] = useState("1200");
@@ -290,6 +295,18 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
       cNum, cDen, tNum, tDen, cRate, tRate, sig, mass,
     };
   }, [csvData]);
+
+  const designSource = activeTab === "readout" ? csvData.raw : "manual";
+  const isDesignConfirmed = confirmedDesign?.source === designSource && confirmedDesign?.tab === activeTab;
+  const hasTwoArms = activeTab !== "readout" || !readoutData?.mass || readoutData.mass.rows.length === 2;
+  const designCounts = activeTab === "readout"
+    ? { nA: readoutData?.cDen, xA: readoutData?.cNum, nB: readoutData?.tDen, xB: readoutData?.tNum }
+    : { nA: num(anNa), xA: num(anXa), nB: num(anNb), xB: num(anXb) };
+  const srm = sampleRatioMismatch({ ...designCounts, plannedShareA: num(plannedShare) / 100, confirmed: isDesignConfirmed && hasTwoArms });
+  const equivalence = practicalEquivalence({ ...designCounts, marginPp: num(equivalenceMargin), confirmed: srm.status === "no_alarm" });
+  const designCheck = <ExperimentDesignCheck locale={locale} share={plannedShare} setShare={setPlannedShare}
+    confirmed={isDesignConfirmed} setConfirmed={(value) => setConfirmedDesign(value ? { source: designSource, tab: activeTab } : null)}
+    margin={equivalenceMargin} setMargin={setEquivalenceMargin} srm={srm} equivalence={equivalence} />;
 
   // ============================================================
   //  Readout bar chart
@@ -630,6 +647,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   </div>
                 </div>
                 <div className="ab-result" id="ab-an-result">
+                  {designCheck}
                   {!analyzeBinary ? null : analyzeBinary.invalid ? (
                     <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{tr("각 그룹 노출 수는 1 이상, 전환 수는 0 ~ 노출 수 범위여야 합니다.", "Each arm's exposure count must be 1 or more, and conversions must be between 0 and the exposure count.")}</p></div></div>
                   ) : (() => {
@@ -650,7 +668,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                                 사용자가 둘을 화해시켜야 하는데, 그건 우리가 할 일이다(§12.14). */}
                             <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{decisionP.toFixed(4)} <PvBadge p={decisionP} locale={locale} /></div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("절대 차이 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(freq.ciLow95 * 100).toFixed(2)}% , {(freq.ciHigh95 * 100).toFixed(2)}% ]</div></div>
-                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 700 }}>{decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(decisionP, liftPositive), fontWeight: 700 }}>{srm.status === "mismatch" ? tr("배정 비율 이상 — 효과 판정 보류", "Allocation mismatch — effect verdict held") : decisionP < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
                           </div>
                           {/* 계산 방법은 접기 한 줄. 근거를 결론과 같은 층에 펴지 않는다(§12.14).
                               문구는 쉬운 말 먼저, 용어는 뒤에(§12.17). */}
@@ -864,6 +882,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("판독할 수 없는 행이 있습니다", "Some rows cannot be read")}</strong><p>{tr(`${readoutData.invalidRows.toLocaleString()}행에서 전환수는 0 이상이고 분모 이하여야 하며, 분모는 0보다 커야 합니다. 원본 값을 수정한 뒤 다시 분석하세요.`, `In ${readoutData.invalidRows.toLocaleString()} row(s), conversions must be between 0 and the denominator, and the denominator must be greater than 0. Correct the source values and analyze again.`)}</p></div></div>
           ) : readoutData && (
             <>
+              {designCheck}
+              {!hasTwoArms && <p>{tr("SRM·동등성 패널은 두 집단 전용입니다. 다중 arm은 개별 배정 계획으로 따로 점검하세요.", "SRM and equivalence here require two arms. Check multi-arm allocation against each arm's planned share separately.")}</p>}
               <section className="block" id="s-readout-sig">
                 <div className="section-head">
                   <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
@@ -879,8 +899,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       grain: "arm",
                       metricDefinitions: [{ key: "conversion-rate-difference", unit: "percentage points" }, { key: "p-value" }, { key: "95% CI" }],
                       engineVersion: "two-proportion-z-test",
-                      status: readoutData.sig ? "COMPLETE" : "ABSTAIN",
-                      warnings: ["Non-significance is inconclusive", ...(readoutData.mass ? ["Holm-adjusted mass-test p-values apply to variants"] : [])],
+                      status: readoutData.sig && srm.status !== "mismatch" ? "COMPLETE" : "ABSTAIN",
+                      warnings: [`Design/SRM: ${srm.status}`, `Practical equivalence: ${equivalence.status}`, "Non-significance is inconclusive", ...(readoutData.mass ? ["Holm-adjusted mass-test p-values apply to variants"] : [])],
                     })}
                   />
                 </div>
@@ -896,7 +916,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   // 결정 초안을 만들지 않는다.
                   const canPrefillDecision = Number.isFinite(s.pValue)
                     && Number.isFinite(s.liftRel)
-                    && testArmCount === 1;
+                    && testArmCount === 1 && srm.status === "no_alarm";
                   const conclusion = isSignificant
                     ? tr(
                         liftPositive ? "Test 전환율이 Control보다 유의하게 높았습니다" : "Test 전환율이 Control보다 유의하게 낮았습니다",
@@ -945,9 +965,10 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       locale={locale}
                       decisionReview={canPrefillDecision}
                       decisionPrefill={canPrefillDecision ? { conclusion, action, metric, baseline, reviewQuestion } : null}
-                      tone={isSignificant ? (liftPositive ? "good" : "bad") : "neutral"}
+                      resultState={srm.status === "mismatch" ? "insufficient" : "ready"}
+                      tone={srm.status === "mismatch" ? "neutral" : isSignificant ? (liftPositive ? "good" : "bad") : "neutral"}
                       title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}
-                      headline={isSignificant
+                      headline={srm.status === "mismatch" ? tr("배정 비율 이상: 효과에 따른 결정 보류", "Allocation mismatch: hold treatment decisions") : isSignificant
                         ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
                         : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
                       points={testArmCount > 1 ? [{
@@ -966,6 +987,11 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       workbookExport={() => ({
                         calculationMode: "exact_after_preprocessing",
                         calculationTables: [{
+                          name: "EXPERIMENT_DESIGN",
+                          title: tr("설계·SRM·동등성 점검", "Design, SRM and equivalence checks"),
+                          rows: [["design_confirmed", "planned_control_share", "srm_status", "srm_p", "alarm_threshold", "equivalence_status", "margin_pp", "lower_90_pp", "upper_90_pp"],
+                            [isDesignConfirmed, num(plannedShare) / 100 || "", srm.status, srm.pValue ?? "", 0.001, equivalence.status, num(equivalenceMargin) || "", equivalence.lowerPp ?? "", equivalence.upperPp ?? ""]],
+                        }, {
                           name: "AB_READOUT",
                           title: tr("Control·Test 두 비율 검정", "Control vs Test two-proportion test"),
                           note: tr("그룹 집계 입력에서 전환율·Lift·z·양측 p를 수식으로 재현", "Recalculates rates, lift, z, and the two-sided p-value from aggregated arm inputs"),

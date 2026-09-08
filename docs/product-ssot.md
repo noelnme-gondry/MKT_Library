@@ -88,7 +88,19 @@ L-02 보조 설명(KO): 표본 부족·변동성·짧은 관찰 기간으로 탐
 
 L-02 detail(EN): Limited samples, variability, or short observation windows can prevent detection; a non-significant result does not prove the absence of an effect.
 
+### 분석 실행 전 점검 (2026-09-08)
+
+- KO: 입력 품질 통과는 설계·인과·모델 건강 검증을 뜻하지 않습니다. 관측 단위와 모형이 도구 전용이면 상세 화면에서 확인한 뒤 분석합니다.
+- EN: Passing input checks does not validate design, causality, or model health. Confirm tool-specific observation units and models in the detailed tool.
+- SRM은 중복 없는 배정 단위와 사전 계획 비율을 사용한 두 집단 Pearson 점검이다. 기대 빈도 5 미만은 보류하고 경고 기준 p<0.001을 공개한다. 경고 없음이 설계 전체의 합격은 아니다. / SRM uses distinct assigned units and a preplanned two-arm allocation; expected counts below 5 are insufficient. The disclosed alarm threshold is p<0.001. No alarm does not validate the entire design.
+- 선택 동등성은 사전 선언한 ±%p 범위와 대표본 90% 구간으로만 판독한다. 양 집단 성공·실패 각각 10건 미만이면 근사 판정을 보류한다. 효과 0의 증명이나 결과를 본 뒤 정하는 허용 범위로 사용하지 않는다. / Optional equivalence compares a predeclared ±percentage-point margin with a large-sample 90% interval, requiring at least 10 successes and failures per arm. It does not prove zero effect; margins must not be selected after reading outcomes.
+
 ### 3.1 AI 답변·외부 프로필 표현 규칙
+
+분석 품질 표시 추가 계약(2026-09-08):
+- KO: ASA는 보고 기간의 전환 성숙도를 확인하지 않으면 조치를 보류한다. 일별 합계로 지연 분포를 추정하지 않는다. Aha는 행동 관측 종료가 선언한 전환 평가 시작보다 이른 열만 개입 후보에 사용하며, 헤더로 실제 이벤트 시점을 검증했다고 주장하지 않는다. MMM의 예산 권고에는 기존 식별·시간순 검증·모델 건강도 실패를 함께 반영한다.
+- EN: ASA holds actions when reporting-period conversion maturity is unconfirmed; daily totals cannot recover a delay distribution. Aha intervention candidates require behavior windows ending before the declared outcome start; headers do not verify actual event timing. MMM budget recommendations incorporate existing identification, time-ordered validation, and model-health failures.
+- 글→도구 퍼널은 GA 사용 가능 시 실제 CTA 클릭의 공개 slug·유형·언어·대상 도구만 세션 저장소에 30분 보관한다. 같은 도구·언어의 업로드/결과 이벤트에만 연결하며 CSV·파일명·헤더·쿼리를 보관하거나 전송하지 않는다. / The editorial funnel keeps only a clicked public slug, content type, locale, and target tool in session storage for 30 minutes when GA is available. Attribution requires the same tool and locale; CSV, filenames, headers, and queries are excluded.
 
 | 분류 | 표현 | 규칙 |
 |---|---|---|

@@ -68,7 +68,12 @@ function requiredMetricKeys(required = [], mapped = new Set(), records = []) {
   const presentMetrics = new Set(records.flatMap((record) => Object.keys(record.metrics || {})));
   return [...new Set(required.flatMap((item) => {
     if (typeof item === "string") return mapped.has(item) && presentMetrics.has(item) ? [item] : [];
-    if (item?.oneOf) return item.oneOf.filter((field) => mapped.has(field) && presentMetrics.has(field)).slice(0, 1);
+    if (item?.oneOf) {
+      const candidates = item.oneOf.filter((field) => mapped.has(field) && presentMetrics.has(field));
+      // Match the engine's valid alternative, e.g. actions when installs are all zero.
+      const usable = candidates.find((field) => records.some((record) => Number.isFinite(record.metrics?.[field]) && record.metrics[field] > 0));
+      return usable ? [usable] : candidates.slice(0, 1);
+    }
     return [];
   }))];
 }

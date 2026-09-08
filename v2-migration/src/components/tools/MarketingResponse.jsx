@@ -1,4 +1,5 @@
 "use client";
+import { mmmDecisionQuality, mmmDecisionQualityMessage } from "@/lib/analysis-results/mmmDecisionQuality";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
 import Link from "next/link";
@@ -1478,6 +1479,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   }, [hasData, csvData, target, mmmMode, bayesianUsePrior, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
 
   const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
+  const decisionHealth = mmm?.health || (mmm?.run ? mmmBayesianHealth(mmm.run) : null);
+  const mmmQuality = mmmDecisionQuality({ run: mmm?.run, health: decisionHealth, notices: mmm?.absorb?.notices });
   const forecastActualMatches = useMemo(() => {
     if (isDemo || !mmm || mmm.empty) return [];
     return findForecastActualMatches(decisionRecords, mmm.panel, effPlatformFilter, mmm.target);
@@ -3656,7 +3659,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const oos = health?.oos?.wmape;
       const warningCount = health?.flags?.length || 0;
       return {
-        tone: warningCount > 0 ? "neutral" : "good",
+        tone: !mmmQuality.budgetEligible || warningCount > 0 ? "neutral" : "good",
         headline: Number.isFinite(oos)
           ? tx(`시간순 검증 오차 ${oos.toFixed(1)}%로 기여를 읽습니다`, `Read contribution with ${oos.toFixed(1)}% time-ordered validation error`)
           : tx("기여 분해 결과와 모델 경고를 함께 확인하세요", "Review contribution together with model warnings"),
@@ -3665,7 +3668,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           { label: tx("모델 경고", "Model warnings"), value: warningCount },
           { label: tx("분석 주", "Weeks"), value: weeks },
         ],
-        point: tx("기여를 확인했으면 미래 예측의 백테스트 신뢰도를 점검하세요.", "After contribution, check forecast backtest reliability."),
+        point: mmmQuality.budgetEligible
+          ? tx("예산 판단의 최소 진단을 통과했습니다. 인과 증명이 아니며 예측 기준모델과 비교한 뒤 작은 변경으로 검증하세요.", "Minimum budget diagnostics passed. This is not causal proof; compare forecast baselines and validate small changes.")
+          : tx(`예산 판단 보류: ${mmmDecisionQualityMessage(mmmQuality, locale)}. 기여값은 탐색용으로만 읽으세요.`, `Budget decision held: ${mmmDecisionQualityMessage(mmmQuality, locale)}. Read contributions as exploratory.`),
         next: "lab",
         nextLabel: tx("미래예측으로", "Next: forecast"),
         evidenceStatus: Number.isFinite(oos)
@@ -3675,7 +3680,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           conclusion: Number.isFinite(oos)
             ? tx(`시간순 검증 오차 ${oos.toFixed(1)}% · 경고 ${warningCount}건`, `Time-ordered validation error ${oos.toFixed(1)}% · ${warningCount} warning(s)`)
             : tx(`모델 경고 ${warningCount}건`, `${warningCount} model warning(s)`),
-          action: warningCount > 0
+          action: !mmmQuality.budgetEligible || warningCount > 0
             ? tx("모델 경고를 해소하기 전 대규모 예산 이동을 보류한다", "Hold large budget moves until model warnings are resolved")
             : tx("기여 상위 채널의 예산 가설을 미래예측에서 검증한다", "Validate the leading channel budget hypothesis in Forecast"),
           hypothesis: tx("시간순 검증과 모델 경고를 함께 지키면 기여도 과신을 줄일 수 있습니다", "Using time-ordered validation and model warnings together reduces overconfidence in contribution"),
@@ -4128,6 +4133,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               toolTitle: stageToolTitle,
               calculationMode: "hybrid_engine_output",
               calculationTables: [{
+                name: "MMM_DECISION_QUALITY",
+                title: tx("예산 판단 근거", "Budget decision evidence"),
+                rows: [["budget_eligible", "hold_reasons", "time_ordered_oos_wmape", "training_coverage_90", "health_warnings"],
+                  [mmmQuality.budgetEligible, mmmQuality.reasons.join(", "), mmmQuality.oosWmape ?? "", mmmQuality.trainingCoverage90 ?? "", mmmQuality.warnings.join(", ")]],
+              }, {
                 name: "MMM_WEEKLY_CONTRIBUTION",
                 title: tx("주별 MMM 기여 분해", "Weekly MMM contribution decomposition"),
                 note: tx("적합·변환·기여값은 엔진 출력이고 주별 기여 합·적합값 재결합·항등식 차이는 수식", "Fit, transforms, and contributions are engine outputs; weekly contribution sum, fitted reconstruction, and identity gap are formulas"),
@@ -4826,7 +4836,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             const controlFitRows = mmmControlFitRows(mmm.panel, mmm.run);
             const identification = mmm.run.identification || {};
             const unresolvedCollinearity = (mmm.absorb?.notices || []).some((notice) => !notice.dropped);
-            const budgetEligible = identification.budgetEligible !== false && !unresolvedCollinearity;
+            const budgetEligible = mmmQuality.budgetEligible && !unresolvedCollinearity;
             const collinearPairKey = (pair) => `${pair.a}|${pair.b}`;
             const highCollinearPairs = (mmm.run.collinear_pairs || [])
               .filter((pair) => pair.a?.startsWith("media_") && pair.b?.startsWith("media_") && Math.abs(pair.corr) >= 0.9);
@@ -5203,11 +5213,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <div className="callout warn">
                   <div className="ico">!</div><div className="body"><strong>{identification.priorScaleConverged === false
                     ? tx("예산 추천 보류 — 잔차분산·prior penalty 반복이 수렴하지 않았습니다", "Budget recommendation paused — residual-scale/prior-penalty iteration did not converge")
-                    : tx("예산 추천 보류 — 채널 효과가 식별되지 않았습니다", "Budget recommendation paused — channel effects are not identified")}</strong><p>{unresolvedCollinearity
+                    : tx(`예산 추천 보류 — ${mmmDecisionQualityMessage(mmmQuality, locale)}`, `Budget recommendation paused — ${mmmDecisionQualityMessage(mmmQuality, locale)}`)}</strong><p>{unresolvedCollinearity
                     ? tx("채널 지출과 구조변화가 거의 같이 움직이지만 어느 변수를 제거할지 지정되지 않았습니다. 앱은 임의로 제거하지 않으며, 독립적인 지출 변동 또는 실험 근거가 필요합니다.", "Channel spend and a regime-change variable move almost identically, but no variable was chosen for removal. The app does not remove one arbitrarily; independent spend variation or experimental evidence is needed.")
                     : identification.priorScaleConverged === false
                       ? tx("잔차분산과 외부 prior penalty가 서로 의존해 고정점으로 반복 계산했지만 안정값에 도달하지 못했습니다. 아래 효과·반응곡선은 진단용으로만 보고 예산 순위에는 쓰지 마세요.", "The fixed-point iteration between residual variance and external-prior penalty did not reach a stable value. Treat the effects and response curves below as diagnostic only, not as a budget ranking.")
-                      : tx("기간 대비 파라미터가 많거나 채널 간 상관이 높아 예산 순위를 신뢰하기 어렵습니다. 아래 반응곡선은 진단용으로만 보세요.", "There are too many parameters for the time span or media correlation is too high to trust a budget ranking. Treat the response curves below as diagnostic only.")}</p></div>
+                      : tx("위 점검 사유를 해결하기 전에는 아래 반응곡선을 진단용으로만 보세요.", "Until the checks above are resolved, treat the response curves below as diagnostic only.")}</p></div>
                 </div>
               ) : ranked.length > 0 ? (
                 <div className="mmm-budget-decision">

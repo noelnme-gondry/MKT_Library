@@ -10,9 +10,9 @@ primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
 answer: "Apple Search Ads(ASA)에서는 검색어 리포트에서 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
 conditions: "설치 3건·탭 8건과 CPT ±10~15%는 이 서비스의 기본 운영 휴리스틱입니다. 계정 규모와 변동성에 맞게 조정하고, 실제 매치 범위·입찰 한도는 현재 Apple Ads 콘솔을 확인하세요."
-reviewedAt: "2026-08-09"
-reviewer: "Growth Opt Playbook"
 sources:
+  - title: "Apple Ads reporting definitions"
+    url: "https://ads.apple.com/app-store/help/reporting/0023-reporting-options-and-definitions"
   - title: "Apple Ads: 키워드 매치 타입"
     url: "https://ads.apple.com/app-store/help/keywords/0059-understand-keyword-match-types"
   - title: "Apple Ads: 키워드 입찰 고려사항"
@@ -24,8 +24,21 @@ faq:
     a: "아닙니다. Exact는 가장 통제가 강한 매치 타입이지만, Apple 안내에 따르면 철자 변형·단복수·어순 변경·번역처럼 가까운 변형에도 매칭될 수 있습니다."
   - q: "예산 소진이 낮으면 CPT를 무조건 올려야 하나요?"
     a: "아닙니다. 목표 CPA를 달성하면서 소진이 낮을 때만 증액 후보입니다. 성과가 나쁘면 검색어와 상품 페이지, 국가, 시즌성을 먼저 확인하세요."
+updated: "2026-09-08"
+reviewedAt: "2026-09-08"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Apple Search Ads(ASA)를 캠페인 하나로 켜면 며칠 뒤 리포트에 브랜드 키워드만 크게 남는 일이 많아요. 원래 앱을 찾던 사람까지 광고로 다시 사 온 결과일 수 있죠. ASA는 앱스토어 검색 상단에서 **의도가 뚜렷한 유저**를 만나는 채널입니다. 그래서 캠페인을 목적별로 나누고, 검색어를 발굴한 뒤 Exact와 입찰가를 조정하는 운영 루프가 필요해요.
+
+## 같은 결과를 재현해 보세요: 성숙도 확인 전후
+
+[합성 검색어 CSV 다운로드](/examples/asa-mature-candidate.csv). Apple export와 비슷한 헤더에 목표 CPA·일일 예산·현재 CPT를 더한 4행 예시입니다. 실제 계정 데이터가 아닙니다.
+
+1. [ASA 도구](/tools/asa-keyword-finder)에 업로드해 Date, Search Term, Taps, Installs, Spend 매핑을 확인하고 분석합니다. 기본 성숙도는 미확인이므로 조치는 보류됩니다.
+2. 이 예시에서만 ‘성숙 기간만 포함’을 선택하세요. 합계 탭 40·설치 12·소진 4,000, CPA 약 333.33, 캠페인 소진율 10%가 됩니다. 목표 CPA 500을 충족해 Exact 후보 1개, 현재 CPT 100에서 115로 조정 후보가 나옵니다.
+3. 결과 CSV·워크북의 quality_status와 권장 CPT를 대조하세요. 실제 파일은 계정 전환 지연을 확인하지 않고 성숙으로 선언하면 안 됩니다. 탭 기여 설치와 조회 포함 설치도 섞지 마세요.
+
+[입력 템플릿](/templates) · [CPA 정의](/glossary/cpa). 후보 생성은 통계적 효과 검정이 아닙니다.
 
 ## 캠페인 구조
 
@@ -84,7 +97,7 @@ Exact는 “성과가 좋아 보이는 단어”를 옮기는 곳이 아니라, 
 
 ## 브랜드 키워드, 증분 확인하세요
 
-브랜드 캠페인이 제일 헷갈려요. CPA가 싸서 좋아 보이지만, **그 설치가 광고 없이도 왔을 설치**일 수 있어요. 정말 증분이 있는지는 [증분 분석](/tools/incrementality)으로 일부 껐다 켜보며 확인하는 게 정석이에요.
+브랜드 캠페인의 낮은 CPA만으로 증분을 알 수는 없습니다. 가능하면 비교군·기간·검정력을 사전에 정한 [증분 분석](/tools/incrementality)으로 검토하세요. 단순 중단 뒤 설치가 줄지 않았다는 사실은 효과 없음의 증명이 아닙니다. 계절성·다른 광고·추적 변경과 불확실성도 확인해야 합니다.
 
 ## 정직하게
 

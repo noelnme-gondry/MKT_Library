@@ -6,6 +6,34 @@ afterEach(() => {
 });
 
 describe("privacy-safe product analytics", () => {
+  it("attributes upload and results only to the clicked tool and locale within 30 minutes", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: (key) => values.get(key), setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    } };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+    const route = { tool_id: "5-26", locale: "ko", source: "csv" };
+    trackProductEvent("blog_tool_cta_clicked", {
+      ...route, content_slug: "apple-search-ads-guide", content_type: "blog",
+      file_name: "secret.csv", raw_value: "private",
+    });
+    expect(JSON.stringify([...values.values()])).not.toMatch(/secret|private|file_name/);
+    for (const name of ["data_import_success", "analysis_completed"]) {
+      trackProductEvent(name, route);
+      expect(window.gtag.mock.lastCall[2].content_slug).toBe("apple-search-ads-guide");
+    }
+    for (const params of [{ ...route, tool_id: "5-27" }, { ...route, locale: "en" }, { ...route, source: "demo" }]) {
+      trackProductEvent("analysis_completed", params);
+      expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    }
+    clock.mockReturnValue(1_802_000);
+    trackProductEvent("analysis_completed", route);
+    expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    expect(values.size).toBe(0);
+    clock.mockRestore();
+  });
+
   it("buckets time to first result without sending an exact timestamp", () => {
     expect(productElapsedBucket(30_000)).toBe("under_1m");
     expect(productElapsedBucket(120_000)).toBe("1_3m");

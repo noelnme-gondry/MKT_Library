@@ -2,7 +2,6 @@
 title: "Google UAC Optimization: Bids, Assets, and Events"
 description: "The levers a marketer actually controls inside an automated Google App Campaign — bidding, assets, and conversion events."
 date: "2026-07-15"
-updated: "2026-08-17"
 slug: "google-uac-optimization"
 keywords: "Google UAC, Google App Campaigns, UAC optimization, App Campaign, UAC bidding, tCPA tROAS, app install ads, Google app ads setup, UAC learning phase, UAC assets"
 tags: ["UAC", "UA"]
@@ -11,15 +10,21 @@ faq:
   - q: "What can I actually adjust in UAC?"
     a: "Campaign structure, bid-stage progression, and asset group diversity. Targeting and placements are decided by the system, so those three levers deserve your time instead."
   - q: "In what order should I move bid stages?"
-    a: "Fill learning on install optimization first, then move to in-app actions, then to ROAS. Skipping a stage resets learning and you start accumulating from zero again."
+    a: "Install, action, and value bidding are not a mandatory progression. Choose using the business goal, valid conversion volume and value data, and the strategy's current requirements. Allow for learning and conversion delay after a change."
   - q: "How often can I change budgets or target costs?"
-    a: "One change at a time, with enough space between changes for learning to settle. Larger changes mean longer relearning, so small adjustments beat sharp ones. Touch it daily and the campaign lives permanently in a learning state."
+    a: "Record changes and conversion delay, and allow observation time between major changes. Change frequency alone does not establish permanent learning or a complete reset. Check current strategy guidance and console status together."
   - q: "Should I rebuild a poorly performing campaign from scratch?"
-    a: "Usually not. A new campaign restarts accumulated learning at zero. Consider rebuilding only after goal and asset adjustments have failed, or when the structure itself is wrong."
+    a: "Diagnose tracking, goals, budget, and assets first. A new campaign needs a learning period, but that does not prove all system learning is reset to zero. Define the structural reason and comparison criteria before rebuilding."
+updated: "2026-09-08"
+reviewedAt: "2026-09-08"
+reviewer: "Codex (AI-assisted editorial audit)"
+sources:
+  - title: "Google App campaigns Maximize conversions"
+    url: "https://support.google.com/google-ads/answer/16550675?hl=en"
 ---
 Google UAC (App Campaigns) lets the algorithm decide most of the placements, targeting, and bidding. "So what does the marketer even do?" is the natural question. There are clear levers — and knowing which ones they are, and leaving the rest alone, is the heart of running UAC.
 
-Put the other way: spending time trying to control what you cannot control is the most common waste in UAC. Pulling placement-level reports and asking to exclude specific inventory mostly goes nowhere in this campaign structure.
+Placement selection is automated, but available exclusions and brand-suitability settings depend on campaign type and the current console. Automation does not mean that every placement control is unavailable.
 
 ## Three controllable levers
 
@@ -31,7 +36,7 @@ Put the other way: spending time trying to control what you cannot control is th
 
 The goal you set changes who the algorithm brings. Run tCPI only and it installs cheap and plenty — with plenty of non-buyers mixed in. When you can, drop down to an [action or revenue goal (tCPA, tROAS)](/blog/performance-marketing-metrics).
 
-But do not skip stages. The further down you go, the sparser the signal the algorithm has to learn from. Jump straight to tROAS while you are getting a handful of conversions a day and there is nothing to learn on, so delivery becomes unstable. Build volume on installs → narrow to in-app actions → move to revenue is the safe order.
+Install → action → value is not a mandatory progression. Choose for the goal and the quantity and quality of conversion signals. App campaigns now also offer Maximize conversions for installs or in-app actions and Maximize conversion value. Distinguish how they spend the budget from the CPI, CPA, or ROAS they may achieve; those outcomes are not guaranteed.
 
 ### 2. Assets (creative)
 
@@ -45,15 +50,15 @@ When you retire low performers, don't swap them all at once — replace the bott
 
 The algorithm learns from the conversion events you define. If your event design and tracking are a mess, the algorithm optimizes in the wrong direction — give it a bad signal and it works hard to bring the wrong users. [Event taxonomy](/guide/event-taxonomy) and postback integration are the hidden foundation of UAC performance.
 
-Keep the optimization event single. Optimizing toward several events at once splits the signal and slows learning on each. And if the chosen event fires too rarely — a handful a day — learning cannot function at all; in that case move one step earlier in the funnel and optimize there instead.
+Choose event scope by strategy. Google's Maximize conversions guidance specifies one install event, recommends one or two similarly valued in-app actions, and supports multiple value events for Maximize conversion value. With sparse events, check missing tracking and reporting delay first, and verify that any earlier-funnel substitute represents business value.
 
 <!-- CONTENT_ACTION -->
 
 ## What not to touch
 
-Touch it too often when performance wobbles a little and you [reset the learning](/blog/ad-machine-learning). Change bids, budgets, and assets daily and the algorithm stays "learning" forever. Change one thing at a time and give it a learning window (usually several days) before judging.
+Changing several settings whenever performance moves makes diagnosis harder. Account for [ad learning](/blog/ad-machine-learning) and conversion delay, record a hypothesis and change date, and allow enough observation time.
 
-Rebuilding the campaign is the same trap. Creating a fresh campaign when results disappoint feels intuitive, but it resets accumulated learning to zero. Reserve it for when goal and asset adjustments have demonstrably failed, or the structure itself is wrong.
+New campaigns need learning and comparison time. Rebuilding is not a diagnosis: first document the structural problem that existing settings cannot resolve and the metric for checking the change.
 
 Detailed setup is in the [Google UAC guide](/guide/google-uac).
 
@@ -61,7 +66,7 @@ Detailed setup is in the [Google UAC guide](/guide/google-uac).
 
 Pick one campaign, open the last 30 days, and check two things.
 
-First, **count how many changes you made in those 30 days** — budget, target cost, and asset changes combined. More than twice a week and the campaign is likely living in a permanent learning state. The cause of weak performance may be the change frequency rather than the settings.
+First, record the date, size, and target of changes in the last 30 days. Compare console learning status and mature conversion trends, not just the number of edits. More than two changes a week alone does not establish a learning failure.
 
 Second, count the daily volume of your optimization event. If it is too low, no amount of goal tuning gives the algorithm something to learn. Moving one step earlier in the funnel to build volume, then stepping back down, is usually faster.
 
@@ -69,4 +74,4 @@ Second, count the daily volume of your optimization event. If it is too low, no 
 
 UAC is a black box — you can't fully know "why it went to this user." Focus on the controllable levers (goal, assets, events), and confirm real incrementality not with console metrics but with a [holdout](/tools/incrementality). The conversions the platform reports have users who'd have come without the ad mixed in.
 
-Note too that UAC conversions pass through Google's own attribution model. Numbers differing from other channels and your MMP is normal — it is a difference in counting rules, not one side being wrong. Why those gaps appear is covered in [attribution data mismatch](/blog/attribution-data-mismatch).
+UAC conversions use Google's attribution rules. A discrepancy with an MMP can reflect different definitions or tracking errors. Start with the definition, window, and deduplication checks in [attribution data mismatch](/blog/attribution-data-mismatch).
