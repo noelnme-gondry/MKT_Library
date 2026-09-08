@@ -11,6 +11,18 @@ import { useAppStore } from "@/store/useDataStore";
 import Incrementality from "@/components/tools/Incrementality";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
+function declareDesign(locale = "ko") {
+  const en = locale === "en";
+  for (const [label, value] of [
+    [en ? "Assignment / observation unit" : "배정·관측 단위", "person"],
+    [en ? "Comparison design" : "비교 설계", "randomized"],
+    [en ? "Window and stopping rule" : "기간·중단 규칙", "planned"],
+    [en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경", "none"],
+  ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  const counts = screen.queryByLabelText(en ? "Independent counts across the full window" : "전체 기간의 독립 단위 집계");
+  if (counts) fireEvent.change(counts, { target: { value: "unique" } });
+}
+
 const EMPTY = { raw: [], headers: [], mapping: {}, fileName: "" };
 
 function seed(slice) {
@@ -81,18 +93,37 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(tabs[1].id);
   });
 
+  it.each(["ko", "en"])("withholds undeclared and contaminated designs, and resets declarations when the window changes (%s)", (locale) => {
+    seed(asRealResult(buildIncrSuppressionDemo(), "design-result.csv"));
+    render(<Incrementality locale={locale} />);
+    const en = locale === "en";
+    fireEvent.change(screen.getByLabelText(en ? "Holdout start date" : "홀드아웃 시작일"), { target: { value: "2024-05-12" } });
+    fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-05" } });
+    expect(screen.getByText(en ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
+    declareDesign(locale);
+    expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(en ? "Window and stopping rule" : "기간·중단 규칙"), { target: { value: "changed" } });
+    expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
+    declareDesign(locale);
+    fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } });
+    expect(screen.getByLabelText(en ? "Comparison design" : "비교 설계").value).toBe("");
+    expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
+  });
+
   it("mounts with a suppression fixture → 결론 카드 + 다운로드", () => {
     seed(asRealResult(buildIncrSuppressionDemo(), "suppression-result.csv"));
     const { container } = render(<Incrementality />);
-    expect(screen.queryByText(/결론 — 광고가 만든 순증분/)).toBeNull();
+    expect(screen.queryByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeNull();
     expect(screen.getByText("홀드아웃 기간을 먼저 지정하세요")).toBeTruthy();
-    const selects = container.querySelectorAll("select");
+    const selects = container.querySelectorAll("select.map-select");
     fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
     fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
-    expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
+    expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(screen.getAllByText(/결과 받기/).length).toBeGreaterThan(0);
     expect(container.querySelector("#s-incr-method")).toBeTruthy();
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
+    declareDesign();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/무작위 홀드아웃.*재검증/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toMatch(/×$/);
 
@@ -111,11 +142,11 @@ describe("Incrementality render smoke", () => {
   it("shows a demo result without offering to save a review promise", () => {
     seed(buildIncrSuppressionDemo());
     const view = render(<Incrementality />);
-    const selects = view.container.querySelectorAll("select");
+    const selects = view.container.querySelectorAll("select.map-select");
     fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
     fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
 
-    expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
+    expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(view.container.querySelector(".decision-review")).toBeNull();
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
@@ -127,13 +158,13 @@ describe("Incrementality render smoke", () => {
     fireEvent.click(on.getByText(/신규 켜기 \(전후\)/));
     expect(on.queryByText(/결론 — 신규/)).toBeNull();
     expect(on.getByText("전환 시점을 먼저 지정하세요")).toBeTruthy();
-    fireEvent.change(on.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(on.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
     expect(on.getByText(/결론 — 신규/)).toBeTruthy();
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);
     fireEvent.click(off.getByText(/종료 \(전후\)/));
-    fireEvent.change(off.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(off.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
     expect(off.getByText(/결론 — 종료/)).toBeTruthy();
   });
 
@@ -141,7 +172,7 @@ describe("Incrementality render smoke", () => {
     seed(buildIncrPrepostDemo("on"));
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
     expect(view.getByText(/결론 — 신규/)).toBeTruthy();
     fireEvent.click(view.getByText(/종료 \(전후\)/));
     expect(view.getByText("전환 시점을 먼저 지정하세요")).toBeTruthy();
@@ -152,8 +183,9 @@ describe("Incrementality render smoke", () => {
     seed(asRealResult(buildIncrPrepostDemo("on"), "did-result.csv"));
     const view = render(<Incrementality locale="en" />);
     fireEvent.click(view.getByText(/New launch \(pre\/post\)/));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
 
+    declareDesign("en");
     expect(screen.getByLabelText("What will change?").value).toMatch(/limited follow-up window/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
@@ -173,8 +205,9 @@ describe("Incrementality render smoke", () => {
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
     fireEvent.click(screen.getByRole("checkbox", { name: /DiD/ }));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
 
+    declareDesign();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/대조군.*DiD.*재검증/);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
     const saved = useAppStore.getState().decisionRecords.at(-1);
@@ -200,9 +233,10 @@ describe("Incrementality render smoke", () => {
       fileName: "imbalanced-holdout.csv",
     });
     const view = render(<Incrementality />);
-    fireEvent.change(view.container.querySelectorAll("select")[0], { target: { value: "2024-01-02" } });
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-01-03" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[0], { target: { value: "2024-01-02" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-01-03" } });
 
+    declareDesign();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/확대하지 않고.*재설계/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
@@ -216,9 +250,9 @@ describe("Incrementality render smoke", () => {
   it("does not infer a review action when pre-holdout balance is unavailable", () => {
     seed(buildIncrSuppressionDemo());
     const view = render(<Incrementality />);
-    fireEvent.change(view.container.querySelectorAll("select")[0], { target: { value: "2024-05-01" } });
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-02" } });
-    expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[0], { target: { value: "2024-05-01" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-02" } });
+    expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
   });
 
@@ -244,7 +278,7 @@ describe("Incrementality render smoke", () => {
     });
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-01-03" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-01-03" } });
     expect(view.getByText(/DiD를 추정할 수 없습니다/)).toBeTruthy();
     expect(view.queryByText(/결론 — 신규/)).toBeNull();
   });
@@ -260,7 +294,7 @@ describe("Incrementality render smoke", () => {
     seed({ raw, headers: ["date", "group", "conversions"], mapping: {}, fileName: "continuing-pretrend.csv" });
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-01-11" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-01-11" } });
     expect(view.getByText(/NOT_IDENTIFIED/)).toBeTruthy();
     expect(view.getByText(/평행추세 가정이 깨져/)).toBeTruthy();
     expect(view.queryByText(/결론 — 신규/)).toBeNull();
@@ -281,7 +315,7 @@ describe("Incrementality render smoke", () => {
     });
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
-    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+    fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
     expect(view.getByText("선택한 데이터에 사용할 수 없는 행이 있어 분석을 중단했습니다")).toBeTruthy();
     expect(view.getByText(/잘못된 날짜 1행 · 비어 있거나 숫자가 아닌 지표 1행/)).toBeTruthy();
     expect(view.queryByText(/결론 — 신규/)).toBeNull();
@@ -298,6 +332,6 @@ describe("Incrementality render smoke", () => {
     });
     render(<Incrementality />);
     expect(screen.getByText("증분을 계산할 수 없는 행이 있습니다")).toBeTruthy();
-    expect(screen.queryByText(/결론 — 광고가 만든 순증분/)).toBeNull();
+    expect(screen.queryByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeNull();
   });
 });
