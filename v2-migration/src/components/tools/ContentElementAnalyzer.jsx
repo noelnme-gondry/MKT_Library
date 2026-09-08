@@ -1033,8 +1033,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               )}</p>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
                 <div>
-                  <label style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tr("반복 단위 열", "Repeated-unit column")}</label>
-                  <select className="map-select" style={{ marginTop: "6px" }} value={clusterColumn} onChange={(event) => { setClusterColumn(event.target.value); setMixedRun({ status: "idle", signature: null, result: null }); }}>
+                  <label htmlFor="content-repeated-unit" style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tr("반복 단위 열", "Repeated-unit column")}</label>
+                  <select id="content-repeated-unit" className="map-select" style={{ marginTop: "6px" }} value={clusterColumn} onChange={(event) => { setClusterColumn(event.target.value); setMixedRun({ status: "idle", signature: null, result: null }); }}>
                     <option value="">{tr("선택 안 함", "None")}</option>
                     {clusterCandidates.map((header) => <option key={header} value={header}>{header}</option>)}
                   </select>
@@ -1171,12 +1171,14 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </details>
 
           {/* 예측 모델 비교는 핵심 연관 해석을 다 읽은 뒤 필요한 사람만 본다. */}
-          <WebRRandomForestPanel
+          {clusterColumn ? <aside className="callout warn" role="status">
+            <p>{tr("반복 단위 선언: 예측 모델 비교 보류. 같은 단위가 학습·검증에 함께 들어갈 수 있어 행 무작위 교차검증의 승자는 표시하지 않습니다. 단위별 분리 검증이 필요하며 위 혼합모형 적합이 이를 대신하지 않습니다.", "Repeated units declared: predictive comparison held. Random row validation can put the same unit in training and validation, so no predictive winner is shown. Validation must separate units; the mixed-model fit above does not replace that check.")}</p>
+          </aside> : <WebRRandomForestPanel
             fit={fit}
             signature={analyzedSig}
             locale={locale}
             source={isDemo ? "demo" : csvData?.importSource || "csv"}
-          />
+          />}
         </>
       )}
     </div>

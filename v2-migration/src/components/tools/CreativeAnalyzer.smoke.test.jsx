@@ -153,6 +153,16 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(screen.queryByText("데이터 준비")).toBeTruthy();
   });
 
+  it.each(["ko", "en"])("does not label low-exposure creatives healthy (%s)", (locale) => {
+    seedWithData();
+    const csv = useAppStore.getState().csvData;
+    const slice = { ...csv, raw: csv.raw.map((row) => ({ ...row, Impr: 2, Clicks: 0, Installs: 0 })) };
+    useAppStore.setState({ csvData: slice, csvGroups: { ...useAppStore.getState().csvGroups, creative: slice } });
+    const { container } = render(<CreativeAnalyzer locale={locale} />);
+    expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "6 held for insufficient exposure or history" : "근거 부족으로 보류 6개");
+    expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "Insufficient data is not a healthy verdict" : "데이터 부족을 건강함으로 판정하지 않습니다");
+  });
+
   it("mounts without throwing with a valid seeded CSV", () => {
     seedWithData();
     let container;

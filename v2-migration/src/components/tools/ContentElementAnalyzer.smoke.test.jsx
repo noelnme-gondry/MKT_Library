@@ -318,6 +318,25 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(oddsNote.textContent).toMatch(/인과효과가 아닙니다/);
   });
 
+  it.each(["ko", "en"])("withdraws row-wise predictive winners after repeated units are declared (%s)", async (locale) => {
+    seedWithBinaryOutcome();
+    const csv = useAppStore.getState().csvData;
+    const slice = { ...csv, raw: csv.raw.map((row, index) => ({ ...row, post_id: `unit${index % 20}` })) };
+    useAppStore.setState({ csvData: slice, csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice } });
+    const { container } = render(<ContentElementAnalyzer locale={locale} />);
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "converted" } });
+    for (const name of ["title_has_number", "title_len"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      if (!button.classList.contains("active")) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "▶ Analyze" : "▶ 분석하기" }));
+    await screen.findByText(locale === "en" ? "Predictive-accuracy winner: Random Forest" : "예측 정확도 승자: Random Forest");
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Repeated-unit column" : "반복 단위 열"), { target: { value: "post_id" } });
+    expect(screen.getByText(locale === "en" ? /Repeated units declared: predictive comparison held/ : /반복 단위 선언: 예측 모델 비교 보류/)).toBeTruthy();
+    expect(container.querySelector("#s-content-webr-random-forest")).toBeNull();
+    expect(screen.queryByRole("radio", { name: /Random Forest/ })).toBeNull();
+  });
+
   it("automatically compares Random Forest, selects its win, and keeps both model choices", async () => {
     seedWithBinaryOutcome();
     const { container } = render(<ContentElementAnalyzer />);
