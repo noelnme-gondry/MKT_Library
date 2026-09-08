@@ -1,3 +1,5 @@
+import { getToolSearchContent } from "@/lib/toolSearchContent";
+import { ANALYSIS_CONTRACTS } from "@/lib/analysis-router/evaluateEligibility";
 import { analysisCatalogEntry } from "./analysisCatalog";
 
 const CONFIRMATION_STATES = new Set(["must_confirm", "SUGGEST", "UNKNOWN"]);
@@ -48,12 +50,12 @@ function profileProblems(entry, profile = {}) {
     problems.push({ code: "grain_mismatch", expected: entry.supportedGrains, current: grain });
   }
 
-  // 무거운 주간 모델은 데이터가 있어도 짧은 기간을 의사결정 용도로 포장하지 않는다.
-  if (["5-18-mmm", "5-18-forecast"].includes(entry.toolId) && periodCount > 0 && periodCount < 12) {
-    problems.push({ code: "min_periods", required: 12, current: periodCount });
+  const contract = ANALYSIS_CONTRACTS[entry.toolId];
+  if (contract && (profile.rowCount != null || profile.rows != null) && rowCount < contract.minRows) {
+    problems.push({ code: "min_rows", required: contract.minRows, current: rowCount });
   }
-  if (["5-21", "5-22", "5-3", "9-6"].includes(entry.toolId) && periodCount > 0 && periodCount < 2) {
-    problems.push({ code: "insufficient_time_variation", current: periodCount });
+  if (contract && (profile.periodCount != null || profile.periods != null) && periodCount < contract.minPeriods) {
+    problems.push({ code: "min_periods", required: contract.minPeriods, current: periodCount });
   }
   if (entry.toolId === "5-28" && profile.validEpisodeCount != null && profile.validEpisodeCount < 2) {
     problems.push({ code: "min_valid_episodes", required: 2, current: profile.validEpisodeCount });
@@ -69,7 +71,7 @@ function copyMode(entry, hasMappingConfirmation, confirmedDesign) {
 
 // UI/스토어와 분리된 단일 도구 판정. empty profile은 "데이터 없음"을 날조하지
 // 않기 위해 blocked이며, profile을 생략하면 구조 계약만 검사한다.
-export function evaluateAnalysisEligibility({ toolId, mapping = {}, mappingContract = null, profile = {}, confirmedDesign = false } = {}) {
+export function evaluateAnalysisEligibility({ toolId, mapping = {}, mappingContract = null, profile = {}, confirmedDesign = false, locale = "ko" } = {}) {
   const entry = analysisCatalogEntry(toolId);
   if (!entry) return { toolId, status: "blocked", blockers: [{ code: "not_declared" }], missing: [], requiresConfirmation: [] };
 
@@ -112,7 +114,7 @@ export function evaluateAnalysisEligibility({ toolId, mapping = {}, mappingContr
       ...(status === "confirm_design" ? entry.confirmationRequirements : []),
       ...(status === "confirm_model" ? entry.confirmationRequirements : []),
     ],
-    recommendationReason: entry.decisionQuestion,
+    recommendationReason: getToolSearchContent(toolId, locale)?.question || entry.decisionQuestion,
   };
 }
 

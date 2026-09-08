@@ -1,6 +1,6 @@
 ---
 title: "Ad Machine Learning: Why CPA Spikes and How to Operate"
-description: "Misread the learning phase and your budget leaks. Why CPA bounces, why touching a campaign resets it, and why the early numbers mislead."
+description: "Misread the learning phase and your budget leaks. Why CPA bounces, how changes affect evaluation, and why the early numbers mislead."
 date: "2026-07-13"
 slug: "ad-machine-learning"
 keywords: "ad machine learning, learning phase, campaign learning, auto-bidding, campaign budget optimization, CBO, why CPA fluctuates during learning phase, when to leave a campaign alone, ad learning phase, learning phase reset, how automated bidding works"
@@ -8,10 +8,13 @@ tags: ["Automation", "Machine Learning"]
 draft: false
 faq:
   - q: "Should I avoid touching campaigns during learning?"
-    a: "Large budget or bid changes reset learning. But an outright misconfiguration — the wrong conversion event, a mistyped region — is better fixed immediately. Protecting the learning phase while it trains on a wrong signal costs more."
+    a: "Large budget or bid changes may affect learning status; this does not mean all historical data is deleted. But an outright misconfiguration — the wrong conversion event, a mistyped region — is better fixed immediately. Protecting the learning phase while it trains on a wrong signal costs more."
   - q: "If CPA spikes, should I cut budget right away?"
     a: "Separate the cause first. Learning restarts, rising competition, creative fatigue, and broken conversion tracking each need a different response. Cutting budget on a tracking bug kills a healthy campaign."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 "It's probably still in the learning phase" — half true, half dangerous. Misunderstand the learning phase and you make one of two mistakes: overreacting to the wild swings during learning, or waiting forever assuming "it'll get better once learning finishes." Both leak budget.
 
@@ -21,13 +24,13 @@ Today, let's really look at what ad machine learning is actually doing — when 
 
 First, what's actually happening during the learning phase.
 
-When you turn on a new ad set, the algorithm knows nothing. Who buys your product, what time of day gets the best response, which placement converts. So it **test-fires** — at this person, that person, this placement, that placement.
+A new ad set explores performance under its conditions; that does not mean the platform uses no previous learning. Who buys your product, what time of day gets the best response, which placement converts. So it **test-fires** — at this person, that person, this placement, that placement.
 
-When a conversion comes in, it learns "ah, this kind of person buys." Once enough data piles up, it starts concentrating delivery on that pattern. That's when performance stabilizes.
+When a conversion comes in, it learns "ah, this kind of person buys." Once enough data piles up, it starts concentrating delivery on that pattern. Performance may stabilize, but improvement is not guaranteed.
 
-Meta sets the condition for finishing this learning at "50 optimization events within 7 days." If a target conversion hits 50 within 7 days of an ad set being newly published or edited, learning is considered complete. Miss that threshold and you stay in "learning limited" status.
+Check completion criteria for the platform, goal and campaign type. A fixed event count is not a universal passing threshold or a guarantee of stable performance.
 
-What matters isn't the number itself — it's **why 50.** You need a sample to detect a pattern. Three conversions isn't enough to build a rule like "this kind of person buys." Could be coincidence. This is exactly the same principle as sample size in [A/B testing](/en/blog/ab-testing). Machine or human, thin data means no judgment.
+What matters is whether the signals are sufficient and valid. You need a sample to detect a pattern. Three conversions isn't enough to build a rule like "this kind of person buys." Could be coincidence. [A/B testing](/en/blog/ab-testing) also needs adequate samples, but statistical power and platform learning completion are different criteria. Machine or human, thin data means no judgment.
 
 (Note: this threshold differs by platform and the policy changes over time. Check the official docs for whatever platform you're running on.)
 
@@ -35,31 +38,29 @@ What matters isn't the number itself — it's **why 50.** You need a sample to d
 
 This is the first trap.
 
-![A graph of CPA over time across the learning and learning-complete phases. During learning, CPA swings wildly with repeated "ooh nice!" and "oh no!" moments; once it hits 50 conversions and learning finishes, CPA converges to a stable line.](/blog-assets-en/ad-machine-learning/learning-phase-timeline.svg)
 
-CPA bounces wildly during learning. Makes sense — the algorithm is still firing at random. Some days it happens to hit people who were going to buy anyway and CPA looks great. Other days it fires at the wrong people and CPA looks terrible.
+CPA bounces wildly during learning. Makes sense — exploration, reporting delay and sparse samples may all contribute. Some days it happens to hit people who were going to buy anyway and CPA looks great. Other days it fires at the wrong people and CPA looks terrible.
 
 You should not make decisions based on these bouncing numbers. But that's not how human psychology works. CPA spikes for two days and your hand reaches for the dial — cut the budget, change the audience, swap the creative.
 
 So what happens then?
 
-## The moment you touch it, learning resets
+## Major changes require time to reassess
 
-This is the core of it. Change the ad title, audience, budget, or optimization goal, and learning resets. All the learning data collected so far is wiped, and it starts over from scratch.
+Learning status can change depending on the type and size of an edit. Not every edit triggers a reset, and a status change does not mean historical data was erased. Compare change history with the actual console state.
 
 So here's the loop: CPA looks bad because it's still learning → you touch it → learning resets → CPA looks bad again because it's learning again → you touch it again → repeat forever.
 
-Learning never finishes. And that account never gets to see the algorithm's actual performance.
+Repeated changes make comparisons harder; they do not prove that learning can never finish.
 
-![A circular diagram of the loop where learning never finishes. Targeting too narrow or budget split too thin across ad sets, leading to conversions falling short of 50, leading to being stuck in "learning limited" status, leading to efficiency looking bad so you tweak it again, leading to learning resetting, and back to the start. The way out: merge ad sets, widen the targeting, and just leave it alone.](/blog-assets-en/ad-machine-learning/learning-reset-loop.svg)
 
 Layer a structural problem on top of this, and the vicious cycle completes itself.
 
-Ad sets split too thin. Say you split a ₩1M budget across 10 ad sets, ₩100K each. Each set needs to hit 50 conversions within 7 days — is a ₩100K set going to produce 50? No. All ten stay stuck in learning limited, forever. Consolidate into 2 sets at ₩500K each instead, and both finish learning.
+Splitting ad sets can leave sparse signals per set. For illustration, a seven-day budget of ₩1M at CPA ₩10K implies 100 conversions: 10 each across ten equal sets, or 50 each across two. This assumes unchanged CPA and does not guarantee learning completion or improved performance.
 
-Targeting too narrow. Too-narrow targeting gets in the way of learning. Fewer people to reach means conversions don't pile up, and you never hit 50. The intuition that "narrower targeting = more precise" backfires here. This connects directly to what we covered in [broad vs. narrow targeting](/en/blog/audience-broad-vs-narrow).
+Targeting too narrow. Too-narrow targeting gets in the way of learning. Fewer people to reach means conversions don't pile up, and signals may be sparse. The intuition that "narrower targeting = more precise" backfires here. This connects directly to what we covered in [broad vs. narrow targeting](/en/blog/audience-broad-vs-narrow).
 
-Target conversion too rare. If purchases only happen twice a day, and you set "purchase" as the optimization goal, that's 14 in 7 days — nowhere near 50. One fix here is stepping the goal back one stage (add-to-cart instead of purchase) to gather enough data.
+Target conversion too rare. If purchases only happen twice a day, and you set "purchase" as the optimization goal, that's 14 in 7 days; check whether this is sufficient for the current strategy. One fix here is stepping the goal back one stage (add-to-cart instead of purchase) to gather enough data.
 
 ## So how long do you have to wait?
 
@@ -69,11 +70,11 @@ Using the learning phase as an excuse to wait indefinitely also wastes budget. I
 
 Here's a simple way to set the bar.
 
-**While it's learning** — don't touch it. At least not until learning finishes, unless it's genuinely bleeding money badly. And "badly" here means spend running away at a rate you truly can't afford — not just CPA bouncing for a day or two.
+**While learning** — avoid changing several settings because of short-term variation alone. Fix tracking errors, wrong regions and unaffordable spend promptly; evaluate performance against the planned window and conversion delay.
 
 **Once learning finishes** — now you can judge. See how the stabilized CPA compares to your target, and if it's bad, that's when you touch it.
 
-**If learning never finishes** — this isn't a patience problem anymore, it's a **structural** one. Consolidate sets, widen targeting, or change the target conversion. It won't resolve itself just by waiting.
+**If learning persists** — check signal volume, tracking, bid constraints, demand and structure. Consolidation, expansion or goal changes are options when the diagnosis and business objective support them.
 
 ## Being honest about this: don't assume "it's the learning phase" by default
 
@@ -83,7 +84,7 @@ CPA is bad, and it happens to be in the learning phase. Is it because of learnin
 
 The creative could've been weak during that same window. The landing page could've been broken. Targeting could've been off. Being in learning means "**it's too early to judge**," not "it's guaranteed to get better if you wait." Those are completely different things.
 
-In practice, plenty of ad sets finish learning and CPA is still bad. In that case, the creative or targeting was the problem from the start — the learning phase just delayed the diagnosis.
+In practice, plenty of ad sets finish learning and CPA is still bad. Check pricing, competition, measurement and conversion delay as well as creative and targeting.
 
 So what to do during learning isn't "pray and wait" — it's "hold off on judgment, but prepare your next move." Line up more creative candidates, check the landing page. That way, if it's still bad once learning finishes, you can play your next card immediately.
 
@@ -107,7 +108,7 @@ Once learning finishes, the algorithm concentrates delivery on people it's judge
 
 Someone who already decided to buy your product has a high conversion probability. From the algorithm's view, that's the ideal target — show them the ad, the conversion fires. But that person would have bought anyway, ad or no ad.
 
-The algorithm doesn't make this distinction. It was never designed to. It's optimized for "find people likely to convert," not "maximize the incremental lift the ad actually created."
+An attributed-conversion result alone does not establish incremental lift. Platform optimization methods can differ; check incrementality with an independent experiment.
 
 So even a great CPA on a cleanly-trained campaign shouldn't be taken at face value. How much of it is real incrementality is something you have to measure separately with a [holdout experiment](/en/blog/incrementality-measurement). This is the ad-specific version of [not mixing up correlation and causation](/en/blog/correlation-vs-causation).
 
@@ -115,9 +116,9 @@ So even a great CPA on a cleanly-trained campaign shouldn't be taken at face val
 
 Count how many ad sets in your account haven't finished learning. Most platforms show this status.
 
-If several are stuck in learning limited, that's not an individual ad set problem — it's an account structure problem. You've split things too thin. Try merging into two or three sets. Once budget consolidates, learning finishes — and only once it finishes do you actually see that set's real performance.
+If several sets are learning limited, check signal volume, tracking, bid constraints, demand and structure. Consolidation is an option to evaluate, not a rule that two or three sets will fix performance.
 
-And set one rule: **"Don't touch it while it's learning."** That single rule stabilizes an account.
+Set this rule: do not change several settings because of a short-term fluctuation alone. Fix tracking errors, wrong targeting and unaffordable spend during learning too.
 
 ## Wrap-up
 

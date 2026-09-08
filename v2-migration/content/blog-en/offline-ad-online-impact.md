@@ -11,6 +11,9 @@ faq:
     a: "You cannot track individual viewers, so work at the aggregate level. Compare online demand trends across exposed and unexposed windows, and check short-window response around airtimes as a cross-check."
   - q: "Can I separate TV from digital contribution?"
     a: "If both moved in the same window, the data alone usually cannot separate them. Separation needs periods where the two budgets moved differently. Without that, report a combined effect rather than inventing a split."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Offline advertising has no clicks. So measurement usually ends either in vague impressions, or in the opposite error: crediting the entire lift during the flight to TV.
 
@@ -20,7 +23,7 @@ The way out of both is to **compare exposed and unexposed windows as a time seri
 
 Offline advertising leaves roughly three traces online.
 
-- **Brand search volume** — people see the ad and search the name. Fastest response.
+- **Brand search volume** — people see the ad and search the name. Response timing varies by product and measurement.
 - **Direct traffic and direct app opens** — people who already know you arrive straight away.
 - **Non-ad-attributed installs or signups** — conversions no network claimed.
 
@@ -48,11 +51,15 @@ The check is simple. Put channel spend into [VIF multicollinearity check](/tools
 
 Following even one of the three changes next quarter's answer.
 
+Eight weeks is a preparation example, not a sufficiency guarantee. Required history depends on autocorrelation, seasonal cycles, observation frequency, and post-period length. A before/after difference alone is not a causal effect.
+
 ## Try this today
 
 **One.** Before the next flight starts, pull **at least eight weeks** of brand search volume and direct traffic and park it somewhere. A baseline cannot be built after the fact, and without one the interval stays so wide that no result is sayable.
 
-**Two.** Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. One or two held-out regions turn next quarter's estimate from "the trend went up" into "the exposed regions moved and the held-out ones did not."
+**Two.** Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. The number of regions must follow a design and power assessment. One or two regions do not guarantee adequate inference; inspect balance, spillovers, and concurrent changes.
+
+The same time-series approach for click-free media appears in [measuring brand campaign lift](/blog/brand-campaign-lift), and the bar for reading the result as incremental is in [incrementality measurement](/blog/incrementality-measurement).
 
 ## Let's be honest
 

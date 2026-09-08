@@ -145,8 +145,13 @@ describe("panel impression tracking", () => {
     expect(observers[0].disconnected).toBe(true);
   });
 
-  it("does not observe the plain answer link", () => {
+  it("reports the answer link only after it becomes visible", () => {
     render(<ContentActionPanel toolId="5-22" post={{ slug: "answer-probe" }} placement="article_answer" />);
-    expect(observers).toHaveLength(0);
+    expect(window.gtag).not.toHaveBeenCalled();
+    observers[0].trigger();
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_cta_viewed", expect.objectContaining({
+      content_slug: "answer-probe", placement: "article_answer", tool_id: "5-22",
+    }));
+    expect(observers[0].disconnected).toBe(true);
   });
 });

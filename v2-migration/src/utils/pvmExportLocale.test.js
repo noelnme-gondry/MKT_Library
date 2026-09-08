@@ -18,6 +18,10 @@ describe("pvmGenerateDiagnosis locale", () => {
       it(`${level}/${name} — en은 한글을 포함하지 않는다`, () => {
         const en = pvmGenerateDiagnosis(e, level, money, "en");
         expect(en).toBeTruthy();
+        const cpi = pvmGenerateDiagnosis(e, level, money, "en", "CPI");
+        expect(cpi).toContain("CPI");
+        expect(cpi).not.toMatch(/budget|CPA/);
+        expect(cpi).toMatch(/result.share/);
         expect(HANGUL.test(en), en).toBe(false);
       });
       it(`${level}/${name} — ko는 기존 한글 문구를 유지한다(회귀 가드)`, () => {

@@ -11,6 +11,9 @@ faq:
     a: "That is the most certain route, but with five elements the number of combinations is more than you can realistically run. Recording the attributes of content you already published lets you compare several elements at once without an experiment."
   - q: "Can I turn these results straight into production guidelines?"
     a: "Use them to narrow hypotheses. Observational data carries the selection bias of the delivery algorithm, so it is not causal. Confirm only the top one or two elements with an experiment before writing a rule."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Content retros keep producing the same sentence: "this one worked because the hook was strong." But that piece was also shorter than usual, and the thumbnail was brighter. Which of those made the performance is unknown.
 
@@ -35,17 +38,23 @@ Putting several elements in simultaneously shows **the difference attributable t
 
 It is also worth knowing that the calculation depends on the type of outcome metric. A bounded rate like CTR and a count like views call for different models. Treating a rate with ordinary regression can predict values below zero.
 
+## Separate repeated units and future validation
+
+Declare repeated campaign, series, or creator units so predictive comparisons keep units separate between training and validation. Declaring a date uses later dates for validation; with repeated units, their earlier rows are removed from training. Insufficient remaining samples withhold the comparison. Validation without dates does not establish future performance, and neither fitted coefficients nor predictive comparisons prove causality.
+
 ## The order to read results in
 
-1. Does the interval cross zero? If it does, not even the direction is settled. That is "not yet distinguishable," not "no effect."
+1. Does the interval cross the no-difference reference (0 for differences, 1 for odds or rate ratios)? If it does, not even the direction is settled. That is "not yet distinguishable," not "no effect."
 2. Is the sample sufficient? If an element appeared in only three pieces, the other characteristics of those three dominate the coefficient.
-3. Is the size practically meaningful? A statistically significant 0.02pp difference in CTR is not a reason to change production direction.
+3. Is the size practically meaningful? The practical value of a statistically significant 0.02pp CTR difference depends on traffic, cost, and expected revenue.
 
 ## The next step is an experiment
 
 This analysis is a **tool for narrowing hypotheses**. Observational data carries the selection bias of the delivery algorithm. When a platform gives more impressions to content that responds well, the attributes of that content look better than they are.
 
 So the order runs like this. Pick the one or two elements that came out on top, produce content that differs only in that element, and confirm it with [experiment analysis](/tools/experiment-analysis). Narrowing with observation and confirming with an experiment is the fastest path.
+
+Once the candidates are narrowed, the next step is designing the test — [ad creative testing](/blog/ad-creative-testing) covers sizing the batch by budget, and [ad creative regression](/blog/creative-attribute-regression) covers comparing past creatives without a new test.
 
 ## Try this today
 

@@ -10,8 +10,8 @@ draft: false
 ogImage: "/blog-assets/ad-creative-testing/ad-creative-lifecycle-ko.png"
 primaryTool: "9-6"
 relatedGlossary: ["cpa", "roas", "ctr", "cvr"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Test with confidence with the Experiments page"
     url: "https://support.google.com/google-ads/answer/7281575"
@@ -278,6 +278,8 @@ CTR이 높아도 구매 전환율이 낮으면 관심만 끌고 구매 의도가
 - [ ] 승자·보류·탈락 조건을 정했다
 - [ ] 결과와 다음 제작 가설을 소재 ID에 기록했다
 - [ ] 승자 소재의 피로도를 추적할 준비를 했다
+
+테스트를 여러 번 돌린 뒤 '무엇이 반복해서 통했나'를 묻게 되면 [광고 소재 성과 분석](/blog/content-element-analysis)으로, 새 실험을 못 돌리는 과거 소재를 비교해야 하면 [광고 소재 회귀분석](/blog/creative-attribute-regression)으로 이어집니다.
 
 ## 결론
 

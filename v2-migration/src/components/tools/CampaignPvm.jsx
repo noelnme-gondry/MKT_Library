@@ -13,6 +13,7 @@ import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggreg
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
@@ -461,6 +462,13 @@ export function buildPvmCache(csvData, state) {
     Cost2: fin.Cost2,
     Result1: fin.Result1,
     Result2: fin.Result2,
+    scopeEvidence: {
+      denominatorKey: resultField, currency: state.currency?.toUpperCase(), filters: scopeFilters(state.dashboardFilter),
+      periods: [
+        { id: "before", start: ymd(p1[0]), end: ymd(p1[1]), observations: rowsP1.length, denominator: fin.Result1, cost: fin.Cost1, quality: scopedInputQuality(rowsP1, ["spend", resultField]) },
+        { id: "after", start: ymd(p2[0]), end: ymd(p2[1]), observations: rowsP2.length, denominator: fin.Result2, cost: fin.Cost2, quality: scopedInputQuality(rowsP2, ["spend", resultField]) },
+      ],
+    },
     layer1,
     layer2,
     layer3,
@@ -1209,7 +1217,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
 
     const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
-    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale);
+    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale, ml);
 
     let nameNode;
     let isNew = false;
@@ -1414,6 +1422,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             toolId={pvmManifest.toolId}
             analysisKey={analysisKey}
             analysisType="pvm"
+            scopeEvidence={cache.scopeEvidence}
             resultState="ready"
             locale={locale}
             tone={cache.deltaCpa > 0 ? "bad" : cache.deltaCpa < 0 ? "good" : "neutral"}
@@ -1615,7 +1624,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <h2 className="section-title">{C.secChannels}</h2>
 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)", outline: "none" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
+          <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
           <div style={{ marginTop: "10px", fontSize: "12px", lineHeight: 1.7, color: "var(--text-muted)" }}>
             {ready
               ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)

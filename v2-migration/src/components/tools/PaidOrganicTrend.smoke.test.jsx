@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import PaidOrganicTrend from "@/components/tools/PaidOrganicTrend";
 import { buildPaidOrganicTrendDemo } from "@/utils/paidOrganicTrend";
@@ -15,6 +15,12 @@ function seed(slice = EMPTY_CSV) {
     csvData: slice,
     isDarkMode: false,
   });
+}
+
+function confirmConditions(locale = "ko") {
+  for (const [ko, en, value] of [["추적·어트리뷰션 정책", "Tracking / attribution policy", "consistent"], ["계절성·프로모션 조건", "Seasonality / promotion conditions", "reviewed"], ["광고 집행 연속성", "Ad delivery continuity", "continuous"]]) {
+    fireEvent.change(screen.getByLabelText(locale === "en" ? en : ko), { target: { value } });
+  }
 }
 
 describe("PaidOrganicTrend render smoke", () => {
@@ -48,7 +54,26 @@ describe("PaidOrganicTrend render smoke", () => {
     const demo = buildPaidOrganicTrendDemo();
     seed({ ...demo, fileName: "uploaded-paid-organic.csv" });
     const { container } = render(<PaidOrganicTrend />);
+    expect(container.querySelector('[data-decision-review-tool="5-18-paid-organic"]')).toBeNull();
+    confirmConditions();
     expect(container.querySelector('[data-decision-review-tool="5-18-paid-organic"]')).toBeTruthy();
+  });
+
+  it.each(["ko", "en"])("withholds tracking-change and interruption interpretations (%s)", (locale) => {
+    seed({ ...buildPaidOrganicTrendDemo(locale), fileName: "observed.csv" });
+    const { container } = render(<PaidOrganicTrend locale={locale} />);
+    confirmConditions(locale);
+    expect(container.querySelector(".decision-review")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Tracking / attribution policy" : "추적·어트리뷰션 정책"), { target: { value: "changed" } });
+    expect(container.querySelector(".decision-review")).toBeNull();
+    confirmConditions(locale);
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Ad delivery continuity" : "광고 집행 연속성"), { target: { value: "interrupted" } });
+    expect(container.querySelector(".decision-review")).toBeNull();
+    expect(container.textContent).toContain(locale === "en" ? "Treat patterns as descriptive" : "패턴은 현상 설명으로만");
+    confirmConditions(locale);
+    act(() => seed({ ...buildPaidOrganicTrendDemo(locale), fileName: "replacement.csv" }));
+    expect(screen.getByLabelText(locale === "en" ? "Tracking / attribution policy" : "추적·어트리뷰션 정책").value).toBe("");
+    expect(container.querySelector(".decision-review")).toBeNull();
   });
 
   it("keeps KR and EN routes functionally equivalent", () => {

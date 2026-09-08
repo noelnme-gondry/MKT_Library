@@ -4,7 +4,7 @@
 
 // 진단(💡) 문구 — index.html pvmGenerateDiagnosis 이식.
 // level: "channel" | "campaign" | "creative".
-export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko") {
+export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko", metricLabel = "CPA") {
   const isEn = locale === "en";
   const fmt = (val) => {
     const s = fmtMoney(Math.abs(val));
@@ -16,8 +16,8 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko") {
 
   if (level === "creative") {
     return isEn
-      ? `This is the lowest (creative) level. The change in this creative's budget share (mix effect: ${fmt(mixVal)}) and the change in unit cost itself (rate effect: ${fmt(rateVal)}) together moved final CPA by ${fmt(e.contribution)}.`
-      : `소재 단위 최하위 레벨입니다. 이 소재의 예산 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 CPA에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
+      ? `This is the lowest (creative) level. The change in this creative's result share (mix effect: ${fmt(mixVal)}) and the change in unit cost itself (rate effect: ${fmt(rateVal)}) together moved final ${metricLabel} by ${fmt(e.contribution)}.`
+      : `소재 단위 최하위 레벨입니다. 이 소재의 결과 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 ${metricLabel}에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
   }
 
   // 이 단계의 믹스 효과(e.mix)는 하위 셀 mix 합과 항등(rollup 설계 — "상위=하위합" 보존).
@@ -28,16 +28,16 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko") {
   let diagnosis = "";
   if (mixVal > 0 && rateVal > 0) {
     diagnosis = isEn
-      ? `For this ${label}, both the budget-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pushed CPA up. Check the sub-segment tab to see which item drove the increase, then reduce its share or review creatives.`
-      : `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 끌어올렸습니다. 하위 세그먼트 탭에서 어느 항목이 이 상승을 주도했는지 확인해 비중을 줄이거나 소재를 점검하세요.`;
+      ? `For this ${label}, both the result-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pushed ${metricLabel} up. Check the sub-segment tab to see which item drove the increase, then reduce its share or review creatives.`
+      : `이 ${label}은 결과 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 ${metricLabel}를 끌어올렸습니다. 하위 세그먼트 탭에서 어느 항목이 이 상승을 주도했는지 확인해 비중을 줄이거나 소재를 점검하세요.`;
   } else if (mixVal < 0 && rateVal < 0) {
     diagnosis = isEn
-      ? `For this ${label}, both the budget-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pulled CPA down. This is an efficient state — keep the current operating approach.`
-      : `이 ${label}은 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 CPA를 낮췄습니다. 효율적인 상태이므로 현재 운영 기조를 유지하세요.`;
+      ? `For this ${label}, both the result-share shift (mix effect: ${fmt(mixVal)}) and the unit-cost change (rate effect: ${fmt(rateVal)}) pulled ${metricLabel} down. This is an efficient state — keep the current operating approach.`
+      : `이 ${label}은 결과 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)}) 모두 ${metricLabel}를 낮췄습니다. 효율적인 상태이므로 현재 운영 기조를 유지하세요.`;
   } else {
     diagnosis = isEn
-      ? `This ${label}'s CPA change is the net of a budget-share shift (mix effect: ${fmt(mixVal)}) and a unit-cost change (rate effect: ${fmt(rateVal)}) working in opposite directions. Check the sub-segment tab to find what drove each effect.`
-      : `이 ${label}의 CPA 변화는 예산 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)})이 서로 다른 방향으로 작용한 결과입니다. 하위 세그먼트 탭에서 각 효과를 주도한 항목을 확인하세요.`;
+      ? `This ${label}'s ${metricLabel} change is the net of a result-share shift (mix effect: ${fmt(mixVal)}) and a unit-cost change (rate effect: ${fmt(rateVal)}) working in opposite directions. Check the sub-segment tab to find what drove each effect.`
+      : `이 ${label}의 ${metricLabel} 변화는 결과 비중 이동(믹스 효과: ${fmt(mixVal)})과 단가 변동(레이트 효과: ${fmt(rateVal)})이 서로 다른 방향으로 작용한 결과입니다. 하위 세그먼트 탭에서 각 효과를 주도한 항목을 확인하세요.`;
   }
   return diagnosis;
 }

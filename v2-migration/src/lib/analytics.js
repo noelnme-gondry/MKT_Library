@@ -15,6 +15,45 @@ const ALLOWED_PARAMS = new Set([
 let firstToolViewAt = null;
 let hasRecordedFirstActivation = false;
 
+const EDITORIAL_JOURNEY_KEY = "gop:editorial-journey";
+const EDITORIAL_JOURNEY_TTL = 30 * 60 * 1000;
+const EDITORIAL_FUNNEL_EVENTS = new Set([
+  "data_import_start", "data_import_success", "data_import_failed",
+  "data_profile_completed", "mapping_confirmed", "analysis_started", "analysis_completed",
+]);
+
+// 공개 글 식별자만 저장한다. 도구 ID는 정규화 전에 비교하여 MMM과 추세를
+// 같은 방문으로 오인하지 않는다. 저장소 차단은 분석 실행에 영향을 주지 않는다.
+function withEditorialJourney(name, params) {
+  try {
+    const storage = window.sessionStorage;
+    if (!storage) return params;
+    if (name === "blog_tool_cta_clicked") {
+      storage.removeItem(EDITORIAL_JOURNEY_KEY);
+      if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.content_slug || "")
+        && ["blog", "glossary"].includes(params.content_type)
+        && ["ko", "en"].includes(params.locale)
+        && /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || "")) {
+        storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({
+          content_slug: params.content_slug, content_type: params.content_type,
+          locale: params.locale, tool_id: params.tool_id, createdAt: Date.now(),
+        }));
+      }
+    } else if (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo") {
+      const stored = storage.getItem(EDITORIAL_JOURNEY_KEY);
+      if (!stored) return params;
+      const journey = JSON.parse(stored);
+      const age = Date.now() - journey.createdAt;
+      if (!Number.isFinite(age) || age < 0 || age > EDITORIAL_JOURNEY_TTL) {
+        storage.removeItem(EDITORIAL_JOURNEY_KEY);
+      } else if (journey.tool_id === params.tool_id && journey.locale === params.locale) {
+        return { ...params, content_slug: journey.content_slug, content_type: journey.content_type };
+      }
+    }
+  } catch { /* 저장소 없이도 기존 집계 이벤트는 유지한다. */ }
+  return params;
+}
+
 export function productElapsedBucket(elapsedMs) {
   const seconds = Math.max(0, Number(elapsedMs) || 0) / 1000;
   if (seconds < 60) return "under_1m";
@@ -66,6 +105,7 @@ export function sanitizeProductEventParams(params = {}) {
 
 export function trackProductEvent(name, params = {}) {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
+  params = withEditorialJourney(name, params);
   if (name === "tool_view" && firstToolViewAt == null) firstToolViewAt = Date.now();
   const isFirstReadyActivation = name === "analysis_completed"
     && firstToolViewAt != null

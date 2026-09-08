@@ -11,6 +11,9 @@ faq:
     a: "In practice, VIF 5 or higher is commonly treated as a warning and 10 or higher as a severe multicollinearity signal. It is a starting point for judging whether channel coefficients are fit for decisions."
   - q: "Can I run MMM with high VIF?"
     a: "You can calculate a model, but channel contribution and coefficients may not be reliable. Create periods where linked channels move independently, then re-check before using the result for allocation."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 An MMM result shows negative Search contribution and implausibly large Social contribution. The model may not be broken. If Search and Social budgets always rose and fell together, the data does not contain enough independent movement to tell which channel drove the outcome. That is the practical problem of **multicollinearity**.
 
@@ -77,16 +80,18 @@ If MMM cannot split channels, nothing is usable. You can still make bundle-level
 
 MMM organizes hypotheses within what the data can support. When multicollinearity is high, it is better to say “we cannot separate this yet” than to decorate an unstable channel number.
 
-Start with the [VIF Multicollinearity Check](/tools/vif-multicollinearity), send suitable data to [Marketing Response Analysis](/tools/marketing-response), and validate important budget moves with an experiment.
+Start with the [VIF Multicollinearity Check](/tools/vif-multicollinearity), send suitable data to [Marketing Response Analysis](/tools/mmm-contribution), and validate important budget moves with an experiment.
 
 ## Try this today
 
 **One.** Before running MMM again, put channel spend through a [VIF check](/tools/vif-multicollinearity) and look at which pairs come back high. That single pass usually explains the "negative coefficient" that prompted the question in the first place.
 
-**Two.** Look at your last 12 weeks of channel budgets and ask whether any channel moved **independently of the others**. If everything scaled up and down together, the next MMM run will have the same problem no matter which model you choose. Staggering one channel's changes by a week or two is what makes the following quarter estimable.
+**Two.** Look at your last 12 weeks of channel budgets and ask whether any channel moved **independently of the others**. If everything scaled up and down together, the next MMM run will have the same problem no matter which model you choose. Staggered changes may add independent variation, but do not guarantee estimability. Recheck sample support, concurrent changes, and identification before interpreting the next model.
+
+For what MMM estimates in the first place, see [marketing mix modeling](/blog/marketing-mix-modeling); its limit — association from observational data, not causation — reads more clearly alongside [incrementality measurement](/blog/incrementality-measurement).
 
 ## Let's be honest
 
-High VIF does not mean the model is wrong. It means **this data cannot separate these channels** — a statement about the data, not about the channels' real effects. A channel with a negative coefficient under collinearity has not been shown to hurt; it has been shown to be unidentifiable.
+High VIF does not mean the model is wrong. It means **this data cannot separate these channels** — a statement about the data, not about the channels' real effects. A negative coefficient under collinearity does not establish harm. Check coefficient uncertainty and identification rather than inferring either harm or unidentifiability from the sign alone.
 
 The wrong response is to keep changing model settings until a plausible-looking number appears. Numbers produced that way are artifacts of the specification, not estimates. Merge the channels that cannot be separated, report them as one bucket, and note the limitation — that is more useful to a budget decision than a confident number nobody can reproduce.

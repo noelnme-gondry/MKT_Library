@@ -6,7 +6,7 @@ import ToolPageShell from "@/components/ToolPageShell";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
-import { downloadCsv } from "@/utils/download";
+import { csvBody, downloadCsv } from "@/utils/download";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import Chart from "@/utils/chartGlobals";
@@ -30,7 +30,7 @@ const toEngineRows = (rows) => rows.map((row) => ({
 }));
 
 // 기간을 반으로 갈라 앞뒤를 비교한다. 날짜가 홀수면 뒤 기간이 하루 길어지는데,
-// 비율 비교라 길이 차이가 결과를 바꾸지 않는다(합이 아니라 전환율을 본다).
+// 기간 길이·요일·소스 구성 차이는 비율 해석에도 영향을 주므로 아래에 고지한다.
 function splitByDate(rows) {
   const dates = [...new Set(rows.map((row) => String(row.date || "")).filter(Boolean))].sort();
   if (dates.length < 4) return null;
@@ -156,28 +156,30 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
 
   const headline =
     verdict === "mix"
-      ? tr("트래픽 구성 변화가 주도 — 페이지가 아니라 유입 믹스", "Traffic mix drove it — not the page")
+      ? tr("트래픽 구성 변화가 주도 — 원인은 별도 확인", "Traffic mix drove it — verify causes separately")
       : verdict === "efficiency"
         ? tr("소스별 전환율 변화가 주도 — 페이지·스토어 요소 점검", "Per-source conversion drove it — check the page")
         : verdict === "mixed"
           ? tr("구성과 효율이 함께 움직임", "Mix and efficiency moved together")
           : verdict === "flat"
-            ? tr("의미 있는 변화 없음", "No meaningful change")
+            ? tr("분해된 순변화 0", "Zero net decomposed change")
             : tr("판단 보류 — 기간 또는 설치가 부족", "Withheld — not enough periods or installs");
 
   const copy =
     verdict === "mix"
       ? tr(
-          "소스별 전환율은 크게 안 변했는데 전환이 낮은 소스의 비중이 늘어 전체 전환율이 내려갔습니다. 이때 스크린샷·아이콘을 바꿔도 잘 안 풀립니다. 유입 구성이 왜 바뀌었는지(광고 증액·피처링·시즌)를 먼저 보세요.",
-          "Per-source conversion barely moved; the blended rate fell because low-converting sources grew as a share. Changing screenshots rarely fixes this — start with why the traffic mix shifted (paid scaling, featuring, season).",
+          "설치당 조회 수 변화에서 구성 항의 절대 크기가 더 큽니다. 증감 방향은 앞·뒤 비율과 함께 읽고, 광고·피처링·계절성 등 구성 변화의 원인은 별도로 확인하세요. 페이지 변경 효과가 없다는 뜻은 아닙니다.",
+          "The mix component is larger in absolute terms in the change in views per install. Read direction from the earlier and later ratios, and investigate media, featuring and seasonality separately. This does not rule out page-change effects.",
         )
       : verdict === "efficiency"
         ? tr(
-            "트래픽 구성은 그대로인데 소스별 전환율 자체가 움직였습니다. 제품 페이지 요소(아이콘·스크린샷·평점)나 스토어 정책 변화를 보세요.",
-            "The traffic mix held while per-source conversion itself moved. Look at product page elements (icon, screenshots, rating) or store policy changes.",
+            "설치당 조회 수 변화에서 소스별 효율 항이 더 큽니다. 페이지 요소뿐 아니라 유입 의도·기기·측정 변경도 함께 확인하세요. 구성 변화가 전혀 없다는 뜻은 아닙니다.",
+            "The within-source efficiency component is larger in the change in views per install. Check traffic intent, devices and measurement as well as page elements; this does not mean the mix was unchanged.",
           )
+        : verdict === "mixed"
+          ? tr("구성과 소스별 효율 항이 함께 변했습니다. 두 항은 반대 방향일 수도 있으므로 합계와 소스별 근거를 함께 확인하세요.", "Mix and within-source efficiency both changed. They may offset each other; inspect totals and source-level evidence together.")
         : verdict === "flat"
-          ? tr("두 기간의 전환 구조가 사실상 같습니다. 지금 데이터로는 개선·악화 신호가 없습니다.", "The two periods are effectively identical. There is no improvement or decline signal in this data.")
+          ? tr("합산한 구성·효율 변화가 0입니다. 소스별 상쇄나 표본 불확실성은 별도로 확인해야 하며 효과 없음의 검정 결과는 아닙니다.", "The summed mix and efficiency changes are zero. Check source-level offsets and sampling uncertainty separately; this is not a test establishing no effect.")
           : tr(
               "분해하려면 앞뒤 기간 각각에 설치가 있어야 하고 날짜가 최소 4일 필요합니다. 기간을 늘려 다시 확인하세요.",
               "Decomposition needs installs in both halves and at least four distinct dates. Extend the period and re-check.",
@@ -213,21 +215,11 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
   }));
 
   const downloadSourceCsv = () => {
-    const cell = (value) => {
-      const text = value == null ? "" : String(value);
-      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-    };
-    const header = ["source", "cvr_before", "cvr_after", "share_before", "share_after", "mix_effect", "efficiency_effect"];
-    const lines = [header, ...sourceRows.map((row) => [
-      row.source,
-      row.cvrBefore ?? "",
-      row.cvrAfter ?? "",
-      row.shareBefore ?? "",
-      row.shareAfter ?? "",
-      row.mix ?? "",
-      row.rate ?? "",
-    ])].map((line) => line.map(cell).join(","));
-    downloadCsv(`﻿${lines.join("\r\n")}\r\n`, "aso-store-conversion");
+    const header = ["source", "cvr_before", "cvr_after", "share_before", "share_after", "mix_effect", "efficiency_effect", "effect_unit", "share_basis"];
+    downloadCsv(csvBody(header, sourceRows.map((row) => [
+      row.source, row.cvrBefore, row.cvrAfter, row.shareBefore, row.shareAfter,
+      row.mix, row.rate, "views_per_install", "installs",
+    ])), "aso-store-conversion");
   };
 
   return (
@@ -244,8 +236,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
       <section className="block diagnostic-tool__rules" id="aso-setup">
         <h2 className="section-title">{tr("무엇을 가르나", "What it separates")}</h2>
         <p>{tr(
-          "전체 스토어 전환율이 떨어졌을 때 원인은 둘입니다. 제품 페이지가 나빠졌거나(효율), 전환이 낮은 소스의 비중이 늘었거나(구성). 처방이 정반대라 섞인 채로는 어느 쪽도 못 고칩니다.",
-          "A falling store conversion rate has two possible causes: the product page got worse (efficiency), or low-converting sources grew as a share (mix). The fixes are opposite, so neither can be addressed while they are blended.",
+          "설치당 조회 수 변화를 구성 항과 소스별 효율 항으로 분해합니다. 이는 관측 산술이며 페이지·광고 변경의 인과 효과를 구분하는 검정은 아닙니다.",
+          "Decompose changes in views per install into mix and within-source efficiency. This is observational arithmetic, not a causal test of page or advertising changes.",
         )}</p>
       </section>
 
@@ -253,7 +245,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
 
       {analyzed && result && <>
         <div id="aso-result"><ResultActionCard
-          tone={verdict === "efficiency" ? "bad" : verdict === "mix" ? "neutral" : verdict === "flat" ? "good" : "neutral"}
+          tone="neutral"
           title={tr("판정", "Verdict")}
           headline={headline}
           points={[{ text: copy }]}
@@ -267,7 +259,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             calculationTables: [{
               name: "ASO_DECOMPOSITION",
               title: tr("소스별 구성·효율 분해", "Source-level mix and efficiency decomposition"),
-              note: tr("앞·뒤 기간 소스 집계 입력에서 전환율·비중·mix·efficiency를 수식으로 재현", "Formula reproduction of conversion, share, mix, and efficiency from source aggregates for both periods"),
+              note: tr("비중은 설치 기준, mix·efficiency 단위는 설치당 조회 수이며 %p가 아닙니다. 집계 비율은 동일 사용자의 순차 전환 확률이 아닙니다.", "Shares use installs; mix/efficiency use views per install, not percentage points. Aggregate ratios are not linked-user transition probabilities."),
               rows: [
                 ["parameter", "value"],
                 ["Cbar", (decomposed.CPA1 + decomposed.CPA2) / 2],
@@ -335,12 +327,12 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
           </dl>
           <p className="muted">{result.periods.balance?.balanced
             ? tr(
-                "두 기간의 데이터 일수가 같아 비율 비교가 공정합니다.",
-                "Both periods cover the same number of days, so the rate comparison is like-for-like.",
+                "두 기간의 데이터 일수가 같습니다. 요일·소스 구성·측정 조건도 확인해야 합니다.",
+                "Both periods have the same day count. Check weekdays, source composition and measurement conditions too.",
               )
             : tr(
-                `데이터가 있는 날이 앞 ${result.periods.balance?.beforeDays}일 · 뒤 ${result.periods.balance?.afterDays}일로 다릅니다. 비율은 그대로 비교할 수 있지만 합계(설치 수)는 길이 차이를 감안해 읽으세요.`,
-                `Day counts differ (${result.periods.balance?.beforeDays} vs ${result.periods.balance?.afterDays}). Rates remain comparable, but read totals with that gap in mind.`,
+                `데이터가 있는 날이 앞 ${result.periods.balance?.beforeDays}일 · 뒤 ${result.periods.balance?.afterDays}일로 다릅니다. 비율과 합계 모두 기간 길이·요일·구성 차이를 감안해 읽으세요.`,
+                `Day counts differ (${result.periods.balance?.beforeDays} vs ${result.periods.balance?.afterDays}). Read both rates and totals with duration, weekdays and composition in mind.`,
               )}</p>
           <p className="muted">{tr(
             "%p는 절대 차이, 괄호 안 %는 상대 차이입니다. 전환율 30%가 40%가 되면 +10%p이자 +33.3%예요.",
@@ -350,6 +342,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
 
         <section className="block" id="aso-funnel">
           <h2 className="section-title">{tr("스토어 퍼널", "Store funnel")}</h2>
+          <p className="muted">{tr("노출·조회·다운로드 집계의 파생 비율입니다. 동일 사용자의 순차 전환 확률이나 Apple 공식 전환율과 다릅니다. Apple 노출에는 페이지 조회도 포함되며 고유 기기·횟수·재다운로드 기준을 맞춰 비교하세요.", "These are ratios of aggregate impressions, views and downloads, not linked-user transition probabilities or Apple’s official conversion rate. Apple impressions include page views; align unique-device, event-count and redownload definitions.")}</p>
           <DataTable
             columns={[
               { key: "stage", label: tr("단계", "Stage") },
@@ -372,8 +365,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         {series && series.dates.length > 1 && <section className="block" id="aso-trend">
           <h2 className="section-title">{tr("전환율 추이", "Conversion trend")}</h2>
           <p className="muted">{tr(
-            "굵은 선이 전체 전환율, 점선이 소스별 전환율입니다. 소스별 선은 그대로인데 전체만 내려갔다면 구성이 바뀐 것이고, 소스별 선이 같이 내려갔다면 페이지 쪽입니다.",
-            "The solid line is the blended rate and the dashed lines are per-source rates. Per-source lines holding while the blended line falls means the mix moved; per-source lines falling together points at the page.",
+            "굵은 선은 전체 비율, 점선은 소스별 비율입니다. 관측 비율의 변화가 페이지 요소 때문인지는 이 차트만으로 알 수 없습니다.",
+            "The solid line is the aggregate ratio and dashed lines are per-source ratios. This chart alone cannot attribute their changes to page elements.",
           )}</p>
           <div className="chart-container" style={{ height: 320 }}><canvas ref={chartRef} /></div>
           {cutDate && <p className="muted">{tr(
@@ -403,8 +396,8 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
             }))}
           />
           <p className="muted">{tr(
-            "비중은 설치 수 기준입니다(§PVM — shift-share의 비중은 결과량 share).",
-            "Share is measured on installs, following the shift-share definition.",
+            "비중은 설치 기준입니다. 분해값의 단위는 설치당 조회 수이며 전환율의 %p와 다릅니다.",
+            "Shares use installs. Decomposition effects are in views per install, not conversion-rate percentage points.",
           )}</p>
         </section>}
 

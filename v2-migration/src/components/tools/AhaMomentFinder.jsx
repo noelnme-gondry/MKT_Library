@@ -1,4 +1,5 @@
 "use client";
+import { limitAhaObservationWindow } from "@/utils/ahaObservationWindow";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -487,6 +488,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [expandedActions, setExpandedActions] = useState(() => new Set());
   // 편집 가능한 컬럼 역할 매핑 (index.html AHA_STATE.colMap — 자동추정 시드 후 사용자 편집)
   const [colMap, setColMap] = useState({});
+  const [outcomeStartDay, setOutcomeStartDay] = useState("");
+  const [outcomeWindowSource, setOutcomeWindowSource] = useState(null);
+  const activeOutcomeStartDay = outcomeWindowSource === csvData.raw ? outcomeStartDay : "";
+  const temporalScope = useMemo(() => limitAhaObservationWindow(colMap, Number(activeOutcomeStartDay)), [colMap, activeOutcomeStartDay]);
   // 나눠보기(세그먼트): null=전체, {col,value}=그 세그먼트 값만. minSupport처럼 탐색
   // 토글이라 게이트 시그니처엔 안 들어감 → 전환 시 재분석 없이 자동 재계산(§12.5).
   const [activeSeg, setActiveSeg] = useState(null);
@@ -591,7 +596,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     const raf1 = requestAnimationFrame(() => {
       rafRef.current = requestAnimationFrame(() => {
         if (cancelled) return;
-        const data = computeAhaCache(segRows, colMap, minSupport, holdoutOn);
+        const data = computeAhaCache(segRows, temporalScope.colMap, minSupport, holdoutOn);
         if (cancelled) return;
         setAnalysisData(data);
         setIsAnalyzing(false);
@@ -602,7 +607,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       cancelAnimationFrame(raf1);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [hasData, analyzed, colMap, csvData, minSupport, holdoutOn, validSeg]);
+  }, [hasData, analyzed, temporalScope, csvData, minSupport, holdoutOn, validSeg]);
 
   // 다운스트림 공용 캐시 — 분석 전/중엔 빈 결과(+ 매핑 UI용 live 역할값, 행 순회 없이 colMap만으로 파생).
   const cache = useMemo(
@@ -1204,6 +1209,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         )}
       </section>
 
+      <section className="block analysis-design-check">
+        <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
+          <input type="number" min="1" step="1" value={activeOutcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
+        </label>
+        <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
+        <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
+      </section>
       {showResults && (
         <>
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
@@ -1218,8 +1230,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               analysisKey={ahaAnalysisKey}
               analysisType="aha"
               resultState={analysisResultState}
-              decisionReview={Boolean(decisionPrefill)}
-              decisionPrefill={decisionPrefill}
+              decisionReview={temporalScope.confirmed && Boolean(decisionPrefill)}
+              decisionPrefill={temporalScope.confirmed ? decisionPrefill : null}
               tone={strongCandidateCount > 0 ? "good" : topAction ? "neutral" : "bad"}
               title={tr("선행 행동 결론", "Leading-action conclusion")}
               headline={topAction
@@ -1265,7 +1277,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   name: "deterministic-grid-search + train/holdout",
                   version: "aha-v1",
                   assumptions: [tr("사용자·행동 집계와 홀드아웃 분할은 현재 매핑·세그먼트·최소 지지도 설정을 반영합니다.", "User-action aggregation and the holdout split reflect current mapping, segment, and minimum-support settings.")],
-                  limitations: [tr("가장 좋은 윈도우·횟수 선택은 워크북에서 다시 탐색되지 않으며, Lift는 관측 연관이지 인과효과가 아닙니다.", "The best window and frequency are not searched again in the workbook; lift is an observed association, not a causal effect.")],
+                  limitations: [tr(`전환 평가 시작일: ${activeOutcomeStartDay || "미선언"}. 시간창 제외: ${temporalScope.excluded.length}개. 원본 이벤트 시점은 검증하지 않았습니다.`, `Outcome evaluation starts on day ${activeOutcomeStartDay || "undeclared"}. Excluded windows: ${temporalScope.excluded.length}. Source event timestamps have not been verified.`), tr("가장 좋은 윈도우·횟수 선택은 워크북에서 다시 탐색되지 않으며, Lift는 관측 연관이지 인과효과가 아닙니다.", "The best window and frequency are not searched again in the workbook; lift is an observed association, not a causal effect.")],
                 },
               })}
               points={topAction ? [] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}

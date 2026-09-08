@@ -266,7 +266,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         ) : !analyzed ? (
           <div className="block dashboard-data-setup dashboard-data-setup--pending" id="dashboard-data-setup">
             <div className="dashboard-data-setup__privacy">
-              {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
+              {tr("🔒 CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장이 켜져 있으면 마지막 사용 후 90일까지 보관됩니다. 저장소에서 끄거나 삭제할 수 있습니다.", "🔒 CSV data is processed in your browser and is not sent to a server. When device storage is enabled, files are kept for up to 90 days after last use. Turn storage off or delete files in Storage.")} <a href={locale === "en" ? "/en/storage" : "/storage"}>{tr("기기 저장 관리", "Manage device storage")}</a>
             </div>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
@@ -284,7 +284,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             </summary>
             <div className="dashboard-data-disclosure__body">
               <div className="dashboard-data-setup__privacy">
-                {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
+                {tr("🔒 CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장이 켜져 있으면 마지막 사용 후 90일까지 보관됩니다. 저장소에서 끄거나 삭제할 수 있습니다.", "🔒 CSV data is processed in your browser and is not sent to a server. When device storage is enabled, files are kept for up to 90 days after last use. Turn storage off or delete files in Storage.")} <a href={locale === "en" ? "/en/storage" : "/storage"}>{tr("기기 저장 관리", "Manage device storage")}</a>
               </div>
               <CsvUploader toolId={toolId} locale={locale} />
             </div>
@@ -341,6 +341,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 stats={verdict.stats}
                 locale={locale}
                 workbookExport={dashboardWorkbookExport}
+                scopeEvidence={verdict.scopeEvidence}
                 decisionPrefill={{
                   conclusion: verdict.headline,
                   action: verdict.tone === "bad"

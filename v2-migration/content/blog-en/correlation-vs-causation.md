@@ -1,6 +1,6 @@
 ---
 title: "Correlation vs Causation: Verify Lift With Experiments"
-description: "The difference between correlation and causation, explained through ice cream and drowning, and why only an experiment can confirm a cause."
+description: "Distinguish correlation from causation, identify confounding and reverse causality, and check the assumptions behind experiments and causal claims."
 date: "2026-07-09"
 slug: "correlation-vs-causation"
 keywords: "correlation, causation, correlation vs causation, confounder, reverse causation, spurious correlation, marketing analysis, experimentation, correlation does not imply causation, confounding variable example, correlation vs causation difference, causal analysis in marketing, data misinterpretation"
@@ -8,10 +8,13 @@ tags: ["Analysis Methodology", "Performance Marketing"]
 draft: false
 faq:
   - q: "If the correlation is very high, is it causal?"
-    a: "No. Two metrics following the same seasonality or the same budget cycle can correlate strongly without one causing the other. A causal claim needs randomized assignment, or at minimum an on/off comparison."
+    a: "No. Two metrics following the same seasonality or the same budget cycle can correlate strongly without one causing the other. A causal claim needs randomized assignment, or a defensible quasi-experimental identification strategy. A simple on/off comparison is insufficient."
   - q: "What if an experiment is impossible?"
     a: "Use quasi-experimental designs such as pre/post, control regions, or interrupted time series, and label the result as an estimated lift. State that seasonality and promotions were not separated."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 On days when ice cream sales are high, drowning accidents also go up. Does ice cream cause drowning? Of course not. There's a separate cause — both are driven by 'summer.'
 
@@ -39,7 +42,7 @@ One more thing: sometimes the direction is reversed. Seeing "loyal customers ope
 
 ## So how do you actually confirm causation?
 
-There's exactly one way. As always, the answer is an experiment. Hold every other condition constant, change exactly one thing, and compare. Randomly split into two groups and act on only one of them, and confounders get spread evenly across both groups, canceling out their influence. That lets you attribute the remaining difference to "thanks to that action." (In practice, this is what an [A/B test](/en/blog/ab-testing) confirms.)
+Randomized experiments provide a strong basis for estimating causal effects. Random assignment balances confounders in expectation, but does not eliminate realized imbalance, cross-exposure, or tracking errors. Check comparison groups and implementation and report uncertainty. When randomization is impossible, a suitable quasi-experiment may help, but a simple before/after comparison is insufficient. An [A/B test](/blog/ab-testing) also depends on these design conditions.
 
 Observational data alone generally can't get you here. No matter how high the correlation, you can't claim "this is because of that." So mature analysis uses observation to find "association" and set direction, and reserves confirmation for experiments.
 
@@ -52,7 +55,7 @@ Next time you spot "A and B are moving together" in a report, ask yourself one t
 
 ## Wrap-up
 
-To recap: correlation is moving together, causation is producing an outcome. The confusion is usually caused by a hidden confounder, and confirming causation requires an experiment.
+To recap: correlation is moving together, causation is producing an outcome. The confusion is usually caused by a hidden confounder, and causal estimation requires an experiment or a defensible identification strategy and checks of its assumptions.
 
 The free tool we've built follows this same principle. It never labels a result from observational data as "causation" — it honestly shows it as "association," and guides you to confirm with a holdout experiment when confirmation is needed. If the data isn't enough, it says so honestly: "cannot be estimated."
 

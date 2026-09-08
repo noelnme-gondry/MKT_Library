@@ -1,9 +1,10 @@
-import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
+import { toolIndexEntry } from "@/lib/toolIndex";
+import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
-import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
+import { TEMPLATE_PAGES, getTemplatePage } from "@/lib/templateCatalog";
 
 // 목록 → 도구별 상세(컬럼 설명) 크롤 경로.
 const templateDetailHref = (toolId) => {
@@ -13,8 +14,7 @@ const templateDetailHref = (toolId) => {
 
 // CSV 템플릿 다운로드 랜딩 — routeMap 밖 독립 페이지(/blog·/guide와 동일 패턴, §12.24).
 // 실제 다운로드는 기존 csvTemplate.js(buildToolTemplateCsv, BOM+CRLF §7)를 그대로
-// 재사용 — 신규 CSV 스키마·엔진 없음. 도구가 없는(=hasToolTemplate false) 이벤트/증분
-// 도구(Aha·증분 분석)는 CANON_FIELDS와 grain이 달라 템플릿 목록에서 제외(정직 §8).
+// 공개 템플릿 목록과 다운로드 스키마는 templateCatalog에서 함께 파생한다.
 export async function generateMetadata() {
   const title = "무료 마케팅 템플릿·체크리스트 다운로드";
   const description =
@@ -31,89 +31,14 @@ export async function generateMetadata() {
   };
 }
 
-const GROUPS = [
-  {
-    heading: "효율 · 예산 CSV (일별 캠페인 성과)",
-    note: "4개 도구가 같은 형식의 CSV를 공유해요. 하나만 올려도 4개 도구 모두 이어서 볼 수 있어요.",
-    unified: true,
-    items: [
-      {
-        toolId: "5-2",
-        title: "운영 대시보드",
-        desc: "일별 캠페인 성과(비용·설치·매출·리텐션)를 스코어카드·차트로 한눈에 봅니다.",
-        href: "/dashboard",
-      },
-      {
-        toolId: "5-3",
-        title: "예산 배분 시뮬레이터",
-        desc: "채널·캠페인별 CPR/ROAS 응답곡선을 학습해 예산을 최적 배분합니다.",
-        href: "/tools/budget-allocation",
-      },
-      {
-        toolId: "5-21",
-        title: "캠페인 성과 변동 탐지",
-        desc: "성과 변동을 배분효과·믹스효과·효율효과로 무잔차 분해합니다.",
-        href: "/tools/campaign-variance",
-      },
-      {
-        toolId: "5-22",
-        title: "캠페인 포화도 진단",
-        desc: "채널·캠페인의 한계 효율을 평균과 비교해 포화/여유 구간을 진단합니다.",
-        href: "/tools/campaign-saturation",
-      },
-    ],
-  },
-  {
-    heading: "소재 CSV",
-    items: [
-      {
-        toolId: "9-6",
-        title: "소재 분석",
-        desc: "소재별 CTR·CVR·피로도 추이를 통계적으로 분석합니다.",
-        href: "/content/freshness",
-      },
-    ],
-  },
-  {
-    heading: "실험 CSV",
-    items: [
-      {
-        toolId: "5-4",
-        title: "실험 분석 (A/B 테스트)",
-        desc: "A/B 테스트 설계와 결과 판독(유의성·검정력)을 지원합니다.",
-        href: "/tools/experiment-analysis",
-      },
-    ],
-  },
-  {
-    heading: "주간 패널 CSV",
-    items: [
-      {
-        toolId: "5-18",
-        title: "주간 패널 (추세·잠식·기여도·예측 공용)",
-        desc: "한 번 매핑하면 추세 분석·유입 변화맵·잠식 진단·채널 기여도·미래 예측 다섯 분석이 같은 데이터를 이어받습니다.",
-        href: "/tools/marketing-response",
-      },
-    ],
-  },
-  {
-    heading: "콘텐츠 CSV",
-    items: [
-      {
-        toolId: "9-3",
-        title: "콘텐츠 트래픽 변동 탐지",
-        desc: "유입경로·카테고리·콘텐츠별 트래픽 변동을 분해해 무엇이 늘고 줄었는지 짚어줍니다.",
-        href: "/content/traffic-variance",
-      },
-      {
-        toolId: "9-7",
-        title: "콘텐츠 운영 대시보드",
-        desc: "콘텐츠 운영 데이터를 대시보드로 시각화하고 이상탐지·스코어카드를 제공합니다.",
-        href: "/content/dashboard",
-      },
-    ],
-  },
-];
+const GROUPS = TEMPLATE_PAGES.map(({ toolId, toolPath, slug }) => {
+  const entry = toolIndexEntry(toolId, "ko");
+  return {
+    heading: entry.name,
+    unified: getTemplatePage(slug).hasUnified,
+    items: [{ toolId, title: entry.name, desc: entry.answer, href: toolPath }],
+  };
+});
 
 const FAQ = [
   {
@@ -133,8 +58,8 @@ const FAQ = [
     a: "아래 템플릿 CSV를 받은 뒤 Google Sheets에서 파일 → 가져오기 → 업로드로 열면 됩니다. 헤더를 바꾸지 않고 데이터를 채운 뒤, 앱에서 공개 보기 링크를 연결하세요.",
   },
   {
-    q: "왜 모든 도구에 템플릿이 있는 건 아닌가요?",
-    a: "핵심 가치 발굴(Aha-moment)이나 증분 분석처럼 이벤트·홀드아웃 단위 CSV를 쓰는 도구는 데이터 형식(grain)이 달라 현재는 목록에서 제외했어요.",
+    q: "어떤 도구의 템플릿을 제공하나요?",
+    a: "CSV 스키마가 있는 공개 도구의 템플릿을 모두 제공합니다. 도구마다 필요한 컬럼과 관측 단위는 컬럼 안내에서 확인하세요.",
   },
 ];
 
@@ -171,9 +96,7 @@ function buildJsonLd() {
 
 export default function TemplatesPage() {
   const checklists = ["taxonomy", "postback", "media"];
-  const publishedGroups = GROUPS
-    .map((group) => ({ ...group, items: group.items.filter((item) => isRoutePublished(item.toolId)) }))
-    .filter((group) => group.items.length > 0);
+  const publishedGroups = GROUPS;
   return (
     <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <script

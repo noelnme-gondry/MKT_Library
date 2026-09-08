@@ -107,6 +107,8 @@ export default async function GlossaryTermPage({ params }) {
         )}
       </header>
 
+      <ContentActionPanel term={term} placement="article_answer" />
+
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
 
       <ContentActionPanel term={term} />

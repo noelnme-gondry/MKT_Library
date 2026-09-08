@@ -20,6 +20,7 @@ export default function InlineCardEditor({
 }) {
   const isEn = locale === "en";
   const [dragKey, setDragKey] = useState(null);
+  const [announcement, setAnnouncement] = useState("");
   const dragKeyRef = useRef(null);
   const cellRefs = useRef({});
   const latest = useRef({});
@@ -104,15 +105,33 @@ export default function InlineCardEditor({
     setDragKey(key);
   };
 
+  const moveByKeyboard = (event, key) => {
+    const offset = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1
+      : ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : 0;
+    if (!offset) return;
+    event.preventDefault();
+    const full = materializeOrder(keys, order);
+    const from = full.indexOf(key);
+    const to = from + offset;
+    if (to < 0 || to >= full.length) return;
+    const next = full.slice();
+    next.splice(from, 1);
+    next.splice(to, 0, key);
+    onPatch?.({ order: next });
+    setAnnouncement(isEn ? `${byKey.get(key).label}: position ${to + 1} of ${full.length}`
+      : `${byKey.get(key).label}: ${full.length}개 중 ${to + 1}번째`);
+  };
+
   const ctlBtn = {
     display: "inline-flex", alignItems: "center", justifyContent: "center",
-    width: "22px", height: "22px", borderRadius: "6px", fontSize: "12px",
+    width: "44px", height: "44px", borderRadius: "6px", fontSize: "12px",
     border: "1px solid var(--border)", background: "var(--surface-base, var(--bg-1))",
     color: "var(--text-muted)", cursor: "pointer", lineHeight: 1, padding: 0,
   };
 
   return (
     <div className={gridClassName}>
+      <span className="sr-only" role="status">{announcement}</span>
       {displayKeys.map((key) => {
         const it = byKey.get(key);
         if (!it) return null;
@@ -136,12 +155,14 @@ export default function InlineCardEditor({
           >
             {editMode && (
               <>
-                <span
-                  aria-hidden
+                <button
+                  type="button"
+                  onKeyDown={(event) => moveByKeyboard(event, key)}
+                  aria-label={isEn ? `${it.label}: use arrow keys to reorder` : `${it.label}: 방향키로 순서 변경`}
                   onPointerDown={(e) => onHandleDown(e, key)}
-                  title={isEn ? "Drag to reorder" : "드래그해서 이동"}
+                  title={isEn ? "Drag or use arrow keys to reorder" : "드래그 또는 방향키로 이동"}
                   style={{ ...ctlBtn, position: "absolute", top: "4px", left: "4px", zIndex: 3, cursor: "grab", touchAction: "none", userSelect: "none" }}
-                >⠿</span>
+                >⠿</button>
                 <button
                   onClick={() => patchHidden(key)}
                   title={isHidden
@@ -152,7 +173,7 @@ export default function InlineCardEditor({
               </>
             )}
             {/* 편집 중엔 카드 자체 클릭(차트 선택 등) 차단 */}
-            <div style={{ pointerEvents: editMode ? "none" : "auto" }}>{it.node}</div>
+            <div style={{ paddingTop: editMode ? "48px" : undefined, pointerEvents: editMode ? "none" : "auto" }}>{it.node}</div>
           </div>
         );
       })}

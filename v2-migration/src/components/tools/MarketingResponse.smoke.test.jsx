@@ -13,7 +13,7 @@
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getMmmInterpretationLimits } from "@/lib/mmmInterpretationLimits";
-import { render, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, fireEvent, act, waitFor, screen } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse, {
@@ -1700,6 +1700,7 @@ describe("MarketingResponse render smoke", () => {
       await flushRaf();
       const koreanCopy = Array.from(new Set(document.body.textContent.match(/[가-힣]+/g) || []));
       expect(koreanCopy, `${stage}: ${koreanCopy.join(", ")}`).toEqual([]);
+      if (stage === "Contribution") expect(document.body.textContent).toContain("Same-window baseline error");
     }
   }, 20_000);
 
@@ -1742,11 +1743,37 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("원본 CSV 통화만 선택하면 분석할 수 있습니다");
   });
 
+  it.each(["ko", "en"])("holds a trend operating action when tracking conditions change (%s)", async (locale) => {
+    seedWithData();
+    const { container } = render(<MarketingResponse initialStage="trend" isolated locale={locale} />);
+    clickByText(container, locale === "en" ? "Analyze" : "분석하기");
+    await flushRaf();
+    expect(container.querySelector(".decision-review")).toBeNull();
+    for (const [ko, en, value] of [["추적·어트리뷰션 정책", "Tracking / attribution policy", "consistent"], ["계절성·프로모션 조건", "Seasonality / promotion conditions", "reviewed"], ["광고 집행 연속성", "Ad delivery continuity", "continuous"]]) fireEvent.change(screen.getByLabelText(locale === "en" ? en : ko), { target: { value } });
+    expect(container.querySelector(".decision-review")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Tracking / attribution policy" : "추적·어트리뷰션 정책"), { target: { value: "changed" } });
+    expect(container.querySelector(".decision-review")).toBeNull();
+    expect(container.textContent).toContain(locale === "en" ? "Treat patterns as descriptive" : "패턴은 현상 설명으로만");
+  });
+
+  it.each(["ko", "en"])("does not call unidentifiable channels an absence of cannibalization (%s)", async (locale) => {
+    seedWithData();
+    const data = useAppStore.getState().csvData;
+    useAppStore.setState({ csvData: { ...data, raw: data.raw.map((row, index) => ({ ...row, g_spend: 100000 + index, m_spend: 80000 + index % 4 })) } });
+    const { container } = render(<MarketingResponse initialStage="diagnose" isolated locale={locale} />);
+    clickByText(container, locale === "en" ? "Analyze" : "분석하기");
+    await flushRaf();
+    expect(container.textContent).toContain(locale === "en" ? "No channels are identifiable; cannibalization cannot be determined" : "식별 가능한 채널이 없어 잠식 여부를 판정할 수 없습니다");
+    expect(container.querySelector(".decision-review")).toBeNull();
+  });
+
   it("renders trend→diagnose panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
     await flushRaf();
+    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeNull();
+    for (const [label, value] of [["추적·어트리뷰션 정책", "consistent"], ["계절성·프로모션 조건", "reviewed"], ["광고 집행 연속성", "continuous"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
     expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeTruthy();
     expect(container.textContent).toContain("다음 검토 약속 만들기");
     clickByText(container, "카니발 진단");
@@ -1785,6 +1812,7 @@ describe("MarketingResponse render smoke", () => {
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
+    expect(document.body.textContent).toContain("같은 구간 기준선 오차");
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");

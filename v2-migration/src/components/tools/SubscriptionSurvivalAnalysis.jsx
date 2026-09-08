@@ -26,6 +26,8 @@ import {
   observedHorizonUnitEconomics,
 } from "@/utils/subscriptionSurvivalMath";
 
+import { survivalFollowup, followupTable } from "@/lib/analysis-results/survivalFollowup";
+
 const TOOL_ID = "5-28";
 // 구독 플랜은 이 분석의 한 프리셋일 뿐이다. 실제 CSV에 있는 일반적인 운영
 // 차원만 선택지로 노출해, 존재하지 않는 세그먼트를 선택하는 일을 막는다.
@@ -121,6 +123,7 @@ function segmentSummary(group, { horizon, arpu, margin, discountRate }) {
   const censored = group.rows.filter((row) => row.event === 0).length;
   return {
     segment: group.name,
+    followup: survivalFollowup(group.rows, horizon),
     n: group.rows.length,
     events: normalized.eventCount,
     censored,
@@ -341,7 +344,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
       ? observedHorizonUnitEconomics({ survival: table, arpu, margin: margin / 100, discountRate: (discountRate ?? 0) / 100, horizon, cac: averageCac(prepared.validRows) })
       : { status: "unavailable", reason: "ltv_inputs_unavailable", ltv: null, cac: null, ltvCac: null, paybackPeriod: null };
     const summaries = groups.map((group) => segmentSummary(group, { horizon, arpu, margin: margin == null ? null : margin / 100, discountRate: (discountRate ?? 0) / 100 }));
-    return { prepared, table, hazard, horizon, timeUnit: active.timeUnit, inputMode: active.inputMode, observationEndDate: active.observationEndDate, eventDefinition: active.eventDefinition, ltvInputs: { arpu, margin, discountRate }, evidence, groups, curves, comparison, economics, segmentSummaries: summaries, ltv: economics.ltv, median: medianSurvival(table), rmst: restrictedMeanSurvival(table, horizon) };
+    return { followup: survivalFollowup(prepared.validRows, horizon), prepared, table, hazard, horizon, timeUnit: active.timeUnit, inputMode: active.inputMode, observationEndDate: active.observationEndDate, eventDefinition: active.eventDefinition, ltvInputs: { arpu, margin, discountRate }, evidence, groups, curves, comparison, economics, segmentSummaries: summaries, ltv: economics.ltv, median: medianSurvival(table), rmst: restrictedMeanSurvival(table, horizon) };
   }, [active, gateOpen, maxObserved, sourceRows]);
 
   const decisionPrefill = useMemo(() => {
@@ -359,7 +362,8 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
     };
   }, [locale, result]);
 
-  const download = result ? <DownloadHub toolId={TOOL_ID} locale={locale} manifest={{ toolId: TOOL_ID, version: "action_survival_v1", inputMode: result.inputMode, timeUnit: result.timeUnit, horizon: result.horizon, observationEndDate: result.observationEndDate || null, eventDefinition: result.eventDefinition || null, includedRows: result.prepared.validRows.length, excludedRows: result.prepared.excludedRows.length, leftTruncation: { applied: result.prepared.leftTruncatedCount > 0, episodeCount: result.prepared.leftTruncatedCount }, ltvInputs: result.ltvInputs, warnings: [result.evidence.reason, result.economics.reason, ...result.segmentSummaries.map((row) => row.evidenceReason)].filter(Boolean), source: "browser" }} items={[
+  const download = result ? <DownloadHub toolId={TOOL_ID} locale={locale} label={tx(locale, "결과 받기", "Get results")} manifest={{ toolId: TOOL_ID, version: "action_survival_v1", inputMode: result.inputMode, timeUnit: result.timeUnit, horizon: result.horizon, observationEndDate: result.observationEndDate || null, eventDefinition: result.eventDefinition || null, includedRows: result.prepared.validRows.length, excludedRows: result.prepared.excludedRows.length, leftTruncation: { applied: result.prepared.leftTruncatedCount > 0, episodeCount: result.prepared.leftTruncatedCount }, ltvInputs: result.ltvInputs, warnings: [result.evidence.reason, result.economics.reason, ...result.segmentSummaries.map((row) => row.evidenceReason)].filter(Boolean), source: "browser" }} items={[
+    { label: tx(locale, "관측 성숙도 근거 CSV", "Follow-up support CSV"), analyticsType: "followup_support", onSelect: () => { const table = followupTable(result.followup, result.segmentSummaries); downloadCsv(csvBody(table.rows[0], table.rows.slice(1)), "survival_followup_support"); } },
     { label: tx(locale, "생존곡선 CSV", "Survival curve CSV"), analyticsType: "survival_curve", onSelect: () => downloadCsv(csvBody(["time", "at_risk", "events", "censored", "survival", "ci_low", "ci_high", "hazard"], result.hazard.rows.map((row) => [row.time, row.atRisk, row.events, row.censored, row.survival, row.ciLow, row.ciHigh, row.hazard])), "subscription_survival_curve") },
     { label: tx(locale, "위험집합 CSV", "Risk-set CSV"), analyticsType: "risk_set", onSelect: () => downloadCsv(csvBody(["time", "at_risk", "events", "censored", "hazard"], result.hazard.rows.map((row) => [row.time, row.atRisk, row.events, row.censored, row.hazard])), "subscription_survival_risk_set") },
     ...(result.segmentSummaries.length ? [{ label: tx(locale, "세그먼트 요약 CSV", "Segment summary CSV"), analyticsType: "segment_summary", onSelect: () => downloadCsv(csvBody(["segment", "n", "events", "censored", "censoring_rate", "horizon", "survival_at_horizon", "rmst", "ltv", "cac", "ltv_cac", "evidence_status"], result.segmentSummaries.map((row) => [row.segment, row.n, row.events, row.censored, row.censoringRate, row.horizon, row.survival, row.rmst, row.ltv, row.cac, row.ltvCac, row.evidenceStatus])), "subscription_survival_segments") }] : []),
@@ -395,7 +399,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
     {result && !isStale && <>
       <div id="subscription-survival-result"><ResultActionCard toolId={TOOL_ID} locale={locale} resultState={result.evidence.status === "READY" ? "ready" : "withheld"} tone={result.evidence.status === "READY" ? "neutral" : "bad"} title={statusCopy(result.evidence.status, locale)} headline={evidenceHeadline({ evidence: result.evidence, hazard: result.hazard, locale })} decisionPrefill={decisionPrefill} download={download} workbookExport={() => ({
         calculationMode: "exact_after_preprocessing",
-        calculationTables: [{
+        calculationTables: [followupTable(result.followup, result.segmentSummaries), {
           name: "SURVIVAL_CURVE",
           title: tx(locale, "Kaplan–Meier 생존·위험 계산", "Kaplan–Meier survival and hazard calculation"),
           note: tx(locale, "위험집합 입력에서 hazard와 누적 생존율을 수식으로 재현. 신뢰구간은 엔진 출력", "Recalculates hazard and cumulative survival from risk-set inputs. Confidence intervals are engine outputs"),
@@ -419,6 +423,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
           limitations: [tx(locale, "Greenwood·log-log 신뢰구간과 세그먼트 log-rank는 엔진 출력이며 관측 범위 밖으로 외삽하지 않습니다.", "Greenwood log-log intervals and segment log-rank are engine outputs; nothing is extrapolated beyond observed support.")],
         },
       })} stats={[
+        { label: tx(locale, "최대 위험 구간의 위험집합", "At risk at peak hazard"), value: result.hazard.maxHazard?.atRisk == null ? "—" : fmtNum(result.hazard.maxHazard.atRisk), detail: tx(locale, "해당 구간 직전 관측 중인 개체 수", "Entities still under observation just before that interval") },
         { label: tx(locale, "이탈·종료", "Exit events"), value: fmtNum(result.prepared.eventCount) },
         { label: tx(locale, "중도절단", "Censored"), value: fmtNum(result.prepared.censoredCount) },
         { label: tx(locale, `${result.horizon}기간 생존율`, `${result.horizon}-period survival`), value: fmtPct(result.table.length ? result.table.filter((row) => row.time <= result.horizon).at(-1)?.survival : null) },
@@ -426,6 +431,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
         { label: tx(locale, "관측기간 반복 가치", "Observed-horizon recurring value"), value: result.ltv == null ? "—" : fmtCurrency(result.ltv, { precise: true }) },
         { label: tx(locale, "가치:획득·유지비", "Value:entity cost"), value: result.economics.ltvCac == null ? "—" : fmtNum(result.economics.ltvCac, 2) },
       ]} points={[
+        { text: tx(locale, `${result.horizon}기간까지 관측 ${result.followup.observedToHorizon}건 · 그 전 이탈 확인 ${result.followup.earlyExit}건 · 그 전 중도절단 ${result.followup.earlyCensored}건 · 아직 관측 진입 전 ${result.followup.notEntered}건입니다. 이른 이탈은 결과가 확인된 사례이며, 이른 중도절단은 이후 상태를 알 수 없습니다.`, `At horizon ${result.horizon}: ${result.followup.observedToHorizon} observed through the horizon, ${result.followup.earlyExit} earlier observed exits, ${result.followup.earlyCensored} earlier censorings, and ${result.followup.notEntered} not yet entered. Early exits have known outcomes; outcomes after early censoring are unknown.`) },
         { text: result.median == null ? tx(locale, "관측 기간 내 중앙 생존기간에 도달하지 않았습니다.", "Median survival was not reached within the observation window.") : tx(locale, `중앙 생존기간은 ${result.median}기간입니다.`, `Median survival is ${result.median} periods.`) },
         { text: result.economics.status === "available" ? tx(locale, `관측기간 내 비용 회수는 ${result.economics.paybackPeriod}기간에 도달했습니다.`, `Cost recovery was reached in period ${result.economics.paybackPeriod} within the observed horizon.`) : result.economics.reason === "payback_not_reached" ? tx(locale, "관측 기간 내 비용 회수에 도달하지 않았습니다.", "Cost recovery was not reached within the observed horizon.") : result.economics.reason === "zero_cac" ? tx(locale, "개체 획득·유지비가 0이어서 가치 비율과 비용 회수는 계산하지 않았습니다.", "Entity cost is zero, so the value ratio and cost recovery are not calculated.") : tx(locale, "기간당 반복 가치·매출총이익률과 모든 에피소드의 개체 획득·유지비가 있어야 가치 비율·비용 회수를 계산합니다.", "Recurring value, gross margin, and entity cost for every episode are required for the value ratio and cost recovery.") },
         ...(result.evidence.reason === "no_censored_rows" ? [{ text: tx(locale, "모든 에피소드가 이탈·종료로 끝나 중도절단 정보가 없습니다. 관측 종료 규칙을 확인한 뒤 방향만 참고하세요.", "Every episode ended in an exit event, so there is no censoring information. Check the observation-end rule and treat this as directional.") }] : []),

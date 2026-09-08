@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
-import { useAppStore } from "@/store/useDataStore";
+import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
+import PeriodSensitivityPanel from "@/components/ds/PeriodSensitivityPanel";
+import { saturationPeriodSensitivity } from "@/lib/analysis-results/periodSensitivity";
 import Chart from "@/utils/chartGlobals";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { CHART_THEME, getCssVar, downloadChartAsPNG } from "@/utils/chartUtils";
@@ -143,9 +145,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
   // Extract fields mapping
   const mappedKeys = new Set(Object.values(csvData?.mapping || {}).filter((v) => v && v !== "__ignore__"));
-  const hasCampaign = mappedKeys.has("campaign_name");
-  const revCandidates = ["revenue_d7", "revenue_d0", "revenue_d14", "revenue_d30", "revenue_d90", "revenue_d180", "revenue_d360"];
-  const revField = revCandidates.find((k) => mappedKeys.has(k)) || null;
+  const { hasCampaign, revField } = satAvailableFields(csvData);
 
   // Enforce valid states synchronously
   const effectiveMetric = satState.metric === "roas" && !revField ? "cpa" : satState.metric;
@@ -163,19 +163,18 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       : mappedKeys.has("actions")
         ? "actions"
         : null;
-  const mappedRows = useMemo(() => (hasData ? getMappedRows(csvData) : []), [csvData, hasData]);
+  const mappedRows = useMemo(() => (hasData && analyzed ? getMappedRows(csvData) : []), [csvData, hasData, analyzed]);
 
-  const rows = (() => {
-    if (!hasData || !basisMetricField) return [];
-    const { revField: rev } = satAvailableFields(csvData);
-    const pointsMap = satBuildPoints(mappedRows, effectiveGrain, basisMetricField, rev);
+  const rows = useMemo(() => {
+    if (!analyzed || !basisMetricField) return [];
+    const pointsMap = satBuildPoints(mappedRows, effectiveGrain, basisMetricField, revField);
     const out = [];
     for (const [name, pts] of pointsMap) {
       const a = SAT_MATH.analyzeEntity(pts, SAT_CONFIG);
       out.push({ name, raw: pts.length, ...a });
     }
     return out;
-  })();
+  }, [analyzed, mappedRows, effectiveGrain, basisMetricField, revField]);
   const okRows = rows
     .filter((r) => r.ok && satActiveVerdict(r, effectiveMetric))
     .sort((a, b) => satActiveIndex(b, effectiveMetric) - satActiveIndex(a, effectiveMetric));
@@ -391,7 +390,9 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     );
   }
 
-  let head = tr("대부분 적정 구간", "Mostly in the steady zone");
+  let head = okRows.length
+    ? tr("분석 가능한 항목은 적정 구간", "Analyzable items are in the steady zone")
+    : tr("판단 보류 — 분석 가능한 항목 없음", "Abstain — no analyzable items");
   if (sat.length || scale.length) {
     const parts = [];
     if (sat.length) parts.push(`<span style="color:#f87171;">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);
@@ -511,7 +512,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               title: tr("대상별 포화도 진단", "Saturation diagnostics by entity"),
               note: tr("곡선 적합·한계효율은 엔진 출력이고 포화지수는 수식", "Curve fit and marginal efficiency are engine outputs; the saturation index is a formula"),
               rows: [
-                ["entity", "observations", "model", "r_squared_engine", "current_daily_cost", "average_efficiency_engine", "marginal_efficiency_engine", "saturation_index", "verdict_engine"],
+                ["entity", "observations", "model", "r_squared_engine", "current_daily_cost", "average_efficiency_engine", "marginal_efficiency_engine", "saturation_index", "verdict_engine", "observed_min_daily_cost", "observed_max_daily_cost"],
                 ...okRows.map((row, index) => {
                   const excelRow = index + 2;
                   const average = isRoas ? row.roas?.avgRoas : row.avgCpr;
@@ -520,8 +521,11 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                     row.name, row.raw || row.n || 0, row.modelType || "", row.r2 ?? "", row.currentCost || 0,
                     Number.isFinite(average) ? average : "",
                     Number.isFinite(marginal) ? marginal : "",
-                    { formula: isRoas ? `=IFERROR(F${excelRow}/G${excelRow},0)` : `=IFERROR(G${excelRow}/F${excelRow},0)` },
+                    Number.isFinite(isRoas ? row.roas?.satIndexRoas : row.satIndex)
+                      ? { formula: isRoas ? `=IFERROR(F${excelRow}/G${excelRow},"")` : `=IFERROR(G${excelRow}/F${excelRow},"")` }
+                      : "unbounded",
                     satActiveVerdict(row, effectiveMetric) || "",
+                    row.xMin ?? "", row.xMax ?? "",
                   ];
                 }),
               ],
@@ -576,6 +580,11 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               ]}
             />
           )}
+        />
+        <PeriodSensitivityPanel
+          key={`${computeAnalyzeSig(csvData)}|${effectiveGrain}|${basisMetricField}|${effectiveMetric}|${currency}`}
+          locale={locale}
+          compute={() => saturationPeriodSensitivity(mappedRows, { grain: effectiveGrain, metricField: basisMetricField, revField, metric: effectiveMetric })}
         />
       </section>
 

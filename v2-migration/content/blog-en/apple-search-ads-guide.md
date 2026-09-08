@@ -8,11 +8,11 @@ tags: ["ASA", "UA"]
 draft: false
 primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
-answer: "In Apple Search Ads (ASA), promote non-Exact search terms only after they have enough taps and installs and meet target CPA. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target."
+answer: "Apple Search Ads (ASA) keyword optimization starts in the search terms report: promote non-Exact terms only after they have enough taps and installs and meet target CPA, and review sufficiently observed poor performers as negative candidates. Hold terms with immature or insufficient data. Raise CPT slightly when pacing is low and performance is good; lower it when spend is high and performance misses target."
 conditions: "The 3-install, 8-tap, and ±10–15% CPT thresholds are this service's operating defaults, not Apple rules. Adjust them to account size and volatility, and verify current match behavior and bid limits in Apple Ads."
-reviewedAt: "2026-08-09"
-reviewer: "Growth Opt Playbook"
 sources:
+  - title: "Apple Ads reporting definitions"
+    url: "https://ads.apple.com/app-store/help/reporting/0023-reporting-options-and-definitions"
   - title: "Apple Ads: Understand keyword match types"
     url: "https://ads.apple.com/app-store/help/keywords/0059-understand-keyword-match-types"
   - title: "Apple Ads: Considerations for keyword bids"
@@ -24,8 +24,21 @@ faq:
     a: "No. Exact is the tightest match type, but Apple says close variants such as misspellings, plurals, reordered words, and translations may still match."
   - q: "Should I always raise CPT when budget pacing is low?"
     a: "No. It is a raise candidate only when pacing is low and target CPA is being met. If performance is poor, inspect the term, product page, market, and seasonality first."
+updated: "2026-09-09"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Run Apple Search Ads (ASA) as one lumped campaign, and a few days later the report may show brand terms taking most of the spend — people who may have searched for your app anyway. ASA sits at the top of App Store search and can reach **high-intent users**. To make that value repeatable, separate campaigns by purpose and run a loop for discovering terms, promoting Exact targets, and adjusting bids.
+
+## Reproduce the result: before and after maturity confirmation
+
+[Download synthetic search-term CSV](/examples/asa-mature-candidate.csv). Four invented rows use export-like headers plus target CPA, daily budget, and current CPT. No account data is included.
+
+1. Upload to the [ASA tool](/tools/asa-keyword-finder), check Date, Search Term, Taps, Installs, and Spend mapping, then analyze. Maturity starts as unknown, so actions are held.
+2. For this example only, declare that the report includes mature periods. Totals are 40 taps, 12 installs, and 4,000 spend: CPA is approximately 333.33 and campaign pacing is 10%. Against target CPA 500, one Exact candidate and a CPT change from 100 to 115 appear.
+3. Compare quality_status and recommended CPT in the CSV and workbook. For real files, verify account conversion lag before declaring maturity. Do not mix tap-through installs with totals that include view-through installs.
+
+[Input templates](/templates) · [CPA definition](/glossary/cpa). Candidate generation is not an effect significance test.
 
 ## Split campaigns by purpose
 
@@ -84,7 +97,9 @@ Detailed steps are in the [Apple Search Ads guide](/guide/apple-search-ads).
 
 ## Check incrementality on brand keywords
 
-Of the four, brand is the trickiest. The cheap CPA looks great, but many of those installs **would have come organically without the ad**. Confirm real incrementality by turning it off in some regions with [incrementality analysis](/tools/incrementality) and watching total installs. If installs don't drop when you turn it off, that budget was re-buying organic with paid dollars.
+Low brand CPA does not establish incrementality. Where feasible, use [incrementality analysis](/tools/incrementality) with a comparison group, duration, and power specified in advance. No observed install drop after a pause does not prove zero effect; inspect uncertainty, seasonality, other advertising, and tracking changes too.
+
+The bar for promoting the terms you find here to Exact is in [ASA keyword expansion](/blog/asa-keyword-expansion), and how much of that traffic converts on the store page is in [App Store Optimization](/blog/aso-basics-guide).
 
 ## Let's be honest
 

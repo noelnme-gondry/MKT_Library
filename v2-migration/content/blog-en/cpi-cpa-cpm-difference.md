@@ -2,7 +2,7 @@
 title: "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained"
 description: "Learn what CPM and CPC measure, and where to look when impression or click costs rise."
 date: "2026-07-15"
-updated: "2026-08-17"
+updated: "2026-09-09"
 slug: "cpi-cpa-cpm-difference"
 keywords: "what is CPM, what is CPC, CPM vs CPC, impression cost, click cost, CPM calculation, CPC calculation, advertising impression cost, advertising click cost, why did CPC go up, why did CPM go up"
 tags: ["Metrics Basics", "Marketing Metrics"]
@@ -13,11 +13,13 @@ faq:
   - q: "Is a low CPM good?"
     a: "Not on its own. Low CPM with low CTR and conversion rate can still produce a worse final CPA. Treat CPM as an intermediate metric for diagnosing causes."
   - q: "My CPC rose but CPM stayed flat. What does that mean?"
-    a: "The auction price did not change, but click-through rate fell. CPC is CPM divided by CTR, so a lower denominator raises CPC. Look at creative and fatigue before touching bids."
+    a: "The auction price did not change, but click-through rate fell. CPC is CPM divided by (1,000 × CTR), so a lower denominator raises CPC. Look at creative and fatigue before touching bids."
   - q: "Can a marketer lower CPM directly?"
     a: "CPM is an auction outcome, not a dial you set. It moves with audience size, bid strategy, creative quality, and competitive pressure. Rather than targeting CPM itself, find what pushed it up."
   - q: "Over what window should I compare CPM, CPC, CPI, and CPA?"
     a: "Day-level comparisons mislead because weekday variation is large. Compare equal-length windows such as the last 7 days against the previous 7, and exclude recent days that have not matured for metrics whose conversions land late."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 You have probably heard that CPM went up, lowered your bid, and watched nothing improve. If the real cause was creative rather than the auction, that is exactly what should happen. CPM and CPC sit at the front of the advertising funnel — impressions and clicks — and reading them separately is what lets you tell "the auction got expensive" apart from "our response got weaker."
 
@@ -28,7 +30,7 @@ For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, 
 Every metric attaches to a different point in the funnel.
 
 - CPM (Cost Per Mille) — cost per 1,000 impressions. Closest to the raw price you pay the platform.
-- CPC (Cost Per Click) — cost per click. Connects as CPM ÷ CTR.
+- CPC (Cost Per Click) — cost per click. Connects as CPM ÷ (1,000 × CTR).
 - CPI (Cost Per Install) — cost per install. The headline metric for app marketing.
 - CPA (Cost Per Action) — cost per desired action (signup, purchase). Closest to real outcome.
 
@@ -38,28 +40,30 @@ Lay it in one line and it clicks (numbers are illustrative). Spend $10,000 for 5
 
 ## CPC went up — it is one of two causes
 
-This is where the practical work starts. CPC is not an independent metric; it is CPM divided by CTR.
+This is where the practical work starts. CPC is not an independent metric; it is CPM divided by (1,000 × CTR).
 
 ```
-CPC = CPM ÷ CTR
+CPC = CPM ÷ (1,000 × CTR)
 ```
 
-So a rising CPC means either CPM rose or CTR fell. The two call for opposite fixes, and CPC alone cannot tell them apart.
+Enter CTR and the conversion rates below as fractions from 0 to 1 (1% = 0.01). These identities require the same period, population, conversion definitions, and attribution scope.
+
+A rise in CPC can reflect higher CPM, lower CTR, or both changes together. This decomposition narrows hypotheses; it does not identify the operational cause.
 
 ![The same symptom — CPC rising from $0.20 to $0.30 — split into two causes. If CPM rose, check audience, bid, and seasonality; if CTR fell, check creative and fatigue.](/blog-assets-en/cpi-cpa-cpm-difference/cpc-split.svg)
 
 Run the numbers. At CPM $2.00 and CTR 1%, CPC is $0.20.
 
 - CPM rises to $3.00 while CTR holds at 1% → CPC $0.30
-- CPM holds at $2.00 while CTR falls to 0.67% → CPC $0.30
+- CPM holds at $2.00 while CTR falls to 0.67% → CPC approximately $0.30
 
-Identical CPC, completely different situations. The first is a pricier auction; the second is creative that stopped working. Rebuilding creative in the first case wastes a week, and cutting bids in the second just buys fewer impressions.
+Similar CPC, but the first reflects impression cost and the second reflects click response. Auctions, placement mix, creative, and audiences can change together. Check breakdowns and experiments before choosing an action.
 
 ### When CPM rose
 
 CPM is not a value you set — it is what the auction returns. Common reasons it climbs:
 
-- The audience narrowed. A tighter audience means more advertisers bidding on the same people.
+- The audience narrowed. Check whether impression cost changed after narrowing. Direction depends on inventory and competition.
 - Competition intensified. Holiday and promotional periods pull budget onto the same inventory. CPM rises even when you changed nothing.
 - Creative quality signals dropped. Platforms discount inventory for creative that earns engagement. Weak response raises effective CPM at the same bid.
 - Placement mix shifted. With automatic placements, a larger share of expensive inventory lifts average CPM while per-placement efficiency is unchanged.
@@ -68,18 +72,18 @@ CPM is not a value you set — it is what the auction returns. Common reasons it
 
 This side is a response to something you made, so there is more to act on.
 
-- Creative fatigue. Repeated exposure to the same people drives CTR down steadily. Read it alongside frequency.
+- Creative fatigue. Check whether CTR declined alongside repeated exposure; repetition alone does not establish a decline. Read it alongside frequency.
 - Share of new creative. A drop in blended CTR can just be a larger mix of new assets still in learning.
-- Message and audience drift apart. Broadening the audience without changing the creative lowers CTR by construction.
+- Message and audience drift apart. Check whether the message fits the expanded audience. Expansion does not guarantee a lower CTR.
 
 <!-- CONTENT_ACTION -->
 
 ## Why you have to watch all of them
 
-The same logic runs down the whole chain. CPA alone cannot tell you why it is bad; decomposing it surfaces the cause.
+The same logic runs down the whole chain. CPA alone cannot tell you why it is bad; decomposing it narrows the hypotheses to investigate.
 
 ```
-CPA ≈ CPM ÷ (CTR × click-to-install rate × install-to-action rate)
+CPA = CPM ÷ (1,000 × CTR × click-to-install rate × install-to-action rate)
 ```
 
 When CPA is high, this is where it splits:
@@ -88,7 +92,7 @@ When CPA is high, this is where it splits:
 - Low CTR → check replacement candidates in [creative fatigue analysis](/content/freshness), or revisit targeting.
 - Low conversion rate → leaking at the landing page or [funnel](/blog/funnel-dropoff-analysis).
 
-So CPA is the result; CPM, CTR, and conversion rate are the causes. Stare at the result alone and you cannot decide whether to swap creative, change targeting, or fix the landing page.
+So CPA is the result; CPM, CTR, and conversion rate are arithmetic components. Stare at the result alone and you cannot decide whether to swap creative, change targeting, or fix the landing page.
 
 ## What to optimize toward
 

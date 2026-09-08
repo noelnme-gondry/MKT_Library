@@ -37,17 +37,13 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
   const verdict = result?.vif?.verdict;
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const copy = verdict === "ok" ? tr("현재 지출 패턴에서는 심한 중복 움직임이 보이지 않습니다. 그래도 연관은 인과가 아니므로 MMM 결과는 실험·홀드아웃과 함께 해석하세요.", "The spend pattern has no severe overlap signal. Correlation is still not causation; interpret MMM with experiments or holdouts.") : verdict === "warn" || verdict === "severe" ? tr("채널별 기여도를 숫자로 나누기 전에, 같이 움직인 채널을 분리해 변동시킨 기간을 확보하세요. 이 상태의 MMM 계수는 배분 근거로 쓰기 어렵습니다.", "Before dividing contribution by channel, create periods where the paired channels move independently. MMM coefficients in this state are weak evidence for allocation.") : verdict === "not_applicable" ? tr("채널은 있지만 시간에 따라 지출이 변한 채널이 2개 미만이라 VIF를 계산할 수 없습니다. 최소 2개 채널의 지출이 서로 다르게 움직인 기간을 추가하세요.", "Channels are present, but fewer than two vary over time, so VIF is not computable. Add periods where at least two channels move independently.") : tr("채널 수와 공통 기간이 부족합니다. 최소 2개 채널, 채널 수보다 3개 이상 많은 날짜가 필요합니다.", "There are not enough channels or common periods. Use at least two channels and at least three more dates than channels.");
-  // computeVif는 계산 불가 시 vif: []를 반환하면서 variableIndices는 비우지 않는다
-  // (골든 계약: modelDiagnostics.test.js). 위치 zip만 하면 vif[i]가 undefined가 되고,
-  // 표시층에서 이를 비유한(∞)으로 렌더해 "계산 불가"를 "완전 공선(최악)"으로 뒤집었다.
-  // → 값이 실제로 존재하는 행만 남긴다. 남은 Infinity는 진짜 완전 공선이다(§8 날조 금지).
+  // The engine returns null both for non-identification and an R² at its boundary.
+  // Preserve those rows as uncomputed; null is not proof of mathematical infinity.
   const vifRows = result?.vif
-    ? result.vif.variableIndices
-      .map((index, vifIndex) => ({ channel: result.channels[index], vif: result.vif.vif[vifIndex] }))
-      .filter((row) => typeof row.vif === "number" && !Number.isNaN(row.vif))
+    ? result.vif.vif.map((vif, index) => ({ channel: result.channels[result.vif.variableIndices[index]], vif }))
     : [];
   const maxVif = result?.vif?.maxVif;
-  const formattedMaxVif = Number.isFinite(maxVif) ? maxVif.toFixed(2) : verdict === "severe" ? "∞" : tr("계산 불가", "Not computable");
+  const formattedMaxVif = Number.isFinite(maxVif) ? maxVif.toFixed(2) : maxVif === Infinity ? "∞" : tr("계산 불가", "Not computable");
   const robustnessLabel = (value) => value === "consistent"
     ? tr("두 방법 일치", "Methods agree")
     : value === "direction_conflict"
@@ -73,7 +69,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
       const text = String(value ?? "");
       return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
     };
-    const lines = [["channel", "vif"], ...vifRows.map((row) => [row.channel, Number.isFinite(row.vif) ? row.vif : "Infinity"])]
+    const lines = [["channel", "vif"], ...vifRows.map((row) => [row.channel, Number.isFinite(row.vif) ? row.vif : row.vif === Infinity ? "Infinity" : "not_computable"])]
       .map((line) => line.map(cell).join(","));
     downloadCsv(`\uFEFF${lines.join("\r\n")}`, "vif-multicollinearity");
   };
@@ -102,7 +98,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
     downloadCsv(`\uFEFF${lines.join("\r\n")}\r\n`, "channel-correlation-holm");
   };
   return <ToolPageShell toolId="5-25" locale={locale} titleLevel={0} title={tr("VIF 다중공선성 점검", "VIF Multicollinearity Check")} summary={<p>{tr("MMM을 돌리기 전에 채널별 지출이 서로 너무 같이 움직였는지 확인합니다. 숫자는 진단 신호이며, 공선성을 해결한 인과 추정은 아닙니다.", "Check whether channel spend moved too tightly together before running MMM. This is a diagnostic signal, not a causal fix.")}</p>}>
-    <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 계산 불가는 심각으로 표시합니다. 비용·채널·날짜만 있으면 됩니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or an uncomputable value is severe. You only need date, channel, and spend.`)}</p></section>
+    <section className="block diagnostic-tool__rules" id="vif-setup"><h2 className="section-title">{tr("VIF 해석", "Reading VIF")}</h2><p>{tr(`VIF ${DIAG_THRESHOLDS.vifWarn} 미만은 관찰상 양호, ${DIAG_THRESHOLDS.vifWarn} 이상은 주의, ${DIAG_THRESHOLDS.vifSevere} 이상 또는 완전 공선(∞)은 심각입니다. 표본·변동 부족으로 계산할 수 없는 상태는 별도의 판단 보류입니다. 비용·채널·날짜가 필요합니다.`, `Below ${DIAG_THRESHOLDS.vifWarn} is observationally OK; ${DIAG_THRESHOLDS.vifWarn}+ is a warning; ${DIAG_THRESHOLDS.vifSevere}+ or perfect collinearity (∞) is severe. Insufficient observations or variation leave the diagnosis uncomputed and held separately. Date, channel, and spend are required.`)}</p></section>
     <CsvUploader toolId="5-25" locale={locale} />
     {analyzed && <>
       <div id="vif-result"><ResultActionCard
@@ -127,11 +123,11 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
               ["kind", "channel_a", "channel_b", "engine_value", "adjusted_p_engine", "absolute_value", "warn_threshold", "threshold_exceeded"],
               ...vifRows.map((row, index) => {
                 const excelRow = index + 2;
-                return ["VIF", row.channel, "", Number.isFinite(row.vif) ? row.vif : "", "", { formula: `=ABS(D${excelRow})` }, DIAG_THRESHOLDS.vifWarn, { formula: `=IF(F${excelRow}>=G${excelRow},1,0)` }];
+                return ["VIF", row.channel, "", Number.isFinite(row.vif) ? row.vif : row.vif === Infinity ? "unbounded" : "not_computable", "", { formula: `=IF(ISNUMBER(D${excelRow}),ABS(D${excelRow}),D${excelRow})` }, DIAG_THRESHOLDS.vifWarn, { formula: `=IF(D${excelRow}="unbounded",1,IF(ISNUMBER(F${excelRow}),IF(F${excelRow}>=G${excelRow},1,0),"not_computable"))` }];
               }),
               ...(result?.pairs || []).map((row, index) => {
                 const excelRow = vifRows.length + index + 2;
-                return ["CORRELATION", row.left, row.right, Number.isFinite(row.r) ? row.r : "", Number.isFinite(row.holmP) ? row.holmP : "", { formula: `=ABS(D${excelRow})` }, 0.8, { formula: `=IF(F${excelRow}>=G${excelRow},1,0)` }];
+                return ["CORRELATION", row.left, row.right, Number.isFinite(row.r) ? row.r : "not_computable", Number.isFinite(row.holmP) ? row.holmP : "", { formula: `=IF(ISNUMBER(D${excelRow}),ABS(D${excelRow}),"not_computable")` }, 0.8, { formula: `=IF(ISNUMBER(F${excelRow}),IF(F${excelRow}>=G${excelRow},1,0),"not_computable")` }];
               }),
             ],
           }],

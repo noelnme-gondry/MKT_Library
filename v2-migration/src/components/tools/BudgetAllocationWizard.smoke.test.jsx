@@ -49,6 +49,7 @@ function seedWithData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: { raw, headers, mapping, fileName: "alloc.csv" } },
     csvData: { raw, headers, mapping, fileName: "alloc.csv" },
   });
+  useAppStore.getState().setGroupAnalyzed("5-3");
 }
 
 describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {

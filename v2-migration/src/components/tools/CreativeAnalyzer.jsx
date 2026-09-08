@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
+import { qualifyCreativeFatigue } from "@/utils/creativeFatigueQuality";
 import { twoWayAnova } from "@/utils/factorialAnovaMath";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
@@ -311,7 +312,7 @@ function computeCreativeHealth(metrics, fatigue, rows) {
     weeksN: weeks.length,
     avgLife,
     fatiguedN,
-    fatigueN: (fatigue || []).length,
+    fatigueN: (fatigue || []).filter((row) => row.qualityStatus === "reviewable").length,
   };
 }
 
@@ -505,7 +506,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   const conceptChartRef = useRef(null);
   const chartInstances = useRef({});
 
-  const hasData = csvData?.raw?.length > 0;
+  const hasRawData = csvData?.raw?.length > 0;
+  const analyzed = useAppStore((state) => state.isGroupAnalyzed(C.uploaderToolId));
+  const hasData = hasRawData && analyzed;
 
   // 매핑된 표준 필드 키 감지 (§8: 없는 컬럼은 하위 분석 숨김, crash X)
   const mappedKeys = useMemo(
@@ -577,7 +580,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       }
     }
 
-    const fatigue = CREATIVE_STATS.fatigueDetect(cleanRows, "ctr", CREATIVE_CONFIG);
+    const fatigue = qualifyCreativeFatigue(CREATIVE_STATS.fatigueDetect(cleanRows, "ctr", CREATIVE_CONFIG), metrics, CREATIVE_CONFIG.minImpressions);
     const fatigueAlerts = CREATIVE_FATIGUE.buildAlerts(
       cleanRows,
       CREATIVE_CONFIG.fatigueAlert,
@@ -830,7 +833,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div className="callout warning">
             <div className="ico">!</div>
             <div className="body">
-              <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
+              <strong>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
               <p>{C.noDataDesc}</p>
               <div style={{ marginTop: "1rem" }}>
                 <ToolTemplateAction
@@ -906,9 +909,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     result?.hitRate == null
       ? "—"
       : `${(result.hitRate * 100).toFixed(0)}% (${result.hits}/${result.eligible})`;
-  const fatigueTone = alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
+  const hasFatigueEvidence = health.fatigueN > 0 || alertNowN > 0;
+  const fatigueTone = !hasFatigueEvidence ? "neutral" : alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
   const entityPluralEn = domain === "content" ? "content items" : "creatives";
-  const fatigueHeadline = alertNowN > 0
+  const fatigueHeadline = !hasFatigueEvidence ? tr("교체 판단 보류 — 노출·관측 기간 근거가 부족합니다", "Replacement decision held — insufficient exposure or observation history") : alertNowN > 0
     ? tr(`지금 교체가 필요한 ${C.entity}가 ${alertNowN}개입니다. 이번 주 계획부터 확정하세요.`, `${alertNowN} ${entityPluralEn} need replacement now. Lock this week's plan first.`)
     : fatiguedCount > 0
       ? tr(`피로 신호가 있는 ${C.entity}가 ${fatiguedCount}개입니다. 교체 시점을 미리 잡아 두세요.`, `${fatiguedCount} ${entityPluralEn} show fatigue signals. Plan replacements before they become urgent.`)
@@ -1002,7 +1006,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       <ResultActionCard
         toolId="9-6"
         analysisType="creative"
-        resultState={metrics.length ? "ready" : "insufficient"}
+        resultState={hasFatigueEvidence ? "ready" : "insufficient"}
         locale={locale}
         decisionReview={hasDecisionTarget}
         decisionPrefill={hasDecisionTarget ? {
@@ -1030,6 +1034,11 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         workbookExport={() => ({
           calculationMode: "hybrid_engine_output",
           calculationTables: [{
+            name: "CREATIVE_FATIGUE_EVIDENCE",
+            title: tr("피로 판정의 노출·기간 근거", "Exposure and history supporting fatigue"),
+            rows: [["creative_id", "quality_status", "fatigue_candidate", "exposure_threshold"],
+              ...(fatigue || []).map((row) => [row.creative_id, row.qualityStatus, row.qualityStatus === "reviewable" ? Boolean(row.fatigued) : "", CREATIVE_CONFIG.minImpressions])],
+          }, {
             name: "CREATIVE_METRICS",
             title: tr("소재별 집계 지표", "Aggregated metrics by creative"),
             note: tr("소재 집계 입력에서 CTR·CVR·IPM·CPI·ROAS를 수식으로 재현", "Recalculates CTR, CVR, IPM, CPI, and ROAS from creative aggregate inputs"),
@@ -1152,7 +1161,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
-        <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
+        <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
         <div style={{ marginTop: "10px" }}>
           <ToolTemplateAction
             toolId={C.uploaderToolId}
@@ -1229,7 +1238,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             </div>
             <div className="ab-stat">
               <div className="ab-stat-label" title={C.statFatTitle}>{C.statFatLabel}</div>
-              <div className={`ab-stat-value tnum ${health.fatiguedN > 0 ? "neg" : "pos"}`}>{pctOf(health.fatiguedN, health.fatigueN)}</div>
+              <div className={`ab-stat-value tnum ${health.fatigueN ? health.fatiguedN > 0 ? "neg" : "pos" : ""}`}>{health.fatigueN ? pctOf(health.fatiguedN, health.fatigueN) : tr("판단 보류", "Withheld")}</div>
               <div className="ab-stat-hint">{health.fatiguedN}/{health.fatigueN}</div>
             </div>
           </div>
@@ -1432,6 +1441,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
           {C.fatigueDesc((fatigue || []).length, fatiguedCount)}
         </p>
+        <p>{tr(`노출·기간 근거 부족으로 보류 ${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length}개. 피로 비율의 분모는 근거 기준을 충족한 소재만 포함합니다. 노출 기준 ${CREATIVE_CONFIG.minImpressions}회는 운영 휴리스틱이며 통계적 유의성 기준이 아닙니다.`, `${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length} held for insufficient exposure or history. The fatigue share includes only eligible creatives. The ${CREATIVE_CONFIG.minImpressions}-impression threshold is an operating heuristic, not statistical significance.`)}</p>
         {fatiguedRows.length > 0 && (
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="cann-card-header">
@@ -1477,7 +1487,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="7" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{C.fatigueEmpty}</td></tr>
+                <tr><td colSpan="7" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{tr("근거 기준을 충족한 피로 후보가 없습니다. 데이터 부족을 건강함으로 판정하지 않습니다.", "No fatigue candidate meets the evidence criteria. Insufficient data is not a healthy verdict.")}</td></tr>
               )}
             </tbody>
           </table>
