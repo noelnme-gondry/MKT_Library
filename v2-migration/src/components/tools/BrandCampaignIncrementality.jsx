@@ -5,7 +5,9 @@ import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 
-import { useAppStore } from "@/store/useDataStore";
+import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
+import CausalDesignCheck, { useCausalDesign } from "@/components/ds/CausalDesignCheck";
+import { designEvidenceTable } from "@/lib/analysis-results/causalDesignEvidence";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -59,7 +61,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     outcome: row?.[resolvedOutcomeColumn],
     campaignOn: row?.[resolvedCampaignColumn],
   })), [csvData.raw, resolvedCampaignColumn, resolvedDateColumn, resolvedOutcomeColumn]);
-  const currentSignature = `${csvData.fileName}|${csvData.raw?.length || 0}|${resolvedDateColumn}|${resolvedOutcomeColumn}|${resolvedCampaignColumn}`;
+  const currentSignature = `${computeAnalyzeSig(csvData)}|${resolvedDateColumn}|${resolvedOutcomeColumn}|${resolvedCampaignColumn}`;
+  const design = useCausalDesign(currentSignature);
   // 데모는 필요한 역할이 고정돼 있으므로 시작 버튼을 누른 즉시 결과를 보여 준다.
   // 실제 파일은 사용자가 열 역할을 확인한 뒤에만 명시적으로 분석한다.
   const result = useMemo(() => (isDemo || analysisSignature === currentSignature) && resolvedDateColumn && resolvedOutcomeColumn && resolvedCampaignColumn
@@ -77,7 +80,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     const hasProfileTrend = Number.isFinite(result.profileTrend?.intercept) && Number.isFinite(result.profileTrend?.slope);
     return {
       calculationMode: "hybrid_engine_output",
-      calculationTables: [{
+      calculationTables: [designEvidenceTable(design.values, design.ready), {
         name: "BRAND_ITS_SERIES",
         title: tx(locale, "기간별 실제·반사실", "Actual and counterfactual series"),
         note: tx(locale, "AR(1) 적합은 엔진 출력, 반사실 선과 기간별 차이는 수식", "AR(1) fit is engine output; counterfactual line and period differences are formulas"),
@@ -106,7 +109,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         limitations: [tx(locale, "AR(1) 적합·프로파일 구간은 브라우저 엔진 출력이며, 원본 변경만으로 재학습되지 않습니다.", "AR(1) fitting and the profile interval are browser-engine outputs and are not refit by editing raw cells."), tx(locale, "대조군이 없어 계절성·PR·프로모션 교란을 분리하지 못합니다.", "Without a control, seasonality, PR, and promotion confounding are not separated.")],
       },
     };
-  }, [locale, result]);
+  }, [locale, result, design.values, design.ready]);
 
   useEffect(() => {
     if (!result?.ok || !chartRef.current) return undefined;
@@ -193,7 +196,9 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     { id: "its", icon: "↗", title: tx(locale, "날짜별 성과와 ON/OFF 시점이 있다", "I have dated outcomes and a clear ON/OFF date"), body: tx(locale, "일별·주별·월별 cadence에 맞는 최소 관측 기간으로 AR(1) ITS 반사실을 추정합니다.", "Run an AR(1) ITS counterfactual with cadence-appropriate minimum history."), cta: tx(locale, "ITS 분석 준비", "Set up ITS") },
     { id: "prepost", icon: "△", title: tx(locale, "전후 합계만 있다", "I only have before / after totals"), body: tx(locale, "탐색적 전후 비교는 가능하지만 계절성과 공통 변화를 분리하기 어렵습니다.", "An exploratory pre/post read is possible, but seasonality and common change remain mixed."), cta: tx(locale, "전후 비교 열기", "Open pre/post comparison") },
   ];
-  const brandHeadline = !profileReady
+  const brandHeadline = !design.ready
+    ? tx(locale, "비교 조건 미확인 — ITS 추정은 탐색용이며 행동 판단을 보류합니다", "Comparison conditions unconfirmed — ITS estimates are exploratory; action is withheld")
+    : !profileReady
     ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없습니다", "An interval including AR(1) uncertainty could not be formed")
     : directionalVerdictWithheld
       ? tx(locale, "방향 판정 보류 · 추정치는 탐색용입니다", "Direction withheld · estimate is exploratory")
@@ -234,6 +239,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       [tx(locale, "95% AR(1) 프로파일 상한", "95% AR(1) profile upper"), profileReady ? result.profileInterval[1] : ""],
       [tx(locale, "AR(1) rho (MLE)", "AR(1) rho (MLE)"), profile?.rhoMle ?? ""],
       [tx(locale, "판정", "Verdict"), brandHeadline],
+      ...designEvidenceTable(design.values, design.ready).rows,
       // 다운로드본만 따로 돌아다녀도 설계 한계를 잃지 않게 같이 적는다(§8).
       [tx(locale, "한계", "Limitation"), tx(locale,
         "통제군 없는 ITS 관찰 추정입니다. 계절성·PR·프로모션 영향은 분리되지 않습니다.",
@@ -241,7 +247,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     ];
     downloadCsv(buildCsv(rows), "brand_campaign_its_summary");
   };
-  const brandDecisionPrefill = result?.ok && !isDemo ? {
+  const brandDecisionPrefill = design.ready && result?.ok && !isDemo ? {
     conclusion: !profileReady
       ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
       : hasProfileLiftSignal
@@ -299,9 +305,10 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
 
     {result && !result.ok && <section className="block" id="brand-its-result"><div className="callout warn"><div className="body"><strong>{tx(locale, "아직 정직한 ITS 추정을 만들 수 없습니다", "ITS is not yet identifiable")}</strong><p>{result.reason === "multiple_campaign_windows" ? tx(locale, "ON/OFF 구간이 여러 번입니다. 이번 버전은 한 번의 연속 캠페인 구간만 분석합니다. 구간 하나만 남기거나 통제군 설계를 사용하세요.", "There are multiple ON/OFF windows. This version analyzes one continuous campaign window; isolate one window or use a control-group design.") : result.reason === "insufficient_pre_periods" ? tx(locale, `집행 전 기간이 ${result.prePeriods}개입니다. 현재 cadence에는 최소 ${result.minPrePeriods}개 기간이 필요합니다.`, `There are ${result.prePeriods} pre periods; this cadence requires at least ${result.minPrePeriods}.`) : result.reason === "insufficient_post_periods" ? tx(locale, `집행 후 기간이 ${result.postPeriods}개입니다. 현재 cadence에는 최소 ${result.minPostPeriods}개 기간이 필요합니다.`, `There are ${result.postPeriods} post periods; this cadence requires at least ${result.minPostPeriods}.`) : result.reason === "zero_pretrend_variance" ? tx(locale, "집행 전 성과가 완벽한 직선이라 불확실성을 추정할 수 없습니다. 노이즈가 없는 샘플 데이터 또는 지나친 집계 여부를 확인하세요.", "The pre-period is a perfect line, so uncertainty cannot be estimated. Check for noiseless sample data or over-aggregation.") : result.reason === "ar1_variance_not_estimable" ? tx(locale, "사전 기간의 AR(1) 불확실성을 추정할 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "AR(1) uncertainty cannot be estimated from the pre-period. Add history or use a control-group design.") : tx(locale, "날짜·성과·집행 여부를 다시 확인하세요.", "Check date, outcome, and campaign-status columns.")}</p></div></div></section>}
 
+    {hasData && <CausalDesignCheck design={design} locale={locale} />}
     {result?.ok && <section className="block" id="brand-its-result">
       <ResultActionCard
-        tone={hasProfileLiftSignal ? "good" : directionalVerdictWithheld ? "neutral" : "bad"}
+        tone={!design.ready ? "neutral" : hasProfileLiftSignal ? "good" : directionalVerdictWithheld ? "neutral" : "bad"}
         title={tx(locale, "브랜드 캠페인 증분 추정", "Estimated brand-campaign lift")}
         headline={brandHeadline}
         points={[{ text: tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`) }]}
@@ -322,8 +329,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         />}
         toolId="5-24"
         analysisType="brand_incrementality"
-        analysisKey={currentSignature}
-        resultState={profileReady ? "ready" : "inconclusive"}
+        analysisKey={`${currentSignature}|${Object.values(design.values).join(":")}`}
+        resultState={design.ready && profileReady && !directionalVerdictWithheld ? "ready" : "inconclusive"}
         locale={locale}
         decisionPrefill={brandDecisionPrefill}
       />
