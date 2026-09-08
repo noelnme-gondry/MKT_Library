@@ -172,6 +172,7 @@ v2-migration/
 - **CSV 그룹/슬라이스 → `src/lib/toolGroups.js` + store `csvGroups`**.
 - **퍼널 이벤트 → `src/lib/analytics.js`**: 허용된 구조 메타데이터만 GA4로. 파일명·원본 행·실제 지표값 금지.
 - **분석 품질 게이트**: `lib/analysis-router/executionPreflight.js`는 추천 핸드오프·도치 실행 직전의 기존 자격 검증을 공유한다. `utils/experimentQuality.js`(SRM·선택 동등성), `utils/asaRecommendationQuality.js`(성숙도·표본), `utils/ahaObservationWindow.js`(행동/결과 시간창), `lib/analysis-results/mmmDecisionQuality.js`(기존 건강도 통합)는 원래 수학 엔진 출력과 분리된 판단 보류 계층이다.
+- **기간 민감도**: `lib/analysis-results/periodSensitivity.js`와 `ds/PeriodSensitivityPanel`은 명시 실행으로 날짜 전·후반을 나누고 기존 포화도/예산 계산을 재사용한다. 같은 예산·설정으로 비교하며 불충분한 관측·범위·제약은 보류한다. 별도 CSV는 화면 결과에서 직접 생성한다.
 - **실제 분석 범위**: `lib/analysis-results/scopeEvidence.js` + `ds/AnalysisScopeEvidence`가 대시보드/PVM/구성 변화의 실제 기간·분모·필터·입력 품질을 결론과 워크북에 전달한다. 집계에서 복원되지 않는 결측률은 미집계다.
 - **공개 재현 사례**: `public/examples/`의 합성 CSV를 `lib/editorialExamples.test.js`에서 실제 자동 매핑·분석 경로로 검산한다. 고객 데이터는 포함하지 않는다.
 - **소재 검증 근거**: `utils/creativeFatigueQuality.js`는 기존 피로 곡선을 바꾸지 않고 노출/기간 부족을 보류한다. 콘텐츠의 반복 단위 선언은 `ContentElementAnalyzer`에서 행 무작위 RF 패널을 내리며, 단위별 교차검증을 수행한 것으로 표시하지 않는다.

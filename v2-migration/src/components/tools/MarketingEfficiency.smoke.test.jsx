@@ -4,10 +4,11 @@
 // render/mount-effect crashes. Golden tests cover satMath/ALLOC_MATH; this
 // asserts the component MOUNTS without throwing in the no-data and with-data
 // states (including the response-curve chart effect once >=1 fittable entity).
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, act, fireEvent, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingEfficiency from "@/components/tools/MarketingEfficiency";
+import { SAT_MATH } from "@/utils/satMath";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -85,6 +86,15 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.queryByText(/Mostly in the steady zone|대부분 적정 구간/)).toBeNull();
   });
 
+  it.each(["ko", "en"])("runs period sensitivity from the actual tool (%s)", async (locale) => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-22");
+    render(<MarketingEfficiency locale={locale} />);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Check period sensitivity" : "기간 민감도 확인" }));
+    await waitFor(() => expect(screen.getByText(locale === "en" ? "Google: Not comparable" : "Google: 비교 불가")).toBeTruthy());
+    expect(screen.getByRole("button", { name: locale === "en" ? "Download period evidence CSV" : "기간 근거 CSV 받기" })).toBeTruthy();
+  });
+
   it("mounts without throwing in the no-data state (upload screen)", () => {
     expect(() => render(<MarketingEfficiency />)).not.toThrow();
     // 데모 자동로드를 없앴으므로 no-data는 업로드 대기 상태가 정상이다.
@@ -125,6 +135,20 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
+  });
+
+  it("does not fit before analysis or refit for display-only changes", () => {
+    const fit = vi.spyOn(SAT_MATH, "analyzeEntity");
+    try {
+      seedWithData();
+      render(<MarketingEfficiency />);
+      expect(fit).not.toHaveBeenCalled();
+      act(() => useAppStore.getState().setGroupAnalyzed("5-22"));
+      expect(fit).toHaveBeenCalledTimes(2);
+      fireEvent.click(screen.getByRole("button", { name: "ROAS (높을수록 좋음)" }));
+      fireEvent.click(screen.getByRole("button", { name: "Meta 응답곡선 보기" }));
+      expect(fit).toHaveBeenCalledTimes(2);
+    } finally { fit.mockRestore(); }
   });
 
   it("switches the decision map between channel/campaign and CPA/ROAS contracts", () => {
