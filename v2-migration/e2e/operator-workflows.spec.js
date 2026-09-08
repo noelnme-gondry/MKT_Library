@@ -93,6 +93,9 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   const workspace = page.getByRole("region", { name: "The analysis map Dochi found" });
   await expect(workspace).toBeVisible();
   await expect(workspace.getByRole("region", { name: "Summary calculated on this screen" }).first()).toBeVisible();
+  const quality = workspace.getByRole("region", { name: "Detailed input quality" }).first();
+  await quality.getByRole("button", { name: "Check detailed input quality" }).click();
+  await expect(quality.getByText(/Input checks passed|Review input cautions/)).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
 });
 
@@ -114,6 +117,9 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
     has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
   });
   await expect(dashboardCard.getByRole("region", { name: "이 화면에서 계산한 요약" })).toBeVisible();
+  const quality = dashboardCard.getByRole("region", { name: "상세 입력 품질" });
+  await quality.getByRole("button", { name: "상세 입력 품질 확인" }).click();
+  await expect(quality.getByText(/입력 검사 통과|입력 주의사항 확인/)).toBeVisible();
   await dashboardCard.getByRole("button", { name: /추가 차트·상세 분석 열기/ }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
