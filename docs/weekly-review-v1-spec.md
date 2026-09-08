@@ -286,6 +286,27 @@ CPA $8.04 — 목표 $8.00 초과
 
 `PVM_MATH.decomposeFinest(rowsP1, rowsP2, keys)` → `rollup(finest, keyFn, R1, R2)`
 (`utils/pvmMath.js:226,395`). 이미 잔차 없는 Bennet 분해이고 mix/rate 항등식이 보장된다.
+브리지는 `lib/weekly-review/varianceBridge.js` — **새 수학을 만들지 않고 번역만** 한다.
+
+**번역에서 걸린 것 셋** (전부 실측으로 드러났다):
+
+1. **엔진은 `r.spend`를 읽지 `r.cost`가 아니다.** 스냅샷은 `cost`로 저장하므로 갈아끼워야 한다.
+   그냥 넘기면 비용이 전부 0이 되고 분해는 조용히 "전부 효율 변화"라고 답한다. 골든이 소스에서
+   번역 존재를 확인하고, 빼면 실제로 실패한다.
+2. **`지출>0 · 결과=0` 셀 하나가 분해 전체를 거부시킨다.** `validateAggregateContract`가
+   `NOT_IDENTIFIED`를 돌려준다(옳은 판단 — 그 셀의 CPA는 정의되지 않는다). 그런데 실제 주간
+   데이터에는 그런 캠페인이 거의 항상 있다. **실측하니 지출 800원짜리 하나가 전체를 막았다.**
+   그래서 소액 셀(두 기간 결과 합 < 30)을 `기타(소액)`로 먼저 합친다.
+3. **합쳐도 남는 셀은 빼되, 뺀 사실과 금액을 반드시 함께 낸다.** 묶음의 전환이 전부 0이면 여전히
+   못 푼다. 검증은 **기간별**이라 "지난주엔 전환이 있었는데 이번 주 0"인 캠페인(정지·소재 소진으로
+   흔하다)도 막는다. 아예 못 답하는 것보다 **결과를 낸 캠페인들 안에서** 답하고 범위를 밝히는 편이
+   낫다 → `excluded`(뺀 셀·기간별 금액) · `overall`(전체 CPA) · `coversAllSpend`를 함께 돌려주고
+   **화면이 반드시 고지한다.** 조용히 빼면 그 순간 거짓 숫자가 된다. `excludeZeroResultCells:false`로
+   두면 빼지 않고 거부하는 선택지도 있다.
+
+**비율은 불안정하면 내주지 않는다.** 효율과 믹스가 서로 반대로 커서 ΔCPA가 0에 가까우면
+`rate/Δ`가 폭발한다. `|Δ| < 0.5 × (|효율|+|믹스|)`면 `shares:null` + `sharesReason:"offsetting"`을
+주고 화면이 금액으로만 말하게 한다.
 
 - `keys` = `[channel, campaign]` (channel 없으면 `[campaign]`)
 - 반환 각 원소: `{ mix, rate, contribution, s1, s2, cpa1, cpa2 }`
