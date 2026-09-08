@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 
 import BlogReadTracker, { readDepthPercent, reachedDepths, readSessionSlugs, recordSessionSlug } from "./BlogReadTracker";
 
@@ -63,6 +63,22 @@ describe("BlogReadTracker", () => {
   afterEach(() => {
     delete window.gtag;
     document.body.innerHTML = "";
+  });
+
+  it.each(["ko", "en"])("tracks actual %s body links and ignores external or new-tab clicks", (locale) => {
+    const article = document.querySelector(".blog-prose");
+    article.innerHTML = `<a href="${locale === "en" ? "/en" : ""}/weekly-review"><span>Review</span></a><a href="https://example.com/weekly-review">External</a>`;
+    render(<BlogReadTracker slug={`weekly-${locale}`} locale={locale} />);
+    // Prevent jsdom navigation after the delegated handler has seen the click.
+    const prevent = event => event.preventDefault();
+    document.addEventListener("click", prevent);
+    fireEvent.click(article.querySelector("span"), { ctrlKey: true });
+    fireEvent.click(article.querySelectorAll("a")[1]);
+    expect(eventsNamed("blog_tool_cta_clicked")).toHaveLength(0);
+    fireEvent.click(article.querySelector("span"));
+    expect(eventsNamed("blog_tool_cta_clicked")).toHaveLength(1);
+    expect(eventsNamed("blog_tool_cta_clicked")[0][2]).toMatchObject({ tool_id: "weekly-review", locale, placement: "article_body" });
+    document.removeEventListener("click", prevent);
   });
 
   it("reports the depths already on screen at mount", () => {

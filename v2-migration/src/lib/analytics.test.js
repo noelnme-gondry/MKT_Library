@@ -6,6 +6,26 @@ afterEach(() => {
 });
 
 describe("privacy-safe product analytics", () => {
+  it.each(["ko", "en"])("connects %s weekly imports, results and exports without attributing demos", (locale) => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key),
+    } };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+    const params = { locale, tool_id: "weekly-review", source: "csv" };
+    trackProductEvent("blog_tool_cta_clicked", { ...params, content_slug: "ad-performance-diagnosis", content_type: "blog" });
+    trackProductEvent("data_import_start", params);
+    clock.mockReturnValue(121000);
+    trackProductEvent("weekly_review_completed", params);
+    expect(window.gtag.mock.lastCall[2]).toMatchObject({ content_slug: "ad-performance-diagnosis", elapsed_bucket: "1_3m" });
+    trackProductEvent("weekly_review_completed", params);
+    expect(window.gtag.mock.lastCall[2].elapsed_bucket).toBeUndefined();
+    trackProductEvent("weekly_review_export", { ...params, state: "requested", download_type: "print" });
+    expect(window.gtag.mock.lastCall[2]).toMatchObject({ content_slug: "ad-performance-diagnosis", state: "requested" });
+    trackProductEvent("weekly_review_export", { ...params, source: "demo" });
+    expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    clock.mockRestore();
+  });
   it("attributes upload and results only to the clicked tool and locale within 30 minutes", () => {
     const values = new Map();
     globalThis.window = { gtag: vi.fn(), sessionStorage: {

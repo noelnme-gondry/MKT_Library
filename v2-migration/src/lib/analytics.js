@@ -12,6 +12,7 @@ const ALLOWED_PARAMS = new Set([
   "scope",
 ]);
 
+let weeklyImportStartedAt = null;
 let firstToolViewAt = null;
 let hasRecordedFirstActivation = false;
 
@@ -19,7 +20,9 @@ const EDITORIAL_JOURNEY_KEY = "gop:editorial-journey";
 const EDITORIAL_JOURNEY_TTL = 30 * 60 * 1000;
 const EDITORIAL_FUNNEL_EVENTS = new Set([
   "data_import_start", "data_import_success", "data_import_failed",
-  "data_profile_completed", "mapping_confirmed", "analysis_started", "analysis_completed",
+  "data_profile_completed", "mapping_confirmed", "analysis_started", "analysis_completed", "analysis_blocked",
+  "weekly_review_viewed", "weekly_review_completed", "weekly_review_blocked",
+  "weekly_decision_saved", "weekly_review_export",
 ]);
 
 // 공개 글 식별자만 저장한다. 도구 ID는 정규화 전에 비교하여 MMM과 추세를
@@ -33,7 +36,7 @@ function withEditorialJourney(name, params) {
       if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.content_slug || "")
         && ["blog", "glossary"].includes(params.content_type)
         && ["ko", "en"].includes(params.locale)
-        && /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || "")) {
+        && (params.tool_id === "weekly-review" || /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || ""))) {
         storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({
           content_slug: params.content_slug, content_type: params.content_type,
           locale: params.locale, tool_id: params.tool_id, createdAt: Date.now(),
@@ -106,6 +109,13 @@ export function sanitizeProductEventParams(params = {}) {
 export function trackProductEvent(name, params = {}) {
   if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
   params = withEditorialJourney(name, params);
+  if (params.tool_id === "weekly-review") {
+    if (name === "data_import_start") weeklyImportStartedAt = Date.now();
+    if (name === "weekly_review_completed" && params.source !== "demo" && weeklyImportStartedAt != null) {
+      params = { ...params, elapsed_bucket: productElapsedBucket(Date.now() - weeklyImportStartedAt) };
+      weeklyImportStartedAt = null;
+    }
+  }
   if (name === "tool_view" && firstToolViewAt == null) firstToolViewAt = Date.now();
   const isFirstReadyActivation = name === "analysis_completed"
     && firstToolViewAt != null

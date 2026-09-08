@@ -161,6 +161,7 @@ function money(value) {
 export default function WeeklyReviewScreen({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
+  const reviewSource = csvData.fileName?.startsWith("demo_") ? "demo" : "csv";
   const decisionRecords = useAppStore((state) => state.decisionRecords ?? EMPTY_RECORDS);
   const sessionDecisionIds = useAppStore((state) => state.decisionSessionRecordIds);
   const existingDecisionCount = decisionRecords.filter((record) => record.toolId !== "weekly-review" && !sessionDecisionIds.has(record.id)).length;
@@ -176,12 +177,17 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const [targetValue, setTargetValue] = useState("");
   const [snapshotStatus, setSnapshotStatus] = useState(null);
   const [projectStatus, setProjectStatus] = useState("");
+  const [projectReady, setProjectReady] = useState(false);
   useEffect(() => { setCurrentRouteId("weekly-review"); }, [setCurrentRouteId]);
+  useEffect(() => {
+    trackProductEventOnce("weekly_review_viewed", productEventKey(locale), { locale, tool_id: "weekly-review" });
+  }, [locale]);
 
   const [kpiMetric, setKpiMetric] = useState(DEFAULT_PROJECT.kpi.metric);
   const [basis, setBasis] = useState(DEFAULT_PROJECT.kpi.basis);
   const [customPeriod, setCustomPeriod] = useState(null);
   const [storedSnapshots, setStoredSnapshots] = useState([]);
+  const [snapshotsReady, setSnapshotsReady] = useState(false);
   const [decision, setDecision] = useState({
     actionKind: "hold", actionTarget: "", actionAmount: "",
     goalMetric: "conversions", goalDirection: "up",
@@ -192,9 +198,12 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const isSavedDecisionCurrent = Boolean(savedDecision && savedDecision.raw === csvData.raw && savedDecision.context === decisionContext);
   useEffect(() => {
     let alive = true;
-    if (persistenceEnabled) readReviewProject().then((saved) => {
-      if (!alive || !saved) return;
-      setProjectName(saved.name); setKpiMetric(saved.metric); setBasis(saved.basis); setTargetValue(saved.target); setTargetCurrency(saved.currency); setCustomPeriod(saved.period || null);
+    (persistenceEnabled ? readReviewProject() : Promise.resolve(null)).then((saved) => {
+      if (!alive) return;
+      if (saved) {
+        setProjectName(saved.name); setKpiMetric(saved.metric); setBasis(saved.basis); setTargetValue(saved.target); setTargetCurrency(saved.currency); setCustomPeriod(saved.period || null);
+      }
+      setProjectReady(true);
     });
     return () => { alive = false; };
   }, [persistenceEnabled]);
@@ -224,7 +233,9 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   // 못 읽으면 빈 목록으로 떨어지고 리뷰는 크기·표본 두 축으로 계속 동작한다.
   useEffect(() => {
     let alive = true;
-    (persistenceEnabled ? listStoredSnapshots() : Promise.resolve([])).then((list) => { if (alive) setStoredSnapshots(list); });
+    (persistenceEnabled ? listStoredSnapshots() : Promise.resolve([])).then((list) => {
+      if (alive) { setStoredSnapshots(list); setSnapshotsReady(true); }
+    });
     return () => { alive = false; };
   }, [persistenceEnabled]);
 
@@ -254,12 +265,22 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   }, [review, persistenceEnabled]);
 
   useEffect(() => {
-    if (!review.ok) return;
+    if (!workspaceReady || !snapshotsReady || !projectReady) return;
+    if (!review.ok) {
+      if (isAnalyzed && csvData.raw?.length) {
+        trackProductEventOnce("weekly_review_blocked", productEventKey(csvData.fileName, csvData.raw.length, review.reason, locale), {
+          locale, tool_id: "weekly-review", source: reviewSource,
+          state: review.reason,
+        });
+      }
+      return;
+    }
     trackProductEventOnce("weekly_review_completed", productEventKey(csvData.fileName, csvData.raw?.length, review.periods.current.start, review.periods.current.end, project.kpi.metric, locale), {
-      locale, tool_id: "weekly-review", source: csvData.fileName?.startsWith("demo_") ? "demo" : "csv",
+      locale, tool_id: "weekly-review", source: reviewSource,
       data_continuity: review.previousSource === "snapshot" ? "saved_snapshot" : "uploaded_periods",
+      result_state: review.routing.status,
     });
-  }, [review, csvData.fileName, csvData.raw, project.kpi.metric, locale]);
+  }, [review, csvData.fileName, csvData.raw, project.kpi.metric, locale, isAnalyzed, workspaceReady, snapshotsReady, projectReady, reviewSource]);
 
   const saveDecision = (recommendedLabel) => {
     const record = {
@@ -283,7 +304,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       sourcePath: locale === "en" ? "/en/weekly-review" : "/weekly-review",
     };
     addDecisionRecord(record);
-    trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review" });
+    trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review", source: reviewSource });
     setSavedDecision({ record, raw: csvData.raw, context: decisionContext });
   };
 
@@ -303,7 +324,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           {review.reason && REASON_TEXT[locale]?.[review.reason] && (
             <p className="wr-screen__reason">{REASON_TEXT[locale][review.reason]}</p>
           )}
-          {workspaceReady ? <CsvUploader toolId="5-2" locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
+          {workspaceReady ? <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
           <Link href={locale === "en" ? "/en/start" : "/start"}>{t.goUpload}</Link>
         </section>
         <ReviewSettings
@@ -370,7 +391,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       </header>
       {projectSetup}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
-      <details><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" locale={locale} showMappingReview />}</details>
+      <details><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview />}</details>
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <ReviewSettings
@@ -635,10 +656,10 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           try {
             await navigator.clipboard.writeText(renderReportText(draft, { number: money }));
             setCopyStatus(locale === "en" ? "Copied." : "복사했습니다.");
-            trackProductEvent("weekly_review_export", { locale, download_type: "clipboard" });
+            trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "clipboard", state: "completed" });
           } catch { setCopyStatus(locale === "en" ? "Copy failed. Select and copy the report text." : "복사하지 못했습니다. 보고서 본문을 선택해 복사해 주세요."); }
         }}>{locale === "en" ? "Copy for Slack / Notion" : "Slack / Notion용 복사"}</button>
-        <button type="button" className="btn" onClick={() => { trackProductEvent("weekly_review_export", { locale, download_type: "print" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
+        <button type="button" className="btn" onClick={() => { trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "print", state: "requested" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
         {copyStatus && <p role="status">{copyStatus}</p>}
       </section>
 
