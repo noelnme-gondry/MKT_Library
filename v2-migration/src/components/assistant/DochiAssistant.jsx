@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
@@ -12,7 +13,7 @@ const COPY = {
   ko: {
     label: "도치 박사 데이터 접수처",
     greeting: "안녕하세요, 도치예요.",
-    prompt: "CSV 하나를 올려 주세요. 읽고 바로 결과를 가져올게요.",
+    prompt: "CSV를 올리면 컬럼을 확인하고, 이 데이터로 가능한 분석을 준비할게요.",
     privacy: "데이터는 브라우저 안에서만 읽습니다.",
     importing: "파일을 읽고 있어요.",
     heading: "도치에게 데이터 맡기기",
@@ -22,7 +23,7 @@ const COPY = {
   en: {
     label: "Dochi, data intake guide",
     greeting: "Hi, I’m Dochi.",
-    prompt: "Upload one CSV. I’ll read it and bring back the results.",
+    prompt: "Upload a CSV. I’ll help check the columns and prepare the analyses your data supports.",
     privacy: "Your data is read only in this browser.",
     importing: "Reading your file.",
     heading: "Give your data to Dochi",
@@ -71,7 +72,11 @@ export default function DochiAssistant({ locale = "ko" }) {
           trackProductEvent("workspace_resume_clicked", { source: "workspace_storage", placement: "dochi_home", state: "available", locale });
           router.push(locale === "en" ? "/en/storage" : "/storage");
         }}>{copy.resume} →</button>}
-        <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" sheetInitiallyOpen onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
+        <ol className="dochi-intake-steps" aria-label={locale === "en" ? "Data workflow" : "데이터 준비 순서"}>
+          <li>{locale === "en" ? "Choose your file" : "파일 선택"}</li><li>{locale === "en" ? "Check columns" : "컬럼 확인"}</li><li>{locale === "en" ? "Review the evidence" : "분석 근거 확인"}</li>
+        </ol>
+        <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
+        <div className="dochi-intake-review"><strong>{locale === "en" ? "Preparing a weekly report?" : "매주 같은 보고서를 준비하시나요?"}</strong><p>{locale === "en" ? "Keep your KPI and target together, compare campaigns and record the next decision." : "프로젝트 KPI와 목표를 정하고 캠페인 비교부터 다음 결정까지 이어가세요."}</p><Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>{locale === "en" ? "Set up a weekly review" : "주간 리뷰 프로젝트 설정"}</Link></div>
         <small>{copy.privacy}</small>
         <span className="dochi-home-assistant__speech-tail" aria-hidden="true">
           <svg viewBox="0 0 54 40" preserveAspectRatio="none"><path d="M0 1L52 20L0 39" /></svg>

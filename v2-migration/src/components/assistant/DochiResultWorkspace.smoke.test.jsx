@@ -43,6 +43,18 @@ afterEach(() => {
 });
 
 describe("DochiResultWorkspace", () => {
+  it.each(["ko", "en"])("hands the mapped campaign CSV to weekly review without re-upload (%s)", locale => {
+    const data = { ...DATA, raw: DATA.raw.map(row => ({ ...row, Campaign: "Test" })), headers: [...DATA.headers, "Campaign"], mapping: { ...DATA.mapping, Campaign: "campaign_name" }, currency: "KRW" };
+    useAppStore.setState({ currentRouteId: "dochi-result", csvData: data, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: data }, dochiAnalysisSession: { sourceData: data, analyses: [] } });
+    render(<DochiResultWorkspace locale={locale} />);
+    const button = screen.getByRole("button", { name: locale === "en" ? "Build weekly review" : "주간 리뷰 만들기" });
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(push).toHaveBeenCalledWith(locale === "en" ? "/en/weekly-review" : "/weekly-review");
+    useAppStore.getState().setCurrentRouteId("weekly-review");
+    expect(useAppStore.getState().csvData.raw).toEqual(data.raw);
+    expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
+  });
   it("does not invent a result when opened without a CSV", () => {
     render(<DochiResultWorkspace />);
     expect(screen.getByRole("heading", { name: "먼저 도치에게 CSV를 맡겨 주세요" })).toBeTruthy();

@@ -11,6 +11,7 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
+import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 
 const COPY = {
   ko: {
@@ -89,6 +90,8 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   const hasPreparedData = Boolean(csvData?.raw?.length && csvData?.headers?.length);
   const cadence = inferMappedDateCadence(csvData);
   const mappedCount = new Set(Object.values(csvData?.mapping || {}).filter((value) => value && value !== "__ignore__")).size;
+  const mappedFields = new Set(Object.values(csvData?.mapping || {}));
+  const canReviewWeekly = mappedFields.has("campaign_name") && TOOL_REQUIRED_FIELDS["5-2"].every(field => typeof field === "string" ? mappedFields.has(field) : field.oneOf.some(key => mappedFields.has(key)));
 
   useEffect(() => () => timersRef.current.forEach((timer) => window.clearTimeout(timer)), []);
 
@@ -152,6 +155,11 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
         </dl>
         <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>
       </header>
+      <section className="dochi-weekly-bridge" aria-labelledby="dochi-weekly-title">
+        <div><h2 id="dochi-weekly-title">{locale === "en" ? "Turn this data into a weekly review" : "이 데이터를 주간 운영 리뷰로"}</h2><p>{locale === "en" ? "Compare periods against your KPI target, inspect campaigns and prepare a report with your next decision. Your uploaded file comes with you." : "목표 대비 성과와 캠페인별 변화를 검토하고, 다음 결정이 담긴 보고서를 만드세요. 지금 올린 파일을 그대로 이어갑니다."}</p>
+          {!canReviewWeekly && <p>{locale === "en" ? "Map date, campaign, spend and conversions or installs to use the weekly review." : "날짜·캠페인·비용과 전환 또는 설치 열을 연결하면 주간 리뷰를 만들 수 있습니다."}</p>}
+        </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review" : "/weekly-review"); }}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</button>
+      </section>
       <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
     </>}
   </section>;
