@@ -89,6 +89,8 @@ First, how far apart the platform console's iOS installs and your MMP or SKAN ag
 
 Second, pull up your conversion-value mapping and count the volume behind each value. If more than half the slots receive almost no installs, the design is sliced too finely. Merge slots until each one carries enough volume to support a decision.
 
+Which SKAN 4 window to open in what order is in [SKAN 4 migration](/blog/skan4-migration-guide), and why media, GA4, and MMP numbers disagree is in [attribution data mismatch](/blog/attribution-data-mismatch).
+
 ## Let's be honest
 
 SKAN's rules change by version, and delay and sample issues make the numbers unstable. The whole team has to share the premise that iOS performance is "the best estimate within a limited signal," not precise measurement. Overreact to a single console number and toggle campaigns on and off, and you'll chase a signal that isn't there and shake real performance in the process.

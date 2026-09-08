@@ -85,6 +85,8 @@ As you think this through, a question will come up: the ad chain isn't just spen
 
 One important note: don't judge a trend off too short a window. You need several weeks or months of trend to see the real pattern. Looking at daily data is fine, but day-of-week variance can be large enough that it's not always advisable — comparing day-of-week-adjusted variance would be a better bet.
 
+Once you know which cell is red, [marketing budget allocation](/blog/budget-marginal-efficiency) covers moving budget on that reading, and [CPM vs CPC vs CPI vs CPA](/blog/cpi-cpa-cpm-difference) covers the formulas behind each metric.
+
 ## Wrap-up
 
 The core idea is treating metrics as a connected chain. Each metric immediately affects — and is affected by — the metric right before and after it in the chain. You have to read the data accounting for the hidden conversion rates between links and the cost-per-impression (CPM) underneath every one of them (the answer to the question above) before the problem location becomes visible.

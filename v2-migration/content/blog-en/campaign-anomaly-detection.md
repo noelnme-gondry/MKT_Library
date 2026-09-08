@@ -47,6 +47,8 @@ Mix the two and you stop at "CPA rose." Split volume and efficiency by channel, 
 
 The [operations dashboard](/dashboard)'s anomaly tab auto-flags days that break the band, and [performance variance detection](/tools/campaign-variance) decomposes the cause residual-free. Upload an efficiency CSV or connect a Google Sheet. Connect a Sheet once and you can keep checking with fresh data without re-uploading weekly.
 
+If the decline is sustained over days rather than a single spike, [ad performance drop](/blog/ad-performance-diagnosis) is the right sequence; if it is unclear which metric to read first, [performance marketing metrics](/blog/performance-marketing-metrics) lays out the chain. If it is unclear which analysis your data can even support, [marketing data analysis](/blog/performance-marketing-analysis-order) is the starting point.
+
 ## Let's be honest
 
 Anomaly detection tells you "this looks off" — it doesn't prove the cause. Even a day that broke the band may have outside factors mixed in (a competitor promo, seasonality, a landing outage). Use the spiked number only as a **starting point** for investigation, and check what actually happened that day before deciding.

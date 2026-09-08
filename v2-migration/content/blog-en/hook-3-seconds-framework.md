@@ -46,6 +46,8 @@ The hook's success isn't a feeling — split it into three metrics.
 
 Split these three and where to fix becomes clear. High Hook Rate but weak CTR? The problem isn't the hook — it's the **mid-message or CTA**. Low Hook Rate itself? Fix the opening frame. Lump it as "the creative's bad" and you'll never know what to change.
 
+Once the hook hypothesis is set, [ad creative testing](/blog/ad-creative-testing) covers how many to run on what budget, and [ad creative performance analysis](/blog/content-element-analysis) covers what actually drove the result afterwards.
+
 ## Let's be honest
 
 Run the same hook too long and [creative fatigue](/blog/ad-performance-diagnosis) bends CTR down within days. One winning pattern doesn't mean milking it for weeks — build several variations of the same concept and rotate them regularly. The hook isn't a one-time hit; it's a game of constant renewal.

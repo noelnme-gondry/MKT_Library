@@ -66,6 +66,8 @@ Also look at **payback period.** Even a good LTV:CAC dries up cash flow if recov
 
 See the LTV:CAC table and the ROAS maturity curve in the [operations dashboard](/dashboard)'s LTV tab via CSV upload or Google Sheet connection. Connect a Sheet and you keep it fresh monthly without re-uploading.
 
+When the ratio differs by channel, the next question is allocation — [marketing budget allocation](/blog/budget-marginal-efficiency) covers where to move budget, and [ad budget scaling limits](/blog/budget-scaling-limit) covers how far to raise it.
+
 ## Let's be honest
 
 LTV is a future estimate, so it can be wrong. Rather than "LTV:CAC is 4:1, so pour in more," weigh the estimate's uncertainty (data window, cohort size) and decide conservatively.

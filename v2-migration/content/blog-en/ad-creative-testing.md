@@ -279,6 +279,8 @@ The safer sequence is keep assets that still perform → add new variants first 
 - [ ] Save the result and next hypothesis by creative ID.
 - [ ] Prepare to monitor fatigue after a winner scales.
 
+After several rounds the question becomes what worked repeatedly — that is [ad creative performance analysis](/blog/content-element-analysis) — and when a fresh test on past creatives is not an option, [ad creative regression](/blog/creative-attribute-regression) picks it up.
+
 ## Conclusion
 
 The useful question is not “How many creatives should we make?” It is **“How many hypotheses can this budget evaluate fairly?”**

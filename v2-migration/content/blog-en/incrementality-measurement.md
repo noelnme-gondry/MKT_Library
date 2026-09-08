@@ -91,6 +91,8 @@ Either grow your sample or your time window, and if it still doesn't register, "
 
 Pick just one campaign that seems most suspicious. Brand search or retargeting is usually the top candidate — since it's served to people who already know you, incrementality tends to be low. They may well have come in anyway. Or is there a channel where you kept raising budget and conversions kept climbing, but you never actually saw business growth from it? If so, that's your suspect. Don't try to validate everything at once — just one campaign is enough to start.
 
+For the step-by-step of designing a holdout and reading its result, see [advertising uplift measurement](/blog/uplift-holdout-guide); when the change sits outside the ad — a screen or a creative — [A/B testing](/blog/ab-testing) applies the same logic.
+
 ## Wrap-up
 
 To recap: attribution splits credit, incrementality measures the real effect — and the real effect comes from experiments, not observation.

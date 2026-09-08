@@ -47,6 +47,8 @@ That is a combination effect, and it shows up in a cross-tab of the two axes wit
 
 The job of observational analysis is **deciding what to test next**. Narrow the candidates, hand them to [experiment analysis](/tools/experiment-analysis), and the question becomes one a small budget can settle.
 
+To validate the candidates this produces, design a test with [ad creative testing](/blog/ad-creative-testing); for a wider view of which elements contribute, read [ad creative performance analysis](/blog/content-element-analysis).
+
 ## Try this today
 
 **One.** Open your last 20–30 creatives and add just **three attribute columns** — the three you actually argue about in retros. Three real columns beat fifteen aspirational ones, and you can fill three from the assets themselves without relying on memory.

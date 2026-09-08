@@ -85,6 +85,8 @@ Put paid conversions and organic conversions in one weekly table, side by side, 
 
 For the weeks where spend moved sharply, check one thing: did total conversions move in the same direction? If spend rose and the total stayed flat, you now have grounds to suspect cannibalization. That is not evidence — it is a reason to run the experiment.
 
+Once CPA is recalculated with the cannibalisation rate applied, [marketing budget allocation](/blog/budget-marginal-efficiency) covers how to move budget on that number and [ad budget scaling limits](/blog/budget-scaling-limit) covers the ceiling. The broader designs for separating what advertising actually caused are in [incrementality measurement](/blog/incrementality-measurement).
+
 ## Let's be honest
 
 "Looks like cannibalization" and "is cannibalization" are different things. Observational signals (leading order, de-trended movement) are grounds for suspicion, no more. And the burden of proof is asymmetric: to declare "this ad has no effect," you need strong evidence like a holdout.

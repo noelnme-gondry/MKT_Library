@@ -69,6 +69,8 @@ Line up your current campaigns by targeting width, and write down the frequency 
 
 If there's a narrow target where frequency keeps climbing, that's the one about to break. If you're planning to raise budget and the target is narrow, widen the audience before you raise the budget — not after. Just reordering those two steps saves you several days of wasted spend.
 
+If the broad-versus-narrow call comes down to how much learning signal you have, [the ad learning phase](/blog/ad-machine-learning) covers when learning ends and what resets it.
+
 ## Wrap-up
 
 Narrow versus broad isn't a matter of preference. Decide based on what frequency looks like right now, whether you're about to raise budget, and whether you have enough data. And it's worth second-guessing a narrow target's great-looking CPA, at least once.
