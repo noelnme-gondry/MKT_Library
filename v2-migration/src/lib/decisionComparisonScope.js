@@ -1,4 +1,4 @@
-const FILTER_KEYS = ["platforms", "countries", "channels", "sources"];
+export const FILTER_KEYS = ["platforms", "countries", "channels", "sources"];
 
 function asDate(value) {
   const text = String(value ?? "").trim();
