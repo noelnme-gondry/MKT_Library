@@ -162,7 +162,8 @@ v2-migration/
 - **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
 - **주간 리뷰 엔진 → `src/lib/weekly-review/`** (순수 함수, 골든): `period.js` 기간 판정(요일 맞춤) ·
   `significance.js` 유의미성(크기+변동성+표본) · `snapshot.js` 주×캠페인 집계 · `router.js` 분석 라우터 ·
-  `varianceBridge.js` PVM 분해 번역 · `decisionScore.js` 결정 판정 5단계 · `reportDraft.js` 보고서 조립.
+  `varianceBridge.js` PVM 분해 번역 · `decisionScore.js` 결정 판정 5단계 · `reportDraft.js` 보고서 조립 ·
+  `snapshotStore.js` 주간 기록 보관(워크스페이스 IDB `meta`) · `reviewPipeline.js` 전체 조립.
   화면은 `components/weekly-review/`. 안내 노출 판정은 `lib/weeklyReviewHandover.js`(모듈 스냅샷).
 - **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나이고, 그 화면은 이제 `/weekly-review`의 접기 섹션 안에서 렌더된다.
 - **수학/통계 → `src/utils/*Math.js`** (수학 변경 시 대응 `*.test.js` 골든 확인 — 원칙적으로 변경 금지).

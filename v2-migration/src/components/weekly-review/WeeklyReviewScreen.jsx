@@ -15,16 +15,13 @@
  * - 추천과 내 결정을 시각적으로 가른다. 저장되는 것은 언제나 사용자가 고른 값이다.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
-import { resolveComparisonPeriods } from "@/lib/weekly-review/period";
-import { buildSnapshot, snapshotMetrics } from "@/lib/weekly-review/snapshot";
-import { routeAnalyses } from "@/lib/weekly-review/router";
-import { buildVariance } from "@/lib/weekly-review/varianceBridge";
-import { DECISION_OUTCOME, scoreDecision } from "@/lib/weekly-review/decisionScore";
+import { DECISION_OUTCOME } from "@/lib/weekly-review/decisionScore";
+import { DEFAULT_PROJECT, KPI_OPTIONS, kpiFor, runReview } from "@/lib/weekly-review/reviewPipeline";
+import { listStoredSnapshots, saveStoredSnapshot } from "@/lib/weekly-review/snapshotStore";
 import { OUTCOME_LABEL, buildReportDraft, describeAction, renderReportText } from "@/lib/weekly-review/reportDraft";
-import { LOWER_IS_BETTER } from "@/lib/weekly-review/significance";
 import WeeklyReview from "@/components/WeeklyReview";
 import WeeklyReviewHandoverNotice from "@/components/weekly-review/WeeklyReviewHandoverNotice";
 import { fmtPct } from "@/utils/format";
@@ -51,6 +48,21 @@ const COPY = {
     save: "이 결정 저장",
     saved: "저장했습니다. 다음 주에 이 결정의 결과를 확인할 수 있습니다.",
     copy: "복사",
+    settings: "기준·기간 설정",
+    kpiLabel: "핵심 지표",
+    basisLabel: "전환 기준",
+    basisActions: "가입·구매 등(actions)",
+    basisInstalls: "설치(installs)",
+    periodLabel: "비교 기간",
+    periodAuto: "자동 (최신 날짜의 요일까지)",
+    periodCustom: "직접 지정",
+    curStart: "이번 시작", curEnd: "이번 끝",
+    prevStart: "지난 시작", prevEnd: "지난 끝",
+    lengthWarn: "기간 길이가 다릅니다. 변화율이 기간 차이 때문일 수 있습니다.",
+    historyNote: (n) => `저장된 주간 기록 ${n}주 — 평소 변동 범위를 이 기록으로 판정합니다.`,
+    historyNone: "저장된 주간 기록이 없어 평소 변동 범위는 아직 모릅니다. 이번 리뷰가 첫 기록으로 남습니다.",
+    goalLabel: "목표", guardLabel: "가드레일", amountLabel: "크기",
+    guardHint: "가드레일을 비우면 다음 주에 자동으로 판정할 수 없습니다.",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -73,8 +85,26 @@ const COPY = {
     save: "Save this decision",
     saved: "Saved. You can check the result of this decision next week.",
     copy: "Copy",
+    settings: "Metric & period",
+    kpiLabel: "Headline metric",
+    basisLabel: "Conversion basis",
+    basisActions: "Actions (signup, purchase…)",
+    basisInstalls: "Installs",
+    periodLabel: "Comparison period",
+    periodAuto: "Automatic (through the latest weekday)",
+    periodCustom: "Set manually",
+    curStart: "This from", curEnd: "This to",
+    prevStart: "Last from", prevEnd: "Last to",
+    lengthWarn: "The two periods differ in length. The change may reflect that difference.",
+    historyNote: (n) => `${n} weeks of saved history — the usual range is judged from these.`,
+    historyNone: "No saved weekly history yet, so the usual range is unknown. This review becomes the first record.",
+    goalLabel: "Goal", guardLabel: "Guardrail", amountLabel: "Size",
+    guardHint: "Leave the guardrail empty and next week's review cannot score this decision.",
   },
 };
+
+// 셀렉터가 매 렌더 새 배열을 만들면 아래 useMemo가 매번 다시 돈다.
+const EMPTY_RECORDS = [];
 
 const ACTION_KINDS = [
   { id: "hold", ko: "유지", en: "Hold" },
@@ -120,12 +150,63 @@ function money(value) {
 export default function WeeklyReviewScreen({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
-  const decisionRecords = useAppStore((state) => state.decisionRecords) || [];
+  const decisionRecords = useAppStore((state) => state.decisionRecords ?? EMPTY_RECORDS);
+  const addDecisionRecord = useAppStore((state) => state.addDecisionRecord);
+  const persistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
 
-  const [decision, setDecision] = useState({ actionKind: "hold", actionTarget: "", actionAmount: "" });
-  const [savedNote, setSavedNote] = useState(false);
+  const [kpiMetric, setKpiMetric] = useState(DEFAULT_PROJECT.kpi.metric);
+  const [basis, setBasis] = useState(DEFAULT_PROJECT.kpi.basis);
+  const [customPeriod, setCustomPeriod] = useState(null);
+  const [storedSnapshots, setStoredSnapshots] = useState([]);
+  const [decision, setDecision] = useState({
+    actionKind: "hold", actionTarget: "", actionAmount: "",
+    goalMetric: "conversions", goalDirection: "up",
+    guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "",
+  });
+  const [savedId, setSavedId] = useState(null);
 
-  const review = useMemo(() => buildReview(csvData), [csvData]);
+  const rows = useMemo(() => getMappedRows(csvData), [csvData]);
+  const project = useMemo(() => ({ kpi: kpiFor(kpiMetric, basis), target: null }), [kpiMetric, basis]);
+
+  // 저장된 주간 기록을 읽어야 평소 변동 범위를 판정할 수 있다(§2.3).
+  // 못 읽으면 빈 목록으로 떨어지고 리뷰는 크기·표본 두 축으로 계속 동작한다.
+  useEffect(() => {
+    let alive = true;
+    listStoredSnapshots().then((list) => { if (alive) setStoredSnapshots(list); });
+    return () => { alive = false; };
+  }, []);
+
+  const review = useMemo(
+    () => runReview({ rows, storedSnapshots, decisionRecords, project, customPeriod }),
+    [rows, storedSnapshots, decisionRecords, project, customPeriod],
+  );
+
+  // 이번 기간 집계를 보관한다 — 다음 주의 "평소 범위"가 여기서 나온다.
+  // 기기 저장을 끈 사용자에게는 쓰지 않는다.
+  useEffect(() => {
+    if (!review.ok || persistenceEnabled !== true) return;
+    saveStoredSnapshot(review.current);
+  }, [review, persistenceEnabled]);
+
+  const saveDecision = useCallback((recommendedLabel) => {
+    const record = {
+      toolId: "weekly-review",
+      locale,
+      action: [decision.actionTarget || recommendedLabel, decision.actionKind, decision.actionAmount]
+        .filter(Boolean).join(" "),
+      actionKind: decision.actionKind,
+      actionTarget: decision.actionTarget || recommendedLabel || "",
+      actionAmount: decision.actionAmount || "",
+      goalMetric: decision.goalMetric,
+      goalDirection: decision.goalDirection,
+      guardrailMetric: decision.guardrailValue ? decision.guardrailMetric : "",
+      guardrailOp: decision.guardrailValue ? decision.guardrailOp : "",
+      guardrailValue: decision.guardrailValue,
+      createdAt: new Date().toISOString(),
+    };
+    addDecisionRecord(record);
+    setSavedId(record.createdAt);
+  }, [decision, addDecisionRecord, locale]);
 
   if (!review.ok) {
     return (
@@ -143,6 +224,14 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           )}
           <a className="btn primary" href={locale === "en" ? "/en/start" : "/start"}>{t.goUpload}</a>
         </section>
+        <ReviewSettings
+          t={t} locale={locale}
+          kpiMetric={kpiMetric} setKpiMetric={setKpiMetric}
+          basis={basis} setBasis={setBasis}
+          customPeriod={customPeriod} setCustomPeriod={setCustomPeriod}
+          periods={review.periods || null}
+          historyWeeks={0}
+        />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
       </article>
     );
@@ -155,7 +244,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const recommended = variance?.ok ? variance.drivers.find((d) => !d.isRemainder) : null;
 
   const draft = buildReportDraft({
-    project: { name: null, kpi: { metric: "cpa", basis: "actions", direction: LOWER_IS_BETTER } },
+    project: { name: null, kpi: project.kpi },
     period: periods.current,
     previousPeriod: periods.previous,
     routing,
@@ -164,7 +253,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       ? { efficiency: variance.split.shares.efficiency, mix: variance.split.shares.mix }
       : null,
     lastDecision,
-    thisDecision: savedNote ? decision : null,
+    thisDecision: savedId ? decision : null,
   });
 
   return (
@@ -187,6 +276,15 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           )}
         </div>
       </header>
+
+      <ReviewSettings
+        t={t} locale={locale}
+        kpiMetric={kpiMetric} setKpiMetric={setKpiMetric}
+        basis={basis} setBasis={setBasis}
+        customPeriod={customPeriod} setCustomPeriod={setCustomPeriod}
+        periods={periods}
+        historyWeeks={review.history?.[kpiMetric]?.length ?? 0}
+      />
 
       {/* ── 1. 결론 ─────────────────────────────── */}
       <section className="wr-card" aria-labelledby="wr-verdict">
@@ -363,8 +461,62 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
                 onChange={(event) => setDecision((prev) => ({ ...prev, actionTarget: event.target.value }))}
               />
             </label>
-            <button type="button" className="btn primary" onClick={() => setSavedNote(true)}>{t.save}</button>
-            {savedNote && <p className="wr-note" role="status">{t.saved}</p>}
+            <label className="wr-field">
+              <span>{t.amountLabel}</span>
+              <input
+                value={decision.actionAmount}
+                placeholder="-10%"
+                onChange={(event) => setDecision((prev) => ({ ...prev, actionAmount: event.target.value }))}
+              />
+            </label>
+            <label className="wr-field">
+              <span>{t.goalLabel}</span>
+              <select
+                value={decision.goalMetric}
+                onChange={(event) => setDecision((prev) => ({ ...prev, goalMetric: event.target.value }))}
+              >
+                <option value="conversions">{locale === "en" ? "Conversions" : "전환"}</option>
+                <option value="cpa">CPA</option>
+                <option value="spend">{locale === "en" ? "Spend" : "비용"}</option>
+              </select>
+              <select
+                value={decision.goalDirection}
+                onChange={(event) => setDecision((prev) => ({ ...prev, goalDirection: event.target.value }))}
+              >
+                <option value="up">{locale === "en" ? "Increase" : "증가"}</option>
+                <option value="down">{locale === "en" ? "Decrease" : "감소"}</option>
+                <option value="hold">{locale === "en" ? "Hold" : "유지"}</option>
+              </select>
+            </label>
+            <label className="wr-field">
+              <span>{t.guardLabel}</span>
+              <select
+                value={decision.guardrailMetric}
+                onChange={(event) => setDecision((prev) => ({ ...prev, guardrailMetric: event.target.value }))}
+              >
+                <option value="cpa">CPA</option>
+                <option value="roas">ROAS</option>
+                <option value="conversions">{locale === "en" ? "Conversions" : "전환"}</option>
+              </select>
+              <select
+                value={decision.guardrailOp}
+                onChange={(event) => setDecision((prev) => ({ ...prev, guardrailOp: event.target.value }))}
+              >
+                <option value="lte">≤</option>
+                <option value="gte">≥</option>
+              </select>
+              <input
+                className="wr-field__num"
+                value={decision.guardrailValue}
+                placeholder="8.00"
+                inputMode="decimal"
+                onChange={(event) => setDecision((prev) => ({ ...prev, guardrailValue: event.target.value }))}
+              />
+            </label>
+            {/* 가드레일을 강제하지 않는다 — 강제하면 아무 값이나 넣어 판정이 거짓이 된다. */}
+            {!decision.guardrailValue && <p className="wr-note">{t.guardHint}</p>}
+            <button type="button" className="btn primary" onClick={() => saveDecision(recommended?.label || "")}>{t.save}</button>
+            {savedId && <p className="wr-note" role="status">{t.saved}</p>}
           </div>
         </section>
       )}
@@ -377,6 +529,84 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
 
       <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
     </article>
+  );
+}
+
+/**
+ * 기준·기간 설정. 자동 판정은 **제안**이고 사용자가 언제든 바꿀 수 있어야 한다 — 자동 비교가
+ * 틀렸는데 고칠 방법이 없으면 리뷰 전체를 못 믿는다(§2.2b).
+ * 접어 두는 이유는 P2다: 매주 바꾸는 값이 아니다.
+ */
+function ReviewSettings({
+  t, locale, kpiMetric, setKpiMetric, basis, setBasis,
+  customPeriod, setCustomPeriod, periods, historyWeeks,
+}) {
+  const manual = Boolean(customPeriod);
+  const setField = (key, value) => setCustomPeriod((prev) => ({ ...(prev || {}), [key]: value }));
+
+  return (
+    <details className="wr-settings">
+      <summary>{t.settings}</summary>
+      <div className="wr-settings__body">
+        <label className="wr-field">
+          <span>{t.kpiLabel}</span>
+          <select value={kpiMetric} onChange={(event) => setKpiMetric(event.target.value)}>
+            {KPI_OPTIONS.map((option) => (
+              <option key={option.metric} value={option.metric}>{locale === "en" ? option.en : option.ko}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="wr-field">
+          <span>{t.basisLabel}</span>
+          <select value={basis} onChange={(event) => setBasis(event.target.value)}>
+            <option value="actions">{t.basisActions}</option>
+            <option value="installs">{t.basisInstalls}</option>
+          </select>
+        </label>
+
+        <label className="wr-field">
+          <span>{t.periodLabel}</span>
+          <select
+            value={manual ? "custom" : "auto"}
+            onChange={(event) => setCustomPeriod(
+              event.target.value !== "custom"
+                ? null
+                : periods
+                  ? { currentStart: periods.current.start, currentEnd: periods.current.end }
+                  : {},
+            )}
+          >
+            <option value="auto">{t.periodAuto}</option>
+            <option value="custom">{t.periodCustom}</option>
+          </select>
+        </label>
+
+        {manual && (
+          <div className="wr-settings__dates">
+            {[["currentStart", t.curStart], ["currentEnd", t.curEnd],
+              ["previousStart", t.prevStart], ["previousEnd", t.prevEnd]].map(([key, label]) => (
+              <label className="wr-field" key={key}>
+                <span>{label}</span>
+                <input
+                  type="date"
+                  value={customPeriod?.[key] || ""}
+                  onChange={(event) => setField(key, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        )}
+
+        {periods?.warnings?.includes("length_mismatch") && (
+          <p className="wr-notice">{t.lengthWarn}</p>
+        )}
+
+        <p className="wr-note">
+          {historyWeeks > 0 ? t.historyNote(historyWeeks) : t.historyNone}
+        </p>
+      </div>
+    </details>
   );
 }
 
@@ -414,42 +644,3 @@ function metricRows(metrics) {
     .filter((row) => row.previous !== null && row.current !== null);
 }
 
-/** 업로드된 CSV 하나에서 리뷰에 필요한 것을 전부 계산한다. */
-function buildReview(csvData) {
-  const rows = getMappedRows(csvData);
-  if (!rows || rows.length === 0) return { ok: false, reason: null };
-
-  const periods = resolveComparisonPeriods({ dates: rows.map((row) => row.date) });
-  if (!periods.ok) return { ok: false, reason: periods.reason };
-
-  const current = buildSnapshot({ rows, period: periods.current });
-  const previous = buildSnapshot({ rows, period: periods.previous });
-  if (!current.ok || !previous.ok) return { ok: false, reason: "no_previous_data" };
-
-  const routing = routeAnalyses({
-    current,
-    previous,
-    project: { kpi: { metric: "cpa", basis: "actions", direction: LOWER_IS_BETTER } },
-    volumeMultiplier: periods.volumeMultiplier,
-  });
-
-  const runsVariance = (routing.run || []).some((entry) => entry.analysis === "variance");
-  const variance = runsVariance ? buildVariance({ current, previous }) : null;
-
-  const currentMetrics = snapshotMetrics(current) || {};
-  const previousMetrics = snapshotMetrics(previous) || {};
-
-  return {
-    ok: true,
-    periods,
-    routing,
-    variance,
-    lastDecision: null, // 저장된 결정 연결은 스냅샷 영속화와 함께 붙인다(§13.1)
-    metrics: {
-      current: { ...currentMetrics, cost: currentMetrics.totals?.cost ?? null },
-      previous: { ...previousMetrics, cost: previousMetrics.totals?.cost ?? null },
-    },
-  };
-}
-
-export { buildReview, scoreDecision };

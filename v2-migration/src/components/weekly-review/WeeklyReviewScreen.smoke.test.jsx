@@ -122,6 +122,74 @@ describe("WeeklyReviewScreen", () => {
     expect(document.querySelectorAll("h1")).toHaveLength(1);
   });
 
+  it("기준·기간을 사용자가 바꿀 수 있다 — 자동 판정이 틀리면 고칠 방법이 있어야 한다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    const kpi = screen.getByLabelText("핵심 지표");
+    expect(kpi.value).toBe("cpa");
+    fireEvent.change(kpi, { target: { value: "roas" } });
+    expect(kpi.value).toBe("roas");
+
+    const period = screen.getByLabelText("비교 기간");
+    fireEvent.change(period, { target: { value: "custom" } });
+    expect(screen.getByLabelText("이번 시작").value).toBe("2026-08-31");
+  });
+
+  it("저장된 주간 기록이 없으면 평소 범위를 모른다고 말한다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    expect(screen.getByText(/저장된 주간 기록이 없어 평소 변동 범위는 아직 모릅니다/)).toBeTruthy();
+  });
+
+  it("결정을 저장하면 목표·가드레일이 함께 기록된다 — 그래야 다음 주에 판정된다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "감액" }));
+    fireEvent.change(screen.getByLabelText("크기"), { target: { value: "-10%" } });
+    fireEvent.change(screen.getByPlaceholderText("8.00"), { target: { value: "9" } });
+    fireEvent.click(screen.getByRole("button", { name: "이 결정 저장" }));
+
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.actionKind).toBe("decrease_budget");
+    expect(saved.actionAmount).toBe("-10%");
+    expect(saved.guardrailMetric).toBe("cpa");
+    expect(saved.guardrailValue).toBe("9");
+    expect(saved.actionTarget).toBeTruthy(); // 추천 대상이 기본값으로 들어간다
+  });
+
+  it("가드레일이 비면 판정할 수 없다고 미리 알린다 — 강제하지는 않는다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    expect(screen.getByText(/가드레일을 비우면 다음 주에 자동으로 판정할 수 없습니다/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "이 결정 저장" }).disabled).toBe(false);
+  });
+
+  it("지난 결정이 있으면 판정이 화면에 붙는다", () => {
+    setData(rowsFor());
+    useAppStore.setState({
+      decisionRecords: [{
+        id: "d1", createdAt: "2026-08-25T00:00:00.000Z",
+        actionKind: "increase_budget", actionTarget: "Google / UAC A", actionAmount: "+15%",
+        goalMetric: "conversions", goalDirection: "up",
+        guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: 20,
+      }],
+    });
+    render(<WeeklyReviewScreen />);
+    expect(screen.getByRole("heading", { name: "지난 결정은 먹혔나" })).toBeTruthy();
+    // 대상을 못 찾으면 "확인 불가"가 뜬다 — 합성 라벨이 실제로 매칭되는지 본다.
+    expect(screen.queryByText("대상 데이터가 없어 확인 불가")).toBeNull();
+  });
+
+  it("v8 옛 결정은 판정 불가로 두고 추측하지 않는다", () => {
+    setData(rowsFor());
+    useAppStore.setState({
+      decisionRecords: [{ id: "d0", createdAt: "2026-08-25T00:00:00.000Z", action: "Meta 예산 증액" }],
+    });
+    render(<WeeklyReviewScreen />);
+    expect(screen.getByText("판정 불가")).toBeTruthy();
+    expect(screen.getByText(/목표·가드레일이 기록되지 않아 판정할 수 없습니다/)).toBeTruthy();
+  });
+
   it("EN도 같은 구조로 렌더된다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen locale="en" />);

@@ -188,7 +188,7 @@ export default function Header({ locale = "ko" }) {
             <><span className="sep">/</span><span className="current current--section">
               {isWeeklyReport
                 ? (locale === "en" ? "Weekly report" : "주간 보고서")
-                : (locale === "en" ? "Weekly review" : "주간 검토")}
+                : (locale === "en" ? "Weekly Review" : "주간 리뷰")}
             </span></>
           )}
           {isGlossary && <><span className="sep">/</span><Link href={glossaryHref} className="current current--section">{locale === "en" ? "Glossary" : "용어사전"}</Link></>}

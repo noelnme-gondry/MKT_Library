@@ -140,7 +140,7 @@ const COPY = {
     lowerHint: "낮을수록 좋은 지표",
     higherHint: "높을수록 좋은 지표",
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
-    openWeeklyReview: "주간 검토 열기 →",
+    openWeeklyReview: "주간 리뷰 열기 →",
   },
   en: {
     summary: "Schedule the next review",

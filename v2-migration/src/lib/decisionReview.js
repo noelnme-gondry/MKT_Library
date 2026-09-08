@@ -245,6 +245,30 @@ function firstNumericValue(value) {
 const LOWER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(CPA|CPI|CAC|CPR|WMAPE|MAPE|RMSE|MAE)(?=$|[^A-Z0-9])/;
 const HIGHER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(ROAS|ROI|CTR|CVR|LTV|ARPU|AOV|F1|LIFT)(?=$|[^A-Z0-9])/;
 
+// ── v9: 자동 판정용 구조화 필드 ──────────────────────────────────
+// 전부 화이트리스트로 좁힌다. 자유 문자열로 두면 `decisionScore`가 분기할 수 없고,
+// 그러면 v9 필드가 있어도 판정이 안 되는 v8과 다를 바 없어진다.
+export const DECISION_ACTION_KINDS = Object.freeze([
+  "increase_budget", "decrease_budget", "hold", "replace", "investigate",
+]);
+const GOAL_DIRECTIONS = ["up", "down", "hold"];
+const GUARDRAIL_OPS = ["lte", "gte"];
+
+function asActionKind(value) {
+  const normalized = asText(value, 24).toLowerCase();
+  return DECISION_ACTION_KINDS.includes(normalized) ? normalized : "";
+}
+
+function asGoalDirection(value) {
+  const normalized = asText(value, 8).toLowerCase();
+  return GOAL_DIRECTIONS.includes(normalized) ? normalized : "";
+}
+
+function asGuardrailOp(value) {
+  const normalized = asText(value, 8).toLowerCase();
+  return GUARDRAIL_OPS.includes(normalized) ? normalized : "";
+}
+
 function asTargetDirection(value) {
   const normalized = asText(value, 12).toLowerCase();
   return ["higher", "lower", "neutral"].includes(normalized) ? normalized : "";
@@ -366,6 +390,14 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     locale,
     conclusion: asText(field(row, "conclusion"), FIELD_LIMITS.conclusion),
     action,
+    actionKind: asActionKind(field(row, "actionKind", "action_kind")),
+    actionTarget: asText(field(row, "actionTarget", "action_target"), FIELD_LIMITS.metric),
+    actionAmount: asText(field(row, "actionAmount", "action_amount"), 32),
+    goalMetric: asText(field(row, "goalMetric", "goal_metric"), FIELD_LIMITS.metric),
+    goalDirection: asGoalDirection(field(row, "goalDirection", "goal_direction")),
+    guardrailMetric: asText(field(row, "guardrailMetric", "guardrail_metric"), FIELD_LIMITS.metric),
+    guardrailOp: asGuardrailOp(field(row, "guardrailOp", "guardrail_op")),
+    guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DECISION_ACTION_KINDS,
   DECISION_REVIEW_SAFE_FIELDS,
   assessDecisionOutcome,
   decisionReviewAgeBucket,
@@ -9,6 +10,7 @@ import {
   getDecisionReviewBucket,
   getDecisionReviewStatus,
   normalizeDecisionReviewRows,
+  sanitizeDecisionReviewRecord,
   sanitizeDecisionReviewRecords,
   serializeDecisionReviewCsv,
   serializeDecisionReviewIcs,
@@ -221,5 +223,55 @@ describe("decision review CSV contract", () => {
       forecast_value: "=SUM(A1:A2)",
     }]);
     expect(invalid).toMatchObject({ forecastPeriod: "", forecastTarget: "", forecastPlatform: "", forecastValue: "" });
+  });
+});
+
+describe("v9 자동 판정 필드", () => {
+  const base = { action: "Google UAC A 예산 감액 -10%", toolId: "weekly-review" };
+
+  it("구조화 필드를 그대로 보존한다", () => {
+    const record = sanitizeDecisionReviewRecord({
+      ...base,
+      actionKind: "decrease_budget", actionTarget: "Google / UAC A", actionAmount: "-10%",
+      goalMetric: "conversions", goalDirection: "hold",
+      guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "8.5",
+    });
+    expect(record.actionKind).toBe("decrease_budget");
+    expect(record.actionTarget).toBe("Google / UAC A");
+    expect(record.actionAmount).toBe("-10%");
+    expect(record.goalDirection).toBe("hold");
+    expect(record.guardrailOp).toBe("lte");
+    expect(record.guardrailValue).toBe("8.5");
+  });
+
+  it("snake_case CSV 컬럼으로도 읽는다", () => {
+    const record = sanitizeDecisionReviewRecord({
+      ...base, action_kind: "increase_budget", guardrail_op: "gte", guardrail_value: "2",
+    });
+    expect(record.actionKind).toBe("increase_budget");
+    expect(record.guardrailOp).toBe("gte");
+  });
+
+  it("모르는 값은 빈 문자열로 떨어진다 — 자유 문자열이면 판정이 분기할 수 없다", () => {
+    const record = sanitizeDecisionReviewRecord({
+      ...base, actionKind: "예산 늘리기", goalDirection: "위로", guardrailOp: "<=", guardrailValue: "여덟",
+    });
+    expect(record.actionKind).toBe("");
+    expect(record.goalDirection).toBe("");
+    expect(record.guardrailOp).toBe("");
+    expect(record.guardrailValue).toBe("");
+  });
+
+  it("v8 레코드는 v9 자리가 비어 있고, 그래서 판정 불가로 남는다", () => {
+    const record = sanitizeDecisionReviewRecord({ ...base });
+    for (const key of ["actionKind", "goalMetric", "guardrailMetric", "guardrailValue"]) {
+      expect(record[key]).toBe("");
+    }
+  });
+
+  it("허용 목록과 스키마 필드가 어긋나지 않는다", () => {
+    const record = sanitizeDecisionReviewRecord({ ...base, actionKind: DECISION_ACTION_KINDS[0] });
+    for (const key of DECISION_REVIEW_SAFE_FIELDS) expect(record).toHaveProperty(key);
+    expect(DECISION_ACTION_KINDS.length).toBeGreaterThan(1);
   });
 });

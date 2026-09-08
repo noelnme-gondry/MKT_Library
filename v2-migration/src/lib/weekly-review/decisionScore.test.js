@@ -66,7 +66,11 @@ describe("대상 좁히기", () => {
     });
     expect(rowsForTarget(snapshot, "Meta AAP")).toHaveLength(1);
     expect(rowsForTarget(snapshot, "Meta")).toHaveLength(2);
+    // 화면이 보여주는 합성 라벨도 받는다 — 사용자가 그대로 복사해 저장한다.
+    expect(rowsForTarget(snapshot, "Meta / Meta AAP")).toHaveLength(1);
+    expect(rowsForTarget(snapshot, "Google / UAC A")).toHaveLength(1);
     expect(rowsForTarget(snapshot, "없는 캠페인")).toHaveLength(0);
+    expect(rowsForTarget(snapshot, "Meta / 없는 캠페인")).toHaveLength(0);
     expect(rowsForTarget(snapshot, "")).toHaveLength(0);
   });
 });

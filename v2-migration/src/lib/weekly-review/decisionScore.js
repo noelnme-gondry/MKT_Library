@@ -51,12 +51,22 @@ export function parsePercentAmount(value) {
   return num === null ? null : num / 100;
 }
 
-/** 결정이 가리키는 캠페인·채널 행만 남긴다. */
+/**
+ * 결정이 가리키는 캠페인·채널 행만 남긴다.
+ *
+ * `"채널 / 캠페인"` 합성 라벨도 받는다. 화면의 추천과 원인 표가 그 형태로 이름을 보여주므로,
+ * 사용자가 그대로 복사해 결정을 저장한다. 캠페인명만 매칭하면 그 결정이 영영 `NO_DATA`가 되고,
+ * 판정이 조용히 죽는다(테스트가 실제로 이 구멍을 잡았다).
+ */
 export function rowsForTarget(snapshot, target) {
   if (!snapshot || !snapshot.ok) return [];
   const needle = String(target ?? "").trim();
   if (!needle) return [];
-  return snapshot.rows.filter((row) => row.campaign === needle || row.channel === needle);
+  return snapshot.rows.filter((row) => {
+    if (row.campaign === needle || row.channel === needle) return true;
+    const composite = row.channel ? `${row.channel} / ${row.campaign}` : row.campaign;
+    return composite === needle;
+  });
 }
 
 function metricValue(metrics, name) {
