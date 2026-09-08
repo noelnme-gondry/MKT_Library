@@ -60,12 +60,19 @@ async function runJourney(page, locale) {
   expect(funnel.find(event => event[1] === "weekly_review_completed")[2].elapsed_bucket).toBe("under_1m");
   expect(JSON.stringify(funnel)).not.toContain("Review Campaign");
   await expect(page.locator(".wr-verdict__big")).toContainText("CPA");
+  await expect(page.locator(".wr-evidence")).toHaveCSS("border-left-width", "1px");
+  await expect(page.locator("#wr-verdict")).toHaveCSS("font-size", "18px");
+  expect(await page.locator(".wr-screen").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft))).toBeGreaterThanOrEqual(12);
   await page.getByRole("button", { name: en ? "Edit project settings" : "프로젝트 기준 편집", exact: true }).click();
   await page.getByLabel(en ? "Project name" : "프로젝트 이름", { exact: true }).fill("App growth review");
   await page.getByLabel(en ? "KPI target (optional)" : "KPI 목표 (선택)", { exact: true }).fill("20");
   await expect(page.getByText(en ? "Target met" : "목표 범위 충족", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: en ? "Save setup for next week" : "다음 주를 위해 설정 저장", exact: true }).click();
   await expect(page.getByText(en ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.", { exact: true })).toBeVisible();
+  if (en && process.env.GOP_VISUAL_CAPTURE) {
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: "/tmp/gop-review-loop.png" });
+  }
   await page.getByRole("button", { name: en ? "Record decision for: Google / Review Campaign" : "결정 기록: Google / Review Campaign", exact: true }).click();
   await expect(page.locator("#wr-decision-target")).toHaveValue("Google / Review Campaign");
   await expect(page.locator(".wr-report")).toContainText(en ? "■ Performance" : "■ 성과");
@@ -114,6 +121,9 @@ async function dochiToWeekly(page, locale) {
     if (locale === "en") localStorage.setItem("mkt-library-theme", "light");
   }, locale);
   await page.goto(en ? "/en" : "/");
+  const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
+  await expect(hero.getByRole("link", { name: en ? /Continue weekly review/ : /주간 리뷰 이어가기/ })).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
+  await hero.getByRole("link", { name: en ? /Start with Dochi/ : /도치로 첫 분석/ }).click();
   const intake = page.locator('.dochi-home-assistant .csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });
@@ -136,6 +146,8 @@ async function dochiToWeekly(page, locale) {
   const csv = Buffer.concat(chunks).toString("utf8");
   expect(csv).toContain("Review Campaign");
   expect(csv).toContain("7000,10500,10,15");
+  await page.getByRole("link", { name: en ? "See saved decisions" : "저장한 결정 확인", exact: true }).click();
+  await expect(page.locator("#wr-history")).toHaveAttribute("open", "");
   await expectNoSeriousAccessibilityViolations(page);
 }
 

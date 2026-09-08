@@ -18,17 +18,17 @@ import { buildDemoCsv } from "@/utils/demoData";
 const COPY = {
   ko: {
     eyebrow: "퍼포먼스 마케팅 의사결정",
-    title: "성과 원인을 찾고,",
-    titleAccent: "다음 하나를 정하세요.",
-    deck: "CSV만 올리면 브라우저 안에서 바로 분석합니다.",
+    title: "데이터로 판단하고,",
+    titleAccent: "다음 주에 다시 확인하세요.",
+    deck: "도치는 CSV 준비와 첫 분석을 돕고, 주간 리뷰는 이번 결정과 다음 결과를 이어줍니다.",
     actionAria: "바로 시작할 작업",
-    dataCta: "내 CSV로 분석",
-    dataActionHint: "성과·예산·소재를 내 데이터로",
+    dataCta: "도치로 첫 분석",
+    dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
+    reviewCta: "주간 리뷰 이어가기",
+    reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
-    calculatorActionHint: "목표 CPA·ROAS·표본수",
     diagnoseCta: "성과 원인 찾기",
-    diagnoseActionHint: "CSV 없이 확인 순서부터",
-    demoCta: "예시 데이터로 30초 체험",
+    demoCta: "대시보드 결과 예시 보기",
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
@@ -40,14 +40,14 @@ const COPY = {
     latestDecision: "최근 판단",
     noSchedule: "일정 미정",
     reviewed: "검토 완료",
-    openInbox: "결정 검토함 열기",
+    openInbox: "주간 리뷰 열기",
     reopenTool: "원본 도구 다시 열기",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
     loopDeck: "직접 올린 파일과 결정 기록은 이 기기에만 마지막 사용 후 90일까지 남고, 언제든 지우거나 저장을 끌 수 있습니다.",
     loop: [
       { id: "start", label: "01 · START", title: "내 데이터 진단", desc: "CSV나 Google Sheets를 가져오면 가능한 분석과 가장 먼저 볼 질문을 추천합니다.", cta: "데이터로 시작" },
-      { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "결론, 근거, 다음 행동 순서로 보고 유지·감액·증액·교체 중 하나를 정합니다.", cta: "샘플 판단 보기" },
-      { id: "review", label: "03 · REVIEW", title: "다음 주 결과 검토", desc: "저장한 결정의 기준값과 실제값을 대조하고, 배운 점을 다음 판단의 근거로 남깁니다.", cta: "결정 검토함 보기" },
+      { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "주간 리뷰에서 목표와 캠페인별 근거를 확인하고 결정과 다음 검토일을 저장합니다.", cta: "이번 주 리뷰 만들기" },
+      { id: "review", label: "03 · REVIEW", title: "다음 데이터로 다시 확인", desc: "다음 기간 CSV를 올려 지난 결정 이후의 관측을 확인합니다. 저장한 결정은 리뷰 안에서 다시 볼 수 있습니다.", cta: "지난 결정 확인" },
     ],
     questionTitle: "지금 가장 먼저 판단할 것은?",
     questionDeck: (count) => `${count}개 분석 전부입니다. 도구 이름이 아니라 판단 상황으로 골라요.`,
@@ -66,17 +66,17 @@ const COPY = {
   },
   en: {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
-    title: "Find the cause.",
-    titleAccent: "Choose one next move.",
-    deck: "Upload a CSV and analyze it right in your browser.",
+    title: "Decide with your data.",
+    titleAccent: "Review what happens next.",
+    deck: "Dochi helps prepare your CSV and first analysis. Weekly Review connects this decision to the next results.",
     actionAria: "Start a task",
-    dataCta: "Analyze my CSV",
-    dataActionHint: "Performance, budget, and creative",
+    dataCta: "Start with Dochi",
+    dataActionHint: "Upload → check columns → supported analyses",
+    reviewCta: "Continue weekly review",
+    reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
-    calculatorActionHint: "Target CPA, ROAS, sample size",
     diagnoseCta: "Find the cause",
-    diagnoseActionHint: "A check order without a CSV",
-    demoCta: "Try example data in 30 seconds",
+    demoCta: "See a dashboard example",
     dataGuideCta: "Prepare CSV columns",
     assurance: "Free · no signup · source data stays in your browser",
     continueTitle: "Continue your last decision",
@@ -86,14 +86,14 @@ const COPY = {
     latestDecision: "Latest decision",
     noSchedule: "Not scheduled",
     reviewed: "Reviewed",
-    openInbox: "Open decision inbox",
+    openInbox: "Open weekly review",
     reopenTool: "Reopen source tool",
     loopTitle: "Do not stop at analysis—review what happened next",
     loopDeck: "Files you upload directly and decision records stay on this device until 90 days after their last use. You can remove them or turn storage off at any time.",
     loop: [
       { id: "start", label: "01 · START", title: "Diagnose my data", desc: "Bring a CSV or Google Sheet to see which analyses it supports and which question to check first.", cta: "Start with my data" },
-      { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Read the conclusion, evidence, and next action before choosing what to hold, cut, scale, or replace.", cta: "See a sample decision" },
-      { id: "review", label: "03 · REVIEW", title: "Review the actual next week", desc: "Compare each saved baseline with the actual outcome and keep the learning for the next decision.", cta: "Open decision inbox" },
+      { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Review targets and campaign evidence, then save a decision and its next review date.", cta: "Build this week's review" },
+      { id: "review", label: "03 · REVIEW", title: "Check the next data", desc: "Upload the next period and inspect observations after your decision. Revisit saved decisions inside the review.", cta: "See past decisions" },
     ],
     questionTitle: "What do you need to decide first?",
     questionDeck: (count) => `All ${count} analyses, grouped by the decision each one supports.`,
@@ -168,30 +168,31 @@ export default function LandingPage({ locale = "ko" }) {
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
-              href={lang === "en" ? "/en/start" : "/start"}
+              href="#dochi-upload"
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
-            <Link
-              className="dc-action-route"
-              href={lang === "en" ? "/en/calculator" : "/calculator"}
-              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
-            >
-              <strong>{T.calculatorCta}</strong>
-              <span>{T.calculatorActionHint}</span>
-            </Link>
-            <Link
-              className="dc-action-route"
-              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
-              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
-            >
-              <strong>{T.diagnoseCta}</strong>
-              <span>{T.diagnoseActionHint}</span>
+            <Link className="dc-action-route" href={lang === "en" ? "/en/weekly-review" : "/weekly-review"} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
+              <strong>{T.reviewCta}</strong><span>{T.reviewHint}</span>
             </Link>
           </nav>
           <div className="dc-hero__utility-actions">
+            <Link
+              className="dc-text-link"
+              href={lang === "en" ? "/en/calculator" : "/calculator"}
+              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
+            >
+              {T.calculatorCta}
+            </Link>
+            <Link
+              className="dc-text-link"
+              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
+              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
+            >
+              {T.diagnoseCta}
+            </Link>
             {/* 예시는 이 제품에서 "무엇이 나오는지"를 볼 유일한 경로다(히어로의 가짜
                 차트를 걷어낸 뒤로 §12.28). 버튼으로 승격하면 목적 CTA와 위계가
                 섞이므로(LandingPage.smoke가 강제) 텍스트 링크는 유지하고 눈에
@@ -215,14 +216,14 @@ export default function LandingPage({ locale = "ko" }) {
         <div className="dc-return__grid">
           <Link
             className={`dc-return__status${dueDecisionRecords.length ? " is-due" : ""}`}
-            href={lang === "en" ? "/en/weekly-review" : "/weekly-review"}
+            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
             onClick={() => trackLandingNav("landing_review_opened", "continue_panel")}
           >
             <span>{T.dueNow}</span><strong>{dueDecisionRecords.length}</strong><b>{T.openInbox} →</b>
           </Link>
           <Link
             className="dc-return__status"
-            href={lang === "en" ? "/en/weekly-review" : "/weekly-review"}
+            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
             onClick={() => trackLandingNav("landing_review_opened", "continue_panel_next")}
           >
             <span>{T.nextReview}</span><strong>{nextDecision?.reviewDate || T.noSchedule}</strong><b>{T.openInbox} →</b>
@@ -275,19 +276,14 @@ export default function LandingPage({ locale = "ko" }) {
         <div className="dc-loop__grid">
           {T.loop.map((step) => {
             const content = <><span>{step.label}</span><h3>{step.title}</h3><p>{step.desc}</p><b>{step.cta} →</b></>;
-            const href = step.id === "start"
-              ? (lang === "en" ? "/en/start" : "/start")
-              : step.id === "decide"
-                ? toolHref("5-2")
-                : (lang === "en" ? "/en/weekly-review" : "/weekly-review");
+            const href = step.id === "start" ? "#dochi-upload" : `${lang === "en" ? "/en" : ""}/weekly-review${step.id === "review" ? "#wr-history" : ""}`;
             return (
               <Link
                 className="dc-loop-card"
                 href={href}
                 key={step.id}
                 onClick={() => {
-                  if (step.id === "decide") prepareSample("5-2", "weekly_loop");
-                  else trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop");
+                  trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop");
                 }}
               >{content}</Link>
             );

@@ -289,8 +289,8 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   await page.getByRole("button", { name: "다음 검토로 저장" }).click();
   await page.locator(".decision-review__weekly-link").click();
 
-  await expect(page).toHaveURL(/\/weekly-review$/);
-  await page.locator(".wr-history > summary").click();
+  await expect(page).toHaveURL(/\/weekly-review#wr-history$/);
+  await expect(page.locator("#wr-history")).toHaveAttribute("open", "");
   await expect(page.locator(".weekly-review-record")).toHaveCount(1);
   await expectPageHierarchy(page, { primaryRegion: ".weekly-review-page" });
   await expectNoSeriousAccessibilityViolations(page);

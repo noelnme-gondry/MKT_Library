@@ -64,7 +64,7 @@ export default function DochiAssistant({ locale = "ko" }) {
       : null;
 
   return (
-    <section className="dochi-home-assistant" data-phase={phase} aria-label={copy.label}>
+    <section className="dochi-home-assistant" id="dochi-upload" tabIndex={-1} data-phase={phase} aria-label={copy.label}>
       <div className="dochi-home-assistant__speech" aria-live="polite">
         <p className="dochi-home-assistant__hello">{copy.greeting}</p>
         <p>{status || copy.prompt}</p>

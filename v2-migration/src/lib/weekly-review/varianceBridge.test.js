@@ -28,6 +28,15 @@ function run(current = CURRENT, previous = PREVIOUS, options = {}) {
 }
 
 describe("엔진 계약을 지켜서 번역한다", () => {
+  it("정지 캠페인의 계산용 0을 CPA 개선으로 표시하지 않는다", () => {
+    const previous = [{ campaign: "Paused", cost: 1000, actions: 100 }, { campaign: "Active", cost: 1000, actions: 100 }];
+    const current = [{ campaign: "Paused", cost: 0, actions: 0 }, { campaign: "Active", cost: 1000, actions: 100 }];
+    const result = run(current, previous);
+    expect(result.ok).toBe(true);
+    expect(result.drivers.find(row => row.label === "Paused")).toMatchObject({ cpa1: 10, cpa2: null, cpaChangePct: null });
+    const realZero = run(current.map(row => row.campaign === "Paused" ? { ...row, actions: 100 } : row), previous);
+    expect(realZero.drivers.find(row => row.label === "Paused")).toMatchObject({ cpa1: 10, cpa2: 0, cpaChangePct: -1 });
+  });
   it("분해가 성립하고 Σ기여 = ΔCPA다", () => {
     const result = run();
     expect(result.ok).toBe(true);

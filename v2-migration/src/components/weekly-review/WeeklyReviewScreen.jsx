@@ -48,7 +48,7 @@ const COPY = {
     shareHead: "팀 공유 보고서",
     historyToggle: (n) => `지난 결정 전체 보기 (${n}건)`,
     noData: "이번 주 데이터를 올려주세요.",
-    noDataDeck: "2주치 캠페인 CSV를 올리면 이번 주와 지난주를 견주어 결론을 만듭니다.",
+    noDataDeck: "처음에는 비교할 두 기간의 캠페인 CSV를 올리세요. 이후에는 다음 기간 CSV와 이 기기에 저장한 집계로 비교하고, 지난 결정 이후의 변화를 검토합니다. 날짜·캠페인·비용·전환 또는 설치 열이 필요합니다.",
     goUpload: "데이터 올리기",
     quiet: "설정한 확인 기준을 넘는 변화가 없습니다.",
     unknown: "이번 기간의 핵심 지표를 잴 수 없었습니다.",
@@ -84,7 +84,7 @@ const COPY = {
     shareHead: "Team review report",
     historyToggle: (n) => `All past decisions (${n})`,
     noData: "Upload this week's data.",
-    noDataDeck: "Upload two weeks of campaign CSV and we compare this week with last.",
+    noDataDeck: "Start with a campaign CSV covering both periods. Next time, compare the next period with an aggregate saved on this device and review changes after your decision. Include date, campaign, spend, and conversions or installs.",
     goUpload: "Upload data",
     quiet: "No change crossed the configured review criteria.",
     unknown: "This period's headline metric could not be measured.",
@@ -314,23 +314,24 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
 
   if (!review.ok) {
     return (
-      <article className="page-inner wr-screen">
+      <article className="content wr-screen">
         <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
         <header className="wr-screen__head">
           <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
         </header>
-        <section className="wr-screen__empty" aria-labelledby="wr-empty">
+        <section className="wr-screen__empty wr-card" id="wr-upload" aria-labelledby="wr-empty">
           <h2 id="wr-empty">{t.noData}</h2>
           <p>{t.noDataDeck}</p>
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
           {review.reason && REASON_TEXT[locale]?.[review.reason] && (
             <p className="wr-screen__reason">{REASON_TEXT[locale][review.reason]}</p>
           )}
-          {workspaceReady ? <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
+          {workspaceReady ? <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
           {projectSetup(review.periods || null, 0, false)}
           <Link href={locale === "en" ? "/en/start" : "/start"}>{t.goUpload}</Link>
         </section>
+        <ReviewLoop locale={locale} hasResult={false} />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
       </article>
     );
@@ -367,7 +368,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   });
 
   return (
-    <article className="page-inner wr-screen">
+    <article className="content wr-screen">
       <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
 
       <header className="wr-screen__head">
@@ -388,16 +389,16 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       </header>
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
-      <details><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview />}</details>
+      <details className="wr-upload" id="wr-upload"><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />}</details>
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
-        <a href="#wr-verdict">{t.verdictHead}</a><a href="#wr-evidence-title">{locale === "en" ? "Campaign evidence" : "캠페인 근거"}</a><a href="#wr-next">{locale === "en" ? "Next decision" : "다음 결정"}</a><a href="#wr-share">{t.shareHead}</a>
+        <a className="btn" href="#wr-verdict">{t.verdictHead}</a><a className="btn" href="#wr-evidence-title">{locale === "en" ? "Campaign evidence" : "캠페인 근거"}</a><a className="btn" href="#wr-next" onClick={() => { const section = document.getElementById("wr-next")?.closest("details"); if (section) section.open = true; }}>{locale === "en" ? "Next decision" : "다음 결정"}</a><a className="btn" href="#wr-share">{t.shareHead}</a>
       </nav>
 
       {/* ── 1. 결론 ─────────────────────────────── */}
       <section className="wr-card" aria-labelledby="wr-verdict">
-        <h2 className="wr-card__eyebrow" id="wr-verdict">{t.verdictHead}</h2>
+        <h2 className="wr-card__title" id="wr-verdict">{t.verdictHead}</h2>
         <div className="wr-verdict">
           <p className={`wr-verdict__big ${kpiAssessment?.significant ? (kpiAssessment.outcome === "worse" ? "is-bad" : "is-good") : "is-flat"}`}>
             {unknown ? t.unknown : quiet ? t.quiet : `${kpiMetric.toUpperCase()} ${pct(kpiAssessment.deltaPct)}`}
@@ -419,8 +420,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           </p>
         </div>
 
-        <div className="wr-tablewrap">
-          <table>
+        <div className="table-wrap wr-tablewrap" role="region" aria-label={t.metricsCaption} tabIndex={0}>
+          <table className="data">
             <caption>{t.metricsCaption}</caption>
             <thead>
               <tr>
@@ -455,7 +456,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       {/* ── 2. 왜 (신호가 있을 때만) ───────────────── */}
       {!quiet && !unknown && variance?.ok && (
         <section className="wr-card" aria-labelledby="wr-why">
-          <h2 className="wr-card__eyebrow" id="wr-why">{t.whyHead}</h2>
+          <h2 className="wr-card__title" id="wr-why">{t.whyHead}</h2>
 
           {variance.split.shares ? (
             <p className="wr-readout">
@@ -488,8 +489,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           )}
           <p className="wr-note">{locale === "en" ? `Arithmetic ${kpiMetric.toUpperCase()} change within the included campaigns` : `포함된 캠페인 범위의 산술 ${kpiMetric.toUpperCase()} 변화`}: {money(variance.cpa1)} → {money(variance.cpa2)}; {locale === "en" ? "efficiency / result mix" : "효율 / 결과 비중 변화"}: {money(variance.split.efficiency)} / {money(variance.split.mix)}</p>
 
-          <div className="wr-tablewrap">
-            <table>
+          <div className="table-wrap wr-tablewrap" role="region" aria-label={t.driversCaption} tabIndex={0}>
+            <table className="data">
               <caption>{t.driversCaption}</caption>
               <thead>
                 <tr>
@@ -523,7 +524,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       {/* ── 3. 지난 결정 (있을 때만) ───────────────── */}
       {lastDecision && (
         <section className="wr-card" aria-labelledby="wr-last">
-          <h2 className="wr-card__eyebrow" id="wr-last">{t.lastHead}</h2>
+          <h2 className="wr-card__title" id="wr-last">{t.lastHead}</h2>
           <p className="wr-decision__action">{describeAction(lastDecision.decision, locale)}</p>
           <p className={`wr-stamp is-${lastDecision.score.outcome.toLowerCase()}`}>
             {outcomeLabel(lastDecision.score.outcome, locale)}
@@ -552,7 +553,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       <details open={!quiet && !unknown} className="wr-settings">
         <summary>{locale === "en" ? "Record my next decision" : "내 다음 결정 기록"}</summary>
         <section className="wr-card" aria-labelledby="wr-next">
-          <h2 className="wr-card__eyebrow" id="wr-next">{t.nextHead}</h2>
+          <h2 className="wr-card__title" id="wr-next">{t.nextHead}</h2>
 
           {recommended && (
             <div className="wr-reco">
@@ -606,6 +607,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
               </select>
               <select
                 aria-label={locale === "en" ? "Goal direction" : "목표 방향"}
+                aria-describedby={decision.goalDirection === "hold" ? "wr-hold-limit" : undefined}
                 value={decision.goalDirection}
                 onChange={(event) => setDecision((prev) => ({ ...prev, goalDirection: event.target.value }))}
               >
@@ -614,6 +616,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
                 <option value="hold">{locale === "en" ? "Hold" : "유지"}</option>
               </select>
             </label>
+            {decision.goalDirection === "hold" && <p className="wr-note" id="wr-hold-limit" role="status">{locale === "en" ? "A hold goal can be recorded, but automatic scoring is not supported: no acceptable range of change has been defined. Measurable guardrail results will still be shown." : "유지 목표는 기록할 수 있지만 자동 판정은 지원하지 않습니다. 어느 정도 변화까지 유지로 볼지 정해져 있지 않기 때문입니다. 계산 가능한 가드레일 결과는 별도로 보여드립니다."}</p>}
             <label className="wr-field">
               <span>{t.guardLabel}</span>
               <select
@@ -649,8 +652,9 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       </details>
 
       {/* ── 5. 공유 ───────────────────────────────── */}
+      <ReviewLoop locale={locale} hasResult nextDate={isSavedDecisionCurrent ? savedDecision.record.reviewDate : null} />
       <section className="wr-card" aria-labelledby="wr-share">
-        <h2 className="wr-card__eyebrow" id="wr-share">{t.shareHead}</h2>
+        <h2 className="wr-card__title" id="wr-share">{t.shareHead}</h2>
         <p>{locale === "en" ? "The same periods, campaign evidence and saved decision, ready for your team review." : "검토한 기간·캠페인 근거·저장한 결정을 한 문서로 전달하세요."}</p>
         <WeeklyReportDocument text={renderReportText(draft, { number: money })} />
         <div className="wr-report-actions">
@@ -752,9 +756,31 @@ function ReviewSettings({
   );
 }
 
+function ReviewLoop({ locale, hasResult, nextDate }) {
+  const en = locale === "en";
+  const reveal = id => {
+    const node = document.getElementById(id);
+    const disclosure = node?.closest("details");
+    if (disclosure) disclosure.open = true;
+  };
+  return <nav className="wr-loop" aria-label={en ? "Weekly review cycle" : "주간 검토 흐름"}>
+    <ol>
+      <li><strong>{en ? "1. Compare periods" : "1. 기간 비교"}</strong><p>{en ? "Bring this period and a comparable baseline." : "이번 데이터와 비교할 지난 기간을 준비합니다."}</p><a className="btn" href="#wr-upload" onClick={() => reveal("wr-upload")}>{hasResult ? (en ? "Upload the next period" : "다음 기간 데이터 올리기") : (en ? "Prepare comparison data" : "비교 데이터 준비")}</a></li>
+      <li><strong>{en ? "2. Record a decision" : "2. 결정 기록"}</strong><p>{en ? "Save the action and conditions you will check." : "확인한 근거와 다음에 볼 조건을 저장합니다."}</p>{hasResult ? <a className="btn" href="#wr-next" onClick={() => reveal("wr-next")}>{en ? "Record this decision" : "이번 결정 기록"}</a> : <span className="wr-note">{en ? "Available after comparison" : "기간 비교 후 기록할 수 있습니다"}</span>}</li>
+      <li><strong>{en ? "3. Review the next results" : "3. 다음 결과 검토"}</strong><p>{nextDate ? `${en ? "Next review" : "다음 검토일"}: ${nextDate}` : (en ? "Save a decision to set the next review date." : "결정을 저장하면 다음 검토일이 정해집니다.")}</p><a className="btn" href="#wr-history" onClick={() => reveal("wr-history")}>{en ? "See saved decisions" : "저장한 결정 확인"}</a></li>
+    </ol>
+  </nav>;
+}
+
 function PastDecisions({ locale, t, count }) {
+  useEffect(() => {
+    const reveal = () => { if (window.location.hash === "#wr-history") document.getElementById("wr-history").open = true; };
+    reveal();
+    window.addEventListener("hashchange", reveal);
+    return () => window.removeEventListener("hashchange", reveal);
+  }, []);
   return (
-    <details className="wr-history">
+    <details className="wr-history" id="wr-history">
       <summary>{t.historyToggle(count)}</summary>
       <WeeklyReview locale={locale} embedded />
     </details>

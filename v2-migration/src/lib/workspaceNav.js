@@ -37,8 +37,8 @@ export const WORKSPACE_NAV = [
     href: "/weekly-review",
     icon: "◷",
     // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
-    ko: { name: "주간 리뷰", desc: "이번 주 변화와 지난 결정 결과" },
-    en: { name: "Weekly Review", desc: "This week's change and last week's outcome" },
+    ko: { name: "주간 리뷰", desc: "비교 → 결정 기록 → 다음 결과 검토" },
+    en: { name: "Weekly Review", desc: "Compare → decide → review the next results" },
   },
 ];
 

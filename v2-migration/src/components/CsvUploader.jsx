@@ -254,6 +254,7 @@ function xlsxFailureState(error) {
 export default function CsvUploader({
   toolId,
   analyticsToolId = toolId,
+  showToolGuide = true,
   locale = "ko",
   afterFileSummary = null,
   showMappingReview = false,
@@ -273,7 +274,7 @@ export default function CsvUploader({
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   // 가이드가 있으면 예시 데이터 버튼은 가이드가 소유한다(아래 중복 블록 차단).
-  const showGuide = entryVariant !== "dochi" && Boolean(getToolGuide(toolId, locale));
+  const showGuide = showToolGuide && entryVariant !== "dochi" && Boolean(getToolGuide(toolId, locale));
   const isRouterMode = toolId === "start-gate";
   const eventToolId = analyticsToolId || toolId;
   const csvData = useAppStore((s) => s.csvData);

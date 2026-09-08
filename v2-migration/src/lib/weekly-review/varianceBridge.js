@@ -261,14 +261,16 @@ function overallCpa(previous, current, resultField) {
 }
 
 function driverOf(entry, share) {
+  const cpa1 = entry.result1 > 0 && Number.isFinite(entry.cpa1) ? entry.cpa1 : null;
+  const cpa2 = entry.result2 > 0 && Number.isFinite(entry.cpa2) ? entry.cpa2 : null;
   return {
     label: entry.key,
     isMerged: entry.key === OTHER_LABEL,
     contribution: entry.contribution,
     share: share(entry.contribution),
-    cpa1: Number.isFinite(entry.cpa1) ? entry.cpa1 : null,
-    cpa2: Number.isFinite(entry.cpa2) ? entry.cpa2 : null,
-    cpaChangePct: entry.cpa1 > 0 && entry.cpa2 >= 0 ? (entry.cpa2 - entry.cpa1) / entry.cpa1 : null,
+    cpa1,
+    cpa2,
+    cpaChangePct: cpa1 > 0 && cpa2 !== null ? (cpa2 - cpa1) / cpa1 : null,
     s1: entry.s1,
     s2: entry.s2,
     isRemainder: false,
