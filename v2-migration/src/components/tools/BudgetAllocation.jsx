@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
-import { useAppStore } from "@/store/useDataStore";
+import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
+import PeriodSensitivityPanel from "@/components/ds/PeriodSensitivityPanel";
+import { splitObservationPeriods, comparePeriodDirections } from "@/lib/analysis-results/periodSensitivity";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { allocResponseCurve, isAllocCurveSegmentEstimated } from "@/utils/allocResponseCurve";
 import { getMappedRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
@@ -293,6 +295,35 @@ export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
     );
   }
   return models;
+}
+
+// Reuse the selected fit and allocator with the same budget in each half.
+// This diagnostic does not change the primary allocation or its math.
+export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency }) {
+  const periods = splitObservationPeriods(rows);
+  const results = periods.map((period) => {
+    const byChannel = buildByChannel(period.rows, unitField, effectiveMetric);
+    const modelsMap = buildAllocationModels(byChannel, adv, groupModels);
+    const historyByCh = Object.fromEntries([...byChannel.keys()].map((name) => [name, calcChannelHistorySummary(period.rows, unitField, name, effectiveMetric, { recentDays })]));
+    const limits = getAllocationEvidenceLimits({ modelsMap });
+    const common = { modelsMap, totalBudget: plannedDailyBudget, maxSpends: limits.maxSpends, overrides: holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}, currency };
+    const allocation = allocMode === "b" ? calculateAllocationModeB({ ...common, extrapolateMode: "1.0" }) : calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh });
+    const funded = !limits.unavailableChannels.length && plannedDailyBudget <= limits.maxBudget && isAllocationFullyFunded({ allocation, budget: plannedDailyBudget, currency });
+    return new Map([...modelsMap].map(([name, model]) => {
+      const cost = allocation.items.find((item) => item.channel === name)?.cost;
+      const current = historyByCh[name]?.totalCost;
+      const enough = model?.kept?.length >= 4;
+      const inRange = Number.isFinite(cost) && cost >= model?.xMin && cost <= model?.xMax;
+      const delta = cost - current;
+      const direction = funded && enough && inRange && Number.isFinite(current)
+        ? Math.abs(delta) <= Math.max(0.01, current * 1e-6) ? "hold" : delta > 0 ? "increase" : "decrease" : null;
+      return [name, { direction, n: model?.kept?.length || 0, min: model?.xMin, max: model?.xMax }];
+    }));
+  });
+  // A different channel universe changes the optimization problem, not just the period.
+  const complete = results[0].size === results[1].size && [...results[0].keys()].every((name) => results[1].has(name));
+  if (!complete) for (const result of results) for (const value of result.values()) value.direction = null;
+  return { periods: periods.map(({ start, end }) => ({ start, end })), rows: comparePeriodDirections(...results) };
 }
 
 /* 산점도(점+추세선) Chart.js datasets 빌더 — Step2(단일 단위) · Step3(다중 채널) 공유.
@@ -2777,7 +2808,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 title: tr("채널별 현재·추천 예산", "Current and recommended budget by channel"),
                 note: tr("추천 비용·성과는 곡선 적합과 제약 배분 엔진 출력이고, 효율·증감·비중은 수식", "Recommended spend and results are curve-fit and constrained-allocation engine outputs; efficiency, deltas, and shares are formulas"),
                 rows: [
-                  ["channel", "current_daily_cost_input", "current_daily_results_input", "recommended_daily_cost_engine", "recommended_daily_results_engine", "current_cost_per_result", "recommended_cost_per_result", "cost_delta", "result_delta", "recommended_spend_share"],
+                  ["channel", "current_daily_cost_input", "current_daily_results_input", "recommended_daily_cost_engine", "recommended_daily_results_engine", "current_cost_per_result", "recommended_cost_per_result", "cost_delta", "result_delta", "recommended_spend_share", "observed_min_daily_cost", "observed_max_daily_cost", "constraint_max_daily_cost", "retained_observations", "low_confidence_hold"],
                   ...items.map((item, index) => {
                     const row = index + 2;
                     const history = historyByCh[item.channel] || {};
@@ -2792,6 +2823,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                       { formula: `=D${row}-B${row}` },
                       { formula: `=E${row}-C${row}` },
                       { formula: `=IFERROR(D${row}/SUM($D$2:$D$${lastRow}),0)`, numberFormat: "0.0%" },
+                      modelsMap.get(item.channel)?.xMin ?? "", modelsMap.get(item.channel)?.xMax ?? "",
+                      evidenceLimits.maxSpends[item.channel] ?? "", modelsMap.get(item.channel)?.kept?.length ?? 0,
+                      Object.hasOwn(lowConfidenceHolds, item.channel),
                     ];
                   }),
                 ],
@@ -2828,6 +2862,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           )}
         />
       )}
+
+      {canStorePlan && <PeriodSensitivityPanel
+        key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}
+        locale={locale}
+        compute={() => allocationPeriodSensitivity(rows, { unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency })}
+      />}
 
       {/* §1 효율·추세선 분석 — PRISM 결과-먼저(P5): 진단 산점도는 기본 접힘, 펼칠 때 canvas resize(§7 0px). */}
       <details
