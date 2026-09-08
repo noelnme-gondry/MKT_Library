@@ -21,7 +21,10 @@ faq:
   - q: "What does a revenue event need?"
     a: "Define at least a numeric amount, an ISO 4217 currency code, and a transaction ID for deduplication. GA4 requires currency when value is sent for recommended ecommerce events."
   - q: "Is hashed PII safe to send as an event parameter?"
-    a: "Check the relevant platform, contract, and legal policies first. The default should be to avoid direct identifiers in events and use an anonymous internal ID plus categorical attributes instead."
+    a: "Check the relevant platform, contract, and legal policies first. The default should be to avoid direct identifiers in events and use an internal ID without direct identifiers plus categorical attributes instead."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 An event name describes the **user action**. Parameters describe its **context and value**. Keep that split: do not turn one event into a bag of screen, product, and payment details. It is how GA4, your MMP, ad platforms, and internal reports can read the same action with the same meaning.
 
@@ -79,6 +82,8 @@ Without these rules, ROAS can be inflated by duplicate transactions and platform
 3. Verify values and duplicates in GA4 DebugView, MMP test devices, and platform test events.
 4. Move reporting, postbacks, and optimization settings to the new version.
 5. Stop the older event on a scheduled date and document the time-series boundary.
+
+During parallel firing, choose the reporting version and deduplication rule before both versions reach conversion, revenue, or bidding aggregates. Internal IDs and hashes do not by themselves guarantee anonymity.
 
 GA4 exposes events and parameters in Realtime and DebugView, and provides a Measurement Protocol validation endpoint. Use an explicit pre-release validation path such as [GA4 event validation](https://developers.google.com/analytics/devguides/collection/protocol/ga4/validating-events).
 

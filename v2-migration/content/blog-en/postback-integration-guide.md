@@ -18,6 +18,9 @@ faq:
     a: "Use the official MMP and network integration method. A SAN has its own attribution flow, so duplicating links or settings can create mismatched data."
   - q: "Is delayed cost data normal?"
     a: "Cost usually uses a separate API integration, permission set, and sync schedule. Diagnose it separately from conversion postbacks."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 When an integration shows “zero installs,” do not start by rebuilding the postback. Check whether the event happened in the app, reached the MMP, was sent to the network, and was counted under the network's rules. The last verified point tells you where to investigate.
 
@@ -31,7 +34,7 @@ A postback is a signal from an MMP or measurement system to an ad network for in
 
 ## Separate SAN from S2S first
 
-A self-attributing network (SAN) checks its own ad-interaction data with the MMP. S2S integrations exchange signals under agreed server-to-server rules. The exact setup varies by MMP and network. Do not clone links, partner toggles, or app IDs from another integration; follow the official partner setup for that pair.
+A self-attributing network (SAN) checks its own ad-interaction data with the MMP. S2S integrations exchange signals under agreed server-to-server rules. SAN describes attribution responsibility; S2S describes transport. They are not mutually exclusive, and SAN integrations can use server-to-server communication. The exact setup varies by MMP and network. Do not clone links, partner toggles, or app IDs from another integration; follow the official partner setup for that pair.
 
 iOS privacy measurement is also different from user-level postbacks. Apple AdAttributionKit sends postbacks to an ad network under limited time-window and privacy conditions after an install or re-engagement. A normal reporting delay in a privacy flow is not automatically an implementation failure. Review [Apple’s postback flow](https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks) before testing.
 
@@ -51,7 +54,7 @@ iOS privacy measurement is also different from user-level postbacks. Apple AdAtt
 1. Confirm a real install and first launch on the test device.
 2. Check whether the MMP recorded it as attributed or organic.
 3. Verify partner connection, app ID, operating system, and campaign account.
-4. Confirm whether the network receives installs through a SAN or S2S flow.
+4. Check attribution responsibility (including SAN) separately from server-to-server delivery and authentication.
 5. Compare MMP time, network time, and conversion-window rules for the same test.
 
 ## If events or revenue are zero

@@ -12,6 +12,9 @@ faq:
   - q: "Do I need SQL or statistics?"
     a: "You do not need to write queries yourself. You do need to judge whether the sample is sufficient, whether a difference could be chance, and whether a correlation is being stated as a cause."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 "What do I need to learn to become a performance marketer?" A lot of answers to this question start by rattling off tool names — Meta Ads Manager, GA4, SQL, a tag manager… but tools aren't skills. They're just instruments. Today, instead of a tool list, let's map this out as a **growth sequence** — the order skills actually stack in. Once you know which level you're standing on, it's obvious what to learn next.
 
@@ -39,7 +42,7 @@ The operating layer becomes more concrete with distinct playbooks: [Meta Advanta
 
 There's a bigger gap than you'd expect between someone who only looks at whatever a dashboard shows, and someone who pulls numbers straight from raw data and double-checks them.
 
-What's needed here isn't anything fancy. **Using a spreadsheet properly** is 80% of it — breaking things down by channel and time period with pivot tables, calculating metrics yourself, and going back to the raw data whenever a number looks off. SQL is a big help if your company runs its own database, but you can absolutely start without it.
+What's needed here isn't anything fancy. **Using a spreadsheet properly** is a useful starting point — breaking things down by channel and time period with pivot tables, calculating metrics yourself, and going back to the raw data whenever a number looks off. SQL is a big help if your company runs its own database, but you can absolutely start without it.
 
 **What to build here:** slicing data with pivots and formulas, calculating metrics yourself to double-check them, and (if possible) basic SQL.
 

@@ -2,7 +2,7 @@
 title: "Incrementality: Validate Ad Lift With Holdouts and DiD"
 description: "Dashboard ROAS should only be half-trusted. Incrementality measurement and three holdout designs for measuring what ads actually create."
 date: "2026-07-09"
-updated: "2026-08-26"
+updated: "2026-09-09"
 slug: "incrementality-measurement"
 keywords: "incrementality measurement, holdout experiment, difference-in-differences, DiD, iROAS, attribution, conversion lift, incrementality vs attribution, holdout group test, what is incrementality, measuring ad effectiveness, proving ad impact, what is a holdout test"
 tags: ["Incrementality Analysis", "Performance Marketing"]
@@ -18,6 +18,8 @@ faq:
   - q: "What share should the holdout be?"
     a: "Derive it from the minimum effect you want to detect and your conversion volume. Too small and the difference is undetectable; too large and the opportunity cost grows. Calculate the required sample first, then back out the share."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 You served a search ad to someone who searched your brand name. They clicked through, and they purchased. Your report shows 'ROAS 800%.' Feels good, right?
 
@@ -43,7 +45,7 @@ Just like this image. Even if marketing shows 500 conversions, the ad may have g
 
 ## So how do you actually measure incrementality — three holdout experiment designs
 
-If you just started running ads, you can compare before and after you turned them on. But what if you've been running marketing for a good while already, and ad performance is already baked into your baseline? That's when you need a holdout experiment.
+Even for a newly launched ad, a simple before/after difference does not identify incrementality. You need a design that separates simultaneous demand, promotion, and tracking changes. The following methods include randomized holdouts and quasi-experiments requiring additional assumptions; their names alone do not establish validity.
 
 The core idea is one thing: compare a group that saw the ad against a group that didn't. Observation alone can't tell you the counterfactual — you have to actually construct the world where they didn't see it. There are broadly three methods used in practice.
 
@@ -53,9 +55,9 @@ Split users into two groups. Show one group the ad (exposed group), and delibera
 
 ![A holdout experiment structure diagram showing an exposed-group conversion rate of 5.0% minus a control-group conversion rate of 3.8%, yielding a net incrementality of 1.2 percentage points from the ad.](/blog-assets-en/incrementality-measurement/holdout-structure.svg)
 
-The key point is that the two groups are identical in every condition except ad exposure. That lets you confidently attribute the difference to "thanks to the ad." It's the method closest to a true experiment (RCT, randomized controlled trial), and the most rigorous one for establishing causation. Platforms like Facebook and Google also offer holdout features (Conversion Lift).
+Randomize assignment in advance and compare by assigned unit. Selecting only people who actually saw an ad can introduce selection bias. Check allocation, cross-exposure, missing tracking, and duplicate units, then interpret the conversion difference and interval under a valid design. Platform Conversion Lift also has product-specific design and eligibility conditions.
 
-That said, the holdout features channels provide ultimately show improvement relative to the exposed group — they don't fully capture the total incrementality of all the advertising actually happening in your business. This method tends to help more with existing-user engagement or conversion-rate improvement than new-user acquisition. For understanding the incrementality of ads driving new-user acquisition, the second method below is more commonly used in practice.
+A platform holdout estimates effects for the campaigns, population, and period included in that study. It cannot automatically be generalized to all advertising. Suitability for new or existing users depends on the study population and measurement design.
 
 ### ② Turn something new ON
 
@@ -67,7 +69,7 @@ Turn off a campaign that's been running well, and see how much performance drops
 
 That said, a naive before/after comparison is risky. Other changes — seasonality, promotions — can get mixed in during that window. "It dropped after we turned it off" might actually just be an off-season effect.
 
-That's why you use **Difference-in-Differences (DiD)**. You take the change in the affected group and subtract the change in an unaffected comparison group. This cancels out shared factors like seasonality that hit both groups equally, leaving purely "the effect of turning the ad off." This requires finding a comparison group with a similar underlying trend, separate from the group being tested.
+**Difference-in-Differences (DiD)** subtracts the comparison group’s change from the intervention group’s change. It requires parallel counterfactual trends and attention to differential concurrent shocks, spillovers, and anticipation. Similar pretrends do not prove these assumptions. If they fail, the difference does not isolate the effect of switching ads off.
 
 If setting this up is too much of a hassle, you can instead use regression to extract seasonality, pre-compute an expected-performance forecast for "if things had stayed the same," and then calculate how far actual performance dropped below that forecast after turning the campaign off. This does require being able to run a regression, and having some confidence in that regression's output.
 
@@ -75,7 +77,7 @@ If setting this up is too much of a hassle, you can instead use regression to ex
 
 ### Switching to incremental terms can make performance drop sharply
 
-Observed performance is inflated because it counts baseline as ad credit too. iROAS (incremental ROAS) and iCPA, recalculated on incrementality alone, usually come out lower — and that's closer to your ad's true performance.
+At the same spend, incremental revenue below attributed revenue gives a lower iROAS. But positive incremental conversions below attributed conversions give a **higher iCPA** (spend ÷ incremental conversions). For example, $1,000 spend, 100 attributed conversions, and 25 incremental conversions give CPA $10 and iCPA $40. Zero or negative incremental conversions, or an interval crossing zero, do not support a stable positive cost metric. Attributed and incremental totals need not always have the same ordering across measurement scopes.
 
 ![A bar chart comparing observed ROAS of 800% against incremental ROAS of 190% side by side. Even for the same campaign, the incremental figure is far lower.](/blog-assets-en/incrementality-measurement/observed-vs-incremental-roas.svg)
 
@@ -85,7 +87,7 @@ This isn't meant to scare you with the numbers — quite the opposite. It's exac
 
 Incrementality is usually a small difference, so with a small sample it often doesn't register statistically. When a result comes back "not significant," that means "we haven't seen enough to be sure yet" — not "there's no effect." Conflating the two leads you to prematurely kill a perfectly good channel.
 
-Either grow your sample or your time window, and if it still doesn't register, "hold judgment" is often the right answer. There are methods (like [marketing mix modeling](/en/blog/marketing-mix-modeling)) that use observational data to quickly estimate direction, but the principle is that confirmation comes from a holdout experiment. "Association" and "causation" are different things.
+At the planned readout, inspect the interval and practical relevance. Preplan a new sample, window, and stopping rule for further testing; if the effect remains indistinguishable, "hold judgment" is often the right answer. There are methods (like [marketing mix modeling](/en/blog/marketing-mix-modeling)) that use observational data to quickly estimate direction, but the principle is that confirmation comes from a holdout experiment. "Association" and "causation" are different things.
 
 ## Try this today
 
@@ -97,6 +99,6 @@ For the step-by-step of designing a holdout and reading its result, see [adverti
 
 To recap: attribution splits credit, incrementality measures the real effect — and the real effect comes from experiments, not observation.
 
-If manually comparing exposed-group and control-group numbers and checking significance after running a holdout sounds like a hassle, try my [holdout test tool](/tools/incrementality). It calculates net incrementality and statistical significance across all three methods — control-group holdout, turn-ON, and turn-OFF (DiD). Uploaded data is processed entirely in your browser and never leaves it, so there's no risk in putting your media spend or revenue numbers anywhere external.
+If manually comparing exposed-group and control-group numbers and checking significance after running a holdout sounds like a hassle, try my [holdout test tool](/tools/incrementality). It calculates net incrementality and statistical significance across all three methods — control-group holdout, turn-ON, and turn-OFF (DiD). Uploaded data is processed entirely in your browser and never leaves it, without sending or storing uploaded source rows on a server.
 
 One last thing, for real this time. Incrementality measurement isn't about talking down advertising — it's the opposite. You need a clear view of which campaigns are truly creating performance so you can direct budget there. Stripping out inflated numbers is, in the end, about investing more in what actually works. So don't hesitate — let's take an honest look at what each campaign really looks like underneath.

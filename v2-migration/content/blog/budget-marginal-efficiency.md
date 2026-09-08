@@ -9,8 +9,8 @@ tags: ["예산 배분", "스케일업"]
 draft: false
 primaryTool: "5-3"
 relatedGlossary: ["marginal-cpa", "response-curve", "roas"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Meridian: ROI, 한계 ROI와 반응곡선"
     url: "https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves"

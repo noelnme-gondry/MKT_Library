@@ -13,7 +13,7 @@ faq:
     a: "The safe zone is the area for essential content that avoids platform UI and cropping. Leave covered areas clear and place captions and logos inside the official safe zone for that placement."
 
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns asset specifications"
