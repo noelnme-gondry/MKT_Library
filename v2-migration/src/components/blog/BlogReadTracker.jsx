@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 
-import { productEventKey, trackProductEventOnce } from "@/lib/analytics";
+import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { isRouteIndexable, resolvePathToId } from "@/lib/routeMap";
 
 // 블로그 읽기 계측. 렌더하는 것이 없다(부작용 전용).
 //
@@ -72,6 +73,33 @@ export default function BlogReadTracker({ slug, locale = "ko", contentType = "bl
     const article = document.querySelector(targetSelector);
     if (!article) return undefined;
 
+    // 실제 본문 링크만 관찰한다. 외부 URL·새 탭은 현재 탭의 분석에 귀속하지 않는다.
+    const targets = new Map();
+    for (const link of article.querySelectorAll("a[href]")) {
+      let url;
+      try { url = new URL(link.href, window.location.href); } catch { continue; }
+      if (url.origin !== window.location.origin) continue;
+      // Weekly Review는 catch-all routeMap 밖의 독립 App Router 페이지다.
+      const toolId = /^\/(en\/)?weekly-review\/?$/.test(url.pathname) ? "weekly-review" : resolvePathToId(url.pathname);
+      if (toolId !== "weekly-review" && !(isRouteIndexable(toolId) && /^[59]-/.test(toolId))) continue;
+      targets.set(link, { tool_id: toolId, locale: url.pathname.startsWith("/en/") ? "en" : "ko",
+        content_slug: slug, content_type: contentType, placement: "article_body" });
+    }
+    const observer = typeof IntersectionObserver === "function" ? new IntersectionObserver((entries) => {
+      for (const entry of entries) if (entry.isIntersecting) {
+        const params = targets.get(entry.target);
+        trackProductEventOnce("blog_cta_viewed", productEventKey(slug, params.tool_id, params.locale, "article_body"), params);
+      }
+    }) : null;
+    for (const link of targets.keys()) observer?.observe(link);
+    const onLinkClick = (event) => {
+      const link = event.target.closest?.("a[href]");
+      const params = targets.get(link);
+      if (!params || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === "_blank" || link.hasAttribute("download")) return;
+      trackProductEvent("blog_tool_cta_clicked", params);
+    };
+    article.addEventListener("click", onLinkClick);
+
     let frame = 0;
     const measure = () => {
       frame = 0;
@@ -101,6 +129,8 @@ export default function BlogReadTracker({ slug, locale = "ko", contentType = "bl
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     return () => {
+      observer?.disconnect();
+      article.removeEventListener("click", onLinkClick);
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);

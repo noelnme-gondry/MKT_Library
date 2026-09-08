@@ -10,6 +10,15 @@ function campaignCsv(start, days) {
 }
 
 async function runJourney(page, locale) {
+  await page.addInitScript(() => {
+    window.__weeklyEvents = [];
+    window.dataLayer = [];
+    const push = window.dataLayer.push.bind(window.dataLayer);
+    window.dataLayer.push = (...items) => {
+      for (const item of items) if (item?.[0] === "event") window.__weeklyEvents.push(Array.from(item));
+      return push(...items);
+    };
+  });
   const pageErrors = [];
   const exposedRows = [];
   page.on("pageerror", error => pageErrors.push(error.message));
@@ -18,7 +27,12 @@ async function runJourney(page, locale) {
   });
   const en = locale === "en";
   const url = `${en ? "/en" : ""}/weekly-review`;
-  await page.goto(url);
+  await page.goto(`${en ? "/en" : ""}/blog/ad-performance-diagnosis`);
+  const articleLink = page.locator(`.blog-prose a[href="${url}"]`).first();
+  await articleLink.scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => window.__weeklyEvents.some(event => event[1] === "blog_cta_viewed" && event[2].tool_id === "weekly-review" && event[2].placement === "article_body"))).toBe(true);
+  await articleLink.click();
+  await expect(page).toHaveURL(new RegExp(`${url}$`));
   const upload = async (buffer) => {
     const details = page.locator("details").filter({ has: page.locator(".csv-uploader") }).first();
     if (await details.count() && !await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
@@ -38,6 +52,13 @@ async function runJourney(page, locale) {
     await expect(page.locator("#wr-verdict")).toBeVisible();
   };
   await upload(campaignCsv(24, 14));
+  await expect.poll(() => page.evaluate(() => window.__weeklyEvents.filter(event => event[1] === "weekly_review_completed").length)).toBeGreaterThan(0);
+  const funnel = await page.evaluate(() => window.__weeklyEvents);
+  for (const name of ["data_import_start", "data_import_success", "mapping_confirmed", "weekly_review_completed"]) {
+    expect(funnel.find(event => event[1] === name)?.[2]).toMatchObject({ tool_id: "weekly-review", locale, content_slug: "ad-performance-diagnosis" });
+  }
+  expect(funnel.find(event => event[1] === "weekly_review_completed")[2].elapsed_bucket).toBe("under_1m");
+  expect(JSON.stringify(funnel)).not.toContain("Review Campaign");
   await expect(page.locator(".wr-verdict__big")).toContainText("CPA");
   await expect(page.locator(".wr-report")).toContainText(en ? "■ Performance" : "■ 성과");
   if (en) await expect(page.locator(".wr-report")).not.toContainText(/[가-힣]/);
@@ -52,6 +73,7 @@ async function runJourney(page, locale) {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: en ? "Copy for Slack / Notion" : "Slack / Notion용 복사", exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(reportBeforeEdit);
+  expect(await page.evaluate(() => window.__weeklyEvents.find(event => event[1] === "weekly_review_export")?.[2])).toMatchObject({ tool_id: "weekly-review", download_type: "clipboard", state: "completed", content_slug: "ad-performance-diagnosis" });
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".wr-report")).toBeVisible();
   await expect(page.locator("#wr-verdict")).toBeHidden();

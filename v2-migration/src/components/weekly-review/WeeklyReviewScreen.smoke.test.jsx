@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
 import { HANDOVER_DISMISS_KEY, HANDOVER_SESSION_KEY, resetHandoverSnapshot } from "@/lib/weeklyReviewHandover";
 import { useAppStore } from "@/store/useDataStore";
@@ -50,6 +50,19 @@ describe("WeeklyReviewScreen", () => {
     window.sessionStorage.clear();
     resetHandoverSnapshot(); // 스냅샷은 모듈에 굳으므로 저장소를 비운 뒤 캐시도 비운다
     window.gtag = vi.fn();
+  });
+
+  it("records an unavailable comparison after snapshot restoration without sending the input", async () => {
+    const persistence = useAppStore.getState().decisionPersistenceEnabled;
+    useAppStore.setState({ decisionPersistenceEnabled: false });
+    setData(rowsFor().filter(row => row.date >= "2026-08-31"));
+    render(<WeeklyReviewScreen />);
+    await waitFor(() => expect(window.gtag.mock.calls.find(call => call[1] === "weekly_review_blocked")?.[2]).toMatchObject({
+      tool_id: "weekly-review", state: "no_previous_data", locale: "ko", source: "csv",
+    }));
+    expect(window.gtag.mock.calls.some(call => call[1] === "weekly_review_completed")).toBe(false);
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("UAC A");
+    useAppStore.setState({ decisionPersistenceEnabled: persistence });
   });
 
   it("데이터가 없으면 결론을 지어내지 않고 업로드를 안내한다", () => {
