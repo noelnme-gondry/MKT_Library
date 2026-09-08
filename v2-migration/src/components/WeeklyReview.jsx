@@ -309,7 +309,12 @@ export function buildBrief(records, t, locale) {
   return `${lines.join("\n")}\n`;
 }
 
-export default function WeeklyReview({ locale = "ko" }) {
+/**
+ * 결정 이력·발견 정리. 예전에는 `/weekly-review`가 이 화면이었지만, 그 주소는 새 Weekly Review
+ * 제품이 가져갔고 이 화면은 그 안의 접기 섹션으로 들어간다(명세 §1.1). 기능을 지우는 것이
+ * 아니라 위계를 내리는 것이라, `embedded`일 때 페이지 셸과 h1만 벗는다.
+ */
+export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
   const [clearPending, setClearPending] = useState(false);
@@ -426,13 +431,23 @@ export default function WeeklyReview({ locale = "ko" }) {
     [findingsByGroup, locale],
   );
 
+  const Shell = embedded ? "div" : "article";
   return (
-    <article className="page-inner weekly-review-page">
-      <header className="weekly-review-page__head">
-        <div className="weekly-review-page__eyebrow">{t.eyebrow}</div>
-        <h1>{t.title}</h1>
-        <p>{t.deck}</p>
-      </header>
+    <Shell className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
+      {embedded ? (
+        // 흡수돼도 제목은 남긴다 — h1만 벗고 h2로 낮춘다. 제목을 통째로 지우면 보조기술이
+        // 이 섹션의 시작을 알 수 없다.
+        <header className="weekly-review-page__head is-embedded">
+          <h2>{t.title}</h2>
+          <p>{t.deck}</p>
+        </header>
+      ) : (
+        <header className="weekly-review-page__head">
+          <div className="weekly-review-page__eyebrow">{t.eyebrow}</div>
+          <h1>{t.title}</h1>
+          <p>{t.deck}</p>
+        </header>
+      )}
 
       {rankedFindings.length > 0 && <section className="weekly-review-page__briefing" aria-labelledby="weekly-briefing-title">
         <header>
@@ -692,6 +707,6 @@ export default function WeeklyReview({ locale = "ko" }) {
           })}
         </section>}
       {sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
-    </article>
+    </Shell>
   );
 }

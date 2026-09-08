@@ -1,4 +1,4 @@
-import WeeklyReview from "@/components/WeeklyReview";
+import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
 import { SITE_URL } from "@/lib/routeMap";
 
 export const metadata = {
@@ -8,5 +8,5 @@ export const metadata = {
 };
 
 export default function EnglishWeeklyReviewPage() {
-  return <WeeklyReview locale="en" />;
+  return <WeeklyReviewScreen locale="en" />;
 }

@@ -36,8 +36,9 @@ export const WORKSPACE_NAV = [
     id: "review",
     href: "/weekly-review",
     icon: "◷",
-    ko: { name: "지난 결정", desc: "결과가 어땠는지 확인" },
-    en: { name: "Past decisions", desc: "Check how they turned out" },
+    // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
+    ko: { name: "주간 리뷰", desc: "이번 주 변화와 지난 결정 결과" },
+    en: { name: "Weekly Review", desc: "This week's change and last week's outcome" },
   },
 ];
 

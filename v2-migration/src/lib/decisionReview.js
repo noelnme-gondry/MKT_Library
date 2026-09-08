@@ -5,7 +5,10 @@ import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 
-export const DECISION_REVIEW_SCHEMA_VERSION = 8;
+// v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
+// v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
+// 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
+export const DECISION_REVIEW_SCHEMA_VERSION = 9;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -13,6 +16,15 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "locale",
   "conclusion",
   "action",
+  // v9 — 자동 판정을 위한 구조화 필드(§6.1). 비어 있으면 판정하지 않는다.
+  "actionKind",
+  "actionTarget",
+  "actionAmount",
+  "goalMetric",
+  "goalDirection",
+  "guardrailMetric",
+  "guardrailOp",
+  "guardrailValue",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -46,6 +58,14 @@ export const DECISION_REVIEW_COLUMNS = [
   "locale",
   "conclusion",
   "action",
+  "action_kind",
+  "action_target",
+  "action_amount",
+  "goal_metric",
+  "goal_direction",
+  "guardrail_metric",
+  "guardrail_op",
+  "guardrail_value",
   "hypothesis",
   "metric",
   "target_direction",
