@@ -39,7 +39,7 @@ function seedWithData() {
 }
 
 describe("LandingPage render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => { window.sessionStorage.clear(); seedNoData(); });
   it("no-data mounts", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
@@ -108,7 +108,10 @@ describe("LandingPage render smoke", () => {
       status: "pending",
     }] });
     window.gtag = vi.fn();
-    const { container } = render(<LandingPage />);
+    const { container } = render(<LandingPage><div data-testid="intake-slot" /></LandingPage>);
+    const intake = container.querySelector('[data-testid="intake-slot"]');
+    expect(container.querySelector(".dc-hero").compareDocumentPosition(intake) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(intake.compareDocumentPosition(container.querySelector(".dc-questions")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(container.querySelector(".dc-return")).toBeTruthy();
     expect(container.querySelector(".dc-return__status strong")?.textContent).toBe("1");
     expect(container.textContent).toContain("검색 예산을 10% 줄이고");
@@ -157,16 +160,19 @@ describe("LandingPage render smoke", () => {
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/calculator"]'));
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
+      journey_entry: "home",
       source: "landing",
       placement: "hero",
       locale: "ko",
     });
     expect(window.gtag).toHaveBeenCalledWith("event", "calculator_entry_clicked", {
+      journey_entry: "home",
       source: "landing",
       placement: "hero",
       locale: "ko",
     });
     expect(window.gtag).toHaveBeenCalledWith("event", "diagnose_entry_clicked", {
+      journey_entry: "home",
       source: "landing",
       placement: "hero",
       locale: "ko",

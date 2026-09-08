@@ -8,6 +8,7 @@ import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 import { localizedHref } from "@/lib/localizedHref";
 import { workspaceNavItems } from "@/lib/workspaceNav";
+import { trackProductEvent } from "@/lib/analytics";
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
@@ -136,6 +137,7 @@ export default function Sidebar({ locale = "ko" }) {
                   key={item.id}
                   href={localizedHref(item.href, locale)}
                   className={`home-sidebar-nav__item${isActive ? " active" : ""}${isReview ? " home-sidebar-nav__item--review" : ""}`}
+                  onClick={() => { if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale }); }}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
                   data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}
@@ -170,6 +172,7 @@ export default function Sidebar({ locale = "ko" }) {
               key={item.id}
               href={localizedHref(item.href, locale)}
               className={`sidebar-primary-nav__item${isReview ? " sidebar-primary-nav__item--review" : ""}${isActive ? " active" : ""}`}
+              onClick={() => { if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale }); }}
               aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
               aria-current={isActive ? "page" : undefined}
               data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}

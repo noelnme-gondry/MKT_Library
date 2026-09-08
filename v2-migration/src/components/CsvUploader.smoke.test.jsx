@@ -270,6 +270,7 @@ describe("CsvUploader render smoke", () => {
     fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
 
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "data_import_failed", {
+      placement: "uploader",
       tool_id: "5-2",
       source: "csv",
       state: "empty_file",

@@ -3,11 +3,12 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { resolvePathToId } from "@/lib/routeMap";
 import { trackProductEvent } from "@/lib/analytics";
+import { journeySurface } from "@/lib/siteJourney";
+import { GA_MEASUREMENT_ID } from "@/lib/analyticsHost";
 
 // SPA(App Router) page_view SSOT. layout의 config는 send_page_view:false라서,
 // 최초 진입과 history 변경 모두 여기서 정확히 한 번 보낸다. GA enhanced measurement나
 // GTM의 별도 history trigger까지 켜면 다시 중복되므로 이 경로만 유지한다.
-const GA_ID = "G-DK12TNR0GW";
 const GA_READY_RETRY_MS = 250;
 const GA_READY_MAX_ATTEMPTS = 20;
 
@@ -66,9 +67,10 @@ export default function GaPageviews() {
         page_path: pathname,
         page_location: sanitizePageLocation(window.location.href),
         page_title: typeof document !== "undefined" ? document.title : undefined,
-        send_to: GA_ID,
+        send_to: GA_MEASUREMENT_ID,
       });
       lastPagePath.current = pathname;
+      trackProductEvent("journey_page_viewed", { scope: journeySurface(pathname), locale: pathname === "/en" || pathname.startsWith("/en/") ? "en" : "ko" });
     });
   }, [pathname]);
 

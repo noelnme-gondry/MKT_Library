@@ -10716,6 +10716,29 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-upload > summary { min-height: 44px; cursor: pointer; color: var(--text-primary); font-weight: 650; }
 .wr-review-nav a { padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-container-lowest); text-decoration: none; }
 .wr-screen { min-width: 0; }
+.wr-screen a.wr-history-entry { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; justify-content: space-between; padding: 18px; margin: 16px 0; border: 1px solid var(--primary); border-radius: 10px; background: var(--work-surface); text-decoration: none; }
+.wr-history-entry strong { font-size: 16px; color: var(--text-primary); }
+.wr-history-entry span { font-size: 13px; }
+
+/* 사이트 공통 여정: 현재 위치와 다음 목적지만, 완료하지 않은 단계에 체크 없음. */
+.journey-progress { margin: 16px 0 22px; color: var(--text-secondary); }
+.journey-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
+.journey-progress li { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border-bottom: 2px solid var(--border); font-size: 13px; }
+.journey-progress li > span { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.journey-progress li[aria-current="step"] { color: var(--text-primary); border-color: var(--primary); background: var(--work-surface); }
+.journey-progress a { color: var(--primary); font-weight: 650; text-underline-offset: 3px; }
+.decision-review__saved { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--operator-line-strong); border-radius: 10px; background: var(--work-surface); }
+/* 접수처는 본문 흐름에 둔다. 고정 패널용 동의 배너 숨김도 적용하지 않는다. */
+body .decision-console-landing > .dochi-home-assistant { display: grid; position: relative; inset: auto; width: min(100%, 780px); margin: 20px auto 36px; }
+.sidebar-primary-nav__item--review { grid-column: 1 / -1; border: 1px solid var(--operator-rail-line); background: var(--operator-rail-raised); }
+.home-sidebar-nav__item--review { border: 1px solid var(--operator-line-strong); background: var(--work-surface); }
+.header-decision-inbox { border-color: var(--operator-line-strong); }
+@media (max-width: 768px) {
+  .header-decision-inbox__label { display: inline; white-space: nowrap; font-size: 12px; }
+  .header-decision-inbox__icon { display: none; }
+  .topbar-context .breadcrumb .current:last-child { max-width: 20vw; }
+  .journey-progress ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .wr-screen :is(button, input, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .wr-report { overflow-wrap: anywhere; }
 /* 주간 업무 화면: 기준은 한 곳, 숫자는 같은 열, 보고서는 독립된 문서. */

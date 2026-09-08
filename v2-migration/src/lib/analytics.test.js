@@ -6,6 +6,18 @@ afterEach(() => {
 });
 
 describe("privacy-safe product analytics", () => {
+  it("queues early production events with an explicit destination and no private fields", () => {
+    globalThis.window = { location: { hostname: "growthoptplaybook.com", pathname: "/" } };
+    expect(trackProductEvent("data_import_start", { source: "csv", fileName: "private.csv" })).toBe(true);
+    expect(Array.from(window.dataLayer[0])).toEqual(["event", "data_import_start", { source: "csv", send_to: "G-DK12TNR0GW" }]);
+  });
+  it("does not initialize tracking on preview or localhost", () => {
+    for (const hostname of ["localhost", "preview.up.railway.app"]) {
+      globalThis.window = { location: { hostname } };
+      expect(trackProductEvent("data_import_start")).toBe(false);
+      expect(window.dataLayer).toBeUndefined();
+    }
+  });
   it.each(["ko", "en"])("connects %s weekly imports, results and exports without attributing demos", (locale) => {
     const values = new Map();
     globalThis.window = { gtag: vi.fn(), sessionStorage: {

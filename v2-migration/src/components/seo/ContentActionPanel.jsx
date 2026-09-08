@@ -166,6 +166,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
       <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
       <h2>{copy.title}</h2>
       <p>{copy.desc}</p>
+      {!isInline && <p className="content-action-panel__journey">{lang === "en" ? "Analyze your data, save a decision, then return to Weekly Review to check what changed." : "내 데이터로 분석하고 결정을 저장하세요. 다음 결과는 주간 리뷰에서 다시 확인합니다."}</p>}
     </div>
     <div className="content-action-panel__links">
       <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>

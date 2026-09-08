@@ -75,8 +75,8 @@ export default function DochiAssistant({ locale = "ko" }) {
         <ol className="dochi-intake-steps" aria-label={locale === "en" ? "Data workflow" : "데이터 준비 순서"}>
           <li>{locale === "en" ? "Choose your file" : "파일 선택"}</li><li>{locale === "en" ? "Check columns" : "컬럼 확인"}</li><li>{locale === "en" ? "Review the evidence" : "분석 근거 확인"}</li>
         </ol>
-        <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
-        <div className="dochi-intake-review"><strong>{locale === "en" ? "Preparing a weekly report?" : "매주 같은 보고서를 준비하시나요?"}</strong><p>{locale === "en" ? "Keep your KPI and target together, compare campaigns and record the next decision." : "프로젝트 KPI와 목표를 정하고 캠페인 비교부터 다음 결정까지 이어가세요."}</p><Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>{locale === "en" ? "Set up a weekly review" : "주간 리뷰 프로젝트 설정"}</Link></div>
+        <CsvUploader toolId="start-gate" locale={locale} entryVariant="dochi" analyticsPlacement="dochi_home" onImportStart={beginImport} onPrepared={openResultWorkspace} onImportFailed={recoverFromImportFailure} />
+        <div className="dochi-intake-review"><strong>{locale === "en" ? "Preparing a weekly report?" : "매주 같은 보고서를 준비하시나요?"}</strong><p>{locale === "en" ? "Keep your KPI and target together, compare campaigns and record the next decision." : "프로젝트 KPI와 목표를 정하고 캠페인 비교부터 다음 결정까지 이어가세요."}</p><Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"} onClick={() => trackProductEvent("review_entry_clicked", { source: "dochi", placement: "dochi_home", locale })}>{locale === "en" ? "Set up a weekly review" : "주간 리뷰 프로젝트 설정"}</Link></div>
         <small>{copy.privacy}</small>
         <span className="dochi-home-assistant__speech-tail" aria-hidden="true">
           <svg viewBox="0 0 54 40" preserveAspectRatio="none"><path d="M0 1L52 20L0 39" /></svg>

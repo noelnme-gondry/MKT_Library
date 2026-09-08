@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import CsvUploader from "@/components/CsvUploader";
+import JourneyProgress from "@/components/ds/JourneyProgress";
+import { trackProductEvent } from "@/lib/analytics";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
@@ -96,6 +98,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   useEffect(() => () => timersRef.current.forEach((timer) => window.clearTimeout(timer)), []);
 
   const openResults = () => {
+    trackProductEvent("dochi_mapping_confirmed", { tool_id: "start-gate", source: "dochi", placement: "dochi_mapping", locale });
     const hasReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     setGroupAnalyzed("dochi-result");
     setPhase("running");
@@ -124,6 +127,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   }
 
   return <section className="dochi-result-workspace" data-phase={phase} aria-labelledby="dochi-result-title">
+    <JourneyProgress stage={phase === "mapping" ? "prepare" : "analyze"} locale={locale} placement="dochi_result" />
     {phase === "running" && <DochiJourney label={C.running} insight={C.insight} />}
     {phase === "mapping" && <>
       <header className="dochi-result-workspace__header">
@@ -133,6 +137,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
       </header>
       <CsvUploader
         toolId="start-gate"
+        analyticsPlacement="dochi_mapping"
         locale={locale}
         showMappingReview
         collapseMappingReview={false}
@@ -158,7 +163,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
       <section className="dochi-weekly-bridge" aria-labelledby="dochi-weekly-title">
         <div><h2 id="dochi-weekly-title">{locale === "en" ? "Turn this data into a weekly review" : "이 데이터를 주간 운영 리뷰로"}</h2><p>{locale === "en" ? "Compare periods against your KPI target, inspect campaigns and prepare a report with your next decision. Your uploaded file comes with you." : "목표 대비 성과와 캠페인별 변화를 검토하고, 다음 결정이 담긴 보고서를 만드세요. 지금 올린 파일을 그대로 이어갑니다."}</p>
           {!canReviewWeekly && <p>{locale === "en" ? "Map date, campaign, spend and conversions or installs to use the weekly review." : "날짜·캠페인·비용과 전환 또는 설치 열을 연결하면 주간 리뷰를 만들 수 있습니다."}</p>}
-        </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review" : "/weekly-review"); }}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</button>
+        </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { trackProductEvent("review_entry_clicked", { tool_id: "weekly-review", source: "dochi", placement: "dochi_result", data_continuity: "same_data", locale }); handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review" : "/weekly-review"); }}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</button>
       </section>
       <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
     </>}

@@ -147,14 +147,15 @@ export default function ResultActionCard({
   // 보고서는 판단 가능한 결과만 수집한다. 표본 부족·차단·미결론 결과를
   // "결론"으로 보관하면 다음 주 검토에서 실제 판단처럼 보이기 때문이다.
   const canCollectReport = Boolean(generatedReportBlock && resultState === "ready");
-  const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(decisionPrefill), [decisionPrefill]);
+  const resolvedDecisionPrefill = useMemo(() => decisionPrefill || { conclusion: typeof headline === "string" ? headline : "" }, [decisionPrefill, headline]);
+  const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(resolvedDecisionPrefill), [resolvedDecisionPrefill]);
   const hasDecisionPrefill = Boolean(
     decisionPrefill
       && typeof decisionPrefill === "object"
       && !Array.isArray(decisionPrefill)
       && String(decisionPrefill.action || "").trim(),
   );
-  const canScheduleDecision = Boolean(decisionReview && toolId && hasDecisionPrefill && !String(csvData?.fileName || "").startsWith("demo_"));
+  const canScheduleDecision = Boolean(decisionReview && toolId && (hasDecisionPrefill || (decisionPrefill == null && resultState === "ready" && headline)) && !String(csvData?.fileName || "").startsWith("demo_"));
   // 결과를 읽은 자리가 판단 기록 루프의 출발점이다. 레일처럼 별도 화면에만
   // 두면 결과→재방문 이음매가 끊기므로, 실제 데이터 결과에는 항상 주간 검토
   // 진입점을 함께 둔다. 데모는 가짜 판단을 남기지 않도록 제외한다.
@@ -347,7 +348,8 @@ export default function ResultActionCard({
         <DecisionReview
           toolId={toolId}
           locale={locale}
-          decisionPrefill={decisionPrefill}
+          decisionPrefill={resolvedDecisionPrefill}
+          allowAutomaticComparison={hasDecisionPrefill}
           decisionPrefillKey={resolvedDecisionPrefillKey}
         />
       )}
@@ -390,8 +392,8 @@ export default function ResultActionCard({
             )
           )}
           {canOpenDecisionReview && (
-            <Link className="btn ghost" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>
-              {locale === "en" ? "Review decisions" : "지난 판단 검토"}
+            <Link className="btn ghost" onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "analysis_result", placement: "result_action_card", locale })} href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>
+              {locale === "en" ? "Open weekly review" : "주간 리뷰 열기"}
             </Link>
           )}
         </div>

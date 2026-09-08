@@ -24,6 +24,8 @@ import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
+import DecisionReview from "@/components/ds/DecisionReview";
+import { productEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 const COPY = {
   ko: {
@@ -507,7 +509,20 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
   const visualizations = result.visualizations || [];
   const evidenceStats = result.verdict.stats?.slice(0, 5) || [];
   const hasDetails = result.verdict.caveats?.length > 0;
-  return <section className={`dochi-workspace__result is-${result.status}${isDecisionFocus ? " is-decision-focus" : ""}`} aria-label={C.result}>
+  const resultRef = useRef(null);
+  const eventKey = productEventKey("dochi_workspace", result.toolId, result.inputSignature, result.mappingSignature, locale);
+  const source = csvData?.fileName?.startsWith("demo_") ? "demo" : "csv";
+  useEffect(() => {
+    if (!resultRef.current || typeof IntersectionObserver !== "function") return;
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      trackProductEventOnce("analysis_result_viewed", eventKey, { tool_id: result.toolId, source, placement: "dochi_workspace", analysis_type: productAnalysisType(result.toolId), result_state: result.status === "success" ? "ready" : result.status, locale });
+      observer.disconnect();
+    });
+    observer.observe(resultRef.current);
+    return () => observer.disconnect();
+  }, [eventKey, locale, result.status, result.toolId, source]);
+  return <section ref={resultRef} className={`dochi-workspace__result is-${result.status}${isDecisionFocus ? " is-decision-focus" : ""}`} aria-label={C.result}>
     <header className="dochi-workspace__result-status">
       <strong>{resultLabel(result, C)}</strong>
       <span>{C.evidence}: {C.evidenceState[result.verdict.evidenceState] || result.verdict.evidenceState}</span>
@@ -525,6 +540,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} /></section>)}
     </section>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
+    {result.status === "success" && source !== "demo" && result.verdict.action && <DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={{ conclusion: result.verdict.headline, action: result.verdict.action }} decisionPrefillKey={eventKey} />}
     {hasDetails && <details className="dochi-workspace__result-details" open={isDetailsOpen} onToggle={(event) => setIsDetailsOpen(event.currentTarget.open)}><summary>{C.detailsView}</summary>{isDetailsOpen && <section><div className="dochi-workspace__result-caveats"><h4>{C.caveats}</h4><p>{result.verdict.caveats.join(" ")}</p></div></section>}</details>}
   </section>;
 }
@@ -713,6 +729,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   }, []);
   const openTool = (toolId) => {
     if (!onOpenTool) return;
+    trackProductEvent("analysis_recommended", { tool_id: toolId, source: "dochi", placement: "dochi_workspace", locale });
     deferHandoff(() => onOpenTool(toolId, prepareHandoffForTool(toolId)));
   };
   const openNaturalExperiment = (handoff) => {
@@ -741,6 +758,9 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     let cancelled = false;
     const execute = () => {
       if (cancelled) return;
+      const eventKey = productEventKey("dochi_workspace", activeQueueItem.toolId, queueSignature, locale);
+      const event = { tool_id: activeQueueItem.toolId, source: csvData.fileName?.startsWith("demo_") ? "demo" : "csv", placement: "dochi_workspace", analysis_type: productAnalysisType(activeQueueItem.toolId), locale };
+      trackProductEventOnce("analysis_started", eventKey, event);
       const efficiencyAdapter = efficiencyAdapterFor(activeQueueItem.toolId);
       const optimizationAdapter = optimizationAdapterFor(activeQueueItem.toolId);
       const responseAdapter = responseAdapterFor(activeQueueItem.toolId);
@@ -748,6 +768,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       const subscriptionAdapter = subscriptionAdapterFor(activeQueueItem.toolId);
       const adapter = efficiencyAdapter || optimizationAdapter || responseAdapter || specialAdapter || subscriptionAdapter;
       if (!adapter) {
+        trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "adapter_unavailable" });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_pending" })
           : current);
@@ -786,11 +807,13 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           verdict: { ...computedResult.verdict, caveats: [...new Set([...(computedResult.verdict.caveats || []), ...(preflight.reasonDetails || [])])] },
           manifest: { ...computedResult.manifest, inputQualityStatus: preflight.status },
         });
+        trackProductEventOnce("analysis_completed", eventKey, { ...event, result_state: result.status === "success" ? "ready" : result.status });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, result })
           : current);
         setAnnouncement(result.verdict.headline);
       } catch {
+        trackProductEventOnce("analysis_blocked", eventKey, { ...event, state: "calculation_error" });
         setQueue((current) => current?.signature === queueSignature
           ? settleAnalysis(current, { toolId: activeQueueItem.toolId, error: "workspace_adapter_error" })
           : current);

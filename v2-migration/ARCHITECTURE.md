@@ -139,6 +139,7 @@ v2-migration/
 - 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
 
 ## 5.1 콘텐츠 SEO·전환 경로
+- **사이트 전체 여정**: `ds/JourneyProgress`(준비→근거→결정→리뷰)를 홈·StartGate·도치 결과·ToolPageShell·주간 리뷰에서 공유. 홈은 `LandingPage` children 슬롯으로 실제 DochiAssistant를 도구 목록 앞에 렌더한다. `lib/siteJourney`는 범주형 최초 유입면을 탭 세션에 보관해 `analytics` 이벤트에 연결한다. 도치의 실제 실행·결과 노출은 `AssistantWorkspace`, 수동 결정은 공용 `DecisionReview`(자동 대조 범위 없음)에서 처리한다.
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview·내부 route와 `draft:true`는 `noindex`, sitemap/RSS/허브에서 제외.
 - **메타 SSOT**: `lib/routeSeo.js`가 route별 title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`) 생성. EN SOP도 `lib/sopData.js`로 서버 HTML에 실제 본문 포함. SOP 출처·검수일=`lib/sopEditorial.js`(화면+`TechArticle` citation), 공개 도구/가이드 sitemap 갱신일=`lib/publicationDates.js`, KR/EN RSS 본문=`lib/rssFeed.js`.
 - **도구 검색 진입면**: `lib/toolSearchContent.js`(공개 도구 KO/EN 롱폼·FAQ SSOT → `ToolLongform` + FAQPage JSON-LD), 역링크는 `lib/toolContentLinks.js`(forward 레지스트리에서 파생) → `ToolEvidenceLinks`. 각 도구의 `question`/`answer`는 접기 **바깥**에 렌더하고 `getToolFaq()`가 FAQ JSON-LD 첫 항목으로 올린다.

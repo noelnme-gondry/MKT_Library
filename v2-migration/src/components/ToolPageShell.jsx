@@ -1,6 +1,7 @@
 "use client";
 import React, { useId } from "react";
 import ToolBrief from "@/components/ds/ToolBrief";
+import JourneyProgress from "@/components/ds/JourneyProgress";
 import { toolIndexEntry } from "@/lib/toolIndex";
 
 /**
@@ -51,6 +52,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
         </header>}
 
+        {toolId && titleLevel === 1 && <JourneyProgress stage="analyze" locale={locale} placement="tool_header" />}
         {toolId && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}

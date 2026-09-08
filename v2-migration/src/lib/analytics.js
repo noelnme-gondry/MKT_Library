@@ -1,5 +1,7 @@
 // 분석 이벤트에는 CSV 값·파일명·채널명 등 사용자 데이터를 절대 싣지 않는다.
 // GA4 탐색에서 미리 정의된 범주형/집계형 파라미터만 쓴다.
+import { journeySurface, withSiteJourney } from "./siteJourney";
+import { GA_MEASUREMENT_ID, isAnalyticsHost } from "./analyticsHost";
 
 const ALLOWED_PARAMS = new Set([
   "tool_id", "source", "column_count", "row_count", "mapped_count", "confidence_bucket",
@@ -10,6 +12,7 @@ const ALLOWED_PARAMS = new Set([
   // 크래시 계측 — 오류 메시지·스택은 원자료가 섞일 수 있어 절대 싣지 않고,
   // 범주형(scope=site|analysis, state=오류 타입, section_id=digest)만 보낸다.
   "scope",
+  "journey_entry", "visit_type",
 ]);
 
 let weeklyImportStartedAt = null;
@@ -107,16 +110,32 @@ export function sanitizeProductEventParams(params = {}) {
 }
 
 export function trackProductEvent(name, params = {}) {
-  if (typeof window === "undefined" || typeof window.gtag !== "function") return false;
+  if (typeof window === "undefined") return false;
+  // 운영 호스트에서 GA 스크립트보다 먼저 마운트된 화면의 이벤트도 표준 큐에 넣는다.
+  // 로컬·미리보기는 여전히 no-op. 광고 차단기를 우회하는 별도 전송은 하지 않는다.
+  if (typeof window.gtag !== "function" && isAnalyticsHost(window.location?.hostname)) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () {
+      if (arguments[0] === "event") arguments[2] = { ...arguments[2], send_to: GA_MEASUREMENT_ID };
+      window.dataLayer.push(arguments);
+    };
+  }
+  if (typeof window.gtag !== "function") return false;
+  try {
+    if (window.sessionStorage) {
+      if (isAnalyticsHost(window.location?.hostname) || name === "landing_data_start_clicked") withSiteJourney("journey_page_viewed", { scope: journeySurface(window.location?.pathname) }, window.sessionStorage);
+      params = withSiteJourney(name, params, window.sessionStorage);
+    }
+  } catch { /* 저장소 차단 시 기본 계측만 */ }
   params = withEditorialJourney(name, params);
+  if (name === "data_import_start" && params.source !== "demo") weeklyImportStartedAt = Date.now();
   if (params.tool_id === "weekly-review") {
-    if (name === "data_import_start") weeklyImportStartedAt = Date.now();
     if (name === "weekly_review_completed" && params.source !== "demo" && weeklyImportStartedAt != null) {
       params = { ...params, elapsed_bucket: productElapsedBucket(Date.now() - weeklyImportStartedAt) };
       weeklyImportStartedAt = null;
     }
   }
-  if (name === "tool_view" && firstToolViewAt == null) firstToolViewAt = Date.now();
+  if (["tool_view", "dochi_mapping_confirmed"].includes(name) && firstToolViewAt == null) firstToolViewAt = Date.now();
   const isFirstReadyActivation = name === "analysis_completed"
     && firstToolViewAt != null
     && !hasRecordedFirstActivation
