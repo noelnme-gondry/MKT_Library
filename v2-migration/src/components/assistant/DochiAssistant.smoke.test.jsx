@@ -30,7 +30,8 @@ describe("DochiAssistant home intake", () => {
     render(<DochiAssistant />);
 
     expect(screen.getByRole("region", { name: "도치 박사 데이터 접수처" })).toBeTruthy();
-    expect(screen.getByText("CSV 하나를 올려 주세요. 읽고 바로 결과를 가져올게요.")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "데이터 준비 순서" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "주간 리뷰 프로젝트 설정" }).getAttribute("href")).toBe("/weekly-review");
     expect(screen.getByText(/브라우저 안에서만 읽습니다/)).toBeTruthy();
     expect(useAppStore.getState().demoDisabled).toBe(true);
     expect(document.querySelector(".dochi-home-assistant__speech")).toBeTruthy();
@@ -46,7 +47,7 @@ describe("DochiAssistant home intake", () => {
 
   it("opens the English dedicated workspace after import", () => {
     render(<DochiAssistant locale="en" />);
-    expect(screen.getByText("Upload one CSV. I’ll read it and bring back the results.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Set up a weekly review" }).getAttribute("href")).toBe("/en/weekly-review");
     fireEvent.click(screen.getByRole("button", { name: "파일 전달" }));
     expect(push).toHaveBeenCalledWith("/en/dochi-result");
   });

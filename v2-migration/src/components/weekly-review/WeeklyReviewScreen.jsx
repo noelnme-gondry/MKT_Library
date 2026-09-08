@@ -23,7 +23,7 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { LOWER_IS_BETTER } from "@/lib/weekly-review/significance";
 import { DECISION_OUTCOME } from "@/lib/weekly-review/decisionScore";
 import { serializeDecisionReviewIcs } from "@/lib/decisionReview";
-import { downloadCalendar } from "@/utils/download";
+import { downloadCalendar, downloadText } from "@/utils/download";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { DEFAULT_PROJECT, KPI_OPTIONS, kpiFor, runReview, nextReviewDate } from "@/lib/weekly-review/reviewPipeline";
 import { mergeSnapshots, listStoredSnapshots, saveStoredSnapshot, readReviewProject, saveReviewProject } from "@/lib/weekly-review/snapshotStore";
@@ -32,6 +32,10 @@ import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib
 import WeeklyReview from "@/components/WeeklyReview";
 import WeeklyReviewHandoverNotice from "@/components/weekly-review/WeeklyReviewHandoverNotice";
 import { fmtPct } from "@/utils/format";
+import { buildWorkspaceEvidence, parseReviewTarget, workspaceReportNotes, formatReviewMetric } from "@/lib/weekly-review/workspaceEvidence";
+import WeeklyEvidencePanel from "./WeeklyEvidencePanel";
+import WeeklyProjectSetup from "./WeeklyProjectSetup";
+import WeeklyReportDocument from "./WeeklyReportDocument";
 
 const COPY = {
   ko: {
@@ -39,9 +43,9 @@ const COPY = {
     title: "주간 리뷰",
     verdictHead: "이번 주 결론",
     whyHead: "왜 그랬나",
-    lastHead: "지난 결정은 먹혔나",
+    lastHead: "지난 결정 이후의 관측",
     nextHead: "이번 주에 할 것",
-    shareHead: "공유",
+    shareHead: "팀 공유 보고서",
     historyToggle: (n) => `지난 결정 전체 보기 (${n}건)`,
     noData: "이번 주 데이터를 올려주세요.",
     noDataDeck: "2주치 캠페인 CSV를 올리면 이번 주와 지난주를 견주어 결론을 만듭니다.",
@@ -55,7 +59,6 @@ const COPY = {
     save: "이 결정 저장",
     saved: "저장했습니다. 다음 주에 이 결정의 결과를 확인할 수 있습니다.",
     copy: "복사",
-    settings: "기준·기간 설정",
     kpiLabel: "핵심 지표",
     basisLabel: "전환 기준",
     basisActions: "가입·구매 등(actions)",
@@ -76,9 +79,9 @@ const COPY = {
     title: "Weekly Review",
     verdictHead: "This week",
     whyHead: "Why",
-    lastHead: "Did last week's decision work?",
+    lastHead: "Observations after the last decision",
     nextHead: "What to do this week",
-    shareHead: "Share",
+    shareHead: "Team review report",
     historyToggle: (n) => `All past decisions (${n})`,
     noData: "Upload this week's data.",
     noDataDeck: "Upload two weeks of campaign CSV and we compare this week with last.",
@@ -92,7 +95,6 @@ const COPY = {
     save: "Save this decision",
     saved: "Saved. You can check the result of this decision next week.",
     copy: "Copy",
-    settings: "Metric & period",
     kpiLabel: "Headline metric",
     basisLabel: "Conversion basis",
     basisActions: "Actions (signup, purchase…)",
@@ -209,25 +211,26 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   }, [persistenceEnabled]);
 
   const rows = useMemo(() => getMappedRows(csvData), [csvData]);
-  const project = useMemo(() => ({ name: projectName, currency: csvData.currency, kpi: kpiFor(kpiMetric, basis), target: targetValue.trim() && Number.isFinite(Number(targetValue)) ? { value: Number(targetValue) } : null }), [projectName, csvData.currency, kpiMetric, basis, targetValue]);
   const targetCurrencyMatches = !targetCurrency || targetCurrency === csvData.currency || ["roas", "conversions"].includes(kpiMetric);
-  const projectSetup = <details className="wr-settings">
-    <summary>{locale === "en" ? "My weekly project" : "내 주간 프로젝트"}</summary>
-    <label className="wr-field"><span>{locale === "en" ? "Project name" : "프로젝트 이름"}</span><input value={projectName} onChange={(event) => setProjectName(event.target.value)} maxLength={120} /></label>
-    <label className="wr-field"><span>{locale === "en" ? "KPI target (optional)" : "KPI 목표 (선택)"}</span><input value={targetValue} onChange={(event) => { setTargetValue(event.target.value); setTargetCurrency(csvData.currency); }} inputMode="decimal" /></label>
-    <p className="wr-note">{locale === "en" ? "One project on this device. Settings and campaign aggregates remain in your browser for up to 90 days. Mapping is remembered by the uploader. Delete them in Storage." : "이 기기에서 프로젝트 1개를 이어갑니다. 설정과 캠페인 집계는 브라우저에 최대 90일 보관하며, 매핑은 업로더가 기억합니다. 저장소 화면에서 삭제할 수 있습니다."}</p>
-    <button type="button" className="btn" disabled={!persistenceEnabled || !targetCurrencyMatches} onClick={async () => {
-      if (!targetCurrencyMatches) return;
-      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: targetValue, period: customPeriod, currency: csvData?.currency }, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
+  const parsedTarget = parseReviewTarget(targetValue);
+  const targetInvalid = targetValue.trim() !== "" && parsedTarget === null;
+  const targetUnitReady = parsedTarget === null || ["roas", "conversions"].includes(kpiMetric) || Boolean(csvData.currency);
+  const project = useMemo(() => ({ name: projectName, currency: csvData.currency, kpi: kpiFor(kpiMetric, basis), target: parsedTarget !== null && targetCurrencyMatches ? { value: parsedTarget } : null }), [projectName, csvData.currency, kpiMetric, basis, parsedTarget, targetCurrencyMatches]);
+  const changeProject = setter => value => { setter(value); setProjectStatus(locale === "en" ? "Unsaved changes · applied to this review." : "변경 사항 미저장 · 현재 리뷰에 적용 중입니다."); };
+  const changeKpi = value => { changeProject(setKpiMetric)(value); setTargetValue(""); setTargetCurrency(null); };
+  const changeBasis = value => { changeProject(setBasis)(value); setTargetValue(""); setTargetCurrency(null); };
+  const changePeriod = value => { changeProject(setCustomPeriod)(value); setTargetValue(""); setTargetCurrency(null); };
+  const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} hasResult={hasResult} onSave={async () => {
+      if (!projectReady || !workspaceReady || !targetUnitReady || !targetCurrencyMatches || targetInvalid) return false;
+      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
       if (result.ok) setTargetCurrency(csvData.currency);
       setProjectStatus(result.ok ? (locale === "en" ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.") : (locale === "en" ? "Could not save. This session still works." : "저장하지 못했습니다. 현재 세션에서는 계속 사용할 수 있습니다."));
       if (result.ok) trackProductEvent("weekly_project_saved", { locale });
-    }}>{locale === "en" ? "Save setup for next week" : "다음 주를 위해 설정 저장"}</button>
-    {!persistenceEnabled && <p>{locale === "en" ? "Device storage is off. This session is not retained." : "기기 저장이 꺼져 있어 현재 세션만 유지됩니다."}</p>}
+      return result.ok;
+    }}>
+    <ReviewSettings t={t} locale={locale} kpiMetric={kpiMetric} setKpiMetric={changeKpi} basis={basis} setBasis={changeBasis} customPeriod={customPeriod} setCustomPeriod={changePeriod} periods={periods} historyWeeks={historyWeeks} />
     {!targetCurrencyMatches && <p className="wr-notice">{locale === "en" ? "The saved target uses a different currency. Re-enter it in the declared source currency before saving or applying it." : "저장된 목표와 원본 통화가 다릅니다. 목표를 원본 통화로 다시 입력한 뒤 저장·적용하세요."}</p>}
-    {projectStatus && <p role="status">{projectStatus}</p>}
-    <Link href={locale === "en" ? "/en/storage" : "/storage"}>{locale === "en" ? "Storage settings" : "저장소 설정"}</Link>
-  </details>;
+  </WeeklyProjectSetup>;
 
   // 저장된 주간 기록을 읽어야 평소 변동 범위를 판정할 수 있다(§2.3).
   // 못 읽으면 빈 목록으로 떨어지고 리뷰는 크기·표본 두 축으로 계속 동작한다.
@@ -243,6 +246,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
     () => isAnalyzed ? runReview({ rows, storedSnapshots, decisionRecords, project, customPeriod }) : { ok: false, reason: "awaiting_analysis" },
     [isAnalyzed, rows, storedSnapshots, decisionRecords, project, customPeriod],
   );
+  const evidence = useMemo(() => buildWorkspaceEvidence(review, project), [review, project]);
 
   // 이번 기간 집계를 보관한다 — 다음 주의 "평소 범위"가 여기서 나온다.
   // 기기 저장을 끈 사용자에게는 쓰지 않는다.
@@ -319,22 +323,14 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
         <section className="wr-screen__empty" aria-labelledby="wr-empty">
           <h2 id="wr-empty">{t.noData}</h2>
           <p>{t.noDataDeck}</p>
-          {projectSetup}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
           {review.reason && REASON_TEXT[locale]?.[review.reason] && (
             <p className="wr-screen__reason">{REASON_TEXT[locale][review.reason]}</p>
           )}
           {workspaceReady ? <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
+          {projectSetup(review.periods || null, 0, false)}
           <Link href={locale === "en" ? "/en/start" : "/start"}>{t.goUpload}</Link>
         </section>
-        <ReviewSettings
-          t={t} locale={locale}
-          kpiMetric={kpiMetric} setKpiMetric={setKpiMetric}
-          basis={basis} setBasis={setBasis}
-          customPeriod={customPeriod} setCustomPeriod={setCustomPeriod}
-          periods={review.periods || null}
-          historyWeeks={0}
-        />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
       </article>
     );
@@ -350,6 +346,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const draft = buildReportDraft({
     locale,
     notes: [
+      ...workspaceReportNotes(evidence, review, locale),
       `${kpiMetric.toUpperCase()} (${periods.previous.start} – ${periods.previous.end} → ${periods.current.start} – ${periods.current.end}): ${money(review.metrics.previous[kpiMetric])} → ${money(review.metrics.current[kpiMetric])}${kpiMetric === "roas" ? " (ratio)" : ""}`,
       locale === "en" ? "Provisional operating heuristics; not a significance, equivalence, or causal-effect test." : "임시 운영 규칙이며 통계적 유의성·동등성·인과효과 검정이 아닙니다.",
       `${locale === "en" ? "Declared source currency" : "선언된 원본 통화"}: ${csvData.currency || (locale === "en" ? "unconfirmed" : "미확인")}`,
@@ -389,19 +386,14 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           )}
         </div>
       </header>
-      {projectSetup}
+      {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
       <details><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" locale={locale} showMappingReview />}</details>
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
-      <ReviewSettings
-        t={t} locale={locale}
-        kpiMetric={kpiMetric} setKpiMetric={setKpiMetric}
-        basis={basis} setBasis={setBasis}
-        customPeriod={customPeriod} setCustomPeriod={setCustomPeriod}
-        periods={periods}
-        historyWeeks={review.history?.[kpiMetric]?.length ?? 0}
-      />
+      <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
+        <a href="#wr-verdict">{t.verdictHead}</a><a href="#wr-evidence-title">{locale === "en" ? "Campaign evidence" : "캠페인 근거"}</a><a href="#wr-next">{locale === "en" ? "Next decision" : "다음 결정"}</a><a href="#wr-share">{t.shareHead}</a>
+      </nav>
 
       {/* ── 1. 결론 ─────────────────────────────── */}
       <section className="wr-card" aria-labelledby="wr-verdict">
@@ -412,11 +404,10 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           </p>
           {!unknown && (
             <p className="wr-verdict__from">
-              {kpiMetric === "roas" ? fmtPct(metrics.previous[kpiMetric]) : money(metrics.previous[kpiMetric])} → {kpiMetric === "roas" ? fmtPct(metrics.current[kpiMetric]) : money(metrics.current[kpiMetric])}
+              {formatReviewMetric(metrics.previous[kpiMetric], kpiMetric, csvData.currency, locale)} → {formatReviewMetric(metrics.current[kpiMetric], kpiMetric, csvData.currency, locale)}
             </p>
           )}
           <p className="wr-note">{locale === "en" ? "Review thresholds are provisional operating heuristics, not a statistical significance or equivalence test. Observed changes do not prove that a decision caused them." : "확인 기준은 임시 운영 규칙이며 통계적 유의성·동등성 검정이 아닙니다. 관측된 변화가 결정의 인과효과를 증명하지는 않습니다."}</p>
-          {project.target && <p className="wr-note">{locale === "en" ? "Declared KPI target (ROAS uses a ratio, e.g. 2 = 200%)" : "선언한 KPI 목표 (ROAS는 배수, 예: 2 = 200%)"}: {money(project.target.value)} {targetCurrency || csvData.currency || ""}</p>}
           <p className="wr-note" data-currency-scope="declare">{locale === "en" ? "Declared source currency (no conversion)" : "선언된 원본 통화 (환산 없음)"}: {csvData.currency || (locale === "en" ? "unconfirmed" : "미확인")}</p>
           <p className="wr-verdict__basis">
             {REASON_TEXT[locale]?.[routing.reason] || ""}
@@ -452,6 +443,14 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           </table>
         </div>
       </section>
+
+      <WeeklyEvidencePanel evidence={evidence} review={review} locale={locale} onChooseCampaign={label => {
+        setDecision(prev => ({ ...prev, actionTarget: label, actionKind: "investigate" }));
+        const section = document.getElementById("wr-next");
+        const disclosure = section?.closest("details");
+        if (disclosure) disclosure.open = true;
+        window.requestAnimationFrame(() => document.getElementById("wr-decision-target")?.focus());
+      }} />
 
       {/* ── 2. 왜 (신호가 있을 때만) ───────────────── */}
       {!quiet && !unknown && variance?.ok && (
@@ -495,7 +494,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
               <thead>
                 <tr>
                   <th scope="col">{locale === "en" ? "Campaign" : "캠페인"}</th>
-                  <th scope="col">CPA</th>
+                  <th scope="col">{kpiMetric.toUpperCase()}</th>
                   <th scope="col">{locale === "en" ? "Result share" : "결과 비중"}</th>
                   <th scope="col">{locale === "en" ? "Contribution" : "기여"}</th>
                 </tr>
@@ -583,6 +582,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
             <label className="wr-field">
               <span>{locale === "en" ? "Target" : "대상"}</span>
               <input
+                id="wr-decision-target"
                 value={decision.actionTarget || recommended?.label || ""}
                 onChange={(event) => setDecision((prev) => ({ ...prev, actionTarget: event.target.value }))}
               />
@@ -640,7 +640,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
               />
             </label>
             {/* 가드레일을 강제하지 않는다 — 강제하면 아무 값이나 넣어 판정이 거짓이 된다. */}
-            {project.target && <button type="button" className="btn" disabled={!targetCurrencyMatches} onClick={() => setDecision((prev) => ({ ...prev, goalMetric: kpiMetric, goalDirection: project.kpi.direction === LOWER_IS_BETTER ? "down" : "up", guardrailMetric: kpiMetric, guardrailOp: project.kpi.direction === LOWER_IS_BETTER ? "lte" : "gte", guardrailValue: targetValue }))}>{locale === "en" ? "Use project KPI and target" : "프로젝트 KPI·목표 적용"}</button>}
+            {project.target && <button type="button" className="btn" disabled={!targetCurrencyMatches} onClick={() => setDecision((prev) => ({ ...prev, goalMetric: kpiMetric, goalDirection: project.kpi.direction === LOWER_IS_BETTER ? "down" : "up", guardrailMetric: kpiMetric, guardrailOp: project.kpi.direction === LOWER_IS_BETTER ? "lte" : "gte", guardrailValue: String(parsedTarget) }))}>{locale === "en" ? "Use project KPI and target" : "프로젝트 KPI·목표 적용"}</button>}
             {!decision.guardrailValue && <p className="wr-note">{t.guardHint}</p>}
             <button type="button" className="btn primary" onClick={() => saveDecision(recommended?.label || "")}>{t.save}</button>
             {isSavedDecisionCurrent && <><p className="wr-note" role="status">{t.saved} · {savedDecision.record.reviewDate}</p><button type="button" className="btn" onClick={() => downloadCalendar(serializeDecisionReviewIcs(savedDecision.record, locale), "weekly_review")}>{locale === "en" ? "Download review reminder (.ics)" : "다음 검토일 캘린더 받기 (.ics)"}</button></>}
@@ -651,7 +651,9 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       {/* ── 5. 공유 ───────────────────────────────── */}
       <section className="wr-card" aria-labelledby="wr-share">
         <h2 className="wr-card__eyebrow" id="wr-share">{t.shareHead}</h2>
-        <pre className="wr-report">{renderReportText(draft, { number: money })}</pre>
+        <p>{locale === "en" ? "The same periods, campaign evidence and saved decision, ready for your team review." : "검토한 기간·캠페인 근거·저장한 결정을 한 문서로 전달하세요."}</p>
+        <WeeklyReportDocument text={renderReportText(draft, { number: money })} />
+        <div className="wr-report-actions">
         <button type="button" className="btn" onClick={async () => {
           try {
             await navigator.clipboard.writeText(renderReportText(draft, { number: money }));
@@ -660,6 +662,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           } catch { setCopyStatus(locale === "en" ? "Copy failed. Select and copy the report text." : "복사하지 못했습니다. 보고서 본문을 선택해 복사해 주세요."); }
         }}>{locale === "en" ? "Copy for Slack / Notion" : "Slack / Notion용 복사"}</button>
         <button type="button" className="btn" onClick={() => { trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "print", state: "requested" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
+        <button type="button" className="btn" onClick={() => downloadText(renderReportText(draft, { number: money }), "weekly_performance_review", "md", locale)}>{locale === "en" ? "Download review document" : "검토 보고서 다운로드"}</button>
+        </div>
         {copyStatus && <p role="status">{copyStatus}</p>}
       </section>
 
@@ -681,8 +685,7 @@ function ReviewSettings({
   const setField = (key, value) => setCustomPeriod((prev) => ({ ...(prev || {}), [key]: value }));
 
   return (
-    <details className="wr-settings">
-      <summary>{t.settings}</summary>
+    <div className="wr-project-criteria">
       <div className="wr-settings__body">
         <label className="wr-field">
           <span>{t.kpiLabel}</span>
@@ -695,7 +698,7 @@ function ReviewSettings({
 
         <label className="wr-field">
           <span>{t.basisLabel}</span>
-          <select value={basis} onChange={(event) => setBasis(event.target.value)}>
+          <select value={kpiMetric === "cpi" ? "installs" : basis} disabled={kpiMetric === "cpi"} onChange={(event) => setBasis(event.target.value)}>
             <option value="actions">{t.basisActions}</option>
             <option value="installs">{t.basisInstalls}</option>
           </select>
@@ -708,7 +711,7 @@ function ReviewSettings({
             onChange={(event) => setCustomPeriod(
               event.target.value === "auto" ? null : event.target.value !== "custom"
                 ? { preset: event.target.value }
-                : periods
+                : periods?.current
                   ? { currentStart: periods.current.start, currentEnd: periods.current.end }
                   : {},
             )}
@@ -745,7 +748,7 @@ function ReviewSettings({
           {historyWeeks > 0 ? t.historyNote(historyWeeks) : t.historyNone}
         </p>
       </div>
-    </details>
+    </div>
   );
 }
 

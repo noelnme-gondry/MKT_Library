@@ -72,6 +72,26 @@ describe("WeeklyReviewScreen", () => {
     expect(screen.queryByText(/이번 주 결론/)).toBeNull();
   });
 
+  it("프로젝트 목표를 다른 KPI 단위로 재사용하지 않는다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "프로젝트 기준 편집" }));
+    const target = screen.getByLabelText("KPI 목표 (선택)");
+    fireEvent.change(target, { target: { value: "25,000" } });
+    expect(screen.getByText("목표 범위 충족")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("핵심 지표", { exact: true }), { target: { value: "roas" } });
+    expect(target.value).toBe("");
+    expect(screen.queryByText("목표 범위 충족")).toBeNull();
+  });
+
+  it("비교표의 캠페인을 결정 기록으로 연결한다", () => {
+    setData(rowsFor({ worsen: false }));
+    render(<WeeklyReviewScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "결정 기록: Google / UAC A" }));
+    expect(document.getElementById("wr-decision-target").value).toBe("Google / UAC A");
+    expect(document.getElementById("wr-decision-target").closest("details").open).toBe(true);
+  });
+
   it("비교 기간을 화면에 명시한다 — 자동 판정이 틀리면 전체를 못 믿는다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen />);
@@ -114,7 +134,7 @@ describe("WeeklyReviewScreen", () => {
     expect(decrease.getAttribute("aria-pressed")).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "이 결정 저장" }));
-    expect(screen.getByRole("status").textContent).toMatch(/다음 주에 이 결정의 결과를 확인/);
+    expect(screen.getByText(/다음 주에 이 결정의 결과를 확인/).getAttribute("role")).toBe("status");
   });
 
   it("보고서에 기간과 성과가 자동으로 들어간다", () => {
@@ -191,7 +211,7 @@ describe("WeeklyReviewScreen", () => {
       }],
     });
     render(<WeeklyReviewScreen />);
-    expect(screen.getByRole("heading", { name: "지난 결정은 먹혔나" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "지난 결정 이후의 관측" })).toBeTruthy();
     // 대상을 못 찾으면 "확인 불가"가 뜬다 — 합성 라벨이 실제로 매칭되는지 본다.
     expect(screen.queryByText("대상 데이터가 없어 확인 불가")).toBeNull();
   });

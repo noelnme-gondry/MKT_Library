@@ -10624,8 +10624,8 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
   background: color-mix(in srgb, var(--warning) 10%, transparent); }
 
 .wr-card { border-top: 1px solid var(--operator-line); padding: 30px 0; }
-.wr-card__eyebrow { font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--text-muted); margin: 0 0 14px; font-weight: 600; }
+.wr-card__eyebrow { font-size: 18px; letter-spacing: -.02em;
+  color: var(--text-primary); margin: 0 0 18px; font-weight: 650; }
 
 .wr-verdict { background: var(--surface-base); border: 1px solid var(--border);
   border-radius: var(--radius-default); padding: 20px 22px; }
@@ -10707,10 +10707,68 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-screen { min-width: 0; }
 .wr-screen :is(button, input, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .wr-report { overflow-wrap: anywhere; }
+/* 주간 업무 화면: 기준은 한 곳, 숫자는 같은 열, 보고서는 독립된 문서. */
+.wr-screen { font-size: 14px; line-height: 1.65; }
+.wr-screen :is(h2, h3, p) { overflow-wrap: anywhere; }
+.wr-screen :is(h2, h3, #wr-project) { scroll-margin-top: 90px; }
+.wr-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.wr-section-heading > div { min-width: 0; flex: 1 1 220px; }
+.wr-section-heading h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.02em; }
+.wr-section-heading p { margin: 5px 0 0; color: var(--text-secondary); }
+.wr-project { margin: 24px 0; border: 1px solid var(--border); border-radius: var(--radius-default); background: var(--surface-base); padding: 20px; }
+.wr-project-fields, .wr-project-criteria .wr-settings__body { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+.wr-project .wr-field { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0; min-width: 0; }
+.wr-project .wr-field > span, .wr-table-controls .wr-field > span { font-size: 14px; color: var(--text-primary); }
+.wr-project .wr-field small { color: var(--text-secondary); font-size: 12px; }
+.wr-project .wr-settings__dates, .wr-project .wr-settings__body > p { grid-column: 1 / -1; }
+.wr-project-actions, .wr-report-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.wr-project-status { margin: 12px 0 0; color: var(--text-secondary); }
+.wr-review-nav { display: flex; gap: 8px 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding: 8px 0; }
+.wr-review-nav a, .wr-project-actions a { display: inline-flex; align-items: center; min-height: 44px; }
+.wr-evidence-summary { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; margin: 24px 0; }
+.wr-target-readout { padding: 20px; border-left: 3px solid var(--primary); background: var(--surface-base); }
+.wr-target-readout h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.wr-target-readout > strong { font-size: clamp(22px, 3vw, 30px); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.wr-target-readout p { margin: 12px 0 0; }
+.wr-target-readout .wr-screen__badge { color: var(--text-primary); background: var(--surface-container-lowest); border: 1px solid var(--border); font-size: 12px; }
+.wr-scope-ledger { margin: 0; }
+.wr-scope-ledger > div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.wr-scope-ledger dt { color: var(--text-secondary); }
+.wr-scope-ledger dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wr-table-controls { display: flex; gap: 12px 20px; flex-wrap: wrap; align-items: end; }
+.wr-table-controls .wr-field { flex: 1 1 200px; margin: 0; }
+.wr-table-controls input, .wr-table-controls select { width: 100%; }
+.wr-campaign-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.wr-campaign-table :is(th, td) { padding: 14px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.wr-campaign-table th[scope="row"] { text-align: left; min-width: 180px; max-width: 300px; }
+.wr-campaign-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wr-campaign-table small { display: block; margin-top: 5px; font-weight: 400; color: var(--text-secondary); }
+.wr-campaign-table caption { text-align: left; padding: 0 0 12px; color: var(--text-secondary); }
+.wr-report { background: var(--surface-container-lowest); padding: clamp(20px, 4vw, 44px); white-space: normal; border-top: 3px solid var(--primary); }
+.wr-report header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 24px; }
+.wr-report header strong { font-size: 23px; line-height: 1.4; letter-spacing: -.025em; }
+.wr-report header p { margin: 8px 0 0; color: var(--text-secondary); }
+.wr-report section { margin: 0 0 24px; }
+.wr-report h3 { font-size: 15px; margin: 0 0 6px; }
+.wr-report p { white-space: pre-wrap; margin-top: 0; }
+.wr-report-appendix { padding-top: 24px; border-top: 1px solid var(--border); font-size: 13px; }
+.dochi-intake-steps { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0; padding-left: 18px; font-size: 12px; color: var(--text-primary); }
+.dochi-intake-review { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.dochi-intake-review strong { font-size: 13px; color: var(--text-primary); }
+.dochi-intake-review a { display: inline-flex; min-height: 44px; align-items: center; font-size: 13px; }
+.dochi-weekly-bridge { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 24px; margin: 20px 0 28px; background: var(--surface-base); border-left: 3px solid var(--primary); }
+.dochi-weekly-bridge > div { flex: 1 1 280px; min-width: 0; }
+.dochi-weekly-bridge h2 { font-size: 20px; margin: 0 0 8px; }
+.dochi-weekly-bridge p { margin: 0; font-size: 14px; color: var(--text-secondary); }
+@media (max-width: 768px) {
+  .wr-evidence-summary { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .wr-project, .dochi-weekly-bridge { padding: 16px; }
+}
 @media print {
   .wr-screen > :not(:has(> #wr-share)) { display: none !important; }
   .wr-screen .wr-card > :not(.wr-report) { display: none !important; }
   .wr-screen .wr-report { background: white; color: black; border: 0; padding: 0; overflow: visible; }
+  .wr-screen .wr-report :is(header, section, p) { color: black; break-inside: avoid; }
 }
 
 .wr-handover { position: fixed; inset: 0; z-index: 60; background: rgba(4, 7, 12, .62);
