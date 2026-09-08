@@ -188,7 +188,10 @@ test("Apple Ads 검색어 CSV를 5-26 권장 조치까지 연결한다", async (
   while (await confirmations.count()) await confirmations.first().click();
   await page.getByRole("button", { name: "데이터 분석하기" }).click();
 
-  await expect(page.locator(".asa-tool__setup + .csv-uploader + #asa-summary .result-action-card")).toBeVisible();
+  await expect(page.locator("#asa-summary .result-action-card")).toBeVisible();
+  await expect(page.getByLabel("업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+  await expect(page.getByText("전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
+  await page.getByLabel("업로드 기간의 전환 성숙도").selectOption("mature");
   await expect(page.getByText("sample planner", { exact: true })).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: "#asa-summary" });
   await expectNoSeriousAccessibilityViolations(page);

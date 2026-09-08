@@ -105,6 +105,8 @@ export default async function EnGlossaryTermPage({ params }) {
         )}
       </header>
 
+      <ContentActionPanel locale="en" term={term} placement="article_answer" />
+
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
 
       <ContentActionPanel locale="en" term={term} />

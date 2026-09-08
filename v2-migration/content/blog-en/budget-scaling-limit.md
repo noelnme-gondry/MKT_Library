@@ -13,7 +13,17 @@ faq:
   - q: "How is marginal CPA calculated?"
     a: "Fit a curve to outcomes across spend levels, then measure how much additional outcome one more unit of spend produces at the current point. Channels whose spend barely varied cannot support a curve, so the verdict is withheld."
 ---
-You have probably had this exchange.
+The following hypothetical example illustrates the risk of scaling from average CPA alone.
+
+## Reproduce the result: 24 rows but no estimable channel
+
+[Download synthetic sparse-channel CSV](/examples/saturation-sparse.csv). There are eight dates and 24 rows, but only one observation per channel.
+
+1. Upload to [Saturation analysis](/tools/campaign-saturation), confirm date, channel, spend, installs, and source currency, then analyze.
+2. Zero channels are estimable, so the summary must abstain. A large total row count must not produce a mostly-steady verdict or a scaling recommendation.
+3. Check the withheld status in Get results. You need several dates and spend levels for the same channel. Opening [Budget allocation](/tools/budget-allocation) cannot supply the missing observations.
+
+Check required fields in [Input templates](/templates). Define business risk and a validation plan before varying spend; two or three weeks alone does not guarantee identification.
 
 "This channel's CPA is 30% under target."
 "Then double the budget."
@@ -63,19 +73,19 @@ Which makes sense — if every data point sits at the same spend level, the slop
 
 So some channels return a withheld verdict. That is not the tool failing; it is **the data declining to answer**. It is tempting to read that as an error and start changing options until a number appears, but a number produced that way is invented, not measured.
 
-What you need is not a statistical option but **a period where spend was deliberately varied**. Raise one channel's budget noticeably for two or three weeks, then bring it back down. Next quarter the curve becomes estimable. Those three weeks feel expensive in the moment and routinely pay for themselves by changing how the following quarter gets allocated.
+If more observations are needed, first define **a spend-change plan with risk limits and comparison conditions**. Duration depends on conversion delay, seasonality, and sample size. Two or three weeks of variation does not guarantee an identifiable curve or validity in the following quarter.
 
 ## Saturated does not only mean "stop"
 
 A saturation verdict is not an instruction to halt. Moving that budget to a channel with headroom raises overall efficiency **without increasing total spend**.
 
-[Budget allocation simulator](/tools/budget-allocation) uses the per-channel curves to compute where to add and where to cut at the same total. When a request for more budget gets blocked, this is usually the faster path — reallocation clears approval far more often than a raise does.
+[Budget allocation simulator](/tools/budget-allocation) uses the per-channel curves to compute where to add and where to cut at the same total. The output is a scenario based on historical observations; it does not guarantee approval or improved efficiency.
 
 ## Try this today
 
 **One.** Take the channel that currently looks best and check how much its spend actually varied over the last 8–12 weeks. If it barely moved, that channel has no basis for a scaling decision right now — good CPA or not.
 
-**Two.** Deliberately vary that channel's budget over the next two or three weeks. Up then down, or down then up; the direction matters less than the variation. That becomes the raw material for next quarter's curve.
+**Two.** Before collecting more observations, specify a loss limit, comparison period, conversion maturity, and stopping rule. Before-and-after data alone does not identify a causal effect.
 
 ## Let's be honest
 
@@ -83,7 +93,7 @@ Saturation is an **association-based estimate**, not a causal experiment. It rea
 
 So the curve moves when seasonality or competition moves. A curve fitted in summer does not describe November.
 
-Before a large budget move, shift a small slice first and check whether reality follows the prediction — moving about a third of the calculated amount, confirming the direction, then moving the rest is a reasonable default.
+Before a large budget move, shift a small slice first and check whether reality follows the prediction — size the initial change using acceptable loss and the sample needed for validation rather than a fixed fraction.
 
 If computing this per channel every cycle is tedious, upload your existing report CSV. Marginal CPA and saturation get calculated per channel, and channels without enough spend variation are honestly marked as withheld rather than given a fabricated number. Data is processed in your browser and never sent to a server.
 

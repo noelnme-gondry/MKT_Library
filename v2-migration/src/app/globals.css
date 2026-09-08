@@ -10188,6 +10188,9 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .paid-organic-verdict.is-growth { border-left-color:var(--success); }
 .paid-organic-verdict p { margin:8px 0 0;color:var(--text-secondary);font-size:11px;line-height:1.65; }
 .asa-tool__setup p,.diagnostic-tool__rules p { margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.65; }
+.analysis-design-check label { display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-height:44px;margin-block:8px;color:var(--text-1); }
+.analysis-design-check input:not([type="checkbox"]),.analysis-design-check select { box-sizing:border-box;min-height:44px;max-width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-1);color:var(--text-1);font:inherit; }
+.analysis-design-check input[type="checkbox"] { flex-shrink:0; }
 .asa-tool__inputs { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;max-width:720px; }
 .asa-tool__inputs label { display:grid;gap:6px;color:var(--text-muted);font-size:11px;font-weight:700; }
 .asa-tool__inputs input { width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-1);color:var(--text-primary);font:inherit; }

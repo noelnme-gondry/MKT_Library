@@ -419,6 +419,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
           limitations: [tx(locale, "Greenwood·log-log 신뢰구간과 세그먼트 log-rank는 엔진 출력이며 관측 범위 밖으로 외삽하지 않습니다.", "Greenwood log-log intervals and segment log-rank are engine outputs; nothing is extrapolated beyond observed support.")],
         },
       })} stats={[
+        { label: tx(locale, "최대 위험 구간의 위험집합", "At risk at peak hazard"), value: result.hazard.maxHazard?.atRisk == null ? "—" : fmtNum(result.hazard.maxHazard.atRisk), detail: tx(locale, "해당 구간 직전 관측 중인 개체 수", "Entities still under observation just before that interval") },
         { label: tx(locale, "이탈·종료", "Exit events"), value: fmtNum(result.prepared.eventCount) },
         { label: tx(locale, "중도절단", "Censored"), value: fmtNum(result.prepared.censoredCount) },
         { label: tx(locale, `${result.horizon}기간 생존율`, `${result.horizon}-period survival`), value: fmtPct(result.table.length ? result.table.filter((row) => row.time <= result.horizon).at(-1)?.survival : null) },

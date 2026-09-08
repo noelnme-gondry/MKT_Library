@@ -13,6 +13,7 @@ import {
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { executionPreflight } from "@/lib/analysis-router/executionPreflight";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
 import {
@@ -1034,9 +1035,10 @@ export const useAppStore = create(persist((set, get) => ({
   handoffCsvToRoute: (routeId, data, { markAnalyzed = true } = {}) => set((state) => {
     const g = groupForRoute(routeId);
     const sig = computeAnalyzeSig(data);
+    const canAnalyze = markAnalyzed && executionPreflight(data, routeId).status !== "blocked";
     return {
       csvGroups: { ...state.csvGroups, [g]: data },
-      analyzedByGroup: { ...state.analyzedByGroup, [g]: markAnalyzed ? sig : null },
+      analyzedByGroup: { ...state.analyzedByGroup, [g]: canAnalyze ? sig : null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: false },
     };
   }),

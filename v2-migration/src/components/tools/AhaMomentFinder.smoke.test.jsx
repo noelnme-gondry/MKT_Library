@@ -148,6 +148,7 @@ describe("AhaMomentFinder render smoke", () => {
     // 600 users leave enough deterministic holdout support for a topAction.
     seedWithData(600);
     render(<AhaMomentFinder />);
+    fireEvent.change(screen.getByLabelText("전환 평가를 시작하는 가입 후 일수"), { target: { value: "14" } });
     fireEvent.click(screen.getByRole("button", { name: /분석하기/ }));
     const reviewSummary = await screen.findByText(/다음 검토 약속 만들기/);
     fireEvent.click(reviewSummary);
@@ -172,6 +173,7 @@ describe("AhaMomentFinder render smoke", () => {
   it("provides the same association-safe controlled-experiment prefill in English", async () => {
     seedWithData(600);
     render(<AhaMomentFinder locale="en" />);
+    fireEvent.change(screen.getByLabelText("Day after signup when outcome evaluation begins"), { target: { value: "14" } });
     fireEvent.click(screen.getByRole("button", { name: "▶ Analyze" }));
     const reviewSummary = await screen.findByText(/Schedule the next review/);
     fireEvent.click(reviewSummary);
@@ -182,9 +184,22 @@ describe("AhaMomentFinder render smoke", () => {
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("50.0% (observed base rate)");
   });
 
+  it.each(["ko", "en"])("holds intervention decisions when every behavior window overlaps the outcome (%s)", async (locale) => {
+    window.gtag = vi.fn();
+    seedWithData(600);
+    render(<AhaMomentFinder locale={locale} />);
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Day after signup when outcome evaluation begins" : "전환 평가를 시작하는 가입 후 일수"), { target: { value: "3" } });
+    expect(screen.getByRole("status").textContent).toMatch(locale === "en" ? /3 features excluded/ : /제외 3개/);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "▶ Analyze" : /분석하기/ }));
+    await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({ tool_id: "5-20", result_state: "insufficient", locale })));
+    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
+    delete window.gtag;
+  });
+
   it("does not recommend nudging an action whose observed lift is not positive", async () => {
     seedWithInverseSignal();
     render(<AhaMomentFinder />);
+    fireEvent.change(screen.getByLabelText("전환 평가를 시작하는 가입 후 일수"), { target: { value: "14" } });
     fireEvent.click(screen.getByRole("button", { name: /분석하기/ }));
     await screen.findByText(/선행 행동 결론/);
 

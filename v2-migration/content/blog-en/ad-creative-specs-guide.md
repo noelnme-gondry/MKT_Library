@@ -10,8 +10,16 @@ faq:
   - q: "Will an off-spec creative simply not run?"
     a: "It depends on the network. Some reject it in review; others serve it but auto-crop, cutting off captions or logos. The second case is more dangerous because performance drops with no visible cause in the report."
   - q: "How much space does a safe zone need?"
-    a: "It is the edge area covered by the network's own UI. Profile rows and CTA buttons sit top and bottom, interaction icons sit on the sides, so keep key captions and logos inside. Exact pixels come from each network's official guide."
+    a: "The safe zone is the area for essential content that avoids platform UI and cropping. Leave covered areas clear and place captions and logos inside the official safe zone for that placement."
 
+updated: "2026-09-08"
+reviewedAt: "2026-09-08"
+reviewer: "Codex (AI-assisted editorial audit)"
+sources:
+  - title: "Google App campaigns asset specifications"
+    url: "https://support.google.com/google-ads/answer/17091671?hl=en"
+  - title: "IAB MRAID interface specification"
+    url: "https://iabtechlab.com/standards/mobile-rich-media-ad-interface-definitions-mraid/"
 ---
 Upload the same video to several platforms without thinking, and some crop it automatically while others reject it outright in review. Each platform demands different ratios, file sizes, and UI safe zones. However good the creative is, if the spec blocks it, it never serves.
 
@@ -23,13 +31,13 @@ These specs **change often**, so memorizing them isn't worth much. Checking the 
 
 ## Video has regions hidden by the UI
 
-Vertical (9:16) video gets platform UI — like button, username, CTA — overlaid on top. That overlap is the safe zone, and if you put key captions or price info there, users never see it.
+Vertical (9:16) video gets platform UI — like button, username, CTA — overlaid on top. The safe zone avoids that overlap. Keep essential captions, prices, and logos within it, and inspect cropping in previews for each placement and language.
 
 The **bottom** of the screen especially is where many platforms park the CTA button and account name. So text you can't afford to lose belongs in the middle to upper area. If you run in multiple countries, set the safe zone against the **longest-translating language** so it doesn't get clipped where the copy runs long.
 
 ## Playable ads have tight size limits
 
-Interactive (playable) ads carry an industry-standard (IAB) size cap. It counts HTML, JS, and images all together, so it's exceeded faster than you'd expect. In practice:
+Interactive (playable) ads follow each platform's size, packaging, and external-request rules. There is no single IAB size cap to apply across all platforms. In practice:
 
 - Replace bundled fonts with **system fonts**.
 - Compress images and drop unnecessary frames.

@@ -14,6 +14,8 @@ import { runSubscriptionAnalysis, subscriptionAdapterFor } from "@/lib/assistant
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
+import { executionPreflight } from "@/lib/analysis-router/executionPreflight";
+import { createAnalysisResult } from "@/lib/assistant/analysisResultContract";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
@@ -759,9 +761,18 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
               : specialAdapter
                 ? runSpecialAnalysis
                 : runSubscriptionAnalysis;
-        const result = run({
+        const prepared = prepareAnalysisHandoff({ ...csvData, mapping: mappingsByTool[activeQueueItem.toolId] }, activeQueueItem.toolId);
+        const preflight = executionPreflight(prepared, activeQueueItem.toolId, locale);
+        const result = preflight.status === "blocked" ? createAnalysisResult({
           toolId: activeQueueItem.toolId,
-          csvData: { ...csvData, mapping: mappingsByTool[activeQueueItem.toolId] },
+          status: "not_computable",
+          inputSignature: currentInputSignature,
+          mappingSignature: currentMappingSignature,
+          verdict: { evidenceState: "not_computable", headline: preflight.message, caveats: [] },
+          manifest: { preflight: "blocked", blockerCodes: preflight.blockers.map((blocker) => blocker.code) },
+        }) : run({
+          toolId: activeQueueItem.toolId,
+          csvData: { ...csvData, ...prepared },
           inputSignature: currentInputSignature,
           mappingSignature: currentMappingSignature,
           locale,

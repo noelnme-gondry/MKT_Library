@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import path from "node:path";
 
 for (const locale of ["ko", "en"]) {
   const prefix = locale === "en" ? "/en" : "";
@@ -24,8 +25,7 @@ for (const locale of ["ko", "en"]) {
   test(`sparse channels never receive a steady verdict (${locale})${tag}`, async ({ page }) => {
     await page.goto(`${prefix}/tools/campaign-saturation`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
-    const rows = Array.from({ length: 24 }, (_, i) => `2026-08-${String(1 + i % 8).padStart(2, "0")},Channel${i},${1000 + i * 100},10`);
-    await page.locator('input[type=file][accept*=csv]').first().setInputFiles({ name: "sparse.csv", mimeType: "text/csv", buffer: Buffer.from(["Date,Channel,Cost,Installs", ...rows].join("\n")) });
+    await page.locator('input[type=file][accept*=csv]').first().setInputFiles(path.resolve("public/examples/saturation-sparse.csv"));
     await page.locator(".csv-uploader").getByRole("button", { name: locale === "en" ? "KRW ₩" : "원 ₩", exact: true }).click();
     const confirmations = page.getByRole("button", { name: locale === "en" ? "Got it" : "확인", exact: true });
     while (await confirmations.count()) await confirmations.first().click();
