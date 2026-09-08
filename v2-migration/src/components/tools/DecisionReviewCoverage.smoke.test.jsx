@@ -121,10 +121,11 @@ describe("decision review coverage for diagnostic tools", () => {
     expect(container.querySelector('[data-decision-review-tool="5-25"]')).toBeNull();
   });
 
-  it("shows infinity instead of a false zero for perfect collinearity", () => {
+  it("preserves the engine's uncomputed VIF without inventing infinity or zero", () => {
     seedVifPanel((day, channelIndex) => (day + 1) * 100 * (channelIndex + 1));
     const { container } = render(<MulticollinearityChecker />);
-    expect(container.textContent).toContain("최대 VIF ∞");
+    expect(container.textContent).toContain("최대 VIF 계산 불가");
+    expect(container.textContent).not.toContain("최대 VIF ∞");
     expect(container.textContent).not.toContain("최대 VIF 0.00");
     expect(container.querySelector('[data-decision-review-tool="5-25"]')).toBeTruthy();
   });
