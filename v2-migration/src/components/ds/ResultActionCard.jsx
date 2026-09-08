@@ -4,6 +4,8 @@ import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import DecisionReview from "@/components/ds/DecisionReview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
+import AnalysisScopeEvidence from "@/components/ds/AnalysisScopeEvidence";
+import { scopeEvidenceTable, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import { computeAnalyzeSig, findMeta, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { findingFromResultCard } from "@/lib/assist/findingProducers";
 import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
@@ -86,6 +88,7 @@ export default function ResultActionCard({
   analysisBasis = true,
   reportBlock = null,
   workbookExport = null,
+  scopeEvidence = null,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
@@ -107,9 +110,15 @@ export default function ResultActionCard({
   const resultScope = useMemo(() => ({
     dateStart: dashboardFilter?.dateStart || undefined,
     dateEnd: dashboardFilter?.dateEnd || undefined,
-    channels: [...(dashboardFilter?.channels || [])].map(String).sort(),
-    countries: [...(dashboardFilter?.countries || [])].map(String).sort(),
-  }), [dashboardFilter]);
+    ...scopeFilters(dashboardFilter),
+    ...(scopeEvidence ? {
+      ...(scopeEvidence.filters || {}),
+      dateStart: scopeEvidence.periods.find((period) => period.id === "after")?.start,
+      dateEnd: scopeEvidence.periods.find((period) => period.id === "after")?.end,
+      comparisonStart: scopeEvidence.periods.find((period) => period.id === "before")?.start,
+      comparisonEnd: scopeEvidence.periods.find((period) => period.id === "before")?.end,
+    } : {}),
+  }), [dashboardFilter, scopeEvidence]);
   const shareToolTitle = locale === "en"
     ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || shareTitle || toolId)
     : (findMeta(toolId)?.title || shareTitle || toolId);
@@ -222,10 +231,13 @@ export default function ResultActionCard({
       },
       scope: resultScope,
       manifest,
-      addon: workbookExport,
+      addon: scopeEvidence ? () => {
+        const addon = (typeof workbookExport === "function" ? workbookExport() : workbookExport) || {};
+        return { ...addon, calculationTables: [...(addon.calculationTables || []), scopeEvidenceTable(scopeEvidence)] };
+      } : workbookExport,
       generatedAt: new Date().toISOString(),
     }),
-  }), [csvData?.fileName, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport]);
+  }), [csvData?.fileName, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
   const copyShareLink = async () => {
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
     const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
@@ -273,6 +285,7 @@ export default function ResultActionCard({
             ))}
           </div>
         )}
+        {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
         {(analysisMeta || (analysisBasis && toolId)) && (
           <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Data and method information" : "데이터 기준과 신뢰도"}>
             {analysisBasis && toolId && (

@@ -8,6 +8,7 @@ import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 import { efficiencyMoneyImpact } from "@/utils/efficiencyImpactMath";
+import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 
 // 통계 검정이 아니라 "주목할 만한 변화" 크기 임계값이다. 한국어 "유의"는 통계적
 // 유의성을 함의해 검정을 한 것처럼 읽힌다(감사 H-6).
@@ -295,5 +296,14 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, moneyImpact, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w, days: daily.length, conversionKey: convKey, efficiencyKey: effKey, retentionSnapshot };
+  const denominatorKey = useCpa ? "actions" : "installs";
+  const scopeEvidence = {
+    denominatorKey, currency: displayCurrency, filters: scopeFilters(filterState),
+    periods: [["before", prevRaw, P], ["after", recentRaw, R]].map(([id, inputRows, total]) => {
+      const dates = inputRows.map((row) => row.date).sort();
+      return { id, start: dates[0], end: dates.at(-1), observations: inputRows.length,
+        denominator: total[convKey], cost: total.cost, quality: scopedInputQuality(inputRows, ["cost", denominatorKey]) };
+    }),
+  };
+  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, moneyImpact, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w, days: daily.length, conversionKey: convKey, efficiencyKey: effKey, retentionSnapshot, scopeEvidence };
 }
