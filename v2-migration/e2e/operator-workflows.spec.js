@@ -431,3 +431,34 @@ test("예산·소재 직접 업로드는 분석 버튼을 누른 뒤에만 결�
 test("budget and creative uploads wait for Analyze @light-en", async ({ page }) => {
   await verifyDirectAnalysisGates(page, true);
 });
+
+async function verifyContentValidationSplit(page, en = false) {
+  await page.goto(`${en ? "/en" : ""}/content/element-analysis`);
+  await expect(page.locator('.csv-dropzone[data-hydrated="true"]')).toBeVisible();
+  const rows = Array.from({ length: 160 }, (_, index) => {
+    const hook = Math.sin(index * 1.1);
+    const length = Math.cos(index * 0.7);
+    const score = 10 + 2 * hook - 3 * length + Math.sin(index * 3);
+    const date = new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10);
+    return [score, hook, length, date, `unit-${index % 20}`].join(",");
+  });
+  await page.locator('.csv-dropzone input[type="file"]').setInputFiles({ name: "content-validation.csv", mimeType: "text/csv", buffer: Buffer.from(`score,hook,length,date,post_id\r\n${rows.join("\r\n")}`) });
+  await page.locator("#content-outcome").selectOption("score");
+  await page.getByRole("button", { name: en ? "▶ Analyze" : "▶ 분석하기", exact: true }).click();
+  await expect(page.locator(".result-action-card").first()).toBeVisible();
+  await page.getByLabel(en ? "Future-validation date column" : "미래 검증 날짜 열").selectOption("date");
+  await expect(page.getByText(en ? /Past-to-future holdout: 32 validation rows/ : /과거→미래 홀드아웃: 검증 32행/)).toBeVisible();
+  await page.getByLabel(en ? "Repeated-unit column" : "반복 단위 열").selectOption("post_id");
+  const help = page.locator("#s-content-webr-random-forest");
+  await help.locator("summary").click();
+  await expect(help.getByText(en ? /Separated validation is unavailable/ : /분리 검증 불가/)).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Random Forest/ })).toHaveCount(0);
+  await expectNoSeriousAccessibilityViolations(page);
+}
+
+test("콘텐츠 미래 검증에서 같은 단위의 과거 행을 제외하고 부족하면 보류한다", async ({ page }) => {
+  await verifyContentValidationSplit(page);
+});
+test("content future validation holds overlapping units @light-en", async ({ page }) => {
+  await verifyContentValidationSplit(page, true);
+});

@@ -12,7 +12,7 @@ const NUMERIC_FEATURES = Object.freeze(["duration_seconds", "text_length", "scen
 const COPY = {
   ko: {
     title: "예측 모델 비교와 설명력 분해",
-    deck: "기존 WLS는 속성 해석 기준으로 유지합니다. 독립 소재와 제작 특성이 충분할 때만 RF·SVM을 같은 교차검증으로 비교합니다.",
+    deck: "기존 WLS는 속성 해석 기준으로 유지합니다. 같은 소재 ID의 날짜별 행을 합쳐 소재당 1행으로 RF·SVM을 같은 교차검증에서 비교합니다. 서로 다른 ID의 독립성은 확인할 수 없고 미래 성과를 검증한 것은 아닙니다.",
     sample: "독립 소재", predictors: "인코딩 변수", numeric: "연속형 제작 특성", ready: "실행 가능", blocked: "데이터 기준 미달",
     rfNeed: (required) => `RF는 현재 변수 수 기준 독립 소재 ${required || 100}개 이상이 필요합니다.`,
     svmNeed: (required) => `SVM은 독립 소재 ${required || 120}개 이상과 성과 결과가 아닌 연속형 제작 특성 2개 이상이 필요합니다.`,
@@ -27,7 +27,7 @@ const COPY = {
   },
   en: {
     title: "Predictive model comparison and explanatory decomposition",
-    deck: "WLS remains the interpretation baseline. RF and SVM are compared on the same cross-validation only when independent creatives and production features are sufficient.",
+    deck: "WLS remains the interpretation baseline. Daily rows sharing a creative ID are aggregated into one row per creative before the same RF/SVM cross-validation. Independence across different IDs cannot be verified, and this does not validate future performance.",
     sample: "Independent creatives", predictors: "Encoded predictors", numeric: "Continuous production features", ready: "Eligible", blocked: "Below data threshold",
     rfNeed: (required) => `RF needs at least ${required || 100} independent creatives for the current feature count.`,
     svmNeed: (required) => `SVM needs at least ${required || 120} independent creatives and two continuous production features that are not outcome components.`,

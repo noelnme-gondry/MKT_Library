@@ -13,6 +13,8 @@ import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { REG_STATS } from "@/utils/regMath";
+import { chronologicalDate } from "@/lib/analysis/webr/validationSplit";
+import { useClientReady } from "@/lib/useClientReady";
 import { CHART_THEME } from "@/utils/chartUtils";
 import { buildDemoCsv } from "@/utils/demoData";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -256,6 +258,7 @@ function downloadCoefCsv(rows) {
 }
 
 export default function ContentElementAnalyzer({ locale = "ko" }) {
+  const isHydrated = useClientReady();
   const T = EA_COPY[locale] || EA_COPY.ko;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((s) => s.csvData);
@@ -282,6 +285,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   // 혼합모형은 lme4(Matrix·Rcpp 동반)를 받아야 해서 이 레지스트리에서 가장 무겁다.
   // 다른 고급 분석처럼 자동 실행하지 않고 사용자가 명시적으로 누를 때만 내려받는다.
   const [clusterColumn, setClusterColumn] = useState("");
+  const [validationTimeColumn, setValidationTimeColumn] = useState("");
   const [mixedRun, setMixedRun] = useState({ status: "idle", signature: null, result: null });
   const mixedRequestRef = useRef(0);
 
@@ -339,9 +343,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
   // 데이터 바뀌면 자동추정 재시드(render-time, setState-in-effect 회피).
   const fileName = csvData?.fileName || "data.csv";
-  const seedKey = hasData ? `${fileName}|${headers.join(",")}|${csvData.raw.length}` : "";
+  const seedKey = useMemo(() => hasData ? computeAnalyzeSig(csvData) : "", [hasData, csvData]);
   if (seededKey !== seedKey) {
     setSeededKey(seedKey);
+    setClusterColumn("");
+    setValidationTimeColumn("");
     const o = guessOutcome(numericCols);
     const f = numericCols.filter((h) => h !== o && !looksLikeId(h));
     setOutcome(o);
@@ -452,7 +458,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       rows, n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length, excludedRows: csvData.raw.length - n,
       R2: res.R2, adjR2: res.adjR2, intercept: res.beta[0], outcome,
       // Additive UI payload only: diagnostics inspect the exact displayed OLS fit.
-      olsFit: res, X, y, terms: ["(Intercept)", ...supportedFeatures],
+      olsFit: res, X, y, terms: ["(Intercept)", ...supportedFeatures], validationRows: validRows,
     };
   }, [analyzed, hasData, csvData, outcome, features]);
 
@@ -502,6 +508,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       return distinct >= 4 && distinct * 2 <= values.length;
     });
   }, [csvData, numericCols]);
+
+  const validationDates = useMemo(() => headers.filter((header) => csvData?.raw?.length
+    && csvData.raw.every((row) => chronologicalDate(row[header]) != null)), [headers, csvData]);
+  const validationGroups = useMemo(() => clusterColumn ? fit?.validationRows?.map((row) => row[clusterColumn]) : undefined, [clusterColumn, fit]);
+  const validationTimes = useMemo(() => validationTimeColumn ? fit?.validationRows?.map((row) => row[validationTimeColumn]) : undefined, [validationTimeColumn, fit]);
 
   const mixedInput = useMemo(() => {
     if (!fit || fit.error || !fit.y?.length || !clusterColumn) return null;
@@ -671,8 +682,10 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           <h2 className="section-title">{T.dataPrep}</h2>
           <CsvGuide toolId={C.guideToolId} onTryExample={handleLoadDemo} locale={locale} />
           <div className="csv-dropzone"
+            data-hydrated={isHydrated}
+            aria-disabled={!isHydrated}
             role="button"
-            tabIndex={0}
+            tabIndex={isHydrated ? 0 : -1}
             aria-label={tr("콘텐츠 분석 CSV 파일 선택", "Choose a content-analysis CSV file")}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }}
@@ -681,7 +694,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             style={{ cursor: "pointer" }}>
             <div className="csv-drop-text">{T.dropTitle}</div>
             <div className="csv-drop-sub">{T.dropSub}</div>
-            <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef}
+            <input type="file" disabled={!isHydrated} accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
           </div>
@@ -752,9 +765,9 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
         <div style={{ marginTop: "12px", display: "grid", gap: "12px" }}>
           <div>
-            <label style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
+            <label htmlFor="content-outcome" style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
             <div style={{ fontSize: "11px", color: MUTED, margin: "2px 0 6px" }}>{T.outcomeHint}</div>
-            <select className="map-select" value={outcome || ""} onChange={(e) => { setOutcome(e.target.value); setFeatures((prev) => prev.filter((f) => f !== e.target.value)); }}>
+            <select id="content-outcome" className="map-select" value={outcome || ""} onChange={(e) => { setOutcome(e.target.value); setFeatures((prev) => prev.filter((f) => f !== e.target.value)); }}>
               {numericCols.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
@@ -1171,14 +1184,23 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </details>
 
           {/* 예측 모델 비교는 핵심 연관 해석을 다 읽은 뒤 필요한 사람만 본다. */}
-          {clusterColumn ? <aside className="callout warn" role="status">
-            <p>{tr("반복 단위 선언: 예측 모델 비교 보류. 같은 단위가 학습·검증에 함께 들어갈 수 있어 행 무작위 교차검증의 승자는 표시하지 않습니다. 단위별 분리 검증이 필요하며 위 혼합모형 적합이 이를 대신하지 않습니다.", "Repeated units declared: predictive comparison held. Random row validation can put the same unit in training and validation, so no predictive winner is shown. Validation must separate units; the mixed-model fit above does not replace that check.")}</p>
-          </aside> : <WebRRandomForestPanel
+          {validationDates.length > 0 && <section className="block">
+            <label htmlFor="content-validation-time">{tr("미래 검증 날짜 열", "Future-validation date column")}</label>
+            <select id="content-validation-time" className="map-select" value={validationTimeColumn} onChange={(event) => setValidationTimeColumn(event.target.value)}>
+              <option value="">{tr("선택 안 함 · 미래 예측 검증 아님", "None · does not validate future prediction")}</option>
+              {validationDates.map((header) => <option key={header} value={header}>{header}</option>)}
+            </select>
+            <p>{tr("날짜를 고르면 앞 80% 날짜로 학습하고 뒤 20% 날짜에서만 비교합니다. 반복 단위도 고르면 검증 단위의 과거 행을 학습에서 제외합니다. 날짜 열은 YYYY-MM-DD 형식이어야 합니다.", "Selecting a date trains on the first 80% of dates and evaluates only on the last 20%. With a repeated-unit column, past rows of validation units are excluded from training. Dates must use YYYY-MM-DD.")}</p>
+          </section>}
+          <WebRRandomForestPanel
+            key={`${seedKey}:${analyzedSig}:${clusterColumn}:${validationTimeColumn}`}
             fit={fit}
             signature={analyzedSig}
             locale={locale}
             source={isDemo ? "demo" : csvData?.importSource || "csv"}
-          />}
+            groups={validationGroups}
+            times={validationTimes}
+          />
         </>
       )}
     </div>
