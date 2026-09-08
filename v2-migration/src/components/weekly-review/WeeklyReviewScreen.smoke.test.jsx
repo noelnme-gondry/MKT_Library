@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
 import { HANDOVER_DISMISS_KEY, HANDOVER_SESSION_KEY, resetHandoverSnapshot } from "@/lib/weeklyReviewHandover";
 import { useAppStore } from "@/store/useDataStore";
+vi.mock("@/components/CsvUploader", () => ({ default: () => <div data-testid="weekly-uploader" /> }));
 
 /** 이번 주(08-31~09-06)와 지난주(08-24~08-30)를 담은 매핑 완료 행. */
 function rowsFor({ worsen = true } = {}) {
@@ -37,7 +38,9 @@ function rowsFor({ worsen = true } = {}) {
 }
 
 function setData(rows) {
-  useAppStore.setState({ csvData: { raw: rows, mapping: {}, mappedRows: rows, headers: [] } });
+  useAppStore.getState().setCurrentRouteId("weekly-review");
+  useAppStore.getState().setCsvData({ raw: rows, mapping: {}, mappedRows: rows, headers: [] });
+  useAppStore.getState().setGroupAnalyzed("5-2");
 }
 
 describe("WeeklyReviewScreen", () => {
@@ -76,9 +79,9 @@ describe("WeeklyReviewScreen", () => {
   it("변화가 평소 범위면 원인·행동 카드를 접는다 — 그게 정상 경로다", () => {
     setData(rowsFor({ worsen: false }));
     render(<WeeklyReviewScreen />);
-    expect(screen.getByText("성과는 사실상 유지됐습니다.")).toBeTruthy();
+    expect(screen.getByText("설정한 확인 기준을 넘는 변화가 없습니다.")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "왜 그랬나" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "이번 주에 할 것" })).toBeNull();
+    expect(screen.getByText("내 다음 결정 기록").closest("details").open).toBe(false);
   });
 
   it("결과 비중이 비용 비중으로 오독되지 않게 라벨을 단다", () => {
@@ -138,7 +141,7 @@ describe("WeeklyReviewScreen", () => {
   it("저장된 주간 기록이 없으면 평소 범위를 모른다고 말한다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen />);
-    expect(screen.getByText(/저장된 주간 기록이 없어 평소 변동 범위는 아직 모릅니다/)).toBeTruthy();
+    expect(screen.getByText(/비교 가능한 주간 기록이 없어 평소 변동 범위는 아직 모릅니다/)).toBeTruthy();
   });
 
   it("결정을 저장하면 목표·가드레일이 함께 기록된다 — 그래야 다음 주에 판정된다", () => {
@@ -187,7 +190,7 @@ describe("WeeklyReviewScreen", () => {
     });
     render(<WeeklyReviewScreen />);
     expect(screen.getByText("판정 불가")).toBeTruthy();
-    expect(screen.getByText(/목표·가드레일이 기록되지 않아 판정할 수 없습니다/)).toBeTruthy();
+    expect(screen.getByText(/목표·가드레일 또는 관측 근거가 부족/)).toBeTruthy();
   });
 
   it("EN도 같은 구조로 렌더된다", () => {
@@ -253,4 +256,40 @@ describe("도치 인수인계 안내", () => {
     expect(window.localStorage.getItem(HANDOVER_DISMISS_KEY)).toBeNull();
     expect(window.sessionStorage.getItem(HANDOVER_SESSION_KEY)).toBe("1");
   });
+});
+
+
+it("주간 리뷰에서 새로 저장한 결정은 재방문해도 이전 화면 안내를 열지 않는다", () => {
+  window.localStorage.clear(); window.sessionStorage.clear(); resetHandoverSnapshot();
+  useAppStore.setState({ decisionRecords: [{ id: "weekly", toolId: "weekly-review" }], decisionSessionRecordIds: new Set() });
+  render(<WeeklyReviewScreen />);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("이전 화면 안내는 포커스를 내부로 옮기고 순환한 뒤 원래 위치로 돌린다", () => {
+  window.localStorage.clear(); window.sessionStorage.clear(); resetHandoverSnapshot();
+  useAppStore.setState({ decisionRecords: [{ id: "old", toolId: "5-2" }], decisionSessionRecordIds: new Set() });
+  const trigger = document.createElement("button"); document.body.appendChild(trigger); trigger.focus();
+  render(<WeeklyReviewScreen />);
+  const dialog = screen.getByRole("dialog");
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  const first = document.activeElement;
+  fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "알겠어요" }));
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(document.activeElement).toBe(first);
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(document.activeElement).toBe(trigger);
+  trigger.remove();
+});
+
+
+it("프로젝트 CPA 목표를 적용하면 낮을수록 좋음과 상한 가드레일을 함께 채운다", () => {
+  useAppStore.setState({ decisionRecords: [] }); setData(rowsFor());
+  render(<WeeklyReviewScreen />);
+  fireEvent.change(screen.getByLabelText("KPI 목표 (선택)"), { target: { value: "12" } });
+  fireEvent.click(screen.getByRole("button", { name: "프로젝트 KPI·목표 적용" }));
+  expect(screen.getByLabelText("목표 방향").value).toBe("down");
+  expect(screen.getByLabelText("가드레일 비교").value).toBe("lte");
+  expect(screen.getByLabelText("가드레일 값").value).toBe("12");
 });

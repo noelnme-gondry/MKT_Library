@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getAllPosts } from "./blog";
 import { getBlogSeo, publishedBlogSeoSlugs } from "./blogSeo";
 
 describe("blogSeo metadata contract", () => {
@@ -26,14 +27,18 @@ describe("blogSeo metadata contract", () => {
     expect(missing, `h1 없음:\n${missing.join("\n")}`).toEqual([]);
   });
 
-  // h1을 따로 적었다는 것 자체가 "제목과 다르게 읽히길 원한다"는 표식이다.
-  // 같은 값을 적어 두면 표식이 거짓말이 되고, 다음 사람이 제목만 고치고 h1을 두고 간다.
-  it.each(["ko", "en"])("never restates the SERP title as the h1 (%s)", (locale) => {
-    const redundant = publishedBlogSeoSlugs(locale)
-      .map((slug) => ({ slug, seo: getBlogSeo(locale, slug, {}) }))
-      .filter(({ seo }) => seo?.h1 && seo.h1 !== seo.title && seo.h1.trim() === seo.title.trim())
-      .map(({ slug }) => slug);
-    expect(redundant).toEqual([]);
+  // 발행 원고를 출발점으로 파싱 결과까지 검사한다. 레지스트리의 자체 목록만
+  // 돌면 미등록 원고와 실제 화면의 폴백 경로는 검사되지 않는다.
+  it.each(["ko", "en"])("published articles carry SEO headings and localized body links (%s)", (locale) => {
+    const posts = getAllPosts(locale);
+    expect(posts.length).toBeGreaterThan(40);
+    expect(posts.map(post => post.slug).sort()).toEqual(publishedBlogSeoSlugs(locale).sort());
+    for (const post of posts) {
+      expect(post.h1, post.slug).toBe(getBlogSeo(locale, post.slug).h1);
+      expect(post.h1.trim(), post.slug).not.toBe("");
+      expect(post.html, post.slug).not.toMatch(/<h1[ >]/);
+      if (locale === "en") expect(post.html, post.slug).not.toMatch(/href="\/blog\//);
+    }
   });
 
   it("provides preview metadata for the unpublished Adjust comparison", () => {

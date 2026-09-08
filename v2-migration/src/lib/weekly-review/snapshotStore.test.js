@@ -122,3 +122,16 @@ describe("이력 추출", () => {
     expect(historyFor(fixture(), {})).toEqual({});
   });
 });
+
+
+it("통화·기간 길이·미래 주가 다른 집계는 평소 범위에서 제외한다", () => {
+  const record = { currency: "KRW", period: { start: "2026-08-24", end: "2026-08-30", days: 7 }, rows: WEEK };
+  const history = historyFor([record, { ...record, currency: "USD" }, { ...record, period: { ...record.period, days: 3 } }, { ...record, period: { ...record.period, start: "2026-09-07" } }], { currency: "KRW", days: 7, excludeStart: "2026-08-31", derive: rows => deriveMetrics(sumRows(rows)) });
+  expect(history.cpa).toEqual([50000 / 6000]);
+});
+
+it("같은 월요일의 부분 주를 저장해도 완료 주는 보존한다", () => {
+  const full = snap("2026-08-24", "2026-08-30", WEEK);
+  const partial = snap("2026-08-24", "2026-08-26", WEEK);
+  expect(mergeSnapshots(mergeSnapshots([], full), partial)).toHaveLength(2);
+});

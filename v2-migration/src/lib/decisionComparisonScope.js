@@ -24,14 +24,22 @@ function dataGroup(value) {
 // CSV에는 원자료가 아니라, 사용자가 선택한 범위만 JSON 한 칸으로 보존한다. 날짜는
 // 기준 계산을 재현하기 위한 메타데이터이고 실제 비교의 날짜 범위는 baselineDate+1부터
 // comparisonWindowDays로 명시적으로 다시 정한다.
-export function createDecisionComparisonScope({ dataGroup: group, filter = {} } = {}) {
+export function createDecisionComparisonScope({ dataGroup: group, filter = {}, weeklyReview = null } = {}) {
   const dimensions = Object.fromEntries(FILTER_KEYS.map((key) => [key, values(filter?.[key])]));
   return JSON.stringify({
     dataGroup: dataGroup(group),
     baselineDateStart: asDate(filter?.dateStart),
     baselineDateEnd: asDate(filter?.dateEnd),
     dimensions,
+    ...(weeklyReview ? { weeklyReview: normalizeWeeklyReviewContext(weeklyReview) } : {}),
   });
+}
+
+function normalizeWeeklyReviewContext(value) {
+  return {
+    basis: value.basis === "installs" ? "installs" : "actions",
+    currency: ["USD", "KRW"].includes(value.currency) ? value.currency : "",
+  };
 }
 
 export function readDecisionComparisonScope(value) {
@@ -52,6 +60,7 @@ export function readDecisionComparisonScope(value) {
     baselineDateStart: asDate(parsed.baselineDateStart),
     baselineDateEnd: asDate(parsed.baselineDateEnd),
     dimensions: Object.fromEntries(FILTER_KEYS.map((key) => [key, values(inputDimensions[key])])),
+    ...(parsed.weeklyReview && typeof parsed.weeklyReview === "object" ? { weeklyReview: normalizeWeeklyReviewContext(parsed.weeklyReview) } : {}),
   };
 }
 

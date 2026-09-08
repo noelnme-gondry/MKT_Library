@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT, KPI_OPTIONS, kpiFor, pickDecisionToScore, runReview } from "./reviewPipeline";
+import { DEFAULT_PROJECT, KPI_OPTIONS, nextReviewDate, kpiFor, pickDecisionToScore, runReview } from "./reviewPipeline";
 import { mergeSnapshots } from "./snapshotStore";
 import { buildSnapshot } from "./snapshot";
 import { HIGHER_IS_BETTER, LOWER_IS_BETTER } from "./significance";
@@ -194,5 +194,42 @@ describe("결정론", () => {
   it("같은 입력이면 같은 출력", () => {
     const args = { rows: rows(), storedSnapshots: storedHistory() };
     expect(JSON.stringify(runReview(args))).toBe(JSON.stringify(runReview(args)));
+  });
+});
+
+describe('returning review regression', () => {
+  it('uses an exact stored comparison period for a one-week upload', () => {
+    const initial = runReview({ rows: rows() });
+    const stored = mergeSnapshots([], initial.previous);
+    const result = runReview({ rows: rows().filter(r => r.date >= '2026-08-31'), storedSnapshots: stored });
+    expect(result.ok).toBe(true);
+    expect(result.previousSource).toBe('snapshot');
+    expect(result.metrics.previous.cpa).toBe(initial.metrics.previous.cpa);
+  });
+  it('does not reinterpret a full-week aggregate as a partial week', () => {
+    const initial = runReview({ rows: rows() });
+    const result = runReview({ rows: rows().filter(r => r.date >= '2026-08-31' && r.date <= '2026-09-02'), storedSnapshots: mergeSnapshots([], initial.previous) });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('no_previous_data');
+  });
+});
+
+
+describe("실제 업로드와 다음 주 비교 계약", () => {
+  it("공통 매핑 결과 campaign_name으로 캠페인별 집계가 만들어진다", () => {
+    const mapped = rows().map(({ campaign, ...row }) => ({ ...row, campaign_name: campaign }));
+    const review = runReview({ rows: mapped });
+    expect(review.ok).toBe(true);
+    expect(review.current.rows.map(row => row.campaign).sort()).toEqual(["AAP", "UAC A"]);
+  });
+  it("저장 당시와 다른 비교 기간의 주간 결정을 성공으로 채점하지 않는다", () => {
+    const review = runReview({ rows: rows(), decisionRecords: [{ toolId: "weekly-review", createdAt: "2026-08-20", baselineDate: "2026-08-23", actionTarget: "UAC A", goalMetric: "conversions", goalDirection: "up", guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "100" }] });
+    expect(review.lastDecision.score.outcome).toBe("UNSCORED");
+    expect(review.lastDecision.score.reason).toBe("comparison_context_mismatch");
+  });
+  it("완료 주와 부분 주 모두 다음 완료 주를 검토하는 월요일을 제안한다", () => {
+    expect(nextReviewDate("2026-09-06")).toBe("2026-09-14");
+    expect(nextReviewDate("2026-09-02")).toBe("2026-09-14");
+    expect(nextReviewDate("bad")).toBe("");
   });
 });

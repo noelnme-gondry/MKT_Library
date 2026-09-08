@@ -83,6 +83,8 @@ Aggregate analysis also needs a valid design and identification. An on/off befor
 
 Apple introduced AdAttributionKit (AAK), the successor to SKAdNetwork. Apple supports interoperability between the frameworks. Choose implementation based on OS, platform and MMP support. It adds dimensions SKAN lacked, such as re-engagement attribution and alternative app marketplace support. See the [AdAttributionKit documentation](https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks) for specifics, and follow platform and MMP announcements for migration timing.
 
+Continue with [SKAN versus MMP attribution](/en/blog/skan-vs-mmp-attribution) to compare measurement systems, and [SKAN conversion-value design](/en/blog/skan-conversion-value-schema) to map events into values.
+
 ## Try this today
 
 Open your iOS campaign report and check two things.

@@ -14,8 +14,10 @@
  */
 
 import { openWorkspaceDb, requestResult, transactionComplete } from "@/lib/workspace-storage/db";
+import { RETENTION_MS } from "@/lib/workspace-storage/expiry";
 
 export const SNAPSHOT_META_KEY = "weekly-review:snapshots";
+export const PROJECT_META_KEY = "weekly-review:project";
 /** 평소 범위 판정에 8주를 쓰므로 여유를 두고 보관한다. */
 export const MAX_SNAPSHOTS = 16;
 
@@ -23,6 +25,7 @@ export const MAX_SNAPSHOTS = 16;
 export function toStoredSnapshot(snapshot) {
   if (!snapshot || !snapshot.ok || !snapshot.period) return null;
   return {
+    currency: snapshot.currency || null,
     period: { start: snapshot.period.start, end: snapshot.period.end, days: snapshot.period.days ?? null },
     rows: (snapshot.rows || []).map((row) => ({
       channel: row.channel ?? null,
@@ -47,7 +50,7 @@ export function mergeSnapshots(existing = [], incoming = null, max = MAX_SNAPSHO
   const stored = toStoredSnapshot(incoming);
   const list = Array.isArray(existing) ? existing.filter((item) => item?.period?.start) : [];
   if (!stored) return list.slice(-max);
-  const next = list.filter((item) => item.period.start !== stored.period.start);
+  const next = list.filter((item) => item.period.start !== stored.period.start || item.period.end !== stored.period.end || item.currency !== stored.currency);
   next.push(stored);
   next.sort((a, b) => (a.period.start < b.period.start ? -1 : a.period.start > b.period.start ? 1 : 0));
   return next.slice(-max);
@@ -60,10 +63,12 @@ export function mergeSnapshots(existing = [], incoming = null, max = MAX_SNAPSHO
  * @param {string} excludeStart 이번 기간 시작일
  * @param {function} derive     `(rows) => { cpa, roas, ... }` — 호출부가 파생 규칙을 준다
  */
-export function historyFor(snapshots = [], { excludeStart = null, derive } = {}) {
+export function historyFor(snapshots = [], { excludeStart = null, days = null, currency = null, derive } = {}) {
   const history = {};
   for (const snapshot of Array.isArray(snapshots) ? snapshots : []) {
-    if (!snapshot?.period?.start || snapshot.period.start === excludeStart) continue;
+    if (!snapshot?.period?.start || (excludeStart && snapshot.period.start >= excludeStart)) continue;
+    if (currency && snapshot.currency !== currency) continue;
+    if (days !== null && snapshot.period.days !== days) continue;
     const metrics = typeof derive === "function" ? derive(snapshot.rows || []) : null;
     if (!metrics) continue;
     for (const [key, value] of Object.entries(metrics)) {
@@ -87,26 +92,40 @@ async function withMetaStore(mode, run) {
   }
 }
 
+function retainSnapshots(snapshots) {
+  return (Array.isArray(snapshots) ? snapshots : []).filter((snapshot) => {
+    const age = Date.now() - Date.parse(snapshot?.savedAt);
+    return Number.isFinite(age) && age >= 0 && age < RETENTION_MS;
+  });
+}
+
 /** 저장된 스냅샷 목록. 저장소를 못 쓰면 빈 배열 — 리뷰를 막지 않는다. */
 export async function listStoredSnapshots() {
   try {
-    const record = await withMetaStore("readonly", (store) => requestResult(store.get(SNAPSHOT_META_KEY)));
-    return Array.isArray(record?.snapshots) ? record.snapshots : [];
+    return await withMetaStore("readwrite", async (store) => {
+      const record = await requestResult(store.get(SNAPSHOT_META_KEY));
+      const snapshots = retainSnapshots(record?.snapshots);
+      if (record && snapshots.length !== record.snapshots?.length) store.put({ ...record, snapshots });
+      return snapshots;
+    });
   } catch {
     return [];
   }
 }
 
 /** 스냅샷 한 장을 보관한다. 성공 여부를 돌려주되 실패해도 던지지 않는다. */
-export async function saveStoredSnapshot(snapshot) {
+export async function saveStoredSnapshot(snapshot, { shouldSave = () => true } = {}) {
   const stored = toStoredSnapshot(snapshot);
   if (!stored) return { ok: false, reason: "not_storable" };
   try {
-    const existing = await listStoredSnapshots();
-    const snapshots = mergeSnapshots(existing, snapshot);
-    await withMetaStore("readwrite", (store) =>
-      requestResult(store.put({ key: SNAPSHOT_META_KEY, snapshots, updatedAt: new Date().toISOString() })));
-    return { ok: true, count: snapshots.length };
+    const count = await withMetaStore("readwrite", async (store) => {
+      const record = await requestResult(store.get(SNAPSHOT_META_KEY));
+      if (!shouldSave()) return null;
+      const snapshots = mergeSnapshots(retainSnapshots(record?.snapshots), { ...snapshot, createdAt: new Date().toISOString() });
+      store.put({ key: SNAPSHOT_META_KEY, snapshots, updatedAt: new Date().toISOString() });
+      return snapshots.length;
+    });
+    return count === null ? { ok: false, reason: "storage_disabled" } : { ok: true, count };
   } catch (error) {
     return { ok: false, reason: "storage_unavailable", error };
   }
@@ -119,4 +138,42 @@ export async function clearStoredSnapshots() {
   } catch {
     return { ok: false };
   }
+}
+
+export async function readReviewProject() {
+  try {
+    return await withMetaStore("readwrite", async (store) => {
+      const record = await requestResult(store.get(PROJECT_META_KEY));
+      const age = Date.now() - Date.parse(record?.updatedAt);
+      if (Number.isFinite(age) && age >= 0 && age < RETENTION_MS) return record.project;
+      if (record) store.delete(PROJECT_META_KEY);
+      return null;
+    });
+  } catch { return null; }
+}
+
+export function normalizePeriodPreference(value) {
+  if (!value || typeof value !== "object") return null;
+  if (["completed_week", "recent_seven", "month"].includes(value.preset)) return { preset: value.preset };
+  const fields = ["currentStart", "currentEnd", "previousStart", "previousEnd"];
+  return Object.fromEntries(fields.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(value[key] || "")).map((key) => [key, value[key]]));
+}
+
+export async function saveReviewProject(project, { shouldSave = () => true } = {}) {
+  // 원본이나 임의 필드를 저장하지 않는다. 매핑은 기존 업로더의 recipe가 소유한다.
+  const safe = {
+    period: normalizePeriodPreference(project.period),
+    name: String(project.name || "").slice(0, 120),
+    metric: ["cpa", "cpi", "roas", "conversions"].includes(project.metric) ? project.metric : "cpa",
+    basis: project.basis === "installs" ? "installs" : "actions",
+    currency: project.currency === "USD" ? "USD" : "KRW",
+    target: project.target === "" ? "" : String(project.target || "").slice(0, 30),
+  };
+  try {
+    return await withMetaStore("readwrite", async (store) => {
+      if (!shouldSave()) return { ok: false };
+      await requestResult(store.put({ key: PROJECT_META_KEY, project: safe, updatedAt: new Date().toISOString() }));
+      return { ok: true };
+    });
+  } catch { return { ok: false }; }
 }

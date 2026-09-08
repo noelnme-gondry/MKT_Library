@@ -2,9 +2,9 @@ import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
 import { SITE_URL } from "@/lib/routeMap";
 
 export const metadata = {
-  title: "주간 결정 검토",
-  description: "분석 결과에서 내린 실행 결정을 다음 주 실제 결과와 연결해 검토합니다.",
-  alternates: { canonical: `${SITE_URL}/weekly-review`, languages: { en: `${SITE_URL}/en/weekly-review` } },
+  title: "주간 마케팅 리뷰 · CSV 비교와 보고서",
+  description: "캠페인 CSV로 주간 KPI 변화와 분해 근거를 확인하고, 지난 결정 검토부터 다음 행동과 보고서까지 브라우저에서 이어갑니다.",
+  alternates: { canonical: `${SITE_URL}/weekly-review`, languages: { ko: `${SITE_URL}/weekly-review`, en: `${SITE_URL}/en/weekly-review`, "x-default": `${SITE_URL}/weekly-review` } },
 };
 
 export default function WeeklyReviewPage() {

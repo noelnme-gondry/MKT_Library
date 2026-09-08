@@ -16,11 +16,11 @@ import { DECISION_OUTCOME } from "./decisionScore";
 
 /** 판정 → 화면·보고서 문구. `NO_EFFECT`를 "효과 없음"이라고 쓰지 않는다. */
 export const OUTCOME_LABEL = Object.freeze({
-  [DECISION_OUTCOME.WORKED]: "효과 있었음",
+  [DECISION_OUTCOME.WORKED]: "목표 방향 변화·가드레일 충족",
   [DECISION_OUTCOME.MIXED]: "목표는 달성, 가드레일 이탈",
   [DECISION_OUTCOME.NO_EFFECT]: "뚜렷한 변화를 확인하지 못함",
-  [DECISION_OUTCOME.BACKFIRED]: "역효과",
-  [DECISION_OUTCOME.NOT_APPLIED]: "실행되지 않은 것으로 보임",
+  [DECISION_OUTCOME.BACKFIRED]: "목표 변화 미확인·가드레일 이탈",
+  [DECISION_OUTCOME.NOT_APPLIED]: "지출에서 예정 변화 미확인",
   [DECISION_OUTCOME.NO_DATA]: "대상 데이터가 없어 확인 불가",
   [DECISION_OUTCOME.UNSCORED]: "판정 불가",
 });
@@ -50,6 +50,8 @@ function section(id, title, body) {
  * @param {object} thisDecision 이번 주에 저장한 결정
  */
 export function buildReportDraft({
+  locale = "ko",
+  notes = [],
   project = {},
   period = null,
   previousPeriod = null,
@@ -89,7 +91,7 @@ export function buildReportDraft({
   // ── 무엇이 바뀌었나 ──────────────────────────────────────
   if (routing.status === "quiet") {
     sections.push(section("what_changed", "무엇이 바뀌었나", {
-      text: "평소 변동 범위 안에서 유지됐습니다.",
+      text: "설정한 확인 기준을 넘는 변화가 없습니다. 성과 동등성이나 효과 없음을 뜻하지 않습니다.",
       quiet: true,
     }));
   } else if (routing.status === "unknown") {
@@ -114,6 +116,7 @@ export function buildReportDraft({
   const ranVariance = (routing.run || []).some((entry) => entry.analysis === "variance");
   if (ranVariance && split && Number.isFinite(split.efficiency) && Number.isFinite(split.mix)) {
     sections.push(section("why", "왜", {
+      metric: kpiName === "cpi" ? "CPI" : "CPA",
       efficiency: split.efficiency,
       mix: split.mix,
       lead: split.efficiency >= split.mix ? "efficiency" : "mix",
@@ -124,10 +127,10 @@ export function buildReportDraft({
   if (lastDecision && lastDecision.decision && lastDecision.score) {
     const { decision, score } = lastDecision;
     sections.push(section("last_decision", "지난 결정의 결과", {
-      action: describeAction(decision),
+      action: describeAction(decision, locale),
       decidedAt: decision.createdAt ?? null,
       outcome: score.outcome,
-      label: OUTCOME_LABEL[score.outcome] ?? null,
+      label: outcomeLabel(score.outcome, locale),
       goal: score.checks?.goal ?? null,
       guardrail: score.checks?.guardrail ?? null,
       reason: score.reason ?? null,
@@ -136,7 +139,7 @@ export function buildReportDraft({
 
   // ── 이번 주 결정 / 다음 주 확인 ───────────────────────────
   if (thisDecision) {
-    sections.push(section("this_decision", "이번 주 결정", { action: describeAction(thisDecision) }));
+    sections.push(section("this_decision", "이번 주 결정", { action: describeAction(thisDecision, locale) }));
     if (thisDecision.guardrailMetric && thisDecision.guardrailOp) {
       sections.push(section("watch_next", "다음 주 확인", {
         metric: thisDecision.guardrailMetric,
@@ -152,13 +155,15 @@ export function buildReportDraft({
     title: project.name ? `Weekly Performance Review — ${project.name}` : "Weekly Performance Review",
     period,
     previousPeriod,
-    sections,
+    locale,
+    notes,
+    sections: locale === "en" ? sections.map(localizeSection) : sections,
   };
 }
 
-export function describeAction(decision) {
+export function describeAction(decision, locale = "ko") {
   if (!decision) return null;
-  const kind = ACTION_LABEL[decision.actionKind] ?? decision.actionKind ?? null;
+  const kind = (locale === "en" ? ACTION_LABEL_EN : ACTION_LABEL)[decision.actionKind] ?? decision.actionKind ?? null;
   const target = decision.actionTarget ?? null;
   const amount = decision.actionAmount ?? null;
   return [target, kind, amount].filter(Boolean).join(" ") || null;
@@ -184,12 +189,43 @@ export function renderReportText(draft, format = PLAIN_FORMAT) {
   lines.push(periodText, "");
 
   for (const item of draft.sections) {
-    const body = renderSection(item, fmt);
+    const body = draft.locale === "en" ? renderEnglishSection(item, fmt) : renderSection(item, fmt);
     if (!body) continue; // 내용이 없으면 제목도 쓰지 않는다
     lines.push(`■ ${item.title}`, `  ${body}`, "");
   }
 
+  for (const note of draft.notes || []) if (note) lines.push(String(note));
   return lines.join("\n").trimEnd();
+}
+
+const ACTION_LABEL_EN = { increase_budget: "Increase budget", decrease_budget: "Decrease budget", hold: "Hold", replace: "Replace creative", investigate: "Investigate" };
+const OUTCOME_LABEL_EN = {
+  WORKED: "Goal-direction change; guardrail met", MIXED: "Goal-direction change; guardrail exceeded",
+  NO_EFFECT: "No clear goal-direction change confirmed", BACKFIRED: "Goal change unconfirmed; guardrail exceeded",
+  NOT_APPLIED: "Planned change not observed in spend", NO_DATA: "Target data unavailable", UNSCORED: "Not scorable",
+};
+export function outcomeLabel(outcome, locale = "ko") {
+  return (locale === "en" ? OUTCOME_LABEL_EN : OUTCOME_LABEL)[outcome] || (locale === "en" ? "Not scorable" : "판정 불가");
+}
+function localizeSection(item) {
+  const titles = { performance: "Performance", what_changed: "What changed", why: "Breakdown", last_decision: "Last decision", this_decision: "This week's decision", watch_next: "Next review" };
+  if (item.id !== "what_changed") return { ...item, title: titles[item.id] || item.title };
+  const text = item.quiet ? "No change crossed the configured review criteria. This does not establish equivalence or no effect."
+    : item.unmeasured ? "The headline metric could not be assessed."
+      : item.drivers?.length ? `${item.drivers[0].label} had the largest arithmetic contribution within the breakdown scope.`
+        : "A change was observed, but its campaign-level breakdown is unavailable.";
+  return { ...item, title: titles[item.id], text };
+}
+function renderEnglishSection(item, fmt) {
+  switch (item.id) {
+    case "performance": return item.unmeasured ? "The headline metric could not be measured." : `${item.metric} ${fmt.percent(item.deltaPct)}` + (item.baselineKnown ? "" : " (usual variation is unknown)");
+    case "what_changed": return item.text;
+    case "why": return `${item.metric || "CPA"}-change contributions within the breakdown scope: efficiency ${fmt.percent(item.efficiency)}, result mix ${fmt.percent(item.mix)}. Arithmetic decomposition, not causal effects.`;
+    case "last_decision": return `${item.action || "Last decision"} → ${item.label}` + (item.outcome === "NO_EFFECT" ? ". This does not establish no effect." : "");
+    case "this_decision": return item.action;
+    case "watch_next": return `${item.metric} ${OP_TEXT[item.op] || item.op} ${fmt.number(item.value)}`;
+    default: return null;
+  }
 }
 
 function renderSection(item, fmt) {
@@ -201,13 +237,13 @@ function renderSection(item, fmt) {
     case "what_changed":
       return item.text;
     case "why": {
-      const eff = fmt.percent(item.efficiency).replace(/^[+−]/, "");
-      const mix = fmt.percent(item.mix).replace(/^[+−]/, "");
-      return `효율 저하가 ${eff}, 예산 믹스 변화가 ${mix}를 설명합니다.`;
+      const eff = fmt.percent(item.efficiency);
+      const mix = fmt.percent(item.mix);
+      return `분해 범위의 ${item.metric || "CPA"} 변화 기여: 효율 ${eff}, 결과 비중 변화 ${mix}. 인과효과가 아닌 산술 분해입니다.`;
     }
     case "last_decision": {
       const head = `${item.action ?? "지난 결정"} → ${item.label ?? "판정 불가"}`;
-      if (item.outcome === "UNSCORED") return `${head} (목표·가드레일이 기록되지 않았습니다)`;
+      if (item.outcome === "UNSCORED") return `${head} (${item.reason === "no_terms_recorded" ? "목표·가드레일이 기록되지 않았습니다" : item.reason === "comparison_context_mismatch" ? "저장 당시와 비교 기간·통화·전환 기준이 다릅니다" : "관측 근거 또는 사전 판정 기준이 부족합니다"})`;
       if (item.outcome === "NO_EFFECT") {
         // "효과가 없다"고 쓰지 않는다 — 1주 표본으로 효과를 부정할 검정력이 없다.
         return `${head}. 효과가 없다는 뜻은 아닙니다.`;

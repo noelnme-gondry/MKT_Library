@@ -39,7 +39,7 @@ describe("아무것도 안 하는 것이 정상 경로다", () => {
       project: PROJECT,
     });
     expect(result.status).toBe("quiet");
-    expect(result.reason).toBe("no_signal");
+    expect(result.reason).toBe("change_too_small");
     expect(result.run).toEqual([]);
     expect(result.kpi.significant).toBe(false);
   });
@@ -69,7 +69,7 @@ describe("아무것도 안 하는 것이 정상 경로다", () => {
       history: HISTORY,
       project: PROJECT,
     });
-    expect(result.status).toBe("signal");
+    expect(result.status).toBe("unknown");
     expect(result.run[0].triggers).toEqual(["spend_shift"]);
     expect(result.kpi.reason).toBe("no_value");
     expect(result.skipped.find((entry) => entry.signal === "kpi_change").reason).toBe("not_assessable");

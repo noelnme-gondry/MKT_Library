@@ -224,3 +224,11 @@ describe("로컬 시간대 접근자를 쓰지 않는다", () => {
     expect(parseUtcDate("2026-08-31").toISOString()).toBe("2026-08-31T00:00:00.000Z");
   });
 });
+
+
+it("월 프리셋의 부분 월은 전월 전체와 길이가 다름을 알린다", () => {
+  const result = resolveComparisonPeriods({ dates: range("2026-08-01", "2026-09-06"), custom: { preset: "month" } });
+  expect(result.current).toEqual({ start: "2026-09-01", end: "2026-09-06", days: 6 });
+  expect(result.previous.days).toBe(31);
+  expect(result.warnings).toContain("length_mismatch");
+});

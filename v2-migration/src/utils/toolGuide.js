@@ -742,6 +742,8 @@ for (const toolId of RESPONSE_SUBTOOL_IDS) {
 }
 
 export function getToolGuide(toolId, locale = "ko") {
+  // 주간 리뷰 업로더는 효율 CSV 계약을 그대로 사용한다.
+  if (toolId === "weekly-review") return getToolGuide("5-2", locale);
   if (locale === "en" && TOOL_GUIDE_EN[toolId]) return TOOL_GUIDE_EN[toolId];
   return TOOL_GUIDE[toolId] || null;
 }

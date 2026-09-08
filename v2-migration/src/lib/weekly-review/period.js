@@ -109,13 +109,23 @@ export function resolveComparisonPeriods({ dates = [], custom = null } = {}) {
     parsed.push(date);
   }
 
-  if (custom) return resolveCustom(custom, dateSet);
-
   if (parsed.length === 0) {
     return { ok: false, reason: "no_dates", current: null, previous: null, partial: false, smallSample: false, warnings: [] };
   }
 
   const maxDate = parsed.reduce((a, b) => (a.getTime() >= b.getTime() ? a : b));
+  if (custom?.preset === "month") {
+    const start = new Date(Date.UTC(maxDate.getUTCFullYear(), maxDate.getUTCMonth(), 1));
+    const previousStart = new Date(Date.UTC(maxDate.getUTCFullYear(), maxDate.getUTCMonth() - 1, 1));
+    const previousEnd = addDaysUtc(start, -1);
+    return resolveCustom({ currentStart: formatUtcDate(start), currentEnd: formatUtcDate(maxDate), previousStart: formatUtcDate(previousStart), previousEnd: formatUtcDate(previousEnd) }, dateSet);
+  }
+  if (custom?.preset) {
+    const anchor = custom.preset === "completed_week"
+      ? (maxDate.getUTCDay() === 0 ? maxDate : addDaysUtc(isoWeekStartUtc(maxDate), -1)) : maxDate;
+    return resolveCustom({ currentStart: formatUtcDate(addDaysUtc(anchor, -6)), currentEnd: formatUtcDate(anchor) }, dateSet);
+  }
+  if (custom) return resolveCustom(custom, dateSet);
   const weekStart = isoWeekStartUtc(maxDate);
   const current = period(weekStart, maxDate);
   const previous = period(addDaysUtc(weekStart, -7), addDaysUtc(maxDate, -7));

@@ -10655,14 +10655,14 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-mine__k { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 12px; }
 .wr-opts { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
 .wr-opt { font: inherit; font-size: 13px; cursor: pointer; background: transparent; color: var(--text-secondary);
-  border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 7px 14px; min-height: 36px; }
+  border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 7px 14px; min-height: 44px; }
 .wr-opt:hover { border-color: var(--primary); color: var(--text-primary); }
 .wr-opt[aria-pressed="true"] { background: var(--primary); border-color: var(--primary);
   color: var(--on-primary); font-weight: 600; }
 .wr-field { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13.5px; margin-bottom: 16px; }
 .wr-field > span { color: var(--text-muted); font-size: 12.5px; min-width: 56px; }
 .wr-field input { background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-default);
-  color: var(--text-primary); font: inherit; font-size: 13.5px; padding: 7px 10px; min-width: 200px; }
+  color: var(--text-primary); font: inherit; font-size: 16px; padding: 7px 10px; min-width: 0; max-width: 100%; min-height: 44px; }
 
 .wr-decision__action { font-size: 16px; font-weight: 650; margin: 0 0 10px; }
 .wr-stamp { display: inline-flex; align-items: center; gap: 7px; font-weight: 650; font-size: 14px;
@@ -10688,9 +10688,9 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-settings[open] > summary::before { content: "▾ "; }
 .wr-settings > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 3px; }
 .wr-settings__body { display: grid; gap: 10px; margin-top: 14px; }
-.wr-settings__dates { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.wr-settings__dates { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .wr-field select, .wr-field input[type="date"] { background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: var(--radius-default); color: var(--text-primary); font: inherit; font-size: 13.5px; padding: 7px 10px; }
+  border-radius: var(--radius-default); color: var(--text-primary); font: inherit; font-size: 16px; padding: 7px 10px; max-width: 100%; min-height: 44px; }
 .wr-field__num { max-width: 110px; font-variant-numeric: tabular-nums; }
 
 .wr-history { margin-top: 30px; border-top: 1px solid var(--operator-line); padding-top: 20px; }
@@ -10704,6 +10704,14 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-screen__reason { font-size: 12.5px; color: var(--text-muted); }
 /* 링크로 만든 버튼이 원고 링크 밑줄을 물려받지 않게 한다. */
 .wr-screen a.btn { text-decoration: none; }
+.wr-screen { min-width: 0; }
+.wr-screen :is(button, input, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.wr-report { overflow-wrap: anywhere; }
+@media print {
+  .wr-screen > :not(:has(> #wr-share)) { display: none !important; }
+  .wr-screen .wr-card > :not(.wr-report) { display: none !important; }
+  .wr-screen .wr-report { background: white; color: black; border: 0; padding: 0; overflow: visible; }
+}
 
 .wr-handover { position: fixed; inset: 0; z-index: 60; background: rgba(4, 7, 12, .62);
   display: flex; align-items: center; justify-content: center; padding: 20px; }

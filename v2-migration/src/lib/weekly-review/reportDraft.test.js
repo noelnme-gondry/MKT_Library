@@ -90,7 +90,7 @@ describe("조용한 주와 판정 불가를 구분해서 쓴다", () => {
     });
     expect(sectionIds(quiet)).not.toContain("why");
     expect(quiet.sections.find((item) => item.id === "what_changed").quiet).toBe(true);
-    expect(renderReportText(quiet)).toMatch(/평소 변동 범위 안에서 유지/);
+    expect(renderReportText(quiet)).toMatch(/성과 동등성이나 효과 없음을 뜻하지 않습니다/);
   });
 
   it("판정 불가는 조용함과 다른 문장을 쓴다", () => {

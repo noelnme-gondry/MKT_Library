@@ -54,16 +54,16 @@ describe("토픽 클러스터", () => {
     expect(measurement?.members).toContain("attribution-data-mismatch");
   });
 
-  // 이 배선의 존재 이유 자체가 "인바운드 0편을 없앤다"이므로, 그 결과를 직접 잰다.
-  it("모든 발행 글이 최소 1개의 인바운드 클러스터 링크를 받는다", () => {
-    const inbound = Object.fromEntries(publishedSlugs.map((slug) => [slug, 0]));
-    for (const slug of publishedSlugs) {
-      const links = clusterLinksFor(slug);
-      const targets = [...(links.pillar ? [links.pillar] : []), ...links.siblings];
-      for (const target of targets) inbound[target] += 1;
+  // 화면에 없는 clusterLinksFor의 가상 간선은 유입 경로가 아니다.
+  it.each(["ko", "en"])("모든 발행 글에 실제 본문 인바운드 링크가 있다 (%s)", (locale) => {
+    const posts = getAllPosts(locale);
+    const inbound = new Set();
+    for (const post of posts) {
+      for (const [, target] of post.html.matchAll(/href="(?:\/en)?\/blog\/([a-z0-9-]+)(?:#[^"]*)?"/g)) {
+        if (target !== post.slug) inbound.add(target);
+      }
     }
-    const orphans = publishedSlugs.filter((slug) => inbound[slug] === 0);
-    expect(orphans, `인바운드 0: ${orphans.join(", ")}`).toEqual([]);
+    expect(posts.filter(post => !inbound.has(post.slug)).map(post => post.slug)).toEqual([]);
   });
 
   it("형제 선택이 결정론적이고 자기 자신을 가리키지 않는다", () => {

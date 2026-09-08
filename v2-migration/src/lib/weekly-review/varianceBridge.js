@@ -176,6 +176,7 @@ export function buildVariance({
       s1: rest.reduce((sum, entry) => sum + entry.s1, 0),
       s2: rest.reduce((sum, entry) => sum + entry.s2, 0),
       isRemainder: true,
+      remainderCount: rest.length,
     });
   }
 
@@ -262,11 +263,12 @@ function overallCpa(previous, current, resultField) {
 function driverOf(entry, share) {
   return {
     label: entry.key,
+    isMerged: entry.key === OTHER_LABEL,
     contribution: entry.contribution,
     share: share(entry.contribution),
-    cpa1: entry.cpa1 > 0 ? entry.cpa1 : null,
-    cpa2: entry.cpa2 > 0 ? entry.cpa2 : null,
-    cpaChangePct: entry.cpa1 > 0 && entry.cpa2 > 0 ? (entry.cpa2 - entry.cpa1) / entry.cpa1 : null,
+    cpa1: Number.isFinite(entry.cpa1) ? entry.cpa1 : null,
+    cpa2: Number.isFinite(entry.cpa2) ? entry.cpa2 : null,
+    cpaChangePct: entry.cpa1 > 0 && entry.cpa2 >= 0 ? (entry.cpa2 - entry.cpa1) / entry.cpa1 : null,
     s1: entry.s1,
     s2: entry.s2,
     isRemainder: false,

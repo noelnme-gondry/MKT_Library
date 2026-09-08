@@ -194,15 +194,15 @@ describe("목표 방향", () => {
     const hold = score([{ campaign: "Meta AAP", cost: 38_000, actions: 5_100 }], {
       decision: { goalDirection: "hold" },
     });
-    expect(hold.checks.goal.pass).toBe(true);
-    expect(hold.outcome).toBe(DECISION_OUTCOME.WORKED);
+    expect(hold.outcome).toBe(DECISION_OUTCOME.UNSCORED);
+    expect(hold.reason).toBe("hold_margin_not_recorded");
   });
 
   it("유지가 목표여도 유의미하게 나빠지면 실패다", () => {
     const hold = score([{ campaign: "Meta AAP", cost: 41_076, actions: 3_400 }], {
       decision: { goalDirection: "hold" },
     });
-    expect(hold.checks.goal.pass).toBe(false);
+    expect(hold.outcome).toBe(DECISION_OUTCOME.UNSCORED);
   });
 
   it("낮추는 것이 목표면 내려가야 달성이다", () => {

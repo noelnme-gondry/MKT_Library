@@ -12,7 +12,7 @@
  * 닫힌다(기존 도치 온보딩에서 이미 겪은 함정).
  */
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import {
   handoverServerSnapshot,
@@ -48,6 +48,7 @@ export default function WeeklyReviewHandoverNotice({ locale = "ko", decisionCoun
     readHandoverStorageSnapshot,
     handoverServerSnapshot,
   );
+  const dialogRef = useRef(null);
   const [closed, setClosed] = useState(false);
 
   const open = storageAllows && decisionCount >= 1 && !closed;
@@ -59,9 +60,23 @@ export default function WeeklyReviewHandoverNotice({ locale = "ko", decisionCoun
 
   useEffect(() => {
     if (!open) return undefined;
-    const onKey = (event) => { if (event.key === "Escape") setClosed(true); };
+    const previousFocus = document.activeElement;
+    const dialog = dialogRef.current;
+    const buttons = [...dialog.querySelectorAll("button")];
+    buttons[0].focus();
+    const onKey = (event) => {
+      if (event.key === "Escape") setClosed(true);
+      if (event.key === "Tab") {
+        const index = buttons.indexOf(document.activeElement);
+        event.preventDefault();
+        buttons[(index + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length].focus();
+      }
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (document.activeElement === document.body || dialog.contains(document.activeElement)) previousFocus?.focus();
+    };
   }, [open]);
 
   if (!open) return null;
@@ -76,12 +91,14 @@ export default function WeeklyReviewHandoverNotice({ locale = "ko", decisionCoun
     const details = document.querySelector(".wr-history");
     if (details) {
       details.open = true;
+      details.querySelector("summary")?.focus();
       details.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
 
   return (
     <div
+      ref={dialogRef}
       className="wr-handover"
       role="dialog"
       aria-modal="true"

@@ -187,10 +187,13 @@ export function scoreDecision({
     volumeMultiplier,
   });
 
-  const goalMet = decision.goalDirection === "hold"
-    // 유지가 목표면 "유의미하게 나빠지지 않았는가"가 기준이다.
-    ? !(goalAssessment.significant && goalAssessment.outcome === "worse")
-    : goalAssessment.significant && goalAssessment.outcome === "better";
+  // 관측 불가나 작은 표본은 유지의 증거가 아니다. 유지 목표는 별도 동등성
+  // 범위가 기록되지 않으므로 자동 합격시키지 않는다.
+  if (decision.goalDirection === "hold" || goalAssessment.deltaPct === null
+    || !goalAssessment.checks?.volume?.pass) {
+    return { ...empty, reason: decision.goalDirection === "hold" ? "hold_margin_not_recorded" : "goal_not_measurable", target: decision.actionTarget };
+  }
+  const goalMet = goalAssessment.significant && goalAssessment.outcome === "better";
 
   const goal = {
     metric: decision.goalMetric,

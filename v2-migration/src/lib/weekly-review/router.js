@@ -207,11 +207,11 @@ export function routeAnalyses({
   }
 
   const run = [...byAnalysis.values()];
-  const kpiUnknown = kpiAssessment.deltaPct === null;
+  const kpiUnknown = kpiAssessment.deltaPct === null || !kpiAssessment.checks?.volume?.pass;
 
   return {
-    status: run.length > 0 ? "signal" : kpiUnknown ? "unknown" : "quiet",
-    reason: run.length > 0 ? null : kpiUnknown ? kpiAssessment.reason : "no_signal",
+    status: kpiUnknown ? "unknown" : run.length > 0 ? "signal" : "quiet",
+    reason: kpiUnknown ? kpiAssessment.reason : run.length > 0 ? null : kpiAssessment.reason || "no_signal",
     kpi: kpiAssessment,
     run,
     skipped,
