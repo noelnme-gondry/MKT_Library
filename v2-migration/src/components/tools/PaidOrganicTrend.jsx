@@ -121,7 +121,9 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const guessedMapping = useMemo(() => guessPaidOrganicColumns(csvData?.headers || []), [csvData?.headers]);
+  const headers = csvData?.headers;
+  const raw = csvData?.raw;
+  const guessedMapping = useMemo(() => guessPaidOrganicColumns(headers || []), [headers]);
   const [mappingState, setMappingState] = useState(() => ({ raw: csvData?.raw, values: guessedMapping }));
   const mapping = mappingState.raw === csvData?.raw ? mappingState.values : guessedMapping;
   const [uploadError, setUploadError] = useState("");
@@ -130,12 +132,12 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const hasData = Boolean(csvData?.raw?.length);
-  const comparisonScope = useMemo(() => ({ raw: csvData.raw, mapping }), [csvData.raw, mapping]);
+  const comparisonScope = useMemo(() => ({ raw, mapping }), [raw, mapping]);
   const conditions = useComparisonConditions(comparisonScope);
 
   const result = useMemo(
-    () => buildPaidOrganicTrend(csvData?.raw || [], mapping),
-    [csvData?.raw, mapping],
+    () => buildPaidOrganicTrend(raw || [], mapping),
+    [raw, mapping],
   );
 
   const readFile = async (file) => {
