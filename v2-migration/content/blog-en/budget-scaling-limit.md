@@ -81,6 +81,8 @@ A saturation verdict is not an instruction to halt. Moving that budget to a chan
 
 [Budget allocation simulator](/tools/budget-allocation) uses the per-channel curves to compute where to add and where to cut at the same total. The output is a scenario based on historical observations; it does not guarantee approval or improved efficiency.
 
+If the question is where to move budget across several channels at once, [marketing budget allocation](/blog/budget-marginal-efficiency) is the next read; to rule out that the added spend merely displaced organic demand, see [paid and organic cannibalisation](/blog/cannibalization-organic-paid).
+
 ## Try this today
 
 **One.** Take the channel that currently looks best and check how much its spend actually varied over the last 8–12 weeks. If it barely moved, that channel has no basis for a scaling decision right now — good CPA or not.

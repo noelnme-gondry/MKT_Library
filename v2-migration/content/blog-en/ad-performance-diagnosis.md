@@ -146,6 +146,8 @@ Do not change creative, targeting, budget, and bidding together. If performance 
 - [ ] Were there landing, app-release, pricing, promotion, or inventory changes?
 - [ ] Is the next change limited to one variable?
 
+If revenue worsened too, [ROAS drop causes and fixes](/blog/roas-improvement) is the next read; if Step 3 narrowed the cause to conversion rate, [conversion rate optimization](/blog/funnel-dropoff-analysis) goes deeper stage by stage.
+
 ## Closing
 
 Ad performance decline is not a single-creative problem. It connects measurement, budget allocation, auctions, creative, and the landing experience. Keep this sequence as a team checklist: **validate data → isolate scope → split mix and efficiency → diagnose the funnel**.

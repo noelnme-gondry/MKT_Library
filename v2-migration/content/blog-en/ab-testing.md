@@ -57,6 +57,8 @@ A few other common traps worth a quick mention: laying out multiple metrics and 
 
 Pick just one thing to test this week. Before you turn it on, write down exactly two things: (1) a single metric that defines success, and (2) how long you'll collect data for (sample size or time window). Then don't look at results until that window ends. Those three lines are 80% of A/B testing.
 
+The trap of calling a cause from two metrics that merely moved together is covered in [correlation vs causation](/blog/correlation-vs-causation).
+
 ## Wrap-up
 
 To recap: A/B testing turns a "feeling" into a "number." Randomize the split, decide your sample size up front, judge by significance, and don't peek in the middle.

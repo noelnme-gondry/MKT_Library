@@ -83,6 +83,8 @@ Figure out which layer you're currently standing on, and start there.
 
 **You make decisions but never verify them** — that's layer 4. Run a single holdout test and your whole view of the numbers changes.
 
+For a hands-on starting order, [marketing data analysis](/blog/performance-marketing-analysis-order) begins from the data you already have, and what remains after automation is in [the AI-era performance marketer](/blog/ai-era-marketer).
+
 ## Wrap-up
 
 Performance marketer skill isn't a list of tools — it's a stack of layers: knowing how to run ads, how to pull numbers, how to decide, and how to verify. Fewer people make it to the top, which is exactly why the top pays more.

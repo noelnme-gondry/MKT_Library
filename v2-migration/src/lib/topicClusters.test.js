@@ -83,4 +83,26 @@ describe("토픽 클러스터", () => {
       expect(untitled, `${locale} 제목 없음: ${untitled.join(", ")}`).toEqual([]);
     }
   });
+
+  // 2026-09-08: `clusterLinksFor`가 만드는 링크는 화면 컴포넌트가 삭제되면서(§12.24)
+  // 아무 데도 안 그려진다 — 즉 클러스터가 선언만 하고 실제 내부링크는 본문이 진다.
+  // 실측하니 25건이 형제·필라를 한 번도 안 가리키고 있었다(예산 클러스터는 상호링크 0).
+  // 앵커 모양만 보면 정상으로 읽히므로(전부 키워드 앵커였다) 연결성을 따로 세야 한다.
+  it("모든 클러스터 글이 본문에서 형제나 필라를 최소 한 번 가리킨다", () => {
+    const orphans = [];
+    for (const locale of ["ko", "en"]) {
+      const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));
+      for (const cluster of TOPIC_CLUSTERS) {
+        const family = [cluster.pillar, ...cluster.members];
+        for (const slug of family) {
+          const post = posts.get(slug);
+          if (!post) continue;
+          const linked = family.some((target) => target !== slug
+            && new RegExp(`href="(/en)?/blog/${target}"`).test(post.html));
+          if (!linked) orphans.push(`${locale}/${cluster.id}/${slug}`);
+        }
+      }
+    }
+    expect(orphans, `본문에서 클러스터 형제를 안 가리키는 글:\n${orphans.join("\n")}`).toEqual([]);
+  });
 });

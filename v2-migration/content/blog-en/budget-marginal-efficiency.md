@@ -76,6 +76,8 @@ The [Budget Allocation Simulator](/tools/budget-allocation) compares where to ad
 
 ![Incrementality — an appropriately designed holdout estimates incremental lift from the daily conversion-rate difference between the ads-off and exposed groups.](/blog-assets/budget-marginal-efficiency/incrementality-en.png)
 
+To decide how far one channel can scale, [ad budget scaling limits](/blog/budget-scaling-limit) covers setting a ceiling with marginal CPA; to check whether the budget is affordable at all, see [the LTV:CAC ratio](/blog/ltv-cac-ratio).
+
 ## Try it on your own data
 
 No signup · your CSV is processed in the browser · no server storage.

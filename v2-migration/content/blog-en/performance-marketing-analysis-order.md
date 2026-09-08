@@ -71,6 +71,8 @@ MMM is not last merely because it is heavy. It answers a different question when
 
 Run [VIF diagnosis](/tools/vif-multicollinearity) before MMM. High VIF is a signal to combine channels or redesign the period and variables. A model producing numbers does not make channel contribution identifiable.
 
+If the number spiked for a single day, go to [campaign anomaly detection](/blog/campaign-anomaly-detection); if conversion leaks at one stage, [conversion rate optimization](/blog/funnel-dropoff-analysis); if users do not stay, [retention cohort analysis](/blog/cohort-analysis-guide).
+
 ## If you do not know the tool, start with three questions
 
 No file yet? Use [Diagnose performance](/diagnose) to choose the symptom, scope, and data shape. If you have a CSV, [Start with my data](/start) is faster: automatic column mapping → analysis eligibility → recommended first question. Uploaded data stays in the browser and is not sent to a server.

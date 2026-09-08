@@ -99,6 +99,8 @@ Detailed steps are in the [Apple Search Ads guide](/guide/apple-search-ads).
 
 Low brand CPA does not establish incrementality. Where feasible, use [incrementality analysis](/tools/incrementality) with a comparison group, duration, and power specified in advance. No observed install drop after a pause does not prove zero effect; inspect uncertainty, seasonality, other advertising, and tracking changes too.
 
+The bar for promoting the terms you find here to Exact is in [ASA keyword expansion](/blog/asa-keyword-expansion), and how much of that traffic converts on the store page is in [App Store Optimization](/blog/aso-basics-guide).
+
 ## Let's be honest
 
 ASA's UI, match types, and policies keep changing. These are operating principles; check the current console and Apple's official documentation for setup screens, eligible settings, and bid limits before you build.

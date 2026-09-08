@@ -86,6 +86,8 @@ Discovery에서 성과가 확인된 검색어를 Exact로 옮기고, 옮긴 검�
 
 ​
 
+승격 후보를 찾는 검색어 리포트 읽는 법은 [Apple Search Ads 키워드 최적화](/blog/apple-search-ads-guide)에 있고, 키워드가 데려온 트래픽이 설치로 이어지는지는 [앱스토어 전환율 하락 원인](/blog/store-conversion-drop-diagnosis)에서 갈립니다.
+
 ## ✔ 오늘 딱 두 개만 해보세요
 
 **하나**, Exact에 담긴 검색어 목록을 뽑아서 Discovery 네거티브 목록이랑 대조해보세요. 겹치는 게 하나라도 있으면 지금 우리끼리 경쟁 중입니다. 저는 처음 확인했을 때 열두 개 나왔어요.

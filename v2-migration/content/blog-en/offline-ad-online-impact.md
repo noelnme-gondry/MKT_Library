@@ -54,6 +54,8 @@ Following even one of the three changes next quarter's answer.
 
 **Two.** Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. One or two held-out regions turn next quarter's estimate from "the trend went up" into "the exposed regions moved and the held-out ones did not."
 
+The same time-series approach for click-free media appears in [measuring brand campaign lift](/blog/brand-campaign-lift), and the bar for reading the result as incremental is in [incrementality measurement](/blog/incrementality-measurement).
+
 ## Let's be honest
 
 Everything above estimates a counterfactual from a trend, not from a randomised comparison. When a product launch, a PR moment, or a seasonal peak lands in the same window, this design cannot separate them from the flight.

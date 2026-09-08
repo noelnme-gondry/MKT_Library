@@ -76,6 +76,8 @@ Read one snapshot of the funnel and you shrug "guess it's always been like this.
 
 The [operations dashboard](/dashboard)'s funnel tab gives you stages by basis (install/signup), an absolute↔conversion toggle, time-series drop detection, and segment ranking via CSV upload or Google Sheet connection. Connect a Sheet to keep it fresh.
 
+If CPA and ROAS worsened alongside conversion rate, rule out measurement, channel, and mix first in [ad performance drop](/blog/ad-performance-diagnosis); for the order to read the metrics in, see [performance marketing metrics](/blog/performance-marketing-metrics). Which analysis your data can support is in [marketing data analysis](/blog/performance-marketing-analysis-order), and users not staying after signup is [retention cohort analysis](/blog/cohort-analysis-guide).
+
 ## Let's be honest
 
 Funnel conversion shows **correlation**, not proven causation. Before declaring "the signup stage is low, so the signup flow is the problem," also suspect traffic quality (did the wrong target come in?). The funnel is a map for deciding what to test first, not proof of the cause.

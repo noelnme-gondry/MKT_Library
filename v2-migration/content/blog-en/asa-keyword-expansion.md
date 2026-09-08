@@ -75,6 +75,8 @@ Keeping brand terms in the same campaign as generic terms creates the illusion o
 
 Split the campaign and evaluate it separately. When you want the real incremental figure, run an on/off comparison in [incrementality analysis](/tools/incrementality). If organic rises by roughly the amount paid conversions fell when the brand campaign is off, those users were coming anyway.
 
+How to read the search terms report for promotion candidates is in [Apple Search Ads keyword optimization](/blog/apple-search-ads-guide), and whether that traffic turns into installs is decided in [app store conversion rate diagnosis](/blog/store-conversion-drop-diagnosis).
+
 ## Try this today
 
 **One.** Export the term list in your Exact campaign and diff it against the Discovery negative list. Any overlap means you are competing with yourself right now. A first check commonly turns up ten or more.
