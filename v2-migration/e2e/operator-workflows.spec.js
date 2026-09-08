@@ -78,6 +78,50 @@ test.beforeEach(async ({ page }, testInfo) => {
   }, theme);
 });
 
+async function verifyHoldoutDesign(page, locale) {
+  const en = locale === "en";
+  await page.goto(`${en ? "/en" : ""}/tools/incrementality`);
+  await expect(page.locator('#tab-incr[data-hydrated="true"]')).toBeVisible();
+  // Confirm the custom uploader's client handlers are attached before injecting a file.
+  await page.getByRole("tab", { name: en ? /New launch/ : /신규 켜기/ }).click();
+  await expect(page.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "incrementality-tab-on");
+  await page.getByRole("tab", { name: en ? /Control group/ : /통제군/ }).click();
+  await expect(page.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", "incrementality-tab-suppression");
+  const rows = Array.from({ length: 16 }, (_, index) => {
+    const date = `2026-08-${String(index + 1).padStart(2, "0")}`;
+    return `${date},exposed,${index < 8 ? 100 : 150},1000,100,200\r\n${date},holdout,100,1000,0,100`;
+  });
+  await page.locator('#tab-incr input[type="file"]').setInputFiles({ name: "holdout-design.csv", mimeType: "text/csv", buffer: Buffer.from(`date,holdout_group,numerator,denominator,spend,revenue_d7\r\n${rows.join("\r\n")}`) });
+  await expect(page.locator("#tab-incr").getByText("holdout-design.csv", { exact: true })).toBeVisible();
+  await page.getByLabel(en ? "Holdout start date" : "홀드아웃 시작일").selectOption("2026-08-09");
+  await page.getByLabel(en ? "Holdout end date" : "홀드아웃 종료일").selectOption("2026-08-16");
+  const action = page.getByLabel(en ? "What will change?" : "무엇을 바꿀까요?");
+  await expect(action).toHaveCount(0);
+  const declarationValues = ["person", "randomized", "planned", "none", "unique"];
+  const declarationLabels = en
+    ? ["Assignment / observation unit", "Comparison design", "Window and stopping rule", "Tracking, promotion, seasonality or other concurrent changes", "Independent counts across the full window"]
+    : ["배정·관측 단위", "비교 설계", "기간·중단 규칙", "추적 정책·프로모션·계절성 등 동시 변경", "전체 기간의 독립 단위 집계"];
+  for (const [index, label] of declarationLabels.entries()) {
+    const select = page.getByLabel(label);
+    await select.focus();
+    await expect(select).toBeFocused();
+    // Native menu arrow events are not supported by the local macOS Chromium harness.
+    // selectOption checks the DOM interaction; Tab checks keyboard focus separately.
+    await select.selectOption(declarationValues[index]);
+    await select.press("Tab");
+    await expect(select).not.toBeFocused();
+    await expect(select).not.toHaveValue("");
+  }
+  await openDetails(page.locator(".decision-review"));
+  await expect(action).toBeVisible();
+  await expectNoSeriousAccessibilityViolations(page);
+  await page.getByLabel(en ? "Window and stopping rule" : "기간·중단 규칙").selectOption("changed");
+  await expect(action).toHaveCount(0);
+}
+
+test("홀드아웃 설계 선언과 포커스·중단 변경 시 행동 보류를 확인한다", async ({ page }) => verifyHoldoutDesign(page, "ko"));
+test("@light-en Holdout design declarations retain focus and withhold changed stopping", async ({ page }) => verifyHoldoutDesign(page, "en"));
+
 test("@light-en English start upload stays accessible in light mode", async ({ page }) => {
   await page.goto("/en/start");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Upload data. Get the right first analysis.");

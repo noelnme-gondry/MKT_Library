@@ -92,17 +92,26 @@ describe("decision review coverage for diagnostic tools", () => {
     }
   });
 
-  it("adds a decision review after a real brand-incrementality estimate", async () => {
+  it.each(["ko", "en"])("adds a brand review only after declaring comparison conditions (%s)", async (locale) => {
     seedConfirmedUserData("5-24", "brand_incrementality");
-    const { container } = render(<BrandCampaignIncrementality />);
-    fireEvent.click(screen.getByRole("button", { name: "증분 추정하기" }));
+    const en = locale === "en";
+    const { container } = render(<BrandCampaignIncrementality locale={locale} />);
+    fireEvent.click(screen.getByRole("button", { name: en ? "Estimate incrementality" : "증분 추정하기" }));
+    expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
+    for (const [label, value] of [
+      [en ? "Assignment / observation unit" : "배정·관측 단위", "time"],
+      [en ? "Comparison design" : "비교 설계", "observational"],
+      [en ? "Window and stopping rule" : "기간·중단 규칙", "planned"],
+      [en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경", "none"],
+    ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
     await waitFor(() => expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeTruthy());
-    expect(container.textContent).toContain("다음 검토 약속 만들기");
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
       tool_id: "5-24",
       analysis_type: "brand_incrementality",
       placement: "result_action_card",
     }));
+    fireEvent.change(screen.getByLabelText(en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경"), { target: { value: "present" } });
+    expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
   });
 
   it("does not save a VIF decision when fewer than two spend columns vary", () => {
