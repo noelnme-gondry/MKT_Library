@@ -47,6 +47,8 @@ This analysis is a **tool for narrowing hypotheses**. Observational data carries
 
 So the order runs like this. Pick the one or two elements that came out on top, produce content that differs only in that element, and confirm it with [experiment analysis](/tools/experiment-analysis). Narrowing with observation and confirming with an experiment is the fastest path.
 
+Once the candidates are narrowed, the next step is designing the test — [ad creative testing](/blog/ad-creative-testing) covers sizing the batch by budget, and [ad creative regression](/blog/creative-attribute-regression) covers comparing past creatives without a new test.
+
 ## Try this today
 
 **One.** Add the attribute columns to your content tracker **now, as a production step** — not as a retro task. Tagging a quarter's worth from memory imports a bias toward remembering successful content as better made, and that bias lands directly in the coefficients.

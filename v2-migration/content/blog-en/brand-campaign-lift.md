@@ -71,6 +71,8 @@ The strongest design is to **hold out a region or audience**. Excluding a few re
 
 Put one line in the next brand campaign brief: "keep N regions unexposed." That single line produces a much better answer to next quarter's "what did it earn." When you can hold out a comparison group, the control-group design in [incrementality analysis](/tools/incrementality) gives a sharper answer.
 
+The general problem of separating what advertising actually caused is covered in [incrementality measurement](/blog/incrementality-measurement), and click-free media like TV get the same treatment in [measuring offline ad impact online](/blog/offline-ad-online-impact).
+
 ## Try this today
 
 **One.** Whatever your outcome metric is — brand search volume, direct traffic — pull the **eight weeks before launch**, not the recent weeks. Without that, there is nothing to do once the campaign ends. A baseline is only ever built in advance.

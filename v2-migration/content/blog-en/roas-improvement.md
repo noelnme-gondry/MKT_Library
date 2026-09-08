@@ -18,13 +18,13 @@ faq:
 ---
 When ROAS falls, the instinct is to cut budget. But one blended ROAS number can make you cut a channel that still has efficient room to grow. First separate **immature data, channel movement, and leakage after conversion** before changing spend.
 
-## 1. Do not treat yesterday’s ROAS as a final answer
+## First check whether ROAS actually dropped
 
 Revenue and purchase conversions can arrive after the click. In the latest day or two, spend may already be recorded while revenue is still incomplete. Align date range, conversion definition, and attribution window before comparing, then check whether the recent period has matured.
 
 For a sudden movement, start with [campaign anomaly detection](/blog/campaign-anomaly-detection). For a decline that persists across periods, use the sequence in [ad performance diagnosis](/blog/ad-performance-diagnosis) to narrow the scope.
 
-## 2. Look at channel gaps, not only the average
+## Did CPA fall with ROAS, or did ROAS fall alone?
 
 An overall ROAS of 300% can hide completely different channel stories. The average does not tell you what to fix.
 
@@ -39,13 +39,13 @@ An overall ROAS of 300% can hide completely different channel stories. The avera
 
 This does not prove a cause. It tells you whether the first action belongs in allocation, in-channel execution, or the conversion experience outside the ad account.
 
-## 3. Split a low-ROAS problem into three paths
+## Three common causes of a ROAS drop
 
 An **allocation problem** means money is still flowing to a saturated channel while another has room. An **in-channel efficiency problem** points to creative fatigue, targeting, or competition. A **back-end problem** means clicks and conversions hold while purchase rate, order value, or checkout flow weakens.
 
 If CPA holds but ROAS falls, start after the conversion rather than with acquisition. The [performance-metric chain](/blog/performance-marketing-metrics) shows which numbers to place next to each other.
 
-## 4. When reallocating, compare the next unit of budget
+## How to move budget to improve ROAS
 
 Channel A can have the best average ROAS and still be saturated, so the next unit of spend performs poorly. Channel B may have a lower average but a better marginal return right now.
 

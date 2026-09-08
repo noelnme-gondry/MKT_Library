@@ -50,6 +50,8 @@ Interactive (playable) ads follow each platform's size, packaging, and external-
 - **Auto-redirect / auto-click**: sending users to the store with no user action is a policy violation.
 - **Key info outside the safe zone**: this passes review but underperforms — a quiet failure that's easy to miss.
 
+Once specs are met, the next question is how many to run on what budget — that is [ad creative testing](/blog/ad-creative-testing) — and how to build the opening seconds is in [the first three seconds of a video ad](/blog/hook-3-seconds-framework).
+
 ## Let's be honest
 
 Exact pixel and size numbers change constantly, so the moment you carve them into a post they risk going stale. Remember only the principle — that ratios, safe zones, and size caps exist — and check current numbers in the [creative specs by platform guide](/guide/creative-specs) or the platform's official docs right before you set up.

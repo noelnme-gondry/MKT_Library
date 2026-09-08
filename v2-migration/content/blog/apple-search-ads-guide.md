@@ -8,7 +8,7 @@ tags: ["ASA", "UA"]
 draft: false
 primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
-answer: "Apple Search Ads(ASA)에서는 검색어 리포트에서 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
+answer: "Apple Search Ads(ASA) 키워드 최적화는 검색어 리포트에서 시작합니다 — 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리고, 성과가 없는 검색어는 제외 키워드로 막으세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
 conditions: "설치 3건·탭 8건과 CPT ±10~15%는 이 서비스의 기본 운영 휴리스틱입니다. 계정 규모와 변동성에 맞게 조정하고, 실제 매치 범위·입찰 한도는 현재 Apple Ads 콘솔을 확인하세요."
 sources:
   - title: "Apple Ads reporting definitions"
@@ -98,6 +98,8 @@ Exact는 “성과가 좋아 보이는 단어”를 옮기는 곳이 아니라, 
 ## 브랜드 키워드, 증분 확인하세요
 
 브랜드 캠페인의 낮은 CPA만으로 증분을 알 수는 없습니다. 가능하면 비교군·기간·검정력을 사전에 정한 [증분 분석](/tools/incrementality)으로 검토하세요. 단순 중단 뒤 설치가 줄지 않았다는 사실은 효과 없음의 증명이 아닙니다. 계절성·다른 광고·추적 변경과 불확실성도 확인해야 합니다.
+
+여기서 찾은 검색어를 Exact로 올리는 기준은 [ASA 키워드 확장](/blog/asa-keyword-expansion)에 있고, 그렇게 데려온 트래픽이 스토어에서 얼마나 설치로 이어지는지는 [앱스토어 최적화(ASO)](/blog/aso-basics-guide)에서 봅니다.
 
 ## 정직하게
 

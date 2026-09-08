@@ -85,6 +85,8 @@ Start with the [VIF Multicollinearity Check](/tools/vif-multicollinearity), send
 
 **Two.** Look at your last 12 weeks of channel budgets and ask whether any channel moved **independently of the others**. If everything scaled up and down together, the next MMM run will have the same problem no matter which model you choose. Staggering one channel's changes by a week or two is what makes the following quarter estimable.
 
+For what MMM estimates in the first place, see [marketing mix modeling](/blog/marketing-mix-modeling); its limit — association from observational data, not causation — reads more clearly alongside [incrementality measurement](/blog/incrementality-measurement).
+
 ## Let's be honest
 
 High VIF does not mean the model is wrong. It means **this data cannot separate these channels** — a statement about the data, not about the channels' real effects. A channel with a negative coefficient under collinearity has not been shown to hurt; it has been shown to be unidentifiable.

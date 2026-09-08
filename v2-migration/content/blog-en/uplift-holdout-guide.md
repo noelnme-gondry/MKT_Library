@@ -84,6 +84,8 @@ For a new campaign, compare a **new ON** period with a similar group left off. F
 
 [Marketing Response Analysis](/tools/marketing-response) can prioritize hypotheses from observational data. Its contribution estimates are hypotheses; a holdout should validate a large budget move.
 
+For why uplift differs from the conversions in your report, [incrementality measurement](/blog/incrementality-measurement) comes first; the decision rules — sample size, early stopping — are shared with [A/B testing](/blog/ab-testing).
+
 ## Wrap-up
 
 Uplift is not a metric for cutting ads. It identifies the campaigns that truly create outcomes so you can invest with confidence. Before scaling a campaign because CPA looks good, ask how much disappears without it.
