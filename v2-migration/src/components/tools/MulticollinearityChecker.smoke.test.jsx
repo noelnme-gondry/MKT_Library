@@ -3,10 +3,16 @@
 // 5-25 VIF 점검 도구 렌더 스모크. 이 도구는 다른 전 도구와 달리 스모크가 없었고,
 // 그 때문에 "계산 불가"를 ∞(완전 공선 = 최악 등급)로 렌더하는 표시층 버그가
 // 골든(순수함수) 그물을 통과해 배포됐다. 그 회귀를 여기서 고정한다.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MulticollinearityChecker from "@/components/tools/MulticollinearityChecker";
+
+const resultCard = vi.hoisted(() => ({ props: null }));
+vi.mock("@/components/ds/ResultActionCard", async (importOriginal) => {
+  const { default: Actual } = await importOriginal();
+  return { default: (props) => { resultCard.props = props; return <Actual {...props} />; } };
+});
 
 const HEADERS = ["date", "channel", "cost"];
 const MAPPING = { date: "date", channel: "channel", cost: "cost" };
@@ -57,6 +63,23 @@ describe("MulticollinearityChecker render smoke", () => {
     // "∞가 없다"가 참이 되고 가드가 아무것도 안 지킨다.
     expect(useAppStore.getState().isGroupAnalyzed("5-25")).toBe(true);
     expect(container.querySelector("table")).toBeTruthy();
-    expect(container.textContent).not.toContain("∞");
+    expect(container.querySelector("table").textContent).not.toContain("∞");
+    expect(resultCard.props.headline).toContain("계산 불가");
+  });
+  it.each(["ko", "en"])("preserves uncomputed collinear rows in the %s workbook without inventing zero or infinity", (locale) => {
+    const rows = constantChannelRows().map((row, index) => ({ ...row, cost: (Math.floor(index / 2) + 1) * (row.channel === "brand" ? 100 : 200) }));
+    seed(rows);
+    render(<MulticollinearityChecker locale={locale} />);
+    expect(resultCard.props.headline).toContain(locale === "en" ? "Stop" : "중단");
+    expect(resultCard.props.stats[0].value).toBe(locale === "en" ? "Not computable" : "계산 불가");
+    const table = resultCard.props.workbookExport().calculationTables[0];
+    const vifRows = table.rows.filter((row) => row[0] === "VIF");
+    expect(vifRows).toHaveLength(2);
+    for (const row of vifRows) {
+      expect(row[3]).toBe("not_computable");
+      expect(row[5].formula).toContain("ISNUMBER");
+      expect(row[7].formula).toContain('="unbounded",1,');
+      expect(row[7].formula).toContain('"not_computable"');
+    }
   });
 });

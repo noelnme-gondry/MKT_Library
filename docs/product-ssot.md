@@ -108,6 +108,10 @@ L-02 detail(EN): Limited samples, variability, or short observation windows can 
 - 반복 단위를 선언한 콘텐츠 데이터는 행 무작위 교차검증의 예측 승자를 표시하지 않는다. 단위별 분리 검증이 필요하며 혼합모형 적합 자체가 이를 대신하지 않는다. / Content data with declared repeated units must not receive a predictive winner from random row validation. Validation must separate units; fitting a mixed model does not substitute for that check.
 - KO: ASA는 보고 기간의 전환 성숙도를 확인하지 않으면 조치를 보류한다. 일별 합계로 지연 분포를 추정하지 않는다. Aha는 행동 관측 종료가 선언한 전환 평가 시작보다 이른 열만 개입 후보에 사용하며, 헤더로 실제 이벤트 시점을 검증했다고 주장하지 않는다. MMM의 예산 권고에는 기존 식별·시간순 검증·모델 건강도 실패를 함께 반영한다.
 - EN: ASA holds actions when reporting-period conversion maturity is unconfirmed; daily totals cannot recover a delay distribution. Aha intervention candidates require behavior windows ending before the declared outcome start; headers do not verify actual event timing. MMM budget recommendations incorporate existing identification, time-ordered validation, and model-health failures.
+- KR: MMM은 같은 시간순 검증 구간의 마지막 관측값 기준선보다 오차가 낮은지도 확인한다. 구간을 복원할 수 없으면 비교 미확인으로 보류한다. 학습 구간의 90% 참고범위 포함률은 미래 구간 커버리지 검증이 아니며, 독립된 미래 포함률을 측정하지 않았다면 미실측으로 표시한다.
+- EN: MMM also checks whether error is lower than a last-observation baseline on the same time-ordered validation windows. Unrecoverable windows leave the comparison unconfirmed and the decision held. Training coverage of a 90% reference range does not validate future coverage; independent future coverage is reported as unmeasured when unavailable.
+- KR: VIF 엔진이 반환한 계산 불가는 수학적 무한대로 바꾸지 않는다. 화면·CSV·워크북에 해당 채널과 계산 불가 상태를 남기며, 빈칸을 0으로 읽어 경고가 해제되는 수식을 사용하지 않는다.
+- EN: An uncomputed VIF is not mathematical infinity. The screen, CSV, and workbook preserve each affected channel and its uncomputed status; blank-to-zero formulas must not clear a warning.
 - 글→도구 퍼널은 GA 사용 가능 시 실제 CTA 클릭의 공개 slug·유형·언어·대상 도구만 세션 저장소에 30분 보관한다. 같은 도구·언어의 업로드/결과 이벤트에만 연결하며 CSV·파일명·헤더·쿼리를 보관하거나 전송하지 않는다. / The editorial funnel keeps only a clicked public slug, content type, locale, and target tool in session storage for 30 minutes when GA is available. Attribution requires the same tool and locale; CSV, filenames, headers, and queries are excluded.
 
 | 분류 | 표현 | 규칙 |
