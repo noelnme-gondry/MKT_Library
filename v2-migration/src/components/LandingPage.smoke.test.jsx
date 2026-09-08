@@ -47,25 +47,25 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-instrument")).toBeNull();
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
-    expect(actions).toHaveLength(3);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 CSV로 분석", "빠른 계산", "성과 원인 찾기"]);
+    expect(actions).toHaveLength(2);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["도치로 첫 분석", "주간 리뷰 이어가기"]);
     expect(actions[0].classList.contains("dc-action-route--primary")).toBe(true);
     expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
-    expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과 원인을 찾고,다음 하나를 정하세요.");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("브라우저 안에서 바로 분석");
+    expect(document.querySelector("#dc-hero-title")?.textContent).toBe("데이터로 판단하고,다음 주에 다시 확인하세요.");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("주간 리뷰는 이번 결정과 다음 결과");
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리");
-    expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
-    expect(document.querySelector('a.dc-action-route[href="/calculator"]')).toBeTruthy();
-    expect(document.querySelector('a.dc-action-route[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("예시 데이터로 30초 체험");
+    expect(document.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
+    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("대시보드 결과 예시 보기");
     expect(document.querySelectorAll(".dc-loop-card")).toHaveLength(3);
     expect(document.querySelectorAll("a.dc-loop-card")).toHaveLength(3);
-    expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-loop-card[href="/weekly-review#wr-history"]')).toBeTruthy();
     expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
-    expect(document.body.textContent).toContain("다음 주 결과 검토");
+    expect(document.body.textContent).toContain("다음 데이터로 다시 확인");
     // 손으로 고른 질문 카드 4장 → 발행 도구 전체 인덱스. 4개만 보이던 것이
     // 첫 화면에서 전부 보인다.
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(0);
@@ -153,9 +153,9 @@ describe("LandingPage render smoke", () => {
   it("tracks each hero action without attaching CSV values", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/start"]'));
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/calculator"]'));
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/diagnose"]'));
+    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="#dochi-upload"]'));
+    clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/calculator"]'));
+    clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
       source: "landing",
       placement: "hero",
@@ -173,10 +173,7 @@ describe("LandingPage render smoke", () => {
     });
     delete window.gtag;
   });
-  // 첫 화면에서 사용자가 내려야 하는 결정은 하나다(product-ssot §5.1·§5.3). 지금은
-  // 목적 CTA 3개 중 하나만 채운 배경·큰 글자를 갖고 나머지 둘은 외곽선이다.
-  // 금지되는 것은 "CTA가 3개"가 아니라 **셋이 동급으로 보이는 것**이다 — 두 번째
-  // --primary가 붙거나 CTA가 계속 늘면 위계가 사라지므로 여기서 막는다.
+  // 첫 분석과 반복 검토를 구분하되 가장 강한 시작 버튼은 하나로 유지한다.
   it("keeps exactly one primary action in the hero", () => {
     for (const locale of ["ko", "en"]) {
       const { container, unmount } = render(<LandingPage locale={locale} />);
@@ -185,7 +182,7 @@ describe("LandingPage render smoke", () => {
       const routes = hero.querySelectorAll(".dc-action-route");
       const primary = hero.querySelectorAll(".dc-action-route--primary");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
-      expect(routes.length, `${locale}: 목적 CTA가 늘었다 — 선택 밀도를 다시 볼 것`).toBeLessThanOrEqual(3);
+      expect(routes.length, `${locale}: 첫 분석과 반복 검토의 두 진입점`).toBe(2);
       // 보조 진입점(예시 보기·데이터 가이드)은 버튼이 아니라 텍스트 링크로 남는다.
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-text-link").length).toBeGreaterThan(0);
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-action-route").length).toBe(0);
@@ -194,18 +191,18 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my CSV", "Quick calculations", "Find the cause"]);
-    expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Find the cause.Choose one next move.");
-    expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
-    expect(container.querySelector('a.dc-action-route[href="/en/calculator"]')).toBeTruthy();
-    expect(container.querySelector('a.dc-action-route[href="/en/diagnose"]')).toBeTruthy();
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Start with Dochi", "Continue weekly review"]);
+    expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Decide with your data.Review what happens next.");
+    expect(container.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('a.dc-loop-card[href="/en/weekly-review"]')).toBeTruthy();
-    expect(container.textContent).toContain("Review the actual next week");
+    expect(container.textContent).toContain("Check the next data");
     // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
     const enLinks = [...container.querySelectorAll(".dc-questions .tool-index__link")];
     expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
-    expect(container.textContent).toContain("Try example data in 30 seconds");
+    expect(container.textContent).toContain("See a dashboard example");
   });
 
   it("도구 목록이 첫 화면 슬롯에 온다 — 아래로 밀리면 없는 것과 같다", () => {

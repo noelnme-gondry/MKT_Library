@@ -537,7 +537,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
           <input ref={importRef} className="decision-review__file" type="file" accept=".csv,text/csv" onChange={importRecords} />
           {message && <span className="decision-review__message" role="status">{message}</span>}
-          <Link className="decision-review__weekly-link" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>{t.openWeeklyReview}</Link>
+          <Link className="btn decision-review__weekly-link" href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>{t.openWeeklyReview}</Link>
         </div>
 
         {records.length === 0 ? (

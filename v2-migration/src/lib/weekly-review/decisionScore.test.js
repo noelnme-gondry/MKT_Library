@@ -76,6 +76,13 @@ describe("대상 좁히기", () => {
 });
 
 describe("판정 5단계", () => {
+  it("유지 목표는 판정 보류하되 가드레일 관측은 보존한다", () => {
+    const result = score([{ campaign: "Meta AAP", cost: 37250, actions: 5000 }], { decision: { actionKind: "hold", actionAmount: "", goalDirection: "hold", guardrailValue: 9 } });
+    expect(result.outcome).toBe(DECISION_OUTCOME.UNSCORED);
+    expect(result.reason).toBe("hold_margin_not_recorded");
+    expect(result.checks.goal.pass).toBeNull();
+    expect(result.checks.guardrail).toMatchObject({ actual: 7.45, threshold: 9, pass: true });
+  });
   it("목표 달성 + 가드레일 안 = 효과 있었음", () => {
     const result = score(CURRENT_WORKED);
     expect(result.outcome).toBe(DECISION_OUTCOME.WORKED);

@@ -92,6 +92,14 @@ describe("WeeklyReviewScreen", () => {
     expect(document.getElementById("wr-decision-target").closest("details").open).toBe(true);
   });
 
+  it("유지 목표를 고를 때 판정 제한을 즉시 알린다", () => {
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    fireEvent.change(screen.getByLabelText("목표 방향"), { target: { value: "hold" } });
+    expect(screen.getByText(/유지 목표는 기록할 수 있지만/).getAttribute("role")).toBe("status");
+    expect(screen.getByRole("navigation", { name: "주간 검토 흐름" })).toBeTruthy();
+  });
+
   it("비교 기간을 화면에 명시한다 — 자동 판정이 틀리면 전체를 못 믿는다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen />);
