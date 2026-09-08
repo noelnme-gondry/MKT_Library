@@ -237,6 +237,12 @@ describe("analysis eligibility", () => {
     expect(result.reasonDetails.join(" ")).toContain("52주 미만");
   });
 
+  it("localizes detailed MMM cautions for English recommendations", () => {
+    const result = evaluateEligibility({ toolId: "5-18-mmm", locale: "en", mapping: { Week: "week", Registrations: "mmm_reg", Google: "ch_google_roi", Meta: "ch_meta" }, canonicalData: mmmData(12) });
+    expect(result.reasonDetails.join(" ")).toContain("fewer than 52");
+    expect(result.reasonDetails.join(" ")).not.toMatch(/[가-힣]/);
+  });
+
   it("marks a 52-week independent MMM panel as decision-ready", () => {
     const result = evaluateEligibility({
       toolId: "5-18-mmm",
