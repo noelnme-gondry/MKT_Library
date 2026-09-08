@@ -181,6 +181,7 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
                 toolId="start-gate"
                 locale={locale}
                 entryVariant="dochi"
+                analyticsPlacement="dochi_welcome"
                 onImportStart={() => setImporting(true)}
                 onPrepared={() => {
                   // 닫기·건너뛰기로 오버레이가 사라져도 시작된 가져오기는 유지된다.

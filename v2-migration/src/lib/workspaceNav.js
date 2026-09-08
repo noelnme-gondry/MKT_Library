@@ -26,19 +26,19 @@ export const WORKSPACE_NAV = [
     en: { name: "Analyze my CSV", desc: "Upload and see what's possible" },
   },
   {
-    id: "diagnose",
-    href: "/diagnose",
-    icon: "◇",
-    ko: { name: "원인 찾기", desc: "파일 없이 3문항으로" },
-    en: { name: "Find the cause", desc: "Three questions, no file" },
-  },
-  {
     id: "review",
     href: "/weekly-review",
     icon: "◷",
     // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
     ko: { name: "주간 리뷰", desc: "비교 → 결정 기록 → 다음 결과 검토" },
     en: { name: "Weekly Review", desc: "Compare → decide → review the next results" },
+  },
+  {
+    id: "diagnose",
+    href: "/diagnose",
+    icon: "◇",
+    ko: { name: "원인 찾기", desc: "파일 없이 3문항으로" },
+    en: { name: "Find the cause", desc: "Three questions, no file" },
   },
 ];
 

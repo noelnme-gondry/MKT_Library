@@ -22,12 +22,12 @@ export const BRAND = {
   url: SITE_URL,
   ko: {
     shortName: "Growth Opt Playbook",
-    definition: "앱·웹 퍼포먼스 마케팅 데이터를 브라우저에서 분석하는 무료 도구 모음입니다.",
+    definition: "캠페인 CSV 분석부터 결정 기록과 다음 주 결과 검토까지 이어가는 무료 마케팅 워크스페이스입니다.",
     audience: "직접 캠페인을 운영하며 예산·소재·채널을 주 단위로 결정하는 퍼포먼스 마케터",
   },
   en: {
     shortName: "Growth Opt Playbook",
-    definition: "A free set of browser-based tools for analyzing app and web performance marketing data.",
+    definition: "A free marketing workspace connecting campaign CSV analysis, saved decisions, and next-week outcome reviews.",
     audience: "Performance marketers who run campaigns and decide budget, creative, and channel weekly",
   },
 };

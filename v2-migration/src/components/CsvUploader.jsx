@@ -267,6 +267,7 @@ export default function CsvUploader({
   mappingReviewStage = "combined",
   onMappingReviewNeedsSemanticFallback = null,
   entryVariant = "default",
+  analyticsPlacement = "uploader",
   sheetInitiallyOpen = false,
   onImportStart = null,
   onPrepared = null,
@@ -321,6 +322,7 @@ export default function CsvUploader({
   const preparationRequestRef = useRef(0);
   const importTaskRef = useRef(0);
   const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
+    placement: analyticsPlacement,
     tool_id: eventToolId,
     source,
     state,
@@ -407,8 +409,8 @@ export default function CsvUploader({
     });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
-    trackProductEvent("data_import_success", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length, locale });
-    trackProductEvent("data_profile_completed", { tool_id: eventToolId, source, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length, locale });
+    trackProductEvent("data_import_success", { tool_id: eventToolId, source, placement: analyticsPlacement, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length, locale });
+    trackProductEvent("data_profile_completed", { tool_id: eventToolId, source, placement: analyticsPlacement, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length, locale });
     setPreviewOpen(true);
     onPrepared?.({ fileName: displayName, rowCount: raw.length, columnCount: headers.length, source });
   };
@@ -421,7 +423,7 @@ export default function CsvUploader({
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
     onImportStart?.({ fileName: file.name, source });
-    trackProductEvent("data_import_start", { tool_id: eventToolId, source, locale });
+    trackProductEvent("data_import_start", { tool_id: eventToolId, source, placement: analyticsPlacement, locale });
     if (isWorkbook) {
       try {
         const sheets = await parseXlsxFile(file);
@@ -569,7 +571,7 @@ export default function CsvUploader({
     if (!apiKey) return;
     setErrorMsg("");
     setRefreshingSheet(true);
-    trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale });
+    trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
     try {
       const result = await fetchSheetTable(apiKey, csvData.sheetUrl);
       if (result.error) {
@@ -861,7 +863,7 @@ export default function CsvUploader({
           onLoaded={handleSheetLoaded}
           onImportStart={() => {
             onImportStart?.({ source: "google_sheets" });
-            trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale });
+            trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
           }}
           onError={handleSheetError}
           locale={locale}
@@ -922,7 +924,7 @@ export default function CsvUploader({
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
     const analysisType = productAnalysisType(eventToolId);
     const event = { tool_id: eventToolId, source: analysisSource, row_count: csvData?.raw?.length || 0, analysis_type: analysisType, mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length, locale };
-    trackProductEvent("mapping_confirmed", event);
+    trackProductEvent("mapping_confirmed", { ...event, placement: analyticsPlacement });
     trackProductEventOnce("analysis_started", analysisResultEventKey(eventToolId, analysisType, computeAnalyzeSig(csvData), "", locale), event);
     if (isMappingMemoryEnabled) {
       const profiles = Object.fromEntries((csvData.semanticMapping?.profile?.columns || []).map((profile) => [profile.header, profile]));
@@ -1046,7 +1048,7 @@ export default function CsvUploader({
             <GoogleSheetConnect
               initialOpen
               onLoaded={handleSheetLoaded}
-              onImportStart={() => trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", locale })}
+              onImportStart={() => trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale })}
               onError={handleSheetError}
               onCancel={() => setSheetChangeOpen(false)}
               locale={locale}

@@ -91,7 +91,7 @@ export default function PageClient({ params, evidenceLinks = [] }) {
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
-            {routeId === "home" && <><LandingPage /><DochiAssistant /><DochiWelcomeOverlay /></>}
+            {routeId === "home" && <><LandingPage><DochiAssistant /></LandingPage><DochiWelcomeOverlay /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
             {routeId === "storage" && <WorkspaceStoragePage />}

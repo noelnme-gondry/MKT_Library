@@ -14,6 +14,7 @@ describe("GaPageviews", () => {
     vi.useFakeTimers();
     currentPath = "/dashboard";
     delete window.gtag;
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
@@ -31,12 +32,12 @@ describe("GaPageviews", () => {
 
     expect(window.gtag).toHaveBeenCalledWith("event", "page_view", expect.objectContaining({ page_path: "/dashboard" }));
     expect(window.gtag).toHaveBeenCalledWith("event", "tool_view", expect.objectContaining({ tool_id: "5-2", source: "route" }));
-    expect(window.gtag).toHaveBeenCalledTimes(2);
+    expect(window.gtag).toHaveBeenCalledTimes(3);
 
     rerender(<GaPageviews />);
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-    expect(window.gtag).toHaveBeenCalledTimes(2);
+    expect(window.gtag).toHaveBeenCalledTimes(3);
   });
 });

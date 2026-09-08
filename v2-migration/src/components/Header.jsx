@@ -13,6 +13,7 @@ import BrandMark from "@/components/BrandMark";
 // 같은 목적지의 이름이 헤더·사이드바·푸터에 각각 적혀 있어 서로 어긋났다 — SSOT에서 받는다.
 import { workspaceNavItem } from "@/lib/workspaceNav";
 import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
+import { trackProductEvent } from "@/lib/analytics";
 
 const HEADER_COPY = {
   ko: {
@@ -224,6 +225,7 @@ export default function Header({ locale = "ko" }) {
             className="btn ghost header-decision-inbox"
             aria-label={T.decisionInboxAria(dueDecisionCount, workspaceNavItem("review", locale).name)}
             aria-current={isWeeklyReview ? "page" : undefined}
+            onClick={() => trackProductEvent("review_entry_clicked", { source: "navigation", placement: "header", locale, result_state: dueDecisionCount ? "due" : "available" })}
           >
             <span className="header-decision-inbox__icon" aria-hidden="true">◷</span>
             <span className="header-decision-inbox__label">{workspaceNavItem("review", locale).name}</span>

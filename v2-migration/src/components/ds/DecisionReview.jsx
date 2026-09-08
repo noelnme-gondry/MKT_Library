@@ -218,7 +218,7 @@ const COPY = {
   },
 };
 
-export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "", sourcePath = "" }) {
+export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "", sourcePath = "", analyticsPlacement = "result_action_card", allowAutomaticComparison = true }) {
   const t = COPY[locale] || COPY.ko;
   const instanceId = useId();
   const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
@@ -328,7 +328,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       baseline: draft.baseline.trim(),
       baselineDate: draft.baselineDate,
       comparisonWindowDays: draft.comparisonWindowDays,
-      comparisonScope: createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter }),
+      comparisonScope: allowAutomaticComparison ? createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter }) : null,
       datasetSnapshot: serializeDatasetContinuitySnapshot(buildDatasetContinuitySnapshot(csvData?.canonicalData, {
         dataGroup: activeDataGroup,
         mapping: csvData?.mapping,
@@ -350,7 +350,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     appliedPrefillKey.current = `${toolId}:${decisionPrefillKey}`;
     draftToolId.current = toolId;
     setMessage("");
-    trackProductEvent("decision_record_added", { tool_id: toolId, source: "decision_review", placement: "result_action_card", locale });
+    trackProductEvent("decision_record_added", { tool_id: toolId, source: "decision_review", placement: analyticsPlacement, locale });
   };
 
   const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
@@ -411,7 +411,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     >
       <summary
         onClick={() => {
-          if (!isOpen) trackProductEvent("decision_review_opened", { tool_id: toolId, source: "result_tape", placement: "result_action_card", locale });
+          if (!isOpen) trackProductEvent("decision_review_opened", { tool_id: toolId, source: "result_tape", placement: analyticsPlacement, locale });
         }}
       >
         <span className="decision-review__tape-main">
@@ -427,6 +427,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       </summary>
       <div className="decision-review__body">
         <p className="decision-review__helper">{t.helper}</p>
+        {!allowAutomaticComparison && <p className="decision-review__helper">{locale === "en" ? "This summary is saved for manual review. Bring the next results to Weekly Review and record what changed; no automatic outcome match is promised." : "이 요약은 직접 검토할 결정으로 저장됩니다. 다음 결과를 주간 리뷰에서 확인하고 변화를 기록하세요. 자동 실제값 대조는 제공하지 않습니다."}</p>}
         <DecisionStorageConsentNotice locale={locale} source="decision_review_reconsent" />
         <div className={`decision-review__persistence ${isPersistenceEnabled ? "is-enabled" : ""}`}>
           <label>
@@ -502,7 +503,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <label className="decision-review__field">
             <span>{t.comparisonWindow}</span>
             <input type="number" min="1" max="60" value={draft.comparisonWindowDays} onChange={(event) => updateDraft("comparisonWindowDays", event.target.value)} />
-            <small>{t.comparisonHint}</small>
+            {allowAutomaticComparison && <small>{t.comparisonHint}</small>}
           </label>
           <label className="decision-review__field">
             <span>{t.reviewDate}</span>
@@ -515,6 +516,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn primary decision-review__add" onClick={addRecord}>{t.add}</button>
         </div>
 
+        {savedDecision && !isPersistencePromptOpen && <div className="decision-review__saved" role="status">
+          <strong>{t.saved(formatReviewDate(savedDecision.reviewDate, locale))}</strong>
+          <Link className="btn" href={`${locale === "en" ? "/en" : ""}/weekly-review#wr-history`} onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "decision_saved", placement: analyticsPlacement, locale })}>{locale === "en" ? "See the saved decision" : "저장한 결정 확인"}</Link>
+        </div>}
         {isPersistencePromptOpen && savedDecision && (
           <section className="decision-review__save-prompt" aria-labelledby={`${detailsId}-save-title`}>
             <div>
@@ -537,7 +542,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
           <input ref={importRef} className="decision-review__file" type="file" accept=".csv,text/csv" onChange={importRecords} />
           {message && <span className="decision-review__message" role="status">{message}</span>}
-          <Link className="btn decision-review__weekly-link" href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>{t.openWeeklyReview}</Link>
+          <Link className="btn decision-review__weekly-link" onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "decision_saved", placement: analyticsPlacement, locale })} href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>{t.openWeeklyReview}</Link>
         </div>
 
         {records.length === 0 ? (

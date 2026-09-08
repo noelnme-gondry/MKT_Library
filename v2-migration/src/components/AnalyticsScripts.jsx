@@ -2,6 +2,7 @@
 import Script from "next/script";
 import GaPageviews from "@/components/GaPageviews";
 import useAnalyticsEnabled from "@/components/useAnalyticsEnabled";
+import { GA_MEASUREMENT_ID } from "@/lib/analyticsHost";
 
 // GTM·GA4를 운영 호스트에서만 싣는다(사유는 lib/analyticsHost.js).
 // 스크립트가 안 실리면 window.gtag가 없고, analytics.js와 GaPageviews가 이미
@@ -18,9 +19,9 @@ export default function AnalyticsScripts() {
       <Script id="gtm" strategy="afterInteractive">
         {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-T6C7QW75');`}
       </Script>
-      <Script src="https://www.googletagmanager.com/gtag/js?id=G-DK12TNR0GW" strategy="afterInteractive" />
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} strategy="afterInteractive" />
       <Script id="ga4" strategy="afterInteractive">
-        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-DK12TNR0GW',{send_page_view:false});`}
+        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_MEASUREMENT_ID}',{send_page_view:false});`}
       </Script>
       <GaPageviews />
     </>

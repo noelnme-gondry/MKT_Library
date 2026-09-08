@@ -15,10 +15,10 @@
  * - 추천과 내 결정을 시각적으로 가른다. 저장되는 것은 언제나 사용자가 고른 값이다.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import CsvUploader from "@/components/CsvUploader";
-import { useAppStore } from "@/store/useDataStore";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { LOWER_IS_BETTER } from "@/lib/weekly-review/significance";
 import { DECISION_OUTCOME } from "@/lib/weekly-review/decisionScore";
@@ -29,6 +29,7 @@ import { DEFAULT_PROJECT, KPI_OPTIONS, kpiFor, runReview, nextReviewDate } from 
 import { mergeSnapshots, listStoredSnapshots, saveStoredSnapshot, readReviewProject, saveReviewProject } from "@/lib/weekly-review/snapshotStore";
 import { outcomeLabel, buildReportDraft, describeAction, renderReportText } from "@/lib/weekly-review/reportDraft";
 import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib/analytics";
+import JourneyProgress from "@/components/ds/JourneyProgress";
 import WeeklyReview from "@/components/WeeklyReview";
 import WeeklyReviewHandoverNotice from "@/components/weekly-review/WeeklyReviewHandoverNotice";
 import { fmtPct } from "@/utils/format";
@@ -180,10 +181,12 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const [snapshotStatus, setSnapshotStatus] = useState(null);
   const [projectStatus, setProjectStatus] = useState("");
   const [projectReady, setProjectReady] = useState(false);
+  const viewRecorded = useRef(false);
   useEffect(() => { setCurrentRouteId("weekly-review"); }, [setCurrentRouteId]);
   useEffect(() => {
-    trackProductEventOnce("weekly_review_viewed", productEventKey(locale), { locale, tool_id: "weekly-review" });
-  }, [locale]);
+    if (!workspaceReady || viewRecorded.current) return;
+    viewRecorded.current = trackProductEvent("weekly_review_viewed", { locale, tool_id: "weekly-review", visit_type: decisionRecords.length ? "with_history" : "without_history" });
+  }, [locale, workspaceReady, decisionRecords.length]);
 
   const [kpiMetric, setKpiMetric] = useState(DEFAULT_PROJECT.kpi.metric);
   const [basis, setBasis] = useState(DEFAULT_PROJECT.kpi.basis);
@@ -225,7 +228,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
       if (result.ok) setTargetCurrency(csvData.currency);
       setProjectStatus(result.ok ? (locale === "en" ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.") : (locale === "en" ? "Could not save. This session still works." : "저장하지 못했습니다. 현재 세션에서는 계속 사용할 수 있습니다."));
-      if (result.ok) trackProductEvent("weekly_project_saved", { locale });
+      if (result.ok) trackProductEvent("weekly_project_saved", { locale, tool_id: "weekly-review", source: reviewSource });
+      else trackProductEvent("weekly_project_save_failed", { locale, tool_id: "weekly-review", source: reviewSource });
       return result.ok;
     }}>
     <ReviewSettings t={t} locale={locale} kpiMetric={kpiMetric} setKpiMetric={changeKpi} basis={basis} setBasis={changeBasis} customPeriod={customPeriod} setCustomPeriod={changePeriod} periods={periods} historyWeeks={historyWeeks} />
@@ -247,6 +251,19 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
     [isAnalyzed, rows, storedSnapshots, decisionRecords, project, customPeriod],
   );
   const evidence = useMemo(() => buildWorkspaceEvidence(review, project), [review, project]);
+  const resultEventKey = productEventKey(computeAnalyzeSig(csvData), review.periods?.current.start, review.periods?.current.end, project.kpi.metric, project.kpi.basis, locale);
+  useEffect(() => {
+    if (!review.ok || !workspaceReady || !snapshotsReady || !projectReady || typeof IntersectionObserver !== "function") return;
+    const target = document.getElementById("wr-verdict");
+    if (!target) return;
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      trackProductEventOnce("weekly_review_result_viewed", resultEventKey, { tool_id: "weekly-review", locale, source: reviewSource, result_state: review.routing.status });
+      observer.disconnect();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [resultEventKey, review.ok, review.routing?.status, reviewSource, locale, workspaceReady, snapshotsReady, projectReady]);
 
   // 이번 기간 집계를 보관한다 — 다음 주의 "평소 범위"가 여기서 나온다.
   // 기기 저장을 끈 사용자에게는 쓰지 않는다.
@@ -258,6 +275,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       const current = await saveStoredSnapshot(review.current, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
       if (alive) {
         setSnapshotStatus(previous.ok && current.ok ? "saved" : "failed");
+        trackProductEventOnce(previous.ok && current.ok ? "weekly_review_saved" : "weekly_review_save_failed", resultEventKey, { tool_id: "weekly-review", source: reviewSource, locale, state: "device" });
         if (previous.ok && current.ok) setStoredSnapshots((existing) => {
           const next = mergeSnapshots(mergeSnapshots(existing, review.previous), review.current);
           const comparable = (list) => JSON.stringify(list.map(({ savedAt, ...snapshot }) => snapshot));
@@ -266,7 +284,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       }
     });
     return () => { alive = false; };
-  }, [review, persistenceEnabled]);
+  }, [review, persistenceEnabled, resultEventKey, reviewSource, locale]);
 
   useEffect(() => {
     if (!workspaceReady || !snapshotsReady || !projectReady) return;
@@ -279,12 +297,12 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       }
       return;
     }
-    trackProductEventOnce("weekly_review_completed", productEventKey(csvData.fileName, csvData.raw?.length, review.periods.current.start, review.periods.current.end, project.kpi.metric, locale), {
+    trackProductEventOnce("weekly_review_completed", resultEventKey, {
       locale, tool_id: "weekly-review", source: reviewSource,
       data_continuity: review.previousSource === "snapshot" ? "saved_snapshot" : "uploaded_periods",
       result_state: review.routing.status,
     });
-  }, [review, csvData.fileName, csvData.raw, project.kpi.metric, locale, isAnalyzed, workspaceReady, snapshotsReady, projectReady, reviewSource]);
+  }, [review, csvData.fileName, csvData.raw, project.kpi.metric, locale, isAnalyzed, workspaceReady, snapshotsReady, projectReady, reviewSource, resultEventKey]);
 
   const saveDecision = (recommendedLabel) => {
     const record = {
@@ -320,6 +338,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
         </header>
+        <JourneyProgress stage="review" locale={locale} placement="weekly_review" />
+        <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
         <section className="wr-screen__empty wr-card" id="wr-upload" aria-labelledby="wr-empty">
           <h2 id="wr-empty">{t.noData}</h2>
           <p>{t.noDataDeck}</p>
@@ -387,6 +407,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
           )}
         </div>
       </header>
+      <JourneyProgress stage="review" locale={locale} placement="weekly_review" />
+      <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
       <details className="wr-upload" id="wr-upload"><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />}</details>
@@ -754,6 +776,14 @@ function ReviewSettings({
       </div>
     </div>
   );
+}
+
+function ReviewHistoryEntry({ count, locale }) {
+  if (!count) return null;
+  return <a className="wr-history-entry" href="#wr-history" onClick={() => {
+    document.getElementById("wr-history").open = true;
+    trackProductEvent("review_history_opened", { source: "weekly_review", placement: "review_header", locale });
+  }}><strong>{locale === "en" ? `${count} saved decision${count === 1 ? "" : "s"}` : `저장한 결정 ${count}개`}</strong><span>{locale === "en" ? "Review outcomes and record the next action →" : "지난 결과를 확인하고 다음 행동 기록 →"}</span></a>;
 }
 
 function ReviewLoop({ locale, hasResult, nextDate }) {

@@ -10,6 +10,7 @@ import CsvUploader from "@/components/CsvUploader";
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import ToolIndex from "@/components/ds/ToolIndex";
+import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
 import { DOCHI_HANDOFF_KEY, DochiArrivalTransition } from "@/components/assistant/DochiHandoffMotion";
 import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
@@ -183,6 +184,7 @@ export default function StartGate({ locale = "ko" }) {
       <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
+      <JourneyProgress stage="prepare" locale={locale} placement="start" />
 
       <section className="block start-upload-panel">
         <CsvUploader

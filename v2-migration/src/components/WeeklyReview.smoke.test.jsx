@@ -139,13 +139,18 @@ describe("WeeklyReview", () => {
         { id: "decision_1", toolId: "5-3", action: "민감한 캠페인 이름", reviewDate: "2099-01-01", actual: "", learning: "", status: "pending" },
       ],
     });
+    let showInbox;
+    const observer = vi.fn(function (callback) { showInbox = callback; this.observe = vi.fn(); this.disconnect = vi.fn(); });
+    vi.stubGlobal("IntersectionObserver", observer);
     render(<WeeklyReview />);
-
+    expect(window.gtag).not.toHaveBeenCalledWith("event", "decision_inbox_viewed", expect.anything());
+    showInbox([{ isIntersecting: true }]);
     expect(window.gtag).toHaveBeenCalledWith("event", "decision_inbox_viewed", {
       source: "weekly_review",
       result_state: "active",
       locale: "ko",
     });
+    vi.unstubAllGlobals();
     fireEvent.change(screen.getByLabelText("실제 결과 — 민감한 캠페인 이름"), { target: { value: "CPA 12,000원" } });
     expect(window.gtag).not.toHaveBeenCalledWith("event", "decision_review_completed", expect.anything());
     expect(screen.getAllByText("예정").length).toBeGreaterThan(0);

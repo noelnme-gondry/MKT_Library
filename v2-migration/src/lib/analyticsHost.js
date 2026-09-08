@@ -15,6 +15,7 @@ export const ANALYTICS_HOSTS = Object.freeze([
   "growthoptplaybook.com",
   "www.growthoptplaybook.com",
 ]);
+export const GA_MEASUREMENT_ID = "G-DK12TNR0GW";
 
 export function isAnalyticsHost(hostname) {
   if (typeof hostname !== "string") return false;

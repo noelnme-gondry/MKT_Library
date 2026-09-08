@@ -44,8 +44,8 @@
 
 | 언어 | 승인 문구 |
 |---|---|
-| KO | 캠페인 CSV를 브라우저에서 분석해 다음 마케팅 행동을 정하는 무료 퍼포먼스 마케팅 의사결정 도구입니다. |
-| EN | A free browser-based workspace that turns campaign CSV data into the next performance-marketing decision. |
+| KO | 캠페인 CSV 분석부터 결정 기록과 다음 주 결과 검토까지 이어가는 무료 마케팅 워크스페이스입니다. |
+| EN | A free marketing workspace connecting campaign CSV analysis, saved decisions, and next-week outcome reviews. |
 
 **60~80단어**
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import ToolIndex from "@/components/ds/ToolIndex";
+import JourneyProgress from "@/components/ds/JourneyProgress";
 // 개수는 세서 쓴다 — "17개"라고 손으로 적힌 값이 실제 발행 도구 수와 어긋나 있었다(§8).
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { trackProductEvent } from "@/lib/analytics";
@@ -112,7 +113,7 @@ const COPY = {
   },
 };
 
-export default function LandingPage({ locale = "ko" }) {
+export default function LandingPage({ locale = "ko", children }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const router = useRouter();
@@ -207,6 +208,9 @@ export default function LandingPage({ locale = "ko" }) {
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
       </section>
+
+      <JourneyProgress locale={lang} stage="prepare" placement="home" />
+      {children}
 
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">

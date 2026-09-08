@@ -100,7 +100,7 @@ const COPY = {
     candidateWaiting: "비교 기간의 데이터가 아직 없습니다. 이전 CSV의 마지막 기간은 실제 결과로 쓰지 않습니다.",
     candidateIncomplete: (days, total) => `같은 ${total}일 비교를 위해 ${days}일치 데이터가 더 필요합니다.`,
     candidateMissingBasis: "기준일과 지원 지표(CPA·CPI·ROAS)를 입력하면 같은 기간으로 자동 비교할 수 있습니다.",
-    candidateMissingScope: "이전 기록에는 데이터 범위가 저장되지 않아 자동 비교하지 않습니다. 같은 범위에서 새 검토를 저장하세요.",
+    candidateMissingScope: "이 결정에는 자동 비교할 데이터 범위가 기록되지 않았습니다. 같은 범위의 결과를 확인하고 직접 검토를 기록하세요.",
     candidateDatasetMismatch: "이 결정에 쓴 데이터가 이 기기에 없거나 범위가 달라 자동 비교하지 않습니다. 원본 도구에서 같은 범위의 데이터를 올려 확인하세요.",
     continuity: "업로드 데이터 확인",
     continuityDuplicate: "이전 판단과 같은 기간·같은 데이터입니다. 새 결과를 만들지 않고 기존 판단을 다시 엽니다.",
@@ -213,7 +213,7 @@ const COPY = {
     candidateWaiting: "The comparison window is not in the current data yet. The end of an older CSV is never used as the actual outcome.",
     candidateIncomplete: (days, total) => `${days} of ${total} comparable days are available; wait for the full window.`,
     candidateMissingBasis: "Add a baseline date and a supported metric (CPA, CPI, or ROAS) to compare the same window automatically.",
-    candidateMissingScope: "This older record did not save its data scope, so it is not compared automatically. Save a new review from the same scope.",
+    candidateMissingScope: "This decision has no recorded scope for automatic comparison. Check results from the same scope and record your review manually.",
     candidateDatasetMismatch: "The CSV currently open is not the dataset used for this decision, so it is not compared automatically.",
     continuity: "Uploaded-data check",
     continuityDuplicate: "This is the same period and same data as the prior decision. Reopen the existing decision instead of creating a new result.",
@@ -320,6 +320,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const [clearPending, setClearPending] = useState(false);
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
+  const inboxRef = useRef(null);
   const records = useAppStore((state) => state.decisionRecords);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
@@ -379,13 +380,17 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
 
   useEffect(() => {
     if (hasTrackedInboxView.current) return;
-    hasTrackedInboxView.current = true;
-    const dueCount = statusCounts.overdue + statusCounts.today;
-    trackProductEvent("decision_inbox_viewed", {
-      source: "weekly_review",
-      result_state: records.length === 0 ? "empty" : dueCount > 0 ? "due" : "active",
-      locale,
-    });
+    const send = () => {
+      if (hasTrackedInboxView.current) return;
+      const dueCount = statusCounts.overdue + statusCounts.today;
+      hasTrackedInboxView.current = trackProductEvent("decision_inbox_viewed", {
+        source: "weekly_review", result_state: records.length === 0 ? "empty" : dueCount > 0 ? "due" : "active", locale,
+      });
+    };
+    if (typeof IntersectionObserver !== "function" || !inboxRef.current) return;
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { send(); observer.disconnect(); } });
+    observer.observe(inboxRef.current);
+    return () => observer.disconnect();
   }, [locale, records.length, statusCounts.overdue, statusCounts.today]);
 
   const importRecords = async (event) => {
@@ -433,7 +438,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
 
   const Shell = embedded ? "div" : "article";
   return (
-    <Shell className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
+    <Shell ref={inboxRef} className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
       {embedded ? (
         // 흡수돼도 제목은 남긴다 — h1만 벗고 h2로 낮춘다. 제목을 통째로 지우면 보조기술이
         // 이 섹션의 시작을 알 수 없다.

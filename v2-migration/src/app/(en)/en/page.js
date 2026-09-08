@@ -41,8 +41,7 @@ export default function EnHomePage() {
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
-              <LandingPage locale="en" />
-              <DochiAssistant locale="en" />
+              <LandingPage locale="en"><DochiAssistant locale="en" /></LandingPage>
               <DochiWelcomeOverlay locale="en" />
             </article>
           </main>
