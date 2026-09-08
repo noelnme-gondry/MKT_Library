@@ -1700,6 +1700,7 @@ describe("MarketingResponse render smoke", () => {
       await flushRaf();
       const koreanCopy = Array.from(new Set(document.body.textContent.match(/[가-힣]+/g) || []));
       expect(koreanCopy, `${stage}: ${koreanCopy.join(", ")}`).toEqual([]);
+      if (stage === "Contribution") expect(document.body.textContent).toContain("Same-window baseline error");
     }
   }, 20_000);
 
@@ -1785,6 +1786,7 @@ describe("MarketingResponse render smoke", () => {
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
+    expect(document.body.textContent).toContain("같은 구간 기준선 오차");
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");

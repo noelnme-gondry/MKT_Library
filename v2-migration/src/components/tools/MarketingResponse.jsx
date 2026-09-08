@@ -1480,7 +1480,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
   const decisionHealth = mmm?.health || (mmm?.run ? mmmBayesianHealth(mmm.run) : null);
-  const mmmQuality = mmmDecisionQuality({ run: mmm?.run, health: decisionHealth, notices: mmm?.absorb?.notices });
+  const mmmQuality = mmmDecisionQuality({ run: mmm?.run, health: decisionHealth, notices: mmm?.absorb?.notices, actual: mmm?.panel?.targets?.[mmm?.target] });
   const forecastActualMatches = useMemo(() => {
     if (isDemo || !mmm || mmm.empty) return [];
     return findForecastActualMatches(decisionRecords, mmm.panel, effPlatformFilter, mmm.target);
@@ -3665,16 +3665,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           : tx("기여 분해 결과와 모델 경고를 함께 확인하세요", "Review contribution together with model warnings"),
         stats: [
           { label: tx("OOS 오차", "OOS error"), value: Number.isFinite(oos) ? `${oos.toFixed(1)}%` : "—" },
+          { label: tx("같은 구간 기준선 오차", "Same-window baseline error"), value: mmmQuality.baseline ? `${mmmQuality.baseline.baselineWmape.toFixed(1)}%` : tx("미확인", "Unconfirmed") },
           { label: tx("모델 경고", "Model warnings"), value: warningCount },
           { label: tx("분석 주", "Weeks"), value: weeks },
         ],
         point: mmmQuality.budgetEligible
-          ? tx("예산 판단의 최소 진단을 통과했습니다. 인과 증명이 아니며 예측 기준모델과 비교한 뒤 작은 변경으로 검증하세요.", "Minimum budget diagnostics passed. This is not causal proof; compare forecast baselines and validate small changes.")
+          ? tx("같은 검증 구간의 마지막 관측값 기준선보다 오차가 낮습니다. 인과 증명이 아니며 작은 변경으로 검증하세요. 독립된 미래 구간의 포함률은 미실측입니다.", "Error is lower than the last-observation baseline on the same validation windows. This is not causal proof; validate small changes. Independent future interval coverage is unmeasured.")
           : tx(`예산 판단 보류: ${mmmDecisionQualityMessage(mmmQuality, locale)}. 기여값은 탐색용으로만 읽으세요.`, `Budget decision held: ${mmmDecisionQualityMessage(mmmQuality, locale)}. Read contributions as exploratory.`),
         next: "lab",
         nextLabel: tx("미래예측으로", "Next: forecast"),
         evidenceStatus: Number.isFinite(oos)
-          ? (warningCount > 0 ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.READY)
+          ? (!mmmQuality.budgetEligible || warningCount > 0 ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.READY)
           : STATISTICAL_STATUS.INSUFFICIENT_DATA,
         decisionPrefill: mmm?.run ? {
           conclusion: Number.isFinite(oos)
@@ -4135,8 +4136,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               calculationTables: [{
                 name: "MMM_DECISION_QUALITY",
                 title: tx("예산 판단 근거", "Budget decision evidence"),
-                rows: [["budget_eligible", "hold_reasons", "time_ordered_oos_wmape", "training_coverage_90", "health_warnings"],
-                  [mmmQuality.budgetEligible, mmmQuality.reasons.join(", "), mmmQuality.oosWmape ?? "", mmmQuality.trainingCoverage90 ?? "", mmmQuality.warnings.join(", ")]],
+                rows: [["budget_eligible", "hold_reasons", "time_ordered_oos_wmape", "training_coverage_90", "health_warnings", "last_observation_baseline_wmape", "independent_future_coverage"],
+                  [mmmQuality.budgetEligible, mmmQuality.reasons.join(", "), mmmQuality.oosWmape ?? "", mmmQuality.trainingCoverage90 ?? "", mmmQuality.warnings.join(", "), mmmQuality.baseline?.baselineWmape ?? "", "unmeasured"]],
+              }, {
+                name: "MMM_BASELINE_FOLDS",
+                title: tx("같은 검증 구간 기준선 비교", "Same-window baseline comparison"),
+                rows: [["training_weeks", "validation_weeks", "model_wmape", "last_observation_baseline_wmape"],
+                  ...(mmmQuality.baseline?.folds || []).map((fold) => [fold.cut, fold.horizon, fold.modelWmape, fold.baselineWmape])],
               }, {
                 name: "MMM_WEEKLY_CONTRIBUTION",
                 title: tx("주별 MMM 기여 분해", "Weekly MMM contribution decomposition"),
@@ -4173,6 +4179,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             toolTitle: stageToolTitle,
             calculationMode: "hybrid_engine_output",
             calculationTables: [{
+              name: "FORECAST_VALIDATION",
+              title: tx("예측 권고의 검증 근거", "Forecast decision validation"),
+              note: tx("화면과 같은 최종 검증 판정입니다. 참고범위는 미래 90% 포함을 보장하지 않습니다.", "Uses the same final validation decision as the screen. Reference ranges do not guarantee 90% future coverage."),
+              rows: [["scope", "wmape", "reliable", "certification_threshold", "scenario_eligible", "hold_reasons"],
+                ["total", recentBacktest?.wmape ?? "", recentBacktest?.reliable === true, recentBacktest?.certificationThreshold ?? "", forecastScenario?.eligible === true, (forecastScenario?.reasons || []).join(", ")],
+                ...(recentBacktest?.componentMetrics || []).map((metric) => [
+                  `${metric.platform || ""}:${metric.component || ""}`, metric.wmape ?? "", metric.passed === true, recentBacktest?.certificationThreshold ?? "", "", "",
+                ])],
+            }, {
               name: "FORECAST_HORIZON",
               title: tx("기간별 예측·참고범위", "Forecast and reference range by period"),
               note: tx("회귀·모델 선택·구간은 엔진 출력이고 구간 폭·미래 지출 합계는 수식", "Regression, model selection, and intervals are engine outputs; interval width and future-spend total are formulas"),
