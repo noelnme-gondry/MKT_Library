@@ -221,14 +221,16 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Google"]);
   });
 
-  it("주간 검토로 이동해도 마지막 실제 도구의 CSV 그룹을 유지", () => {
+  it("주간 리뷰는 다른 도구의 이질 데이터 대신 효율 CSV를 읽는다", () => {
     const responseSlice = { raw: [{ week: "2026-08-03" }], headers: ["week"], mapping: {}, fileName: "response.csv" };
     useAppStore.setState({
       activeDataGroup: "response",
       csvGroups: { ...useAppStore.getState().csvGroups, response: responseSlice },
     });
     useAppStore.getState().setCurrentRouteId("weekly-review");
-    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "response", csvData: responseSlice });
+    expect(useAppStore.getState().activeDataGroup).toBe("efficiency");
+    expect(useAppStore.getState().csvData).toBe(useAppStore.getState().csvGroups.efficiency);
+    expect(useAppStore.getState().csvGroups.response).toBe(responseSlice);
   });
 
   // TOOL_GROUP에 있는데 csvGroups에 슬라이스가 없으면 미러가 undefined가 되고,

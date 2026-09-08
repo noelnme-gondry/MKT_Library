@@ -5,7 +5,10 @@ import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 
-export const DECISION_REVIEW_SCHEMA_VERSION = 8;
+// v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
+// v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
+// 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
+export const DECISION_REVIEW_SCHEMA_VERSION = 9;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -13,6 +16,15 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "locale",
   "conclusion",
   "action",
+  // v9 — 자동 판정을 위한 구조화 필드(§6.1). 비어 있으면 판정하지 않는다.
+  "actionKind",
+  "actionTarget",
+  "actionAmount",
+  "goalMetric",
+  "goalDirection",
+  "guardrailMetric",
+  "guardrailOp",
+  "guardrailValue",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -46,6 +58,14 @@ export const DECISION_REVIEW_COLUMNS = [
   "locale",
   "conclusion",
   "action",
+  "action_kind",
+  "action_target",
+  "action_amount",
+  "goal_metric",
+  "goal_direction",
+  "guardrail_metric",
+  "guardrail_op",
+  "guardrail_value",
   "hypothesis",
   "metric",
   "target_direction",
@@ -225,6 +245,30 @@ function firstNumericValue(value) {
 const LOWER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(CPA|CPI|CAC|CPR|WMAPE|MAPE|RMSE|MAE)(?=$|[^A-Z0-9])/;
 const HIGHER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(ROAS|ROI|CTR|CVR|LTV|ARPU|AOV|F1|LIFT)(?=$|[^A-Z0-9])/;
 
+// ── v9: 자동 판정용 구조화 필드 ──────────────────────────────────
+// 전부 화이트리스트로 좁힌다. 자유 문자열로 두면 `decisionScore`가 분기할 수 없고,
+// 그러면 v9 필드가 있어도 판정이 안 되는 v8과 다를 바 없어진다.
+export const DECISION_ACTION_KINDS = Object.freeze([
+  "increase_budget", "decrease_budget", "hold", "replace", "investigate",
+]);
+const GOAL_DIRECTIONS = ["up", "down", "hold"];
+const GUARDRAIL_OPS = ["lte", "gte"];
+
+function asActionKind(value) {
+  const normalized = asText(value, 24).toLowerCase();
+  return DECISION_ACTION_KINDS.includes(normalized) ? normalized : "";
+}
+
+function asGoalDirection(value) {
+  const normalized = asText(value, 8).toLowerCase();
+  return GOAL_DIRECTIONS.includes(normalized) ? normalized : "";
+}
+
+function asGuardrailOp(value) {
+  const normalized = asText(value, 8).toLowerCase();
+  return GUARDRAIL_OPS.includes(normalized) ? normalized : "";
+}
+
 function asTargetDirection(value) {
   const normalized = asText(value, 12).toLowerCase();
   return ["higher", "lower", "neutral"].includes(normalized) ? normalized : "";
@@ -346,6 +390,14 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     locale,
     conclusion: asText(field(row, "conclusion"), FIELD_LIMITS.conclusion),
     action,
+    actionKind: asActionKind(field(row, "actionKind", "action_kind")),
+    actionTarget: asText(field(row, "actionTarget", "action_target"), FIELD_LIMITS.metric),
+    actionAmount: asText(field(row, "actionAmount", "action_amount"), 32),
+    goalMetric: asText(field(row, "goalMetric", "goal_metric"), FIELD_LIMITS.metric),
+    goalDirection: asGoalDirection(field(row, "goalDirection", "goal_direction")),
+    guardrailMetric: asText(field(row, "guardrailMetric", "guardrail_metric"), FIELD_LIMITS.metric),
+    guardrailOp: asGuardrailOp(field(row, "guardrailOp", "guardrail_op")),
+    guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),

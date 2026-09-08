@@ -14,7 +14,7 @@ v2-migration/
 │  │  ├─ (ko|en)/blog/·glossary/    # 블로그·용어사전 (fs MD 파이프라인, routeMap 밖) + blog/tag/
 │  │  ├─ (ko|en)/calculator/        # 계산기 허브 + [slug]
 │  │  ├─ (ko|en)/diagnose/·contact/·privacy/·terms/·templates/
-│  │  ├─ (ko|en)/weekly-review/·weekly-report/   # 결정 검토 루프 · 주간 리포트
+│  │  ├─ (ko|en)/weekly-review/·weekly-report/   # 주간 리뷰(핵심) · 주간 리포트
 │  │  ├─ sitemap.js·rss.xml/·(en)/en/rss.xml/·llms.txt/  # SEO 파생(공개 routeMap + 발행 콘텐츠, 개수 하드코딩 금지)
 │  │  ├─ layout.js·global-error.js               # 폰트·SEO 메타·GTM/GA4/AdSense·초기 테마·<GaPageviews/>
 │  │     └ 소셜 카드는 public/og-card.png 한 장 (scripts/build-og-card.mjs로 재생성, 빌드타임 생성 없음)
@@ -69,7 +69,7 @@ v2-migration/
 | `/start` | start-gate | StartGate.jsx (업로드 → 가능한 분석 추천) |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
-| `/weekly-review` | — | WeeklyReview.jsx (결정 검토 인박스) |
+| `/weekly-review` | — | weekly-review/WeeklyReviewScreen.jsx (주간 리뷰. 결정 인박스 `WeeklyReview.jsx`는 그 안 접기로 `embedded` 렌더) |
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
@@ -160,7 +160,13 @@ v2-migration/
 ## 7. 내비게이션 팁
 - **사이드바 접기 → `src/lib/sidebarCollapse.js`**. **기본값은 항상 펼침**이고 접는 시점은 사용자가 정한다(헤더 ◧ 토글, 선택은 localStorage에 저장). 상태는 `body.is-sidebar-collapsed` 한 곳에 두어 셸을 렌더하는 10여 개 레이아웃을 각각 고치지 않는다. 접은 사용자에게만 `RootDocument`의 부팅 인라인 스크립트가 첫 페인트 전에 적용한다. **접힌 상태에서는 `.app`을 1열로 선언해야 한다** — 사이드바가 흐름에서 빠지면 남은 자식이 첫 트랙에 배치돼 본문 폭이 0이 된다.
 - **결론 금액 환산 → `src/utils/efficiencyImpactMath.js`** (효율 변화 × 관측 전환량 → 창/일/N일 환산. 예측이 아니라 산술 환산이며 호출부가 그 사실을 문구로 말한다. 소비처: `utils/dashboardVerdict.js` 5-2 결론).
-- **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나다.
+- **주간 리뷰 엔진 → `src/lib/weekly-review/`** (순수 함수, 골든): `period.js` 기간 판정(요일 맞춤) ·
+  `significance.js` 유의미성(크기+변동성+표본) · `snapshot.js` 주×캠페인 집계 · `router.js` 분석 라우터 ·
+  `varianceBridge.js` PVM 분해 번역 · `decisionScore.js` 결정 판정 5단계 · `reportDraft.js` 보고서 조립 ·
+  `snapshotStore.js` 주간 집계·프로젝트/기간 설정 보관(워크스페이스 IDB `meta`, 90일 만료·전체 삭제 연동) · `reviewPipeline.js` 전체 조립(실제 `campaign_name` 매핑, 업로드/저장 집계 비교, 기간·통화·기준 검증).
+  `TOOL_GROUP[weekly-review]`는 efficiency이며 공유 업로더와 분석 게이트를 사용한다. 보고서는 KO/EN 복사·인쇄, 결정 저장 후 기존 ICS 생성기를 사용한다.
+  화면은 `components/weekly-review/`. 안내 노출 판정은 `lib/weeklyReviewHandover.js`(모듈 스냅샷).
+- **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나이고, 그 화면은 이제 `/weekly-review`의 접기 섹션 안에서 렌더된다.
 - **수학/통계 → `src/utils/*Math.js`** (수학 변경 시 대응 `*.test.js` 골든 확인 — 원칙적으로 변경 금지).
 - **도구 UI → `src/components/tools/<도구>.jsx`** (§2 표에서 route→파일).
 - **대시보드(5-2) 탭 → `src/components/dashboard/<Tab>.jsx`** (viz·scorecard·pacing·anomaly·ltv·cohort·funnel·segment·seasonality).

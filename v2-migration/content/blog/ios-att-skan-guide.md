@@ -83,6 +83,8 @@ SKAN은 애플이 주는 대안이에요. 특징이 셋이에요.
 
 애플은 SKAdNetwork의 후속인 AdAttributionKit(AAK)을 공개했어요. Apple은 두 프레임워크의 상호 운용을 지원합니다. 실제 적용은 OS·매체·MMP 지원 상태로 결정하세요. 재참여(re-engagement) 어트리뷰션과 대체 앱스토어 지원처럼 SKAN에 없던 축이 들어와 있습니다. 세부 스펙은 [AdAttributionKit 문서](https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks)에서, 마이그레이션 시점은 매체·MMP 공지를 따라가세요.
 
+측정 체계별 차이는 [SKAN과 MMP 어트리뷰션 비교](/blog/skan-vs-mmp-attribution)에서, 이벤트를 값으로 묶는 순서는 [SKAN 컨버전 값 설계](/blog/skan-conversion-value-schema)에서 이어서 확인하세요.
+
 ## 오늘 해볼 것
 
 iOS 캠페인 리포트를 열어서 두 가지만 확인해 보세요.

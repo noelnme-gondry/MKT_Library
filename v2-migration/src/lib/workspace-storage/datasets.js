@@ -1,4 +1,5 @@
 import { openWorkspaceDb, requestResult, transactionComplete } from "./db";
+import { SNAPSHOT_META_KEY, PROJECT_META_KEY, listStoredSnapshots, readReviewProject } from "@/lib/weekly-review/snapshotStore";
 import { partitionByExpiry, remainingRetentionDays } from "./expiry";
 
 function summary(entry) {
@@ -78,8 +79,10 @@ export async function removeWorkspaceDataset(group) {
 export async function clearWorkspaceDatasets() {
   const db = await openWorkspaceDb();
   try {
-    const transaction = db.transaction("datasets", "readwrite");
+    const transaction = db.transaction(["datasets", "meta"], "readwrite");
     transaction.objectStore("datasets").clear();
+    transaction.objectStore("meta").delete(SNAPSHOT_META_KEY);
+    transaction.objectStore("meta").delete(PROJECT_META_KEY);
     await transactionComplete(transaction);
   } finally {
     db.close();
@@ -98,6 +101,7 @@ export async function sweepExpiredWorkspaceDatasets(now = Date.now()) {
       expired.forEach((entry) => store.delete(entry.group));
       await transactionComplete(write);
     }
+    await Promise.all([listStoredSnapshots(), readReviewProject()]);
     return { keep: keep.map(summary), expired: expired.map(summary) };
   } finally {
     db.close();

@@ -75,6 +75,8 @@ There are traps too. The classic one is multicollinearity (when several channels
 
 So the principle is this: use MMM to set overall direction, and confirm actual results through experiments. If MMM says "social's contribution is bigger than expected," you test that by scaling up spend and checking the result. Conversely, if it says "this channel looks like it's cannibalizing," you run a holdout test. (Holdouts are covered in detail in the [incrementality measurement post](/en/blog/incrementality-measurement).) Think of experiments and MMM as a pair, not competitors.
 
+Before fitting the model, use the [MMM multicollinearity checklist](/en/blog/multicollinearity-mmm-guide) to check whether channel spending patterns can be distinguished.
+
 ## Try this today
 
 MMM needs data before it needs a model. Today's task is "gathering ingredients." Collect the following into one sheet, weekly:

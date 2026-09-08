@@ -66,6 +66,14 @@ describe("workspace dataset connection lifecycle", () => {
     expect(db.close).toHaveBeenCalledTimes(1);
   });
 
+  it("전체 삭제가 주간 집계와 프로젝트 설정까지 삭제한다", async () => {
+    await clearWorkspaceDatasets();
+    expect(db.transaction).toHaveBeenCalledWith(["datasets", "meta"], "readwrite");
+    expect(store.clear).toHaveBeenCalledOnce();
+    expect(store.delete).toHaveBeenCalledWith("weekly-review:snapshots");
+    expect(store.delete).toHaveBeenCalledWith("weekly-review:project");
+  });
+
   it("closes the database when an expiry sweep write fails", async () => {
     dbMock.requestResult.mockResolvedValueOnce([{ group: "old", lastUsedAt: 0 }]);
     dbMock.transactionComplete.mockRejectedValueOnce(new Error("sweep delete failed"));

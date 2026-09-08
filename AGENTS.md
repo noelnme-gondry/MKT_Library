@@ -182,6 +182,8 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **표시 전용 선언을 분석 게이트 시그에 넣으면 표시 토글이 결과를 지운다**(2026-09-02): 효율 패밀리의 통화 토글은 환산이 아니라 단위 선언이라 숫자가 한 자리도 안 바뀌는데, `csvData.currency`가 `computeAnalyzeSig`에 들어 있어 게이트가 닫히고 결과가 통째로 접혔다 — 사용자에겐 "달러 눌렀더니 데이터가 확 바뀜"으로 보인다. 시그를 바꾸는 컨트롤은 **결과를 지울 자격이 있는지** 먼저 따질 것(선언만 바뀌면 새 시그로 다시 찍어 잇고, 분석 전이었다면 열어 주지 않는다).
 - **게이트 `requiresAny` 키는 정규키와 정확히 일치(단/복수)**: `["click"]` vs `clicks` 불일치 → 데모인데 영구 잠김(silent). 키는 추측 말고 복붙.
 
+- **저장 집계는 잘라 쓸 원본이 아니다**: 주간 합계를 부분 주로 나누거나 다른 통화·전환 기준의 결정과 비교하지 않는다. 기간·단위 계약이 맞는 집계만 재사용하고, 같은 화면의 다음 업로드와 새로고침 후 재방문을 모두 검증한다(#812).
+
 **계산·엔진**
 - **윤년**: `dayOfYear()` 1~366 → 배열 길이 367 보장.
 - **로그-스페이스**: 큰 파라미터 Beta PDF 등 underflow → log-space 계산 후 max 빼고 exp 정규화.
@@ -558,7 +560,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ## 16. 현재 상태
 
 - ✅ **v2 컷오버 완료** — `v2-migration/`이 운영 앱 SSOT. 레거시 `index.html` 런타임 제거(git 히스토리 보존). Railway Root Directory=`v2-migration`.
-- ✅ 검증 하네스: `npm run test:all` **381파일·3011 통과**(0 skipped) · eslint 0 errors/0 warnings · `next build` ✓ — 2026-09-08 실측. `playwright` **25/25**(mobile-320·tablet-768·desktop-1440·light-EN)는 2026-09-01 실측값. **수치를 적을 땐 실제로 돌려서 적을 것**(돌리지 않은 항목은 언제 잰 값인지 함께 남긴다).
+- ✅ 검증 기록은 PR Test plan과 `docs/weekly-review-monetization-readiness-2026-09-09.md` 참조. 로컬 사용자 파일 포함 여부와 실측 날짜를 밝히고, 실행하지 않은 검증을 완료로 쓰지 않는다.
 - ✅ **가이드(SOP) 검색 진입면** — 15개 전부 `routeSeo` 전용 메타 + `guideSearchContent` + FAQPage·BreadcrumbList + 아웃바운드(원인·교훈은 §7 "라우트 종류로 갈리는 게이트").
 - ✅ **제품 계약 SSOT 신설**(2026-08-19) — `docs/product-ssot.md`. 외부 검토 4건을 코드 대조해 확정(도구 수 14+5 정의, 제품명 `Growth Opt Playbook` 단일화 결정).
 - ✅ 디자인시스템(§12.21)·결론카드/다운로드허브(§12.27) 채택 완료(D-07). 개수를 적지 말 것 — `ds/downloadEscape.test.js`가 발행 라우트에서 파생해 강제하고 **예외는 코드에 사유 표식이 있어야 통과**한다. 그 가드가 현황이다.
