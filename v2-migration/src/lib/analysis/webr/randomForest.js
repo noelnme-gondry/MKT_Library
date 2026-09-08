@@ -1,5 +1,6 @@
 import { getWebRAnalysisDefinition, WEBR_ANALYSIS_IDS } from "./analysisRegistry";
 import { runWebRAdvancedTask } from "./webRClient";
+import { buildValidationSplit } from "./validationSplit";
 
 const DEFINITION = getWebRAnalysisDefinition(WEBR_ANALYSIS_IDS.RANDOM_FOREST_CHALLENGER);
 const BIND_PREFIX = ".mkt_webr_rf_";
@@ -10,7 +11,7 @@ function isFiniteMatrix(X) {
   return X.every((row) => Array.isArray(row) && row.length === width && row.every(Number.isFinite));
 }
 
-export function prepareRandomForestInput({ X = [], y = [], terms = [] } = {}) {
+export function prepareRandomForestInput({ X = [], y = [], terms = [], validationGroups, validationTimes } = {}) {
   if (!isFiniteMatrix(X) || !Array.isArray(y) || y.length !== X.length || y.some((value) => !Number.isFinite(value))) {
     return { ok: false, reason: "invalid_numeric_input" };
   }
@@ -40,8 +41,13 @@ export function prepareRandomForestInput({ X = [], y = [], terms = [] } = {}) {
       return { ok: false, reason: "insufficient_class_support", n: y.length, minorityCount, requiredMinority: 20, predictorCount, outcomeType };
     }
   }
+  const validation = buildValidationSplit({ n: y.length, groups: validationGroups, times: validationTimes, y, predictorCount });
+  if (!validation.ok) return { ...validation, n: y.length, predictorCount, outcomeType };
   return {
     ok: true,
+    validationGroups,
+    validationTimes,
+    validation,
     X,
     y,
     terms,
@@ -57,6 +63,9 @@ export function normalizeRandomForestResult(rawRows = [], input = {}) {
     return { status: "failed", reason: "invalid_webr_result" };
   }
   const model = rawRows[0] || {};
+  if (![model.rf_primary, model.baseline_primary, model.relative_gain].every(Number.isFinite)) {
+    return { status: "failed", reason: "invalid_webr_result" };
+  }
   const importance = rawRows.map((row, index) => ({
     name: input.terms[index + 1],
     importance: Number(row.importance),
@@ -76,16 +85,19 @@ export function normalizeRandomForestResult(rawRows = [], input = {}) {
     outcomeType: input.outcomeType,
     n: Number(model.n) || input.n,
     folds: Number(model.folds) || 0,
+    validationMode: input.validation?.mode || "random_rows",
+    validationN: input.validation?.validationN ?? input.n,
+    purgedN: input.validation?.purgedN ?? 0,
     primaryMetric: String(model.primary_metric || ""),
     secondaryMetric: String(model.secondary_metric || ""),
     randomForest: {
       primary: Number(model.rf_primary),
-      secondary: Number(model.rf_secondary),
+      secondary: Number.isFinite(model.rf_secondary) ? model.rf_secondary : null,
     },
     baseline: {
       engine: input.outcomeType === "classification" ? "logistic_regression" : "ols",
       primary: Number(model.baseline_primary),
-      secondary: Number(model.baseline_secondary),
+      secondary: Number.isFinite(model.baseline_secondary) ? model.baseline_secondary : null,
     },
     relativeGain,
     recommendation,
@@ -93,7 +105,7 @@ export function normalizeRandomForestResult(rawRows = [], input = {}) {
   };
 }
 
-function randomForestRCode(predictorCount) {
+function randomForestRCode(predictorCount, validation) {
   const bindings = Array.from({ length: predictorCount }, (_, index) => `x${index}=${BIND_PREFIX}x${index}`);
   return `local({
     suppressPackageStartupMessages(library(randomForest))
@@ -104,12 +116,13 @@ function randomForestRCode(predictorCount) {
     model_p <- ncol(model_x)
     is_classification <- all(model_y %in% c(0, 1)) && length(unique(model_y)) == 2
     fold_count <- min(5L, max(3L, floor(model_n / 30L)))
-    fold_id <- sample(rep(seq_len(fold_count), length.out=model_n))
+    ${validation?.foldIds ? `fold_count <- ${validation.folds}L` : ""}
+    fold_id <- ${validation?.foldIds ? BIND_PREFIX + "fold_id" : "sample(rep(seq_len(fold_count), length.out=model_n))"}
     rf_prediction <- rep(NA_real_, model_n)
     baseline_prediction <- rep(NA_real_, model_n)
     for (fold in seq_len(fold_count)) {
-      train <- fold_id != fold
-      test <- !train
+      train <- ${validation?.mode?.includes("holdout") ? "fold_id == 0" : "fold_id != fold"}
+      test <- fold_id == fold
       if (is_classification) {
         rf_fit <- randomForest::randomForest(
           x=model_x[train, , drop=FALSE],
@@ -138,7 +151,8 @@ function randomForestRCode(predictorCount) {
         baseline_prediction[test] <- predict(baseline_fit, model_x[test, , drop=FALSE])
       }
     }
-    if (any(!is.finite(rf_prediction)) || any(!is.finite(baseline_prediction))) stop("non_finite_cv_prediction")
+    evaluated <- fold_id > 0
+    if (any(!is.finite(rf_prediction[evaluated])) || any(!is.finite(baseline_prediction[evaluated]))) stop("non_finite_cv_prediction")
     full_fit <- randomForest::randomForest(
       x=model_x,
       y=if (is_classification) factor(model_y, levels=c(0, 1)) else model_y,
@@ -147,6 +161,9 @@ function randomForestRCode(predictorCount) {
       importance=TRUE
     )
     model_importance <- as.numeric(randomForest::importance(full_fit, type=1, scale=FALSE)[, 1])
+    rf_prediction <- rf_prediction[evaluated]
+    baseline_prediction <- baseline_prediction[evaluated]
+    model_y <- model_y[evaluated]
     if (is_classification) {
       rf_primary <- mean((rf_prediction - model_y)^2)
       baseline_primary <- mean((baseline_prediction - model_y)^2)
@@ -184,6 +201,10 @@ function randomForestRCode(predictorCount) {
 async function executeRandomForest(runtime, input) {
   const boundNames = [`${BIND_PREFIX}y`];
   runtime.objs.globalEnv.bind(`${BIND_PREFIX}y`, input.y);
+  if (input.validation?.foldIds) {
+    boundNames.push(`${BIND_PREFIX}fold_id`);
+    runtime.objs.globalEnv.bind(`${BIND_PREFIX}fold_id`, input.validation.foldIds);
+  }
   for (let index = 0; index < input.predictorCount; index += 1) {
     const name = `${BIND_PREFIX}x${index}`;
     boundNames.push(name);
@@ -191,7 +212,7 @@ async function executeRandomForest(runtime, input) {
   }
   let resultObject;
   try {
-    resultObject = await runtime.evalR(randomForestRCode(input.predictorCount));
+    resultObject = await runtime.evalR(randomForestRCode(input.predictorCount, input.validation));
     return normalizeRandomForestResult(await resultObject.toD3(), input);
   } finally {
     if (resultObject) await runtime.destroy(resultObject);

@@ -10,6 +10,13 @@ function input(n = 120, predictorCount = 2) {
 }
 
 describe("WebR Random Forest challenger adapter", () => {
+  it("does not interpret creative feature groups as validation units", () => {
+    expect(prepareRandomForestInput({ ...input(), groups: [{ id: "hook", indices: [1] }] })).toMatchObject({ ok: true, validation: { mode: "random_rows" } });
+  });
+  it("does not turn unavailable validation errors into an apparent tie", () => {
+    const prepared = prepareRandomForestInput(input());
+    expect(normalizeRandomForestResult(Array.from({ length: prepared.predictorCount }, () => ({ rf_primary: null, baseline_primary: null, relative_gain: null })), prepared)).toMatchObject({ status: "failed" });
+  });
   it("requires enough rows relative to the predictor count", () => {
     expect(prepareRandomForestInput(input(120))).toMatchObject({ ok: true, outcomeType: "classification" });
     expect(prepareRandomForestInput(input(80))).toMatchObject({
