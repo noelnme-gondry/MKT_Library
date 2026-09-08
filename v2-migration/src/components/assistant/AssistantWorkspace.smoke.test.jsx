@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import AssistantWorkspace, { analysisInputSignature } from "@/components/assistant/AssistantWorkspace";
 import { useAppStore } from "@/store/useDataStore";
@@ -42,6 +42,27 @@ function slice(mapping = { date: "date", channel: "channel", cost: "cost", insta
 describe("Dochi analysis workspace", () => {
   beforeEach(() => {
     useAppStore.setState({ denomBasis: "installs", displayCurrency: "KRW" });
+  });
+
+  it.each(["ko", "en"])("checks detailed recommendation quality on demand and resets it after input changes (%s)", async (locale) => {
+    const en = locale === "en";
+    const records = completeRaw.map((row) => ({ ...row, cost: "100" }));
+    const data = slice(undefined, records);
+    const view = render(<AssistantWorkspace csvData={data} locale={locale} getTitle={(id) => id} onOpenTool={() => {}} />);
+    const card = () => within(screen.getByRole("heading", { name: "5-22" }).closest("article"));
+    expect(card().getByText(en ? "Detailed quality not checked yet" : "상세 품질 아직 미검사")).toBeTruthy();
+    fireEvent.click(card().getByRole("button", { name: en ? "Check detailed input quality" : "상세 입력 품질 확인" }));
+    await waitFor(() => expect(card().getByText(en ? "Review input cautions" : "입력 주의사항 확인")).toBeTruthy());
+    expect(card().getByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: en ? "Run summary analyses" : "요약 분석 실행" }));
+    await waitFor(() => expect(screen.getAllByText(en ? "Complete" : "완료")).toHaveLength(5));
+    const resultDetails = [...view.container.querySelectorAll(".dochi-workspace__result-details")];
+    expect(resultDetails.length).toBeGreaterThan(0);
+    resultDetails.forEach((details) => { details.open = true; fireEvent(details, new Event("toggle")); });
+    expect(screen.getAllByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/).length).toBeGreaterThan(1);
+    view.rerender(<AssistantWorkspace csvData={{ ...data, raw: records.map((row, index) => ({ ...row, cost: String(100 + index * 10) })) }} locale={locale} getTitle={(id) => id} onOpenTool={() => {}} />);
+    expect(card().getByText(en ? "Detailed quality not checked yet" : "상세 품질 아직 미검사")).toBeTruthy();
+    expect(card().queryByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeNull();
   });
 
   it("uses a structural fingerprint instead of carrying source headers or values in the result signature", () => {
