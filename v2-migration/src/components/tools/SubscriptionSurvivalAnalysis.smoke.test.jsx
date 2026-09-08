@@ -51,6 +51,17 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     expect(container.querySelector("#subscription-risk-table table")).toBeTruthy();
   });
 
+  it.each(["ko", "en"])("keeps early exits and unfinished follow-up distinct near the conclusion (%s)", (locale) => {
+    const { container } = render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed locale={locale} />);
+    confirmEventDefinition(locale);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Analyze" : "분석하기" }));
+    expect(container.querySelector("#subscription-survival-result").textContent).toContain(locale === "en"
+      ? "At horizon 4: 1 observed through the horizon, 3 earlier observed exits, 1 earlier censorings, and 0 not yet entered."
+      : "4기간까지 관측 1건 · 그 전 이탈 확인 3건 · 그 전 중도절단 1건 · 아직 관측 진입 전 0건");
+    fireEvent.pointerDown(screen.getByRole("button", { name: locale === "en" ? "Get results" : "결과 받기" }), { button: 0, ctrlKey: false });
+    expect(screen.getByText(locale === "en" ? "Follow-up support CSV" : "관측 성숙도 근거 CSV")).toBeTruthy();
+  });
+
   it("does not render a fake zero or infinity median when no event is observed", () => {
     const censored = ROWS.map((row) => ({ ...row, event_observed: "0" }));
     const { container } = render(<SubscriptionSurvivalAnalysis rows={censored} analyzed locale="en" />);
