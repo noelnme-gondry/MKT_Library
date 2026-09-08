@@ -13,6 +13,7 @@ import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggreg
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
@@ -461,6 +462,13 @@ export function buildPvmCache(csvData, state) {
     Cost2: fin.Cost2,
     Result1: fin.Result1,
     Result2: fin.Result2,
+    scopeEvidence: {
+      denominatorKey: resultField, currency: state.currency?.toUpperCase(), filters: scopeFilters(state.dashboardFilter),
+      periods: [
+        { id: "before", start: ymd(p1[0]), end: ymd(p1[1]), observations: rowsP1.length, denominator: fin.Result1, cost: fin.Cost1, quality: scopedInputQuality(rowsP1, ["spend", resultField]) },
+        { id: "after", start: ymd(p2[0]), end: ymd(p2[1]), observations: rowsP2.length, denominator: fin.Result2, cost: fin.Cost2, quality: scopedInputQuality(rowsP2, ["spend", resultField]) },
+      ],
+    },
     layer1,
     layer2,
     layer3,
@@ -1414,6 +1422,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             toolId={pvmManifest.toolId}
             analysisKey={analysisKey}
             analysisType="pvm"
+            scopeEvidence={cache.scopeEvidence}
             resultState="ready"
             locale={locale}
             tone={cache.deltaCpa > 0 ? "bad" : cache.deltaCpa < 0 ? "good" : "neutral"}

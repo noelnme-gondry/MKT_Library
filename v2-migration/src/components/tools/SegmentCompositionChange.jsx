@@ -558,6 +558,17 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         <ResultActionCard
           locale={locale}
           toolId={TOOL_ID}
+          analysisKey={JSON.stringify({ ...active, dimensionId: selected.dimensionId })}
+          resultState={[DIMENSION_STATUS.READY, DIMENSION_STATUS.CAUTION].includes(selected.status) ? "ready" : "insufficient"}
+          scopeEvidence={{
+            denominatorKey: mapping.roles.population || tx(locale, "선택 축의 기준 인원", "Selected-axis population"),
+            observationUnit: "cells",
+            filters: active.scopeColumn && active.scopeValue ? { [active.scopeColumn]: [active.scopeValue] } : {},
+            periods: [
+              { id: "before", start: active.pre, end: active.pre, observations: selected.periods.pre.cells, denominator: selected.periods.pre.population },
+              { id: "after", start: active.post, end: active.post, observations: selected.periods.post.cells, denominator: selected.periods.post.population },
+            ],
+          }}
           tone={STATUS_TONE[selected.status] || "neutral"}
           headline={conclusion()}
           /* ResultActionCard의 계약은 `{text}` 객체다. 문자열을 넘기면 렌더는

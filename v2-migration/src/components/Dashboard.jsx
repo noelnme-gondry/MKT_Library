@@ -341,6 +341,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 stats={verdict.stats}
                 locale={locale}
                 workbookExport={dashboardWorkbookExport}
+                scopeEvidence={verdict.scopeEvidence}
                 decisionPrefill={{
                   conclusion: verdict.headline,
                   action: verdict.tone === "bad"

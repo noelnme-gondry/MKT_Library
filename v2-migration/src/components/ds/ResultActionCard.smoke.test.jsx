@@ -15,6 +15,23 @@ describe("ResultActionCard decision-first hierarchy", () => {
     });
   });
 
+  it.each(["ko", "en"])("shows the actual denominator and unmeasured aggregate missingness (%s)", (locale) => {
+    render(<ResultActionCard headline="Scope result" locale={locale} analysisBasis={false} decisionReview={false}
+      scopeEvidence={{ denominatorKey: "installs", currency: "KRW", observationUnit: "cells", filters: { channels: ["Selected A"] }, periods: [{ id: "after", start: "2026-08-08", end: "2026-08-14", observations: 7, denominator: 140 }] }} />);
+    const summary = screen.getByText(locale === "en" ? "Actual analysis scope and denominator" : "실제 분석 범위·분모 확인");
+    fireEvent.click(summary);
+    expect(summary.closest("details").textContent).toContain("140");
+    expect(summary.closest("details").textContent).toContain("Selected A");
+    expect(summary.closest("details").textContent).toContain(locale === "en" ? "missing/invalid input cells: Unmeasured" : "입력 결측·비정상 셀: 미집계");
+  });
+
+  it("publishes the actual result period instead of the broader upload filter", () => {
+    useAppStore.setState({ dashboardFilter: { dateStart: "2026-01-01", channels: new Set(["Wrong"]) }, findingsByGroup: {} });
+    render(<ResultActionCard toolId="5-2" headline="Scope result" analysisBasis={false} decisionReview={false}
+      scopeEvidence={{ filters: { channels: ["Actual"] }, periods: [{ id: "after", start: "2026-08-08", end: "2026-08-14" }] }} />);
+    expect(useAppStore.getState().findingsByGroup.efficiency[0].scope).toMatchObject({ dateStart: "2026-08-08", dateEnd: "2026-08-14", channels: ["Actual"] });
+  });
+
   it("renders key figures before supporting prose", () => {
     const { container } = render(
       <ResultActionCard

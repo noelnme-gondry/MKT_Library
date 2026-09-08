@@ -34,6 +34,16 @@ describe("SegmentCompositionChange render smoke", () => {
     expect(container.textContent).toContain("데이터 분석하기");
   });
 
+  it.each(["ko", "en"])("reports low-population results as insufficient rather than ready (%s)", (locale) => {
+    window.gtag = vi.fn();
+    const rows = DEMO.raw.map((row) => ({ ...row, signups: "1" }));
+    const { container } = mount({ rows, locale });
+    expect(container.querySelector("#segment-composition-result")).toBeTruthy();
+    expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({ tool_id: "5-29", result_state: "insufficient", locale }));
+    expect(window.gtag.mock.calls.filter((call) => call[1] === "analysis_completed").some((call) => call[2].result_state === "ready")).toBe(false);
+    delete window.gtag;
+  });
+
   it("매핑을 손대지 않아도 파일을 읽고 바로 분석한다", () => {
     // 마케터가 세그먼트를 보러 와서 매핑을 먼저 공부해야 하면 그 화면은 못 쓴다.
     const { container } = mount();
