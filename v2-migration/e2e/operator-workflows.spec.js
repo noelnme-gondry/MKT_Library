@@ -122,6 +122,28 @@ async function verifyHoldoutDesign(page, locale) {
 test("홀드아웃 설계 선언과 포커스·중단 변경 시 행동 보류를 확인한다", async ({ page }) => verifyHoldoutDesign(page, "ko"));
 test("@light-en Holdout design declarations retain focus and withhold changed stopping", async ({ page }) => verifyHoldoutDesign(page, "en"));
 
+async function verifyMovementConditions(page, locale) {
+  const en = locale === "en";
+  await page.goto(`${en ? "/en" : ""}/tools/paid-organic-trend`);
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: en ? "Choose CSV" : "CSV 선택", exact: true }).click();
+  const chooser = await chooserPromise;
+  const rows = Array.from({ length: 8 }, (_, i) => `${new Date(Date.UTC(2026, 1, 2 + i * 7)).toISOString().slice(0, 10)},1300,${300 + i * 35}`);
+  await chooser.setFiles({ name: "movement.csv", mimeType: "text/csv", buffer: Buffer.from(`week,total_signups,paid_signups\r\n${rows.join("\r\n")}`) });
+  const panel = page.getByRole("region", { name: en ? "Observational comparison conditions" : "관찰 비교 조건" });
+  await expect(panel).toBeVisible();
+  const review = page.locator('[data-decision-review-tool="5-18-paid-organic"]');
+  await expect(review).toHaveCount(0);
+  for (const [ko, english, value] of [["추적·어트리뷰션 정책", "Tracking / attribution policy", "consistent"], ["계절성·프로모션 조건", "Seasonality / promotion conditions", "reviewed"], ["광고 집행 연속성", "Ad delivery continuity", "continuous"]]) await panel.getByLabel(en ? english : ko).selectOption(value);
+  await expect(review).toBeVisible();
+  await panel.getByLabel(en ? "Tracking / attribution policy" : "추적·어트리뷰션 정책").selectOption("changed");
+  await expect(review).toHaveCount(0);
+  await expectNoSeriousAccessibilityViolations(page);
+}
+
+test("유입 변화맵의 추적 변경 조건은 실행 제안을 보류한다", async ({ page }) => verifyMovementConditions(page, "ko"));
+test("@light-en Movement map withholds actions after a tracking change", async ({ page }) => verifyMovementConditions(page, "en"));
+
 test("@light-en English start upload stays accessible in light mode", async ({ page }) => {
   await page.goto("/en/start");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Upload data. Get the right first analysis.");

@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useClientReady } from "@/lib/useClientReady";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
@@ -84,12 +85,9 @@ const METHODS_EN = [
   { key: "off", label: "③ Shutdown (pre/post)", tip: "★★ Quasi-experiment" },
 ];
 
-const subscribeHydration = () => () => {};
-const clientReady = () => true;
-const serverReady = () => false;
 
 export default function Incrementality({ locale = "ko" } = {}) {
-  const isHydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
+  const isHydrated = useClientReady();
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
