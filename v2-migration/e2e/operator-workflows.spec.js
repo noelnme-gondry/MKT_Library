@@ -400,6 +400,38 @@ test("입력 매핑이 바뀌면 이전 주간 보고서 블록을 stale로 표�
   await expect(page.getByText("입력 데이터가 바뀐 뒤 만들어진 이전 결과입니다.")).toBeVisible();
 });
 
+async function verifyDirectAnalysisGates(page, en = false) {
+  await page.goto(`${en ? "/en" : ""}/tools/budget-allocation`);
+  await uploadCsv(page, "efficiency.csv");
+  await expect(page.locator("#tab-alloc .result-action-card")).toHaveCount(0);
+  const confirmations = page.getByRole("button", { name: en ? "Confirm" : "확인", exact: true });
+  while (await confirmations.count()) await confirmations.first().click();
+  await page.locator(".csv-uploader").getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+  await expect(page.locator("#tab-alloc .result-action-card")).toBeVisible();
+
+  await page.goto(`${en ? "/en" : ""}/content/freshness`);
+  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  const rows = Array.from({ length: 120 }, (_, index) => {
+    const day = Math.floor(index / 6) + 1;
+    return [`2026-01-${String(day).padStart(2, "0")}`, "Meta", `creative-${index % 6}`, 5000, 100 + index % 11, 20, 10000].join(",");
+  });
+  await page.locator('.csv-uploader input[type="file"]').setInputFiles({ name: "creative-gate.csv", mimeType: "text/csv", buffer: Buffer.from(`date,channel,creative_id,impressions,clicks,installs,spend\r\n${rows.join("\r\n")}`) });
+  await expect(page.locator("#s-fatigue")).toHaveCount(0);
+  const currency = page.locator('.csv-uploader [data-currency-scope="declare"]').first();
+  if (await currency.count()) await currency.getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
+  const creativeConfirmations = page.getByRole("button", { name: en ? "Confirm" : "확인", exact: true });
+  while (await creativeConfirmations.count()) await creativeConfirmations.first().click();
+  await page.locator(".csv-uploader").getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+  await expect(page.locator("#s-fatigue")).toBeVisible();
+}
+
+test("예산·소재 직접 업로드는 분석 버튼을 누른 뒤에만 결과를 표시한다", async ({ page }) => {
+  await verifyDirectAnalysisGates(page);
+});
+test("budget and creative uploads wait for Analyze @light-en", async ({ page }) => {
+  await verifyDirectAnalysisGates(page, true);
+});
+
 async function verifyContentValidationSplit(page, en = false) {
   await page.goto(`${en ? "/en" : ""}/content/element-analysis`);
   await expect(page.locator('.csv-dropzone[data-hydrated="true"]')).toBeVisible();

@@ -114,6 +114,8 @@ L-02 detail(EN): Limited samples, variability, or short observation windows can 
 - EN: MMM also checks whether error is lower than a last-observation baseline on the same time-ordered validation windows. Unrecoverable windows leave the comparison unconfirmed and the decision held. Training coverage of a 90% reference range does not validate future coverage; independent future coverage is reported as unmeasured when unavailable.
 - KR: VIF 엔진이 반환한 계산 불가는 수학적 무한대로 바꾸지 않는다. 화면·CSV·워크북에 해당 채널과 계산 불가 상태를 남기며, 빈칸을 0으로 읽어 경고가 해제되는 수식을 사용하지 않는다.
 - EN: An uncomputed VIF is not mathematical infinity. The screen, CSV, and workbook preserve each affected channel and its uncomputed status; blank-to-zero formulas must not clear a warning.
+- KR: 예산 배분·소재 분석은 업로드만으로 계산하지 않는다. 매핑을 확인하고 분석하기를 눌러야 결과를 계산하며, 입력 변경으로 기존 분석이 무효화되면 결과를 닫고 재확인을 기다린다.
+- EN: Budget allocation and creative analysis do not calculate on upload alone. Confirm mapping and run Analyze to calculate results; input changes that invalidate the analysis close the results until reconfirmed.
 - 글→도구 퍼널은 GA 사용 가능 시 실제 CTA 클릭의 공개 slug·유형·언어·대상 도구만 세션 저장소에 30분 보관한다. 같은 도구·언어의 업로드/결과 이벤트에만 연결하며 CSV·파일명·헤더·쿼리를 보관하거나 전송하지 않는다. / The editorial funnel keeps only a clicked public slug, content type, locale, and target tool in session storage for 30 minutes when GA is available. Attribution requires the same tool and locale; CSV, filenames, headers, and queries are excluded.
 
 | 분류 | 표현 | 규칙 |

@@ -506,7 +506,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   const conceptChartRef = useRef(null);
   const chartInstances = useRef({});
 
-  const hasData = csvData?.raw?.length > 0;
+  const hasRawData = csvData?.raw?.length > 0;
+  const analyzed = useAppStore((state) => state.isGroupAnalyzed(C.uploaderToolId));
+  const hasData = hasRawData && analyzed;
 
   // 매핑된 표준 필드 키 감지 (§8: 없는 컬럼은 하위 분석 숨김, crash X)
   const mappedKeys = useMemo(
@@ -831,7 +833,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div className="callout warning">
             <div className="ico">!</div>
             <div className="body">
-              <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
+              <strong>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
               <p>{C.noDataDesc}</p>
               <div style={{ marginTop: "1rem" }}>
                 <ToolTemplateAction

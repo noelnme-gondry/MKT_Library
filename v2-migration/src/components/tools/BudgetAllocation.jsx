@@ -556,7 +556,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const [groupModels, setGroupModels] = useState({}); // { unit: "linear"|"log"|"poly2"|"power" } — 단위별 모델 override
   const [groupVerification, setGroupVerification] = useState({}); // { unit: "verified" }
 
-  const hasData = csvData?.raw?.length > 0;
+  const hasRawData = csvData?.raw?.length > 0;
+  const analyzed = useAppStore((state) => state.isGroupAnalyzed("5-3"));
+  const hasData = hasRawData && analyzed;
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -1668,7 +1670,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip warning">
-              <span className="dot"></span>{tr("CSV 업로드 대기", "Waiting for CSV upload")}
+              <span className="dot"></span>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}
             </span>
           }
           summary={
@@ -1686,7 +1688,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <div className="callout warning">
               <div className="ico">!</div>
               <div className="body">
-                <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
+                <strong>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
                 <p>{tr(
                   "효율 CSV 한 번 업로드로 채널별 예산 배분을 분석합니다. 그리디(Greedy) 방식은 '가장 효율이 좋은 곳에 예산을 1순위로' 배분합니다.",
                   "Upload your efficiency CSV once to analyze per-channel budget allocation. The greedy method allocates budget ‘to the most efficient spot first.’"
