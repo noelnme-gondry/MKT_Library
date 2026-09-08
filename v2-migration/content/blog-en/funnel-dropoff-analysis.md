@@ -19,7 +19,7 @@ If you want to lift conversion rate but don't know where to start, draw the funn
 
 First, make the denominator in CVR explicit across the team. The same conversion count produces a different rate when the denominator is clicks, installs, or sessions. If that definition is not fixed, the diagnosis below is not comparable.
 
-## Read the funnel as pass-through rates by stage
+## A low conversion rate is decided at one funnel stage
 
 An app marketing funnel usually goes:
 
@@ -36,7 +36,7 @@ For example:
 
 What stands out here is install → signup at 25%. Of clickers, 40% install, but only 25% of those sign up — the other 75% install and just leave. That's likely your biggest leak.
 
-## Not "the lowest stage" but "the most valuable stage"
+## Conversion rate priority — value at stake, not the lowest rate
 
 There's a trap: the lowest pass-through stage isn't always priority one.
 
@@ -58,7 +58,7 @@ Finding the stage is where it really starts. Especially for post-click stages (l
 
 <!-- CONTENT_ACTION -->
 
-## Change one thing, then validate it
+## Validate each change with an A/B test
 
 Landing A vs B, five form fields vs three, or two offer messages: change **one thing at a time** and verify it with an [A/B test](/blog/ab-testing). Change several things because they "feel better" and you cannot tell improvement from regression or identify the cause.
 

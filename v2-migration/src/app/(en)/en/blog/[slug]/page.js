@@ -90,7 +90,7 @@ function buildPostJsonLd(post, canonical) {
     "@graph": [
       {
         "@type": "BlogPosting",
-        headline: post.title,
+        headline: post.h1,
         description: post.description,
         datePublished: post.date || undefined,
         dateModified: post.updated || post.date || undefined,
@@ -139,7 +139,7 @@ export default async function EnBlogPostPage({ params }) {
       <header className="content-article__header">
         <span className="content-article__type">FIELD NOTE</span>
         <h1>
-          {post.title}
+          {post.h1}
         </h1>
         {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
         {post.seoAnswer && (

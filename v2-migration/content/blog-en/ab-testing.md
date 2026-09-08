@@ -33,13 +33,13 @@ The structure is simple. Randomly split your subjects roughly in half, show one 
 
 "Random" is the key word here. Randomize the split, and the two groups differ only in which screen they see — every other condition is equal. That lets you attribute the conversion rate difference to "thanks to the screen difference." (This is the same logic as the holdout in the [incrementality measurement post](/en/blog/incrementality-measurement) — you're just changing the screen instead of the ad.)
 
-## Two rules to follow
-
-### One: decide your required sample size before you start
+## How do you calculate A/B test sample size?
 
 Catching a small difference requires a larger sample. This is called statistical power — the probability of catching a real difference when one actually exists. The rule is to decide up front, before turning the test on, how many people (or how many weeks) you'll collect. That way you avoid the temptation to stop the moment it "looks like it's winning enough."
 
-### Two: call it based on significance
+Sample size follows from four values: baseline conversion rate, minimum detectable effect, significance level, and power. Rather than solving it by hand each time, put those four into the [A/B test sample size calculator](/calculator/ab-test-sample-size) to see the required audience and expected duration first.
+
+## What does calling a test on significance mean?
 
 Significance is, simply put, "how unlikely is it that this difference is just chance." "Statistically significant" means "hard to explain away as chance." Instead of eyeballing 4.2% vs. 4.8%, the real test is whether that gap falls outside the range chance alone could produce.
 

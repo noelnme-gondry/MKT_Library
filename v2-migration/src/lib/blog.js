@@ -108,6 +108,8 @@ function parseFile(fileName, locale) {
   return {
     slug,
     title: seo?.title || data.title || slug,
+    // 화면 h1. 레지스트리가 따로 적지 않았으면 제목과 같다(§blogSeo H1).
+    h1: seo?.h1 || seo?.title || data.title || slug,
     description: seo?.description || data.description || "",
     seoAnswer: editorial.answer || data.description || "",
     searchIntent: seo?.intent || "",
