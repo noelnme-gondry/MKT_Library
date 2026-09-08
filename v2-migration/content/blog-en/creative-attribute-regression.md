@@ -11,6 +11,9 @@ faq:
     a: "Use it only to narrow direction. When the delivery algorithm concentrates impressions on creatives that respond well, the attributes of those creatives look better than they are. Confirmation has to come from an experiment."
   - q: "How many creatives do I need before this analysis works?"
     a: "Meaningfully more than the number of attributes you are comparing. With four attributes you need at least dozens of creatives, and each attribute needs enough creatives both with and without it before the coefficients stabilise."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Everyone knows A/B testing is the right answer. The problem is that you cannot run one every time — the budget is small, there are too few creatives, or the network refuses to split delivery evenly.
 
@@ -31,7 +34,7 @@ Attributes go in as 0/1 or as numbers. What matters here is **recording facts, n
 
 Suppose thumbnails with a person have a higher average CTR. If those thumbnails were mostly used on short videos, that gap may be the person or may be the length.
 
-Putting several attributes in at once shows **the difference once the other attributes are held at the same level**. [Content element analysis](/content/element-analysis) runs that calculation, and [creative fatigue analysis](/content/freshness) uses the same data to tell you when to rotate.
+Putting several attributes in at once shows **the difference once the other attributes are held at the same level**. [Content element analysis](/content/element-analysis) runs that calculation, and [creative fatigue analysis](/content/freshness) separately requires daily dates, creative IDs, exposure, and outcome metrics. The attribute table above cannot establish a fatigue timeline.
 
 ## Do not miss combination effects
 
@@ -39,9 +42,18 @@ One trap deserves attention. Attribute by attribute, you get as far as "person t
 
 That is a combination effect, and it shows up in a cross-tab of the two axes with performance per cell. When one exists, you cannot pick each axis separately — you have to pick the combination.
 
+An illustrative cross-tab makes this concrete:
+
+| | Short video | Long video |
+| --- | --- | --- |
+| Person present | 2.4% | 1.1% |
+| No person | 1.5% | 1.4% |
+
+The direction differs by video length. Check support and uncertainty in all four cells before choosing an interaction to test.
+
 ## Moving results into production guidelines
 
-- Do not use an attribute whose interval crosses zero. Not even the direction is settled.
+- Do not use an attribute whose interval crosses its no-difference reference (0 for differences, 1 for odds or rate ratios). Not even the direction is settled.
 - Drop attributes with thin samples. An attribute present in three creatives just reflects the other characteristics of those three.
 - Send only the top one or two to an experiment. Turning all of them into guidelines stacks up unverified rules.
 

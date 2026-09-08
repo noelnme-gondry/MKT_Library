@@ -10,13 +10,14 @@ primaryTool: "5-2"
 relatedGlossary: ["cpa", "incrementality", "multicollinearity", "response-curve"]
 answer: "Performance marketing analysis starts with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
 conditions: "The time windows below are practical eligibility checks used by this service. More rows do not fix poor measurement or weak variation, and observational data alone cannot establish causal lift."
-reviewedAt: "2026-08-09"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 faq:
   - q: "Which analysis should I run first when ad performance drops?"
     a: "Start with daily spend and conversions to validate the period and scope. Then use variance decomposition to separate channel mix from within-channel efficiency."
   - q: "Can I run MMM as soon as I have a lot of data?"
     a: "No. You need a long weekly channel panel with meaningful spend variation, then a VIF check for collinearity. High collinearity makes channel contributions hard to separate."
+updated: "2026-09-09"
 ---
 When performance drops, it is tempting to choose a method first: “Should we run MMM?” or “Is this an A/B test?” That can force the data into a method it cannot support. A daily campaign export can find an operating problem quickly, but it cannot prove the net causal effect of advertising by itself.
 
@@ -67,7 +68,7 @@ Without a control, holdout market, or off period, observational performance does
 
 ## 5. MMM is not the final boss; it has different requirements
 
-MMM is not last merely because it is heavy. It answers a different question when you have a sufficiently long weekly panel of channel spend, outcomes, and controls such as seasonality and promotions. This service uses 52 weeks as a starting eligibility check, but time alone is not enough. If channels move together, their contributions are difficult to separate.
+MMM is not last merely because it is heavy. It answers a different question when you have a sufficiently long weekly panel of channel spend, outcomes, and controls such as seasonality and promotions. The entry recommendation treats 12–51 weeks as exploratory and checks its decision-period threshold from 52 weeks. Meeting that threshold does not pass input quality, independent variation, identification, or time-ordered validation. If channels move together, their contributions are difficult to separate.
 
 Run [VIF diagnosis](/tools/vif-multicollinearity) before MMM. High VIF is a signal to combine channels or redesign the period and variables. A model producing numbers does not make channel contribution identifiable.
 

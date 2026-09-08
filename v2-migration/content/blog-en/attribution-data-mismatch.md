@@ -8,12 +8,15 @@ tags: ["Analytics Methodology", "Performance Marketing"]
 draft: false
 faq:
   - q: "When network and MMP conversions differ, which is right?"
-    a: "Both are right on their own terms. Attribution windows, credit models, and counting times differ. Fix one basis for budget decisions and use network numbers for in-network optimization."
+    a: "Different rules can produce valid differences, but errors must still be investigated. Attribution windows, credit models, and counting times differ. Fix one basis for budget decisions and use network numbers for in-network optimization."
   - q: "How large a gap is still normal?"
     a: "There is no fixed threshold. A gap that widens suddenly is more likely an integration problem than normal variance. Record your usual gap and investigate when it leaves that range."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
-Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP says 85. Open the order DB and it's 100. What goes in Monday's report? The short answer: "which one is right" is the wrong question. All four are correct under their own rules — they're just answering different questions. Here are the four reasons they diverge, and which number to anchor on for which purpose.
+Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP says 85. Open the order DB and it's 100. What goes in Monday's report? The short answer: "which one is right" is the wrong question. Different rules can explain the gap, but they do not establish that all four numbers are correct. Check duplicates, missing events, and integration errors. Here are the four reasons they diverge, and which number to anchor on for which purpose.
 
 ![Same week's conversion count, different by system](/blog-assets-en/attribution-data-mismatch/four-numbers.svg)
 
@@ -30,11 +33,11 @@ Numbers differing isn't the incident. The incident comes after: you report chann
 
 ## Reason 1. Attribution windows differ
 
-The window during which a conversion gets credited to an ad varies by system. Meta's default is 7-day click, 1-day view. Google and various MMPs each have their own defaults. A longer window catches more conversions, so two numbers with different windows can never match. Someone who clicks and buys 9 days later might be missing from Meta's dashboard but present elsewhere.
+The window during which a conversion gets credited to an ad varies by system. Check the actual click, view, and engagement windows for the campaign and current settings; do not assume a universal default. Google and various MMPs each have their own defaults. A longer window catches more conversions, so numbers with different windows are not directly comparable, even if they happen to match. Someone who clicks and buys 9 days later might be missing from Meta's dashboard but present elsewhere.
 
 ## Reason 2. Whether "views" count at all differs
 
-Ad platform dashboards count view-through conversions — someone who saw the ad but never clicked, and converted anyway — as their own credit. GA4 is fundamentally click-based. The gap widens for impression-heavy channels like display or video. This is a big part of why ad-platform numbers tend to run higher.
+Ad platform dashboards count view-through conversions — someone who saw the ad but never clicked, and converted anyway — as their own credit. GA4 can also include YouTube engaged-view key events depending on configuration and report; it is not simply click-only. See [Google’s documentation](https://support.google.com/analytics/answer/12846214?hl=en). The gap widens for impression-heavy channels like display or video. This is a big part of why ad-platform numbers tend to run higher.
 
 ## Reason 3. The credit date differs
 
@@ -50,7 +53,7 @@ On top of that, iOS adds another layer. Since tracking restrictions kicked in, a
 
 ![Which number to trust, by question](/blog-assets-en/attribution-data-mismatch/number-purpose.svg)
 
-Comparing campaigns or creatives within the same platform? Use that platform's dashboard. Even if the absolute numbers are inflated, relative comparisons measured by the same rules are valid. Nothing beats this for judging whether creative A beats creative B.
+Comparing campaigns or creatives within the same platform? Use that platform's dashboard. Consistent rules help, but audience, delivery allocation, and maturity differences can still bias relative comparisons. Validate a creative winner with a designed experiment.
 
 Comparing across channels? Pick one — MMP or GA4 — and stick with it. Either works, as long as you're consistent. The worst move is cherry-picking whichever number flatters each channel. The moment you do, meetings stop being analysis and become negotiation.
 
@@ -62,6 +65,6 @@ By the way, if GA4's own numbers feel off, that is a separate issue. After setti
 
 ## Do this today
 
-Build a one-page "source of truth" document. Four columns per metric: which metric / which source / which window / when it's considered final. Example: "channel-level conversions: MMP, 7-day click, final at D+3." Having this one page eliminates half the meetings that start with "your number doesn't match mine."
+Build a one-page "source of truth" document. Four columns per metric: which metric / which source / which window / when it's considered final. Example: "channel-level conversions: MMP, 7-day click, provisional review at D+3, with finalization based on observed reporting delay." Having this one page eliminates half the meetings that start with "your number doesn't match mine."
 
-Once your source of truth is settled, the next question shows up: "so where should we actually put more budget?" That calculation doesn't come out of dashboard numbers alone, and running it in a spreadsheet every time gets old fast. Drop your ad platform report or MMP export CSV into our [marketing response analysis](/tools/marketing-response) — incrementality analysis and MMM-based contribution decomposition run right in your browser, and nothing goes to a server.
+Once your source of truth is settled, the next question shows up: "so where should we actually put more budget?" That calculation doesn't come out of dashboard numbers alone, and running it in a spreadsheet every time gets old fast. Drop your ad platform report or MMP export CSV into our [marketing response analysis](/tools/marketing-response) — MMM-based estimates run in the browser when the input provides the required weekly channel panel and conditions, and nothing goes to a server.

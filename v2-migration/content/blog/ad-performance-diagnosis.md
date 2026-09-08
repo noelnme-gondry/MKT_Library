@@ -1,16 +1,16 @@
 ---
-title: "광고 성과 하락 원인: CPA·CTR 떨어질 때 4단계 진단"
-description: "CPA·CTR·전환율이 떨어졌을 때 소재부터 바꾸기 전 확인할 순서. 측정 오류, 채널별 변동, 예산 배분, 퍼널 문제를 4단계로 진단합니다."
+title: "광고 성과 하락 원인: CPA 상승·CTR 하락 때 4단계 진단"
+description: "CPA 상승·CTR 하락 때 소재부터 바꾸기 전 확인할 순서. 측정 오류, 채널 변동, 예산 배분, 퍼널을 4단계로 점검합니다."
 date: "2026-07-22"
-updated: "2026-08-03"
+updated: "2026-09-09"
 slug: "ad-performance-diagnosis"
 keywords: "광고 성과 하락, CPA 상승 원인, CTR 하락 원인, 광고 성과 진단, 소재 피로도, 광고 전환율 하락, 캠페인 성과 분석"
 tags: ["문제 진단", "소재"]
 draft: false
 primaryTool: "5-21"
 relatedGlossary: ["cpa", "ctr", "cvr", "cpm"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: 데이터 최신성"
     url: "https://support.google.com/google-ads/answer/2544985?hl=en"
@@ -59,7 +59,7 @@ CPA는 그 자체로 원인이 아니라 앞 단계 지표들의 결과입니다
 3. **전환율(CVR) 하락** — 클릭은 그대로인데 전환이 줄었습니다.
 4. **예산 배분 이동** — 채널별 효율은 그대로인데 비싼 캠페인이 비중을 가져갔습니다.
 
-넷은 처방이 정반대입니다. 소재를 갈아야 하는 건 2번뿐이고, 4번은 소재를 아무리 바꿔도 움직이지 않습니다. 아래 순서는 이 넷을 하나씩 지워 나가는 절차입니다.
+네 변화는 함께 발생할 수 있고, 같은 지표 변화도 여러 운영 요인에서 나옵니다. CTR 하락만으로 소재 교체를 확정하거나, 믹스 변화에서 소재 영향을 배제하지 마세요. 아래 순서는 가설을 좁히는 절차입니다.
 
 ## 0단계. CPA 상승이 측정 탓은 아닌가요?
 

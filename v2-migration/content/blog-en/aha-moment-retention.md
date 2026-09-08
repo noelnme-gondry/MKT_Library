@@ -18,6 +18,9 @@ faq:
     a: "Use it as a hypothesis, not proof. Confirm that encouraging the action increases retention in an A/B test or holdout before making it an operating metric."
   - q: "Can I find an Aha Moment without user-level event data?"
     a: "You need at least a user ID, a 0/1 target, and early action counts to test the relationship directly. Aggregated campaign data cannot establish a person-level behavior-retention link."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 An Aha Moment is not the one action that retained users happened to do most often. It is a testable statement about **which users did which action, how many times, and by when**—and whether encouraging that action actually improves long-term retention.
 
@@ -68,13 +71,13 @@ F1 is useful because it balances precision and recall. But a high F1 does not ma
 
 ## Illustrative example: why Lift alone is not enough
 
-This is **illustrative data**, not a benchmark.
+This is **illustrative data**, with overall D30 retention of 20%. Lift is rounded to one decimal; it is not a benchmark.
 
 | Candidate condition | D30 retention | Lift vs. all users | Reach | Interpretation |
 |---|---:|---:|---:|---|
 | Add three friends within D3 | 42% | 2.1x | 28% | Strong experiment candidate |
 | Save five items in week one | 39% | 2.0x | 8% | Strong signal; check whether reach can increase |
-| Open the app on day one | 23% | 1.2x | 94% | Common but weakly discriminative |
+| Open the app on day one | 20% | 1.0x | 94% | Common but weakly discriminative |
 | Register payment method in week one | 70% | 3.5x | 1% | Very rare; check support and inducement cost |
 
 Payment registration has the highest Lift, but only 1% of users reach it. Before asking every new user to do it, check whether the sample is large enough, whether the action fits the product journey, and whether its reach can realistically increase. The friend-add condition is usually a better first experiment because signal and reach both matter.

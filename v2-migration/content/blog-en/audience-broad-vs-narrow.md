@@ -12,22 +12,24 @@ faq:
   - q: "Why does CPA rise after narrowing the audience?"
     a: "A smaller reachable pool means the same people see the ad repeatedly, so frequency climbs and fatigue sets in. Check frequency and CTR trends together."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 "Narrow targeting is more accurate" and "broad is the answer these days" both circulate at the same time. Both are true, and both are half-true. The right answer changes with the situation, so this isn't something to memorize — it's something to learn to judge. Today, let's look at what to check before you decide.
 
-## Narrowing gets you accuracy, but it costs more and burns out faster
+## Compare observed reach and response
 
 Let's start with the tradeoff. Narrowing your targeting gives you something and takes something away at the same time.
 
-![A table comparing narrow and broad targeting across four factors. Narrow targeting has smaller reach, more expensive CPM, and higher conversion rate, but exhausts the audience faster. Broad targeting has larger reach, cheaper CPM, and lower conversion rate, but exhausts more slowly.](/blog-assets-en/audience-broad-vs-narrow/tradeoff-comparison.svg)
 
-Narrow it down, and conversion rate goes up — makes sense, since you've picked only the people likely to care. But you lose three things in exchange: the number of people you can reach shrinks, CPM gets more expensive (more advertisers competing for the same slice), and you run out of people to show it to much faster.
+Narrowing limits eligible reach, but does not guarantee higher conversion or more expensive CPM. Check whether the selected traits represent buying intent, alongside auction conditions and creative response.
 
-Broaden it, and it's the opposite. CPM is cheap and there are plenty of people, but uninterested people get mixed in too, so conversion rate drops.
+Broadening expands the eligible pool. The algorithm still selects delivery, so measure the actual direction of CPM and conversion changes.
 
 Here's the key point: CPA is the outcome of all four of these interacting together. If you look only at conversion rate and conclude "narrower is better," you're missing the CPM increase. If you look only at CPM and conclude "broader is better," you're missing the conversion rate drop. You need to judge by final CPA, not by any single metric in isolation.
 
-## When budget scales up, narrow targets break
+## Track reach and frequency when scaling
 
 This is where things fall apart most often in practice — a narrow target that's been performing well suddenly collapses in efficiency the moment you increase its budget.
 
@@ -35,13 +37,13 @@ This is where things fall apart most often in practice — a narrow target that'
 
 The reason is simple. If the audience size stays the same but the budget goes up, that extra money gets spent showing the ad more often to the same people. Frequency spikes. And once frequency spikes, [creative fatigue](/blog/ad-performance-diagnosis) arrives fast — CTR drops, CPM rises, and CPA collapses.
 
-So here's a principle: audience size should scale with budget. If you're raising budget, either widen the audience alongside it or rotate creative more frequently. Raise the budget and leave everything else unchanged, and it breaks almost every time.
+So here's a principle: audience size should scale with budget. If you're raising budget, either widen the audience alongside it or rotate creative more frequently. Efficiency may also hold after an increase; evaluate marginal results, reach and frequency after a bounded change.
 
 ## So what should you actually check
 
 Three things, roughly, and the picture becomes clear.
 
-One, what's frequency doing right now? If frequency keeps climbing, that's a sign the audience is too narrow — time to widen it. If frequency is staying low, there's still room.
+One, what's frequency doing right now? Rising frequency calls for reviewing repeated exposure alongside the observation window, frequency distribution, CTR and conversions. A low average does not guarantee room to scale.
 
 Two, are you planning to raise budget? If you are, it's safer to widen the audience ahead of time. If you wait to react until after CPA spikes post-increase, you've already burned several days' worth of spend.
 
@@ -67,7 +69,7 @@ And that ratio isn't fixed. As budget grows, the broad side needs to carry more 
 
 Line up your current campaigns by targeting width, and write down the frequency for each one alongside it.
 
-If there's a narrow target where frequency keeps climbing, that's the one about to break. If you're planning to raise budget and the target is narrow, widen the audience before you raise the budget — not after. Just reordering those two steps saves you several days of wasted spend.
+Review mature conversions and marginal efficiency where frequency rises. If expansion is needed, avoid mixing a budget and targeting change at once; define the hypothesis, step size and comparison window.
 
 If the broad-versus-narrow call comes down to how much learning signal you have, [the ad learning phase](/blog/ad-machine-learning) covers when learning ends and what resets it.
 

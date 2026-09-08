@@ -1,16 +1,16 @@
 ---
 title: "Ad Performance Drop: Diagnose CPA and CTR in 4 Steps"
-description: "Before replacing creative when CPA, CTR, or conversion rate drops, diagnose measurement, channel mix, efficiency, and the funnel in four steps."
+description: "Before replacing creative when CPA rises or CTR and conversion rate fall, diagnose measurement, channel mix, efficiency, and the funnel in four steps."
 date: "2026-07-22"
-updated: "2026-08-03"
+updated: "2026-09-09"
 slug: "ad-performance-diagnosis"
 keywords: "ad performance drop, CPA increase, CTR drop, ad performance diagnosis, creative fatigue, conversion rate decline"
 tags: ["Diagnosis", "Creative"]
 draft: false
 primaryTool: "5-21"
 relatedGlossary: ["cpa", "ctr", "cvr", "cpm"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Data freshness"
     url: "https://support.google.com/google-ads/answer/2544985?hl=en"
@@ -59,7 +59,7 @@ CPA is not a cause in itself — it is the result of the metrics in front of it.
 3. **Conversion rate (CVR) fell** — clicks held, but fewer of them converted.
 4. **Budget mix shifted** — per-channel efficiency held, but an expensive campaign took share.
 
-The four have opposite fixes. Only the second calls for new creative, and the fourth will not move no matter how much creative you swap. The steps below rule them out one at a time.
+These changes can coexist, and different operational factors can produce the same metric movement. Falling CTR does not mandate new creative, and a mix shift does not rule out creative influence. The steps below narrow hypotheses.
 
 ## Step 0. Is the CPA rise a measurement problem?
 

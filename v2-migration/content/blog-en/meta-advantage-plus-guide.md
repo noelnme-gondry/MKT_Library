@@ -10,35 +10,38 @@ faq:
   - q: "Why split campaigns by OS?"
     a: "iOS reports through SKAN with different delay and counting rules. Merged campaigns hide which side the budget drifted to and mix the basis for judging performance."
   - q: "Can I keep Meta's default attribution window?"
-    a: "The default is 7-day click plus 1-day view. To compare Meta with other networks, read the 1-day click basis alongside it."
+    a: "Check the current ad set’s click/view attribution settings and reporting basis. Matching windows still leaves deduplication and measurement differences."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.
 
-## OS split isn't optional
+## Separate OS measurement and setup requirements
 
-iOS and Android have fundamentally different data environments, so you have to run them as separate campaigns. iOS especially needs its own SKAN-dedicated campaign as standard, because signal quality splits entirely on ATT consent. Mix the two in one campaign and different-quality signals blur the optimization.
+Supported optimization, attribution methods and delay can differ by OS. Check app and OS requirements for the campaign, and segment reporting by OS and attribution method. Not all iOS performance is measured through SKAN alone.
 
-## Event priority (AEM) sets the optimization direction
+## Check optimization events and value delivery
 
-Since iOS 14.5, only up to eight events per app can serve as optimization signals (Aggregated Event Measurement). Which you place at which rank among those eight decides what the algorithm optimizes.
+Check supported events and value-optimization requirements for the selected app and campaign. Do not apply a historical web-domain AEM limit as a current universal eight-event-per-app rule.
 
-The principle is simple: put revenue-tied events (purchase, subscription) at the top ranks, and turn Value Optimization on only for those. Changing the ranks often shakes learning each time, so settle them carefully up front.
+Verify purchase/subscription amounts, currency and deduplication, then select the event that represents the business goal.
 
 ## Attribution window — mind it when comparing platforms
 
-Meta's default attribution is **7-day click + 1-day view**. But don't line that up directly against other platforms' numbers like Google or TikTok — every platform's window differs.
+Record the current ad set’s click/view attribution windows before comparing Google or TikTok reports.
 
-So for cross-platform comparison reporting, there's a convention to **narrow to a 1-day-click basis**. It usually reads lower than the 7-day-click basis, so don't be alarmed by the smaller number. Using the same ruler makes cross-channel comparison fair.
+Show a comparable reporting window where available, but a shared one-day-click basis does not remove overlapping attribution, modeling or measurement differences. Short windows also answer a different question for products with long purchase delays.
 
-## Raise bids in stages
+## Choose bidding for the goal and constraints
 
-Start on automatic (Highest Volume) to burn through learning fast, then as data accumulates tighten control in the order Cost Cap → Bid Cap. Turn on value-based bidding (Value-Based Optimization) only after purchase data has accumulated fairly stably.
+Volume, cost goals, bid caps and value optimization are not a mandatory progression. Choose a supported strategy for the goal, budget, conversion volume and value data. Tighter limits may reduce delivery; evaluate volume and delay alongside cost.
 
 ## Problems that snag often
 
-- **iOS install reporting suddenly drops sharply**: likely SKAN postback delay, or you recently changed AEM event priority. A priority change restarts learning and can leave reporting thin for days.
-- **Value-based bidding but revenue is erratic**: check whether the purchase event's revenue value is actually being sent and whether the Value Optimization toggle is on. On iOS, only revenue caught within the SKAN postback window counts as signal.
+- **iOS install reporting suddenly drops sharply**: check attribution method, postback delay, conversion tracking and budget/bid changes. A report decline alone does not establish a learning restart or lost installs.
+- **Value-based bidding but revenue is erratic**: check whether the purchase event's revenue value is actually being sent and whether the Value Optimization toggle is on. SKAN reports have measurement windows, but that does not mean every iOS optimization signal is restricted to SKAN revenue.
 
 ## Let's be honest
 

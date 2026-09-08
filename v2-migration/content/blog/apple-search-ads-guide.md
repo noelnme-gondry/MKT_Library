@@ -8,7 +8,7 @@ tags: ["ASA", "UA"]
 draft: false
 primaryTool: "5-26"
 relatedGlossary: ["cpi", "cpa"]
-answer: "Apple Search Ads(ASA) 키워드 최적화는 검색어 리포트에서 시작합니다 — 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리고, 성과가 없는 검색어는 제외 키워드로 막으세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
+answer: "Apple Search Ads(ASA) 키워드 최적화는 검색어 리포트에서 시작합니다 — 충분한 탭·설치와 목표 CPA를 함께 충족한 비-Exact 검색어를 Exact 후보로 올리고, 충분히 관찰한 저성과 검색어는 제외 후보로 검토하세요. 성숙도·표본이 부족하면 보류하세요. 예산을 덜 쓰면서 성과가 좋으면 CPT를 조금 높이고, 많이 쓰면서 성과가 나쁘면 낮춥니다."
 conditions: "설치 3건·탭 8건과 CPT ±10~15%는 이 서비스의 기본 운영 휴리스틱입니다. 계정 규모와 변동성에 맞게 조정하고, 실제 매치 범위·입찰 한도는 현재 Apple Ads 콘솔을 확인하세요."
 sources:
   - title: "Apple Ads reporting definitions"
@@ -25,7 +25,7 @@ faq:
   - q: "예산 소진이 낮으면 CPT를 무조건 올려야 하나요?"
     a: "아닙니다. 목표 CPA를 달성하면서 소진이 낮을 때만 증액 후보입니다. 성과가 나쁘면 검색어와 상품 페이지, 국가, 시즌성을 먼저 확인하세요."
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Apple Search Ads(ASA)를 캠페인 하나로 켜면 며칠 뒤 리포트에 브랜드 키워드만 크게 남는 일이 많아요. 원래 앱을 찾던 사람까지 광고로 다시 사 온 결과일 수 있죠. ASA는 앱스토어 검색 상단에서 **의도가 뚜렷한 유저**를 만나는 채널입니다. 그래서 캠페인을 목적별로 나누고, 검색어를 발굴한 뒤 Exact와 입찰가를 조정하는 운영 루프가 필요해요.

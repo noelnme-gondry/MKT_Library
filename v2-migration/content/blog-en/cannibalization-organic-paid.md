@@ -2,7 +2,7 @@
 title: "Paid vs Organic Cannibalization: How to Measure It"
 description: "Diagnose internal cannibalization — paid ads eating organic conversions — and tell correlation apart from causation."
 date: "2026-07-15"
-updated: "2026-08-26"
+updated: "2026-09-09"
 slug: "cannibalization-organic-paid"
 keywords: "cannibalization, internal cannibalization, organic cannibalization, paid vs organic, brand search advertising, incrementality, cannibalization rate, organic conversion decline, brand keyword bidding"
 tags: ["Analysis", "Incrementality Analysis"]
@@ -16,11 +16,13 @@ faq:
   - q: "If cannibalization exists, should I turn ads off?"
     a: "No. It is a matter of degree — some cannibalization can coexist with real net lift. What you need is a corrected ROAS to decide with, not an on/off switch."
   - q: "Is brand search advertising always cannibalization?"
-    a: "Not necessarily. When competitors bid on your brand terms it has defensive value. An on/off test is the only reliable way to measure the actual net lift."
+    a: "Not necessarily. When competitors bid on your brand terms it has defensive value. A suitably designed holdout can estimate net lift; check its assumptions and uncertainty."
   - q: "Paid and organic both went up. Doesn't that rule out cannibalization?"
     a: "Moving together proves nothing on its own. Advertising may have created new demand, or it may simply have been peak season. You need a control group or a pre/post design to construct the counterfactual."
   - q: "How do I calculate a cannibalization rate?"
     a: "Divide the organic conversions gained in the held-out group by the paid conversions it lost. If 100 paid conversions disappear and organic rises by 70, the cannibalization rate is 70% and net lift is 30. Without random assignment, that number is not causal."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Turn off brand-search ads and organic traffic rises by exactly that much? Then that ad spend was re-buying people who were coming anyway. That's internal cannibalization — paid eating into free traffic.
 
@@ -42,15 +44,17 @@ Before pausing the brand campaign: 100 paid conversions, 200 organic, 300 total.
 - Organic conversions gained: 70 → people who would have come anyway
 - Actual conversions lost: 30 → this is the ad's net lift
 
-The cannibalization rate is 70 ÷ 100 = 70%. The report credits this campaign with 100 conversions; it really produced 30. Its CPA needs to be recalculated at roughly three times what the dashboard shows.
+The cannibalization rate is 70 ÷ 100 = 70%. The report credits this campaign with 100 conversions; it really produced 30. At the same spend, iCPA is 100 ÷ 30 ≈ 3.33 times the attributed CPA.
 
 The key point: finding cannibalization is not an argument for switching the campaign off. If the CPA of those 30 net conversions still clears your target, there is a reason to keep running. Cannibalization is a signal to re-judge with corrected numbers, not an on/off verdict.
+
+This arithmetic example assumes stable conditions and measurement definitions. Actual before/after totals alone do not identify 30 conversions as causal lift. Regional assignment requires regional inference; do not treat regional totals as independent person/device binomial samples.
 
 ## Signs to suspect cannibalization
 
 A few signals show up first in observational data.
 
-- You raised spend but total (organic + paid) conversions didn't rise by as much. If paid went up while organic fell, you just shuffled the seat.
+- You raised spend but total (organic + paid) conversions didn't rise by as much. Paid rising while organic falls can reflect displacement, tracking reclassification, or other changes.
 - Was organic already declining before you raised spend? A cause has to come first to even be a candidate.
 - After removing seasonality and overall trend, does organic still fall when paid rises?
 - Is impression share on brand terms climbing while total clicks stay flat? That is the classic shape of paid displacing organic.
@@ -68,7 +72,7 @@ The real test is [incrementality analysis](/tools/incrementality). Turn brand ad
 Three design mistakes come up repeatedly.
 
 - **Reading paid conversions only.** Pause the ads and paid conversions go to zero by construction. The quantity to watch is paid plus organic combined.
-- **Running too short.** Search rankings and user habits take time to re-settle. A holdout of a few days understates cannibalization.
+- **Running too short.** Search rankings and user habits take time to re-settle. A short holdout can be unstable because of delay, carryover, and variability; the direction of bias is not guaranteed.
 - **Splitting regions that aren't comparable.** Hold out your capital city while running everywhere else and the two groups had different baseline conversion rates to begin with, so the gap cannot be read as ad effect.
 
 ## Brand keywords are the confusing case

@@ -13,7 +13,7 @@ faq:
     a: "세이프존은 매체 UI와 크롭을 피해서 핵심 내용을 배치하는 안전 영역입니다. UI가 덮는 영역은 비워 두고, 자막·로고는 해당 게재 위치의 공식 세이프존 안에 배치하세요."
 
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns asset specifications"

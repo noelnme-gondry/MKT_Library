@@ -15,6 +15,9 @@ faq:
     a: "No. Separate a saturated channel from one whose underlying efficiency or conversion flow has deteriorated. The appropriate action differs for each."
   - q: "Does a ROAS increase after reallocation prove the change worked?"
     a: "It is an observed improvement, not proof of causation. Seasonality, promotions, and competition can change at the same time, so validate important scale decisions with small steps or a control."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 When ROAS falls, the instinct is to cut budget. But one blended ROAS number can make you cut a channel that still has efficient room to grow. First separate **immature data, channel movement, and leakage after conversion** before changing spend.
 
@@ -24,7 +27,7 @@ Revenue and purchase conversions can arrive after the click. In the latest day o
 
 For a sudden movement, start with [campaign anomaly detection](/blog/campaign-anomaly-detection). For a decline that persists across periods, use the sequence in [ad performance diagnosis](/blog/ad-performance-diagnosis) to narrow the scope.
 
-## Did CPA fall with ROAS, or did ROAS fall alone?
+## Did CPA rise while ROAS fell, or did ROAS fall alone?
 
 An overall ROAS of 300% can hide completely different channel stories. The average does not tell you what to fix.
 
@@ -35,7 +38,7 @@ An overall ROAS of 300% can hide completely different channel stories. The avera
 | One channel loses ROAS | Creative, targeting, bidding, and saturation in that channel |
 | Every channel declines | Price, promotion, landing, checkout, or measurement changes |
 | ROAS declines while CPA holds | Post-conversion purchase rate, order value, and revenue collection |
-| Both CPA and ROAS decline | Which of CPM, CTR, and CVR moved first |
+| CPA rises while ROAS falls | Which of CPM, CTR, and CVR moved first |
 
 This does not prove a cause. It tells you whether the first action belongs in allocation, in-channel execution, or the conversion experience outside the ad account.
 

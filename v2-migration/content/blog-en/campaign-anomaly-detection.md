@@ -12,6 +12,9 @@ faq:
   - q: "Should an anomaly alert trigger immediate action?"
     a: "First separate a data problem from a performance problem. Broken tracking or delayed reporting is no reason to touch the campaign. Then split the change into volume, efficiency, and mix to locate it."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: is this a real anomaly, or just that day's noise?
 
@@ -30,7 +33,7 @@ So you need a definition of "spiked" — not the gut feeling that it rose since 
 
 ## The bar for an anomaly is "how far past the usual"
 
-A simple method that works in practice is a **moving average ± standard deviation band**. Take the recent N days' mean and spread as the baseline, and flag today as an "anomaly candidate" only if it breaks the band (say mean ± 2σ). Inside the band, it's just the usual wobble.
+A simple method that works in practice is a **moving average ± standard deviation band**. Take the recent N days' mean and spread as the baseline, and flag today as an "anomaly candidate" only if it breaks the band (say mean ± 2σ). Inside the band does not prove normality: small sustained shifts, limited samples, or a contaminated baseline can go undetected.
 
 Set up this way, you react not to "CPA rose 20% from yesterday" but only to **"it broke past the normal range."** Most wasted interventions get filtered here. For metrics with strong day-of-week swings, compare like days or remove the day-of-week effect for more accuracy.
 
@@ -45,7 +48,7 @@ Mix the two and you stop at "CPA rose." Split volume and efficiency by channel, 
 
 ## Where to look
 
-The [operations dashboard](/dashboard)'s anomaly tab auto-flags days that break the band, and [performance variance detection](/tools/campaign-variance) decomposes the cause residual-free. Upload an efficiency CSV or connect a Google Sheet. Connect a Sheet once and you can keep checking with fresh data without re-uploading weekly.
+The [operations dashboard](/dashboard)'s anomaly tab auto-flags days that break the band, and [performance variance detection](/tools/campaign-variance) decomposes the observed change without a residual; this does not prove causality. Upload an efficiency CSV or connect a Google Sheet. Where public-sheet import is enabled, refresh with the fetch-latest button. It is not automatic synchronization.
 
 If the decline is sustained over days rather than a single spike, [ad performance drop](/blog/ad-performance-diagnosis) is the right sequence; if it is unclear which metric to read first, [performance marketing metrics](/blog/performance-marketing-metrics) lays out the chain. If it is unclear which analysis your data can even support, [marketing data analysis](/blog/performance-marketing-analysis-order) is the starting point.
 

@@ -8265,6 +8265,10 @@ body:has(.consent-banner) .dochi-home-assistant { display:none; }
   .dochi-home-mapping,.dochi-home-results { margin:18px 0;padding:15px;border-radius:12px; }
   .dochi-workspace__chart svg { min-height:170px;aspect-ratio:4/3; }
 }
+/* A fixed intake panel covers the tool links on narrow/coarse-pointer screens. */
+@media (max-width:720px), (pointer:coarse) {
+  .dochi-home-assistant { position:relative;right:auto;bottom:auto;width:min(100%,498px);margin:24px auto; }
+}
 @keyframes dochi-home-run-mobile { 0%,100% { transform:translateX(0); } 50% { transform:translateX(calc(-1 * min(55vw,300px))); } }
 @keyframes dochi-home-return-mobile { from { transform:translateX(calc(-1 * min(55vw,300px))); } to { transform:translateX(0); } }
 @media (prefers-reduced-motion:reduce) {

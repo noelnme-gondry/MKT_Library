@@ -15,8 +15,8 @@ faq:
     a: "Record changes and conversion delay, and allow observation time between major changes. Change frequency alone does not establish permanent learning or a complete reset. Check current strategy guidance and console status together."
   - q: "Should I rebuild a poorly performing campaign from scratch?"
     a: "Diagnose tracking, goals, budget, and assets first. A new campaign needs a learning period, but that does not prove all system learning is reset to zero. Define the structural reason and comparison criteria before rebuilding."
-updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+updated: "2026-09-09"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns Maximize conversions"
@@ -68,7 +68,7 @@ Pick one campaign, open the last 30 days, and check two things.
 
 First, record the date, size, and target of changes in the last 30 days. Compare console learning status and mature conversion trends, not just the number of edits. More than two changes a week alone does not establish a learning failure.
 
-Second, count the daily volume of your optimization event. If it is too low, no amount of goal tuning gives the algorithm something to learn. Moving one step earlier in the funnel to build volume, then stepping back down, is usually faster.
+Second, count the daily volume of your optimization event. If signals are sparse, check tracking and delay first. An earlier-funnel event is an option only when it represents business value, not a mandatory progression.
 
 ## Let's be honest
 

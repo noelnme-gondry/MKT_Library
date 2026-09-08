@@ -71,7 +71,7 @@ async function navigateToTool(page, href, section, query) {
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
-  const theme = testInfo.project.name === "desktop-light-en" ? "light" : "dark";
+  const theme = testInfo.project.use.colorScheme === "light" ? "light" : "dark";
   await page.addInitScript((initialTheme) => {
     window.localStorage.clear();
     window.localStorage.setItem("mkt-library-theme", initialTheme);
@@ -154,7 +154,10 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   await uploadCsv(page, "efficiency.csv");
   const mapping = page.locator('.csv-mapping-block[aria-describedby="dochi-mapping-coach-title"]');
   await expect(mapping).toBeVisible();
+  // Check the visible coach, then wait for dismissal before auditing the next state.
+  await expectNoSeriousAccessibilityViolations(page);
   await page.locator(".dochi-mapping-coach").getByRole("button", { name: "Got it" }).click();
+  await expect(page.locator(".dochi-mapping-coach")).toBeHidden();
 
   const workspace = page.getByRole("region", { name: "The analysis map Dochi found" });
   await expect(workspace).toBeVisible();
@@ -163,6 +166,10 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   await quality.getByRole("button", { name: "Check detailed input quality" }).click();
   await expect(quality.getByText(/Input checks passed|Review input cautions/)).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
+  const dashboardCard = workspace.locator(".dochi-workspace__card").filter({ has: page.getByRole("heading", { name: "Weekly check", exact: true }) });
+  await dashboardCard.getByRole("button", { name: "Open extra charts and details" }).click();
+  await expect(page).toHaveURL(/\/en\/dashboard$/);
+  await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
 });
 
 test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간다", async ({ page }) => {

@@ -11,6 +11,9 @@ faq:
     a: "Most conversions from a brand campaign arrive later through another path. Click-based CPA captures only a fraction of the effect, and cutting budget on that number hides the effect entirely."
   - q: "Is it acceptable to report a number with no control group?"
     a: "Yes, if you label it an estimated lift. Without a control, seasonality, PR, and promotions are not separated, so list the other events that happened in the same window alongside the number."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 About two weeks after a brand campaign wraps, the readout meeting gets booked. Three slides in, someone asks the only question that matters:
 
@@ -33,13 +36,13 @@ Brand campaigns do not behave that way. Someone sees the ad and does not tap. A 
 
 Where does that conversion get recorded? Under **brand search** or **direct traffic**. Nothing lands in the brand campaign account — and the brand search campaign gets praised for great efficiency, when the demand it harvested was created by the brand campaign.
 
-Judge on clicks and you will always undercount. Cut budget on that number and you lose the ability to see the effect at all.
+Click-based reporting alone cannot establish the total effect. Cut budget on that number and you lose the ability to see the effect at all.
 
 ## Choose the outcome metric
 
 Use whichever of these you have.
 
-- **Brand search volume** — visits from searches on your brand or product name. Fastest to respond and least noisy.
+- **Brand search volume** — visits from searches on your brand or product name. Response timing and noise depend on the product, search volume, and measurement.
 - **Direct traffic** — typed URLs, direct app opens. A lagging indicator of awareness.
 - **Non-ad-attributed signups or installs** — conversions no network claimed.
 
@@ -49,8 +52,8 @@ If you have all three, start with brand search. It is the behavior closest to th
 
 The point is to construct "what would have happened without the campaign." With no control group, the **pre-period trend** plays that role.
 
-1. Gather at least eight weeks of weekly (or daily) data before the campaign.
-2. Fit a trend over that window and extend it forward. That extension is the counterfactual.
+1. Gather weekly or daily pre-campaign observations. Eight weeks is an example; seasonality and design may require a longer history.
+2. Fit a trend over that window and extend it forward. That extension is a model-based counterfactual estimate, conditional on the pre-period relationship remaining valid.
 3. Sum the gaps between actual values and the extended line — that is the estimated lift.
 
 This design is called an interrupted time series. [Brand campaign incrementality](/tools/brand-campaign-incrementality) computes the trend and the uncertainty interval from three columns: date, outcome, and campaign status.
@@ -67,19 +70,21 @@ So when you write the result, list the other events in the window. That is not d
 
 ## Set up the next campaign better
 
-The strongest design is to **hold out a region or audience**. Excluding a few regions instead of going national creates a same-period comparison group, and seasonality or PR effects hit both sides equally, so they cancel.
+The strongest design is to **hold out a region or audience**. Excluding a few regions instead of going national creates a same-period comparison group, and shared shocks cancel only under appropriate comparability assumptions; check unequal shocks and spillovers.
 
-Put one line in the next brand campaign brief: "keep N regions unexposed." That single line produces a much better answer to next quarter's "what did it earn." When you can hold out a comparison group, the control-group design in [incrementality analysis](/tools/incrementality) gives a sharper answer.
+Put one line in the next brand campaign brief: "keep N regions unexposed." That single line produces a much better answer to next quarter's "what did it earn." Regional holdouts require inference at the regional assignment level. Do not enter regional aggregates as independent people in the binomial control-group method of [incrementality analysis](/tools/incrementality).
 
 The general problem of separating what advertising actually caused is covered in [incrementality measurement](/blog/incrementality-measurement), and click-free media like TV get the same treatment in [measuring offline ad impact online](/blog/offline-ad-online-impact).
 
+Eight weeks is a preparation example, not a sufficiency guarantee. Required history depends on autocorrelation, seasonal cycles, observation frequency, and post-period length. A before/after difference alone is not a causal effect.
+
 ## Try this today
 
-**One.** Whatever your outcome metric is — brand search volume, direct traffic — pull the **eight weeks before launch**, not the recent weeks. Without that, there is nothing to do once the campaign ends. A baseline is only ever built in advance.
+**One.** Whatever your outcome metric is — brand search volume, direct traffic — secure **pre-launch observations**, not only recent weeks. Assess whether eight weeks is sufficient for the design and seasonality; disclose the baseline limitation if historical tracking is unavailable.
 
 **Two.** Put one line in the next brand campaign brief: **"leave N regions unexposed."**
 
-That single line changes a lot. Instead of going national, holding out a few regions creates a same-period comparison group. Seasonality, PR, competitor moves — all of it hits both sides equally and cancels out. Next quarter's "what did it earn" gets a much firmer answer.
+That single line changes a lot. Instead of going national, holding out a few regions creates a same-period comparison group. Check whether seasonality, PR, and competitor changes affected groups comparably, and whether spillovers occurred. Holding out regions does not automatically cancel these factors. Next quarter's "what did it earn" gets a much firmer answer.
 
 If the calculation is tedious, upload your existing report CSV. It fits the pre-period trend, measures how far actuals rose above it, and returns an interval that accounts for autocorrelation. Data is processed in your browser and never sent to a server.
 
