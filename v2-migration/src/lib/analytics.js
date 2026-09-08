@@ -116,7 +116,6 @@ export function trackProductEvent(name, params = {}) {
   if (typeof window.gtag !== "function" && isAnalyticsHost(window.location?.hostname)) {
     window.dataLayer = window.dataLayer || [];
     window.gtag = function () {
-      if (arguments[0] === "event") arguments[2] = { ...arguments[2], send_to: GA_MEASUREMENT_ID };
       window.dataLayer.push(arguments);
     };
   }
@@ -144,7 +143,10 @@ export function trackProductEvent(name, params = {}) {
   const enriched = isFirstReadyActivation
     ? { ...params, elapsed_bucket: productElapsedBucket(Date.now() - firstToolViewAt) }
     : params;
-  window.gtag("event", name, sanitizeProductEventParams(enriched));
+  // 동의 기본값 스크립트가 큐만 먼저 만든 경우에도 config 이전 목적지를 명시한다.
+  const safeParams = sanitizeProductEventParams(enriched);
+  if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
+  window.gtag("event", name, safeParams);
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;
   return true;
 }

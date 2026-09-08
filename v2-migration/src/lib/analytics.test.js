@@ -18,6 +18,12 @@ describe("privacy-safe product analytics", () => {
       expect(window.dataLayer).toBeUndefined();
     }
   });
+  it("routes early events when the consent bootstrap already installed the queue", () => {
+    const gtag = vi.fn();
+    globalThis.window = { gtag, location: { hostname: "growthoptplaybook.com", pathname: "/" } };
+    trackProductEvent("weekly_review_viewed", { tool_id: "weekly-review" });
+    expect(gtag).toHaveBeenCalledWith("event", "weekly_review_viewed", { tool_id: "weekly-review", send_to: "G-DK12TNR0GW" });
+  });
   it.each(["ko", "en"])("connects %s weekly imports, results and exports without attributing demos", (locale) => {
     const values = new Map();
     globalThis.window = { gtag: vi.fn(), sessionStorage: {
