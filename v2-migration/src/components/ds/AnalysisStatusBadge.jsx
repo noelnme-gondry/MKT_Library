@@ -5,7 +5,8 @@ import { analysisStatusLabel } from "@/lib/analysis-router/analysisStatus";
 // 전부 semantic 토큰으로 통일한다. ANALYZING·COMPLETE·STALE만 raw hex를 써서
 // 라이트 모드에서 다크용 색이 그대로 나왔다 — 한 파일 안에서 규칙이 갈렸고,
 // ds/는 다른 도구가 베끼는 기준이라 전파 위험이 있었다(감사 P1-13).
-const tone = (token, mix) => ({ color: `var(${token})`, background: `color-mix(in srgb, var(${token}) ${mix}%, transparent)` });
+// 색상 배경 위 작은 글자는 본문 대비 토큰을 쓴다. success 16% 배경의 light 대비는 4.42:1이었다.
+const tone = (token, mix) => ({ color: "var(--text-primary)", background: `color-mix(in srgb, var(${token}) ${mix}%, transparent)` });
 
 const TONE = {
   EMPTY: tone("--text-muted", 12),

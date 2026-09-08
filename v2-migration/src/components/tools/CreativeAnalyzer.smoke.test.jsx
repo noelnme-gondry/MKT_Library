@@ -5,8 +5,9 @@
 // component MOUNTS without throwing in the no-data and with-data states,
 // including the fatigue + forest-plot chart effects and the WLS decompose path
 // (needs creative attributes + >=30 clean rows).
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { CREATIVE_STATS } from "@/utils/creativeMath";
 import { useAppStore } from "@/store/useDataStore";
 import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
 
@@ -80,6 +81,7 @@ function seedWithData() {
     csvGroups: { ...useAppStore.getState().csvGroups, creative: slice },
     csvData: slice,
   });
+  useAppStore.getState().setGroupAnalyzed("5-6");
 }
 
 // Full CSV incl. spend + actions + revenue_d7 so the CPA/ROAS decompose branches
@@ -141,16 +143,44 @@ function seedWithCpaRoasData() {
     csvGroups: { ...useAppStore.getState().csvGroups, creative: slice },
     csvData: slice,
   });
+  useAppStore.getState().setGroupAnalyzed("5-6");
 }
 
 describe("CreativeAnalyzer render smoke", () => {
   beforeEach(() => seedNoData());
+  it("waits for explicit analysis before deriving creative metrics", () => {
+    seedWithData();
+    useAppStore.setState({ analyzedByGroup: {} });
+    const derive = vi.spyOn(CREATIVE_STATS, "deriveMetrics");
+    render(<CreativeAnalyzer />);
+    expect(derive).not.toHaveBeenCalled();
+    act(() => useAppStore.getState().setGroupAnalyzed("5-6"));
+    expect(derive).toHaveBeenCalled();
+    expect(document.querySelector("#s-fatigue")).toBeTruthy();
+    const count = derive.mock.calls.length;
+    const csv = useAppStore.getState().csvData;
+    act(() => useAppStore.getState().setCsvData({ ...csv, raw: csv.raw.slice(1) }));
+    expect(document.querySelector("#s-fatigue")).toBeNull();
+    expect(derive).toHaveBeenCalledTimes(count);
+    derive.mockRestore();
+  });
 
   it("mounts without throwing in the no-data state (upload screen)", () => {
     // 데모 자동로드를 없앴으므로 no-data는 업로드/데이터 준비 화면이 정상이다.
     expect(() => render(<CreativeAnalyzer />)).not.toThrow();
     // No-data → CsvUploader auto-loads sample data, replacing the uploader-prep block.
     expect(screen.queryByText("데이터 준비")).toBeTruthy();
+  });
+
+  it.each(["ko", "en"])("does not label low-exposure creatives healthy (%s)", (locale) => {
+    seedWithData();
+    const csv = useAppStore.getState().csvData;
+    const slice = { ...csv, raw: csv.raw.map((row) => ({ ...row, Impr: 2, Clicks: 0, Installs: 0 })) };
+    useAppStore.setState({ csvData: slice, csvGroups: { ...useAppStore.getState().csvGroups, creative: slice } });
+    useAppStore.getState().setGroupAnalyzed("5-6");
+    const { container } = render(<CreativeAnalyzer locale={locale} />);
+    expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "6 held for insufficient exposure or history" : "근거 부족으로 보류 6개");
+    expect(container.querySelector("#s-fatigue").textContent).toContain(locale === "en" ? "Insufficient data is not a healthy verdict" : "데이터 부족을 건강함으로 판정하지 않습니다");
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {

@@ -101,7 +101,8 @@ function pearson(valuesA, valuesB) {
   return denA > 0 && denB > 0 ? numerator / Math.sqrt(denA * denB) : null;
 }
 
-function evaluateMmmConfidence(records, quality, contract) {
+function evaluateMmmConfidence(records, quality, contract, locale) {
+  const en = locale === "en";
   const mediaKeys = Object.keys(quality.metricStats).filter((key) => key.startsWith("ch_"));
   const activeMedia = mediaKeys.filter((key) => quality.metricStats[key].nonZeroCount > 0);
   const sparseMedia = activeMedia.filter((key) => quality.metricStats[key].nonZeroCount < contract.minDecisionActivePeriods);
@@ -116,10 +117,10 @@ function evaluateMmmConfidence(records, quality, contract) {
   }
 
   const details = [];
-  if (quality.periodCount < contract.decisionMinPeriods) details.push(`관측 기간 ${quality.periodCount}주: 52주 미만이라 탐색용 결과입니다.`);
-  if (activeMedia.length < 2) details.push("활성 광고 변수 2개 미만: 채널별 기여를 비교하기 어렵습니다.");
-  if (sparseMedia.length) details.push(`활성 주가 26주 미만인 광고 변수: ${sparseMedia.join(", ")}`);
-  if (collinearPairs.length) details.push(`같이 움직이는 광고 변수: ${collinearPairs.map((pair) => `${pair.left}·${pair.right}`).join(", ")}`);
+  if (quality.periodCount < contract.decisionMinPeriods) details.push(en ? `${quality.periodCount} observed weeks: fewer than 52, so results are exploratory.` : `관측 기간 ${quality.periodCount}주: 52주 미만이라 탐색용 결과입니다.`);
+  if (activeMedia.length < 2) details.push(en ? "Fewer than two active media variables: channel contributions are difficult to compare." : "활성 광고 변수 2개 미만: 채널별 기여를 비교하기 어렵습니다.");
+  if (sparseMedia.length) details.push(en ? `Media variables with fewer than 26 active weeks: ${sparseMedia.join(", ")}` : `활성 주가 26주 미만인 광고 변수: ${sparseMedia.join(", ")}`);
+  if (collinearPairs.length) details.push(en ? `Media variables moving together: ${collinearPairs.map((pair) => `${pair.left} / ${pair.right}`).join(", ")}` : `같이 움직이는 광고 변수: ${collinearPairs.map((pair) => `${pair.left}·${pair.right}`).join(", ")}`);
   const tier = details.length ? "exploratory" : "decision";
   return { tier, details, mediaKeys, activeMedia, sparseMedia, collinearPairs };
 }
@@ -138,7 +139,8 @@ function coefficientOfVariation(values = []) {
 
 // 어떤 분석이든 "행이 N개"보다 "각 비교 단위가 며칠 실제 운영됐는가"가 더 중요하다.
 // 같은 날짜의 세부 행은 먼저 합쳐, creative가 많은 채널이 과대표집계되지 않게 한다.
-function evaluateEntityCoverage(records, contract) {
+function evaluateEntityCoverage(records, contract, locale) {
+  const en = locale === "en";
   if (!contract.entityFields?.length) return { entities: [], details: [] };
   const entityField = contract.entityFields.find((field) => records.some((record) => record.dimensions?.[field]));
   if (!entityField) return { entities: [], details: [] };
@@ -163,16 +165,24 @@ function evaluateEntityCoverage(records, contract) {
     };
   });
   const details = [];
-  if (contract.minEntities && entities.length < contract.minEntities) details.push(`비교 가능한 ${entityField}이 ${contract.minEntities}개 미만입니다.`);
+  if (contract.minEntities && entities.length < contract.minEntities) details.push(en ? `Fewer than ${contract.minEntities} comparable ${entityField} units.` : `비교 가능한 ${entityField}이 ${contract.minEntities}개 미만입니다.`);
   const sparse = entities.filter((item) => item.activePeriodCount < contract.minEntityActivePeriods);
-  if (sparse.length) details.push(`운영 관측이 ${contract.minEntityActivePeriods}기간 미만인 ${entityField}: ${sparse.map((item) => item.entity).join(", ")}`);
+  if (sparse.length) details.push(en ? `${entityField} units with fewer than ${contract.minEntityActivePeriods} active periods: ${sparse.map((item) => item.entity).join(", ")}` : `운영 관측이 ${contract.minEntityActivePeriods}기간 미만인 ${entityField}: ${sparse.map((item) => item.entity).join(", ")}`);
   const lowVariation = entities.filter((item) => item.spendCv != null && item.spendCv < contract.minEntitySpendCv);
-  if (lowVariation.length) details.push(`지출 변동이 너무 작은 ${entityField}: ${lowVariation.map((item) => item.entity).join(", ")}`);
+  if (lowVariation.length) details.push(en ? `${entityField} units with too little spend variation: ${lowVariation.map((item) => item.entity).join(", ")}` : `지출 변동이 너무 작은 ${entityField}: ${lowVariation.map((item) => item.entity).join(", ")}`);
   return { entityField, entities, details };
 }
 
-function qualityDetails(quality) {
-  const messages = {
+function qualityDetails(quality, locale) {
+  const messages = locale === "en" ? {
+    missing_date: "Some rows have no date.",
+    duplicates: "Some date and dimension combinations are duplicated.",
+    invalid_values: "Some numeric or date values are invalid.",
+    period_gaps: "Some gaps exceed the observed cadence.",
+    high_missing_rate: "A key metric has more than 20% missing values.",
+    all_zero_metric: "A key metric is zero throughout the period.",
+    outliers: "Some values are far outside the usual range.",
+  } : {
     missing_date: "날짜가 비어 있는 행이 있습니다.",
     duplicates: "날짜와 차원 조합이 중복된 행이 있습니다.",
     invalid_values: "숫자 또는 날짜 형식이 아닌 값이 있습니다.",
@@ -233,7 +243,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     cost: record.metrics?.cost ?? record.metrics?.spend,
   }))) : null;
   const eligiblePeriodCount = vifPanel ? vifPanel.dates.length : quality.periodCount;
-  const preliminaryEntityCoverage = evaluateEntityCoverage(records, contract);
+  const preliminaryEntityCoverage = evaluateEntityCoverage(records, contract, locale);
   const eligibleEntityCount = vifPanel ? vifPanel.entities.length : preliminaryEntityCoverage.entities.length;
   const dynamicMinPeriods = contract.minPeriodsOverEntities && eligibleEntityCount
     ? eligibleEntityCount + contract.minPeriodsOverEntities
@@ -302,13 +312,13 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
   const isBlocked = Boolean(foreignGrainGuide) || missing.length || hasMappingConflict || hasRequiredMappingConfirmation || records.length < contract.minRows || hasTooFewPeriods || hasTooFewEntities || hasInsufficientVifVariation || unusableMetrics.length;
   let confidenceTier = "standard";
   if (!isBlocked && toolId === "5-18-mmm") {
-    const mmm = evaluateMmmConfidence(records, quality, contract);
+    const mmm = evaluateMmmConfidence(records, quality, contract, locale);
     confidenceTier = mmm.tier;
     details.push(...mmm.details);
   }
   const entityCoverage = !isBlocked ? preliminaryEntityCoverage : { entities: preliminaryEntityCoverage.entities, details: [] };
   if (!isBlocked) details.push(...entityCoverage.details);
-  if (!isBlocked) details.push(...qualityDetails(quality));
+  if (!isBlocked) details.push(...qualityDetails(quality, locale));
   const hasCaution = details.length > 0;
   const status = isBlocked ? "blocked" : hasCaution ? "caution" : "ready";
   const statisticalStatus = deriveStatisticalStatus({

@@ -1,8 +1,8 @@
 ---
 title: "Retargeting and Re-engagement: Why to Split From UA"
-description: "Why retargeting belongs in its own campaign, how to segment the audience, and why deferred deep links are not optional."
+description: "Why retargeting belongs in its own campaign, how to segment the audience, and how to distinguish deep links from deferred installation flows."
 date: "2026-07-18"
-updated: "2026-08-17"
+updated: "2026-09-09"
 slug: "retargeting-reengagement-guide"
 keywords: "retargeting, re-engagement, app retargeting, dormant user reactivation, retargeting audience, deferred deep link, lookalike seed, user segments, retargeting incrementality"
 tags: ["UA", "Growth & career"]
@@ -16,6 +16,8 @@ faq:
     a: "Only as far as you can genuinely write a different message. Splitting segments that will share the same creative just shrinks the volume behind each one and slows learning. Start with axes where the message clearly changes, such as cart abandonment."
   - q: "After how many days is a user dormant?"
     a: "There is no fixed threshold — it comes from your service's natural usage cycle. Fourteen days without a session means something entirely different for a weekly app than for a daily one. Set the line where your retention curve bends."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The campaign that brings new users (UA) and the one that recalls existing users (retargeting) have completely different purposes. Mix them in one campaign and they eat each other's budget, and you can't see which side earned the result. So split them from the start.
 
@@ -46,11 +48,11 @@ Expected efficiency differs a lot by segment. Cart abandoners, who were right at
 
 One rule for splitting: go only as far as you can **actually write a different message**. Splitting segments that will share the same creative shrinks the volume behind each one, slows learning, and starves the platform's optimization of data.
 
-## Without deferred deep links, it's half-built
+## Check links for each installation state
 
 Tap a retargeting ad and the app just opens the home screen, and the user has to hunt down the item they were viewing all over again. Drop-off spikes here.
 
-Setting up a [deferred deep link](/glossary/deep-link) so a click leads straight to that screen is half of retargeting performance. Skip it and even a great audience leaks at the final step.
+For an installed app, use a [deep link](/glossary/deep-link) to the promised screen. Consider deferred deep linking when that destination needs to survive an installation flow.
 
 A detail people miss: a plain deep link only works when the app is already installed. When it is not, the user goes to the store, and it is the *deferred* deep link that carries them to the right screen on first launch. Ship without testing both paths and you can run for weeks in a state where installed users land correctly and new users drop onto the home screen.
 
@@ -74,11 +76,13 @@ Seed size matters too. Too small and the platform cannot find a pattern; too lar
 
 ## Try this today
 
-Pick one retargeting campaign and hold out 5–10% of its audience. That group sees no retargeting ads at all.
+Pick a retargeting campaign and pre-plan the allocation unit, power, purchase cycle, budget, holdout share and duration. Randomly assign groups; 5–10% is an example, not a sufficient-sample guarantee. That group sees no retargeting ads at all.
 
-Two to four weeks later (longer than your purchase cycle), compare return and purchase rates between the two groups. Near-identical results mean the campaign was paying for people who were coming back anyway. A clear gap is your real incremental lift.
+At the planned cutoff, compare return and purchase rates by assigned group rather than actual exposure, including uncertainty. A small or nonsignificant difference does not prove no effect. Check assignment, contamination and concurrent changes against a practically meaningful effect range.
 
 The retargeting CPA in your report can never tell you this. Conversion rate inside the exposed group cannot separate "would have returned" from "the ad brought them back."
+
+Whether retargeting only looks good because of displacement is settled in [paid and organic cannibalisation](/blog/cannibalization-organic-paid), and what splitting campaigns does to learning is in [the ad learning phase](/blog/ad-machine-learning).
 
 ## Let's be honest
 

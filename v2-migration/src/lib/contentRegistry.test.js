@@ -107,8 +107,12 @@ describe("editorial SEO registries", () => {
         expect(post, `${locale}/${slug} must exist`).toBeTruthy();
         expect(post.primaryTool).toBe(audit.toolId);
         expect(post.reviewer, `${locale}/${slug} needs an explicit review owner`).toBeTruthy();
-        expect(post.reviewedAt).toBe("2026-08-03");
-        expect(post.updated).toBe("2026-08-03");
+        // A later editorial review must not fail a guard for the original audit.
+        expect(post.reviewedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(post.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(post.reviewedAt >= "2026-08-03").toBe(true);
+        expect(post.updated >= "2026-08-03").toBe(true);
+        expect(post.reviewedAt >= post.updated).toBe(true);
         expect(post.sources.length).toBeGreaterThanOrEqual(audit.minimumSources);
         expect(post.faq.length).toBeGreaterThanOrEqual(3);
         if (audit.hasMidAction) expect(post.html).toContain("<!-- CONTENT_ACTION -->");

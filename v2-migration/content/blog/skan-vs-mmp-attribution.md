@@ -14,7 +14,7 @@ faq:
   - q: "SKAN 데이터로 실시간 최적화가 가능한가요?"
     a: "SKAN의 아직 도착하지 않은 포스트백만으로 당일 최종 성과를 판단할 수는 없습니다. 다른 운영 신호는 구분해서 사용하고, 포스트백 창과 지연을 반영한 성숙 구간에서 재검토하세요."
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Apple SKAdNetwork"

@@ -12,6 +12,9 @@ faq:
   - q: "How much history does an LTV estimate need?"
     a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
 
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.
 
@@ -29,7 +32,9 @@ LTV (Lifetime Value) is the total a customer earns you until they churn. The cat
 
 The simplest form:
 
-LTV = average revenue per user (ARPU) × average lifespan
+Revenue-based LTV ≈ monthly revenue per customer × average lifetime in months
+
+This simplification assumes stable monthly revenue. More generally, combine period-specific survival and revenue or margin, separating observed value from future estimates.
 
 Lifespan comes from the [retention curve](/blog/cohort-analysis-guide). Better retention means longer stays and larger LTV — which is why cohort analysis and LTV are a set.
 
@@ -51,9 +56,9 @@ The formula is two divisions. What's wrong isn't the formula — it's the values
 
 Common benchmarks:
 
-- **3:1** — healthy. LTV is triple CAC.
-- **Under 1:1** — you lose more the more you spend.
-- **Over 5:1** — possibly under-investing (you could spend more aggressively).
+- **3:1** — LTV is triple CAC; the ratio alone does not establish business health.
+- **Under 1:1** — on a contribution-margin basis, acquisition cost may not be recovered. Check the horizon and cost scope.
+- **Over 5:1** — a candidate for testing expansion, not proof that additional spend will retain the same efficiency.
 
 But 3:1 is a convention born in SaaS. The right line varies by industry and margin structure — with thin margins, even 3:1 can be risky.
 
@@ -64,7 +69,9 @@ Also look at **payback period.** Even a good LTV:CAC dries up cash flow if recov
 - **Channel-level LTV:CAC** comparison → where to load more budget. The basis for [budget allocation](/tools/budget-allocation).
 - **ROAS maturity** → how recovery builds over time.
 
-See the LTV:CAC table and the ROAS maturity curve in the [operations dashboard](/dashboard)'s LTV tab via CSV upload or Google Sheet connection. Connect a Sheet and you keep it fresh monthly without re-uploading.
+See the LTV:CAC table and the ROAS maturity curve in the [operations dashboard](/dashboard)'s LTV tab via CSV upload or Google Sheet connection. Where public-sheet import is enabled, use the fetch-latest button to refresh. It is not automatic synchronization.
+
+When the ratio differs by channel, the next question is allocation — [marketing budget allocation](/blog/budget-marginal-efficiency) covers where to move budget, and [ad budget scaling limits](/blog/budget-scaling-limit) covers how far to raise it.
 
 ## Let's be honest
 

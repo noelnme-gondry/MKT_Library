@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useRef, useMemo, useEffect, useSyncExternalStore } from "react";
+import { useClientReady } from "@/lib/useClientReady";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -48,9 +49,7 @@ const STANDARD_FIELD_EN_LABELS = {
   clicks: "Clicks", installs: "Installs", actions: "Actions / signups",
 };
 
-const subscribeHydration = () => () => {};
-const hydratedClientSnapshot = () => true;
-const hydratedServerSnapshot = () => false;
+
 
 function localizedStandardFieldLabel(key, locale) {
   if (locale !== "en") return STANDARD_FIELDS[key]?.label || key;
@@ -293,7 +292,7 @@ export default function CsvUploader({
   const isStale = useAppStore((s) => s.isGroupStale(toolId));
   const fileInputRef = useRef(null);
   const mappingDetailsRef = useRef(null);
-  const isHydrated = useSyncExternalStore(subscribeHydration, hydratedClientSnapshot, hydratedServerSnapshot);
+  const isHydrated = useClientReady();
   const [isDragging, setIsDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   // 분석 결과 컴포넌트의 무거운 useMemo는 그룹 게이트가 열리는 순간 실행된다.

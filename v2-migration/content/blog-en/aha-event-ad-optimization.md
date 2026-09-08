@@ -13,6 +13,9 @@ faq:
     a: "No. First confirm that it relates to later retention or revenue, then test whether nudging the action improves those outcomes."
   - q: "Why use an Aha Event instead of purchase optimization?"
     a: "Purchase is closer to the business goal, but it can be too sparse for early-stage campaigns to learn from. An Aha Event can be an earlier, higher-volume quality signal."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 An install CPA can fall while the business still feels unchanged. Installs and sign-ups rise, but very few people return a few days later.
 
@@ -80,9 +83,9 @@ Automation optimizes the goal you give it. Make that goal a better proxy for dur
 
 ## Try this today
 
-**One.** Take your current optimization event and count its **daily volume**. Below roughly a few dozen a day, the network cannot learn on it however well chosen it is — move one step earlier in the funnel, build volume, then step back down.
+**One.** Take your current optimization event and count its **daily volume**. Learning requirements vary by network, campaign type, optimization target, and conversion delay. Check the current platform guidance before changing the event; there is no universal daily cutoff.
 
-**Two.** Split last quarter's installs into two groups: those that fired your Aha candidate within the window and those that did not. Compare D7 or D30 retention between them. A candidate that does not separate those two curves is not an Aha event, whatever the product intuition says.
+**Two.** Split last quarter's installs into two groups: those that fired your Aha candidate within the window and those that did not. Compare D7 or D30 retention between them. If the curves are not distinguishable, inspect sample support and uncertainty before rejecting the candidate.
 
 ## Let's be honest
 

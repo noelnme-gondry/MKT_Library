@@ -14,11 +14,11 @@ faq:
   - q: "How long before I can judge an ASO change?"
     a: "There is no fixed passing duration. Record the change date, observation cutoff, and samples by source, and compare matched weekdays. Read platform experiments using their own settings and uncertainty; a before/after comparison does not establish causality."
   - q: "Which step does store conversion rate refer to?"
-    a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
+    a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. These are operational ratios, distinct from Apple’s official conversion rate. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
   - q: "Does ASO improve paid performance too?"
     a: "With identical spend and product page views, conversion moving from 30% to 40% means about 33.3% more installs and 25% lower CPI. This calculation does not hold unchanged if traffic mix or acquisition costs change."
-updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+updated: "2026-09-09"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Apple Product Page Optimization"
@@ -88,12 +88,14 @@ Collapsing conversion into a single rate stops the diagnosis right there. The st
 | Product page views | Product Page Views | Times someone tapped through to your product page |
 | Installs | Total Downloads | Times someone actually downloaded |
 
-That gives you two conversion rates, not one.
+These two ratios are operational derivatives. Apple’s official conversion rate uses downloads and pre-orders over unique-device impressions; Impressions also include product page views. Views and downloads are not linked steps for identical users, so downloads divided by page views is not the install probability of a page visitor. Align unique-device versus event counts and redownload definitions. [Apple metric definitions](https://developer.apple.com/help/app-store-connect-analytics/reference/metrics-definitions).
+
+The operational ratios are:
 
 - **Browse conversion = product page views ÷ impressions** — driven by the icon, app name, and first screenshot thumbnail. The question is whether people tap in the list.
 - **Page conversion = installs ÷ product page views** — driven by the screenshot flow, description, and ratings. The question is whether people install once they are on the page.
 
-With 100,000 impressions, 12,000 product page views, and 3,600 installs, browse conversion is 12% and page conversion is 30%. If installs drop next month while page conversion stays at 30%, the screenshots are not the problem — the browse layer is, meaning the icon or your ranking. Reading the two layers as a single 3.6% erases that distinction entirely.
+With 100,000 impressions, 12,000 product page views, and 3,600 installs, browse conversion is 12% and page conversion is 30%. If installs drop next month while this ratio stays at 30%, check view volume and source mix first. That alone does not rule out screenshot effects or identify the icon or ranking as the cause. Reading the two layers as a single 3.6% erases that distinction entirely.
 
 ### Conversion dropped — did it get worse, or did the mix change?
 
@@ -101,7 +103,7 @@ This is the mistake ASO work repeats most often. Store traffic converts very dif
 
 So an overall drop from 30% to 26% has two readings.
 
-1. **Rate decline** — conversion actually fell within each source. The page got worse, or a competitor got better.
+1. **Rate decline** — conversion actually fell within each source. Page quality, traffic intent, competition and measurement changes are possible explanations.
 2. **Mix shift** — each source converts exactly as before, but low-converting sources (browse, referral) now make up a larger share.
 
 Read case 2 as case 1 and you rebuild screenshots that were never broken. The way to separate them is to split by source and check whether each source's own rate moved. Decompose the total change into "rate change within sources" and "share change across sources" and the two parts add up with no residual left over.
@@ -118,11 +120,11 @@ This makes measurement genuinely hard. If organic installs fell during a period 
 
 ## The order to fix it
 
-1. **Store page conversion** (icon, screenshots, rating) — start where the effect is immediate.
+1. **Store page conversion** (icon, screenshots, rating) — test a specific change.
 2. **Keywords** (name, subtitle) — widen visibility itself.
-3. **Pair with paid** to boost rank.
+3. **Pair with paid** to evaluate total installs and incrementality.
 
-The order follows reversal cost and speed of effect. Screenshots are easy to change and revert and pay off immediately; the app name affects brand search and existing rank, and is hard to undo.
+The order follows reversal cost and speed of effect. Screenshots are easy to change and revert and require testing to establish a benefit; the app name affects brand search and existing rank, and is hard to undo.
 
 Detailed steps are in the [ASO basics guide](/guide/aso-basics).
 
@@ -130,13 +132,15 @@ Detailed steps are in the [ASO basics guide](/guide/aso-basics).
 
 Open your store console and read just two numbers: **product page views** and **install conversion rate**.
 
-- Low page conversion (installs ÷ product page views) → a screenshot, description, or rating problem. Fix the page first.
-- Low browse conversion (product page views ÷ impressions) → an icon or app name problem.
-- Few impressions at all → a keyword or rank problem. Start with name and subtitle.
+- Low page conversion (installs ÷ product page views) → review screenshots, description, ratings, traffic mix and measurement before testing a page change.
+- Low browse conversion (product page views ÷ impressions) → review the icon, app name and source composition.
+- Few impressions at all → review keywords, rank and search demand. Start with name and subtitle.
 
 To see all three branches split by source at once, upload your store console CSV to the [ASO store conversion tool](/tools/aso-store-conversion). It calculates the funnel and the mix-versus-rate decomposition together.
 
 That single branch decides what you work on for the next month. Trying to fix both at once, and being unable to attribute either result, is the most common waste in ASO.
+
+If conversion has actually dropped, first separate the page from the traffic mix — [app store conversion rate diagnosis](/blog/store-conversion-drop-diagnosis) has that decomposition, and [app store A/B testing](/blog/store-listing-experiment) covers validating whatever you change.
 
 ## Let's be honest
 

@@ -9,8 +9,8 @@ tags: ["예산 배분", "스케일업"]
 draft: false
 primaryTool: "5-3"
 relatedGlossary: ["marginal-cpa", "response-curve", "roas"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Meridian: ROI, 한계 ROI와 반응곡선"
     url: "https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves"
@@ -75,6 +75,8 @@ faq:
 > ⚠️ **한 가지는 정직하게 짚습니다.** 이 시뮬레이터는 과거 관측 구간의 관계로 예산 이동을 추정합니다. 이동 뒤 경매·소재·수요가 바뀌는 과정과 과거 성과의 복원 여부는 계산하지 않습니다. 삭감의 인과적 영향을 중요하게 판단해야 한다면 재배분 결과만 믿지 말고, [증분 분석](/tools/incrementality)으로 "이 채널을 빼면 실제로 얼마가 사라지나"를 함께 검증하세요.
 
 ![증분 분석 — 적절히 설계된 홀드아웃에서 광고 차단 그룹과 노출 그룹의 날짜별 전환율 차이로 증분을 추정한다.](/blog-assets/budget-marginal-efficiency/incrementality.png)
+
+한 채널을 얼마나 더 올려도 되는지가 궁금하면 [광고 예산 증액 기준](/blog/budget-scaling-limit)에서 한계 CPA로 상한을 잡는 법을, 그 예산을 애초에 감당할 수 있는지는 [LTV:CAC 비율 계산법](/blog/ltv-cac-ratio)에서 확인하세요.
 
 ## 직접 내 데이터로
 

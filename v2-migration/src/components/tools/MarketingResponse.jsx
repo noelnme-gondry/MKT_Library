@@ -15,6 +15,8 @@ import { createForecastReviewSnapshot, findForecastActualMatches, forecastReview
 import { toLocalDecisionDate } from "@/lib/decisionReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
+import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
+import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { csvBody, downloadCsv } from "@/utils/download";
@@ -490,6 +492,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (segmentSel && platformFilter !== "all" && !segmentSel.values.some((v) => v.value === platformFilter)) return "all";
     return platformFilter;
   }, [segmentSel, platformFilter]);
+
+  const comparisonScope = useMemo(() => ({ raw: csvData.raw, mmmAnalysisSig, target, effPlatformFilter, stage }), [csvData.raw, mmmAnalysisSig, target, effPlatformFilter, stage]);
+  const comparisonConditions = useComparisonConditions(comparisonScope);
+  const isObservationalComparison = stage === "trend" || stage === "diagnose";
 
   // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
@@ -1480,7 +1486,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
   const decisionHealth = mmm?.health || (mmm?.run ? mmmBayesianHealth(mmm.run) : null);
-  const mmmQuality = mmmDecisionQuality({ run: mmm?.run, health: decisionHealth, notices: mmm?.absorb?.notices });
+  const mmmQuality = mmmDecisionQuality({ run: mmm?.run, health: decisionHealth, notices: mmm?.absorb?.notices, actual: mmm?.panel?.targets?.[mmm?.target] });
   const forecastActualMatches = useMemo(() => {
     if (isDemo || !mmm || mmm.empty) return [];
     return findForecastActualMatches(decisionRecords, mmm.panel, effPlatformFilter, mmm.target);
@@ -3627,7 +3633,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const strong = ranks.filter((row) => mmmCannibLevel(row).lv >= 5).length;
       return {
         tone: strong > 0 ? "bad" : ranks.length ? "neutral" : "bad",
-        headline: strong > 0
+        headline: !cannib?.identifiedChannels?.length
+          ? tx("식별 가능한 채널이 없어 잠식 여부를 판정할 수 없습니다", "No channels are identifiable; cannibalization cannot be determined")
+          : strong > 0
           ? tx(`강한 잠식 후보 ${strong}개를 먼저 확인하세요`, `Review ${strong} strong cannibalization candidate(s) first`)
           : tx("강한 잠식 후보가 확인되지 않았습니다", "No strong cannibalization candidate was identified"),
         stats: [
@@ -3639,7 +3647,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         next: "mmm",
         nextLabel: tx("기여 분해로", "Next: contribution"),
         evidenceStatus: cannib?.identifiedChannels?.length ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.NOT_IDENTIFIED,
-        decisionPrefill: ranks.length ? {
+        decisionPrefill: ranks.length && cannib?.identifiedChannels?.length ? {
           conclusion: strong > 0
             ? tx(`강한 잠식 후보 ${strong}개`, `${strong} strong cannibalization candidate(s)`)
             : tx("강한 잠식 후보 없음", "No strong cannibalization candidate"),
@@ -3665,16 +3673,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           : tx("기여 분해 결과와 모델 경고를 함께 확인하세요", "Review contribution together with model warnings"),
         stats: [
           { label: tx("OOS 오차", "OOS error"), value: Number.isFinite(oos) ? `${oos.toFixed(1)}%` : "—" },
+          { label: tx("같은 구간 기준선 오차", "Same-window baseline error"), value: mmmQuality.baseline ? `${mmmQuality.baseline.baselineWmape.toFixed(1)}%` : tx("미확인", "Unconfirmed") },
           { label: tx("모델 경고", "Model warnings"), value: warningCount },
           { label: tx("분석 주", "Weeks"), value: weeks },
         ],
         point: mmmQuality.budgetEligible
-          ? tx("예산 판단의 최소 진단을 통과했습니다. 인과 증명이 아니며 예측 기준모델과 비교한 뒤 작은 변경으로 검증하세요.", "Minimum budget diagnostics passed. This is not causal proof; compare forecast baselines and validate small changes.")
+          ? tx("같은 검증 구간의 마지막 관측값 기준선보다 오차가 낮습니다. 인과 증명이 아니며 작은 변경으로 검증하세요. 독립된 미래 구간의 포함률은 미실측입니다.", "Error is lower than the last-observation baseline on the same validation windows. This is not causal proof; validate small changes. Independent future interval coverage is unmeasured.")
           : tx(`예산 판단 보류: ${mmmDecisionQualityMessage(mmmQuality, locale)}. 기여값은 탐색용으로만 읽으세요.`, `Budget decision held: ${mmmDecisionQualityMessage(mmmQuality, locale)}. Read contributions as exploratory.`),
         next: "lab",
         nextLabel: tx("미래예측으로", "Next: forecast"),
         evidenceStatus: Number.isFinite(oos)
-          ? (warningCount > 0 ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.READY)
+          ? (!mmmQuality.budgetEligible || warningCount > 0 ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.READY)
           : STATISTICAL_STATUS.INSUFFICIENT_DATA,
         decisionPrefill: mmm?.run ? {
           conclusion: Number.isFinite(oos)
@@ -4057,6 +4066,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         </div>
       )}
       {renderTabs()}
+      {isObservationalComparison && <ComparisonConditions conditions={comparisonConditions} locale={locale} />}
       {(() => {
         const summary = responseStageSummary();
         const stageToolId = {
@@ -4082,7 +4092,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               toolId: stageToolId,
               toolTitle: stageToolTitle,
               calculationMode: "hybrid_engine_output",
-              calculationTables: [{
+              calculationTables: [comparisonConditionsTable(comparisonConditions.values), {
                 name: "TREND_DECOMPOSITION",
                 title: tx("주별 추세 분해", "Weekly trend decomposition"),
                 note: tx("MMM Performance 제거·STL 분해는 엔진 출력이고 차이·재결합 검사는 수식", "Performance removal and STL decomposition are engine outputs; differences and reconciliation checks are formulas"),
@@ -4107,7 +4117,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               toolId: stageToolId,
               toolTitle: stageToolTitle,
               calculationMode: "hybrid_engine_output",
-              calculationTables: [{
+              calculationTables: [comparisonConditionsTable(comparisonConditions.values), {
                 name: "CANNIBALIZATION_SIGNALS",
                 title: tx("채널별 잠식 진단 신호", "Cannibalization signals by channel"),
                 note: tx("탈추세·차분·순증분·시차 검정과 CEI는 엔진 출력이고 절댓값·활성 비율·구간 폭은 수식", "Detrended, differenced, net-incrementality, lag tests, and CEI are engine outputs; absolute values, active share, and interval width are formulas"),
@@ -4135,8 +4145,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               calculationTables: [{
                 name: "MMM_DECISION_QUALITY",
                 title: tx("예산 판단 근거", "Budget decision evidence"),
-                rows: [["budget_eligible", "hold_reasons", "time_ordered_oos_wmape", "training_coverage_90", "health_warnings"],
-                  [mmmQuality.budgetEligible, mmmQuality.reasons.join(", "), mmmQuality.oosWmape ?? "", mmmQuality.trainingCoverage90 ?? "", mmmQuality.warnings.join(", ")]],
+                rows: [["budget_eligible", "hold_reasons", "time_ordered_oos_wmape", "training_coverage_90", "health_warnings", "last_observation_baseline_wmape", "independent_future_coverage"],
+                  [mmmQuality.budgetEligible, mmmQuality.reasons.join(", "), mmmQuality.oosWmape ?? "", mmmQuality.trainingCoverage90 ?? "", mmmQuality.warnings.join(", "), mmmQuality.baseline?.baselineWmape ?? "", "unmeasured"]],
+              }, {
+                name: "MMM_BASELINE_FOLDS",
+                title: tx("같은 검증 구간 기준선 비교", "Same-window baseline comparison"),
+                rows: [["training_weeks", "validation_weeks", "model_wmape", "last_observation_baseline_wmape"],
+                  ...(mmmQuality.baseline?.folds || []).map((fold) => [fold.cut, fold.horizon, fold.modelWmape, fold.baselineWmape])],
               }, {
                 name: "MMM_WEEKLY_CONTRIBUTION",
                 title: tx("주별 MMM 기여 분해", "Weekly MMM contribution decomposition"),
@@ -4173,6 +4188,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             toolTitle: stageToolTitle,
             calculationMode: "hybrid_engine_output",
             calculationTables: [{
+              name: "FORECAST_VALIDATION",
+              title: tx("예측 권고의 검증 근거", "Forecast decision validation"),
+              note: tx("화면과 같은 최종 검증 판정입니다. 참고범위는 미래 90% 포함을 보장하지 않습니다.", "Uses the same final validation decision as the screen. Reference ranges do not guarantee 90% future coverage."),
+              rows: [["scope", "wmape", "reliable", "certification_threshold", "scenario_eligible", "hold_reasons"],
+                ["total", recentBacktest?.wmape ?? "", recentBacktest?.reliable === true, recentBacktest?.certificationThreshold ?? "", forecastScenario?.eligible === true, (forecastScenario?.reasons || []).join(", ")],
+                ...(recentBacktest?.componentMetrics || []).map((metric) => [
+                  `${metric.platform || ""}:${metric.component || ""}`, metric.wmape ?? "", metric.passed === true, recentBacktest?.certificationThreshold ?? "", "", "",
+                ])],
+            }, {
               name: "FORECAST_HORIZON",
               title: tx("기간별 예측·참고범위", "Forecast and reference range by period"),
               note: tx("회귀·모델 선택·구간은 엔진 출력이고 구간 폭·미래 지출 합계는 수식", "Regression, model selection, and intervals are engine outputs; interval width and future-spend total are formulas"),
@@ -4197,6 +4221,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         // 받아갈 수 있게 한다 — 원천 데이터를 그대로 돌려주지는 않는다
         // (product-ssot §5.5 · D-13 · §12.27).
         const stageDownloadItems = [];
+        if (isObservationalComparison) stageDownloadItems.push({
+          label: tx("비교 조건 (CSV)", "Comparison conditions (CSV)"), analyticsType: "comparison_conditions",
+          onSelect: () => { const table = comparisonConditionsTable(comparisonConditions.values); downloadCsv(csvBody(table.rows[0], table.rows.slice(1)), "comparison_conditions"); },
+        });
         if (stage === "trend" && trend && mmm && !mmm.empty) {
           const actual = trend.rawTarget || mmm.panel.targets[mmm.target] || [];
           const labels = mmm.panel.weekLabel || actual.map((_, index) => String(index + 1));
@@ -4247,14 +4275,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           <ResultActionCard
             toolId="5-18"
             locale={locale}
-            analysisKey={`${mmmAnalyzedSig}|${target}|${effPlatformFilter}|${stage}`}
+            analysisKey={`${mmmAnalyzedSig}|${target}|${effPlatformFilter}|${stage}|${isObservationalComparison ? Object.values(comparisonConditions.values).join(":") : ""}`}
             analysisType={stage === "hub" ? "mapping" : stage}
-            resultState={mmm?.empty ? "insufficient" : "ready"}
+            resultState={mmm?.empty ? "insufficient" : isObservationalComparison && (!comparisonConditions.ready || summary.evidenceStatus === STATISTICAL_STATUS.NOT_IDENTIFIED) ? "inconclusive" : "ready"}
             tone={summary.tone}
             title={tx(`${stageKo} 요약`, `${stageKo} summary`)}
             headline={summary.headline}
             stats={summary.stats}
-            points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
+            points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }, ...(isObservationalComparison ? [{ text: comparisonConditionsNote(comparisonConditions.ready, locale), cls: "muted" }] : [])]}
             workbookExport={stageWorkbookExport}
             download={stageDownloadItems.length ? (
               <DownloadHub
@@ -4270,7 +4298,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               </button>
             ) : null}
             decisionReview={Boolean(summary.decisionPrefill)}
-            decisionPrefill={summary.decisionPrefill}
+            decisionPrefill={!isObservationalComparison || comparisonConditions.ready ? summary.decisionPrefill : null}
             analysisDetails={<div className="result-evidence-status"><EvidenceStatusBadge status={summary.evidenceStatus} locale={locale} /></div>}
             analysisBasis={false}
           />

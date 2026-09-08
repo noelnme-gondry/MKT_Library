@@ -23,6 +23,9 @@ faq:
     a: "No. Separate channel mix, seasonality, promotions, and simultaneous changes first. Use an A/B test or holdout when a causal decision is needed."
   - q: "What is the difference between Classic and Rolling retention?"
     a: "Classic retention measures a return exactly on the relevant day. Rolling retention includes a return on or after that day, so the two values should not be compared as the same D7 metric."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
+updated: "2026-09-09"
 ---
 Only compare a D7 cohort after every user in that cohort has had seven full days to return. If your data ends on July 30, a cohort acquired on July 28 has not had a chance to reach D7 yet. Treating it as zero—or quietly averaging it in—makes retention look worse than it is.
 
@@ -65,9 +68,9 @@ This is **illustrative data**, not an industry benchmark.
 | July 24 | 1,300 | No | Incomplete |
 | July 29 | 1,500 | No | Incomplete |
 
-The user-weighted D7 retention for the two mature cohorts is about 17.5%. If the two immature cohorts are treated as 0%, the number appears to fall to about 8.5%. That is a reporting error, not evidence that users suddenly churned.
+The user-weighted D7 retention for the two mature cohorts is about 17.5%. If the two immature cohorts are treated as 0%, the number appears to fall to about 7.5%. That is a reporting error, not evidence that users suddenly churned.
 
-![Bar chart comparing 17.5 percent D7 retention from mature cohorts with 8.5 percent when incomplete cohorts are treated as zero](/blog-assets-en/cohort-analysis-guide/incomplete-cohort-bias.svg)
+Arithmetic: retained users = 1,000 × 18% + 1,100 × 17% = 367. Mature cohorts give 367 ÷ 2,100 = 17.48%; including immature users in the denominator gives 367 ÷ 4,900 = 7.49%.
 
 Analytics products may flag recent, incomplete intervals for the same reason. See Amplitude’s [Retention Analysis FAQ](https://amplitude.com/docs/analytics/charts/retention-analysis/faq) for how incomplete periods affect interpretation.
 
@@ -134,4 +137,4 @@ Next, use the [Cohort-Based Retention Guide](/en/guide/cohort-retention) to conn
 
 Retention benchmarks from outside your product are mostly unusable. The normal range varies so much by category, monetisation model and acquisition mix that an external average tells you little, and the sourcing is frequently unclear.
 
-The only reference worth trusting is **your own past cohorts**. Stack the last 8–12 weeks and ask whether this cohort sits inside or outside that band. That comparison answers a real question; comparing against someone else's number mostly generates false confidence in both directions.
+Start with **your own comparable past cohorts**; external benchmarks can add context only when definitions, populations, and observation windows align. Stack the last 8–12 weeks and ask whether this cohort sits inside or outside that band. That comparison answers a real question; comparing against someone else's number mostly generates false confidence in both directions.

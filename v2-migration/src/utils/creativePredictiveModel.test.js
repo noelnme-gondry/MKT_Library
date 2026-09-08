@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCreativePredictiveInput, creativeShapleyR2 } from "./creativePredictiveModel";
+import { CREATIVE_STATS } from "./creativeMath";
 
 function creativeRows(count = 320) {
   return Array.from({ length: count }, (_, index) => {
@@ -30,6 +31,17 @@ function creativeRows(count = 320) {
 }
 
 describe("creative predictive model input", () => {
+  it("aggregates repeated creative dates before preparing validation rows", () => {
+    const originals = creativeRows();
+    const daily = originals.flatMap((row) => [{ ...row, date: "2026-01-01" }, { ...row, date: "2026-01-02" }]);
+    const metrics = CREATIVE_STATS.deriveMetrics(daily);
+    expect(metrics).toHaveLength(originals.length);
+    expect(new Set(metrics.map((row) => row.creative_id)).size).toBe(metrics.length);
+    expect(metrics[0].impressions).toBe(originals[0].impressions * 2);
+    const result = buildCreativePredictiveInput({ metrics, attributes: ["message_angle", "format"], metric: "ctr", numericFeatures: ["duration_seconds", "text_length"] });
+    expect(result.ok).toBe(true);
+    expect(result.n).toBe(originals.length);
+  });
   it("builds one numeric matrix from independent creative rows and preserves feature diversity", () => {
     const result = buildCreativePredictiveInput({
       metrics: creativeRows(),

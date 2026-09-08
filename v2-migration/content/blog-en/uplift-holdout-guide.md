@@ -2,7 +2,7 @@
 title: "How to Measure Advertising Uplift: Read Net Lift with a Holdout Test"
 description: "Measure advertising uplift with a holdout test, learn when good CPA or ROAS is not enough to scale, and interpret net lift in order."
 date: "2026-08-09"
-updated: "2026-08-26"
+updated: "2026-09-09"
 slug: "uplift-holdout-guide"
 keywords: "uplift, uplift meaning, advertising uplift, holdout test, incrementality, net lift, incremental ROAS, iROAS, ad effectiveness measurement"
 tags: ["Incrementality", "Performance Marketing"]
@@ -14,9 +14,11 @@ sources:
     url: "https://support.google.com/google-ads/answer/12005564?hl=en"
 faq:
   - q: "Are uplift and incrementality the same?"
-    a: "In marketing practice they are often used for the outcome advertising truly added. Uplift can also refer specifically to a relative change such as the conversion-rate difference between exposed and holdout groups."
+    a: "In marketing practice they are often used for the outcome advertising truly added. Absolute uplift is a conversion-rate difference in percentage points; relative uplift divides that difference by the holdout rate and is expressed as a percentage."
   - q: "Can I skip uplift testing when CPA is good?"
     a: "No. Brand Search and retargeting can show strong CPA among people likely to convert anyway. Use a holdout when the decision is whether more spend will create additional business outcome."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 A Brand Search campaign has a great CPA. Retargeting collects many conversions. But if total revenue or new customers do not rise with spend, the report may include conversions that would have happened without advertising.
 
@@ -41,7 +43,7 @@ CPA and ROAS are calculated from people who encountered the ad. If an ad was the
 - **Late promotion spend**: the discount, rather than the ad, may drive conversion.
 - **Products with strong organic demand**: paid media may re-buy organic conversions.
 
-A good CPA can be an operating-efficiency signal, but it is not automatically a scaling case. Uplift and incremental ROAS answer whether more spend grows the business.
+A good CPA can be an operating-efficiency signal, but it is not automatically a scaling case. Read uplift and incremental ROAS alongside marginal efficiency: the average effect at current spend does not guarantee the return on additional spend.
 
 ## How to design a holdout test
 
@@ -62,7 +64,7 @@ Do not choose the holdout share from a rule of thumb. Derive it from the minimum
 | Primary metric | New-purchase conversion rate |
 | Minimum expected effect | +1.0pp uplift |
 | Observation window | Two weeks |
-| Next action | Raise budget 10% only if the interval is positive |
+| Next action | Consider a small increase only if design and business criteria pass; otherwise hold and plan further testing |
 
 ### 4. Read rate difference and absolute lift together
 
@@ -73,7 +75,7 @@ A +1pp uplift means about 100 extra conversions in a 10,000-person audience and 
 | Result | Interpretation | Next step |
 | --- | --- | --- |
 | Confidence interval is positive | Evidence that advertising added outcomes | Scale in a small step, then re-check |
-| Positive estimate but not significant | Not proof of no effect; power may be low | Collect longer, enlarge the sample, or hold judgment |
+| Positive estimate but not significant | Not proof of no effect; power may be low | Hold judgment; preplan sample, window, and stopping rules for further testing |
 | Near zero or negative | Weak incremental evidence in this design | Pause scale-up and review targeting or channel role |
 
 Do not translate “not significant” as “no effect.” But do not make a large scale decision from a p-value alone either. Absolute lift and iROAS must clear the business threshold.
@@ -83,6 +85,8 @@ Do not translate “not significant” as “no effect.” But do not make a lar
 For a new campaign, compare a **new ON** period with a similar group left off. For an existing campaign, consider a short **OFF** period with difference-in-differences. These are weaker than random holdouts, so disclose comparison trends and external changes rather than claiming certainty from before/after alone.
 
 [Marketing Response Analysis](/tools/marketing-response) can prioritize hypotheses from observational data. Its contribution estimates are hypotheses; a holdout should validate a large budget move.
+
+For why uplift differs from the conversions in your report, [incrementality measurement](/blog/incrementality-measurement) comes first; the decision rules — sample size, early stopping — are shared with [A/B testing](/blog/ab-testing).
 
 ## Wrap-up
 
@@ -98,6 +102,6 @@ With exposed and holdout numbers, new-ON data, or shutdown data, use [Incrementa
 
 ## Let's be honest
 
-Uplift is estimated with uncertainty, and uncertainty is usually wide. A holdout that returns "positive but not significant" has not shown the ad works, and it has not shown it fails either — it has shown the test lacked power. Reporting that as "no effect" is the most common way an incrementality result gets misused.
+Uplift is estimated with uncertainty, and uncertainty is usually wide. A holdout that returns "positive but not significant" has not shown the ad works, and it has not shown it fails either — limited power is one possible explanation, but nonsignificance alone does not prove it. Reporting that as "no effect" is the most common way an incrementality result gets misused.
 
 Nor does one measurement generalise. Uplift shifts with season, competitive pressure, and how saturated the channel already is, so a number measured in a peak month does not describe a quiet one. For campaigns carrying a large share of budget, re-measure periodically rather than treating the first result as settled.

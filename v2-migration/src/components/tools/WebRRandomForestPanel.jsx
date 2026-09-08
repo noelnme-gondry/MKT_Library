@@ -3,13 +3,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareRandomForestInput, runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
+import { csvBody, downloadCsv } from "@/utils/download";
 
 const COPY = {
   ko: {
     title: "Random Forest 자동 비교",
     desc: "기본 회귀 결과를 먼저 읽은 뒤, 예측력이 실제로 더 나아지는지만 추가로 비교합니다.",
     run: "Random Forest 다시 실행",
-    loading: "Random Forest 500그루와 교차검증을 실행 중입니다. 첫 실행은 R 엔진을 불러와 10~20초 걸릴 수 있습니다.",
+    loading: "Random Forest 500그루와 분리 검증을 실행 중입니다. 첫 실행은 R 엔진을 불러와 10~20초 걸릴 수 있습니다.",
     blocked: (n, required) => `현재 완전한 행은 ${n || 0}개입니다. 선택한 요소 수 기준으로 최소 ${required || 100}개가 필요합니다.`,
     tooManyObservations: (max) => `완전한 행이 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 기간·세그먼트·요소를 좁혀 다시 실행하세요.`,
     tooManyPredictors: (max) => `선택한 요소가 브라우저 R 엔진의 안전 한도(${max}개)를 넘었습니다. 요소를 줄여 다시 실행하세요.`,
@@ -23,8 +24,8 @@ const COPY = {
     candidate: "예측 정확도 승자: Random Forest",
     keep: "예측 정확도 승자: 기존 회귀",
     tie: "예측 승자 보류: 실질적인 예측력 차이 없음",
-    candidateBody: (gain) => `동일 교차검증에서 Random Forest의 주 지표 오차가 ${gain}% 낮았습니다. 예측 용도로만 교체 후보이며 해석·인과 판정은 기존 회귀를 유지해야 합니다.`,
-    keepBody: (gain) => `동일 교차검증에서 기존 회귀의 주 지표 오차가 Random Forest보다 ${gain}% 낮았습니다. 기존 회귀를 기본 선택했습니다.`,
+    candidateBody: (gain) => `같은 학습·검증 분리에서 Random Forest의 주 지표 오차가 기준 회귀보다 ${gain}% 낮았습니다. 예측 용도로만 교체 후보이며 해석·인과 판정은 기존 회귀를 유지해야 합니다.`,
+    keepBody: (gain) => `같은 학습·검증 분리에서 Random Forest의 주 지표 오차가 기준 회귀보다 ${gain}% 높았습니다. 기존 회귀를 기본 선택했습니다.`,
     tieBody: (difference) => `관측된 주 지표 차이는 ${difference}입니다. 사전 운영 임계값 5% 미만이라 자동 승자를 정하지 않습니다.`,
     importance: "예측 중요도 상위 요소",
     caveat: "Permutation importance는 다른 변수를 함께 둔 예측 기여도입니다. 방향(+/−)과 인과효과를 뜻하지 않습니다.",
@@ -39,7 +40,7 @@ const COPY = {
     title: "Automatic Random Forest comparison",
     desc: "Read the baseline regression first, then use this optional comparison only to check whether predictive accuracy materially improves.",
     run: "Retry Random Forest",
-    loading: "Running a 500-tree Random Forest and cross-validation. The first run can take 10–20 seconds while the R engine loads.",
+    loading: "Running a 500-tree Random Forest and separated validation. The first run can take 10–20 seconds while the R engine loads.",
     blocked: (n, required) => `${n || 0} complete rows are available. The selected feature count requires at least ${required || 100}.`,
     tooManyObservations: (max) => `Complete rows exceed the browser R safety limit (${max}). Narrow the period, segment, or features and try again.`,
     tooManyPredictors: (max) => `Selected features exceed the browser R safety limit (${max}). Reduce the features and try again.`,
@@ -53,8 +54,8 @@ const COPY = {
     candidate: "Predictive-accuracy winner: Random Forest",
     keep: "Predictive-accuracy winner: current regression",
     tie: "Predictive winner withheld: no material difference",
-    candidateBody: (gain) => `Random Forest reduced the primary error by ${gain}% in the same cross-validation. It is a prediction-only replacement candidate; keep regression for interpretation and causal caution.`,
-    keepBody: (gain) => `The current regression reduced primary-metric error by ${gain}% versus Random Forest in the same cross-validation, so it is selected by default.`,
+    candidateBody: (gain) => `Random Forest reduced the primary error by ${gain}% versus the baseline regression on the same validation split. It is a prediction-only replacement candidate; keep regression for interpretation and causal caution.`,
+    keepBody: (gain) => `Random Forest's primary error was ${gain}% higher than the baseline regression on the same validation split, so the current regression is selected by default.`,
     tieBody: (difference) => `The observed primary-metric difference is ${difference}. It is below the predeclared 5% operating threshold, so no automatic winner is selected.`,
     importance: "Top predictive importance",
     caveat: "Permutation importance is predictive contribution with other variables present. It does not provide direction or a causal effect.",
@@ -73,13 +74,13 @@ function metricValue(metric, value) {
   return value.toFixed(4);
 }
 
-export default function WebRRandomForestPanel({ fit, signature, locale = "ko", source = "csv" }) {
+export default function WebRRandomForestPanel({ fit, signature, locale = "ko", source = "csv", groups, times }) {
   const T = COPY[locale] || COPY.ko;
   const requestRef = useRef(0);
   const autoSignatureRef = useRef(null);
   const [run, setRun] = useState({ status: "idle", signature: null, result: null, error: null });
   const [selectedModel, setSelectedModel] = useState("baseline");
-  const input = useMemo(() => prepareRandomForestInput({ X: fit?.X, y: fit?.y, terms: fit?.terms }), [fit]);
+  const input = useMemo(() => prepareRandomForestInput({ X: fit?.X, y: fit?.y, terms: fit?.terms, validationGroups: groups, validationTimes: times }), [fit, groups, times]);
   const predictorCount = input.predictorCount ?? Math.max(0, (fit?.terms?.length || 1) - 1);
   const observedRows = input.n ?? fit?.y?.length ?? 0;
   const requiredObservations = input.requiredObservations ?? Math.max(100, predictorCount * 20);
@@ -132,7 +133,9 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
         ? T.classSupport(input.minorityCount, input.requiredMinority)
         : input.reason === "insufficient_observations"
           ? T.blocked(observedRows, requiredObservations)
-          : T.invalid;
+          : input.reason?.startsWith("validation_")
+            ? (locale === "en" ? "Separated validation is unavailable. Check row alignment, YYYY-MM-DD dates, at least four units for group validation, and sufficient training/test observations after removing shared units." : "분리 검증 불가: 행 대응·YYYY-MM-DD 날짜·단위별 검증의 최소 4개 단위·중복 단위 제외 후 학습/검증 표본을 확인하세요.")
+            : T.invalid;
     return (
       <details className="rf-help" id="s-content-webr-random-forest">
         <summary><span aria-hidden="true">ⓘ</span> {T.whyBlocked}</summary>
@@ -152,7 +155,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   const observedDifference = Number.isFinite(result?.relativeGain)
     ? result.relativeGain > 0
       ? `Random Forest ${Math.abs(result.relativeGain * 100).toFixed(1)}% ${locale === "en" ? "lower" : "낮음"}`
-      : `${baselineLabel} ${Math.abs(result.relativeGain * 100).toFixed(1)}% ${locale === "en" ? "lower" : "낮음"}`
+      : `Random Forest ${Math.abs(result.relativeGain * 100).toFixed(1)}% ${locale === "en" ? "higher" : "높음"}`
     : "—";
   const verdict = recommendation === "random_forest_candidate"
     ? { title: T.candidate, body: T.candidateBody(gain), tone: "info" }
@@ -176,6 +179,11 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
     <section className="block" id="s-content-webr-random-forest">
       <h2 className="section-title"><span className="ix">ADV</span>{T.title}</h2>
       <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px" }}>{T.desc}</p>
+      <p>{input.validation.mode === "random_rows"
+        ? (locale === "en" ? "Random row validation assumes independent content items; it does not validate future performance or repeated units." : "행 무작위 검증은 콘텐츠별 독립 관측을 가정합니다. 미래 성과나 반복 단위의 예측력을 검증한 것은 아닙니다.")
+        : input.validation.mode === "group_cv"
+          ? (locale === "en" ? `Validation separates units across ${input.validation.folds} folds. ${input.validation.validationN} rows are evaluated; this does not validate future performance.` : `단위가 겹치지 않는 ${input.validation.folds}개 분할에서 ${input.validation.validationN}행을 검증합니다. 미래 성과 검증은 아닙니다.`)
+          : (locale === "en" ? `Past-to-future holdout: ${input.validation.validationN} validation rows; ${input.validation.purgedN} past rows of shared units excluded. One historical holdout does not guarantee future accuracy.` : `과거→미래 홀드아웃: 검증 ${input.validation.validationN}행, 겹치는 단위의 과거 ${input.validation.purgedN}행 제외. 한 과거 구간의 검증은 미래 정확도를 보장하지 않습니다.`)}</p>
       <details className="rf-requirements">
         <summary><span aria-hidden="true">ⓘ</span> {T.requirements}</summary>
         <p>{T.requirementsBody(requiredObservations)}</p>
@@ -185,6 +193,12 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
           {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{visible.error.includes("baseline_regression_not_estimable") ? T.baselineUnavailable : T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
             <div style={{ marginTop: "14px" }}>
+              <button type="button" className="ab-button" onClick={() => downloadCsv(csvBody(
+                ["validation_mode", "evaluated_rows", "purged_rows", "folds", "primary_metric", "baseline_error", "random_forest_error", "relative_gain", "recommendation"],
+                [[input.validation.mode, input.validation.validationN ?? input.n, input.validation.purgedN ?? 0, result.folds, result.primaryMetric, result.baseline.primary, result.randomForest.primary, result.relativeGain, result.recommendation]],
+              ), "content-predictive-validation")}>
+                {locale === "en" ? "Download validation evidence (CSV)" : "검증 근거 받기 (CSV)"}
+              </button>
               <div className={`callout ${verdict.tone}`}>
                 <div className="body"><strong>{verdict.title}</strong><p>{verdict.body}</p></div>
               </div>

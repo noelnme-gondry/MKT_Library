@@ -77,3 +77,37 @@ describe("AsoStoreConversion render smoke", () => {
     expect(container.querySelector('[data-decision-review-tool="5-27"]')).toBeTruthy();
   });
 });
+
+
+describe("ASO observed shift copy", () => {
+  for (const locale of ["ko", "en"]) {
+    it(`${locale}: rising mix and mixed effects do not claim a fall or missing periods`, () => {
+      const makeSlice = (after) => {
+        const headers = ["date", "store_source", "impressions", "product_page_views", "installs"];
+        const raw = [
+          ["2026-08-01", "A", "200", "100", "40"], ["2026-08-01", "B", "200", "100", "10"],
+          ["2026-08-02", "A", "200", "100", "40"], ["2026-08-02", "B", "200", "100", "10"],
+          ...["2026-08-03", "2026-08-04"].flatMap(date => after.map(([source, views, installs]) => [date, source, String(views * 2), String(views), String(installs)])),
+        ].map(values => Object.fromEntries(headers.map((key, i) => [key, values[i]])));
+        return { raw, headers, mapping: Object.fromEntries(headers.map(key => [key, key])), fileName: "observed-store.csv" };
+      };
+      useAppStore.setState({ analyzedByGroup: {} });
+      seed(makeSlice([["A", 300, 120], ["B", 100, 10]]));
+      useAppStore.getState().setGroupAnalyzed("5-27");
+      const rising = render(<AsoStoreConversion locale={locale} />);
+      const first = rising.container.querySelector("#aso-result").textContent;
+      expect(first).toContain(locale === "ko" ? "구성 변화" : "mix");
+      expect(first).not.toMatch(/내려갔습니다|blended rate fell/);
+      expect(rising.container.querySelector("#aso-sources").textContent).toContain(locale === "ko" ? "설치당 조회 수" : "views per install");
+      rising.unmount();
+
+      seed(makeSlice([["A", 100, 50], ["B", 300, 15]]));
+      useAppStore.getState().setGroupAnalyzed("5-27");
+      const mixed = render(<AsoStoreConversion locale={locale} />);
+      const second = mixed.container.querySelector("#aso-result").textContent;
+      expect(second).toContain(locale === "ko" ? "구성과 효율이 함께" : "Mix and efficiency moved together");
+      expect(second).not.toMatch(/날짜가 최소 4일|at least four distinct dates/);
+      mixed.unmount();
+    });
+  }
+});

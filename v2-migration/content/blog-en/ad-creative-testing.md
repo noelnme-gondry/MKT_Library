@@ -10,8 +10,8 @@ draft: false
 ogImage: "/blog-assets/ad-creative-testing/ad-creative-lifecycle-en.png"
 primaryTool: "9-6"
 relatedGlossary: ["cpa", "roas", "ctr", "cvr"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Test with confidence with the Experiments page"
     url: "https://support.google.com/google-ads/answer/7281575"
@@ -278,6 +278,8 @@ The safer sequence is keep assets that still perform → add new variants first 
 - [ ] Define winner, hold, and loser actions.
 - [ ] Save the result and next hypothesis by creative ID.
 - [ ] Prepare to monitor fatigue after a winner scales.
+
+After several rounds the question becomes what worked repeatedly — that is [ad creative performance analysis](/blog/content-element-analysis) — and when a fresh test on past creatives is not an option, [ad creative regression](/blog/creative-attribute-regression) picks it up.
 
 ## Conclusion
 

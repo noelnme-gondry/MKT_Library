@@ -13,7 +13,7 @@ faq:
     a: "세이프존은 매체 UI와 크롭을 피해서 핵심 내용을 배치하는 안전 영역입니다. UI가 덮는 영역은 비워 두고, 자막·로고는 해당 게재 위치의 공식 세이프존 안에 배치하세요."
 
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns asset specifications"
@@ -41,6 +41,8 @@ sources:
 - **외부 도메인 호출**: 플레이어블 안에서 바깥 서버에 API를 부르면 매체 검수에서 거절돼요.
 - **자동 리다이렉트·자동 클릭**: 유저 액션 없이 스토어로 자동 이동시키는 소재는 정책 위반이에요.
 - **핵심 정보가 세이프존 밖에 있음**: 다국가로 운영한다면, 텍스트가 가장 긴 언어 기준으로 세이프존을 잡아야 다른 언어권에서도 안 잘려요.
+
+규격을 맞춘 다음 문제는 몇 개를 어떤 예산으로 돌릴지인데, 그건 [광고 소재 테스트 방법](/blog/ad-creative-testing)에 있고 첫 3초를 어떻게 짤지는 [광고 첫 3초 후킹](/blog/hook-3-seconds-framework)에 있습니다.
 
 ## 정직하게
 

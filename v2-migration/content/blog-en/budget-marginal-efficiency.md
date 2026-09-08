@@ -9,8 +9,8 @@ tags: ["Budget Allocation", "Scaling"]
 draft: false
 primaryTool: "5-3"
 relatedGlossary: ["marginal-cpa", "response-curve", "roas"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Meridian: ROI, mROI, and response curves"
     url: "https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves"
@@ -75,6 +75,8 @@ The [Budget Allocation Simulator](/tools/budget-allocation) compares where to ad
 > ⚠️ **One honest caveat.** This simulator estimates budget moves from relationships in the observed historical range. It does not model how auctions, creative, or demand may change after the move, nor whether historical performance will return. When the causal impact of a cut matters, pair the reallocation result with [Incrementality Analysis](/tools/incrementality) to test "how much actually disappears if I pull this channel."
 
 ![Incrementality — an appropriately designed holdout estimates incremental lift from the daily conversion-rate difference between the ads-off and exposed groups.](/blog-assets/budget-marginal-efficiency/incrementality-en.png)
+
+To decide how far one channel can scale, [ad budget scaling limits](/blog/budget-scaling-limit) covers setting a ceiling with marginal CPA; to check whether the budget is affordable at all, see [the LTV:CAC ratio](/blog/ltv-cac-ratio).
 
 ## Try it on your own data
 

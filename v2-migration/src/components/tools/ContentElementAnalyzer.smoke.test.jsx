@@ -11,6 +11,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
+import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
 import { runWebRLogisticRegression } from "@/lib/analysis/webr/logisticRegression";
 import { runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
 
@@ -154,6 +155,13 @@ function seedWithBinaryOutcome() {
 describe("ContentElementAnalyzer render smoke", () => {
   beforeEach(() => {
     seedNoData();
+  });
+
+  it.each(["ko", "en"])("keeps the baseline denominator when RF error doubles (%s)", async (locale) => {
+    runWebRRandomForest.mockResolvedValueOnce({ status: "complete", outcomeType: "regression", folds: 4, primaryMetric: "rmse", secondaryMetric: "oos_r2", randomForest: { primary: 2, secondary: 0.5 }, baseline: { primary: 1, secondary: 0.8 }, relativeGain: -1, recommendation: "baseline_regression", importance: [] });
+    render(<WebRRandomForestPanel locale={locale} signature="denominator-check" fit={{ X: Array.from({ length: 120 }, (_, index) => [1, index % 7]), y: Array.from({ length: 120 }, (_, index) => index % 5), terms: ["Intercept", "feature"] }} />);
+    expect(await screen.findByText(locale === "en" ? /100.0% higher than the baseline regression/ : /기준 회귀보다 100.0% 높았습니다/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: locale === "en" ? "Download validation evidence (CSV)" : "검증 근거 받기 (CSV)" })).toBeTruthy();
   });
 
   it("mounts without throwing in the no-data state", () => {
@@ -316,6 +324,31 @@ describe("ContentElementAnalyzer render smoke", () => {
     // 문구 전체를 박아두면 카피를 다듬을 때마다 깨지므로 핵심 조각으로만 확인한다.
     const oddsNote = screen.getByText(/odds가 몇 배/);
     expect(oddsNote.textContent).toMatch(/인과효과가 아닙니다/);
+  });
+
+  it.each(["ko", "en"])("replaces row-wise predictions with disjoint-unit validation after declaration (%s)", async (locale) => {
+    seedWithBinaryOutcome();
+    const csv = useAppStore.getState().csvData;
+    const slice = { ...csv, raw: csv.raw.map((row, index) => ({ ...row, post_id: `unit${index % 20}` })) };
+    useAppStore.setState({ csvData: slice, csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice } });
+    const { container } = render(<ContentElementAnalyzer locale={locale} />);
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "converted" } });
+    for (const name of ["title_has_number", "title_len"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      if (!button.classList.contains("active")) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "▶ Analyze" : "▶ 분석하기" }));
+    await screen.findByText(locale === "en" ? "Predictive-accuracy winner: Random Forest" : "예측 정확도 승자: Random Forest");
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Repeated-unit column" : "반복 단위 열"), { target: { value: "post_id" } });
+    expect(screen.getByText(locale === "en" ? /Validation separates units/ : /단위가 겹치지 않는/)).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /Random Forest/ })).toBeNull();
+    await screen.findByText(locale === "en" ? "Predictive-accuracy winner: Random Forest" : "예측 정확도 승자: Random Forest");
+    const input = runWebRRandomForest.mock.calls.at(-1)[0];
+    expect(input.validation.mode).toBe("group_cv");
+    for (let fold = 1; fold <= input.validation.folds; fold += 1) {
+      const trainUnits = new Set(input.validationGroups.filter((_, index) => input.validation.foldIds[index] !== fold));
+      expect(input.validationGroups.filter((_, index) => input.validation.foldIds[index] === fold).some((unit) => trainUnits.has(unit))).toBe(false);
+    }
   });
 
   it("automatically compares Random Forest, selects its win, and keeps both model choices", async () => {

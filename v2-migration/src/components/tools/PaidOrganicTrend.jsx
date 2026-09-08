@@ -1,4 +1,5 @@
 "use client";
+import { useClientReady } from "@/lib/useClientReady";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -14,6 +15,9 @@ import {
   buildPaidOrganicTrendDemo,
   guessPaidOrganicColumns,
 } from "@/utils/paidOrganicTrend";
+
+import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
+import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
 
 const COPY = {
   ko: {
@@ -111,12 +115,15 @@ function fmtNumber(value) {
 }
 
 export default function PaidOrganicTrend({ locale = "ko" }) {
+  const isHydrated = useClientReady();
   const C = COPY[locale] || COPY.ko;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const guessedMapping = useMemo(() => guessPaidOrganicColumns(csvData?.headers || []), [csvData?.headers]);
+  const headers = csvData?.headers;
+  const raw = csvData?.raw;
+  const guessedMapping = useMemo(() => guessPaidOrganicColumns(headers || []), [headers]);
   const [mappingState, setMappingState] = useState(() => ({ raw: csvData?.raw, values: guessedMapping }));
   const mapping = mappingState.raw === csvData?.raw ? mappingState.values : guessedMapping;
   const [uploadError, setUploadError] = useState("");
@@ -125,10 +132,12 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const hasData = Boolean(csvData?.raw?.length);
+  const comparisonScope = useMemo(() => ({ raw, mapping }), [raw, mapping]);
+  const conditions = useComparisonConditions(comparisonScope);
 
   const result = useMemo(
-    () => buildPaidOrganicTrend(csvData?.raw || [], mapping),
-    [csvData?.raw, mapping],
+    () => buildPaidOrganicTrend(raw || [], mapping),
+    [raw, mapping],
   );
 
   const readFile = async (file) => {
@@ -259,7 +268,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
     : result.verdict === "co-growth"
       ? [C.growthTitle, C.growthBody, "growth"]
       : [C.mixedTitle, C.mixedBody, "mixed"];
-  const decisionPrefill = result.points.length > 0
+  const decisionPrefill = conditions.ready && result.points.length > 0
     ? {
         conclusion: verdictCopy[0],
         action: result.verdict === "watch"
@@ -276,7 +285,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
     : null;
 
   return (
-    <div className="paid-organic-tool">
+    <div className="paid-organic-tool" data-hydrated={isHydrated ? "true" : "false"}>
       <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
@@ -295,10 +304,10 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
             <small>{C.privacy}</small>
           </div>
           <div className="paid-organic-upload__actions">
-            <button type="button" className="btn primary" onClick={() => fileRef.current?.click()}>{C.upload}</button>
-            <button type="button" className="btn" onClick={() => setCsvData(buildPaidOrganicTrendDemo(locale))}>{C.demo}</button>
+            <button type="button" disabled={!isHydrated} className="btn primary" onClick={() => fileRef.current?.click()}>{C.upload}</button>
+            <button type="button" disabled={!isHydrated} className="btn" onClick={() => setCsvData(buildPaidOrganicTrendDemo(locale))}>{C.demo}</button>
           </div>
-          <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => readFile(event.target.files?.[0])} />
+          <input ref={fileRef} disabled={!isHydrated} type="file" accept=".csv,text/csv" hidden onChange={(event) => readFile(event.target.files?.[0])} />
           {uploadError && <p className="paid-organic-upload__error" role="alert">{uploadError}</p>}
         </section>
       ) : (
@@ -352,11 +361,12 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                   CSV로 되돌려줄 "계산한 인사이트"가 없다. 원천 데이터를 그대로
                   내보내는 것은 §12.27이 금지한다. 정밀 진단이 필요하면 잠식 진단
                   화면으로 넘어가며, 다운로드는 거기가 소유한다. (D-07) */}
+              <ComparisonConditions conditions={conditions} locale={locale} />
               <ResultActionCard
                 tone={verdictCopy[2] === "bad" ? "bad" : verdictCopy[2] === "good" ? "good" : "neutral"}
                 title={locale === "en" ? "Conclusion" : "결론"}
                 headline={verdictCopy[0]}
-                points={[{ text: verdictCopy[1] }, { text: C.ctaHint, cls: "muted" }]}
+                points={[{ text: verdictCopy[1] }, { text: comparisonConditionsNote(conditions.ready, locale), cls: "muted" }, { text: C.ctaHint, cls: "muted" }]}
                 stats={[
                   { label: C.recentOrganic, value: fmtPct(result.recentOrganicChange) },
                   { label: C.recentPaid, value: fmtPct(result.recentPaidChange) },
@@ -364,11 +374,12 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
                 ]}
                 toolId="5-18-paid-organic"
                 shareTitle={locale === "en" ? "Paid · Organic Movement Map" : "Paid·Organic 변화맵"}
-                analysisKey={`${result.recentOrganicChange}:${result.recentPaidChange}:${result.oppositeCount}`}
+                analysisKey={`${result.recentOrganicChange}:${result.recentPaidChange}:${result.oppositeCount}:${Object.values(conditions.values).join(":")}`}
+                resultState={conditions.ready ? "ready" : "inconclusive"}
                 locale={locale}
                 workbookExport={() => ({
                   calculationMode: "exact_after_preprocessing",
-                  calculationTables: [{
+                  calculationTables: [comparisonConditionsTable(conditions.values), {
                     name: "PAID_ORGANIC_WOW",
                     title: tr("주별 Paid·Organic 변화", "Weekly Paid and Organic movement"),
                     note: tr("주간 집계 입력 이후 WoW와 의미 있는 움직임 여부를 수식으로 재현", "Recalculates WoW and meaningful-movement flags from weekly aggregate inputs"),

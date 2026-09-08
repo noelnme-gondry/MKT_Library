@@ -13,7 +13,7 @@ faq:
     a: "The safe zone is the area for essential content that avoids platform UI and cropping. Leave covered areas clear and place captions and logos inside the official safe zone for that placement."
 
 updated: "2026-09-08"
-reviewedAt: "2026-09-08"
+reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns asset specifications"
@@ -49,6 +49,8 @@ Interactive (playable) ads follow each platform's size, packaging, and external-
 - **External domain calls**: calling an outside API from inside a playable is usually rejected.
 - **Auto-redirect / auto-click**: sending users to the store with no user action is a policy violation.
 - **Key info outside the safe zone**: this passes review but underperforms — a quiet failure that's easy to miss.
+
+Once specs are met, the next question is how many to run on what budget — that is [ad creative testing](/blog/ad-creative-testing) — and how to build the opening seconds is in [the first three seconds of a video ad](/blog/hook-3-seconds-framework).
 
 ## Let's be honest
 

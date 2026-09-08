@@ -2,7 +2,7 @@
 title: "When Does Scaling Budget Start Raising CPA?"
 description: "Compare marginal CPA with average CPA to separate channels with headroom from channels already saturated."
 date: "2026-08-15"
-updated: "2026-08-17"
+updated: "2026-09-09"
 slug: "budget-scaling-limit"
 keywords: "budget scaling, advertising budget limit, marginal CPA, saturation, diminishing returns, scale up budget, CPA increase, response curve, marketing budget optimization, when to stop scaling"
 tags: ["Budget Allocation", "Scaling"]
@@ -12,6 +12,8 @@ faq:
     a: "Average CPA can sit under target while the CPA of the next unit of spend already exceeds it. Scaling decisions belong to marginal CPA, not the average."
   - q: "How is marginal CPA calculated?"
     a: "Fit a curve to outcomes across spend levels, then measure how much additional outcome one more unit of spend produces at the current point. Channels whose spend barely varied cannot support a curve, so the verdict is withheld."
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The following hypothetical example illustrates the risk of scaling from average CPA alone.
 
@@ -55,11 +57,11 @@ No need to complicate it.
 Saturation index = marginal CPA ÷ average CPA
 ```
 
-- **Near 1** — still in the linear zone. Scaling will not hurt efficiency much.
+- **Near 1** — average and marginal efficiency are similar near the fitted point; larger scale changes are not guaranteed.
 - **Well above 1** — saturated. More spend buys proportionally less.
-- **Below 1** — headroom remains. Highest priority for additional budget.
+- **Below 1** — headroom remains. Compare against target CPA, other channels’ marginal efficiency, observed ranges, and constraints before prioritizing.
 
-On a ROAS basis the direction inverts: a **lower** marginal-to-average ROAS means more saturated. That one is easy to get backwards, so check it twice.
+Lower marginal ROAS relative to average ROAS signals saturation. The tool defines its ROAS saturation index as **average ROAS ÷ marginal ROAS**, keeping the same direction as the CPA index: higher means more saturated.
 
 [Campaign saturation analysis](/tools/campaign-saturation) computes this index per channel from a CSV with date, channel, cost, and outcome.
 
@@ -77,9 +79,11 @@ If more observations are needed, first define **a spend-change plan with risk li
 
 ## Saturated does not only mean "stop"
 
-A saturation verdict is not an instruction to halt. Moving that budget to a channel with headroom raises overall efficiency **without increasing total spend**.
+A saturation verdict is not an instruction to halt. Moving that budget to a channel with headroom can simulate improved efficiency **without increasing total spend**; actual improvement still needs validation.
 
 [Budget allocation simulator](/tools/budget-allocation) uses the per-channel curves to compute where to add and where to cut at the same total. The output is a scenario based on historical observations; it does not guarantee approval or improved efficiency.
+
+If the question is where to move budget across several channels at once, [marketing budget allocation](/blog/budget-marginal-efficiency) is the next read; to rule out that the added spend merely displaced organic demand, see [paid and organic cannibalisation](/blog/cannibalization-organic-paid).
 
 ## Try this today
 

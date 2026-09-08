@@ -1,16 +1,16 @@
 ---
 title: "Ad Performance Drop: Diagnose CPA and CTR in 4 Steps"
-description: "Before replacing creative when CPA, CTR, or conversion rate drops, diagnose measurement, channel mix, efficiency, and the funnel in four steps."
+description: "Before replacing creative when CPA rises or CTR and conversion rate fall, diagnose measurement, channel mix, efficiency, and the funnel in four steps."
 date: "2026-07-22"
-updated: "2026-08-03"
+updated: "2026-09-09"
 slug: "ad-performance-diagnosis"
 keywords: "ad performance drop, CPA increase, CTR drop, ad performance diagnosis, creative fatigue, conversion rate decline"
 tags: ["Diagnosis", "Creative"]
 draft: false
 primaryTool: "5-21"
 relatedGlossary: ["cpa", "ctr", "cvr", "cpm"]
-reviewedAt: "2026-08-03"
-reviewer: "Growth Opt Playbook"
+reviewedAt: "2026-09-09"
+reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Data freshness"
     url: "https://support.google.com/google-ads/answer/2544985?hl=en"
@@ -50,7 +50,18 @@ Treating one day of noise like a long-term problem can introduce changes that di
 
 Skipping this order can lead to replacing healthy creative, stopping a campaign that is still gathering evidence, or treating a landing-page problem as an ad problem.
 
-## Step 0. Is the performance drop real?
+## Four reasons ad CPA suddenly rises
+
+CPA is not a cause in itself — it is the result of the metrics in front of it. When CPA rises, one of these four moved first.
+
+1. **CPM rose** — the auction got more expensive for the same impressions.
+2. **CTR fell** — the same impressions produced fewer clicks, so each click cost more.
+3. **Conversion rate (CVR) fell** — clicks held, but fewer of them converted.
+4. **Budget mix shifted** — per-channel efficiency held, but an expensive campaign took share.
+
+These changes can coexist, and different operational factors can produce the same metric movement. Falling CTR does not mandate new creative, and a mix shift does not rule out creative influence. The steps below narrow hypotheses.
+
+## Step 0. Is the CPA rise a measurement problem?
 
 Validate measurement first. A change in how conversions are counted can look exactly like a performance drop. If conversions suddenly approach zero, check events, pixels, and SDKs before changing ads—especially after an app or web release. Compare the same conversion across the ad platform, GA4, MMP, and your payment database. Google Ads also starts its [conversion-tracking troubleshooting](https://support.google.com/google-ads/answer/12674892?hl=en) with a test conversion and tag-status checks.
 
@@ -70,7 +81,7 @@ Break the result down by channel, campaign, OS, country, and creative. The offic
 
 This step does not prove a cause. It narrows the surface area worth changing.
 
-## Step 2. Did the channel worsen, or did budget mix change?
+## Step 2. Did budget mix push CPA up?
 
 Overall CPA can rise even when every channel's CPA is unchanged. If a more expensive channel takes a larger share of conversions, the blended CPA rises. That is a **mix effect**.
 
@@ -90,7 +101,7 @@ This decomposition describes what moved together; it does not prove why it moved
 
 <!-- CONTENT_ACTION -->
 
-## Step 3. If efficiency worsened, where did the funnel move?
+## Step 3. Which moved — CPM, CTR, or CVR?
 
 Trace CPM, then CTR, then conversion rate.
 
@@ -134,6 +145,8 @@ Do not change creative, targeting, budget, and bidding together. If performance 
 - [ ] Do older creatives show rising frequency and falling CTR together?
 - [ ] Were there landing, app-release, pricing, promotion, or inventory changes?
 - [ ] Is the next change limited to one variable?
+
+If revenue worsened too, [ROAS drop causes and fixes](/blog/roas-improvement) is the next read; if Step 3 narrowed the cause to conversion rate, [conversion rate optimization](/blog/funnel-dropoff-analysis) goes deeper stage by stage.
 
 ## Closing
 
