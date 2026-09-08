@@ -5,8 +5,9 @@
 // mount effect. Golden tests (src/utils/*.test.js) cover the pure math; this
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
-import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, act } from "@testing-library/react";
+import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 
@@ -43,6 +44,7 @@ function seedWithData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: { raw, headers, mapping, fileName: "alloc.csv" } },
     csvData: { raw, headers, mapping, fileName: "alloc.csv" },
   });
+  useAppStore.getState().setGroupAnalyzed("5-3");
 }
 
 function seedNoData() {
@@ -57,6 +59,22 @@ describe("BudgetAllocation render smoke", () => {
   beforeEach(() => {
     // Reset the mirror + active group before each case so state can't leak.
     seedNoData();
+  });
+  it("waits for explicit analysis before fitting uploaded budget data", () => {
+    seedWithData();
+    useAppStore.setState({ analyzedByGroup: {} });
+    const fit = vi.spyOn(ALLOC_MATH, "fitBest");
+    render(<BudgetAllocation />);
+    expect(fit).not.toHaveBeenCalled();
+    act(() => useAppStore.getState().setGroupAnalyzed("5-3"));
+    expect(fit).toHaveBeenCalled();
+    expect(document.querySelector(".result-action-card")).toBeTruthy();
+    const count = fit.mock.calls.length;
+    const csv = useAppStore.getState().csvData;
+    act(() => useAppStore.getState().setCsvData({ ...csv, raw: csv.raw.slice(1) }));
+    expect(document.querySelector(".result-action-card")).toBeNull();
+    expect(fit).toHaveBeenCalledTimes(count);
+    fit.mockRestore();
   });
 
   it("mounts without throwing in the no-data state", () => {

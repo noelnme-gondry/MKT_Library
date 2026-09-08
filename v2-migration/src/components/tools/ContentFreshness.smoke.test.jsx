@@ -73,6 +73,7 @@ function seedWithData() {
     csvGroups: { ...useAppStore.getState().csvGroups, creative: slice },
     csvData: slice,
   });
+  useAppStore.getState().setGroupAnalyzed("9-6");
 }
 
 describe("ContentFreshness (9-6 소재 분석) render smoke", () => {
