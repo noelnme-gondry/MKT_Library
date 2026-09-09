@@ -24,7 +24,6 @@ export default function WorkspaceStorageBootstrap() {
       if (cancelled || useAppStore.getState().decisionPersistenceEnabled !== true) return;
       navigator.storage?.persist?.().catch(() => {});
       await useAppStore.getState().initializeProjects();
-      if (!cancelled) useAppStore.getState().restoreWorkspaceDatasets();
     };
     const unsubscribe = useAppStore.persist.onFinishHydration(restore);
     if (useAppStore.persist.hasHydrated()) restore();

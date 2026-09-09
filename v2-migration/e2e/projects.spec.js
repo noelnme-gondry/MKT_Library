@@ -21,8 +21,9 @@ for (const locale of ["ko", "en"]) {
       window.dataLayer.push = (...items) => { for (const item of items) if (item?.[0] === "event") window.__projectEvents.push(Array.from(item)); return push(...items); };
     });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
-    await page.goto(`${prefix}/subscription`);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.goto(`${prefix}/projects`);
+    // SSR의 제목은 저장소 준비 신호가 아니다. 실제 생성 작업이 열릴 때까지 기다린다.
+    await expect(page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true })).toBeEnabled();
     await page.evaluate(async () => {
       const db = await new Promise((resolve, reject) => { const r = indexedDB.open("mkt_workspace", 1); r.onsuccess = () => resolve(r.result); r.onerror = reject; });
       const tx = db.transaction(["meta", "datasets"], "readwrite");
@@ -82,7 +83,7 @@ for (const locale of ["ko", "en"]) {
 
 test("existing projects remain separate and readable without a license", async ({ page }) => {
   await page.goto("/projects");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "프로젝트 만들기", exact: true })).toBeEnabled();
   await page.evaluate(async () => {
     const db = await new Promise(resolve => { const r = indexedDB.open("mkt_workspace", 1); r.onsuccess = () => resolve(r.result); });
     const tx = db.transaction(["meta", "datasets"], "readwrite");

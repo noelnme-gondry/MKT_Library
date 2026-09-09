@@ -25,7 +25,10 @@ export function projectStoreActions(set, get, emptyData) {
         await expireProjects();
         const projects = await listProjects();
         const active = projects.find(project => project.id === get().activeProjectId) || projects[0];
-        set({ projects, activeProjectId: active?.id || DEFAULT_PROJECT_ID, decisionRecords: active?.decisions || [], projectsReady: true, projectSwitching: false });
+        set({ projects, activeProjectId: active?.id || DEFAULT_PROJECT_ID, decisionRecords: active?.decisions || [] });
+        // 파일·설정·마커까지 복원한 뒤에만 전환과 내보내기를 허용한다.
+        await get().restoreWorkspaceDatasets();
+        set({ projectsReady: true, projectSwitching: false });
       } catch { set({ projectsReady: false, projectSwitching: false, projectError: "storage_unavailable" }); }
     },
     refreshProjects: async () => {
