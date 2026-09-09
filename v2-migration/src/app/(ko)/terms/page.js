@@ -20,7 +20,13 @@ export default function TermsPage() {
       alternateHref="/en/terms"
       title="이용약관"
       intro="Growth Opt Playbook의 분석 도구와 콘텐츠를 이용할 때 적용되는 기본 조건입니다."
+      updated="2026-09-09"
       sections={[
+        {
+          title: "유료 이용권과 환불",
+          content: <p>주간 리뷰 1개월 이용권은 자동 갱신되지 않습니다. 결제 후 7일 이내에는 사용 여부와 관계없이 전액 환불하며, 이후에는 남은 기간을 일할 계산해 환불합니다. 위약금은 없습니다. 신청 방법과 처리 기한 등 자세한 기준은 <Link href="/subscription#refund-policy">환불정책</Link>에서 확인할 수 있습니다. 이 약관의 책임 관련 조항은 관계 법령에 따른 소비자의 환불·손해배상 권리를 제한하지 않습니다.</p>,
+        },
+
         {
           title: "서비스와 이용 범위",
           content: <p>Growth Opt Playbook은 퍼포먼스 마케팅 가이드와 브라우저 기반 분석 도구를 제공합니다. 관련 법령을 위반하거나 서비스의 정상 운영을 방해하는 방식으로 이용해서는 안 됩니다.</p>,
