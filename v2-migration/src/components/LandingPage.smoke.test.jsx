@@ -47,19 +47,19 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터로 분석 시작", "첫 주간 리뷰 시작"]);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["CSV로 가능한 분석 한 번에", "질문에서 시작하기"]);
     expect(actions[0].classList.contains("dc-action-route--primary")).toBe(true);
     expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
-    expect(document.querySelector("#dc-hero-title")?.textContent).toBe("데이터로 판단하고,다음 주에 다시 확인하세요.");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("주간 리뷰는 이번 결정과 다음 결과");
+    expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고");
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리");
     expect(document.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("데모로 먼저 보기");
+    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("샘플로 체험하기");
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(3);
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(0);
@@ -119,6 +119,10 @@ describe("LandingPage render smoke", () => {
     const { container } = render(<LandingPage />);
     fireEvent.click(container.querySelector(".dc-hero__utility-actions button"));
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
+    // Navigation mounts the result route, which selects the shared CSV slice.
+    useAppStore.getState().setCurrentRouteId("dochi-result");
+    expect(useAppStore.getState().csvData.fileName).toMatch(/^demo_/);
+    expect(useAppStore.getState().isGroupAnalyzed("dochi-result")).toBe(false);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-2",
       source: "landing",
@@ -178,7 +182,7 @@ describe("LandingPage render smoke", () => {
       const routes = hero.querySelectorAll(".dc-action-route");
       const primary = hero.querySelectorAll(".dc-action-route--primary");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
-      expect(routes.length, `${locale}: 분석과 첫 리뷰의 진입점`).toBe(2);
+      expect(routes.length, `${locale}: CSV와 질문의 진입점`).toBe(2);
       // 보조 진입점(예시 보기·데이터 가이드)은 버튼이 아니라 텍스트 링크로 남는다.
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-text-link").length).toBeGreaterThan(0);
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-action-route").length).toBe(0);
@@ -187,19 +191,19 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Start with my data", "Start my first weekly review"]);
-    expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Decide with your data.Review what happens next.");
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Find analyses for my CSV", "Start with a question"]);
+    expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did it change?What should you do next?");
     expect(container.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
-    expect(container.textContent).toContain("Save your decision and review next week’s results.");
+    expect(container.textContent).toContain("This week’s analysis. Next week’s decisions.");
     // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
     fireEvent.click(container.querySelector(".home-tool-finder > button"));
     const enLinks = [...container.querySelectorAll(".dc-questions .tool-index__link")];
     expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
-    expect(container.textContent).toContain("Try a demo");
+    expect(container.textContent).toContain("Explore a sample");
   });
 
   it("도구 목록이 첫 화면 슬롯에 온다 — 아래로 밀리면 없는 것과 같다", () => {
@@ -232,6 +236,18 @@ describe("LandingPage render smoke", () => {
     expect(found.size).toBe(PUBLISHED_TOOL_IDS.length);
     fireEvent.click(container.querySelector(".home-tool-finder > button"));
     expect(new Set([...container.querySelectorAll(".home-tool-finder__results a")].map(a => a.getAttribute("href")))).toEqual(found);
+  });
+
+  it.each(["ko", "en"])("keeps question entry reachable without replacing uploaded data (%s)", (locale) => {
+    seedWithData();
+    const source = useAppStore.getState().csvData;
+    const { container } = render(<LandingPage locale={locale} />);
+    const questionLink = container.querySelector('a[href="#questions"]');
+    expect(questionLink.closest(".dc-hero__actions")).toBeTruthy();
+    clickWithoutNavigation(questionLink);
+    expect(document.activeElement).toBe(container.querySelector("#questions"));
+    expect(useAppStore.getState().csvData).toBe(source);
+    expect(container.querySelector(`a[href="${locale === "en" ? "/en" : ""}/subscription"]`)).toBeTruthy();
   });
 
 });

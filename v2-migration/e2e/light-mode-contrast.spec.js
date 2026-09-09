@@ -29,6 +29,9 @@ for (const [path, label] of ROUTES) {
     // 복원 완료를 기다려 axe 실행 중 배경이 오버레이로 바뀌지 않게 한다.
     await expect(page.locator("body")).toHaveClass(/light-mode/);
     if (path === "/") {
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await page.locator(".dc-action-route--primary").click();
+      await page.getByRole("button", { name: "처음이라면, 도치 안내 보기", exact: true }).click();
       await expect(page.getByRole("dialog", { name: "도치의 첫 방문 안내" })).toBeVisible();
       await page.evaluate(() => {
         for (const animation of document.getAnimations()) {

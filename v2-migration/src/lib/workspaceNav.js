@@ -13,6 +13,7 @@
 export const WORKSPACE_NAV = [
   {
     id: "home",
+    group: "home",
     href: "/",
     icon: "◎",
     ko: { name: "홈", desc: "지금 볼 것과 다음 행동" },
@@ -20,13 +21,40 @@ export const WORKSPACE_NAV = [
   },
   {
     id: "start",
+    group: "work",
     href: "/start",
     icon: "⇧",
-    ko: { name: "내 CSV 분석", desc: "파일 올리고 가능한 분석 찾기" },
+    ko: { name: "CSV로 시작", desc: "파일 올리고 가능한 분석 찾기" },
     en: { name: "Analyze my CSV", desc: "Upload and see what's possible" },
   },
   {
+    id: "results", group: "work", href: "/dochi-result", icon: "▦",
+    ko: { name: "내 분석 결과", desc: "같은 CSV에서 확인한 통합 결과" },
+    en: { name: "My analysis results", desc: "Connected results from the same CSV" },
+  },
+  {
+    id: "overview", group: "work", href: "/dashboard", icon: "▥",
+    ko: { name: "성과 오버뷰", desc: "기간과 채널별 운영 성과 확인" },
+    en: { name: "Performance overview", desc: "Review performance by period and channel" },
+  },
+  {
+    id: "blog", group: "learn", href: "/blog", icon: "▤",
+    ko: { name: "블로그", desc: "마케팅 질문을 이해하는 실무 글" },
+    en: { name: "Blog", desc: "Practical answers to marketing questions" },
+  },
+  {
+    id: "guide", group: "learn", href: "/guide", icon: "☑",
+    ko: { name: "실무 가이드 · SOP", desc: "설정부터 분석까지 운영 기준" },
+    en: { name: "Guides & SOPs", desc: "Operating standards from setup to analysis" },
+  },
+  {
+    id: "storage", group: "manage", href: "/storage", icon: "▣",
+    ko: { name: "저장된 데이터", desc: "이 기기의 CSV 복원과 저장 관리" },
+    en: { name: "Saved data", desc: "Restore and manage CSVs on this device" },
+  },
+  {
     id: "review",
+    group: "work",
     href: "/weekly-review",
     icon: "◷",
     // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
@@ -35,6 +63,7 @@ export const WORKSPACE_NAV = [
   },
   {
     id: "projects",
+    group: "manage",
     href: "/projects",
     icon: "▣",
     ko: { name: "프로젝트 보관함", desc: "고객·앱별 리뷰와 지난 결정" },
@@ -42,17 +71,19 @@ export const WORKSPACE_NAV = [
   },
   {
     id: "subscription",
+    group: "manage",
     href: "/subscription",
     icon: "▤",
-    ko: { name: "보고서 이용권", desc: "Word·Excel 보고서와 이용 안내" },
-    en: { name: "Report pass", desc: "Word and Excel reports and plan details" },
+    ko: { name: "구독 · 요금제", desc: "무료 분석과 Pro 보고서 이용 안내" },
+    en: { name: "Plans & subscription", desc: "Free analysis and Pro reporting" },
   },
   {
     id: "diagnose",
+    group: "learn",
     href: "/diagnose",
     icon: "◇",
-    ko: { name: "원인 찾기", desc: "파일 없이 3문항으로" },
-    en: { name: "Find the cause", desc: "Three questions, no file" },
+    ko: { name: "질문에서 시작", desc: "파일 없이 3문항으로" },
+    en: { name: "Start with a question", desc: "Three questions, no file" },
   },
 ];
 
@@ -63,9 +94,16 @@ export function workspaceNavItem(id, locale = "ko") {
   const entry = byId[id];
   if (!entry) return null;
   const copy = entry[locale] || entry.ko;
-  return { id: entry.id, href: entry.href, icon: entry.icon, ...copy };
+  return { id: entry.id, href: entry.href, icon: entry.icon, group: entry.group, ...copy };
 }
 
 export function workspaceNavItems(locale = "ko") {
   return WORKSPACE_NAV.map((entry) => workspaceNavItem(entry.id, locale));
 }
+
+export const WORKSPACE_NAV_GROUPS = [
+  { id: "home", ko: "라이브러리", en: "Library" },
+  { id: "learn", ko: "배우고 찾아보기", en: "Learn & explore" },
+  { id: "work", ko: "데이터로 적용하기", en: "Analyze & review" },
+  { id: "manage", ko: "내 워크스페이스", en: "My workspace" },
+];

@@ -12,6 +12,7 @@ import { getAllPosts } from "@/lib/blog";
 import { getComparesForTool } from "@/lib/compareContent";
 import { getAllTerms } from "@/lib/glossary";
 import PageClient from "./PageClient";
+import HomeReading from "@/components/HomeReading";
 
 // 가이드 → 콘텐츠·도구 역링크. 가이드는 본문이 이미 롱폼이라 아웃바운드가 없으면
 // 막다른 페이지가 된다 — 실제로 15개 전부 도구·블로그로 나가는 링크가 0건이었다.
@@ -179,6 +180,6 @@ async function PageWithStructuredData({ params }) {
     {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
     {guideBreadcrumb && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(guideBreadcrumb) }} />}
     {sopStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sopStructuredData) }} />}
-    <PageClient params={params} evidenceLinks={buildEvidenceLinks(routeId)} />
+    <PageClient params={params} evidenceLinks={buildEvidenceLinks(routeId)} reading={routeId === "home" ? <HomeReading locale="ko" /> : null} />
   </>;
 }

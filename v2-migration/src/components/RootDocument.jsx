@@ -11,6 +11,14 @@ import WorkspaceStorageBootstrap from "@/components/WorkspaceStorageBootstrap";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
+const pretendard = localFont({
+  src: "../../public/fonts/PretendardVariable.woff2",
+  variable: "--font-pretendard",
+  weight: "100 900",
+  display: "swap",
+  preload: true,
+  fallback: ["system-ui", "Arial", "sans-serif"],
+});
 const wantedSans = localFont({
   src: "../../public/fonts/WantedSansVariable.woff2",
   variable: "--font-wanted-sans",
@@ -29,7 +37,7 @@ export default function RootDocument({ children, locale = "ko" }) {
   const isEnglish = locale === "en";
   const language = isEnglish ? "en" : "ko";
   return (
-    <html lang={language} suppressHydrationWarning className={`${wantedSans.variable} ${jetBrainsMono.variable} dark`}>
+    <html lang={language} suppressHydrationWarning className={`${pretendard.variable} ${wantedSans.variable} ${jetBrainsMono.variable} dark`}>
       <head>
         {/* 기본 테마가 라이트인데 theme-color만 다크로 고정돼 있어 모바일 브라우저
             상단 크롬만 검게 떴다. 실제로 칠해지는 배경(--background)에 맞춘다. */}

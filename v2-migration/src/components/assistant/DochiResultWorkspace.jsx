@@ -14,6 +14,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { idToPath } from "@/lib/routeMap";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
+import { toolIndexEntry } from "@/lib/toolIndex";
 
 const COPY = {
   ko: {
@@ -165,7 +166,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
           {!canReviewWeekly && <p>{locale === "en" ? "Map date, campaign, spend and conversions or installs to use the weekly review." : "날짜·캠페인·비용과 전환 또는 설치 열을 연결하면 주간 리뷰를 만들 수 있습니다."}</p>}
         </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { trackProductEvent("review_entry_clicked", { tool_id: "weekly-review", source: "dochi", placement: "dochi_result", data_continuity: "same_data", locale }); handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review" : "/weekly-review"); }}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</button>
       </section>
-      <AssistantWorkspace csvData={csvData} locale={locale} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
+      <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
     </>}
   </section>;
 }

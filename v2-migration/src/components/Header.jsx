@@ -14,6 +14,7 @@ import BrandMark from "@/components/BrandMark";
 import { workspaceNavItem } from "@/lib/workspaceNav";
 import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 import { trackProductEvent } from "@/lib/analytics";
+import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 
 const HEADER_COPY = {
   ko: {
@@ -131,6 +132,8 @@ export default function Header({ locale = "ko" }) {
 
   // 부팅 인라인 스크립트가 첫 페인트 전에 이미 클래스를 붙여 뒀다 — 렌더는 그것을 읽기만 한다.
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebar, readSidebarSnapshot, sidebarServerSnapshot);
+  const { isMobile, isOpen: isMobileNavOpen } = useMobileNavigation();
+  const isNavigationExpanded = isMobile ? isMobileNavOpen : !sidebarCollapsed;
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {
@@ -168,10 +171,11 @@ export default function Header({ locale = "ko" }) {
         <button
           type="button"
           className="btn ghost header-sidebar-toggle"
-          aria-expanded={!sidebarCollapsed}
-          aria-controls="sidebar"
-          aria-label={sidebarCollapsed ? T.sidebarExpand : T.sidebarCollapse}
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          aria-expanded={isNavigationExpanded}
+          aria-controls={isMobile ? (isMobileNavOpen ? "sidebar" : undefined) : "sidebar"}
+          aria-haspopup={isMobile ? "dialog" : undefined}
+          aria-label={isNavigationExpanded ? T.sidebarCollapse : T.sidebarExpand}
+          onClick={() => isMobile ? setMobileNavigationOpen(!isMobileNavOpen) : setSidebarCollapsed(!sidebarCollapsed)}
         >
           <span aria-hidden="true">◧</span>
         </button>

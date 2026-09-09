@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort, findMeta } from "@/store/useDataStore";
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 import { localizedHref } from "@/lib/localizedHref";
-import { workspaceNavItems } from "@/lib/workspaceNav";
+import { WORKSPACE_NAV_GROUPS, workspaceNavItems } from "@/lib/workspaceNav";
 import { trackProductEvent } from "@/lib/analytics";
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
+import ModalDialog from "@/components/ds/ModalDialog";
+import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 
 const SIDEBAR_COPY = {
   ko: {
@@ -28,7 +30,7 @@ const SIDEBAR_COPY = {
     facebook: "페북",
     naverBlog: "네이버 블로그",
     resourceLabel: "자료실",
-    workspaceLabel: "DECISION WORKSPACE",
+    workspaceLabel: "워크스페이스",
     allTools: "할 수 있는 분석 전체 →",
     allToolsTitle: "할 수 있는 분석",
     allToolsDesc: (count) => `${count}개를 판단 단계별로 보기`,
@@ -52,7 +54,7 @@ const SIDEBAR_COPY = {
     instagram: "Instagram",
     facebook: "Facebook",
     naverBlog: "Naver Blog",
-    workspaceLabel: "DECISION WORKSPACE",
+    workspaceLabel: "Workspace",
     allTools: "Every analysis →",
     allToolsTitle: "Every analysis",
     allToolsDesc: (count) => `All ${count}, grouped by decision`,
@@ -65,7 +67,7 @@ const SIDEBAR_COPY = {
   },
 };
 
-export default function Sidebar({ locale = "ko" }) {
+function SidebarContents({ locale = "ko", onNavigate }) {
   const T = SIDEBAR_COPY[locale] || SIDEBAR_COPY.ko;
   // 개수를 손으로 적으면 도구가 늘 때 이 줄만 낡는다 — 레지스트리에서 센다(§7).
   const allToolsDesc = T.allToolsDesc(PUBLISHED_TOOL_IDS.length);
@@ -78,14 +80,13 @@ export default function Sidebar({ locale = "ko" }) {
   const currentRouteId = resolvePathToId(pathname) ?? "home";
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
   const isHome = cleanPath === "/";
-  const isStart = cleanPath === "/start";
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
-  const isDiagnose = cleanPath === "/diagnose";
-  const isWeeklyReview = cleanPath === "/weekly-review";
   const isLibraryRoute = /^\/(blog|guide|templates|glossary|compare)(\/|$)/.test(cleanPath);
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const session = useAppStore((state) => state.dochiAnalysisSession);
+  const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const dueDecisionCount = decisionRecords.reduce((count, record) => {
     const bucket = getDecisionReviewBucket(record);
     return count + (bucket === "overdue" || bucket === "today" ? 1 : 0);
@@ -111,7 +112,10 @@ export default function Sidebar({ locale = "ko" }) {
   };
 
   return (
-    <aside className="sidebar" id="sidebar">
+    <aside className="sidebar library-sidebar" id="sidebar" aria-label={locale === "en" ? "Site navigation" : "사이트 메뉴"} onClick={(event) => {
+      if (event.target.closest("a") && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) onNavigate?.();
+    }}>
+      {onNavigate && <button className="library-sidebar-close" type="button" aria-label={locale === "en" ? "Close navigation" : "메뉴 닫기"} onClick={onNavigate}>×</button>}
       <Link
         href={locale === "en" ? "/en" : "/"}
         className="brand"
@@ -125,66 +129,32 @@ export default function Sidebar({ locale = "ko" }) {
         </div>
       </Link>
 
-      {isHome ? (
-        <div className="home-sidebar-workspace">
-          <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
-          <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
-            {workspaceNavItems(locale).map((item) => {
-              const isReview = item.id === "review";
-              const isActive = item.id === "home";
-              return (
-                <Link
-                  key={item.id}
-                  href={localizedHref(item.href, locale)}
-                  className={`home-sidebar-nav__item${isActive ? " active" : ""}${isReview ? " home-sidebar-nav__item--review" : ""}`}
-                  onClick={() => { if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale }); }}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
-                  data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}
-                >
-                  <span className="home-sidebar-nav__icon" aria-hidden="true">{item.icon}</span>
-                  <span className="home-sidebar-nav__copy"><strong>{item.name}</strong><em>{item.desc}</em></span>
-                  {isReview && dueDecisionCount > 0 && <b aria-hidden="true">{dueDecisionCount}</b>}
-                </Link>
-              );
-            })}
-            {/* 홈 사이드바는 워크스페이스 네 줄만 그려서, 정작 홈에서 "무슨 분석이
-                가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄을 여기에도 둔다. */}
-            <Link href={localizedHref("/start", locale)} className="home-sidebar-nav__item home-sidebar-nav__item--all" aria-label={`${T.allToolsTitle}: ${allToolsDesc}`}>
-              <span className="home-sidebar-nav__icon" aria-hidden="true">▦</span><span className="home-sidebar-nav__copy"><strong>{T.allToolsTitle}</strong><em>{allToolsDesc}</em></span>
-            </Link>
-          </nav>
-        </div>
-      ) : (
-        <>
-      {/* 홈 변형과 같은 SSOT를 쓴다 — 예전에는 두 변형이 각자 라벨을 들고 있어서
-          한쪽만 고치면 어긋났고, 부제가 `NOW`·`DATA`·`DIAG`·`WEEK` 같은 암호였다.
-          줄여 쓴 코드는 읽는 사람에게 아무것도 주지 않아 그 자리를 설명으로 바꿨다. */}
-      <nav className="sidebar-primary-nav" aria-label={T.workspaceLabel}>
-        {workspaceNavItems(locale).map((item) => {
-          const isReview = item.id === "review";
-          const isActive = (item.id === "start" && isStart)
-            || (item.id === "diagnose" && isDiagnose)
-            || (isReview && isWeeklyReview)
-            || cleanPath === item.href;
-          const sub = isReview && dueDecisionCount > 0 ? T.reviewDue(dueDecisionCount) : item.desc;
-          return (
-            <Link
-              key={item.id}
+      <nav className="sidebar-primary-nav library-nav" aria-label={locale === "en" ? "Library and workspace" : "라이브러리와 워크스페이스"}>
+        {WORKSPACE_NAV_GROUPS.map((group) => <div className="library-nav-group" key={group.id}>
+          <div className="library-nav-group__label">{group[locale === "en" ? "en" : "ko"]}</div>
+          {workspaceNavItems(locale).filter((item) => item.group === group.id).map((item) => {
+            const isReview = item.id === "review";
+            const isActive = cleanPath === item.href || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
+            return <Link key={item.id}
               href={localizedHref(item.href, locale)}
-              className={`sidebar-primary-nav__item${isReview ? " sidebar-primary-nav__item--review" : ""}${isActive ? " active" : ""}`}
-              onClick={() => { if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale }); }}
-              aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
+              className={`sidebar-primary-nav__item library-nav-item${isActive ? " active" : ""}`}
               aria-current={isActive ? "page" : undefined}
-              data-due={isReview && dueDecisionCount > 0 ? "true" : undefined}
-            >
-              <span aria-hidden="true">{item.icon}</span>
+              aria-label={isReview ? T.reviewAria(dueDecisionCount, item.name) : `${item.name}: ${item.desc}`}
+              title={item.desc}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                if (item.id === "results" && session?.sourceData?.raw?.length) handoffCsvToRoute("dochi-result", session.sourceData);
+                if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale });
+              }}>
+              <span className="library-nav-item__icon" aria-hidden="true">{item.icon}</span>
               <strong>{item.name}</strong>
-              <small aria-hidden="true">{sub}</small>
-            </Link>
-          );
-        })}
+              {isReview && dueDecisionCount > 0 && <b className="library-nav-item__count">{dueDecisionCount}</b>}
+            </Link>;
+          })}
+        </div>)}
       </nav>
+      <details className="library-full-navigation" open={!isHome && (currentRouteId.startsWith("5-") || currentRouteId.startsWith("9-") || currentRouteId === "8-1")}>
+        <summary>{locale === "en" ? "Browse every tool and guide" : "전체 도구와 가이드 탐색"}</summary>
       <div className="inner-workspace-label inner-workspace-label--stacked">
         <span>{T.workspaceLabel}</span>
         {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
@@ -337,8 +307,7 @@ export default function Sidebar({ locale = "ko" }) {
           );
         })}
       </nav>
-        </>
-      )}
+      </details>
 
       {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 해당 리소스·계산기
           페이지에서만 펼치고, 홈과 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
@@ -348,25 +317,11 @@ export default function Sidebar({ locale = "ko" }) {
         </summary>
         <section className="sidebar-library" data-section="resources">
         <Link
-          href={locale === "en" ? "/en/blog" : "/blog"}
-          className="sidebar-library-link"
-          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
-        >
-          <span><strong>{T.blog}</strong></span><b>↗</b>
-        </Link>
-        <Link
           href={locale === "en" ? "/en/calculator" : "/calculator"}
           className="sidebar-library-link"
           aria-current={isCalculator ? "page" : undefined}
         >
           <span><strong>{T.calculators}</strong></span><b>↗</b>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/guide" : "/guide"}
-          className="sidebar-library-link"
-          aria-current={(pathname || "").includes("/guide") ? "page" : undefined}
-        >
-          <span><strong>{T.guide}</strong></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}
@@ -392,11 +347,24 @@ export default function Sidebar({ locale = "ko" }) {
         </section>
       </details>
 
-      {isHome && (
-        <div className="home-sidebar-local">
-          <span>{T.localOnly}</span>
-        </div>
-      )}
+      <div className="home-sidebar-local"><span>{T.localOnly}</span></div>
     </aside>
   );
+}
+
+
+export default function Sidebar({ locale = "ko" }) {
+  const pathname = usePathname();
+  const { isMobile, isOpen } = useMobileNavigation();
+  // Mobile openness is temporary; desktop collapse preferences are never changed.
+  useEffect(() => {
+    setMobileNavigationOpen(false);
+    return () => setMobileNavigationOpen(false);
+  }, [pathname, isMobile]);
+  if (!isMobile) return <SidebarContents locale={locale} />;
+  return <ModalDialog open={isOpen} onClose={() => setMobileNavigationOpen(false)}
+    ariaLabel={locale === "en" ? "Site navigation" : "사이트 메뉴"}
+    overlayClassName="library-nav-overlay" panelClassName="library-nav-dialog">
+    <SidebarContents locale={locale} onNavigate={() => setMobileNavigationOpen(false)} />
+  </ModalDialog>;
 }

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 
 import AssistantWorkspace, { analysisInputSignature } from "@/components/assistant/AssistantWorkspace";
 import { useAppStore } from "@/store/useDataStore";
+import { buildDemoCsv } from "@/utils/demoData";
 
 const raw = [
   { date: "2026-08-01", channel: "Meta", cost: "100", installs: "10" },
@@ -122,6 +123,17 @@ describe("Dochi analysis workspace", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /추가 차트·상세 분석 열기/ })[0]);
     expect(screen.getByText("상세 분석 화면을 준비하고 있습니다.")).toBeTruthy();
     await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
+  });
+
+  it("keeps campaign summaries eligible when the source also has a creative dimension", async () => {
+    const onEligibilityChange = vi.fn();
+    render(<AssistantWorkspace csvData={buildDemoCsv("efficiency")} onEligibilityChange={onEligibilityChange} />);
+    await waitFor(() => expect(onEligibilityChange).toHaveBeenCalled());
+    const latest = onEligibilityChange.mock.calls.at(-1)[0];
+    for (const id of ["5-2", "5-21"]) {
+      expect(latest.find((item) => item.toolId === id).blockers).toEqual([]);
+    }
+    expect(latest.find((item) => item.toolId === "5-2").status).toBe("ready");
   });
 
   it("treats a mapped dt column as a daily source and makes weekly analyses available without a week header", async () => {

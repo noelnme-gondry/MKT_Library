@@ -197,7 +197,15 @@ function detectedGrain(entry, fields, cadence) {
   const has = (key) => fields.has(key);
   if (has("tenure_periods") && has("event_observed")) return "subscription_episode";
   if (has("search_term")) return "asa_keyword_daily";
-  if (has("creative_id") && has("impressions")) return "creative_daily";
+  if (has("creative_id") && has("impressions")) {
+    // A creative dimension does not invalidate additive campaign metrics.
+    // Keep creative-only spend schemas separate; efficiency requires its cost key.
+    if (has("date") && has("cost")) {
+      if (entry.supportedGrains.includes("campaign_daily")) return "campaign_daily";
+      if (entry.supportedGrains.includes("channel_spend_timeseries") && (has("channel") || has("campaign_name"))) return "channel_spend_timeseries";
+    }
+    return "creative_daily";
+  }
   if (has("store_source") && has("product_page_views")) return "store_funnel_daily";
   if (entry.supportedGrains.includes("weekly_panel")
     && (has("week") || has("date") || has("iso_week_start"))

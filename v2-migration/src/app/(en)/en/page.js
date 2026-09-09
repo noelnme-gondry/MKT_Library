@@ -2,6 +2,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import LandingPage from "@/components/LandingPage";
+import HomeReading from "@/components/HomeReading";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
 import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import { SITE_URL } from "@/lib/routeMap";
@@ -41,8 +42,7 @@ export default function EnHomePage() {
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
-              <LandingPage locale="en"><DochiAssistant locale="en" /></LandingPage>
-              <DochiWelcomeOverlay locale="en" />
+              <LandingPage locale="en" reading={<HomeReading locale="en" />}><DochiAssistant locale="en" /><DochiWelcomeOverlay locale="en" manual /></LandingPage>
             </article>
           </main>
         </div>
