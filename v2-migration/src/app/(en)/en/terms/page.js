@@ -21,7 +21,13 @@ export default function EnglishTermsPage() {
       alternateHref="/terms"
       title="Terms of Use"
       intro="These terms set out the basic conditions for using Growth Opt Playbook tools and content."
+      updated="2026-09-09"
       sections={[
+        {
+          title: "Paid passes and refunds",
+          content: <p>The one-month Weekly Review pass does not renew automatically. Request a full refund within 7 days of payment regardless of use, or a prorated refund for the remaining term afterwards, with no cancellation penalty. See the <Link href="/en/subscription#refund-policy">Refund Policy</Link> for request instructions and processing times. Liability provisions in these terms do not limit statutory consumer rights to refunds or compensation.</p>,
+        },
+
         {
           title: "Service and acceptable use",
           content: <p>Growth Opt Playbook provides performance marketing guides and browser-based analysis tools. You may not use the service unlawfully or in a way that disrupts its normal operation.</p>,

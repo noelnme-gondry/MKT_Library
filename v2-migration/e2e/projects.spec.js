@@ -54,6 +54,13 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Second project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
+    await page.getByRole("link", { name: en ? "Read the refund policy" : "환불정책 보기", exact: true }).click();
+    await expect(page).toHaveURL(/#refund-policy$/);
+    const refundPolicy = page.locator("#refund-policy");
+    await expect(refundPolicy.getByRole("heading", { level: 2 })).toBeVisible();
+    await expect(refundPolicy).toContainText(en ? "regardless of whether" : "사용 여부나 보고서 다운로드 여부와 관계없이");
+    await expect(refundPolicy).toContainText(en ? "3 business days" : "3영업일");
+    await expect(refundPolicy.getByRole("link")).toHaveAttribute("href", `${prefix}/contact`);
     await page.getByRole("button", { name: en ? "I'm interested at KRW 5,900/month" : "월 5,900원 구독에 관심 있어요", exact: true }).click();
     await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "not a reservation or payment" : "예약이나 결제가 아닙니다");
     const events = await page.evaluate(() => window.__projectEvents);
