@@ -4,6 +4,8 @@ import Link from "next/link";
 import ProjectStorageSummary from "./ProjectStorageSummary";
 import SellerInformation from "./SellerInformation";
 import SubscriptionCheckout from "./SubscriptionCheckout";
+import SubscriptionPlanComparison from "./SubscriptionPlanComparison";
+import SubscriptionReportPreview from "./SubscriptionReportPreview";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 import { SUBSCRIPTION, validateLicense, hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -43,16 +45,17 @@ export default function SubscriptionPage({ locale = "ko" }) {
   };
   const messages = en ? { valid: "License verified.", invalid: "This key is unavailable, expired, or revoked.", offline: "Could not reach license verification. An eligible cached license remains usable for its grace period.", not_configured: "License activation is not available yet. No payment is being collected." } : { valid: "키를 확인했습니다.", invalid: "사용할 수 없거나 만료·회수된 키입니다.", offline: "키 검증에 연결하지 못했습니다. 유효한 캐시가 있으면 유예기간 동안 계속 사용할 수 있습니다.", not_configured: "키 등록은 아직 준비 중입니다. 현재 결제를 받지 않습니다." };
   return <div className="projects-page subscription-page">
-    <header><h1>{en ? "Weekly Review subscription" : "주간 리뷰 구독 안내"}</h1><p>{en ? "Keep weekly reviews for multiple projects together, prepare batch reports, and add your branding. Review the plan, storage limits, and refund policy below." : "여러 프로젝트의 주간 리뷰를 모아 관리하고, 일괄 보고서와 브랜드 맞춤 보고서를 만드세요. 이용 요금·저장 한도·환불 기준을 아래에서 확인할 수 있습니다."}</p><a href="#refund-policy">{en ? "Read the refund policy" : "환불정책 보기"}</a></header>
-    <section><h2>{en ? "Analyze for free. Take a report to your next meeting." : "분석은 무료로, 보고서는 다음 회의까지."}</h2><p>{en ? "All analysis tools and one project remain free. Reading saved decisions and exporting your project backup remain available after a pass expires. Analysis report downloads require an active pass." : "모든 분석 도구와 프로젝트 1개는 무료입니다. 저장한 결정 읽기와 프로젝트 백업 내보내기는 이용권 만료 후에도 가능합니다. 분석 보고서 다운로드는 이용권으로 제공합니다."}</p></section>
-    <section id="purchase"><h2>{en ? "One-month report pass · KRW 5,900" : "1개월 보고서 이용권 · 5,900원"}</h2><p>{en ? "Word analysis reports, Excel workbooks, multiple projects, batch reviews and report branding. Browser storage limits still apply." : "Word 분석 보고서, Excel 계산 워크북, 여러 프로젝트 관리, 일괄 리뷰와 보고서 브랜딩을 제공합니다. 브라우저 저장 한도는 계속 적용됩니다."}</p>
-      <div className="subscription-deliverables">
-        <article><span aria-hidden="true">W</span><h3>{en ? "A report you can present" : "바로 설명할 수 있는 Word"}</h3><p>{en ? "Conclusion → key results → evidence → charts → method and limitations. Edit the document for your team." : "결론 → 핵심 수치 → 근거 → 차트 → 분석 방법과 한계. 팀에 맞게 문서를 편집하세요."}</p></article>
-        <article><span aria-hidden="true">X</span><h3>{en ? "A workbook you can inspect" : "계산을 확인할 수 있는 Excel"}</h3><p>{en ? "Source rows, mappings, scope, calculation sheets and editable chart data. Model estimates remain explicitly labelled engine outputs." : "원본 행·매핑·분석 범위·계산 시트와 편집 가능한 차트 데이터. 모델 추정값은 엔진 산출물로 구분합니다."}</p></article>
-      </div>
-      <p>{en ? "One calendar month from payment, without automatic renewal. Complex statistical models must be refitted on the website; changing raw workbook cells does not rerun preprocessing or model estimation." : "결제일부터 1개월이며 자동 갱신되지 않습니다. 복잡한 통계 모델은 사이트에서 다시 추정해야 하며, Excel 원본 셀 수정만으로 전처리·모델 추정이 다시 실행되지는 않습니다."}</p>
-      <p><Link href={en ? "/en/terms" : "/terms"}>{en ? "Terms" : "이용약관"}</Link> · <a href="#refund-policy">{en ? "Refund policy" : "환불정책"}</a></p>
-      <SubscriptionCheckout locale={locale} />
+    <header className="subscription-hero"><h1>{en ? "A plan for your next decision." : "분석에서 끝내지 않는 선택."}</h1><p>{en ? "Start with a free analysis. Choose Pro when you need editable reports and a workspace for multiple projects." : "첫 분석은 무료로 시작하세요. 편집 가능한 보고서와 여러 프로젝트 관리가 필요할 때 Pro를 선택하세요."}</p><nav aria-label={en ? "Plan information" : "이용권 안내"}><a href="#plans">{en ? "Compare plans" : "플랜 비교"}</a><a href="#report-preview-title">{en ? "Inside the reports" : "보고서 구성"}</a><a href="#refund-policy">{en ? "Refund policy" : "환불정책"}</a></nav></header>
+    <SubscriptionPlanComparison locale={locale} paid={hasPaidAccess(entitlement, now)} />
+    <div className="subscription-assurances">
+      <div><span aria-hidden="true">↻</span><strong>{en ? "No automatic renewal" : "자동 갱신 없음"}</strong><p>{en ? "One purchase, one calendar month." : "한 번 결제하고 1개월 사용합니다."}</p></div>
+      <div><span aria-hidden="true">✓</span><strong>{en ? "Full refund within 7 days" : "7일 이내 전액 환불"}</strong><p>{en ? "Even if you have used paid features." : "유료 기능 사용 여부와 무관합니다."}</p></div>
+      <div><span aria-hidden="true">▣</span><strong>{en ? "Your CSV stays in your browser" : "CSV는 브라우저에서만"}</strong><p>{en ? "Source rows are not sent for payment." : "결제할 때도 원본 행을 보내지 않습니다."}</p></div>
+    </div>
+    <SubscriptionReportPreview locale={locale} />
+    <section id="purchase" className="subscription-purchase" aria-labelledby="purchase-title">
+      <div className="purchase-summary"><span className="purchase-plan-badge">Pro</span><h2 id="purchase-title">{en ? "Your report pass" : "보고서 이용권 구매"}</h2><p>{en ? "Word and Excel reports, multiple projects, batch reports and branding." : "Word·Excel 보고서, 여러 프로젝트, 일괄 보고서와 브랜딩."}</p><dl><div><dt>{en ? "Period" : "이용 기간"}</dt><dd>{en ? "1 calendar month from payment" : "결제일부터 1개월"}</dd></div><div><dt>{en ? "Renewal" : "갱신 방식"}</dt><dd>{en ? "No automatic renewal" : "자동 갱신 없음"}</dd></div><div className="purchase-total"><dt>{en ? "Payment amount" : "결제 금액"}</dt><dd>{SUBSCRIPTION.monthlyKrw.toLocaleString(en ? "en-US" : "ko-KR")}{en ? " KRW" : "원"}</dd></div></dl><a href="#plans">{en ? "Review plan details" : "플랜 구성 다시 보기"}</a></div>
+      <div className="purchase-payment"><h3>{en ? "Payment and access" : "결제·이용권 확인"}</h3><p>{en ? "Your pass activates after payment is confirmed. Keep the recovery code to use it on another device." : "결제 확인 후 이용권이 활성화됩니다. 다른 기기에서 이용하려면 복원 코드를 보관하세요."}</p><SubscriptionCheckout locale={locale} /><p className="purchase-policy-links"><Link href={en ? "/en/terms" : "/terms"}>{en ? "Terms" : "이용약관"}</Link><a href="#refund-policy">{en ? "Refund policy" : "환불정책"}</a><Link href={en ? "/en/contact" : "/contact"}>{en ? "Contact support" : "고객센터 문의"}</Link></p></div>
     </section>
     {Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) && <section><h2>{en ? "Already have a license key?" : "전달받은 라이선스 키가 있나요?"}</h2><p>{en ? "Manual one-month licenses, no account required. Verification sends only a key hash. CSVs, project names, and branding never enter this request. A key works across devices; projects do not automatically sync." : "계정 없이 수동으로 전달받은 1개월 키를 사용합니다. 검증 요청에는 키 해시만 전송하며 CSV·프로젝트명·브랜딩은 보내지 않습니다. 여러 기기에서 키를 사용할 수 있지만 프로젝트가 자동 동기화되지는 않습니다."}</p>
       <label className="wr-field">{en ? "License key" : "라이선스 키"}<input type="password" autoComplete="off" value={key} onChange={event => setKey(event.target.value)} maxLength={200} /></label><button type="button" className="btn" disabled={busy || !key.trim()} onClick={activate}>{en ? "Verify key" : "키 확인"}</button>

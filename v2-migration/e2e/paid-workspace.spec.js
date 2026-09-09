@@ -3,6 +3,36 @@ import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
+  test(`plan comparison, current plan and purchase navigation (${locale})${tag}`, async ({ page }) => {
+    let paid = false;
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: false, mode: "test" } }));
+    await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: paid ? { plan: "paid", payment: true, verifiedAt: Date.now(), expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 } : null } }));
+    await page.goto(`${prefix}/subscription`);
+    const free = page.getByRole("article", { name: en ? "Free" : "무료", exact: true });
+    const pro = page.getByRole("article", { name: "Pro", exact: true });
+    await expect(free).toContainText(en ? "Your current plan" : "현재 이용 플랜");
+    await expect(pro).toContainText("5,900");
+    await expect(pro).toContainText(en ? "no automatic renewal" : "자동 갱신 없음");
+    await expect(free.getByRole("link")).toHaveAttribute("href", `${prefix}/start`);
+    const choose = pro.getByRole("link", { name: en ? "Choose Pro" : "Pro 이용권 선택", exact: true });
+    await choose.focus(); await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
+    await expect(page.locator("#purchase")).toContainText("5,900");
+    for (const light of [false, true]) {
+      // Reload with the chosen theme; sampling during a color transition creates false contrast failures.
+      await page.evaluate(lightMode => localStorage.setItem("mkt-library-theme", lightMode ? "light" : "dark"), light);
+      await page.reload();
+      await expect(pro).toBeVisible();
+      if (light) await expect(page.locator("body")).toHaveClass(/light-mode/);
+      else await expect(page.locator("body")).not.toHaveClass(/light-mode/);
+      await expectNoSeriousAccessibilityViolations(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    }
+    paid = true;
+    await page.reload();
+    await expect(pro).toContainText(en ? "Your current plan" : "현재 이용 플랜");
+    await expect(free).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
+  });
   test(`unpaid report gate and seller product page (${locale})${tag}`, async ({ page }) => {
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
