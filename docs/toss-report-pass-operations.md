@@ -4,6 +4,19 @@
 
 ## 서버 설정
 
+### Railway 적용 순서
+
+1. 현재 앱과 **같은 프로젝트·환경**에 PostgreSQL 서비스를 추가한다. 앱 서비스 Root Directory는 `v2-migration` 그대로 둔다.
+2. 앱 서비스의 **Variables**에 아래 네 변수를 추가한다. DB 서비스에만 추가하면 Next.js 서버가 읽지 못한다.
+3. `PAYMENTS_DATABASE_URL`은 PostgreSQL 서비스의 `DATABASE_URL`을 참조하는 변수로 연결한다. 서비스 이름이 `Postgres`라면 `${{Postgres.DATABASE_URL}}`이다. 실제 서비스 이름에 맞추며, 브라우저 코드용 `NEXT_PUBLIC_` 접두사를 붙이지 않는다.
+4. PostgreSQL 연결 도구에서 저장소 루트 `scripts/payments-schema.sql`을 한 번 실행한다. 앱 Root Directory 밖의 파일이므로 앱 시작 시 자동 실행되지 않는다. `gop_payment_orders` 테이블이 생성됐는지 확인한다.
+5. 우선 테스트 키를 넣고 `PAYMENTS_LIVE_ENABLED=false`로 배포한다. `/api/payments/config`의 `enabled:true`, `mode:test`를 확인한다. 이는 설정 형식 확인일 뿐 DB 연결·승인 성공 증명은 아니다.
+6. `/subscription#purchase`에서 실제 토스 테스트 결제 → 새로고침 → 보고서 다운로드 → 복원 코드로 다른 브라우저 복원 → 테스트 취소를 확인한다.
+7. 토스 개발자센터의 라이브 결제 상태 변경 웹훅에 `https://growthoptplaybook.com/api/payments/webhook`을 등록한다. 테스트 환경에서도 별도로 등록·검증한다.
+8. 테스트와 상점 활성화 확인 후 라이브 키 한 쌍으로 교체하고 `PAYMENTS_LIVE_ENABLED=true`로 재배포한다. 테스트 키를 넣은 상태에서 플래그만 바꾸면 실제 결제가 되지 않는다.
+
+운영자가 입력할 값은 **토스 키 2개·DB 참조 1개·활성화 플래그 1개**다. 5,900원 가격과 판매자 정보는 코드에서 관리하므로 별도 가격·주소 환경변수는 필요 없다. 이 결제 경로에는 Supabase 설정이 필요하지 않다. CSV 저장을 위한 DB도 만들지 않는다.
+
 Railway 앱 서비스의 서버 환경변수에 다음을 설정한다. 소스·문서·채팅에 키 값이나 DB 연결문자열을 붙이지 않는다.
 
 | 변수 | 의미 |
@@ -46,4 +59,4 @@ CSV·분석 결과·프로젝트명·파일명·로고는 주문·승인·복원
 
 현재 자동 검증은 모의 토스 응답과 DB 테스트 대역을 사용한다. 실제 토스·PostgreSQL·웹훅·라이브 결제는 환경 설정 후 별도 실측해야 한다.
 
-공식 연동 근거: [SDK 초기화](https://docs.tosspayments.com/sdk/v2/js/environment), [금액 검증과 승인 흐름](https://docs.tosspayments.com/guides/v2/get-started/payment-flow).
+공식 연동 근거: [SDK 초기화](https://docs.tosspayments.com/sdk/v2/js/environment), [API 키 종류](https://docs.tosspayments.com/reference/using-api/api-keys), [금액 검증과 승인 흐름](https://docs.tosspayments.com/guides/v2/get-started/payment-flow), [Railway 서비스 변수 참조](https://docs.railway.com/integrations/api/manage-variables).
