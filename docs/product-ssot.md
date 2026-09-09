@@ -38,6 +38,16 @@
 
 **도구 수를 손으로 세지 말 것.** 화면 카피는 `PUBLISHED_TOOL_IDS`(`lib/toolIndex.js`)에서 파생한다(현재 `LandingPage.jsx`의 `T.questionDeck(PUBLISHED_TOOL_IDS.length)`). `brandFacts.getPublishedToolCount()`는 같은 수를 계산하는 두 번째 경로이므로 이제 그것을 재노출한다 — 세는 곳은 하나다. 이 수는 제품 구조가 바뀌면 함께 바뀐다 — 실제로 2026-08-19 하루 사이에 14에서 18이 됐다. **문서·커밋·외부 프로필에 수를 적을 때는 그 시점의 파생값을 확인하고 적는다.**
 
+### 1.1a 라이브러리 홈과 공용 탐색 (2026-09-09 승인)
+
+- KO/EN 공용 서체: 제목은 로컬 Pretendard(대표 제목 800, 섹션·카드 700), 본문·조작 UI는 Wanted Sans, 코드용 고정폭 서체는 기존 역할을 유지한다. 홈·분석·주간 리뷰·블로그·SOP·구독에서 같은 제목 위계를 사용한다.
+- KO 홈 제목: “성과는 왜 바뀌었고, 다음엔 뭘 해야 할까?” / EN: “Why did it change? What should you do next?”
+- 홈 설명: “실무 가이드로 기준을 잡고, 내 데이터로 확인하세요. 성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다.” / EN: “Build your baseline with practical guides and check your data. Connect performance analysis to next week’s decisions in one place.”
+- CSV가 있는 방문자는 “CSV로 가능한 분석 한 번에”, 파일이 없는 방문자는 “질문에서 시작하기” 또는 샘플 체험으로 진입한다. 가능한 기본 분석을 묶어 실행하며 모든 분석의 무조건 실행을 약속하지 않는다.
+- 블로그·실무 가이드(SOP)·통합 결과·주간 리뷰·프로젝트·저장 관리·구독은 공용 사이드바에서 도달 가능해야 한다. 기존 도구와 자료의 전체 목록, 언어·테마·검색·복원·다운로드 기능을 보존한다.
+- 도치 인사 안내는 데이터 준비 영역에서 요청해 열 수 있게 하며 홈을 자동으로 가리지 않는다. 업로드·매핑·실행 게이트와 동일 데이터 전달 계약은 그대로 유지한다.
+- EN has equivalent CSV, question and sample entry points, persistent content/workspace navigation and on-demand Dochi help. Existing data gates, storage, settings and exports remain available.
+
 ### 1.2 승인 소개문 (그대로 복사해 사용)
 
 판매자 표시 정보(2026-09-09 사용자 제공): 상호 공드리공작소 · 대표자 신기훈 · 사업자등록번호 856-07-03210 · 주소 용두동 39-463 · 고객센터 010-8829-9034 · 이메일 gondry.montauk@gmail.com. 주소는 사용자가 승인한 범위만 표시하며 시·구 등 누락 정보와 사업자등록증 일치 여부는 미확인이다. 통신판매업 신고번호는 미제공이며 임의 생성하지 않는다. KO/EN 모두 법적 이름과 주소 원문을 보존한다. 코드 사본은 `src/lib/sellerFacts.js`가 소유한다.

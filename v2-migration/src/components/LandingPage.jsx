@@ -9,24 +9,23 @@ import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { TOOL_GROUP } from "@/lib/toolGroups";
-import { runLandingMotion } from "@/utils/landingMotion";
 import { useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
 
 const COPY = {
   ko: {
     eyebrow: "퍼포먼스 마케팅 의사결정",
-    title: "데이터로 판단하고,",
-    titleAccent: "다음 주에 다시 확인하세요.",
-    deck: "도치는 CSV 준비와 첫 분석을 돕고, 주간 리뷰는 이번 결정과 다음 결과를 이어줍니다.",
+    title: "성과는 왜 바뀌었고,",
+    titleAccent: "다음엔 뭘 해야 할까?",
+    deck: "실무 가이드로 기준을 잡고, 내 데이터로 확인하세요. 성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다.",
     actionAria: "바로 시작할 작업",
-    dataCta: "내 데이터로 분석 시작",
+    dataCta: "CSV로 가능한 분석 한 번에",
     dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
     reviewCta: "주간 리뷰 이어가기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
-    demoCta: "데모로 먼저 보기",
+    demoCta: "샘플로 체험하기",
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
@@ -40,12 +39,12 @@ const COPY = {
     reviewed: "검토 완료",
     openInbox: "주간 리뷰 열기",
     reopenTool: "원본 도구 다시 열기",
-    loopTitle: "분석한 결정을 저장하고, 다음 주 결과를 검토하세요.",
+    loopTitle: "이번 주의 분석을, 다음 주의 판단으로.",
     loopDeck: "이번 판단과 다음 결과를 주간 리뷰에서 이어보세요.",
-    questionTitle: "직접 도구 찾기",
-    questionDeck: "살펴볼 목적을 선택하세요.",
-    libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
-    libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
+    questionTitle: "지금 어떤 고민이 있나요?",
+    questionDeck: "분석 용어를 몰라도 괜찮습니다. 익숙한 질문을 골라보세요.",
+    libraryTitle: "데이터를 올리기 전에, 읽어도 좋습니다.",
+    libraryDeck: "실무의 질문을 풀어내는 블로그와 바로 꺼내 쓰는 운영 가이드.",
     blogLabel: "마케팅 블로그",
     blogTitle: "성과를 해석하는 실무 인사이트",
     blogDesc: "예산·소재·측정 문제를 원인부터 좁히고 실제 분석으로 이어가는 실무 글입니다.",
@@ -59,17 +58,17 @@ const COPY = {
   },
   en: {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
-    title: "Decide with your data.",
-    titleAccent: "Review what happens next.",
-    deck: "Dochi helps prepare your CSV and first analysis. Weekly Review connects this decision to the next results.",
+    title: "Why did it change?",
+    titleAccent: "What should you do next?",
+    deck: "Build your baseline with practical guides and check your data. Connect performance analysis to next week’s decisions in one place.",
     actionAria: "Start a task",
-    dataCta: "Start with my data",
+    dataCta: "Find analyses for my CSV",
     dataActionHint: "Upload → check columns → supported analyses",
     reviewCta: "Continue weekly review",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
-    demoCta: "Try a demo",
+    demoCta: "Explore a sample",
     dataGuideCta: "Prepare CSV columns",
     assurance: "Free analysis · paid report downloads · source data stays in your browser",
     continueTitle: "Continue your last decision",
@@ -81,16 +80,16 @@ const COPY = {
     reviewed: "Reviewed",
     openInbox: "Open weekly review",
     reopenTool: "Reopen source tool",
-    loopTitle: "Save your decision and review next week’s results.",
+    loopTitle: "This week’s analysis. Next week’s decisions.",
     loopDeck: "Connect this decision to the next results in Weekly Review.",
-    questionTitle: "Find a tool",
-    questionDeck: "Choose what you want to explore.",
-    libraryTitle: "Build evidence for the next decision.",
-    libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
-    blogLabel: "마케팅 블로그",
+    questionTitle: "What are you working through?",
+    questionDeck: "Start with a familiar question. No analysis terminology needed.",
+    libraryTitle: "Start with a good read.",
+    libraryDeck: "Practical articles to understand the question, and SOPs to put it into practice.",
+    blogLabel: "Marketing blog",
     blogTitle: "Practical insight for reading performance",
     blogDesc: "Practical guides that narrow budget, creative, and measurement problems from cause to analysis.",
-    guideLabel: "운영 플레이북",
+    guideLabel: "Operating playbook",
     guideTitle: "Operating standards your team can share",
     guideDesc: "Step-by-step SOPs from tracking setup to campaign operations, creative, and analysis.",
     resources: "Ready-to-use resources and external channels",
@@ -100,7 +99,7 @@ const COPY = {
   },
 };
 
-export default function LandingPage({ locale = "ko", children }) {
+export default function LandingPage({ locale = "ko", children, reading }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const router = useRouter();
@@ -121,8 +120,6 @@ export default function LandingPage({ locale = "ko", children }) {
     window.addEventListener("hashchange", revealFromHash);
     return () => window.removeEventListener("hashchange", revealFromHash);
   }, []);
-  // 진입 모션은 렌더층 전용 — 로케일이 바뀌면 DOM이 갈아끼워지므로 다시 부착한다.
-  useEffect(() => runLandingMotion(rootRef.current), [lang]);
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
@@ -148,11 +145,11 @@ export default function LandingPage({ locale = "ko", children }) {
       locale: lang,
     });
     setDemoDisabled(false);
-    handoffCsvToRoute(id, buildDemoCsv(TOOL_GROUP[id] || "efficiency", lang));
+    handoffCsvToRoute("dochi-result", buildDemoCsv(TOOL_GROUP[id] || "efficiency", lang), { markAnalyzed: false });
   };
   const openSample = (id, placement) => {
     prepareSample(id, placement);
-    router.push(toolHref(id));
+    router.push(lang === "en" ? "/en/dochi-result" : "/dochi-result");
   };
   const trackLandingNav = (name, placement) => {
     trackProductEvent(name, { source: "landing", placement, locale: lang });
@@ -178,8 +175,11 @@ export default function LandingPage({ locale = "ko", children }) {
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
-            <Link className="dc-action-route" href={`${lang === "en" ? "/en" : ""}/weekly-review${decisionRecords.length ? "#wr-history" : ""}`} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
-              <strong>{decisionRecords.length ? T.reviewCta : (lang === "en" ? "Start my first weekly review" : "첫 주간 리뷰 시작")}</strong><span>{decisionRecords.length ? T.reviewHint : (lang === "en" ? "Compare this week, record a decision, return next week" : "이번 주 비교부터 결정 기록까지 한 번에")}</span>
+            <Link className="dc-action-route dc-action-route--question" href="#questions" onClick={() => {
+              rootRef.current?.querySelector("#questions")?.focus();
+            }}>
+              <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>
+              <span>{lang === "en" ? "No file? Explore your next step" : "파일 없이 고민부터 골라보세요"}</span>
             </Link>
           </nav>
           <div className="dc-hero__utility-actions">
@@ -197,10 +197,6 @@ export default function LandingPage({ locale = "ko", children }) {
             >
               {T.diagnoseCta}
             </Link>
-            {/* 예시는 이 제품에서 "무엇이 나오는지"를 볼 유일한 경로다(히어로의 가짜
-                차트를 걷어낸 뒤로 §12.28). 버튼으로 승격하면 목적 CTA와 위계가
-                섞이므로(LandingPage.smoke가 강제) 텍스트 링크는 유지하고 눈에
-                띄는 정도만 올린다. */}
             <button type="button" className="dc-text-link dc-text-link--button" onClick={() => openSample("5-2", "hero_example")}>
               {T.demoCta} →
             </button>
@@ -210,6 +206,15 @@ export default function LandingPage({ locale = "ko", children }) {
           </div>
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
+        <aside className="library-journey" aria-label={lang === "en" ? "One-file analysis workflow" : "CSV 통합 분석 흐름"}>
+          <span>{lang === "en" ? "Dochi’s connected analysis" : "도치의 통합 분석"}</span>
+          <h2>{lang === "en" ? <>One file.<br />Connected results.</> : <>파일은 한 번.<br />가능한 분석은 한곳에.</>}</h2>
+          <ol>
+            <li><b>{lang === "en" ? "Upload and check columns" : "CSV를 올리고 컬럼 확인"}</b><p>{lang === "en" ? "Confirm dates, spend and conversions" : "날짜·비용·전환이 맞게 연결됐는지 확인"}</p></li>
+            <li><b>{lang === "en" ? "Run supported baseline analyses" : "가능한 기본 분석을 함께 실행"}</b><p>{lang === "en" ? "See which analyses need more data or setup" : "추가 조건이나 데이터가 필요한 분석은 별도 안내"}</p></li>
+            <li><b>{lang === "en" ? "Continue to your weekly review" : "결과에서 주간 리뷰까지"}</b><p>{lang === "en" ? "Carry your data into detailed analysis and decisions" : "같은 데이터를 상세 분석과 결정 기록으로 연결"}</p></li>
+          </ol>
+        </aside>
       </section>
 
       {/* #dochi-upload 탐색은 브라우저가 hydration 전에 부모 details를 열 수 있다. */}
@@ -252,7 +257,7 @@ export default function LandingPage({ locale = "ko", children }) {
         </div>
       </section>}
 
-      <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
+      <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">
         <header className="dc-section-head">
           <div>
             <h2 id="dc-question-title">{T.questionTitle}</h2>
@@ -281,25 +286,27 @@ export default function LandingPage({ locale = "ko", children }) {
       </section>
 
 
-      <section className="dc-library" id="library" aria-labelledby="dc-library-title">
-        <header className="dc-section-head">
+      {reading}
+      <section className={`dc-library${reading ? " has-reading" : ""}`} id="library" aria-label={reading ? T.guideLabel : undefined} aria-labelledby={reading ? undefined : "dc-library-title"}>
+        {!reading && <header className="dc-section-head">
           <div>
             <h2 id="dc-library-title">{T.libraryTitle}</h2>
           </div>
           <p>{T.libraryDeck}</p>
-        </header>
+        </header>}
         <div className="dc-library__grid">
-          <Link className="dc-library-card" href={lang === "en" ? "/en/blog" : "/blog"}>
+          {!reading && <Link className="dc-library-card" href={lang === "en" ? "/en/blog" : "/blog"}>
             <span>{T.blogLabel}</span>
             <h3>{T.blogTitle}</h3>
             <p>{T.blogDesc}</p>
-          </Link>
+          </Link>}
           <Link className="dc-library-card" href={lang === "en" ? "/en/guide" : "/guide"}>
             <span>{T.guideLabel}</span>
             <h3>{T.guideTitle}</h3>
             <p>{T.guideDesc}</p>
           </Link>
         </div>
+        <div className="library-plan-link"><p>{lang === "en" ? "Analysis and decision records are free. Explore Pro for report downloads and multiple projects." : "분석과 결정 기록은 무료입니다. 보고서 다운로드와 여러 프로젝트는 Pro로."}</p><Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare plans" : "구독 · 요금제 보기"}</Link></div>
         <div className="dc-resource-strip">
           <span>{T.resources}</span>
           <div>

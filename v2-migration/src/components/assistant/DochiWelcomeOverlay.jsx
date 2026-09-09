@@ -82,13 +82,14 @@ export const DOCHI_WELCOME_COPY = {
   },
 };
 
-export default function DochiWelcomeOverlay({ locale = "ko" }) {
+export default function DochiWelcomeOverlay({ locale = "ko", manual = false }) {
   const copy = DOCHI_WELCOME_COPY[locale] || DOCHI_WELCOME_COPY.ko;
   const router = useRouter();
   const savedDatasets = useAppStore((state) => state.workspaceDatasetSummaries);
   const decisionPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const workspaceRestoreStatus = useAppStore((state) => state.workspaceRestoreStatus);
   const [closed, setClosed] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [step, setStep] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -105,15 +106,13 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
     || workspaceRestoreStatus === "ready"
     || workspaceRestoreStatus === "failed";
   const displayStep = savedDatasets.length > 0 ? DOCHI_WELCOME_STEPS.length - 1 : step;
-  const open = shouldShowDochiWelcome({
-    dismissed: !storageAllows,
-  }) && isRestoreResolved && !closed;
+  const open = (manual ? requested : shouldShowDochiWelcome({ dismissed: !storageAllows })) && isRestoreResolved && !closed;
 
   useEffect(() => {
     if (!open) return;
     markDochiWelcomeSessionSeen();
     trackProductEvent("onboarding_welcome_viewed", { placement: "home_welcome", locale, state: "opened" });
-    // open이 true가 되는 것은 생애 한 번뿐이라 이 effect도 한 번만 돈다.
+    // Explicitly reopening the guide records another view.
   }, [open, locale]);
 
   const close = (state) => {
@@ -140,7 +139,10 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
 
   const isLast = displayStep === DOCHI_WELCOME_STEPS.length - 1;
 
-  return (
+  return (<>
+    {manual && <button type="button" className="dochi-help-trigger" aria-haspopup="dialog" onClick={() => { setClosed(false); setRequested(true); setStep(0); }}>
+      {locale === "en" ? "Ask Dochi how to get started" : "처음이라면, 도치 안내 보기"}
+    </button>}
     <ModalDialog
       open={open}
       onClose={() => close("dismissed")}
@@ -218,5 +220,5 @@ export default function DochiWelcomeOverlay({ locale = "ko" }) {
         </div>
       </div>
     </ModalDialog>
-  );
+  </>);
 }

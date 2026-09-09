@@ -62,7 +62,13 @@ async function runJourney(page, locale) {
   expect(JSON.stringify(funnel)).not.toContain("Review Campaign");
   await expect(page.locator(".wr-verdict__big")).toContainText("CPA");
   await expect(page.locator(".wr-evidence")).toHaveCSS("border-left-width", "1px");
-  await expect(page.locator("#wr-verdict")).toHaveCSS("font-size", "18px");
+  // The conclusion heading sits between reading text and the page title.
+  const typeSizes = await page.evaluate(() => {
+    const size = (selector) => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
+    return { body: size(".wr-screen"), section: size("#wr-verdict"), title: size("main h1") };
+  });
+  expect(typeSizes.section).toBeGreaterThan(typeSizes.body);
+  expect(typeSizes.section).toBeLessThan(typeSizes.title);
   expect(await page.locator(".wr-screen").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft))).toBeGreaterThanOrEqual(12);
   await page.getByRole("button", { name: en ? "Edit project settings" : "프로젝트 기준 편집", exact: true }).click();
   await page.getByLabel(en ? "Project name" : "프로젝트 이름", { exact: true }).fill("App growth review");
@@ -136,7 +142,7 @@ async function dochiToWeekly(page, locale) {
 
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await hero.getByRole("link", { name: en ? /Start with my data/ : /내 데이터로 분석 시작/ }).click();
+  await hero.getByRole("link", { name: en ? /Find analyses for my CSV/ : /CSV로 가능한 분석 한 번에/ }).click();
   const intake = page.locator('.dochi-home-assistant .csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });

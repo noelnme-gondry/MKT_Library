@@ -2,10 +2,9 @@
 //
 // Render-smoke for Sidebar. Regression net for a render/mount-effect throw.
 // Sidebar derives its active id from usePathname() (mocked to "/") and reads the
-// static IA/PHASES tables — it does NOT read csvData. "/" intentionally renders
-// the compact Decision Workspace nav; inner pages retain the full IA nav.
+// static IA/PHASES tables. Primary destinations remain visible on every route.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Sidebar from "@/components/Sidebar";
 import { WORKSPACE_NAV, workspaceNavItem } from "@/lib/workspaceNav";
@@ -23,6 +22,7 @@ function seedNoData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
     decisionRecords: [],
+    dochiAnalysisSession: null,
     isCmdkOpen: false,
   });
 }
@@ -44,29 +44,41 @@ describe("Sidebar render smoke", () => {
     pathname = "/";
     seedNoData();
   });
+  it("restores the unified source after a detail tool changes the active CSV", () => {
+    seedWithData();
+    const source = useAppStore.getState().csvData;
+    useAppStore.setState({ dochiAnalysisSession: { sourceData: source, analyses: [] }, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV } });
+    const { container } = render(<Sidebar />);
+    const link = container.querySelector('.library-nav-item[href="/dochi-result"]');
+    link.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(link);
+    useAppStore.getState().setCurrentRouteId("dochi-result");
+    expect(useAppStore.getState().csvData.raw).toBe(source.raw);
+    expect(useAppStore.getState().csvData.mapping).toBe(source.mapping);
+  });
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
-    expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(WORKSPACE_NAV.length + 1);
+    expect(document.querySelector(".library-nav")).toBeTruthy();
+    expect(document.querySelectorAll(".library-nav-item")).toHaveLength(WORKSPACE_NAV.length);
     // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
     // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
-    expect(document.querySelector(".home-sidebar-nav__item--all")).toBeTruthy();
-    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("start").desc);
-    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
-    expect(document.body.textContent).toContain(workspaceNavItem("start").desc);
+    expect(document.querySelector(".inner-workspace-label__all")).toBeTruthy();
+    expect(document.querySelector('.library-nav-item[href="/start"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("start").desc);
+    expect(document.querySelector('.library-nav-item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
+    expect(document.body.textContent).toContain(workspaceNavItem("start").name);
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
     // 개수 대신 목적지를 단언한다 — 개수를 적으면 항목이 하나 늘 때마다 여기서
     // 깨지고, 그때 숫자만 고치면 무엇이 들어왔는지는 아무도 안 본다.
-    // 블로그는 별도 블록이 아니라 이 자료실 안에 있다(하단에 블록이 둘 있을 이유가 없다).
+    // Blog and SOPs stay in primary navigation; supporting resources stay here.
     expect([...document.querySelectorAll(".sidebar-library-link")].map((link) => link.getAttribute("href")))
-      .toEqual(["/blog", "/calculator", "/guide", "/templates", "/glossary", "/compare"]);
+      .toEqual(["/calculator", "/templates", "/glossary", "/compare"]);
     expect(document.body.textContent).toContain("마케팅 지표 계산기");
     expect(document.body.textContent).not.toContain("무CSV 계산기");
     // 소셜 채널은 사이드바에서 뺐다 — 도구 목록과 같은 열에 YouTube·Instagram이
     // 있을 이유가 없다. 도달 경로는 랜딩의 자료·채널 줄이 갖는다(LandingPage 스모크가 강제).
     expect(document.querySelector(".sidebar-social")).toBe(null);
     expect(document.querySelector('a[href*="youtube.com"]')).toBe(null);
-    expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
+    expect(document.querySelector('.library-nav-item[aria-current="page"]')).toBeTruthy();
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   it("with-data mounts", () => {
@@ -101,7 +113,7 @@ describe("Sidebar render smoke", () => {
   it("keeps resource and external-link parity in English", () => {
     pathname = "/en";
     const { container } = render(<Sidebar locale="en" />);
-    expect(container.textContent).toContain("Operating Guide");
+    expect(container.textContent).toContain(workspaceNavItem("guide", "en").name);
     expect(container.textContent).toContain(workspaceNavItem("review", "en").name);
     expect(container.textContent).toContain("Marketing metric calculators");
     expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
@@ -109,7 +121,7 @@ describe("Sidebar render smoke", () => {
   it("uses the full workspace navigation on library routes instead of treating them as home", () => {
     pathname = "/blog";
     const { container } = render(<Sidebar />);
-    expect(container.querySelector(".home-sidebar-nav")).toBeNull();
+    expect(container.querySelector(".library-nav")).toBeTruthy();
     expect(container.querySelector(".sidebar-primary-nav")).toBeTruthy();
     expect(container.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(true);
   });
@@ -122,6 +134,17 @@ describe("Sidebar render smoke", () => {
     expect(review?.getAttribute("aria-label")).toBe(`${workspaceNavItem("review").name}, 지금 검토할 결정 1건`);
     expect(review?.textContent).toContain("1");
   });
+  it.each(["ko", "en"])("keeps content, CSV, results and recurring work outside disclosures (%s)", (locale) => {
+    pathname = locale === "en" ? "/en" : "/";
+    const { container } = render(<Sidebar locale={locale} />);
+    for (const id of ["blog", "guide", "start", "results", "review", "subscription", "projects", "storage", "diagnose"]) {
+      const item = workspaceNavItem(id, locale);
+      const link = container.querySelector(`.library-nav a[href="${locale === "en" ? "/en" : ""}${item.href}"]`);
+      expect(link, id).toBeTruthy();
+      expect(link.closest("details"), id).toBeNull();
+    }
+  });
+
 });
 
 describe("응답 패널 다섯 분석 노출", () => {
@@ -149,7 +172,7 @@ describe("Sidebar content weight", () => {
   it("carries no decorative all-caps English labels on a Korean screen", () => {
     const { container } = render(<Sidebar />);
     // §5.7 — 모든 문장은 상태·행동·오해 방지·오류 해결 중 하나를 해야 한다.
-    for (const label of ["QUICK MATH", "SOP", "FILES", "TERMS", "VS", "INSIGHTS", "LOCAL ONLY", "LIBRARY"]) {
+    for (const label of ["QUICK MATH", "FILES", "TERMS", "VS", "INSIGHTS", "LOCAL ONLY", "LIBRARY"]) {
       expect(container.textContent).not.toContain(label);
     }
   });

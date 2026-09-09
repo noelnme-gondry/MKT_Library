@@ -61,6 +61,16 @@ afterEach(() => {
 });
 
 describe("DochiWelcomeOverlay first-visit onboarding", () => {
+  it("keeps the home clear until a visitor requests the guide", () => {
+    render(<DochiWelcomeOverlay manual />);
+    expect(screen.queryByRole("dialog")).toBe(null);
+    fireEvent.click(screen.getByRole("button", { name: "처음이라면, 도치 안내 보기" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "안내 닫기" }));
+    expect(screen.queryByRole("dialog")).toBe(null);
+    fireEvent.click(screen.getByRole("button", { name: "처음이라면, 도치 안내 보기" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
   it("walks every scripted step in order with its own pose", () => {
     render(<DochiWelcomeOverlay />);
 

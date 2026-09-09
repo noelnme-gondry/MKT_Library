@@ -9,7 +9,7 @@ for (const locale of ["ko", "en"]) {
   test(`home to demo result and workbook (${locale})${tag}`, async ({ page }) => {
     await enablePaidReports(page);
     await page.goto(prefix || "/");
-    await page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true }).click();
+    await expect(page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true })).toBeHidden();
     await page.getByRole("button", { name: en ? /Understand performance changes/ : /성과 변화 확인/ }).click();
     const tool = page.locator(`.dc-questions a[href="${prefix}/dashboard"]`);
     await expect(tool).toBeVisible();
