@@ -1,5 +1,5 @@
 /* ============================================================
- * workspaceNav — 상단 작업 목적지 네 개의 이름·설명 단일 출처.
+ * workspaceNav — 공통 작업 목적지의 이름·설명 단일 출처.
  *
  * 같은 라벨이 사이드바(홈 변형·일반 변형), 헤더 브레드크럼, ⌘K, 푸터에
  * 각각 적혀 있었다. 한 곳만 고치면 나머지가 어긋난다(§7 — 목록을 두 곳에
@@ -32,6 +32,20 @@ export const WORKSPACE_NAV = [
     // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
     ko: { name: "주간 리뷰", desc: "비교 → 결정 기록 → 다음 결과 검토" },
     en: { name: "Weekly Review", desc: "Compare → decide → review the next results" },
+  },
+  {
+    id: "projects",
+    href: "/projects",
+    icon: "▣",
+    ko: { name: "프로젝트 보관함", desc: "고객·앱별 리뷰와 지난 결정" },
+    en: { name: "Projects", desc: "Reviews and decisions by client or app" },
+  },
+  {
+    id: "subscription",
+    href: "/subscription",
+    icon: "▤",
+    ko: { name: "보고서 이용권", desc: "Word·Excel 보고서와 이용 안내" },
+    en: { name: "Report pass", desc: "Word and Excel reports and plan details" },
   },
   {
     id: "diagnose",

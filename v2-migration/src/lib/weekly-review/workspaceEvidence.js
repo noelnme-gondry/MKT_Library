@@ -19,7 +19,7 @@ const keyOf = row => JSON.stringify([row.channel || "", row.campaign]);
 function values(row, basis) {
   if (!row) return null;
   const totals = sumRows([row]);
-  return { ...deriveMetrics(totals, { basis }), cost: totals.cost };
+  return { ...deriveMetrics(totals, { basis }), cost: totals.cost, installs: totals.installs, revenue: totals.revenue };
 }
 
 // 스냅샷의 같은 캠페인끼리만 비교한다. 없던 캠페인의 과거 값을 0으로 보충하지 않는다.

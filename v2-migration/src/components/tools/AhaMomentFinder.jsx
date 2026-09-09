@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import { limitAhaObservationWindow } from "@/utils/ahaObservationWindow";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -770,6 +771,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       showToast({ variant: "warn", title: tr("차트를 찾을 수 없음", "Chart not found"), body: "aha-scatter" });
       return;
     }
+    if (!requirePaidExport()) return;
     downloadChartAsPNG(chartRef.current, "aha_scatter");
   };
 
@@ -1665,7 +1667,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
-                <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>⬇ CSV</button>
+                <button className="ab-pill" onClick={() => requirePaidExport() && downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>⬇ CSV</button>
               </div>
               <p className="muted" style={{ fontSize: "11.5px" }}>{tr(
                 <><strong>체크박스</strong> = 위 산점도에 표시 · <strong>행(▸) 클릭</strong> = 달성률 구간별 상세 펼치기. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심). 색 = 산점도 이벤트 색.</>,
@@ -1763,7 +1765,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 (claude-ux.md §6 탈출구) ── */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>
             <button className="ab-pill" style={{ fontSize: "12.5px", padding: "9px 18px" }}
-              onClick={() => textDownload(
+              onClick={() => requirePaidExport({ locale }) && textDownload(
                 tr(`${C.docFileStem}_설명_${_today()}.md`, `${C.docFileStem}_explainer_${_today()}.md`),
                 buildAhaGuideDoc(cache, sortedResults, minSupport, C, locale),
               )}>

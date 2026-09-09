@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { useEffect, useRef, useState } from "react";
 import { downloadCsv } from "@/utils/download";
 import { periodSensitivityCsv } from "@/lib/analysis-results/periodSensitivity";
@@ -36,7 +37,7 @@ export default function PeriodSensitivityPanel({ compute, locale = "ko" }) {
           <strong>{row.name}: {labels[row.status]}</strong> · {labels[row.before.direction] || "—"} → {labels[row.after.direction] || "—"}
           <p>{en ? "Observed daily spend / retained observations" : "관측 일지출 / 사용 관측 수"}: {value(row.before.min)}–{value(row.before.max)} (n={row.before.n ?? 0}) → {value(row.after.min)}–{value(row.after.max)} (n={row.after.n ?? 0})</p>
         </li>)}</ul>
-        <button type="button" className="btn secondary" onClick={() => downloadCsv(periodSensitivityCsv(result), "period_sensitivity")}>{en ? "Download period evidence CSV" : "기간 근거 CSV 받기"}</button>
+        <button type="button" className="btn secondary" onClick={() => requirePaidExport() && downloadCsv(periodSensitivityCsv(result), "period_sensitivity")}>{en ? "Download period evidence CSV" : "기간 근거 CSV 받기"}</button>
       </>}
     </div>
   </section>;

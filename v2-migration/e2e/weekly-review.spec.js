@@ -1,3 +1,4 @@
+import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
@@ -115,6 +116,7 @@ test("@light-en weekly review: English first and returning upload", async ({ pag
 });
 
 async function dochiToWeekly(page, locale) {
+  await enablePaidReports(page);
   const en = locale === "en";
   await page.addInitScript(locale => {
     window.__journeyEvents = [];

@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Sidebar from "@/components/Sidebar";
-import { workspaceNavItem } from "@/lib/workspaceNav";
+import { WORKSPACE_NAV, workspaceNavItem } from "@/lib/workspaceNav";
 
 let pathname = "/";
 vi.mock("next/navigation", () => ({
@@ -47,7 +47,7 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(5);
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(WORKSPACE_NAV.length + 1);
     // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
     // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
     expect(document.querySelector(".home-sidebar-nav__item--all")).toBeTruthy();
@@ -78,7 +78,7 @@ describe("Sidebar render smoke", () => {
     const search = document.querySelector(".sidebar-search");
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
-    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(4);
+    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.length);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면

@@ -1,3 +1,4 @@
+import { enablePaidReports } from "./support/paidReports";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import * as XLSX from "xlsx";
@@ -204,6 +205,7 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
 });
 
 test("운영 대시보드 결과에서 원본·수식이 든 XLSX를 받는다", async ({ page }) => {
+  await enablePaidReports(page);
   await page.goto("/dashboard");
   await uploadCsv(page, "efficiency.csv");
   const confirmations = page.getByRole("button", { name: "확인", exact: true });

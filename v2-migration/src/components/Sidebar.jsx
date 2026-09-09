@@ -165,7 +165,8 @@ export default function Sidebar({ locale = "ko" }) {
           const isReview = item.id === "review";
           const isActive = (item.id === "start" && isStart)
             || (item.id === "diagnose" && isDiagnose)
-            || (isReview && isWeeklyReview);
+            || (isReview && isWeeklyReview)
+            || cleanPath === item.href;
           const sub = isReview && dueDecisionCount > 0 ? T.reviewDue(dueDecisionCount) : item.desc;
           return (
             <Link

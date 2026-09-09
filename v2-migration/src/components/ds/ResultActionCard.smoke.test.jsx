@@ -72,7 +72,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(utilities).toBeTruthy();
     // 보조 동선은 머리 안에 있으면 안 된다.
     expect(head.querySelector(".result-action-card__utilities")).toBeNull();
-    for (const label of ["결론 공유", "상세 문서 받기", "보고서에 추가", "주간 리뷰 열기"]) {
+    for (const label of ["결론 공유", "보고서에 추가", "주간 리뷰 열기"]) {
       const node = screen.getByText(label);
       expect(utilities.contains(node)).toBe(true);
       expect(head.contains(node)).toBe(false);
@@ -98,7 +98,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(container.querySelector(".result-action-card__stats").getAttribute("aria-label")).toBe("Key figures");
   });
 
-  it("offers a localized detailed-document download for actionable results", () => {
+  it("opens the purchase gate for unpaid report exports", () => {
     render(
       <ResultActionCard
         toolId="5-3"
@@ -107,7 +107,9 @@ describe("ResultActionCard decision-first hierarchy", () => {
         decisionReview={false}
       />,
     );
-    expect(screen.getByRole("button", { name: "상세 문서 받기" })).toBeTruthy();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
+    expect(useAppStore.getState().purchasePrompt.toolId).toBe("5-3");
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   it("does not offer an insufficient result as a report conclusion", () => {

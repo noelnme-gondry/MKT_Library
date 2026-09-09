@@ -46,8 +46,8 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-instrument")).toBeNull();
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
-    expect(actions).toHaveLength(1);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터로 분석 시작"]);
+    expect(actions).toHaveLength(2);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터로 분석 시작", "첫 주간 리뷰 시작"]);
     expect(actions[0].classList.contains("dc-action-route--primary")).toBe(true);
     expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
@@ -55,7 +55,7 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("주간 리뷰는 이번 결정과 다음 결과");
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
-    expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리");
+    expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리");
     expect(document.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
@@ -178,7 +178,7 @@ describe("LandingPage render smoke", () => {
       const routes = hero.querySelectorAll(".dc-action-route");
       const primary = hero.querySelectorAll(".dc-action-route--primary");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
-      expect(routes.length, `${locale}: 신규 방문자는 분석으로 시작`).toBe(1);
+      expect(routes.length, `${locale}: 분석과 첫 리뷰의 진입점`).toBe(2);
       // 보조 진입점(예시 보기·데이터 가이드)은 버튼이 아니라 텍스트 링크로 남는다.
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-text-link").length).toBeGreaterThan(0);
       expect(container.querySelectorAll(".dc-hero__utility-actions .dc-action-route").length).toBe(0);
@@ -187,7 +187,7 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Start with my data"]);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Start with my data", "Start my first weekly review"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Decide with your data.Review what happens next.");
     expect(container.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();

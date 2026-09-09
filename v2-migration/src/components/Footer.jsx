@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 // 결정 검토함의 이름은 사이드바·헤더와 같은 SSOT에서 받는다.
 import { workspaceNavItem } from "@/lib/workspaceNav";
+import SellerInformation from "./SellerInformation";
 
 export default function Footer() {
   const pathname = usePathname() || "/";
@@ -43,5 +44,6 @@ export default function Footer() {
       <nav className="site-footer__column" aria-label={copy.learn}><strong>{copy.learn}</strong><Link href={`${p}/weekly-review`}>{workspaceNavItem("review", isEn ? "en" : "ko").name}</Link><Link href={`${p}/weekly-report`}>{copy.report}</Link><Link href={`${p}/templates`}>{copy.templates}</Link><Link href={`${p}/compare`}>{copy.compare}</Link><Link href={`${p}/manuals`}>{copy.manuals}</Link><Link href={`${p}/blog`}>{copy.blog}</Link><Link href={`${p}/glossary`}>{copy.glossary}</Link><Link href={`${p}/guide`}>{copy.guide}</Link></nav>
       <nav className="site-footer__column" aria-label={copy.legal}><strong>{copy.legal}</strong><Link href={`${p}/privacy`}>{copy.privacy}</Link><Link href={`${p}/terms`}>{copy.terms}</Link><Link href={`${p}/contact`}>{copy.contact}</Link></nav>
     </div>
+    <SellerInformation locale={isEn ? "en" : "ko"} />
   </footer>;
 }

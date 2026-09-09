@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Papa from "papaparse";
@@ -1642,14 +1643,14 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${ml} 브릿지 — 지난주 전체 → ${C.levelChannel} 기여(±) → 이번주 전체`, `${ml} bridge — prior week total → ${C.levelChannel} contribution (±) → this week total`)}</span>
-              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
+              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-waterfall" ref={chartPvmWaterfall}></canvas></div>
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${C.levelChannel}별 Mix·Rate 분해`, `Mix·Rate breakdown by ${C.levelChannel}`)}</span>
-              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
+              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-channel-stack" ref={chartPvmTrend}></canvas></div>
           </div>

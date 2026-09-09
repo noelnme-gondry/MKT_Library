@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { writeWorkbookWithCharts } from "./nativeCharts.js";
 
 export const ANALYSIS_WORKBOOK_SHEETS = Object.freeze([
   "00_README",
@@ -48,7 +49,7 @@ function isSafeInternalFormula(value) {
   const remainder = formula.slice(1)
     .replace(/'(?:[^']|''){1,31}'!/g, "")
     .replace(/""/g, "")
-    .replace(/\b(?:ERFC|IF|AND|OR|IFERROR|ABS|SQRT|COUNTA|COUNT|MAX|MIN|SUM|SUMIFS|AVERAGE|SUMPRODUCT|INDEX|MATCH|VALUE|SUBSTITUTE)\b/g, "")
+    .replace(/\b(?:ERFC|IF|AND|OR|ISNUMBER|IFERROR|ABS|SQRT|COUNTA|COUNT|MAX|MIN|SUM|SUMIFS|AVERAGE|SUMPRODUCT|INDEX|MATCH|VALUE|SUBSTITUTE)\b/g, "")
     .replace(/\$?[A-Z]{1,3}:\$?[A-Z]{1,3}/g, "")
     .replace(/\$?[A-Z]{1,3}\$?\d+/g, "")
     .replace(/-?\d+(?:\.\d+)?/g, "")
@@ -305,10 +306,5 @@ export function buildAnalysisWorkbook(payload = {}) {
 }
 
 export function writeAnalysisWorkbook(payload = {}) {
-  return XLSX.write(buildAnalysisWorkbook(payload), {
-    bookType: "xlsx",
-    type: "array",
-    compression: true,
-    cellStyles: true,
-  });
+  return writeWorkbookWithCharts(buildAnalysisWorkbook(payload), payload.charts || []);
 }

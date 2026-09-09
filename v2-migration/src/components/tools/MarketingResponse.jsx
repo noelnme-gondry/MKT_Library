@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData, canTrackDecisionReview } from "@/lib/dataOrigin";
 import { mmmDecisionQuality, mmmDecisionQualityMessage } from "@/lib/analysis-results/mmmDecisionQuality";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -3794,6 +3795,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             : tx("가입+재유입", "Signups + Reactivation");
   const targetOptions = availTargets.map((value) => ({ value, label: targetLabel(value) }));
   const handlePackageDownload = () => {
+    if (!requirePaidExport({ locale })) return;
     try {
       const packageRun = sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end);
       const packagePanel = sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start);
@@ -4594,11 +4596,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </p>
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
                     <button className="ab-pill" title={tx("채널 × 3-state 투표 + 게이트·탄력성·커버리지·그랜저 → CSV", "Channel × 3-state vote + gate/elasticity/coverage/Granger → CSV")}
-                      onClick={() => cannib && csvDownload(`mmm_cannib_${mmm.target}_${_today()}.csv`, buildCannibCsv(cannib, mmm.effects, mmm.target))}>
+                      onClick={() => requirePaidExport({ locale }) && cannib && csvDownload(`mmm_cannib_${mmm.target}_${_today()}.csv`, buildCannibCsv(cannib, mmm.effects, mmm.target))}>
                       {tx("⬇ 채널별 카니발 CSV", "⬇ Per-channel cannibalization CSV")}
                     </button>
                     <button className="ab-pill" title={tx("주별 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 원자료", "Weekly target/channel ln(1+spend), detrended residuals, first-difference raw data")}
-                      onClick={() => csvDownload(`mmm_cannib_series_${mmm.target}_${_today()}.csv`, buildCannibSeriesCsv(mmm.panel, mmm.target))}>
+                      onClick={() => requirePaidExport({ locale }) && csvDownload(`mmm_cannib_series_${mmm.target}_${_today()}.csv`, buildCannibSeriesCsv(mmm.panel, mmm.target))}>
                       {tx("⬇ 검정 원자료 CSV", "⬇ Test raw-data CSV")}
                     </button>
                   </div>
@@ -4775,7 +4777,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 ── */}
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
                 <button className="ab-button"
-                  onClick={() => textDownload(`${tx("카니발_진단_설명", "cannibalization_diagnosis_explained")}_${mmm.target}_${_today()}.md`, buildCannibGuideDoc(cannib, mmmTargetDisplay(mmm.target, locale), locale))}>
+                  onClick={() => requirePaidExport({ locale }) && textDownload(`${tx("카니발_진단_설명", "cannibalization_diagnosis_explained")}_${mmm.target}_${_today()}.md`, buildCannibGuideDoc(cannib, mmmTargetDisplay(mmm.target, locale), locale))}>
                   {tx("📄 이 과정에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "📄 Want a detailed explanation of this process? — Get the detailed document")}
                 </button>
               </div>
@@ -5461,6 +5463,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           className="ab-pill"
                           title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}
                           onClick={() => {
+                            if (!requirePaidExport({ locale })) return;
                             csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(viewedDecomp, contributionLabels, groupPanels));
                             trackProductEvent("result_downloaded", { tool_id: "5-18", source: "weekly_group_contribution", download_type: "csv", locale });
                           }}
@@ -5740,7 +5743,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   (product-ssot §5.5 · D-07) */}
               <div className="mmm-result-download" data-mmm-flow-step="download">
                 <button type="button"
-                  onClick={() => textDownload(`${tx("MMM_기여분해_설명", "mmm_contribution_explained")}_${mmm.target}_${_today()}.md`, buildMmmGuideDoc(mmm, tgtKo, locale))}>
+                  onClick={() => requirePaidExport({ locale }) && textDownload(`${tx("MMM_기여분해_설명", "mmm_contribution_explained")}_${mmm.target}_${_today()}.md`, buildMmmGuideDoc(mmm, tgtKo, locale))}>
                   {tx("상세 분석 문서 받기", "Download detailed analysis notes")}
                 </button>
               </div>
@@ -6426,7 +6429,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       className="ab-pill"
                       style={{ background: "var(--primary)", color: "var(--on-primary)", fontWeight: 700, borderColor: "var(--primary)" }}
                       title={forecastDownloadTitle(forecast, locale)}
-                      onClick={() => csvDownload(
+                      onClick={() => requirePaidExport({ locale }) && csvDownload(
                         `mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`,
                         buildForecastCsv(
                           { ...forecast, exportScenarioGate: forecastScenario },

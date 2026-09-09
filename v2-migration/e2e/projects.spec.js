@@ -13,7 +13,7 @@ async function readStored(page) {
 }
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
-  test(`project migration, complete backup restore and interest gate (${locale})${tag}`, async ({ page }) => {
+  test(`project migration, complete backup restore and report-pass gate (${locale})${tag}`, async ({ page }) => {
     await page.addInitScript(() => {
       window.__projectEvents = [];
       window.dataLayer = [];
@@ -50,7 +50,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? "Replace current project" : "현재 프로젝트에 복원", exact: true }).click();
     await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "Could not complete" : "작업을 완료하지 못했습니다");
     expect((await readStored(page)).files[0].text).toBe(initial.files[0].text);
-    // Second project attempts open the price/interest page; existing data remains accessible.
+    // Second project attempts open the report-pass page; existing data remains accessible.
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Second project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
@@ -61,11 +61,11 @@ for (const locale of ["ko", "en"]) {
     await expect(refundPolicy).toContainText(en ? "regardless of whether" : "사용 여부나 보고서 다운로드 여부와 관계없이");
     await expect(refundPolicy).toContainText(en ? "3 business days" : "3영업일");
     await expect(refundPolicy.getByRole("link")).toHaveAttribute("href", `${prefix}/contact`);
-    await page.getByRole("button", { name: en ? "I'm interested at KRW 5,900/month" : "월 5,900원 구독에 관심 있어요", exact: true }).click();
-    await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "not a reservation or payment" : "예약이나 결제가 아닙니다");
+    await expect(page.locator("#purchase")).toContainText("5,900");
+    await expect(page.locator("#purchase")).toContainText("Word");
+    await expect(page.locator("#purchase")).toContainText("Excel");
     const events = await page.evaluate(() => window.__projectEvents);
     expect(events.some(event => event[1] === "subscription_gate_viewed" && event[2].source === "project_limit")).toBe(true);
-    expect(events.some(event => event[1] === "subscription_interest_clicked" && event[2].state === "monthly_5900")).toBe(true);
     expect(JSON.stringify(events)).not.toContain("Client Alpha");
     await expectNoSeriousAccessibilityViolations(page);
     await page.goto(`${prefix}/projects`);

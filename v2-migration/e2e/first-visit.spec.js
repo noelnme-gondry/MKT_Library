@@ -1,3 +1,4 @@
+import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations, expectPageHierarchy } from "./support/quality";
 
@@ -6,6 +7,7 @@ for (const locale of ["ko", "en"]) {
   const prefix = en ? "/en" : "";
   const tag = en ? " @light-en" : "";
   test(`home to demo result and workbook (${locale})${tag}`, async ({ page }) => {
+    await enablePaidReports(page);
     await page.goto(prefix || "/");
     await page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true }).click();
     await page.getByRole("button", { name: en ? /Understand performance changes/ : /성과 변화 확인/ }).click();

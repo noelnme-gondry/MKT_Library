@@ -8,6 +8,7 @@ import { CONNECTED_TOOLS } from "@/lib/toolConnections";
 import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
+import SubscriptionPurchasePrompt from "@/components/SubscriptionPurchasePrompt";
 // 워크스페이스 목적지 이름은 사이드바·헤더·푸터와 같은 SSOT에서 받는다.
 import { workspaceNavItem } from "@/lib/workspaceNav";
 
@@ -204,6 +205,7 @@ export default function GlobalModals({ locale = "ko" }) {
   };
 
   return <>
+    <SubscriptionPurchasePrompt />
     <LegacyPillGroupA11y />
     <div id="toast-container" className="toast-container" role="status" aria-live="polite"></div>
     <div id="cmdk" className="cmdk-overlay" hidden={!isCmdkOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setCmdkOpen(false); }}>
