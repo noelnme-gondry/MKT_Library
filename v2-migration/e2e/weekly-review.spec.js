@@ -130,11 +130,11 @@ async function dochiToWeekly(page, locale) {
   await page.goto(en ? "/en" : "/");
   await expect(page.locator(".header-decision-inbox__label")).toBeVisible();
   expect(await page.locator("#dochi-upload").evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById("questions")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-  expect(await page.locator("#dochi-upload").evaluate(node => getComputedStyle(node).position)).toBe("relative");
-  expect(await page.locator("#dochi-upload").evaluate(node => node.getBoundingClientRect().bottom <= document.getElementById("questions").getBoundingClientRect().top)).toBe(true);
+  await expect(page.locator("#dochi-upload")).not.toBeVisible();
+
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
-  await expect(hero.getByRole("link", { name: en ? /Continue weekly review/ : /주간 리뷰 이어가기/ })).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await hero.getByRole("link", { name: en ? /Start with Dochi/ : /도치로 첫 분석/ }).click();
+  await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
+  await hero.getByRole("link", { name: en ? /Start with my data/ : /내 데이터로 분석 시작/ }).click();
   const intake = page.locator('.dochi-home-assistant .csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });

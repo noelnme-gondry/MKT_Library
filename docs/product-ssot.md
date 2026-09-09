@@ -202,6 +202,20 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 제품이 제공하는 선택지는 많아도 **한 화면에서 사용자가 내려야 하는 결정은 하나**다. 첫 방문자에게 선명해야 하는 것은 'CSV를 올린다' 또는 '문제를 진단한다' 중 하나이며, 라이브러리·테마·설정·전체 도구 인덱스는 그 행동과 경쟁하지 않는다.
 
+### 5.1.1 홈 진입과 도구 탐색
+
+홈 소개는 유지하고, 주 행동은 **내 데이터로 분석 시작 / Start with my data**다. 도치 업로드는 이 행동 또는 `#dochi-upload` 직접 진입 때 펼친다. 접어도 진행 중인 작업은 유지한다. 보조 행동은 **데모로 먼저 보기 / Try a demo**이며, 저장된 결정이 있으면 상단에서 **주간 리뷰 이어가기 / Continue weekly review**로 연결한다.
+
+**직접 도구 찾기 / Find a tool**는 목적 세 개만 먼저 보여주고 선택한 목적의 도구 이름과 질문 한 줄을 펼친다. **전체 도구 보기 / View all tools**로 모든 발행 도구에 도달할 수 있다. 도구 목록은 `toolIndex`에서 파생한다.
+
+| 목적 | EN | 설명 KO / EN |
+|---|---|---|
+| 성과 변화 확인 | Understand performance changes | 비용·전환·유입의 변화 살펴보기 / Inspect changes in cost, conversions, and traffic |
+| 예산·효과 판단 | Plan budgets and evaluate effects | 예산 배분·실험·채널 기여도 검토하기 / Review allocation, experiments, and channel contribution |
+| 소재·스토어 개선 | Improve creative and app discovery | 소재·콘텐츠·앱 유입의 개선점 찾기 / Explore creative, content, and app discovery |
+
+신규 방문자에게 주간 리뷰는 **분석한 결정을 저장하고, 다음 주 결과를 검토하세요 / Save your decision and review next week’s results**라는 짧은 다음 단계 안내로 제공한다.
+
 ### 5.2 모든 도구 화면의 읽기 순서
 
 | 순서 | 요소 | 사용자가 얻는 답 |

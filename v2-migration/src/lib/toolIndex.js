@@ -68,6 +68,7 @@ export function toolIndexEntry(toolId, locale = "ko") {
 export function toolIndexByStage(locale = "ko") {
   return TOOL_JOURNEY.map((stage) => ({
     id: stage.id,
+    homePurpose: stage.homePurpose,
     // "01 · MONITOR" — 아래 워크플로 섹션이 이미 쓰는 표기다. 같은 언어를 쓰면
     // 두 섹션이 같은 축을 말한다는 게 읽힌다.
     label: stage.label?.[locale] || stage.label?.ko || "",

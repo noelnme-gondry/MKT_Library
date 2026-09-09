@@ -46,7 +46,7 @@ v2-migration/
 
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
-| `/` | home | LandingPage |
+| `/` | home | LandingPage → 접이식 도치 접수 + ds/HomeToolFinder (toolIndex·TOOL_JOURNEY.homePurpose 파생) |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* (9탭) |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |

@@ -10729,7 +10729,7 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .journey-progress a { color: var(--primary); font-weight: 650; text-underline-offset: 3px; }
 .decision-review__saved { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--operator-line-strong); border-radius: 10px; background: var(--work-surface); }
 /* 접수처는 본문 흐름에 둔다. 고정 패널용 동의 배너 숨김도 적용하지 않는다. */
-body .decision-console-landing > .dochi-home-assistant { display: grid; position: relative; inset: auto; width: min(100%, 780px); margin: 20px auto 36px; }
+body .decision-console-landing .dc-intake > .dochi-home-assistant { display: grid; position: relative; inset: auto; width: min(100%, 780px); margin: 20px auto 36px; }
 .sidebar-primary-nav__item--review { grid-column: 1 / -1; border: 1px solid var(--operator-rail-line); background: var(--operator-rail-raised); }
 .home-sidebar-nav__item--review { border: 1px solid var(--operator-line-strong); background: var(--work-surface); }
 .header-decision-inbox { border-color: var(--operator-line-strong); }
@@ -10823,5 +10823,25 @@ body .decision-console-landing > .dochi-home-assistant { display: grid; position
 @media (max-width: 720px) {
   .wr-verdict__big { font-size: 24px; }
   .wr-handover__box { grid-template-columns: 44px 1fr auto; }
+}
+
+/* 홈은 목적 세 개를 먼저 선택하고 도구 목록을 한 자리에서 펼친다. */
+.dc-intake { margin: 0 0 28px; border-bottom: 1px solid var(--dc-line); }
+.dc-intake:not([open]) { display: none; }
+.dc-intake > summary { cursor: pointer; min-height: 44px; padding: 12px 0; color: var(--dc-text-soft); }
+.dc-intake > summary:focus-visible { outline: 2px solid var(--dc-signal); outline-offset: 3px; }
+.home-tool-finder__purposes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.home-tool-finder__purposes button { display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 20px; min-height: 100px; color: var(--dc-text); background: var(--work-surface); border: 1px solid var(--dc-line); border-radius: 8px; cursor: pointer; }
+.home-tool-finder__purposes button[aria-expanded="true"] { border-color: var(--dc-signal); background: var(--bg-2); }
+.home-tool-finder__purposes strong { font-size: 16px; }
+.home-tool-finder__purposes span { font-size: 13px; line-height: 1.6; color: var(--dc-text-soft); }
+.home-tool-finder > button { margin-top: 12px; min-height: 44px; }
+.home-tool-finder__results { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; }
+.dc-questions .home-tool-finder__results .tool-index__link { display: flex; flex-direction: column; gap: 6px; padding: 16px 0; min-height: 44px; border-bottom: 1px solid var(--dc-line); background: none; border-radius: 0; }
+.home-tool-finder__results strong { font-size: 15px; color: var(--dc-text); }
+.home-tool-finder__results span { font-size: 13px; line-height: 1.6; color: var(--dc-text-soft); }
+@media (max-width: 768px) {
+  .home-tool-finder__purposes, .home-tool-finder__results { grid-template-columns: minmax(0,1fr); }
+  .home-tool-finder__purposes button { min-height: 80px; padding: 16px; }
 }
 } /* @layer app 끝 */
