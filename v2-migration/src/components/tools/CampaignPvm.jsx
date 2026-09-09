@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -1089,7 +1090,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const pvmManifest = buildResultManifest({
     toolId: C.uploaderToolId,
     mode: "pvm",
-    source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+    source: isDemoData(csvData) ? "demo" : "csv",
     inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
     filter: { lookback, weekBasis, metric },
     grain: "channel-campaign-creative",

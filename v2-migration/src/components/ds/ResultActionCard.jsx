@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -103,7 +104,7 @@ export default function ResultActionCard({
   const [shareCopied, setShareCopied] = useState(false);
   const inputSignature = computeAnalyzeSig(csvData);
   const resolvedAnalysisType = analysisType || productAnalysisType(toolId);
-  const dataSource = String(csvData?.fileName || "").startsWith("demo_")
+  const dataSource = isDemoData(csvData)
     ? "demo"
     : csvData?.importSource || (csvData?.raw?.length ? "csv" : "manual");
   const resultTelemetryKey = analysisResultEventKey(toolId, resolvedAnalysisType, inputSignature, analysisKey || "", locale);
@@ -155,11 +156,11 @@ export default function ResultActionCard({
       && !Array.isArray(decisionPrefill)
       && String(decisionPrefill.action || "").trim(),
   );
-  const canScheduleDecision = Boolean(decisionReview && toolId && (hasDecisionPrefill || (decisionPrefill == null && resultState === "ready" && headline)) && !String(csvData?.fileName || "").startsWith("demo_"));
+  const canScheduleDecision = Boolean(decisionReview && toolId && (hasDecisionPrefill || (decisionPrefill == null && resultState === "ready" && headline)) && !isDemoData(csvData));
   // 결과를 읽은 자리가 판단 기록 루프의 출발점이다. 레일처럼 별도 화면에만
   // 두면 결과→재방문 이음매가 끊기므로, 실제 데이터 결과에는 항상 주간 검토
   // 진입점을 함께 둔다. 데모는 가짜 판단을 남기지 않도록 제외한다.
-  const canOpenDecisionReview = Boolean(toolId && !String(csvData?.fileName || "").startsWith("demo_"));
+  const canOpenDecisionReview = Boolean(toolId && !isDemoData(csvData));
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {

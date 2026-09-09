@@ -187,3 +187,6 @@ v2-migration/
 - **공개 재현 사례**: `public/examples/`의 합성 CSV를 `lib/editorialExamples.test.js`에서 실제 자동 매핑·분석 경로로 검산한다. 고객 데이터는 포함하지 않는다.
 - **소재 검증 근거**: `utils/creativeFatigueQuality.js`는 기존 피로 곡선을 바꾸지 않고 노출/기간 부족을 보류한다. 콘텐츠의 반복 단위 선언은 `ContentElementAnalyzer`에서 행 무작위 RF 패널을 내리며, 단위별 교차검증을 수행한 것으로 표시하지 않는다.
 - **데이터가 엔진에 안 들어감 → `getMappedRows`(dashboardAggregator.js) + 표준키/별칭 확인**.
+
+## Project-scoped local workspace (2026-09-09)
+`lib/project/repository.js` owns `meta[project:<id>]` (settings, snapshots, decisions, saved report, branding). `project/storeActions.js` keeps only the active project's decisions and CSV slices in Zustand. Default project retains legacy dataset keys; other projects use `<id>::<group>`. Legacy settings/snapshots migrate atomically without a DB version change. `backup.js` exports/validates/restores complete local projects; `projectLimits.js` owns byte limits. `dataSeries.js` describes upload period/schema within the selected project; it does not infer client identity or append rows. Subscription interest and optional key validation live in `lib/subscription/entitlement.js`; key hashes never enter project backups. Preview routes `/projects` and `/subscription` have KO/EN shared-shell equivalents.

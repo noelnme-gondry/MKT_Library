@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ANALYSIS_CATALOG, analysisCatalogEntry } from "@/lib/assistant/analysisCatalog";
@@ -511,7 +512,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
   const hasDetails = result.verdict.caveats?.length > 0;
   const resultRef = useRef(null);
   const eventKey = productEventKey("dochi_workspace", result.toolId, result.inputSignature, result.mappingSignature, locale);
-  const source = csvData?.fileName?.startsWith("demo_") ? "demo" : "csv";
+  const source = isDemoData(csvData) ? "demo" : "csv";
   useEffect(() => {
     if (!resultRef.current || typeof IntersectionObserver !== "function") return;
     const observer = new IntersectionObserver(entries => {
@@ -759,7 +760,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     const execute = () => {
       if (cancelled) return;
       const eventKey = productEventKey("dochi_workspace", activeQueueItem.toolId, queueSignature, locale);
-      const event = { tool_id: activeQueueItem.toolId, source: csvData.fileName?.startsWith("demo_") ? "demo" : "csv", placement: "dochi_workspace", analysis_type: productAnalysisType(activeQueueItem.toolId), locale };
+      const event = { tool_id: activeQueueItem.toolId, source: isDemoData(csvData) ? "demo" : "csv", placement: "dochi_workspace", analysis_type: productAnalysisType(activeQueueItem.toolId), locale };
       trackProductEventOnce("analysis_started", eventKey, event);
       const efficiencyAdapter = efficiencyAdapterFor(activeQueueItem.toolId);
       const optimizationAdapter = optimizationAdapterFor(activeQueueItem.toolId);

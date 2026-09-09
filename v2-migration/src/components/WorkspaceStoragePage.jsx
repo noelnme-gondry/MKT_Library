@@ -24,7 +24,7 @@ const COPY = {
     resume: "이어 분석하기",
     resuming: "불러오는 중…",
     removeOneConfirm: "이 그룹의 저장 파일을 지울까요? 현재 화면의 데이터도 함께 비워집니다.",
-    removeAllConfirm: "이 기기에 저장된 업로드 파일을 모두 지울까요? 현재 화면의 데이터도 함께 비워집니다.",
+    removeAllConfirm: "모든 프로젝트의 저장 파일·결정·집계·보고서·로고를 지울까요? 현재 화면의 데이터도 함께 비워집니다. 필요한 프로젝트는 먼저 백업해 주세요.",
     rows: (count) => `${count.toLocaleString()}행`,
     lastUsed: "마지막 사용",
     remaining: (days) => `남은 기간 ${days}일`,
@@ -46,7 +46,7 @@ const COPY = {
     resume: "Continue analysis",
     resuming: "Restoring…",
     removeOneConfirm: "Remove this saved dataset? The data currently open for this group will also be cleared.",
-    removeAllConfirm: "Remove every saved upload on this device? The data currently open will also be cleared.",
+    removeAllConfirm: "Delete stored files, decisions, aggregates, reports and logos for all projects? The current data will also be cleared. Export any needed project backups first.",
     rows: (count) => `${count.toLocaleString()} rows`,
     lastUsed: "Last used",
     remaining: (days) => `${days} days left`,
@@ -143,6 +143,6 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
       </article>)}
     </section>
     {datasets.length > 0 && <button type="button" className="btn ghost workspace-storage-page__clear" onClick={removeAll}>{T.removeAll}</button>}
-    <p className="workspace-storage-page__privacy">{T.privacy} <Link href={locale === "en" ? "/en/privacy" : "/privacy"}>{locale === "en" ? "Privacy Policy" : "개인정보 처리방침"}</Link></p>
+    <p className="workspace-storage-page__privacy">{T.privacy} <Link className="btn" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Storage limits and subscription guide" : "저장 한도·구독 안내"}</Link> <Link href={locale === "en" ? "/en/privacy" : "/privacy"}>{locale === "en" ? "Privacy Policy" : "개인정보 처리방침"}</Link></p>
   </div>;
 }

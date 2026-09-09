@@ -1,3 +1,4 @@
+import { readProject, updateProject } from "@/lib/project/repository";
 /**
  * 주간 스냅샷 보관함.
  *
@@ -100,7 +101,8 @@ function retainSnapshots(snapshots) {
 }
 
 /** 저장된 스냅샷 목록. 저장소를 못 쓰면 빈 배열 — 리뷰를 막지 않는다. */
-export async function listStoredSnapshots() {
+export async function listStoredSnapshots(projectId = null) {
+  if (projectId) { try { return retainSnapshots((await readProject(projectId))?.snapshots); } catch { return []; } }
   try {
     return await withMetaStore("readwrite", async (store) => {
       const record = await requestResult(store.get(SNAPSHOT_META_KEY));
@@ -114,7 +116,15 @@ export async function listStoredSnapshots() {
 }
 
 /** 스냅샷 한 장을 보관한다. 성공 여부를 돌려주되 실패해도 던지지 않는다. */
-export async function saveStoredSnapshot(snapshot, { shouldSave = () => true } = {}) {
+export async function saveStoredSnapshot(snapshot, { shouldSave = () => true, projectId = null } = {}) {
+  if (projectId) {
+    if (!toStoredSnapshot(snapshot)) return { ok: false, reason: "not_storable" };
+    try {
+      if (!shouldSave()) return { ok: false, reason: "storage_disabled" };
+      const saved = await updateProject(projectId, existing => ({ snapshots: mergeSnapshots(retainSnapshots(existing?.snapshots), { ...snapshot, createdAt: new Date().toISOString() }) }), shouldSave);
+      return saved ? { ok: true, count: saved.snapshots.length } : { ok: false, reason: "storage_disabled" };
+    } catch { return { ok: false, reason: "storage_unavailable" }; }
+  }
   const stored = toStoredSnapshot(snapshot);
   if (!stored) return { ok: false, reason: "not_storable" };
   try {
@@ -140,7 +150,8 @@ export async function clearStoredSnapshots() {
   }
 }
 
-export async function readReviewProject() {
+export async function readReviewProject(projectId = null) {
+  if (projectId) { try { const project = await readProject(projectId); return project?.settings || (project ? { name: project.name, metric: "cpa", basis: "actions", currency: "KRW", target: "", period: null } : null); } catch { return null; } }
   try {
     return await withMetaStore("readwrite", async (store) => {
       const record = await requestResult(store.get(PROJECT_META_KEY));
@@ -159,7 +170,7 @@ export function normalizePeriodPreference(value) {
   return Object.fromEntries(fields.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(value[key] || "")).map((key) => [key, value[key]]));
 }
 
-export async function saveReviewProject(project, { shouldSave = () => true } = {}) {
+export async function saveReviewProject(project, { shouldSave = () => true, projectId = null } = {}) {
   // 원본이나 임의 필드를 저장하지 않는다. 매핑은 기존 업로더의 recipe가 소유한다.
   const safe = {
     period: normalizePeriodPreference(project.period),
@@ -169,6 +180,13 @@ export async function saveReviewProject(project, { shouldSave = () => true } = {
     currency: project.currency === "USD" ? "USD" : "KRW",
     target: project.target === "" ? "" : String(project.target || "").slice(0, 30),
   };
+  if (projectId) {
+    try {
+      if (!shouldSave()) return { ok: false };
+      const saved = await updateProject(projectId, { name: safe.name, settings: safe }, shouldSave);
+      return { ok: Boolean(saved) };
+    } catch { return { ok: false }; }
+  }
   try {
     return await withMetaStore("readwrite", async (store) => {
       if (!shouldSave()) return { ok: false };

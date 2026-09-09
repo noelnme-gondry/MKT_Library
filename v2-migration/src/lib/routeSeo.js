@@ -1,4 +1,12 @@
 export const ROUTE_SEO = {
+  projects: {
+    ko: { title: "프로젝트 보관함", description: "이 브라우저에 저장한 프로젝트별 데이터·결정·주간 보고서를 열고 백업하거나 복원합니다." },
+    en: { title: "Project Library", description: "Open, back up and restore project data, decisions and weekly reports stored in this browser." },
+  },
+  subscription: {
+    ko: { title: "주간 리뷰 구독·저장 안내", description: "무료 분석 범위, 월 5,900원 구독 예정 기능과 브라우저 저장 용량을 확인합니다. 현재는 결제 없이 관심을 확인합니다." },
+    en: { title: "Weekly Review Subscription and Storage", description: "Explore free analysis, planned KRW 5,900 monthly features and browser storage limits. Register interest without making a payment." },
+  },
   "guide-index": {
     ko: {
       title: "퍼포먼스 마케팅 실무 가이드 | UAC·Meta·MMP",

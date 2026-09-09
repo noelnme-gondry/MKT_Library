@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useMemo } from "react";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
@@ -35,7 +36,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
   const analyzed = useAppStore((state) => state.isGroupAnalyzed("5-25"));
   const result = useMemo(() => analyzed ? analyze(getMappedRows(csvData)) : null, [analyzed, csvData]);
   const verdict = result?.vif?.verdict;
-  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
+  const isDemo = isDemoData(csvData);
   const copy = verdict === "ok" ? tr("현재 지출 패턴에서는 심한 중복 움직임이 보이지 않습니다. 그래도 연관은 인과가 아니므로 MMM 결과는 실험·홀드아웃과 함께 해석하세요.", "The spend pattern has no severe overlap signal. Correlation is still not causation; interpret MMM with experiments or holdouts.") : verdict === "warn" || verdict === "severe" ? tr("채널별 기여도를 숫자로 나누기 전에, 같이 움직인 채널을 분리해 변동시킨 기간을 확보하세요. 이 상태의 MMM 계수는 배분 근거로 쓰기 어렵습니다.", "Before dividing contribution by channel, create periods where the paired channels move independently. MMM coefficients in this state are weak evidence for allocation.") : verdict === "not_applicable" ? tr("채널은 있지만 시간에 따라 지출이 변한 채널이 2개 미만이라 VIF를 계산할 수 없습니다. 최소 2개 채널의 지출이 서로 다르게 움직인 기간을 추가하세요.", "Channels are present, but fewer than two vary over time, so VIF is not computable. Add periods where at least two channels move independently.") : tr("채널 수와 공통 기간이 부족합니다. 최소 2개 채널, 채널 수보다 3개 이상 많은 날짜가 필요합니다.", "There are not enough channels or common periods. Use at least two channels and at least three more dates than channels.");
   // The engine returns null both for non-identification and an R² at its boundary.
   // Preserve those rows as uncomputed; null is not proof of mathematical infinity.

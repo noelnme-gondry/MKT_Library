@@ -8,6 +8,7 @@
 // 통계적 정직성(§8): 관측 속성 회귀는 교락이 심함 → "연관"이지 "인과" 아님.
 // OLS가 산출하지 않는 값("확률 85%" 등)은 만들지 않는다. 유의성은 HC3 robust
 // two-sided p에 BH 다중검정 보정을 적용한다.
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useCallback, useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -273,7 +274,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const webRAutoSignatureRef = useRef(null);
 
   const hasData = csvData?.raw?.length > 0;
-  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+  const isDemo = isDemoData(csvData);
 
   const [demoPending, setDemoPending] = useState(false);
   const [outcome, setOutcome] = useState(null);

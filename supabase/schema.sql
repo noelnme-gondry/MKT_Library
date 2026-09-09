@@ -82,6 +82,7 @@ END;
 $$;
 
 -- 함수 실행 권한을 anonymous 역할에 부여
+REVOKE EXECUTE ON FUNCTION validate_access_key(TEXT, TEXT) FROM PUBLIC, authenticated;
 GRANT EXECUTE ON FUNCTION validate_access_key(TEXT, TEXT) TO anon;
 
 -- ============================================================

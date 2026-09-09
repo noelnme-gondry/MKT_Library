@@ -1,6 +1,12 @@
+import { serializeProject } from "@/lib/project/serializeProject";
+import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
+import { decisionDataOrigin } from "@/lib/dataOrigin";
+import { readStoredTable } from "@/lib/workspace-storage/readTable";
+import { projectStoreActions } from "@/lib/project/storeActions";
+import { initializeProjects as initializeProjectRecords, updateProject, readProject } from "@/lib/project/repository";
+import { describeDataSeries, compareDataSeries } from "@/lib/project/dataSeries";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import Papa from "papaparse";
 import { mergeEvents as mergeStoreEvents } from "@/utils/storeEvents";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 import { TOOL_GROUP, groupForRoute, buildGroupMap } from "@/lib/toolGroups";
@@ -89,41 +95,8 @@ function toolIdForGroup(group) {
   return Object.keys(TOOL_GROUP).find((id) => TOOL_GROUP[id] === group) || "";
 }
 
-function parseWorkspaceCsv(text, storedHeaders = []) {
-  return new Promise((resolve, reject) => {
-    Papa.parse(text, {
-      header: true,
-      skipEmptyLines: "greedy",
-      worker: typeof Worker !== "undefined",
-      complete: (result) => {
-        if (result.errors?.some((error) => error.type === "Quotes" || error.code === "TooManyFields")) {
-          reject(new Error("WORKSPACE_DATASET_PARSE_FAILED"));
-          return;
-        }
-        const parsedHeaders = result.meta?.fields || [];
-        // 첫 업로드에서 확정된 헤더(공백 trim·인코딩 복원 포함)를 우선한다. 파일을
-        // 다시 읽을 때 Papa의 원문 헤더만 쓰면 저장해둔 mapping key와 달라질 수 있다.
-        const headers = storedHeaders.length === parsedHeaders.length ? storedHeaders : parsedHeaders;
-        const raw = (Array.isArray(result.data) ? result.data : []).map((row) => Object.fromEntries(headers.map((header, index) => [header, row?.[parsedHeaders[index]]])));
-        resolve({ raw, headers });
-      },
-      error: reject,
-    });
-  });
-}
-
 async function restoreWorkspaceSlice(entry) {
-  if (!entry?.sourceBlob) throw new Error("WORKSPACE_DATASET_MISSING_SOURCE");
-  let table;
-  if (entry.sourceKind === "xlsx") {
-    const { parseXlsxFile } = await import("@/lib/data-import/xlsxWorkerClient");
-    const sheets = await parseXlsxFile(entry.sourceBlob);
-    const sheet = sheets.find((item) => item.name === entry.worksheetName) || sheets[0];
-    table = { raw: sheet?.raw || [], headers: sheet?.headers || [] };
-  } else {
-    table = await parseWorkspaceCsv(await entry.sourceBlob.text(), entry.headers || []);
-  }
-  if (!table.headers.length || !table.raw.length) throw new Error("WORKSPACE_DATASET_EMPTY");
+  const table = await readStoredTable(entry);
   const mapping = entry.mapping && typeof entry.mapping === "object" ? entry.mapping : {};
   const mappingBindingsV2 = Array.isArray(entry.mappingBindingsV2) ? entry.mappingBindingsV2 : [];
   const toolId = toolIdForGroup(entry.group);
@@ -133,8 +106,9 @@ async function restoreWorkspaceSlice(entry) {
     mapping,
     fileName: entry.fileName,
     importSource: "device_storage",
+    currency: entry.series?.currency || undefined,
     worksheetName: entry.worksheetName || null,
-    workspaceSource: { blob: entry.sourceBlob, kind: entry.sourceKind || "csv", originalFileName: entry.fileName },
+    workspaceSource: { blob: entry.sourceBlob, kind: entry.sourceKind || "csv", transform: entry.transform, originalFileName: entry.fileName },
     canonicalData: buildCanonicalDataset({ raw: table.raw, headers: table.headers, mapping }),
     mappedRows: buildLegacyRows({ raw: table.raw, legacyMapping: mapping, semanticBindings: mappingBindingsV2, toolId }),
     mappingBindingsV2,
@@ -539,23 +513,11 @@ export function displayItemNumberShort(itemId) {
 // 원본 CSV 행이 아니므로 §2.2(원본 미저장)에 걸리지 않지만, 무한정 쌓이지 않도록
 // 개수·길이를 제한해 저장한다. 저장하지 않으면 새로고침마다 사라져 "왜 이랬는지"를
 // 기록하는 유일한 장치가 매번 증발한다(기능은 이미 완성돼 있는데 배선만 빠져 있었다).
-const MAX_PERSISTED_EVENT_MARKERS = 200;
-export const sanitizeEventMarkers = (markers) => {
-  if (!Array.isArray(markers)) return [];
-  return markers
-    .filter((marker) => marker && typeof marker === "object")
-    .slice(0, MAX_PERSISTED_EVENT_MARKERS)
-    .map((marker) => ({
-      id: String(marker.id ?? "").slice(0, 40),
-      date: String(marker.date ?? "").slice(0, 40),
-      label: String(marker.label ?? "").slice(0, 120),
-      type: ["listing", "creative", "price", "campaign", "release", "external", "other"].includes(marker.type) ? marker.type : "other",
-    }))
-    .filter((marker) => marker.date || marker.label);
-};
+export { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
 
 export const persistPartialize = (state) => {
   const persisted = {
+    activeProjectId: state.activeProjectId,
     viewConfig: state.viewConfig,
     customMetrics: state.customMetrics,
     customCharts: state.customCharts,
@@ -715,13 +677,15 @@ export const useAppStore = create(persist((set, get) => ({
       // 별도 IndexedDB에 있다. 둘을 같은 선택에서 함께 지워야 "저장 끄기"가
       // 실제로 사생활 통제가 된다. 현재 세션 기록은 의도적으로 남긴다.
       clearWorkspaceDatasets().catch(() => {});
-      set({ workspaceDatasetSummaries: [], workspaceStorageError: null });
+      set({ workspaceDatasetSummaries: [], projects: [], eventMarkers: [], workspaceStorageError: null });
     }
     return true;
   },
   addDecisionRecord: (draft) => set((state) => {
     const now = new Date().toISOString();
-    const normalized = sanitizeDecisionReviewRecord(draft, draft?.toolId);
+    const data = state.csvGroups[groupForRoute(draft?.toolId)] || state.csvData;
+    const dataOrigin = decisionDataOrigin(data);
+    const normalized = sanitizeDecisionReviewRecord({ ...draft, dataOrigin }, draft?.toolId);
     if (!normalized) return {};
     const isUniqueId = normalized.id && !state.decisionRecords.some((record) => record.id === normalized.id);
     const id = isUniqueId ? normalized.id : nextDecisionRecordId(state.decisionRecords);
@@ -830,6 +794,16 @@ export const useAppStore = create(persist((set, get) => ({
       notes: text ? [{ id: "weekly-note", text: String(text) }] : [],
     },
   })),
+  ...projectStoreActions(set, get, () => ({
+    csvGroups: buildGroupMap(EMPTY_SLICE), csvData: EMPTY_SLICE(),
+    analyzedByGroup: buildGroupMap(() => null), csvClearedByGroup: buildGroupMap(() => true),
+    dashboardFilterGroups: buildGroupMap(EMPTY_DASHBOARD_FILTER), dashboardFilter: EMPTY_DASHBOARD_FILTER(),
+    findingsByGroup: buildGroupMap(() => []), analysisHandoff: null, dochiAnalysisSession: null,
+    responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
+    reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] },
+    workspaceDatasetSummaries: [], workspaceRestoreStatus: "idle", pendingProjectConfig: null,
+    storeEventsManual: [], eventMarkers: [], viewConfig: {}, customMetrics: {}, customCharts: {},
+  })),
   pendingProjectConfig: null,
   setPendingProjectConfig: (project) => set({ pendingProjectConfig: project }),
   applyProjectConfig: (project, compatibleGroups = []) => set((state) => {
@@ -899,9 +873,10 @@ export const useAppStore = create(persist((set, get) => ({
   workspaceStorageError: null,
   workspaceExpiredCount: 0,
   refreshWorkspaceDatasets: async () => {
+    const projectId = get().activeProjectId;
     try {
-      const datasets = await listWorkspaceDatasets();
-      set({ workspaceDatasetSummaries: datasets, workspaceStorageError: null });
+      const datasets = await listWorkspaceDatasets(projectId);
+      if (get().activeProjectId === projectId) set({ workspaceDatasetSummaries: datasets, workspaceStorageError: null });
       return datasets;
     } catch (error) {
       set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
@@ -910,15 +885,17 @@ export const useAppStore = create(persist((set, get) => ({
   },
   restoreWorkspaceDatasets: async () => {
     if (get().decisionPersistenceEnabled !== true) return [];
+    const projectId = get().activeProjectId;
     set({ workspaceRestoreStatus: "loading", workspaceStorageError: null });
     try {
-      const sweep = await sweepExpiredWorkspaceDatasets();
+      const sweep = await sweepExpiredWorkspaceDatasets(Date.now(), projectId);
       const summaries = sweep.keep;
       const restored = await Promise.all(summaries.map(async (summary) => {
-        const entry = await readWorkspaceDataset(summary.group);
+        const entry = await readWorkspaceDataset(summary.group, projectId);
         return entry ? [summary.group, await restoreWorkspaceSlice(entry)] : null;
       }));
       set((state) => {
+        if (state.activeProjectId !== projectId || !state.decisionPersistenceEnabled) return {};
         const csvGroups = { ...state.csvGroups };
         restored.filter(Boolean).forEach(([group, slice]) => {
           // 현재 세션에서 사용자가 이미 올린 파일을 늦은 복원이 덮지 않는다.
@@ -932,6 +909,8 @@ export const useAppStore = create(persist((set, get) => ({
           workspaceExpiredCount: sweep.expired.length,
         };
       });
+      const project = await readProject(projectId);
+      if (get().activeProjectId === projectId) await get().restoreProjectConfiguration(project);
       return summaries;
     } catch (error) {
       set({ workspaceRestoreStatus: "failed", workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
@@ -939,9 +918,11 @@ export const useAppStore = create(persist((set, get) => ({
     }
   },
   removeWorkspaceDataset: async (group) => {
+    const projectId = get().activeProjectId;
     try {
-      await removeWorkspaceDataset(group);
+      await removeWorkspaceDataset(group, projectId);
       set((state) => {
+        if (state.activeProjectId !== projectId) return {};
         const isActive = state.activeDataGroup === group;
         return {
           workspaceDatasetSummaries: state.workspaceDatasetSummaries.filter((entry) => entry.group !== group),
@@ -961,6 +942,7 @@ export const useAppStore = create(persist((set, get) => ({
     try {
       await clearWorkspaceDatasets();
       set({
+        projects: [], decisionRecords: [], eventMarkers: [], viewConfig: {}, customMetrics: {}, customCharts: {},
         workspaceDatasetSummaries: [],
         csvGroups: buildGroupMap(EMPTY_SLICE),
         csvData: EMPTY_SLICE(),
@@ -986,7 +968,9 @@ export const useAppStore = create(persist((set, get) => ({
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
   // A changed signature keeps the last confirmed signature so the UI can say
   // "stale" rather than silently falling back to the pre-analysis state.
-  setCsvData: (data) => {
+  setCsvData: (data, expectedProjectId = get().activeProjectId) => {
+    if (expectedProjectId !== get().activeProjectId || get().projectSwitching) return;
+    const projectId = expectedProjectId;
     let group = "efficiency";
     set((state) => {
     const g = groupForRoute(state.currentRouteId);
@@ -1013,21 +997,29 @@ export const useAppStore = create(persist((set, get) => ({
     };
     });
     const source = data?.workspaceSource;
-    if (source?.blob instanceof Blob && data?.raw?.length && !String(data.fileName || "").startsWith("demo_") && get().decisionPersistenceEnabled === true) {
+    if (source?.blob instanceof Blob && data?.raw?.length && data.importSource !== "demo" && get().decisionPersistenceEnabled === true) {
+      const series = describeDataSeries(data, group);
+      const previous = get().workspaceDatasetSummaries.find(entry => entry.group === group)?.series;
+      set(state => {
+        const slice = { ...state.csvData, dataContinuity: compareDataSeries(previous, series), dataSeries: series };
+        return { csvData: slice, csvGroups: { ...state.csvGroups, [group]: slice } };
+      });
       saveWorkspaceDataset({
+        projectId, series, shouldSave: () => get().decisionPersistenceEnabled && !get().projectSwitching && get().activeProjectId === projectId && get().csvGroups[group]?.raw === data.raw,
         group,
         fileName: data.fileName,
         sourceBlob: source.blob,
         sourceKind: source.kind || "csv",
+        transform: source.transform || null,
         headers: data.headers,
         rowCount: data.raw.length,
         mapping: data.mapping,
         mappingBindingsV2: data.mappingBindingsV2,
         worksheetName: data.worksheetName,
-      }).then((saved) => set((state) => ({
+      }).then((saved) => { get().refreshProjects(); set((state) => state.activeProjectId !== projectId ? {} : ({
         workspaceDatasetSummaries: [saved, ...state.workspaceDatasetSummaries.filter((entry) => entry.group !== saved.group)],
         workspaceStorageError: null,
-      }))).catch((error) => set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }));
+      })); }).catch((error) => set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }));
     }
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
@@ -1236,3 +1228,19 @@ export const useAppStore = create(persist((set, get) => ({
   partialize: persistPartialize,
   migrate: persistMigrate,
 }));
+
+// 소유한 상태 참조가 바뀔 때만 기록한다. CSV 원본은 serializeProject 대상이 아니다.
+const PROJECT_STATE_FIELDS = ["decisionRecords", "eventMarkers", "viewConfig", "customMetrics", "customCharts", "dashboardFilterGroups", "csvGroups"];
+useAppStore.subscribe((state, previous) => {
+  if (!state.projectsReady || !state.decisionPersistenceEnabled || state.projectSwitching || previous.workspaceRestoreStatus === "loading" || state.activeProjectId !== previous.activeProjectId || PROJECT_STATE_FIELDS.every(key => state[key] === previous[key])) return;
+  const shouldSave = () => {
+    const current = useAppStore.getState();
+    return current.decisionPersistenceEnabled && !current.projectSwitching && current.activeProjectId === state.activeProjectId && PROJECT_STATE_FIELDS.every(key => current[key] === state[key]);
+  };
+  const persist = async () => {
+    if (state.decisionRecords.length > previous.decisionRecords.length && !state.projects.length) await initializeProjectRecords(state.decisionRecords, shouldSave);
+    const configuration = await serializeProject(state);
+    await updateProject(state.activeProjectId, { decisions: sanitizeDecisionReviewRecords(state.decisionRecords), eventMarkers: sanitizeEventMarkers(state.eventMarkers), configuration }, shouldSave);
+  };
+  persist().catch(() => useAppStore.setState({ projectError: "storage_unavailable" }));
+});

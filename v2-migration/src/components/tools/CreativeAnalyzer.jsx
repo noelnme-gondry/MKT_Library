@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
 import PillGroup from "@/components/ds/PillGroup";
@@ -981,7 +982,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               manifest={buildResultManifest({
                 toolId: domain === "content" ? "9-6" : "5-6",
                 mode: domain,
-                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                source: isDemoData(csvData) ? "demo" : "csv",
                 inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                 mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
                 filter: { metric, selectedCell: selectedCell ? `${selectedCell.row}|${selectedCell.col}` : "all" },

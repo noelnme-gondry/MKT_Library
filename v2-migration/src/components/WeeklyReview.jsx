@@ -1,5 +1,6 @@
 "use client";
 
+import { canTrackDecisionReview } from "@/lib/dataOrigin";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
@@ -416,7 +417,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
       status: "reviewed",
       reviewedAt: new Date().toISOString(),
     });
-    trackProductEvent("decision_review_completed", {
+    if (canTrackDecisionReview(record, useAppStore.getState().csvGroups[groupForRoute(record.toolId)], source === "comparable_data")) trackProductEvent("decision_review_completed", {
       tool_id: record.toolId,
       source,
       result_state: "reviewed",

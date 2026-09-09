@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData, canTrackDecisionReview } from "@/lib/dataOrigin";
 import { mmmDecisionQuality, mmmDecisionQualityMessage } from "@/lib/analysis-results/mmmDecisionQuality";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
@@ -245,7 +246,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const sourceCurrency = selectedSourceCurrency || displayCurrency;
   const convAmt = (v) => selectedSourceCurrency ? convertCurrency(v, sourceCurrency, displayCurrency) : Number(v);
   const hasData = csvData?.raw?.length > 0;
-  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+  const isDemo = isDemoData(csvData);
   const setMmmSourceCurrency = (currency) => {
     setCsvData({ ...csvData, currency });
     setDisplayCurrency(currency);
@@ -2700,7 +2701,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       result_state: "reviewed",
       locale,
     });
-    trackProductEvent("decision_review_completed", {
+    if (canTrackDecisionReview(useAppStore.getState().decisionRecords.find(record => record.id === match.recordId), useAppStore.getState().csvGroups.response, true)) trackProductEvent("decision_review_completed", {
       tool_id: "5-18",
       source: "forecast_review",
       result_state: "reviewed",

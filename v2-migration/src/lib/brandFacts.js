@@ -37,8 +37,8 @@ export const BRAND = {
 export const BRAND_FACTS = [
   {
     id: "price",
-    ko: { claim: "모든 분석 도구가 무료입니다.", detail: "유료 등급이나 기능 제한이 없고 결제 단계도 없습니다." },
-    en: { claim: "Every analysis tool is free.", detail: "There is no paid tier, feature gate, or checkout step." },
+    ko: { claim: "모든 분석 도구가 무료입니다.", detail: "분석 도구·프로젝트 1개·단일 보고서는 무료입니다. 월 5,900원 확장 구독은 관심 확인 단계이며 현재 결제를 받지 않습니다." },
+    en: { claim: "Every analysis tool is free.", detail: "Analysis tools, one project and single reports are free. A KRW 5,900/month expansion is at the interest-validation stage; no payment is collected." },
   },
   {
     id: "account",

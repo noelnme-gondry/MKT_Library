@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useMemo, useState } from "react";
 import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
@@ -44,7 +45,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   const raises = recommendations.filter((row) => row.action.code === "raise");
   const lowers = recommendations.filter((row) => row.action.code === "lower");
   const hasData = Boolean(csvData?.raw?.length);
-  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
+  const isDemo = isDemoData(csvData);
   const set = (key) => (event) => setSettings((current) => ({ ...current, [key]: event.target.value }));
 
   const downloadActions = () => {

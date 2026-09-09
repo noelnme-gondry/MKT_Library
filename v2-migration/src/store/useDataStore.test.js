@@ -50,7 +50,7 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
     // eventMarkers는 사용자가 직접 입력한 날짜 + 짧은 라벨이라 원본 CSV가 아니다(§2.2 비대상).
     // 저장하지 않으면 새로고침마다 사라져 "왜 이랬는지" 기록 장치가 매번 증발했다.
-    expect(Object.keys(persisted).sort()).toEqual(["analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "decisionPersistencePreferenceSet", "eventMarkers", "viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["activeProjectId", "analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "decisionPersistencePreferenceSet", "eventMarkers", "viewConfig"]);
     expect(persisted.eventMarkers).toEqual([{ id: "m1", date: "2026-01-05", label: "브랜드 캠페인 시작", type: "other" }]);
     expect(persisted.analystMode).toBe(false);
     expect(persisted.decisionPersistenceEnabled).toBe(false);
