@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ProjectStorageSummary from "./ProjectStorageSummary";
+import SellerInformation from "./SellerInformation";
+import SubscriptionCheckout from "./SubscriptionCheckout";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 import { SUBSCRIPTION, validateLicense, hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -11,7 +13,6 @@ export default function SubscriptionPage({ locale = "ko" }) {
   const reason = useAppStore(state => state.upgradeReason);
   const entitlement = useAppStore(state => state.entitlement);
   const setEntitlement = useAppStore(state => state.setEntitlement);
-  const [interested, setInterested] = useState(false);
   const [key, setKey] = useState("");
   const [status, setStatus] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -27,10 +28,6 @@ export default function SubscriptionPage({ locale = "ko" }) {
       useAppStore.setState({ upgradeReason: null });
     }
   }, [locale, reason]);
-  const interest = () => {
-    if (!interested) trackProductEvent("subscription_interest_clicked", { locale, source: "subscription_page", state: "monthly_5900" });
-    setInterested(true);
-  };
   const activate = async () => {
     setBusy(true);
     try {
@@ -47,10 +44,15 @@ export default function SubscriptionPage({ locale = "ko" }) {
   const messages = en ? { valid: "License verified.", invalid: "This key is unavailable, expired, or revoked.", offline: "Could not reach license verification. An eligible cached license remains usable for its grace period.", not_configured: "License activation is not available yet. No payment is being collected." } : { valid: "키를 확인했습니다.", invalid: "사용할 수 없거나 만료·회수된 키입니다.", offline: "키 검증에 연결하지 못했습니다. 유효한 캐시가 있으면 유예기간 동안 계속 사용할 수 있습니다.", not_configured: "키 등록은 아직 준비 중입니다. 현재 결제를 받지 않습니다." };
   return <div className="projects-page subscription-page">
     <header><h1>{en ? "Weekly Review subscription" : "주간 리뷰 구독 안내"}</h1><p>{en ? "Keep weekly reviews for multiple projects together, prepare batch reports, and add your branding. Review the plan, storage limits, and refund policy below." : "여러 프로젝트의 주간 리뷰를 모아 관리하고, 일괄 보고서와 브랜드 맞춤 보고서를 만드세요. 이용 요금·저장 한도·환불 기준을 아래에서 확인할 수 있습니다."}</p><a href="#refund-policy">{en ? "Read the refund policy" : "환불정책 보기"}</a></header>
-    <section><h2>{en ? "What stays free" : "무료로 계속 사용하는 것"}</h2><p>{en ? "All analysis tools, one project, and single-project weekly reports. Existing projects remain accessible and exportable if your license expires, subject to the same device retention policy." : "모든 분석 도구, 프로젝트 1개, 단일 프로젝트 주간 보고서는 무료입니다. 키가 만료돼도 기존 프로젝트 열기·내보내기는 계속 가능하며, 기기 보관 정책은 동일하게 적용됩니다."}</p></section>
-    <section><h2>{en ? "One-month pass · KRW 5,900" : "1개월 이용권 · 5,900원"}</h2><p>{en ? "More projects, batch reports, and your report logo, company name, and footer. No project-count cap with a valid key; browser and app storage limits still apply." : "여러 프로젝트 관리, 일괄 보고서, 보고서 로고·회사명·푸터를 제공합니다. 유효한 키가 있으면 프로젝트 개수 제한은 없지만 브라우저·앱 저장 한도는 적용됩니다."}</p><p>{en ? "A one-time purchase for one month, with no automatic renewal. The start and end dates are specified at purchase." : "1개월 단위로 이용하는 상품이며 자동 갱신되지 않습니다. 이용 시작일과 종료일은 구매 시 안내하는 기간을 기준으로 합니다."}</p>
-      <button className="btn primary" type="button" onClick={interest} disabled={interested}>{interested ? (en ? "Interest noted on this screen" : "이 화면에서 관심 표시 완료") : (en ? "I'm interested at KRW 5,900/month" : "월 5,900원 구독에 관심 있어요")}</button>
-      {interested && <p role="status">{en ? "Thank you. This is not a reservation or payment. Analytics records an interest event only when allowed. To discuss a pilot, contact us; CSV files are not needed." : "감사합니다. 예약이나 결제가 아닙니다. 허용된 경우에만 관심 이벤트를 기록합니다. 파일럿 참여를 논의하려면 문의해 주세요. CSV 파일을 보낼 필요는 없습니다."} <Link href={en ? "/en/contact" : "/contact"}>{en ? "Pilot enquiry" : "파일럿 문의"}</Link></p>}
+    <section><h2>{en ? "Analyze for free. Take a report to your next meeting." : "분석은 무료로, 보고서는 다음 회의까지."}</h2><p>{en ? "All analysis tools and one project remain free. Reading saved decisions and exporting your project backup remain available after a pass expires. Analysis report downloads require an active pass." : "모든 분석 도구와 프로젝트 1개는 무료입니다. 저장한 결정 읽기와 프로젝트 백업 내보내기는 이용권 만료 후에도 가능합니다. 분석 보고서 다운로드는 이용권으로 제공합니다."}</p></section>
+    <section id="purchase"><h2>{en ? "One-month report pass · KRW 5,900" : "1개월 보고서 이용권 · 5,900원"}</h2><p>{en ? "Word analysis reports, Excel workbooks, multiple projects, batch reviews and report branding. Browser storage limits still apply." : "Word 분석 보고서, Excel 계산 워크북, 여러 프로젝트 관리, 일괄 리뷰와 보고서 브랜딩을 제공합니다. 브라우저 저장 한도는 계속 적용됩니다."}</p>
+      <div className="subscription-deliverables">
+        <article><span aria-hidden="true">W</span><h3>{en ? "A report you can present" : "바로 설명할 수 있는 Word"}</h3><p>{en ? "Conclusion → key results → evidence → charts → method and limitations. Edit the document for your team." : "결론 → 핵심 수치 → 근거 → 차트 → 분석 방법과 한계. 팀에 맞게 문서를 편집하세요."}</p></article>
+        <article><span aria-hidden="true">X</span><h3>{en ? "A workbook you can inspect" : "계산을 확인할 수 있는 Excel"}</h3><p>{en ? "Source rows, mappings, scope, calculation sheets and editable chart data. Model estimates remain explicitly labelled engine outputs." : "원본 행·매핑·분석 범위·계산 시트와 편집 가능한 차트 데이터. 모델 추정값은 엔진 산출물로 구분합니다."}</p></article>
+      </div>
+      <p>{en ? "One calendar month from payment, without automatic renewal. Complex statistical models must be refitted on the website; changing raw workbook cells does not rerun preprocessing or model estimation." : "결제일부터 1개월이며 자동 갱신되지 않습니다. 복잡한 통계 모델은 사이트에서 다시 추정해야 하며, Excel 원본 셀 수정만으로 전처리·모델 추정이 다시 실행되지는 않습니다."}</p>
+      <p><Link href={en ? "/en/terms" : "/terms"}>{en ? "Terms" : "이용약관"}</Link> · <a href="#refund-policy">{en ? "Refund policy" : "환불정책"}</a></p>
+      <SubscriptionCheckout locale={locale} />
     </section>
     {Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) && <section><h2>{en ? "Already have a license key?" : "전달받은 라이선스 키가 있나요?"}</h2><p>{en ? "Manual one-month licenses, no account required. Verification sends only a key hash. CSVs, project names, and branding never enter this request. A key works across devices; projects do not automatically sync." : "계정 없이 수동으로 전달받은 1개월 키를 사용합니다. 검증 요청에는 키 해시만 전송하며 CSV·프로젝트명·브랜딩은 보내지 않습니다. 여러 기기에서 키를 사용할 수 있지만 프로젝트가 자동 동기화되지는 않습니다."}</p>
       <label className="wr-field">{en ? "License key" : "라이선스 키"}<input type="password" autoComplete="off" value={key} onChange={event => setKey(event.target.value)} maxLength={200} /></label><button type="button" className="btn" disabled={busy || !key.trim()} onClick={activate}>{en ? "Verify key" : "키 확인"}</button>
@@ -73,6 +75,7 @@ export default function SubscriptionPage({ locale = "ko" }) {
       <p>{en ? "For duplicate charges, unavailable paid features, or services differing from their description or contract, we provide refunds and other remedies required by applicable law. The 7-day and prorated rules above do not limit statutory withdrawal rights, defect remedies, or compensation. Mandatory consumer protections prevail if they are more favorable to you. Later policy changes do not reduce the refund rights attached to an existing purchase." : "중복 결제, 유료 기능 제공 불가, 표시·광고 또는 계약 내용과 다른 서비스 제공은 관계 법령에 따른 환불과 필요한 조치의 대상입니다. 위 7일·일할 환불 기준은 법정 청약철회, 하자에 따른 환불이나 손해배상 권리를 제한하지 않습니다. 관계 법령에서 더 유리한 소비자 보호 기준을 정한 경우 그 기준을 우선 적용합니다. 정책이 변경되어도 이미 구매한 이용권의 환불 권리를 불리하게 변경하지 않습니다."}</p>
     </section>
     <ProjectStorageSummary locale={locale} />
+    <SellerInformation locale={locale} />
     <Link className="btn" href={en ? "/en/projects" : "/projects"}>{en ? "Open projects" : "프로젝트 보관함 열기"}</Link>
   </div>;
 }

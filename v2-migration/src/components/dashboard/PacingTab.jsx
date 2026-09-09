@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
@@ -377,7 +378,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
               className="ab-pill"
               type="button"
               aria-label={locale === "en" ? "Download pacing chart as PNG" : "페이싱 차트 PNG 다운로드"}
-              onClick={() => downloadChartAsPNG(chartRef.current, "pacing")}
+              onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "pacing")}
             >
               {T.pngBtn}
             </button>

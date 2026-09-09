@@ -2,10 +2,12 @@
 import React, { useState } from "react";
 import { DropdownMenu } from "radix-ui";
 import { trackProductEvent } from "@/lib/analytics";
-import { downloadJson, downloadXlsx } from "@/utils/download";
+import { downloadFile, downloadJson, downloadXlsx } from "@/utils/download";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
 import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
 import { workbookFileBase } from "@/lib/analysis-export/exportContract";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
+import { captureAnalysisCharts } from "@/lib/analysis-export/chartSnapshots";
 
 // 결과 다운로드 허브 — Radix 포털과 roving focus를 사용해 glass/sticky 조상과
 // 무관하게 메뉴를 배치하고 키보드 동작을 표준화한다.
@@ -23,6 +25,21 @@ export default function DownloadHub({
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const analysisExport = useAnalysisExport();
+  const documentItem = analysisExport?.buildPayload ? {
+    label: locale === "en" ? "Analysis report (Word)" : "분석 보고서 (Word)",
+    desc: locale === "en" ? "Conclusion, evidence, charts and next actions for your meeting" : "회의용 결론·근거·차트·다음 행동",
+    icon: "▤", analyticsType: "docx",
+    onSelect: async () => {
+      if (isExporting) return false;
+      setIsExporting(true); setExportError("");
+      try {
+        const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
+        const payload = { ...analysisExport.buildPayload(manifest), charts: await captureAnalysisCharts() };
+        return downloadFile(await createAnalysisDocument(payload), `${payload.toolId}_analysis_report.docx`);
+      } catch { setExportError(locale === "en" ? "Could not create the report. Please try again." : "보고서를 만들지 못했습니다. 다시 시도해 주세요."); return false; }
+      finally { setIsExporting(false); }
+    },
+  } : null;
   const workbookItem = analysisExport?.buildPayload ? {
     label: locale === "en" ? "Detailed workbook (XLSX)" : "상세 워크북 (XLSX)",
     desc: locale === "en"
@@ -35,13 +52,14 @@ export default function DownloadHub({
       setIsExporting(true);
       setExportError("");
       try {
-        const payload = analysisExport.buildPayload(manifest);
+        const payload = { ...analysisExport.buildPayload(manifest), charts: await captureAnalysisCharts() };
         const bytes = await createAnalysisWorkbook(payload);
-        downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
+        return downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
       } catch {
         setExportError(locale === "en"
           ? "The workbook could not be created. Reduce the file size or try again."
           : "워크북을 만들지 못했습니다. 파일 크기를 줄이거나 다시 시도해 주세요.");
+        return false;
       } finally {
         setIsExporting(false);
       }
@@ -56,13 +74,13 @@ export default function DownloadHub({
     analyticsType: "manifest",
     onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
   } : null;
-  const usable = [workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
+  const usable = [documentItem, workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
 
   if (usable.length === 0) return null;
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-    <DropdownMenu.Root open={open} onOpenChange={setOpen} modal={false}>
+    <DropdownMenu.Root open={open} onOpenChange={next => { if (!next || requirePaidExport({ toolId, locale })) setOpen(next); }} modal={false}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
@@ -71,7 +89,7 @@ export default function DownloadHub({
           disabled={isExporting}
           style={{ fontWeight: 600, ...buttonStyle }}
         >
-          ⬇ {isExporting ? (locale === "en" ? "Building XLSX…" : "XLSX 생성 중…") : label} ▾
+          ⬇ {isExporting ? (locale === "en" ? "Building report…" : "보고서 생성 중…") : label} ▾
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -91,9 +109,10 @@ export default function DownloadHub({
           {usable.map((item) => (
             <DropdownMenu.Item
               key={`${item.analyticsType || "item"}-${item.label}`}
-              onSelect={() => {
-                trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" });
-                Promise.resolve(item.onSelect()).catch(() => {});
+              onSelect={async () => {
+                if (!requirePaidExport({ toolId, locale, format: item.analyticsType })) return;
+                try { if (await item.onSelect() !== false) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" }); }
+                catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
               }}
               style={{
                 display: "block",
@@ -115,7 +134,7 @@ export default function DownloadHub({
                 {item.icon ? `${item.icon} ` : ""}{item.label}
               </span>
               {item.desc && (
-                <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                <span style={{ display: "block", fontSize: "var(--fs-sm)", color: "var(--text-muted)", marginTop: "4px" }}>
                   {item.desc}
                 </span>
               )}

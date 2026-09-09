@@ -1,3 +1,4 @@
+import { enablePaidReports } from "./support/paidReports";
 import { expect, test } from "@playwright/test";
 import Papa from "papaparse";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
@@ -21,6 +22,7 @@ for (const locale of ["ko", "en"]) {
   for (const example of examples) {
     test(`public example ${example.kind}: blog download → analysis → export (${locale})${en ? " @light-en" : ""}`, async ({ page }) => {
       await page.addInitScript(theme => localStorage.setItem("mkt-library-theme", theme), en ? "light" : "dark");
+      await enablePaidReports(page);
       await page.goto(`${prefix}/blog/${example.blog}`);
       const inputDownload = page.waitForEvent("download");
       await page.locator(`main a[href="/examples/${example.file}"]`).click();

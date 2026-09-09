@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useAppStore } from "@/store/useDataStore";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
@@ -13,6 +14,16 @@ vi.mock("@/lib/analysis-export/workbookClient", () => ({ createAnalysisWorkbook:
 vi.mock("@/utils/download", () => ({ downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
 
 describe("DownloadHub", () => {
+  beforeEach(() => { useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 }, purchasePrompt: null }); });
+  it("blocks unpaid exports before opening the menu", () => {
+    useAppStore.setState({ entitlement: null });
+    const action = vi.fn();
+    render(<DownloadHub toolId="5-2" label="Export" items={[{ label: "CSV", onSelect: action }]} />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Export" }), { button: 0, ctrlKey: false });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(action).not.toHaveBeenCalled();
+    expect(useAppStore.getState().purchasePrompt.toolId).toBe("5-2");
+  });
   it("portals the menu, supports keyboard navigation, and runs the selected download", () => {
     const onSelect = vi.fn();
     render(<DownloadHub label="Export" items={[{ label: "CSV", onSelect }]} />);
@@ -42,7 +53,7 @@ describe("DownloadHub", () => {
     );
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
     fireEvent.click(screen.getByRole("menuitem", { name: /상세 워크북 \(XLSX\)/ }));
-    await waitFor(() => expect(createAnalysisWorkbook).toHaveBeenCalledWith(payload));
+    await waitFor(() => expect(createAnalysisWorkbook).toHaveBeenCalledWith({ ...payload, charts: [] }));
     expect(downloadXlsx).toHaveBeenCalledWith(expect.any(ArrayBuffer), "5-21_analysis_workbook");
     expect(buildPayload).toHaveBeenCalledWith(null);
     expect(trackProductEvent).toHaveBeenCalledWith("result_downloaded", {

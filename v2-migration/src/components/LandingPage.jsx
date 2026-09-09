@@ -30,7 +30,7 @@ const COPY = {
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
-    assurance: "무료 · 가입 없음 · 원본 데이터는 브라우저에서만 처리",
+    assurance: "분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리",
     continueTitle: "지난 판단을 이어서 검토하세요",
     continueDeck: "이 브라우저에 남아 있는 결정 요약과 직접 올린 파일을 이어서 보여줍니다. 저장 화면에서 언제든 지울 수 있습니다.",
     dueNow: "지금 검토",
@@ -71,7 +71,7 @@ const COPY = {
     diagnoseCta: "Find the cause",
     demoCta: "Try a demo",
     dataGuideCta: "Prepare CSV columns",
-    assurance: "Free · no signup · source data stays in your browser",
+    assurance: "Free analysis · paid report downloads · source data stays in your browser",
     continueTitle: "Continue your last decision",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
     dueNow: "Due now",
@@ -178,9 +178,9 @@ export default function LandingPage({ locale = "ko", children }) {
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
-            {decisionRecords.length > 0 && <Link className="dc-action-route" href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
-              <strong>{T.reviewCta}</strong><span>{T.reviewHint}</span>
-            </Link>}
+            <Link className="dc-action-route" href={`${lang === "en" ? "/en" : ""}/weekly-review${decisionRecords.length ? "#wr-history" : ""}`} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
+              <strong>{decisionRecords.length ? T.reviewCta : (lang === "en" ? "Start my first weekly review" : "첫 주간 리뷰 시작")}</strong><span>{decisionRecords.length ? T.reviewHint : (lang === "en" ? "Compare this week, record a decision, return next week" : "이번 주 비교부터 결정 기록까지 한 번에")}</span>
+            </Link>
           </nav>
           <div className="dc-hero__utility-actions">
             <Link
@@ -201,7 +201,7 @@ export default function LandingPage({ locale = "ko", children }) {
                 차트를 걷어낸 뒤로 §12.28). 버튼으로 승격하면 목적 CTA와 위계가
                 섞이므로(LandingPage.smoke가 강제) 텍스트 링크는 유지하고 눈에
                 띄는 정도만 올린다. */}
-            <button type="button" className="dc-text-link dc-text-link--button dc-text-link--lead" onClick={() => openSample("5-2", "hero_example")}>
+            <button type="button" className="dc-text-link dc-text-link--button" onClick={() => openSample("5-2", "hero_example")}>
               {T.demoCta} →
             </button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>

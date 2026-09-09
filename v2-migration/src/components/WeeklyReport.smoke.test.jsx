@@ -12,6 +12,7 @@ describe("WeeklyReport", () => {
     reportWorkbookMock.create.mockReset();
     reportWorkbookMock.create.mockResolvedValue(new Uint8Array([1, 2, 3]));
     useAppStore.setState({
+      entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 },
       reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] },
     });
   });
@@ -35,6 +36,7 @@ describe("WeeklyReport", () => {
     const activeCsv = { raw: [{ Date: "2026-08-01" }], headers: ["Date"], mapping: { Date: "date" }, fileName: "other.csv" };
     const signature = "variance.csv|1|cost:Cost|date:Date|installs:Installs";
     useAppStore.setState({
+      entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 },
       csvData: activeCsv,
       csvGroups: { ...useAppStore.getState().csvGroups, efficiency: varianceCsv },
       reportDraft: {
@@ -68,6 +70,7 @@ describe("WeeklyReport", () => {
 
   it("서로 다른 분석 기간을 수집하면 공유 전 경고한다", () => {
     useAppStore.setState({
+      entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 },
       reportDraft: {
         schemaVersion: 1,
         title: "",
@@ -86,6 +89,7 @@ describe("WeeklyReport", () => {
   it("XLSX 생성 실패를 삼키지 않고 다시 시도할 수 있게 알린다", async () => {
     reportWorkbookMock.create.mockRejectedValueOnce(new Error("worker failed"));
     useAppStore.setState({
+      entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 },
       reportDraft: {
         schemaVersion: 1,
         title: "",

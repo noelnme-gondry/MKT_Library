@@ -1,5 +1,6 @@
 "use client";
 
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
@@ -405,6 +406,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
   const selName = satState.selected || okRows[0]?.name || "curve";
   const handlePngDownload = () => {
+    if (!requirePaidExport()) return;
     if (!chartRef.current) {
       showToast({ variant: "warn", title: tr("차트를 찾을 수 없음", "Chart not found"), body: "sat-curve-chart" });
       return;

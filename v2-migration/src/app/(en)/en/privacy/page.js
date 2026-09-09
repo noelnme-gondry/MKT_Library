@@ -25,6 +25,10 @@ export default function EnglishPrivacyPage() {
       intro="Your source analysis data is not sent to our server. This page explains operational data collection and browser storage."
       sections={[
         {
+          title: "Report-pass payments and recovery",
+          content: <p>To process purchases, refunds and access recovery, the server stores the order ID, product, amount, approval/cancellation status, access term and a hash of the recovery code. Payment details are entered and processed on Toss Payments screens; the app does not store full card numbers or passwords. Payment and supply records are retained for the statutory five-year period, separately from the 90-day browser analysis-data policy. Access recovery uses a cookie and a local entitlement cache. CSV files, analysis results, project names and filenames are never included in payment requests. Contact customer service below to request access, correction or deletion; statutory retention requirements may limit deletion during that period.</p>,
+        },
+        {
           title: "Uploaded data",
           content: <p>CSV files and source analysis rows are <strong>processed in your current browser and are not transmitted to or stored on our server</strong>. Source data uploaded for analysis is not collected in an application-side database.</p>,
         },

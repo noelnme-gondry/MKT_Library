@@ -1,4 +1,8 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
+import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
+import { buildWeeklyReviewExport } from "@/lib/analysis-export/weeklyReviewExport";
+import DownloadHub from "@/components/ds/DownloadHub";
 import { isDemoData } from "@/lib/dataOrigin";
 import { updateProject } from "@/lib/project/repository";
 
@@ -25,7 +29,7 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { LOWER_IS_BETTER } from "@/lib/weekly-review/significance";
 import { DECISION_OUTCOME } from "@/lib/weekly-review/decisionScore";
 import { serializeDecisionReviewIcs } from "@/lib/decisionReview";
-import { downloadCalendar, downloadText } from "@/utils/download";
+import { downloadCalendar } from "@/utils/download";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { DEFAULT_PROJECT, KPI_OPTIONS, kpiFor, runReview, nextReviewDate } from "@/lib/weekly-review/reviewPipeline";
 import { mergeSnapshots, listStoredSnapshots, saveStoredSnapshot, readReviewProject, saveReviewProject } from "@/lib/weekly-review/snapshotStore";
@@ -701,7 +705,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
           } catch { setSavedReport({ raw: csvData.raw, context: decisionContext, ok: false }); }
           finally { setReportBusy(false); }
         }}>{locale === "en" ? "Save report to project" : "프로젝트에 보고서 저장"}</button>
-        {savedReport?.raw === csvData.raw && savedReport.context === decisionContext && <p role="status">{savedReport.ok ? (locale === "en" ? "Report saved." : "보고서를 저장했습니다.") : (locale === "en" ? "Save failed. Your analysis remains open; download a copy." : "저장하지 못했습니다. 분석은 유지되니 보고서를 내려받아 주세요.")}</p>}
+        {savedReport?.raw === csvData.raw && savedReport.context === decisionContext && <p role="status">{savedReport.ok ? (locale === "en" ? "Report saved." : "보고서를 저장했습니다.") : (locale === "en" ? "Save failed. Your analysis remains open; check device storage." : "저장하지 못했습니다. 분석은 유지됩니다. 기기 저장 상태를 확인해 주세요.")}{savedReport.ok && <> <Link href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "See it in Projects" : "보관함에서 확인"}</Link></>}</p>}
         <div className="wr-report-actions">
         <button type="button" className="btn" onClick={async () => {
           try {
@@ -710,8 +714,8 @@ function ProjectWeeklyReview({ locale, projectId }) {
             trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "clipboard", state: "completed" });
           } catch { setCopyStatus(locale === "en" ? "Copy failed. Select and copy the report text." : "복사하지 못했습니다. 보고서 본문을 선택해 복사해 주세요."); }
         }}>{locale === "en" ? "Copy for Slack / Notion" : "Slack / Notion용 복사"}</button>
-        <button type="button" className="btn" onClick={() => { trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "print", state: "requested" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
-        <button type="button" className="btn" onClick={() => downloadText(renderReportText(draft, { number: money }), "weekly_performance_review", "md", locale)}>{locale === "en" ? "Download review document" : "검토 보고서 다운로드"}</button>
+        <button type="button" className="btn" onClick={() => { if (!requirePaidExport({ locale })) return; trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "print", state: "requested" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
+        <AnalysisExportProvider value={{ buildPayload: () => buildWeeklyReviewExport({ csvData, evidence, review, text: renderReportText(draft, { number: money }), locale }) }}><DownloadHub toolId="weekly-review" locale={locale} label={locale === "en" ? "Download Word / Excel" : "Word / Excel 보고서 받기"} /></AnalysisExportProvider>
         </div>
         {copyStatus && <p role="status">{copyStatus}</p>}
       </section>

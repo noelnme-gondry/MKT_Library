@@ -1,11 +1,13 @@
 "use client";
 
+import { requirePaidExport } from "@/lib/subscription/paidExport";
+import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
 import Link from "next/link";
 import { useState } from "react";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { serializeReportDraft } from "@/lib/reports/reportSchema";
 import { renderReportMarkdown } from "@/lib/reports/renderMarkdown";
-import { downloadText } from "@/utils/download";
+import { downloadFile } from "@/utils/download";
 import { downloadXlsx } from "@/utils/download";
 import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
 import { trackProductEvent } from "@/lib/analytics";
@@ -26,9 +28,9 @@ const COPY = {
     up: "위로",
     down: "아래로",
     remove: "제거",
-    markdown: "Markdown 받기",
+    markdown: "Word 받기",
     workbook: "XLSX 받기",
-    workbookError: "XLSX를 만들지 못했습니다. 잠시 후 다시 시도하거나 Markdown·PDF를 이용해 주세요.",
+    workbookError: "XLSX를 만들지 못했습니다. 잠시 후 다시 시도하거나 Word·PDF를 이용해 주세요.",
     print: "인쇄 / PDF",
     privacy: "브라우저 세션에서만 유지됩니다. 원본 데이터는 저장하거나 내보내지 않습니다.",
     mixedPeriods: "수집한 결과의 분석 기간이 서로 다릅니다. 공유 전 각 결론의 기간을 확인하세요.",
@@ -48,9 +50,9 @@ const COPY = {
     up: "Move up",
     down: "Move down",
     remove: "Remove",
-    markdown: "Download Markdown",
+    markdown: "Download Word",
     workbook: "Download XLSX",
-    workbookError: "We could not create the XLSX file. Try again, or use Markdown or PDF instead.",
+    workbookError: "We could not create the XLSX file. Try again, or use Word or PDF instead.",
     print: "Print / PDF",
     privacy: "Kept only for this browser session. Source data is neither stored nor exported.",
     mixedPeriods: "Collected results use different analysis periods. Check each conclusion’s period before sharing.",
@@ -78,12 +80,17 @@ export default function WeeklyReport({ locale = "ko" }) {
   const [workbookError, setWorkbookError] = useState("");
   const title = draft.title || t.defaultTitle;
   const hasMixedPeriods = new Set(draft.blocks.map(reportPeriodKey).filter(Boolean)).size > 1;
-  const download = () => {
+  const download = async () => {
+    if (!requirePaidExport({ locale })) return;
     const safe = serializeReportDraft({ ...draft, title });
-    downloadText(renderReportMarkdown(safe, locale), locale === "en" ? "weekly-performance-report" : "주간-성과-보고서", "md", locale);
+    try {
+      const payload = buildAnalysisExportPayload({ toolId: "weekly-report", toolTitle: title, locale, headline: title, points: renderReportMarkdown(safe, locale).split("\n").filter(Boolean).map(text => ({ text })), source: { rows: [] }, addon: { method: { name: "Collected analysis conclusions", limitations: [locale === "en" ? "Collected conclusions only; use each tool workbook for raw data and calculations." : "수집한 결론만 포함합니다. 원본과 계산식은 각 도구의 워크북을 이용하세요."] } } });
+      const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
+      downloadFile(await createAnalysisDocument(payload), "weekly-performance-report.docx");
+    } catch { setWorkbookError(t.workbookError); }
   };
   const downloadWorkbook = async () => {
-    if (isWorkbookExporting) return;
+    if (isWorkbookExporting || !requirePaidExport({ locale })) return;
     setWorkbookError("");
     setIsWorkbookExporting(true);
     try {
@@ -117,7 +124,7 @@ export default function WeeklyReport({ locale = "ko" }) {
         </fieldset>
         <button className="btn primary" type="button" disabled={!draft.blocks.length} onClick={download}>{t.markdown}</button>
         <button className="btn ghost" type="button" disabled={!draft.blocks.length || isWorkbookExporting} onClick={downloadWorkbook}>{isWorkbookExporting ? "XLSX…" : t.workbook}</button>
-        <button className="btn ghost" type="button" disabled={!draft.blocks.length} onClick={() => window.print()}>{t.print}</button>
+        <button className="btn ghost" type="button" disabled={!draft.blocks.length} onClick={() => requirePaidExport({ locale }) && window.print()}>{t.print}</button>
       </section>
       {workbookError && <p className="weekly-report-page__export-error" role="alert">{workbookError}</p>}
       <p className="weekly-review-page__privacy">{t.privacy}</p>

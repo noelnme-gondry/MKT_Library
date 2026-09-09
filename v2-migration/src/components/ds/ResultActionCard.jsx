@@ -12,7 +12,6 @@ import { findingFromResultCard } from "@/lib/assist/findingProducers";
 import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
 import { encodeSharePayload, shareUrlFromPayload } from "@/lib/decisionShare";
 import { localizedTool } from "@/lib/toolConnections";
-import { downloadText } from "@/utils/download";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
@@ -53,17 +52,6 @@ function decisionPrefillKey(prefill) {
   }));
 }
 
-function detailedDocument({ title, headline, stats, points, locale }) {
-  const heading = locale === "en" ? "Analysis details" : "분석 상세 문서";
-  const keyFigures = stats.length
-    ? `\n## ${locale === "en" ? "Key figures" : "핵심 수치"}\n${stats.map((stat) => `- ${stat.label}: ${stat.value}${stat.detail ? ` (${stat.detail})` : ""}`).join("\n")}`
-    : "";
-  const evidence = points.length
-    ? `\n## ${locale === "en" ? "Interpretation and next checks" : "해석과 다음 확인"}\n${points.map((point) => `- ${typeof point.text === "string" ? point.text : "—"}`).join("\n")}`
-    : "";
-  return `# ${title}\n\n## ${heading}\n${typeof headline === "string" ? headline : "—"}${keyFigures}${evidence}\n\n${locale === "en" ? "This document summarizes the displayed result. It does not replace causal validation or an experiment." : "이 문서는 화면에 표시된 결과를 요약합니다. 인과 검증이나 실험을 대체하지 않습니다."}\n`;
-}
-
 export default function ResultActionCard({
   tone = "neutral",
   title = "결론",
@@ -102,6 +90,7 @@ export default function ResultActionCard({
   const addReportBlock = useAppStore((state) => state.addReportBlock);
   const [reportAdded, setReportAdded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareError, setShareError] = useState("");
   const inputSignature = computeAnalyzeSig(csvData);
   const resolvedAnalysisType = analysisType || productAnalysisType(toolId);
   const dataSource = isDemoData(csvData)
@@ -210,7 +199,6 @@ export default function ResultActionCard({
     if (generatedFinding) publishFinding(generatedFinding);
   }, [generatedFinding, publishFinding]);
   const canShareDecision = Boolean(toolId && typeof headline === "string" && headline.trim());
-  const canDownloadDetails = Boolean(toolId && typeof headline === "string" && headline.trim());
   const canExportWorkbook = Boolean(toolId && headline);
   const analysisExport = useMemo(() => ({
     toolId,
@@ -241,16 +229,17 @@ export default function ResultActionCard({
     }),
   }), [csvData?.fileName, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
   const copyShareLink = async () => {
+    setShareError("");
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
     const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
-    if (!url) return;
+    if (!url) { setShareError(locale === "en" ? "This result is too large for a share link. Use a report instead." : "공유 링크에 담기에는 결과가 큽니다. 보고서를 이용해 주세요."); return; }
     try {
       await navigator.clipboard.writeText(url);
       setShareCopied(true);
       trackProductEvent("share_link_copied", { tool_id: toolId, placement: "result_action_card", locale });
       window.setTimeout(() => setShareCopied(false), 2400);
     } catch {
-      // 클립보드 권한이 없으면 조용히 무시한다(공유는 보조 기능).
+      setShareError(locale === "en" ? "Could not copy the link. Allow clipboard access and try again." : "링크를 복사하지 못했습니다. 클립보드 권한을 확인하고 다시 시도해 주세요.");
     }
   };
   const collectForReport = () => {
@@ -358,27 +347,14 @@ export default function ResultActionCard({
       {/* 보조 동선은 결론·수치·행동보다 뒤에 둔다. 예전에는 이 넷이 카드 머리의
           다운로드와 나란히 서서, 결과를 읽는 자리에서 시각적으로 가장 강한 것이
           유틸리티 버튼 다섯이었다(§5.3 "동급으로 보이는 CTA 여럿" · §5.5 "다음 행동 1개"). */}
-      {(canShareDecision || canDownloadDetails || canCollectReport || canOpenDecisionReview) && (
+      {shareError && <p role="alert">{shareError}</p>}
+      {(canShareDecision || canCollectReport || canOpenDecisionReview) && (
         <div className="result-action-card__utilities" role="group" aria-label={locale === "en" ? "More actions for this result" : "이 결과로 더 할 수 있는 것"}>
           {canShareDecision && (
             <button className="btn ghost" type="button" onClick={copyShareLink}>
               {shareCopied
                 ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
                 : (locale === "en" ? "Share conclusion" : "결론 공유")}
-            </button>
-          )}
-          {canDownloadDetails && (
-            <button
-              className="btn ghost"
-              type="button"
-              onClick={() => downloadText(
-                detailedDocument({ title: shareToolTitle, headline, stats, points, locale }),
-                `${toolId}-analysis-details`,
-                "md",
-                locale,
-              )}
-            >
-              {locale === "en" ? "Download details" : "상세 문서 받기"}
             </button>
           )}
           {canCollectReport && (

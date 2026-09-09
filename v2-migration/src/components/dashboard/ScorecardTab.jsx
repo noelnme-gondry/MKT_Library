@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
@@ -426,7 +427,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           <button
             className="ab-pill"
             style={{ marginTop: "8px" }}
-            onClick={() => downloadChartAsPNG(chartRef.current, "scorecard_daily")}
+            onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "scorecard_daily")}
           >
             {T.pngBtn}
           </button>

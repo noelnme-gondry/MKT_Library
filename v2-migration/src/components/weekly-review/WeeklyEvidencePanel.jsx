@@ -1,5 +1,6 @@
 "use client";
 
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { useState } from "react";
 import { CAMPAIGN_STATUS, campaignComparisonCsv, formatReviewMetric } from "@/lib/weekly-review/workspaceEvidence";
 import { downloadCsv } from "@/utils/download";
@@ -12,7 +13,7 @@ export default function WeeklyEvidencePanel({ evidence, review, locale = "ko", o
   const campaigns = evidence.campaigns.filter(row => row.label.toLowerCase().includes(query.toLowerCase()) && (filter !== "zero" || row.withoutResults) && (filter !== "unknown" || ["unknown", "new", "absent"].includes(row.status)));
   return <section className="wr-card wr-evidence" aria-labelledby="wr-evidence-title">
     <div className="wr-section-heading"><div><h2 id="wr-evidence-title">{en ? "Where to focus this week" : "이번 주 확인할 지점"}</h2><p>{en ? "Start with spend without conversions, then review the largest active campaigns." : "전환 없는 지출을 먼저 확인하고, 현재 지출이 큰 캠페인을 검토하세요."}</p></div>
-      <button type="button" className="btn" onClick={() => downloadCsv(campaignComparisonCsv(evidence, review, locale), "weekly_campaign_comparison")}>{en ? "Download full comparison CSV" : "전체 캠페인 비교 CSV"}</button></div>
+      <button type="button" className="btn" onClick={() => requirePaidExport() && downloadCsv(campaignComparisonCsv(evidence, review, locale), "weekly_campaign_comparison")}>{en ? "Download full comparison CSV" : "전체 캠페인 비교 CSV"}</button></div>
     <div className="wr-evidence-summary">
       <div className="wr-target-readout">
         <h3>{en ? "Observed gap to target" : "목표 대비 관측 차이"}</h3>
@@ -32,7 +33,7 @@ export default function WeeklyEvidencePanel({ evidence, review, locale = "ko", o
       <span role="status">{campaigns.length} / {evidence.campaigns.length} {en ? "campaigns" : "캠페인"}</span>
     </div>
     <div className="table-wrap wr-tablewrap" role="region" aria-label={en ? "Campaign comparison, scroll horizontally" : "캠페인 비교표, 가로 스크롤"} tabIndex={0}>
-      <table className="data wr-campaign-table"><caption>{en ? "Observed campaign performance · zero-conversion spend first" : "캠페인별 관측 성과 · 전환 없는 지출 우선"}</caption><thead><tr>
+      <table className="data wr-campaign-table"><caption><strong>{en ? "Campaign performance comparison" : "캠페인별 성과 비교"}</strong><span>{en ? "Sorted by spend without conversions, then current spend" : "전환 없는 지출을 먼저, 이후 이번 비용순으로 표시합니다"}</span></caption><thead><tr>
         <th scope="col">{en ? "Campaign / status" : "캠페인 / 관측 상태"}</th><th scope="col">{en ? "Previous spend" : "지난 비용"}</th><th scope="col">{en ? "Current spend" : "이번 비용"}</th><th scope="col">{en ? "Conversions" : "이번 전환"}</th><th scope="col">{evidence.metric.toUpperCase()} {en ? "previous → current" : "지난 → 이번"}</th><th scope="col">{en ? "Next decision" : "다음 결정"}</th>
       </tr></thead><tbody>{campaigns.map(row => <tr key={row.key}><th scope="row"><strong>{row.label}</strong><small>{CAMPAIGN_STATUS[locale][row.status]}</small></th><td className="num">{format(row.previous?.cost, "cost")}</td><td className="num">{format(row.current?.cost, "cost")}</td><td className="num">{format(row.current?.conversions, "conversions")}</td><td className="num">{format(row.previous?.[evidence.metric])} → {format(row.current?.[evidence.metric])}</td><td><button type="button" className="btn" disabled={!row.current} aria-label={`${en ? "Record decision for" : "결정 기록"}: ${row.label}`} onClick={() => onChooseCampaign(row.label)}>{en ? "Record decision" : "결정 기록"}</button></td></tr>)}</tbody></table>
     </div>

@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import SubscriptionSurvivalAnalysis, { buildSegmentCurveChartData, scheduleSubscriptionChartResize } from "@/components/tools/SubscriptionSurvivalAnalysis";
 import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
+
+beforeEach(() => useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } }));
 
 const ROWS = [
   { tenure_periods: "1", event_observed: "1", channel: "Paid" },
@@ -59,7 +61,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
       ? "At horizon 4: 1 observed through the horizon, 3 earlier observed exits, 1 earlier censorings, and 0 not yet entered."
       : "4기간까지 관측 1건 · 그 전 이탈 확인 3건 · 그 전 중도절단 1건 · 아직 관측 진입 전 0건");
     fireEvent.pointerDown(screen.getByRole("button", { name: locale === "en" ? "Get results" : "결과 받기" }), { button: 0, ctrlKey: false });
-    expect(screen.getByText(locale === "en" ? "Follow-up support CSV" : "관측 성숙도 근거 CSV")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
   });
 
   it("does not render a fake zero or infinity median when no event is observed", () => {
@@ -94,20 +96,20 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     expect(container.querySelector("#subscription-survival-result")).toBeTruthy();
   });
 
-  it("offers aggregated risk-set and segment CSVs without exporting source rows", () => {
+  it("offers Word and calculation workbook after analysis and segment changes", () => {
     render(<SubscriptionSurvivalAnalysis rows={ROWS} analyzed />);
     confirmEventDefinition();
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
-    expect(screen.getByText("생존곡선 CSV")).toBeTruthy();
-    expect(screen.getByText("위험집합 CSV")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Word/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
     fireEvent.pointerDown(document.body, { button: 0 });
 
     const segment = screen.getByLabelText("세그먼트");
     fireEvent.change(segment, { target: { value: "channel" } });
     fireEvent.click(screen.getByRole("button", { name: "다시 분석" }));
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
-    expect(screen.getByText("세그먼트 요약 CSV")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /XLSX/ })).toBeTruthy();
   });
 
   it("creates a review handoff only for an adequate observed risk signal", () => {

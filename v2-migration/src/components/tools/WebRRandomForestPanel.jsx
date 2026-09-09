@@ -1,5 +1,6 @@
 "use client";
 
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareRandomForestInput, runWebRRandomForest } from "@/lib/analysis/webr/randomForest";
@@ -193,7 +194,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
           {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{visible.error.includes("baseline_regression_not_estimable") ? T.baselineUnavailable : T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
             <div style={{ marginTop: "14px" }}>
-              <button type="button" className="ab-button" onClick={() => downloadCsv(csvBody(
+              <button type="button" className="ab-button" onClick={() => requirePaidExport() && downloadCsv(csvBody(
                 ["validation_mode", "evaluated_rows", "purged_rows", "folds", "primary_metric", "baseline_error", "random_forest_error", "relative_gain", "recommendation"],
                 [[input.validation.mode, input.validation.validationN ?? input.n, input.validation.purgedN ?? 0, result.folds, result.primaryMetric, result.baseline.primary, result.randomForest.primary, result.relativeGain, result.recommendation]],
               ), "content-predictive-validation")}>

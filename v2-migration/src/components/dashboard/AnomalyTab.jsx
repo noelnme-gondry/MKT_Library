@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
@@ -312,7 +313,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
               className="ab-pill"
               type="button"
               aria-label={tr("이상탐지 차트 PNG 다운로드", "Download anomaly chart as PNG")}
-              onClick={() => downloadChartAsPNG(chartRef.current, "anomaly")}
+              onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "anomaly")}
             >
               ⬇ PNG
             </button>

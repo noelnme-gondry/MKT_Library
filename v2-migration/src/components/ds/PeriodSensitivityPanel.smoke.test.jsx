@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useAppStore } from "@/store/useDataStore";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PeriodSensitivityPanel from "./PeriodSensitivityPanel";
@@ -6,6 +7,7 @@ import * as downloads from "@/utils/download";
 
 describe("period sensitivity explicit execution", () => {
   it.each(["ko", "en"])("runs on request, exports the same evidence and clears on input replacement (%s)", async (locale) => {
+    useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
     const compute = vi.fn(() => ({ periods: [{ start: "2026-08-01", end: "2026-08-08" }, { start: "2026-08-09", end: "2026-08-16" }], rows: [{ name: "A", status: "changed", before: { direction: "scale", n: 8, min: 100, max: 200 }, after: { direction: "saturated", n: 8, min: 100, max: 200 } }] }));
     const download = vi.spyOn(downloads, "downloadCsv").mockReturnValue(true);
     try {

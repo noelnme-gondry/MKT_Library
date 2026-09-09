@@ -1,5 +1,6 @@
 "use client";
 
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { useEffect, useMemo, useRef } from "react";
 
 import Chart from "@/utils/chartGlobals";
@@ -260,7 +261,7 @@ export default function ScaleDecisionMap({
             : `총비용과 전체 가중 ${metricLabel}을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
         </div>
         {matrix.points.length >= 2 && (
-          <button type="button" className="ab-pill" onClick={() => downloadChartAsPNG(canvasRef.current, `scale_decision_${grain}_${metric}`)}>
+          <button type="button" className="ab-pill" onClick={() => requirePaidExport() && downloadChartAsPNG(canvasRef.current, `scale_decision_${grain}_${metric}`)}>
             {isEn ? "↓ PNG" : "↓ PNG"}
           </button>
         )}

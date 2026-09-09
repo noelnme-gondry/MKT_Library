@@ -1,4 +1,5 @@
 "use client";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
@@ -1302,7 +1303,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <button
             className="ab-pill"
             id="creative-export-metrics"
-            onClick={() => exportCreativeMetricsCSV(metrics, snapshotHash, CREATIVE_CONFIG.version, locale)}
+            onClick={() => requirePaidExport({ locale }) && exportCreativeMetricsCSV(metrics, snapshotHash, CREATIVE_CONFIG.version, locale)}
           >
             {tr("⬇ 지표 CSV 다운로드", "⬇ Download metrics CSV")}
           </button>
@@ -1367,7 +1368,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     <button
                       className="ab-pill"
                       title={tr("PNG 다운로드", "Download PNG")}
-                      onClick={() => downloadChartAsPNG(conceptChartRef.current, `creative_forest_${curMetricKey}`)}
+                      onClick={() => requirePaidExport() && downloadChartAsPNG(conceptChartRef.current, `creative_forest_${curMetricKey}`)}
                     >
                       ⬇ PNG
                     </button>
@@ -1450,7 +1451,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               <button
                 className="ab-pill"
                 title={tr("PNG 다운로드", "Download PNG")}
-                onClick={() => downloadChartAsPNG(fatigueChartRef.current, "creative_fatigue_decay")}
+                onClick={() => requirePaidExport() && downloadChartAsPNG(fatigueChartRef.current, "creative_fatigue_decay")}
               >
                 ⬇ PNG
               </button>

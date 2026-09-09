@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ function nextReview(project) {
 }
 export default function ProjectsPage({ locale = "ko" }) {
   const en = locale === "en";
+  const backupInput = useRef(null);
   const router = useRouter();
   const projects = useAppStore(state => state.projects);
   const activeId = useAppStore(state => state.activeProjectId);
@@ -90,13 +91,17 @@ export default function ProjectsPage({ locale = "ko" }) {
   };
   return <div className="projects-page">
     <header><h1>{en ? "Projects" : "프로젝트 보관함"}</h1><p>{en ? "Keep each client or app separate. Select the project before uploading next week's file; filenames may change." : "고객·앱별 데이터를 따로 관리합니다. 다음 주 파일을 올리기 전에 프로젝트를 선택하세요. 파일명은 달라도 됩니다."}</p><Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "Subscription and storage guide" : "구독·저장 용량 안내"}</Link></header>
-    <section className="project-create"><label className="wr-field">{en ? "New project name" : "새 프로젝트 이름"}<input value={name} onChange={event => setName(event.target.value)} maxLength={120} /></label><button className="btn primary" type="button" disabled={!ready || busy || switching} onClick={create}>{en ? "Create project" : "프로젝트 만들기"}</button><label className="btn">{en ? "Import project backup" : "프로젝트 백업 가져오기"}<input type="file" accept="application/json,.json" disabled={busy || switching || !ready} onChange={preview} /></label></section>
-    {!storageEnabled && <p>{en ? "Device storage is off. Enable it to keep or restore projects; current session analysis still works." : "기기 저장이 꺼져 있습니다. 프로젝트 보관·복원을 쓰려면 저장을 켜 주세요. 현재 세션의 분석은 계속 사용할 수 있습니다."} <Link href={en ? "/en/storage" : "/storage"}>{en ? "Storage settings" : "저장 설정"}</Link></p>}
+    <section className="project-start-panel">
+      <h2>{en ? "Your next review starts here" : "다음 주 리뷰도 여기서 이어가세요"}</h2>
+      <p>{en ? "Choose a project, upload this week's CSV, and save your review. Keep each client's decisions together." : "프로젝트 선택 → 이번 주 CSV 업로드 → 리뷰 저장. 고객·앱별로 지난 결정과 다음 결과를 한곳에 모읍니다."}</p>
+      <div className="project-create"><label className="wr-field"><span>{en ? "New project name" : "새 프로젝트 이름"}</span><input value={name} onChange={event => setName(event.target.value)} maxLength={120} placeholder={en ? "Client or app name" : "고객 또는 앱 이름"} /></label><button className="btn primary" type="button" disabled={!storageEnabled || !ready || busy || switching} onClick={create}>{en ? "Create project" : "프로젝트 만들기"}</button><button className="btn" type="button" disabled={!storageEnabled || busy || switching || !ready} onClick={() => backupInput.current?.click()}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</button><input ref={backupInput} hidden type="file" accept="application/json,.json" disabled={!storageEnabled || busy || switching || !ready} onChange={preview} /></div>
+    </section>
+    {!storageEnabled && <section><h2>{en ? "Keep your next review on this device" : "다음 리뷰를 이 기기에 보관하세요"}</h2><p>{en ? "Device storage is off. Enable it to keep or restore projects; files stay in this browser." : "기기 저장이 꺼져 있습니다. 저장을 켜면 프로젝트를 보관·복원할 수 있습니다. 파일은 이 브라우저에만 저장됩니다."}</p><button className="btn primary" disabled={busy} onClick={async () => { setBusy(true); try { useAppStore.getState().setDecisionPersistenceEnabled(true); await useAppStore.getState().initializeProjects(); } catch { setMessage(en ? "Could not enable storage. Check your browser settings." : "저장을 켜지 못했습니다. 브라우저 설정을 확인해 주세요."); } finally { setBusy(false); } }}>{en ? "Enable device storage" : "기기 저장 켜기"}</button> <Link href={en ? "/en/storage" : "/storage"}>{en ? "Storage settings" : "저장 설정"}</Link></section>}
     {storageError && <p role="alert">{en ? "Project storage is unavailable or a write failed. Keep a downloaded copy of your current results; saved records may not include the latest changes." : "프로젝트 저장소를 사용할 수 없거나 저장에 실패했습니다. 현재 결과를 내려받아 보관해 주세요. 저장된 기록에는 최신 변경이 빠져 있을 수 있습니다."}</p>}
     {message && <p role="status">{message}</p>}
     {backup && <section className="project-import-preview"><h2>{en ? "Check before restoring" : "복원 전 확인"}</h2><p>{backup.project.name || (en ? "Unnamed project" : "이름 없는 프로젝트")} · {backup.files.length} {en ? "files" : "파일"} · {bytesLabel(backup.bytes)} · {backup.project.decisions.length} {en ? "decisions" : "결정"}</p><p>{en ? "Includes source files, mappings, settings, period snapshots and decisions. Import stays in this browser and does not run analysis automatically." : "원본 파일·매핑·설정·기간 집계·결정 기록을 포함합니다. 이 브라우저에서만 가져오며 분석은 자동 실행하지 않습니다."}</p><button className="btn" disabled={busy || switching || !ready} onClick={() => restore(false)}>{en ? "Restore as new project" : "새 프로젝트로 복원"}</button>{active && <button className="btn" disabled={busy || switching || !ready} onClick={() => restore(true)}>{en ? "Replace current project" : "현재 프로젝트에 복원"}</button>}<button className="btn ghost" onClick={() => setBackup(null)}>{en ? "Cancel" : "취소"}</button></section>}
     <div className="project-list">
-      {!projects.length && <p>{en ? "No saved projects. Create one, or start your first analysis." : "저장된 프로젝트가 없습니다. 프로젝트를 만들거나 첫 분석을 시작하세요."}</p>}
+      {!projects.length && <section className="project-empty"><h2>{en ? "Make your first review worth returning to" : "첫 리뷰를 다음 주의 기준으로 만드세요"}</h2><p>{en ? "Compare performance, record what you will change, then check the next results. Explore a review before creating a project." : "성과를 비교하고 바꿀 행동을 기록한 뒤, 다음 결과를 확인하세요. 프로젝트를 만들기 전에 주간 리뷰를 먼저 살펴볼 수도 있습니다."}</p><Link className="btn primary" href={en ? "/en/weekly-review" : "/weekly-review"}>{en ? "Start a weekly review" : "주간 리뷰 시작"}</Link></section>}
       {[...projects].sort((a, b) => (nextReview(a) || "9999").localeCompare(nextReview(b) || "9999")).map(project => {
         const due = nextReview(project);
         const end = [...(project.snapshots || [])].map(snapshot => snapshot.period?.end).filter(Boolean).sort().at(-1);
