@@ -54,7 +54,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Second project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
-    await page.getByRole("link", { name: en ? "Read the refund policy" : "환불정책 보기", exact: true }).click();
+    await page.locator(".subscription-hero").getByRole("link", { name: en ? "Refund policy" : "환불정책", exact: true }).click();
     await expect(page).toHaveURL(/#refund-policy$/);
     const refundPolicy = page.locator("#refund-policy");
     await expect(refundPolicy.getByRole("heading", { level: 2 })).toBeVisible();
