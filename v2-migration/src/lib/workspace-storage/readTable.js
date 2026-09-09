@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { wideToLong } from "@/lib/data-import/wideToLong";
+import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 
 export async function readStoredTable(entry) {
   if (!entry?.sourceBlob) throw new Error("WORKSPACE_DATASET_MISSING_SOURCE");
@@ -11,7 +12,8 @@ export async function readStoredTable(entry) {
     if (!sheet) throw new Error("WORKSPACE_SHEET_MISSING");
     table = { raw: sheet.raw, headers: sheet.headers };
   } else {
-    table = await new Promise((resolve, reject) => Papa.parse(entry.sourceBlob, {
+    const input = await prepareCsvParseInput(entry.sourceBlob);
+    table = await new Promise((resolve, reject) => Papa.parse(input, {
       header: true, skipEmptyLines: "greedy", worker: typeof Worker !== "undefined",
       complete: result => {
         if (result.errors?.some(error => error.type === "Quotes" || error.code === "TooManyFields")) return reject(new Error("WORKSPACE_DATASET_PARSE_FAILED"));
