@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
@@ -545,7 +546,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               manifest={buildResultManifest({
                 toolId: "5-22",
                 mode: effectiveMetric,
-                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                source: isDemoData(csvData) ? "demo" : "csv",
                 inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                 filter: { grain: effectiveGrain, metric: effectiveMetric },
                 grain: effectiveGrain,

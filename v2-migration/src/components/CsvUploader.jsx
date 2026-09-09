@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
@@ -282,7 +283,9 @@ export default function CsvUploader({
   const workspaceDatasetSummaries = useAppStore((s) => s.workspaceDatasetSummaries);
   const workspaceStorageError = useAppStore((s) => s.workspaceStorageError);
   const deviceStorageEnabled = useAppStore((s) => s.decisionPersistenceEnabled);
-  const setCsvData = useAppStore((s) => s.setCsvData);
+  const activeProjectId = useAppStore((s) => s.activeProjectId);
+  const writeCsvData = useAppStore((s) => s.setCsvData);
+  const setCsvData = data => writeCsvData(data, activeProjectId);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
@@ -374,7 +377,7 @@ export default function CsvUploader({
     }
     const requestId = ++preparationRequestRef.current;
     const prepared = await prepareImportedData({ headers, raw, toolId, source });
-    if (requestId !== preparationRequestRef.current) return;
+    if (requestId !== preparationRequestRef.current || activeProjectId !== useAppStore.getState().activeProjectId) return;
     const insights = prepared.insights;
     if (insights.signature.needsWideToLong) {
       setPendingWideImport({ headers, raw, fileName, source, worksheetName, fileModifiedAt, workspaceSource, insights });
@@ -519,7 +522,7 @@ export default function CsvUploader({
         source: pendingWideImport.source,
         worksheetName: pendingWideImport.worksheetName,
         fileModifiedAt: pendingWideImport.fileModifiedAt,
-        workspaceSource: pendingWideImport.workspaceSource,
+        workspaceSource: pendingWideImport.workspaceSource ? { ...pendingWideImport.workspaceSource, transform: "wide_to_long" } : null,
       });
     } catch (error) {
       reportImportFailure({ message: `${T.parseError}${error.message}`, source: pendingWideImport.source, state: "transform_error" });
@@ -675,7 +678,7 @@ export default function CsvUploader({
   };
 
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
-  const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo_"));
+  const isDemo = isDemoData(csvData);
   const isSheetSourced = !!(csvData && csvData.sheetUrl);
   // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
   // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
@@ -1030,6 +1033,11 @@ export default function CsvUploader({
           </div>
         </section>
       )}
+      {csvData.dataContinuity && <div className="csv-memory-note" role="status">
+        {locale === "en" ? "Within the selected project: " : "선택한 프로젝트 기준: "}
+        {({ unconfirmed: locale === "en" ? "First upload or period unconfirmed." : "첫 업로드이거나 기간을 확인할 수 없습니다.", next_period: locale === "en" ? "The next period follows the saved data." : "저장된 데이터의 다음 기간입니다.", gap: locale === "en" ? "Newer period, with a gap." : "더 최근 기간이며 날짜 공백이 있습니다.", same_period: locale === "en" ? "Same period; values may differ." : "같은 기간이며 값은 다를 수 있습니다.", overlap: locale === "en" ? "Periods overlap." : "기간이 겹칩니다.", historical: locale === "en" ? "Earlier period." : "이전보다 과거 기간입니다.", schema_changed: locale === "en" ? "Mapped columns changed; check compatibility." : "매핑된 컬럼이 달라졌습니다. 비교 가능 여부를 확인하세요.", currency_changed: locale === "en" ? "Currency changed; amounts are not comparable as-is." : "통화가 달라져 금액을 그대로 비교할 수 없습니다." })[csvData.dataContinuity]}
+        {locale === "en" ? " The saved file is replaced, not appended. Filenames do not identify projects. Choose another project for a different client or app." : " 저장된 파일은 이어 붙이지 않고 교체합니다. 파일명으로 프로젝트를 구분하지 않습니다. 다른 고객·앱은 프로젝트를 바꿔 주세요."}
+      </div>}
       {csvData.importInsights?.recipeApplied && (
         <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
       )}

@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Papa from "papaparse";
@@ -102,7 +103,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
     setMethod(nextMethod);
     // 방법별 샘플의 열 계약이 다르다. 탭만 바꾸고 이전 샘플을 남기면 다른
     // 방법의 데이터가 그럴듯한 숫자로 해석될 수 있어, 샘플만 안전하게 교체한다.
-    if (csvData?.fileName?.startsWith("demo_")) {
+    if (isDemoData(csvData)) {
       const nextDemo = nextMethod === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(nextMethod);
       if (nextDemo.fileName !== csvData.fileName) setCsvData(nextDemo);
     }
@@ -163,7 +164,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
     else setCsvData(buildIncrPrepostDemo(method));
   };
   const resetCsv = () => clearCsvGroup();
-  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+  const isDemo = isDemoData(csvData);
 
   // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
   // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.
@@ -536,7 +537,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       {blockedState && (
         <AnalysisBlockedTelemetry
           toolId="5-23"
-          source={csvData?.fileName?.startsWith("demo_") ? "demo" : csvData?.importSource || "csv"}
+          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
           state={blockedState}
           signature={`suppression|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}|${csvData?.raw?.length || 0}`}
           rowCount={csvData?.raw?.length || 0}
@@ -643,7 +644,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               manifest={buildResultManifest({
                 toolId: "5-23",
                 mode: "holdout",
-                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                source: isDemoData(csvData) ? "demo" : "csv",
                 inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                 filter: { start, end },
                 grain: "holdout-period",
@@ -966,7 +967,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       {blockedState && (
         <AnalysisBlockedTelemetry
           toolId="5-23"
-          source={csvData?.fileName?.startsWith("demo_") ? "demo" : csvData?.importSource || "csv"}
+          source={isDemoData(csvData) ? "demo" : csvData?.importSource || "csv"}
           state={blockedState}
           signature={`prepost|${direction}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${useDiD ? 1 : 0}|${csvData?.raw?.length || 0}`}
           rowCount={csvData?.raw?.length || 0}

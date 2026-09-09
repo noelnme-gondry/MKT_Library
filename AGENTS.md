@@ -58,7 +58,7 @@ v2-migration/
 ```
 - **검증**: `npm run test:all`(vitest golden+smoke) · `npm run lint`(eslint 0 errors 유지) · `npm run build`
 - **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`·`--border`)+다크/라이트 **전역**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
-- **Supabase**: 전체 무료 전환으로 **미사용** — `layout.js`에 스크립트 주석화(`TODO(B2B)`). service_role key 규칙(§2.3) 불변. 접근키·Pro 페이월은 제거됨.
+- **Supabase**: 현재 운영 연결은 미사용. 주간 리뷰 확장 라이선스 RPC 클라이언트는 선택적 환경 설정 뒤에 준비돼 있으며, 설정이 없으면 구독 관심 확인만 제공한다. 분석 도구는 무료. service_role key 규칙(§2.3) 불변. 접근키·Pro 페이월은 제거됨.
 
 ---
 

@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Link from "next/link";
@@ -894,7 +895,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                     manifest={buildResultManifest({
                       toolId: "5-4",
                       mode: testType,
-                      source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                      source: isDemoData(csvData) ? "demo" : "csv",
                       inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                       grain: "arm",
                       metricDefinitions: [{ key: "conversion-rate-difference", unit: "percentage points" }, { key: "p-value" }, { key: "95% CI" }],

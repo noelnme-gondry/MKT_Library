@@ -255,6 +255,8 @@ export default function Header({ locale = "ko" }) {
               <span className="header-utility-menu__label">{T.utilities}</span>
             </summary>
             <div className="header-utility-menu__panel">
+              <Link href={locale === "en" ? "/en/projects" : "/projects"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Projects" : "프로젝트 보관함"}</Link>
+              <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
               <ProjectSettingsMenu locale={locale} />
               <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>
               <button className="btn ghost header-analyst-mode-menu" type="button" aria-pressed={analystMode} onClick={() => { setAnalystMode(!analystMode); closeUtilityMenu(); }}>

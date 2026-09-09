@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
@@ -50,7 +51,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const hasData = (csvData?.raw || []).length > 0 && (csvData?.headers || []).length > 0;
-  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
+  const isDemo = isDemoData(csvData);
 
   const headers = csvData.headers || [];
   const resolvedDateColumn = dateColumn || findHeader(headers, csvData.mapping, "date", [/^date$/i, /날짜|일자/]);

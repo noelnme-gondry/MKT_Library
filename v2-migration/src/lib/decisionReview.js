@@ -13,6 +13,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
   "sourcePath",
+  "dataOrigin",
   "locale",
   "conclusion",
   "action",
@@ -55,6 +56,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
 export const DECISION_REVIEW_COLUMNS = [
   "tool_id",
   "source_path",
+  "data_origin",
   "locale",
   "conclusion",
   "action",
@@ -386,6 +388,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   const record = {
     id: asText(field(row, "id", "record_id"), FIELD_LIMITS.id),
     toolId: asText(field(row, "toolId", "tool_id"), FIELD_LIMITS.toolId) || asText(fallbackToolId, FIELD_LIMITS.toolId),
+    dataOrigin: ["real", "demo"].includes(field(row, "dataOrigin", "data_origin")) ? field(row, "dataOrigin", "data_origin") : "unknown",
     sourcePath: normalizeSourcePath(field(row, "sourcePath", "source_path")),
     locale,
     conclusion: asText(field(row, "conclusion"), FIELD_LIMITS.conclusion),
@@ -442,38 +445,6 @@ export function sanitizeDecisionReviewRecords(records = []) {
 }
 
 export function serializeDecisionReviewCsv(records = []) {
-  const rows = normalizeDecisionReviewRows(records).map((record) => [
-    record.toolId,
-    record.sourcePath,
-    record.locale,
-    record.conclusion,
-    record.action,
-    record.hypothesis,
-    record.metric,
-    record.targetDirection,
-    record.comparisonKind,
-    record.forecastPeriod,
-    record.forecastTarget,
-    record.forecastPlatform,
-    record.forecastValue,
-    record.forecastLower,
-    record.forecastUpper,
-    record.forecastSourceThrough,
-    record.baseline,
-    record.baselineDate,
-    record.comparisonWindowDays,
-    record.comparisonScope,
-    record.datasetSnapshot,
-    record.reviewQuestion,
-    record.reviewDate,
-    record.sourcePeriod,
-    record.actual,
-    record.learning,
-    record.status,
-    record.reviewedAt,
-    record.createdAt,
-    record.updatedAt,
-    record.id,
-  ]);
+  const rows = normalizeDecisionReviewRows(records).map(record => DECISION_REVIEW_COLUMNS.map(column => record[column === "record_id" ? "id" : column.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())] ?? ""));
   return `\uFEFF${[DECISION_REVIEW_COLUMNS, ...rows].map((row) => row.map(safeCell).join(",")).join("\r\n")}\r\n`;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SUBSCRIPTION, validateLicenseHash, hasPaidAccess } from "@/lib/subscription/entitlement";
 import { useAppStore } from "@/store/useDataStore";
 
 // IndexedDB는 Zustand persist와 의도적으로 분리돼 있다. hydration이 끝난 뒤에만
@@ -8,10 +9,22 @@ import { useAppStore } from "@/store/useDataStore";
 export default function WorkspaceStorageBootstrap() {
   useEffect(() => {
     let cancelled = false;
-    const restore = () => {
+    const refreshLicense = async () => {
+      let cache;
+      try { cache = JSON.parse(localStorage.getItem(SUBSCRIPTION.cacheKey)); } catch { return; }
+      if (!cache?.keyHash) return;
+      if (hasPaidAccess(cache)) useAppStore.getState().setEntitlement(cache);
+      const result = await validateLicenseHash(cache.keyHash, cache);
+      if (cancelled) return;
+      useAppStore.getState().setEntitlement(result.entitlement);
+      try { if (result.entitlement) localStorage.setItem(SUBSCRIPTION.cacheKey, JSON.stringify(result.entitlement)); else localStorage.removeItem(SUBSCRIPTION.cacheKey); } catch {}
+    };
+    refreshLicense();
+    const restore = async () => {
       if (cancelled || useAppStore.getState().decisionPersistenceEnabled !== true) return;
       navigator.storage?.persist?.().catch(() => {});
-      useAppStore.getState().restoreWorkspaceDatasets();
+      await useAppStore.getState().initializeProjects();
+      if (!cancelled) useAppStore.getState().restoreWorkspaceDatasets();
     };
     const unsubscribe = useAppStore.persist.onFinishHydration(restore);
     if (useAppStore.persist.hasHydrated()) restore();

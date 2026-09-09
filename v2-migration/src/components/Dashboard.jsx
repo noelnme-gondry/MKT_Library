@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useMemo } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
@@ -184,7 +185,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     domain,
     locale,
   }), [verdict, csvData?.mapping, domain, locale]);
-  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
+  const isDemo = isDemoData(csvData);
   const openMapping = () => {
     setMappingOpen(true);
     requestAnimationFrame(() => document.getElementById("dashboard-data-setup")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -399,7 +400,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     align="right"
                     manifest={buildResultManifest({
                       toolId,
-                      source: csvData.fileName?.startsWith("demo_") ? "demo" : isContent ? "content-csv" : "csv",
+                      source: isDemoData(csvData) ? "demo" : isContent ? "content-csv" : "csv",
                       inputSignature: `${csvData.fileName || "dataset"}|${csvData.raw.length}`,
                       filter: { windowDays: dashWindowDays },
                       grain: "dashboard-period",

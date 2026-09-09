@@ -1,4 +1,6 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
+import { updateProject } from "@/lib/project/repository";
 
 /**
  * Weekly Review — 주간 성과를 읽고 이번 주 행동 하나를 정하는 화면.
@@ -162,9 +164,14 @@ function money(value) {
 }
 
 export default function WeeklyReviewScreen({ locale = "ko" }) {
+  const activeProjectId = useAppStore(state => state.activeProjectId);
+  return <ProjectWeeklyReview key={activeProjectId} locale={locale} projectId={activeProjectId} />;
+}
+
+function ProjectWeeklyReview({ locale, projectId }) {
   const t = COPY[locale] || COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
-  const reviewSource = csvData.fileName?.startsWith("demo_") ? "demo" : "csv";
+  const reviewSource = isDemoData(csvData) ? "demo" : "csv";
   const decisionRecords = useAppStore((state) => state.decisionRecords ?? EMPTY_RECORDS);
   const sessionDecisionIds = useAppStore((state) => state.decisionSessionRecordIds);
   const existingDecisionCount = decisionRecords.filter((record) => record.toolId !== "weekly-review" && !sessionDecisionIds.has(record.id)).length;
@@ -199,11 +206,14 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
     guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "",
   });
   const [savedDecision, setSavedDecision] = useState(null);
+  const [savedReport, setSavedReport] = useState(null);
+  const [reportBusy, setReportBusy] = useState(false);
   const decisionContext = JSON.stringify([projectName, kpiMetric, basis, customPeriod, csvData.currency]);
   const isSavedDecisionCurrent = Boolean(savedDecision && savedDecision.raw === csvData.raw && savedDecision.context === decisionContext);
   useEffect(() => {
+    if (!workspaceReady) return;
     let alive = true;
-    (persistenceEnabled ? readReviewProject() : Promise.resolve(null)).then((saved) => {
+    (persistenceEnabled ? readReviewProject(projectId) : Promise.resolve(null)).then((saved) => {
       if (!alive) return;
       if (saved) {
         setProjectName(saved.name); setKpiMetric(saved.metric); setBasis(saved.basis); setTargetValue(saved.target); setTargetCurrency(saved.currency); setCustomPeriod(saved.period || null);
@@ -211,7 +221,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       setProjectReady(true);
     });
     return () => { alive = false; };
-  }, [persistenceEnabled]);
+  }, [persistenceEnabled, projectId, workspaceReady]);
 
   const rows = useMemo(() => getMappedRows(csvData), [csvData]);
   const targetCurrencyMatches = !targetCurrency || targetCurrency === csvData.currency || ["roas", "conversions"].includes(kpiMetric);
@@ -225,7 +235,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   const changePeriod = value => { changeProject(setCustomPeriod)(value); setTargetValue(""); setTargetCurrency(null); };
   const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} hasResult={hasResult} onSave={async () => {
       if (!projectReady || !workspaceReady || !targetUnitReady || !targetCurrencyMatches || targetInvalid) return false;
-      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
+      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
       if (result.ok) setTargetCurrency(csvData.currency);
       setProjectStatus(result.ok ? (locale === "en" ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.") : (locale === "en" ? "Could not save. This session still works." : "저장하지 못했습니다. 현재 세션에서는 계속 사용할 수 있습니다."));
       if (result.ok) trackProductEvent("weekly_project_saved", { locale, tool_id: "weekly-review", source: reviewSource });
@@ -239,12 +249,13 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   // 저장된 주간 기록을 읽어야 평소 변동 범위를 판정할 수 있다(§2.3).
   // 못 읽으면 빈 목록으로 떨어지고 리뷰는 크기·표본 두 축으로 계속 동작한다.
   useEffect(() => {
+    if (!workspaceReady) return;
     let alive = true;
-    (persistenceEnabled ? listStoredSnapshots() : Promise.resolve([])).then((list) => {
+    (persistenceEnabled ? listStoredSnapshots(projectId) : Promise.resolve([])).then((list) => {
       if (alive) { setStoredSnapshots(list); setSnapshotsReady(true); }
     });
     return () => { alive = false; };
-  }, [persistenceEnabled]);
+  }, [persistenceEnabled, projectId, workspaceReady]);
 
   const review = useMemo(
     () => isAnalyzed ? runReview({ rows, storedSnapshots, decisionRecords, project, customPeriod }) : { ok: false, reason: "awaiting_analysis" },
@@ -268,11 +279,11 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   // 이번 기간 집계를 보관한다 — 다음 주의 "평소 범위"가 여기서 나온다.
   // 기기 저장을 끈 사용자에게는 쓰지 않는다.
   useEffect(() => {
-    if (!review.ok || persistenceEnabled !== true) return;
+    if (!review.ok || persistenceEnabled !== true || reviewSource === "demo") return;
     let alive = true;
-    saveStoredSnapshot(review.previous, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true }).then(async (previous) => {
+    saveStoredSnapshot(review.previous, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId }).then(async (previous) => {
       if (!alive) return;
-      const current = await saveStoredSnapshot(review.current, { shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true });
+      const current = await saveStoredSnapshot(review.current, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
       if (alive) {
         setSnapshotStatus(previous.ok && current.ok ? "saved" : "failed");
         trackProductEventOnce(previous.ok && current.ok ? "weekly_review_saved" : "weekly_review_save_failed", resultEventKey, { tool_id: "weekly-review", source: reviewSource, locale, state: "device" });
@@ -284,7 +295,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
       }
     });
     return () => { alive = false; };
-  }, [review, persistenceEnabled, resultEventKey, reviewSource, locale]);
+  }, [review, persistenceEnabled, resultEventKey, reviewSource, locale, projectId]);
 
   useEffect(() => {
     if (!workspaceReady || !snapshotsReady || !projectReady) return;
@@ -334,6 +345,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
     return (
       <article className="content wr-screen">
         <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
+      <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>
         <header className="wr-screen__head">
           <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
@@ -390,6 +402,7 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
   return (
     <article className="content wr-screen">
       <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
+      <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>
 
       <header className="wr-screen__head">
         <div className="wr-screen__eyebrow">{t.eyebrow}</div>
@@ -679,6 +692,16 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
         <h2 className="wr-card__title" id="wr-share">{t.shareHead}</h2>
         <p>{locale === "en" ? "The same periods, campaign evidence and saved decision, ready for your team review." : "검토한 기간·캠페인 근거·저장한 결정을 한 문서로 전달하세요."}</p>
         <WeeklyReportDocument text={renderReportText(draft, { number: money })} />
+        <button type="button" className="btn primary" disabled={!persistenceEnabled || reviewSource === "demo" || reportBusy} onClick={async () => {
+          setReportBusy(true);
+          try {
+            const saved = await updateProject(projectId, { report: { text: renderReportText(draft, { number: money }), period: periods.current, generatedAt: new Date().toISOString() } }, () => useAppStore.getState().decisionPersistenceEnabled && useAppStore.getState().activeProjectId === projectId);
+            setSavedReport({ raw: csvData.raw, context: decisionContext, ok: Boolean(saved) });
+            if (saved) { await useAppStore.getState().refreshProjects(); trackProductEvent("weekly_report_saved", { locale, source: reviewSource }); }
+          } catch { setSavedReport({ raw: csvData.raw, context: decisionContext, ok: false }); }
+          finally { setReportBusy(false); }
+        }}>{locale === "en" ? "Save report to project" : "프로젝트에 보고서 저장"}</button>
+        {savedReport?.raw === csvData.raw && savedReport.context === decisionContext && <p role="status">{savedReport.ok ? (locale === "en" ? "Report saved." : "보고서를 저장했습니다.") : (locale === "en" ? "Save failed. Your analysis remains open; download a copy." : "저장하지 못했습니다. 분석은 유지되니 보고서를 내려받아 주세요.")}</p>}
         <div className="wr-report-actions">
         <button type="button" className="btn" onClick={async () => {
           try {

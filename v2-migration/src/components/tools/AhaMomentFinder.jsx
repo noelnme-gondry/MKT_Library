@@ -1,4 +1,5 @@
 "use client";
+import { isDemoData } from "@/lib/dataOrigin";
 import { limitAhaObservationWindow } from "@/utils/ahaObservationWindow";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
@@ -499,7 +500,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [analyzedSig, setAnalyzedSig] = useState(null);
 
   const hasData = csvData?.raw?.length > 0;
-  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+  const isDemo = isDemoData(csvData);
 
   // 자동 로드하지 않는다. 도구에 들어가자마자 샘플 분석 화면이 뜨면 "내 데이터를
   // 올리는 곳"이라는 사실이 가려지고, 화면의 숫자가 내 것인지 예시인지도 헷갈린다.
@@ -1298,7 +1299,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   manifest={buildResultManifest({
                     toolId: domain === "content" ? "9-2" : "5-20",
                     mode: holdoutOn ? "association-holdout" : "association",
-                    source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                    source: isDemoData(csvData) ? "demo" : "csv",
                     inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                     mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
                     filter: { segment: validSeg ? `${validSeg.col}=${validSeg.value}` : "all", holdout: holdoutOn, minSupport },

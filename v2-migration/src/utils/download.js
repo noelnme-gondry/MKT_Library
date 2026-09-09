@@ -2,7 +2,7 @@
 // (DownloadHub와 짝). CSV는 항상 BOM+CRLF+charset=utf-8(§7 Excel 한 행 뭉침·한글
 // 깨짐 방지). 표시/입출력 헬퍼라 utils에 둠(수학 아님).
 
-function triggerDownload(blob, fileName) {
+export function downloadFile(blob, fileName) {
   if (typeof document === "undefined") return false;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -40,12 +40,12 @@ export function csvBody(header, rows) {
 // 안전하게 저장되도록 charset 지정.
 export function downloadCsv(csvString, baseName = "export") {
   const blob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
-  return triggerDownload(blob, withDate(baseName, "csv"));
+  return downloadFile(blob, withDate(baseName, "csv"));
 }
 
 export function downloadXlsx(arrayBuffer, baseName = "export") {
   const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  return triggerDownload(blob, withDate(baseName, "xlsx"));
+  return downloadFile(blob, withDate(baseName, "xlsx"));
 }
 
 // 사내에 도는 파일이 곧 유통 경로다. 텍스트·마크다운 산출물 끝에 출처 한 줄을 남긴다.
@@ -66,16 +66,16 @@ export function withAttribution(textString, locale = "ko") {
 // 마크다운/텍스트 문서 저장(claude-ux §6 "상세 문서 받기" 탈출구용).
 export function downloadText(textString, baseName = "summary", ext = "md", locale = "ko") {
   const blob = new Blob([withAttribution(textString, locale)], { type: "text/plain;charset=utf-8" });
-  return triggerDownload(blob, withDate(baseName, ext));
+  return downloadFile(blob, withDate(baseName, ext));
 }
 
 export function downloadCalendar(calendarString, baseName = "decision_review") {
   const blob = new Blob([calendarString], { type: "text/calendar;charset=utf-8" });
-  return triggerDownload(blob, withDate(baseName, "ics"));
+  return downloadFile(blob, withDate(baseName, "ics"));
 }
 
 export function downloadJson(value, baseName = "result-manifest", ext = "json") {
   const text = `${JSON.stringify(value, null, 2)}\n`;
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  return triggerDownload(blob, withDate(baseName, ext));
+  return downloadFile(blob, withDate(baseName, ext));
 }
