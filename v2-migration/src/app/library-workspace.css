@@ -159,8 +159,10 @@
   .app .library-full-navigation .sidebar-search { background: var(--library-background); color: var(--library-muted); border-color: var(--library-border); }
   .app .sidebar-library-disclosure { border-color: var(--library-border); margin-top: 5px; }
   .app .sidebar-library-disclosure > summary { display: flex; font-size: 12px; letter-spacing: 0; padding: 12px 10px; color: var(--library-muted); }
-  .app .sidebar-library-link { color: var(--library-muted); background: transparent; }
-  .app .sidebar-library-link:hover, .app .sidebar-library-link[aria-current="page"] { color: var(--library-accent); background: var(--library-accent-surface); }
+  .app .sidebar.library-sidebar .sidebar-library-link { color: var(--library-muted); background: transparent; }
+  .app .sidebar.library-sidebar .sidebar-library-link strong,
+  .library-nav-dialog .sidebar-library-link strong { color: inherit; }
+  .app .sidebar.library-sidebar .sidebar-library-link:is(:hover, [aria-current="page"]) { color: var(--library-accent); background: var(--library-accent-surface); }
   .home-sidebar-local { margin-top: auto; padding: 20px 10px 0; color: var(--library-muted); font-size: 11px; line-height: 1.8; }
   body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
   body.is-sidebar-collapsed .app .sidebar.library-sidebar { display: none; }
@@ -259,6 +261,9 @@
   .dc-intake[open] { margin-block: 22px; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); }
   .dochi-help-trigger { border: 0; background: transparent; color: var(--library-accent); min-height: 44px; cursor: pointer; font-size: 12px; }
   .app .content { max-width: 1480px; }
+  /* Availability is explained in the card; dimming its whole link also dims
+     the explanation and makes it unreadable on the light surface. */
+  .app .tool-index__item.is-dim .tool-index__link { opacity: 1; }
   .app .btn.primary { box-shadow: none; }
   .kpi-grid--overview { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 10px; overflow: hidden; }
   .dashboard-section, .dashboard-card, .wr-card, .dochi-workspace__card { border-radius: 10px; background: var(--library-surface); }
