@@ -113,6 +113,7 @@ export const CONNECTED_TOOLS = {
 export const TOOL_JOURNEY = [
   {
     id: "monitor",
+    homePurpose: "performance",
     label: { ko: "01 · CHECK", en: "01 · CHECK" },
     title: { ko: "이번 주 점검", en: "This week" },
     description: { ko: "어디가 흔들렸고 왜 그런지 봅니다.", en: "See what moved and why." },
@@ -120,6 +121,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "baseline",
+    homePurpose: "performance",
     label: { ko: "02 · BASELINE", en: "02 · BASELINE" },
     title: { ko: "추세·잠식 점검", en: "Trend and displacement" },
     description: { ko: "원래 추세인지, 광고가 오가닉을 먹은 건지 가릅니다.", en: "Tell the underlying trend apart from paid displacing organic." },
@@ -127,6 +129,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "budget",
+    homePurpose: "planning",
     label: { ko: "03 · BUDGET", en: "03 · BUDGET" },
     title: { ko: "예산 조정", en: "Budget moves" },
     description: { ko: "더 써도 되는지, 어디로 옮길지 정합니다.", en: "Decide what can scale and where budget should move." },
@@ -134,6 +137,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "creative",
+    homePurpose: "creative",
     label: { ko: "04 · CREATIVE", en: "04 · CREATIVE" },
     title: { ko: "먹히는 요소 찾기", en: "What resonates" },
     description: { ko: "소재·콘텐츠·초기 행동 중 무엇이 성과를 만드는지 찾습니다.", en: "Find which creative, content, or early action drives the outcome." },
@@ -141,6 +145,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "store",
+    homePurpose: "creative",
     label: { ko: "05 · STORE", en: "05 · STORE" },
     title: { ko: "앱 유입 개선", en: "App store traffic" },
     description: { ko: "검색 키워드와 스토어 페이지에서 새는 곳을 봅니다.", en: "Check search keywords and the store page for leaks." },
@@ -148,6 +153,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "prove",
+    homePurpose: "planning",
     label: { ko: "06 · PROOF", en: "06 · PROOF" },
     title: { ko: "효과 검증", en: "Proof" },
     description: { ko: "관찰된 차이가 실제 효과인지 확인합니다.", en: "Test whether the observed difference is a real effect." },
@@ -155,6 +161,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "contribution",
+    homePurpose: "planning",
     label: { ko: "07 · MIX", en: "07 · MIX" },
     title: { ko: "채널 기여도", en: "Channel contribution" },
     description: { ko: "장기 배분의 근거를 채널 단위로 만듭니다.", en: "Build the channel-level basis for long-run allocation." },

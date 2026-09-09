@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import ToolIndex from "@/components/ds/ToolIndex";
-import JourneyProgress from "@/components/ds/JourneyProgress";
-// 개수는 세서 쓴다 — "17개"라고 손으로 적힌 값이 실제 발행 도구 수와 어긋나 있었다(§8).
-import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
+import HomeToolFinder from "@/components/ds/HomeToolFinder";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
@@ -23,13 +20,13 @@ const COPY = {
     titleAccent: "다음 주에 다시 확인하세요.",
     deck: "도치는 CSV 준비와 첫 분석을 돕고, 주간 리뷰는 이번 결정과 다음 결과를 이어줍니다.",
     actionAria: "바로 시작할 작업",
-    dataCta: "도치로 첫 분석",
+    dataCta: "내 데이터로 분석 시작",
     dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
     reviewCta: "주간 리뷰 이어가기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
     diagnoseCta: "성과 원인 찾기",
-    demoCta: "대시보드 결과 예시 보기",
+    demoCta: "데모로 먼저 보기",
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
@@ -43,15 +40,10 @@ const COPY = {
     reviewed: "검토 완료",
     openInbox: "주간 리뷰 열기",
     reopenTool: "원본 도구 다시 열기",
-    loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
-    loopDeck: "직접 올린 파일과 결정 기록은 이 기기에만 마지막 사용 후 90일까지 남고, 언제든 지우거나 저장을 끌 수 있습니다.",
-    loop: [
-      { id: "start", label: "01 · START", title: "내 데이터 진단", desc: "CSV나 Google Sheets를 가져오면 가능한 분석과 가장 먼저 볼 질문을 추천합니다.", cta: "데이터로 시작" },
-      { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "주간 리뷰에서 목표와 캠페인별 근거를 확인하고 결정과 다음 검토일을 저장합니다.", cta: "이번 주 리뷰 만들기" },
-      { id: "review", label: "03 · REVIEW", title: "다음 데이터로 다시 확인", desc: "다음 기간 CSV를 올려 지난 결정 이후의 관측을 확인합니다. 저장한 결정은 리뷰 안에서 다시 볼 수 있습니다.", cta: "지난 결정 확인" },
-    ],
-    questionTitle: "지금 가장 먼저 판단할 것은?",
-    questionDeck: (count) => `${count}개 분석 전부입니다. 도구 이름이 아니라 판단 상황으로 골라요.`,
+    loopTitle: "분석한 결정을 저장하고, 다음 주 결과를 검토하세요.",
+    loopDeck: "이번 판단과 다음 결과를 주간 리뷰에서 이어보세요.",
+    questionTitle: "직접 도구 찾기",
+    questionDeck: "살펴볼 목적을 선택하세요.",
     libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
     libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
     blogLabel: "마케팅 블로그",
@@ -71,13 +63,13 @@ const COPY = {
     titleAccent: "Review what happens next.",
     deck: "Dochi helps prepare your CSV and first analysis. Weekly Review connects this decision to the next results.",
     actionAria: "Start a task",
-    dataCta: "Start with Dochi",
+    dataCta: "Start with my data",
     dataActionHint: "Upload → check columns → supported analyses",
     reviewCta: "Continue weekly review",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
-    demoCta: "See a dashboard example",
+    demoCta: "Try a demo",
     dataGuideCta: "Prepare CSV columns",
     assurance: "Free · no signup · source data stays in your browser",
     continueTitle: "Continue your last decision",
@@ -89,15 +81,10 @@ const COPY = {
     reviewed: "Reviewed",
     openInbox: "Open weekly review",
     reopenTool: "Reopen source tool",
-    loopTitle: "Do not stop at analysis—review what happened next",
-    loopDeck: "Files you upload directly and decision records stay on this device until 90 days after their last use. You can remove them or turn storage off at any time.",
-    loop: [
-      { id: "start", label: "01 · START", title: "Diagnose my data", desc: "Bring a CSV or Google Sheet to see which analyses it supports and which question to check first.", cta: "Start with my data" },
-      { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Review targets and campaign evidence, then save a decision and its next review date.", cta: "Build this week's review" },
-      { id: "review", label: "03 · REVIEW", title: "Check the next data", desc: "Upload the next period and inspect observations after your decision. Revisit saved decisions inside the review.", cta: "See past decisions" },
-    ],
-    questionTitle: "What do you need to decide first?",
-    questionDeck: (count) => `All ${count} analyses, grouped by the decision each one supports.`,
+    loopTitle: "Save your decision and review next week’s results.",
+    loopDeck: "Connect this decision to the next results in Weekly Review.",
+    questionTitle: "Find a tool",
+    questionDeck: "Choose what you want to explore.",
     libraryTitle: "Build evidence for the next decision.",
     libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
     blogLabel: "마케팅 블로그",
@@ -118,6 +105,22 @@ export default function LandingPage({ locale = "ko", children }) {
   const T = COPY[lang];
   const router = useRouter();
   const rootRef = useRef(null);
+  const intakeRef = useRef(null);
+  const openIntake = () => {
+    if (!intakeRef.current) return;
+    intakeRef.current.open = true;
+    requestAnimationFrame(() => {
+      const target = intakeRef.current?.querySelector("#dochi-upload");
+      target?.focus();
+      target?.scrollIntoView?.({ block: "start" });
+    });
+  };
+  useEffect(() => {
+    const revealFromHash = () => { if (window.location.hash === "#dochi-upload") openIntake(); };
+    revealFromHash();
+    window.addEventListener("hashchange", revealFromHash);
+    return () => window.removeEventListener("hashchange", revealFromHash);
+  }, []);
   // 진입 모션은 렌더층 전용 — 로케일이 바뀌면 DOM이 갈아끼워지므로 다시 부착한다.
   useEffect(() => runLandingMotion(rootRef.current), [lang]);
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
@@ -170,14 +173,14 @@ export default function LandingPage({ locale = "ko", children }) {
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
               href="#dochi-upload"
-              onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
+              onClick={() => { openIntake(); trackLandingNav("landing_data_start_clicked", "hero"); }}
             >
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
-            <Link className="dc-action-route" href={lang === "en" ? "/en/weekly-review" : "/weekly-review"} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
+            {decisionRecords.length > 0 && <Link className="dc-action-route" href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"} onClick={() => trackLandingNav("landing_review_opened", "hero")}>
               <strong>{T.reviewCta}</strong><span>{T.reviewHint}</span>
-            </Link>
+            </Link>}
           </nav>
           <div className="dc-hero__utility-actions">
             <Link
@@ -209,8 +212,13 @@ export default function LandingPage({ locale = "ko", children }) {
         </div>
       </section>
 
-      <JourneyProgress locale={lang} stage="prepare" placement="home" />
-      {children}
+      {/* #dochi-upload 탐색은 브라우저가 hydration 전에 부모 details를 열 수 있다. */}
+      <details className="dc-intake" ref={intakeRef} suppressHydrationWarning onToggle={(event) => {
+        if (!event.currentTarget.open) rootRef.current?.querySelector(".dc-action-route--primary")?.focus();
+      }}>
+        <summary>{lang === "en" ? "Close data preparation" : "데이터 준비 접기"}</summary>
+        {children}
+      </details>
 
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">
@@ -244,23 +252,15 @@ export default function LandingPage({ locale = "ko", children }) {
         </div>
       </section>}
 
-      {/* 목적 선택(질문 카드)을 개념 설명(주간 결정 루프)보다 앞에 둔다 — 첫 화면
-          바로 아래에서 "내가 원하는 것"에 도달하게(claude-ux §1 여정=질문 프레임). */}
-      {/* 첫 화면에서 "무엇을 할 수 있나"가 전부 보여야 한다. 예전에는 손으로 고른
-          질문 카드 4장만 있어서 4개만 이름이 노출됐고, 전체 목록은 스크롤
-          네 번 아래에 있었다. 카드와 목록 두 장치를 하나로 합친다 — 페이지는 짧아지고
-          보이는 도구는 4개에서 전부로 늘어난다. */}
       <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
         <header className="dc-section-head">
           <div>
             <h2 id="dc-question-title">{T.questionTitle}</h2>
           </div>
-          <p>{T.questionDeck(PUBLISHED_TOOL_IDS.length)}</p>
+          <p>{T.questionDeck}</p>
         </header>
-        <ToolIndex
+        <HomeToolFinder
           locale={lang}
-          density="compact"
-          headingLevel={3}
           onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
             tool_id: toolId,
             source: "landing",
@@ -277,22 +277,7 @@ export default function LandingPage({ locale = "ko", children }) {
           </div>
           <p>{T.loopDeck}</p>
         </header>
-        <div className="dc-loop__grid">
-          {T.loop.map((step) => {
-            const content = <><span>{step.label}</span><h3>{step.title}</h3><p>{step.desc}</p><b>{step.cta} →</b></>;
-            const href = step.id === "start" ? "#dochi-upload" : `${lang === "en" ? "/en" : ""}/weekly-review${step.id === "review" ? "#wr-history" : ""}`;
-            return (
-              <Link
-                className="dc-loop-card"
-                href={href}
-                key={step.id}
-                onClick={() => {
-                  trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop");
-                }}
-              >{content}</Link>
-            );
-          })}
-        </div>
+        <Link className="dc-text-link" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackLandingNav("landing_review_opened", "weekly_loop")}>{T.openInbox}</Link>
       </section>
 
 
