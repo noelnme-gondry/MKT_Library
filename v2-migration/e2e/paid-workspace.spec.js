@@ -34,6 +34,7 @@ for (const locale of ["ko", "en"]) {
     await expect(free).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
   });
   test(`unpaid report gate and seller product page (${locale})${tag}`, async ({ page }) => {
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: false, mode: "test" } }));
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
     await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
