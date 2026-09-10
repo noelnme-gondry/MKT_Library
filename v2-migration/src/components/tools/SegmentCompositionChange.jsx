@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
 import CsvUploader from "@/components/CsvUploader";
@@ -184,10 +185,10 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     [manualMapping, auto],
   );
   const setMapping = (next) => setManualMapping(next);
-  const [draft, setDraft] = useState({ pre: "", post: "", scopeValue: "", dimensionId: "", memberId: "" });
+  const [draft, setDraft] = useSavedToolInput("5-29", "draft", { pre: "", post: "", scopeValue: "", dimensionId: "", memberId: "" });
   // 인과 확인은 탐색 토글이 아니라 **설계 선언**이다. 매핑 서명과 분리해 두되,
   // 선언이 비어 있으면 섹션 자체가 열리지 않는다.
-  const [design, setDesign] = useState({ cutoff: "", treated: "", control: "" });
+  const [design, setDesign] = useSavedToolInput("5-29", "design", { cutoff: "", treated: "", control: "" });
 
   const periods = useMemo(() => periodKeys(rows, mapping.roles.time), [rows, mapping.roles.time]);
   const signature = useMemo(

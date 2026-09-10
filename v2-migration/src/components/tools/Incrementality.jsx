@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
@@ -96,7 +97,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
-  const [method, setMethod] = useState("suppression");
+  const [method, setMethod] = useSavedToolInput("5-23", "method", "suppression");
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
   const selectMethod = useCallback((nextMethod) => {
@@ -107,7 +108,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
       const nextDemo = nextMethod === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(nextMethod);
       if (nextDemo.fileName !== csvData.fileName) setCsvData(nextDemo);
     }
-  }, [csvData, setCsvData]);
+  }, [csvData, setCsvData, setMethod]);
   const onMethodKeyDown = useCallback((event, methodKey) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -711,7 +712,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const groupCols = useMemo(() => headers.filter((h) => h !== dateCol && !numericCols.includes(h)), [headers, dateCol, numericCols]);
   const [metricCol, setMetricCol] = useState(numericCols[0] || "");
   const [groupCol, setGroupCol] = useState(groupCols[0] || "");
-  const [useDiD, setUseDiD] = useState(!!groupCols.length);
+  const [useDiD, setUseDiD] = useSavedToolInput("5-23", "useDiD", !!groupCols.length);
   const [controlGroup, setControlGroup] = useState("");
   const [treatmentGroup, setTreatmentGroup] = useState("");
   const groupVals = useMemo(() => groupCol ? [...new Set((csvData.raw || []).map((r) => String(r[groupCol]).trim()).filter(Boolean))] : [], [csvData.raw, groupCol]);
@@ -729,7 +730,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       : rows;
     return aggregateDailyMetric(treatmentRows, dateCol, metricCol).map((point) => point.date);
   }, [csvData.raw, groupCol, selectedTreatment, dateCol, metricCol]);
-  const [cutoff, setCutoff] = useState("");
+  const [cutoff, setCutoff] = useSavedToolInput("5-23", "cutoff", "");
   const effCutoff = cutoff;
   const design = useCausalDesign(`${computeAnalyzeSig(csvData)}|${direction}|${effCutoff}|${metricCol}|${groupCol}|${selectedControl}|${selectedTreatment}|${useDiD}`);
   const chartInst = useRef(null);

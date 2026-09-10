@@ -1,4 +1,5 @@
 "use client";
+import PassRecoveryHelp from "./PassRecoveryHelp";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -125,5 +126,6 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       <Link className="btn" href={en ? "/en/projects#project-backup" : "/projects#project-backup"}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</Link>
     </div>
     <section className="checkout-restore" aria-labelledby="checkout-restore-title"><h4 id="checkout-restore-title">{en ? "Restore a purchased pass on this device" : "구매한 이용권을 이 기기에서 복원"}</h4><div className="checkout-restore__form"><label className="wr-field">{en ? "Private recovery code" : "이용권 복원 코드"}<input type="password" autoComplete="off" maxLength={150} value={restoreCode} onChange={event => setRestoreCode(event.target.value)} /></label><button type="button" className="btn" disabled={busy || !restoreCode.trim()} onClick={restore}>{en ? "Restore access" : "이용권 복원"}</button></div></section>
+    <PassRecoveryHelp locale={locale} />
   </div>;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
@@ -78,7 +79,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
-  const [testType, setTestType] = useState("binary");
+  const [testType, setTestType] = useSavedToolInput("5-4", "testType", "binary");
   const onPrimaryTabKeyDown = useCallback((event, tabId) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -101,23 +102,23 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
 
   // ---- Plan mode inputs ----
-  const [planBaseline, setPlanBaseline] = useState("5");
-  const [planMde, setPlanMde] = useState("10");
-  const [planMean, setPlanMean] = useState("3500");
-  const [planSigma, setPlanSigma] = useState("1200");
-  const [planAlpha, setPlanAlpha] = useState("0.05");
-  const [planPower, setPlanPower] = useState("0.80");
-  const [planCprA, setPlanCprA] = useState("2500");
-  const [planCprB, setPlanCprB] = useState("");
-  const [sequentialLooks, setSequentialLooks] = useState("4");
+  const [planBaseline, setPlanBaseline] = useSavedToolInput("5-4", "planBaseline", "5");
+  const [planMde, setPlanMde] = useSavedToolInput("5-4", "planMde", "10");
+  const [planMean, setPlanMean] = useSavedToolInput("5-4", "planMean", "3500");
+  const [planSigma, setPlanSigma] = useSavedToolInput("5-4", "planSigma", "1200");
+  const [planAlpha, setPlanAlpha] = useSavedToolInput("5-4", "planAlpha", "0.05");
+  const [planPower, setPlanPower] = useSavedToolInput("5-4", "planPower", "0.80");
+  const [planCprA, setPlanCprA] = useSavedToolInput("5-4", "planCprA", "2500");
+  const [planCprB, setPlanCprB] = useSavedToolInput("5-4", "planCprB", "");
+  const [sequentialLooks, setSequentialLooks] = useSavedToolInput("5-4", "sequentialLooks", "4");
 
   // ---- Analyze mode inputs ----
   const [anNa, setAnNa] = useState("10000");
   const [anXa, setAnXa] = useState("500");
   const [anNb, setAnNb] = useState("10000");
   const [anXb, setAnXb] = useState("560");
-  const [plannedShare, setPlannedShare] = useState("");
-  const [equivalenceMargin, setEquivalenceMargin] = useState("");
+  const [plannedShare, setPlannedShare] = useSavedToolInput("5-4", "plannedShare", "");
+  const [equivalenceMargin, setEquivalenceMargin] = useSavedToolInput("5-4", "equivalenceMargin", "");
   const [confirmedDesign, setConfirmedDesign] = useState(null);
   const [ancNa, setAncNa] = useState("2000");
   const [ancMa, setAncMa] = useState("3500");

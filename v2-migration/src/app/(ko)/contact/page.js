@@ -1,3 +1,4 @@
+import PassRecoveryHelp from "@/components/PassRecoveryHelp";
 import { SITE_URL } from "@/lib/routeMap";
 import PolicyPage from "@/components/PolicyPage";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -26,6 +27,7 @@ export default function ContactPage() {
         intro="비즈니스 제안, 협업, 제품 피드백 모두 환영합니다. 편한 채널로 연락해 주세요."
         updated="2026-09-02"
         sections={[
+          { title: "이용권 복원", content: <PassRecoveryHelp locale="ko" /> },
           {
             title: "운영자 소개",
             content: <ContactAuthorProfile locale="ko" />,

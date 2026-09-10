@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
@@ -512,7 +513,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const basisMetric = effBasis === "installs" ? "cpi" : "cpa";
   // 지표는 전역 기준을 기본값으로 파생 — 사용자 pill은 수동 오버라이드(null=전역 따름).
   // 전역 기준이 flip되면 오버라이드를 렌더 중 리셋(React sanctioned reset-on-change 패턴, 이펙트 불필요).
-  const [metricOverride, setMetricOverride] = useState(null);
+  const [metricOverride, setMetricOverride] = useSavedToolInput("5-21", "metricOverride", null);
   const [lastBasisMetric, setLastBasisMetric] = useState(basisMetric);
   if (basisMetric !== lastBasisMetric) {
     setLastBasisMetric(basisMetric);
@@ -520,8 +521,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }
   const metric = metricOverride ?? basisMetric;
   const setMetric = setMetricOverride;
-  const [weekBasis, setWeekBasis] = useState("calendar");
-  const [lookback, setLookback] = useState(1);
+  const [weekBasis, setWeekBasis] = useSavedToolInput("5-21", "weekBasis", "calendar");
+  const [lookback, setLookback] = useSavedToolInput("5-21", "lookback", 1);
   const [periodOverride, setPeriodOverride] = useState(null);
   const dashboardPeriodOverride = useMemo(() => {
     if (!dashboardFilter.dateStart || !dashboardFilter.dateEnd) return null;

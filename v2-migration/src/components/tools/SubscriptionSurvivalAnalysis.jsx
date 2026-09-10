@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
 import CsvUploader from "@/components/CsvUploader";
@@ -299,7 +300,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
   const sourceRows = rowsOverride || getMappedRows(csvData);
   const hasRows = sourceRows.length > 0;
   const gateOpen = analyzedOverride ?? isStoreAnalyzed;
-  const [draft, setDraft] = useState({ inputMode: "periods", timeUnit: "month", horizon: "", segmentKey: "", observationEndDate: "", eventDefinition: "", arpu: "", margin: "", discountRate: "" });
+  const [draft, setDraft] = useSavedToolInput("5-28", "draft", { inputMode: "periods", timeUnit: "month", horizon: "", segmentKey: "", observationEndDate: "", eventDefinition: "", arpu: "", margin: "", discountRate: "" });
   const [applied, setApplied] = useState(null);
   const [validationMessage, setValidationMessage] = useState("");
   const defaultPrepared = useMemo(() => prepareSurvivalRows(sourceRows, draft), [draft, sourceRows]);

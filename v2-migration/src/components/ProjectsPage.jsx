@@ -5,9 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useDataStore";
 import { exportProjectBackup, parseProjectBackup, importProjectBackup } from "@/lib/project/backup";
+import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
-import { compatibleSavedAnalysis, savedAnalysisConfiguration } from "@/lib/project/savedAnalyses";
-import { TOOL_GROUP } from "@/lib/toolGroups";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { serializeProject } from "@/lib/project/serializeProject";
 import { updateProject } from "@/lib/project/repository";
@@ -59,15 +58,9 @@ export default function ProjectsPage({ locale = "ko" }) {
   });
   const restoreSetup = (project, item, currentPeriod) => run(async () => {
     if (project.id !== activeId && !await useAppStore.getState().switchProject(project.id)) throw new Error("PROJECT_OPEN_FAILED");
-    const state = useAppStore.getState();
-    if (!await compatibleSavedAnalysis(item, state)) {
-      setMessage(en ? "Upload a CSV with the saved column names in this project, then load the setup again. Existing settings were not changed." : "이 프로젝트에 저장 당시와 같은 컬럼명의 CSV를 올린 뒤 설정을 다시 불러오세요. 기존 설정은 바꾸지 않았습니다.");
-      return;
-    }
-    if (useAppStore.getState().activeProjectId !== project.id || useAppStore.getState().csvGroups !== state.csvGroups) throw new Error("PROJECT_CHANGED");
-    state.applyProjectConfig(savedAnalysisConfiguration(item, state, currentPeriod), [TOOL_GROUP[item.toolId]]);
+    useAppStore.setState({ pendingSavedAnalysis: { projectId: project.id, item, currentPeriod } });
     const entry = toolIndexEntry(item.toolId, locale);
-    if (entry) router.push(entry.href);
+    if (entry) router.push(en ? `/en${entry.href}` : entry.href);
   });
   const exportOne = id => run(async () => {
     if (id === activeId) await updateProject(id, { decisions: useAppStore.getState().decisionRecords, configuration: await serializeProject(useAppStore.getState(), locale), eventMarkers: sanitizeEventMarkers(useAppStore.getState().eventMarkers) });
@@ -119,14 +112,15 @@ export default function ProjectsPage({ locale = "ko" }) {
       {!projects.length && <section className="project-empty"><h2>{en ? "Make your first review worth returning to" : "첫 리뷰를 다음 주의 기준으로 만드세요"}</h2><p>{en ? "Compare performance, record what you will change, then check the next results. Explore a review before creating a project." : "성과를 비교하고 바꿀 행동을 기록한 뒤, 다음 결과를 확인하세요. 프로젝트를 만들기 전에 주간 리뷰를 먼저 살펴볼 수도 있습니다."}</p><Link className="btn primary" href={en ? "/en/weekly-review" : "/weekly-review"}>{en ? "Start a weekly review" : "주간 리뷰 시작"}</Link></section>}
       {[...projects].sort((a, b) => (nextReview(a) || "9999").localeCompare(nextReview(b) || "9999")).map(project => {
         const due = nextReview(project);
+        const dueRecords = (project.decisions || []).filter(record => ["overdue", "today"].includes(getDecisionReviewBucket(record)));
         const end = [...(project.snapshots || [])].map(snapshot => snapshot.period?.end).filter(Boolean).sort().at(-1);
         return <article className="project-card" key={project.id}>
           <h2>{project.name || (en ? "Existing records" : "기존 기록")}{project.id === activeId ? (en ? " · Current" : " · 현재") : ""}</h2>
           <p>{project.settings?.metric?.toUpperCase() || "—"} · {project.settings?.currency || "—"}</p>
           {project.report?.text && <details><summary>{en ? "Read saved report" : "저장한 보고서 읽기"}</summary><p>{project.report.generatedAt}</p><WeeklyReportDocument text={project.report.text} /></details>}
           <dl><dt>{en ? "Latest snapshot period end" : "최근 집계 기간 종료일"}</dt><dd>{end || "—"}</dd><dt>{en ? "Next review" : "다음 검토일"}</dt><dd>{due || "—"}</dd><dt>{en ? "Open decisions" : "미완료 결정"}</dt><dd>{(project.decisions || []).filter(record => record.status !== "reviewed").length}</dd></dl>
-          <section className="project-next-work"><h3>{en ? "Next actions" : "이 프로젝트의 다음 할 일"}</h3><p>{due ? (en ? `Review your open decisions, starting with ${due}.` : `${due} 검토 예정인 결정부터 결과를 확인하세요.`) : (en ? "Upload the next period and record a decision to check later." : "다음 기간 데이터를 올리고, 나중에 확인할 결정을 기록하세요.")}</p><div className="workflow-next-step__actions"><button className="btn" disabled={busy || switching || !ready} onClick={() => open(project.id, "/start")}>{en ? "Upload next CSV" : "다음 CSV 분석"}</button></div></section>
-          {!!project.savedAnalyses?.length && <section className="saved-analysis-list"><h3>{en ? "Saved analysis setups" : "저장한 분석 설정"}</h3><p>{en ? "Mappings and shared filters only. Choose a period, check the inputs, then run analysis." : "매핑과 공통 필터를 불러옵니다. 적용할 기간을 선택하고 입력 확인 후 분석을 실행하세요."}</p>{project.savedAnalyses.map(item => <article key={item.id}><strong>{item.name}</strong><span>{toolIndexEntry(item.toolId, locale)?.name || item.toolId}</span><div className="workflow-next-step__actions"><button className="btn primary" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, true)}>{en ? "Keep current period" : "현재 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, false)}>{en ? "Use saved period" : "저장한 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => run(async () => { await updateProject(project.id, current => ({ savedAnalyses: (current.savedAnalyses || []).filter(saved => saved.id !== item.id) })); await useAppStore.getState().refreshProjects(); })}>{en ? "Remove setup" : "설정 삭제"}</button></div></article>)}</section>}
+          <section className="project-next-work">{dueRecords.length > 0 && <p className="project-review-due"><strong>{en ? `${dueRecords.length} decisions due for review` : `오늘까지 검토할 결정 ${dueRecords.length}개`}</strong></p>}<h3>{en ? "Next actions" : "이 프로젝트의 다음 할 일"}</h3><p>{due ? (en ? `Review your open decisions, starting with ${due}.` : `${due} 검토 예정인 결정부터 결과를 확인하세요.`) : (en ? "Upload the next period and record a decision to check later." : "다음 기간 데이터를 올리고, 나중에 확인할 결정을 기록하세요.")}</p><div className="workflow-next-step__actions"><button className="btn" disabled={busy || switching || !ready} onClick={() => open(project.id, "/start")}>{en ? "Upload next CSV" : "다음 CSV 분석"}</button></div></section>
+          {!!project.savedAnalyses?.length && <section className="saved-analysis-list"><h3>{en ? "Saved analysis setups" : "저장한 분석 설정"}</h3><p>{en ? "Load saved mappings, filters and supported tool inputs. Compare the file before applying." : "매핑·필터·지원하는 도구 입력값을 불러옵니다. 적용 전 새 파일과의 차이를 확인하세요."}</p>{project.savedAnalyses.map(item => <article key={item.id}><strong>{item.name}</strong><span>{toolIndexEntry(item.toolId, locale)?.name || item.toolId}</span><div className="workflow-next-step__actions"><button className="btn primary" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, "newFile")}>{en ? "Continue with a new CSV" : "새 CSV로 이어서 분석"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, true)}>{en ? "Keep current period" : "현재 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, false)}>{en ? "Use saved period" : "저장한 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => run(async () => { await updateProject(project.id, current => ({ savedAnalyses: (current.savedAnalyses || []).filter(saved => saved.id !== item.id) })); await useAppStore.getState().refreshProjects(); })}>{en ? "Remove setup" : "설정 삭제"}</button></div></article>)}</section>}
           <div className="project-actions"><button className="btn primary" disabled={busy || switching || !ready} onClick={() => open(project.id)}>{en ? "Open review" : "리뷰 열기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => exportOne(project.id)}>{en ? "Export backup" : "백업 내보내기"}</button><button className="btn ghost" disabled={busy || switching || !ready} onClick={() => run(async () => { if (window.confirm(en ? "Delete this project and its stored files and records?" : "프로젝트와 저장된 파일·기록을 삭제할까요?")) await useAppStore.getState().deleteProject(project.id); })}>{en ? "Delete" : "삭제"}</button></div>
         </article>;
       })}
