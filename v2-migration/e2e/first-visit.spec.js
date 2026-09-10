@@ -10,7 +10,7 @@ for (const locale of ["ko", "en"]) {
     await enablePaidReports(page);
     await page.goto(prefix || "/");
     await expect(page.getByRole("button", { name: en ? "Close the welcome" : "안내 닫기", exact: true })).toBeHidden();
-    await page.getByRole("button", { name: en ? /Understand performance changes/ : /성과 변화 확인/ }).click();
+    await page.getByRole("button", { name: en ? /Where did performance change/ : /성과는 어디서/ }).click();
     const tool = page.locator(`.dc-questions a[href="${prefix}/dashboard"]`);
     await expect(tool).toBeVisible();
     await tool.click();

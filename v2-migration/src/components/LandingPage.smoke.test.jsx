@@ -61,7 +61,7 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelector(".home-result-preview button")?.textContent).toContain("샘플로 체험하기");
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(3);
+    expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(0);
     fireEvent.click(document.querySelector(".home-tool-finder > button"));
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
@@ -215,7 +215,7 @@ describe("LandingPage render smoke", () => {
     const questions = document.querySelector(".dc-questions");
     const loop = document.querySelector(".dc-loop");
     // 히어로 바로 다음 블록이어야 하고, 루프 설명보다 앞이어야 한다.
-    expect(questions.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(3);
+    expect(questions.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
     expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
     expect(document.querySelector(".dc-catalog")).toBeNull();
