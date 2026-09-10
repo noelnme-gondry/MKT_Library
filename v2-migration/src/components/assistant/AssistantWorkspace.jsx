@@ -25,6 +25,7 @@ import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
+import { requestDecisionReviewOpen } from "@/lib/decisionReviewUi";
 import DecisionReview from "@/components/ds/DecisionReview";
 import { productEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
@@ -549,7 +550,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} /></section>)}
     </section>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
-    {result.status === "success" && source !== "demo" && result.verdict.action && <DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={{ conclusion: result.verdict.headline, action: result.verdict.action }} decisionPrefillKey={eventKey} />}
+    {result.status === "success" && source !== "demo" && result.verdict.action && <><button type="button" className="btn primary" onClick={() => requestDecisionReviewOpen(result.toolId, "analysis_next_step")}>{locale === "en" ? "Record my next action" : "다음 행동을 결정으로 기록"}</button><DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={{ conclusion: result.verdict.headline, action: result.verdict.action }} decisionPrefillKey={eventKey} /></>}
     {hasDetails && <details className="dochi-workspace__result-details" open={isDetailsOpen} onToggle={(event) => setIsDetailsOpen(event.currentTarget.open)}><summary>{C.detailsView}</summary>{isDetailsOpen && <section><div className="dochi-workspace__result-caveats"><h4>{C.caveats}</h4><p>{result.verdict.caveats.join(" ")}</p></div></section>}</details>}
   </section>;
 }
@@ -932,7 +933,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <section className="dochi-workspace__section" aria-labelledby="dochi-baseline-title">
         <header><div><h3 id="dochi-baseline-title">{C.baseline}</h3><p>{C.baselineDeck}</p></div></header>
         {baseline.length ? <div className="dochi-workspace__grid">{baseline.map((result) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(result.toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} isDecisionFocus={decisionFocus?.result.toolId === result.toolId} />)}</div> : <p className="muted">{C.noBaseline}</p>}
-        <div className="dochi-workspace__queue" aria-label={C.queue}><strong>{C.queue}</strong><span>{queue?.items.length ? queue.items.map((item) => `${titleFor(item.toolId, getTitle)}: ${queueStateLabel(item.state, C, item.state)}`).join(" · ") : C.queueEmpty}</span></div>
+        <div className="dochi-workspace__queue" data-queue-settled={Boolean(queue?.items.length && !queue.items.some(item => ["queued", "running"].includes(item.state)))} aria-label={C.queue}><strong>{C.queue}</strong><span>{queue?.items.length ? queue.items.map((item) => `${titleFor(item.toolId, getTitle)}: ${queueStateLabel(item.state, C, item.state)}`).join(" · ") : C.queueEmpty}</span></div>
       </section>
 
       <details className="dochi-workspace__section"><summary>{C.extra} <span>{models.length}</span></summary><div className="dochi-workspace__grid">{models.map((result) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(result.toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />)}</div></details>

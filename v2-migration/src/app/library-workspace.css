@@ -1,8 +1,13 @@
 /* Approved library/workspace presentation. Loaded once by both root layouts.
    Existing controls, gates, chart themes and content own their behavior. */
 @layer app {
+  .workflow-next-step { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; margin: 16px 0; background: var(--library-surface); border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 10px; }
+  .workflow-next-step p { margin: 6px 0; color: var(--library-muted); line-height: 1.6; }
+  .workflow-next-step__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
   :root {
     --font-heading: var(--font-pretendard), var(--font-wanted-sans), system-ui, sans-serif;
+    --library-shadow: 0 4px 18px rgb(0 0 0 / 12%);
     --library-accent: #8caaff;
     --library-accent-surface: #202f4d;
     --library-surface: #192231;
@@ -12,13 +17,14 @@
     --library-border: #334156;
   }
   body.light-mode {
+    --library-shadow: 0 4px 18px rgb(25 42 70 / 5%);
     --library-accent: #315be8;
     --library-accent-surface: #edf2ff;
     --library-surface: #ffffff;
-    --library-background: #f5f7fa;
+    --library-background: #f1f4f8;
     --library-text: #202938;
     --library-muted: #526176;
-    --library-border: #dce3ed;
+    --library-border: #d5dde8;
   }
   body {
     --background: var(--library-background);
@@ -449,8 +455,6 @@
     .app .content-list .card-title { font-size: 18px; }
   }
   /* Shared workspace hierarchy: page, work surface, then controls. */
-  :root { --library-shadow: 0 4px 18px rgb(0 0 0 / 12%); }
-  body.light-mode { --library-shadow: 0 4px 18px rgb(25 42 70 / 5%); --library-background: #f1f4f8; --library-border: #d5dde8; }
   .app .main > .content { padding: clamp(20px, 3vw, 40px); }
   .app.is-home .main > .content { padding: 0; }
   .app :is(.page-deck, .content-index__hero > p, .projects-page > header > p) { max-width: 72ch; color: var(--library-muted); line-height: 1.8; }

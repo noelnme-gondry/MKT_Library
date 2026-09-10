@@ -1,4 +1,5 @@
 "use client";
+import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
@@ -28,6 +29,12 @@ async function jsonRequest(path, body) {
 export default function SubscriptionCheckout({ locale = "ko" }) {
   const en = locale === "en";
   const entitlement = useAppStore(state => state.entitlement);
+  const [returnPath, setReturnPath] = useState(null);
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => { if (active) setReturnPath(readPaymentReturn()); });
+    return () => { active = false; };
+  }, []);
   const [config, setConfig] = useState(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
@@ -112,6 +119,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     {!paid && config?.enabled && <button className="btn primary" type="button" disabled={busy} onClick={ready ? pay : prepare}>{busy ? (en ? "Processing…" : "처리 중…") : ready ? (en ? "Pay KRW 5,900" : "5,900원 결제하기") : (en ? "Choose payment method" : "결제수단 선택")}</button>}
     {message && <p role="status">{message}</p>}
     {returnStatus === "confirm" && <button type="button" className="btn" disabled={busy} onClick={confirm}>{en ? "Retry approval check" : "승인 확인 재시도"}</button>}
+    {returnPath && <Link className="btn" href={returnPath}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</Link>}
     <div className="purchase-project-transfer">
       <p>{en ? "Moving to another device? Restore your pass here, then import the backup exported from Projects on your original device. Your files and review history do not sync automatically." : "다른 기기로 옮기시나요? 여기서 이용권을 복원한 뒤, 원래 기기의 프로젝트 보관함에서 내보낸 백업을 가져오세요. 파일과 검토 이력은 자동 동기화되지 않습니다."}</p>
       <Link className="btn" href={en ? "/en/projects#project-backup" : "/projects#project-backup"}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</Link>

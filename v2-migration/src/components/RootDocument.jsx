@@ -16,7 +16,7 @@ const pretendard = localFont({
   variable: "--font-pretendard",
   weight: "100 900",
   display: "swap",
-  preload: true,
+  preload: false,
   fallback: ["system-ui", "Arial", "sans-serif"],
 });
 const wantedSans = localFont({

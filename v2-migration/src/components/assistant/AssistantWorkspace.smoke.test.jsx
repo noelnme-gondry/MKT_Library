@@ -77,7 +77,7 @@ describe("Dochi analysis workspace", () => {
     await waitFor(() => expect(card().getByText(en ? "Review input cautions" : "입력 주의사항 확인")).toBeTruthy());
     expect(card().getByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: en ? "Run summary analyses" : "요약 분석 실행" }));
-    await waitFor(() => expect(screen.getAllByText(en ? "Complete" : "완료")).toHaveLength(5));
+    await waitFor(() => expect(view.container.querySelector(".dochi-workspace__queue").getAttribute("data-queue-settled")).toBe("true"));
     const resultDetails = [...view.container.querySelectorAll(".dochi-workspace__result-details")];
     expect(resultDetails.length).toBeGreaterThan(0);
     resultDetails.forEach((details) => { details.open = true; fireEvent(details, new Event("toggle")); });

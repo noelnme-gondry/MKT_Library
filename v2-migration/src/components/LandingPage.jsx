@@ -158,6 +158,37 @@ export default function LandingPage({ locale = "ko", children, reading }) {
 
   return (
     <div className="decision-console-landing" ref={rootRef}>
+      {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
+        <header className="dc-return__head">
+          <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>
+          <p>{T.continueDeck}</p><Link className="btn" href={lang === "en" ? "/en/projects" : "/projects"}>{lang === "en" ? "Open projects" : "프로젝트 열기"}</Link>
+        </header>
+        <div className="dc-return__grid">
+          <Link
+            className={`dc-return__status${dueDecisionRecords.length ? " is-due" : ""}`}
+            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
+            onClick={() => trackLandingNav("landing_review_opened", "continue_panel")}
+          >
+            <span>{T.dueNow}</span><strong>{dueDecisionRecords.length}</strong><b>{T.openInbox} →</b>
+          </Link>
+          <Link
+            className="dc-return__status"
+            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
+            onClick={() => trackLandingNav("landing_review_opened", "continue_panel_next")}
+          >
+            <span>{T.nextReview}</span><strong>{nextDecision?.reviewDate || T.noSchedule}</strong><b>{T.openInbox} →</b>
+          </Link>
+          {latestDecision && <article className="dc-return__latest">
+            <span>{T.latestDecision}</span>
+            <strong>{latestDecision.action || latestDecision.conclusion || T.reviewed}</strong>
+            <small>{latestDecision.reviewDate || T.noSchedule}</small>
+            {idToSlug[latestDecision.toolId] && <Link
+              href={toolHref(latestDecision.toolId)}
+              onClick={() => trackProductEvent("landing_continue_tool_clicked", { tool_id: latestDecision.toolId, source: "landing", placement: "continue_panel", locale: lang })}
+            >{T.reopenTool} →</Link>}
+          </article>}
+        </div>
+      </section>}
       <section className="dc-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy">
           <div className="dc-eyebrow">{T.eyebrow}</div>
@@ -200,37 +231,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
         {children}
       </details>
 
-      {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
-        <header className="dc-return__head">
-          <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>
-          <p>{T.continueDeck}</p>
-        </header>
-        <div className="dc-return__grid">
-          <Link
-            className={`dc-return__status${dueDecisionRecords.length ? " is-due" : ""}`}
-            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
-            onClick={() => trackLandingNav("landing_review_opened", "continue_panel")}
-          >
-            <span>{T.dueNow}</span><strong>{dueDecisionRecords.length}</strong><b>{T.openInbox} →</b>
-          </Link>
-          <Link
-            className="dc-return__status"
-            href={lang === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}
-            onClick={() => trackLandingNav("landing_review_opened", "continue_panel_next")}
-          >
-            <span>{T.nextReview}</span><strong>{nextDecision?.reviewDate || T.noSchedule}</strong><b>{T.openInbox} →</b>
-          </Link>
-          {latestDecision && <article className="dc-return__latest">
-            <span>{T.latestDecision}</span>
-            <strong>{latestDecision.action || latestDecision.conclusion || T.reviewed}</strong>
-            <small>{latestDecision.reviewDate || T.noSchedule}</small>
-            {idToSlug[latestDecision.toolId] && <Link
-              href={toolHref(latestDecision.toolId)}
-              onClick={() => trackProductEvent("landing_continue_tool_clicked", { tool_id: latestDecision.toolId, source: "landing", placement: "continue_panel", locale: lang })}
-            >{T.reopenTool} →</Link>}
-          </article>}
-        </div>
-      </section>}
+
 
       <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">
         <header className="dc-section-head">
