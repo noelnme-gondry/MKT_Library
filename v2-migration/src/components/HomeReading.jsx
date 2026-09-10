@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAllPosts } from "@/lib/blog";
 import { localizedHref } from "@/lib/localizedHref";
 import { getRouteSeo } from "@/lib/routeSeo";
@@ -21,7 +22,9 @@ export default function HomeReading({ locale = "ko" }) {
       <Link href={localizedHref("/blog", locale)}>{en ? "All articles" : "블로그 전체 보기"}</Link></header>
     <div className="library-reading__grid">
       <Link className="library-featured-post" href={localizedHref(`/blog/${featured.slug}`, locale)}>
-        <div className="library-featured-post__art" aria-hidden="true"><span>{en ? "Question" : "질문"}</span><i>→</i><span>{en ? "Data" : "데이터"}</span><i>→</i><span>{en ? "Analysis" : "첫 분석"}</span></div>
+        <div className="library-featured-post__art" aria-hidden="true">
+          <Image src="/images/editorial/analysis-perspective.webp" alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 600px" />
+        </div>
         <div><span className="library-reading__type">{en ? "Blog" : "블로그"}</span><h3>{featured.title}</h3><p>{featured.description}</p></div>
       </Link>
       <div className="library-reading__list">
