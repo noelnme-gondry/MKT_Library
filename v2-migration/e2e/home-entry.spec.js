@@ -40,9 +40,10 @@ async function checkHome(page, locale) {
   await expect(page).toHaveURL(/#dochi-upload$/);
   await page.reload();
   await expect(page.locator("#dochi-upload")).toBeVisible();
-  await page.locator(".dc-intake > summary").click();
+  await page.getByRole("button", { name: en ? "Close CSV upload" : "CSV 업로드 닫기", exact: true }).click();
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
   await expect(page.locator(".dc-action-route--primary")).toBeFocused();
+  await expect(page).not.toHaveURL(/#dochi-upload$/);
   expect(hydrationErrors).toEqual([]);
 }
 

@@ -108,7 +108,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
   const intakeRef = useRef(null);
   const openIntake = () => {
     if (!intakeRef.current) return;
-    intakeRef.current.open = true;
+    intakeRef.current.hidden = false;
     requestAnimationFrame(() => {
       const target = intakeRef.current?.querySelector("#dochi-upload");
       target?.focus();
@@ -222,14 +222,18 @@ export default function LandingPage({ locale = "ko", children, reading }) {
         <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
       </section>
 
-      {/* #dochi-upload 탐색은 브라우저가 hydration 전에 부모 details를 열 수 있다. */}
-      <details className="dc-intake" ref={intakeRef} suppressHydrationWarning onToggle={(event) => {
-        if (!event.currentTarget.open) rootRef.current?.querySelector(".dc-action-route--primary")?.focus();
-      }}>
-        <summary>{lang === "en" ? "Close data preparation" : "데이터 준비 접기"}</summary>
+      <section className="dc-intake" ref={intakeRef} hidden aria-labelledby="csv-upload-heading">
+        <div className="dc-intake__header">
+          <h2 id="csv-upload-heading">{lang === "en" ? "CSV upload" : "CSV 업로드"}</h2>
+          <button className="dc-intake__close" type="button" aria-label={lang === "en" ? "Close CSV upload" : "CSV 업로드 닫기"} onClick={() => {
+            intakeRef.current.hidden = true;
+            if (window.location.hash === "#dochi-upload") window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+            rootRef.current?.querySelector(".dc-action-route--primary")?.focus();
+          }}><span aria-hidden="true">×</span></button>
+        </div>
         <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>{T.dataGuideCta} →</Link>
         {children}
-      </details>
+      </section>
 
 
 

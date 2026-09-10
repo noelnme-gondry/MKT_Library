@@ -351,7 +351,12 @@
   .library-plan-link { display: flex; justify-content: space-between; gap: 22px; padding: 22px 0; font-size: 12px; color: var(--library-muted); }
   .library-plan-link p { margin: 0; line-height: 1.8; }
   .library-plan-link a { color: var(--library-accent); flex-shrink: 0; padding-block: 6px; }
-  .dc-intake[open] { margin-block: 22px; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); }
+  .dc-intake__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+  .dc-intake__header h2 { margin: 0; font-size: 22px; }
+  .dc-intake__close { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); font-size: 28px; cursor: pointer; }
+  .dc-intake__close:hover { background: var(--library-accent-surface); border-color: var(--library-accent); }
+  .dc-intake__close:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 3px; }
+  .dc-intake:not([hidden]) { margin-block: 22px; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); }
   .dochi-help-trigger { border: 0; background: transparent; color: var(--library-accent); min-height: 44px; cursor: pointer; font-size: 12px; }
   .app .content { max-width: 1480px; }
   /* Availability is explained in the card; dimming its whole link also dims
@@ -665,7 +670,7 @@
     .library-reading__grid { grid-template-columns: 1fr; }
     .library-reading h2, .dc-section-head h2 { font-size: 24px; }
     .dc-library__grid { grid-template-columns: 1fr; }
-    .dc-intake[open] { padding: 15px; }
+    .dc-intake:not([hidden]) { padding: 15px; }
     .plan-comparison-grid { grid-template-columns: 1fr; }
   }
   /* Narrow screens: keep each workflow action readable and easy to tap. */
