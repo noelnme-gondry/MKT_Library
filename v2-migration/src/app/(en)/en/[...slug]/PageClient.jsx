@@ -1,4 +1,5 @@
 "use client";
+import AnalysisSetupBar from "@/components/ds/AnalysisSetupBar";
 import { use, useLayoutEffect } from "react";
 import { notFound, redirect, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -79,6 +80,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 

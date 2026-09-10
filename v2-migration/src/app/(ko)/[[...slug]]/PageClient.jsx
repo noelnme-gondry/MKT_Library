@@ -1,4 +1,5 @@
 "use client";
+import AnalysisSetupBar from "@/components/ds/AnalysisSetupBar";
 import { use, useLayoutEffect } from "react";
 import { notFound, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -88,6 +89,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
           <Header />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" />}
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}

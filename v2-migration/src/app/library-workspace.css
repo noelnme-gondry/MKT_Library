@@ -694,6 +694,19 @@
     .purchase-dialog .workflow-next-step { padding: 14px; }
     .workflow-next-step { min-width: 0; overflow-wrap: anywhere; }
   }
+  .analysis-setup, .project-next-work, .sample-report-downloads { padding: 20px; margin: 16px 0; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); color: var(--library-text); }
+  .analysis-setup__context { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+  .analysis-setup p, .project-next-work p, .saved-analysis-list p, .sample-report-downloads p { color: var(--library-muted); line-height: 1.6; }
+  .analysis-setup__form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--library-border); }
+  .analysis-setup__form label { display: grid; gap: 8px; max-width: 480px; }
+  .analysis-setup__form input { min-height: 44px; font-size: 16px; }
+  .saved-analysis-list > article { display: grid; gap: 12px; padding: 18px 0; border-top: 1px solid var(--library-border); }
+  .saved-analysis-list > article > span { color: var(--library-muted); }
+  .analysis-setup .btn, .saved-analysis-list .btn, .project-next-work .btn, .sample-report-downloads .btn { min-height: 44px; white-space: normal; }
+  @media (max-width: 600px) {
+    .analysis-setup, .project-next-work, .sample-report-downloads { padding: 16px; }
+    .saved-analysis-list .workflow-next-step__actions, .sample-report-downloads .workflow-next-step__actions { display: grid; grid-template-columns: 1fr; }
+  }
   @media print {
     .library-sidebar, .library-nav-overlay, .library-journey { display: none !important; }
     .app.is-home, .app:not(.is-home) { display: block; }

@@ -1,3 +1,4 @@
+import SampleReportDownloads from "./SampleReportDownloads";
 export default function SubscriptionReportPreview({ locale = "ko" }) {
   const en = locale === "en";
   return <section className="report-preview" aria-labelledby="report-preview-title">
@@ -23,6 +24,7 @@ export default function SubscriptionReportPreview({ locale = "ko" }) {
         <p>{en ? "Trace source rows, mappings and calculation inputs. Inspect formulas and edit chart data in your spreadsheet." : "원본·매핑·계산 입력을 따라가며 근거를 확인하세요. 스프레드시트에서 수식과 차트 데이터를 편집할 수 있습니다."}</p>
       </article>
     </div>
+    <SampleReportDownloads locale={locale} />
     <p className="report-preview-note">{en ? "File structure illustrations, not actual analysis results. Content varies by tool. Complex models must be refitted on the website; editing raw cells does not rerun preprocessing or model estimation. Chart annotations may differ from the website." : "위 이미지는 실제 결과가 아닌 파일 구성 예시이며, 도구마다 포함 내용이 다릅니다. 복잡한 모델은 사이트에서 다시 추정해야 합니다. 원본 셀 편집만으로 전처리·모델 추정이 재실행되지는 않으며, 차트 주석은 화면과 다를 수 있습니다."}</p>
   </section>;
 }
