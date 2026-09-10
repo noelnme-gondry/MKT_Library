@@ -60,7 +60,7 @@ export default async function Page({ params }) {
       />
 
       <h2>Template columns</h2>
-      <div className="table-scroll">
+      <div className="table-scroll" role="region" tabIndex={0} aria-label="Template columns">
         <table className="template-detail__table">
           <thead>
             <tr>

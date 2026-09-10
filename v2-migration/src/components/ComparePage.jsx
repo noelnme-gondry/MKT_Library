@@ -38,7 +38,7 @@ export default function ComparePage({ slug, locale = "ko" }) {
       <p className="compare-page__lead">{page.lead}</p>
 
       <h2>{t.table}</h2>
-      <div className="table-scroll">
+      <div className="table-scroll" role="region" tabIndex={0} aria-label={page.table.caption}>
         <table className="compare-page__table">
           <caption>{page.table.caption}</caption>
           <thead>

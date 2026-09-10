@@ -104,7 +104,9 @@ function parseFile(fileName, locale) {
   const slug = data.slug || fileName.replace(/\.md$/, "");
   const seo = getBlogSeo(locale, slug, data);
   const editorial = getBlogEditorial(locale, slug, data);
-  const html = normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale));
+  const html = normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale))
+    .replace(/<table>/g, `<div class="table-scroll" role="region" tabindex="0" aria-label="${locale === "en" ? "Data table" : "데이터 표"}"><table>`)
+    .replace(/<\/table>/g, "</table></div>");
   return {
     slug,
     title: seo?.title || data.title || slug,
