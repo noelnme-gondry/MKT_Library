@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { rememberPaymentAccess } from "@/lib/subscription/paymentClient";
 import { trackProductEvent } from "@/lib/analytics";
+import { trackPaymentEvent, paymentFailureEvent } from "@/lib/subscription/paymentAnalytics";
 import { downloadFile } from "@/utils/download";
 
 let sdkPromise;
@@ -44,11 +45,12 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     try {
       const result = await jsonRequest("confirm", {});
       rememberPaymentAccess(result.entitlement); setRecoveryCode(result.recoveryCode);
+      trackPaymentEvent("purchase", { locale, mode: result.mode, transaction: result.transaction });
       setMessage(en ? "Payment confirmed. Your report pass is active. Save your recovery code before leaving this page." : "결제를 확인했습니다. 보고서 이용권이 활성화되었습니다. 이 화면을 떠나기 전에 복원 코드를 보관해 주세요.");
       window.history.replaceState(null, "", `${window.location.pathname}#purchase`);
       setReturnStatus(null);
       trackProductEvent("payment_access_activated", { locale, source: "subscription_page", state: result.mode });
-    } catch { setMessage(en ? "Approval could not be confirmed. Retry confirmation; do not pay again. Contact us if this continues." : "승인 결과를 확인하지 못했습니다. 다시 결제하지 말고 승인 확인을 재시도해 주세요. 계속되면 고객센터로 문의해 주세요."); }
+    } catch { trackPaymentEvent("payment_confirmation_failed", { locale, mode: undefined }); setMessage(en ? "Approval could not be confirmed. Retry confirmation; do not pay again. Contact us if this continues." : "승인 결과를 확인하지 못했습니다. 다시 결제하지 말고 승인 확인을 재시도해 주세요. 계속되면 고객센터로 문의해 주세요."); }
     finally { confirming.current = false; setBusy(false); }
   }, [en, locale]);
   useEffect(() => {
@@ -58,14 +60,20 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       if (!active) return;
       setReturnStatus(status);
       if (status === "confirm") confirm();
-      if (status === "failed") setMessage(en ? "Payment was cancelled or did not complete. You can try again." : "결제가 취소되었거나 완료되지 않았습니다. 다시 시도할 수 있습니다.");
+      if (["failed", "cancelled"].includes(status)) {
+        trackPaymentEvent(status === "cancelled" ? "payment_cancelled" : "payment_failed", { locale });
+        window.history.replaceState(null, "", `${window.location.pathname}#purchase`);
+        setMessage(en ? "Payment was cancelled or did not complete. You can try again." : "결제가 취소되었거나 완료되지 않았습니다. 다시 시도할 수 있습니다.");
+      }
     });
     return () => { active = false; };
-  }, [confirm, en]);
+  }, [confirm, en, locale]);
   const prepare = async () => {
     setBusy(true); setMessage("");
+    trackPaymentEvent("checkout_requested", { locale, mode: config?.mode });
     try {
       order.current = await jsonRequest("order", {});
+      trackPaymentEvent("begin_checkout", { locale, mode: config.mode, transaction: order.current });
       const TossPayments = await loadSdk();
       widgets.current = TossPayments(config.clientKey).widgets({ customerKey: order.current.customerKey });
       await widgets.current.setAmount({ currency: "KRW", value: order.current.amount });
@@ -73,14 +81,15 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       await widgets.current.renderAgreement({ selector: "#toss-payment-agreement", variantKey: "AGREEMENT" });
       setReady(true);
       trackProductEvent("checkout_started", { locale, source: "subscription_page", state: config.mode });
-    } catch { setMessage(en ? "Checkout could not load. Please retry." : "결제 화면을 불러오지 못했습니다. 다시 시도해 주세요."); }
+    } catch { trackPaymentEvent("checkout_failed", { locale, mode: config?.mode }); setMessage(en ? "Checkout could not load. Please retry." : "결제 화면을 불러오지 못했습니다. 다시 시도해 주세요."); }
     finally { setBusy(false); }
   };
   const pay = async () => {
     setBusy(true);
     try {
+      trackPaymentEvent("payment_submitted", { locale, mode: config?.mode });
       await widgets.current.requestPayment({ orderId: order.current.orderId, orderName: order.current.orderName, successUrl: `${location.origin}/api/payments/return?locale=${locale}`, failUrl: `${location.origin}/api/payments/failure?locale=${locale}` });
-    } catch { setMessage(en ? "Payment did not complete. Check your selection and try again." : "결제가 완료되지 않았습니다. 결제수단을 확인하고 다시 시도해 주세요."); }
+    } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(en ? "Payment did not complete. Check your selection and try again." : "결제가 완료되지 않았습니다. 결제수단을 확인하고 다시 시도해 주세요."); }
     finally { setBusy(false); }
   };
   const restore = async () => {

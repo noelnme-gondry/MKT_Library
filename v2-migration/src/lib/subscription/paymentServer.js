@@ -104,7 +104,7 @@ export async function confirmPayment(request, input) {
     const entitlement = await syncOrder(client, order, payment);
     if (!entitlement || entitlement.expiresAt <= Date.now()) throw new Error("PAYMENT_NOT_COMPLETED");
     await client.query("COMMIT");
-    return { body: { entitlement, mode: order.mode, recoveryCode: `${credential.id}.${credential.token}` }, cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) };
+    return { body: { entitlement, mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id }, recoveryCode: `${credential.id}.${credential.token}` }, cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) };
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
 }
@@ -141,7 +141,8 @@ export function redirectPaymentResult(request, failed = false) {
   const url = new URL(request.url);
   const origin = paymentOrigin(request);
   const locale = url.searchParams.get("locale") === "en" ? "/en" : "";
-  const target = new URL(`${locale}/subscription?payment=${failed ? "failed" : "confirm"}#purchase`, origin);
+  const cancelled = failed && ["PAY_PROCESS_CANCELED", "USER_CANCEL"].includes(url.searchParams.get("code"));
+  const target = new URL(`${locale}/subscription?payment=${failed ? (cancelled ? "cancelled" : "failed") : "confirm"}#purchase`, origin);
   const headers = { Location: target.href, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
   if (!failed) {
     const input = { orderId: url.searchParams.get("orderId"), paymentKey: url.searchParams.get("paymentKey"), amount: Number(url.searchParams.get("amount")) };
