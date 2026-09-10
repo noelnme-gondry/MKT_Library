@@ -47,8 +47,10 @@ for (const locale of ["ko", "en"]) {
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape"); await expect(gate).toBeHidden(); await expect(trigger).toBeFocused();
     await trigger.click();
-    await gate.getByRole("link").click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
+    await expect(gate.getByRole("link", { name: en ? "Save or back up my work" : "작업 보관·백업하기" })).toHaveAttribute("href", `${prefix}/projects`);
+    await gate.getByRole("link", { name: en ? "Contact support" : "고객센터 문의" }).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/contact$`));
+    await page.goto(`${prefix}/subscription#purchase`);
     await expect(page.locator("#purchase")).toContainText("5,900");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");
