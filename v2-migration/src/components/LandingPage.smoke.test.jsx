@@ -59,7 +59,7 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelector(".dc-hero__utility-actions button")?.textContent).toContain("샘플로 체험하기");
+    expect(document.querySelector(".home-result-preview button")?.textContent).toContain("샘플로 체험하기");
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(3);
     expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(0);
@@ -117,7 +117,7 @@ describe("LandingPage render smoke", () => {
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".dc-hero__utility-actions button"));
+    fireEvent.click(container.querySelector(".home-result-preview button"));
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
     // Navigation mounts the result route, which selects the shared CSV slice.
     useAppStore.getState().setCurrentRouteId("dochi-result");

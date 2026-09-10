@@ -64,7 +64,7 @@ for (const locale of ["ko", "en"]) {
   test(`home sample retains column confirmation and weekly handoff (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
-    await page.locator(".dc-hero__utility-actions button").click();
+    await page.locator(".home-result-preview button").click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
     await expect(page.locator('.dochi-result-workspace[data-phase="mapping"]')).toBeVisible();
     await expect(page.locator(".dochi-workspace__findings-summary")).toHaveCount(0);

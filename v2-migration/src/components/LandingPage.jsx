@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import HomeResultPreview from "@/components/landing/HomeResultPreview";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -185,43 +185,10 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           <div className="dc-hero__utility-actions">
             <Link className="dc-text-link" href={lang === "en" ? "/en/blog" : "/blog"}>{lang === "en" ? "Read the blog" : "블로그 읽기"} →</Link>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide" : "/guide"}>{lang === "en" ? "Guides & SOPs" : "실무 가이드 · SOP"} →</Link>
-            <Link
-              className="dc-text-link"
-              href={lang === "en" ? "/en/calculator" : "/calculator"}
-              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
-            >
-              {T.calculatorCta}
-            </Link>
-            <Link
-              className="dc-text-link"
-              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
-              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
-            >
-              {T.diagnoseCta}
-            </Link>
-            <button type="button" className="dc-text-link dc-text-link--button" onClick={() => openSample("5-2", "hero_example")}>
-              {T.demoCta} →
-            </button>
-            <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
-              {T.dataGuideCta} →
-            </Link>
           </div>
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
-        <aside className="library-journey" aria-label={lang === "en" ? "Choose where to begin" : "시작 방법 선택"}>
-          <div className="library-journey__intro">
-            <div>
-              <span>{lang === "en" ? "Choose your starting point" : "필요한 곳에서 시작"}</span>
-              <h2>{lang === "en" ? <>Read, explore,<br />or analyze.</> : <>읽고, 찾아보고,<br />필요할 때 분석하세요.</>}</h2>
-            </div>
-            <Image className="library-journey__dochi" src="/assets/dochi/dochi-editorial.webp" width={640} height={640} sizes="(max-width: 768px) 112px, 160px" alt="" />
-          </div>
-          <ol>
-            <li><Link href={lang === "en" ? "/en/guide" : "/guide"}><b>{lang === "en" ? "Guides & SOPs" : "실무 가이드 · SOP"}</b><p>{lang === "en" ? "Find operating standards before you analyze" : "분석 전에 필요한 운영 기준부터 확인하세요"}</p></Link></li>
-            <li><Link href="#questions"><b>{lang === "en" ? "Choose an analysis tool" : "필요한 도구 바로 쓰기"}</b><p>{lang === "en" ? "Choose your question and open a tool directly" : "고민에 맞는 도구를 골라 바로 실행하세요"}</p></Link></li>
-            <li><Link href="#dochi-upload" onClick={openIntake}><b>{T.dataCta}</b><p>{lang === "en" ? "Upload one file to run supported analyses together" : "파일 하나로 가능한 기본 분석을 함께 실행하세요"}</p></Link></li>
-          </ol>
-        </aside>
+        <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
       </section>
 
       {/* #dochi-upload 탐색은 브라우저가 hydration 전에 부모 details를 열 수 있다. */}
@@ -229,6 +196,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
         if (!event.currentTarget.open) rootRef.current?.querySelector(".dc-action-route--primary")?.focus();
       }}>
         <summary>{lang === "en" ? "Close data preparation" : "데이터 준비 접기"}</summary>
+        <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>{T.dataGuideCta} →</Link>
         {children}
       </details>
 
@@ -271,6 +239,22 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           </div>
           <p>{T.questionDeck}</p>
         </header>
+        <div className="dc-tool-shortcuts">
+            <Link
+              className="dc-text-link"
+              href={lang === "en" ? "/en/calculator" : "/calculator"}
+              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
+            >
+              {T.calculatorCta}
+            </Link>
+            <Link
+              className="dc-text-link"
+              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
+              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
+            >
+              {T.diagnoseCta}
+            </Link>
+        </div>
         <HomeToolFinder
           locale={lang}
           onItemClick={(toolId) => trackProductEvent("landing_tool_pick", {
