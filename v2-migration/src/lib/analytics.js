@@ -1,5 +1,6 @@
 // 분석 이벤트에는 CSV 값·파일명·채널명 등 사용자 데이터를 절대 싣지 않는다.
 // GA4 탐색에서 미리 정의된 범주형/집계형 파라미터만 쓴다.
+import { PAYMENT_PRODUCT } from "./subscription/paymentProduct";
 import { journeySurface, withSiteJourney } from "./siteJourney";
 import { GA_MEASUREMENT_ID, isAnalyticsHost } from "./analyticsHost";
 
@@ -103,10 +104,17 @@ export function productAnalysisType(toolId) {
   return ANALYSIS_TYPE_BY_TOOL[normalizeProductToolId(toolId)] || "analysis";
 }
 
-export function sanitizeProductEventParams(params = {}) {
-  return Object.fromEntries(Object.entries(params)
+export function sanitizeProductEventParams(params = {}, name) {
+  const safe = Object.fromEntries(Object.entries(params)
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
+  if (["begin_checkout", "purchase", "test_begin_checkout", "test_purchase"].includes(name)
+    && params.currency === "KRW" && Number.isSafeInteger(params.value) && params.value > 0
+    && params.items?.length === 1 && params.items[0].item_id === PAYMENT_PRODUCT.id) {
+    Object.assign(safe, { currency: "KRW", value: params.value, items: [{ item_id: params.items[0].item_id, price: params.value, quantity: 1 }] });
+    if (/^gop_[a-f0-9-]{36}$/.test(params.transaction_id || "")) safe.transaction_id = params.transaction_id;
+  }
+  return safe;
 }
 
 export function trackProductEvent(name, params = {}) {
@@ -144,7 +152,7 @@ export function trackProductEvent(name, params = {}) {
     ? { ...params, elapsed_bucket: productElapsedBucket(Date.now() - firstToolViewAt) }
     : params;
   // 동의 기본값 스크립트가 큐만 먼저 만든 경우에도 config 이전 목적지를 명시한다.
-  const safeParams = sanitizeProductEventParams(enriched);
+  const safeParams = sanitizeProductEventParams(enriched, name);
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
   window.gtag("event", name, safeParams);
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;

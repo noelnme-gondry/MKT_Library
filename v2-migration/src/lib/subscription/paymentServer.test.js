@@ -81,6 +81,8 @@ describe("payment boundaries", () => {
     const { cookie, input } = await fixture();
     const first = await confirmPayment(request(cookie), input);
     const second = await confirmPayment(request(cookie), input);
+    expect(first.body.transaction).toEqual({ orderId: input.orderId, amount: 5900, productId: "report-pass-month-v1" });
+    expect(second.body.transaction).toEqual(first.body.transaction);
     expect(second.body.entitlement.expiresAt).toBe(first.body.entitlement.expiresAt);
     expect(first.cookie).toContain("HttpOnly; SameSite=Lax"); expect(first.cookie).toContain("Secure");
     expect((await readPaymentAccess(request(), first.body.recoveryCode)).body.entitlement.plan).toBe("paid");
