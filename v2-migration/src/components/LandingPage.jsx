@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -207,8 +208,13 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
         <aside className="library-journey" aria-label={lang === "en" ? "One-file analysis workflow" : "CSV 통합 분석 흐름"}>
-          <span>{lang === "en" ? "Dochi’s connected analysis" : "도치의 통합 분석"}</span>
-          <h2>{lang === "en" ? <>One file.<br />Connected results.</> : <>파일은 한 번.<br />가능한 분석은 한곳에.</>}</h2>
+          <div className="library-journey__intro">
+            <div>
+              <span>{lang === "en" ? "Dochi’s connected analysis" : "도치의 통합 분석"}</span>
+              <h2>{lang === "en" ? <>One file.<br />Connected results.</> : <>파일은 한 번.<br />가능한 분석은 한곳에.</>}</h2>
+            </div>
+            <Image className="library-journey__dochi" src="/assets/dochi/dochi-editorial.webp" width={640} height={640} sizes="(max-width: 768px) 112px, 160px" alt="" />
+          </div>
           <ol>
             <li><b>{lang === "en" ? "Upload and check columns" : "CSV를 올리고 컬럼 확인"}</b><p>{lang === "en" ? "Confirm dates, spend and conversions" : "날짜·비용·전환이 맞게 연결됐는지 확인"}</p></li>
             <li><b>{lang === "en" ? "Run supported baseline analyses" : "가능한 기본 분석을 함께 실행"}</b><p>{lang === "en" ? "See which analyses need more data or setup" : "추가 조건이나 데이터가 필요한 분석은 별도 안내"}</p></li>
