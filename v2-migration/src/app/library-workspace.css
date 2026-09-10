@@ -411,6 +411,25 @@
   .app .tool-index__q { font-size: 16px; }
   .app .tool-brief { background: var(--library-surface); border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 8px; padding: 18px 20px; }
   .app .csv-uploader { border-color: var(--library-border); background: var(--library-surface); border-radius: 12px; }
+  .app .csv-analysis-cta-row { padding: 18px 20px; gap: 12px 16px; border: 1px solid var(--library-border); border-radius: 9px; background: var(--library-background); }
+  .app .csv-analysis-status { flex-shrink: 0; padding: 5px 9px; border-radius: 5px; background: var(--library-surface); font-size: 13px; }
+  .app .csv-analysis-hint { flex: 1 1 260px; min-width: 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+  .app .csv-analysis-action { flex-shrink: 0; margin-left: 0; }
+  .app .dochi-workspace__period-comparison { gap: 18px; width: 100%; }
+  .app .dochi-workspace__period-comparison > figcaption { gap: 18px; font-size: 12px; }
+  .app .dochi-workspace__period-comparison ul { gap: 0; }
+  .app .dochi-workspace__period-comparison li { padding: 14px 0; gap: 7px 18px; border-bottom: 1px solid var(--library-border); }
+  .app .dochi-workspace__period-comparison li:last-child { border-bottom: 0; }
+  .app .dochi-workspace__period-comparison li strong { font-size: 13px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  .app .dochi-workspace__period-comparison li em { font-size: 12px; }
+  .app .dochi-workspace__period-comparison li > span { font-size: 12px; }
+  .app .dochi-workspace__period-comparison li > span b { font-size: inherit; text-align: right; }
+  .app .dochi-workspace__period-comparison li > span::before { height: 10px; border-radius: 3px; }
+  @media (max-width: 768px) {
+    .app .csv-analysis-cta-row { padding: 16px; }
+    .app .dochi-workspace__period-comparison li { grid-template-columns: minmax(0, 1fr); }
+    .app .dochi-workspace__period-comparison li > div { grid-row: auto; display: flex; justify-content: space-between; gap: 12px; }
+  }
   .app .dashboard-section-head { padding-bottom: 14px; border-bottom: 1px solid var(--library-border); margin-bottom: 18px; }
   .app .kpi-grid--overview { box-shadow: var(--library-shadow); }
   .app .project-list { display: grid; gap: 20px; }
