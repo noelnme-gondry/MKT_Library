@@ -83,7 +83,7 @@ describe("DochiResultWorkspace", () => {
     act(() => vi.advanceTimersByTime(1100));
     await act(async () => { await Promise.resolve(); });
 
-    expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "분석 결과" })).toBeTruthy();
     expect(document.querySelector(".dochi-result-workspace__header.is-results")).toBeTruthy();
     expect(screen.getByText("모든 효율 분석에 같이 적용")).toBeTruthy();
     expect(screen.getByText("판정할 날짜 부족")).toBeTruthy();
@@ -102,7 +102,7 @@ describe("DochiResultWorkspace", () => {
     });
     render(<DochiResultWorkspace />);
 
-    expect(screen.getByRole("heading", { name: "도치 결과함" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "분석 결과" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "컬럼을 확인해 주세요" })).toBeNull();
   });
 
