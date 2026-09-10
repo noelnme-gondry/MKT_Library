@@ -319,6 +319,60 @@
   .app .content code.inline { overflow-wrap: anywhere; white-space: normal; }
   .app .dashboard-tabs__label { letter-spacing: 0; }
   .app .dashboard-tabs .ab-pill { min-height: 40px; }
+  /* Standalone navigation actions must look actionable. Prose links and
+     whole-card links retain their own reading/navigation presentation. */
+  .app :is(.library-reading header > a, .library-plan-link a,
+    .dc-questions .home-tool-finder > button, .dc-loop > a,
+    .subscription-hero nav a, .purchase-summary > a, .wr-screen__empty > a) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 11px 17px;
+    border: 1px solid var(--library-border);
+    border-radius: 9px;
+    background: var(--library-surface);
+    color: var(--library-text);
+    font: 650 14px/1.5 var(--font-sans);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s;
+  }
+  .app :is(.library-reading header > a, .library-plan-link a,
+    .dc-questions .home-tool-finder > button, .dc-loop > a,
+    .subscription-hero nav a, .purchase-summary > a, .wr-screen__empty > a):hover {
+    background: var(--library-accent-surface);
+    border-color: var(--library-accent);
+    color: var(--library-accent);
+  }
+  .app :is(.library-reading header > a, .library-plan-link a,
+    .dc-questions .home-tool-finder > button, .dc-loop > a,
+    .subscription-hero nav a, .purchase-summary > a, .wr-screen__empty > a):focus-visible {
+    outline: 2px solid var(--library-accent);
+    outline-offset: 3px;
+  }
+  .app :is(.library-reading header > a, .library-plan-link a,
+    .dc-questions .home-tool-finder > button, .dc-loop > a,
+    .subscription-hero nav a, .purchase-summary > a, .wr-screen__empty > a):active {
+    background: var(--library-accent-surface);
+    border-color: var(--library-accent);
+  }
+  .app .dc-hero .dc-hero__utility-actions .dc-text-link,
+  .app .dc-resource-strip a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 12px;
+    border: 1px solid var(--library-border);
+    border-radius: 8px;
+    background: var(--library-surface);
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .app .subscription-hero nav { gap: 10px; }
+  .app .library-plan-link { align-items: center; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); margin-top: 16px; }
   @media (max-width: 768px) {
     .app .dashboard-tabs .ab-pill { min-height: 44px; }
     .app .wr-card { padding: 18px; }
