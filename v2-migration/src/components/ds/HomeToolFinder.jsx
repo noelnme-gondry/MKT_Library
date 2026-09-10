@@ -5,21 +5,15 @@ import Link from "next/link";
 import { toolIndexByStage } from "@/lib/toolIndex";
 import { localizedHref } from "@/lib/localizedHref";
 
-const PURPOSES = [
-  { id: "performance", ko: ["성과 변화 확인", "비용·전환·유입의 변화 살펴보기"], en: ["Understand performance changes", "Inspect changes in cost, conversions, and traffic"] },
-  { id: "planning", ko: ["예산·효과 판단", "예산 배분·실험·채널 기여도 검토하기"], en: ["Plan budgets and evaluate effects", "Review allocation, experiments, and channel contribution"] },
-  { id: "creative", ko: ["소재·스토어 개선", "소재·콘텐츠·앱 유입의 개선점 찾기"], en: ["Improve creative and app discovery", "Explore creative, content, and app discovery"] },
-];
-
 export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   const [selected, setSelected] = useState(null);
   const en = locale === "en";
   const stages = toolIndexByStage(locale);
-  const tools = stages.filter(stage => selected === "all" || stage.homePurpose === selected).flatMap(stage => stage.tools);
+  const tools = stages.filter(stage => selected === "all" || stage.id === selected).flatMap(stage => stage.tools);
   return <div className="home-tool-finder">
     <div className="home-tool-finder__purposes" role="group" aria-label={en ? "Choose a purpose" : "목적 선택"}>
-      {PURPOSES.map(purpose => <button type="button" key={purpose.id} aria-expanded={selected === purpose.id} aria-controls="home-tool-results" onClick={() => setSelected(selected === purpose.id ? null : purpose.id)}>
-        <strong>{purpose[locale][0]}</strong><span>{purpose[locale][1]}</span>
+      {stages.map(purpose => <button type="button" key={purpose.id} aria-expanded={selected === purpose.id} aria-controls="home-tool-results" onClick={() => setSelected(selected === purpose.id ? null : purpose.id)}>
+        <strong>{purpose.homeQuestion}</strong><span>{purpose.tools.map(tool => tool.name).join(" · ")}</span>
       </button>)}
     </div>
     <button className="dc-text-link dc-text-link--button" type="button" aria-expanded={selected === "all"} aria-controls="home-tool-results" onClick={() => setSelected(selected === "all" ? null : "all")}>

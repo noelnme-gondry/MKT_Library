@@ -36,7 +36,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
-    await expect(page.locator(".home-tool-finder__purposes button")).toHaveCount(3);
+    await expect(page.locator(".home-tool-finder__purposes button")).toHaveCount(7);
     await expect(page.locator("#dochi-upload")).toBeHidden();
     await expect(page.locator(".library-reading__grid a")).toHaveCount(4);
     await expectNoSeriousAccessibilityViolations(page);

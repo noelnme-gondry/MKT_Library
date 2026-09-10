@@ -12,7 +12,7 @@ async function checkHome(page, locale) {
   await page.goto(en ? "/en" : "/");
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
   const purposes = page.locator(".home-tool-finder__purposes button");
-  await expect(purposes).toHaveCount(3);
+  await expect(purposes).toHaveCount(7);
   await purposes.first().focus();
   await page.keyboard.press("Enter");
   await expect(purposes.first()).toHaveAttribute("aria-expanded", "true");

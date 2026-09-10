@@ -113,6 +113,7 @@ export const CONNECTED_TOOLS = {
 export const TOOL_JOURNEY = [
   {
     id: "monitor",
+    homeQuestion: { ko: "성과는 어디서, 왜 달라졌을까?", en: "Where did performance change, and why?" },
     homePurpose: "performance",
     label: { ko: "01 · CHECK", en: "01 · CHECK" },
     title: { ko: "이번 주 점검", en: "This week" },
@@ -121,6 +122,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "baseline",
+    homeQuestion: { ko: "유입 변화가 추세일까, 광고 영향일까?", en: "Is traffic changing with the trend or with ads?" },
     homePurpose: "performance",
     label: { ko: "02 · BASELINE", en: "02 · BASELINE" },
     title: { ko: "추세·잠식 점검", en: "Trend and displacement" },
@@ -129,6 +131,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "budget",
+    homeQuestion: { ko: "예산을 더 쓸까, 다른 곳으로 옮길까?", en: "Should I scale spend or move the budget?" },
     homePurpose: "planning",
     label: { ko: "03 · BUDGET", en: "03 · BUDGET" },
     title: { ko: "예산 조정", en: "Budget moves" },
@@ -137,6 +140,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "creative",
+    homeQuestion: { ko: "어떤 소재·콘텐츠·행동이 성과와 연결될까?", en: "Which creative, content, or actions relate to results?" },
     homePurpose: "creative",
     label: { ko: "04 · CREATIVE", en: "04 · CREATIVE" },
     title: { ko: "먹히는 요소 찾기", en: "What resonates" },
@@ -145,6 +149,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "store",
+    homeQuestion: { ko: "앱 검색과 스토어 전환을 어떻게 개선할까?", en: "How can I improve app search and store conversion?" },
     homePurpose: "creative",
     label: { ko: "05 · STORE", en: "05 · STORE" },
     title: { ko: "앱 유입 개선", en: "App store traffic" },
@@ -153,6 +158,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "prove",
+    homeQuestion: { ko: "실험 효과와 사용자 이탈을 어떻게 확인할까?", en: "How can I examine experiment effects and user drop-off?" },
     homePurpose: "planning",
     label: { ko: "06 · PROOF", en: "06 · PROOF" },
     title: { ko: "효과 검증", en: "Proof" },
@@ -161,6 +167,7 @@ export const TOOL_JOURNEY = [
   },
   {
     id: "contribution",
+    homeQuestion: { ko: "채널별 기여와 앞으로의 성과는 어떨까?", en: "How much do channels contribute, and what comes next?" },
     homePurpose: "planning",
     label: { ko: "07 · MIX", en: "07 · MIX" },
     title: { ko: "채널 기여도", en: "Channel contribution" },
