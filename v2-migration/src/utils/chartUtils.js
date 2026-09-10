@@ -60,20 +60,20 @@ export function chartCommonOpts() {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: reducedMotion() ? 0 : 460, easing: "easeOutQuart" },
-    layout: { padding: { top: 12, right: 12, bottom: 0, left: 0 } },
+    layout: { padding: { top: 16, right: 16, bottom: 8, left: 4 } },
     plugins: {
       legend: {
         display: true,
         position: "top",
         align: "end",
         labels: {
-          color: CHART_THEME.muted,
-          font: { family: CHART_FONT_STACK, size: 11 },
+          color: CHART_THEME.text,
+          font: { family: CHART_FONT_STACK, size: 12 },
           usePointStyle: true,
           pointStyle: "circle",
           boxWidth: 8,
           boxHeight: 8,
-          padding: 16,
+          padding: 20,
         },
       },
       tooltip: {
@@ -97,7 +97,7 @@ export function chartCommonOpts() {
         border: { color: CHART_THEME.grid },
         ticks: {
           color: CHART_THEME.muted,
-          font: { family: CHART_MONO_STACK, size: 10 },
+          font: { family: CHART_FONT_STACK, size: 11 },
           // 라벨이 많아지면 Chart.js 기본값은 45도로 눕혀 읽기 어려워진다. 눕히지 않고
           // 자동으로 솎아낸다(날짜 축에서 특히 차이가 큼).
           maxRotation: 0,
@@ -110,7 +110,7 @@ export function chartCommonOpts() {
         // 실선 그리드는 데이터선과 경쟁한다. 점선 + 얇은 톤으로 뒤로 물린다.
         grid: { color: CHART_THEME.grid, drawBorder: false, drawTicks: false, lineWidth: 1, tickBorderDash: [3, 3], borderDash: [3, 3] },
         border: { display: false, dash: [3, 3] },
-        ticks: { color: CHART_THEME.muted, font: { family: CHART_MONO_STACK, size: 10 }, padding: 8, maxTicksLimit: 6 },
+        ticks: { color: CHART_THEME.muted, font: { family: CHART_FONT_STACK, size: 11 }, padding: 10, maxTicksLimit: 6 },
         beginAtZero: true,
       },
     },
