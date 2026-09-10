@@ -6461,15 +6461,16 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .dochi-workspace__period-comparison > figcaption i::before { position:absolute;top:50%;left:0;width:8px;height:8px;border-radius:2px;background:var(--text-muted);content:"";transform:translateY(-50%); }
 .dochi-workspace__period-comparison > figcaption i.is-recent::before { background:var(--primary); }
 .dochi-workspace__period-comparison ul { display:grid;gap:11px;margin:0;padding:0;list-style:none; }
-.dochi-workspace__period-comparison li { display:grid;grid-template-columns:minmax(90px,1.1fr) minmax(140px,2fr);gap:3px 12px;align-items:center; }
+.dochi-workspace__period-comparison li { display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:3px 12px;align-items:center; }
 .dochi-workspace__period-comparison li > div { grid-row:1 / 3;display:grid;align-content:center;gap:2px;min-width:0; }
 .dochi-workspace__period-comparison li strong { overflow:hidden;color:var(--text-secondary);font-size:10.5px;text-overflow:ellipsis;white-space:nowrap; }
 .dochi-workspace__period-comparison li em { color:var(--text-muted);font:700 10px var(--font-sans);font-style:normal; }
 .dochi-workspace__period-comparison li em.is-positive { color:var(--success); }
 .dochi-workspace__period-comparison li em.is-negative { color:var(--danger); }
-.dochi-workspace__period-comparison li > span { position:relative;display:block;width:var(--dochi-period-size);min-width:2px;height:12px;border-radius:3px;background:color-mix(in srgb,var(--text-muted) 48%,transparent); }
-.dochi-workspace__period-comparison li > span.is-recent { background:var(--primary); }
-.dochi-workspace__period-comparison li > span b { position:absolute;top:50%;left:calc(100% + 6px);color:var(--text-secondary);font:600 9.5px var(--font-sans);white-space:nowrap;transform:translateY(-50%); }
+.dochi-workspace__period-comparison li > span { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,13ch);align-items:center;gap:6px;min-width:0;font:600 9.5px var(--font-sans); }
+.dochi-workspace__period-comparison li > span::before { content:"";width:var(--dochi-period-size);height:12px;border-radius:3px;background:color-mix(in srgb,var(--text-muted) 48%,transparent); }
+.dochi-workspace__period-comparison li > span.is-recent::before { background:var(--primary); }
+.dochi-workspace__period-comparison li > span b { min-width:0;color:var(--text-secondary);font:600 9.5px var(--font-sans);font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
 .dochi-workspace__exact-table { margin-top:10px; }
 .dochi-workspace__exact-table > summary { display:inline-flex;min-height:28px;align-items:center;color:var(--primary);font-size:10px;font-weight:700;cursor:pointer; }
 .dochi-workspace__exact-table[open] > summary { margin-bottom:7px; }
@@ -8214,7 +8215,7 @@ body:has(.consent-banner) .dochi-assistant { display:none; }
   .dochi-result-workspace__header h1,.dochi-result-empty h1 { font-size:26px; }
   .dochi-result-workspace__header.is-results { grid-template-columns:1fr;padding:18px 15px; }
   .dochi-result-workspace__context { grid-template-columns:1fr 1fr; }
-  .dochi-workspace__period-comparison li { grid-template-columns:minmax(76px,.8fr) minmax(110px,1.2fr); }
+  .dochi-workspace__period-comparison li { grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); }
   .dochi-result-tool > summary { align-items:flex-start;padding:14px; }
   .dochi-result-tool__actions { flex-wrap:wrap;justify-content:flex-end;gap:6px; }
   .dochi-result-tool__actions button { min-height:28px;padding:4px 7px;font-size:10px; }
