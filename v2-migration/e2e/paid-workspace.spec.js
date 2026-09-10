@@ -82,6 +82,9 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/subscription?payment=confirm#purchase`);
     await expect(page.locator(".subscription-checkout")).toContainText(en ? "Payment confirmed" : "결제를 확인했습니다");
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
+    await expect(page.locator(".checkout-widgets")).toBeHidden();
+    await expect(page.locator(".checkout-access-card").getByRole("button")).toBeVisible();
+    await expect(page.getByLabel(en ? "Private recovery code" : "이용권 복원 코드", { exact: true })).toBeVisible();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: en ? "Save pass recovery code" : "이용권 복원 코드 보관", exact: true }).click();
     expect((await download).suggestedFilename()).toBe("growthopt-pass-recovery.txt");
