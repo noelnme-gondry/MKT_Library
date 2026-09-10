@@ -91,7 +91,7 @@ export default function ProjectsPage({ locale = "ko" }) {
   };
   return <div className="projects-page">
     <header><h1>{en ? "Projects" : "프로젝트 보관함"}</h1><p>{en ? "Keep each client or app separate. Select the project before uploading next week's file; filenames may change." : "고객·앱별 데이터를 따로 관리합니다. 다음 주 파일을 올리기 전에 프로젝트를 선택하세요. 파일명은 달라도 됩니다."}</p><Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "Subscription and storage guide" : "구독·저장 용량 안내"}</Link></header>
-    <section className="project-start-panel">
+    <section className="project-start-panel" id="project-backup">
       <h2>{en ? "Your next review starts here" : "다음 주 리뷰도 여기서 이어가세요"}</h2>
       <p>{en ? "Choose a project, upload this week's CSV, and save your review. Keep each client's decisions together." : "프로젝트 선택 → 이번 주 CSV 업로드 → 리뷰 저장. 고객·앱별로 지난 결정과 다음 결과를 한곳에 모읍니다."}</p>
       <div className="project-create"><label className="wr-field"><span>{en ? "New project name" : "새 프로젝트 이름"}</span><input value={name} onChange={event => setName(event.target.value)} maxLength={120} placeholder={en ? "Client or app name" : "고객 또는 앱 이름"} /></label><button className="btn primary" type="button" disabled={!storageEnabled || !ready || busy || switching} onClick={create}>{en ? "Create project" : "프로젝트 만들기"}</button><button className="btn" type="button" disabled={!storageEnabled || busy || switching || !ready} onClick={() => backupInput.current?.click()}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</button><input ref={backupInput} hidden type="file" accept="application/json,.json" disabled={!storageEnabled || busy || switching || !ready} onChange={preview} /></div>

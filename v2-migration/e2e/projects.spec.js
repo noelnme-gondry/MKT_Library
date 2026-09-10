@@ -13,7 +13,7 @@ async function readStored(page) {
 }
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
-  test(`project migration, complete backup restore and report-pass gate (${locale})${tag}`, async ({ page }) => {
+  test(`project migration, complete backup restore and report-pass gate (${locale})${tag}`, async ({ page, browser }) => {
     await page.addInitScript(() => {
       window.__projectEvents = [];
       window.dataLayer = [];
@@ -44,6 +44,23 @@ for (const locale of ["ko", "en"]) {
     expect(exported.project.settings.name).toBe("Client Alpha");
     expect(Buffer.from(exported.files[0].base64, "base64").toString()).toBe(initial.files[0].text);
     expect(JSON.stringify(exported)).not.toContain("keyHash");
+    // A fresh browser has no source cookies or IndexedDB. Transfer only the downloaded file.
+    const otherContext = await browser.newContext();
+    try {
+      const other = await otherContext.newPage();
+      await other.goto(new URL(`${prefix}/subscription`, page.url()).href);
+      await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
+      await expect(other).toHaveURL(/projects#project-backup$/);
+      await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
+      await expect(other.locator(".project-card")).toHaveCount(0);
+      await other.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
+      await other.getByRole("button", { name: en ? "Restore as new project" : "새 프로젝트로 복원", exact: true }).click();
+      await expect(other.locator(".projects-page").getByRole("status")).toContainText(en ? "Backup restored" : "백업을 복원했습니다");
+      expect((await readStored(other)).files[0].text).toBe(initial.files[0].text);
+      await other.reload();
+      await expect(other.getByRole("heading", { name: /Client Alpha/ })).toBeVisible();
+      expect((await readStored(page)).files[0].text).toBe(initial.files[0].text);
+    } finally { await otherContext.close(); }
     const invalid = { ...exported, files: exported.files.map(file => ({ ...file, base64: Buffer.from('"unterminated').toString("base64") })) };
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles({ name: "bad-backup.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(invalid)) });
     page.once("dialog", dialog => dialog.accept());
