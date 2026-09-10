@@ -223,9 +223,13 @@ describe("LandingPage render smoke", () => {
   it.each(["ko", "en"])("opens intake on demand and covers all tools through purposes (%s)", (locale) => {
     const { container } = render(<LandingPage locale={locale}><section id="dochi-upload" tabIndex={-1}><input aria-label="file" /></section></LandingPage>);
     const intake = container.querySelector(".dc-intake");
-    expect(intake.open).toBe(false);
+    expect(intake.hidden).toBe(true);
     clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
-    expect(intake.open).toBe(true);
+    expect(intake.hidden).toBe(false);
+    fireEvent.click(container.querySelector(".dc-intake__close"));
+    expect(intake.hidden).toBe(true);
+    clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
+    expect(intake.hidden).toBe(false);
     const found = new Set();
     for (const button of container.querySelectorAll(".home-tool-finder__purposes button")) {
       fireEvent.click(button);

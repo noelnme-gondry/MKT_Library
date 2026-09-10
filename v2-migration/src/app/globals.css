@@ -10832,9 +10832,7 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 
 /* 홈은 목적 세 개를 먼저 선택하고 도구 목록을 한 자리에서 펼친다. */
 .dc-intake { margin: 0 0 28px; border-bottom: 1px solid var(--dc-line); }
-.dc-intake:not([open]) { display: none; }
-.dc-intake > summary { cursor: pointer; min-height: 44px; padding: 12px 0; color: var(--dc-text-soft); }
-.dc-intake > summary:focus-visible { outline: 2px solid var(--dc-signal); outline-offset: 3px; }
+.dc-intake[hidden] { display: none; }
 .home-tool-finder__purposes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .home-tool-finder__purposes button { display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 20px; min-height: 100px; color: var(--dc-text); background: var(--work-surface); border: 1px solid var(--dc-line); border-radius: 8px; cursor: pointer; }
 .home-tool-finder__purposes button[aria-expanded="true"] { border-color: var(--dc-signal); background: var(--bg-2); }
