@@ -279,20 +279,38 @@
   .decision-console-landing .dc-section-head { display: block; margin: 0; }
   .dc-questions > .dc-section-head { grid-area: 1 / 1; }
   .dc-questions .home-tool-finder { display: contents; }
-  .dc-questions .home-tool-finder__purposes { grid-area: 2 / 1 / auto / -1; margin: 0; }
+  .dc-questions .home-tool-finder__purposes { grid-area: 3 / 1 / auto / -1; margin: 0; }
   .dc-questions .home-tool-finder > button { grid-area: 1 / 2; align-self: end; margin: 0; min-height: 44px; padding: 8px 0; font-size: 12px; }
-  .dc-questions #home-tool-results { grid-area: 3 / 1 / auto / -1; }
+  .dc-questions #home-tool-results { grid-area: 4 / 1 / auto / -1; }
   .dc-questions #home-tool-results[hidden] { display: none; }
   .dc-section-head h2 { font-size: 28px; line-height: 1.4; font-weight: 700; letter-spacing: -.04em; }
   .dc-section-head p { margin: 7px 0 0; font-size: 14px; line-height: 1.8; max-width: 600px; }
   .home-tool-finder__purposes { margin-top: 20px; gap: 14px; }
   .home-tool-finder__purposes button { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-content: center; gap: 7px 12px; min-height: 106px; padding: 21px; border: 1px solid var(--library-border); border-radius: 9px; background: var(--library-surface); box-shadow: none; }
-  .home-tool-finder__purposes button::before { content: '↗'; grid-row: span 2; color: var(--library-accent); font-size: 21px; line-height: 1.4; }
-  .home-tool-finder__purposes button:nth-child(2)::before { content: '⇄'; }
-  .home-tool-finder__purposes button:nth-child(3)::before { content: '▧'; }
+  .home-tool-finder__icon { grid-row: span 2; align-self: start; margin-top: 2px; color: var(--library-accent); }
   .home-tool-finder__purposes button:hover { border-color: var(--library-accent); }
   .home-tool-finder__purposes button strong { font-family: var(--font-heading); font-size: 17px; font-weight: 650; }
   .home-tool-finder__purposes button span { font-size: 13px; line-height: 1.8; color: var(--library-muted); }
+  .home-tool-finder__search { grid-area: 2 / 1 / auto / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .home-tool-finder__search label { font-weight: 650; }
+  .home-tool-finder__search input { flex: 1; min-width: 180px; min-height: 48px; padding: 12px 16px; font-size: 16px; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); }
+  .home-tool-finder__search button, .home-tool-finder__tool-heading button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); }
+  .home-tool-finder button[aria-pressed="true"], .home-tool-finder__purposes button[aria-expanded="true"] { background: var(--library-accent-surface); border-color: var(--library-accent); color: var(--library-accent); }
+  .home-tool-finder__results { gap: 16px; }
+  .home-tool-finder__tool { display: flex; flex-direction: column; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); min-width: 0; overflow-wrap: anywhere; }
+  .home-tool-finder__tool-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+  .home-tool-finder__tool-heading h3 { font-size: 19px; margin: 8px 0; }
+  .home-tool-finder__tool-heading button { flex-shrink: 0; font-size: 13px; }
+  .home-tool-finder__tool p { color: var(--library-muted); margin: 12px 0; line-height: 1.7; }
+  .home-tool-finder__tool dl { margin: 4px 0 20px; font-size: 14px; line-height: 1.7; }
+  .home-tool-finder__tool dt { font-weight: 650; margin-top: 12px; }
+  .home-tool-finder__tool dd { margin: 4px 0 0; color: var(--library-muted); }
+  .dc-questions .home-tool-finder__results .tool-index__link { margin-top: auto; align-self: start; padding: 10px 18px; border: 1px solid var(--library-accent); border-radius: 7px; background: var(--library-accent-surface); color: var(--library-accent); font-weight: 650; }
+  @media (max-width: 600px) {
+    .home-tool-finder__search label { flex-basis: 100%; }
+    .home-tool-finder__search input { width: 100%; flex-basis: 100%; }
+    .home-tool-finder__tool { padding: 18px; }
+  }
   .dc-loop { display: flex; align-items: center; justify-content: space-between; gap: 25px; margin-top: 24px; padding: 24px 27px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-accent-surface); }
   .dc-loop::before { content: '↻'; color: var(--library-accent); font-size: 26px; }
   .dc-loop .dc-section-head { flex: 1; }
