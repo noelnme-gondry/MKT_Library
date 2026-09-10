@@ -518,6 +518,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
 
         {savedDecision && !isPersistencePromptOpen && <div className="decision-review__saved" role="status">
           <strong>{t.saved(formatReviewDate(savedDecision.reviewDate, locale))}</strong>
+          <p>{locale === "en" ? "Keep this work in a project, then return with the next period’s data to review your decision." : "프로젝트에 작업을 보관하고, 다음 기간 데이터로 돌아와 이번 결정을 검토하세요."}</p>
+          <Link className="btn primary" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Keep in a project" : "프로젝트에 보관하기"}</Link>
           <Link className="btn" href={`${locale === "en" ? "/en" : ""}/weekly-review#wr-history`} onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "decision_saved", placement: analyticsPlacement, locale })}>{locale === "en" ? "See the saved decision" : "저장한 결정 확인"}</Link>
         </div>}
         {isPersistencePromptOpen && savedDecision && (

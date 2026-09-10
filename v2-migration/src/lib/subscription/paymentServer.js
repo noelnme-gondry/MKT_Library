@@ -132,9 +132,11 @@ export async function reconcilePaymentWebhook(input) {
 export function paymentResponse(result) {
   return Response.json(result.body, { headers: { "Cache-Control": "no-store", ...(result.cookie ? { "Set-Cookie": result.cookie } : {}) } });
 }
-export function paymentError() {
-  // Never return provider payloads, connection strings, or secret-bearing errors.
-  return Response.json({ error: "PAYMENT_UNAVAILABLE" }, { status: 503, headers: { "Cache-Control": "no-store" } });
+export function paymentError(error) {
+  const statuses = { INVALID_ORIGIN: 403, INVALID_ORDER: 400, ALREADY_ACTIVE: 409, PAYMENT_NOT_COMPLETED: 409, PAYMENT_MISMATCH: 409, PAYMENTS_NOT_CONFIGURED: 503 };
+  const code = Object.hasOwn(statuses, error?.message) ? error.message : "PAYMENT_UNAVAILABLE";
+  console.error("payment_request_failed", { code });
+  return Response.json({ error: code }, { status: statuses[code] || 503, headers: { "Cache-Control": "no-store" } });
 }
 
 export function redirectPaymentResult(request, failed = false) {

@@ -58,7 +58,7 @@ v2-migration/
 ```
 - **검증**: `npm run test:all`(vitest golden+smoke) · `npm run lint`(eslint 0 errors 유지) · `npm run build`
 - **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`·`--border`)+다크/라이트 **전역**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
-- **Supabase**: 현재 운영 연결은 미사용. 주간 리뷰 확장 라이선스 RPC 클라이언트는 선택적 환경 설정 뒤에 준비돼 있으며, 설정이 없으면 구독 관심 확인만 제공한다. 분석 도구는 무료. service_role key 규칙(§2.3) 불변. 접근키·Pro 페이월은 제거됨.
+- **Supabase**: 현재 운영 연결은 미사용. 주간 리뷰 확장 라이선스 RPC 클라이언트는 선택적 환경 설정 뒤에 준비돼 있으며, 현재 결제는 Toss + PostgreSQL을 사용한다. 분석은 무료이며 보고서 다운로드 등 Pro 범위는 docs/product-ssot.md를 따른다. service_role key 규칙(§2.3) 불변.
 
 ---
 
@@ -94,7 +94,7 @@ v2-migration/
 | 9-2·9-3·9-7 | 콘텐츠 Aha·트래픽 변동·운영 대시보드 (`hidden:true`) | 콘텐츠 CSV |
 | — | `/start` 진입 게이트 · `/weekly-review` 결정 검토 · `/blog` · `/guide` | — |
 
-전 도구 free(티어·페이월 없음). 흡수된 구 도구 id는 redirect로 보존.
+분석 도구 실행은 무료. 보고서 다운로드·여러 프로젝트·브랜딩은 Pro 이용권 범위다. 흡수된 구 도구 id는 redirect로 보존.
 
 ### 4.3 CSV 상태 = 그룹 스코프 (Zustand)
 ```js
@@ -440,7 +440,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)
 `LandingPage` = ① **1단 중앙 히어로**(eyebrow+헤드라인+한 줄 데크+목적 CTA 3열 균등+통합 신뢰 1줄) ② `ds/ToolIndex` 전체 도구 인덱스 ③ 주간 결정 루프 3단계 ④ 블로그 | SOP 허브. **목적 선택(②)이 개념 설명(③)보다 앞**(첫 화면에서 바로 도구를 찾게, 스모크가 순서 강제). 구 `ConnectedToolJourney`는 인덱스와 **같은 갈래·같은 도구**를 카드로 또 그려서 삭제됐다 — 되살리지 말 것.
 - **히어로 CTA는 개수가 아니라 위계가 계약이다**(2026-08-19): 외부 검토가 "동급 CTA 3개"를 P0로 지목했지만 실제 코드는 하나만 `--primary`(채운 배경·16px·그림자)이고 나머지는 외곽선 14px이었다 — **진단이 커밋 #690~#695 이전 화면 기준이라 낡았다**. 재설계 대신 `LandingPage.smoke.test.jsx`가 KO/EN 모두에서 primary가 정확히 하나·목적 CTA ≤3·보조는 텍스트 링크임을 강제한다. 외부 감사를 반영할 땐 **그 진단이 어느 커밋 기준인지부터 확인할 것**.
-- **히어로에 예시 판단 카드·장식 차트를 다시 넣지 말 것**: 가짜 수치를 띄우던 `.dc-instrument`·`.dc-mini-chart`와 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 전부 삭제됐다(PR #644).
+- **임의 수치의 히어로 판단 카드·장식 차트 금지**: 2026-09-10 사용자 승인에 따라 동일 체험용 픽스처로 계산한 비교 1개와 도치, 기간·샘플 표시는 허용한다. 결측이면 생략하고 성과를 날조하지 않는다. 가짜 수치를 띄우던 `.dc-instrument`·`.dc-mini-chart`와 `ProductPreview`·`ToolCarousel`·`ToolCardMock`·`LiveMiniChart`는 전부 삭제됐다(PR #644).
 - **질문 카드(②)는 이제 손으로 고른 4장이 아니라 발행 도구 전체 인덱스다**(2026-08-18): 4장만 이름이 노출돼 17개 중 13개는 사이드바를 열어야만 존재를 알 수 있었다. 카드와 별도 카탈로그 두 장치를 하나로 합쳐 **페이지는 짧아지고 보이는 도구는 전부로** 늘었다. 목록을 아래 섹션에 두면 스크롤 밖이라 없는 것과 같다 — 스모크가 위치와 개수를 함께 강제한다.
 - **첫 화면 카피는 중복부터 센다**: 신뢰 배지와 프라이버시 줄이 같은 말을 두 번 하고, 데크가 CTA 힌트를 반복하고 있었다("글이 많다"의 정체). 동급 항목은 나열 대신 **박스로 묶어 균등 grid**(claude-ux §5) — 도구·목적 이름을 줄바꿈으로 줄줄 세우지 말 것.
 - **진입 모션**: `utils/landingMotion.js`(anime.js v4, 히어로 타임라인·미니차트 SVG line-draw·스크롤 리빌). 셀렉터가 마크업과 1:1이라 클래스명을 바꾸면 모션 대상도 같이 고칠 것. 안전장치는 §7.

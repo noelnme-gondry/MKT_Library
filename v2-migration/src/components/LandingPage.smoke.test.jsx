@@ -101,7 +101,8 @@ describe("LandingPage render smoke", () => {
     const intake = container.querySelector('[data-testid="intake-slot"]');
     expect(container.querySelector(".dc-hero").compareDocumentPosition(intake) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(intake.compareDocumentPosition(container.querySelector(".dc-questions")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(container.querySelector(".dc-return")).toBeTruthy();
+    expect(container.querySelector(".dc-return").compareDocumentPosition(container.querySelector(".dc-hero")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('.dc-return a[href="/projects"]')).toBeTruthy();
     expect(container.querySelector(".dc-return__status strong")?.textContent).toBe("1");
     expect(container.textContent).toContain("검색 예산을 10% 줄이고");
     const reopen = container.querySelector('a[href="/tools/budget-allocation"]');
