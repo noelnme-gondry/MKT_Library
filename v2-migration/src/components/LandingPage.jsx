@@ -167,6 +167,12 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           </h1>
           <p className="dc-hero__deck">{T.deck}</p>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
+            <Link className="dc-action-route dc-action-route--question" href="#questions" onClick={() => {
+              rootRef.current?.querySelector("#questions")?.focus();
+            }}>
+              <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>
+              <span>{lang === "en" ? "No file? Explore your next step" : "파일 없이 고민부터 골라보세요"}</span>
+            </Link>
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
@@ -176,14 +182,11 @@ export default function LandingPage({ locale = "ko", children, reading }) {
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
-            <Link className="dc-action-route dc-action-route--question" href="#questions" onClick={() => {
-              rootRef.current?.querySelector("#questions")?.focus();
-            }}>
-              <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>
-              <span>{lang === "en" ? "No file? Explore your next step" : "파일 없이 고민부터 골라보세요"}</span>
-            </Link>
+
           </nav>
           <div className="dc-hero__utility-actions">
+            <Link className="dc-text-link" href={lang === "en" ? "/en/blog" : "/blog"}>{lang === "en" ? "Read the blog" : "블로그 읽기"} →</Link>
+            <Link className="dc-text-link" href={lang === "en" ? "/en/guide" : "/guide"}>{lang === "en" ? "Guides & SOPs" : "실무 가이드 · SOP"} →</Link>
             <Link
               className="dc-text-link"
               href={lang === "en" ? "/en/calculator" : "/calculator"}
@@ -207,18 +210,18 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           </div>
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
-        <aside className="library-journey" aria-label={lang === "en" ? "One-file analysis workflow" : "CSV 통합 분석 흐름"}>
+        <aside className="library-journey" aria-label={lang === "en" ? "Choose where to begin" : "시작 방법 선택"}>
           <div className="library-journey__intro">
             <div>
-              <span>{lang === "en" ? "Dochi’s connected analysis" : "도치의 통합 분석"}</span>
-              <h2>{lang === "en" ? <>One file.<br />Connected results.</> : <>파일은 한 번.<br />가능한 분석은 한곳에.</>}</h2>
+              <span>{lang === "en" ? "Choose your starting point" : "필요한 곳에서 시작"}</span>
+              <h2>{lang === "en" ? <>Read, explore,<br />or analyze.</> : <>읽고, 찾아보고,<br />필요할 때 분석하세요.</>}</h2>
             </div>
             <Image className="library-journey__dochi" src="/assets/dochi/dochi-editorial.webp" width={640} height={640} sizes="(max-width: 768px) 112px, 160px" alt="" />
           </div>
           <ol>
-            <li><b>{lang === "en" ? "Upload and check columns" : "CSV를 올리고 컬럼 확인"}</b><p>{lang === "en" ? "Confirm dates, spend and conversions" : "날짜·비용·전환이 맞게 연결됐는지 확인"}</p></li>
-            <li><b>{lang === "en" ? "Run supported baseline analyses" : "가능한 기본 분석을 함께 실행"}</b><p>{lang === "en" ? "See which analyses need more data or setup" : "추가 조건이나 데이터가 필요한 분석은 별도 안내"}</p></li>
-            <li><b>{lang === "en" ? "Continue to your weekly review" : "결과에서 주간 리뷰까지"}</b><p>{lang === "en" ? "Carry your data into detailed analysis and decisions" : "같은 데이터를 상세 분석과 결정 기록으로 연결"}</p></li>
+            <li><Link href={lang === "en" ? "/en/guide" : "/guide"}><b>{lang === "en" ? "Guides & SOPs" : "실무 가이드 · SOP"}</b><p>{lang === "en" ? "Find operating standards before you analyze" : "분석 전에 필요한 운영 기준부터 확인하세요"}</p></Link></li>
+            <li><Link href="#questions"><b>{lang === "en" ? "Choose an analysis tool" : "필요한 도구 바로 쓰기"}</b><p>{lang === "en" ? "Choose your question and open a tool directly" : "고민에 맞는 도구를 골라 바로 실행하세요"}</p></Link></li>
+            <li><Link href="#dochi-upload" onClick={openIntake}><b>{T.dataCta}</b><p>{lang === "en" ? "Upload one file to run supported analyses together" : "파일 하나로 가능한 기본 분석을 함께 실행하세요"}</p></Link></li>
           </ol>
         </aside>
       </section>

@@ -12,6 +12,12 @@ const SEO_ROUTE_IDS = ROUTES.filter((route) => isRouteIndexable(route) && route.
 // 렌더된 <title>은 layout.js의 template("%s | Growth Opt Playbook")을 거친다.
 const TITLE_SUFFIX = " | Growth Opt Playbook";
 
+it("gives the unindexed results page a localized title instead of its internal ID", () => {
+  expect(getRouteSeo("dochi-result", "ko")?.title).toBe("분석 결과");
+  expect(getRouteSeo("dochi-result", "en")?.title).toBe("Analysis Results");
+  expect(isRouteIndexable(ROUTES.find((route) => route.id === "dochi-result"))).toBe(false);
+});
+
 describe("indexable route SEO copy", () => {
   it("covers every indexable route (derived, not hand-listed)", () => {
     const missing = SEO_ROUTE_IDS.filter((id) => !getRouteSeo(id, "ko") || !getRouteSeo(id, "en"));

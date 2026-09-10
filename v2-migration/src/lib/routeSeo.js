@@ -1,4 +1,8 @@
 export const ROUTE_SEO = {
+  "dochi-result": {
+    ko: { title: "분석 결과", description: "업로드한 데이터의 분석 결과와 다음 확인 항목을 살펴보세요." },
+    en: { title: "Analysis Results", description: "Review analysis results and next checks for your uploaded data." },
+  },
   projects: {
     ko: { title: "프로젝트 보관함", description: "이 브라우저에 저장한 프로젝트별 데이터·결정·주간 보고서를 열고 백업하거나 복원합니다." },
     en: { title: "Project Library", description: "Open, back up and restore project data, decisions and weekly reports stored in this browser." },

@@ -75,7 +75,7 @@ describe("DochiAnalysisDock", () => {
     expect(screen.getByText("지금 보는 분석")).toBeTruthy();
     expect(screen.getByText("이 분석의 검토 대기 1건")).toBeTruthy();
     expect(document.querySelector('button[aria-current="page"]')).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /도치 결과함 전체 보기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /분석 결과 전체 보기/ }));
     expect(push).toHaveBeenCalledWith("/dochi-result");
   });
 });

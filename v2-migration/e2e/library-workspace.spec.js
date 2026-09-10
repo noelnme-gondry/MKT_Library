@@ -28,7 +28,8 @@ for (const locale of ["ko", "en"]) {
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
     const hero = await page.locator(".dc-hero").boundingBox();
-    const primary = await page.locator(".dc-action-route--primary").boundingBox();
+    // Questions are the first entry; CSV remains an optional adjacent action.
+    const primary = await page.locator(".dc-action-route--question").boundingBox();
     expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
     expect(primary.height).toBeLessThanOrEqual(56);
     await page.locator(".dc-action-route--question").click();

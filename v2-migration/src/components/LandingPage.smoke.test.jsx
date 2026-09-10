@@ -47,9 +47,9 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["CSV로 가능한 분석 한 번에", "질문에서 시작하기"]);
-    expect(actions[0].classList.contains("dc-action-route--primary")).toBe(true);
-    expect(actions.slice(1).every((action) => !action.classList.contains("dc-action-route--primary"))).toBe(true);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["질문에서 시작하기", "CSV로 가능한 분석 한 번에"]);
+    expect(actions[0].getAttribute("href")).toBe("#questions");
+    expect(actions[1].getAttribute("href")).toBe("#dochi-upload");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
     expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고");
@@ -178,6 +178,9 @@ describe("LandingPage render smoke", () => {
     for (const locale of ["ko", "en"]) {
       const { container, unmount } = render(<LandingPage locale={locale} />);
       const hero = container.querySelector(".dc-hero__actions");
+      const prefix = locale === "en" ? "/en" : "";
+      expect(container.querySelector(`.dc-hero a[href="${prefix}/blog"]`)).toBeTruthy();
+      expect(container.querySelector(`.dc-hero a[href="${prefix}/guide"]`)).toBeTruthy();
       expect(hero, `${locale}: 히어로 행동 영역이 없다`).toBeTruthy();
       const routes = hero.querySelectorAll(".dc-action-route");
       const primary = hero.querySelectorAll(".dc-action-route--primary");
@@ -191,7 +194,7 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Find analyses for my CSV", "Start with a question"]);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Start with a question", "Find analyses for my CSV"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did it change?What should you do next?");
     expect(container.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
