@@ -650,6 +650,27 @@
     .dc-intake[open] { padding: 15px; }
     .plan-comparison-grid { grid-template-columns: 1fr; }
   }
+  /* Narrow screens: keep each workflow action readable and easy to tap. */
+  @media (max-width: 600px) {
+    .app .main > .content { padding: 16px; }
+    .decision-console-landing .dc-return__head { flex-wrap: wrap; gap: 12px; }
+    .decision-console-landing .dc-return__head > .btn { width: 100%; justify-content: center; }
+    .decision-console-landing .dc-return__grid { grid-template-columns: minmax(0, 1fr); }
+    .decision-console-landing .dc-return__latest { overflow-wrap: anywhere; }
+    .app :is(.decision-review__saved, .decision-review__save-prompt) { padding: 14px; gap: 12px; }
+    .app .decision-review__saved > :is(strong, p, a) { width: 100%; margin: 0; }
+    .app :is(.decision-review__saved, .decision-review__save-prompt, .project-actions, .wr-project-actions) .btn { min-height: 48px; white-space: normal; justify-content: center; text-align: center; }
+    .app :is(.project-actions, .wr-project-actions) { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .app :is(.purchase-summary, .purchase-payment) { padding: 20px 16px; min-width: 0; }
+    .app .purchase-policy-links { display: flex; flex-wrap: wrap; }
+    .app .purchase-policy-links a { display: inline-flex; align-items: center; min-height: 44px; }
+    .app :is(.checkout-restore, .decision-review, .project-create) :is(input, select, textarea) { font-size: 16px; min-width: 0; max-width: 100%; }
+    .purchase-dialog-overlay { padding: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+    .purchase-dialog { padding: 18px; max-height: calc(100dvh - 24px); overscroll-behavior: contain; }
+    .purchase-dialog > .btn.primary, .purchase-dialog .workflow-next-step .btn { width: 100%; justify-content: center; white-space: normal; min-height: 48px; text-align: center; }
+    .purchase-dialog .workflow-next-step { padding: 14px; }
+    .workflow-next-step { min-width: 0; overflow-wrap: anywhere; }
+  }
   @media print {
     .library-sidebar, .library-nav-overlay, .library-journey { display: none !important; }
     .app.is-home, .app:not(.is-home) { display: block; }
