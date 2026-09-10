@@ -233,9 +233,8 @@
   .library-featured-post, .library-reading__list { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 10px; overflow: hidden; }
   .library-featured-post { text-decoration: none; color: var(--library-text); }
   .library-featured-post > div:last-child { padding: 25px; }
-  .library-featured-post__art { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 140px; padding: 20px; background: color-mix(in srgb, var(--library-accent) 12%, var(--library-background)); }
-  .library-featured-post__art span { border: 1px solid var(--library-border); padding: 12px 15px; border-radius: 6px; font-size: 12px; background: var(--library-surface); }
-  .library-featured-post__art i { font-style: normal; color: var(--library-muted); }
+  .library-featured-post__art { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--library-background); }
+  .library-featured-post__art img { object-fit: cover; object-position: 50% 50%; }
   .library-reading__type { font-size: 11px; color: var(--library-muted); }
   .library-reading h3 { font-size: 19px; font-weight: 550; letter-spacing: -.025em; line-height: 1.6; margin: 12px 0 10px; }
   .library-reading p { font-size: 14px; line-height: 1.9; color: var(--library-muted); }
