@@ -33,7 +33,9 @@ for (const locale of ["ko", "en"]) {
     expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
     expect(primary.height).toBeLessThanOrEqual(56);
     await page.locator(".dc-action-route--question").click();
-    await expect(page.locator("#questions")).toBeFocused();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
+    await expect(page.locator("main h1")).toBeVisible();
+    await page.goto(prefix || "/");
     await expect(page.locator(".home-tool-finder__purposes button")).toHaveCount(3);
     await expect(page.locator("#dochi-upload")).toBeHidden();
     await expect(page.locator(".library-reading__grid a")).toHaveCount(4);

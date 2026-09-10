@@ -48,7 +48,7 @@ describe("LandingPage render smoke", () => {
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
     expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["질문에서 시작하기", "CSV로 가능한 분석 한 번에"]);
-    expect(actions[0].getAttribute("href")).toBe("#questions");
+    expect(actions[0].getAttribute("href")).toBe("/diagnose");
     expect(actions[1].getAttribute("href")).toBe("#dochi-upload");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
@@ -245,10 +245,10 @@ describe("LandingPage render smoke", () => {
     seedWithData();
     const source = useAppStore.getState().csvData;
     const { container } = render(<LandingPage locale={locale} />);
-    const questionLink = container.querySelector('a[href="#questions"]');
+    const questionLink = container.querySelector(".dc-action-route--question");
     expect(questionLink.closest(".dc-hero__actions")).toBeTruthy();
     clickWithoutNavigation(questionLink);
-    expect(document.activeElement).toBe(container.querySelector("#questions"));
+    expect(questionLink.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/diagnose`);
     expect(useAppStore.getState().csvData).toBe(source);
     expect(container.querySelector(`a[href="${locale === "en" ? "/en" : ""}/subscription"]`)).toBeTruthy();
   });

@@ -167,9 +167,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           </h1>
           <p className="dc-hero__deck">{T.deck}</p>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
-            <Link className="dc-action-route dc-action-route--question" href="#questions" onClick={() => {
-              rootRef.current?.querySelector("#questions")?.focus();
-            }}>
+            <Link className="dc-action-route dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"}>
               <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>
               <span>{lang === "en" ? "No file? Explore your next step" : "파일 없이 고민부터 골라보세요"}</span>
             </Link>
