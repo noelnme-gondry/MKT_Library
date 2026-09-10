@@ -56,6 +56,24 @@ for (const locale of ["ko", "en"]) {
     expect(downloads).toHaveLength(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
+  test(`payment action follows methods and agreement (${locale})${tag}`, async ({ page }) => {
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
+    await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
+    await page.route("**/api/payments/order", route => route.fulfill({ json: { customerKey: "fixture", orderId: "fixture", amount: 5900 } }));
+    await page.addInitScript(() => {
+      window.TossPayments = () => ({ widgets: () => ({
+        setAmount: async () => {},
+        renderPaymentMethods: async ({ selector }) => { document.querySelector(selector).textContent = "Payment methods fixture"; },
+        renderAgreement: async ({ selector }) => { document.querySelector(selector).textContent = "Agreement fixture"; },
+      }) });
+    });
+    await page.goto(`${prefix}/subscription#purchase`);
+    await page.getByRole("button", { name: en ? "Choose payment method" : "결제수단 선택", exact: true }).click();
+    const pay = page.getByRole("button", { name: en ? "Pay KRW 5,900" : "5,900원 결제하기", exact: true });
+    await expect(pay).toBeEnabled();
+    expect(await pay.evaluate(button => Boolean(document.querySelector("#toss-payment-agreement").compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    expect((await pay.boundingBox()).y).toBeGreaterThan((await page.locator("#toss-payment-agreement").boundingBox()).y);
+  });
   test(`mock checkout approval and recovery (${locale})${tag}`, async ({ page }) => {
     const sent = [];
     await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
