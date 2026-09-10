@@ -13,9 +13,9 @@ export function trackPaymentEvent(name, { locale = "ko", mode, transaction } = {
       if (name === "purchase") params.transaction_id = transaction.orderId;
       const event = mode === "test" ? `test_${name}` : name;
       const key = `gop:ga:${event}:${transaction.orderId}`;
-      try { if (sessionStorage.getItem(key)) return false; } catch { /* GA transaction ID remains stable. */ }
+      try { if (sessionStorage.getItem(key) || (name === "purchase" && localStorage.getItem(key))) return false; } catch { /* GA transaction ID remains stable. */ }
       const sent = trackProductEvent(event, params);
-      if (sent) { try { sessionStorage.setItem(key, "1"); } catch { /* Storage is optional. */ } }
+      if (sent) { try { sessionStorage.setItem(key, "1"); if (name === "purchase") localStorage.setItem(key, "1"); } catch { /* Storage is optional. */ } }
       return sent;
     }
     return trackProductEvent(name, params);

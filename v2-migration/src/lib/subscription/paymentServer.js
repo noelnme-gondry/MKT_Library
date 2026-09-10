@@ -89,24 +89,32 @@ export async function confirmPayment(request, input) {
   }
   const credential = credentials(cookies(request)[pendingName]);
   if (!credential || credential.id !== input.orderId || !Number.isSafeInteger(input.amount) || typeof input.paymentKey !== "string" || input.paymentKey.length > 300) throw new Error("INVALID_ORDER");
-  const client = await database().connect();
+  let client = await database().connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query("SELECT * FROM gop_payment_orders WHERE id=$1 FOR UPDATE", [credential.id]);
     const order = rows[0];
     if (!owns(order, credential.token) || order.amount !== input.amount || order.mode !== paymentConfiguration().mode || order.status === "revoked" || (order.payment_key && order.payment_key !== input.paymentKey)) throw new Error("INVALID_ORDER");
+    await client.query("UPDATE gop_payment_orders SET payment_key=$2 WHERE id=$1", [order.id, input.paymentKey]);
+    await client.query("COMMIT");
+    client.release();
+    client = null;
     order.payment_key = input.paymentKey;
+    // No database connection or row lock is held during provider HTTP.
     // Confirm retries use the same persisted idempotency key. A lost response must not charge twice.
     let payment;
     try { payment = await toss(`/${encodeURIComponent(input.paymentKey)}`); } catch { /* Not yet approved; confirm below. */ }
     if (!payment || payment.status === "READY" || payment.status === "IN_PROGRESS") payment = await toss("/confirm", { method: "POST", headers: { "Idempotency-Key": order.idempotency_key }, body: JSON.stringify({ paymentKey: input.paymentKey, orderId: order.id, amount: order.amount }) });
-    await client.query("UPDATE gop_payment_orders SET payment_key=$2 WHERE id=$1", [order.id, input.paymentKey]);
-    const entitlement = await syncOrder(client, order, payment);
+    client = await database().connect();
+    await client.query("BEGIN");
+    const latest = (await client.query("SELECT * FROM gop_payment_orders WHERE id=$1 FOR UPDATE", [order.id])).rows[0];
+    if (!owns(latest, credential.token) || latest.status === "revoked" || latest.payment_key !== input.paymentKey || latest.amount !== input.amount || latest.mode !== order.mode) throw new Error("INVALID_ORDER");
+    const entitlement = await syncOrder(client, latest, payment);
     if (!entitlement || entitlement.expiresAt <= Date.now()) throw new Error("PAYMENT_NOT_COMPLETED");
     await client.query("COMMIT");
-    return { body: { entitlement, mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id }, recoveryCode: `${credential.id}.${credential.token}` }, cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) };
-  } catch (error) { await client.query("ROLLBACK"); throw error; }
-  finally { client.release(); }
+    return { body: { entitlement, mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id }, recoveryCode: `${credential.id}.${credential.token}` }, cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request), clearReturn: true };
+  } catch (error) { if (client) await client.query("ROLLBACK"); throw error; }
+  finally { client?.release(); }
 }
 export async function readPaymentAccess(request, recoveryCode) {
   if (recoveryCode !== undefined) assertSameOrigin(request);
@@ -130,7 +138,10 @@ export async function reconcilePaymentWebhook(input) {
   await syncOrder(database(), order, await toss(`/${encodeURIComponent(order.payment_key)}`));
 }
 export function paymentResponse(result) {
-  return Response.json(result.body, { headers: { "Cache-Control": "no-store", ...(result.cookie ? { "Set-Cookie": result.cookie } : {}) } });
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (result.cookie) headers.append("Set-Cookie", result.cookie);
+  if (result.clearReturn) headers.append("Set-Cookie", "gop_payment_return=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+  return Response.json(result.body, { headers });
 }
 export function paymentError(error) {
   const statuses = { INVALID_ORIGIN: 403, INVALID_ORDER: 400, ALREADY_ACTIVE: 409, PAYMENT_NOT_COMPLETED: 409, PAYMENT_MISMATCH: 409, PAYMENTS_NOT_CONFIGURED: 503 };
