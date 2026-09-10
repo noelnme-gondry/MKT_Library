@@ -56,6 +56,7 @@ export function toolIndexEntry(toolId, locale = "ko") {
     // EN 이름은 사이드바와 같은 경로로 뽑는다 — 두 곳이 다르면 같은 도구가
     // 목록과 내비에서 다른 이름으로 보인다.
     name: (locale === "en" ? trItemTitle(toolId, locale, meta?.titleEn || meta?.title) : meta?.title) || toolId,
+    searchText: [content.title, content.lead, ...(content.sections || []).flat(), locale === "en" ? meta?.seoTitleEn : meta?.seoTitle].filter(Boolean).join(" "),
     question: content.question || "",
     answer: content.answer || "",
     // 이 도구를 열면 실제로 화면에 나오는 것 3가지. 짧은 이름이 못 말하는 부분을 메운다.

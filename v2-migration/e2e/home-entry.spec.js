@@ -21,6 +21,15 @@ async function checkHome(page, locale) {
   const subset = await links.count();
   await page.getByRole("button", { name: en ? "View all tools" : "전체 도구 보기", exact: true }).click();
   expect(await links.count()).toBeGreaterThan(subset);
+  const search = page.getByRole("searchbox", { name: en ? "Find an analysis" : "필요한 분석 찾기" });
+  await search.fill("ROAS");
+  await expect(links.first()).toBeVisible();
+  const saved = page.locator(".home-tool-finder__tool-heading button").first();
+  await saved.click();
+  await expect(saved).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await page.getByRole("button", { name: en ? "Saved tools (1)" : "저장한 도구 (1)", exact: true }).click();
+  await expect(links).toHaveCount(1);
   await expectNoSeriousAccessibilityViolations(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator(".dc-action-route--primary").focus();
