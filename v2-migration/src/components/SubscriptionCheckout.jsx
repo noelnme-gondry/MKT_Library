@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -101,6 +102,10 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     {message && <p role="status">{message}</p>}
     {returnStatus === "confirm" && <button type="button" className="btn" disabled={busy} onClick={confirm}>{en ? "Retry approval check" : "승인 확인 재시도"}</button>}
     {(recoveryCode || entitlement?.payment) && <button type="button" className="btn" onClick={saveRecovery}>{en ? "Save pass recovery code" : "이용권 복원 코드 보관"}</button>}
+    <div className="purchase-project-transfer">
+      <p>{en ? "Moving to another device? Restore your pass here, then import the backup exported from Projects on your original device. Your files and review history do not sync automatically." : "다른 기기로 옮기시나요? 여기서 이용권을 복원한 뒤, 원래 기기의 프로젝트 보관함에서 내보낸 백업을 가져오세요. 파일과 검토 이력은 자동 동기화되지 않습니다."}</p>
+      <Link className="btn" href={en ? "/en/projects#project-backup" : "/projects#project-backup"}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</Link>
+    </div>
     <details><summary>{en ? "Restore a purchased pass on this device" : "구매한 이용권을 이 기기에서 복원"}</summary><label className="wr-field">{en ? "Private recovery code" : "이용권 복원 코드"}<input type="password" autoComplete="off" maxLength={150} value={restoreCode} onChange={event => setRestoreCode(event.target.value)} /></label><button type="button" className="btn" disabled={busy || !restoreCode.trim()} onClick={restore}>{en ? "Restore access" : "이용권 복원"}</button></details>
   </div>;
 }

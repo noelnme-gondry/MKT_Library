@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import pg from "pg";
+import { SITE_URL } from "@/lib/routeMap";
 import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduct";
 
 let pool;
@@ -32,11 +33,18 @@ function credentials(value) {
 function owns(order, token) {
   return order && tokenPattern.test(order.access_hash) && timingSafeEqual(Buffer.from(order.access_hash, "hex"), Buffer.from(hash(token), "hex"));
 }
+function paymentOrigin(request) {
+  // Railway/Next may construct request.url using localhost even for the public site.
+  // Only recognize our canonical host; never turn arbitrary forwarded hosts into trusted origins.
+  const canonical = new URL(SITE_URL);
+  if ([request.headers.get("host"), request.headers.get("x-forwarded-host")].includes(canonical.host)) return canonical.origin;
+  return new URL(request.url).origin;
+}
 function cookie(name, value, request, maxAge = 34560000) {
-  return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
+  return `${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${new URL(paymentOrigin(request)).protocol === "https:" ? "; Secure" : ""}`;
 }
 export function assertSameOrigin(request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) throw new Error("INVALID_ORIGIN");
+  if (request.headers.get("origin") !== paymentOrigin(request)) throw new Error("INVALID_ORIGIN");
 }
 async function toss(path, options = {}) {
   const response = await fetch(`https://api.tosspayments.com/v1/payments${path}`, {
@@ -131,12 +139,13 @@ export function paymentError() {
 
 export function redirectPaymentResult(request, failed = false) {
   const url = new URL(request.url);
+  const origin = paymentOrigin(request);
   const locale = url.searchParams.get("locale") === "en" ? "/en" : "";
-  const target = new URL(`${locale}/subscription?payment=${failed ? "failed" : "confirm"}#purchase`, url.origin);
+  const target = new URL(`${locale}/subscription?payment=${failed ? "failed" : "confirm"}#purchase`, origin);
   const headers = { Location: target.href, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
   if (!failed) {
     const input = { orderId: url.searchParams.get("orderId"), paymentKey: url.searchParams.get("paymentKey"), amount: Number(url.searchParams.get("amount")) };
-    if (!idPattern.test(input.orderId || "") || !input.paymentKey || input.paymentKey.length > 300 || !Number.isSafeInteger(input.amount)) return new Response(null, { status: 303, headers: { ...headers, Location: new URL(`${locale}/subscription?payment=failed#purchase`, url.origin).href } });
+    if (!idPattern.test(input.orderId || "") || !input.paymentKey || input.paymentKey.length > 300 || !Number.isSafeInteger(input.amount)) return new Response(null, { status: 303, headers: { ...headers, Location: new URL(`${locale}/subscription?payment=failed#purchase`, origin).href } });
     headers["Set-Cookie"] = cookie("gop_payment_return", Buffer.from(JSON.stringify(input)).toString("base64url"), request, 86400);
   }
   return new Response(null, { status: 303, headers });

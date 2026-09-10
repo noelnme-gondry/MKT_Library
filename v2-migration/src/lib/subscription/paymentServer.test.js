@@ -51,6 +51,17 @@ describe("payment boundaries", () => {
   it("rejects cross-origin mutations", () => {
     expect(() => assertSameOrigin(new Request("https://example.com/api/payments/order", { headers: { origin: "https://evil.example" } }))).toThrow("INVALID_ORIGIN");
   });
+  it("handles the production proxy origin without trusting arbitrary forwarded hosts", async () => {
+    const headers = { host: "growthoptplaybook.com", origin: "https://growthoptplaybook.com" };
+    const proxied = new Request("https://localhost:8080/api/payments/order", { headers });
+    expect(() => assertSameOrigin(proxied)).not.toThrow();
+    const created = await createPaymentOrder(proxied);
+    expect(created.cookie).toContain("; Secure");
+    const redirected = redirectPaymentResult(new Request("https://localhost:8080/api/payments/failure", { headers }), true);
+    expect(redirected.headers.get("Location")).toBe("https://growthoptplaybook.com/subscription?payment=failed#purchase");
+    expect(() => assertSameOrigin(new Request(proxied.url, { headers: { ...headers, origin: "https://evil.example" } }))).toThrow("INVALID_ORIGIN");
+    expect(() => assertSameOrigin(new Request(proxied.url, { headers: { host: "localhost:8080", "x-forwarded-host": "evil.example", origin: "https://evil.example" } }))).toThrow("INVALID_ORIGIN");
+  });
   it("persists an order before payment and reuses its pending cookie", async () => {
     const { cookie, input } = await fixture();
     expect((await createPaymentOrder(request(cookie))).body.orderId).toBe(input.orderId);
