@@ -56,6 +56,24 @@ for (const locale of ["ko", "en"]) {
     expect(downloads).toHaveLength(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
+  test(`payment action follows methods and agreement (${locale})${tag}`, async ({ page }) => {
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
+    await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
+    await page.route("**/api/payments/order", route => route.fulfill({ json: { customerKey: "fixture", orderId: "fixture", amount: 5900 } }));
+    await page.addInitScript(() => {
+      window.TossPayments = () => ({ widgets: () => ({
+        setAmount: async () => {},
+        renderPaymentMethods: async ({ selector }) => { document.querySelector(selector).textContent = "Payment methods fixture"; },
+        renderAgreement: async ({ selector }) => { document.querySelector(selector).textContent = "Agreement fixture"; },
+      }) });
+    });
+    await page.goto(`${prefix}/subscription#purchase`);
+    await page.getByRole("button", { name: en ? "Choose payment method" : "결제수단 선택", exact: true }).click();
+    const pay = page.getByRole("button", { name: en ? "Pay KRW 5,900" : "5,900원 결제하기", exact: true });
+    await expect(pay).toBeEnabled();
+    expect(await pay.evaluate(button => Boolean(document.querySelector("#toss-payment-agreement").compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    expect((await pay.boundingBox()).y).toBeGreaterThan((await page.locator("#toss-payment-agreement").boundingBox()).y);
+  });
   test(`mock checkout approval and recovery (${locale})${tag}`, async ({ page }) => {
     const sent = [];
     await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
@@ -64,6 +82,9 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/subscription?payment=confirm#purchase`);
     await expect(page.locator(".subscription-checkout")).toContainText(en ? "Payment confirmed" : "결제를 확인했습니다");
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
+    await expect(page.locator(".checkout-widgets")).toBeHidden();
+    await expect(page.locator(".checkout-access-card").getByRole("button")).toBeVisible();
+    await expect(page.getByLabel(en ? "Private recovery code" : "이용권 복원 코드", { exact: true })).toBeVisible();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: en ? "Save pass recovery code" : "이용권 복원 코드 보관", exact: true }).click();
     expect((await download).suggestedFilename()).toBe("growthopt-pass-recovery.txt");

@@ -312,7 +312,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
             <p>{T.guideDesc}</p>
           </Link>
         </div>
-        <div className="library-plan-link"><p>{lang === "en" ? "Analysis and decision records are free. Explore Pro for report downloads and multiple projects." : "분석과 결정 기록은 무료입니다. 보고서 다운로드와 여러 프로젝트는 Pro로."}</p><Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare plans" : "구독 · 요금제 보기"}</Link></div>
+        <div className="library-plan-link"><div><h3>{lang === "en" ? "From analysis to your next report" : "분석부터 다음 보고서까지"}</h3><p>{lang === "en" ? "Analysis and decision records are free. Explore Pro for report downloads and multiple projects." : "분석과 결정 기록은 무료입니다. 보고서 다운로드와 여러 프로젝트는 Pro로."}</p></div><Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare plans" : "구독 · 요금제 보기"}</Link></div>
         <div className="dc-resource-strip">
           <span>{T.resources}</span>
           <div>
