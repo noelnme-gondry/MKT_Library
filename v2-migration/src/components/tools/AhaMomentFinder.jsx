@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import { limitAhaObservationWindow } from "@/utils/ahaObservationWindow";
@@ -481,8 +482,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     setCsvData(buildDemoCsv(C.demoGroup, locale));
   };
   const resetCsv = () => clearCsvGroup();
-  const [minSupport, setMinSupport] = useState(30);
-  const [holdoutOn, setHoldoutOn] = useState(true);
+  const [minSupport, setMinSupport] = useSavedToolInput("5-20", "minSupport", 30);
+  const [holdoutOn, setHoldoutOn] = useSavedToolInput("5-20", "holdoutOn", true);
   const [sortBy, setSortBy] = useState("f1");
   const [drilldownAction, setDrilldownAction] = useState(null);
   // 전문가 뷰: 산점도에 표시할 이벤트 선택(null=전체) + 표에서 달성률 구간 펼침
@@ -490,7 +491,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [expandedActions, setExpandedActions] = useState(() => new Set());
   // 편집 가능한 컬럼 역할 매핑 (index.html AHA_STATE.colMap — 자동추정 시드 후 사용자 편집)
   const [colMap, setColMap] = useState({});
-  const [outcomeStartDay, setOutcomeStartDay] = useState("");
+  const [outcomeStartDay, setOutcomeStartDay] = useSavedToolInput("5-20", "outcomeStartDay", "");
   const [outcomeWindowSource, setOutcomeWindowSource] = useState(null);
   const activeOutcomeStartDay = outcomeWindowSource === csvData.raw ? outcomeStartDay : "";
   const temporalScope = useMemo(() => limitAhaObservationWindow(colMap, Number(activeOutcomeStartDay)), [colMap, activeOutcomeStartDay]);

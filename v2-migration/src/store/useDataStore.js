@@ -804,6 +804,7 @@ export const useAppStore = create(persist((set, get) => ({
     workspaceDatasetSummaries: [], workspaceRestoreStatus: "idle", pendingProjectConfig: null,
     storeEventsManual: [], eventMarkers: [], viewConfig: {}, customMetrics: {}, customCharts: {},
   })),
+  pendingSavedAnalysis: null,
   pendingProjectConfig: null,
   setPendingProjectConfig: (project) => set({ pendingProjectConfig: project }),
   applyProjectConfig: (project, compatibleGroups = []) => set((state) => {

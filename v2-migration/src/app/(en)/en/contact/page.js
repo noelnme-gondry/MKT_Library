@@ -1,3 +1,4 @@
+import PassRecoveryHelp from "@/components/PassRecoveryHelp";
 import { SITE_URL } from "@/lib/routeMap";
 import PolicyPage from "@/components/PolicyPage";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -27,6 +28,7 @@ export default function EnglishContactPage() {
         intro="Business inquiries, collaborations, and product feedback are all welcome. Use whichever channel works best."
         updated="2026-09-02"
         sections={[
+          { title: "Pass recovery", content: <PassRecoveryHelp locale="en" /> },
           {
             title: "About the operator",
             content: <ContactAuthorProfile locale="en" />,

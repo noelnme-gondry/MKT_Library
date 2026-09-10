@@ -31,3 +31,18 @@ it("includes validated setups in backup round trips", async () => {
   const backup = { product: "growthopt-playbook-backup", version: 1, project: { name: "A", snapshots: [], decisions: [], savedAnalyses: [item] }, files: [] };
   expect(parseProjectBackup(JSON.stringify(backup)).project.savedAnalyses).toEqual([item]);
 });
+it("saves model inputs without results and flags a currency change", async () => {
+  const { compareSavedInput } = await import("./savedAnalyses");
+  const before = state(); before.csvGroups.efficiency.currency = "KRW";
+  before.viewConfig["analysis-inputs:5-3"] = { budget: "200000", verifiedSig: "approved" };
+  const item = await captureSavedAnalysis(before, "5-3", "Budget", "ko");
+  expect(item.configuration.viewConfig["analysis-inputs:5-3"]).toEqual({ budget: "200000" });
+  const next = state(); next.csvGroups.efficiency.currency = "USD";
+  expect(compareSavedInput(item, next).currencyChanged).toBe(true);
+});
+it("supports manual tool input setups with no CSV", async () => {
+  const before = state(); before.csvGroups = { experiment: { headers: [], mapping: {} } };
+  before.viewConfig["analysis-inputs:5-4"] = { planMde: "15" };
+  const item = await captureSavedAnalysis(before, "5-4", "Experiment", "en");
+  expect(item.hasCsv).toBe(false); expect(await compatibleSavedAnalysis(item, before)).toBe(true);
+});

@@ -707,6 +707,28 @@
     .analysis-setup, .project-next-work, .sample-report-downloads { padding: 16px; }
     .saved-analysis-list .workflow-next-step__actions, .sample-report-downloads .workflow-next-step__actions { display: grid; grid-template-columns: 1fr; }
   }
+  .saved-setup-review, .pass-recovery-help, .sample-report-excerpt { padding: 24px; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); margin: 20px 0; }
+  .saved-setup-review p, .pass-recovery-help p, .pass-recovery-help li, .sample-report-excerpt p { color: var(--library-muted); line-height: 1.7; }
+  .setup-comparison { display: grid; grid-template-columns: minmax(110px, 1fr) 2fr; gap: 12px; padding: 16px; background: var(--library-background); border-radius: 8px; }
+  .setup-comparison dd { margin: 0; overflow-wrap: anywhere; }
+  .sample-report-excerpt header > span { color: var(--library-accent); font-size: 12px; letter-spacing: .08em; font-weight: 700; }
+  .sample-report-excerpt h3 { font-size: clamp(20px, 2vw, 28px); line-height: 1.4; }
+  .sample-report-excerpt figure { margin: 24px 0; }
+  .sample-report-excerpt figcaption { font-weight: 700; }
+  .sample-report-channel { padding: 14px 0; border-top: 1px solid var(--library-border); }
+  .sample-report-bar { display: grid; grid-template-columns: 90px minmax(40px, 1fr) 110px; align-items: center; gap: 12px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .sample-report-bar > div { background: var(--library-background); height: 14px; border-radius: 3px; overflow: hidden; }
+  .sample-report-bar i { display: block; height: 100%; background: var(--library-muted); }
+  .sample-report-bar i.is-current { background: var(--library-accent); }
+  .sample-report-bar b { text-align: right; }
+  .project-review-due { border-left: 3px solid var(--library-accent); padding-left: 12px; }
+  @media (max-width: 600px) {
+    .saved-setup-review, .pass-recovery-help, .sample-report-excerpt { padding: 16px; }
+    .sample-report-bar { grid-template-columns: 64px minmax(24px, 1fr) 88px; gap: 6px; font-size: 12px; }
+    .setup-comparison { grid-template-columns: 1fr; gap: 6px; }
+    .setup-comparison dd { margin-bottom: 12px; }
+    .pass-recovery-help .btn, .saved-setup-review .btn { min-height: 44px; white-space: normal; margin-top: 8px; }
+  }
   @media print {
     .library-sidebar, .library-nav-overlay, .library-journey { display: none !important; }
     .app.is-home, .app:not(.is-home) { display: block; }

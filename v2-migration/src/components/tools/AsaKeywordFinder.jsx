@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useMemo, useState } from "react";
 import CsvUploader from "@/components/CsvUploader";
@@ -27,7 +28,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const csvData = useAppStore((state) => state.csvData);
   const analyzed = useAppStore((state) => state.isGroupAnalyzed("5-26"));
-  const [settings, setSettings] = useState({ budget: "", cpa: "", cpt: "" });
+  const [settings, setSettings] = useSavedToolInput("5-26", "settings", { budget: "", cpa: "", cpt: "" });
   const [maturityDeclaration, setMaturityDeclaration] = useState(null);
   const maturity = maturityDeclaration?.raw === csvData.raw ? maturityDeclaration.value : "unknown";
   const rows = useMemo(() => getMappedRows(csvData), [csvData]);

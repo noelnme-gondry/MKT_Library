@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -133,7 +134,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
-  const [satState, setSatState] = useState({
+  const [satState, setSatState] = useSavedToolInput("5-22", "satState", {
     grain: "channel", // channel | campaign
     metric: "cpa", // cpa | roas
     selected: null,

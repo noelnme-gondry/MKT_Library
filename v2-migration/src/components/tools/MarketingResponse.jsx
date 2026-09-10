@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData, canTrackDecisionReview } from "@/lib/dataOrigin";
 import { mmmDecisionQuality, mmmDecisionQualityMessage } from "@/lib/analysis-results/mmmDecisionQuality";
@@ -180,6 +181,7 @@ function workbookColumn(index) {
 }
 
 export default function MarketingResponse({ locale = "ko", initialStage = "trend", isolated = false }) {
+  const settingsToolId = ({ trend: "5-18-trend", diagnose: "5-18-cannibal", mmm: "5-18-mmm", lab: "5-18-forecast" })[initialStage] || "5-18";
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
   const tx = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
@@ -187,14 +189,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // URL에서 전달받은 단계는 라우팅 레이어가 검증하지만, 컴포넌트 단독 사용·테스트도
   // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
   const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // hub | trend | diagnose | mmm | lab
-  const [target, setTarget] = useState("Regs");
+  const [target, setTarget] = useSavedToolInput(settingsToolId, "target", "Regs");
   // 사용자 MMM은 Bayesian을 기본 추정기로 고정하고, WebR challenger를 자동 실행해
   // 같은 OOS 검증구간에서 더 정확한 결과를 고르게 한다. Classic/Prism 구현은
   // 과거 결과 호환과 엔진 검증을 위해 내부에만 남긴다.
   const mmmMode = "bayesian";
   const [mmmResultModel, setMmmResultModel] = useState("bayesian");
   // T1: Bayesian 모드 정보 prior(지출점유 기반 약정보) — 기본 활성. 끄면 평면 OLS(모델 차이 비교용).
-  const [bayesianUsePrior, setBayesianUsePrior] = useState(true);
+  const [bayesianUsePrior, setBayesianUsePrior] = useSavedToolInput(settingsToolId, "bayesianUsePrior", true);
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -202,17 +204,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [bayesianResponseChannel, setBayesianResponseChannel] = useState(null);
   const [isHealthWarningOpen, setIsHealthWarningOpen] = useState(false);
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
-  const [fcHorizon, setFcHorizon] = useState(13);
+  const [fcHorizon, setFcHorizon] = useSavedToolInput(settingsToolId, "fcHorizon", 13);
   // 입력 중 값과 실제 계산값을 분리한다. 스피너의 화살표 한 번에도 후보 탐색·OOS
   // 재계산이 실행되면 메인 스레드가 멈추므로, 명시적 적용 때만 계산값을 바꾼다.
-  const [fcHorizonDraft, setFcHorizonDraft] = useState("13");
-  const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
-  const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
-  const [fcTotalBudget, setFcTotalBudget] = useState(null);
-  const [fcMinBudget, setFcMinBudget] = useState(0);
-  const [fcMaxBudget, setFcMaxBudget] = useState(null);
-  const [fcEventPolicy, setFcEventPolicy] = useState("hold");
-  const [fcEventPolicyDraft, setFcEventPolicyDraft] = useState("hold");
+  const [fcHorizonDraft, setFcHorizonDraft] = useSavedToolInput(settingsToolId, "fcHorizonDraft", "13");
+  const [fcBudget, setFcBudget] = useSavedToolInput(settingsToolId, "fcBudget", {}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
+  const [fcStepOff, setFcStepOff] = useSavedToolInput(settingsToolId, "fcStepOff", {}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
+  const [fcTotalBudget, setFcTotalBudget] = useSavedToolInput(settingsToolId, "fcTotalBudget", null);
+  const [fcMinBudget, setFcMinBudget] = useSavedToolInput(settingsToolId, "fcMinBudget", 0);
+  const [fcMaxBudget, setFcMaxBudget] = useSavedToolInput(settingsToolId, "fcMaxBudget", null);
+  const [fcEventPolicy, setFcEventPolicy] = useSavedToolInput(settingsToolId, "fcEventPolicy", "hold");
+  const [fcEventPolicyDraft, setFcEventPolicyDraft] = useSavedToolInput(settingsToolId, "fcEventPolicyDraft", "hold");
   // null=전체 이력. 사용자가 추천을 승인했을 때만 최근 운영 체제의 시작점 이후
   // 데이터로 예측 회귀를 다시 적합한다. 원본 CSV·MMM 기여 분해는 바꾸지 않는다.
   const [fcRegimeTrainingWeeks, setFcRegimeTrainingWeeks] = useState(null);
@@ -220,7 +222,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [forecastRegimeStateSignature, setForecastRegimeStateSignature] = useState(null);
   const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
-  const [cannibQuestion, setCannibQuestion] = useState("precedence");
+  const [cannibQuestion, setCannibQuestion] = useSavedToolInput(settingsToolId, "cannibQuestion", "precedence");
   const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
   const [weeklyPerformanceView, setWeeklyPerformanceView] = useState("individual");
   const [spendTimelineKind, setSpendTimelineKind] = useState("brand");
@@ -315,9 +317,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       setFcHorizon(preparedForecastHorizon);
       setFcEventPolicy(fcEventPolicyDraft);
     });
-  }, [deferMmmUpdate, isForecastSettingsDirty, preparedForecastHorizon, fcEventPolicyDraft]);
+  }, [deferMmmUpdate, isForecastSettingsDirty, preparedForecastHorizon, fcEventPolicyDraft, setFcHorizonDraft, setFcHorizon, setFcEventPolicy]);
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
-  const [platformFilter, setPlatformFilter] = useState("all"); // all | android | ios
+  const [platformFilter, setPlatformFilter] = useSavedToolInput(settingsToolId, "platformFilter", "all"); // all | android | ios
 
   // CSV 로드 시 colMap 자동 초기화(이름 기반 부분 추정 — reg/react/채널만, 나머지는 트레이).
   const csvSig = hasData ? `${csvData.fileName}|${(csvData.headers || []).join(",")}` : "";

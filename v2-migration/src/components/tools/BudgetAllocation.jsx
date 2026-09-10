@@ -1,4 +1,5 @@
 "use client";
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
@@ -514,17 +515,17 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // PRISM의 단일 의사결정 입력: 총 예산 또는 효율 목표. 채널별 금액을 고정하는
   // 수동 편집기는 배분 결과를 왜곡하므로 이 화면에서는 제공하지 않는다.
-  const [planningBasis, setPlanningBasis] = useState("budget"); // budget | target
-  const [targetValue, setTargetValue] = useState(null);
-  const [budgetPeriod, setBudgetPeriod] = useState("daily"); // daily | monthly
-  const [budget, setBudget] = useState("");
+  const [planningBasis, setPlanningBasis] = useSavedToolInput("5-3", "planningBasis", "budget"); // budget | target
+  const [targetValue, setTargetValue] = useSavedToolInput("5-3", "targetValue", null);
+  const [budgetPeriod, setBudgetPeriod] = useSavedToolInput("5-3", "budgetPeriod", "daily"); // daily | monthly
+  const [budget, setBudget] = useSavedToolInput("5-3", "budget", "");
   const [budgetAutoDefaulted, setBudgetAutoDefaulted] = useState(false); // 최초 진입 시 최근 일예산 합계로 1회 채움
-  const [recentDays, setRecentDays] = useState(7);
-  const [allocMode, setAllocMode] = useState("c"); // c | b
+  const [recentDays, setRecentDays] = useSavedToolInput("5-3", "recentDays", 7);
+  const [allocMode, setAllocMode] = useSavedToolInput("5-3", "allocMode", "c"); // c | b
   // 적합이 얇은 채널로 예산을 옮기지 않는다(§8.6 입증책임 비대칭 · product-ssot D-14).
   // 신뢰도는 이미 R²와 데이터 점 수로 계산하고 있었지만 **표시만** 하고 배분에는
   // 쓰지 않았다 — 가장 불확실한 추정치로 돈을 옮기는 상태였다. 기본 ON.
-  const [holdLowConfidence, setHoldLowConfidence] = useState(true);
+  const [holdLowConfidence, setHoldLowConfidence] = useSavedToolInput("5-3", "holdLowConfidence", true);
   // 효율 CSV 숫자는 환산하지 않는다. 업로드 때 선언한 원본 통화가 포맷과
   // 최적화 step의 단위이며, 전역 값은 구 세션 데이터용 fallback일 뿐이다.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -539,10 +540,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // 고급 추세선 컨트롤 (Step 2/3 상세 설정)
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [trendType, setTrendType] = useState("auto"); // auto|linear|log|poly2|power
-  const [weightMode, setWeightMode] = useState("none"); // none|linear|exponential
-  const [outlierMethod, setOutlierMethod] = useState("iqr"); // none|iqr|modz
-  const [outlierStrength, setOutlierStrength] = useState("standard"); // standard|strong|very_strong
+  const [trendType, setTrendType] = useSavedToolInput("5-3", "trendType", "auto"); // auto|linear|log|poly2|power
+  const [weightMode, setWeightMode] = useSavedToolInput("5-3", "weightMode", "none"); // none|linear|exponential
+  const [outlierMethod, setOutlierMethod] = useSavedToolInput("5-3", "outlierMethod", "iqr"); // none|iqr|modz
+  const [outlierStrength, setOutlierStrength] = useSavedToolInput("5-3", "outlierStrength", "standard"); // standard|strong|very_strong
   const [normalizeMode, setNormalizeMode] = useState("raw"); // raw|log|minmax|robust (차트 표시 전용)
   const [hidePoints, setHidePoints] = useState(false); // 추세선만 표시
   // 차트 표시 대상 채널 (예산 분배와 무관, 차트에만). null=자동 상위6, Set=명시

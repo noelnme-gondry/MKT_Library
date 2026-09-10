@@ -1,5 +1,6 @@
 "use client";
 
+import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -41,7 +42,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const setCsvData = useAppStore((state) => state.setCsvData);
   const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
-  const [dataPath, setDataPath] = useState("its");
+  const [dataPath, setDataPath] = useSavedToolInput("5-24", "dataPath", "its");
   const [dateColumn, setDateColumn] = useState("");
   const [outcomeColumn, setOutcomeColumn] = useState("");
   const [campaignColumn, setCampaignColumn] = useState("");
