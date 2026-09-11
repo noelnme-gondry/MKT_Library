@@ -374,7 +374,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
         </section>
         <ReviewLoop locale={locale} hasResult={false} />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
-        <AccountArchive locale={locale} />
+        <AccountArchive locale={locale} anchorId="account-archive" />
       </article>
     );
   }
@@ -727,7 +727,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
       </section>
 
       <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
-      <AccountArchive locale={locale} />
+      <AccountArchive locale={locale} anchorId="account-archive" />
     </article>
   );
 }

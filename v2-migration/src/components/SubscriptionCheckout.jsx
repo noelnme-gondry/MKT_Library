@@ -1,5 +1,6 @@
 "use client";
 import PassRecoveryHelp from "./PassRecoveryHelp";
+import AccountArchive from "./AccountArchive";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -149,16 +150,18 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
   return <div className="subscription-checkout">
     {paid ? <div className="checkout-access-card"><p role="status">{en ? "Your report pass is active until" : "보고서 이용권 사용 중 · 만료일"} {new Date(entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>{(recoveryCode || entitlement?.payment) && <button type="button" className="btn" onClick={saveRecovery}>{en ? "Save pass recovery code" : "이용권 복원 코드 보관"}</button>}</div> : config?.enabled ? <><p>{en ? "One-time payment. No automatic renewal. By purchasing, you agree to the terms and refund policy below." : "자동 갱신 없는 1회 결제입니다. 구매 시 아래 이용약관과 환불정책에 동의합니다."}</p><p>{en ? "Paying first saves a temporary copy of this project's inputs and settings in this browser. Return to your analysis to restore it. Unrestored copies expire after 24 hours and are removed on the next cleanup. Nothing is uploaded." : "결제하기를 누르면 이 프로젝트의 입력·설정을 먼저 이 브라우저에 임시 보관합니다. 분석 복귀 버튼으로 복원할 수 있습니다. 미복원본은 24시간 뒤 다음 정리 때 삭제하며 서버로 보내지 않습니다."}</p>{config.mode === "test" && <p>{en ? "Test checkout · no actual charge" : "테스트 결제 · 실제 청구되지 않음"}</p>}</> : <p>{config ? (en ? "Purchases are currently unavailable. You can keep analyzing or try a free sample report." : "지금은 구매할 수 없습니다. 분석을 계속하거나 무료 샘플 보고서를 확인하세요.") : (en ? "Checking checkout availability…" : "구매 가능 여부 확인 중…")} {config && <a href="#report-preview-title">{en ? "Free sample reports" : "무료 샘플 보고서"}</a>}</p>}
     <div className="checkout-widgets" hidden={paid}><div id="toss-payment-methods" /><div id="toss-payment-agreement" /></div>
-    {!paid && config?.requiresAccount && !checkoutAccount && <p>{en ? "Sign in to link this purchase to your verified email. Marketing consent is not required." : "구매 이용권을 검증된 이메일에 연결하려면 로그인해 주세요. 마케팅 수신 동의는 필요하지 않습니다."} <a href="#account-archive">{en ? "Sign in" : "로그인하기"}</a></p>}
+    {!paid && config?.requiresAccount && !checkoutAccount && <div className="checkout-signin"><p>{en ? "Sign in to link this purchase to your verified email. Marketing consent is not required." : "구매 이용권을 검증된 이메일에 연결하려면 로그인해 주세요. 마케팅 수신 동의는 필요하지 않습니다."}</p><AccountArchive locale={locale} profile /></div>}
     {!paid && config?.enabled && (!config.requiresAccount || checkoutAccount) && <button className="btn primary" type="button" disabled={busy} onClick={ready ? pay : prepare}>{busy ? (en ? "Processing…" : "처리 중…") : ready ? (en ? `Pay KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")}` : `${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 결제하기`) : (en ? "Reload checkout" : "결제 화면 다시 불러오기")}</button>}
     {message && <p role="status">{message}</p>}
     {returnStatus === "confirm" && <button type="button" className="btn" disabled={busy} onClick={confirm}>{en ? "Retry approval check" : "승인 확인 재시도"}</button>}
     {returnPath && <button className="btn" disabled={busy} onClick={async () => { try { await restoreCheckoutSnapshot(); router.push(returnPath); } catch { setMessage(en ? "Could not restore this project's temporary copy. Reopen the original project; your current work was not replaced." : "이 프로젝트의 임시본을 복원하지 못했습니다. 원래 프로젝트를 다시 열어 주세요. 현재 작업은 덮어쓰지 않았습니다."); } }}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</button>}
+    <details className="checkout-existing"><summary>{en ? "Restore an existing purchase" : "이미 구매한 이용권 복원"}</summary>
     <div className="purchase-project-transfer">
       <p>{en ? "Moving to another device? Restore your pass here, then import the backup exported from Projects on your original device. Your files and review history do not sync automatically." : "다른 기기로 옮기시나요? 여기서 이용권을 복원한 뒤, 원래 기기의 프로젝트 보관함에서 내보낸 백업을 가져오세요. 파일과 검토 이력은 자동 동기화되지 않습니다."}</p>
       <Link className="btn" href={en ? "/en/projects#project-backup" : "/projects#project-backup"}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</Link>
     </div>
     <section className="checkout-restore" aria-labelledby="checkout-restore-title"><h4 id="checkout-restore-title">{en ? "Restore a purchased pass on this device" : "구매한 이용권을 이 기기에서 복원"}</h4><div className="checkout-restore__form"><label className="wr-field">{en ? "Private recovery code" : "이용권 복원 코드"}<input type="password" autoComplete="off" maxLength={150} value={restoreCode} onChange={event => setRestoreCode(event.target.value)} /></label><button type="button" className="btn" disabled={busy || !restoreCode.trim()} onClick={restore}>{en ? "Restore access" : "이용권 복원"}</button></div></section>
     <PassRecoveryHelp locale={locale} />
+    </details>
   </div>;
 }
