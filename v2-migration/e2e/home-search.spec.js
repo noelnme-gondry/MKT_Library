@@ -15,6 +15,7 @@ for (const locale of ["ko", "en"]) {
     await expect(input).toHaveValue("CPA");
     await page.getByRole("button", { name: locale === "en" ? "Clear search" : "검색 지우기", exact: true }).click();
     await expect(input).toHaveValue("");
+    await expect(input).toBeFocused();
     await expect(page.locator(".home-tool-finder__purposes")).toBeVisible();
   });
 }

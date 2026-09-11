@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChartNoAxesCombined, TrendingUp, Wallet, Palette, Store, FlaskConical, Network, Bookmark } from "lucide-react";
 import { toolIndexByStage } from "@/lib/toolIndex";
@@ -19,6 +19,7 @@ const QUESTION_ICONS = {
 };
 
 export default function HomeToolFinder({ locale = "ko", onItemClick }) {
+  const searchInput = useRef(null);
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState("");
   const [saveError, setSaveError] = useState(false);
@@ -36,8 +37,8 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   return <div className="home-tool-finder" data-searching={terms.length > 0}>
     <div className="home-tool-finder__search">
       <label htmlFor="home-tool-search">{en ? "Find an analysis" : "필요한 분석 찾기"}</label>
-      <input id="home-tool-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={en ? "Search a question or metric, e.g. ROAS" : "질문이나 지표로 검색 · 예: ROAS"} aria-controls="home-tool-results" />
-    {terms.length > 0 && <button type="button" className="btn" onClick={() => { setQuery(""); setSelected(null); }}>{en ? "Clear search" : "검색 지우기"}</button>}
+      <input ref={searchInput} id="home-tool-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={en ? "Search a question or metric, e.g. ROAS" : "질문이나 지표로 검색 · 예: ROAS"} aria-controls="home-tool-results" />
+    {terms.length > 0 && <button type="button" className="btn" onClick={() => { setQuery(""); setSelected(null); searchInput.current?.focus(); }}>{en ? "Clear search" : "검색 지우기"}</button>}
       <button type="button" aria-pressed={selected === "saved" && !terms.length} onClick={() => { setQuery(""); setSelected(selected === "saved" ? null : "saved"); }}>
         <Bookmark size={18} aria-hidden="true" /> {en ? "Saved tools" : "저장한 도구"} ({savedCount})
       </button>
