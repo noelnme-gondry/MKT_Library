@@ -4,6 +4,7 @@ export async function accountRequest(path, options) {
   const response = await fetch(`/api/account/${path}`, { cache: "no-store", ...options });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "ACCOUNTS_UNAVAILABLE");
+  if (typeof window !== "undefined" && options?.method && options.method !== "GET" && path !== "login") window.dispatchEvent(new Event("gop-account-changed"));
   return data;
 }
 export async function refreshAccount() {

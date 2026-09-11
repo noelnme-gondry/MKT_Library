@@ -59,7 +59,7 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".library-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".library-nav-item")).toHaveLength(WORKSPACE_NAV.length);
+    expect(document.querySelectorAll(".library-nav-item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
     // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
     // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
     expect(document.querySelector(".inner-workspace-label__all")).toBeTruthy();
@@ -90,7 +90,7 @@ describe("Sidebar render smoke", () => {
     const search = document.querySelector(".sidebar-search");
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
-    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.length);
+    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면
@@ -137,7 +137,7 @@ describe("Sidebar render smoke", () => {
   it.each(["ko", "en"])("keeps content, CSV, results and recurring work outside disclosures (%s)", (locale) => {
     pathname = locale === "en" ? "/en" : "/";
     const { container } = render(<Sidebar locale={locale} />);
-    for (const id of ["blog", "guide", "start", "results", "review", "subscription", "projects", "storage", "diagnose"]) {
+    for (const id of ["blog", "guide", "start", "results", "review", "subscription", "storage", "diagnose"]) {
       const item = workspaceNavItem(id, locale);
       const link = container.querySelector(`.library-nav a[href="${locale === "en" ? "/en" : ""}${item.href}"]`);
       expect(link, id).toBeTruthy();

@@ -4616,6 +4616,31 @@ body:not(.light-mode) .moon-icon {
 .mobile-quick-start { display: none; }
 .purchase-reasons { display: flex; flex-wrap: wrap; gap: 8px; }
 .header-price { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.my-account-menu { position: relative; }
+.my-account-menu__trigger { display: flex; align-items: center; gap: 7px; white-space: nowrap; list-style: none; min-height: 44px; }
+.my-account-menu__trigger::-webkit-details-marker { display: none; }
+.my-account-menu__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 200; width: min(360px, calc(100vw - 24px)); max-height: 75dvh; overflow: auto; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: 0 12px 36px #0004; }
+.my-account-menu__panel .account-archive { padding: 0; border: 0; background: none; }
+.my-account-menu__panel p { white-space: normal; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.my-account-menu__panel label { display: block; white-space: normal; }
+.my-account-menu__panel input[type="email"] { width: 100%; }
+.my-account-menu__panel nav { display: grid; gap: 4px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.my-account-menu__panel nav a { padding: 10px 8px; border-radius: var(--radius-sm); color: var(--text-1); }
+.my-account-menu__panel nav a:hover { background: var(--bg-3); }
+.project-review-workspace__bar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.project-review-workspace__bar p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+.project-review-workspace__bar label { display: grid; gap: 5px; margin-left: auto; font-size: 12px; }
+.project-review-workspace__bar select { max-width: 280px; min-height: 44px; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; }
+.project-review-workspace__views { display: flex; gap: 6px; }
+.project-review-workspace__views [aria-pressed="true"] { background: var(--selected-bg); border-color: var(--primary); color: var(--text-1); }
+.project-review-workspace [hidden] { display: none !important; }
+@media (max-width: 640px) {
+  .my-account-menu__panel { position: fixed; right: 12px; top: 110px; }
+  .my-account-menu__trigger { padding-inline: 6px; font-size: 12px; }
+  .project-review-workspace__bar { padding: 16px; }
+  .project-review-workspace__bar label { margin-left: 0; width: 100%; }
+  .project-review-workspace__bar select { max-width: 100%; }
+}
 @media (max-width: 768px) {
   .mobile-quick-start { display: block; padding: 12px 0; }
   .mobile-quick-start nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -10997,4 +11022,12 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .subscription-checkout { display: grid; gap: 16px; }
 .subscription-checkout > .btn { justify-self: start; }
 #purchase, #refund-policy { scroll-margin-top: 100px; }
+@media (max-width: 480px) {
+  .topbar, .app:not(.is-home) .topbar { flex-wrap: wrap; height: auto; gap: 4px; }
+  .topbar-context { flex-basis: 100%; }
+  .topbar-actions, .app:not(.is-home) .topbar-actions { width: 100%; min-width: 0; }
+  .topbar-actions__primary { width: 100%; justify-content: space-between; gap: 2px; }
+  .topbar-actions .my-account-menu__trigger { font-size: 11px; padding-inline: 5px; }
+  .header-cmdk__label--mobile { display: none; }
+}
 } /* @layer app 끝 */

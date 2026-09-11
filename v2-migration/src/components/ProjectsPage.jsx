@@ -19,7 +19,7 @@ import WeeklyReportDocument from "./weekly-review/WeeklyReportDocument";
 function nextReview(project) {
   return (project.decisions || []).filter(record => record.status !== "reviewed" && record.reviewDate).map(record => record.reviewDate).sort()[0] || "";
 }
-export default function ProjectsPage({ locale = "ko" }) {
+export default function ProjectsPage({ locale = "ko", embedded = false, onReview }) {
   const en = locale === "en";
   const backupInput = useRef(null);
   const router = useRouter();
@@ -50,10 +50,11 @@ export default function ProjectsPage({ locale = "ko" }) {
     const result = await useAppStore.getState().createProject(name);
     if (result.reason === "project_limit") return upgrade("project_limit");
     if (!result.ok) throw new Error("PROJECT_CREATE_FAILED");
-    router.push(en ? "/en/weekly-review" : "/weekly-review");
+    if (onReview) onReview(); else router.push(en ? "/en/weekly-review" : "/weekly-review");
   });
   const open = (id, path = "/weekly-review") => run(async () => {
-    if (!await useAppStore.getState().switchProject(id)) throw new Error("PROJECT_OPEN_FAILED");
+    if (id !== activeId && !await useAppStore.getState().switchProject(id)) throw new Error("PROJECT_OPEN_FAILED");
+    if (path === "/weekly-review" && onReview) return onReview();
     router.push(en ? `/en${path}` : path);
   });
   const restoreSetup = (project, item, currentPeriod) => run(async () => {
@@ -98,7 +99,7 @@ export default function ProjectsPage({ locale = "ko" }) {
     });
   };
   return <div className="projects-page">
-    <header><h1>{en ? "Projects" : "프로젝트 보관함"}</h1><p>{en ? "Keep each client or app separate. Select the project before uploading next week's file; filenames may change." : "고객·앱별 데이터를 따로 관리합니다. 다음 주 파일을 올리기 전에 프로젝트를 선택하세요. 파일명은 달라도 됩니다."}</p><Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "Subscription and storage guide" : "구독·저장 용량 안내"}</Link></header>
+    <header>{embedded ? <h1>{en ? "Manage my projects" : "내 프로젝트 관리"}</h1> : <h1>{en ? "Projects" : "프로젝트 보관함"}</h1>}<p>{en ? "Keep each client or app separate. Select the project before uploading next week's file; filenames may change." : "고객·앱별 데이터를 따로 관리합니다. 다음 주 파일을 올리기 전에 프로젝트를 선택하세요. 파일명은 달라도 됩니다."}</p><Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "Subscription and storage guide" : "구독·저장 용량 안내"}</Link></header>
     <section className="project-start-panel" id="project-backup">
       <h2>{en ? "Your next review starts here" : "다음 주 리뷰도 여기서 이어가세요"}</h2>
       <p>{en ? "Choose a project, upload this week's CSV, and save your review. Keep each client's decisions together." : "프로젝트 선택 → 이번 주 CSV 업로드 → 리뷰 저장. 고객·앱별로 지난 결정과 다음 결과를 한곳에 모읍니다."}</p>

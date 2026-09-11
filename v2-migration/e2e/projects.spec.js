@@ -50,7 +50,7 @@ for (const locale of ["ko", "en"]) {
       const other = await otherContext.newPage();
       await other.goto(new URL(`${prefix}/subscription`, page.url()).href);
       await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
-      await expect(other).toHaveURL(/projects#project-backup$/);
+      await expect(other).toHaveURL(/weekly-review#project-management$/);
       await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
       await expect(other.locator(".project-card")).toHaveCount(0);
       await other.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);

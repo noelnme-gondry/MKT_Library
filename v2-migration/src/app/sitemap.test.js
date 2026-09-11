@@ -88,7 +88,8 @@ describe("sitemap covers every routable page in app/", () => {
 
   // catch-all([[...slug]]·[...slug])과 동적 세그먼트([slug])는 routeMap·발행
   // 콘텐츠에서 파생되므로 여기서 별도로 세지 않는다. noindex를 선언한 페이지도 제외.
-  const NOINDEX_SEGMENTS = new Set(["growth-funnel", "share"]);
+  // projects is a compatibility redirect into the canonical weekly-review workspace.
+  const NOINDEX_SEGMENTS = new Set(["growth-funnel", "share", "projects"]);
 
   function collectRoutes(dir, prefix = "") {
     const found = [];
