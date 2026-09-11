@@ -10,6 +10,7 @@ const pendingName = "gop_payment_pending";
 const hash = value => createHash("sha256").update(value).digest("hex");
 const tokenPattern = /^[a-f0-9]{64}$/;
 const idPattern = /^gop_[a-f0-9-]{36}$/;
+const requiresPurchaseAccount = () => accountsEnabled() && process.env.ACCOUNT_ALLOWED_EMAILS === undefined;
 export function paymentConfiguration() {
   const clientKey = process.env.TOSS_CLIENT_KEY || "";
   const secret = process.env.TOSS_SECRET_KEY || "";
@@ -17,7 +18,7 @@ export function paymentConfiguration() {
   const configured = /^(test|live)_gck_/.test(clientKey)
     && secret.startsWith(`${mode}_gsk_`) && Boolean(process.env.PAYMENTS_DATABASE_URL)
     && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true");
-  return { enabled: configured, clientKey: configured ? clientKey : null, mode, product: PAYMENT_PRODUCT, requiresAccount: accountsEnabled() };
+  return { enabled: configured, clientKey: configured ? clientKey : null, mode, product: PAYMENT_PRODUCT, requiresAccount: requiresPurchaseAccount() };
 }
 function database() {
   if (!paymentConfiguration().enabled) throw new Error("PAYMENTS_NOT_CONFIGURED");
@@ -68,7 +69,7 @@ async function syncOrder(client, order, payment) {
 export async function createPaymentOrder(request) {
   assertSameOrigin(request);
   const account = await readAccount(request);
-  if (accountsEnabled() && !account) throw new Error("LOGIN_REQUIRED");
+  if (requiresPurchaseAccount() && !account) throw new Error("LOGIN_REQUIRED");
   const current = credentials(cookies(request)[cookieName]);
   if (current) {
     const { rows } = await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [current.id]);

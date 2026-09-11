@@ -38,6 +38,13 @@ async function fixture() {
   return { cookie, input };
 }
 describe("payment boundaries", () => {
+  it("keeps anonymous purchases available during the restricted pilot", async () => {
+    vi.stubEnv("ACCOUNTS_ENABLED", "true"); vi.stubEnv("GOOGLE_CLIENT_ID", "fixture"); vi.stubEnv("GOOGLE_CLIENT_SECRET", "fixture");
+    vi.stubEnv("ACCOUNT_ALLOWED_EMAILS", "owner@example.com");
+    expect(paymentConfiguration().requiresAccount).toBe(false);
+    const created = await createPaymentOrder(request());
+    expect(created.body.orderId).toMatch(/^gop_/);
+  });
   it("requires a verified account for new orders after account rollout", async () => {
     vi.stubEnv("ACCOUNTS_ENABLED", "true"); vi.stubEnv("GOOGLE_CLIENT_ID", "fixture"); vi.stubEnv("GOOGLE_CLIENT_SECRET", "fixture");
     expect(paymentConfiguration().requiresAccount).toBe(true);
