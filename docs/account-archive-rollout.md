@@ -7,7 +7,7 @@
 - Google `openid`·`email` 로그인은 Testing 상태에서도 테스트 사용자 명단 밖 계정이 접근할 수 있다. Google 콘솔 명단을 서버 접근 제어로 간주하지 않는다.
 - 운영자 검증은 먼저 `ACCOUNT_ALLOWED_EMAILS`에 승인한 주소만 쉼표로 구분해 설정·배포한 뒤 `ACCOUNTS_ENABLED=true`로 진행한다. 목록은 서버에서만 읽으며 클라이언트에 노출하지 않는다. 빈 문자열·공백·쉼표뿐인 목록은 모두 차단한다. 미설정은 기존 공개 동작이므로 일반 공개 승인 전 변수를 삭제하지 않는다.
 - Google 검증 완료 후 계정 생성 전에 검사하고, 세션 발급·매 요청의 기존 세션·이메일 복원 요청도 검사한다. 차단된 이메일은 복원 메일을 보내지 않고 일반 요청과 동일하게 응답한다. 제한 해제는 별도 공개 승인 후 진행한다. 기존 계정 데이터는 삭제하지 않는다.
-- 허용 목록이 설정된 검증 기간에는 일반 방문자의 기존 익명 구매를 유지한다. 허용된 계정으로 로그인한 구매만 계정에 연결한다. 계정 일반 공개 후에는 기존 계약대로 신규 구매에 로그인을 요구한다.
+- 신규 결제는 로그인 필수다. 계정 기능이 꺼지면 신규 결제도 차단하며 `PAYMENTS_REQUIRE_ACCOUNT=false` 같은 익명 우회를 지원하지 않는다. 허용 목록을 바꿔 결제 정책이 뒤집히지 않는다. 운영 빌드의 테스트 키 결제는 서버에서 차단한다. 기존 익명 실구매 복원은 별도 유지한다.
 
 ## 구성
 
@@ -46,6 +46,9 @@
 단위/스모크의 DB mock 검증은 실제 PostgreSQL·Google·Toss 통합 검증을 대체하지 않는다.
 
 ## 메일 작업 구성
+
+- 2026-09-12 구현: 기본 npm start는 계정/메일 설정이 켜져 있으면 기동 10초 후와 15분마다 내부 worker를 실행한다. 개발·빌드에서는 발송하지 않는다. 아래 외부 스케줄러·ACCOUNT_JOB_SECRET 구성은 선택 사항이다. 성공은 account_mail_worker의 sent/failed 집계와 실제 수신으로 확인한다. 앱이 중지되면 발송도 지연된다.
+- 같은 명령의 prestart가 이용기간 additive migration을 적용한다. 배포·롤백 제약은 purchase-audit-hardening-2026-09-12.md를 따른다.
 
 - Resend 연결은 `SMTP_HOST=smtp.resend.com`·`SMTP_USER=resend`이면 HTTPS API를 사용한다. 기존 `SMTP_PASS`에 저장한 Resend 키를 재사용하며 새 키 입력은 필요 없다. Railway Pro 미만의 SMTP 차단을 피하기 위한 전송 방식이며, 다른 SMTP 제공자의 TLS 발송 경로는 유지한다. 수신처·본문·동의 범위는 바뀌지 않는다. API 수락은 받은편지함 도착을 뜻하지 않는다.
 - 2026-09-11 운영 DB에 `scripts/accounts-schema.sql`을 단일 트랜잭션으로 적용했다(COMMIT 및 계정 테이블 6개 확인). 변경 전 pg_dump custom-format 백업은 DB 볼륨의 `/var/lib/postgresql/data/gop-pre-account-EJBGSH/database.dump`에 권한 600으로 생성했고 pg_restore 목록을 확인했다. 같은 볼륨이므로 재해 복구용 외부 백업이나 실제 복원 검증을 대체하지 않는다. Railway 기본 백업 기능은 현재 요금제에서 사용할 수 없다. DB 설정 화면의 기존 리전 `europe-west4-drams3a` 경고는 미해결이며 임의 이동하지 않았다.

@@ -5,6 +5,9 @@
 > **새 도구·엔진·경로·상태 슬라이스를 추가/이동/삭제하면 같은 작업에서 이 파일도 갱신**(AGENTS.md §15).
 
 ## 1. 디렉토리 트리 (핵심)
+
+결제 기간 migration: `scripts/payment-periods.sql` ← `scripts/migrate-payment-periods.mjs` (npm prestart). 계정 연장 구간: `gop_paid_until` SQL 함수. 운영 알림: `src/instrumentation.js` → `lib/account/accountMailWorker.js` → `accountMail.js`.
+
 ```
 v2-migration/
 ├─ src/
@@ -32,6 +35,8 @@ v2-migration/
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)
 │     ├─ landing/·seo/·calculators/·sops/
 │     ├─ SubscriptionPage·SubscriptionPlanComparison·SubscriptionReportPreview·SubscriptionTrialOffer  # Free/체험/Pro 구분·첫 결정 저장·결제 진입 (KO/EN 공용)
+│     ├─ SubscriptionCheckout       # 위젯 준비→클릭 시 주문·계측 / 입금 대기→상태 조회→계정·쿠키 이용권 복원
+│     ├─ AccountArchive             # lib/account/accountServer·accountClient: 계정·허용목록·HTML 콜백 실패 안내
 │     ├─ blog/                      # 블로그 읽기 계측(BlogReadTracker) + 본문 끝 도치 브리지(BlogDochiBridge)
 │     ├─ ToolPageOutro.jsx      # ★ 하단 마감 박스 = 경계선 + 다음단계·참고자료·관련글 (§12.30)
 │     ├─ GuideAnswer.jsx        # 가이드 질문·한 문장 답 (본문 위, 접기 바깥)

@@ -9,7 +9,7 @@ let pool;
 export const accountHash = value => createHash("sha256").update(value).digest("hex");
 const hash = accountHash;
 const sessionCookie = "gop_account";
-export const accountsEnabled = () => process.env.ACCOUNTS_ENABLED === "true" && Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PAYMENTS_DATABASE_URL);
+export const accountsEnabled = () => (!process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT_NAME === "production") && process.env.ACCOUNTS_ENABLED === "true" && Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PAYMENTS_DATABASE_URL);
 const origin = () => new URL(process.env.ACCOUNTS_ORIGIN || SITE_URL).origin;
 export function accountDatabase() {
   if (!accountsEnabled()) throw new Error("ACCOUNTS_UNAVAILABLE");
@@ -28,8 +28,9 @@ export async function readAccount(request) {
   if (!accountsEnabled()) return null;
   const token = readCookie(request, sessionCookie);
   if (!/^[a-f0-9]{64}$/.test(token)) return null;
-  const { rows } = await accountDatabase().query(`SELECT a.*, (SELECT max(p.expires_at) FROM gop_payment_orders p WHERE p.account_id=a.id AND p.status='paid' AND p.mode='live') AS paid_until FROM gop_account_sessions s JOIN gop_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>NOW()`, [hash(token)]);
-  return rows[0] && accountEmailAllowed(rows[0].email) ? rows[0] : null;
+  const { rows } = await accountDatabase().query(`SELECT a.*, gop_paid_until(a.id,'live',NOW()) AS paid_until FROM gop_account_sessions s JOIN gop_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>NOW()`, [hash(token)]);
+  if (rows[0] && !accountEmailAllowed(rows[0].email)) throw new Error("ACCOUNT_RESTRICTED");
+  return rows[0] || null;
 }
 export async function requireAccount(request) {
   const account = await readAccount(request);
@@ -40,9 +41,18 @@ export function accountResponse(body, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 export function accountError(error) {
-  const statuses = { LOGIN_REQUIRED: 401, INVALID_ORIGIN: 403, INVALID_MEMO: 400, PRO_REQUIRED: 402, INVALID_LOGIN: 400, ACCOUNTS_UNAVAILABLE: 503, ARCHIVE_LIMIT: 409 };
+  const statuses = { LOGIN_REQUIRED: 401, INVALID_ORIGIN: 403, ACCOUNT_RESTRICTED: 403, NO_PURCHASE: 404, INVALID_MEMO: 400, PRO_REQUIRED: 402, INVALID_LOGIN: 400, ACCOUNTS_UNAVAILABLE: 503, ARCHIVE_LIMIT: 409 };
   const code = Object.hasOwn(statuses, error?.message) ? error.message : "ACCOUNTS_UNAVAILABLE";
   return accountResponse({ error: code }, statuses[code]);
+}
+export function accountLoginFailure(error, channel = "google") {
+  const restricted = error?.message === "ACCOUNT_RESTRICTED";
+  const unavailable = error?.message === "ACCOUNTS_UNAVAILABLE";
+  const code = restricted ? "ACCOUNT_RESTRICTED" : unavailable ? "ACCOUNTS_UNAVAILABLE" : "INVALID_LOGIN";
+  const ko = restricted ? "현재 계정 기능은 제한 검증 중입니다. 익명 분석은 계속 이용할 수 있습니다. 저장한 기록을 삭제한 것은 아닙니다." : channel === "email" ? "로그인 링크를 요청한 브라우저에서 다시 열어 주세요. 링크가 만료됐거나 이미 사용됐다면 새 링크를 요청하세요." : "로그인을 완료하지 못했습니다. 원래 분석 화면으로 돌아가 다시 시도해 주세요.";
+  const en = restricted ? "Account features are currently in a restricted pilot. Anonymous analysis remains available. Your saved records have not been deleted." : channel === "email" ? "Open this link in the browser where you requested it. If it has expired or was already used, request a new link." : "Sign-in could not be completed. Return to your analysis and try again.";
+  const nonce = randomBytes(16).toString("base64");
+  return new Response(`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>로그인 안내 · Sign-in help</title><main><h1>로그인 안내 <span lang="en">· Sign-in help</span></h1><p>${ko}</p><p lang="en">${en}</p><p><a href="/start">익명 분석 계속하기</a> · <a href="/en/start" lang="en">Continue anonymous analysis</a></p><p>원래 창의 로그인 버튼으로 다시 시도할 수 있습니다. <span lang="en">You can retry from the sign-in button in your original window.</span></p></main><script nonce="${nonce}">if(window.opener){window.opener.postMessage({type:"gop-account-failed",code:"${code}"},location.origin)}</script></html>`, { status: restricted ? 403 : unavailable ? 503 : 400, headers: { "Content-Type": "text/html;charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; base-uri 'none'; frame-ancestors 'none'` } });
 }
 function oauthClient() { return new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, origin() + "/api/account/callback"); }
 export async function startGoogleLogin(request) {
@@ -66,13 +76,14 @@ export async function finishGoogleLogin(request) {
   const ticket = await client.verifyIdToken({ idToken: tokens.id_token, audience: process.env.GOOGLE_CLIENT_ID });
   const identity = ticket.getPayload();
   if (!identity?.sub || !identity.email_verified || !identity.email || identity.nonce !== attempt.nonce) throw new Error("INVALID_LOGIN");
-  if (!accountEmailAllowed(identity.email)) throw new Error("INVALID_LOGIN");
+  if (!accountEmailAllowed(identity.email)) throw new Error("ACCOUNT_RESTRICTED");
   const account = (await accountDatabase().query("INSERT INTO gop_accounts(id,google_sub,email) VALUES($1,$2,$3) ON CONFLICT(google_sub) DO UPDATE SET email=EXCLUDED.email RETURNING id", [randomUUID(), identity.sub, identity.email])).rows[0];
   return issueAccountSession(account.id);
 }
 export async function issueAccountSession(accountId) {
   const account = (await accountDatabase().query("SELECT email FROM gop_accounts WHERE id=$1", [accountId])).rows[0];
-  if (!account || !accountEmailAllowed(account.email)) throw new Error("INVALID_LOGIN");
+  if (!account) throw new Error("INVALID_LOGIN");
+  if (!accountEmailAllowed(account.email)) throw new Error("ACCOUNT_RESTRICTED");
   const token = randomBytes(32).toString("hex");
   await accountDatabase().query("INSERT INTO gop_account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '30 days')", [hash(token), accountId]);
   const headers = new Headers({ "Content-Type": "text/html;charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; script-src 'nonce-account-complete'" });

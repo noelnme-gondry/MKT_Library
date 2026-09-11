@@ -1,3 +1,4 @@
+import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
 export const PRO_TRIAL_DAYS = 14;
 export const PRO_TRIAL_MS = PRO_TRIAL_DAYS * 86400000;
 export function trialRemainingBucket(start, now = Date.now()) {
@@ -18,8 +19,8 @@ export function archiveMemo(record) {
   return memo;
 }
 export function accountEntitlement(account, now = Date.now()) {
-  const paidUntil = Date.parse(account?.paid_until || "");
-  const trialUntil = Date.parse(account?.trial_started_at || "") + PRO_TRIAL_MS;
+  const paidUntil = new Date(account?.paid_until || "").getTime();
+  const trialUntil = new Date(account?.trial_started_at || "").getTime() + PRO_TRIAL_MS;
   const expiresAt = Math.max(Number.isFinite(paidUntil) ? paidUntil : 0, Number.isFinite(trialUntil) ? trialUntil : 0);
-  return expiresAt > now ? { plan: "paid", account: true, trial: !(paidUntil > now), expiresAt, verifiedAt: now, offlineUntil: Math.min(expiresAt, now + 300000) } : null;
+  return expiresAt > now ? { plan: "paid", account: true, trial: !(paidUntil > now), expiresAt, verifiedAt: now, offlineUntil: Math.min(expiresAt, now + SUBSCRIPTION.graceMs) } : null;
 }
