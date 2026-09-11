@@ -20,7 +20,8 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
   const show = next => { setView(next); window.history.replaceState(null, "", next === "manage" ? "#project-management" : window.location.pathname); };
   return <div className="project-review-workspace">
     <header className="project-review-workspace__bar">
-      <div><strong>{en ? "Project review" : "프로젝트 리뷰"}</strong><p>{en ? "Weekly comparisons, decisions and reports belong to this project." : "이번 주 비교부터 지난 결정·보고서까지, 이 프로젝트에서 이어갑니다."}</p></div>
+      {view === "review" && <div className="project-review-workspace__title"><h1>{en ? "Project review" : "프로젝트 리뷰"}</h1><p>{en ? "Weekly comparisons, decisions and reports belong to this project." : "이번 주 비교부터 지난 결정·보고서까지, 이 프로젝트에서 이어갑니다."}</p></div>}
+      <div className="project-review-workspace__tools">
       <label>{en ? "Current project" : "현재 프로젝트"}<select value={activeId} disabled={!ready || switching || !projects.length} onChange={async event => {
         setError(false);
         if (event.target.value === activeId) return;
@@ -30,6 +31,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
       <div className="project-review-workspace__views" aria-label={en ? "Project views" : "프로젝트 화면"}>
         <button type="button" className="btn" aria-pressed={view === "review"} onClick={() => show("review")}>{en ? "Weekly review" : "이번 주 리뷰"}</button>
         <button type="button" className="btn" aria-pressed={view === "manage"} onClick={() => show("manage")}>{en ? "Manage projects" : "프로젝트 관리"}</button>
+      </div>
       </div>
     </header>
     {error && <p role="alert">{en ? "Could not open this project. Your current review remains available." : "프로젝트를 열지 못했습니다. 현재 리뷰는 유지됩니다."}</p>}

@@ -68,7 +68,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     {!record && !profile && <p>{en ? "Account memos from all projects. Copy a memo to the current project to review it here; source CSVs are not synced." : "모든 프로젝트에서 계정에 보관한 메모입니다. 현재 프로젝트로 복사해 검토할 수 있으며 CSV 원본은 동기화하지 않습니다."}</p>}
     {!profile && <p>{en ? "Analysis needs no signup. Sign in to save decision memos. One 14-day Pro trial per Google account starts with your first save; it does not renew automatically." : "분석은 가입 없이. 결정 메모 보관은 로그인으로. Google 계정당 1회, 첫 저장일부터 14일간 Pro를 체험하며 자동 결제되지 않습니다."}</p>}
     {!profile && <p>{en ? "Source CSVs are never sent to our server. Only the decision memo you choose is stored in your account. Memos may contain campaign names and figures you wrote." : "CSV 원본은 서버에 보내지 않습니다. 저장하기로 선택한 결정 메모만 계정에 보관됩니다. 메모에는 작성한 캠페인명·수치가 포함될 수 있습니다."}</p>}
-    {!session.account ? <button className="btn" disabled={busy} onClick={() => {
+    {!session.account ? <button className={profile ? "btn primary account-profile-login" : "btn"} disabled={busy} onClick={() => {
       const popup = window.open("about:blank", "gop-account-login", "popup,width=520,height=700");
       if (!popup) { setMessage(en ? "Allow popups to sign in while keeping this analysis open." : "분석을 열어둔 채 로그인하려면 팝업을 허용해 주세요."); return; }
       run(async () => { try { const result = await accountRequest("login", { method: "POST" }); popup.location.replace(result.url); trackProductEvent("login_started", { locale }); } catch (error) { popup.close(); throw error; } });
