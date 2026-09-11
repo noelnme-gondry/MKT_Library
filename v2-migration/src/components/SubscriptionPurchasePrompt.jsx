@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ModalDialog from "@/components/ds/ModalDialog";
+import SubscriptionTrialOffer from "./SubscriptionTrialOffer";
 import { useAppStore } from "@/store/useDataStore";
 import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
 import { trackProductEvent } from "@/lib/analytics";
@@ -23,6 +24,7 @@ export default function SubscriptionPurchasePrompt() {
     <p>{en ? "Keep the conclusion, supporting evidence, and next actions together." : "결론과 근거, 다음 행동을 한 번에 정리해 가져가세요."}</p>
     <ul><li><strong>Word</strong> — {en ? "Meeting-ready conclusions, evidence tables, charts and limitations" : "회의용 결론·근거 표·차트·해석 한계"}</li><li><strong>Excel</strong> — {en ? "Source rows, mappings, calculation sheets and editable charts" : "원본·매핑·계산 시트·편집 가능한 차트"}</li></ul>
     <p>{en ? `KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")} for one month. No automatic renewal.` : `1개월 ${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 · 자동 갱신 없음`}</p>
+    <SubscriptionTrialOffer locale={en ? "en" : "ko"} onNavigate={close} />
     {availability === "unavailable" && <p role="status">{en ? "Purchases are currently unavailable. You can continue your analysis or contact support." : "지금은 구매할 수 없습니다. 분석은 계속할 수 있으며 구매 관련 사항은 고객센터로 문의해 주세요."}</p>}
     <Link className="btn primary" href={availability === "unavailable" ? (en ? "/en/subscription#report-preview-title" : "/subscription#report-preview-title") : (en ? "/en/subscription#purchase" : "/subscription#purchase")} onClick={close}>{availability === "unavailable" ? (en ? "View free sample reports" : "무료 샘플 보고서 보기") : (en ? "View the pass and purchase" : "이용권 확인하고 구매")}</Link>
     <p>{en ? "When you pay, this browser temporarily saves your current work before opening the payment window." : "결제 실행 시 현재 작업을 이 브라우저에 임시 보관한 뒤 결제창을 엽니다."}</p>

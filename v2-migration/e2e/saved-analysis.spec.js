@@ -63,6 +63,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? "Apply checked setup" : "확인한 설정 적용" }).click();
     await expect(page.getByRole("textbox", { name: en ? "Target CPA" : "목표 CPA", exact: true })).toHaveValue("7250");
     await page.goto(`${prefix}/subscription`);
+    await page.locator(".checkout-existing > summary").click();
     await expect(page.locator(".pass-recovery-help")).toBeVisible();
     await expect(page.getByRole("link", { name: en ? "Request purchase verification" : "구매 확인·복원 요청" })).toHaveAttribute("href", /^mailto:/);
   });

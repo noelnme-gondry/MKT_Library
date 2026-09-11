@@ -4617,6 +4617,15 @@ body:not(.light-mode) .moon-icon {
 .purchase-reasons { display: flex; flex-wrap: wrap; gap: 8px; }
 .header-price { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .my-account-menu { position: relative; }
+.subscription-trial-offer { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-block: 20px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-2); }
+.subscription-trial-offer > div { flex: 1 1 240px; min-width: 0; }
+.subscription-trial-offer strong { color: var(--text-1); font-size: 15px; }
+.subscription-trial-offer p { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.subscription-trial-offer a.btn { min-height: 44px; text-decoration: none; white-space: normal; }
+.checkout-existing { margin-top: 24px; border-top: 1px solid var(--border); }
+.checkout-existing > summary { padding: 14px 0; min-height: 44px; color: var(--text-secondary); cursor: pointer; }
+.checkout-signin .account-archive { margin: 12px 0; }
+#account-archive { scroll-margin-top: 100px; }
 .my-account-menu__trigger { display: flex; align-items: center; gap: 7px; white-space: nowrap; list-style: none; min-height: 44px; }
 .my-account-menu__trigger::-webkit-details-marker { display: none; }
 .my-account-menu__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 200; width: min(336px, calc(100vw - 24px)); max-height: 75dvh; overflow: auto; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 12px 36px #0004; text-align: left; }

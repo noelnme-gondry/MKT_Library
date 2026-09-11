@@ -93,10 +93,32 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
     await expect(page.locator(".checkout-widgets")).toBeHidden();
     await expect(page.locator(".checkout-access-card").getByRole("button")).toBeVisible();
+    await page.locator(".checkout-existing > summary").click();
     await expect(page.getByLabel(en ? "Private recovery code" : "이용권 복원 코드", { exact: true })).toBeVisible();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: en ? "Save pass recovery code" : "이용권 복원 코드 보관", exact: true }).click();
     expect((await download).suggestedFilename()).toBe("growthopt-pass-recovery.txt");
     expect(sent).toEqual([{}]);
+  });
+  test(`trial entry and trial-to-purchase state (${locale})${tag}`, async ({ page }) => {
+    let started = false;
+    const trialStartedAt = Date.now();
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: false, mode: "test" } }));
+    await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
+    await page.route("**/api/account/memos", route => route.fulfill({ json: { memos: [] } }));
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: { id: "fixture", email: "reader@example.com", trialStartedAt: started ? new Date(trialStartedAt).toISOString() : null }, entitlement: started ? { plan: "paid", account: true, trial: true, expiresAt: trialStartedAt + 14 * 86400000, offlineUntil: Date.now() + 300000 } : null } }));
+    await page.goto(`${prefix}/subscription`);
+    await expect(page.locator(".subscription-page .account-archive")).toHaveCount(0);
+    await page.getByRole("link", { name: en ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#account-archive$`));
+    await expect(page.locator("#account-archive")).toBeInViewport();
+    await expect(page.locator("#account-archive")).toContainText(en ? "First analyze your CSV" : "먼저 이 프로젝트에서 CSV를 분석");
+    started = true;
+    await page.goto(`${prefix}/subscription`);
+    const pro = page.getByRole("article", { name: "Pro", exact: true });
+    await expect(pro).toContainText(en ? "Pro trial · 14 days left" : "Pro 체험 중 · 14일 남음");
+    await expect(pro).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
+    await expect(pro.getByRole("link", { name: en ? "Choose Pro" : "Pro 이용권 선택" })).toBeVisible();
+    await expectNoSeriousAccessibilityViolations(page);
   });
 }

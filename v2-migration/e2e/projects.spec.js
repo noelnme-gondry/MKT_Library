@@ -49,6 +49,7 @@ for (const locale of ["ko", "en"]) {
     try {
       const other = await otherContext.newPage();
       await other.goto(new URL(`${prefix}/subscription`, page.url()).href);
+      await other.locator(".checkout-existing > summary").click();
       await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
       await expect(other).toHaveURL(/weekly-review#project-management$/);
       await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
