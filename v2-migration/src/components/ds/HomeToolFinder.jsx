@@ -33,15 +33,16 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   }) : selected === "saved" ? allTools.filter(tool => savedIds.includes(tool.id)) : stages.filter(stage => selected === "all" || stage.id === selected).flatMap(stage => stage.tools);
   const isOpen = Boolean(selected || terms.length);
   const savedCount = allTools.filter(tool => savedIds.includes(tool.id)).length;
-  return <div className="home-tool-finder">
+  return <div className="home-tool-finder" data-searching={terms.length > 0}>
     <div className="home-tool-finder__search">
       <label htmlFor="home-tool-search">{en ? "Find an analysis" : "필요한 분석 찾기"}</label>
       <input id="home-tool-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={en ? "Search a question or metric, e.g. ROAS" : "질문이나 지표로 검색 · 예: ROAS"} aria-controls="home-tool-results" />
+    {terms.length > 0 && <button type="button" className="btn" onClick={() => { setQuery(""); setSelected(null); }}>{en ? "Clear search" : "검색 지우기"}</button>}
       <button type="button" aria-pressed={selected === "saved" && !terms.length} onClick={() => { setQuery(""); setSelected(selected === "saved" ? null : "saved"); }}>
         <Bookmark size={18} aria-hidden="true" /> {en ? "Saved tools" : "저장한 도구"} ({savedCount})
       </button>
     </div>
-    <div className="home-tool-finder__purposes" role="group" aria-label={en ? "Choose a purpose" : "목적 선택"}>
+    <div hidden={terms.length > 0} className="home-tool-finder__purposes" role="group" aria-label={en ? "Choose a purpose" : "목적 선택"}>
       {stages.map(purpose => {
         const Icon = QUESTION_ICONS[purpose.id];
         return <button type="button" key={purpose.id} aria-expanded={selected === purpose.id && !terms.length} aria-controls="home-tool-results" onClick={() => { setQuery(""); setSelected(selected === purpose.id ? null : purpose.id); }}>
@@ -50,7 +51,7 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
         </button>;
       })}
     </div>
-    <button className="dc-text-link dc-text-link--button" type="button" aria-expanded={selected === "all"} aria-controls="home-tool-results" onClick={() => { setQuery(""); setSelected(selected === "all" ? null : "all"); }}>
+    <button hidden={terms.length > 0} className="dc-text-link dc-text-link--button" type="button" aria-expanded={selected === "all"} aria-controls="home-tool-results" onClick={() => { setQuery(""); setSelected(selected === "all" ? null : "all"); }}>
       {selected === "all" ? (en ? "Close all tools" : "전체 도구 접기") : (en ? "View all tools" : "전체 도구 보기")}
     </button>
     <div id="home-tool-results" hidden={!isOpen}>

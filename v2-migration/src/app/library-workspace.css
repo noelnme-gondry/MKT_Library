@@ -1,6 +1,8 @@
 /* Approved library/workspace presentation. Loaded once by both root layouts.
    Existing controls, gates, chart themes and content own their behavior. */
 @layer app {
+  .home-tool-finder > [hidden] { display: none; }
+  .dc-questions .home-tool-finder[data-searching="true"] #home-tool-results { grid-row: 3; }
   .workflow-next-step { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; margin: 16px 0; background: var(--library-surface); border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 10px; }
   .workflow-next-step p { margin: 6px 0; color: var(--library-muted); line-height: 1.6; }
   .workflow-next-step__actions { display: flex; flex-wrap: wrap; gap: 10px; }

@@ -10,6 +10,7 @@ describe("tool discovery and reuse", () => {
     const tool = allToolIndexEntries(locale)[0];
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: tool.name } });
     expect(container.querySelector("#home-tool-results").hidden).toBe(false);
+    expect(container.querySelector(".home-tool-finder__purposes").hidden).toBe(true);
     expect(screen.getByRole("link", { name: `${locale === "en" ? "Open" : "분석 열기"}: ${tool.name}` }).getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}${tool.href}`);
     expect(container.querySelector("dl").textContent).toContain(tool.needs[0]);
     fireEvent.click(screen.getByRole("button", { name: `${locale === "en" ? "Save" : "저장"}: ${tool.name}` }));
@@ -24,6 +25,7 @@ describe("tool discovery and reuse", () => {
     const { container } = render(<HomeToolFinder />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "no-such-tool-xyz" } });
     expect(screen.getByText(/검색 결과가 없습니다/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "검색 지우기" }));
     fireEvent.click(container.querySelector(".home-tool-finder__purposes button"));
     expect(screen.getByRole("searchbox").value).toBe("");
     expect(screen.getAllByRole("link").length).toBeGreaterThan(0);
