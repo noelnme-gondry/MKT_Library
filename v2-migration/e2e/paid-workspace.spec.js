@@ -30,6 +30,11 @@ for (const locale of ["ko", "en"]) {
     }
     paid = true;
     await page.reload();
+    // Anonymous negative checks expire after five minutes. A server-only change
+    // does not represent this tab's explicit purchase/restore (which clears it).
+    await expect(pro).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
+    await page.clock.setSystemTime(new Date(Date.now() + 300001));
+    await page.reload();
     await expect(pro).toContainText(en ? "Your current plan" : "현재 이용 플랜");
     await expect(free).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
   });
@@ -49,8 +54,8 @@ for (const locale of ["ko", "en"]) {
     await page.keyboard.press("Escape"); await expect(gate).toBeHidden(); await expect(trigger).toBeFocused();
     await trigger.click();
     await expect(gate.getByRole("link", { name: en ? "Save or back up my work" : "작업 보관·백업하기" })).toHaveAttribute("href", `${prefix}/projects`);
-    await gate.getByRole("link", { name: en ? "Contact support" : "고객센터 문의" }).click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/contact$`));
+    await gate.getByRole("link", { name: en ? "View free sample reports" : "무료 샘플 보고서 보기" }).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#report-preview-title$`));
     await page.goto(`${prefix}/subscription#purchase`);
     await expect(page.locator("#purchase")).toContainText("5,900");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");

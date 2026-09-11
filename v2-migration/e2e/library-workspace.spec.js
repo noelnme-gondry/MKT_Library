@@ -14,8 +14,8 @@ for (const locale of ["ko", "en"]) {
       const heading = page.locator("h1").first();
       await expect(heading).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
-      await expect(heading).toHaveCSS("font-family", /pretendard/i);
-      expect(await page.evaluate(() => [...document.fonts].some((font) => /pretendard/i.test(font.family) && font.status === "loaded")), route).toBe(true);
+      await expect(heading).toHaveCSS("font-family", /GOP Heading/i);
+      expect(await page.evaluate(() => [...document.fonts].some((font) => /GOP Heading/i.test(font.family) && font.status === "loaded")), route).toBe(true);
       // Long SOP code tokens must wrap without making the entire page scroll.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
     }
