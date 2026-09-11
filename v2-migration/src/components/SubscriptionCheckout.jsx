@@ -66,6 +66,8 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
   }, [config?.requiresAccount]);
   const confirm = useCallback(async () => {
     if (confirming.current) return;
+    // Approval owns this visit, even after it removes the query string and before the store rerenders.
+    autoPrepared.current = true;
     confirming.current = true; setBusy(true);
     try {
       const result = await jsonRequest("confirm", {});

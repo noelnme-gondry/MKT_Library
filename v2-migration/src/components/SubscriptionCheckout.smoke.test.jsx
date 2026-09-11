@@ -11,9 +11,11 @@ afterEach(() => { vi.unstubAllGlobals(); tracking.mockClear(); window.history.re
 it.each(["ko", "en"])("only emits purchase after a successful approval response (%s)", async locale => {
   const transaction = { orderId: "gop_12345678-1234-1234-1234-123456789abc", amount: 5900 };
   window.history.replaceState(null, "", "/subscription?payment=confirm");
-  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config") ? { enabled: false } : { entitlement: { plan: "paid" }, transaction, mode: "live" } })));
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config") ? { enabled: true } : { entitlement: { plan: "paid" }, transaction, mode: "live" } })));
   render(<SubscriptionCheckout locale={locale} />);
   await waitFor(() => expect(tracking).toHaveBeenCalledWith("purchase", { locale, mode: "live", transaction }));
+  expect(tracking.mock.calls.some(([name]) => name === "checkout_requested")).toBe(false);
+  expect(screen.getByText(locale === "en" ? /Payment confirmed\./ : /결제를 확인했습니다\./)).toBeTruthy();
 });
 it("does not emit purchase on a failed confirmation", async () => {
   window.history.replaceState(null, "", "/subscription?payment=confirm");
