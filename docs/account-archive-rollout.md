@@ -39,6 +39,8 @@
 
 ## 메일 작업 구성
 
+- 2026-09-11 Resend `mail.growthoptplaybook.com`의 Tokyo(ap-northeast-1) 발송 도메인 인증을 완료했다. Porkbun의 기존 10개 레코드는 유지하고 TXT `resend._domainkey.mail`, CNAME `rsend.mail` → `rsend-apne1.forge.rmta.net`, CNAME `send.mail` → `send.forge.rmta.net`만 추가했다. 외부 DNS 조회와 Resend `Verified`를 확인했다. 메일·로그의 미국 저장 및 보관 기간을 SSOT와 KO/EN 개인정보처리방침에 반영했다. 운영 사이트 배포는 별도 확인해야 한다.
+- Resend SMTP 설정: `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`. `SMTP_PASS`에는 해당 발송 도메인의 Sending access 키를 운영자가 직접 입력한다. `SMTP_FROM`은 인증된 `mail.growthoptplaybook.com` 아래 주소여야 한다. 키 생성·호스팅 입력·테스트 발송은 아직 미완료이며 DNS 인증만으로 앱 발송이 켜지지 않는다. 추적용 서브도메인은 구성하지 않았다.
 - 서버에 `ACCOUNT_MAIL_ENABLED=true`, `SMTP_HOST`, `SMTP_PORT`(465 또는 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`을 설정한다. SMTP는 TLS를 요구하며 인증서 검증을 끄지 않는다. 활성화 전 등록한 운영자 주소로 실제 수신·반송을 검증한다.
 - 32자 이상의 임의 `ACCOUNT_JOB_SECRET`을 서버와 작업 실행 환경에 설정한다. 비밀값을 URL이나 git에 넣지 않는다.
 - 외부 스케줄러에서 15분마다 `node scripts/account-mail-job.mjs`를 실행한다. 작업 환경에는 `ACCOUNT_JOB_SECRET`과 HTTPS `ACCOUNTS_ORIGIN`만 있으면 된다. 스크립트는 POST `/api/account/jobs`를 호출하며 CSV·메일 본문·토큰을 로그에 남기지 않는다. 새 유료 스케줄러 서비스 생성은 별도 운영 선택이다.
