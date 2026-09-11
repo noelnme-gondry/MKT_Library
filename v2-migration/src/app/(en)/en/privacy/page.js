@@ -17,13 +17,25 @@ export const metadata = {
 export default function EnglishPrivacyPage() {
   return (
     <PolicyPage
-      updated="2026-08-27"
+      updated="2026-09-11"
       locale="en"
       eyebrow="PRIVACY"
       alternateHref="/privacy"
       title="Privacy Policy"
       intro="Your source analysis data is not sent to our server. This page explains operational data collection and browser storage."
       sections={[
+        {
+          title: "Account service emails and temporary checkout storage",
+          content: <p>When email delivery is available, account-linked live purchases receive order, amount and access-period notices at the registered email. You may also request a one-time sign-in link. Review and expiry reminders require separate optional consent, which you can disable in the archive. Emails exclude memo contents and CSV data. The delivery queue retains only account, order or memo identifiers, schedules and delivery state for duplicate prevention while the account exists. Sign-in link records are hashed and valid for 10 minutes. Email provider, location and retention details are described in the international-processing section below. Clicking Pay temporarily saves your current work only in this browser. The copy is deleted after restoration or during the next cleanup after 24 hours. Clear all and turning device storage off also remove these temporary copies.</p>,
+        },
+        {
+          title: "Service email provider and international processing",
+          content: <><p>We use Resend (Plus Five Five, Inc.) to deliver service emails. At each send request, an encrypted TLS SMTP connection transfers the recipient and sender email addresses, subject, message body (order ID, amount, access period or a one-time sign-in link), and delivery identifier. CSV data and decision memo contents are excluded. Sending is routed through Tokyo, Japan (ap-northeast-1), while message contents, delivery logs and account records are stored in the United States. Selecting Tokyo does not mean storage in Japan.</p><p>On standard plans, emails and logs are retained for 30 days and backups for 7 days. Remaining customer data is deleted within 90 days after the Resend service agreement ends. These periods are separate from statutory payment-record retention and the application delivery queue. Disable optional reminders in the archive or request that email processing stop or data be deleted through <Link href="/en/contact">Contact</Link>. If you do not want email processing, email sign-in and notifications are unavailable, and you may request account deletion. Anonymous CSV analysis remains available. See <a href="https://resend.com/security/gdpr">Resend&apos;s data protection information</a> for provider processing and deletion details.</p></>,
+        },
+        {
+          title: "Account decision storage (when available)",
+          content: <p>If you choose Google sign-in, we use your stable Google account identifier and verified email for identification, pass linking and one 14-day trial per account. The trial starts on the first saved memo and does not charge automatically. Only decision memos you review and select (action, conclusion, hypothesis, review date and review notes) are stored on the server. Memos may include campaign names or figures you entered. Source CSVs, mappings, analysis datasets and local snapshots are excluded. Account memos are separate from the 90-day device policy and are not deleted merely because a pass expires. Delete individual memos in the archive or request account deletion through Contact. Account identity, email and trial-start records are retained while your account exists. Sessions are valid for 30 days; pending login information is valid for 10 minutes. Marketing consent is collected separately through newsletter signup. Google authentication and our operational database are used; processing-provider and transfer-location details must be published before activation.</p>,
+        },
         {
           title: "Report-pass payments and recovery",
           content: <p>To process purchases, refunds and access recovery, the server stores the order ID, product, amount, approval/cancellation status, access term and a hash of the recovery code. Payment details are entered and processed on Toss Payments screens; the app does not store full card numbers or passwords. Payment and supply records are retained for the statutory five-year period, separately from the 90-day browser analysis-data policy. Access recovery uses a cookie and a local entitlement cache. CSV files, analysis results, project names and filenames are never included in payment requests. Contact customer service below to request access, correction or deletion; statutory retention requirements may limit deletion during that period.</p>,

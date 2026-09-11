@@ -4,6 +4,7 @@ import Link from "next/link";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { useAppStore } from "@/store/useDataStore";
 import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
+import { trackProductEvent } from "@/lib/analytics";
 
 export default function SubscriptionPurchasePrompt() {
   const prompt = useAppStore(state => state.purchasePrompt);
@@ -24,7 +25,8 @@ export default function SubscriptionPurchasePrompt() {
     <p>{en ? `KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")} for one month. No automatic renewal.` : `1개월 ${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 · 자동 갱신 없음`}</p>
     {availability === "unavailable" && <p role="status">{en ? "Purchases are currently unavailable. You can continue your analysis or contact support." : "지금은 구매할 수 없습니다. 분석은 계속할 수 있으며 구매 관련 사항은 고객센터로 문의해 주세요."}</p>}
     <Link className="btn primary" href={availability === "unavailable" ? (en ? "/en/subscription#report-preview-title" : "/subscription#report-preview-title") : (en ? "/en/subscription#purchase" : "/subscription#purchase")} onClick={close}>{availability === "unavailable" ? (en ? "View free sample reports" : "무료 샘플 보고서 보기") : (en ? "View the pass and purchase" : "이용권 확인하고 구매")}</Link>
-    <div className="workflow-next-step"><strong>{en ? "Before leaving for payment" : "결제 화면으로 이동하기 전에"}</strong><p>{en ? "Unsaved analysis may be lost when payment redirects you. Keep your work in Projects first." : "결제 중 페이지가 전환되면 저장하지 않은 분석이 사라질 수 있어요. 프로젝트에서 작업을 먼저 보관하세요."}</p><Link className="btn" href={en ? "/en/projects" : "/projects"} onClick={close}>{en ? "Save or back up my work" : "작업 보관·백업하기"}</Link></div>
+    <p>{en ? "When you pay, this browser temporarily saves your current work before opening the payment window." : "결제 실행 시 현재 작업을 이 브라우저에 임시 보관한 뒤 결제창을 엽니다."}</p>
+    <details><summary>{en ? "Not ready to purchase? (optional)" : "구매를 보류하는 이유가 있나요? (선택)"}</summary><div className="purchase-reasons">{["price", "identity", "trust", "refund", "later"].map((reason, index) => <button className="btn ghost" type="button" key={reason} onClick={() => { trackProductEvent("subscription_gate_reason", { tool_id: prompt?.toolId, locale: en ? "en" : "ko", gate_reason: reason, source: "purchase_prompt" }); close(); }}>{(en ? ["Price", "Account requirements", "Need more confidence", "Refund terms", "Not now"] : ["가격", "계정 요구", "신뢰·효용 확인", "환불 조건", "지금은 아님"])[index]}</button>)}</div></details>
     <p className="purchase-dialog-note">{en ? "Analysis stays free. Report generation happens in your browser; source data is not uploaded." : "분석은 계속 무료입니다. 보고서는 브라우저에서 생성하며 원본을 서버에 보내지 않습니다."}</p>
   </ModalDialog>;
 }

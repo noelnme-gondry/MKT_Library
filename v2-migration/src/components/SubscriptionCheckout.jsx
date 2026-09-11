@@ -2,6 +2,10 @@
 import PassRecoveryHelp from "./PassRecoveryHelp";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { saveCheckoutSnapshot, restoreCheckoutSnapshot } from "@/lib/subscription/checkoutSnapshot";
+import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
+import { refreshAccount } from "@/lib/account/accountClient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -29,7 +33,9 @@ async function jsonRequest(path, body) {
 }
 export default function SubscriptionCheckout({ locale = "ko" }) {
   const en = locale === "en";
+  const router = useRouter();
   const entitlement = useAppStore(state => state.entitlement);
+  const paid = hasPaidAccess(entitlement) && !entitlement?.trial;
   const [returnPath, setReturnPath] = useState(null);
   useEffect(() => {
     let active = true;
@@ -37,6 +43,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     return () => { active = false; };
   }, []);
   const [config, setConfig] = useState(null);
+  const [checkoutAccount, setCheckoutAccount] = useState(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,9 +53,21 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
   const widgets = useRef(null);
   const order = useRef(null);
   const confirming = useRef(false);
+  const autoPrepared = useRef(false);
+  const preparing = useRef(false);
   useEffect(() => { jsonRequest("config").then(setConfig).catch(() => setConfig({ enabled: false })); }, []);
+  useEffect(() => {
+    if (!config?.requiresAccount) return;
+    let active = true;
+    const refresh = async () => { try { const result = await refreshAccount(); if (active) setCheckoutAccount(result.account); } catch { if (active) setCheckoutAccount(null); } };
+    const onMessage = event => { if (event.origin === location.origin && event.data?.type === "gop-account-ready") refresh(); };
+    refresh(); window.addEventListener("focus", refresh); window.addEventListener("message", onMessage);
+    return () => { active = false; window.removeEventListener("focus", refresh); window.removeEventListener("message", onMessage); };
+  }, [config?.requiresAccount]);
   const confirm = useCallback(async () => {
     if (confirming.current) return;
+    // Approval owns this visit, even after it removes the query string and before the store rerenders.
+    autoPrepared.current = true;
     confirming.current = true; setBusy(true);
     try {
       const result = await jsonRequest("confirm", {});
@@ -76,7 +95,9 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     });
     return () => { active = false; };
   }, [confirm, en, locale]);
-  const prepare = async () => {
+  const prepare = useCallback(async () => {
+    if (preparing.current) return;
+    preparing.current = true;
     setBusy(true); setMessage("");
     trackPaymentEvent("checkout_requested", { locale, mode: config?.mode });
     try {
@@ -90,14 +111,26 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       setReady(true);
       trackProductEvent("checkout_started", { locale, source: "subscription_page", state: config.mode });
     } catch (error) { trackPaymentEvent("checkout_failed", { locale, mode: config?.mode }); setMessage(error.message === "RATE_LIMITED" ? (en ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.") : (en ? "Checkout could not load. Please retry." : "결제 화면을 불러오지 못했습니다. 다시 시도해 주세요.")); }
-    finally { setBusy(false); }
-  };
+    finally { preparing.current = false; setBusy(false); }
+  }, [config, locale, en]);
+  useEffect(() => {
+    if (!config?.enabled || paid || (config.requiresAccount && !checkoutAccount) || autoPrepared.current || new URLSearchParams(window.location.search).get("payment") === "confirm") return;
+    autoPrepared.current = true;
+    prepare();
+  }, [config, paid, prepare, checkoutAccount]);
   const pay = async () => {
     setBusy(true);
     try {
+      await saveCheckoutSnapshot();
+      // Revalidate identity just before handing control to the payment provider.
+      if (config?.requiresAccount) {
+        const currentOrder = await jsonRequest("order", {});
+        if (currentOrder.accountId !== checkoutAccount?.id) throw new Error("ACCOUNT_CHANGED");
+        order.current = currentOrder;
+      }
       trackPaymentEvent("payment_submitted", { locale, mode: config?.mode });
       await widgets.current.requestPayment({ orderId: order.current.orderId, orderName: order.current.orderName, successUrl: `${location.origin}/api/payments/return?locale=${locale}`, failUrl: `${location.origin}/api/payments/failure?locale=${locale}` });
-    } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(en ? "Payment did not complete. Check your selection and try again." : "결제가 완료되지 않았습니다. 결제수단을 확인하고 다시 시도해 주세요."); }
+    } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(en ? "Payment did not complete. Check browser storage and your payment method, then retry. Your current analysis remains open." : "결제가 완료되지 않았습니다. 브라우저 저장 공간과 결제수단을 확인하고 다시 시도해 주세요. 현재 분석은 그대로 열려 있습니다."); }
     finally { setBusy(false); }
   };
   const restore = async () => {
@@ -113,14 +146,14 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       downloadFile(new Blob([`${en ? "Keep this code private. It restores your paid access, not project data." : "이 코드는 이용권을 복원합니다. 다른 사람에게 공유하지 마세요. 프로젝트 데이터는 별도로 백업하세요."}\n\n${code}`], { type: "text/plain;charset=utf-8" }), "growthopt-pass-recovery.txt");
     } catch { setMessage(en ? "Could not save the recovery code. Reconnect and try again." : "복원 코드를 보관하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요."); }
   };
-  const paid = hasPaidAccess(entitlement);
   return <div className="subscription-checkout">
-    {paid ? <div className="checkout-access-card"><p role="status">{en ? "Your report pass is active until" : "보고서 이용권 사용 중 · 만료일"} {new Date(entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>{(recoveryCode || entitlement?.payment) && <button type="button" className="btn" onClick={saveRecovery}>{en ? "Save pass recovery code" : "이용권 복원 코드 보관"}</button>}</div> : config?.enabled ? <><p>{en ? "One-time payment. No automatic renewal. By purchasing, you agree to the terms and refund policy below." : "자동 갱신 없는 1회 결제입니다. 구매 시 아래 이용약관과 환불정책에 동의합니다."}</p>{config.mode === "test" && <p>{en ? "Test checkout · no actual charge" : "테스트 결제 · 실제 청구되지 않음"}</p>}</> : <p>{en ? "Contact customer service for purchase availability." : "이용권 구매 가능 여부는 고객센터로 문의해 주세요."}</p>}
+    {paid ? <div className="checkout-access-card"><p role="status">{en ? "Your report pass is active until" : "보고서 이용권 사용 중 · 만료일"} {new Date(entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>{(recoveryCode || entitlement?.payment) && <button type="button" className="btn" onClick={saveRecovery}>{en ? "Save pass recovery code" : "이용권 복원 코드 보관"}</button>}</div> : config?.enabled ? <><p>{en ? "One-time payment. No automatic renewal. By purchasing, you agree to the terms and refund policy below." : "자동 갱신 없는 1회 결제입니다. 구매 시 아래 이용약관과 환불정책에 동의합니다."}</p><p>{en ? "Paying first saves a temporary copy of this project's inputs and settings in this browser. Return to your analysis to restore it. Unrestored copies expire after 24 hours and are removed on the next cleanup. Nothing is uploaded." : "결제하기를 누르면 이 프로젝트의 입력·설정을 먼저 이 브라우저에 임시 보관합니다. 분석 복귀 버튼으로 복원할 수 있습니다. 미복원본은 24시간 뒤 다음 정리 때 삭제하며 서버로 보내지 않습니다."}</p>{config.mode === "test" && <p>{en ? "Test checkout · no actual charge" : "테스트 결제 · 실제 청구되지 않음"}</p>}</> : <p>{config ? (en ? "Purchases are currently unavailable. You can keep analyzing or try a free sample report." : "지금은 구매할 수 없습니다. 분석을 계속하거나 무료 샘플 보고서를 확인하세요.") : (en ? "Checking checkout availability…" : "구매 가능 여부 확인 중…")} {config && <a href="#report-preview-title">{en ? "Free sample reports" : "무료 샘플 보고서"}</a>}</p>}
     <div className="checkout-widgets" hidden={paid}><div id="toss-payment-methods" /><div id="toss-payment-agreement" /></div>
-    {!paid && config?.enabled && <button className="btn primary" type="button" disabled={busy} onClick={ready ? pay : prepare}>{busy ? (en ? "Processing…" : "처리 중…") : ready ? (en ? "Pay KRW 5,900" : "5,900원 결제하기") : (en ? "Choose payment method" : "결제수단 선택")}</button>}
+    {!paid && config?.requiresAccount && !checkoutAccount && <p>{en ? "Sign in to link this purchase to your verified email. Marketing consent is not required." : "구매 이용권을 검증된 이메일에 연결하려면 로그인해 주세요. 마케팅 수신 동의는 필요하지 않습니다."} <a href="#account-archive">{en ? "Sign in" : "로그인하기"}</a></p>}
+    {!paid && config?.enabled && (!config.requiresAccount || checkoutAccount) && <button className="btn primary" type="button" disabled={busy} onClick={ready ? pay : prepare}>{busy ? (en ? "Processing…" : "처리 중…") : ready ? (en ? `Pay KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")}` : `${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 결제하기`) : (en ? "Reload checkout" : "결제 화면 다시 불러오기")}</button>}
     {message && <p role="status">{message}</p>}
     {returnStatus === "confirm" && <button type="button" className="btn" disabled={busy} onClick={confirm}>{en ? "Retry approval check" : "승인 확인 재시도"}</button>}
-    {returnPath && <Link className="btn" href={returnPath}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</Link>}
+    {returnPath && <button className="btn" disabled={busy} onClick={async () => { try { await restoreCheckoutSnapshot(); router.push(returnPath); } catch { setMessage(en ? "Could not restore this project's temporary copy. Reopen the original project; your current work was not replaced." : "이 프로젝트의 임시본을 복원하지 못했습니다. 원래 프로젝트를 다시 열어 주세요. 현재 작업은 덮어쓰지 않았습니다."); } }}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</button>}
     <div className="purchase-project-transfer">
       <p>{en ? "Moving to another device? Restore your pass here, then import the backup exported from Projects on your original device. Your files and review history do not sync automatically." : "다른 기기로 옮기시나요? 여기서 이용권을 복원한 뒤, 원래 기기의 프로젝트 보관함에서 내보낸 백업을 가져오세요. 파일과 검토 이력은 자동 동기화되지 않습니다."}</p>
       <Link className="btn" href={en ? "/en/projects#project-backup" : "/projects#project-backup"}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</Link>

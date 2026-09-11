@@ -104,7 +104,7 @@ export async function clearWorkspaceDatasets() {
     transaction.objectStore("meta").delete(PROJECT_META_KEY);
     const meta = transaction.objectStore("meta");
     const records = await requestResult(meta.getAll());
-    records.filter(record => record.key?.startsWith("project:")).forEach(record => meta.delete(record.key));
+    records.filter(record => record.key?.startsWith("project:") || record.key?.startsWith("checkout:")).forEach(record => meta.delete(record.key));
     await transactionComplete(transaction);
   } finally {
     db.close();

@@ -10,6 +10,8 @@ import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
 import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
+import BlogCsvAnalysis from "@/components/blog/BlogCsvAnalysis";
+import { splitBlogInsight } from "@/lib/blogInsightRegistry";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -123,7 +125,8 @@ export default async function EnBlogPostPage({ params }) {
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
-  const article = splitArticleForAction(post.html);
+  const inline = splitBlogInsight(post.html, post.slug);
+  const article = inline || splitArticleForAction(post.html);
 
   return (
     <div className="content-article">
@@ -164,7 +167,7 @@ export default async function EnBlogPostPage({ params }) {
 
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
-        {article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
+        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} locale="en" /> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 

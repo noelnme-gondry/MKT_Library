@@ -53,7 +53,8 @@ for (const locale of ["ko", "en"]) {
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape"); await expect(gate).toBeHidden(); await expect(trigger).toBeFocused();
     await trigger.click();
-    await expect(gate.getByRole("link", { name: en ? "Save or back up my work" : "작업 보관·백업하기" })).toHaveAttribute("href", `${prefix}/projects`);
+    await expect(gate.getByRole("link", { name: en ? "Save or back up my work" : "작업 보관·백업하기" })).toHaveCount(0);
+    await expect(gate).toContainText(en ? "browser" : "브라우저");
     await gate.getByRole("link", { name: en ? "View free sample reports" : "무료 샘플 보고서 보기" }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#report-preview-title$`));
     await page.goto(`${prefix}/subscription#purchase`);
@@ -76,7 +77,7 @@ for (const locale of ["ko", "en"]) {
       }) });
     });
     await page.goto(`${prefix}/subscription#purchase`);
-    await page.getByRole("button", { name: en ? "Choose payment method" : "결제수단 선택", exact: true }).click();
+    await expect(page.getByRole("button", { name: en ? "Choose payment method" : "결제수단 선택", exact: true })).toHaveCount(0);
     const pay = page.getByRole("button", { name: en ? "Pay KRW 5,900" : "5,900원 결제하기", exact: true });
     await expect(pay).toBeEnabled();
     expect(await pay.evaluate(button => Boolean(document.querySelector("#toss-payment-agreement").compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);

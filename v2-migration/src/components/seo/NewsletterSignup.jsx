@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { trackProductEvent } from "@/lib/analytics";
 
 const FORM_ACTION = "https://buttondown.com/api/emails/embed-subscribe/noelnme";
 
 export default function NewsletterSignup({ locale = "ko", placement = "post", source = "blog" }) {
+  const frameName = `newsletter-${useId()}`;
   const [isConfirmationPending, setIsConfirmationPending] = useState(false);
   const isEnglish = locale === "en";
   const copy = isEnglish
@@ -47,7 +48,7 @@ export default function NewsletterSignup({ locale = "ko", placement = "post", so
         <h2>{copy.title}</h2>
         <p>{copy.description}</p>
       </div>
-      <form action={FORM_ACTION} method="post" target="buttondown-subscribe-frame" onSubmit={handleSubmitAttempt} className="newsletter-signup__form">
+      <form action={FORM_ACTION} method="post" target={frameName} onSubmit={handleSubmitAttempt} className="newsletter-signup__form">
         <input type="hidden" name="embed" value="1" />
         <input type="hidden" name="tag" value={`growthopt-${source}`} />
         <input type="hidden" name="tag" value={sourceTag} />
@@ -67,7 +68,7 @@ export default function NewsletterSignup({ locale = "ko", placement = "post", so
         </p>
         {isConfirmationPending && <p className="newsletter-signup__success" role="status">{copy.submitted}</p>}
       </form>
-      <iframe className="newsletter-signup__frame" name="buttondown-subscribe-frame" title="Buttondown subscription response" />
+      <iframe className="newsletter-signup__frame" name={frameName} title="Buttondown subscription response" />
     </section>
   );
 }

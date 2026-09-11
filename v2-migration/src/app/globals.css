@@ -4605,6 +4605,25 @@ body:not(.light-mode) .moon-icon {
   color: var(--text-primary);
   font-weight: 600;
 }
+.blog-inline-insight { margin: 2.3rem 0; padding: 18px; border: 1px solid var(--border-stronger); background: var(--surface-container-low); color: var(--text-secondary); }
+.blog-inline-insight__result { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-subtle); }
+.blog-inline-insight__finding { color: var(--text-primary); font-weight: 700; }
+.blog-inline-insight label, .account-archive label { display: grid; gap: 6px; margin: 10px 0; font-size: 13px; }
+.blog-inline-insight select, .account-archive select { min-width: 0; width: 100%; min-height: 44px; }
+.blog-inline-insight p, .account-archive p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.blog-inline-insight figure { margin: 16px 0; }
+.blog-inline-insight .chart-container { height: 220px; }
+.mobile-quick-start { display: none; }
+.purchase-reasons { display: flex; flex-wrap: wrap; gap: 8px; }
+.header-price { white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 768px) {
+  .mobile-quick-start { display: block; padding: 12px 0; }
+  .mobile-quick-start nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .mobile-quick-start p { margin: 0 0 10px; }
+  .header-price { font-size: 11px; padding-inline: 6px; }
+}
+.blog-prose .blog-inline-insight h2 { margin: 0; padding: 0; border: 0; font-size: 18px; }
+.account-archive dd { margin: 0; overflow-wrap: anywhere; }
 .blog-prose code {
   font-family: var(--font-sans);
   font-size: 0.88em;

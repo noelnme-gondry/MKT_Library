@@ -15,6 +15,7 @@ import { workspaceNavItem } from "@/lib/workspaceNav";
 import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 import { trackProductEvent } from "@/lib/analytics";
 import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
+import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
 
 const HEADER_COPY = {
   ko: {
@@ -224,6 +225,7 @@ export default function Header({ locale = "ko" }) {
 
       <div className="topbar-actions">
         <div className="topbar-actions__primary">
+          <Link className="btn ghost header-price" href={locale === "en" ? "/en/subscription" : "/subscription"} aria-label={locale === "en" ? `Pro: KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")} for one month` : `Pro 1개월 ${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원`}>Pro {SUBSCRIPTION.monthlyKrw.toLocaleString(locale === "en" ? "en-US" : "ko-KR")}{locale === "en" ? " KRW" : "원"}</Link>
           <Link
             href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
             className="btn ghost header-decision-inbox"

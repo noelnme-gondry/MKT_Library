@@ -42,8 +42,8 @@ export const BRAND_FACTS = [
   },
   {
     id: "account",
-    ko: { claim: "가입이나 로그인이 필요 없습니다.", detail: "계정 없이 페이지를 열고 바로 CSV를 올릴 수 있습니다." },
-    en: { claim: "No signup or login is required.", detail: "Open the page without an account and upload a CSV right away." },
+    ko: { claim: "분석은 가입이나 로그인 없이 시작합니다.", detail: "계정 없이 CSV를 분석할 수 있습니다. 계정 보관 기능을 이용할 때는 로그인합니다." },
+    en: { claim: "Start analyzing without signup or login.", detail: "Analyze CSVs without an account. Sign in when using account storage." },
   },
   {
     id: "privacy",
@@ -54,8 +54,8 @@ export const BRAND_FACTS = [
   },
   {
     id: "persistence",
-    ko: { claim: "데이터는 이 기기에만 저장돼요.", detail: "올린 파일은 이 브라우저 안에서 열리고 계산돼요. 인터넷으로 어디에도 보내지 않으며, 마지막 사용 후 90일이 지나면 자동으로 지워지고 언제든 직접 지울 수 있어요." },
-    en: { claim: "Your data is stored on this device only.", detail: "Your file is opened and calculated inside this browser. It is never sent anywhere, is erased 90 days after its last use, and can be removed whenever you choose." },
+    ko: { claim: "원본 파일은 이 기기에서 처리·보관합니다.", detail: "원본 파일은 서버로 보내지 않습니다. 기기 저장본은 마지막 사용 후 90일 만료 대상입니다. 계정 보관을 선택한 결정 메모는 별도로 서버에 저장되며 직접 삭제할 수 있습니다." },
+    en: { claim: "Source files are processed and retained on this device.", detail: "Source files are not sent to the server. Device copies expire 90 days after last use. Decision memos you choose to keep in your account are stored separately on the server and can be deleted." },
   },
   {
     id: "determinism",

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import HomeResultPreview from "@/components/landing/HomeResultPreview";
+import MobileQuickStart from "@/components/MobileQuickStart";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -197,6 +198,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <p className="dc-hero__deck">{T.deck}</p>
+          <MobileQuickStart locale={lang} />
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link className="dc-action-route dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"}>
               <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>

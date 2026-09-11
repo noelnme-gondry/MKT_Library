@@ -13,6 +13,7 @@ import { buildDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } fr
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
+import AccountArchive from "@/components/AccountArchive";
 
 function nextWeekDate() {
   const date = new Date();
@@ -516,6 +517,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn primary decision-review__add" onClick={addRecord}>{t.add}</button>
         </div>
 
+        {savedDecision && <AccountArchive record={savedDecision} locale={locale} />}
         {savedDecision && !isPersistencePromptOpen && <div className="decision-review__saved" role="status">
           <strong>{t.saved(formatReviewDate(savedDecision.reviewDate, locale))}</strong>
           <p>{locale === "en" ? "Keep this work in a project, then return with the next period’s data to review your decision." : "프로젝트에 작업을 보관하고, 다음 기간 데이터로 돌아와 이번 결정을 검토하세요."}</p>
