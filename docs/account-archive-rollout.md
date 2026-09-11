@@ -28,6 +28,7 @@
 
 ## 실제 환경 검증
 
+- 2026-09-11 #856 main 머지(`4890964b`) 및 운영 배포 뒤 `/api/account/session` 200·KO/EN 개인정보 고지 반영을 확인했다. 계정/메일 활성화 스위치는 아직 꺼져 있다. 운영 서버의 기존 Resend 키로 HTTPS 테스트 메일 1건을 발송해 API 200 및 Resend `delivered`를 확인했다. 이는 연결 검증이며 실제 계정 로그인·자동 작업 스케줄러 검증을 대체하지 않는다.
 1. KO/EN 블로그 업로드→차트→상세 분석: 네트워크에 CSV·파일명·열 값이 없는지 확인.
 2. 분석을 열어 둔 채 Google 팝업 로그인 성공/취소/차단; 다른 Google 계정 전환 시 메모 격리.
 3. 첫 저장·동시 두 요청·DB 쓰기 실패·14일 경계·재로그인에서 체험 시작일 불변.
@@ -39,11 +40,13 @@
 
 ## 메일 작업 구성
 
+- Resend 연결은 `SMTP_HOST=smtp.resend.com`·`SMTP_USER=resend`이면 HTTPS API를 사용한다. 기존 `SMTP_PASS`에 저장한 Resend 키를 재사용하며 새 키 입력은 필요 없다. Railway Pro 미만의 SMTP 차단을 피하기 위한 전송 방식이며, 다른 SMTP 제공자의 TLS 발송 경로는 유지한다. 수신처·본문·동의 범위는 바뀌지 않는다. API 수락은 받은편지함 도착을 뜻하지 않는다.
+- 2026-09-11 운영 DB에 `scripts/accounts-schema.sql`을 단일 트랜잭션으로 적용했다(COMMIT 및 계정 테이블 6개 확인). 변경 전 pg_dump custom-format 백업은 DB 볼륨의 `/var/lib/postgresql/data/gop-pre-account-EJBGSH/database.dump`에 권한 600으로 생성했고 pg_restore 목록을 확인했다. 같은 볼륨이므로 재해 복구용 외부 백업이나 실제 복원 검증을 대체하지 않는다. Railway 기본 백업 기능은 현재 요금제에서 사용할 수 없다. DB 설정 화면의 기존 리전 `europe-west4-drams3a` 경고는 미해결이며 임의 이동하지 않았다.
 - 2026-09-11 Resend `mail.growthoptplaybook.com`의 Tokyo(ap-northeast-1) 발송 도메인 인증을 완료했다. Porkbun의 기존 10개 레코드는 유지하고 TXT `resend._domainkey.mail`, CNAME `rsend.mail` → `rsend-apne1.forge.rmta.net`, CNAME `send.mail` → `send.forge.rmta.net`만 추가했다. 외부 DNS 조회와 Resend `Verified`를 확인했다. 메일·로그의 미국 저장 및 보관 기간을 SSOT와 KO/EN 개인정보처리방침에 반영했다. 운영 사이트 배포는 별도 확인해야 한다.
-- Resend SMTP 설정: `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`. `SMTP_PASS`에는 해당 발송 도메인의 Sending access 키를 운영자가 직접 입력한다. `SMTP_FROM`은 인증된 `mail.growthoptplaybook.com` 아래 주소여야 한다. 키 생성·호스팅 입력·테스트 발송은 아직 미완료이며 DNS 인증만으로 앱 발송이 켜지지 않는다. 추적용 서브도메인은 구성하지 않았다.
+- Resend SMTP 설정: `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`. `SMTP_PASS`에는 해당 발송 도메인의 Sending access 키를 운영자가 직접 입력한다. `SMTP_FROM`은 인증된 `mail.growthoptplaybook.com` 아래 주소여야 한다. 키 생성·호스팅 입력과 운영자 HTTPS 테스트 발송은 완료했으며 DNS 인증만으로 앱 발송이 켜지지는 않는다. 추적용 서브도메인은 구성하지 않았다.
 - 서버에 `ACCOUNT_MAIL_ENABLED=true`, `SMTP_HOST`, `SMTP_PORT`(465 또는 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`을 설정한다. SMTP는 TLS를 요구하며 인증서 검증을 끄지 않는다. 활성화 전 등록한 운영자 주소로 실제 수신·반송을 검증한다.
 - 32자 이상의 임의 `ACCOUNT_JOB_SECRET`을 서버와 작업 실행 환경에 설정한다. 비밀값을 URL이나 git에 넣지 않는다.
 - 외부 스케줄러에서 15분마다 `node scripts/account-mail-job.mjs`를 실행한다. 작업 환경에는 `ACCOUNT_JOB_SECRET`과 HTTPS `ACCOUNTS_ORIGIN`만 있으면 된다. 스크립트는 POST `/api/account/jobs`를 호출하며 CSV·메일 본문·토큰을 로그에 남기지 않는다. 새 유료 스케줄러 서비스 생성은 별도 운영 선택이다.
 - 작업은 한 번에 최대 20건, DB 행 lease로 동시 실행을 분리한다. 실패는 15분 후 최대 5회 재시도한다. `attempts>=5 AND sent_at IS NULL`은 운영 알림·수동 재처리 대상이다. SMTP 수락 직후 프로세스가 중단되면 같은 메일이 다시 갈 수 있으므로 exactly-once라고 주장하지 않는다. 고정 Message-ID를 사용한다.
 - 발송 직전 옵트아웃·삭제·검토일 변경·Pro 만료·결제 취소 상태를 다시 확인한다. 24시간 이상 늦은 검토/D-7 안내는 보내지 않는다. 과거 `.txt` 복원 코드 자체는 메일/큐에 저장하지 않고 계정 로그인으로 복원한다.
-- 현재 운영 확인: Railway MKT Library production의 서비스 변수에는 Sheets·DB·Toss 설정만 있고 OAuth·SMTP·계정 활성화 설정은 없다(2026-09-11, 변수 이름만 확인). 실제 DB 마이그레이션·발송·결제·OAuth 연결은 미실행이다.
+- 운영 확인(2026-09-11): OAuth ID/secret과 SMTP 설정 5개가 앱 서비스에 등록됐다(값 미열람). DB 마이그레이션과 운영자 테스트 메일 배달은 완료했다. 계정 활성화·실계정 로그인·자동 작업용 비밀키 및 스케줄러는 아직 미완료다.

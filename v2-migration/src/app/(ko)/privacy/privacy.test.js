@@ -11,7 +11,7 @@ describe("device-storage privacy contract", () => {
     for (const source of [koSource, enSource]) {
       expect(source).toContain("Plus Five Five, Inc.");
       expect(source).toContain("ap-northeast-1");
-      expect(source).toContain("TLS SMTP");
+      expect(source).toContain("TLS HTTPS");
       expect(source).toContain('href="https://resend.com/security/gdpr"');
     }
     expect(koSource).toContain("미국에 저장");
@@ -22,6 +22,10 @@ describe("device-storage privacy contract", () => {
     expect(enSource).toContain("30 days and backups for 7 days");
     expect(enSource).toContain("a one-time sign-in link");
     expect(enSource).toContain("CSV data and decision memo contents are excluded");
+    expect(koSource).toContain("네덜란드 암스테르담");
+    expect(enSource).toContain("Amsterdam, Netherlands");
+    expect(koSource).toContain("openid·email");
+    expect(enSource).toContain("only openid and email");
     expect(koSource).not.toContain("실제 메일 제공자·처리 지역은 운영 활성화 전에 고지합니다");
     expect(enSource).not.toContain("Actual email providers and processing locations must be disclosed before activation");
   });

@@ -8,6 +8,19 @@ export async function sendAccountMail(to, subject, text, messageId) {
   if (!mailEnabled()) throw new Error("MAIL_UNAVAILABLE");
   const port = Number(process.env.SMTP_PORT || 587);
   if (![465, 587].includes(port) || /[\r\n]/.test(to) || /[\r\n]/.test(process.env.SMTP_FROM)) throw new Error("MAIL_UNAVAILABLE");
+  // Railway non-Pro plans block SMTP. Resend's SMTP password is already an API key.
+  if (process.env.SMTP_HOST === "smtp.resend.com" && process.env.SMTP_USER === "resend") {
+    try {
+      const headers = { Authorization: `Bearer ${process.env.SMTP_PASS}`, "Content-Type": "application/json" };
+      if (messageId) headers["Idempotency-Key"] = createHash("sha256").update(messageId).digest("hex");
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST", headers, redirect: "error", signal: AbortSignal.timeout(20000),
+        body: JSON.stringify({ from: process.env.SMTP_FROM, to: [to], subject, text }),
+      });
+      if (!response.ok || typeof (await response.json())?.id !== "string") throw new Error("MAIL_UNAVAILABLE");
+      return;
+    } catch { throw new Error("MAIL_UNAVAILABLE"); }
+  }
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, requireTLS: true, tls: { minVersion: "TLSv1.2", rejectUnauthorized: true }, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }, logger: false, debug: false, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000, disableFileAccess: true, disableUrlAccess: true });
   try {
     const result = await transport.sendMail({ from: process.env.SMTP_FROM, to: { address: to, name: "" }, subject, text, messageId });
