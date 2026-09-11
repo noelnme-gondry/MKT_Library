@@ -9,7 +9,7 @@ let pool;
 export const accountHash = value => createHash("sha256").update(value).digest("hex");
 const hash = accountHash;
 const sessionCookie = "gop_account";
-export const accountsEnabled = () => process.env.ACCOUNTS_ENABLED === "true" && Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PAYMENTS_DATABASE_URL);
+export const accountsEnabled = () => (!process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT_NAME === "production") && process.env.ACCOUNTS_ENABLED === "true" && Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PAYMENTS_DATABASE_URL);
 const origin = () => new URL(process.env.ACCOUNTS_ORIGIN || SITE_URL).origin;
 export function accountDatabase() {
   if (!accountsEnabled()) throw new Error("ACCOUNTS_UNAVAILABLE");

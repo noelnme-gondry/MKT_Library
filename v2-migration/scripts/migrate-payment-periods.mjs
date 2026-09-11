@@ -2,7 +2,7 @@ import pg from "pg";
 import { readFile } from "node:fs/promises";
 
 // Run before serving requests. No credentials or connection errors are printed.
-if (process.env.PAYMENTS_DATABASE_URL) {
+if (process.env.PAYMENTS_DATABASE_URL && (!process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT_NAME === "production")) {
   const client = new pg.Client({ connectionString: process.env.PAYMENTS_DATABASE_URL, connectionTimeoutMillis: 10000 });
   try {
     await client.connect();
