@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, screen, fireEvent } from "@testing-library/react";
+import { useAppStore } from "@/store/useDataStore";
 import SubscriptionCheckout from "./SubscriptionCheckout";
 
 const tracking = vi.hoisted(() => vi.fn());
@@ -20,4 +21,13 @@ it("does not emit purchase on a failed confirmation", async () => {
   render(<SubscriptionCheckout locale="ko" />);
   await waitFor(() => expect(tracking).toHaveBeenCalledWith("payment_confirmation_failed", expect.any(Object)));
   expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
+
+it.each(["ko", "en"])("explains a rate limit without starting the payment SDK (%s)", async locale => {
+  useAppStore.setState({ entitlement: null });
+  vi.stubGlobal("fetch", vi.fn(async path => path.endsWith("config") ? { ok: true, json: async () => ({ enabled: true, mode: "test" }) } : { ok: false, status: 429 }));
+  render(<SubscriptionCheckout locale={locale} />);
+  fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Choose payment method" : "결제수단 선택" }));
+  await screen.findByText(locale === "en" ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.");
+  expect(tracking.mock.calls.some(([name]) => name === "begin_checkout")).toBe(false);
 });

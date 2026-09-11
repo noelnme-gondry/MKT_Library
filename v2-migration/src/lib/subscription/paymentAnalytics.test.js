@@ -5,6 +5,8 @@ const transaction = { orderId: "gop_12345678-1234-1234-1234-123456789abc", amoun
 beforeEach(() => {
   const values = new Map();
   vi.stubGlobal("sessionStorage", { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) });
+  const durable = new Map();
+  vi.stubGlobal("localStorage", { getItem: key => durable.get(key), setItem: (key, value) => durable.set(key, value) });
   vi.stubGlobal("window", { gtag: vi.fn(), location: { hostname: "growthoptplaybook.com" } });
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -32,4 +34,11 @@ it("rejects missing or invalid confirmed metadata and survives analytics failure
 it("classifies cancellation without sending raw provider errors", () => {
   expect(paymentFailureEvent({ code: "USER_CANCEL", message: "secret" })).toBe("payment_cancelled");
   expect(paymentFailureEvent({ code: "UNKNOWN" })).toBe("payment_failed");
+});
+
+it("deduplicates a purchase after session storage is cleared", () => {
+  expect(trackPaymentEvent("purchase", { mode: "live", transaction })).toBe(true);
+  vi.stubGlobal("sessionStorage", { getItem: () => null, setItem: vi.fn() });
+  expect(trackPaymentEvent("purchase", { mode: "live", transaction })).toBe(false);
+  expect(window.gtag).toHaveBeenCalledTimes(1);
 });

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { passExpiresAt, verifiedPayment } from "./paymentProduct";
-import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult } from "./paymentServer";
+import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, paymentResponse } from "./paymentServer";
 
-const db = vi.hoisted(() => ({ rows: new Map(), calls: [] }));
+const db = vi.hoisted(() => ({ rows: new Map(), calls: [], active: 0 }));
 vi.mock("pg", () => ({ default: { Pool: class {
-  async connect() { return this; }
-  release() {}
+  async connect() { db.active++; return this; }
+  release() { db.active--; }
   async query(sql, args = []) {
     db.calls.push({ sql, args });
     if (sql.startsWith("SELECT")) return { rows: db.rows.has(args[0]) ? [{ ...db.rows.get(args[0]) }] : [] };
@@ -23,7 +23,7 @@ vi.mock("pg", () => ({ default: { Pool: class {
 const request = (cookie = "", path = "confirm") => new Request(`https://example.com/api/payments/${path}`, { method: "POST", headers: { origin: "https://example.com", cookie } });
 let payment;
 beforeEach(() => {
-  db.rows.clear(); db.calls.length = 0;
+  db.rows.clear(); db.calls.length = 0; db.active = 0;
   vi.stubEnv("TOSS_CLIENT_KEY", "test_gck_fixture"); vi.stubEnv("TOSS_SECRET_KEY", "test_gsk_fixture"); vi.stubEnv("PAYMENTS_DATABASE_URL", "postgresql://fixture"); vi.stubEnv("PAYMENTS_LIVE_ENABLED", "false");
   payment = null;
   vi.stubGlobal("fetch", vi.fn(async () => Response.json(payment)));
@@ -119,4 +119,33 @@ describe("payment boundaries", () => {
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
   });
+});
+
+it("releases the transaction before HTTP and rejects revocation during HTTP", async () => {
+  const { cookie, input } = await fixture();
+  fetch.mockImplementation(async () => {
+    expect(db.calls.at(-1).sql).toBe("COMMIT");
+    expect(db.active).toBe(0);
+    db.rows.get(input.orderId).status = "revoked";
+    return Response.json(payment);
+  });
+  await expect(confirmPayment(request(cookie), input)).rejects.toThrow("INVALID_ORDER");
+  expect(db.rows.get(input.orderId).status).toBe("revoked");
+});
+it("clears the payment return cookie after successful confirmation", async () => {
+  const { cookie, input } = await fixture();
+  const response = paymentResponse(await confirmPayment(request(cookie), input));
+  expect(response.headers.getSetCookie()).toHaveLength(2);
+  expect(response.headers.getSetCookie()[1]).toContain("gop_payment_return=;");
+  expect(response.headers.getSetCookie()[1]).toContain("Max-Age=0");
+});
+
+it("does not activate a credential replaced while the provider request runs", async () => {
+  const { cookie, input } = await fixture();
+  fetch.mockImplementation(async () => {
+    db.rows.get(input.orderId).access_hash = "b".repeat(64);
+    return Response.json(payment);
+  });
+  await expect(confirmPayment(request(cookie), input)).rejects.toThrow("INVALID_ORDER");
+  expect(db.rows.get(input.orderId).status).toBe("pending");
 });

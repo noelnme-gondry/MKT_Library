@@ -1,5 +1,5 @@
 import { JetBrains_Mono } from "next/font/google";
-import localFont from "next/font/local";
+import "@/app/korean-fonts.css";
 import Footer from "@/components/Footer";
 import AnalyticsScripts from "@/components/AnalyticsScripts";
 import ConsentBanner from "@/components/ConsentBanner";
@@ -11,22 +11,6 @@ import WorkspaceStorageBootstrap from "@/components/WorkspaceStorageBootstrap";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
-const pretendard = localFont({
-  src: "../../public/fonts/PretendardVariable.woff2",
-  variable: "--font-pretendard",
-  weight: "100 900",
-  display: "swap",
-  preload: false,
-  fallback: ["system-ui", "Arial", "sans-serif"],
-});
-const wantedSans = localFont({
-  src: "../../public/fonts/WantedSansVariable.woff2",
-  variable: "--font-wanted-sans",
-  weight: "400 1000",
-  display: "swap",
-  preload: true,
-  fallback: ["system-ui", "Arial", "sans-serif"],
-});
 const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
 
 const SITE_URL = "https://growthoptplaybook.com";
@@ -37,7 +21,7 @@ export default function RootDocument({ children, locale = "ko" }) {
   const isEnglish = locale === "en";
   const language = isEnglish ? "en" : "ko";
   return (
-    <html lang={language} suppressHydrationWarning className={`${pretendard.variable} ${wantedSans.variable} ${jetBrainsMono.variable} dark`}>
+    <html lang={language} suppressHydrationWarning className={`${jetBrainsMono.variable} dark`}>
       <head>
         {/* 기본 테마가 라이트인데 theme-color만 다크로 고정돼 있어 모바일 브라우저
             상단 크롬만 검게 떴다. 실제로 칠해지는 배경(--background)에 맞춘다. */}

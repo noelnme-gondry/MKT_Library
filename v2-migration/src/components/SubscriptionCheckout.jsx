@@ -24,7 +24,7 @@ function loadSdk() {
 }
 async function jsonRequest(path, body) {
   const response = await fetch(`/api/payments/${path}`, body === undefined ? { cache: "no-store" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!response.ok) throw new Error("PAYMENT_UNAVAILABLE");
+  if (!response.ok) throw new Error(response.status === 429 ? "RATE_LIMITED" : "PAYMENT_UNAVAILABLE");
   return response.json();
 }
 export default function SubscriptionCheckout({ locale = "ko" }) {
@@ -89,7 +89,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       await widgets.current.renderAgreement({ selector: "#toss-payment-agreement", variantKey: "AGREEMENT" });
       setReady(true);
       trackProductEvent("checkout_started", { locale, source: "subscription_page", state: config.mode });
-    } catch { trackPaymentEvent("checkout_failed", { locale, mode: config?.mode }); setMessage(en ? "Checkout could not load. Please retry." : "결제 화면을 불러오지 못했습니다. 다시 시도해 주세요."); }
+    } catch (error) { trackPaymentEvent("checkout_failed", { locale, mode: config?.mode }); setMessage(error.message === "RATE_LIMITED" ? (en ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.") : (en ? "Checkout could not load. Please retry." : "결제 화면을 불러오지 못했습니다. 다시 시도해 주세요.")); }
     finally { setBusy(false); }
   };
   const pay = async () => {
