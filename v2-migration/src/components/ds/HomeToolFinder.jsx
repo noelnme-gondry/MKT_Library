@@ -56,23 +56,28 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
       {selected === "all" ? (en ? "Close all tools" : "전체 도구 접기") : (en ? "View all tools" : "전체 도구 보기")}
     </button>
     <div id="home-tool-results" hidden={!isOpen}>
-      {isOpen && <p role="status">{en ? `${tools.length} tools` : `${tools.length}개 도구`}</p>}
+      {isOpen && <div className="home-tool-finder__result-header"><h3>{terms.length ? (en ? "Search results" : "검색 결과") : selected === "saved" ? (en ? "Saved tools" : "저장한 도구") : (en ? "Available analyses" : "선택할 수 있는 분석")}</h3><p role="status">{en ? `${tools.length} tools` : `${tools.length}개 도구`}</p></div>}
       {selected === "saved" && !terms.length && <p>{en ? "Saved in this browser only. Save tools you want to use again." : "이 브라우저에만 저장됩니다. 다시 쓸 도구를 저장해 두세요."}</p>}
       {saveError && <p role="alert">{en ? "Could not save. Allow browser storage and try again." : "저장하지 못했습니다. 브라우저 저장 설정을 확인하고 다시 시도하세요."}</p>}
       {!tools.length && <p>{terms.length ? (en ? "No matching tools. Try another metric or choose a question above." : "검색 결과가 없습니다. 다른 지표를 입력하거나 위의 질문을 골라보세요.") : (en ? "No saved tools yet. Open all tools and select Save." : "아직 저장한 도구가 없습니다. 전체 도구에서 저장 버튼을 눌러보세요.")}</p>}
       <ul className="home-tool-finder__results">
         {tools.map(tool => <li key={tool.id} className="home-tool-finder__tool">
-          <div className="home-tool-finder__tool-heading"><h3>{tool.name}</h3>
+          <div className="home-tool-finder__tool-heading">
+            <h3>{tool.name}</h3>
+            <p>{tool.question}</p>
+          </div>
+          <dl>
+            <div><dt>{en ? "What you get" : "확인할 결과"}</dt><dd>{tool.answer || tool.outputs.join(" · ")}</dd></div>
+            <div className="home-tool-finder__data"><dt>{en ? "Data to prepare" : "준비할 데이터"}</dt><dd>{tool.needs.length ? <ul>{tool.needs.map(need => <li key={need}>{need}</li>)}</ul> : (en ? "Check input options in the tool" : "도구에서 입력 방법 확인")}</dd></div>
+          </dl>
+          <div className="home-tool-finder__actions">
+            <Link className="home-tool-finder__open" href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)} aria-label={`${en ? "Open" : "분석 열기"}: ${tool.name}`}>
+              {en ? "Open analysis" : "분석 열기"}
+            </Link>
             <button type="button" aria-label={`${en ? "Save" : "저장"}: ${tool.name}`} aria-pressed={savedIds.includes(tool.id)} onClick={() => setSaveError(!toggleSavedTool(tool.id))}>
-              <Bookmark size={18} fill={savedIds.includes(tool.id) ? "currentColor" : "none"} aria-hidden="true" />{savedIds.includes(tool.id) ? (en ? "Saved" : "저장됨") : (en ? "Save" : "저장")}
+              <Bookmark size={16} fill={savedIds.includes(tool.id) ? "currentColor" : "none"} aria-hidden="true" />{savedIds.includes(tool.id) ? (en ? "Saved" : "저장됨") : (en ? "Save" : "저장")}
             </button>
           </div>
-          <p>{tool.question}</p>
-          <dl><dt>{en ? "What you get" : "확인할 결과"}</dt><dd>{tool.answer || tool.outputs.join(" · ")}</dd>
-            <dt>{en ? "Data to prepare" : "준비할 데이터"}</dt><dd>{tool.needs.length ? tool.needs.join(" · ") : (en ? "Check input options in the tool" : "도구에서 입력 방법 확인")}</dd></dl>
-          <Link className="tool-index__link" href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)} aria-label={`${en ? "Open" : "분석 열기"}: ${tool.name}`}>
-            {en ? "Open analysis" : "분석 열기"}
-          </Link>
         </li>)}
       </ul>
     </div>

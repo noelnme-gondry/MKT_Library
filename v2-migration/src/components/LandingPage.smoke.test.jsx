@@ -62,9 +62,9 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".home-result-preview button")?.textContent).toContain("샘플로 체험하기");
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
-    expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(0);
+    expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
     fireEvent.click(document.querySelector(".home-tool-finder > button"));
-    expect(document.querySelectorAll(".dc-questions .tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
     // 소셜 채널을 사이드바에서 뺀 뒤로 랜딩의 자료·채널 줄이 유일한 도달 경로다
@@ -137,7 +137,7 @@ describe("LandingPage render smoke", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
     fireEvent.click(container.querySelector(".home-tool-finder > button"));
-    for (const link of container.querySelectorAll(".dc-questions .tool-index__link")) clickWithoutNavigation(link);
+    for (const link of container.querySelectorAll(".home-tool-finder__results a")) clickWithoutNavigation(link);
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("x.csv");
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_tool_pick", {
       tool_id: "5-2",
@@ -204,7 +204,7 @@ describe("LandingPage render smoke", () => {
     expect(container.textContent).toContain("This week’s analysis. Next week’s decisions.");
     // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
     fireEvent.click(container.querySelector(".home-tool-finder > button"));
-    const enLinks = [...container.querySelectorAll(".dc-questions .tool-index__link")];
+    const enLinks = [...container.querySelectorAll(".home-tool-finder__results a")];
     expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
     expect(container.textContent).toContain("Explore a sample");

@@ -11,6 +11,16 @@ for (const locale of ["ko", "en"]) {
     const gap = await page.evaluate(() => document.querySelector("#home-tool-results").getBoundingClientRect().top - document.querySelector(".home-tool-finder__search").getBoundingClientRect().bottom);
     expect(gap).toBeGreaterThanOrEqual(0);
     expect(gap).toBeLessThan(45);
+    // Result actions must remain compact even when the data requirements wrap.
+    const cards = page.locator(".home-tool-finder__tool");
+    for (const card of await cards.all()) {
+      const action = await card.locator(".home-tool-finder__open").boundingBox();
+      expect(action.height).toBeGreaterThanOrEqual(44);
+      expect(action.height).toBeLessThan(65);
+      const bounds = await card.boundingBox();
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(page.viewportSize().width);
+    }
     await input.press("Enter");
     await expect(input).toHaveValue("CPA");
     await page.getByRole("button", { name: locale === "en" ? "Clear search" : "검색 지우기", exact: true }).click();
