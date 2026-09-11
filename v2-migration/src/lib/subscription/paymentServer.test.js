@@ -264,3 +264,9 @@ it("blocks anonymous new orders even when account rollout is disabled", async ()
   await expect(createPaymentOrder(request())).rejects.toThrow("LOGIN_REQUIRED");
   expect(db.calls).toHaveLength(0);
 });
+it("does not restore a recovery token replaced during provider lookup", async () => {
+  const { cookie, input } = await fixture();
+  const approved = await confirmPayment(request(cookie), input);
+  fetch.mockImplementation(async () => { db.rows.get(input.orderId).access_hash = "b".repeat(64); return Response.json(payment); });
+  expect((await readPaymentAccess(request(), approved.body.recoveryCode)).body.entitlement).toBeNull();
+});

@@ -16,7 +16,9 @@ export async function refreshAccount() {
   }
   const current = useAppStore.getState().entitlement;
   // Do not shorten an existing anonymous purchase while the owner links it.
-  if (data.entitlement && !(current && !current.account && hasPaidAccess(current) && current.expiresAt >= data.entitlement.expiresAt)) useAppStore.getState().setEntitlement(data.entitlement);
-  else if (useAppStore.getState().entitlement?.account) useAppStore.getState().setEntitlement(null);
+  if (data.entitlement) {
+    const samePurchase = current && ((!current.account && !current.accountId) || (current.payment && current.accountId === data.account?.id));
+    if (!(samePurchase && hasPaidAccess(current) && current.expiresAt >= data.entitlement.expiresAt)) useAppStore.getState().setEntitlement(data.entitlement);
+  } else if (current?.account) useAppStore.getState().setEntitlement(null);
   return data;
 }

@@ -103,6 +103,10 @@ async function accountCoverage(order, entitlement) {
   const expiresAt = new Date(rows[0]?.paid_until).getTime();
   return expiresAt > Date.now() ? { ...entitlement, expiresAt, offlineUntil: Math.min(expiresAt, entitlement.offlineUntil) } : null;
 }
+function ownedEntitlement(order, entitlement, credential) {
+  if (!entitlement) return null;
+  return { ...entitlement, ...(order.account_id ? { account: true, accountId: order.account_id } : {}), payment: Boolean(credential) };
+}
 export async function createPaymentOrder(request) {
   assertSameOrigin(request);
   if (!paymentConfiguration().enabled) throw new Error("PAYMENTS_NOT_CONFIGURED");
@@ -174,7 +178,7 @@ export async function confirmPayment(request, input) {
     await client.query("COMMIT");
     client.release(); client = null;
     entitlement = await accountCoverage(latest, entitlement);
-    return { body: { entitlement: !entitlement ? null : credential ? entitlement : { ...entitlement, account: true, payment: false }, ...(!entitlement ? { status: "scheduled" } : {}), mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id }, ...(credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
+    return { body: { entitlement: ownedEntitlement(latest, entitlement, credential), ...(!entitlement ? { status: "scheduled" } : {}), mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id }, ...(credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
   } catch (error) { if (client) await client.query("ROLLBACK"); throw error; }
   finally { client?.release(); }
 }
@@ -207,8 +211,12 @@ export async function readPaymentAccess(request, recoveryCode) {
     if (payment) entitlement = await syncExternalOrder(order, payment);
   }
   entitlement = await accountCoverage(order, entitlement);
+  if (payment && credential) {
+    const latest = (await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [order.id])).rows[0];
+    if (!owns(latest, credential.token)) return { body: { entitlement: null } };
+  }
   const active = entitlement?.expiresAt > Date.now();
-  return { body: { entitlement: active ? (credential ? entitlement : { ...entitlement, account: true, payment: false }) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
+  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
 export async function reconcilePaymentWebhook(input) {
   const id = input?.data?.orderId;
