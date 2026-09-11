@@ -1,5 +1,6 @@
 "use client";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
+import AccountArchive from "@/components/AccountArchive";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildWeeklyReviewExport } from "@/lib/analysis-export/weeklyReviewExport";
 import DownloadHub from "@/components/ds/DownloadHub";
@@ -173,6 +174,8 @@ export default function WeeklyReviewScreen({ locale = "ko" }) {
 }
 
 function ProjectWeeklyReview({ locale, projectId }) {
+  const sheetRefreshRef = useRef(null);
+  const [refreshingConnectedSheet, setRefreshingConnectedSheet] = useState(false);
   const t = COPY[locale] || COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const reviewSource = isDemoData(csvData) ? "demo" : "csv";
@@ -342,7 +345,8 @@ function ProjectWeeklyReview({ locale, projectId }) {
     };
     addDecisionRecord(record);
     trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review", source: reviewSource });
-    setSavedDecision({ record, raw: csvData.raw, context: decisionContext });
+    // Use the persisted, normalized record, including its generated stable ID.
+    setSavedDecision({ record: useAppStore.getState().decisionRecords[0], raw: csvData.raw, context: decisionContext });
   };
 
   if (!review.ok) {
@@ -369,6 +373,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
         </section>
         <ReviewLoop locale={locale} hasResult={false} />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
+        <AccountArchive locale={locale} />
       </article>
     );
   }
@@ -428,7 +433,8 @@ function ProjectWeeklyReview({ locale, projectId }) {
       <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
-      <details className="wr-upload" id="wr-upload"><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />}</details>
+      {csvData.sheetUrl && <button className="btn primary" disabled={refreshingConnectedSheet || !workspaceReady} onClick={async () => { document.getElementById("wr-upload").open = true; setRefreshingConnectedSheet(true); try { await sheetRefreshRef.current.refreshSheet(); } finally { setRefreshingConnectedSheet(false); } }}>{refreshingConnectedSheet ? (locale === "en" ? "Fetching…" : "불러오는 중…") : (locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신")}</button>}
+      <details className="wr-upload" id="wr-upload"><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />}</details>
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
@@ -685,7 +691,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
             {project.target && <button type="button" className="btn" disabled={!targetCurrencyMatches} onClick={() => setDecision((prev) => ({ ...prev, goalMetric: kpiMetric, goalDirection: project.kpi.direction === LOWER_IS_BETTER ? "down" : "up", guardrailMetric: kpiMetric, guardrailOp: project.kpi.direction === LOWER_IS_BETTER ? "lte" : "gte", guardrailValue: String(parsedTarget) }))}>{locale === "en" ? "Use project KPI and target" : "프로젝트 KPI·목표 적용"}</button>}
             {!decision.guardrailValue && <p className="wr-note">{t.guardHint}</p>}
             <button type="button" className="btn primary" onClick={() => saveDecision(recommended?.label || "")}>{t.save}</button>
-            {isSavedDecisionCurrent && <><p className="wr-note" role="status">{t.saved} · {savedDecision.record.reviewDate}</p><button type="button" className="btn" onClick={() => downloadCalendar(serializeDecisionReviewIcs(savedDecision.record, locale), "weekly_review")}>{locale === "en" ? "Download review reminder (.ics)" : "다음 검토일 캘린더 받기 (.ics)"}</button></>}
+            {isSavedDecisionCurrent && <><AccountArchive record={savedDecision.record} locale={locale} /><p className="wr-note" role="status">{t.saved} · {savedDecision.record.reviewDate}</p><button type="button" className="btn" onClick={() => downloadCalendar(serializeDecisionReviewIcs(savedDecision.record, locale), "weekly_review")}>{locale === "en" ? "Download review reminder (.ics)" : "다음 검토일 캘린더 받기 (.ics)"}</button></>}
           </div>
         </section>
       </details>
@@ -721,6 +727,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
       </section>
 
       <PastDecisions locale={locale} t={t} count={decisionRecords.length} />
+      <AccountArchive locale={locale} />
     </article>
   );
 }

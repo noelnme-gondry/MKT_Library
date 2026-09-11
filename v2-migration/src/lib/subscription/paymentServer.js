@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import pg from "pg";
 import { SITE_URL } from "@/lib/routeMap";
 import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduct";
+import { readAccount, accountsEnabled } from "@/lib/account/accountServer";
 
 let pool;
 const cookieName = "gop_payment_access";
@@ -16,7 +17,7 @@ export function paymentConfiguration() {
   const configured = /^(test|live)_gck_/.test(clientKey)
     && secret.startsWith(`${mode}_gsk_`) && Boolean(process.env.PAYMENTS_DATABASE_URL)
     && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true");
-  return { enabled: configured, clientKey: configured ? clientKey : null, mode, product: PAYMENT_PRODUCT };
+  return { enabled: configured, clientKey: configured ? clientKey : null, mode, product: PAYMENT_PRODUCT, requiresAccount: accountsEnabled() };
 }
 function database() {
   if (!paymentConfiguration().enabled) throw new Error("PAYMENTS_NOT_CONFIGURED");
@@ -66,6 +67,8 @@ async function syncOrder(client, order, payment) {
 }
 export async function createPaymentOrder(request) {
   assertSameOrigin(request);
+  const account = await readAccount(request);
+  if (accountsEnabled() && !account) throw new Error("LOGIN_REQUIRED");
   const current = credentials(cookies(request)[cookieName]);
   if (current) {
     const { rows } = await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [current.id]);
@@ -76,11 +79,18 @@ export async function createPaymentOrder(request) {
   if (previous) {
     const { rows } = await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [previous.id]);
     const order = rows[0];
-    if (owns(order, previous.token) && order.status === "pending" && Date.now() - new Date(order.created_at).getTime() < 20 * 60000) return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id } };
+    if (owns(order, previous.token) && order.status === "pending" && (!account || !order.account_id || order.account_id === account.id) && Date.now() - new Date(order.created_at).getTime() < 20 * 60000) {
+      if (account) {
+        const linked = await database().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1 AND (account_id IS NULL OR account_id=$2)", [order.id, account.id]);
+        if (!linked.rowCount) throw new Error("INVALID_ORDER");
+      }
+      return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id, ...(account ? { accountId: account.id } : {}) } };
+    }
   }
   const id = `gop_${randomUUID()}`, token = randomBytes(32).toString("hex");
   await database().query("INSERT INTO gop_payment_orders(id,access_hash,amount,product_id,idempotency_key,mode) VALUES($1,$2,$3,$4,$5,$6)", [id, hash(token), PAYMENT_PRODUCT.amount, PAYMENT_PRODUCT.id, randomUUID(), paymentConfiguration().mode]);
-  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
+  if (account) await database().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1", [id, account.id]);
+  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, ...(account ? { accountId: account.id } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
 }
 export async function confirmPayment(request, input) {
   assertSameOrigin(request);
@@ -144,7 +154,7 @@ export function paymentResponse(result) {
   return Response.json(result.body, { headers });
 }
 export function paymentError(error) {
-  const statuses = { INVALID_ORIGIN: 403, INVALID_ORDER: 400, ALREADY_ACTIVE: 409, PAYMENT_NOT_COMPLETED: 409, PAYMENT_MISMATCH: 409, PAYMENTS_NOT_CONFIGURED: 503 };
+  const statuses = { LOGIN_REQUIRED: 401, INVALID_ORIGIN: 403, INVALID_ORDER: 400, ALREADY_ACTIVE: 409, PAYMENT_NOT_COMPLETED: 409, PAYMENT_MISMATCH: 409, PAYMENTS_NOT_CONFIGURED: 503 };
   const code = Object.hasOwn(statuses, error?.message) ? error.message : "PAYMENT_UNAVAILABLE";
   console.error("payment_request_failed", { code });
   return Response.json({ error: code }, { status: statuses[code] || 503, headers: { "Cache-Control": "no-store" } });

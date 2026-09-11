@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { passExpiresAt, verifiedPayment } from "./paymentProduct";
 import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, paymentResponse } from "./paymentServer";
@@ -23,11 +23,13 @@ vi.mock("pg", () => ({ default: { Pool: class {
 const request = (cookie = "", path = "confirm") => new Request(`https://example.com/api/payments/${path}`, { method: "POST", headers: { origin: "https://example.com", cookie } });
 let payment;
 beforeEach(() => {
+  vi.stubEnv("ACCOUNTS_ENABLED", "false");
   db.rows.clear(); db.calls.length = 0; db.active = 0;
   vi.stubEnv("TOSS_CLIENT_KEY", "test_gck_fixture"); vi.stubEnv("TOSS_SECRET_KEY", "test_gsk_fixture"); vi.stubEnv("PAYMENTS_DATABASE_URL", "postgresql://fixture"); vi.stubEnv("PAYMENTS_LIVE_ENABLED", "false");
   payment = null;
   vi.stubGlobal("fetch", vi.fn(async () => Response.json(payment)));
 });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 async function fixture() {
   const created = await createPaymentOrder(request());
   const cookie = created.cookie.split(";")[0];
@@ -36,6 +38,12 @@ async function fixture() {
   return { cookie, input };
 }
 describe("payment boundaries", () => {
+  it("requires a verified account for new orders after account rollout", async () => {
+    vi.stubEnv("ACCOUNTS_ENABLED", "true"); vi.stubEnv("GOOGLE_CLIENT_ID", "fixture"); vi.stubEnv("GOOGLE_CLIENT_SECRET", "fixture");
+    expect(paymentConfiguration().requiresAccount).toBe(true);
+    await expect(createPaymentOrder(request())).rejects.toThrow("LOGIN_REQUIRED");
+    expect(db.calls).toHaveLength(0);
+  });
   it("clamps a calendar month in KST, including leap years", () => {
     expect(passExpiresAt("2026-01-31T03:00:00Z")).toBe("2026-02-28T03:00:00.000Z");
     expect(passExpiresAt("2028-01-31T03:00:00Z")).toBe("2028-02-29T03:00:00.000Z");

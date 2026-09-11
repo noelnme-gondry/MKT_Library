@@ -27,6 +27,7 @@ import { rankFindings } from "@/lib/assist/rankFindings";
 import { detectFindingConflicts } from "@/lib/assist/detectFindingConflicts";
 import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
+import AccountArchive from "@/components/AccountArchive";
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 
 const COPY = {
@@ -712,6 +713,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
             </article>;
           })}
         </section>}
+      <AccountArchive locale={locale} />
       {sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
     </Shell>
   );

@@ -14,6 +14,7 @@ const ALLOWED_PARAMS = new Set([
   // 범주형(scope=site|analysis, state=오류 타입, section_id=digest)만 보낸다.
   "scope",
   "journey_entry", "visit_type",
+  "gate_reason", "trial_remaining_bucket",
 ]);
 
 let weeklyImportStartedAt = null;
@@ -108,6 +109,8 @@ export function sanitizeProductEventParams(params = {}, name) {
   const safe = Object.fromEntries(Object.entries(params)
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
+  if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
+  if (safe.trial_remaining_bucket && !["not_started", "expired", "under_3d", "3_7d", "8_14d"].includes(safe.trial_remaining_bucket)) delete safe.trial_remaining_bucket;
   if (["begin_checkout", "purchase", "test_begin_checkout", "test_purchase"].includes(name)
     && params.currency === "KRW" && Number.isSafeInteger(params.value) && params.value > 0
     && params.items?.length === 1 && params.items[0].item_id === PAYMENT_PRODUCT.id) {

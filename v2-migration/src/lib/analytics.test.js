@@ -6,6 +6,10 @@ afterEach(() => {
 });
 
 describe("privacy-safe product analytics", () => {
+  it("only allows categorical gate reasons and trial buckets, not free text", () => {
+    expect(sanitizeProductEventParams({ gate_reason: "price", trial_remaining_bucket: "under_3d", email: "private@example.com" })).toEqual({ gate_reason: "price", trial_remaining_bucket: "under_3d" });
+    expect(sanitizeProductEventParams({ gate_reason: "private company", trial_remaining_bucket: "private date" })).toEqual({});
+  });
   it("queues early production events with an explicit destination and no private fields", () => {
     globalThis.window = { location: { hostname: "growthoptplaybook.com", pathname: "/" } };
     expect(trackProductEvent("data_import_start", { source: "csv", fileName: "private.csv" })).toBe(true);

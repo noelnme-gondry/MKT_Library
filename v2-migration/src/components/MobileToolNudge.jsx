@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
+import MobileQuickStart from "@/components/MobileQuickStart";
 
 // 모바일 유입 대응 "가벼운 처방"(범위 밖 = 전면 반응형 재설계). 대시보드+전 분석
 // 도구(5-x·9-x)에 viewport 폭 기준으로 정보성 배너 노출. 기능 잠금 없음(논블로킹).
@@ -63,7 +64,7 @@ export default function MobileToolNudge({ locale = "ko" }) {
 
   return (
     <div role="note" data-mobile-nudge className="mobile-tool-nudge">
-      <span style={{ flex: 1 }}>{T.text}</span>
+      <div style={{ flex: 1 }}><MobileQuickStart locale={locale} /><span>{T.text}</span></div>
       <button
         type="button"
         onClick={dismissMobileNudge}

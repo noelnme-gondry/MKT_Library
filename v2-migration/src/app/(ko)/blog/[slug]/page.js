@@ -10,6 +10,8 @@ import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
 import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
+import BlogCsvAnalysis from "@/components/blog/BlogCsvAnalysis";
+import { splitBlogInsight } from "@/lib/blogInsightRegistry";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -126,7 +128,8 @@ export default async function BlogPostPage({ params }) {
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
-  const article = splitArticleForAction(post.html);
+  const inline = splitBlogInsight(post.html, post.slug);
+  const article = inline || splitArticleForAction(post.html);
 
   return (
     <div className="content-article">
@@ -171,7 +174,7 @@ export default async function BlogPostPage({ params }) {
 
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
-        {article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
+        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} /> : article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 

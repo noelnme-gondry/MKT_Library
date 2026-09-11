@@ -9,6 +9,7 @@ import SubscriptionReportPreview from "./SubscriptionReportPreview";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 import { SUBSCRIPTION, validateLicense, hasPaidAccess } from "@/lib/subscription/entitlement";
+import AccountArchive from "@/components/AccountArchive";
 
 export default function SubscriptionPage({ locale = "ko" }) {
   const en = locale === "en";
@@ -46,10 +47,11 @@ export default function SubscriptionPage({ locale = "ko" }) {
   const messages = en ? { valid: "License verified.", invalid: "This key is unavailable, expired, or revoked.", offline: "Could not reach license verification. An eligible cached license remains usable for its grace period.", not_configured: "License activation is not available yet. No payment is being collected." } : { valid: "키를 확인했습니다.", invalid: "사용할 수 없거나 만료·회수된 키입니다.", offline: "키 검증에 연결하지 못했습니다. 유효한 캐시가 있으면 유예기간 동안 계속 사용할 수 있습니다.", not_configured: "키 등록은 아직 준비 중입니다. 현재 결제를 받지 않습니다." };
   return <div className="projects-page subscription-page">
     <header className="subscription-hero"><h1>{en ? "A plan for your next decision." : "분석에서 끝내지 않는 선택."}</h1><p>{en ? "Start with a free analysis. Choose Pro when you need editable reports and a workspace for multiple projects." : "첫 분석은 무료로 시작하세요. 편집 가능한 보고서와 여러 프로젝트 관리가 필요할 때 Pro를 선택하세요."}</p><nav aria-label={en ? "Plan information" : "이용권 안내"}><a href="#plans">{en ? "Compare plans" : "플랜 비교"}</a><a href="#report-preview-title">{en ? "Inside the reports" : "보고서 구성"}</a><a href="#refund-policy">{en ? "Refund policy" : "환불정책"}</a></nav></header>
+    <div id="account-archive"><AccountArchive locale={locale} /></div>
     <SubscriptionPlanComparison locale={locale} paid={hasPaidAccess(entitlement, now)} />
     <div className="subscription-assurances">
       <div><span aria-hidden="true">↻</span><strong>{en ? "No automatic renewal" : "자동 갱신 없음"}</strong><p>{en ? "One purchase, one calendar month." : "한 번 결제하고 1개월 사용합니다."}</p></div>
-      <div><span aria-hidden="true">✓</span><strong>{en ? "Full refund within 7 days" : "7일 이내 전액 환불"}</strong><p>{en ? "Even if you have used paid features." : "유료 기능 사용 여부와 무관합니다."}</p></div>
+      <div><span aria-hidden="true">✓</span><strong>{en ? "Review before purchasing" : "구매 전 확인"}</strong><p><a href="#refund-policy">{en ? "Read the refund policy" : "환불정책 확인하기"}</a></p></div>
       <div><span aria-hidden="true">▣</span><strong>{en ? "Your CSV stays in your browser" : "CSV는 브라우저에서만"}</strong><p>{en ? "Source rows are not sent for payment." : "결제할 때도 원본 행을 보내지 않습니다."}</p></div>
     </div>
     <SubscriptionReportPreview locale={locale} />

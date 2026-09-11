@@ -1,7 +1,7 @@
 "use client";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo, useEffect, useImperativeHandle } from "react";
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -254,6 +254,7 @@ function xlsxFailureState(error) {
 
 export default function CsvUploader({
   toolId,
+  refreshRef = null,
   analyticsToolId = toolId,
   showToolGuide = true,
   locale = "ko",
@@ -571,7 +572,7 @@ export default function CsvUploader({
   const handleRefreshSheet = async () => {
     if (!csvData?.sheetUrl) return;
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
-    if (!apiKey) return;
+    if (!apiKey) { setErrorMsg(locale === "en" ? "Sheet refresh is unavailable here. Upload an exported CSV instead." : "현재 환경에서는 시트를 갱신할 수 없습니다. 내보낸 CSV를 올려 주세요."); return; }
     setErrorMsg("");
     setRefreshingSheet(true);
     trackProductEvent("data_import_start", { tool_id: eventToolId, source: "google_sheets", placement: analyticsPlacement, locale });
@@ -588,6 +589,8 @@ export default function CsvUploader({
       setRefreshingSheet(false);
     }
   };
+
+  useImperativeHandle(refreshRef, () => ({ refreshSheet: handleRefreshSheet }));
 
   const handleMappingChange = (header, value) => {
     const mapping = { ...csvData.mapping, [header]: value };
