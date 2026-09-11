@@ -12,7 +12,31 @@ describe("private account notification delivery", () => {
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail, close: mocks.close });
     mocks.sendMail.mockResolvedValue({ accepted: ["reader@example.com"] });
   });
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  it("uses the existing Resend key over HTTPS without opening SMTP", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.resend.com");
+    vi.stubEnv("SMTP_USER", "resend");
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "message-id" }) });
+    vi.stubGlobal("fetch", fetch);
+    await sendAccountMail("reader@example.com", "Title", "Body", "<job@example.com>");
+    expect(mocks.createTransport).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({ method: "POST", redirect: "error", signal: expect.any(AbortSignal) }));
+    const options = fetch.mock.calls[0][1];
+    expect(options.headers.Authorization).toBe("Bearer test@example.com");
+    expect(options.headers["Idempotency-Key"]).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.parse(options.body)).toEqual({ from: "test@example.com", to: ["reader@example.com"], subject: "Title", text: "Body" });
+  });
+  it.each(["rejected", "missing-id", "network"])("fails closed for Resend %s without SMTP fallback", async kind => {
+    vi.stubEnv("SMTP_HOST", "smtp.resend.com");
+    vi.stubEnv("SMTP_USER", "resend");
+    const fetch = vi.fn().mockImplementation(async () => {
+      if (kind === "network") throw new Error("private provider error");
+      return { ok: kind !== "rejected", json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetch);
+    await expect(sendAccountMail("reader@example.com", "Title", "Body")).rejects.toThrow("MAIL_UNAVAILABLE");
+    expect(mocks.createTransport).not.toHaveBeenCalled();
+  });
   it("requires a strong job credential, never an anonymous GET", () => {
     expect(() => authorizeMailJob(new Request("https://example.com"))).toThrow();
     expect(() => authorizeMailJob(new Request("https://example.com", { headers: { authorization: `Bearer ${"a".repeat(40)}` } }))).not.toThrow();

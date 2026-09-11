@@ -39,6 +39,8 @@
 
 ## 메일 작업 구성
 
+- Resend 연결은 `SMTP_HOST=smtp.resend.com`·`SMTP_USER=resend`이면 HTTPS API를 사용한다. 기존 `SMTP_PASS`에 저장한 Resend 키를 재사용하며 새 키 입력은 필요 없다. Railway Pro 미만의 SMTP 차단을 피하기 위한 전송 방식이며, 다른 SMTP 제공자의 TLS 발송 경로는 유지한다. 수신처·본문·동의 범위는 바뀌지 않는다. API 수락은 받은편지함 도착을 뜻하지 않는다.
+- 2026-09-11 운영 DB에 `scripts/accounts-schema.sql`을 단일 트랜잭션으로 적용했다(COMMIT 및 계정 테이블 6개 확인). 변경 전 pg_dump custom-format 백업은 DB 볼륨의 `/var/lib/postgresql/data/gop-pre-account-EJBGSH/database.dump`에 권한 600으로 생성했고 pg_restore 목록을 확인했다. 같은 볼륨이므로 재해 복구용 외부 백업이나 실제 복원 검증을 대체하지 않는다. Railway 기본 백업 기능은 현재 요금제에서 사용할 수 없다. DB 설정 화면의 기존 리전 `europe-west4-drams3a` 경고는 미해결이며 임의 이동하지 않았다.
 - 2026-09-11 Resend `mail.growthoptplaybook.com`의 Tokyo(ap-northeast-1) 발송 도메인 인증을 완료했다. Porkbun의 기존 10개 레코드는 유지하고 TXT `resend._domainkey.mail`, CNAME `rsend.mail` → `rsend-apne1.forge.rmta.net`, CNAME `send.mail` → `send.forge.rmta.net`만 추가했다. 외부 DNS 조회와 Resend `Verified`를 확인했다. 메일·로그의 미국 저장 및 보관 기간을 SSOT와 KO/EN 개인정보처리방침에 반영했다. 운영 사이트 배포는 별도 확인해야 한다.
 - Resend SMTP 설정: `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`. `SMTP_PASS`에는 해당 발송 도메인의 Sending access 키를 운영자가 직접 입력한다. `SMTP_FROM`은 인증된 `mail.growthoptplaybook.com` 아래 주소여야 한다. 키 생성·호스팅 입력·테스트 발송은 아직 미완료이며 DNS 인증만으로 앱 발송이 켜지지 않는다. 추적용 서브도메인은 구성하지 않았다.
 - 서버에 `ACCOUNT_MAIL_ENABLED=true`, `SMTP_HOST`, `SMTP_PORT`(465 또는 587), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`을 설정한다. SMTP는 TLS를 요구하며 인증서 검증을 끄지 않는다. 활성화 전 등록한 운영자 주소로 실제 수신·반송을 검증한다.

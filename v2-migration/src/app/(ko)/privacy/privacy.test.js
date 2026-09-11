@@ -11,7 +11,7 @@ describe("device-storage privacy contract", () => {
     for (const source of [koSource, enSource]) {
       expect(source).toContain("Plus Five Five, Inc.");
       expect(source).toContain("ap-northeast-1");
-      expect(source).toContain("TLS SMTP");
+      expect(source).toContain("TLS HTTPS");
       expect(source).toContain('href="https://resend.com/security/gdpr"');
     }
     expect(koSource).toContain("미국에 저장");
