@@ -58,16 +58,17 @@ export const WORKSPACE_NAV = [
     href: "/weekly-review",
     icon: "◷",
     // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
-    ko: { name: "주간 리뷰", desc: "비교 → 결정 기록 → 다음 결과 검토" },
-    en: { name: "Weekly Review", desc: "Compare → decide → review the next results" },
+    ko: { name: "프로젝트 리뷰", desc: "프로젝트별 주간 비교·결정·보고서" },
+    en: { name: "Project review", desc: "Weekly comparisons, decisions and reports by project" },
   },
   {
     id: "projects",
+    secondary: true,
     group: "manage",
     href: "/projects",
     icon: "▣",
-    ko: { name: "프로젝트 보관함", desc: "고객·앱별 리뷰와 지난 결정" },
-    en: { name: "Projects", desc: "Reviews and decisions by client or app" },
+    ko: { name: "내 프로젝트 관리", desc: "프로젝트 리뷰의 저장·백업 관리" },
+    en: { name: "Manage my projects", desc: "Storage and backups within project review" },
   },
   {
     id: "subscription",
@@ -94,7 +95,7 @@ export function workspaceNavItem(id, locale = "ko") {
   const entry = byId[id];
   if (!entry) return null;
   const copy = entry[locale] || entry.ko;
-  return { id: entry.id, href: entry.href, icon: entry.icon, group: entry.group, ...copy };
+  return { id: entry.id, href: entry.href, icon: entry.icon, group: entry.group, secondary: entry.secondary === true, ...copy };
 }
 
 export function workspaceNavItems(locale = "ko") {

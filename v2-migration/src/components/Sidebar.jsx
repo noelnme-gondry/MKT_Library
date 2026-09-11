@@ -132,7 +132,7 @@ function SidebarContents({ locale = "ko", onNavigate }) {
       <nav className="sidebar-primary-nav library-nav" aria-label={locale === "en" ? "Library and workspace" : "라이브러리와 워크스페이스"}>
         {WORKSPACE_NAV_GROUPS.map((group) => <div className="library-nav-group" key={group.id}>
           <div className="library-nav-group__label">{group[locale === "en" ? "en" : "ko"]}</div>
-          {workspaceNavItems(locale).filter((item) => item.group === group.id).map((item) => {
+          {workspaceNavItems(locale).filter((item) => item.group === group.id && !item.secondary).map((item) => {
             const isReview = item.id === "review";
             const isActive = cleanPath === item.href || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
             return <Link key={item.id}

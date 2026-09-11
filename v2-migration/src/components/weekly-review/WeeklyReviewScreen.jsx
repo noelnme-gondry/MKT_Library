@@ -168,12 +168,12 @@ function money(value) {
   return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export default function WeeklyReviewScreen({ locale = "ko" }) {
+export default function WeeklyReviewScreen({ locale = "ko", embedded = false }) {
   const activeProjectId = useAppStore(state => state.activeProjectId);
-  return <ProjectWeeklyReview key={activeProjectId} locale={locale} projectId={activeProjectId} />;
+  return <ProjectWeeklyReview key={activeProjectId} locale={locale} projectId={activeProjectId} embedded={embedded} />;
 }
 
-function ProjectWeeklyReview({ locale, projectId }) {
+function ProjectWeeklyReview({ locale, projectId, embedded }) {
   const sheetRefreshRef = useRef(null);
   const [refreshingConnectedSheet, setRefreshingConnectedSheet] = useState(false);
   const t = COPY[locale] || COPY.ko;
@@ -245,6 +245,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
       const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
       if (result.ok) setTargetCurrency(csvData.currency);
       setProjectStatus(result.ok ? (locale === "en" ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.") : (locale === "en" ? "Could not save. This session still works." : "저장하지 못했습니다. 현재 세션에서는 계속 사용할 수 있습니다."));
+      if (result.ok) await useAppStore.getState().refreshProjects();
       if (result.ok) trackProductEvent("weekly_project_saved", { locale, tool_id: "weekly-review", source: reviewSource });
       else trackProductEvent("weekly_project_save_failed", { locale, tool_id: "weekly-review", source: reviewSource });
       return result.ok;
@@ -353,7 +354,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
     return (
       <article className="content wr-screen">
         <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
-      <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>
+      {!embedded && <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>}
         <header className="wr-screen__head">
           <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
@@ -411,7 +412,7 @@ function ProjectWeeklyReview({ locale, projectId }) {
   return (
     <article className="content wr-screen">
       <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
-      <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>
+      {!embedded && <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>}
 
       <header className="wr-screen__head">
         <div className="wr-screen__eyebrow">{t.eyebrow}</div>

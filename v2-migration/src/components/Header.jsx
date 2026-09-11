@@ -16,6 +16,7 @@ import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 import { trackProductEvent } from "@/lib/analytics";
 import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
+import MyAccountMenu from "./MyAccountMenu";
 
 const HEADER_COPY = {
   ko: {
@@ -194,7 +195,7 @@ export default function Header({ locale = "ko" }) {
             <><span className="sep">/</span><span className="current current--section">
               {isWeeklyReport
                 ? (locale === "en" ? "Weekly report" : "주간 보고서")
-                : (locale === "en" ? "Weekly Review" : "주간 리뷰")}
+                : workspaceNavItem("review", locale).name}
             </span></>
           )}
           {isGlossary && <><span className="sep">/</span><Link href={glossaryHref} className="current current--section">{locale === "en" ? "Glossary" : "용어사전"}</Link></>}
@@ -261,7 +262,6 @@ export default function Header({ locale = "ko" }) {
               <span className="header-utility-menu__label">{T.utilities}</span>
             </summary>
             <div className="header-utility-menu__panel">
-              <Link href={locale === "en" ? "/en/projects" : "/projects"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Projects" : "프로젝트 보관함"}</Link>
               <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
               <ProjectSettingsMenu locale={locale} />
               <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>
@@ -293,6 +293,7 @@ export default function Header({ locale = "ko" }) {
               </button>
             </div>
           </details>
+          <MyAccountMenu locale={locale} />
         </div>
       </div>
     </header>
