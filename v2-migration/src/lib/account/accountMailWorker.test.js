@@ -1,0 +1,25 @@
+import { afterEach, expect, it, vi } from "vitest";
+const mock = vi.hoisted(() => ({ dispatch: vi.fn(), enabled: true }));
+vi.mock("./accountMail", () => ({ mailEnabled: () => mock.enabled, dispatchAccountMail: mock.dispatch }));
+vi.mock("./accountServer", () => ({ accountsEnabled: () => true }));
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+it("runs once per interval, survives failures and never overlaps a batch", async () => {
+  vi.resetModules(); vi.useFakeTimers();
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  let resolve;
+  mock.dispatch.mockImplementationOnce(() => new Promise(done => { resolve = done; })).mockRejectedValueOnce(new Error("private"));
+  const { startAccountMailWorker } = await import("./accountMailWorker");
+  startAccountMailWorker(); startAccountMailWorker();
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(mock.dispatch).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(15 * 60000);
+  expect(mock.dispatch).toHaveBeenCalledTimes(1);
+  resolve({ sent: 1, failed: 0 });
+  await vi.advanceTimersByTimeAsync(15 * 60000);
+  expect(mock.dispatch).toHaveBeenCalledTimes(2);
+  expect(console.error).toHaveBeenCalledWith("account_mail_worker_unavailable");
+  mock.dispatch.mockResolvedValue({ sent: 0, failed: 0 });
+  await vi.advanceTimersByTimeAsync(15 * 60000);
+  expect(mock.dispatch).toHaveBeenCalledTimes(3);
+});

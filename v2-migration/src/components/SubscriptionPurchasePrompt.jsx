@@ -10,6 +10,7 @@ import { trackProductEvent } from "@/lib/analytics";
 export default function SubscriptionPurchasePrompt() {
   const prompt = useAppStore(state => state.purchasePrompt);
   const [availability, setAvailability] = useState("loading");
+  const [reasonPrompt, setReasonPrompt] = useState(null);
   useEffect(() => {
     if (!prompt) return;
     let active = true;
@@ -28,7 +29,7 @@ export default function SubscriptionPurchasePrompt() {
     {availability === "unavailable" && <p role="status">{en ? "Purchases are currently unavailable. You can continue your analysis or contact support." : "지금은 구매할 수 없습니다. 분석은 계속할 수 있으며 구매 관련 사항은 고객센터로 문의해 주세요."}</p>}
     <Link className="btn primary" href={availability === "unavailable" ? (en ? "/en/subscription#report-preview-title" : "/subscription#report-preview-title") : (en ? "/en/subscription#purchase" : "/subscription#purchase")} onClick={close}>{availability === "unavailable" ? (en ? "View free sample reports" : "무료 샘플 보고서 보기") : (en ? "View the pass and purchase" : "이용권 확인하고 구매")}</Link>
     <p>{en ? "When you pay, this browser temporarily saves your current work before opening the payment window." : "결제 실행 시 현재 작업을 이 브라우저에 임시 보관한 뒤 결제창을 엽니다."}</p>
-    <details><summary>{en ? "Not ready to purchase? (optional)" : "구매를 보류하는 이유가 있나요? (선택)"}</summary><div className="purchase-reasons">{["price", "identity", "trust", "refund", "later"].map((reason, index) => <button className="btn ghost" type="button" key={reason} onClick={() => { trackProductEvent("subscription_gate_reason", { tool_id: prompt?.toolId, locale: en ? "en" : "ko", gate_reason: reason, source: "purchase_prompt" }); close(); }}>{(en ? ["Price", "Account requirements", "Need more confidence", "Refund terms", "Not now"] : ["가격", "계정 요구", "신뢰·효용 확인", "환불 조건", "지금은 아님"])[index]}</button>)}</div></details>
+    <details><summary>{en ? "Not ready to purchase? (optional)" : "구매를 보류하는 이유가 있나요? (선택)"}</summary><div className="purchase-reasons">{["price", "identity", "trust", "refund", "later"].map((reason, index) => <button className="btn ghost" type="button" key={reason} disabled={reasonPrompt === prompt} onClick={() => { trackProductEvent("subscription_gate_reason", { tool_id: prompt?.toolId, locale: en ? "en" : "ko", gate_reason: reason, source: "purchase_prompt" }); setReasonPrompt(prompt); }}>{(en ? ["Price", "Account requirements", "Need more confidence", "Refund terms", "Not now"] : ["가격", "계정 요구", "신뢰·효용 확인", "환불 조건", "지금은 아님"])[index]}</button>)}</div>{reasonPrompt === prompt && <p role="status">{en ? "Thank you for your feedback. You can close this window and continue your analysis." : "의견 감사합니다. 이 창을 닫고 분석을 계속할 수 있습니다."}</p>}</details>
     <p className="purchase-dialog-note">{en ? "Analysis stays free. Report generation happens in your browser; source data is not uploaded." : "분석은 계속 무료입니다. 보고서는 브라우저에서 생성하며 원본을 서버에 보내지 않습니다."}</p>
   </ModalDialog>;
 }

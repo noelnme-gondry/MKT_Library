@@ -20,4 +20,12 @@ describe("account and purchased Pro coexistence", () => {
     expect(state.setEntitlement).toHaveBeenCalledWith(null);
     spy.mockRestore();
   });
+  it("keeps the recovery flag when logging in with the same paid expiry", async () => {
+    const now = Date.now();
+    state.entitlement = { plan: "paid", payment: true, expiresAt: now + 30 * 86400000, offlineUntil: now + 72 * 3600000 };
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ entitlement: { ...state.entitlement, payment: false, account: true } }));
+    await refreshAccount();
+    expect(state.setEntitlement).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });

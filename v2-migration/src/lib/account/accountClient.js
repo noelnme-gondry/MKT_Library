@@ -8,10 +8,15 @@ export async function accountRequest(path, options) {
   return data;
 }
 export async function refreshAccount() {
-  const data = await accountRequest("session");
+  let data;
+  try { data = await accountRequest("session"); }
+  catch (error) {
+    if (error.message === "ACCOUNT_RESTRICTED" && useAppStore.getState().entitlement?.account) useAppStore.getState().setEntitlement(null);
+    throw error;
+  }
   const current = useAppStore.getState().entitlement;
   // Do not shorten an existing anonymous purchase while the owner links it.
-  if (data.entitlement && !(current && !current.account && hasPaidAccess(current) && current.expiresAt > data.entitlement.expiresAt)) useAppStore.getState().setEntitlement(data.entitlement);
+  if (data.entitlement && !(current && !current.account && hasPaidAccess(current) && current.expiresAt >= data.entitlement.expiresAt)) useAppStore.getState().setEntitlement(data.entitlement);
   else if (useAppStore.getState().entitlement?.account) useAppStore.getState().setEntitlement(null);
   return data;
 }

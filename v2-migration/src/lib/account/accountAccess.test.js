@@ -35,7 +35,7 @@ describe("server pilot allowlist", () => {
   const callback = () => new Request(`https://growthoptplaybook.com/api/account/callback?code=code&state=${"a".repeat(64)}`, { headers: { cookie: `gop_oauth_state=${"a".repeat(64)}` } });
   it("rejects a verified outsider before creating accounts or sessions", async () => {
     mocks.identity.email = "other@example.com";
-    await expect(finishGoogleLogin(callback())).rejects.toThrow("INVALID_LOGIN");
+    await expect(finishGoogleLogin(callback())).rejects.toThrow("ACCOUNT_RESTRICTED");
     expect(mocks.query.mock.calls.some(([sql]) => sql.startsWith("INSERT"))).toBe(false);
   });
   it("allows the verified pilot owner without starting a trial at login", async () => {
@@ -49,8 +49,8 @@ describe("server pilot allowlist", () => {
   });
   it("blocks session issuance including old email links and existing sessions", async () => {
     mocks.identity.email = "other@example.com";
-    await expect(issueAccountSession("outsider")).rejects.toThrow("INVALID_LOGIN");
-    expect(await readAccount(new Request("https://growthoptplaybook.com", { headers: { cookie: `gop_account=${"b".repeat(64)}` } }))).toBeNull();
+    await expect(issueAccountSession("outsider")).rejects.toThrow("ACCOUNT_RESTRICTED");
+    await expect(readAccount(new Request("https://growthoptplaybook.com", { headers: { cookie: `gop_account=${"b".repeat(64)}` } }))).rejects.toThrow("ACCOUNT_RESTRICTED");
     expect(mocks.query.mock.calls.some(([sql]) => sql.startsWith("INSERT"))).toBe(false);
   });
 });

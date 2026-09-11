@@ -9,7 +9,7 @@ export async function POST(request) {
     // Verify the private payment cookie and current provider status before linking.
     const access = await readPaymentAccess(request);
     const orderId = access.body.recoveryCode?.split(".")[0];
-    if (!access.body.entitlement || !orderId) throw new Error("PRO_REQUIRED");
+    if (!access.body.entitlement || !orderId) throw new Error("NO_PURCHASE");
     const linked = await accountDatabase().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1 AND (account_id IS NULL OR account_id=$2)", [orderId, owner.id]);
     if (!linked.rowCount) throw new Error("INVALID_LOGIN");
     return accountResponse({ ok: true });

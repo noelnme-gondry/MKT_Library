@@ -50,6 +50,7 @@ for (const locale of ["ko", "en"]) {
     await trigger.focus(); await page.keyboard.press("Enter");
     const gate = page.getByRole("dialog", { name: en ? "Take your analysis into your next meeting" : "분석을 다음 회의에서 바로 쓰세요" });
     await expect(gate).toBeVisible(); await expect(gate).toContainText("Word"); await expect(gate).toContainText("Excel");
+    await expect(page).not.toHaveTitle("");
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape"); await expect(gate).toBeHidden(); await expect(trigger).toBeFocused();
     await trigger.click();
@@ -61,14 +62,16 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator("#purchase")).toContainText("5,900");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");
+    await expect(page).not.toHaveTitle("");
     await expectNoSeriousAccessibilityViolations(page);
     expect(downloads).toHaveLength(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });
   test(`payment action follows methods and agreement (${locale})${tag}`, async ({ page }) => {
+    const orders = [];
     await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
     await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
-    await page.route("**/api/payments/order", route => route.fulfill({ json: { customerKey: "fixture", orderId: "fixture", amount: 5900 } }));
+    await page.route("**/api/payments/order", route => { orders.push(route.request()); return route.fulfill({ json: { customerKey: "fixture", orderId: "fixture", amount: 5900 } }); });
     await page.addInitScript(() => {
       window.TossPayments = () => ({ widgets: () => ({
         setAmount: async () => {},
@@ -80,8 +83,18 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByRole("button", { name: en ? "Choose payment method" : "결제수단 선택", exact: true })).toHaveCount(0);
     const pay = page.getByRole("button", { name: en ? "Pay KRW 5,900" : "5,900원 결제하기", exact: true });
     await expect(pay).toBeEnabled();
+    expect(orders).toHaveLength(0);
     expect(await pay.evaluate(button => Boolean(document.querySelector("#toss-payment-agreement").compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     expect((await pay.boundingBox()).y).toBeGreaterThan((await page.locator("#toss-payment-agreement").boundingBox()).y);
+  });
+  test(`pending deposits do not offer another payment (${locale})${tag}`, async ({ page }) => {
+    await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
+    await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null, status: "waiting_for_deposit", orderId: "gop_fixture_pending" } }));
+    await page.goto(`${prefix}/subscription#purchase`);
+    await expect(page.getByRole("heading", { name: en ? "Waiting for your deposit" : "입금 확인을 기다리고 있습니다" })).toBeVisible();
+    await expect(page.getByRole("button", { name: en ? "Pay KRW 5,900" : "5,900원 결제하기", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: en ? "Check deposit status" : "입금 상태 확인" }).click();
+    await expect(page.getByText(en ? /Deposit has not been confirmed/ : /아직 입금 완료가 확인되지 않았습니다/)).toBeVisible();
   });
   test(`mock checkout approval and recovery (${locale})${tag}`, async ({ page }) => {
     const sent = [];

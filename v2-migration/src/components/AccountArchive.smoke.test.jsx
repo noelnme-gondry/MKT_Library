@@ -46,4 +46,17 @@ describe("account archive consent and re-entry", () => {
     expect(useAppStore.getState().decisionRecords.map(record => record.id)).toEqual(["remote-1", "local-1"]);
     expect(screen.getByRole("button", { name: "이 기기의 검토 목록으로 복사" }).disabled).toBe(true);
   });
+  it.each(["ko", "en"])("does not offer a purchase claim to someone with no purchased pass (%s)", async locale => {
+    render(<AccountArchive locale={locale} profile />);
+    await screen.findByText(/owner@example.com/);
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Link the purchased pass on this device" : "이 기기의 구매 이용권 연결" })).toBeNull();
+  });
+  it.each(["ko", "en"])("distinguishes a missing purchased pass from an expired trial (%s)", async locale => {
+    useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 86400000 } });
+    mocks.request.mockRejectedValue(new Error("NO_PURCHASE"));
+    render(<AccountArchive locale={locale} profile />);
+    fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Link the purchased pass on this device" : "이 기기의 구매 이용권 연결" }));
+    await screen.findByText(locale === "en" ? /No active purchased pass was found/ : /연결할 구매 이용권을 찾지 못했습니다/);
+    expect(screen.queryByText(locale === "en" ? /Your trial has ended/ : /체험이 종료됐습니다/)).toBeNull();
+  });
 });

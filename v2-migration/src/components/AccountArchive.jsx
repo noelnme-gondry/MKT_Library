@@ -20,6 +20,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
   const [email, setEmail] = useState("");
   const [reminder, setReminder] = useState(false);
   const localRecords = useAppStore(state => state.decisionRecords);
+  const entitlement = useAppStore(state => state.entitlement);
   const [selectedId, setSelectedId] = useState("");
   const [trialReturn, setTrialReturn] = useState(null);
   useEffect(() => {
@@ -43,10 +44,14 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
           if (bucket === "expired" && !next.entitlement) trackProductEventOnce("trial_expired", `trial-expired:${locale}`, { locale, trial_remaining_bucket: bucket });
         }
         if (next.account && !record && !profile) { const result = await accountRequest("memos"); if (active && currentVersion === version) setMemos(result.memos); }
-      } catch { if (active) setMessage(en ? "Account storage is unavailable. Your local records remain here." : "계정 보관함에 연결하지 못했습니다. 로컬 기록은 그대로 유지됩니다."); }
+      } catch (error) { if (active) setMessage(error.message === "ACCOUNT_RESTRICTED" ? (en ? "This account is outside the current pilot. Saved records have not been deleted. Anonymous analysis remains available." : "현재 검증 대상이 아닌 계정입니다. 저장한 기록이 삭제된 것은 아닙니다. 익명 분석은 계속 이용할 수 있습니다.") : (en ? "Account storage is unavailable. Your local records remain here." : "계정 보관함에 연결하지 못했습니다. 로컬 기록은 그대로 유지됩니다.")); }
     };
     refresh();
-    const onMessage = event => { if (event.origin === window.location.origin && event.data?.type === "gop-account-ready") { if (!loginMessages.has(event)) { loginMessages.add(event); trackProductEvent("login_completed", { locale }); } refresh(); } };
+    const onMessage = event => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "gop-account-failed") setMessage(event.data.code === "ACCOUNT_RESTRICTED" ? (en ? "Account features are in a restricted pilot. Anonymous analysis remains available." : "계정 기능은 현재 제한 검증 중입니다. 익명 분석은 계속 이용할 수 있습니다.") : (en ? "Sign-in did not complete. Retry from this window; open email links in this same browser." : "로그인을 완료하지 못했습니다. 이 창에서 다시 시도하고 이메일 링크도 같은 브라우저에서 열어 주세요."));
+      if (event.data?.type === "gop-account-ready") { if (!loginMessages.has(event)) { loginMessages.add(event); trackProductEvent("login_completed", { locale }); } refresh(); }
+    };
     window.addEventListener("message", onMessage);
     window.addEventListener("focus", refresh);
     window.addEventListener("gop-account-changed", refresh);
@@ -57,7 +62,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     setBusy(true); setMessage("");
     try { await action(); }
     catch (error) {
-      setMessage(error.message === "PRO_REQUIRED" ? (en ? "Your trial has ended. Existing memos can still be read and exported." : "체험이 종료됐습니다. 기존 메모는 계속 읽고 내보낼 수 있습니다.") : (en ? "Could not complete this action. Your local records remain unchanged." : "처리하지 못했습니다. 로컬 기록은 그대로 유지됩니다."));
+      setMessage(error.message === "NO_PURCHASE" ? (en ? "No active purchased pass was found in this browser. Restore your purchased pass first." : "이 브라우저에서 연결할 구매 이용권을 찾지 못했습니다. 구매한 이용권을 먼저 복원해 주세요.") : error.message === "PRO_REQUIRED" ? (en ? "Active Pro access is required to save or update memos. Existing memos can still be read and exported." : "메모 저장·수정에는 유효한 Pro 이용권이 필요합니다. 기존 메모는 계속 읽고 내보낼 수 있습니다.") : (en ? "Could not complete this action. Your local records remain unchanged." : "처리하지 못했습니다. 로컬 기록은 그대로 유지됩니다."));
     } finally { setBusy(false); }
   };
   const selected = record || localRecords.find(item => item.id === selectedId);
@@ -83,7 +88,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     }}>{en ? "Continue with Google" : "Google로 계속"}</button> : <>
       <p>{session.account.email} · {session.entitlement ? `${en ? "Pro until" : "Pro 만료"} ${new Date(session.entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}` : session.account.trialStartedAt ? (en ? "Trial ended" : "체험 종료") : (en ? "Trial starts on first save" : "첫 저장 시 체험 시작")}</p>
       {session.mailEnabled && <label><input type="checkbox" checked={session.account.serviceReminders === true} disabled={busy} onChange={event => { const enabled = event.target.checked; run(async () => { await accountRequest(`preferences?reminders=${enabled ? "on" : "off"}`, { method: "POST" }); setSession(await refreshAccount()); }); }} />{en ? "Receive selected review reminders and a Pro expiry notice by email (optional; not marketing)." : "선택한 검토일·Pro 만료 안내를 이메일로 받습니다 (선택, 마케팅 아님)."}</label>}
-      <button className="btn" disabled={busy} onClick={() => run(async () => { await accountRequest("claim-pass", { method: "POST" }); setSession(await refreshAccount()); setMessage(en ? "Purchased pass linked to this account." : "구매한 이용권을 이 계정에 연결했습니다."); })}>{en ? "Link the purchased pass on this device" : "이 기기의 구매 이용권 연결"}</button>
+      {entitlement?.payment && !entitlement?.account && <button className="btn" disabled={busy} onClick={() => run(async () => { await accountRequest("claim-pass", { method: "POST" }); setSession(await refreshAccount()); setMessage(en ? "Purchased pass linked to this account." : "구매한 이용권을 이 계정에 연결했습니다."); })}>{en ? "Link the purchased pass on this device" : "이 기기의 구매 이용권 연결"}</button>}
       {!record && !profile && <label>{en ? "Choose a local decision to save" : "계정에 보관할 로컬 결정 선택"}<select value={selectedId} onChange={event => { setSelectedId(event.target.value); setConsent(false); }}><option value="">{en ? "Choose a decision" : "결정 선택"}</option>{localRecords.map(item => <option key={item.id} value={item.id}>{item.action}</option>)}</select></label>}
       {preview && <><details><summary>{en ? "Review the memo being sent" : "계정에 보낼 메모 확인"}</summary><dl>{Object.entries(preview).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></details><label><input type="checkbox" checked={consent === selected.id} onChange={event => setConsent(event.target.checked ? selected.id : "")} />{en ? "Store this selected memo in my account." : "선택한 메모를 계정에 보관합니다."}</label>{session.mailEnabled && session.account.serviceReminders && preview.reviewDate && <label><input type="checkbox" checked={reminder} onChange={event => setReminder(event.target.checked)} />{en ? "Email me on this review date while Pro is active (optional)." : "Pro 이용기간 중 이 검토일에 이메일로 알려 주세요 (선택)."}</label>}<button className="btn primary" disabled={busy || consent !== selected.id} onClick={save}>{en ? "Save decision to account" : "결정 메모 계정에 저장"}</button></>}
       {!session.entitlement && session.account.trialStartedAt && <Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "View Pro" : "Pro 이용권 보기"}</Link>}
