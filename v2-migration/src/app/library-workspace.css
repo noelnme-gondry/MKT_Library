@@ -296,18 +296,37 @@
   .home-tool-finder__search { grid-area: 2 / 1 / auto / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
   .home-tool-finder__search label { font-weight: 650; }
   .home-tool-finder__search input { flex: 1; min-width: 180px; min-height: 48px; padding: 12px 16px; font-size: 16px; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); }
-  .home-tool-finder__search button, .home-tool-finder__tool-heading button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); }
+  .home-tool-finder__search button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); color: var(--library-text); }
   .home-tool-finder button[aria-pressed="true"], .home-tool-finder__purposes button[aria-expanded="true"] { background: var(--library-accent-surface); border-color: var(--library-accent); color: var(--library-accent); }
-  .home-tool-finder__results { gap: 16px; }
-  .home-tool-finder__tool { display: flex; flex-direction: column; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); min-width: 0; overflow-wrap: anywhere; }
-  .home-tool-finder__tool-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-  .home-tool-finder__tool-heading h3 { font-size: 19px; margin: 8px 0; }
-  .home-tool-finder__tool-heading button { flex-shrink: 0; font-size: 13px; }
-  .home-tool-finder__tool p { color: var(--library-muted); margin: 12px 0; line-height: 1.7; }
-  .home-tool-finder__tool dl { margin: 4px 0 20px; font-size: 14px; line-height: 1.7; }
-  .home-tool-finder__tool dt { font-weight: 650; margin-top: 12px; }
-  .home-tool-finder__tool dd { margin: 4px 0 0; color: var(--library-muted); }
-  .dc-questions .home-tool-finder__results .tool-index__link { margin-top: auto; align-self: start; padding: 10px 18px; border: 1px solid var(--library-accent); border-radius: 7px; background: var(--library-accent-surface); color: var(--library-accent); font-weight: 650; }
+  .home-tool-finder__result-header { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 16px; }
+  .home-tool-finder__result-header h3 { margin: 0; font-size: 18px; color: var(--library-text); }
+  .home-tool-finder__result-header p { margin: 0; font-size: 13px; color: var(--library-muted); }
+  .home-tool-finder__results { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .home-tool-finder__tool { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(0, 1.6fr) 132px; align-items: start; gap: 28px; padding: 24px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); min-width: 0; overflow-wrap: anywhere; }
+  .home-tool-finder__tool-heading h3 { font-size: 19px; line-height: 1.4; margin: 0; color: var(--library-text); }
+  .home-tool-finder__tool-heading p { color: var(--library-muted); font-size: 14px; margin: 10px 0 0; line-height: 1.65; }
+  .home-tool-finder__tool dl { display: grid; gap: 16px; margin: 0; font-size: 14px; line-height: 1.65; }
+  .home-tool-finder__tool dt { font-size: 12px; font-weight: 650; margin: 0 0 5px; color: var(--library-muted); }
+  .home-tool-finder__tool dd { margin: 0; color: var(--library-text); }
+  .home-tool-finder__data { padding-top: 14px; border-top: 1px solid var(--library-border); }
+  .home-tool-finder__data ul { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0; list-style: none; }
+  .home-tool-finder__data li { padding: 3px 8px; border-radius: 4px; background: var(--library-background); font-size: 12px; color: var(--library-muted); }
+  .home-tool-finder__actions { display: grid; gap: 8px; }
+  .home-tool-finder__actions > :is(a, button) { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 650; line-height: 1.4; text-decoration: none; }
+  .home-tool-finder__open { background: var(--library-text); border: 1px solid var(--library-text); color: var(--library-surface); }
+  .home-tool-finder__open:hover { background: var(--library-accent); border-color: var(--library-accent); color: var(--library-background); }
+  .home-tool-finder__actions button { background: transparent; border: 1px solid var(--library-border); color: var(--library-muted); cursor: pointer; }
+  .home-tool-finder__actions > :focus-visible { outline: 2px solid var(--library-accent); outline-offset: 3px; }
+  @media (max-width: 1000px) {
+    .home-tool-finder__tool { grid-template-columns: minmax(0, 1fr) 132px; gap: 18px; }
+    .home-tool-finder__tool dl { grid-column: 1 / -1; grid-row: 2; }
+    .home-tool-finder__actions { grid-column: 2; grid-row: 1; }
+  }
+  @media (max-width: 540px) {
+    .home-tool-finder__tool { grid-template-columns: minmax(0, 1fr); }
+    .home-tool-finder__tool dl { grid-column: 1; grid-row: auto; }
+    .home-tool-finder__actions { grid-column: 1; grid-row: auto; grid-template-columns: 1fr 1fr; }
+  }
   @media (max-width: 600px) {
     .home-tool-finder__search label { flex-basis: 100%; }
     .home-tool-finder__search input { width: 100%; flex-basis: 100%; }
