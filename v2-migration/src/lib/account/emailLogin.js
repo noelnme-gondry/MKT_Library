@@ -2,12 +2,13 @@ import { randomBytes } from "node:crypto";
 import { SITE_URL } from "@/lib/routeMap";
 import { accountDatabase, accountHash, accountCookie, readCookie, accountSameOrigin, issueAccountSession } from "./accountServer";
 import { mailEnabled, sendAccountMail } from "./accountMail";
+import { accountEmailAllowed } from "./accountAccess";
 export async function requestEmailLogin(request, email, locale = "ko") {
   accountSameOrigin(request);
   if (!mailEnabled()) throw new Error("ACCOUNTS_UNAVAILABLE");
   if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("INVALID_LOGIN");
   const db = accountDatabase();
-  const accounts = (await db.query("SELECT id FROM gop_accounts WHERE lower(email)=lower($1)", [email.trim()])).rows;
+  const accounts = accountEmailAllowed(email) ? (await db.query("SELECT id FROM gop_accounts WHERE lower(email)=lower($1)", [email.trim()])).rows : [];
   const browser = randomBytes(32).toString("hex");
   // Never merge identities merely because they share an email address.
   if (accounts.length === 1) {

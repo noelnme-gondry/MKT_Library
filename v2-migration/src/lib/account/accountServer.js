@@ -3,6 +3,7 @@ import pg from "pg";
 import { OAuth2Client } from "google-auth-library";
 import { SITE_URL } from "@/lib/routeMap";
 import { accountEntitlement, archiveMemo } from "./archiveContract";
+import { accountEmailAllowed } from "./accountAccess";
 
 let pool;
 export const accountHash = value => createHash("sha256").update(value).digest("hex");
@@ -28,7 +29,7 @@ export async function readAccount(request) {
   const token = readCookie(request, sessionCookie);
   if (!/^[a-f0-9]{64}$/.test(token)) return null;
   const { rows } = await accountDatabase().query(`SELECT a.*, (SELECT max(p.expires_at) FROM gop_payment_orders p WHERE p.account_id=a.id AND p.status='paid' AND p.mode='live') AS paid_until FROM gop_account_sessions s JOIN gop_accounts a ON a.id=s.account_id WHERE s.token_hash=$1 AND s.expires_at>NOW()`, [hash(token)]);
-  return rows[0] || null;
+  return rows[0] && accountEmailAllowed(rows[0].email) ? rows[0] : null;
 }
 export async function requireAccount(request) {
   const account = await readAccount(request);
@@ -65,10 +66,13 @@ export async function finishGoogleLogin(request) {
   const ticket = await client.verifyIdToken({ idToken: tokens.id_token, audience: process.env.GOOGLE_CLIENT_ID });
   const identity = ticket.getPayload();
   if (!identity?.sub || !identity.email_verified || !identity.email || identity.nonce !== attempt.nonce) throw new Error("INVALID_LOGIN");
+  if (!accountEmailAllowed(identity.email)) throw new Error("INVALID_LOGIN");
   const account = (await accountDatabase().query("INSERT INTO gop_accounts(id,google_sub,email) VALUES($1,$2,$3) ON CONFLICT(google_sub) DO UPDATE SET email=EXCLUDED.email RETURNING id", [randomUUID(), identity.sub, identity.email])).rows[0];
   return issueAccountSession(account.id);
 }
 export async function issueAccountSession(accountId) {
+  const account = (await accountDatabase().query("SELECT email FROM gop_accounts WHERE id=$1", [accountId])).rows[0];
+  if (!account || !accountEmailAllowed(account.email)) throw new Error("INVALID_LOGIN");
   const token = randomBytes(32).toString("hex");
   await accountDatabase().query("INSERT INTO gop_account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '30 days')", [hash(token), accountId]);
   const headers = new Headers({ "Content-Type": "text/html;charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; script-src 'nonce-account-complete'" });

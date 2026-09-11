@@ -14,6 +14,14 @@ import { requestEmailLogin, finishEmailLogin } from "./emailLogin";
 describe("existing-account email login fallback", () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.send.mockResolvedValue(undefined); mocks.issue.mockImplementation(async () => new Response("ready")); });
   afterEach(() => vi.unstubAllEnvs());
+  it("silently skips blocked pilot email without querying accounts or sending mail", async () => {
+    vi.stubEnv("ACCOUNT_ALLOWED_EMAILS", "owner@example.com");
+    const response = await requestEmailLogin(new Request("https://growthoptplaybook.com", { headers: { origin: "https://growthoptplaybook.com" } }), "other@example.com");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(mocks.query).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
   it("does not create accounts or trials for unknown email addresses", async () => {
     mocks.query.mockResolvedValue({ rows: [] });
     const response = await requestEmailLogin(new Request("https://growthoptplaybook.com", { headers: { origin: "https://growthoptplaybook.com" } }), "unknown@example.com");
