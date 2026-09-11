@@ -270,3 +270,13 @@ it("does not restore a recovery token replaced during provider lookup", async ()
   fetch.mockImplementation(async () => { db.rows.get(input.orderId).access_hash = "b".repeat(64); return Response.json(payment); });
   expect((await readPaymentAccess(request(), approved.body.recoveryCode)).body.entitlement).toBeNull();
 });
+it("does not downgrade a committed deposit when an older waiting lookup arrives late", async () => {
+  const { cookie, input } = await fixture();
+  const approved = await confirmPayment(request(cookie), input);
+  db.rows.get(input.orderId).verified_at = new Date().toISOString();
+  payment.status = "WAITING_FOR_DEPOSIT";
+  const restored = await readPaymentAccess(request(), approved.body.recoveryCode);
+  expect(db.rows.get(input.orderId).status).toBe("paid");
+  expect(restored.body.entitlement.plan).toBe("paid");
+  expect(restored.body.status).toBeUndefined();
+});

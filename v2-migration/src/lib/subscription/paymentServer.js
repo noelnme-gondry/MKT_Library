@@ -63,6 +63,8 @@ async function toss(path, options = {}) {
 }
 async function syncOrder(client, order, payment) {
   if (payment.orderId !== order.id || payment.paymentKey !== order.payment_key || payment.totalAmount !== order.amount || payment.currency !== "KRW") throw new Error("PAYMENT_MISMATCH");
+  // A slower pre-deposit lookup must not undo a newer committed deposit webhook.
+  if (payment.status === "WAITING_FOR_DEPOSIT" && order.status === "paid") return cachedPaymentEntitlement(order);
   if (verifiedPayment(payment, order)) {
     // All callers hold a transaction/order lock. Serialize first allocations across
     // different orders belonging to the same account, without holding locks over HTTP.
@@ -82,7 +84,7 @@ async function syncOrder(client, order, payment) {
     return { plan: "paid", expiresAt: new Date(expiresAt).getTime(), verifiedAt: Date.now(), offlineUntil: Math.min(new Date(expiresAt).getTime(), Date.now() + SUBSCRIPTION.graceMs), payment: true };
   }
   if (["CANCELED", "PARTIAL_CANCELED", "ABORTED", "EXPIRED"].includes(payment.status) || payment.cancels?.length) await client.query("UPDATE gop_payment_orders SET status='revoked', verified_at=NOW() WHERE id=$1", [order.id]);
-  if (payment.status === "WAITING_FOR_DEPOSIT") await client.query("UPDATE gop_payment_orders SET status='pending', verified_at=NOW() WHERE id=$1 AND status <> 'revoked'", [order.id]);
+  if (payment.status === "WAITING_FOR_DEPOSIT") await client.query("UPDATE gop_payment_orders SET status='pending', verified_at=NOW() WHERE id=$1 AND status='pending'", [order.id]);
   return null;
 }
 async function syncExternalOrder(order, payment) {
@@ -169,7 +171,7 @@ export async function confirmPayment(request, input) {
     const latest = (await client.query("SELECT * FROM gop_payment_orders WHERE id=$1 FOR UPDATE", [order.id])).rows[0];
     if (!authorized(latest) || latest.status === "revoked" || latest.payment_key !== input.paymentKey || latest.amount !== input.amount || latest.mode !== order.mode) throw new Error("INVALID_ORDER");
     let entitlement = await syncOrder(client, latest, payment);
-    if (payment.status === "WAITING_FOR_DEPOSIT") {
+    if (payment.status === "WAITING_FOR_DEPOSIT" && !entitlement) {
       await client.query("COMMIT");
       // This is an ownership credential, not a paid entitlement. Keep it for delayed deposits.
       return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
@@ -216,7 +218,7 @@ export async function readPaymentAccess(request, recoveryCode) {
     if (!owns(latest, credential.token)) return { body: { entitlement: null } };
   }
   const active = entitlement?.expiresAt > Date.now();
-  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
+  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
 export async function reconcilePaymentWebhook(input) {
   const id = input?.data?.orderId;
