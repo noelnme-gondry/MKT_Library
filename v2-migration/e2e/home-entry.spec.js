@@ -24,7 +24,7 @@ async function checkHome(page, locale) {
   const search = page.getByRole("searchbox", { name: en ? "Find an analysis" : "필요한 분석 찾기" });
   await search.fill("ROAS");
   await expect(links.first()).toBeVisible();
-  const saved = page.locator(".home-tool-finder__tool-heading button").first();
+  const saved = page.locator(".home-tool-finder__results").getByRole("button", { name: en ? /^Save:/ : /^저장:/ }).first();
   await saved.click();
   await expect(saved).toHaveAttribute("aria-pressed", "true");
   await page.reload();
