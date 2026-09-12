@@ -8,6 +8,7 @@ import { serializeDecisionReviewCsv, serializeDecisionReviewIcs } from "@/lib/de
 import { downloadCsv, downloadCalendar } from "@/utils/download";
 import { trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
+import AccountDecisionLibrary from "./AccountDecisionLibrary";
 const loginMessages = new WeakSet();
 const ReviewSaveDialog = lazy(() => import("./ReviewSaveDialog"));
 
@@ -15,6 +16,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
   const en = locale === "en";
   const [session, setSession] = useState(null);
   const [memos, setMemos] = useState([]);
+  const [memosLoading, setMemosLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [consent, setConsent] = useState("");
@@ -39,6 +41,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
         const next = await refreshAccount();
         if (!active || currentVersion !== version) return;
         setMemos([]);
+        setMemosLoading(true);
         setSession(next);
         onSession?.(next);
         if (next.account) {
@@ -46,7 +49,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
           trackProductEventOnce("archive_gate_viewed", `archive:${locale}:${bucket}`, { locale, trial_remaining_bucket: bucket, state: next.entitlement ? "active" : "free" });
           if (bucket === "expired" && !next.entitlement) trackProductEventOnce("trial_expired", `trial-expired:${locale}`, { locale, trial_remaining_bucket: bucket });
         }
-        if (next.account && !record && !profile) { const result = await accountRequest("memos"); if (active && currentVersion === version) setMemos(result.memos); }
+        if (next.account && !record && !profile) { const result = await accountRequest("memos"); if (active && currentVersion === version) { setMemos(result.memos); setMemosLoading(false); } }
       } catch (error) { if (active && currentVersion === version) { setSession(null); onSession?.(null); setMessage(error.message === "ACCOUNT_RESTRICTED" ? (en ? "This account is outside the current pilot. Saved records have not been deleted. Anonymous analysis remains available." : "현재 검증 대상이 아닌 계정입니다. 저장한 기록이 삭제된 것은 아닙니다. 익명 분석은 계속 이용할 수 있습니다.") : (en ? "Account storage is unavailable. Your local records remain here." : "계정 보관함에 연결하지 못했습니다. 로컬 기록은 그대로 유지됩니다.")); } }
     };
     refresh();
@@ -78,6 +81,14 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     if (result.trialStarted) { trackProductEvent("trial_started", { locale, source: "first_memo" }); setTrialReturn(readPaymentReturn()); }
     setMessage(en ? "Decision memo saved to your account." : "결정 메모를 계정에 저장했습니다.");
   });
+  if (!record && !profile) return <AccountDecisionLibrary locale={locale} anchorId={anchorId} signedIn={Boolean(session.account)} memos={memos} loading={memosLoading} records={localRecords} busy={busy} message={message} onCopy={setPendingCopy}
+    onExport={() => downloadCsv(serializeDecisionReviewCsv(memos), "account-decisions")}
+    onCalendar={memo => downloadCalendar(serializeDecisionReviewIcs(memo, locale), "decision-review")}
+    onDelete={memo => run(async () => { await accountRequest(`memos?id=${encodeURIComponent(memo.id)}`, { method: "DELETE" }); setMemos(items => items.filter(item => item.id !== memo.id)); setMessage(en ? "Account copy deleted. Local records were kept." : "계정의 사본을 삭제했습니다. 로컬 기록은 유지됩니다."); })}
+    accountControls={<AccountArchive locale={locale} profile />}
+    renderSave={memo => <AccountArchive key={memo.id} locale={locale} record={memo} />}>
+    {pendingCopy && <Suspense fallback={<p role="status">{en ? "Opening save…" : "저장 창을 여는 중…"}</p>}><ReviewSaveDialog locale={locale} record={pendingCopy} onClose={() => setPendingCopy(null)} /></Suspense>}
+  </AccountDecisionLibrary>;
   return <section id={anchorId} className="account-archive block" aria-label={profile ? (en ? "My account" : "마이페이지") : (en ? "Account decision archive" : "계정 결정 보관함")}>
     {pendingCopy && <Suspense fallback={<p role="status">{en ? "Opening save…" : "저장 창을 여는 중…"}</p>}><ReviewSaveDialog locale={locale} record={pendingCopy} onClose={() => setPendingCopy(null)} /></Suspense>}
     {!compact && <h3>{profile ? (en ? "My account" : "마이페이지") : (en ? "Keep this decision across devices" : "다른 기기에서도 이 결정 이어보기")}</h3>}
@@ -90,8 +101,11 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
       if (!popup) { setMessage(en ? "Allow popups to sign in while keeping this analysis open." : "분석을 열어둔 채 로그인하려면 팝업을 허용해 주세요."); return; }
       run(async () => { try { const result = await accountRequest("login", { method: "POST" }); popup.location.replace(result.url); trackProductEvent("login_started", { locale }); } catch (error) { popup.close(); throw error; } });
     }}>{en ? "Continue with Google" : "Google로 계속"}</button> : <>
-      <p>{session.account.email} · {session.entitlement ? `${en ? "Pro until" : "Pro 만료"} ${new Date(session.entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}` : session.account.trialStartedAt ? (en ? "Trial ended" : "체험 종료") : (en ? "Trial starts on first save" : "첫 저장 시 체험 시작")}</p>
-      {!compact && session.mailEnabled && <label><input type="checkbox" checked={session.account.serviceReminders === true} disabled={busy} onChange={event => { const enabled = event.target.checked; run(async () => { await accountRequest(`preferences?reminders=${enabled ? "on" : "off"}`, { method: "POST" }); setSession(await refreshAccount()); }); }} />{en ? "Receive selected review reminders and a Pro expiry notice by email (optional; not marketing)." : "선택한 검토일·Pro 만료 안내를 이메일로 받습니다 (선택, 마케팅 아님)."}</label>}
+      <div className="account-identity">
+        <p className="account-identity__email">{session.account.email}</p>
+        <p className="account-identity__plan">{session.entitlement ? <><span>{en ? "Pro until" : "Pro 만료"}</span><time dateTime={new Date(session.entitlement.expiresAt).toISOString()}>{new Date(session.entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</time></> : session.account.trialStartedAt ? (en ? "Trial ended" : "체험 종료") : (en ? "Trial starts on first save" : "첫 저장 시 체험 시작")}</p>
+      </div>
+      {!compact && session.mailEnabled && <label className="account-reminder"><input type="checkbox" checked={session.account.serviceReminders === true} disabled={busy} onChange={event => { const enabled = event.target.checked; run(async () => { await accountRequest(`preferences?reminders=${enabled ? "on" : "off"}`, { method: "POST" }); setSession(await refreshAccount()); }); }} /><span className="account-reminder__copy"><span className="account-reminder__title">{en ? "Email reminders" : "이메일 알림 받기"}</span><span>{en ? "Get reminders for selected review dates and Pro expiry." : "선택한 검토일과 Pro 만료일을 알려드려요."}</span><span className="account-reminder__note">{en ? "Optional · No marketing emails" : "선택 사항 · 마케팅 메일 아님"}</span></span></label>}
       {!compact && entitlement?.payment && !entitlement?.account && <button className="btn" disabled={busy} onClick={() => run(async () => { await accountRequest("claim-pass", { method: "POST" }); setSession(await refreshAccount()); setMessage(en ? "Purchased pass linked to this account." : "구매한 이용권을 이 계정에 연결했습니다."); })}>{en ? "Link the purchased pass on this device" : "이 기기의 구매 이용권 연결"}</button>}
       {!record && !profile && <label>{en ? "Choose a local decision to save" : "계정에 보관할 로컬 결정 선택"}<select value={selectedId} onChange={event => { setSelectedId(event.target.value); setConsent(false); }}><option value="">{en ? "Choose a decision" : "결정 선택"}</option>{localRecords.map(item => <option key={item.id} value={item.id}>{item.action}</option>)}</select></label>}
       {preview && <><details><summary>{en ? "Review the memo being sent" : "계정에 보낼 메모 확인"}</summary><dl>{Object.entries(preview).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></details><label><input type="checkbox" checked={consent === selected.id} onChange={event => setConsent(event.target.checked ? selected.id : "")} />{en ? "Store this selected memo in my account." : "선택한 메모를 계정에 보관합니다."}</label>{session.mailEnabled && session.account.serviceReminders && preview.reviewDate && <label><input type="checkbox" checked={reminder} onChange={event => setReminder(event.target.checked)} />{en ? "Email me on this review date while Pro is active (optional)." : "Pro 이용기간 중 이 검토일에 이메일로 알려 주세요 (선택)."}</label>}<button className="btn primary" disabled={busy || consent !== selected.id} onClick={save}>{en ? "Save decision to account" : "결정 메모 계정에 저장"}</button></>}

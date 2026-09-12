@@ -1,12 +1,55 @@
 import { test, expect } from "@playwright/test";
 
 for (const locale of ["ko", "en"]) {
+  test(`decision library shows records before controls (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const en = locale === "en";
+    let memos = [];
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "library", email: "reader@example.com", serviceReminders: false }, entitlement: null } }));
+    await page.route("**/api/account/memos", route => route.fulfill({ json: { memos } }));
+    await page.goto(`${en ? "/en" : ""}/weekly-review#account-archive`);
+    const library = page.locator(".account-library");
+    await expect(library.getByRole("heading", { name: en ? "No saved decisions yet" : "아직 저장한 결정이 없습니다" })).toBeVisible();
+    await expect(library.getByRole("combobox")).toHaveCount(0);
+    await expect(library.getByRole("checkbox")).toHaveCount(0);
+    memos = [{ id: "memo-1", action: "Review the campaign budget", conclusion: "Check the next period before increasing spend.", reviewDate: "2026-10-01" }];
+    await page.reload();
+    await expect(library.getByRole("heading", { name: memos[0].action })).toBeVisible();
+    await expect(library.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
+    await expect(library.getByRole("button", { name: en ? "Sign out" : "로그아웃" })).toHaveCount(0);
+    await library.getByText(en ? "Account settings" : "계정 설정", { exact: true }).click();
+    await expect(library.getByRole("checkbox", { name: en ? /Email reminders/ : /이메일 알림 받기/ })).toBeVisible();
+    expect(await library.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
+  });
+  test(`signed-in account copy stays aligned (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const en = locale === "en";
+    const email = "long.account.address.for.layout@example.com";
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "layout", email, serviceReminders: false }, entitlement: { plan: "paid", account: true, trial: false, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
+    await page.goto(`${en ? "/en" : ""}/weekly-review`);
+    await expect(page.locator(".header-price")).toHaveText(en ? "About Pro" : "Pro 안내");
+    await page.locator(".my-account-menu > summary").click();
+    const panel = page.locator(".my-account-menu__panel");
+    await expect(panel.locator(".account-identity__email")).toHaveText(email);
+    const checkbox = panel.getByRole("checkbox", { name: en ? /Email reminders/ : /이메일 알림 받기/ });
+    await expect(checkbox).toBeVisible();
+    const emailBox = await panel.locator(".account-identity__email").boundingBox();
+    const planBox = await panel.locator(".account-identity__plan").boundingBox();
+    expect(planBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
+    const inputBox = await checkbox.boundingBox();
+    const copyBox = await panel.locator(".account-reminder__copy").boundingBox();
+    expect(copyBox.x).toBeGreaterThan(inputBox.x + inputBox.width);
+    expect(Math.abs(copyBox.y - inputBox.y)).toBeLessThan(5);
+    await expect(panel.locator(".account-identity__plan time")).toHaveCSS("white-space", "nowrap");
+    expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+  });
   test(`account entry and unified project review (${locale})`, async ({ page }) => {
     const en = locale === "en";
     const prefix = en ? "/en" : "";
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
     await page.goto(`${prefix}/weekly-review`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New review" : "새 리뷰");
+    await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
+    await expect(page.locator(".wr-screen .journey-progress a")).toHaveCount(0);
     await expect(page.locator(".wr-screen__eyebrow")).toHaveCount(0);
     const trigger = page.locator(".my-account-menu > summary");
     await expect(trigger).toHaveText(en ? "My account" : "마이페이지");

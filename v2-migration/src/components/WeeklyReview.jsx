@@ -725,7 +725,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
             </article>;
           })}
         </section>}
-      <AccountArchive locale={locale} />
+      {!embedded && <AccountArchive locale={locale} />}
       {sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
     </Shell>
   );
