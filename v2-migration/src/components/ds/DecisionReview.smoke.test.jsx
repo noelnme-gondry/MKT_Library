@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import DecisionReview from "@/components/ds/DecisionReview";
@@ -37,6 +38,7 @@ describe("DecisionReview", () => {
     fireEvent.change(screen.getByLabelText("검증 지표"), { target: { value: "CPA" } });
     expect(screen.getByLabelText("무엇이 개선인가요?").value).toBe("lower");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
 
     expect(screen.getByText("Meta 예산 20% 감액")).toBeTruthy();
     expect(screen.getByText("다음 주에도 이 결정을 다시 보시겠어요?")).toBeTruthy();
@@ -51,6 +53,7 @@ describe("DecisionReview", () => {
     const { container } = render(<DecisionReview toolId="5-3" decisionPrefill={{ action: "예산 검토", reviewDate: "2026-08-11" }} />);
     openDecisionReview(container);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionPersistenceEnabled).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "이 기기에 저장" }));
@@ -81,6 +84,7 @@ describe("DecisionReview", () => {
     openDecisionReview(view.container);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("검색 예산을 10% 시험 증액");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].raw).toBeUndefined();
     expect(useAppStore.getState().decisionRecords[0].sourcePath).toBe("/tools/budget-allocation");
     view.unmount();
@@ -109,6 +113,7 @@ describe("DecisionReview", () => {
     expect(screen.getByText("다음 CSV와 자동 대조")).toBeTruthy();
     expect(container.textContent).toContain("2026-08-03 · 가입 1,240명/주");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
 
     const record = useAppStore.getState().decisionRecords[0];
     expect(record).toMatchObject({ comparisonKind: "forecast_actual", forecastPeriod: "2026-08-03", forecastTarget: "Regs", forecastValue: "1240" });
@@ -121,6 +126,7 @@ describe("DecisionReview", () => {
     const retentionSwitch = screen.getByRole("switch", { name: "원본 파일과 결정 기록을 이 기기에 저장" });
     fireEvent.click(retentionSwitch);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
 
     const storedOn = window.localStorage.getItem("mkt_view_config");
     expect(storedOn).toContain("Search 점검");

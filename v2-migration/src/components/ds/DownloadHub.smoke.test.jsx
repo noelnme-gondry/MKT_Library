@@ -14,7 +14,7 @@ vi.mock("@/lib/analysis-export/workbookClient", () => ({ createAnalysisWorkbook:
 vi.mock("@/utils/download", () => ({ downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
 
 describe("DownloadHub", () => {
-  beforeEach(() => { useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 }, purchasePrompt: null }); });
+  beforeEach(() => { useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 }, purchasePrompt: null }); });
   it("blocks unpaid exports before opening the menu", () => {
     useAppStore.setState({ entitlement: null });
     const action = vi.fn();
@@ -23,6 +23,17 @@ describe("DownloadHub", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(action).not.toHaveBeenCalled();
     expect(useAppStore.getState().purchasePrompt.toolId).toBe("5-2");
+  });
+  it("does not generate or deliver files for trial-only accounts", () => {
+    useAppStore.setState({ entitlement: { plan: "paid", account: true, trial: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
+    const buildPayload = vi.fn();
+    const action = vi.fn();
+    render(<AnalysisExportProvider value={{ toolId: "5-2", buildPayload }}><DownloadHub label="Trial export" items={[{ label: "CSV", onSelect: action }]} /></AnalysisExportProvider>);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Trial export" }), { button: 0, ctrlKey: false });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(buildPayload).not.toHaveBeenCalled();
+    expect(action).not.toHaveBeenCalled();
+    expect(useAppStore.getState().purchasePrompt).toBeTruthy();
   });
   it("portals the menu, supports keyboard navigation, and runs the selected download", () => {
     const onSelect = vi.fn();

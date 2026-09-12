@@ -1,4 +1,5 @@
 import { enablePaidReports } from "./support/paidReports";
+import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import * as XLSX from "xlsx";
@@ -279,6 +280,7 @@ test("Apple Ads 검색어 CSV를 5-26 권장 조치까지 연결한다", async (
 });
 
 test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본다", async ({ page }) => {
+  await enableReviewLogin(page);
   await page.goto("/dashboard");
   await uploadCsv(page, "efficiency.csv");
 
@@ -289,6 +291,7 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
 
   await page.locator(".decision-review > summary").click();
   await page.getByRole("button", { name: "다음 검토로 저장" }).click();
+  await confirmReviewDialog(page);
   await page.locator(".decision-review__weekly-link").click();
 
   await expect(page).toHaveURL(/\/weekly-review#wr-history$/);

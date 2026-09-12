@@ -1,11 +1,11 @@
 "use client";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
+import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildWeeklyReviewExport } from "@/lib/analysis-export/weeklyReviewExport";
 import DownloadHub from "@/components/ds/DownloadHub";
-import { isDemoData } from "@/lib/dataOrigin";
-import { updateProject } from "@/lib/project/repository";
+import { isDemoData, decisionDataOrigin } from "@/lib/dataOrigin";
 
 /**
  * Weekly Review — 주간 성과를 읽고 이번 주 행동 하나를 정하는 화면.
@@ -182,7 +182,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
   const decisionRecords = useAppStore((state) => state.decisionRecords ?? EMPTY_RECORDS);
   const sessionDecisionIds = useAppStore((state) => state.decisionSessionRecordIds);
   const existingDecisionCount = decisionRecords.filter((record) => record.toolId !== "weekly-review" && !sessionDecisionIds.has(record.id)).length;
-  const addDecisionRecord = useAppStore((state) => state.addDecisionRecord);
+  const [pendingSave, setPendingSave] = useState(null);
   const persistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const workspaceStatus = useAppStore((state) => state.workspaceRestoreStatus);
   const workspaceReady = !persistenceEnabled || ["ready", "failed"].includes(workspaceStatus);
@@ -214,7 +214,6 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
   });
   const [savedDecision, setSavedDecision] = useState(null);
   const [savedReport, setSavedReport] = useState(null);
-  const [reportBusy, setReportBusy] = useState(false);
   const decisionContext = JSON.stringify([projectName, kpiMetric, basis, customPeriod, csvData.currency]);
   const isSavedDecisionCurrent = Boolean(savedDecision && savedDecision.raw === csvData.raw && savedDecision.context === decisionContext);
   useEffect(() => {
@@ -326,6 +325,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
   const saveDecision = (recommendedLabel) => {
     const record = {
       toolId: "weekly-review",
+      dataOrigin: decisionDataOrigin(csvData),
       locale,
       action: [decision.actionTarget || recommendedLabel, decision.actionKind, decision.actionAmount]
         .filter(Boolean).join(" "),
@@ -344,10 +344,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
       reviewDate: nextReviewDate(review.periods?.current.end),
       sourcePath: locale === "en" ? "/en/weekly-review" : "/weekly-review",
     };
-    addDecisionRecord(record);
-    trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review", source: reviewSource });
-    // Use the persisted, normalized record, including its generated stable ID.
-    setSavedDecision({ record: useAppStore.getState().decisionRecords[0], raw: csvData.raw, context: decisionContext });
+    setPendingSave({ record, raw: csvData.raw, context: decisionContext });
   };
 
   if (!review.ok) {
@@ -359,7 +356,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
           <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
         </header>}
-        <JourneyProgress stage="review" locale={locale} placement="weekly_review" />
+        <JourneyProgress stage="prepare" locale={locale} placement="weekly_review" />
         <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
         <section className="wr-screen__empty wr-card" id="wr-upload" aria-labelledby="wr-empty">
           <h2 id="wr-empty">{t.noData}</h2>
@@ -429,7 +426,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
           )}
         </div>
       </header>
-      <JourneyProgress stage="review" locale={locale} placement="weekly_review" />
+      <JourneyProgress stage={isSavedDecisionCurrent ? "review" : "analyze"} locale={locale} placement="weekly_review" />
       <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
@@ -702,15 +699,16 @@ function ProjectWeeklyReview({ locale, projectId, embedded }) {
         <h2 className="wr-card__title" id="wr-share">{t.shareHead}</h2>
         <p>{locale === "en" ? "The same periods, campaign evidence and saved decision, ready for your team review." : "검토한 기간·캠페인 근거·저장한 결정을 한 문서로 전달하세요."}</p>
         <WeeklyReportDocument text={renderReportText(draft, { number: money })} />
-        <button type="button" className="btn primary" disabled={!persistenceEnabled || reviewSource === "demo" || reportBusy} onClick={async () => {
-          setReportBusy(true);
-          try {
-            const saved = await updateProject(projectId, { report: { text: renderReportText(draft, { number: money }), period: periods.current, generatedAt: new Date().toISOString() } }, () => useAppStore.getState().decisionPersistenceEnabled && useAppStore.getState().activeProjectId === projectId);
-            setSavedReport({ raw: csvData.raw, context: decisionContext, ok: Boolean(saved) });
-            if (saved) { await useAppStore.getState().refreshProjects(); trackProductEvent("weekly_report_saved", { locale, source: reviewSource }); }
-          } catch { setSavedReport({ raw: csvData.raw, context: decisionContext, ok: false }); }
-          finally { setReportBusy(false); }
-        }}>{locale === "en" ? "Save report to project" : "프로젝트에 보고서 저장"}</button>
+        <button type="button" className="btn primary" disabled={!persistenceEnabled || reviewSource === "demo"} onClick={() => setPendingSave({ report: { text: renderReportText(draft, { number: money }), period: periods.current, generatedAt: new Date().toISOString() }, raw: csvData.raw, context: decisionContext })}>{locale === "en" ? "Save report to project" : "프로젝트에 보고서 저장"}</button>
+        {pendingSave && <ReviewSaveDialog locale={locale} record={pendingSave.record} report={pendingSave.report} onClose={() => setPendingSave(null)} onSaved={result => {
+          if (result.record) {
+            setSavedDecision({ record: result.record, raw: pendingSave.raw, context: pendingSave.context });
+            trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review", source: reviewSource });
+          } else {
+            setSavedReport({ raw: pendingSave.raw, context: pendingSave.context, ok: true });
+            trackProductEvent("weekly_report_saved", { locale, source: reviewSource });
+          }
+        }} />}
         {savedReport?.raw === csvData.raw && savedReport.context === decisionContext && <p role="status">{savedReport.ok ? (locale === "en" ? "Report saved." : "보고서를 저장했습니다.") : (locale === "en" ? "Save failed. Your analysis remains open; check device storage." : "저장하지 못했습니다. 분석은 유지됩니다. 기기 저장 상태를 확인해 주세요.")}{savedReport.ok && <> <Link href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "See it in Projects" : "보관함에서 확인"}</Link></>}</p>}
         <div className="wr-report-actions">
         <button type="button" className="btn" onClick={async () => {

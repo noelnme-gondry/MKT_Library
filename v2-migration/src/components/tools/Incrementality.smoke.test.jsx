@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for Incrementality (5-23). Asserts the component MOUNTS without
 // throwing in the no-data state and with each method's demo data loaded
@@ -128,6 +129,7 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toMatch(/×$/);
 
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
     expect(saved.sourcePeriod).toBe("2024-05-12 ~ 2024-06-05");
@@ -189,6 +191,7 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByLabelText("What will change?").value).toMatch(/limited follow-up window/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+    confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
@@ -210,6 +213,7 @@ describe("Incrementality render smoke", () => {
     declareDesign();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/대조군.*DiD.*재검증/);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
     expect(saved.sourcePeriod).toBe("2024-04-01 ~ 2024-06-29 · 전환 시점 2024-05-16");
@@ -240,6 +244,7 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/확대하지 않고.*재설계/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
     expect(saved.sourcePeriod).toBe("2024-01-02 ~ 2024-01-03");

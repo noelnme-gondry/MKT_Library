@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
@@ -88,6 +89,9 @@ describe("WeeklyReview", () => {
     expect(screen.getAllByText("검토일 없음").length).toBeGreaterThan(0);
     const emptyDate = screen.getAllByLabelText("검토일").find((input) => input.value === "");
     fireEvent.change(emptyDate, { target: { value: "2099-01-01" } });
+    expect(useAppStore.getState().decisionRecords.find(record => record.id === "decision_2").reviewDate).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "검토 내용 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").reviewDate).toBe("2099-01-01");
   });
 
@@ -108,6 +112,9 @@ describe("WeeklyReview", () => {
     const directionSelects = screen.getAllByLabelText(/무엇이 개선인가요\?/);
     const revenueDirection = directionSelects.find((select) => select.value === "");
     fireEvent.change(revenueDirection, { target: { value: "higher" } });
+    expect(useAppStore.getState().decisionRecords.find(record => record.id === "decision_2").targetDirection).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: "검토 내용 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").targetDirection).toBe("higher");
     expect(screen.getAllByText("지표 개선").length).toBeGreaterThan(1);
   });

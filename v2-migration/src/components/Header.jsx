@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
 import { resolvePathToId } from "@/lib/routeMap";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { readSidebarSnapshot, setSidebarCollapsed, sidebarServerSnapshot, subscribeSidebar } from "@/lib/sidebarCollapse";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
@@ -274,7 +275,7 @@ export default function Header({ locale = "ko" }) {
                 </button>
               )}
               {isAnalysisRoute && (
-                <button className="btn ghost header-print" type="button" title={T.printTitle} onClick={() => { window.print(); closeUtilityMenu(); }}>
+                <button className="btn ghost header-print" type="button" title={T.printTitle} onClick={() => { if (requirePaidExport({ toolId: currentRouteId, locale, format: "print" })) window.print(); closeUtilityMenu(); }}>
                   {T.print}
                 </button>
               )}

@@ -29,6 +29,7 @@ export default function SubscriptionPlanComparison({ locale = "ko", paid = false
       {[false, true].map(pro => <article key={String(pro)} className={`plan-card${pro ? " plan-card--pro" : ""}`} aria-labelledby={`plan-${pro ? "pro" : "free"}-title`}>
         <div className="plan-card-status">{trialEndsAt && pro ? `${en ? "Pro trial" : "Pro 체험 중"} · ${trialDays}${en ? " days left" : "일 남음"}` : !trialEndsAt && pro === paid ? <><span aria-hidden="true">✓</span> {en ? "Your current plan" : "현재 이용 플랜"}</> : pro ? (en ? "For reports and multiple projects" : "보고서·여러 프로젝트를 위한 플랜") : (en ? "Start with your first analysis" : "첫 분석부터 무료로")}</div>
         {pro && trialEndsAt && <p>{en ? "Trial ends" : "체험 종료일"}: {new Date(trialEndsAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>}
+        {pro && <p>{en ? "Analysis downloads require an active purchase and are not included in the 14-day trial." : "분석자료 다운로드는 유효한 구매 이용권 전용이며 14일 체험에 포함되지 않습니다."}</p>}
         <div className="plan-card-header">
           <h2 id={`plan-${pro ? "pro" : "free"}-title`}>{pro ? "Pro" : (en ? "Free" : "무료")}</h2>
           <p>{pro ? (en ? "Bring your analysis to the meeting." : "분석을 회의에서 쓸 보고서로.") : (en ? "Find your next decision." : "데이터로 다음 행동을 찾으세요.")}</p>

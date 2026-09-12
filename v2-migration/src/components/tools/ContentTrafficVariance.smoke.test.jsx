@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for ContentTrafficVariance (9-3, content_traffic group). It's a
 // thin wrapper that renders <CampaignPvm domain="content" /> — same engine
@@ -108,6 +109,7 @@ describe("ContentTrafficVariance render smoke", () => {
     render(<ContentTrafficVariance />);
     fireEvent.click(screen.getByText(/다음 검토 약속/));
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-3");
   });
 });

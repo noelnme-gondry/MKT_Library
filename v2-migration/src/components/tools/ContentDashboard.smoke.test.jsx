@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for ContentDashboard (9-7, content_dashboard group). Thin wrapper
 // that renders <Dashboard domain="content" /> — same engine (dashboardAggregator /
@@ -96,6 +97,7 @@ describe("ContentDashboard render smoke", () => {
     render(<ContentDashboard />);
     fireEvent.click(screen.getByText(/다음 검토 약속/));
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-7");
   });
 });

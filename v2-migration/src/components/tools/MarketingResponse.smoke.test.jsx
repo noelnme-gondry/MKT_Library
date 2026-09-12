@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for MarketingResponse (5-18, response group). Regression net for
 // the CampaignPvm-class crashes: a route component that throws during render or
@@ -1798,6 +1799,8 @@ describe("MarketingResponse render smoke", () => {
     expect(container.textContent).toContain("새 CSV에서 대조 가능한 실제값 1건을 찾았습니다");
     expect(container.textContent).toContain("이 실제값 반영");
     fireEvent.click(Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("이 실제값 반영")));
+    expect(useAppStore.getState().decisionRecords[0].actual).toBe("");
+    confirmReviewSave();
 
     expect(useAppStore.getState().decisionRecords[0].actual).toContain("명/주");
     expect(window.gtag).toHaveBeenCalledWith("event", "forecast_actual_applied", expect.objectContaining({

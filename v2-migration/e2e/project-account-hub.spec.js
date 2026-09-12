@@ -6,7 +6,7 @@ for (const locale of ["ko", "en"]) {
     const prefix = en ? "/en" : "";
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
     await page.goto(`${prefix}/weekly-review`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "Project review" : "프로젝트 리뷰");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New review" : "새 리뷰");
     await expect(page.locator(".wr-screen__eyebrow")).toHaveCount(0);
     const trigger = page.locator(".my-account-menu > summary");
     await expect(trigger).toHaveText(en ? "My account" : "마이페이지");
@@ -19,11 +19,23 @@ for (const locale of ["ko", "en"]) {
     for (const light of [false, true]) {
       await page.evaluate(value => document.body.classList.toggle("light-mode", value), light);
       const links = panel.locator("nav a");
-      expect(await links.count()).toBe(4);
+      expect(await links.count()).toBe(3);
       for (const link of await links.all()) {
         await expect(link).toHaveCSS("text-decoration-line", "none");
         expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
         await expect(link.locator("svg")).toBeVisible();
+        await link.hover();
+        const contrast = await link.evaluate(node => {
+          const luminance = color => {
+            const values = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => value / 255).map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+            return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+          };
+          const style = getComputedStyle(node);
+          const text = luminance(getComputedStyle(node.querySelector("span")).color);
+          const background = luminance(style.backgroundColor);
+          return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
+        });
+        expect(contrast).toBeGreaterThanOrEqual(4.5);
       }
       const login = panel.locator(".account-profile-login");
       expect((await login.boundingBox()).height).toBeGreaterThanOrEqual(44);
@@ -33,9 +45,9 @@ for (const locale of ["ko", "en"]) {
     await expect(trigger).toBeFocused();
     await expect(panel).not.toBeVisible();
     await trigger.click();
-    await panel.getByRole("link", { name: en ? "Manage my projects" : "내 프로젝트 관리", exact: true }).click();
-    await expect(page.getByRole("heading", { name: en ? "Manage my projects" : "내 프로젝트 관리", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: en ? "Weekly review" : "이번 주 리뷰", exact: true }).click();
+    await panel.getByRole("link", { name: en ? "My projects" : "내 프로젝트", exact: true }).click();
+    await expect(page.getByRole("heading", { name: en ? "My projects" : "내 프로젝트", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: en ? "Start your first review" : "첫 리뷰 시작하기", exact: true }).click();
     await expect(page.locator("#wr-upload")).toBeVisible();
     await trigger.click();
     await page.keyboard.press("Escape");
@@ -43,6 +55,6 @@ for (const locale of ["ko", "en"]) {
     await expect(panel).not.toBeVisible();
     await page.goto(`${prefix}/projects`);
     await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#project-management$`));
-    await expect(page.getByRole("heading", { name: en ? "Manage my projects" : "내 프로젝트 관리", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: en ? "My projects" : "내 프로젝트", exact: true })).toBeVisible();
   });
 }

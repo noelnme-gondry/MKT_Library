@@ -5,9 +5,11 @@ for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
   test(`saved setup and editable sample reports (${locale})${en ? " @light-en" : ""}`, async ({ page }) => {
     await page.goto(`${prefix}/projects`);
+    await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Weekly test");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(/weekly-review/);
+    await expect(page.getByRole("heading", { level: 1, name: "Weekly test", exact: true })).toBeVisible();
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader input[type="file"]').first()).toBeEnabled();
     await page.locator('.csv-uploader input[type="file"]').first().setInputFiles("e2e/fixtures/efficiency.csv");
@@ -43,9 +45,11 @@ for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
   test(`restores model thresholds without a CSV (${locale})${en ? " @light-en" : ""}`, async ({ page }) => {
     await page.goto(`${prefix}/projects`);
+    await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Threshold project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(/weekly-review/);
+    await expect(page.getByRole("heading", { level: 1, name: "Threshold project", exact: true })).toBeVisible();
     await page.goto(`${prefix}/tools/asa-keyword-finder`);
     const target = page.getByRole("textbox", { name: en ? "Target CPA" : "목표 CPA", exact: true });
     await expect(target).toBeEnabled();

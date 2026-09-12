@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import { readFile, writeFile } from "node:fs/promises";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
@@ -14,6 +15,7 @@ async function readStored(page) {
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
   test(`project migration, complete backup restore and report-pass gate (${locale})${tag}`, async ({ page, browser }) => {
+    await enableReviewLogin(page);
     await page.addInitScript(() => {
       window.__projectEvents = [];
       window.dataLayer = [];
@@ -22,6 +24,7 @@ for (const locale of ["ko", "en"]) {
     });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto(`${prefix}/projects`);
+    await page.locator("#project-backup > summary").click();
     // SSR의 제목은 저장소 준비 신호가 아니다. 실제 생성 작업이 열릴 때까지 기다린다.
     await expect(page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true })).toBeEnabled();
     await page.evaluate(async () => {
@@ -33,6 +36,7 @@ for (const locale of ["ko", "en"]) {
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
     });
     await page.goto(`${prefix}/projects`);
+    await page.locator("#project-backup > summary").click();
     await expect(page.getByRole("heading", { name: /Client Alpha/ })).toBeVisible();
     const initial = await readStored(page);
     expect(initial.meta.some(record => record.key === "weekly-review:project")).toBe(false);
@@ -48,14 +52,17 @@ for (const locale of ["ko", "en"]) {
     const otherContext = await browser.newContext();
     try {
       const other = await otherContext.newPage();
+      await enableReviewLogin(other);
       await other.goto(new URL(`${prefix}/subscription`, page.url()).href);
       await other.locator(".checkout-existing > summary").click();
       await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
       await expect(other).toHaveURL(/weekly-review#project-management$/);
+      await other.locator("#project-backup > summary").click();
       await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
       await expect(other.locator(".project-card")).toHaveCount(0);
       await other.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
       await other.getByRole("button", { name: en ? "Restore as new project" : "새 프로젝트로 복원", exact: true }).click();
+      await confirmReviewDialog(other, en);
       await expect(other.locator(".projects-page").getByRole("status")).toContainText(en ? "Backup restored" : "백업을 복원했습니다");
       expect((await readStored(other)).files[0].text).toBe(initial.files[0].text);
       await other.reload();
@@ -66,6 +73,7 @@ for (const locale of ["ko", "en"]) {
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles({ name: "bad-backup.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(invalid)) });
     page.once("dialog", dialog => dialog.accept());
     await page.getByRole("button", { name: en ? "Replace current project" : "현재 프로젝트에 복원", exact: true }).click();
+    await confirmReviewDialog(page, en);
     await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "Could not complete" : "작업을 완료하지 못했습니다");
     expect((await readStored(page)).files[0].text).toBe(initial.files[0].text);
     // Second project attempts open the report-pass page; existing data remains accessible.
@@ -87,12 +95,14 @@ for (const locale of ["ko", "en"]) {
     expect(JSON.stringify(events)).not.toContain("Client Alpha");
     await expectNoSeriousAccessibilityViolations(page);
     await page.goto(`${prefix}/projects`);
+    await page.locator("#project-backup > summary").click();
     page.once("dialog", dialog => dialog.accept());
     await page.getByRole("button", { name: en ? "Delete" : "삭제", exact: true }).click();
     await expect(page.locator(".project-card")).toHaveCount(0);
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
     await expect(page.locator(".project-import-preview")).toContainText("Client Alpha");
     await page.getByRole("button", { name: en ? "Restore as new project" : "새 프로젝트로 복원", exact: true }).click();
+    await confirmReviewDialog(page, en);
     await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "Backup restored" : "백업을 복원했습니다");
     const restored = await readStored(page);
     expect(restored.files).toHaveLength(1);
@@ -108,6 +118,7 @@ for (const locale of ["ko", "en"]) {
 
 test("existing projects remain separate and readable without a license", async ({ page }) => {
   await page.goto("/projects");
+    await page.locator("#project-backup > summary").click();
   await expect(page.getByRole("button", { name: "프로젝트 만들기", exact: true })).toBeEnabled();
   await page.evaluate(async () => {
     const db = await new Promise(resolve => { const r = indexedDB.open("mkt_workspace", 1); r.onsuccess = () => resolve(r.result); });
@@ -121,6 +132,7 @@ test("existing projects remain separate and readable without a license", async (
   });
   for (const id of ["client_b", "client_a"]) {
     await page.goto("/projects");
+    await page.locator("#project-backup > summary").click();
     await expect(page.locator(".project-card")).toHaveCount(2);
     await page.locator(".project-card").filter({ has: page.getByRole("heading", { name: new RegExp(id) }) }).getByRole("button", { name: "리뷰 열기", exact: true }).click();
     await expect(page).toHaveURL(/\/weekly-review$/);

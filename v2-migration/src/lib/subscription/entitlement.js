@@ -2,6 +2,11 @@ export const SUBSCRIPTION = Object.freeze({ monthlyKrw: 5900, freeProjects: 1, g
 export function hasPaidAccess(entitlement, now = Date.now()) {
   return entitlement?.plan === "paid" && Number(entitlement.expiresAt) > now && Number(entitlement.offlineUntil) > now;
 }
+// Account trials retain their other Pro features, but analysis downloads require a purchase.
+export function hasPurchasedAccess(entitlement, now = Date.now()) {
+  return hasPaidAccess(entitlement, now) && entitlement.trial !== true
+    && (entitlement.payment === true || entitlement.account === true);
+}
 export function canCreateProject(count, entitlement, now = Date.now()) {
   return count < SUBSCRIPTION.freeProjects || hasPaidAccess(entitlement, now);
 }

@@ -1,4 +1,5 @@
 import { enablePaidReports } from "./support/paidReports";
+import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import { expect, test } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
@@ -11,6 +12,7 @@ function campaignCsv(start, days) {
 }
 
 async function runJourney(page, locale) {
+  await enableReviewLogin(page);
   await page.addInitScript(() => {
     window.__weeklyEvents = [];
     window.dataLayer = [];
@@ -87,6 +89,7 @@ async function runJourney(page, locale) {
   const guardrail = page.getByLabel(en ? "Guardrail value" : "가드레일 값", { exact: true });
   await guardrail.fill("20");
   await page.getByRole("button", { name: en ? "Save this decision" : "이 결정 저장", exact: true }).click();
+  await confirmReviewDialog(page, en);
   await expect(page.locator(".wr-report")).toContainText(en ? "This week's decision" : "이번 주 결정");
   await expect(page.getByRole("dialog", { name: en ? "The decision log now lives here." : "결정 검토함이 여기로 들어왔어요." })).toHaveCount(0);
   const reportBeforeEdit = await page.locator(".wr-report").innerText();
@@ -122,6 +125,7 @@ test("@light-en weekly review: English first and returning upload", async ({ pag
 });
 
 async function dochiToWeekly(page, locale) {
+  await enableReviewLogin(page);
   await enablePaidReports(page);
   const en = locale === "en";
   await page.addInitScript(locale => {
@@ -155,6 +159,7 @@ async function dochiToWeekly(page, locale) {
   await expect(decision).toBeVisible();
   await decision.locator(":scope > summary").click();
   await decision.getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }).click();
+  await confirmReviewDialog(page, en);
   await expect(decision).toContainText(en ? "Decision saved" : "결정 저장됨");
   const events = await page.evaluate(() => window.__journeyEvents);
   expect(events.find(event => event[1] === "data_import_success")?.[2]).toMatchObject({ placement: "dochi_home", journey_entry: "home" });

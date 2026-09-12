@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import SubscriptionSurvivalAnalysis, { buildSegmentCurveChartData, scheduleSubscriptionChartResize } from "@/components/tools/SubscriptionSurvivalAnalysis";
 import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 
-beforeEach(() => useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } }));
+beforeEach(() => useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } }));
 
 const ROWS = [
   { tenure_periods: "1", event_observed: "1", channel: "Paid" },

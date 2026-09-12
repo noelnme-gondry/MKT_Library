@@ -12,6 +12,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
   const activeId = useAppStore(state => state.activeProjectId);
   const switching = useAppStore(state => state.projectSwitching);
   const ready = useAppStore(state => state.projectsReady);
+  const active = projects.find(project => project.id === activeId);
   useEffect(() => {
     const hash = () => setView(window.location.hash === "#project-management" ? "manage" : initialView);
     hash(); window.addEventListener("hashchange", hash);
@@ -20,19 +21,21 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
   const show = next => { setView(next); window.history.replaceState(null, "", next === "manage" ? "#project-management" : window.location.pathname); };
   return <div className="project-review-workspace">
     <header className="project-review-workspace__bar">
-      {view === "review" && <div className="project-review-workspace__title"><h1>{en ? "Project review" : "프로젝트 리뷰"}</h1><p>{en ? "Weekly comparisons, decisions and reports belong to this project." : "이번 주 비교부터 지난 결정·보고서까지, 이 프로젝트에서 이어갑니다."}</p></div>}
-      <div className="project-review-workspace__tools">
+      <div className="project-review-workspace__title">
+        {view === "review" && <button className="btn ghost" onClick={() => show("manage")}>{en ? "My projects" : "내 프로젝트"}</button>}
+        <h1>{view === "manage" ? (en ? "My projects" : "내 프로젝트") : active ? (active.name || (en ? "Existing project" : "기존 프로젝트")) : (en ? "New review" : "새 리뷰")}</h1>
+        <p>{view === "manage" ? (en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다.") : active ? (en ? "Review this week, then check your previous decisions below." : "이번 주 성과를 확인하고, 아래에서 지난 결정의 결과를 검토하세요.") : (en ? "Start with your data. Choose a project when you save." : "데이터부터 확인하세요. 저장할 때 프로젝트를 정하면 됩니다.")}</p>
+      </div>
+      {view === "review" && <div className="project-review-workspace__tools">
+      {projects.length > 0 &&
       <label>{en ? "Current project" : "현재 프로젝트"}<select value={activeId} disabled={!ready || switching || !projects.length} onChange={async event => {
         setError(false);
         if (event.target.value === activeId) return;
         const ok = await useAppStore.getState().switchProject(event.target.value);
         if (ok) show("review"); else setError(true);
-      }}>{!projects.length && <option value={activeId}>{en ? "Current review · this session" : "현재 리뷰 · 세션 작업"}</option>}{projects.map(project => <option key={project.id} value={project.id}>{project.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}</select></label>
-      <div className="project-review-workspace__views" aria-label={en ? "Project views" : "프로젝트 화면"}>
-        <button type="button" className="btn" aria-pressed={view === "review"} onClick={() => show("review")}>{en ? "Weekly review" : "이번 주 리뷰"}</button>
-        <button type="button" className="btn" aria-pressed={view === "manage"} onClick={() => show("manage")}>{en ? "Manage projects" : "프로젝트 관리"}</button>
-      </div>
-      </div>
+      }}>{projects.map(project => <option key={project.id} value={project.id}>{project.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}</select></label>}
+      {active && <details><summary>{en ? "Manage project" : "프로젝트 관리"}</summary><button className="btn" onClick={() => show("manage")}>{en ? "Projects and backups" : "프로젝트 목록·백업"}</button></details>}
+      </div>}
     </header>
     {error && <p role="alert">{en ? "Could not open this project. Your current review remains available." : "프로젝트를 열지 못했습니다. 현재 리뷰는 유지됩니다."}</p>}
     {switching && <p role="status">{en ? "Opening project…" : "프로젝트를 불러오는 중입니다…"}</p>}
