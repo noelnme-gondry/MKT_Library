@@ -157,7 +157,8 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("link", { name: en ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#account-archive$`));
     await expect(page.locator("#account-archive")).toBeInViewport();
-    await expect(page.locator("#account-archive")).toContainText(en ? "First analyze your CSV" : "먼저 이 프로젝트에서 CSV를 분석");
+    await expect(page.locator("#account-archive").getByRole("heading", { name: en ? "No saved decisions yet" : "아직 저장한 결정이 없습니다" })).toBeVisible();
+    await expect(page.locator("#account-archive").getByRole("link", { name: en ? "Record your first decision" : "첫 결정 기록하기" })).toHaveAttribute("href", `${prefix}/weekly-review#wr-upload`);
     started = true;
     await page.goto(`${prefix}/subscription`);
     const pro = page.getByRole("article", { name: "Pro", exact: true });
