@@ -198,31 +198,27 @@ export default function LandingPage({ locale = "ko", children, reading }) {
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <p className="dc-hero__deck">{T.deck}</p>
-          <MobileQuickStart locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
-            <Link className="dc-action-route dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"}>
-              <strong>{lang === "en" ? "Start with a question" : "질문에서 시작하기"}</strong>
-              <span>{lang === "en" ? "No file? Explore your next step" : "파일 없이 고민부터 골라보세요"}</span>
-            </Link>
+            <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
               href="#dochi-upload"
               onClick={() => { openIntake(); trackLandingNav("landing_data_start_clicked", "hero"); }}
             >
-              <strong>{T.dataCta}</strong>
+              <strong>{lang === "en" ? "Upload your CSV" : "내 CSV로 분석하기"}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
 
           </nav>
           <div className="dc-hero__utility-actions">
-            <Link className="dc-text-link" href={lang === "en" ? "/en/blog" : "/blog"}>{lang === "en" ? "Read the blog" : "블로그 읽기"} →</Link>
-            <Link className="dc-text-link" href={lang === "en" ? "/en/guide" : "/guide"}>{lang === "en" ? "Guides & SOPs" : "실무 가이드 · SOP"} →</Link>
+            <Link className="dc-text-link dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackLandingNav("diagnose_entry_clicked", "hero")}>{lang === "en" ? "Not sure where to start?" : "어디서 시작할지 모르겠다면"}<span aria-hidden="true"> ↗</span></Link>
           </div>
           <p className="dc-hero__assurance">{T.assurance}</p>
         </div>
         <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
       </section>
+      <MobileQuickStart locale={lang} />
 
       <section className="dc-intake" ref={intakeRef} hidden aria-labelledby="csv-upload-heading">
         <div className="dc-intake__header">
