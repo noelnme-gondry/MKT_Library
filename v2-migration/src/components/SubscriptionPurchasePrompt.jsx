@@ -23,6 +23,7 @@ export default function SubscriptionPurchasePrompt() {
     <button className="btn ghost purchase-dialog-close" type="button" onClick={close}>{en ? "Close" : "닫기"}</button>
     <h2>{en ? "Reports you can use and edit" : "전달하고 다시 계산할 수 있는 보고서"}</h2>
     <p>{en ? "Keep the conclusion, supporting evidence, and next actions together." : "결론과 근거, 다음 행동을 한 번에 정리해 가져가세요."}</p>
+    <p>{en ? "Analysis downloads require an active purchased pass. Sign-in and the 14-day trial do not unlock downloads." : "분석자료 다운로드는 유효한 구매 이용권이 필요합니다. 로그인·14일 체험만으로는 다운로드할 수 없습니다."}</p>
     <ul><li><strong>Word</strong> — {en ? "Meeting-ready conclusions, evidence tables, charts and limitations" : "회의용 결론·근거 표·차트·해석 한계"}</li><li><strong>Excel</strong> — {en ? "Source rows, mappings, calculation sheets and editable charts" : "원본·매핑·계산 시트·편집 가능한 차트"}</li></ul>
     <p>{en ? `KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")} for one month. No automatic renewal.` : `1개월 ${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 · 자동 갱신 없음`}</p>
     <SubscriptionTrialOffer locale={en ? "en" : "ko"} onNavigate={close} />

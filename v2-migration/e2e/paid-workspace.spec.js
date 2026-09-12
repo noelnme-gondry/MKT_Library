@@ -3,6 +3,38 @@ import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
+  for (const state of ["trial", "expired", "purchased"]) {
+    test(`analysis download requires a current purchase: ${state} (${locale})${tag}`, async ({ page }) => {
+      const entitlement = { plan: "paid", account: true, trial: state === "trial", expiresAt: Date.now() + (state === "expired" ? -60000 : 86400000), offlineUntil: Date.now() + 3600000 };
+      await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: true, mode: "test", clientKey: "test_gck_fixture" } }));
+      await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
+      await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "download-test", email: "test@example.com", trialStartedAt: new Date().toISOString() }, entitlement } }));
+      await page.addInitScript(() => { window.__prints = 0; window.print = () => { window.__prints += 1; }; });
+      const downloads = []; page.on("download", download => downloads.push(download));
+      await page.goto(`${prefix}/dashboard`);
+      await page.locator(".my-account-menu > summary").click();
+      await expect(page.locator(".my-account-menu__panel")).toContainText("test@example.com");
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
+      await page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" }).getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
+      await page.locator(".dashboard-briefing .result-action-card").getByRole("button", { name: en ? "Download" : "결과 받기", exact: true }).click();
+      if (state === "purchased") {
+        await expect(page.getByRole("menuitem", { name: /Word/ })).toBeVisible();
+      } else {
+        const gate = page.locator(".purchase-dialog");
+        await expect(gate).toBeVisible();
+        await expect(gate).toContainText(en ? "14-day trial do not unlock downloads" : "14일 체험만으로는 다운로드할 수 없습니다");
+        await page.keyboard.press("Escape");
+        await page.locator(".header-utility-menu > summary").click();
+        await page.locator(".header-print").click();
+        await expect(gate).toBeVisible();
+        expect(await page.evaluate(() => window.__prints)).toBe(0);
+        await gate.getByRole("link", { name: en ? "View the pass and purchase" : "이용권 확인하고 구매", exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
+      }
+      expect(downloads).toHaveLength(0);
+    });
+  }
   test(`plan comparison, current plan and purchase navigation (${locale})${tag}`, async ({ page }) => {
     let paid = false;
     await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: false, mode: "test" } }));

@@ -79,7 +79,7 @@ describe("AnomalyTab render smoke", () => {
   it("exports the mounted chart from the visible PNG action", () => {
     seedWithData();
     render(<AnomalyTab />);
-    useAppStore.setState({ entitlement: { plan: "paid", expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
+    useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
     fireEvent.click(screen.getByRole("button", { name: "이상탐지 차트 PNG 다운로드" }));
     expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly");
   });
