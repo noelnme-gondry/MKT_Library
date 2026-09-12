@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for AbTestHoldout (5-4, experiment group). Regression net for
 // the CampaignPvm-class crashes: a route component that throws during render or
@@ -135,6 +136,7 @@ describe("AbTestHoldout render smoke", () => {
     expect(screen.getByLabelText("검토일에 답할 질문").value).toContain("Control 기준 5.00%");
 
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0]).toMatchObject({
       toolId: "5-4",
       action: "Test를 제한적으로 롤아웃하고 Control을 유지해 전환율을 계속 비교한다",

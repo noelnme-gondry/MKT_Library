@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
@@ -142,6 +143,7 @@ describe("WeeklyReviewScreen", () => {
     expect(decrease.getAttribute("aria-pressed")).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "이 결정 저장" }));
+    confirmReviewSave();
     expect(screen.getByText(/다음 주에 이 결정의 결과를 확인/).getAttribute("role")).toBe("status");
   });
 
@@ -192,6 +194,7 @@ describe("WeeklyReviewScreen", () => {
     fireEvent.change(screen.getByLabelText("크기"), { target: { value: "-10%" } });
     fireEvent.change(screen.getByPlaceholderText("8.00"), { target: { value: "9" } });
     fireEvent.click(screen.getByRole("button", { name: "이 결정 저장" }));
+    confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords[0];
     expect(saved.actionKind).toBe("decrease_budget");

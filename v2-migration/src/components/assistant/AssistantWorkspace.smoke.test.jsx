@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
@@ -56,6 +57,7 @@ describe("Dochi analysis workspace", () => {
     const editor = view.container.querySelector(".dochi-workspace__result.is-success .decision-review");
     fireEvent.click(editor.querySelector("summary"));
     fireEvent.click(within(editor).getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }));
+    confirmReviewSave();
     const record = useAppStore.getState().decisionRecords[0];
     expect(record.action.length).toBeGreaterThan(0);
     expect(record.comparisonScope).toBeFalsy();

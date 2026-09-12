@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for ContentElementAnalyzer (9-1, content_attr group). New tool on
 // the regMath OLS engine (REG_STATS.ols, golden-covered by regMath.test.js).
@@ -240,6 +241,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/A\/B 테스트 초안.*나머지 요소.*고정/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("9-1");
@@ -267,6 +269,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(screen.getByLabelText("What will change?").value).toMatch(/Draft an A\/B test.*holding every other element.*fixed/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+    confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("9-1");

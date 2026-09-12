@@ -36,8 +36,7 @@ export default function MyAccountMenu({ locale = "ko" }) {
       <button type="button" className="my-account-menu__close" aria-label={en ? "Close my account" : "마이페이지 닫기"} onClick={() => { close(); root.current.querySelector("summary")?.focus(); }}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
       {open && <AccountArchive locale={locale} profile />}
       <nav aria-label={en ? "My workspace" : "내 작업 관리"}>
-        <Link href={href("/weekly-review#project-management")} onClick={event => navigateReview(event, true)}><MenuIcon kind="projects" /><span>{en ? "Manage my projects" : "내 프로젝트 관리"}</span></Link>
-        <Link href={href("/weekly-review")} onClick={event => navigateReview(event, false)}><MenuIcon kind="review" /><span>{en ? "Current project review" : "현재 프로젝트 리뷰"}</span></Link>
+        <Link href={href("/weekly-review#project-management")} onClick={event => navigateReview(event, true)}><MenuIcon kind="projects" /><span>{en ? "My projects" : "내 프로젝트"}</span></Link>
         <Link href={href("/storage")} onClick={close}><MenuIcon kind="storage" /><span>{en ? "Storage & backup settings" : "저장·백업 설정"}</span></Link>
         <Link href={href("/subscription")} onClick={close}><MenuIcon kind="plan" /><span>{en ? "Plans & subscription" : "구독·요금제"}</span></Link>
       </nav>

@@ -28,6 +28,7 @@ import { detectFindingConflicts } from "@/lib/assist/detectFindingConflicts";
 import { downloadCsv, downloadText, downloadCalendar } from "@/utils/download";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AccountArchive from "@/components/AccountArchive";
+import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 
 const COPY = {
@@ -323,7 +324,10 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const inboxRef = useRef(null);
-  const records = useAppStore((state) => state.decisionRecords);
+  const storedRecords = useAppStore((state) => state.decisionRecords);
+  const [recordDrafts, setRecordDrafts] = useState({});
+  const [pendingAction, setPendingAction] = useState(null);
+  const records = useMemo(() => storedRecords.map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts]);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
   const csvGroups = useAppStore((state) => state.csvGroups);
@@ -405,15 +409,16 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
       setMessage(t.importError);
       return;
     }
-    importDecisionRecords(imported);
-    setMessage(t.imported(imported.length));
+    setPendingAction(() => () => { importDecisionRecords(imported); setMessage(t.imported(imported.length)); });
   };
 
-  const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
+  const updateRecord = (id, key, value) => setRecordDrafts(current => ({ ...current, [id]: { ...current[id], [key]: value } }));
 
   const completeReview = (record, actual = record.actual, source = "weekly_review") => {
     if (!record || !record.reviewDate || record.reviewDate > todayKey || !String(actual || "").trim()) return;
+    setPendingAction(() => () => {
     updateDecisionRecord(record.id, {
+      ...recordDrafts[record.id],
       actual: String(actual).trim(),
       status: "reviewed",
       reviewedAt: new Date().toISOString(),
@@ -424,6 +429,8 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
       result_state: "reviewed",
       days_since_decision: decisionReviewAgeBucket(record, { isSameSession: decisionSessionRecordIds.has(record.id) }),
       locale,
+    });
+    setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
     });
   };
 
@@ -441,6 +448,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const Shell = embedded ? "div" : "article";
   return (
     <Shell ref={inboxRef} className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
+      {pendingAction && <ReviewSaveDialog locale={locale} onConfirm={pendingAction} onClose={() => setPendingAction(null)} />}
       {embedded ? (
         // 흡수돼도 제목은 남긴다 — h1만 벗고 h2로 낮춘다. 제목을 통째로 지우면 보조기술이
         // 이 섹션의 시작을 알 수 없다.
@@ -705,6 +713,10 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
+              {recordDrafts[record.id] && <button type="button" className="btn small" onClick={() => setPendingAction(() => () => {
+                updateDecisionRecord(record.id, recordDrafts[record.id]);
+                setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
+              })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
               {status !== "reviewed" && <div className="weekly-review-record__complete">
                 <button type="button" className="btn small primary" disabled={!isReviewDue || !record.actual.trim()} onClick={() => completeReview(record)}>{t.completeReview}</button>
                 {!isReviewDue && <small>{t.completeLocked}</small>}

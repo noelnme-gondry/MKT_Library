@@ -5,6 +5,7 @@ import { isDemoData, canTrackDecisionReview } from "@/lib/dataOrigin";
 import { mmmDecisionQuality, mmmDecisionQualityMessage } from "@/lib/analysis-results/mmmDecisionQuality";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import HelpTip from "@/components/ds/HelpTip";
+import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -264,6 +265,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [mmmAnalyzedRaw, setMmmAnalyzedRaw] = useState(null);
   const [mmmUploadError, setMmmUploadError] = useState(null);
   const [packageDownloadStatus, setPackageDownloadStatus] = useState("idle");
+  const [pendingReviewSave, setPendingReviewSave] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isForecastWorkerRunning, setIsForecastWorkerRunning] = useState(false);
   const [forecastWorkerProgress, setForecastWorkerProgress] = useState({ completed: 0, total: 0 });
@@ -2697,6 +2699,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const applyForecastActual = useCallback((match) => {
     if (!match?.reviewDate || match.reviewDate > toLocalDecisionDate()) return;
     const actual = targetValueLabel(match.actualValue, { perWeek: true });
+    setPendingReviewSave(() => () => {
     updateDecisionRecord(match.recordId, { actual, status: "reviewed", reviewedAt: new Date().toISOString() });
     trackProductEvent("forecast_actual_applied", {
       tool_id: "5-18",
@@ -2709,6 +2712,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       source: "forecast_review",
       result_state: "reviewed",
       locale,
+    });
     });
   }, [locale, targetValueLabel, updateDecisionRecord]);
   const spendValueLabel = useCallback((value, { perWeek = false } = {}) => {
@@ -4049,6 +4053,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   return (
     <div className="tab-pane active" id="tab-response" role="tabpanel" aria-labelledby={!isolated && stage !== "hub" ? `marketing-response-tab-${stage}` : undefined}>
+      {pendingReviewSave && <ReviewSaveDialog locale={locale} onConfirm={pendingReviewSave} onClose={() => setPendingReviewSave(null)} />}
       <AnalyzingOverlay
         show={isAnalyzing || isForecastWorkerRunning || isRegimeWorkerRunning}
         title={tx("분석 중…", "Analyzing…")}

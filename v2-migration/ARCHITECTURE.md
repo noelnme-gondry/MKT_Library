@@ -75,7 +75,7 @@ v2-migration/
 | `/start` | start-gate | StartGate.jsx (업로드 → 가능한 분석 추천) |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
-| `/weekly-review` | — | weekly-review/WeeklyReviewScreen.jsx (주간 리뷰. 결정 인박스 `WeeklyReview.jsx`는 그 안 접기로 `embedded` 렌더) |
+| `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·프로젝트 선택) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |

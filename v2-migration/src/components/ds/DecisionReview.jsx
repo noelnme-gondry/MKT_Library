@@ -14,6 +14,9 @@ import { useAppStore } from "@/store/useDataStore";
 import { downloadCalendar, downloadCsv } from "@/utils/download";
 import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNotice";
 import AccountArchive from "@/components/AccountArchive";
+import ReviewSaveDialog from "@/components/ReviewSaveDialog";
+import { decisionDataOrigin } from "@/lib/dataOrigin";
+import ProjectReviewLink from "@/components/ProjectReviewLink";
 
 function nextWeekDate() {
   const date = new Date();
@@ -241,6 +244,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [savedDecision, setSavedDecision] = useState(null);
+  const [savedProjectId, setSavedProjectId] = useState(null);
   const [isPersistencePromptOpen, setIsPersistencePromptOpen] = useState(false);
   const detailsRef = useRef(null);
   const actionInputRef = useRef(null);
@@ -248,12 +252,14 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const appliedPrefillKey = useRef(`${toolId}:${decisionPrefillKey}`);
   const draftToolId = useRef(toolId);
   const allRecords = useAppStore((state) => state.decisionRecords);
-  const records = allRecords.filter((record) => record.toolId === toolId);
+  const [recordDrafts, setRecordDrafts] = useState({});
+  const [pendingAction, setPendingAction] = useState(null);
+  const records = allRecords.filter((record) => record.toolId === toolId).map(record => ({ ...record, ...recordDrafts[record.id] }));
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const isPersistencePromptSeen = useAppStore((state) => state.decisionPersistencePromptSeen);
   const markPersistencePromptSeen = useAppStore((state) => state.markDecisionPersistencePromptSeen);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
-  const addDecisionRecord = useAppStore((state) => state.addDecisionRecord);
+  const [pendingSave, setPendingSave] = useState(null);
   const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
   const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
   const removeDecisionRecord = useAppStore((state) => state.removeDecisionRecord);
@@ -310,6 +316,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     }
     const savedRecord = {
       toolId,
+      dataOrigin: decisionDataOrigin(csvData),
       sourcePath: resolvedSourcePath,
       locale,
       createdAt: new Date().toISOString(),
@@ -340,7 +347,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       actual: "",
       learning: "",
     };
-    addDecisionRecord(savedRecord);
+    setPendingSave(savedRecord);
+  };
+  const finishSave = ({ record: savedRecord, project }) => {
+    setSavedProjectId(project.id);
     setSavedDecision(savedRecord);
     if (!isPersistenceEnabled && !isPersistencePromptSeen) {
       markPersistencePromptSeen();
@@ -354,7 +364,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     trackProductEvent("decision_record_added", { tool_id: toolId, source: "decision_review", placement: analyticsPlacement, locale });
   };
 
-  const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
+  const updateRecord = (id, key, value) => setRecordDrafts(current => ({ ...current, [id]: { ...current[id], [key]: value } }));
 
   const exportRecords = () => {
     if (!records.length) return;
@@ -396,9 +406,11 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       setMessage(t.importError);
       return;
     }
-    importDecisionRecords(imported, toolId);
-    setMessage(t.imported(imported.length));
-    trackProductEvent("decision_record_imported", { tool_id: toolId, source: "decision_review", placement: "result_action_card", locale });
+    setPendingAction(() => () => {
+      importDecisionRecords(imported, toolId);
+      setMessage(t.imported(imported.length));
+      trackProductEvent("decision_record_imported", { tool_id: toolId, source: "decision_review", placement: "result_action_card", locale });
+    });
   };
 
   return (
@@ -517,13 +529,15 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <button type="button" className="btn primary decision-review__add" onClick={addRecord}>{t.add}</button>
         </div>
 
+        {pendingSave && <ReviewSaveDialog locale={locale} record={pendingSave} onSaved={finishSave} onClose={() => setPendingSave(null)} />}
+        {pendingAction && <ReviewSaveDialog locale={locale} onConfirm={pendingAction} onClose={() => setPendingAction(null)} />}
         {savedDecision && <AccountArchive record={savedDecision} locale={locale} />}
         {savedDecision && !isPersistencePromptOpen && <div className="decision-review__saved" role="status">
           <strong>{t.saved(formatReviewDate(savedDecision.reviewDate, locale))}</strong>
-          <p>{locale === "en" ? "Keep this work in a project, then return with the next period’s data to review your decision." : "프로젝트에 작업을 보관하고, 다음 기간 데이터로 돌아와 이번 결정을 검토하세요."}</p>
+          <p>{locale === "en" ? "Your decision is saved in the selected project. Return with the next period’s data to review its outcome." : "선택한 프로젝트에 결정을 저장했습니다. 다음 기간 데이터로 돌아와 결과를 검토하세요."}</p>
           <button className="btn primary" type="button" disabled={!savedDecision.reviewDate} onClick={() => exportCalendar(savedDecision)}>{locale === "en" ? "Add review to calendar" : "검토일을 캘린더에 추가"}</button>
-          <Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Keep in a project" : "프로젝트에 보관하기"}</Link>
-          <Link className="btn" href={`${locale === "en" ? "/en" : ""}/weekly-review#wr-history`} onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "decision_saved", placement: analyticsPlacement, locale })}>{locale === "en" ? "See the saved decision" : "저장한 결정 확인"}</Link>
+          <Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "My projects" : "내 프로젝트"}</Link>
+          <ProjectReviewLink projectId={savedProjectId} locale={locale} onNavigate={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "decision_saved", placement: analyticsPlacement, locale })} />
         </div>}
         {isPersistencePromptOpen && savedDecision && (
           <section className="decision-review__save-prompt" aria-labelledby={`${detailsId}-save-title`}>
@@ -597,6 +611,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                   </div>}
                 </div>
                 <div className="decision-review__record-footer">
+                  {recordDrafts[record.id] && <button type="button" className="btn primary" onClick={() => setPendingAction(() => () => {
+                    updateDecisionRecord(record.id, recordDrafts[record.id]);
+                    setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
+                  })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
                   <span>{record.reviewDate || "—"}</span>
                   <label>
                     <span className="sr-only">{t.learning} — {record.action}</span>

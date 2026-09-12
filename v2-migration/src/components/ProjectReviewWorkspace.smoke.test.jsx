@@ -12,7 +12,8 @@ it.each(["ko", "en"])("keeps the draft when managing projects and returning (%s)
   const en = locale === "en";
   render(<ProjectReviewWorkspace locale={locale} />);
   fireEvent.change(screen.getByRole("textbox", { name: "Draft decision" }), { target: { value: "Keep current draft" } });
-  fireEvent.click(screen.getByRole("button", { name: en ? "Manage projects" : "프로젝트 관리" }));
+  expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Client A");
+  fireEvent.click(screen.getByRole("button", { name: en ? "My projects" : "내 프로젝트" }));
   expect(screen.queryByRole("textbox", { name: "Draft decision" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Open selected review" }));
   expect(screen.getByRole("textbox", { name: "Draft decision" }).value).toBe("Keep current draft");

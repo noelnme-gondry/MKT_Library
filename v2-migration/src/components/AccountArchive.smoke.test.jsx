@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
@@ -43,6 +44,9 @@ describe("account archive consent and re-entry", () => {
     useAppStore.setState({ decisionRecords: [{ id: "local-1", action: "Keep this" }] });
     render(<AccountArchive />);
     fireEvent.click(await screen.findByRole("button", { name: "이 기기의 검토 목록으로 복사" }));
+    expect(useAppStore.getState().decisionRecords.map(record => record.id)).toEqual(["local-1"]);
+    await screen.findByRole("button", { name: "Confirm authenticated review save" });
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords.map(record => record.id)).toEqual(["remote-1", "local-1"]);
     expect(screen.getByRole("button", { name: "이 기기의 검토 목록으로 복사" }).disabled).toBe(true);
   });

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { confirmReviewSave } from "@/test/reviewSaveBoundary";
 //
 // Render-smoke for CreativeAnalyzer (5-6). Regression net for render/mount-effect
 // crashes. Golden tests cover CREATIVE_STATS / CREATIVE_FATIGUE; this asserts the
@@ -208,6 +209,7 @@ describe("CreativeAnalyzer render smoke", () => {
     fireEvent.click(screen.getByText(/다음 검토 약속/));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/cr_/);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-6");
   });
 

@@ -4648,17 +4648,28 @@ body:not(.light-mode) .moon-icon {
 .my-account-menu__panel nav { display: grid; gap: 4px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px; }
 .my-account-menu__panel nav a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 12px; border-radius: 8px; color: var(--text-1); font-size: 14px; font-weight: 550; line-height: 1.4; text-decoration: none; }
 .my-account-menu__panel nav a svg { flex: 0 0 20px; }
-.my-account-menu__panel nav a:hover { background: var(--bg-3); }
+.app .topbar .my-account-menu__panel nav a:hover,
+.app .topbar .my-account-menu__panel nav a:focus-visible { background: var(--bg-2); color: var(--text-1); box-shadow: inset 0 0 0 1px var(--border); }
+.project-review-workspace .projects-page { max-width: var(--container-max); padding-inline: clamp(18px, 3vw, 42px); margin: 0 auto; }
+.project-review-workspace__title > .btn { margin: 0 0 12px; }
+.project-review-workspace__tools > details { position: relative; }
+.project-review-workspace__tools > details > summary { cursor: pointer; min-height: 44px; padding: 12px; color: var(--text-1); }
 .project-review-workspace__bar { width: 100%; max-width: var(--container-max); margin: 0 auto; padding: 28px clamp(18px, 3vw, 42px) 0; }
 .project-review-workspace__title h1 { margin: 0; padding: 0; border: 0; color: var(--text-1); font-size: 28px; font-weight: 750; letter-spacing: -.035em; line-height: 1.3; }
 .project-review-workspace__bar p { margin: 8px 0 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
 .project-review-workspace__tools { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-top: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
 .project-review-workspace__bar label { display: grid; gap: 6px; min-width: 0; width: 260px; font-size: 12px; color: var(--text-secondary); }
 .project-review-workspace__bar select { width: 100%; height: 44px; font: inherit; font-size: 14px; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
-.project-review-workspace__views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-1); }
-.project-review-workspace__views .btn { min-height: 44px; margin: 0; padding: 8px 16px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 650; box-shadow: none; }
-.project-review-workspace__views .btn[aria-pressed="true"] { background: var(--bg-2); border-color: var(--border); color: var(--text-1); box-shadow: 0 1px 3px #0001; }
 .project-review-workspace .wr-screen { padding-top: 0; }
+.review-save-overlay { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: #0008; }
+.review-save-dialog { width: min(560px, 100%); max-height: 90dvh; overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-2); color: var(--text-1); }
+.review-save-dialog h2 { margin: 0 0 12px; font-size: 24px; }
+.review-save-dialog p { font-size: 14px; line-height: 1.6; }
+.review-save-dialog > label { display: grid; gap: 8px; margin-block: 16px; }
+.review-save-dialog input, .review-save-dialog select { width: 100%; min-height: 44px; background: var(--bg-1); color: var(--text-1); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.review-save-dialog input[type="checkbox"] { width: auto; min-height: auto; }
+.review-save-dialog > .btn { margin: 12px 8px 0 0; }
+.review-save-dialog .account-archive { margin-block: 16px; padding: 16px 0; border: 0; border-block: 1px solid var(--border); background: none; }
 .project-review-workspace .wr-screen__head--embedded { padding: 0; }
 .project-review-workspace [hidden] { display: none !important; }
 @media (max-width: 640px) {
@@ -4668,7 +4679,6 @@ body:not(.light-mode) .moon-icon {
   .project-review-workspace__title h1 { font-size: 24px; }
   .project-review-workspace__tools { margin-top: 18px; gap: 12px; }
   .project-review-workspace__bar label { width: 100%; }
-  .project-review-workspace__views { width: 100%; }
   .project-review-workspace__bar select { max-width: 100%; }
 }
 @media (max-width: 768px) {
