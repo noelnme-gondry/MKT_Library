@@ -16,7 +16,7 @@ export default function JourneyProgress({ stage, locale = "ko", placement = "wor
   return <nav className="journey-progress" aria-label={en ? "From analysis to the next review" : "분석부터 다음 리뷰까지"}>
     <ol>{STEPS.map((step, index) => <li key={step.id} aria-current={stage === step.id ? "step" : undefined}>
       <span aria-hidden="true">{index + 1}</span>
-      {step.id === "review" && stage !== "review" ? <Link href={`${en ? "/en" : ""}/weekly-review`} onClick={() => trackProductEvent("review_entry_clicked", { source: "journey", placement, locale })}>{step[en ? "en" : "ko"]}</Link> : <strong>{step[en ? "en" : "ko"]}</strong>}
+      {step.id === "review" && stage !== "review" && placement !== "weekly_review" ? <Link href={`${en ? "/en" : ""}/weekly-review`} onClick={() => trackProductEvent("review_entry_clicked", { source: "journey", placement, locale })}>{step[en ? "en" : "ko"]}</Link> : <strong>{step[en ? "en" : "ko"]}</strong>}
     </li>)}</ol>
   </nav>;
 }

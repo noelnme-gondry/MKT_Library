@@ -8,6 +8,7 @@ import { serializeDecisionReviewCsv, serializeDecisionReviewIcs } from "@/lib/de
 import { downloadCsv, downloadCalendar } from "@/utils/download";
 import { trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
+import AccountDecisionLibrary from "./AccountDecisionLibrary";
 const loginMessages = new WeakSet();
 const ReviewSaveDialog = lazy(() => import("./ReviewSaveDialog"));
 
@@ -15,6 +16,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
   const en = locale === "en";
   const [session, setSession] = useState(null);
   const [memos, setMemos] = useState([]);
+  const [memosLoading, setMemosLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [consent, setConsent] = useState("");
@@ -39,6 +41,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
         const next = await refreshAccount();
         if (!active || currentVersion !== version) return;
         setMemos([]);
+        setMemosLoading(true);
         setSession(next);
         onSession?.(next);
         if (next.account) {
@@ -46,7 +49,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
           trackProductEventOnce("archive_gate_viewed", `archive:${locale}:${bucket}`, { locale, trial_remaining_bucket: bucket, state: next.entitlement ? "active" : "free" });
           if (bucket === "expired" && !next.entitlement) trackProductEventOnce("trial_expired", `trial-expired:${locale}`, { locale, trial_remaining_bucket: bucket });
         }
-        if (next.account && !record && !profile) { const result = await accountRequest("memos"); if (active && currentVersion === version) setMemos(result.memos); }
+        if (next.account && !record && !profile) { const result = await accountRequest("memos"); if (active && currentVersion === version) { setMemos(result.memos); setMemosLoading(false); } }
       } catch (error) { if (active && currentVersion === version) { setSession(null); onSession?.(null); setMessage(error.message === "ACCOUNT_RESTRICTED" ? (en ? "This account is outside the current pilot. Saved records have not been deleted. Anonymous analysis remains available." : "현재 검증 대상이 아닌 계정입니다. 저장한 기록이 삭제된 것은 아닙니다. 익명 분석은 계속 이용할 수 있습니다.") : (en ? "Account storage is unavailable. Your local records remain here." : "계정 보관함에 연결하지 못했습니다. 로컬 기록은 그대로 유지됩니다.")); } }
     };
     refresh();
@@ -78,6 +81,14 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     if (result.trialStarted) { trackProductEvent("trial_started", { locale, source: "first_memo" }); setTrialReturn(readPaymentReturn()); }
     setMessage(en ? "Decision memo saved to your account." : "결정 메모를 계정에 저장했습니다.");
   });
+  if (!record && !profile) return <AccountDecisionLibrary locale={locale} anchorId={anchorId} signedIn={Boolean(session.account)} memos={memos} loading={memosLoading} records={localRecords} busy={busy} message={message} onCopy={setPendingCopy}
+    onExport={() => downloadCsv(serializeDecisionReviewCsv(memos), "account-decisions")}
+    onCalendar={memo => downloadCalendar(serializeDecisionReviewIcs(memo, locale), "decision-review")}
+    onDelete={memo => run(async () => { await accountRequest(`memos?id=${encodeURIComponent(memo.id)}`, { method: "DELETE" }); setMemos(items => items.filter(item => item.id !== memo.id)); setMessage(en ? "Account copy deleted. Local records were kept." : "계정의 사본을 삭제했습니다. 로컬 기록은 유지됩니다."); })}
+    accountControls={<AccountArchive locale={locale} profile />}
+    renderSave={memo => <AccountArchive key={memo.id} locale={locale} record={memo} />}>
+    {pendingCopy && <Suspense fallback={<p role="status">{en ? "Opening save…" : "저장 창을 여는 중…"}</p>}><ReviewSaveDialog locale={locale} record={pendingCopy} onClose={() => setPendingCopy(null)} /></Suspense>}
+  </AccountDecisionLibrary>;
   return <section id={anchorId} className="account-archive block" aria-label={profile ? (en ? "My account" : "마이페이지") : (en ? "Account decision archive" : "계정 결정 보관함")}>
     {pendingCopy && <Suspense fallback={<p role="status">{en ? "Opening save…" : "저장 창을 여는 중…"}</p>}><ReviewSaveDialog locale={locale} record={pendingCopy} onClose={() => setPendingCopy(null)} /></Suspense>}
     {!compact && <h3>{profile ? (en ? "My account" : "마이페이지") : (en ? "Keep this decision across devices" : "다른 기기에서도 이 결정 이어보기")}</h3>}

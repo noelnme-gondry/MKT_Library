@@ -14,8 +14,28 @@ describe("account archive consent and re-entry", () => {
     mocks.request.mockImplementation(async path => path === "memos" ? { memos: [], trialStarted: true } : {});
   });
   afterEach(cleanup);
+  it.each(["ko", "en"])("keeps settings and the save form out of the empty library (%s)", async locale => {
+    const en = locale === "en";
+    render(<AccountArchive locale={locale} />);
+    await screen.findByText(en ? "No saved decisions yet" : "아직 저장한 결정이 없습니다");
+    expect(screen.getByRole("link", { name: en ? "Record your first decision" : "첫 결정 기록하기" }).getAttribute("href")).toContain("#wr-upload");
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("button", { name: en ? "Sign out" : "로그아웃" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /기존 메모 내보내기|Export existing memos/ })).toBeNull();
+  });
+  it("opens local decision selection only after the save action", async () => {
+    useAppStore.setState({ decisionRecords: [{ id: "decision_1", action: "Review budget" }] });
+    render(<AccountArchive />);
+    fireEvent.click(await screen.findByRole("button", { name: "계정에 보관하기" }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "decision_1" } });
+    const save = await screen.findByRole("button", { name: "결정 메모 계정에 저장" });
+    expect(save.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("선택한 메모를 계정에 보관합니다."));
+    fireEvent.click(save);
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("memos", expect.objectContaining({ method: "POST" })));
+  });
   it("refreshes every archive after a successful account mutation", async () => {
-    render(<><AccountArchive record={{ id: "decision_1", action: "Review budget" }} /><AccountArchive /></>);
+    render(<><AccountArchive record={{ id: "decision_1", action: "Review budget" }} /><AccountArchive profile /></>);
     await waitFor(() => expect(screen.getAllByText(/첫 저장 시 체험 시작/)).toHaveLength(2));
     mocks.refresh.mockResolvedValue({ enabled: true, account: { id: "owner", email: "owner@example.com", trialStartedAt: Date.now() }, entitlement: { expiresAt: Date.now() + 14 * 86400000 }, mailEnabled: false });
     // The real client emits only for mutations; reads must not emit recursively.
@@ -43,12 +63,12 @@ describe("account archive consent and re-entry", () => {
     mocks.request.mockResolvedValue({ memos: [{ id: "remote-1", toolId: "5-2", action: "Review budget" }] });
     useAppStore.setState({ decisionRecords: [{ id: "local-1", action: "Keep this" }] });
     render(<AccountArchive />);
-    fireEvent.click(await screen.findByRole("button", { name: "이 기기의 검토 목록으로 복사" }));
+    fireEvent.click(await screen.findByRole("button", { name: "검토 이어하기" }));
     expect(useAppStore.getState().decisionRecords.map(record => record.id)).toEqual(["local-1"]);
     await screen.findByRole("button", { name: "Confirm authenticated review save" });
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords.map(record => record.id)).toEqual(["remote-1", "local-1"]);
-    expect(screen.getByRole("button", { name: "이 기기의 검토 목록으로 복사" }).disabled).toBe(true);
+    expect(screen.getByRole("link", { name: "검토 이어하기" }).getAttribute("href")).toContain("#wr-history");
   });
   it.each(["ko", "en"])("does not offer a purchase claim to someone with no purchased pass (%s)", async locale => {
     render(<AccountArchive locale={locale} profile />);
