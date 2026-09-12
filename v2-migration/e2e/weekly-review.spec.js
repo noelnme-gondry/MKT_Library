@@ -146,7 +146,7 @@ async function dochiToWeekly(page, locale) {
 
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await hero.getByRole("link", { name: en ? /Find analyses for my CSV/ : /CSV로 가능한 분석 한 번에/ }).click();
+  await hero.getByRole("link", { name: en ? /Upload your CSV/ : /내 CSV로 분석하기/ }).click();
   const intake = page.locator('.dochi-home-assistant .csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });
