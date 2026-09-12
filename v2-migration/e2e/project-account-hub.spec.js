@@ -1,6 +1,27 @@
 import { test, expect } from "@playwright/test";
 
 for (const locale of ["ko", "en"]) {
+  test(`signed-in account copy stays aligned (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const en = locale === "en";
+    const email = "long.account.address.for.layout@example.com";
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "layout", email, serviceReminders: false }, entitlement: { plan: "paid", account: true, trial: false, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
+    await page.goto(`${en ? "/en" : ""}/weekly-review`);
+    await expect(page.locator(".header-price")).toHaveText(en ? "About Pro" : "Pro 안내");
+    await page.locator(".my-account-menu > summary").click();
+    const panel = page.locator(".my-account-menu__panel");
+    await expect(panel.locator(".account-identity__email")).toHaveText(email);
+    const checkbox = panel.getByRole("checkbox", { name: en ? /Email reminders/ : /이메일 알림 받기/ });
+    await expect(checkbox).toBeVisible();
+    const emailBox = await panel.locator(".account-identity__email").boundingBox();
+    const planBox = await panel.locator(".account-identity__plan").boundingBox();
+    expect(planBox.y).toBeGreaterThanOrEqual(emailBox.y + emailBox.height);
+    const inputBox = await checkbox.boundingBox();
+    const copyBox = await panel.locator(".account-reminder__copy").boundingBox();
+    expect(copyBox.x).toBeGreaterThan(inputBox.x + inputBox.width);
+    expect(Math.abs(copyBox.y - inputBox.y)).toBeLessThan(5);
+    await expect(panel.locator(".account-identity__plan time")).toHaveCSS("white-space", "nowrap");
+    expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+  });
   test(`account entry and unified project review (${locale})`, async ({ page }) => {
     const en = locale === "en";
     const prefix = en ? "/en" : "";
