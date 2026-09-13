@@ -215,6 +215,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.1 한 화면, 한 결정
 
+#### 입력·비교 기준의 정확성 (2026-09-13)
+
+- 공개 Sheets 입력은 이미 공개된 자료에만 사용한다. 비공개·사내 자료는 공유 권한을 바꾸도록 안내하지 않고, CSV로 내려받아 업로드하도록 안내한다. / Public Sheets import is for data already shared publicly. For private or company data, keep sharing permissions unchanged and upload a downloaded CSV.
+- 주간 리뷰의 평소 변동 범위에는 같은 통화·기간 길이의 과거 집계 중 서로 겹치지 않는 최신 기간을 사용한다. 현재 기간과 겹치는 집계는 제외한다. 저장 건수와 판정에 사용한 기간 수를 구분하고, 실제 기간·지표값을 접힌 근거에서 확인하게 한다. 이력이 부족한 경우와 모든 값이 동일한 경우를 구분하며 정상·유의성으로 단정하지 않는다. / Weekly review uses recent, non-overlapping historical aggregates with matching currency and period length, excluding overlap with the current period. Show the periods and metric values actually used in expandable evidence, distinguish insufficient history from identical values, and do not claim normality or statistical significance.
+- 미래 예측의 총예산·채널별 제약·채널 예산은 원본 CSV 통화로 입력한다. 표시 통화를 바꿔도 입력·모델 예산은 달라지지 않는다. 환산된 결과는 기존 고정 참고 환율을 고지하며 실시간 시세로 표현하지 않는다. / Forecast totals, channel limits and channel budgets use the source CSV currency. Changing display currency does not change inputs or model budgets. Converted output retains its fixed reference-rate disclosure and is not a live quote.
+
 제품이 제공하는 선택지는 많아도 **한 화면에서 사용자가 내려야 하는 결정은 하나**다. 첫 방문자에게 선명해야 하는 것은 'CSV를 올린다' 또는 '문제를 진단한다' 중 하나이며, 라이브러리·테마·설정·전체 도구 인덱스는 그 행동과 경쟁하지 않는다.
 
 ### 5.1.1 홈 진입과 도구 탐색

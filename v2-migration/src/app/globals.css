@@ -4281,6 +4281,10 @@ body:not(.light-mode) .moon-icon {
 .sheet-connect-btn:active {
   transform: scale(0.98);
 }
+.sheet-connect-hint { color: var(--text-primary); font-size: 12px; line-height: 1.6; max-width: 68ch; }
+.forecast-budget-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.forecast-budget-controls label { display: grid; gap: 6px; font-size: 12px; color: var(--text-primary); }
+.forecast-budget-controls input { width: 130px; min-height: 44px; }
 .sheet-connect-entry { display: grid; gap: 8px; margin-top: 10px; }
 .sheet-source-list { display: grid; gap: 4px; max-width: 520px; padding: 9px; border-left: 2px solid var(--border); background: var(--surface-container-low); color: var(--text-muted); font: 700 9.5px var(--font-sans); letter-spacing: .04em; }
 .sheet-source-list__item { display: grid; grid-template-columns: minmax(0,1fr) 22px; align-items: center; gap: 4px; }

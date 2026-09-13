@@ -57,7 +57,7 @@ tools:
 - 도구 추가: `IA` → `routeMap` → `PageClient` 디스패치 → `TOOL_REQUIRED/OPTIONAL_FIELDS` → `toolGroups` → `TOOL_GUIDE` → `demoData` → 컴포넌트 → `sitemap` → 골든+스모크. 상세: §12.1.
 - 계산 게이트: `analyzedByGroup`/`isGroupAnalyzed` 뒤에서만 무거운 compute. 토글은 lookup만(§4.4).
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).
-- 저장 집계는 기간·통화·전환 기준이 맞을 때만 재사용한다. 부분 주를 주간 합계에서 추정하지 말고 새 업로드·재방문 경로를 검증한다(#812).
+- 저장 집계는 기간·통화·전환 기준이 맞을 때만 재사용한다. 평소 변동 이력의 현재·과거 기간 간 겹침도 제외하고, 판정과 근거 표는 같은 배열을 쓴다. 부분 주를 추정하지 말고 새 업로드·재방문 경로를 검증한다(#812, 2026-09-13).
 - CSV 상태는 `TOOL_GROUP` 기반 그룹 스코프 — 읽기(`activeDataGroup`)·쓰기(`groupForRoute`) 그룹이 갈리지 않게(§4.3).
 - 함정 목록: AGENTS.md §7 + `docs/pitfalls.md` 상세. 최신 전면 감사는 `docs/system-audit-2026-08-12.md`.
 - **전역 규칙이 있어도 개별 규칙이 취소하면 없는 것과 같다**: 전역 `:focus-visible` 링을 `outline:none`으로 덮은 곳이 12곳 있었다. 취소가 이기는지는 특이도·선언 순서로 갈리므로 **grep 개수로 판정하지 말 것**(`app/focusVisible.test.js`).

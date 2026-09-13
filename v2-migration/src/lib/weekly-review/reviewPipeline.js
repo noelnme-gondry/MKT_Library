@@ -12,7 +12,7 @@
 import { readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { resolveComparisonPeriods, parseUtcDate, formatUtcDate, addDaysUtc } from "./period";
 import { buildSnapshot, deriveMetrics, snapshotMetrics, sumRows } from "./snapshot";
-import { historyFor } from "./snapshotStore";
+import { historySeriesFor, historyFromSeries } from "./snapshotStore";
 import { routeAnalyses } from "./router";
 import { buildVariance } from "./varianceBridge";
 import { scoreDecision } from "./decisionScore";
@@ -96,12 +96,14 @@ export function runReview({
   periods.reason = null;
   periods.volumeMultiplier = periods.smallSample ? 2 : 1;
 
-  const history = historyFor(storedSnapshots, {
+  const historySeries = historySeriesFor(storedSnapshots, {
     excludeStart: periods.current.start,
     days: periods.current.days,
     currency: project.currency,
     derive: (snapshotRows) => deriveMetrics(sumRows(snapshotRows), { basis }),
   });
+
+  const history = historyFromSeries(historySeries);
 
   const routing = routeAnalyses({
     current,
@@ -150,6 +152,7 @@ export function runReview({
     previous,
     history,
     routing,
+    historySeries,
     variance,
     lastDecision,
     historyWeeks: Object.keys(history).length > 0 ? (history[project.kpi?.metric] || []).length : 0,

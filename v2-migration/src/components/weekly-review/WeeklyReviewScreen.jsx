@@ -45,6 +45,7 @@ import { buildWorkspaceEvidence, parseReviewTarget, workspaceReportNotes, format
 import WeeklyEvidencePanel from "./WeeklyEvidencePanel";
 import WeeklyProjectSetup from "./WeeklyProjectSetup";
 import WeeklyReportDocument from "./WeeklyReportDocument";
+import WeeklyHistoryEvidence, { baselineExplanation } from "./WeeklyHistoryEvidence";
 
 const COPY = {
   ko: {
@@ -78,7 +79,7 @@ const COPY = {
     curStart: "이번 시작", curEnd: "이번 끝",
     prevStart: "지난 시작", prevEnd: "지난 끝",
     lengthWarn: "기간 길이가 다릅니다. 변화율이 기간 차이 때문일 수 있습니다.",
-    historyNote: (n) => `저장된 주간 기록 ${n}주 — 평소 변동 범위를 이 기록으로 판정합니다.`,
+    historyNote: (n) => `비교 가능한 기록 ${n}개 기간 — 이번 판정에 쓴 이력에서 실제 사용한 기간과 값을 확인하세요.`,
     historyNone: "비교 가능한 주간 기록이 없어 평소 변동 범위는 아직 모릅니다. 기기 저장이 켜져 있어야 다음 방문에도 기록이 남습니다.",
     goalLabel: "목표", guardLabel: "가드레일", amountLabel: "크기",
     guardHint: "가드레일을 비우면 다음 주에 자동으로 판정할 수 없습니다.",
@@ -114,7 +115,7 @@ const COPY = {
     curStart: "This from", curEnd: "This to",
     prevStart: "Last from", prevEnd: "Last to",
     lengthWarn: "The two periods differ in length. The change may reflect that difference.",
-    historyNote: (n) => `${n} weeks of saved history — the usual range is judged from these.`,
+    historyNote: (n) => `${n} comparable periods — open the review history evidence to see the periods and values used.`,
     historyNone: "No comparable history yet, so the usual range is unknown. Device storage must be on to keep records for your next visit.",
     goalLabel: "Goal", guardLabel: "Guardrail", amountLabel: "Size",
     guardHint: "Leave the guardrail empty and next week's review cannot score this decision.",
@@ -485,9 +486,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
           <p className="wr-verdict__basis">
             {REASON_TEXT[locale]?.[routing.reason] || ""}
             {kpiAssessment && !kpiAssessment.baselineKnown && (
-              <> {locale === "en"
-                ? "The usual range is not known yet — too few weeks."
-                : "평소 변동 범위는 아직 모릅니다(비교 이력이 짧습니다)."}</>
+              <> {baselineExplanation(kpiAssessment.baseline, locale)}</>
             )}
           </p>
         </div>
@@ -626,6 +625,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
           )}
         </section>
       )}
+
+      <WeeklyHistoryEvidence review={review} metric={kpiMetric} currency={csvData.currency} locale={locale} />
 
       {/* ── 4. 이번 주에 할 것 ─────────────────────── */}
       <details open={!quiet && !unknown} className="wr-settings">

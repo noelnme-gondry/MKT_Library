@@ -1556,14 +1556,22 @@ export function forecastNaiveBaselineLabel(id, tx) {
 
 // 천단위 콤마 입력(§7 `type=number`는 콤마 불가 · §12.14 라이브 콤마+커서 보존 포트). type=text로
 // 표시=콤마, 읽기=콤마 strip. onCommit(number|null) — 빈칸이면 null(부모가 기본값 복귀).
-export function CommaNumberInput({ value, onCommit, style, placeholder, disabled = false }) {
+export function CommaNumberInput({ value, onCommit, style, placeholder, disabled = false, allowDecimals = false, ariaLabel }) {
   const ref = useRef(null);
   const focusedRef = useRef(false);
-  const fmt = (n) => (n == null || n === "" || !isFinite(n) ? "" : Number(n).toLocaleString());
+  const fmt = (n) => (n == null || n === "" || !isFinite(n) ? "" : Number(n).toLocaleString("en-US", { maximumFractionDigits: 20 }));
   const [txt, setTxt] = useState(fmt(value));
   useEffect(() => { if (!focusedRef.current) setTxt(fmt(value)); }, [value]);
   const handle = (e) => {
     const raw = e.target.value, caret = e.target.selectionStart;
+    if (allowDecimals) {
+      const normalized = raw.replace(/,/g, "");
+      if (!/^\d*\.?\d*$/.test(normalized) || (normalized && normalized !== "." && !Number.isFinite(Number(normalized)))) return;
+      setTxt(raw);
+      // 소수점만 입력 중인 상태는 아직 금액이 아니다. 기존 예산을 0으로 만들지 않는다.
+      if (normalized !== ".") onCommit(normalized === "" ? null : Number(normalized));
+      return;
+    }
     const digitsLeft = raw.slice(0, caret).replace(/[^\d]/g, "").length;
     const num = raw.replace(/[^\d]/g, "");
     const formatted = num === "" ? "" : Number(num).toLocaleString();
@@ -1577,7 +1585,7 @@ export function CommaNumberInput({ value, onCommit, style, placeholder, disabled
     });
   };
   return (
-    <input ref={ref} type="text" inputMode="numeric" value={txt} placeholder={placeholder} disabled={disabled}
+    <input ref={ref} type="text" inputMode={allowDecimals ? "decimal" : "numeric"} aria-label={ariaLabel} value={txt} placeholder={placeholder} disabled={disabled}
       onFocus={() => { focusedRef.current = true; }}
       onBlur={() => { focusedRef.current = false; setTxt(fmt(value)); }}
       onChange={handle} style={{ ...style, opacity: disabled ? 0.6 : 1, cursor: disabled ? "not-allowed" : undefined }} />
