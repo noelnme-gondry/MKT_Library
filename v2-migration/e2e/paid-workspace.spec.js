@@ -21,6 +21,7 @@ for (const locale of ["ko", "en"]) {
       if (state === "purchased") {
         await expect(page.getByRole("menuitem", { name: /Word/ })).toBeVisible();
       } else {
+        await page.getByRole("menuitem", { name: /Word/ }).click();
         const gate = page.locator(".purchase-dialog");
         await expect(gate).toBeVisible();
         await expect(gate).toContainText(en ? "14-day trial do not unlock downloads" : "14일 체험만으로는 다운로드할 수 없습니다");
@@ -80,12 +81,14 @@ for (const locale of ["ko", "en"]) {
     const downloads = []; page.on("download", download => downloads.push(download));
     const trigger = page.locator(".dashboard-briefing .result-action-card").getByRole("button", { name: en ? "Download" : "결과 받기", exact: true });
     await trigger.focus(); await page.keyboard.press("Enter");
+    await page.getByRole("menuitem", { name: /Word/ }).click();
     const gate = page.getByRole("dialog", { name: en ? "Take your analysis into your next meeting" : "분석을 다음 회의에서 바로 쓰세요" });
     await expect(gate).toBeVisible(); await expect(gate).toContainText("Word"); await expect(gate).toContainText("Excel");
     await expect(page).not.toHaveTitle("");
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape"); await expect(gate).toBeHidden(); await expect(trigger).toBeFocused();
     await trigger.click();
+    await page.getByRole("menuitem", { name: /Word/ }).click();
     await expect(gate.getByRole("link", { name: en ? "Save or back up my work" : "작업 보관·백업하기" })).toHaveCount(0);
     await expect(gate).toContainText(en ? "browser" : "브라우저");
     await gate.getByRole("link", { name: en ? "View free sample reports" : "무료 샘플 보고서 보기" }).click();

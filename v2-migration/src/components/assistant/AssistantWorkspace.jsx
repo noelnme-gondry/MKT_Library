@@ -502,6 +502,7 @@ function resultExportValue({ result, toolTitle, locale, csvData, C }) {
       analysisType: "dochi_workspace",
       inputSignature: result.inputSignature || "",
       source: {
+        importSource: csvData?.importSource,
         fileName: csvData?.fileName,
         headers: csvData?.headers,
         rows: csvData?.raw,

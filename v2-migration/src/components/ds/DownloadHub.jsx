@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { DropdownMenu } from "radix-ui";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadFile, downloadJson, downloadXlsx } from "@/utils/download";
@@ -8,6 +8,7 @@ import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
 import { workbookFileBase } from "@/lib/analysis-export/exportContract";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { captureAnalysisCharts } from "@/lib/analysis-export/chartSnapshots";
+import AnalysisReportPreview from "./AnalysisReportPreview";
 
 // 결과 다운로드 허브 — Radix 포털과 roving focus를 사용해 glass/sticky 조상과
 // 무관하게 메뉴를 배치하고 키보드 동작을 표준화한다.
@@ -24,6 +25,8 @@ export default function DownloadHub({
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [preview, setPreview] = useState(null);
+  const triggerRef = useRef(null);
   const analysisExport = useAnalysisExport();
   const documentItem = analysisExport?.buildPayload ? {
     label: locale === "en" ? "Analysis report (Word)" : "분석 보고서 (Word)",
@@ -74,15 +77,23 @@ export default function DownloadHub({
     analyticsType: "manifest",
     onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
   } : null;
-  const usable = [documentItem, workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
+  const previewItem = analysisExport?.buildPayload ? {
+    label: locale === "en" ? "Preview my report · free" : "내 보고서 미리보기 · 무료",
+    desc: locale === "en" ? "Check the current conclusion and limitations before buying" : "구매 전 현재 분석의 결론·한계 확인",
+    analyticsType: "preview", free: true,
+    onSelect: () => { setPreview(analysisExport.buildPayload(manifest)); setExportError(""); trackProductEvent("report_preview_opened", { tool_id: toolId || analysisExport.toolId, locale, source: "analysis_export" }); },
+  } : null;
+  const usable = [previewItem, documentItem, workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
 
   if (usable.length === 0) return null;
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-    <DropdownMenu.Root open={open} onOpenChange={next => { if (!next || requirePaidExport({ toolId, locale })) setOpen(next); }} modal={false}>
+    {preview && <AnalysisReportPreview payload={preview} locale={locale} returnFocusRef={triggerRef} onClose={() => setPreview(null)} />}
+    <DropdownMenu.Root open={open} onOpenChange={next => { if (!next || previewItem || requirePaidExport({ toolId, locale })) setOpen(next); }} modal={false}>
       <DropdownMenu.Trigger asChild>
         <button
+          ref={triggerRef}
           type="button"
           className={`ab-pill ${className}`.trim()}
           aria-label={label}
@@ -96,6 +107,7 @@ export default function DownloadHub({
         <DropdownMenu.Content
           align={align === "right" ? "end" : "start"}
           sideOffset={6}
+          onCloseAutoFocus={event => { if (preview) event.preventDefault(); }}
           style={{
             minWidth: "220px",
             zIndex: 50,
@@ -110,8 +122,9 @@ export default function DownloadHub({
             <DropdownMenu.Item
               key={`${item.analyticsType || "item"}-${item.label}`}
               onSelect={async () => {
-                if (!requirePaidExport({ toolId, locale, format: item.analyticsType })) return;
-                try { if (await item.onSelect() !== false) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" }); }
+                if (!item.free) triggerRef.current?.focus();
+                if (!item.free && !requirePaidExport({ toolId, locale, format: item.analyticsType })) return;
+                try { if (await item.onSelect() !== false && !item.free) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" }); }
                 catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
               }}
               style={{

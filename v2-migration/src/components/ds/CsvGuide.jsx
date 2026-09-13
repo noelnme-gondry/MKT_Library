@@ -5,6 +5,7 @@ import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/compone
 import DataTable from "@/components/ds/DataTable";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { trackProductEvent } from "@/lib/analytics";
+import SourceExportGuide from "./SourceExportGuide";
 
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
@@ -118,6 +119,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
         </div>
 
         <div className="csv-guide-modal-body">
+          <SourceExportGuide toolId={toolId} locale={locale} />
           <section className="csv-guide-section csv-guide-section--purpose">
             <h4>{T.whenHeading}</h4>
             <p>{guide.when}</p>

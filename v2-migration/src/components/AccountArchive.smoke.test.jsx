@@ -14,6 +14,25 @@ describe("account archive consent and re-entry", () => {
     mocks.request.mockImplementation(async path => path === "memos" ? { memos: [], trialStarted: true } : {});
   });
   afterEach(cleanup);
+  it.each(["ko", "en"])("offers one explicit reminder enrollment alongside the selected memo (%s)", async locale => {
+    mocks.refresh.mockResolvedValue({ enabled: true, account: { id: "owner", email: "owner@example.com", serviceReminders: false }, mailEnabled: true });
+    render(<AccountArchive locale={locale} record={{ id: "decision_1", action: "Hold", reviewDate: "2026-09-20" }} />);
+    const reminder = await screen.findByLabelText(locale === "en" ? /Enable reminders for this review/ : /이 검토일·이용기간 종료 안내 수신에 동의/);
+    expect(reminder.checked).toBe(false);
+    fireEvent.click(reminder);
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText(locale === "en" ? "Store this selected memo in my account." : "선택한 메모를 계정에 보관합니다."));
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Save decision to account" : "결정 메모 계정에 저장" }));
+    await waitFor(() => expect(mocks.request).toHaveBeenCalled());
+    expect(JSON.parse(mocks.request.mock.calls[0][1].body)).toMatchObject({ reminder: true, serviceRemindersConsent: "service-reminders-v1" });
+  });
+  it.each(["ko", "en"])("explains the invitation restriction before login (%s)", async locale => {
+    mocks.refresh.mockResolvedValue({ enabled: true, signupRestricted: true, account: null, mailEnabled: false });
+    render(<AccountArchive locale={locale} profile />);
+    await screen.findByText(locale === "en" ? /limited to invited accounts/ : /초대된 계정만/);
+    expect(screen.getByRole("button", { name: locale === "en" ? "Continue with Google" : "Google로 계속" })).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
+  });
   it.each(["ko", "en"])("keeps settings and the save form out of the empty library (%s)", async locale => {
     const en = locale === "en";
     render(<AccountArchive locale={locale} />);

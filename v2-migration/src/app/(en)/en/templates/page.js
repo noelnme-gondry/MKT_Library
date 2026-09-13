@@ -1,3 +1,5 @@
+import TaskTemplatePaths from "@/components/TaskTemplatePaths";
+import SourceExportGuide from "@/components/ds/SourceExportGuide";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -13,8 +15,8 @@ const templateDetailHref = (toolId) => {
 };
 
 export async function generateMetadata() {
-  const title = "Free marketing templates and checklists";
-  const description = "Download CSV schemas plus event taxonomy, postback QA, and new ad channel onboarding checklists.";
+  const title = "Marketing report samples and CSV templates";
+  const description = "Explore weekly reporting, CPA diagnosis and budget-scaling examples. Download free Word/Excel samples, CSV input templates and operating checklists.";
   const canonical = `${SITE_URL}/en/templates`;
   return {
     title,
@@ -40,7 +42,7 @@ const FAQ = [
   ["Does the template include example data?", "No. It contains only a header row. Fill the rows below with your own data before uploading."],
   ["Can I upload a CSV I already have?", "Yes. Automatic column mapping recognizes most existing headers. Use a template when the mapping is unclear."],
   ["Is uploaded data sent to a server?", "No. CSV files are processed in your browser and never sent to a server. Device storage can be managed in Storage."],
-  ["How do I use a template in Google Sheets?", "Download a template below, then use File → Import → Upload in Google Sheets. Keep the header row unchanged, fill your data, and connect the shared Viewer link in the app."],
+  ["How do I use a template in Google Sheets?", "Download a template below, then use File → Import → Upload in Google Sheets. Keep the header row unchanged, fill your data, then download it as CSV and upload it. Confidential sheets can stay private."],
   ["Which tools have templates?", "Templates are listed for each published tool with a supported CSV schema. Check the column guide for its required data and observation unit."],
 ];
 
@@ -50,20 +52,13 @@ export default function EnglishTemplatesPage() {
   return (
     <main id="main-content" tabIndex="-1" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Free marketing templates and checklists</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Marketing report samples and CSV templates</h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
           Each analysis tool expects slightly different columns. Download a blank header-only CSV, fill it in, and upload it without rebuilding the mapping. Downloads are generated in your browser and never sent to a server.
         </p>
       </header>
-      <section className="templates-sheet-guide" aria-label="How to use the Google Sheets templates">
-        <div><span>GOOGLE SHEETS</span><strong>Use the same template in a spreadsheet</strong></div>
-        <ol>
-          <li>Download a CSV / Google Sheets template below.</li>
-          <li>In Google Sheets, use <b>File → Import → Upload</b>; keep the header row unchanged.</li>
-          <li>Fill the data, share it as <b>Anyone with the link · Viewer</b>, then import it in the app.</li>
-        </ol>
-        <small>Your sheet remains in Google Sheets and source rows stay in browser memory. The app can only remember that sheet’s URL and name in this browser.</small>
-      </section>
+      <TaskTemplatePaths locale="en" />
+      <SourceExportGuide locale="en" />
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>{group.heading}</h2>

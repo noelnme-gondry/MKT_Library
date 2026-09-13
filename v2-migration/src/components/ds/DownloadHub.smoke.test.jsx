@@ -8,12 +8,33 @@ import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportCont
 import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
 import { downloadXlsx } from "@/utils/download";
 import { trackProductEvent } from "@/lib/analytics";
+import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
 
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 vi.mock("@/lib/analysis-export/workbookClient", () => ({ createAnalysisWorkbook: vi.fn(async () => new ArrayBuffer(8)) }));
 vi.mock("@/utils/download", () => ({ downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
 
 describe("DownloadHub", () => {
+  it.each(["ko", "en"])("previews actual evidence without a purchase, file generation or analytics disclosure (%s)", async locale => {
+    useAppStore.setState({ entitlement: null, purchasePrompt: null });
+    vi.clearAllMocks();
+    const payload = buildAnalysisExportPayload({ toolId: "5-21", toolTitle: "Performance change", locale, headline: "Hold: private-campaign-17", stats: [{ label: "CPA", value: "12,345", detail: "Observed only" }], source: { rows: [{ privateRevenue: 12345 }] }, addon: { method: { name: "Bennet", limitations: ["No causal attribution"] } } });
+    render(<AnalysisExportProvider value={{ toolId: "5-21", buildPayload: () => payload }}><DownloadHub toolId="5-21" locale={locale} /></AnalysisExportProvider>);
+    const trigger = screen.getByRole("button", { name: "결과 받기" });
+    trigger.focus(); fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    fireEvent.click(screen.getByRole("menuitem", { name: locale === "en" ? /Preview my report/ : /내 보고서 미리보기/ }));
+    await screen.findByRole("dialog");
+    expect(screen.getByText(payload.summary.headline)).toBeTruthy();
+    expect(screen.getByText("12,345")).toBeTruthy();
+    expect(screen.getByText("No causal attribution")).toBeTruthy();
+    expect(createAnalysisWorkbook).not.toHaveBeenCalled();
+    expect(downloadXlsx).not.toHaveBeenCalled();
+    expect(useAppStore.getState().purchasePrompt).toBeNull();
+    expect(JSON.stringify(trackProductEvent.mock.calls)).not.toMatch(/private|12,345|12345|No causal/);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Close" : "닫기" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
   beforeEach(() => { useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 }, purchasePrompt: null }); });
   it("blocks unpaid exports before opening the menu", () => {
     useAppStore.setState({ entitlement: null });
@@ -30,7 +51,8 @@ describe("DownloadHub", () => {
     const action = vi.fn();
     render(<AnalysisExportProvider value={{ toolId: "5-2", buildPayload }}><DownloadHub label="Trial export" items={[{ label: "CSV", onSelect: action }]} /></AnalysisExportProvider>);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Trial export" }), { button: 0, ctrlKey: false });
-    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("menu")).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: "CSV" }));
     expect(buildPayload).not.toHaveBeenCalled();
     expect(action).not.toHaveBeenCalled();
     expect(useAppStore.getState().purchasePrompt).toBeTruthy();

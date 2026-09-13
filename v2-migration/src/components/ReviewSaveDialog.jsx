@@ -7,6 +7,10 @@ import ProjectReviewLink from "./ProjectReviewLink";
 import { refreshAccount } from "@/lib/account/accountClient";
 import { useAppStore } from "@/store/useDataStore";
 import { saveProjectReview } from "@/lib/project/saveReview";
+import { serializeDecisionReviewIcs } from "@/lib/decisionReview";
+import { downloadCalendar } from "@/utils/download";
+import { trackProductEvent } from "@/lib/analytics";
+import { TOOL_GROUP } from "@/lib/toolGroups";
 
 export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm }) {
   const en = locale === "en";
@@ -49,6 +53,16 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
     <h2>{saved ? (en ? "Review saved" : "리뷰를 저장했습니다") : (en ? "Save review" : "리뷰 저장")}</h2>
     {saved ? <>
       <p role="status">{en ? `Saved on this device in ${saved.project.name || "your existing project"}.` : `이 기기의 ‘${saved.project.name || "기존 프로젝트"}’에 저장했습니다.`}</p>
+      {saved.record && <section className="review-next-visit">
+        <h3>{en ? "For your next review" : "다음 검토 준비"}</h3>
+        {saved.record.sourcePeriod && <p>{en ? "Saved analysis period: " : "저장한 분석 기간: "}{saved.record.sourcePeriod}</p>}
+        <p>{TOOL_GROUP[saved.record.toolId] === "efficiency" ? (en ? "Return to this project with a new-period file using the same currency, conversion definition and columns. Check the dates before comparing. Data does not refresh automatically." : "같은 통화·전환 기준·컬럼으로 새 기간의 파일을 준비해 이 프로젝트로 돌아오세요. 비교 전에 날짜를 확인하세요. 데이터는 자동으로 갱신되지 않습니다.") : (en ? "Return to this decision with the next observed results. Keep the measurement definition consistent and check that the observation period is complete before reviewing." : "다음에 관측한 결과를 준비해 이 결정으로 돌아오세요. 같은 측정 기준을 유지하고 관측 기간이 끝났는지 확인한 뒤 검토하세요.")}</p>
+        {saved.record.reviewDate && <button className="btn" type="button" onClick={() => {
+          const calendar = serializeDecisionReviewIcs(saved.record, locale);
+          if (calendar && downloadCalendar(calendar, "decision-review") !== false) trackProductEvent("review_calendar_downloaded", { locale, source: "review_save" });
+        }}>{en ? `Add ${saved.record.reviewDate} to calendar · free` : `${saved.record.reviewDate} 캘린더에 추가 · 무료`}</button>}
+      </section>}
+      {saved.record && <p>{en ? "Optional: keep only the selected memo in your account to start Pro if you have not used your trial. Device saving above is already complete." : "선택 사항: 아래에서 결정 메모를 계정에 처음 보관하면 Pro 체험이 시작됩니다. 이미 사용한 체험은 다시 시작되지 않습니다. 이 기기에 저장하는 단계는 이미 끝났습니다."}</p>}
       {saved.record && <AccountArchive record={saved.record} locale={locale} />}
       {saved.record && <ProjectReviewLink projectId={saved.project.id} locale={locale} onNavigate={onClose} />}
       <Link className="btn" href={`${en ? "/en" : ""}/weekly-review#project-management`}>{en ? "Open my projects" : "내 프로젝트 열기"}</Link>

@@ -146,17 +146,16 @@ export default async function BlogPostPage({ params }) {
       </Link>
 
       <header className="content-article__header">
-        <span className="content-article__type">FIELD NOTE</span>
         <h1>
           {post.h1}
         </h1>
         {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
         {post.seoAnswer && (
-          <aside className="content-answer" aria-label="검색 질문에 대한 짧은 답">
-            <span className="content-answer__label">{post.searchIntent || "검색 질문에 대한 짧은 답"}</span>
+          <aside className="content-answer" aria-label="이 글의 핵심 요약">
+            <span className="content-answer__label">핵심 요약</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>적용 조건</strong>{post.conditions}</p>}
-            <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_answer" />
+            {!practice && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_answer" />}
           </aside>
         )}
         <div className="content-article__meta">

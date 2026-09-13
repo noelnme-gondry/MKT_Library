@@ -1,3 +1,5 @@
+import TaskTemplatePaths from "@/components/TaskTemplatePaths";
+import SourceExportGuide from "@/components/ds/SourceExportGuide";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -16,9 +18,9 @@ const templateDetailHref = (toolId) => {
 // 실제 다운로드는 기존 csvTemplate.js(buildToolTemplateCsv, BOM+CRLF §7)를 그대로
 // 공개 템플릿 목록과 다운로드 스키마는 templateCatalog에서 함께 파생한다.
 export async function generateMetadata() {
-  const title = "무료 마케팅 템플릿·체크리스트 다운로드";
+  const title = "마케팅 보고서 샘플·CSV 템플릿 다운로드";
   const description =
-    "분석 도구별 CSV 양식과 이벤트 택소노미·포스트백 QA·신규 광고 매체 온보딩 체크리스트를 무료 다운로드합니다.";
+    "주간 성과 보고·CPA 원인 점검·예산 증액 실습과 Word·Excel 샘플, 도구별 CSV 양식, 운영 체크리스트를 무료로 확인하세요.";
   const canonical = `${SITE_URL}/templates`;
   return {
     title,
@@ -55,7 +57,7 @@ const FAQ = [
   },
   {
     q: "Google Sheets에서 템플릿을 쓰려면 어떻게 하나요?",
-    a: "아래 템플릿 CSV를 받은 뒤 Google Sheets에서 파일 → 가져오기 → 업로드로 열면 됩니다. 헤더를 바꾸지 않고 데이터를 채운 뒤, 앱에서 공개 보기 링크를 연결하세요.",
+    a: "아래 템플릿 CSV를 받은 뒤 Google Sheets에서 파일 → 가져오기 → 업로드로 열면 됩니다. 헤더를 유지해 데이터를 채운 뒤 CSV로 내려받아 업로드하세요. 사내 자료는 시트를 공개하지 않아도 됩니다.",
   },
   {
     q: "어떤 도구의 템플릿을 제공하나요?",
@@ -71,7 +73,7 @@ function buildJsonLd() {
         "@type": "CollectionPage",
         "@id": `${SITE_URL}/templates#page`,
         url: `${SITE_URL}/templates`,
-        name: "무료 마케팅 템플릿·체크리스트 다운로드",
+        name: "마케팅 보고서 샘플·CSV 템플릿 다운로드",
         description: "분석 도구별 CSV 양식과 마케팅 운영 체크리스트를 무료 다운로드합니다.",
         inLanguage: "ko-KR",
       },
@@ -105,7 +107,7 @@ export default function TemplatesPage() {
       />
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          무료 마케팅 템플릿·체크리스트
+          마케팅 보고서 샘플·CSV 템플릿
         </h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
           분석 도구마다 필요한 컬럼이 조금씩 달라요. 헤더만 채워진 빈 CSV를 받아서
@@ -114,15 +116,8 @@ export default function TemplatesPage() {
         </p>
       </header>
 
-      <section className="templates-sheet-guide" aria-label="Google Sheets 템플릿 사용 방법">
-        <div><span>GOOGLE SHEETS</span><strong>같은 템플릿을 시트에서도 그대로 쓰세요</strong></div>
-        <ol>
-          <li>아래에서 CSV / Google Sheets 템플릿을 받습니다.</li>
-          <li>Google Sheets에서 <b>파일 → 가져오기 → 업로드</b>로 열고, 헤더 행은 바꾸지 않습니다.</li>
-          <li>데이터를 채운 뒤 <b>링크가 있는 모든 사용자 · 보기</b>로 공유하면 앱에서 바로 불러올 수 있습니다.</li>
-        </ol>
-        <small>시트는 Google 계정에, 분석 원본은 브라우저 메모리에만 남습니다. 앱은 시트 URL과 이름만 이 브라우저에서 다시 고를 수 있게 기억합니다.</small>
-      </section>
+      <TaskTemplatePaths locale="ko" />
+      <SourceExportGuide locale="ko" />
 
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>

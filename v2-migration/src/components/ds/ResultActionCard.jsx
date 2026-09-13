@@ -215,6 +215,7 @@ export default function ResultActionCard({
       inputSignature,
       source: {
         fileName: csvData?.fileName,
+        importSource: csvData?.importSource,
         headers: csvData?.headers,
         rows: csvData?.raw,
         mapping: csvData?.mapping,
@@ -227,7 +228,7 @@ export default function ResultActionCard({
       } : workbookExport,
       generatedAt: new Date().toISOString(),
     }),
-  }), [csvData?.fileName, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
+  }), [csvData?.fileName, csvData?.importSource, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
   const copyShareLink = async () => {
     setShareError("");
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
