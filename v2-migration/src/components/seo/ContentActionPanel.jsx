@@ -175,7 +175,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     <div className="content-action-panel__links">
       <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>
       {!isInline && useCase && <>
-        {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(resolvedTool, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
+        {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(useCase.practiceToolId, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
         {template && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/templates/${template.slug}`} onClick={() => trackClick(resolvedTool, "article_case_template")}>{lang === "en" ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →"}</Link>}
         {useCase.canReview && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackClick("weekly-review", "article_case_review")}>{lang === "en" ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →"}</Link>}
       </>}

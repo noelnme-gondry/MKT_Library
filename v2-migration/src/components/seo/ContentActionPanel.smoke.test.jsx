@@ -33,7 +33,7 @@ describe("all published article journeys", () => {
     if (practice) {
       expect(sample.getAttribute("href")).toBe("#blog-practice");
       clickWithoutNavigation(sample);
-      expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ content_slug: slug, placement: "article_case_practice" }));
+      expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ tool_id: practice.toolId, content_slug: slug, placement: "article_case_practice" }));
     }
     const review = screen.queryByRole("link", { name: en ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →" });
     const canReview = Boolean(practice && TOOL_GROUP[practice.toolId] === "efficiency" && TOOL_GROUP[toolId] === "efficiency");

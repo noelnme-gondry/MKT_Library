@@ -25,6 +25,7 @@ export function growthUseCase(slug, locale = "ko") {
   const canReview = Boolean(practice && TOOL_GROUP[practice.toolId] === "efficiency" && TOOL_GROUP[toolId] === "efficiency");
   return {
     hasPractice: Boolean(practice),
+    practiceToolId: practice?.toolId || null,
     canReview,
     description: CASES[slug]?.[locale === "en" ? "en" : "ko"] || (locale === "en"
       ? "Check the required columns and prepare your data for the related analysis."
