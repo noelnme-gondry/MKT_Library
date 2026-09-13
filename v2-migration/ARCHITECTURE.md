@@ -175,6 +175,7 @@ v2-migration/
   `snapshotStore.js` 주간 집계·프로젝트/기간 설정 보관(워크스페이스 IDB `meta`, 90일 만료·전체 삭제 연동) · `reviewPipeline.js` 전체 조립(실제 `campaign_name` 매핑, 업로드/저장 집계 비교, 기간·통화·기준 검증).
   `TOOL_GROUP[weekly-review]`는 efficiency이며 공유 업로더와 분석 게이트를 사용한다. 보고서는 KO/EN 복사·인쇄, 결정 저장 후 기존 ICS 생성기를 사용한다.
   화면은 `components/weekly-review/`. 안내 노출 판정은 `lib/weeklyReviewHandover.js`(모듈 스냅샷).
+  `snapshotStore.historySeriesFor`는 기간 중복을 제외한 이력을 만들고 같은 결과를 판정 배열과 `WeeklyHistoryEvidence`의 실제 기간·값 표에 연결한다. 예측 입력은 `tools/ForecastBudgetControls`에서 원본 CSV 통화로 받아 고정 환율이 제약에 들어가지 않게 한다. `scripts/check-public-readiness.mjs`는 공개 계정·결제 설정만 GET으로 재확인하며 실거래·메일 성공을 뜻하지 않는다.
   프로젝트 기준은 `WeeklyProjectSetup`, 목표 차이·캠페인 전후 비교는 `WeeklyEvidencePanel`, 인쇄 문서는 `WeeklyReportDocument`가 렌더한다. `workspaceEvidence.js`는 기존 스냅샷 집계를 화면·CSV·보고서로 연결하며, 없는 기간이나 KPI를 0으로 보충하지 않는다. 도치 결과에서 필수 매핑을 확인한 뒤 efficiency 슬라이스를 주간 리뷰에 넘긴다.
   홈은 `#dochi-upload`와 `/weekly-review`를 주요 진입점으로 둔다. `WeeklyReviewScreen`의 `ReviewLoop`가 비교·결정·다음 검토를 연결하며, 도구의 결정 기록 링크는 `#wr-history`를 열어 저장한 결정으로 바로 이동한다. 리뷰 업로더는 `showToolGuide={false}`로 대시보드 전용 안내를 숨긴다.
 - **도구 사이 결론 모순 검출 → `src/lib/assist/detectFindingConflicts.js`** (같은 `dataGroup`의 finding 방향 대조. 어느 쪽이 옳은지 정하지 않고 확인 순서만 말한다). 저장소 `store.findingsByGroup` + 정렬 `lib/assist/rankFindings.js`의 소비처는 `components/WeeklyReview.jsx`의 "이번 주 분석이 말한 것" 브리핑 하나이고, 그 화면은 이제 `/weekly-review`의 접기 섹션 안에서 렌더된다.

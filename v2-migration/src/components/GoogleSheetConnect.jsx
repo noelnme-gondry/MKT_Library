@@ -21,34 +21,34 @@ const COPY = {
   ko: {
     openBtn: "📊 공개 Google Sheets에서 불러오기",
     urlLabel: "구글 시트 링크",
-    urlHint: '이 시트가 "링크가 있는 모든 사용자에게 공개(보기)"로 설정돼 있어야 해요.',
+    urlHint: '이미 공개된 시트만 불러올 수 있습니다. 비공개·사내 자료는 공유 권한을 유지하고 CSV로 내려받아 업로드하세요.',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",
     submitBtn: "불러오기",
     cancelBtn: "취소",
     loading: "시트 데이터 가져오는 중…",
     errInvalidUrl: "구글 시트 링크가 아닌 것 같아요. 주소창의 전체 URL을 붙여넣어 주세요.",
-    errForbidden: '이 시트를 못 읽었어요. 구글 시트 우측 상단 "공유" → "링크가 있는 모든 사용자"로 보기 권한을 켜주세요.',
+    errForbidden: '이 시트에 접근할 수 없습니다. 링크를 확인하거나, 공유 권한을 바꾸지 않고 시트를 CSV로 내려받아 업로드하세요.',
     errFetch: "시트를 불러오지 못했어요. 링크가 정확한지 확인해주세요.",
     errEmpty: "이 시트에 데이터가 없어요.",
     recentLabel: "이 브라우저에서 최근 연결한 시트",
     forgetSource: "목록에서 지우기",
-    sourcePrivacy: "시트 URL과 이름만 이 브라우저에 기억합니다. 행 데이터는 저장하지 않습니다.",
+    sourcePrivacy: "최근 연결 목록에는 시트 URL과 이름만 기억합니다. 가져온 데이터의 기기 저장 여부는 저장 설정을 따릅니다.",
   },
   en: {
     openBtn: "📊 Import from a public Google Sheet",
     urlLabel: "Google Sheets link",
-    urlHint: 'This sheet needs to be shared as "Anyone with the link" (Viewer).',
+    urlHint: 'Import sheets that are already public. For private or company data, keep sharing permissions unchanged and upload a downloaded CSV.',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",
     submitBtn: "Import",
     cancelBtn: "Cancel",
     loading: "Fetching sheet data…",
     errInvalidUrl: "That doesn't look like a Google Sheets link. Paste the full URL from the address bar.",
-    errForbidden: 'Couldn\'t read this sheet. Open "Share" in Google Sheets and turn on "Anyone with the link" (Viewer).',
+    errForbidden: 'Cannot access this sheet. Check the link or download and upload a CSV without changing sharing permissions.',
     errFetch: "Couldn't load the sheet. Check that the link is correct.",
     errEmpty: "This sheet has no data.",
     recentLabel: "Recently connected in this browser",
     forgetSource: "Remove from this list",
-    sourcePrivacy: "Only the sheet URL and name are remembered in this browser. No row data is stored.",
+    sourcePrivacy: "Recent connections remember only the sheet URL and name. Device storage of imported data follows your storage settings.",
   },
 };
 
@@ -216,6 +216,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
           ref={inputRef}
           id={inputId}
           type="url"
+          aria-describedby={`${inputId}-hint`}
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={T.urlPlaceholder}
@@ -249,7 +250,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
           </button>
         )}
       </div>
-      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlHint}</span>
+      <span id={`${inputId}-hint`} className="sheet-connect-hint">{T.urlHint}</span>
       {recentSources.length > 0 && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
     </form>
   );

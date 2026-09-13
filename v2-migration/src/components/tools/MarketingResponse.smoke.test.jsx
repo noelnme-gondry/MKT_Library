@@ -2014,6 +2014,12 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("Organic 기저+halo · Paid Spend 회귀");
     expect(document.body.textContent).toContain("Total = Android(Organic + Paid) + iOS(Organic + Paid)");
     expect(document.body.textContent).toContain("Android·iOS 성분 검증");
+    const budgets = screen.getAllByRole("textbox", { name: /주간 예산 \(USD\)/ });
+    const before = budgets.map(input => input.value);
+    expect(budgets.length).toBeGreaterThan(0);
+    act(() => useAppStore.getState().setDisplayCurrency("KRW"));
+    await flushRaf();
+    expect(screen.getAllByRole("textbox", { name: /주간 예산 \(USD\)/ }).map(input => input.value)).toEqual(before);
     expect(document.body.textContent).not.toContain("기간·연간 패턴 자동 탐색");
   }, 90_000);
 

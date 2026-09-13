@@ -41,8 +41,9 @@ import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import PillGroup from "@/components/ds/PillGroup";
+import ForecastBudgetControls from "./ForecastBudgetControls";
 import FixedRateNote from "@/components/ds/FixedRateNote";
-import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
+import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact, fmtCurrency } from "@/utils/format";
 import { allocateFixedMmmGroupTotals, buildMmmAggregateMediaPanel, buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
 import { resolveResponseStage } from "@/lib/responseStage";
@@ -6385,14 +6386,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <button className="ab-pill" onClick={() => setFcScenarioOpen((value) => !value)}>{fcScenarioOpen ? tx("접기", "Hide") : tx("열기", "Show")}</button>
                       </div>
                       {fcScenarioOpen && <>
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", margin: "8px 0" }}>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("총 주간 예산", "Total weekly budget")}{` (${currencySym})`} <CommaNumberInput value={fcTotalBudget == null ? "" : Math.round(convertCurrency(fcTotalBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcTotalBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "110px" }} /></label>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최소", "Channel min")}{` (${currencySym})`} <CommaNumberInput value={Math.round(convertCurrency(fcMinBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMinBudget(value == null ? 0 : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
-                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최대", "Channel max")}{` (${currencySym})`} <CommaNumberInput value={fcMaxBudget == null ? "" : Math.round(convertCurrency(fcMaxBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMaxBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
-                        </div>
-                        {/* 이 입력은 표시 통화로 받아 원본 통화로 되돌려 엔진에 넣는다 —
-                            환산이 걸려 있으면 고정 환율이 배분 제약에 들어가므로 고지한다. */}
-                        <FixedRateNote sourceCurrency={selectedSourceCurrency} displayCurrency={displayCurrency} locale={locale} />
+                        <ForecastBudgetControls currency={sourceCurrency} locale={locale} total={fcTotalBudget} minimum={fcMinBudget} maximum={fcMaxBudget} onTotal={setFcTotalBudget} onMinimum={setFcMinBudget} onMaximum={setFcMaxBudget} />
                         <div className="table-wrap"><table className="data" style={{ fontSize: "11.5px" }}><thead><tr><th>{tx("시나리오", "Scenario")}</th><th>{tx("평균/주", "Average/wk")}</th><th>{tx("기준 대비", "vs baseline")}</th><th>{tx("상태", "Status")}</th></tr></thead><tbody>
                           {forecastScenarioResults.results.map((scenario) => <tr key={scenario.key}><td><strong>{tx({ baseline: "기준 예산", "media-off": "미디어 OFF", "plus-10": "+10% 증액", "minus-10": "-10% 감액" }[scenario.key] || scenario.label, scenario.label)}</strong></td><td className="tnum">{scenario.summary?.average == null ? "—" : targetValueLabel(scenario.summary.average, { perWeek: true })}</td><td className="tnum">{scenario.summary?.percentFromBaseline == null ? "—" : `${scenario.summary.percentFromBaseline >= 0 ? "+" : ""}${scenario.summary.percentFromBaseline.toFixed(1)}%`}</td><td>{scenario.key === "baseline" ? tx("표시", "Shown") : forecastScenario.eligible ? tx("참고 시나리오", "Reference scenario") : tx("식별 게이트 잠금", "Identification locked")}</td></tr>)}
                         </tbody></table></div>
@@ -6477,7 +6471,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </h3>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "12px" }}>
-                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx(`최근평균/주 (${displayCurrency})`, `Recent avg/wk (${displayCurrency})`)}</th><th>{tx(`미래 예산/주 (${displayCurrency})`, `Future budget/wk (${displayCurrency})`)}</th></tr></thead>
+                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx(`최근평균/주 (${sourceCurrency})`, `Recent avg/wk (${sourceCurrency})`)}</th><th>{tx(`미래 예산/주 (${sourceCurrency})`, `Future budget/wk (${sourceCurrency})`)}</th></tr></thead>
                           <tbody>
                             {forecast.chans.map((ch) => {
                               const rec = forecast.recentMean[ch.key] || 0;
@@ -6485,7 +6479,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               // 표의 숫자와 실제 기본 예측이 어긋나는 것을 막는다.
                               const cur = forecastScenario.eligible ? fcBudget[ch.key] : null;
                               const sourceValue = cur != null && isFinite(cur) ? cur : rec;
-                              const val = Math.round(convertCurrency(sourceValue, sourceCurrency, displayCurrency));
+                              const val = sourceValue;
                               const effectiveValue = forecast.futSpendByKey?.[ch.key]?.[0];
                               const isEffectiveValueClamped = forecast.spendRanges?.[ch.key]?.outOfRange === true
                                 && Number.isFinite(effectiveValue)
@@ -6493,15 +6487,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               return (
                                 <tr key={ch.key}>
                                   <td>{ch.label}</td>
-                                  <td className="tnum" style={{ color: MUTED }}>{spendValueLabel(rec, { perWeek: true })}</td>
+                                  <td className="tnum" style={{ color: MUTED }}>{fmtCurrency(rec, { currency: sourceCurrency, precise: true })}</td>
                                   <td>
                                     <CommaNumberInput
                                       value={val}
+                                      allowDecimals
+                                      ariaLabel={tx(`${ch.label} 주간 예산 (${sourceCurrency})`, `${ch.label} weekly budget (${sourceCurrency})`)}
                                       disabled={!forecastScenario.eligible}
                                       onCommit={(n) => setFcBudget((prev) => {
                                         const next = { ...prev };
                                         if (n == null) delete next[ch.key];
-                                        else next[ch.key] = Math.max(0, convertCurrency(n, displayCurrency, sourceCurrency));
+                                        else next[ch.key] = Math.max(0, n);
                                         return next;
                                       })}
                                       style={{ width: "120px", textAlign: "right" }}

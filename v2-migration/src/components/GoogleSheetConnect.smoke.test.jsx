@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import GoogleSheetConnect, { fetchSheetTable } from "./GoogleSheetConnect";
+import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "./GoogleSheetConnect";
 import { listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
 vi.mock("@/lib/data-import/localHistory", () => ({
@@ -68,6 +68,15 @@ describe("GoogleSheetConnect cancel affordance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listSheetSources.mockResolvedValue([]);
+  });
+
+  it.each(["ko", "en"])("offers a private-file alternative with input-linked help in %s", locale => {
+    render(<GoogleSheetConnect initialOpen locale={locale} />);
+    const input = screen.getByRole("textbox");
+    const help = document.getElementById(input.getAttribute("aria-describedby"));
+    expect(help.textContent).toContain("CSV");
+    expect(help.textContent).toContain(locale === "en" ? "keep sharing permissions unchanged" : "공유 권한을 유지");
+    expect(sheetErrorMessage("forbidden", locale)).toContain(locale === "en" ? "without changing sharing permissions" : "공유 권한을 바꾸지 않고");
   });
 
   it("offers cancel when the visitor opened the form themselves", async () => {

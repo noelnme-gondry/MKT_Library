@@ -112,6 +112,14 @@ async function runJourney(page, locale) {
   await upload(campaignCsv(38, 7));
   await expect(page.getByText(en ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다.", { exact: true })).toBeVisible();
   await expect(page.locator(".wr-report")).toContainText("2026-09-07");
+  const evidence = page.locator("details").filter({ has: page.locator("caption", { hasText: en ? "Values used to assess historical variation" : "평소 변동 폭 비교에 사용한 값" }) });
+  await evidence.locator(":scope > summary").click();
+  await expect(evidence.getByRole("row")).toHaveCount(3); // 헤더 + 복원한 과거 2기간
+  await expect(evidence.getByRole("table")).toContainText("2026-08-24 ~ 2026-08-30");
+  await expect(evidence.getByRole("table")).toContainText("2026-08-31 ~ 2026-09-06");
+  await expect(evidence.getByRole("table")).not.toContainText("2026-09-07");
+  await expectNoSeriousAccessibilityViolations(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await upload(campaignCsv(45, 7));
   await expect(page.locator(".wr-report")).toContainText("2026-09-14");
   await expect(page.getByText(en ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다.", { exact: true })).toBeVisible();

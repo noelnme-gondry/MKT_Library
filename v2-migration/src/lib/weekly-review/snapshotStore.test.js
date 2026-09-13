@@ -82,6 +82,22 @@ describe("병합", () => {
 describe("이력 추출", () => {
   const derive = (rows) => deriveMetrics(sumRows(rows), { basis: "actions" });
 
+  it("이번 기간과 겹치거나 서로 겹치는 사용자 지정 이력을 중복 관측으로 세지 않는다", () => {
+    const record = (start, end, cost) => ({ currency: "KRW", period: { start, end, days: 7 }, rows: [{ cost, actions: 10 }] });
+    const history = historyFor([
+      record("2026-08-24", "2026-08-30", 100),
+      record("2026-08-25", "2026-08-31", 200),
+      record("2026-08-31", "2026-09-06", 300),
+      record("2026-09-02", "2026-09-08", 400),
+    ], { currency: "KRW", days: 7, excludeStart: "2026-09-07", derive });
+    expect(history.cpa).toEqual([10, 30]);
+  });
+
+  it("손상된 기간 타입은 정렬에서 예외를 내거나 관측값으로 섞지 않는다", () => {
+    const record = { period: { start: "2026-08-24", end: "2026-08-30" }, rows: [{ cost: 100, actions: 10 }] };
+    expect(historyFor([{ ...record, period: { start: 20260824, end: 20260830 } }, record], { derive }).cpa).toEqual([10]);
+  });
+
   function fixture() {
     let list = [];
     const weeks = [

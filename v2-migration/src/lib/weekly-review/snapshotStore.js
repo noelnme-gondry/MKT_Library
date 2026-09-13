@@ -65,13 +65,33 @@ export function mergeSnapshots(existing = [], incoming = null, max = MAX_SNAPSHO
  * @param {function} derive     `(rows) => { cpa, roas, ... }` — 호출부가 파생 규칙을 준다
  */
 export function historyFor(snapshots = [], { excludeStart = null, days = null, currency = null, derive } = {}) {
-  const history = {};
-  for (const snapshot of Array.isArray(snapshots) ? snapshots : []) {
-    if (!snapshot?.period?.start || (excludeStart && snapshot.period.start >= excludeStart)) continue;
-    if (currency && snapshot.currency !== currency) continue;
-    if (days !== null && snapshot.period.days !== days) continue;
+  return historyFromSeries(historySeriesFor(snapshots, { excludeStart, days, currency, derive }));
+}
+
+// 최신 기간부터 고른다. 시작일만 비교하면 현재 기간 일부가 과거 기준에 섞이고,
+// 이동한 사용자 지정 기간을 모두 세면 같은 날짜가 복수 관측으로 들어간다.
+export function historySeriesFor(snapshots = [], { excludeStart = null, days = null, currency = null, derive } = {}) {
+  const candidates = (Array.isArray(snapshots) ? snapshots : []).filter(snapshot => {
+    const { start, end } = snapshot?.period || {};
+    return typeof start === "string" && typeof end === "string" && start && end && end >= start && (!excludeStart || end < excludeStart)
+      && (!currency || snapshot.currency === currency)
+      && (days === null || snapshot.period.days === days);
+  }).sort((a, b) => b.period.end.localeCompare(a.period.end) || b.period.start.localeCompare(a.period.start));
+  const selected = [];
+  let nextStart = excludeStart;
+  for (const snapshot of candidates) {
+    if (nextStart && snapshot.period.end >= nextStart) continue;
     const metrics = typeof derive === "function" ? derive(snapshot.rows || []) : null;
     if (!metrics) continue;
+    selected.push({ period: snapshot.period, metrics });
+    nextStart = snapshot.period.start;
+  }
+  return selected.reverse();
+}
+
+export function historyFromSeries(series = []) {
+  const history = {};
+  for (const { metrics } of series) {
     for (const [key, value] of Object.entries(metrics)) {
       if (value === null || value === undefined || !Number.isFinite(value)) continue;
       (history[key] ||= []).push(value);
