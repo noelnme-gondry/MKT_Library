@@ -6,9 +6,9 @@ const valid = { valid: true, expires_at: "2026-10-09T00:00:00Z" };
 const cached = { ...resolveLicenseResult(null, valid, now), keyHash: hash };
 afterEach(() => vi.unstubAllEnvs());
 describe("license and interest plan", () => {
-  it("free users can create one project; existing reads are not an entitlement operation", () => {
+  it("every project requires active Pro; existing reads are not an entitlement operation", () => {
     expect(SUBSCRIPTION.monthlyKrw).toBe(5900);
-    expect(canCreateProject(0, null, now)).toBe(true);
+    expect(canCreateProject(0, null, now)).toBe(false);
     expect(canCreateProject(1, null, now)).toBe(false);
     expect(canCreateProject(20, cached, now)).toBe(true);
   });

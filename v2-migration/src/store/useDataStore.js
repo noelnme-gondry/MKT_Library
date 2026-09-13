@@ -1,3 +1,4 @@
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { serializeProject } from "@/lib/project/serializeProject";
 import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
 import { decisionDataOrigin, isDemoData } from "@/lib/dataOrigin";
@@ -682,6 +683,7 @@ export const useAppStore = create(persist((set, get) => ({
     return true;
   },
   addDecisionRecord: (draft) => set((state) => {
+    if (!hasPaidAccess(state.entitlement)) return { upgradeReason: "project_limit" };
     const now = new Date().toISOString();
     const data = state.csvGroups[groupForRoute(draft?.toolId)] || state.csvData;
     const dataOrigin = decisionDataOrigin(data);
@@ -702,6 +704,7 @@ export const useAppStore = create(persist((set, get) => ({
     };
   }),
   importDecisionRecords: (rows, fallbackToolId = "") => set((state) => {
+    if (!hasPaidAccess(state.entitlement)) return { upgradeReason: "project_limit" };
     const now = new Date().toISOString();
     const normalizedRows = normalizeDecisionReviewRows(rows, fallbackToolId);
     if (!normalizedRows.length) return {};
@@ -718,7 +721,7 @@ export const useAppStore = create(persist((set, get) => ({
     });
     return { decisionRecords: nextRecords };
   }),
-  updateDecisionRecord: (id, patch) => set((state) => ({
+  updateDecisionRecord: (id, patch) => set((state) => !hasPaidAccess(state.entitlement) ? ({ upgradeReason: "project_limit" }) : ({
     decisionRecords: state.decisionRecords.map((record) => {
       if (record.id !== id) return record;
       const normalized = sanitizeDecisionReviewRecord({ ...record, ...patch, id: record.id, createdAt: record.createdAt });
@@ -1001,16 +1004,23 @@ export const useAppStore = create(persist((set, get) => ({
       dochiAnalysisSession: null,
     };
     });
+    get().persistWorkspaceGroup(group, projectId);
+  },
+  // Also used after the first trial unlocks a file already analyzed in memory.
+  // Does not reset findings, remap data, switch projects or rerun an analysis.
+  persistWorkspaceGroup: async (group, projectId = get().activeProjectId) => {
+    if (get().activeProjectId !== projectId || get().projectSwitching) return false;
+    const data = get().csvGroups[group];
     const source = data?.workspaceSource;
-    if (source?.blob instanceof Blob && data?.raw?.length && data.importSource !== "demo" && get().decisionPersistenceEnabled === true) {
+    if (source?.blob instanceof Blob && data?.raw?.length && data.importSource !== "demo" && get().decisionPersistenceEnabled === true && hasPaidAccess(get().entitlement)) {
       const series = describeDataSeries(data, group);
       const previous = get().workspaceDatasetSummaries.find(entry => entry.group === group)?.series;
       set(state => {
-        const slice = { ...state.csvData, dataContinuity: compareDataSeries(previous, series), dataSeries: series };
-        return { csvData: slice, csvGroups: { ...state.csvGroups, [group]: slice } };
+        const slice = { ...state.csvGroups[group], dataContinuity: compareDataSeries(previous, series), dataSeries: series };
+        return { ...(state.activeDataGroup === group ? { csvData: slice } : {}), csvGroups: { ...state.csvGroups, [group]: slice } };
       });
-      saveWorkspaceDataset({
-        projectId, series, shouldSave: () => get().decisionPersistenceEnabled && !get().projectSwitching && get().activeProjectId === projectId && get().csvGroups[group]?.raw === data.raw,
+      return saveWorkspaceDataset({
+        projectId, series, entitlement: get().entitlement, shouldSave: () => hasPaidAccess(get().entitlement) && get().decisionPersistenceEnabled && !get().projectSwitching && get().activeProjectId === projectId && get().csvGroups[group]?.raw === data.raw,
         group,
         fileName: data.fileName,
         sourceBlob: source.blob,
@@ -1024,7 +1034,7 @@ export const useAppStore = create(persist((set, get) => ({
       }).then((saved) => { get().refreshProjects(); set((state) => state.activeProjectId !== projectId ? {} : ({
         workspaceDatasetSummaries: [saved, ...state.workspaceDatasetSummaries.filter((entry) => entry.group !== saved.group)],
         workspaceStorageError: null,
-      })); }).catch((error) => set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }));
+      })); return true; }).catch((error) => { set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }); return false; });
     }
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
@@ -1238,14 +1248,19 @@ export const useAppStore = create(persist((set, get) => ({
 const PROJECT_STATE_FIELDS = ["decisionRecords", "eventMarkers", "viewConfig", "customMetrics", "customCharts", "dashboardFilterGroups", "csvGroups"];
 useAppStore.subscribe((state, previous) => {
   if (!state.projectsReady || !state.decisionPersistenceEnabled || state.projectSwitching || previous.workspaceRestoreStatus === "loading" || state.activeProjectId !== previous.activeProjectId || PROJECT_STATE_FIELDS.every(key => state[key] === previous[key])) return;
+  // Read-only sessions can remove existing decisions, but cannot persist changed settings.
+  if (!hasPaidAccess(state.entitlement)) {
+    if (state.decisionRecords !== previous.decisionRecords) updateProject(state.activeProjectId, { decisions: sanitizeDecisionReviewRecords(state.decisionRecords) }).catch(() => useAppStore.setState({ projectError: "storage_unavailable" }));
+    return;
+  }
   const shouldSave = () => {
     const current = useAppStore.getState();
-    return current.decisionPersistenceEnabled && !current.projectSwitching && current.activeProjectId === state.activeProjectId && PROJECT_STATE_FIELDS.every(key => current[key] === state[key]);
+    return hasPaidAccess(current.entitlement) && current.decisionPersistenceEnabled && !current.projectSwitching && current.activeProjectId === state.activeProjectId && PROJECT_STATE_FIELDS.every(key => current[key] === state[key]);
   };
   const persist = async () => {
     if (state.decisionRecords.length > previous.decisionRecords.length && !state.projects.length) await initializeProjectRecords(state.decisionRecords, shouldSave);
     const configuration = await serializeProject(state);
-    await updateProject(state.activeProjectId, { decisions: sanitizeDecisionReviewRecords(state.decisionRecords), eventMarkers: sanitizeEventMarkers(state.eventMarkers), configuration }, shouldSave);
+    await updateProject(state.activeProjectId, { decisions: sanitizeDecisionReviewRecords(state.decisionRecords), eventMarkers: sanitizeEventMarkers(state.eventMarkers), configuration }, shouldSave, state.entitlement);
   };
   persist().catch(() => useAppStore.setState({ projectError: "storage_unavailable" }));
 });

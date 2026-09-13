@@ -11,7 +11,7 @@ it.each(["ko", "en"])("offers a first-save route without starting a trial (%s)",
   refresh.mockResolvedValue({ enabled: true, account: null });
   render(<SubscriptionTrialOffer locale={locale} />);
   const link = await screen.findByRole("link", { name: locale === "en" ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기" });
-  expect(link.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/weekly-review#account-archive`);
+  expect(link.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/weekly-review#wr-next`);
   expect(refresh).toHaveBeenCalledOnce();
 });
 it("does not offer a second trial to an expired account", async () => {

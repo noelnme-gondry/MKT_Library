@@ -1,11 +1,12 @@
 import { projectTransaction, migrateLegacyProject } from "./repository";
 import { projectMetaKey, DEFAULT_PROJECT_ID, PROJECT_LIMITS } from "./projectLimits";
 import { requestResult } from "@/lib/workspace-storage/db";
-import { canCreateProject } from "@/lib/subscription/entitlement";
+import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement";
 import { sanitizeDecisionReviewRecord } from "@/lib/decisionReview";
 
 // Creation and the first record commit together. Never switch/clear the source CSV.
 export async function saveProjectReview({ projectId, name, record, report, entitlement, initialDecisions = [], shouldSave = () => true }) {
+  if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
   return projectTransaction("readwrite", async meta => {
     const projects = (await requestResult(meta.getAll())).filter(item => item.key === `project:${item.id}`);
     let target = projects.find(item => item.id === projectId);
@@ -31,6 +32,7 @@ export async function saveProjectReview({ projectId, name, record, report, entit
     target = { ...target, lastUsedAt: now };
     if (new Blob([JSON.stringify(target)]).size > PROJECT_LIMITS.metadataBytes) throw new Error("PROJECT_METADATA_LIMIT");
     if (!shouldSave()) throw new Error("SAVE_CONTEXT_CHANGED");
+    if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
     meta.put(target);
     return { project: target, record: savedRecord };
   });

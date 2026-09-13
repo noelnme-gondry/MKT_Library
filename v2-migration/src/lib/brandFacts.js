@@ -22,12 +22,12 @@ export const BRAND = {
   url: SITE_URL,
   ko: {
     shortName: "Growth Opt Playbook",
-    definition: "캠페인 CSV 분석부터 결정 기록과 다음 주 결과 검토까지 이어가는 무료 마케팅 워크스페이스입니다.",
+    definition: "무료 캠페인 CSV 분석과 Pro의 결정 기록·다음 주 결과 검토를 연결하는 마케팅 워크스페이스입니다.",
     audience: "직접 캠페인을 운영하며 예산·소재·채널을 주 단위로 결정하는 퍼포먼스 마케터",
   },
   en: {
     shortName: "Growth Opt Playbook",
-    definition: "A free marketing workspace connecting campaign CSV analysis, saved decisions, and next-week outcome reviews.",
+    definition: "A marketing workspace connecting free campaign CSV analysis with Pro decision records and next-week outcome reviews.",
     audience: "Performance marketers who run campaigns and decide budget, creative, and channel weekly",
   },
 };
@@ -37,13 +37,13 @@ export const BRAND = {
 export const BRAND_FACTS = [
   {
     id: "price",
-    ko: { claim: "모든 분석 도구가 무료입니다.", detail: "분석 도구와 프로젝트 1개는 무료입니다. 보고서 다운로드·여러 프로젝트·일괄 보고서·브랜딩은 5,900원 1개월 이용권으로 제공합니다. 자동 갱신은 없습니다." },
-    en: { claim: "Every analysis tool is free.", detail: "Analysis tools and one project are free. Report downloads, multiple projects, batch reports and branding are included in a KRW 5,900 one-month pass without automatic renewal." },
+    ko: { claim: "모든 분석 도구가 무료입니다.", detail: "분석 도구는 무료입니다. 프로젝트·리뷰와 결정 기록 저장·보고서 다운로드·브랜딩은 5,900원 1개월 이용권으로 제공합니다. 자동 갱신은 없습니다." },
+    en: { claim: "Every analysis tool is free.", detail: "Analysis tools are free. Projects, saved reviews and decisions, report downloads and branding are included in a KRW 5,900 one-month pass without automatic renewal." },
   },
   {
     id: "account",
-    ko: { claim: "분석은 가입이나 로그인 없이 시작합니다.", detail: "계정 없이 CSV를 분석할 수 있습니다. 계정 보관 기능을 이용할 때는 로그인합니다." },
-    en: { claim: "Start analyzing without signup or login.", detail: "Analyze CSVs without an account. Sign in when using account storage." },
+    ko: { claim: "분석은 가입이나 로그인 없이 시작합니다.", detail: "계정 없이 CSV를 분석할 수 있습니다. 리뷰·결정 기록 저장은 로그인과 유효한 Pro가 필요합니다." },
+    en: { claim: "Start analyzing without signup or login.", detail: "Analyze CSVs without an account. Saving reviews and decisions requires sign-in and active Pro." },
   },
   {
     id: "privacy",
@@ -54,8 +54,8 @@ export const BRAND_FACTS = [
   },
   {
     id: "persistence",
-    ko: { claim: "원본 파일은 이 기기에서 처리·보관합니다.", detail: "원본 파일은 서버로 보내지 않습니다. 기기 저장본은 마지막 사용 후 90일 만료 대상입니다. 계정 보관을 선택한 결정 메모는 별도로 서버에 저장되며 직접 삭제할 수 있습니다." },
-    en: { claim: "Source files are processed and retained on this device.", detail: "Source files are not sent to the server. Device copies expire 90 days after last use. Decision memos you choose to keep in your account are stored separately on the server and can be deleted." },
+    ko: { claim: "원본 파일은 이 기기에서 처리합니다.", detail: "원본 파일은 서버로 보내지 않습니다. 새 파일 보관에는 유효한 Pro와 기기 저장 설정이 필요합니다. 기기 저장본은 마지막 사용 후 90일 만료 대상입니다. 계정 보관을 선택한 결정 메모는 별도로 서버에 저장되며 직접 삭제할 수 있습니다." },
+    en: { claim: "Source files are processed on this device.", detail: "Source files are not sent to the server. Saving new files requires active Pro and device storage enabled. Device copies expire 90 days after last use. Decision memos you choose to keep in your account are stored separately on the server and can be deleted." },
   },
   {
     id: "determinism",

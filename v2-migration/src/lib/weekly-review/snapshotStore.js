@@ -1,3 +1,4 @@
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { readProject, updateProject } from "@/lib/project/repository";
 /**
  * 주간 스냅샷 보관함.
@@ -136,12 +137,15 @@ export async function listStoredSnapshots(projectId = null) {
 }
 
 /** 스냅샷 한 장을 보관한다. 성공 여부를 돌려주되 실패해도 던지지 않는다. */
-export async function saveStoredSnapshot(snapshot, { shouldSave = () => true, projectId = null } = {}) {
+export async function saveStoredSnapshot(snapshot, { shouldSave = () => true, projectId = null, entitlement = null } = {}) {
+  if (!hasPaidAccess(entitlement)) return { ok: false, reason: "pro_required" };
+  const contextAllowsSave = shouldSave;
+  shouldSave = () => hasPaidAccess(entitlement) && contextAllowsSave();
   if (projectId) {
     if (!toStoredSnapshot(snapshot)) return { ok: false, reason: "not_storable" };
     try {
       if (!shouldSave()) return { ok: false, reason: "storage_disabled" };
-      const saved = await updateProject(projectId, existing => ({ snapshots: mergeSnapshots(retainSnapshots(existing?.snapshots), { ...snapshot, createdAt: new Date().toISOString() }) }), shouldSave);
+      const saved = await updateProject(projectId, existing => ({ snapshots: mergeSnapshots(retainSnapshots(existing?.snapshots), { ...snapshot, createdAt: new Date().toISOString() }) }), shouldSave, entitlement);
       return saved ? { ok: true, count: saved.snapshots.length } : { ok: false, reason: "storage_disabled" };
     } catch { return { ok: false, reason: "storage_unavailable" }; }
   }
@@ -190,7 +194,10 @@ export function normalizePeriodPreference(value) {
   return Object.fromEntries(fields.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(value[key] || "")).map((key) => [key, value[key]]));
 }
 
-export async function saveReviewProject(project, { shouldSave = () => true, projectId = null } = {}) {
+export async function saveReviewProject(project, { shouldSave = () => true, projectId = null, entitlement = null } = {}) {
+  if (!hasPaidAccess(entitlement)) return { ok: false, reason: "pro_required" };
+  const contextAllowsSave = shouldSave;
+  shouldSave = () => hasPaidAccess(entitlement) && contextAllowsSave();
   // 원본이나 임의 필드를 저장하지 않는다. 매핑은 기존 업로더의 recipe가 소유한다.
   const safe = {
     period: normalizePeriodPreference(project.period),
@@ -203,7 +210,7 @@ export async function saveReviewProject(project, { shouldSave = () => true, proj
   if (projectId) {
     try {
       if (!shouldSave()) return { ok: false };
-      const saved = await updateProject(projectId, { name: safe.name, settings: safe }, shouldSave);
+      const saved = await updateProject(projectId, { name: safe.name, settings: safe }, shouldSave, entitlement);
       return { ok: Boolean(saved) };
     } catch { return { ok: false }; }
   }

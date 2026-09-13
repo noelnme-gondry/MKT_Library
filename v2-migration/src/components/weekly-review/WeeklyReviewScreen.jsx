@@ -1,4 +1,5 @@
 "use client";
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -178,6 +179,8 @@ export default function WeeklyReviewScreen({ locale = "ko", embedded = false }) 
 }
 
 function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
+  const entitlement = useAppStore(state => state.entitlement);
+  const hasSavedProject = useAppStore(state => state.projects.some(item => item.id === projectId));
   const sheetRefreshRef = useRef(null);
   const [refreshingConnectedSheet, setRefreshingConnectedSheet] = useState(false);
   const t = COPY[locale] || COPY.ko;
@@ -245,9 +248,9 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const changeKpi = value => { changeProject(setKpiMetric)(value); setTargetValue(""); setTargetCurrency(null); };
   const changeBasis = value => { changeProject(setBasis)(value); setTargetValue(""); setTargetCurrency(null); };
   const changePeriod = value => { changeProject(setCustomPeriod)(value); setTargetValue(""); setTargetCurrency(null); };
-  const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={!isSampleData && projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} hasResult={hasResult} onSave={async () => {
+  const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={hasSavedProject && hasPaidAccess(entitlement) && !isSampleData && projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} proActive={hasPaidAccess(entitlement)} hasResult={hasResult} onSave={async () => {
       if (isSampleData || !projectReady || !workspaceReady || !targetUnitReady || !targetCurrencyMatches || targetInvalid) return false;
-      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
+      const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, entitlement, shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement) && useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
       if (result.ok) setTargetCurrency(csvData.currency);
       setProjectStatus(result.ok ? (locale === "en" ? "Setup saved on this device." : "이 기기에 설정을 저장했습니다.") : (locale === "en" ? "Could not save. This session still works." : "저장하지 못했습니다. 현재 세션에서는 계속 사용할 수 있습니다."));
       if (result.ok) await useAppStore.getState().refreshProjects();
@@ -305,11 +308,11 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   // 이번 기간 집계를 보관한다 — 다음 주의 "평소 범위"가 여기서 나온다.
   // 기기 저장을 끈 사용자에게는 쓰지 않는다.
   useEffect(() => {
-    if (!review.ok || persistenceEnabled !== true || reviewSource === "demo") return;
+    if (!hasSavedProject || !hasPaidAccess(entitlement) || !review.ok || persistenceEnabled !== true || reviewSource === "demo") return;
     let alive = true;
-    saveStoredSnapshot(review.previous, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId }).then(async (previous) => {
+    saveStoredSnapshot(review.previous, { projectId, entitlement, shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement) && useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId }).then(async (previous) => {
       if (!alive) return;
-      const current = await saveStoredSnapshot(review.current, { projectId, shouldSave: () => useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
+      const current = await saveStoredSnapshot(review.current, { projectId, entitlement, shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement) && useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
       if (alive) {
         setSnapshotStatus(previous.ok && current.ok ? "saved" : "failed");
         trackProductEventOnce(previous.ok && current.ok ? "weekly_review_saved" : "weekly_review_save_failed", resultEventKey, { tool_id: "weekly-review", source: reviewSource, locale, state: "device" });
@@ -321,7 +324,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       }
     });
     return () => { alive = false; };
-  }, [review, persistenceEnabled, resultEventKey, reviewSource, locale, projectId]);
+  }, [review, persistenceEnabled, resultEventKey, reviewSource, locale, projectId, entitlement, hasSavedProject]);
 
   useEffect(() => {
     if (!workspaceReady || !snapshotsReady || !projectReady) return;

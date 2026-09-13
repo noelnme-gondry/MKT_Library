@@ -1,9 +1,11 @@
+import { enableReviewLogin } from "./support/reviewSave";
 import { unzipSync } from "fflate";
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
   test(`saved setup and editable sample reports (${locale})${en ? " @light-en" : ""}`, async ({ page }) => {
+    await enableReviewLogin(page);
     await page.goto(`${prefix}/projects`);
     await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Weekly test");
@@ -44,6 +46,7 @@ for (const locale of ["ko", "en"]) {
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "";
   test(`restores model thresholds without a CSV (${locale})${en ? " @light-en" : ""}`, async ({ page }) => {
+    await enableReviewLogin(page);
     await page.goto(`${prefix}/projects`);
     await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Threshold project");

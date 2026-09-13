@@ -77,7 +77,7 @@ v2-migration/
 | `/start` | start-gate | StartGate.jsx (업로드 → 가능한 분석 추천) |
 | `/guide` | guide-index | GuideIndex.jsx |
 | `/guide/<kebab>` | 1-x~4-x·8-1 | sops/SopContent.jsx |
-| `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·프로젝트 선택) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
+| `/weekly-review` | — | `ProjectReviewWorkspace.jsx`(프로젝트 목록/이름 H1) → `weekly-review/WeeklyReviewScreen.jsx` → `WeeklyReview.jsx`(결정 인박스). 저장=`ReviewSaveDialog.jsx`(로그인·유효 Pro·프로젝트 선택; 첫 체험은 선택한 초안 메모의 계정 보관 동의 후 시작) → `lib/project/saveReview.js`(이름+결정 원자 저장); 열기=`ProjectReviewLink.jsx`(저장한 프로젝트 복원 후 이동). 저장 시 CSV 이동 없음 |
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
@@ -121,7 +121,7 @@ v2-migration/
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js`(Zustand)**: `currentRouteId`(URL 미러)·`IA`/`PHASES`·`dashboardFilter`·`isDarkMode`·`isCmdkOpen`·`viewConfig`·`decisionRecords`·`analyzedByGroup`. `requestAd(cb)`는 광고 제거 후 남은 no-op 래퍼(§12.26).
-- **persist**: 설정만 localStorage(`viewConfig`·`customMetrics`·`customCharts`·`analystMode`, name `mkt_view_config`, `partialize=persistPartialize`). **원본 CSV·매핑·필터 Set은 절대 저장 X**(§2.2). 결정 요약과 업로드 원본(IndexedDB 워크스페이스·90일 만료·`/storage` 삭제)은 `decisionPersistenceEnabled`가 켜져 있을 때 저장되며 **기본값이 ON(opt-out)** 이다 — 동의 배너는 과거 거절 사용자에게만 뜨고, 신규 사용자에게는 저장 후 안내가 대신 나간다. 서버 전송은 어느 경우에도 없다. 서버/테스트엔 `noopStorage` 폴백.
+- **persist**: 설정만 localStorage(`viewConfig`·`customMetrics`·`customCharts`·`analystMode`, name `mkt_view_config`, `partialize=persistPartialize`). **원본 CSV·매핑·필터 Set은 절대 저장 X**(§2.2). 결정 요약과 업로드 원본(IndexedDB 워크스페이스·90일 만료·`/storage` 삭제)은 `decisionPersistenceEnabled`가 켜져 있고 Pro가 유효할 때만 새로 저장·수정되며 **기본값이 ON(opt-out)** 이다 — 동의 배너는 과거 거절 사용자에게만 뜨고, 신규 사용자에게는 저장 후 안내가 대신 나간다. 서버 전송은 어느 경우에도 없다. 서버/테스트엔 `noopStorage` 폴백.
 - **CSV 그룹 스코프**: `csvGroups` 슬라이스 = `efficiency`·`creative`·`experiment`·`response`·`aha`·`incrementality`·`brand_incrementality`·`collinearity`·`asa_keyword`·`aso_store`·`subscription_survival`·`segment_composition`·`content_attr`·`content_aha`·`content_traffic`·`content_dashboard`. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 스왑, `setCsvData`가 활성 그룹+미러 기록). **소비자는 `s.csvData`만 읽는다.**
   - `TOOL_GROUP`(`lib/toolGroups.js`)이 `라우트 id → 그룹`, **`DATA_GROUPS`(=그 값 집합)가 그룹 목록의 SSOT**. 세 맵(`csvGroups`·`analyzedByGroup`·`dashboardFilterGroups`)은 `buildGroupMap()`으로 **파생**하므로 라우트만 추가하면 자동으로 따라온다(PR #610). 손으로 나열하던 시절 누락된 키가 미러를 `undefined`로 만들어 도구가 렌더 throw로 죽었다(5-24, PR #608) — 다시 나열식으로 되돌리지 말 것. 구조 가드는 `useDataStore.test.js`.
   - CSV를 **쓰는** 라우트는 도구가 아니어도 `TOOL_GROUP`에 등록(`start-gate`→efficiency). 읽기·쓰기 그룹이 갈리면 업로드가 사라진다(PR #604).

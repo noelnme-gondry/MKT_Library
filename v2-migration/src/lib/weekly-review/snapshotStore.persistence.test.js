@@ -1,3 +1,4 @@
+import { activePro } from "@/test/proEntitlement";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listStoredSnapshots, readReviewProject, saveReviewProject, SNAPSHOT_META_KEY, PROJECT_META_KEY } from "./snapshotStore";
 import { RETENTION_MS } from "@/lib/workspace-storage/expiry";
@@ -30,7 +31,7 @@ describe("주간 보관 정책", () => {
     expect(db.records.has(PROJECT_META_KEY)).toBe(false);
   });
   it("설정은 KPI·통화·기간만 복원하고 임의 원자료는 저장하지 않는다", async () => {
-    expect(await saveReviewProject({ name: "Example", metric: "roas", basis: "actions", currency: "USD", target: "2", period: { preset: "recent_seven" }, raw: [{ secret: "private" }] })).toEqual({ ok: true });
+    expect(await saveReviewProject({ name: "Example", metric: "roas", basis: "actions", currency: "USD", target: "2", period: { preset: "recent_seven" }, raw: [{ secret: "private" }] }, { entitlement: activePro() })).toEqual({ ok: true });
     expect(await readReviewProject()).toEqual({ name: "Example", metric: "roas", basis: "actions", currency: "USD", target: "2", period: { preset: "recent_seven" } });
     expect(JSON.stringify([...db.records.values()])).not.toContain("private");
   });
