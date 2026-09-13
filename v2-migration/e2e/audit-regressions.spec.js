@@ -11,7 +11,8 @@ for (const locale of ["ko", "en"]) {
       .filter(path => path.startsWith(`${prefix}/templates/`));
     expect(paths.length).toBeGreaterThan(10);
     await page.goto(`${prefix}/templates`);
-    for (const path of paths) await expect(page.locator(`main a[href="${path}"]`)).toBeVisible();
+    // Task entry links may repeat a destination; verify coverage in the full template catalog.
+    for (const path of paths) await expect(page.locator(`main .card a[href="${path}"]`)).toBeVisible();
   });
   test(`home fits tablet in both themes (${locale})${tag}`, async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
