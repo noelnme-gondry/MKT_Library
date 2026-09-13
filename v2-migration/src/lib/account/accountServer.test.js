@@ -22,6 +22,26 @@ describe("server-controlled account archive", () => {
     });
   });
   afterEach(() => vi.unstubAllEnvs());
+  it("enrolls service reminders only with explicit consent in the memo transaction", async () => {
+    await saveAccountMemo(request(), { ...input, reminder: true });
+    expect(db.write.mock.calls.some(([sql]) => sql.includes("SET service_reminders"))).toBe(false);
+    db.write.mockClear();
+    await saveAccountMemo(request(), { ...input, reminder: true, serviceRemindersConsent: "service-reminders-v1" });
+    expect(db.write).toHaveBeenCalledWith("UPDATE gop_accounts SET service_reminders=true WHERE id=$1", ["owner-a"]);
+    expect(db.write.mock.calls.at(-1)[0]).toBe("COMMIT");
+  });
+  it("rejects an enrollment without a review date or affirmative reminder choice", async () => {
+    await expect(saveAccountMemo(request(), { ...input, serviceRemindersConsent: "service-reminders-v1" })).rejects.toThrow("INVALID_MEMO");
+    await expect(saveAccountMemo(request(), { ...input, memo: { ...input.memo, reviewDate: "" }, reminder: true, serviceRemindersConsent: "service-reminders-v1" })).rejects.toThrow("INVALID_MEMO");
+    expect(db.connect).not.toHaveBeenCalled();
+  });
+  it("rolls back both the memo and enrollment when the preference write fails", async () => {
+    const normal = db.write.getMockImplementation();
+    db.write.mockImplementation((sql, args) => { if (sql.includes("SET service_reminders")) throw new Error("preference failure"); return normal(sql, args); });
+    await expect(saveAccountMemo(request(), { ...input, reminder: true, serviceRemindersConsent: "service-reminders-v1" })).rejects.toThrow("preference failure");
+    expect(db.write.mock.calls.at(-1)[0]).toBe("ROLLBACK");
+    expect(db.write.mock.calls.some(([sql]) => sql === "COMMIT")).toBe(false);
+  });
   it("starts exactly 14 days with a row lock and the first successful save", async () => {
     const result = await saveAccountMemo(request(), input);
     expect(result.trialStarted).toBe(true);

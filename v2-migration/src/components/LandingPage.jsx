@@ -176,7 +176,8 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           {latestDecision && <article className="dc-return__latest">
             <span>{T.latestDecision}</span>
             <strong>{latestDecision.action || latestDecision.conclusion || T.reviewed}</strong>
-            <small>{latestDecision.reviewDate || T.noSchedule}</small>
+            <small>{lang === "en" ? "Review date: " : "검토일: "}{latestDecision.reviewDate || T.noSchedule}</small>
+            {latestDecision.sourcePeriod && <small>{lang === "en" ? "Saved period: " : "저장한 기간: "}{latestDecision.sourcePeriod}</small>}
             {idToSlug[latestDecision.toolId] && <Link
               href={toolHref(latestDecision.toolId)}
               onClick={() => trackProductEvent("landing_continue_tool_clicked", { tool_id: latestDecision.toolId, source: "landing", placement: "continue_panel", locale: lang })}

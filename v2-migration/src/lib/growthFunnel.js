@@ -9,6 +9,25 @@ const FUNNEL_STAGES = [
   { id: "reviewed", events: ["decision_review_completed"] },
 ];
 
+// Weekly calculation, decision save and report save can happen independently.
+// Do not add these to analysis_completed or present them as sequential conversion.
+const WEEKLY_STAGES = [
+  { id: "weeklyCalculated", events: ["weekly_review_completed"] },
+  { id: "weeklyDecided", events: ["weekly_decision_saved"] },
+  { id: "weeklyReported", events: ["weekly_report_saved"] },
+];
+const COMMERCE_STAGES = [
+  { id: "gate", events: ["subscription_gate_viewed"] },
+  { id: "trial", events: ["trial_started"] },
+  { id: "checkout", events: ["begin_checkout"] },
+  { id: "purchased", events: ["purchase"] },
+];
+
+function countStages(definitions, events, sequential = false) {
+  return definitions.map(stage => ({ ...stage, count: events.filter(event => stage.events.includes(event.eventName)).reduce((sum, event) => sum + event.count, 0) }))
+    .map((stage, index, all) => ({ ...stage, rateFromPrevious: sequential && index && all[index - 1].count > 0 ? stage.count / all[index - 1].count : null }));
+}
+
 const HEADER_ALIASES = {
   eventName: ["event_name", "event name", "이벤트 이름", "이벤트명"],
   eventCount: ["event_count", "event count", "이벤트 수", "이벤트수"],
@@ -76,6 +95,7 @@ export function parseGrowthFunnelRows(rows = []) {
 }
 
 function isCompletedEventIncluded(event, hasSource, hasResultState) {
+  if (event.eventName === "weekly_review_completed") return !(hasSource && event.source === "demo");
   if (event.eventName !== "analysis_completed") return true;
   if (hasSource && event.source === "demo") return false;
   if (hasResultState && event.resultState && event.resultState !== "ready") return false;
@@ -113,6 +133,9 @@ export function buildGrowthFunnel(parsed) {
     ok: true,
     mode: parsed.mode,
     stages,
+    weeklyStages: countStages(WEEKLY_STAGES, includedEvents),
+    // Trial is optional. Only checkout → purchase has a meaningful adjacent ratio.
+    commerceStages: countStages(COMMERCE_STAGES, includedEvents, true).map(stage => ({ ...stage, rateFromPrevious: stage.id === "purchased" ? stage.rateFromPrevious : null })),
     dateRange: dateValues.length ? { start: dateValues[0], end: dateValues.at(-1) } : null,
     sourceBreakdown: [...sourceCounts.entries()].map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count || a.source.localeCompare(b.source)),
     activationBuckets: ["under_1m", "1_3m", "3_10m", "10m_plus"].map((bucket) => ({ bucket, count: activationCounts.get(bucket) || 0 })).filter((item) => item.count > 0),

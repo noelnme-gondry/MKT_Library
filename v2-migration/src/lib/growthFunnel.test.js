@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { buildGrowthFunnel, parseGrowthFunnelRows } from "./growthFunnel";
 
 describe("growth funnel GA4 export parser", () => {
+  it("keeps weekly work and commerce separate from analysis counts", () => {
+    const report = buildGrowthFunnel(parseGrowthFunnelRows([
+      { event_name: "analysis_completed", event_count: 4, source: "csv", result_state: "ready" },
+      { event_name: "weekly_review_completed", event_count: 3, source: "csv", result_state: "eligible" },
+      { event_name: "weekly_review_completed", event_count: 9, source: "demo", result_state: "eligible" },
+      { event_name: "weekly_decision_saved", event_count: 2, source: "weekly_review" },
+      { event_name: "weekly_report_saved", event_count: 1, source: "weekly_review" },
+      { event_name: "subscription_gate_viewed", event_count: 5 },
+      { event_name: "begin_checkout", event_count: 2 },
+      { event_name: "checkout_started", event_count: 2 },
+      { event_name: "purchase", event_count: 1 },
+    ]));
+    expect(report.stages.find(stage => stage.id === "completed").count).toBe(4);
+    expect(report.weeklyStages.map(stage => stage.count)).toEqual([3, 2, 1]);
+    expect(report.commerceStages.map(stage => stage.count)).toEqual([5, 0, 2, 1]);
+    expect(report.commerceStages.at(-1).rateFromPrevious).toBe(0.5);
+    expect(report.weeklyStages.every(stage => stage.rateFromPrevious === null)).toBe(true);
+  });
   it("reads KR GA4 headers and excludes demo and non-ready completions", () => {
     const parsed = parseGrowthFunnelRows([
       { "이벤트 이름": "landing_data_start_clicked", "이벤트 수": "100", 날짜: "20260801", 소스: "landing" },

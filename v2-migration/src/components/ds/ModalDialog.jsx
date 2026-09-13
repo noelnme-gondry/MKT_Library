@@ -12,6 +12,7 @@ export default function ModalDialog({
   ariaLabelledBy,
   ariaDescribedBy,
   initialFocusRef,
+  returnFocusRef,
   overlayClassName = "",
   panelClassName = "",
   overlayStyle,
@@ -49,7 +50,7 @@ export default function ModalDialog({
               initialFocus.focus();
             }}
             onCloseAutoFocus={(event) => {
-              const previousFocus = previousFocusRef.current;
+              const previousFocus = returnFocusRef?.current || previousFocusRef.current;
               if (!previousFocus?.isConnected || typeof previousFocus.focus !== "function") return;
               event.preventDefault();
               previousFocus.focus();

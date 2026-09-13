@@ -143,17 +143,16 @@ export default async function EnBlogPostPage({ params }) {
       </Link>
 
       <header className="content-article__header">
-        <span className="content-article__type">FIELD NOTE</span>
         <h1>
           {post.h1}
         </h1>
         {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
         {post.seoAnswer && (
-          <aside className="content-answer" aria-label="Short answer to the search question">
-            <span className="content-answer__label">{post.searchIntent || "Short answer"}</span>
+          <aside className="content-answer" aria-label="Article takeaway">
+            <span className="content-answer__label">Key takeaway</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>Applies when</strong>{post.conditions}</p>}
-            <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_answer" />
+            {!practice && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_answer" />}
           </aside>
         )}
         <div className="content-article__meta">

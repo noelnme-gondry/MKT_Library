@@ -108,6 +108,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
       />,
     );
     fireEvent.pointerDown(screen.getByRole("button", { name: "결과 받기" }), { button: 0, ctrlKey: false });
+    fireEvent.click(screen.getByRole("menuitem", { name: /분석 보고서 \(Word\)/ }));
     expect(useAppStore.getState().purchasePrompt.toolId).toBe("5-3");
     expect(screen.queryByRole("menu")).toBeNull();
   });

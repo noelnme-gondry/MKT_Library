@@ -125,6 +125,7 @@ export function buildAnalysisExportPayload({
     inputSignature: plain(inputSignature),
     source: {
       fileName: plain(resolvedAddon.source?.fileName ?? source.fileName),
+      importSource: plain(resolvedAddon.source?.importSource ?? source.importSource),
       headers,
       rows: rawRows,
       mapping: mapping && typeof mapping === "object" && !Array.isArray(mapping) ? { ...mapping } : {},

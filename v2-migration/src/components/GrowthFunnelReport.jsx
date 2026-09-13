@@ -44,6 +44,10 @@ const COPY = {
     aggregate: "이 수치는 사용자·세션 코호트가 아니라 집계 이벤트량입니다. 실제 전환율은 GA4에서 동일 사용자/세션 기준으로 다시 확인하세요.",
     rowMode: "각 행을 이벤트 1건으로 셌습니다. 세션 전환율은 아닙니다.",
     stages: { intent: "분석 의도", imported: "데이터 가져오기 성공", completed: "비데모 분석 완료", decided: "결정 저장", reviewed: "결정 재검토" },
+    weeklyTitle: "주간 리뷰 사용",
+    commerceTitle: "체험·구매 행동",
+    separate: "각 행동의 이벤트량입니다. 주간 계산은 결정 검토 완료가 아니며, 체험 없이 구매할 수도 있습니다. 같은 사용자의 반복 행동을 포함하고 미수집 이벤트는 확인할 수 없습니다.",
+    otherStages: { weeklyCalculated: "비데모 주간 계산 완료", weeklyDecided: "주간 결정 저장", weeklyReported: "주간 보고서 저장", gate: "다운로드 구매 안내", trial: "Pro 체험 시작", checkout: "결제 진행", purchased: "구매 완료" },
   },
   en: {
     eyebrow: "LOCAL GROWTH OPS",
@@ -71,6 +75,10 @@ const COPY = {
     aggregate: "These are aggregate event volumes, not a user or session cohort. Confirm true conversion in GA4 with one user/session scope.",
     rowMode: "Each row was counted as one event. This is not a session conversion rate.",
     stages: { intent: "Analysis intent", imported: "Data import success", completed: "Non-demo analysis complete", decided: "Decision saved", reviewed: "Decision reviewed" },
+    weeklyTitle: "Weekly review activity",
+    commerceTitle: "Trial and purchase activity",
+    separate: "Counts represent events. Weekly calculation is not a completed decision review, and a trial is optional before purchase. Repeat actions are included; uncollected events cannot be recovered.",
+    otherStages: { weeklyCalculated: "Non-demo weekly calculation", weeklyDecided: "Weekly decision saved", weeklyReported: "Weekly report saved", gate: "Download purchase prompt", trial: "Pro trial started", checkout: "Checkout initiated", purchased: "Purchase completed" },
   },
 };
 
@@ -145,6 +153,10 @@ export default function GrowthFunnelReport({ locale = "ko" }) {
           <div className="growth-funnel-stages__track" aria-hidden="true"><i style={{ width: `${Math.max(stage.count ? 4 : 0, stage.count / maxCount * 100)}%` }} /></div>
         </article>)}
       </section>
+      <p className="growth-funnel-file">{t.separate}</p>
+      {[[t.weeklyTitle, report.weeklyStages], [t.commerceTitle, report.commerceStages]].map(([title, stages]) => <section className="growth-funnel-sources" key={title}>
+        <h2>{title}</h2><div>{stages.map(stage => <span key={stage.id}><b>{t.otherStages[stage.id]}</b><strong>{stage.count.toLocaleString()}</strong></span>)}</div>
+      </section>)}
       {report.activationBuckets.length > 0 && <section className="growth-funnel-sources"><h2>{t.activationTitle}</h2><div>{report.activationBuckets.map((item) => <span key={item.bucket}><b>{t.activationLabels[item.bucket]}</b><strong>{item.count.toLocaleString()}</strong></span>)}</div></section>}
       {report.sourceBreakdown.length > 0 && <section className="growth-funnel-sources"><h2>{t.sourceTitle}</h2><div>{report.sourceBreakdown.map((item) => <span key={item.source}><b>{item.source}</b><strong>{item.count.toLocaleString()}</strong></span>)}</div></section>}
     </>}

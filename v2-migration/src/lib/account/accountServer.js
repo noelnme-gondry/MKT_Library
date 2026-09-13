@@ -99,8 +99,9 @@ export async function logoutAccount(request) {
 export async function saveAccountMemo(request, input) {
   accountSameOrigin(request);
   const owner = await requireAccount(request);
-  if (!input || Object.keys(input).some(key => !["memo", "consent", "reminder", "locale"].includes(key)) || input.consent !== "decision-memo-v1" || (input.reminder !== undefined && typeof input.reminder !== "boolean") || (input.locale !== undefined && !["ko", "en"].includes(input.locale))) throw new Error("INVALID_MEMO");
+  if (!input || Object.keys(input).some(key => !["memo", "consent", "reminder", "locale", "serviceRemindersConsent"].includes(key)) || input.consent !== "decision-memo-v1" || (input.reminder !== undefined && typeof input.reminder !== "boolean") || (input.locale !== undefined && !["ko", "en"].includes(input.locale))) throw new Error("INVALID_MEMO");
   const memo = archiveMemo(input.memo);
+  if (input.serviceRemindersConsent !== undefined && (input.serviceRemindersConsent !== "service-reminders-v1" || input.reminder !== true || !memo.reviewDate)) throw new Error("INVALID_MEMO");
   if (Object.keys(input.memo).some(key => !Object.hasOwn(memo, key))) throw new Error("INVALID_MEMO");
   const client = await accountDatabase().connect();
   try {
@@ -120,6 +121,8 @@ export async function saveAccountMemo(request, input) {
     if (!existing && count >= 2000) throw new Error("ARCHIVE_LIMIT");
     await client.query("INSERT INTO gop_decision_memos(account_id,id,memo) VALUES($1,$2,$3) ON CONFLICT(account_id,id) DO UPDATE SET memo=EXCLUDED.memo,updated_at=NOW()", [owner.id, memo.id, JSON.stringify(memo)]);
     await client.query("UPDATE gop_decision_memos SET reminder_enabled=$3 WHERE account_id=$1 AND id=$2", [owner.id, memo.id, input.reminder === true]);
+    // One explicit UI choice; account preference and memo commit or roll back together.
+    if (input.serviceRemindersConsent === "service-reminders-v1") await client.query("UPDATE gop_accounts SET service_reminders=true WHERE id=$1", [owner.id]);
     if (input.locale) await client.query("UPDATE gop_accounts SET locale=$2 WHERE id=$1", [owner.id, input.locale]);
     await client.query("COMMIT");
     return { memo, entitlement, trialStarted };
