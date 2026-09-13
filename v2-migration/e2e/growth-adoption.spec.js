@@ -11,6 +11,11 @@ for (const locale of ["ko", "en"]) {
       expect((await request.get(href)).ok(), href).toBe(true);
     }
     await expect(page.getByRole("button", { name: en ? "Download sample Word" : "Word 샘플 받기" })).toBeVisible();
+    for (const button of await tasks.getByRole("button").all()) {
+      const bounds = await button.boundingBox();
+      expect(bounds.height).toBeGreaterThanOrEqual(44);
+      expect(bounds.width).toBeGreaterThanOrEqual(44);
+    }
     await page.getByText(en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드", { exact: true }).click();
     await expect(page.locator(".source-export-guide details[open]")).toContainText(en ? "Keep the sheet private" : "공개 범위를 바꾸지");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -45,6 +50,9 @@ for (const locale of ["ko", "en"]) {
     const preview = page.getByRole("dialog", { name: en ? "Your report preview" : "내 보고서 미리보기" });
     await expect(preview).toContainText(headline);
     await expect(preview).toContainText(en ? "limitations" : "해석 한계");
+    const closeBounds = await preview.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).boundingBox();
+    expect(closeBounds.height).toBeGreaterThanOrEqual(44);
+    expect(closeBounds.width).toBeGreaterThanOrEqual(44);
     expect(await preview.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape");
