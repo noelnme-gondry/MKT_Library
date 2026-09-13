@@ -36,3 +36,10 @@ it("refuses missing projects and a second free project without changing the exis
   expect((await listProjects()).map(item => item.name)).toEqual(["Client A"]);
   expect((await readProject("default")).decisions).toHaveLength(1);
 });
+it("keeps the first local project usable after a trial expires without allowing another project", async () => {
+  const entitlement = { plan: "paid", trial: true, expiresAt: Date.now() - 1000, offlineUntil: Date.now() - 1000 };
+  await saveProjectReview({ name: "Client A", record, entitlement });
+  await saveProjectReview({ projectId: "default", record: { ...record, action: "Review next week" }, entitlement });
+  expect((await readProject("default")).decisions.map(item => item.action)).toEqual(["Review next week", "Hold budget"]);
+  await expect(saveProjectReview({ name: "Client B", record, entitlement })).rejects.toThrow("PROJECT_LIMIT");
+});

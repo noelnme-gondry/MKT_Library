@@ -18,6 +18,15 @@ for (const locale of ["ko", "en"]) {
     }
     await page.getByText(en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드", { exact: true }).click();
     await expect(page.locator(".source-export-guide details[open]")).toContainText(en ? "Keep the sheet private" : "공개 범위를 바꾸지");
+    const sheetsGuide = page.locator(".google-sheets-guide");
+    const bigQuery = sheetsGuide.locator("summary").filter({ hasText: "BigQuery" });
+    await bigQuery.focus();
+    await page.keyboard.press("Enter");
+    await expect(sheetsGuide.locator("details[open]").filter({ hasText: "BigQuery" })).toContainText(en ? "These are separate schedules" : "두 예약은 별개");
+    for (const link of await sheetsGuide.locator("details[open] a").all()) {
+      expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    }
+    await expectNoSeriousAccessibilityViolations(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await page.goto(`${prefix}/blog/budget-scaling-limit`);
     await expect(page.locator(".content-answer__action")).toHaveCount(0);
