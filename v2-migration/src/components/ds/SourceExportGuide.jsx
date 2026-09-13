@@ -1,4 +1,5 @@
 import { TOOL_GROUP } from "@/lib/toolGroups";
+import GoogleSheetsGuide from "../GoogleSheetsGuide";
 
 export default function SourceExportGuide({ toolId, locale = "ko" }) {
   if (toolId && TOOL_GROUP[toolId] !== "efficiency") return null;
@@ -13,10 +14,7 @@ export default function SourceExportGuide({ toolId, locale = "ko" }) {
       </ol>
       <a href="https://support.google.com/analytics/answer/16748649" target="_blank" rel="noreferrer">{en ? "Platform export reference (Google Analytics Help)" : "플랫폼별 내보내기 참고 (Google Analytics 도움말)"}</a>
     </details>
-    <details><summary>{en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드"}</summary>
-      <p>{en ? "Keep the sheet private. Download the relevant tab as CSV from File → Download, then upload that file here. The public-link connector is only for sheets you are permitted to make public." : "시트의 공개 범위를 바꾸지 마세요. 필요한 탭에서 파일 → 다운로드로 CSV를 받은 뒤 업로드하세요. 공개 링크 연결은 공개해도 되는 시트에만 사용합니다."}</p>
-      <a href="https://support.google.com/docs/answer/9330963" target="_blank" rel="noreferrer">{en ? "Google Sheets export help" : "Google Sheets 내보내기 도움말"}</a>
-    </details>
+    <GoogleSheetsGuide locale={locale} />
     <p>{en ? "Next time, keep the same columns and measurement definitions and update the dates. Saved settings do not refresh the source: upload the new file and check the comparison periods." : "다음에는 같은 컬럼·측정 기준을 유지하고 기간을 갱신하세요. 저장된 설정이 원본을 자동 갱신하지는 않습니다. 새 파일을 올린 뒤 비교 기간을 확인하세요."}</p>
   </section>;
 }

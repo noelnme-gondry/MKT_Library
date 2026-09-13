@@ -96,6 +96,10 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#report-preview-title$`));
     await page.goto(`${prefix}/subscription#purchase`);
     await expect(page.locator("#purchase")).toContainText("5,900");
+    const freePlan = page.locator('.plan-card[aria-labelledby="plan-free-title"]');
+    await expect(freePlan).toContainText(en ? "free after the trial" : "체험 종료 후에도 무료");
+    await expect(freePlan).toContainText(en ? "sign in to save" : "저장은 로그인 후");
+    await expect(freePlan).toContainText(en ? "Read and export existing memos" : "기존 메모 읽기·내보내기");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");
     await expect(page).not.toHaveTitle("");

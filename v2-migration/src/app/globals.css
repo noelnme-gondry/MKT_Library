@@ -4742,6 +4742,16 @@ body:not(.light-mode) .moon-icon {
 .source-export-guide li { margin-block: 10px; }
 .source-export-guide a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); text-underline-offset: 3px; }
 .source-export-guide :is(a, summary):focus-visible, .task-template-paths a:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.google-sheets-guide { min-width: 0; margin-block: 16px; color: var(--text-secondary); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.google-sheets-guide h3 { color: var(--text-primary); font-size: 16px; margin-block: 0 8px; }
+.google-sheets-guide details { padding-block: 6px; border-bottom: 1px solid var(--border); }
+.google-sheets-guide summary { min-height: 44px; align-content: center; color: var(--text-primary); cursor: pointer; }
+.google-sheets-guide ol { padding-inline-start: 22px; }
+.google-sheets-guide li { margin-block: 10px; }
+.google-sheets-guide nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.google-sheets-guide a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); text-underline-offset: 3px; }
+.google-sheets-guide :is(a, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.google-sheets-guide__flow { color: var(--text-primary); font-weight: 600; }
 .project-review-workspace .wr-screen__head--embedded { padding: 0; }
 .project-review-workspace [hidden] { display: none !important; }
 @media (max-width: 640px) {
