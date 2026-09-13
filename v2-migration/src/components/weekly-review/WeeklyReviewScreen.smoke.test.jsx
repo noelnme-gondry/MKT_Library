@@ -192,6 +192,8 @@ describe("WeeklyReviewScreen", () => {
     render(<WeeklyReviewScreen />);
     fireEvent.click(screen.getByRole("button", { name: "감액" }));
     fireEvent.change(screen.getByLabelText("크기"), { target: { value: "-10%" } });
+    fireEvent.change(screen.getByLabelText("검토일"), { target: { value: "2026-09-16" } });
+    fireEvent.click(screen.getByText("재검토 기준 · 선택"));
     fireEvent.change(screen.getByPlaceholderText("8.00"), { target: { value: "9" } });
     fireEvent.click(screen.getByRole("button", { name: "이 결정 저장" }));
     confirmReviewSave();
@@ -201,6 +203,7 @@ describe("WeeklyReviewScreen", () => {
     expect(saved.actionAmount).toBe("-10%");
     expect(saved.guardrailMetric).toBe("cpa");
     expect(saved.guardrailValue).toBe("9");
+    expect(saved.reviewDate).toBe("2026-09-16");
     expect(saved.actionTarget).toBeTruthy(); // 추천 대상이 기본값으로 들어간다
   });
 

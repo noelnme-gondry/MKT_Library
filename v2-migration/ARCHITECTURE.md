@@ -38,6 +38,8 @@ v2-migration/
 │     ├─ SubscriptionCheckout       # 위젯 준비→클릭 시 주문·계측 / 입금 대기→상태 조회→계정·쿠키 이용권 복원
 │     ├─ AccountArchive             # lib/account/accountServer·accountClient: 계정·허용목록·HTML 콜백 실패 안내
 │     ├─ blog/                      # 블로그 읽기 계측(BlogReadTracker) + 본문 끝 도치 브리지(BlogDochiBridge)
+│     │                             # BlogPracticePrep → lib/blogPractice.js 예제·KO/EN 안내 → BlogCsvAnalysis 선택 실습 (blogInsightRegistry 절 위치)
+│     │                             # lib/blogPracticeData.js → demoData + download.csvBody 브라우저 합성 CSV·원본 일치 확인; growthUseCases → 발행 글 하단 후속 경로
 │     ├─ ToolPageOutro.jsx      # ★ 하단 마감 박스 = 경계선 + 다음단계·참고자료·관련글 (§12.30)
 │     ├─ GuideAnswer.jsx        # 가이드 질문·한 문장 답 (본문 위, 접기 바깥)
 │     └─ Header/Sidebar/Footer/CsvUploader/GlobalModals/StartGate/WeeklyReview…  # 셸
@@ -195,4 +197,6 @@ v2-migration/
 - **데이터가 엔진에 안 들어감 → `getMappedRows`(dashboardAggregator.js) + 표준키/별칭 확인**.
 
 ## Project-scoped local workspace (2026-09-09)
+
+홈·진입 화면의 대표 샘플은 `lib/sampleJourney.js`에서 미리보기와 같은 채널·14일을 선택한다. `components/useSampleAnalysis.js`가 기존 store handoff와 검증 게이트를 재사용한다. 모듈이 만든 원본·매핑 참조와 demo 출처를 확인하는 WeakMap으로 실파일의 매핑 건너뛰기를 막고, 주간 리뷰는 해당 객체의 비교 기간을 이어받는다. 표시 설정만 바꾼 사본도 같은 기간을 유지하며, 실제 업로드는 새 원본 참조·출처로 구분한다. 샘플은 실제 프로젝트 설정·집계와 분리된다. 콘텐츠의 사례 연결은 `lib/growthUseCases.js`의 편집 목록과 기존 도구·템플릿 계약에서 파생한다.
 `lib/project/repository.js` owns `meta[project:<id>]` (settings, snapshots, decisions, saved report, branding). `project/storeActions.js` keeps only the active project's decisions and CSV slices in Zustand. Default project retains legacy dataset keys; other projects use `<id>::<group>`. Legacy settings/snapshots migrate atomically without a DB version change. `backup.js` exports/validates/restores complete local projects; `projectLimits.js` owns byte limits. `dataSeries.js` describes upload period/schema within the selected project; it does not infer client identity or append rows. Subscription interest and optional key validation live in `lib/subscription/entitlement.js`; key hashes never enter project backups. Preview routes `/projects` and `/subscription` have KO/EN shared-shell equivalents.

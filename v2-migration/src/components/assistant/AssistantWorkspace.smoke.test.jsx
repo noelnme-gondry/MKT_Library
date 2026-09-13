@@ -121,7 +121,7 @@ describe("Dochi analysis workspace", () => {
     const onOpenTool = vi.fn();
     render(<AssistantWorkspace csvData={slice()} getTitle={(toolId) => `도구 ${toolId}`} onOpenTool={onOpenTool} />);
     expect(screen.getByText(/표준 역할 매핑/)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "이 화면에서 계산 가능한 요약" })).toBeTruthy();
+    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("details").open).toBe(true);
     fireEvent.click(screen.getAllByRole("button", { name: /추가 차트·상세 분석 열기/ })[0]);
     expect(screen.getByText("상세 분석 화면을 준비하고 있습니다.")).toBeTruthy();
     await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
@@ -179,13 +179,18 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /요약 분석 실행/ }));
     await waitFor(() => expect(screen.getByText("분석 결과")).toBeTruthy());
-    expect(screen.getByRole("heading", { name: /도치가 확인한 발견 \d+건/ })).toBeTruthy();
-    expect(document.querySelectorAll(".dochi-workspace__findings-summary li").length).toBeGreaterThan(0);
-    expect(screen.getByText("현재 근거")).toBeTruthy();
-    expect(screen.getByText("해석 한계 보기")).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy());
+    const findings = document.querySelector(".dochi-workspace__findings-summary");
+    expect(findings.open).toBe(false);
+    fireEvent.click(findings.querySelector("summary"));
+    expect(findings.querySelector("summary").textContent).toMatch(/도치가 확인한 발견 \d+건/);
+    expect(findings.querySelectorAll("li").length).toBeGreaterThan(1);
+    const focus = within(document.querySelector(".dochi-workspace__decision-focus"));
+    expect(focus.getByText("현재 근거")).toBeTruthy();
+    expect(focus.getByText("해석 한계 보기")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("img", { name: "직전 기간과 최근 기간 사이에 무엇이 변했는가?" })).toBeTruthy());
-    fireEvent.click(screen.getByText("정확한 수치 표 보기"));
-    expect(screen.getByRole("table")).toBeTruthy();
+    fireEvent.click(focus.getByText("정확한 수치 표 보기"));
+    expect(focus.getAllByRole("table").length).toBeGreaterThan(0);
   });
 
   it("keeps the decision reading order visible and detailed evidence collapsed", async () => {
@@ -197,8 +202,9 @@ describe("Dochi analysis workspace", () => {
     const contextIndex = directChildren.findIndex((child) => child.classList.contains("dochi-workspace__head"));
     const judgmentIndex = directChildren.findIndex((child) => child.classList.contains("dochi-workspace__judgment"));
     const decisionIndex = directChildren.findIndex((child) => child.classList.contains("dochi-workspace__decision-focus"));
-    expect(contextIndex).toBeLessThan(judgmentIndex);
-    expect(judgmentIndex).toBeLessThan(decisionIndex);
+    expect(judgmentIndex).toBe(-1); // A completed result replaces the preparation pitch.
+    expect(contextIndex).toBeLessThan(decisionIndex);
+    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("details").open).toBe(false);
 
     const decision = container.querySelector(".dochi-workspace__decision-focus");
     expect(decision.querySelector(".dochi-workspace__decision-tape")).toBeTruthy();
@@ -227,7 +233,7 @@ describe("Dochi analysis workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: /요약 분석 실행/ }));
     await waitFor(() => expect(screen.getAllByText("완료").length).toBe(5));
 
-    const hubs = screen.getAllByRole("button", { name: "⬇ 결과 받기" });
+    const hubs = screen.getAllByRole("button", { name: "결과 받기" });
     expect(hubs.length).toBe(document.querySelectorAll(".dochi-workspace__result-status").length);
     expect(hubs.length).toBeGreaterThan(0);
   });
@@ -236,7 +242,7 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace csvData={slice(undefined, completeRaw)} locale="en" getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /Run summary analyses/ }));
     await waitFor(() => expect(screen.getAllByText("Complete").length).toBe(5));
-    expect(screen.getAllByRole("button", { name: "⬇ Get results" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Get results" }).length).toBeGreaterThan(0);
   });
 
   it("automatically starts only when the home Dochi handoff explicitly requests it", async () => {

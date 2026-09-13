@@ -86,6 +86,7 @@ async function runJourney(page, locale) {
   await expect(page.locator("#wr-decision-target")).toHaveValue("Google / Review Campaign");
   await expect(page.locator(".wr-report")).toContainText(en ? "■ Performance" : "■ 성과");
   if (en) await expect(page.locator(".wr-report")).not.toContainText(/[가-힣]/);
+  await page.getByText(en ? "Review criteria · optional" : "재검토 기준 · 선택", { exact: true }).click();
   const guardrail = page.getByLabel(en ? "Guardrail value" : "가드레일 값", { exact: true });
   await guardrail.fill("20");
   await page.getByRole("button", { name: en ? "Save this decision" : "이 결정 저장", exact: true }).click();

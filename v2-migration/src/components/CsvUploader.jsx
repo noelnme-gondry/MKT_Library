@@ -12,6 +12,7 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import useSampleAnalysis from "@/components/useSampleAnalysis";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
 import { projectSemanticBindingsToLegacyMapping, semanticBindingsFromLegacyMapping } from "@/lib/data-import/canonical-v2/legacyProjection";
@@ -276,6 +277,7 @@ export default function CsvUploader({
   onImportFailed = null,
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
+  const launchSample = useSampleAnalysis(locale);
   // 가이드가 있으면 예시 데이터 버튼은 가이드가 소유한다(아래 중복 블록 차단).
   const showGuide = showToolGuide && entryVariant !== "dochi" && Boolean(getToolGuide(toolId, locale));
   const isRouterMode = toolId === "start-gate";
@@ -671,6 +673,7 @@ export default function CsvUploader({
   // Load a deterministic demo dataset for this tool's group and auto-confirm the
   // analyze gate so results render immediately (§12.8 demo pattern).
   const handleLoadDemo = () => {
+    if (toolId === "start-gate") { launchSample(); return; }
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group, locale);

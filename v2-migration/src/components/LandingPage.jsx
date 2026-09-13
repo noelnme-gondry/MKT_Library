@@ -3,16 +3,14 @@
 import Link from "next/link";
 import HomeResultPreview from "@/components/landing/HomeResultPreview";
 import MobileQuickStart from "@/components/MobileQuickStart";
-import { useRouter } from "next/navigation";
+import useSampleAnalysis from "@/components/useSampleAnalysis";
 import { useEffect, useRef } from "react";
 
 import HomeToolFinder from "@/components/ds/HomeToolFinder";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
-import { TOOL_GROUP } from "@/lib/toolGroups";
 import { useAppStore } from "@/store/useDataStore";
-import { buildDemoCsv } from "@/utils/demoData";
 
 const COPY = {
   ko: {
@@ -104,7 +102,7 @@ const COPY = {
 export default function LandingPage({ locale = "ko", children, reading }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
-  const router = useRouter();
+  const launchSample = useSampleAnalysis(lang);
   const rootRef = useRef(null);
   const intakeRef = useRef(null);
   const openIntake = () => {
@@ -122,8 +120,6 @@ export default function LandingPage({ locale = "ko", children, reading }) {
     window.addEventListener("hashchange", revealFromHash);
     return () => window.removeEventListener("hashchange", revealFromHash);
   }, []);
-  const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
-  const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
   const activeDecisionRecords = decisionRecords.filter((record) => getDecisionReviewBucket(record) !== "reviewed");
   const dueDecisionRecords = activeDecisionRecords.filter((record) => ["overdue", "today"].includes(getDecisionReviewBucket(record)));
@@ -146,12 +142,10 @@ export default function LandingPage({ locale = "ko", children, reading }) {
       placement,
       locale: lang,
     });
-    setDemoDisabled(false);
-    handoffCsvToRoute("dochi-result", buildDemoCsv(TOOL_GROUP[id] || "efficiency", lang), { markAnalyzed: false });
   };
   const openSample = (id, placement) => {
     prepareSample(id, placement);
-    router.push(lang === "en" ? "/en/dochi-result" : "/dochi-result");
+    launchSample();
   };
   const trackLandingNav = (name, placement) => {
     trackProductEvent(name, { source: "landing", placement, locale: lang });
@@ -162,7 +156,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">
           <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>
-          <p>{T.continueDeck}</p><Link className="btn" href={lang === "en" ? "/en/projects" : "/projects"}>{lang === "en" ? "Open projects" : "프로젝트 열기"}</Link>
+          <p>{T.continueDeck}</p><div className="dc-return__actions"><Link className="btn primary" href={lang === "en" ? "/en/weekly-review#wr-upload" : "/weekly-review#wr-upload"} onClick={() => trackLandingNav("landing_review_opened", "next_csv")}>{lang === "en" ? "Upload the next CSV" : "다음 CSV로 이어가기"}</Link><Link className="btn" href={lang === "en" ? "/en/projects" : "/projects"}>{lang === "en" ? "Open projects" : "프로젝트 열기"}</Link></div>
         </header>
         <div className="dc-return__grid">
           <Link

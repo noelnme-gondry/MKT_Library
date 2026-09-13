@@ -13,7 +13,7 @@ import { trackProductEvent } from "@/lib/analytics";
 const GUIDE_COPY = {
   ko: {
     need: "필요: ",
-    effort: (count) => `필수 컬럼 ${count}개`,
+    effort: (count) => count ? `필수 컬럼 ${count}개` : "파일 확인 후 필요한 컬럼 안내",
     tryExample: "예시 데이터로 결과 바로 보기",
     openBtn: "📖 어떤 데이터가 왜 필요한가요?",
     modalTitle: "이 도구에 올릴 데이터 안내",
@@ -35,7 +35,7 @@ const GUIDE_COPY = {
   },
   en: {
     need: "Needs: ",
-    effort: (count) => `${count} required columns`,
+    effort: (count) => count ? `${count} required columns` : "Required columns shown after checking your file",
     tryExample: "Run the example and see results",
     openBtn: "📖 What data is needed and why?",
     modalTitle: "Data guide for this tool",

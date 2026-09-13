@@ -164,6 +164,8 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   const workspace = page.getByRole("region", { name: "The analysis map Dochi found" });
   await expect(workspace).toBeVisible();
   await expect(workspace.getByRole("region", { name: "Summary calculated on this screen" }).first()).toBeVisible();
+  await expect(workspace.locator('[data-queue-settled="true"]')).toBeAttached();
+  await workspace.getByText("Summaries this screen can calculate", { exact: true }).click();
   const quality = workspace.getByRole("region", { name: "Detailed input quality" }).first();
   await quality.getByRole("button", { name: "Check detailed input quality" }).click();
   await expect(quality.getByText(/Input checks passed|Review input cautions/)).toBeVisible();
@@ -188,10 +190,12 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
 
   const workspace = page.getByRole("region", { name: "도치가 찾은 분석 지도" });
   await expect(workspace).toBeVisible();
+  await expect(workspace.locator('[data-queue-settled="true"]')).toBeAttached();
+  await expect(workspace.locator(".dochi-workspace__decision-focus").getByRole("region", { name: "이 화면에서 계산한 요약" })).toBeVisible();
+  await workspace.getByText("이 화면에서 계산 가능한 요약", { exact: true }).click();
   const dashboardCard = workspace.locator(".dochi-workspace__card").filter({
     has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
   });
-  await expect(dashboardCard.getByRole("region", { name: "이 화면에서 계산한 요약" })).toBeVisible();
   const quality = dashboardCard.getByRole("region", { name: "상세 입력 품질" });
   await quality.getByRole("button", { name: "상세 입력 품질 확인" }).click();
   await expect(quality.getByText(/입력 검사 통과|입력 주의사항 확인/)).toBeVisible();

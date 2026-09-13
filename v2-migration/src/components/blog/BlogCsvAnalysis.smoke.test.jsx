@@ -4,6 +4,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import BlogCsvAnalysis from "./BlogCsvAnalysis";
 import { useAppStore } from "@/store/useDataStore";
 import { idToSlug } from "@/lib/routeMap";
+import BlogPracticePrep from "./BlogPracticePrep";
+import { blogPracticeFor } from "@/lib/blogPractice";
+import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
+import { buildBlogPracticeDownload } from "@/lib/blogPracticeData";
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("./BlogInsightChart", () => ({ default: ({ visual }) => <figure>{JSON.stringify(visual.data)}</figure> }));
@@ -20,6 +24,42 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
   afterEach(cleanup);
+  it.each(["ko", "en"])("passes an exact generated %s demo to its full tool without pretending it ran the model", async locale => {
+    const slug = "aha-moment-retention";
+    const practice = blogPracticeFor(slug, locale);
+    const download = buildBlogPracticeDownload(practice);
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
+    const file = new File([download.text], download.file, { type: "text/csv" });
+    file.text = async () => download.text;
+    fireEvent.change(screen.getByLabelText(locale === "en" ? "Choose CSV" : "CSV 선택"), { target: { files: [file] } });
+    await screen.findByRole("status");
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Show result" : "결과 보기" })).toBeNull();
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open detailed analysis" : "더 자세한 분석 보기" }));
+    expect(useAppStore.getState().csvGroups.aha.raw).toHaveLength(download.demo.raw.length);
+    expect(useAppStore.getState().csvGroups.aha.importSource).toBe("demo");
+    expect(useAppStore.getState().isGroupAnalyzed("5-20")).toBe(false);
+    expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug["5-20"]}`);
+  });
+  it.each(["ko", "en"])("connects the %s preparation link to labeled optional practice and sends ASA to its maturity controls", async locale => {
+    const slug = "apple-search-ads-guide";
+    const practice = blogPracticeFor(slug, locale);
+    const { container } = render(<><BlogPracticePrep practice={practice} /><BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} /></>);
+    const download = screen.getByRole("link", { name: practice.download });
+    expect(download.getAttribute("href")).toBe(practice.href);
+    expect(download.getAttribute("download")).toBe(practice.file);
+    const jump = screen.getByRole("link", { name: practice.jump });
+    const target = container.querySelector(jump.getAttribute("href"));
+    expect(target).toBe(screen.getByRole("complementary", { name: practice.title }));
+    expect(target.tabIndex).toBe(-1);
+    expect(target.querySelector("details").open).toBe(false);
+    await upload(locale, "Date,Search Term,Taps,Installs,Spend\n2026-08-01,example,10,3,1000");
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Show result" : "결과 보기" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open detailed analysis" : "더 자세한 분석 보기" }));
+    expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug["5-26"]}`);
+    expect(useAppStore.getState().csvData.raw).toHaveLength(1);
+    expect(useAppStore.getState().isGroupAnalyzed("5-26")).toBe(false);
+  });
   it.each(["ko", "en"])("renders one real chart and carries full data through the actual %s route setter", async locale => {
     const { container } = render(<BlogCsvAnalysis config={{ toolId: "5-2", type: "funnel" }} slug="funnel-dropoff-analysis" locale={locale} />);
     await upload(locale);

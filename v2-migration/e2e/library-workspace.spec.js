@@ -61,16 +61,15 @@ for (const locale of ["ko", "en"]) {
     if (mobile) await expect(page.getByRole("dialog")).toBeHidden();
   });
 
-  test(`home sample retains column confirmation and weekly handoff (${locale})${tag}`, async ({ page }) => {
+  test(`home sample opens computed results and retains weekly handoff (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
     await page.locator(".home-result-preview button").click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
-    await expect(page.locator('.dochi-result-workspace[data-phase="mapping"]')).toBeVisible();
-    await expect(page.locator(".dochi-workspace__findings-summary")).toHaveCount(0);
-    await page.getByRole("button", { name: en ? "Confirm and open results" : "확인하고 결과 가져오기", exact: true }).click();
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
-    await expect(page.locator(".dochi-workspace__findings-summary")).toBeVisible();
+    await expect(page.locator(".sample-journey-scope")).toContainText(en ? "Sample data" : "샘플 데이터");
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+    await expect(page.locator(".dochi-workspace__decision-focus")).toBeVisible();
     await expect(page.locator(".dochi-workspace__queue")).not.toContainText(en ? "Running" : "실행 중");
     await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review$`));

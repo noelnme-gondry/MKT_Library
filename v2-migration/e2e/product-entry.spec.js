@@ -22,9 +22,9 @@ for (const locale of ["ko", "en"]) {
     }
     await sample.click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
-    await expect(page.locator('.dochi-result-workspace[data-phase="mapping"]')).toBeVisible();
-    await page.getByRole("button", { name: locale === "en" ? "Confirm and open results" : "확인하고 결과 가져오기", exact: true }).click();
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
-    await expect(page.locator(".dochi-workspace__findings-summary")).toBeVisible();
+    await expect(page.locator(".sample-journey-scope")).toContainText(locale === "en" ? "Sample data" : "샘플 데이터");
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+    await expect(page.locator(".dochi-workspace__decision-focus")).toBeVisible();
   });
 }

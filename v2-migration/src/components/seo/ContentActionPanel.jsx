@@ -5,6 +5,8 @@ import { useEffect, useRef } from "react";
 import { idToSlug } from "@/lib/routeMap";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { growthUseCase } from "@/lib/growthUseCases";
+import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
 
 const TOOL_COPY = {
   "5-2": {
@@ -115,6 +117,8 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const resolvedTool = TOOL_COPY[candidate] ? candidate : "5-2";
   const lang = locale === "en" ? "en" : "ko";
   const copy = TOOL_COPY[resolvedTool][lang];
+  const useCase = contentType === "blog" ? growthUseCase(content?.slug, lang) : null;
+  const template = useCase && TEMPLATE_PAGES.find(page => page.toolId === resolvedTool);
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
   const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
   const trackClick = (targetToolId, targetPlacement) => {
@@ -166,11 +170,16 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
       <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
       <h2>{copy.title}</h2>
       <p>{copy.desc}</p>
-      {!isInline && <p className="content-action-panel__journey">{lang === "en" ? "Analyze your data, save a decision, then return to Weekly Review to check what changed." : "내 데이터로 분석하고 결정을 저장하세요. 다음 결과는 주간 리뷰에서 다시 확인합니다."}</p>}
+      {!isInline && <p className="content-action-panel__journey">{useCase?.description || (lang === "en" ? "Analyze your data, save a decision, then return to Weekly Review to check what changed." : "내 데이터로 분석하고 결정을 저장하세요. 다음 결과는 주간 리뷰에서 다시 확인합니다.")}</p>}
     </div>
     <div className="content-action-panel__links">
       <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>
-      {!isInline && related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
+      {!isInline && useCase && <>
+        {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(useCase.practiceToolId, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
+        {template && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/templates/${template.slug}`} onClick={() => trackClick(resolvedTool, "article_case_template")}>{lang === "en" ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →"}</Link>}
+        {useCase.canReview && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackClick("weekly-review", "article_case_review")}>{lang === "en" ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →"}</Link>}
+      </>}
+      {!isInline && !useCase && related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
     </div>
   </aside>;
 }
