@@ -61,7 +61,7 @@ describe("privacy-safe product analytics", () => {
       file_name: "secret.csv", raw_value: "private",
     });
     expect(JSON.stringify([...values.values()])).not.toMatch(/secret|private|file_name/);
-    for (const name of ["data_import_success", "analysis_completed"]) {
+    for (const name of ["data_import_success", "analysis_completed", "analysis_result_viewed", "decision_record_added", "decision_review_completed"]) {
       trackProductEvent(name, route);
       expect(window.gtag.mock.lastCall[2].content_slug).toBe("apple-search-ads-guide");
     }

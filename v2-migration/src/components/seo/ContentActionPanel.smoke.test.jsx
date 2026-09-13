@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ContentActionPanel from "./ContentActionPanel";
+import { useAppStore } from "@/store/useDataStore";
+import { getAllPosts } from "@/lib/blog";
+import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
+import { TOOL_GROUP } from "@/lib/toolGroups";
+import { primaryToolForContent } from "@/lib/contentToolRegistry";
+import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
 
 const TARGET_POSTS = [
   ["ad-performance-diagnosis", "5-21", "/tools/campaign-variance"],
@@ -10,6 +16,35 @@ const TARGET_POSTS = [
   ["multicollinearity-mmm-guide", "5-25", "/tools/vif-multicollinearity"],
   ["apple-search-ads-guide", "5-26", "/tools/asa-keyword-finder"],
 ];
+
+describe("all published article journeys", () => {
+  afterEach(() => { delete window.gtag; useAppStore.setState(useAppStore.getInitialState()); });
+  it.each(["ko", "en"].flatMap(locale => getAllPosts(locale).map(post => [post.slug, locale])))("%s exposes only supported next steps in %s", (slug, locale) => {
+    window.gtag = vi.fn();
+    const en = locale === "en";
+    const toolId = primaryToolForContent(slug, "blog");
+    const template = TEMPLATE_PAGES.find(page => page.toolId === toolId);
+    const practice = BLOG_INSIGHT_PLACEMENTS[slug];
+    render(<ContentActionPanel post={{ slug }} locale={locale} />);
+    expect(template).toBeTruthy();
+    expect(screen.getByRole("link", { name: en ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/templates/${template.slug}`);
+    const sample = screen.queryByRole("link", { name: en ? "Try the article’s demo →" : "본문 데모 실습으로 →" });
+    expect(Boolean(sample)).toBe(Boolean(practice));
+    if (practice) {
+      expect(sample.getAttribute("href")).toBe("#blog-practice");
+      clickWithoutNavigation(sample);
+      expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ content_slug: slug, placement: "article_case_practice" }));
+    }
+    const review = screen.queryByRole("link", { name: en ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →" });
+    const canReview = Boolean(practice && TOOL_GROUP[practice.toolId] === "efficiency" && TOOL_GROUP[toolId] === "efficiency");
+    expect(Boolean(review)).toBe(canReview);
+    if (canReview) {
+      expect(review.getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review`);
+      clickWithoutNavigation(review);
+      expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ tool_id: "weekly-review", content_slug: slug, placement: "article_case_review" }));
+    }
+  });
+});
 
 const ACTION_CASES = TARGET_POSTS.flatMap(([slug, toolId, path]) =>
   ["ko", "en"].flatMap((locale) =>

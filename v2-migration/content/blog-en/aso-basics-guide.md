@@ -28,16 +28,6 @@ sources:
 ---
 While you're tweaking creative and bids to lower CPI, the store page where users actually decide to install has often sat untouched for months. A tap on your ad still installs on the store, so if store conversion is leaking, ad spend leaks along with it.
 
-## Reproduce the result: a source-mix-only CSV
-
-[Download synthetic App Store Connect-shaped CSV](/examples/aso-mix-only.csv). These eight rows are invented, not customer data.
-
-1. Upload to the [ASO tool](/tools/aso-store-conversion). Confirm Date, Source Type, Product Page Views, and Total Downloads map to date, store source, page views, and installs.
-2. Analyze August 1–2 against August 3–4. Conversion is 34%→16%, a −18-percentage-point change. Search stays at 40% and Browse at 10%, so the within-source rate contribution is zero.
-3. Use Get results to download the decomposition. This is source-mix arithmetic, not evidence of a screenshot treatment effect or paid incrementality.
-
-[ASO templates](/templates) · [CVR definition](/glossary/cvr)
-
 ASO (App Store Optimization) plugs that hole and grows organic installs on top. It has two axes: getting found (visibility) and getting installed (conversion).
 
 ## Why this comes before paid work

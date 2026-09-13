@@ -30,16 +30,6 @@ reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Run Apple Search Ads (ASA) as one lumped campaign, and a few days later the report may show brand terms taking most of the spend — people who may have searched for your app anyway. ASA sits at the top of App Store search and can reach **high-intent users**. To make that value repeatable, separate campaigns by purpose and run a loop for discovering terms, promoting Exact targets, and adjusting bids.
 
-## Reproduce the result: before and after maturity confirmation
-
-[Download synthetic search-term CSV](/examples/asa-mature-candidate.csv). Four invented rows use export-like headers plus target CPA, daily budget, and current CPT. No account data is included.
-
-1. Upload to the [ASA tool](/tools/asa-keyword-finder), check Date, Search Term, Taps, Installs, and Spend mapping, then analyze. Maturity starts as unknown, so actions are held.
-2. For this example only, declare that the report includes mature periods. Totals are 40 taps, 12 installs, and 4,000 spend: CPA is approximately 333.33 and campaign pacing is 10%. Against target CPA 500, one Exact candidate and a CPT change from 100 to 115 appear.
-3. Compare quality_status and recommended CPT in the CSV and workbook. For real files, verify account conversion lag before declaring maturity. Do not mix tap-through installs with totals that include view-through installs.
-
-[Input templates](/templates) · [CPA definition](/glossary/cpa). Candidate generation is not an effect significance test.
-
 ## Split campaigns by purpose
 
 ASA is usually split into four buckets by keyword type. Different purposes mean different CPA expectations and bid strategies.

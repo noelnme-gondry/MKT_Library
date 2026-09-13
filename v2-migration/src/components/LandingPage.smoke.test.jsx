@@ -123,7 +123,7 @@ describe("LandingPage render smoke", () => {
     // Navigation mounts the result route, which selects the shared CSV slice.
     useAppStore.getState().setCurrentRouteId("dochi-result");
     expect(useAppStore.getState().csvData.fileName).toMatch(/^demo_/);
-    expect(useAppStore.getState().isGroupAnalyzed("dochi-result")).toBe(false);
+    expect(useAppStore.getState().isGroupAnalyzed("dochi-result")).toBe(true);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-2",
       source: "landing",

@@ -17,16 +17,6 @@ reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The following hypothetical example illustrates the risk of scaling from average CPA alone.
 
-## Reproduce the result: 24 rows but no estimable channel
-
-[Download synthetic sparse-channel CSV](/examples/saturation-sparse.csv). There are eight dates and 24 rows, but only one observation per channel.
-
-1. Upload to [Saturation analysis](/tools/campaign-saturation), confirm date, channel, spend, installs, and source currency, then analyze.
-2. Zero channels are estimable, so the summary must abstain. A large total row count must not produce a mostly-steady verdict or a scaling recommendation.
-3. Check the withheld status in Get results. You need several dates and spend levels for the same channel. Opening [Budget allocation](/tools/budget-allocation) cannot supply the missing observations.
-
-Check required fields in [Input templates](/templates). Define business risk and a validation plan before varying spend; two or three weeks alone does not guarantee identification.
-
 "This channel's CPA is 30% under target."
 "Then double the budget."
 

@@ -26,8 +26,10 @@ const EDITORIAL_JOURNEY_TTL = 30 * 60 * 1000;
 const EDITORIAL_FUNNEL_EVENTS = new Set([
   "data_import_start", "data_import_success", "data_import_failed",
   "data_profile_completed", "mapping_confirmed", "analysis_started", "analysis_completed", "analysis_blocked",
+  "analysis_result_viewed", "dochi_mapping_confirmed", "decision_record_added", "decision_review_completed",
   "weekly_review_viewed", "weekly_review_completed", "weekly_review_blocked",
   "weekly_decision_saved", "weekly_review_export",
+  "weekly_review_result_viewed",
 ]);
 
 // 공개 글 식별자만 저장한다. 도구 ID는 정규화 전에 비교하여 MMM과 추세를

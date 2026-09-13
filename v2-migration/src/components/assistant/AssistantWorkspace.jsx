@@ -91,7 +91,7 @@ const COPY = {
     exactTable: "정확한 수치 표 보기",
     detailsView: "해석 한계 보기",
     resultToggle: "결과 펼치기/접기",
-    downloadLabel: "⬇ 결과 받기",
+    downloadLabel: "결과 받기",
     embeddedRunning: "도치가 실제 데이터를 계산하고 있습니다.",
     staleResult: "이 결과는 이전 입력 또는 매핑에서 생성됐습니다. 현재 데이터의 결과로 표시하지 않습니다.",
     adapterError: "분석 실행 중 결과를 만들지 못했습니다. 상세 도구에서 조건을 확인해 주세요.",
@@ -170,7 +170,7 @@ const COPY = {
     exactTable: "View exact values",
     detailsView: "Show interpretation limits",
     resultToggle: "Show or hide result",
-    downloadLabel: "⬇ Get results",
+    downloadLabel: "Get results",
     embeddedRunning: "Dochi is calculating your actual data.",
     staleResult: "This result was created from a previous input or mapping. It is not shown as a result for the current data.",
     adapterError: "The workspace could not produce a result. Review the conditions in the detailed tool.",
@@ -717,8 +717,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       && queueItem.result?.inputSignature === currentInputSignature
       && queueItem.result?.mappingSignature === currentMappingSignature);
   const successfulFindings = currentResults.filter(({ queueItem }) => queueItem.result.status === "success");
-  const decisionFocus = [...currentResults].reverse().find(({ queueItem }) => queueItem.result.status === "success")
-    || currentResults.at(-1)
+  // Keep the recommended conclusion stable while later queue items finish.
+  // Completion order must not replace the headline with an unrelated scenario.
+  const decisionFocus = successfulFindings.find(({ result }) => result.toolId === recommended?.toolId)
+    || successfulFindings[0]
+    || currentResults[0]
     || null;
   const deferHandoff = useCallback((callback) => {
     setIsPreparingHandoff(true);
@@ -914,15 +917,16 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       {isPreparingHandoff && <p className="dochi-workspace__handoff-loading" role="status">{C.preparingDetails}</p>}
 
-      {recommended && <section className="dochi-workspace__judgment" aria-labelledby="dochi-recommended-title">
+      {recommended && !decisionFocus && <section className="dochi-workspace__judgment" aria-labelledby="dochi-recommended-title">
         <div className="dochi-workspace__judgment-copy"><span>{C.judgment}</span><h3 id="dochi-recommended-title">{titleFor(recommended.toolId, getTitle)}</h3><p><b>{C.reason}</b>{recommended.recommendationReason}</p><small>{C.judgmentReview}</small></div>
         <div className="dochi-workspace__judgment-action"><em>{C.status[recommended.status]}</em><p>{baseline.length > 0 ? C.judgmentReady : blockersText(recommended, locale)}</p>{baseline.length > 0 ? <button type="button" className="ab-button" onClick={startNext} disabled={Boolean(activeQueueItem)}>{activeQueueItem ? C.queueRunning : queue ? C.rerun : C.start}</button> : <button type="button" className="ab-button" onClick={() => openTool(recommended.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>}</div>
       </section>}
 
-      {successfulFindings.length > 0 && <section className="dochi-workspace__findings-summary" aria-labelledby="dochi-findings-title">
-        <header><span>FINDINGS</span><h3 id="dochi-findings-title">{C.findingsTitle(successfulFindings.length)}</h3><p>{C.findingsDeck}</p></header>
+      {successfulFindings.length > 1 && <details className="dochi-workspace__findings-summary">
+        <summary>{C.findingsTitle(successfulFindings.length)}</summary>
+        <p>{C.findingsDeck}</p>
         <ol>{successfulFindings.map(({ result, queueItem }) => <li key={result.toolId}><span>{titleFor(result.toolId, getTitle)}</span><strong>{queueItem.result.verdict.headline}</strong></li>)}</ol>
-      </section>}
+      </details>}
 
       {decisionFocus && <section className="dochi-workspace__decision-focus" aria-labelledby="dochi-decision-focus-title">
         <header><span>{C.decisionTape}</span><h3 id="dochi-decision-focus-title">{titleFor(decisionFocus.result.toolId, getTitle)}</h3></header>
@@ -930,11 +934,12 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         <button type="button" className="ab-pill" onClick={() => openTool(decisionFocus.result.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>
       </section>}
 
-      <section className="dochi-workspace__section" aria-labelledby="dochi-baseline-title">
-        <header><div><h3 id="dochi-baseline-title">{C.baseline}</h3><p>{C.baselineDeck}</p></div></header>
+      <details className="dochi-workspace__section" open={!decisionFocus}>
+        <summary>{C.baseline}</summary>
+        <p>{C.baselineDeck}</p>
         {baseline.length ? <div className="dochi-workspace__grid">{baseline.map((result) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(result.toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} isDecisionFocus={decisionFocus?.result.toolId === result.toolId} />)}</div> : <p className="muted">{C.noBaseline}</p>}
         <div className="dochi-workspace__queue" data-queue-settled={Boolean(queue?.items.length && !queue.items.some(item => ["queued", "running"].includes(item.state)))} aria-label={C.queue}><strong>{C.queue}</strong><span>{queue?.items.length ? queue.items.map((item) => `${titleFor(item.toolId, getTitle)}: ${queueStateLabel(item.state, C, item.state)}`).join(" · ") : C.queueEmpty}</span></div>
-      </section>
+      </details>
 
       <details className="dochi-workspace__section"><summary>{C.extra} <span>{models.length}</span></summary><div className="dochi-workspace__grid">{models.map((result) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(result.toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />)}</div></details>
       <details className="dochi-workspace__section"><summary>{C.design} <span>{designs.length}</span></summary><div className="dochi-workspace__grid">{designs.map((result) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(result.toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />)}</div></details>

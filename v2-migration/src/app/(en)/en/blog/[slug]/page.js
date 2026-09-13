@@ -12,6 +12,8 @@ import BlogReadTracker from "@/components/blog/BlogReadTracker";
 import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
 import BlogCsvAnalysis from "@/components/blog/BlogCsvAnalysis";
 import { splitBlogInsight } from "@/lib/blogInsightRegistry";
+import BlogPracticePrep from "@/components/blog/BlogPracticePrep";
+import { blogPracticeFor } from "@/lib/blogPractice";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -127,6 +129,7 @@ export default async function EnBlogPostPage({ params }) {
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
   const inline = splitBlogInsight(post.html, post.slug);
   const article = inline || splitArticleForAction(post.html);
+  const practice = inline ? blogPracticeFor(post.slug, "en") : null;
 
   return (
     <div className="content-article">
@@ -165,9 +168,11 @@ export default async function EnBlogPostPage({ params }) {
         </div>
       </header>
 
+      <BlogPracticePrep practice={practice} />
+
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
-        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} locale="en" /> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
+        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} locale="en" /> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 

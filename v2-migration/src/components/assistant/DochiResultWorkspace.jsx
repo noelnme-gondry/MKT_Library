@@ -15,6 +15,7 @@ import { idToPath } from "@/lib/routeMap";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { getSampleJourney } from "@/lib/sampleJourney";
 
 const COPY = {
   ko: {
@@ -84,10 +85,15 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const setDochiAnalysisSession = useAppStore((state) => state.setDochiAnalysisSession);
   const dochiAnalysisSession = useAppStore((state) => state.dochiAnalysisSession);
+  const isAnalyzed = useAppStore((state) => state.isGroupAnalyzed("dochi-result"));
+  const sample = getSampleJourney(csvData);
   const router = useRouter();
   const hasRememberedResult = dochiAnalysisSession?.sourceData?.raw === csvData?.raw
     && dochiAnalysisSession?.sourceData?.mapping === csvData?.mapping;
-  const [phase, setPhase] = useState(() => hasRememberedResult ? "results" : "mapping");
+  const initialPhase = hasRememberedResult || (sample && isAnalyzed) ? "results" : "mapping";
+  const [phaseState, setPhaseState] = useState(() => ({ raw: csvData.raw, mapping: csvData.mapping, value: initialPhase }));
+  const phase = phaseState.raw === csvData.raw && phaseState.mapping === csvData.mapping ? phaseState.value : initialPhase;
+  const setPhase = value => setPhaseState({ raw: csvData.raw, mapping: csvData.mapping, value });
   const [mappingStage, setMappingStage] = useState("legacy");
   const timersRef = useRef([]);
   const hasPreparedData = Boolean(csvData?.raw?.length && csvData?.headers?.length);
@@ -151,22 +157,23 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     </>}
     {phase === "results" && <>
       <header className="dochi-result-workspace__header is-results">
-        <div className="dochi-result-workspace__intro"><span>{C.eyebrow}</span><h1 id="dochi-result-title">{C.resultsTitle}</h1><p>{C.resultsDeck}</p><small>{C.scope}</small></div>
-        <dl className="dochi-result-workspace__context">
+        <div className="dochi-result-workspace__intro"><span>{C.eyebrow}</span><h1 id="dochi-result-title">{C.resultsTitle}</h1><p>{C.resultsDeck}</p></div>
+        {sample && <div className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"} · {sample.channel}</strong><p>{sample.period.previousStart} – {sample.period.previousEnd} → {sample.period.currentStart} – {sample.period.currentEnd}</p><span>{locale === "en" ? "Starts with CPA · key actions · KRW. This is the channel shown on the home preview." : "시작 기준: CPA · 핵심행동 수 · KRW. 홈 미리보기와 같은 채널입니다."}</span><Link href={locale === "en" ? "/en#dochi-upload" : "/#dochi-upload"}>{locale === "en" ? "Analyze your own CSV →" : "내 CSV로 분석하기 →"}</Link></div>}
+        <details className="dochi-result-workspace__source"><summary>{locale === "en" ? "Source and analysis scope" : "원본·분석 범위 확인"}</summary><p>{C.scope}</p><dl className="dochi-result-workspace__context">
           <div><dt>{locale === "en" ? "Data" : "데이터"}</dt><dd title={csvData.fileName}>{csvData.fileName}</dd></div>
           <div><dt>{locale === "en" ? "Rows" : "행"}</dt><dd>{csvData.raw.length.toLocaleString()}</dd></div>
           <div><dt>{locale === "en" ? "Columns" : "컬럼"}</dt><dd>{csvData.headers.length.toLocaleString()}</dd></div>
           <div><dt>{locale === "en" ? "Mapped" : "표준 역할"}</dt><dd>{mappedCount}/{csvData.headers.length}</dd></div>
           <div><dt>{C.cadence}</dt><dd>{C.cadenceLabels[cadence.cadence]}</dd></div>
-        </dl>
+        </dl></details>
         <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>
       </header>
+      <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
       <section className="dochi-weekly-bridge" aria-labelledby="dochi-weekly-title">
         <div><h2 id="dochi-weekly-title">{locale === "en" ? "Turn this data into a weekly review" : "이 데이터를 주간 운영 리뷰로"}</h2><p>{locale === "en" ? "Compare periods against your KPI target, inspect campaigns and prepare a report with your next decision. Your uploaded file comes with you." : "목표 대비 성과와 캠페인별 변화를 검토하고, 다음 결정이 담긴 보고서를 만드세요. 지금 올린 파일을 그대로 이어갑니다."}</p>
           {!canReviewWeekly && <p>{locale === "en" ? "Map date, campaign, spend and conversions or installs to use the weekly review." : "날짜·캠페인·비용과 전환 또는 설치 열을 연결하면 주간 리뷰를 만들 수 있습니다."}</p>}
         </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { trackProductEvent("review_entry_clicked", { tool_id: "weekly-review", source: "dochi", placement: "dochi_result", data_continuity: "same_data", locale }); handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review" : "/weekly-review"); }}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</button>
       </section>
-      <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />
     </>}
   </section>;
 }

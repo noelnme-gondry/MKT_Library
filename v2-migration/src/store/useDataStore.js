@@ -1,6 +1,6 @@
 import { serializeProject } from "@/lib/project/serializeProject";
 import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
-import { decisionDataOrigin } from "@/lib/dataOrigin";
+import { decisionDataOrigin, isDemoData } from "@/lib/dataOrigin";
 import { readStoredTable } from "@/lib/workspace-storage/readTable";
 import { projectStoreActions } from "@/lib/project/storeActions";
 import { initializeProjects as initializeProjectRecords, updateProject, readProject } from "@/lib/project/repository";
@@ -989,7 +989,11 @@ export const useAppStore = create(persist((set, get) => ({
     return {
       csvGroups: { ...state.csvGroups, [g]: data },
       csvData: data,
-      analyzedByGroup: state.analyzedByGroup,
+      // A real file can have the sample's filename, row count and headers.
+      // Its mapping still needs confirmation; demo approval is not transferable.
+      analyzedByGroup: isDemoData(state.csvGroups[g]) && !isDemoData(data)
+        ? { ...state.analyzedByGroup, [g]: null }
+        : state.analyzedByGroup,
       csvClearedByGroup,
       responseMappingSession,
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },

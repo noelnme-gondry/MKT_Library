@@ -4,6 +4,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import CsvGuide from "@/components/ds/CsvGuide";
 
 describe("CsvGuide", () => {
+  it.each(["ko", "en"])("does not imply a zero-column contract before inspecting router input (%s)", locale => {
+    const { container } = render(<CsvGuide toolId="start-gate" locale={locale} />);
+    expect(container.querySelector(".csv-guide-effort").textContent).toBe(locale === "en" ? "Required columns shown after checking your file" : "파일 확인 후 필요한 컬럼 안내");
+    expect(container.textContent).not.toMatch(/필수 컬럼 0개|0 required columns/);
+  });
   beforeEach(() => {
     window.gtag = vi.fn();
   });

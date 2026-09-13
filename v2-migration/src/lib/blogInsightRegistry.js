@@ -11,7 +11,7 @@ export const BLOG_INSIGHT_PLACEMENTS = {
   "aha-moment-retention": entry(3, "5-20", "distribution"),
   "apple-search-ads-guide": entry(4, "5-26"),
   "asa-keyword-expansion": entry(2, "5-26"),
-  "aso-basics-guide": entry(4, "5-27"),
+  "aso-basics-guide": entry(3, "5-27"),
   "audience-broad-vs-narrow": entry(1, "5-4", "comparison"),
   "brand-campaign-lift": entry(2, "5-24", "trend"),
   "budget-marginal-efficiency": entry(4, "5-3"),

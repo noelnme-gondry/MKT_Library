@@ -11,7 +11,7 @@ import { FUNNEL_MATH } from "@/utils/funnelMath";
 import { trackProductEvent } from "@/lib/analytics";
 import BlogInsightChart from "./BlogInsightChart";
 
-export default function BlogCsvAnalysis({ config, slug, locale = "ko" }) {
+export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null }) {
   const en = locale === "en", id = useId(), router = useRouter();
   const [csv, setCsv] = useState(null), [result, setResult] = useState(null), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [selection, setSelection] = useState({ category: "", value: "", denominator: "" });
@@ -36,7 +36,14 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko" }) {
       if (request !== task.current) return;
       if (parsed.errors.length || !parsed.data.length || parsed.data.length > 20000 || !parsed.meta.fields?.length || parsed.meta.renamedHeaders && Object.keys(parsed.meta.renamedHeaders).length) throw new Error("csv");
       const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
-      setCsv({ raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: file.name, projectId });
+      let sample = null;
+      if (practice?.demoGroup) {
+        const { buildBlogPracticeDownload, matchesBlogPracticeDemo } = await import("@/lib/blogPracticeData");
+        const { demo } = buildBlogPracticeDownload(practice);
+        if (matchesBlogPracticeDemo(parsed, demo)) sample = demo;
+      }
+      if (request !== task.current) return;
+      setCsv({ raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: file.name, projectId, importSource: sample ? "demo" : "upload", ...(sample?.currency ? { currency: sample.currency } : {}) });
       setSelection({ category: "", value: "", denominator: "" });
     } catch { if (request === task.current) setError(en ? "Use a CSV up to 5 MB / 20,000 rows with unique headers, or open the full analysis." : "중복 없는 헤더의 CSV(5MB·2만 행 이하)를 선택하거나 상세 분석을 이용하세요."); }
     finally { if (request === task.current) setBusy(false); }
@@ -90,21 +97,28 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko" }) {
     trackProductEvent("blog_tool_cta_clicked", { content_slug: slug, content_type: "blog", tool_id: config.toolId, locale, placement: "article_inline" });
     router.push(`${en ? "/en" : ""}${idToSlug[config.toolId]}`);
   };
-  return <aside className="blog-inline-insight" aria-labelledby={id}>
-    <h2 id={id}>{custom ? (en ? "Inspect the data behind this section" : "이 문단의 데이터 먼저 살펴보기") : (en ? "Check this with your CSV" : "이 내용을 내 CSV로 확인")}</h2>
-    <p>{en ? "One chart and the result. CSV processing stays in this browser." : "차트 하나와 결과만 확인하세요. CSV는 이 브라우저에서 처리합니다."}</p>
-    {custom && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
+  return <aside className={`blog-inline-insight${practice ? " blog-practice" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
+    {practice && <span className="blog-practice__eyebrow">{practice.eyebrow}</span>}
+    <h2 id={id}>{practice ? practice.title : custom ? (en ? "Inspect the data behind this section" : "이 문단의 데이터 먼저 살펴보기") : (en ? "Check this with your CSV" : "이 내용을 내 CSV로 확인")}</h2>
+    <p>{practice ? practice.introduction : en ? "One chart and the result. CSV processing stays in this browser." : "차트 하나와 결과만 확인하세요. CSV는 이 브라우저에서 처리합니다."}</p>
+    {practice && <details className="blog-practice__instructions">
+      <summary>{practice.instructions}</summary>
+      <ol>{practice.steps.map(step => <li key={step}>{step}</li>)}</ol>
+      <p className="blog-practice__limit">{practice.limit}</p>
+    </details>}
+    {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
     <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={busy} onChange={upload} /></label>
     {csv && <>
-      <details open={!result}><summary>{en ? "Check columns" : "열 확인"}</summary>
+      {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <details open={!result}><summary>{en ? "Check columns" : "열 확인"}</summary>
         {custom ? ["category", "value", "denominator"].map((key, index) => <label key={key}>{(en ? ["Group / date", "Value column (counts or amounts)", "Denominator (optional)"] : ["그룹 / 날짜", "값 열 (건수·금액)", "분모 열 (선택)"])[index]}<select disabled={busy} value={selection[key]} onChange={event => { setSelection(value => ({ ...value, [key]: event.target.value })); setResult(null); }}><option value="">—</option>{csv.headers.map(header => <option key={header}>{header}</option>)}</select></label>) : csv.headers.map(header => <label key={header}>{header}<select disabled={busy} value={csv.mapping[header] || "__ignore__"} onChange={event => { setCsv(value => ({ ...value, mapping: { ...value.mapping, [header]: event.target.value } })); setResult(null); }}><option value="__ignore__">{en ? "Ignore" : "사용 안 함"}</option>{Object.entries(STANDARD_FIELDS).filter(([key]) => allowedFields.has(key)).map(([key, field]) => <option key={key} value={key}>{en ? key : field.label}</option>)}</select></label>)}
         {hasMoney && config.type === "adapter" && <label data-currency-scope="declare">{en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)"}<select disabled={busy} value={csv.currency || ""} onChange={event => { setCsv(value => ({ ...value, currency: event.target.value })); setResult(null); }}><option value="">—</option><option value="KRW">KRW</option><option value="USD">USD</option></select></label>}
-      </details>
-      <button className="btn primary" disabled={busy} onClick={analyze}>{busy ? (en ? "Calculating…" : "계산 중…") : (en ? "Show result" : "결과 보기")}</button>
+      </details>}
+      {practice?.mode !== "detail" && <button className="btn primary" disabled={busy} onClick={analyze}>{busy ? (en ? "Calculating…" : "계산 중…") : (en ? "Show result" : "결과 보기")}</button>}
     </>}
     {error && <p role="alert">{error}</p>}
     {result && <div className="blog-inline-insight__result"><p className="blog-inline-insight__finding">{result.verdict.headline}</p>{result.status === "success" && <BlogInsightChart visual={result.visualizations[0]} locale={locale} />}{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</div>}
     {needsReplace && <label><input type="checkbox" checked={replace} onChange={event => setReplace(event.target.checked)} />{en ? "Replace the current dataset in the detailed tool with this CSV." : "상세 도구의 기존 데이터를 이 CSV로 교체합니다."}</label>}
+    {practice?.detailNote && <p>{practice.detailNote}</p>}
     <button className="btn" disabled={busy} onClick={openDetail}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
   </aside>;
 }
