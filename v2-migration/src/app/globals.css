@@ -11221,7 +11221,9 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .tutorial-launcher > span:first-child { color: var(--primary); font-size: 22px; line-height: 1; }
 /* Keep consent, existing dialogs, form entry and focused page controls unobscured. */
 body:has(.consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
-body:has(main :focus-visible, .content :focus-visible, input:focus, textarea:focus, select:focus) .tutorial-launcher,
+/* Pointer focus must also keep help hidden: otherwise it can appear between
+   pointerdown and pointerup and steal the underlying control's click. */
+body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launcher,
 .tutorial-launcher[data-obscures-control] { visibility: hidden; }
 .tutorial-inline { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--primary); font: 600 13px/1.4 var(--font-sans); cursor: pointer; }
 .tutorial-overlay { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 24px; background: rgb(9 16 30 / 64%); }
