@@ -80,14 +80,20 @@ export async function finishGoogleLogin(request) {
   const account = (await accountDatabase().query("INSERT INTO gop_accounts(id,google_sub,email) VALUES($1,$2,$3) ON CONFLICT(google_sub) DO UPDATE SET email=EXCLUDED.email RETURNING id", [randomUUID(), identity.sub, identity.email])).rows[0];
   return issueAccountSession(account.id);
 }
-export async function issueAccountSession(accountId) {
+// Popup logins answer with HTML; the password form posts from the page and needs the
+// same session cookie without it. Both issue the session through this one path.
+export async function accountSessionCookie(accountId) {
   const account = (await accountDatabase().query("SELECT email FROM gop_accounts WHERE id=$1", [accountId])).rows[0];
   if (!account) throw new Error("INVALID_LOGIN");
   if (!accountEmailAllowed(account.email)) throw new Error("ACCOUNT_RESTRICTED");
   const token = randomBytes(32).toString("hex");
   await accountDatabase().query("INSERT INTO gop_account_sessions(token_hash,account_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '30 days')", [hash(token), accountId]);
+  return cookie(sessionCookie, token, 30 * 86400);
+}
+export async function issueAccountSession(accountId) {
+  const session = await accountSessionCookie(accountId);
   const headers = new Headers({ "Content-Type": "text/html;charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'none'; script-src 'nonce-account-complete'" });
-  headers.append("Set-Cookie", cookie(sessionCookie, token, 30 * 86400));
+  headers.append("Set-Cookie", session);
   headers.append("Set-Cookie", cookie("gop_oauth_state", "", 0));
   return new Response('<!doctype html><meta charset="utf-8"><title>Login complete</title><p>로그인 완료 · Login complete. You can return to your analysis.</p><script nonce="account-complete">if(window.opener){window.opener.postMessage({type:"gop-account-ready"},location.origin);window.close()}</script>', { headers });
 }
