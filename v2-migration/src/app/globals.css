@@ -4613,7 +4613,15 @@ body:not(.light-mode) .moon-icon {
 .blog-inline-insight__result { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-subtle); }
 .blog-inline-insight__finding { color: var(--text-primary); font-weight: 700; }
 .blog-inline-insight label, .account-archive label { display: grid; gap: 6px; margin: 10px 0; font-size: 13px; }
-.blog-inline-insight select, .account-archive select { min-width: 0; width: 100%; min-height: 44px; }
+/* input이 빠져 있어 텍스트 칸만 브라우저 기본 폭으로 남았다 — 같은 폼 안에서
+   아이디는 전체 폭, 비밀번호는 짧게 나오던 원인. */
+.blog-inline-insight select, .account-archive select,
+.account-archive :is(input[type="email"], input[type="password"], input[type="text"]) { min-width: 0; width: 100%; min-height: 44px; }
+/* 로그인은 접어 두지 않는다. 두 경로를 같은 얇은 선으로만 나눈다. */
+.account-archive :is(.account-password-login, .account-link-login) { display: grid; gap: 0; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+.account-archive :is(.account-password-login, .account-link-login) > h4 { margin: 0; font-size: 14px; font-weight: 650; }
+.account-archive :is(.account-password-login, .account-link-login) > p { margin: 6px 0 4px; color: var(--text-secondary); }
+.account-archive :is(.account-password-login, .account-link-login) .btn { display: flex; width: 100%; justify-content: center; min-height: 44px; margin-top: 14px; }
 .blog-inline-insight p, .account-archive p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .blog-inline-insight figure { margin: 16px 0; }
 .blog-inline-insight .chart-container { height: 220px; }

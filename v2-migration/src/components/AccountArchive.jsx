@@ -123,8 +123,10 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     </>}
     {/* 아이디는 계정에 등록된 이메일 주소다(Google로 만든 계정은 그 Google 이메일).
         비밀번호 로그인은 서버에서 지정한 계정에만 열린다. */}
-    {!session.account && session.passwordLoginEnabled && <details className="account-password-login"><summary>{en ? "Sign in with an id and password" : "아이디·비밀번호로 로그인"}</summary>
-      <p>{en ? "Your id is the email address registered on the account. This sign-in is available only for accounts enabled for it." : "아이디는 계정에 등록된 이메일 주소입니다. 이 로그인은 지정된 계정에만 열려 있습니다."}</p>
+    {/* 로그인은 접어 둘 것이 아니다. 여기까지 온 사람은 로그인하러 온 것이므로 바로 쓰게 둔다. */}
+    {!session.account && session.passwordLoginEnabled && <section className="account-password-login" aria-labelledby="account-password-title">
+      <h4 id="account-password-title">{en ? "Sign in with an id and password" : "아이디·비밀번호로 로그인"}</h4>
+      <p>{en ? "Your id is the email address registered on the account." : "아이디는 계정에 등록된 이메일 주소입니다."}</p>
       <form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("password-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); setPassword(""); trackProductEvent("login_completed", { locale }); setSession(await refreshAccount()); }, {
         INVALID_LOGIN: en ? "That id and password did not match an account enabled for password sign-in. Repeated attempts are blocked for a while." : "아이디·비밀번호가 맞지 않거나 이 로그인이 열려 있지 않은 계정입니다. 여러 번 실패하면 한동안 잠깁니다.",
         ACCOUNTS_UNAVAILABLE: en ? "Password sign-in is not enabled on the server right now." : "서버에서 비밀번호 로그인이 켜져 있지 않습니다.",
@@ -135,8 +137,15 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
         <label>{en ? "Password" : "비밀번호"}<input type="password" required maxLength={200} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
         <button className="btn" disabled={busy}>{en ? "Sign in" : "로그인"}</button>
       </form>
-    </details>}
-    {!session.account && session.mailEnabled && <details><summary>{en ? "Existing account: cannot use Google here?" : "기존 계정인데 Google 로그인이 안 되나요?"}</summary><p>{en ? "Request a one-time link for your registered Google email. Open it in this browser within 10 minutes. This does not create a new account or trial." : "등록한 Google 이메일로 일회용 링크를 요청하세요. 10분 안에 이 브라우저에서 열어 주세요. 새 계정이나 체험을 만들지 않습니다."}</p><form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("email-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, locale }) }); setMessage(en ? "If this email identifies an existing account, check your inbox for a link." : "기존 계정에 등록된 이메일이라면 받은편지함에서 링크를 확인해 주세요."); }); }}><label>{en ? "Registered email" : "등록된 이메일"}<input type="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} /></label><button className="btn" disabled={busy}>{en ? "Request sign-in link" : "로그인 링크 요청"}</button></form></details>}
+    </section>}
+    {!session.account && session.mailEnabled && <section className="account-link-login" aria-labelledby="account-link-title">
+      <h4 id="account-link-title">{en ? "Sign in by email link" : "이메일 링크로 로그인"}</h4>
+      <p>{en ? "For an existing account when Google is unavailable here. The link works once, in this browser, for 10 minutes. No new account or trial is created." : "기존 계정인데 여기서 Google 로그인이 안 될 때 씁니다. 링크는 이 브라우저에서 10분간 한 번만 쓸 수 있고, 새 계정이나 체험을 만들지 않습니다."}</p>
+      <form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("email-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, locale }) }); setMessage(en ? "If this email identifies an existing account, check your inbox for a link." : "기존 계정에 등록된 이메일이라면 받은편지함에서 링크를 확인해 주세요."); }); }}>
+        <label>{en ? "Registered email" : "등록된 이메일"}<input type="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} /></label>
+        <button className="btn" disabled={busy}>{en ? "Request sign-in link" : "로그인 링크 요청"}</button>
+      </form>
+    </section>}
     <p role="status">{message}</p>{trialReturn && <Link className="btn primary" href={trialReturn}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</Link>}<Link href={en ? "/en/privacy" : "/privacy"}>{en ? "Privacy policy" : "개인정보처리방침"}</Link>
   </section>;
 }
