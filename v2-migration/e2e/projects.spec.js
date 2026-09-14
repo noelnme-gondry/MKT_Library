@@ -24,7 +24,8 @@ for (const locale of ["ko", "en"]) {
     });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto(`${prefix}/projects`);
-    await page.locator("#project-backup > summary").click();
+    // 프로젝트 만들기는 이 화면의 주된 행동이라 접기 뒤에 두지 않는다. 여는 동작 없이 바로 쓸 수 있어야 한다.
+    await expect(page.locator("#project-backup > summary")).toHaveCount(0);
     // SSR의 제목은 저장소 준비 신호가 아니다. 실제 생성 작업이 열릴 때까지 기다린다.
     await expect(page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true })).toBeEnabled();
     await page.evaluate(async () => {
@@ -36,7 +37,6 @@ for (const locale of ["ko", "en"]) {
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
     });
     await page.goto(`${prefix}/projects`);
-    await page.locator("#project-backup > summary").click();
     await expect(page.getByRole("heading", { name: /Client Alpha/ })).toBeVisible();
     const initial = await readStored(page);
     expect(initial.meta.some(record => record.key === "weekly-review:project")).toBe(false);
@@ -57,7 +57,6 @@ for (const locale of ["ko", "en"]) {
       await other.locator(".checkout-existing > summary").click();
       await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
       await expect(other).toHaveURL(/weekly-review#project-management$/);
-      await other.locator("#project-backup > summary").click();
       await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
       await expect(other.locator(".project-card")).toHaveCount(0);
       await other.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
@@ -79,7 +78,6 @@ for (const locale of ["ko", "en"]) {
     // After expiry, any project creation is gated; existing data remains accessible.
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "review-test", email: "review@example.com", trialStartedAt: "2026-01-01" }, entitlement: null } }));
     await page.reload();
-    await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Second project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
@@ -98,13 +96,11 @@ for (const locale of ["ko", "en"]) {
     expect(JSON.stringify(events)).not.toContain("Client Alpha");
     await expectNoSeriousAccessibilityViolations(page);
     await page.goto(`${prefix}/projects`);
-    await page.locator("#project-backup > summary").click();
     page.once("dialog", dialog => dialog.accept());
     await page.getByRole("button", { name: en ? "Delete" : "삭제", exact: true }).click();
     await expect(page.locator(".project-card")).toHaveCount(0);
     await enableReviewLogin(page);
     await page.reload();
-    await page.locator("#project-backup > summary").click();
     await expect(page.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
     await expect(page.locator(".project-import-preview")).toContainText("Client Alpha");
@@ -125,7 +121,6 @@ for (const locale of ["ko", "en"]) {
 
 test("existing projects remain separate and readable without a license", async ({ page }) => {
   await page.goto("/projects");
-    await page.locator("#project-backup > summary").click();
   await expect(page.getByRole("button", { name: "프로젝트 만들기", exact: true })).toBeEnabled();
   await page.evaluate(async () => {
     const db = await new Promise(resolve => { const r = indexedDB.open("mkt_workspace", 1); r.onsuccess = () => resolve(r.result); });
@@ -139,7 +134,6 @@ test("existing projects remain separate and readable without a license", async (
   });
   for (const id of ["client_b", "client_a"]) {
     await page.goto("/projects");
-    await page.locator("#project-backup > summary").click();
     await expect(page.locator(".project-card")).toHaveCount(2);
     await page.locator(".project-card").filter({ has: page.getByRole("heading", { name: new RegExp(id) }) }).getByRole("button", { name: "리뷰 열기", exact: true }).click();
     await expect(page).toHaveURL(/\/weekly-review$/);
