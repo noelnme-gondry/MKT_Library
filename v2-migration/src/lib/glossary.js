@@ -9,6 +9,7 @@ import matter from "gray-matter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
+import { wrapArticleTables } from "@/lib/articleTables";
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -65,7 +66,7 @@ function parseFile(fileName, locale) {
       : [],
     primaryTool: data.primaryTool || primaryToolForContent(slug, "glossary"),
     draft: data.draft === true,
-    html: localizeInternalLinks(marked.parse(content || ""), locale),
+    html: wrapArticleTables(localizeInternalLinks(marked.parse(content || ""), locale), locale),
   };
 }
 

@@ -35,7 +35,9 @@ describe("device-storage privacy contract", () => {
     expect(koSource).toContain("원본은 서버로 전송하지 않습니다");
     expect(koSource).toContain("저장된 원본 파일과 결정 기록의 영속 사본을 즉시 지우며");
     expect(koSource).toContain('href="/storage"');
-    expect(koSource).toContain('updated="2026-09-11"');
+    expect(koSource).toContain("유효한 Pro 이용권(14일 체험 포함)이 있고 기기 저장을 켠 경우");
+    expect(koSource).toContain("무료 분석만 이용하면 새 분석 파일을 기기에 자동 보관하지 않습니다");
+    expect(koSource).not.toContain("기본 설정에서는 사용자가 직접 올린");
   });
 
   it("keeps the English privacy contract equivalent", () => {
@@ -44,6 +46,12 @@ describe("device-storage privacy contract", () => {
     expect(enSource).toContain("Source files are never sent to our server");
     expect(enSource).toContain("immediately removes stored source files and the persistent copy of decision records");
     expect(enSource).toContain('href="/en/storage"');
-    expect(enSource).toContain('updated="2026-09-11"');
+    expect(enSource).toContain("With active Pro access (including the 14-day trial) and device storage enabled");
+    expect(enSource).toContain("Free analysis alone does not automatically retain new analysis files on this device");
+    expect(enSource).not.toContain("With the default setting, source CSV/XLSX files");
+    const koDate = koSource.match(/updated="(\d{4}-\d{2}-\d{2})"/);
+    const enDate = enSource.match(/updated="(\d{4}-\d{2}-\d{2})"/);
+    expect(koDate).not.toBeNull();
+    expect(enDate?.[1]).toBe(koDate[1]);
   });
 });

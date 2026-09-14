@@ -11,6 +11,7 @@ import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentTool
 import { getBlogSeo } from "@/lib/blogSeo";
 import { getBlogEditorial } from "@/lib/blogEditorial";
 import { decodeTextEntitiesOnce, stripHtmlTags } from "@/lib/htmlText";
+import { wrapArticleTables } from "@/lib/articleTables";
 
 // 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
 // 굳이 확장하지 않음). gfm=마크다운 표/자동링크 지원.
@@ -104,10 +105,8 @@ function parseFile(fileName, locale) {
   const slug = data.slug || fileName.replace(/\.md$/, "");
   const seo = getBlogSeo(locale, slug, data);
   const editorial = getBlogEditorial(locale, slug, data);
-  const html = normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale))
-    .replace(/<pre>/g, `<pre tabindex="0" role="region" aria-label="${locale === "en" ? "Formula or code" : "수식 또는 코드"}">`)
-    .replace(/<table>/g, `<div class="table-scroll" role="region" tabindex="0" aria-label="${locale === "en" ? "Data table" : "데이터 표"}"><table>`)
-    .replace(/<\/table>/g, "</table></div>");
+  const html = wrapArticleTables(normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale))
+    .replace(/<pre>/g, `<pre tabindex="0" role="region" aria-label="${locale === "en" ? "Formula or code" : "수식 또는 코드"}">`), locale);
   return {
     slug,
     title: seo?.title || data.title || slug,
