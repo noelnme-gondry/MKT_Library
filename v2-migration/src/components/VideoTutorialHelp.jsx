@@ -7,10 +7,60 @@ import { VIDEO_TUTORIALS, TUTORIAL_STEP_SECONDS, tutorialIdsForPath, tutorialMed
 import { trackProductEvent } from "@/lib/analytics";
 
 const OPEN_EVENT = "gop:video-tutorial";
-export function VideoHelpButton({ topic, locale = "ko" }) {
-  return <button type="button" className="tutorial-inline" onClick={event => {
-    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { topic, trigger: event.currentTarget } }));
-  }}><span aria-hidden="true">▷</span> {locale === "en" ? "Video guide" : "영상으로 보기"}</button>;
+const PAGE_CONTROLS = 'button, a[href], input, select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]';
+
+// A floating help entry must yield to the real task underneath it. Probe only
+// its small viewport footprint instead of reading every control on every scroll.
+function useLauncherClearance(ref, active) {
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    let settleTimer = 0;
+    let scrolling = false;
+    const mountedLauncher = ref.current;
+    const check = () => {
+      frame = 0;
+      if (scrolling) return;
+      const launcher = ref.current;
+      if (!launcher) return;
+      const rect = launcher.getBoundingClientRect();
+      let overlaps = false;
+      for (let x = rect.left + 1; x < rect.right && !overlaps; x += 16) {
+        for (let y = rect.top + 1; y < rect.bottom && !overlaps; y += 16) {
+          overlaps = document.elementsFromPoint(x, y).some(node =>
+            !launcher.contains(node) && node.closest(PAGE_CONTROLS));
+        }
+      }
+      launcher.toggleAttribute("data-obscures-control", overlaps);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(check); };
+    const onScroll = () => {
+      // Stay out of the way through scrolling and its settling frames.
+      scrolling = true;
+      ref.current?.setAttribute("data-obscures-control", "");
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => { scrolling = false; schedule(); }, 150);
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(settleTimer);
+      observer.disconnect();
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", schedule);
+      mountedLauncher?.removeAttribute("data-obscures-control");
+    };
+  }, [ref, active]);
+}
+export function VideoHelpButton({ topic, locale = "ko", className = "tutorial-inline", onOpen, children }) {
+  return <button type="button" className={className} aria-haspopup="dialog" onClick={event => {
+    const trigger = onOpen?.() || event.currentTarget;
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { topic, trigger } }));
+  }}><span aria-hidden="true">▷</span> {children || (locale === "en" ? "Video guide" : "영상으로 보기")}</button>;
 }
 
 function TutorialLauncher({ pathname, locale }) {
@@ -18,6 +68,8 @@ function TutorialLauncher({ pathname, locale }) {
   const [failed, setFailed] = useState(false);
   const [chapter, setChapter] = useState(0);
   const videoRef = useRef(null);
+  const launcherRef = useRef(null);
+  useLauncherClearance(launcherRef, !topic);
   const triggerRef = useRef(null);
   const closeRef = useRef(null);
   const en = locale === "en";
@@ -27,20 +79,21 @@ function TutorialLauncher({ pathname, locale }) {
   const select = id => { videoRef.current?.pause(); setFailed(false); setChapter(0); setTopic(id); };
   useEffect(() => {
     const open = event => {
-      if (!VIDEO_TUTORIALS.some(item => item.id === event.detail?.topic)) return;
-      triggerRef.current = event.detail.trigger;
+      const requested = event.detail?.topic || tutorialIdsForPath(pathname, { projectManagement: !!document.querySelector("#project-management") })[0] || "import";
+      if (!VIDEO_TUTORIALS.some(item => item.id === requested)) return;
+      triggerRef.current = event.detail?.trigger;
       setFailed(false);
       setChapter(0);
-      setTopic(event.detail.topic);
+      setTopic(requested);
     };
     window.addEventListener(OPEN_EVENT, open);
     return () => window.removeEventListener(OPEN_EVENT, open);
-  }, []);
+  }, [pathname]);
   if (!ids.length && !tutorial) return null;
   const close = () => { videoRef.current?.pause(); setTopic(null); };
   const event = name => trackProductEvent(name, { source: "video_tutorial", content_slug: topic, locale });
   return <>
-    <button type="button" className="tutorial-launcher no-print" aria-haspopup="dialog" onClick={event => {
+    <button ref={launcherRef} type="button" className="tutorial-launcher no-print" aria-haspopup="dialog" onClick={event => {
       triggerRef.current = event.currentTarget;
       const projectManagement = !!document.querySelector("#project-management");
       const contextual = tutorialIdsForPath(pathname, { projectManagement });

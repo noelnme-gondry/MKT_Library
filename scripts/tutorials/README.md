@@ -9,6 +9,9 @@ caption tracks, a timestamped transcript and Radix focus restoration. CSV mappin
 and Sheets have contextual inline entry buttons; published CSV routes also have
 the floating launcher. The project manager chooses its own topic when opened
 inside the weekly-review route. Paid access is never changed by the player.
+The launcher yields during scrolling or when it covers page controls. The header
+utility menu always provides the same contextual guide, with focus returned to
+its summary after closing the player.
 
 ## Reproduce (local only)
 
