@@ -56,10 +56,9 @@ export default function PaymentReviewCheckout({ clientKey, product, locale = "ko
       setMessage(en ? "Could not continue the test checkout. If you closed it, you can open it again. Otherwise check the connection and retry." : "테스트 결제창을 진행하지 못했습니다. 창을 닫았다면 다시 열 수 있습니다. 그 외에는 연결 상태를 확인한 뒤 재시도하세요.");
     } finally { running.current = false; setBusy(false); }
   };
-  return <section className="checkout-review checkout-access-card" aria-labelledby="checkout-review-title">
-    <h3 id="checkout-review-title">{en ? "Test checkout for integration review" : "심사용 테스트 결제창"}</h3>
-    <p>{en ? "Check the checkout for the pass described above without signing in. It uses a Toss test key: no actual charge, payment approval or Pro access is issued." : "위 이용권 상품의 결제창을 로그인 없이 확인할 수 있습니다. 토스 테스트 키를 사용하며 실제 청구·결제 승인·Pro 권한 발급은 진행하지 않습니다."}</p>
-    <p>{en ? "Select a payment method and open its test checkout. This is not a purchase." : "결제수단을 선택한 뒤 테스트 결제창을 여세요. 실제 구매는 이루어지지 않습니다."}</p>
+  return <section className="checkout-review" aria-labelledby="checkout-review-title">
+    <h4 id="checkout-review-title">{en ? "Test checkout for integration review" : "심사용 테스트 결제창"}</h4>
+    <p>{en ? "Preview the checkout without signing in. No actual charge, payment approval or pass is issued." : "로그인 없이 결제창을 확인할 수 있습니다. 실제 청구·결제 승인·이용권 발급은 진행되지 않습니다."}</p>
     <div id="toss-review-methods" /><div id="toss-review-agreement" />
     <button type="button" className="btn primary" disabled={busy} onClick={open}>{busy ? (en ? "Opening…" : "여는 중…") : ready ? (en ? `Open KRW ${product.amount.toLocaleString("en-US")} test checkout` : `${product.amount.toLocaleString("ko-KR")}원 테스트 결제창 열기`) : (en ? "Show test payment methods" : "테스트 결제수단 확인")}</button>
     {message && <p role="status">{message}</p>}

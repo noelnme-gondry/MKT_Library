@@ -17,7 +17,7 @@ for (const locale of ["ko", "en"]) {
         window.__reviewCalls.push({ name: "initialize", key });
         return { widgets: () => ({
           setAmount: async amount => { window.__reviewCalls.push({ name: "amount", ...amount }); },
-          renderPaymentMethods: async ({ selector }) => { document.querySelector(selector).textContent = "Card payment methods (test fixture)"; },
+          renderPaymentMethods: async ({ selector }) => { const host = document.querySelector(selector); host.textContent = "Card payment methods (test fixture)"; host.style.minHeight = "500px"; },
           renderAgreement: async ({ selector }) => { document.querySelector(selector).textContent = "Payment agreement (test fixture)"; },
           requestPayment: async options => { window.__reviewCalls.push({ name: "request", ...options }); },
         }) };
@@ -27,9 +27,31 @@ for (const locale of ["ko", "en"]) {
     const review = page.locator(".checkout-review");
     await expect(review.getByRole("heading", { name: en ? "Test checkout for integration review" : "심사용 테스트 결제창" })).toBeVisible();
     expect(await page.evaluate(() => window.__reviewCalls)).toEqual([]);
+    await expect(page.getByText(en ? "Purchases are currently unavailable." : "지금은 구매할 수 없습니다.", { exact: false })).toHaveCount(0);
+    const details = page.locator(".checkout-purchase-info");
+    await expect(details).not.toHaveAttribute("open");
+    await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).not.toBeVisible();
+
     await review.getByRole("button", { name: en ? "Show test payment methods" : "테스트 결제수단 확인" }).click();
     const open = review.getByRole("button", { name: en ? "Open KRW 5,900 test checkout" : "5,900원 테스트 결제창 열기" });
     await expect(open).toBeVisible();
+    const layout = await page.locator("#purchase").evaluate(panel => {
+      const summary = panel.querySelector(".purchase-summary").getBoundingClientRect();
+      const payment = panel.querySelector(".purchase-payment").getBoundingClientRect();
+      const button = panel.querySelector(".checkout-review button");
+      const style = getComputedStyle(button);
+      return { sideBySide: summary.right <= payment.left + 1, summaryHeight: summary.height, paymentHeight: payment.height,
+        buttonCentered: style.justifyContent === "center" && style.textAlign === "center", buttonHeight: button.getBoundingClientRect().height,
+        overflow: panel.scrollWidth > panel.clientWidth + 1 };
+    });
+    expect(layout.buttonCentered).toBe(true);
+    expect(layout.buttonHeight).toBeGreaterThanOrEqual(52);
+    expect(layout.overflow).toBe(false);
+    if (layout.sideBySide) expect(layout.summaryHeight).toBeLessThan(layout.paymentHeight);
+    await details.locator("summary").click();
+    await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).toBeVisible();
+    await details.locator("summary").click();
+
     await open.click();
     await expect.poll(() => page.evaluate(() => window.__reviewCalls.filter(call => call.name === "request").length)).toBe(1);
     const calls = await page.evaluate(() => window.__reviewCalls);
