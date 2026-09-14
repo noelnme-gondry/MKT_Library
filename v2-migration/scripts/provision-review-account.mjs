@@ -1,8 +1,14 @@
 // Create or update the id/password account a card-network reviewer signs in with.
-// Run manually against the payments database; never in the request path.
+// Run manually; never in the request path. This is a command, not an environment
+// variable: the only variable the running app needs is ACCOUNT_PASSWORD_LOGINS.
 //
+// With a database connection it writes the account directly:
 //   REVIEW_ACCOUNT_EMAIL=... REVIEW_ACCOUNT_PASSWORD=... \
 //   PAYMENTS_DATABASE_URL=... node scripts/provision-review-account.mjs
+//
+// Without one it prints SQL to paste into the database console instead, so an
+// operator who cannot open a shell on the app service can still provision:
+//   REVIEW_ACCOUNT_EMAIL=... REVIEW_ACCOUNT_PASSWORD=... node scripts/provision-review-account.mjs
 //
 // The password is read from the environment and never written to this repository,
 // logged, or echoed. Add the same address to ACCOUNT_PASSWORD_LOGINS (and to
@@ -16,13 +22,25 @@ const email = (process.env.REVIEW_ACCOUNT_EMAIL || "").trim();
 const password = process.env.REVIEW_ACCOUNT_PASSWORD || "";
 const url = process.env.PAYMENTS_DATABASE_URL;
 
-if (!url) { console.error("PAYMENTS_DATABASE_URL is required."); process.exit(1); }
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.error("REVIEW_ACCOUNT_EMAIL must be an email address."); process.exit(1); }
 if (password.length < 12 || password.length > 200) { console.error("REVIEW_ACCOUNT_PASSWORD must be 12-200 characters."); process.exit(1); }
 
 const salt = randomBytes(16);
 const key = await derive(password, salt, 64, { N: 16384, r: 8, p: 1 });
 const hash = `scrypt$16384$8$1$${salt.toString("hex")}$${key.toString("hex")}`;
+const sqlLiteral = value => `'${String(value).replace(/'/g, "''")}'`;
+
+// No connection string: print the statements instead of guessing at a database.
+// The hash already contains its own salt, so pasting this is equivalent to writing it here.
+if (!url) {
+  console.log(`-- Paste into the payments database console. Deploy first so password_hash exists.
+INSERT INTO gop_accounts (id, google_sub, email, password_hash)
+VALUES (gen_random_uuid(), NULL, ${sqlLiteral(email)}, ${sqlLiteral(hash)});
+
+-- If this address already has an account, run this instead:
+-- UPDATE gop_accounts SET password_hash=${sqlLiteral(hash)} WHERE lower(email)=lower(${sqlLiteral(email)});`);
+  process.exit(0);
+}
 
 const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 10000 });
 try {
