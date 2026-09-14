@@ -1,5 +1,6 @@
 ---
 term: "Uplift"
+searchTitleTerms: ["Uplift"]
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
 shortDef: "The outcome difference between treatment and control; interpreting it as incremental ad impact requires a valid design"
 description: "If the exposed group converts at 8% and the holdout at 5%, uplift is 3pp. How to run the split, and why ROAS can look fine when uplift is near zero."

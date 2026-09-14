@@ -1,5 +1,6 @@
 ---
 term: "Incrementality"
+searchTitleTerms: ["Incrementality"]
 seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
 description: "What did advertising add? Compare incrementality, attribution, uplift, CPA and iCPA with calculation examples and design limits."

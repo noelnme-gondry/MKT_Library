@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { getAllTerms, getTermBySlug } from "./glossary";
 
-// 검색결과 제목·설명 길이 예산. 상세 라우트가 title을 absolute로 내보내므로
-// 브랜드 접미(" | Growth Opt Playbook")는 붙지 않고, 아래 값이 곧 노출 길이다.
-// KO 30자는 네이버 웹사이트 컬렉션 잘림선, KO 80자는 그 스니펫 길이 기준.
+// 설명의 내부 편집 예산. 검색엔진의 고정 글자 수 제한이 아니다.
+// 제목은 searchTitleTerms와 본문 정합으로 검증한다. 30자 상한 때문에
+// 정식 영문 용어를 제거했던 회귀를 다시 강제하지 않는다.
 const LIMITS = {
-  ko: { title: 30, description: 80 },
-  en: { title: 60, description: 155 },
+  ko: { description: 80 },
+  en: { description: 155 },
 };
 
 describe("glossary entity and SEO titles", () => {
@@ -48,11 +48,9 @@ describe.each(["ko", "en"])("glossary SERP budget (%s)", (locale) => {
     }
   });
 
-  // seoTitle이 비면 라우트가 "term 뜻 — 용어사전" 폴백을 쓰는데, 그러면 정식
-  // 엔티티명(영문 풀네임 괄호 포함)이 그대로 제목 앞자리를 먹어 잘린다.
-  it.each(terms.map((t) => [t.slug, t]))("%s keeps its search title within budget", (_slug, term) => {
-    expect(term.seoTitle).not.toBe("");
-    expect(term.seoTitle.length).toBeLessThanOrEqual(limit.title);
+  it.each(terms.map((t) => [t.slug, t]))("%s keeps an explicit search title", (_slug, term) => {
+    expect(term.seoTitle.trim()).not.toBe("");
+    expect(term.seoTitle).not.toContain("Growth Opt Playbook");
   });
 
   it.each(terms.map((t) => [t.slug, t]))("%s keeps its description within budget", (_slug, term) => {

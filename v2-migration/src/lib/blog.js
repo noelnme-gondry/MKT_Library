@@ -109,6 +109,7 @@ function parseFile(fileName, locale) {
     .replace(/<pre>/g, `<pre tabindex="0" role="region" aria-label="${locale === "en" ? "Formula or code" : "수식 또는 코드"}">`), locale);
   return {
     slug,
+    searchTitleTerms: data.searchTitleTerms || [],
     title: seo?.title || data.title || slug,
     // 화면 h1. 레지스트리가 따로 적지 않았으면 제목과 같다(§blogSeo H1).
     h1: seo?.h1 || seo?.title || data.title || slug,

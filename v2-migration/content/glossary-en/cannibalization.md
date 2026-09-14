@@ -1,6 +1,7 @@
 ---
 term: "Cannibalization"
 seoTitle: "Cannibalization: Is Paid Stealing Your Organic?"
+searchTitleTerms: ["Cannibalization"]
 shortDef: "When paid ads steal conversions that would have happened organically anyway"
 description: "Cannibalization is paid advertising taking conversions that would have arrived organically. Why it inflates measured efficiency, and how to check."
 date: "2026-07-18"

@@ -3,6 +3,7 @@ title: "퍼포먼스 마케팅 분석 순서: 데이터에 맞는 첫 분석 고
 description: "성과가 떨어졌을 때 대시보드, 변동 분해, 포화도, A/B, 증분, MMM 중 무엇부터 해야 할지 데이터 형태와 질문으로 고릅니다."
 date: "2026-08-09"
 slug: "performance-marketing-analysis-order"
+searchTitleTerms: ["퍼포먼스 마케팅", "분석"]
 keywords: "퍼포먼스 마케팅 분석, 마케팅 데이터 분석 순서, 광고 성과 분석 방법, 캠페인 분석, MMM 데이터, 증분 분석, 광고 데이터 CSV"
 tags: ["문제 진단", "분석 방법론"]
 draft: false

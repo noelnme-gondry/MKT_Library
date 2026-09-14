@@ -3,6 +3,7 @@ title: "ASO Strategy: Improve Store Conversion and Keywords"
 description: "ASO fixes both the store conversion after an ad click and search visibility. Icon, screenshots, ratings, then keywords — in order."
 date: "2026-07-15"
 slug: "aso-basics-guide"
+searchTitleTerms: ["ASO Strategy"]
 keywords: "ASO, app store optimization, ASO basics, ASO strategy, learn ASO, app keyword optimization, app store conversion rate, store page conversion, app icon screenshots, app ranking, organic installs, store listing experiments"
 tags: ["ASO", "Metrics Basics"]
 draft: false
@@ -17,7 +18,7 @@ faq:
     a: "Split it in two or the diagnosis stalls. Browse conversion is product page views divided by impressions and is driven by the icon and app name; page conversion is installs divided by product page views and is driven by screenshots and ratings. These are operational ratios, distinct from Apple’s official conversion rate. With 100,000 impressions, 12,000 product page views, and 3,600 installs, those are 12% and 30%. Reading only the combined 3.6% cannot tell you whether to fix the icon or the screenshots."
   - q: "Does ASO improve paid performance too?"
     a: "With identical spend and product page views, conversion moving from 30% to 40% means about 33.3% more installs and 25% lower CPI. This calculation does not hold unchanged if traffic mix or acquisition costs change."
-updated: "2026-09-09"
+updated: "2026-09-14"
 reviewedAt: "2026-09-09"
 reviewer: "Codex (AI-assisted editorial audit)"
 sources:

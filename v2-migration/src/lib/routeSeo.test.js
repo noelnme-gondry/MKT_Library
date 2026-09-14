@@ -4,8 +4,7 @@ import { getRouteSeo } from "./routeSeo";
 
 // 색인 가능한 라우트는 전부 전용 SEO 카피를 가져야 한다. 이 목록을 손으로 적으면
 // 새 라우트가 "가드에서도 똑같이 빠져" 결함이 통과한다 — toolOg.test.js가 정확히
-// 5-25·5-26을 그렇게 놓쳤고(§7), 이 파일도 같은 두 도구를 놓쳐 5-26 KO 제목 32자·
-// EN 69자(한도 30·60)가 배포된 채로 통과하고 있었다. SSOT에서 파생할 것.
+// 5-25·5-26을 그렇게 놓쳤다(§7). 전용 메타·검색 의도를 SSOT에서 파생해 검증한다.
 // home은 layout.js의 buildRootMetadata가 담당하므로 제외한다.
 const SEO_ROUTE_IDS = ROUTES.filter((route) => isRouteIndexable(route) && route.id !== "home").map((route) => route.id);
 
@@ -24,7 +23,7 @@ describe("indexable route SEO copy", () => {
     expect(missing).toEqual([]);
   });
 
-  it.each(SEO_ROUTE_IDS)("%s has concise KO and EN metadata", (routeId) => {
+  it.each(SEO_ROUTE_IDS)("%s has localized metadata without duplicate branding", (routeId) => {
     const ko = getRouteSeo(routeId, "ko");
     const en = getRouteSeo(routeId, "en");
 
@@ -32,18 +31,22 @@ describe("indexable route SEO copy", () => {
     expect(ko?.description).toBeTruthy();
     expect(en?.title).toBeTruthy();
     expect(en?.description).toBeTruthy();
-    expect([...ko.title].length).toBeLessThanOrEqual(30);
+    expect(ko.title).not.toContain(TITLE_SUFFIX);
+    expect(en.title).not.toContain(TITLE_SUFFIX);
     expect([...ko.description].length).toBeLessThanOrEqual(80);
-    expect(en.title.length).toBeLessThanOrEqual(60);
-    expect(`${en.title}${TITLE_SUFFIX}`.length).toBeLessThanOrEqual(60);
     expect(en.description.length).toBeLessThanOrEqual(160);
   });
 
-  it("keeps KO titles from collapsing into bare feature names", () => {
-    // 30자 예산의 절반도 안 쓰는 제목은 쿼리 단어가 하나도 안 들어간 기능명이었다
-    // (21개 중 11개). 최소한 검색어 하나는 담기게 하한을 둔다.
-    const tooThin = SEO_ROUTE_IDS.filter((id) => [...getRouteSeo(id, "ko").title].length < 13);
-    expect(tooThin).toEqual([]);
+  it.each(["ko", "en"])("keeps distinct route titles instead of internal IDs (%s)", (locale) => {
+    // 문자 수는 검색 의도를 증명하지 않는다. 빈 제목·중복·내부 ID 폴백을 막고,
+    // 아래의 도구별 핵심 개념 검사로 실제 검색 의도를 확인한다.
+    const titles = SEO_ROUTE_IDS.map(id => {
+      const title = getRouteSeo(id, locale).title.trim();
+      expect(title).not.toBe("");
+      expect(title).not.toBe(id);
+      return title;
+    });
+    expect(new Set(titles).size).toBe(titles.length);
   });
 
   it("gives every SOP guide its own description instead of the group fallback", () => {

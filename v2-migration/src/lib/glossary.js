@@ -42,6 +42,7 @@ function parseFile(fileName, locale) {
     // 제목이다. 둘을 섞으면 "…뜻 — 용어사전"처럼 제목이 중복되고, 구조화된
     // DefinedTerm 이름이 문장으로 오염된다.
     seoTitle: data.seoTitle || "",
+    searchTitleTerms: data.searchTitleTerms || [],
     shortDef: data.shortDef || "",
     description: data.description || data.shortDef || "",
     date: data.date || "",

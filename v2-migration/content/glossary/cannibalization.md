@@ -1,6 +1,7 @@
 ---
 term: "카니발라이제이션 (Cannibalization)"
-seoTitle: "카니발라이제이션 뜻 | 광고가 오가닉 잡아먹는지 확인"
+seoTitle: "광고 카니발라이제이션(Cannibalization) 뜻"
+searchTitleTerms: ["카니발라이제이션", "Cannibalization"]
 shortDef: "유료 광고가 어차피 왔을 오가닉 유입을 대신 잡아먹는 현상"
 description: "카니발라이제이션은 유료 광고가 원래 왔을 오가닉 전환을 가져가는 현상입니다. 확인 방법까지."
 date: "2026-07-18"

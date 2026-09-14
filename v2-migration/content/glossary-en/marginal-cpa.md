@@ -1,5 +1,6 @@
 ---
 term: "Marginal CPA / Marginal ROAS"
+searchTitleTerms: ["Marginal CPA"]
 seoTitle: "Marginal CPA and ROAS: Why Averages Mislead"
 shortDef: "The CPA/ROAS of the next dollar added (or last dollar removed) at your current spend — the #1 metric for increasing, reallocating, or cutting budget"
 description: "Marginal CPA and ROAS measure the next unit of spend, not the average. Why averages mislead and how equimarginal logic guides budget moves."
