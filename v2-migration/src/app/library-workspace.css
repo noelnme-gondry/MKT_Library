@@ -658,6 +658,7 @@
   .app .checkout-review > p { font-weight: 400; }
   .app .checkout-review > h3 { margin: 0; }
   .app .checkout-review > div { min-width: 0; }
+  .app .checkout-review > .btn.primary:hover { background: var(--primary); color: var(--on-primary); }
   .app .purchase-project-transfer { padding-block: 20px; border-block: 1px solid var(--library-border); }
   .app .purchase-project-transfer p { margin: 0 0 14px; font-size: 13px; line-height: 1.75; }
   .app .checkout-restore { margin: 0; padding: 0; border: 0; background: transparent; }
