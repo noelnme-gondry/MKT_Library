@@ -19,7 +19,10 @@ function syncGroup(group) {
   // (2026-08-19: LtvTab의 성숙 기준일·표시 방법 두 그룹이 실제로 잘못 표기되고 있었다.)
   if (group.dataset.pillgroup === "multi") {
     for (const button of optionButtons(group)) {
-      button.setAttribute("aria-pressed", String(button.classList.contains("active")));
+      const pressed = String(button.classList.contains("active"));
+      // aria-pressed is observed below. Rewriting the same value recursively
+      // schedules this observer and prevents the browser from painting/input.
+      if (button.getAttribute("aria-pressed") !== pressed) button.setAttribute("aria-pressed", pressed);
     }
     return;
   }

@@ -19,6 +19,10 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
   const task = useRef(0);
   useEffect(() => () => { task.current += 1; }, []);
   const projectId = useAppStore(state => state.activeProjectId);
+  // Initial device restoration can change the destination while a demo is loading.
+  // Storage-disabled and storage-unavailable sessions can still analyze in memory.
+  const projectPreparing = useAppStore(state => state.projectSwitching || (state.decisionPersistenceEnabled && !state.projectsReady && !state.projectError));
+  const inputDisabled = busy || projectPreparing;
   const existing = useAppStore(state => state.csvGroups[groupForRoute(config.toolId)]);
   const needsReplace = Boolean(existing?.raw?.length && csv && existing.raw !== csv.raw);
   const custom = config.type !== "adapter" && config.type !== "funnel";
@@ -131,9 +135,10 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     </details>}
     {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
     <div className="blog-practice__actions">
-      {practice && <button className="btn primary" disabled={busy} onClick={openDemo}>{en ? "Open analysis with demo" : "데모로 분석 열기"}</button>}
-      <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={busy} onChange={upload} /></label>
+      {practice && <button className="btn primary" disabled={inputDisabled} onClick={openDemo}>{en ? "Open analysis with demo" : "데모로 분석 열기"}</button>}
+      <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={inputDisabled} onChange={upload} /></label>
     </div>
+    {projectPreparing && <p role="status">{en ? "Checking device storage…" : "기기 저장 상태를 확인하고 있습니다…"}</p>}
     {csv && <>
       {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <details open={!result}><summary>{en ? "Check columns" : "열 확인"}</summary>
         {custom ? ["category", "value", "denominator"].map((key, index) => <label key={key}>{(en ? ["Group / date", "Value column (counts or amounts)", "Denominator (optional)"] : ["그룹 / 날짜", "값 열 (건수·금액)", "분모 열 (선택)"])[index]}<select disabled={busy} value={selection[key]} onChange={event => { setSelection(value => ({ ...value, [key]: event.target.value })); setResult(null); }}><option value="">—</option>{csv.headers.map(header => <option key={header}>{header}</option>)}</select></label>) : csv.headers.map(header => <label key={header}>{header}<select disabled={busy} value={csv.mapping[header] || "__ignore__"} onChange={event => { setCsv(value => ({ ...value, mapping: { ...value.mapping, [header]: event.target.value } })); setResult(null); }}><option value="__ignore__">{en ? "Ignore" : "사용 안 함"}</option>{Object.entries(STANDARD_FIELDS).filter(([key]) => allowedFields.has(key)).map(([key, field]) => <option key={key} value={key}>{en ? key : field.label}</option>)}</select></label>)}
@@ -145,6 +150,6 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     {result && <div className="blog-inline-insight__result"><p className="blog-inline-insight__finding">{result.verdict.headline}</p>{result.status === "success" && <BlogInsightChart visual={result.visualizations[0]} locale={locale} />}{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</div>}
     {needsReplace && <label><input type="checkbox" checked={replacementTarget === existing.raw} onChange={event => setReplacementTarget(event.target.checked ? existing.raw : null)} />{en ? "Replace the current dataset in the detailed tool with this CSV." : "상세 도구의 기존 데이터를 이 CSV로 교체합니다."}</label>}
     {practice?.detailNote && <p>{practice.detailNote}</p>}
-    <button className="btn" disabled={busy} onClick={() => openDetail()}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
+    <button className="btn" disabled={inputDisabled} onClick={() => openDetail()}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
   </aside>;
 }

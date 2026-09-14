@@ -3,6 +3,9 @@
 // Every published article must have an entry or an explicit non-CSV reason.
 const entry = (section, toolId, type = "adapter") => ({ section, toolId, type });
 export const BLOG_INSIGHT_PLACEMENTS = {
+  "weekly-marketing-report-template": entry(3, "5-21"),
+  "cac-payback-period": entry(5, "5-2"),
+  "marketing-report-sheets-bigquery": entry(4, "5-2"),
   "ab-testing": entry(2, "5-4", "comparison"),
   "ad-creative-testing": entry(10, "9-6"),
   "ad-machine-learning": entry(6, "5-21"),

@@ -1,0 +1,9 @@
+﻿Field,Record
+Comparison periods,2026-08-31~09-06 vs 2026-09-07~09-13
+"Time zone, currency, outcome","Asia/Seoul, KRW, installs under one attribution definition"
+"Extracted at, maturity",Synthetic example: both periods assumed mature
+Observed change,"Spend 700000→840000 (+20%), installs 700→700; A CPI 1000→1500"
+Hypothesis to check,"Inspect changes to A placement mix, creative and tracking"
+Decision,Hold further scaling of A; check marginal efficiency before scaling B
+Owner,Campaign owner
+Review date and condition,2026-09-21: check maturity and change history before review
