@@ -6,8 +6,8 @@
 //   REVIEW_ACCOUNT_EMAIL=... REVIEW_ACCOUNT_PASSWORD=... \
 //   PAYMENTS_DATABASE_URL=... node scripts/provision-review-account.mjs
 //
-// Without one it prints SQL to paste into the database console instead, so an
-// operator who cannot open a shell on the app service can still provision:
+// Without one it writes review-account.sql (owner-only, git-ignored) to paste into the
+// database console instead, so an operator who cannot open a shell can still provision:
 //   REVIEW_ACCOUNT_EMAIL=... REVIEW_ACCOUNT_PASSWORD=... node scripts/provision-review-account.mjs
 //
 // The password is read from the environment and never written to this repository,
@@ -15,6 +15,7 @@
 // ACCOUNT_ALLOWED_EMAILS when that allow list is set) so the sign-in is accepted.
 import { randomUUID, randomBytes, scrypt } from "node:crypto";
 import { promisify } from "node:util";
+import { writeFile } from "node:fs/promises";
 import pg from "pg";
 
 const derive = promisify(scrypt);
@@ -30,15 +31,20 @@ const key = await derive(password, salt, 64, { N: 16384, r: 8, p: 1 });
 const hash = `scrypt$16384$8$1$${salt.toString("hex")}$${key.toString("hex")}`;
 const sqlLiteral = value => `'${String(value).replace(/'/g, "''")}'`;
 
-// No connection string: print the statements instead of guessing at a database.
-// The hash already contains its own salt, so pasting this is equivalent to writing it here.
+// No connection string: write the statements for the database console instead of
+// guessing at a database. The file is owner-only and its path is all that is printed —
+// a password verifier on stdout would outlive the run in scrollback and CI logs.
 if (!url) {
-  console.log(`-- Paste into the payments database console. Deploy first so password_hash exists.
+  const file = new URL("../review-account.sql", import.meta.url);
+  await writeFile(file, `-- Paste into the payments database console. Deploy first so password_hash exists.
+-- Delete this file once the account exists; it carries a password verifier.
 INSERT INTO gop_accounts (id, google_sub, email, password_hash)
 VALUES (gen_random_uuid(), NULL, ${sqlLiteral(email)}, ${sqlLiteral(hash)});
 
 -- If this address already has an account, run this instead:
--- UPDATE gop_accounts SET password_hash=${sqlLiteral(hash)} WHERE lower(email)=lower(${sqlLiteral(email)});`);
+-- UPDATE gop_accounts SET password_hash=${sqlLiteral(hash)} WHERE lower(email)=lower(${sqlLiteral(email)});
+`, { mode: 0o600 });
+  console.log("Wrote review-account.sql (owner-only). Open it, run the statement, then delete the file.");
   process.exit(0);
 }
 
