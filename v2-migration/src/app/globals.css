@@ -11096,7 +11096,10 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .projects-page a:not(.btn) { color: var(--primary); text-underline-offset: 3px; }
 .projects-page > header { display: grid; gap: 12px; justify-items: start; }
 .projects-page > header h1, .projects-page > header p { margin: 0; }
-.project-start-panel .project-create { margin-top: 20px; align-items: end; }
+/* 접기를 걷어내면서 제목과 줄 간격을 이 패널이 직접 갖는다. `<details>`였을 때는
+   `.projects-page section` 안쪽 여백 규칙에 걸리지 않아 내용이 테두리에 붙어 있었다. */
+.project-start-panel > h2 { margin: 0; font-size: 18px; }
+.project-start-panel .project-create { margin-top: 18px; align-items: end; }
 .project-create .wr-field { display: grid; gap: 8px; flex: 1 1 240px; margin: 0; }
 .project-create .wr-field input { width: 100%; }
 .project-empty { grid-column: 1 / -1; }
