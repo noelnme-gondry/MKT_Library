@@ -105,6 +105,7 @@ for (const locale of ["ko", "en"]) {
     await enableReviewLogin(page);
     await page.reload();
     await page.locator("#project-backup > summary").click();
+    await expect(page.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
     await expect(page.locator(".project-import-preview")).toContainText("Client Alpha");
     await page.getByRole("button", { name: en ? "Restore as new project" : "새 프로젝트로 복원", exact: true }).click();
