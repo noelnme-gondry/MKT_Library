@@ -34,7 +34,8 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
         const ok = await useAppStore.getState().switchProject(event.target.value);
         if (ok) show("review"); else setError(true);
       }}>{projects.map(project => <option key={project.id} value={project.id}>{project.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}</select></label>}
-      {active && <details><summary>{en ? "Manage project" : "프로젝트 관리"}</summary><button className="btn" onClick={() => show("manage")}>{en ? "Projects and backups" : "프로젝트 목록·백업"}</button></details>}
+      {/* 버튼 하나를 감추려고 접기를 쓰지 않는다. */}
+      {active && <button className="btn" onClick={() => show("manage")}>{en ? "Projects and backups" : "프로젝트 목록·백업"}</button>}
       </div>}
     </header>
     {error && <p role="alert">{en ? "Could not open this project. Your current review remains available." : "프로젝트를 열지 못했습니다. 현재 리뷰는 유지됩니다."}</p>}
