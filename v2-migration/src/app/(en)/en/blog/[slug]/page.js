@@ -6,6 +6,7 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
+import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
@@ -174,6 +175,8 @@ export default async function EnBlogPostPage({ params }) {
         {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} locale="en" /> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
+
+      <EditorialTrust compact locale="en" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
       <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} locale="en" />
 

@@ -2,9 +2,9 @@
 term: "Incrementality"
 seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
 shortDef: "The pure additional performance an ad actually caused"
-description: "Attribution assigns every conversion to a channel; incrementality counts only what disappears without ads — how to measure it and where CPA misleads."
+description: "What did advertising add? Compare incrementality, attribution, uplift, CPA and iCPA with calculation examples and design limits."
 date: "2026-07-18"
-updated: "2026-08-26"
+updated: "2026-09-14"
 slug: "incrementality"
 keywords: "incrementality, incrementality meaning, incrementality measurement, incrementality testing"
 category: "Measurement & Methodology"
@@ -15,7 +15,7 @@ sources:
 draft: false
 faq:
   - q: "How is incrementality different from attribution?"
-    a: "Attribution is a rule for splitting conversions that already happened across channels. Incrementality asks whether those conversions would have happened without the ad. Attribution always allocates 100%; incremental effect is often far smaller."
+    a: "Attribution allocates credit for observable, attributable conversions under a rule. Incrementality asks what advertising added relative to its absence. Missingness, duplication and reporting scope vary, so do not assume every report allocates 100% of all conversions."
   - q: "How do you measure incrementality?"
     a: "A randomised holdout is the strongest design. Without a control group you can use before-and-after comparisons around turning a campaign on or off, geo splits, or a time-series baseline. Each step down that list lets more competing explanations in."
   - q: "If incrementality is low, should I turn the ads off?"
@@ -38,7 +38,19 @@ The most reliable method is a [holdout test](/glossary/holdout-test): randomly s
 
 ## Why CPA/ROAS alone isn't enough
 
-CPA and ROAS only describe people who saw the ad — they can't tell you whether the ad *caused* the conversion. If incrementality is near zero, CPA can look great while the ad is doing almost nothing.
+CPA and ROAS relate costs to outcomes under attribution rules; they do not establish causation. A near-zero incrementality point estimate is not evidence of no effect until uncertainty and design quality have been assessed.
+
+## CPA and iCPA use different denominators
+
+In a hypothetical experiment, $1,000 in cost and 100 attributed conversions give a $10 CPA. If incremental conversions for the same scope are estimated at 20, iCPA is $50. This is an arithmetic example, not an observed incremental share for a campaign.
+
+| Check | Why it matters |
+| --- | --- |
+| Aligned cost, conversion and experiment scope | Do not divide account-wide cost by lift from a subset |
+| Group sizes and observation windows | Adjust for different sizes and align conversion maturity |
+| Estimated interval and design conditions | If lift is nonpositive or its direction is unresolved, do not base a budget on a single iCPA |
+
+In the [Incrementality Analysis tool](/tools/incrementality), check the data shape and design before reading results and withholding reasons. More conversion rows cannot replace a missing control.
 
 ## Go deeper
 

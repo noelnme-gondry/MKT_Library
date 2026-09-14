@@ -2,7 +2,7 @@
 title: "iOS Measurement: ATT, SKAN, and Conversion Value Explained"
 description: "iOS performance may not be bad, just invisible. ATT cuts user-level measurement and SKAN gives delayed aggregate signal. How to judge anyway."
 date: "2026-07-15"
-updated: "2026-09-09"
+updated: "2026-09-14"
 slug: "ios-att-skan-guide"
 keywords: "ATT, SKAN, SKAdNetwork, SKAN 4, SKAdNetwork 4.0, skan attribution, iOS performance measurement, iOS privacy, App Tracking Transparency, iOS14 marketing, app attribution, conversion value, crowd anonymity, privacy threshold, AdAttributionKit"
 tags: ["Measurement", "iOS"]
@@ -15,10 +15,10 @@ faq:
   - q: "What changed in SKAN 4?"
     a: "Conversion measurement expanded from one window to three, so behavior can be measured through day 35 after install, with additional delivery delay, and a coarse value of low, medium, or high joined the precise fine value. Campaign identifiers became hierarchical, but how much detail you actually receive depends on the privacy threshold."
   - q: "What is crowd anonymity in SKAN?"
-    a: "It is Apple's guard against re-identification when install volume is small: the lower the tier, the less detail is returned, and the fine value and granular source identifier stop arriving. Splitting campaigns finer shrinks each slice's volume, so more structure paradoxically buys coarser data."
+    a: "Apple limits returned detail to reduce re-identification risk. Value and source-identifier detail depend on the tier and window. If detail falls after splitting campaigns, inspect return conditions and observed distributions; splitting alone does not establish a tier decline."
   - q: "Can I calculate ROAS from SKAN data?"
     a: "Only loosely. You can encode revenue into conversion-value buckets, but the resolution is low and revenue beyond the measurement window is never captured. Treat SKAN ROAS as a limited estimate; different missingness and maturity can distort rankings too."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-09-14"
 reviewer: "Codex (AI-assisted editorial audit)"
 ---
 If Android is fine but only iOS looks cut in half, suspect measurement before the campaign. After the "Allow tracking?" prompt (ATT), precise user-level tracking on iOS got hard, and you now read performance through Apple's limited aggregate frame, SKAdNetwork (SKAN). Miss this structure and you'll kill a perfectly good iOS campaign on the numbers alone.
@@ -55,7 +55,7 @@ Two: a coarse value arrived. The precise fine value (0–63) comes only in the f
 
 Three: the privacy threshold (crowd anonymity) governs how much you get. This is what most often bites in practice. When install volume is small, Apple reduces what it returns so individuals cannot be re-identified. At a low tier, neither the fine value nor the granular source identifier arrives.
 
-That produces a paradox specific to SKAN. Normally finer campaign structure means better analysis, but here splitting campaigns shrinks each slice's volume, lowering its tier and coarsening the data. Carry over your Android campaign structure and you can flatten your iOS data wholesale. On iOS it is often better to deliberately consolidate campaigns to build volume.
+Splitting campaigns can leave fewer observations in each report segment. That alone does not establish a lower Apple tier. Check versions, source identifiers and returned-value distributions before deciding whether consolidation serves the operating objective.
 
 Exact tier conditions and per-window return rules change between versions, so confirm against [Apple's SKAdNetwork documentation](https://developer.apple.com/documentation/storekit/skadnetwork) and the [multiple conversion windows reference](https://developer.apple.com/documentation/storekit/receiving-postbacks-in-multiple-conversion-windows) before designing.
 
@@ -85,11 +85,24 @@ Apple introduced AdAttributionKit (AAK), the successor to SKAdNetwork. Apple sup
 
 Continue with [SKAN versus MMP attribution](/en/blog/skan-vs-mmp-attribution) to compare measurement systems, and [SKAN conversion-value design](/en/blog/skan-conversion-value-schema) to map events into values.
 
+## Align these fields before comparing reports
+
+This is a diagnostic example, not an account result. Comparing installs viewed on Monday with postbacks received through Friday mixes performance differences with arrival delay.
+
+| Comparison | Align first | Unsupported conclusion |
+| --- | --- | --- |
+| Install date and postback receipt date | Grouping date and maturity of each window | Fewer receipts = fewer installs that day |
+| Fine, coarse and missing values | Window, version, return conditions and mapping version | Missing value = zero purchases |
+| Platform, MMP and SKAN totals | Attribution window, redownloads, modeling and deduplication scope | Report gap = missing installs |
+| SKAN and AdAttributionKit | Actual implementation, interoperability and deduplication | Adding both totals = new customers |
+
+Record the report period, window and mapping version, then follow the [SKAN versus MMP comparison](/en/blog/skan-vs-mmp-attribution). Apple's [multiple conversion windows](https://developer.apple.com/documentation/storekit/receiving-postbacks-in-multiple-conversion-windows) and [AdAttributionKit interoperability documentation](https://developer.apple.com/documentation/adattributionkit/adattributionkit-skadnetwork-interoperability) describe return conditions. These checks do not reconstruct unobserved revenue or establish causality.
+
 ## Try this today
 
 Open your iOS campaign report and check two things.
 
-First, how far apart the platform console's iOS installs and your MMP or SKAN aggregate sit. The gap is not the missing volume. Align attribution windows, deduplication, modeling and delay first. A large gap suggests iOS performance is under-measured rather than bad.
+First, how far apart the platform console's iOS installs and your MMP or SKAN aggregate sit. The gap is not the missing volume. Align attribution windows, deduplication, modeling and delay first. Its size alone cannot distinguish missing measurement from a real performance decline.
 
 Second, pull up your conversion-value mapping and count the volume behind each value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation. Merge slots until each one carries enough volume to support a decision.
 

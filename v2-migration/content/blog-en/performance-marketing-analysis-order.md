@@ -10,14 +10,14 @@ primaryTool: "5-2"
 relatedGlossary: ["cpa", "incrementality", "multicollinearity", "response-curve"]
 answer: "Performance marketing analysis starts with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
 conditions: "The time windows below are practical eligibility checks used by this service. More rows do not fix poor measurement or weak variation, and observational data alone cannot establish causal lift."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-09-14"
 reviewer: "Codex (AI-assisted editorial audit)"
 faq:
   - q: "Which analysis should I run first when ad performance drops?"
     a: "Start with daily spend and conversions to validate the period and scope. Then use variance decomposition to separate channel mix from within-channel efficiency."
   - q: "Can I run MMM as soon as I have a lot of data?"
     a: "No. You need a long weekly channel panel with meaningful spend variation, then a VIF check for collinearity. High collinearity makes channel contributions hard to separate."
-updated: "2026-09-09"
+updated: "2026-09-14"
 ---
 When performance drops, it is tempting to choose a method first: “Should we run MMM?” or “Is this an A/B test?” That can force the data into a method it cannot support. A daily campaign export can find an operating problem quickly, but it cannot prove the net causal effect of advertising by itself.
 
@@ -73,6 +73,17 @@ MMM is not last merely because it is heavy. It answers a different question when
 Run [VIF diagnosis](/tools/vif-multicollinearity) before MMM. High VIF is a signal to combine channels or redesign the period and variables. A model producing numbers does not make channel contribution identifiable.
 
 If the number spiked for a single day, go to [campaign anomaly detection](/blog/campaign-anomaly-detection); if conversion leaks at one stage, [conversion rate optimization](/blog/funnel-dropoff-analysis); if users do not stay, [retention cohort analysis](/blog/cohort-analysis-guide).
+
+## What can one file actually answer?
+
+Suppose a daily file contains `date, channel, spend, clicks, new paying customers`. This is a workflow example, not observed campaign performance.
+
+1. **Validate the input:** confirm that customers are deduplicated and new, dates and currency align, and recent conversions have matured. A column name alone does not make purchases, installs and signups the same outcome.
+2. **Reach a first result:** check mapping and eligibility at [Start with my data](/en/start). Divide total cost by total customers and narrow the channel and period. Do not average row-level CPAs.
+3. **Explain an observed change:** with two comparable periods, use [Performance variance](/en/tools/campaign-variance) to inspect mix and efficiency contributions. Align periods and conversion definitions first.
+4. **Keep the unanswered question:** this file contains no randomized assignment or no-ad control. It can help locate a decline, but does not establish how many customers would disappear if advertising stopped.
+
+A low MMM VIF also does not remove omitted confounders. Review controls and model assumptions separately, as described in Google Meridian's [required causal assumptions](https://developers.google.com/meridian/docs/causal-inference/required-assumptions). Record unresolved conditions alongside the result before making the next decision.
 
 ## If you do not know the tool, start with three questions
 

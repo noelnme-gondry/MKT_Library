@@ -6,6 +6,7 @@ import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
+import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
@@ -182,11 +183,11 @@ export default async function BlogPostPage({ params }) {
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 
+      <EditorialTrust compact locale="ko" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
+
       <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} />
 
-      {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이.
-          FAQ 외의 링크 블록(검토·출처/검색의도/토픽클러스터/관련 가이드·용어)은
-          글 끝이 줄줄이 이어지는 원인이라 제거했다. */}
+      {/* 근거는 본문 직후 접어서 확인하고, 다음 행동과 글쓴이는 별도로 둔다. */}
       <div className="blog-post-outro">
         <ContentActionPanel toolId={post.primaryTool} post={post} />
         <NewsletterSignup placement="post" />

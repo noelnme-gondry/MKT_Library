@@ -46,8 +46,8 @@ describe("SERP title experiment registry", () => {
 
   it("콘텐츠 변경 뒤의 28일·충분한 노출·4~10위에서 제목 하나만 바꿀 때 열린다", () => {
     const decision = evaluateSerpExperiment(SERP_TITLE_EXPERIMENTS[1], {
-      start: "2026-08-26",
-      end: "2026-09-22",
+      start: "2026-09-15",
+      end: "2026-10-12",
       impressions: SERP_EXPERIMENT_POLICY.minimumImpressions,
       averagePosition: 8.2,
     });

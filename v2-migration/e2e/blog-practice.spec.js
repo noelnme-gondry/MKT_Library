@@ -1,4 +1,5 @@
 import path from "node:path";
+import { JSDOM } from "jsdom";
 import { expect, test } from "@playwright/test";
 import { BLOG_PRACTICES, blogPracticeFor } from "../src/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
@@ -13,16 +14,59 @@ const generatedCases = [...new Map(Object.keys(BLOG_INSIGHT_PLACEMENTS)
 
 for (const locale of ["ko", "en"]) {
   test(`every published ${locale} article has appropriate practice and preparation links`, async ({ request }) => {
+    let checkedCitations = 0;
     for (const slug of Object.keys(PUBLISHED_BLOG_TOOL_MAP)) {
       const response = await request.get(`${locale === "en" ? "/en" : ""}/blog/${slug}`);
       expect(response.ok(), slug).toBe(true);
       const html = await response.text();
+      const dom = new JSDOM(html);
+      const doc = dom.window.document;
+      const links = new Set([...doc.querySelectorAll("main a[href]")].map(link => link.getAttribute("href")));
+      for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+        const data = JSON.parse(script.textContent);
+        const nodes = Array.isArray(data) ? data : data["@graph"] || [data];
+        for (const node of nodes) for (const citation of node.citation || []) {
+          checkedCitations += 1;
+          expect(links.has(citation), `${slug}: ${citation}`).toBe(true);
+        }
+      }
+      dom.window.close();
       const eligible = Boolean(BLOG_INSIGHT_PLACEMENTS[slug]);
       expect(html.includes('class="blog-practice-prep"'), slug).toBe(eligible);
       expect(html.includes('id="blog-practice"'), slug).toBe(eligible);
       expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}/templates/`);
     }
+    expect(checkedCitations).toBeGreaterThan(0);
   });
+  for (const slug of ["incrementality-measurement", "apple-search-ads-guide"]) {
+    test(`direct demo and keyboard sources (${locale}/${slug})`, async ({ page }) => {
+      const en = locale === "en";
+      const errors = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await page.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+      await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
+      const trust = page.locator(".editorial-trust--compact");
+      await expect(trust).not.toHaveAttribute("open");
+      await trust.locator("summary").focus();
+      await page.keyboard.press("Enter");
+      await expect(trust).toHaveAttribute("open");
+      await expect(trust.locator("a").first()).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const demo = page.getByRole("button", { name: en ? "Open analysis with demo" : "데모로 분석 열기", exact: true });
+      await expect(demo).toBeEnabled();
+      expect((await demo.boundingBox()).height).toBeGreaterThanOrEqual(44);
+      await demo.click();
+      await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
+      if (slug === "incrementality-measurement") {
+        const notice = page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" });
+        await expect(notice).toBeVisible();
+        await notice.getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
+      }
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+      expect(errors).toEqual([]);
+    });
+  }
   for (const slug of generatedCases) {
     test(`generated practice downloads and reaches its tool (${locale}/${slug})`, async ({ page }) => {
       const en = locale === "en", practice = blogPracticeFor(slug, locale);

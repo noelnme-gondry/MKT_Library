@@ -1,10 +1,10 @@
 ---
 term: "Uplift"
 seoTitle: "What Is Uplift? Measure Incremental Ad Impact with a Holdout"
-shortDef: "The pure increase in outcomes an ad actually caused, isolated from what would've happened anyway"
+shortDef: "The outcome difference between treatment and control; interpreting it as incremental ad impact requires a valid design"
 description: "If the exposed group converts at 8% and the holdout at 5%, uplift is 3pp. How to run the split, and why ROAS can look fine when uplift is near zero."
 date: "2026-08-09"
-updated: "2026-08-26"
+updated: "2026-09-14"
 slug: "uplift"
 keywords: "uplift, uplift meaning, advertising uplift, incrementality, net lift, holdout test, causal lift"
 category: "Measurement & Methodology"
@@ -15,16 +15,16 @@ sources:
 draft: false
 faq:
   - q: "How is uplift different from ROAS?"
-    a: "ROAS divides all revenue from people who saw the ad by its cost, so it includes conversions that would have happened anyway. Uplift removes that share and counts only what advertising added. Strong ROAS with near-zero uplift is a real and common outcome."
+    a: "ROAS divides attributed ad revenue by cost under a stated attribution rule. Uplift compares treatment and control outcomes and estimates what advertising added under a valid design. Attributed and incremental performance are different quantities."
   - q: "How do you calculate uplift?"
     a: "From the outcome difference between a randomly assigned exposed group and a holdout. If the exposed group converts at 8% and the holdout at 5%, uplift is 3 percentage points. Without random assignment, or with different windows or audiences, that gap is not an ad effect."
   - q: "Can uplift come out negative?"
-    a: "It can. Usually that is small-sample noise, so read the confidence interval first. When the interval crosses zero, the honest reading is 'not yet distinguishable', not 'no effect'."
+    a: "Yes. Sampling variation, measurement or design problems, and a real negative effect are all possible. Do not choose an explanation from the point estimate alone. An interval crossing zero does not establish no effect; its direction remains unresolved."
 ---
 
 ## In one line
 
-Take the performance of a group exposed to advertising and subtract the baseline — what would have happened anyway with no ads at all. The remainder is uplift.
+Compare outcomes in a group assigned to advertising with a control assigned to have that advertising withheld. Interpreting this uplift as incremental impact requires checking random assignment, aligned observation windows and interference between groups.
 
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 
@@ -36,7 +36,7 @@ The standard way to measure it is a [holdout test](/glossary/holdout-test): rand
 
 ## Why CPA/ROAS alone isn't enough
 
-CPA and ROAS only tell you what happened among people who saw the ad — they can't tell you whether the ad caused it. If uplift is close to zero, a great-looking CPA can still mean the ad wasn't actually doing much.
+CPA and ROAS relate cost to outcomes counted under an attribution rule. They do not establish whether advertising caused those outcomes. Even a near-zero uplift point estimate cannot establish a small effect without considering its uncertainty.
 
 ## How is uplift calculated?
 
@@ -49,6 +49,12 @@ Start with the conversion-rate difference between a randomized exposed group and
 | Incremental conversions | Absolute uplift × exposed population | Depends on population |
 
 If assignment was not randomized, or the groups differ in audience or timing, that difference alone is not proof of ad impact. Use the [Incrementality Analysis tool](/tools/incrementality) to choose a holdout, launch, or shutdown method that matches your data.
+
+## The same 3pp can support different decisions
+
+Eight versus five conversions in groups of 100 gives a 3pp difference. So does 800 versus 500 in groups of 10,000. Their uncertainty is not the same. Keep assigned population, converted population and observation window for each group, rather than saving only percentages.
+
+Use the **assigned population defined by the analysis design**, not a subset selected afterward because they actually saw an ad. Selecting on actual exposure after randomization can introduce selection bias. When the holdout rate is zero, relative uplift is undefined; do not report it as 0% or infinite performance.
 
 ## Go deeper
 
