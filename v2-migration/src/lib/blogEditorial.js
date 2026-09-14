@@ -1,6 +1,9 @@
 // 블로그의 "짧은 답"·적용 범위·검토 정보를 원고와 분리한 편집 레지스트리.
 // 검색 메타와 CTA를 섞지 않고, SSR 본문과 JSON-LD가 동일한 답변을 쓰게 한다.
 const KO_ANSWERS = {
+  "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿은 비교 조건, 관측된 변화, 확인할 가설, 결정과 다음 검토일을 함께 기록합니다. 합성 예제에서 비용은 700,000원에서 840,000원으로 늘고 설치는 700건으로 같아 설치당 비용이 1,000원에서 1,200원으로 상승합니다. 이것만으로 운영 원인을 확정하지 않습니다.",
+  "cac-payback-period": "CAC 회수기간은 신규 고객 코호트의 누적 공헌이익이 획득비용에 도달하는 시점으로 계산합니다. 예제는 4개월 말 900만 원, 5개월 말 1,050만 원으로 획득비용 1,000만 원을 5개월 말에 처음 회수합니다. 4.67개월은 월중 기여가 일정하다는 가정의 보간값입니다.",
+  "marketing-report-sheets-bigquery": "광고 리포트 자동화는 BigQuery에서 집계하고 Google Sheets에서 검토한 뒤 CSV를 분석에 사용하는 흐름으로 구성할 수 있습니다. Connected Sheets 예약 갱신과 사이트의 불러오기는 별개입니다. 사내 시트는 비공개로 유지하고 필요한 집계만 CSV로 내보내세요. 권한·비용·날짜·통화·전환 정의를 먼저 확인합니다.",
   "ab-testing": "A/B 테스트는 사전에 정한 표본·관찰 기간·종료 규칙에 따라 효과 크기와 신뢰구간을 함께 판단합니다. p값은 차이가 없다는 가정 아래 관측값 이상으로 극단적인 결과가 나올 확률이며, B가 이길 확률이 아닙니다. 유의해 보이는 순간에 종료하면 고정 표본 검정의 오류율이 달라집니다.",
   "ad-creative-specs-guide": "소재가 반려되거나 크롭되는 이유는 대개 매체별 비율(1:1·9:16 등)·최소 해상도·용량 제한이 서로 다르기 때문입니다. 하나의 파일로 통일하지 말고 집행 전에 매체별 규격과 실제 미리보기를 함께 확인하세요.",
   "ad-creative-testing": "동시에 돌릴 광고 소재 수는 '한 번에 3개'처럼 고정할 수 없고, 테스트 배치 예산을 소재당 판정 예산으로 나눈 뒤 소수점을 버려 정합니다. 이 값은 운영 가능한 슬롯 수이지 통계적 표본 크기가 아니며, 목적도 이번 주 CTR 1등 찾기가 아닙니다.",
@@ -29,12 +32,12 @@ const KO_ANSWERS = {
   "creative-attribute-regression": "광고 소재 회귀분석은 집행한 소재의 속성을 사실 기반 0/1·숫자 열로 만들어 연관성을 비교합니다. 신뢰구간이 기준값(차이는 0, 비율은 1)을 걸치면 효과 없음이 아니라 불확실로 읽으세요. 반복 소재와 시간 순서를 검증에 반영해야 합니다.",
   "event-taxonomy-guide": "이벤트 택소노미는 행동을 이벤트 이름으로, 맥락을 파라미터로 분리해야 GA4·MMP·광고 매체·내부 리포트가 같은 행동을 같은 뜻으로 읽습니다. 새로 이름을 만들기 전에 GA4 권장 이벤트를 먼저 확인하고, 제품 정의와 맞을 때는 그대로 쓰세요.",
   "funnel-dropoff-analysis": "전환율 개선은 퍼널 단계별 분모와 기간을 맞추는 데서 시작합니다. 설치자의 25%가 가입했다면 75%는 관찰 기간 내 가입이 확인되지 않은 것이지 반드시 이탈한 것은 아닙니다. 개선 여지·트래픽·후속 가치·실행 비용으로 우선순위를 정하세요.",
-  "ga4-data-traps": "GA4 숫자가 다른 건 대부분 고장이 아니라 집계 기준 차이입니다 — 세션 정의, 처리 지연, 개인정보 보호 임계값, 귀속 모델이 다른 도구와 다르기 때문입니다. 설정을 고치기 전에 비교할 범위와 기준을 먼저 맞추면, 귀속 차이를 버그로 오해해 불필요한 세팅을 건드리는 일을 막을 수 있습니다.",
+  "ga4-data-traps": "GA4 숫자가 다르면 지표·범위, 날짜·시간대, 처리 지연, 임계값, 샘플링, (other) 행, 귀속·태깅의 7가지를 점검합니다. 집계 기준 차이와 실제 수집 오류를 모두 검토하고, 보고서의 품질 표시와 추출 시각을 남기세요.",
   "google-uac-optimization": "Google UAC의 주요 레버는 입찰 목표·에셋·전환 이벤트입니다. 지원하는 제외 설정도 확인하세요. 설치·행동·매출은 필수 승급 순서가 아니며, 주당 변경 횟수만으로 학습 장애를 판정할 수 없습니다.",
   "hook-3-seconds-framework": "영상 광고의 초반 반응을 확인하고 첫 몇 초 안에 메시지의 관련성을 전달하세요. 모든 이탈이 3초 안에 일어나는 것은 아닙니다. 다만 모든 소재에 같은 후킹 공식이 통하지는 않으니, 타깃의 문제·메시지·형식을 바꾼 소재를 실제 이탈률로 비교해 검증하세요.",
   "incrementality-measurement": "증분성(인크리멘탈리티) 측정은 리포트에 찍힌 전환이 아니라 광고가 없었다면 사라졌을 전환을 재는 일입니다 — 마케팅 전환 500건 중 실제 증분은 120건이고 나머지 380건은 원래 올 손님이었을 수 있습니다. ROAS 800%가 찍혀도 증분이 낮으면 증액 근거가 되지 않으므로, 적절히 설계한 무작위 홀드아웃과 불확실성으로 확인할 수 있습니다.",
   "ios-att-skan-guide": "iOS 성과 차이는 ATT 동의율만으로 설명할 수 없습니다. ATT는 IDFA 기반 교차 앱 추적을 제한하며 모든 측정을 막지는 않습니다. SKAN 4는 0~2일·3~7일·8~35일 창에서 조건에 따라 최대 세 포스트백을 보내고 수신에는 추가 지연이 있습니다.",
-  "ltv-cac-ratio": "LTV:CAC는 3:1이 흔한 기준선이지만, 그 비율을 보기 전에 계산이 맞는지부터 확인해야 합니다. 결제 고객 획득에 5,000만 원을 써서 500명을 데려왔다면 CAC는 10만 원이고, 이들이 월 2만 원씩 평균 12개월 남으면 LTV는 24만 원이라 2.4:1인데, 분모에 무엇을 넣었는지(광고비만인지 인건비 포함인지)에 따라 이 값이 통째로 달라집니다.",
+  "ltv-cac-ratio": "LTV:CAC는 같은 신규 고객 코호트의 가치를 획득비용과 비교하는 비율입니다. 신규 결제 고객 500명을 획득하는 데 5,000만 원을 썼다면 CAC는 10만 원입니다. 월 매출 2만 원이 평균 12개월 이어진다는 가정의 매출 LTV는 24만 원으로 2.4:1이지만, 공헌이익률 30%라면 0.72:1입니다. 비용 범위는 CAC의 분자, 신규 고객 수는 분모입니다.",
   "marketing-mix-modeling": "MMM(마케팅 믹스 모델링)은 주별 채널 지출과 매출을 놓고 '매출 = 베이스라인 + 채널별 기여 + 외부요인'을 추정하는 방법입니다. 점 추정과 함께 실제 구간의 종류·수준·시간순 검증을 확인해야 하며, 관측 데이터 기반이라 연관이지 인과가 아닙니다.",
   "multicollinearity-mmm-guide": "MMM에서 특정 채널 기여도가 음수로 나오면 모델 고장보다 다중공선성을 먼저 의심하세요. 검색과 소셜 예산을 늘 같이 올리고 내렸다면 모델은 둘 중 누가 결과를 만들었는지 구분할 근거가 없고, 이때 VIF가 높게 나오는 것은 '효과가 없다'가 아니라 '이 데이터로는 분리할 수 없다'는 뜻입니다.",
   "meta-advantage-plus-guide": "Meta Advantage+ App은 OS별 측정, 최적화 이벤트·가치 데이터, 입찰 목표를 함께 점검하세요. 현재 캠페인의 지원 요건과 클릭·조회 귀속 창을 확인하고, 과거 웹 AEM 제한을 앱당 8개라는 공통 규칙으로 적용하지 마세요.",
@@ -52,6 +55,9 @@ const KO_ANSWERS = {
 };
 
 const EN_ANSWERS = {
+  "weekly-marketing-report-template": "A weekly marketing report template records comparison conditions, observed changes, hypotheses, decisions and review dates. In this synthetic example, spend rises from KRW 700,000 to 840,000 while installs stay at 700, raising CPI from 1,000 to 1,200. These observations do not establish the operational cause.",
+  "cac-payback-period": "The CAC payback period is when a new-customer cohort’s cumulative contribution recovers acquisition cost. In the example, contribution reaches KRW 9 million at month four and 10.5 million at month five, first recovering the KRW 10 million cost at month five-end. The 4.67-month figure interpolates under a uniform-accrual assumption.",
+  "marketing-report-sheets-bigquery": "Marketing report automation can aggregate in BigQuery, review in Google Sheets and supply an analysis-ready CSV. Connected Sheets scheduled refresh and importing into this site are separate steps. Keep internal sheets private and export only necessary aggregates. Check permissions, costs, dates, currency and outcome definitions first.",
   "ab-testing": "A/B testing uses a preplanned sample, observation window, and stopping rules, alongside effect size and confidence intervals. A p-value is conditional on the no-difference hypothesis, not the probability that B wins. Stopping when significance first appears changes a fixed-sample test’s error rate.",
   "ad-creative-specs-guide": "Creatives get rejected or cropped because aspect ratios (1:1, 9:16), minimum resolutions, and file-size caps differ by platform. Do not ship one universal file — check each platform's spec and an actual preview before launch.",
   "ad-creative-testing": "Ad creative testing cannot fix the number at 'three at a time'; divide the test batch budget by the per-creative decision budget and round down. That result is how many operational slots you have, not a statistical sample size, and the goal is not to crown this week's CTR winner.",
@@ -80,12 +86,12 @@ const EN_ANSWERS = {
   "creative-attribute-regression": "Ad creative regression compares associations using factual attribute columns. An interval crossing its null reference—zero for differences, one for ratios—means uncertainty, not no effect. Account for repeated creatives and time order in validation.",
   "event-taxonomy-guide": "An event taxonomy works when the action is the event name and the context lives in parameters, so GA4, your MMP, ad platforms, and internal reports read the same behavior the same way. Check GA4's recommended events before inventing a name, and use them directly when they fit your product definition.",
   "funnel-dropoff-analysis": "Conversion rate optimization starts with matching funnel denominators and windows. If 25% of installers sign up, the remaining 75% have no observed signup in that window; they have not necessarily left. Prioritize improvement potential, traffic, downstream value and effort.",
-  "ga4-data-traps": "GA4 numbers usually differ because of counting rules, not bugs — session definition, processing latency, privacy thresholds, and attribution model all differ from other tools. Align the comparison scope and definitions before changing settings, or you will 'fix' an attribution difference that was never broken.",
+  "ga4-data-traps": "When GA4 numbers differ, check seven areas: metrics and scopes, dates and time zones, processing, thresholds, sampling, the (other) row, and attribution or tagging. Investigate both definition differences and real collection errors. Record quality indicators and extraction times.",
   "google-uac-optimization": "Google UAC’s main levers are bidding goals, assets and conversion events; check supported exclusions too. Install, action and value goals are not mandatory stages, and weekly edit counts alone do not establish a learning failure.",
   "hook-3-seconds-framework": "Check early video response and communicate relevance in the opening seconds. Not all drop-off happens within three seconds. No single hook formula fits every creative, though — compare variants that change the audience problem, message, and format against actual drop-off data.",
   "incrementality-measurement": "Incrementality measurement asks not how many conversions your report shows but how many would disappear without the ad — of 500 marketing conversions, only 120 may be incremental while 380 were coming anyway. A reported ROAS of 800% is not a scaling case if lift is low, and a well-designed randomized holdout is one way to assess it.",
   "ios-att-skan-guide": "iOS report differences cannot be explained by ATT consent alone. ATT restricts IDFA-based cross-app tracking, not all measurement. SKAN 4 supports up to three conditional postbacks for days 0–2, 3–7 and 8–35, with additional delivery delay.",
-  "ltv-cac-ratio": "LTV:CAC of 3:1 is a common reference line, but check the arithmetic before trusting the ratio. Spending $50,000 to acquire 500 paying customers gives CAC of $100, and if they spend $20 a month for 12 months LTV is $240 — a 2.4:1 ratio that shifts entirely depending on whether the denominator holds media spend alone or headcount too.",
+  "ltv-cac-ratio": "LTV:CAC compares value and acquisition cost for the same new-customer cohort. Acquiring 500 first-time paying customers for $50,000 gives CAC of $100. Assuming $20 monthly revenue for 12 months gives revenue LTV of $240, or 2.4:1; at 30% contribution margin the ratio is 0.72:1. Cost scope is the CAC numerator and new customers are its denominator.",
   "marketing-mix-modeling": "Marketing mix modeling (MMM) takes weekly channel spend and revenue and estimates revenue = baseline + per-channel contribution + external factors. Read point estimates alongside the actual interval type, level, and time-ordered validation, and treat it as association from observational data, not causation.",
   "multicollinearity-mmm-guide": "When an MMM channel comes back with a negative coefficient, suspect multicollinearity before assuming the model broke. If search and social budgets always rose and fell together, the model has no basis to separate them, and a high VIF means 'this data cannot separate these channels' — not 'this channel does not work'.",
   "meta-advantage-plus-guide": "For Meta Advantage+ App, check OS measurement, optimization events and value data, and bidding goals together. Verify current campaign requirements and click/view attribution windows; do not apply an old web AEM limit as a universal eight-event-per-app rule.",
@@ -103,6 +109,9 @@ const EN_ANSWERS = {
 };
 
 const CONDITION_GROUP_BY_SLUG = {
+  "weekly-marketing-report-template": "measurement",
+  "cac-payback-period": "economics",
+  "marketing-report-sheets-bigquery": "measurement",
   "ab-testing": "experiment", "aha-event-ad-optimization": "causal", "aha-moment-retention": "causal",
   "cannibalization-organic-paid": "causal", "correlation-vs-causation": "causal", "incrementality-measurement": "causal",
   "marketing-mix-modeling": "causal", "ad-creative-specs-guide": "platform", "ad-creative-testing": "creative", "ad-machine-learning": "platform",

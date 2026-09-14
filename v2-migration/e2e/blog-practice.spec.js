@@ -128,8 +128,11 @@ for (const locale of ["ko", "en"]) {
       if (practice.mode === "detail") {
         await expect(panel.getByRole("button", { name: en ? "Show result" : "결과 보기", exact: true })).toHaveCount(0);
         await panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true }).click();
-        await expect(page).toHaveURL(new RegExp(`${en ? "/en" : ""}/tools/asa-keyword-finder$`));
-        await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+        await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-26") {
+          await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+        }
       } else {
         await panel.getByRole("button", { name: en ? "Show result" : "결과 보기", exact: true }).click();
         await expect(panel.locator(".blog-inline-insight__finding")).toContainText(slug === "aso-basics-guide" ? (en ? "Traffic mix" : "트래픽 구성") : (en ? "No channel has enough observations" : "관측 수나 지출 변동"));

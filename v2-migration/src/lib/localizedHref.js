@@ -4,6 +4,9 @@ import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 // switching and Markdown link localization all use this list so an EN prefix is
 // never added to a route that does not exist.
 export const EN_BLOG_SLUGS = new Set([
+  "weekly-marketing-report-template",
+  "cac-payback-period",
+  "marketing-report-sheets-bigquery",
   "ab-testing",
   "ad-creative-specs-guide",
   "ad-creative-testing",

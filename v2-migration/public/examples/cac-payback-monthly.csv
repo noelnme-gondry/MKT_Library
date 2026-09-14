@@ -1,0 +1,6 @@
+﻿cohort,month,new_customers,acquisition_cost_krw,gross_revenue_krw,refunds_krw,variable_cost_krw
+Synthetic cohort A,1,100,10000000,4500000,500000,2000000
+Synthetic cohort A,2,100,10000000,5000000,500000,2000000
+Synthetic cohort A,3,100,10000000,5000000,500000,2000000
+Synthetic cohort A,4,100,10000000,4500000,500000,2000000
+Synthetic cohort A,5,100,10000000,3500000,500000,1500000

@@ -24,6 +24,33 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it.each(["ko", "en"])("waits for initial device restoration before accepting a %s demo or upload", async locale => {
+    useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false });
+    const slug = "cac-payback-period", en = locale === "en";
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={blogPracticeFor(slug, locale)} />);
+    const demo = screen.getByRole("button", { name: en ? "Open analysis with demo" : "데모로 분석 열기" });
+    expect(demo.disabled).toBe(true);
+    expect(screen.getByLabelText(en ? "Choose CSV" : "CSV 선택").disabled).toBe(true);
+    expect(screen.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기" }).disabled).toBe(true);
+    expect(screen.getByRole("status")).toBeTruthy();
+    fireEvent.click(demo);
+    expect(push).not.toHaveBeenCalled();
+    act(() => useAppStore.setState({ projectsReady: true, activeProjectId: "restored" }));
+    expect(demo.disabled).toBe(false);
+    fireEvent.click(demo);
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`${en ? "/en" : ""}/dashboard`));
+    expect(useAppStore.getState().activeProjectId).toBe("restored");
+    expect(useAppStore.getState().csvGroups.efficiency.raw.length).toBeGreaterThan(0);
+  });
+  it("allows in-memory analysis when storage is unavailable, but blocks an active switch", () => {
+    useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false, projectError: "storage_unavailable" });
+    const slug = "cac-payback-period";
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
+    const demo = screen.getByRole("button", { name: "데모로 분석 열기" });
+    expect(demo.disabled).toBe(false);
+    act(() => useAppStore.setState({ projectSwitching: true }));
+    expect(demo.disabled).toBe(true);
+  });
   it.each(["ko", "en"])("opens the %s generated demo in one click with analysis still gated", async locale => {
     const slug = "aha-moment-retention", practice = blogPracticeFor(slug, locale);
     render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);

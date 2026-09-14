@@ -2,9 +2,35 @@ import { BLOG_INSIGHT_PLACEMENTS } from "./blogInsightRegistry";
 import { TOOL_GROUP } from "./toolGroups";
 import { toolIndexEntry } from "./toolIndex";
 
+const WEEKLY_REPORT_PRACTICE = {
+  "file": "weekly-report-campaigns.csv",
+  "currency": "KRW",
+  "mode": "detail",
+  "ko": {
+    "title": "두 주의 캠페인 비용과 설치 비교",
+    "steps": [
+      "데모로 상세 도구를 열고 날짜·채널·캠페인·비용·설치 매핑과 KRW 단위를 확인하세요.",
+      "8월 31일~9월 6일과 9월 7~13일을 비교하세요. 비용은 700,000원→840,000원, 설치는 두 기간 모두 700건입니다.",
+      "캠페인 A의 설치당 비용 1,000원→1,500원과 B의 1,000원 유지를 확인하고 다음에 확인할 가설을 적으세요."
+    ],
+    "limit": "설치 기준의 합성 예제입니다. 신규 구매 고객 CAC나 광고의 인과효과를 계산한 결과가 아닙니다. 두 기간의 집계 성숙도는 예제에서 같다고 가정합니다."
+  },
+  "en": {
+    "title": "Compare two weeks of campaign spend and installs",
+    "steps": [
+      "Open the demo in the full tool and check date, channel, campaign, spend and install mappings, with KRW as the unit.",
+      "Compare August 31–September 6 with September 7–13. Spend is KRW 700,000→840,000; installs are 700 in each period.",
+      "Check A’s CPI rising from 1,000 to 1,500 and B’s staying at 1,000, then record the next hypothesis to inspect."
+    ],
+    "limit": "This synthetic example uses installs. It does not compute new-paying-customer CAC or causal advertising effects. Both periods are assumed equally mature."
+  }
+};
+
 // Editorial examples: one file and equivalent reading instructions for both locales.
 // Numeric examples are verified against these files by editorialExamples.test.js.
 export const BLOG_PRACTICES = {
+  "marketing-report-sheets-bigquery": WEEKLY_REPORT_PRACTICE,
+  "weekly-marketing-report-template": WEEKLY_REPORT_PRACTICE,
   "budget-scaling-limit": {
     file: "saturation-sparse.csv",
     currency: "KRW",

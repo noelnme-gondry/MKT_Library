@@ -1,8 +1,8 @@
 ---
 title: "CPM vs CPC vs CPI vs CPA: Ad Cost Metrics Explained"
-description: "Learn what CPM and CPC measure, and where to look when impression or click costs rise."
+description: "Compare CPI, CPA, CPM and CPC formulas, denominators and uses. Calculate a common example and narrow the checks behind a performance change."
 date: "2026-07-15"
-updated: "2026-09-09"
+updated: "2026-09-14"
 slug: "cpi-cpa-cpm-difference"
 keywords: "what is CPM, what is CPC, CPM vs CPC, impression cost, click cost, CPM calculation, CPC calculation, advertising impression cost, advertising click cost, why did CPC go up, why did CPM go up"
 tags: ["Metrics Basics", "Marketing Metrics"]
@@ -18,23 +18,23 @@ faq:
     a: "CPM is an auction outcome, not a dial you set. It moves with audience size, bid strategy, creative quality, and competitive pressure. Rather than targeting CPM itself, find what pushed it up."
   - q: "Over what window should I compare CPM, CPC, CPI, and CPA?"
     a: "Day-level comparisons mislead because weekday variation is large. Compare equal-length windows such as the last 7 days against the previous 7, and exclude recent days that have not matured for metrics whose conversions land late."
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-09-14"
 reviewer: "Codex (AI-assisted editorial audit)"
 ---
-You have probably heard that CPM went up, lowered your bid, and watched nothing improve. If the real cause was creative rather than the auction, that is exactly what should happen. CPM and CPC sit at the front of the advertising funnel — impressions and clicks — and reading them separately is what lets you tell "the auction got expensive" apart from "our response got weaker."
+CPI, CPA, CPM and CPC divide advertising spend by different denominators. When a cost metric rises, inspect exposure costs and click, install or action rates first. CPM and CTR can describe a CPC change, but identifying auction, creative or targeting causes requires change history and further evidence.
 
-For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article focuses on the first two links in that chain.
+For the full CPI, CPA, and ROAS chain, and which optimization metric to choose, start with the [performance marketing metrics guide](/blog/performance-marketing-metrics). This article compares all four cost metrics, then uses CPM and CPC to narrow the change.
 
 ## Each cost attaches to a different funnel stage
 
-Every metric attaches to a different point in the funnel.
+| Metric | Formula | Question | Common misreading |
+| --- | --- | --- | --- |
+| CPM | Spend ÷ impressions × 1,000 | Has the price of exposure changed? | Cheap impressions do not guarantee valuable customers |
+| CPC | Spend ÷ clicks | Has the price of a click changed? | Inspect CPM and CTR together |
+| CPI | Spend ÷ installs | What did each install cost? | An install is not a new paying customer |
+| CPA | Spend ÷ defined actions | What did each signup or purchase action cost? | Different action definitions cannot be compared directly |
 
-- CPM (Cost Per Mille) — cost per 1,000 impressions. Closest to the raw price you pay the platform.
-- CPC (Cost Per Click) — cost per click. Connects as CPM ÷ (1,000 × CTR).
-- CPI (Cost Per Install) — cost per install. The headline metric for app marketing.
-- CPA (Cost Per Action) — cost per desired action (signup, purchase). Closest to real outcome.
-
-The further down you go, the closer to "an action that makes money." So the final goal is usually to lower CPA, but the earlier metrics tell you why CPA is what it is.
+Align currency, period and attribution scope. If a denominator is zero or missing, do not report zero cost. Distinguish [CAC](/glossary/cac), the cost per new customer, from signup CPA or cost per order.
 
 Lay it in one line and it clicks (numbers are illustrative). Spend $10,000 for 5M impressions → CPM $2. Of those, 50k clicks means 1% CTR, CPC $0.20. If 5,000 of those install, CPI $2. If 500 of them sign up, CPA $20. Stretched out like this, you see exactly where people drop and how cost compounds.
 

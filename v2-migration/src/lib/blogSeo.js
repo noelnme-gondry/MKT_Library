@@ -1,6 +1,9 @@
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
+  "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿: 숫자에서 다음 행동까지",
+  "cac-payback-period": "CAC 회수기간 계산법: LTV:CAC와 현금 회수의 차이",
+  "marketing-report-sheets-bigquery": "광고 리포트 자동화: BigQuery·Google Sheets에서 CSV까지",
   "ab-testing": "A/B 테스트 방법: 표본 크기·유의성·결과 해석까지",
   "ad-creative-specs-guide": "소재가 반려·크롭되는 이유: 매체 규격 위반 진단",
   "ad-creative-testing": "광고 소재 테스트 방법: 테스트 개수·예산·판정 기준",
@@ -51,6 +54,9 @@ const KO_TITLES = {
 };
 
 const EN_TITLES = {
+  "weekly-marketing-report-template": "Weekly Marketing Report Template: From Metrics to Decisions",
+  "cac-payback-period": "CAC Payback Period: Calculation and Cash Recovery",
+  "marketing-report-sheets-bigquery": "Marketing Report Automation: BigQuery, Google Sheets and CSV",
   "ab-testing": "A/B Testing: Sample Size, Significance, and Reading Results",
   "ad-machine-learning": "Ad Learning Phase: Why CPA Swings While the Model Learns",
   "ad-performance-diagnosis": "Ad Performance Drop: Why CPA Rises and CTR Falls",
@@ -168,14 +174,14 @@ const DESCRIPTION_OVERRIDES = {
     "aso-basics-guide": "ASO 전략은 검색 노출과 스토어 전환을 함께 고칩니다. 아이콘·스크린샷·평점부터 키워드까지 순서대로.",
     "ad-creative-testing": "테스트 예산과 목표 CPA로 적정 소재 수를 계산하고 가설 설정부터 승자·보류·탈락 판정까지 정리합니다.",
     "cannibalization-organic-paid": "내부 카니발라이제이션과 유료·오가닉 잠식을 구분하고 측정하는 방법입니다.",
-    "cpi-cpa-cpm-difference": "CPM 2,000원·CTR 1%면 CPC는 200원. 네 지표 계산식과 CPC 상승을 경매·소재로 가르는 법.",
+    "cpi-cpa-cpm-difference": "CPM 2,000원·CTR 1%면 CPC는 200원. CPI·CPA·CPM·CPC의 분모와 계산식을 비교하고 변화를 점검합니다.",
     "performance-marketing-metrics": "CTR·CVR·CPA·ROAS를 보는 순서와, CPA·ROAS가 흔들릴 때 문제 위치를 찾는 방법을 정리합니다.",
   },
   en: {
     "aso-basics-guide": "An ASO strategy fixes both search visibility and the store conversion after an ad click. Icon, screenshots, ratings, then keywords — in order.",
     "ad-creative-testing": "Calculate how many ad creatives your budget can support, define one hypothesis, and classify winners, holds, and losers without relying on CTR alone.",
     "cannibalization-organic-paid": "Measure internal cannibalisation and separate paid impact from organic demand.",
-    "cpi-cpa-cpm-difference": "At a 1% CTR, CPC equals CPM divided by 10. Compare all four formulas, then separate auction pressure from creative response when CPC rises.",
+    "cpi-cpa-cpm-difference": "At 1% CTR, CPC equals CPM divided by 10. Compare CPI, CPA, CPM and CPC denominators and formulas, then inspect changes without assuming a cause.",
     "performance-marketing-metrics": "Review CTR, CVR, CPA, and ROAS in order to locate whether a performance problem sits before or after conversion.",
   },
 };

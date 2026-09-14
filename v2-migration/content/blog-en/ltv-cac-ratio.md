@@ -12,19 +12,24 @@ faq:
   - q: "How much history does an LTV estimate need?"
     a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
 
-reviewedAt: "2026-09-09"
+reviewedAt: "2026-09-14"
 reviewer: "Codex (AI-assisted editorial audit)"
-updated: "2026-09-09"
+updated: "2026-09-14"
 ---
 Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.
 
 ## Start with CAC
 
-CAC (Customer Acquisition Cost) is simple.
+Customer Acquisition Cost (CAC) is allocated acquisition cost divided by distinct new customers within the same scope. Here a customer means a first-time paying customer. Label cost per install as CPI and cost per signup as signup CPA separately.
 
-CAC = total spend to acquire ÷ customers acquired
+| Scope | Definition to align |
+| --- | --- |
+| Acquisition cost | Ad spend only, or allocated sales and production costs too? |
+| New customers | Distinct first-time paying customers, without repeat orders |
+| Cohort | LTV from that same original customer population |
+| Observation window | Observed D30 values separate from predicted D180 values |
 
-The thing to watch is what you use as the denominator. Installs, signups, or paying customers give completely different numbers. Standardize the definition of "customer" across the team. Usually, the paying user is the meaningful basis.
+Repeat orders and install counts are different denominators. If acquisition takes much longer than a month, disclose the approximation in dividing this month’s spend by this month’s new customers.
 
 ## LTV is an estimate
 
@@ -62,14 +67,14 @@ Common benchmarks:
 
 But 3:1 is a convention born in SaaS. The right line varies by industry and margin structure — with thin margins, even 3:1 can be risky.
 
-Also look at **payback period.** Even a good LTV:CAC dries up cash flow if recovery takes 18 months.
+Also calculate the [CAC payback period](/blog/cac-payback-period). Equal ratios can carry different cash requirements when recovery takes longer. Record monthly cohort contribution and unrecovered status separately.
 
 ## Where you use it
 
 - **Channel-level LTV:CAC** comparison → where to load more budget. The basis for [budget allocation](/tools/budget-allocation).
 - **ROAS maturity** → how recovery builds over time.
 
-See the LTV:CAC table and the ROAS maturity curve in the [operations dashboard](/dashboard)'s LTV tab via CSV upload or Google Sheet connection. Where public-sheet import is enabled, use the fetch-latest button to refresh. It is not automatic synchronization.
+The [operations dashboard](/dashboard) exposes revenue and install-based ratios and ROAS maturity. Its denominator can be installs or actions when mapped, and revenue recovery includes model extrapolation. Select installs for the demo below. That differs from this article’s first-time-paying-customer and contribution basis. The demo teaches the tool workflow using separate data. Public-sheet imports must be reloaded with the button; they do not synchronize automatically.
 
 When the ratio differs by channel, the next question is allocation — [marketing budget allocation](/blog/budget-marginal-efficiency) covers where to move budget, and [ad budget scaling limits](/blog/budget-scaling-limit) covers how far to raise it.
 

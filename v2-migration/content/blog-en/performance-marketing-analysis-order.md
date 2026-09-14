@@ -91,3 +91,5 @@ A low MMM VIF also does not remove omitted confounders. Review controls and mode
 No file yet? Use [Diagnose performance](/diagnose) to choose the symptom, scope, and data shape. If you have a CSV, [Start with my data](/start) is faster: automatic column mapping → analysis eligibility → recommended first question. Uploaded data stays in the browser and is not sent to a server.
 
 The best analysis is not the most complex one. Start with the smallest question your data can answer, check whether the result changes a decision, and deepen the analysis only when needed.
+
+For repeated decisions, record observations, hypotheses and actions in the [weekly marketing report worksheet](/blog/weekly-marketing-report-template). If preparation is the bottleneck, compare the paths in [BigQuery, Sheets and analysis-ready CSVs](/blog/marketing-report-sheets-bigquery).
