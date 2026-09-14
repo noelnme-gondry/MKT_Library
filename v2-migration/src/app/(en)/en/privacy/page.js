@@ -17,7 +17,7 @@ export const metadata = {
 export default function EnglishPrivacyPage() {
   return (
     <PolicyPage
-      updated="2026-09-11"
+      updated="2026-09-14"
       locale="en"
       eyebrow="PRIVACY"
       alternateHref="/privacy"
@@ -46,7 +46,7 @@ export default function EnglishPrivacyPage() {
         },
         {
           title: "Information stored in your browser",
-          content: <p>For convenience, this device may retain theme, language, display preferences, column-mapping recipes, and recently connected public Google Sheets URLs in localStorage or IndexedDB. With the default setting, source CSV/XLSX files you upload yourself, their file names, headers and mappings, plus decision-record summaries are kept in this browser&apos;s IndexedDB/localStorage until 90 days after their last use. Source files are never sent to our server. Turning storage off immediately removes stored source files and the persistent copy of decision records; the current session can remain visible until you refresh or close it. Use <Link href="/en/storage">Stored on this device</Link> to remove one file, remove all files, or change this setting.</p>,
+          content: <p>For convenience, this device may retain theme, language, display preferences, column-mapping recipes, and recently connected public Google Sheets URLs in localStorage or IndexedDB. With active Pro access (including the 14-day trial) and device storage enabled, source CSV/XLSX files you upload yourself, their file names, headers and mappings, plus decision-record summaries are kept in this browser&apos;s IndexedDB/localStorage until 90 days after their last use. Free analysis alone does not automatically retain new analysis files on this device. Source files are never sent to our server. Turning storage off immediately removes stored source files and the persistent copy of decision records; the current session can remain visible until you refresh or close it. Use <Link href="/en/storage">Stored on this device</Link> to remove one file, remove all files, or change this setting.</p>,
         },
         {
           title: "External requests from advanced analysis",

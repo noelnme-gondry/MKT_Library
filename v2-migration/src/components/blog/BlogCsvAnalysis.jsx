@@ -1,5 +1,5 @@
 "use client";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
@@ -15,8 +15,9 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
   const en = locale === "en", id = useId(), router = useRouter();
   const [csv, setCsv] = useState(null), [result, setResult] = useState(null), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [selection, setSelection] = useState({ category: "", value: "", denominator: "" });
-  const [replace, setReplace] = useState(false);
+  const [replacementTarget, setReplacementTarget] = useState(null);
   const task = useRef(0);
+  useEffect(() => () => { task.current += 1; }, []);
   const projectId = useAppStore(state => state.activeProjectId);
   const existing = useAppStore(state => state.csvGroups[groupForRoute(config.toolId)]);
   const needsReplace = Boolean(existing?.raw?.length && csv && existing.raw !== csv.raw);
@@ -25,16 +26,21 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
   const allowedFields = new Set([...(TOOL_REQUIRED_FIELDS[mappingToolId] || []).flatMap(field => typeof field === "string" ? [field] : field.oneOf || []), ...(TOOL_OPTIONAL_FIELDS[mappingToolId] || []).map(field => field.key)]);
   const hasMoney = csv && Object.values(csv.mapping).some(field => /^(cost|spend|revenue|budget)/.test(field));
   const message = en ? "Check columns and units. Empty, negative, non-numeric and percentage cells cannot be used as counts. For larger or more complex files, open the full analysis." : "열과 단위를 확인해 주세요. 빈칸·음수·문자·백분율 셀은 건수로 계산하지 않습니다. 크거나 복잡한 파일은 상세 분석에서 확인하세요.";
+  const parseCsv = text => {
+    if (new Blob([text]).size > 5 * 1024 * 1024) throw new Error("size");
+    const parsed = Papa.parse(text, { header: true, skipEmptyLines: "greedy" });
+    if (parsed.errors.length || !parsed.data.length || parsed.data.length > 20000 || !parsed.meta.fields?.length || parsed.meta.renamedHeaders && Object.keys(parsed.meta.renamedHeaders).length) throw new Error("csv");
+    return parsed;
+  };
   const upload = async event => {
     const file = event.target.files?.[0];
     if (!file) return;
     const request = ++task.current;
-    setCsv(null); setResult(null); setError(""); setBusy(true); setReplace(false);
+    setCsv(null); setResult(null); setError(""); setBusy(true); setReplacementTarget(null);
     try {
       if (file.size > 5 * 1024 * 1024) throw new Error("size");
-      const parsed = Papa.parse(await file.text(), { header: true, skipEmptyLines: "greedy" });
+      const parsed = parseCsv(await file.text());
       if (request !== task.current) return;
-      if (parsed.errors.length || !parsed.data.length || parsed.data.length > 20000 || !parsed.meta.fields?.length || parsed.meta.renamedHeaders && Object.keys(parsed.meta.renamedHeaders).length) throw new Error("csv");
       const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
       let sample = null;
       if (practice?.demoGroup) {
@@ -82,20 +88,37 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     } catch { if (request === task.current) setError(message); }
     finally { if (request === task.current) setBusy(false); }
   };
-  const openDetail = () => {
+  const openDetail = (candidate = csv, confirmedTarget = replacementTarget) => {
     const state = useAppStore.getState();
-    if (csv) {
-      if (state.activeProjectId !== csv.projectId || state.projectSwitching) { setError(en ? "The active project changed. Select the CSV again in this project." : "활성 프로젝트가 바뀌었습니다. 이 프로젝트에서 CSV를 다시 선택해 주세요."); return; }
-      if (state.csvGroups[groupForRoute(config.toolId)]?.raw?.length && !replace) { setError(en ? "Confirm replacing this tool's current dataset below." : "아래에서 상세 도구의 기존 데이터 교체를 확인해 주세요."); return; }
+    if (candidate) {
+      if (state.activeProjectId !== candidate.projectId || state.projectSwitching) { setError(en ? "The active project changed. Select the CSV again in this project." : "활성 프로젝트가 바뀌었습니다. 이 프로젝트에서 CSV를 다시 선택해 주세요."); return; }
+      const currentRows = state.csvGroups[groupForRoute(config.toolId)]?.raw;
+      if (currentRows?.length && confirmedTarget !== currentRows) { setError(en ? "Confirm replacing this tool's current dataset below." : "아래에서 상세 도구의 기존 데이터 교체를 확인해 주세요."); return; }
       state.setCurrentRouteId(config.toolId);
       // Mapping is built against the full destination contract. Calculations remain gated.
-      state.setCsvData(csv, csv.projectId);
+      state.setCsvData(candidate, candidate.projectId);
       // The preview used every uploaded row; stale detail filters must not hide them.
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
       if (config.type === "funnel") state.setDashboardTab("funnel");
     }
     trackProductEvent("blog_tool_cta_clicked", { content_slug: slug, content_type: "blog", tool_id: config.toolId, locale, placement: "article_inline" });
     router.push(`${en ? "/en" : ""}${idToSlug[config.toolId]}`);
+  };
+  const openDemo = async () => {
+    const request = ++task.current;
+    setBusy(true); setCsv(null); setResult(null); setError(""); setReplacementTarget(null);
+    try {
+      const { loadBlogPracticeDemo } = await import("@/lib/blogPracticeData");
+      const sample = await loadBlogPracticeDemo(practice);
+      if (request !== task.current) return;
+      const parsed = parseCsv(sample.text);
+      const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
+      const candidate = { raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: sample.file, projectId, importSource: "demo", ...(sample.demo.currency ? { currency: sample.demo.currency } : {}) };
+      setCsv(candidate);
+      // Loading a sample never grants permission to replace existing project data.
+      openDetail(candidate, null);
+    } catch { if (request === task.current) setError(en ? "The demo could not be loaded. Try again or choose a CSV." : "데모를 불러오지 못했습니다. 다시 시도하거나 CSV를 선택해 주세요."); }
+    finally { if (request === task.current) setBusy(false); }
   };
   return <aside className={`blog-inline-insight${practice ? " blog-practice" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
     {practice && <span className="blog-practice__eyebrow">{practice.eyebrow}</span>}
@@ -107,7 +130,10 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       <p className="blog-practice__limit">{practice.limit}</p>
     </details>}
     {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
-    <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={busy} onChange={upload} /></label>
+    <div className="blog-practice__actions">
+      {practice && <button className="btn primary" disabled={busy} onClick={openDemo}>{en ? "Open analysis with demo" : "데모로 분석 열기"}</button>}
+      <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={busy} onChange={upload} /></label>
+    </div>
     {csv && <>
       {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <details open={!result}><summary>{en ? "Check columns" : "열 확인"}</summary>
         {custom ? ["category", "value", "denominator"].map((key, index) => <label key={key}>{(en ? ["Group / date", "Value column (counts or amounts)", "Denominator (optional)"] : ["그룹 / 날짜", "값 열 (건수·금액)", "분모 열 (선택)"])[index]}<select disabled={busy} value={selection[key]} onChange={event => { setSelection(value => ({ ...value, [key]: event.target.value })); setResult(null); }}><option value="">—</option>{csv.headers.map(header => <option key={header}>{header}</option>)}</select></label>) : csv.headers.map(header => <label key={header}>{header}<select disabled={busy} value={csv.mapping[header] || "__ignore__"} onChange={event => { setCsv(value => ({ ...value, mapping: { ...value.mapping, [header]: event.target.value } })); setResult(null); }}><option value="__ignore__">{en ? "Ignore" : "사용 안 함"}</option>{Object.entries(STANDARD_FIELDS).filter(([key]) => allowedFields.has(key)).map(([key, field]) => <option key={key} value={key}>{en ? key : field.label}</option>)}</select></label>)}
@@ -117,8 +143,8 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     </>}
     {error && <p role="alert">{error}</p>}
     {result && <div className="blog-inline-insight__result"><p className="blog-inline-insight__finding">{result.verdict.headline}</p>{result.status === "success" && <BlogInsightChart visual={result.visualizations[0]} locale={locale} />}{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</div>}
-    {needsReplace && <label><input type="checkbox" checked={replace} onChange={event => setReplace(event.target.checked)} />{en ? "Replace the current dataset in the detailed tool with this CSV." : "상세 도구의 기존 데이터를 이 CSV로 교체합니다."}</label>}
+    {needsReplace && <label><input type="checkbox" checked={replacementTarget === existing.raw} onChange={event => setReplacementTarget(event.target.checked ? existing.raw : null)} />{en ? "Replace the current dataset in the detailed tool with this CSV." : "상세 도구의 기존 데이터를 이 CSV로 교체합니다."}</label>}
     {practice?.detailNote && <p>{practice.detailNote}</p>}
-    <button className="btn" disabled={busy} onClick={openDetail}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
+    <button className="btn" disabled={busy} onClick={() => openDetail()}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
   </aside>;
 }

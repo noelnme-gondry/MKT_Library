@@ -17,7 +17,7 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     controlTitle: "업리프트 뜻 | 홀드아웃으로 보는 광고 순수 증가분",
     candidateTitle: "업리프트 뜻·계산 | 광고 순수 증가분 측정",
     changedFields: Object.freeze(["title"]),
-    lastMaterialChange: "2026-08-26",
+    lastMaterialChange: "2026-09-14",
     status: "collecting_baseline",
   }),
   Object.freeze({
@@ -29,7 +29,7 @@ export const SERP_TITLE_EXPERIMENTS = Object.freeze([
     controlTitle: "인크리멘탈리티 뜻 | CPA·ROAS로는 안 보이는 것",
     candidateTitle: "인크리멘탈리티·인크리멘탈 뜻 | 증분 측정",
     changedFields: Object.freeze(["title"]),
-    lastMaterialChange: "2026-08-26",
+    lastMaterialChange: "2026-09-14",
     status: "collecting_baseline",
   }),
 ]);

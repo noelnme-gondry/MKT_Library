@@ -7024,6 +7024,16 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
 .editorial-trust__sources ul { margin: 7px 0 0; padding-left: 17px; }
 .editorial-trust__sources li { margin: 4px 0; color: var(--text-muted); font-size: 12px; }
 .editorial-trust__sources a { color: var(--primary); }
+.blog-practice__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-block: 16px; }
+.blog-practice__actions > .btn { min-height: 44px; }
+.editorial-trust--compact { padding: 0; border-width: 1px 0; border-radius: 0; background: transparent; }
+.editorial-trust--compact > summary { min-height: 44px; padding: 12px 4px; cursor: pointer; color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.editorial-trust__count { margin-inline-start: 12px; color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+.editorial-trust--compact > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.editorial-trust__body { padding: 0 4px 14px; overflow-wrap: anywhere; }
+.editorial-trust__body ul { margin: 12px 0 0; padding-inline-start: 20px; }
+.editorial-trust__body li { margin: 6px 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.editorial-trust__body a { color: var(--primary); text-underline-offset: 3px; }
 
 /* MMM preview: a compact, believable model readout instead of a decorative list. */
 .landing-advanced-lab__model {

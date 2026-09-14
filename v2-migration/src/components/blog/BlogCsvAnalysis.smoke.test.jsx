@@ -23,7 +23,62 @@ describe("blog CSV to full analysis", () => {
     push.mockClear();
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
-  afterEach(cleanup);
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it.each(["ko", "en"])("opens the %s generated demo in one click with analysis still gated", async locale => {
+    const slug = "aha-moment-retention", practice = blogPracticeFor(slug, locale);
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open analysis with demo" : "데모로 분석 열기" }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug["5-20"]}`));
+    expect(useAppStore.getState().csvGroups.aha.raw.length).toBeGreaterThan(0);
+    expect(useAppStore.getState().csvGroups.aha.importSource).toBe("demo");
+    expect(useAppStore.getState().isGroupAnalyzed("5-20")).toBe(false);
+  });
+  it.each([false, true])("requires confirmation of the current dataset (changed after confirmation: %s)", async changed => {
+    const original = [{ existing: "keep" }];
+    useAppStore.setState(state => ({ csvGroups: { ...state.csvGroups, aha: { ...state.csvGroups.aha, raw: original } } }));
+    const slug = "aha-moment-retention";
+    render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
+    fireEvent.click(screen.getByRole("button", { name: "데모로 분석 열기" }));
+    await screen.findByRole("alert");
+    expect(push).not.toHaveBeenCalled();
+    expect(useAppStore.getState().csvGroups.aha.raw).toBe(original);
+    fireEvent.click(screen.getByRole("checkbox"));
+    if (changed) {
+      const newer = [{ newer: "preserve" }];
+      act(() => useAppStore.setState(state => ({ csvGroups: { ...state.csvGroups, aha: { ...state.csvGroups.aha, raw: newer } } })));
+      expect(screen.getByRole("checkbox").checked).toBe(false);
+      fireEvent.click(screen.getByRole("button", { name: "더 자세한 분석 보기" }));
+      expect(push).not.toHaveBeenCalled();
+      expect(useAppStore.getState().csvGroups.aha.raw).toBe(newer);
+      fireEvent.click(screen.getByRole("checkbox"));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "더 자세한 분석 보기" }));
+    expect(push).toHaveBeenCalledOnce();
+    expect(useAppStore.getState().csvGroups.aha.importSource).toBe("demo");
+  });
+  it.each(["success", "project-change", "unmount", "fetch-failure"])("handles static demo loading: %s", async scenario => {
+    let resolve;
+    const response = new Promise(done => { resolve = done; });
+    const fetchMock = vi.fn(() => response);
+    vi.stubGlobal("fetch", fetchMock);
+    const slug = "apple-search-ads-guide";
+    const { unmount } = render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
+    fireEvent.click(screen.getByRole("button", { name: "데모로 분석 열기" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/examples/asa-mature-candidate.csv"));
+    if (scenario === "project-change") act(() => useAppStore.setState({ activeProjectId: "another" }));
+    if (scenario === "unmount") unmount();
+    await act(async () => resolve({ ok: scenario !== "fetch-failure", text: async () => "Date,Search Term,Taps,Installs,Spend\n2026-08-01,example,40,12,4000" }));
+    if (scenario === "success") {
+      expect(push).toHaveBeenCalledWith(idToSlug["5-26"]);
+      expect(useAppStore.getState().csvData.currency).toBe("KRW");
+      expect(useAppStore.getState().csvData.importSource).toBe("demo");
+      expect(useAppStore.getState().isGroupAnalyzed("5-26")).toBe(false);
+    } else {
+      expect(push).not.toHaveBeenCalled();
+      expect(useAppStore.getState().csvGroups.asa_keyword.raw).toHaveLength(0);
+      if (scenario !== "unmount") expect(screen.getByRole("alert")).toBeTruthy();
+    }
+  });
   it.each(["ko", "en"])("passes an exact generated %s demo to its full tool without pretending it ran the model", async locale => {
     const slug = "aha-moment-retention";
     const practice = blogPracticeFor(slug, locale);

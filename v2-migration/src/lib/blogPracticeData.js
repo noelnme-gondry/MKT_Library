@@ -11,6 +11,13 @@ export function buildBlogPracticeDownload(practice) {
   };
 }
 
+export async function loadBlogPracticeDemo(practice) {
+  if (practice.demoGroup) return buildBlogPracticeDownload(practice);
+  const response = await fetch(practice.href);
+  if (!response.ok) throw new Error("demo-unavailable");
+  return { file: practice.file, text: await response.text(), demo: { currency: practice.currency } };
+}
+
 // A filename is not proof of sample origin. Match every cell before marking a demo.
 export function matchesBlogPracticeDemo(parsed, demo) {
   return parsed.meta.fields.length === demo.headers.length

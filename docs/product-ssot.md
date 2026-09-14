@@ -601,7 +601,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 |---|---|---|
 | ~~D-09~~ | 탭 ARIA·키보드 계약 | ✅ **2026-08-19 완료**. 5개 tablist 중 **9-6 하나만** 계약이 통째로 빠져 있었다(화살표 키·`aria-controls`·로빙 tabindex·panel 연결 전부 없음) — 나머지 넷이 완비돼 있어 "탭은 되어 있다"로 보였다. 배선 후 `app/tabContract.test.js`가 전수로 강제한다 |
 | 🟡 D-10 | 모바일 실기기 검증 증거 부재 | **자동화 가능한 부분 완료(2026-08-19)**: `app/mobileTaskIntegrity.test.js`가 `@media (max-width ≤820px)` 블록에서 핵심 조작 셀렉터가 `display:none`으로 사라지지 않는지 CSS에서 파생해 검사한다(셀렉터의 **마지막 복합 선택자만** `:not()` 제거 후 대조 — `.dc-action-route:not(…) > span` 같은 오탐을 걸렀다). **남음**: 320/768/1440 실기기 회귀 체크는 릴리스 체크리스트 항목으로 사람이 한다. Playwright는 새 라이브러리라 확인 없이 추가하지 않았다(§11) |
-| 🟡 D-11 | AEO/GEO 측정 | **준비 완료(2026-08-19)**: 체크리스트가 **낡아 있었다** — 17개씩으로 적혀 있었으나 도구 승격 후 실제로는 22개씩(총 44개)이다. 재생성했고 `docs/aeo-runs/`에 기록 절차를 만들었다(측정 전 반드시 재생성 — 대상이 제품보다 낡으면 추이가 무의미하다). **남음**: 44개를 ChatGPT·Claude·Perplexity·Google AI 개요에서 실제로 돌리는 것은 사람이 해야 한다. 돌리지 않은 셀을 채우면 그 달 추이가 통째로 못 쓰게 되므로(§8) 비워 둔다 |
+| 🟡 D-11 | AEO/GEO 측정 | 대상은 `scripts/aeo-prompts.mjs`에서 파생한다(2026-09-14: KO 24 + EN 24). `docs/aeo-runs/README.md`에서 실행 원문·누락·보고서별 집계 계약을 관리한다. 실제 AI 응답과 Search Console Generative AI 보고서는 확보 전까지 미측정이다. 접근 가능 여부를 실제 인용 성과로 기록하지 않는다. |
 | ~~D-12~~ | 문서 드리프트 | ✅ **2026-08-19 완료**. `ARCHITECTURE.md`의 "단일 파일"은 `globals.css` 얘기라 드리프트가 아니었고, `worklog.md`의 index.html 언급도 과거 기록으로서 정확하다. 실제 위험은 **복사해 실행하라고 만든 핸드오프 프롬프트** 한 블록이 "단일 index.html SPA"를 현재형으로 말하던 것 — 시점 경고와 현재 진입점을 붙였다 |
 
 ---
@@ -721,11 +721,13 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 준비 전 필수 컬럼 수를 알 수 없으면 ‘파일 확인 후 필요한 컬럼 안내 / Required columns shown after checking your file’로 표시한다. 필수 컬럼이 0개라고 안내하지 않는다.
 - 유입 콘텐츠는 기존 실무 글·공개 사례·도구 계약을 연결한다. 체험 이벤트를 실제 활성화·재방문으로 집계하지 않으며, 리뷰 계산 완료와 사용자가 결정 검토를 완료한 행동을 구별한다.
 
-### 블로그 선택 실습 (2026-09-13)
+### 블로그 선택 실습 (2026-09-14)
 
-- 예제 CSV가 있는 글은 본문 밖에 ‘읽기 전 준비 / Before you read’를 표시한다. 안내는 ‘데모 데이터를 받아두고, 본문 중간에서 직접 확인해 보세요. / Download the demo data and try it as you read.’이며 ‘학습용 합성 데이터 · CSV / Synthetic practice data · CSV’를 명시한다. ‘데모 CSV 받기 / Download demo CSV’와 ‘본문 실습으로 / Jump to practice’를 제공한다.
-- 도입부에 재현 절차를 끼워 넣지 않는다. 관련 개념을 설명한 뒤 ‘선택 실습 / Optional practice’ 영역에서 ‘받아둔 데모 CSV를 선택해 직접 확인해 보세요. 파일은 이 브라우저에서 처리합니다. / Choose the demo CSV you downloaded to check the result. Files are processed in this browser.’라고 안내한다. 상세 순서는 ‘실습 안내와 해석 범위 / Steps and interpretation’로 접어 둔다.
+- 예제 CSV가 있는 글은 본문 밖에 ‘읽기 전 준비 / Before you read’를 표시한다. 안내는 ‘데모를 받아두거나, 본문 실습에서 바로 열어 확인해 보세요. / Download the demo or open it directly in the practice section.’이며 ‘학습용 합성 데이터 · CSV / Synthetic practice data · CSV’를 명시한다. ‘데모 CSV 받기 / Download demo CSV’와 ‘본문 실습으로 / Jump to practice’를 제공한다.
+- 도입부에 재현 절차를 끼워 넣지 않는다. 관련 개념을 설명한 뒤 ‘선택 실습 / Optional practice’ 영역에서 ‘데모로 분석 도구를 바로 열거나 CSV를 선택하세요. 파일은 이 브라우저에서 처리합니다. / Open the analysis with demo data or choose a CSV. Files are processed in this browser.’라고 안내한다. 상세 순서는 ‘실습 안내와 해석 범위 / Steps and interpretation’로 접어 둔다.
+- ‘데모로 분석 열기 / Open analysis with demo’는 등록된 합성 예제만 상세 도구의 분석 전 상태로 전달한다. 기존 데이터 교체는 확인을 거치며, 프로젝트가 바뀌거나 요청이 취소되면 쓰지 않는다. 다운로드·업로드·본문 실습 경로는 유지한다.
+- 블로그 JSON-LD의 citation은 본문 또는 본문 직후 접힌 ‘출처·검토 / Sources and review’ 영역에서 실제 링크로 확인할 수 있어야 한다. 검토자·검토일은 명시된 메타데이터만 표시한다.
 - 예산 포화도 예제는 채널별 관측 부족, ASO 예제는 소스 구성 변화, ASA 예제는 전환 성숙도 확인 전후를 다룬다. 분석 보류를 오류나 정상 판정으로 바꾸지 않는다. ASA 성숙도 선언은 상세 도구에서만 가능하며, 실습용 선언을 실제 계정 데이터에 그대로 적용하도록 안내하지 않는다. 수치의 검증 기준은 기존 editorialExamples.test.js와 합성 CSV를 유지한다.
 - CSV 실습 대상은 발행 글의 `blogInsightRegistry` 배치에서 파생한다. 개별 재현 예제가 없는 글은 해당 분석 도구의 기존 합성 데모를 브라우저에서 CSV로 생성한다. 단순 집계가 글의 모형 결과처럼 보이지 않도록 새 실습은 상세 도구의 매핑·분석 조건 확인으로 이어진다. 설정·커리어 등 CSV 부적합 사유가 있는 글에는 데모 안내를 만들지 않는다.
-- 공통 안내: ‘데모 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요. / Choose the demo CSV, then check the columns and analysis settings in the full tool.’, ‘예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다. / This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account.’ 도구별 질문·결과 항목은 `toolIndex`의 기존 문구를 재사용한다.
+- 공통 안내: ‘데모를 바로 열거나 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요. / Open the demo or choose a CSV, then check the columns and analysis settings in the full tool.’, ‘예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다. / This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account.’ 도구별 질문·결과 항목은 `toolIndex`의 기존 문구를 재사용한다.
 - 모든 발행 글 하단에 해당 도구·CSV 컬럼 준비를 연결한다. 실습 대상 글은 ‘본문 데모 실습으로 / Try the article’s demo’로 연결하고, 주간 리뷰는 효율 데이터 그룹을 다루는 실습 글에만 제공한다. 다른 데이터 그룹의 파일이 주간 리뷰로 그대로 이어진다고 약속하지 않는다.

@@ -7,6 +7,7 @@ import { toolIndexEntry } from "./toolIndex";
 export const BLOG_PRACTICES = {
   "budget-scaling-limit": {
     file: "saturation-sparse.csv",
+    currency: "KRW",
     ko: {
       title: "행이 많아도 판단할 수 없는 이유",
       steps: [
@@ -49,6 +50,7 @@ export const BLOG_PRACTICES = {
   },
   "apple-search-ads-guide": {
     file: "asa-mature-candidate.csv",
+    currency: "KRW",
     mode: "detail",
     ko: {
       title: "전환 집계가 끝났는지 확인하고 판단하기",
@@ -76,22 +78,22 @@ export const BLOG_PRACTICES = {
 const COPY = {
   ko: {
     before: "읽기 전 준비",
-    invitation: "데모 데이터를 받아두고, 본문 중간에서 직접 확인해 보세요.",
+    invitation: "데모를 받아두거나, 본문 실습에서 바로 열어 확인해 보세요.",
     source: "학습용 합성 데이터 · CSV",
     download: "데모 CSV 받기",
     jump: "본문 실습으로",
     eyebrow: "선택 실습",
-    introduction: "받아둔 데모 CSV를 선택해 직접 확인해 보세요. 파일은 이 브라우저에서 처리합니다.",
+    introduction: "데모로 분석 도구를 바로 열거나 CSV를 선택하세요. 파일은 이 브라우저에서 처리합니다.",
     instructions: "실습 안내와 해석 범위",
   },
   en: {
     before: "Before you read",
-    invitation: "Download the demo data and try it as you read.",
+    invitation: "Download the demo or open it directly in the practice section.",
     source: "Synthetic practice data · CSV",
     download: "Download demo CSV",
     jump: "Jump to practice",
     eyebrow: "Optional practice",
-    introduction: "Choose the demo CSV you downloaded to check the result. Files are processed in this browser.",
+    introduction: "Open the analysis with demo data or choose a CSV. Files are processed in this browser.",
     instructions: "Steps and interpretation",
   },
 };
@@ -100,7 +102,7 @@ export function blogPracticeFor(slug, locale = "ko") {
   const config = BLOG_INSIGHT_PLACEMENTS[slug];
   if (!config) return null;
   const practice = BLOG_PRACTICES[slug];
-  if (practice) return { ...COPY[locale], ...practice[locale], mode: practice.mode || "inline", file: practice.file, href: `/examples/${practice.file}` };
+  if (practice) return { ...COPY[locale], ...practice[locale], mode: practice.mode || "inline", locale, currency: practice.currency, file: practice.file, href: `/examples/${practice.file}` };
   const tool = toolIndexEntry(config.toolId, locale);
   const group = TOOL_GROUP[config.toolId];
   if (!tool || !group) return null;
@@ -112,7 +114,7 @@ export function blogPracticeFor(slug, locale = "ko") {
     locale,
     file: `demo_${group}_${locale}.csv`,
     title: tool.question,
-    introduction: en ? "Choose the demo CSV, then check the columns and analysis settings in the full tool." : "데모 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요.",
+    introduction: en ? "Open the demo or choose a CSV, then check the columns and analysis settings in the full tool." : "데모를 바로 열거나 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요.",
     steps: [
       en ? `Choose the downloaded CSV, then open ${tool.name} using ‘Open detailed analysis’.` : `받아둔 CSV를 선택하고 ‘더 자세한 분석 보기’로 ${tool.name} 도구를 여세요.`,
       en ? "Confirm the column roles, units and observation period in the tool before running the analysis." : "도구에서 열의 역할·단위·관찰 기간을 확인한 뒤 분석하세요.",

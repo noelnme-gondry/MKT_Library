@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import EditorialTrust from "./EditorialTrust";
 
 describe("EditorialTrust", () => {
+  it.each(["ko", "en"])("keeps compact %s sources in HTML, collapsed without inventing a review", locale => {
+    const { container } = render(<EditorialTrust compact locale={locale} sources={[{ title: "Source", url: "https://example.com/source" }]} />);
+    expect(container.querySelector("details").open).toBe(false);
+    expect(container.querySelector("summary").textContent).toContain(locale === "en" ? "Sources and review" : "출처·검토");
+    expect(container.querySelector("a").getAttribute("href")).toBe("https://example.com/source");
+    expect(container.querySelector("time")).toBeNull();
+  });
   it("does not imply a review when no explicit review or source exists", () => {
     const { container } = render(<EditorialTrust />);
     expect(container.innerHTML).toBe("");
