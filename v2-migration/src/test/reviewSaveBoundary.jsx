@@ -7,6 +7,8 @@ vi.mock("@/components/ReviewSaveDialog", async () => {
   const { useAppStore } = await import("@/store/useDataStore");
   return { default: function SaveBoundary({ record, onSaved, onClose, onConfirm }) {
     return <button onClick={() => {
+      // This boundary represents a verified signed-in Pro user.
+      useAppStore.getState().setEntitlement({ plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 });
       if (onConfirm) onConfirm();
       else {
         useAppStore.getState().addDecisionRecord(record);

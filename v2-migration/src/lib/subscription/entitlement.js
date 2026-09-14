@@ -1,4 +1,4 @@
-export const SUBSCRIPTION = Object.freeze({ monthlyKrw: 5900, freeProjects: 1, graceMs: 72 * 60 * 60 * 1000, cacheKey: "gop:license:v1" });
+export const SUBSCRIPTION = Object.freeze({ monthlyKrw: 5900, freeProjects: 0, graceMs: 72 * 60 * 60 * 1000, cacheKey: "gop:license:v1" });
 export function hasPaidAccess(entitlement, now = Date.now()) {
   return entitlement?.plan === "paid" && Number(entitlement.expiresAt) > now && Number(entitlement.offlineUntil) > now;
 }
@@ -8,7 +8,7 @@ export function hasPurchasedAccess(entitlement, now = Date.now()) {
     && (entitlement.payment === true || entitlement.account === true);
 }
 export function canCreateProject(count, entitlement, now = Date.now()) {
-  return count < SUBSCRIPTION.freeProjects || hasPaidAccess(entitlement, now);
+  return count >= 0 && hasPaidAccess(entitlement, now);
 }
 export function resolveLicenseResult(previous, result, now = Date.now()) {
   if (result === null) return hasPaidAccess(previous, now) ? { ...previous, offline: true } : null;

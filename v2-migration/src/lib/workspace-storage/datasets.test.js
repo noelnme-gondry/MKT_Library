@@ -1,3 +1,4 @@
+import { activePro } from "@/test/proEntitlement";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearWorkspaceDatasets,
@@ -39,7 +40,7 @@ describe("workspace dataset connection lifecycle", () => {
   it.each([
     ["save", () => {
       dbMock.transactionComplete.mockRejectedValueOnce(new Error("write failed"));
-      return saveWorkspaceDataset({ group: "efficiency", fileName: "data.csv", sourceBlob: new Blob(["a,b"]) });
+      return saveWorkspaceDataset({ entitlement: activePro(), group: "efficiency", fileName: "data.csv", sourceBlob: new Blob(["a,b"]) });
     }],
     ["list", () => {
       dbMock.requestResult.mockRejectedValueOnce(new Error("read failed"));

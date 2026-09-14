@@ -1,4 +1,4 @@
-import { canCreateProject } from "@/lib/subscription/entitlement";
+import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement";
 import { openWorkspaceDb, requestResult, transactionComplete } from "@/lib/workspace-storage/db";
 import { RETENTION_MS } from "@/lib/workspace-storage/expiry";
 import { sanitizeDecisionReviewRecords } from "@/lib/decisionReview";
@@ -33,7 +33,7 @@ export async function initializeProjects(legacyDecisions = [], shouldSave = () =
       const legacySnapshots = records.find(record => record.key === "weekly-review:snapshots");
       const files = await requestResult(datasets.getAll());
       if (!shouldSave()) return [];
-      if (legacyProject || legacySnapshots || legacyDecisions.length || files.length || legacySettings.eventMarkers?.length || ["viewConfig", "customMetrics", "customCharts"].some(key => Object.keys(legacySettings.configuration?.[key] || {}).length)) {
+      if (legacyProject || legacySnapshots || legacyDecisions.length || files.length) {
         const project = { ...migrateLegacyProject(legacyProject?.project, legacySnapshots?.snapshots, legacyDecisions, Date.now()), ...legacySettings };
         meta.put(project);
         projects = [project];
@@ -51,12 +51,19 @@ export async function listProjects() {
 export async function readProject(id = DEFAULT_PROJECT_ID) {
   return projectTransaction("readonly", meta => requestResult(meta.get(projectMetaKey(id))));
 }
-export async function updateProject(id, patch, shouldSave = () => true) {
+export async function updateProject(id, patch, shouldSave = () => true, entitlement = null) {
   return projectTransaction("readwrite", async meta => {
     const key = projectMetaKey(id);
     const existing = await requestResult(meta.get(key));
     if (!shouldSave() || !existing) return null;
-    const next = { ...existing, ...(typeof patch === "function" ? patch(existing) : patch), key, id, lastUsedAt: Date.now() };
+    const changes = typeof patch === "function" ? patch(existing) : patch;
+    // Expiry must not prevent reading or deleting a user's own saved records.
+    const removalsOnly = Object.entries(changes).every(([field, value]) =>
+      ["decisions", "savedAnalyses"].includes(field) && Array.isArray(value)
+      && value.length <= (existing[field] || []).length && new Set(value.map(item => item.id)).size === value.length
+      && value.every(item => (existing[field] || []).some(saved => JSON.stringify(saved) === JSON.stringify(item))));
+    if (!hasPaidAccess(entitlement) && !removalsOnly) throw new Error("PRO_REQUIRED");
+    const next = { ...existing, ...changes, key, id, lastUsedAt: Date.now() };
     if (new Blob([JSON.stringify(next)]).size > PROJECT_LIMITS.metadataBytes) throw new Error("PROJECT_METADATA_LIMIT");
     meta.put(next);
     return next;

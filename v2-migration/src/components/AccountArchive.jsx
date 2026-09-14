@@ -77,7 +77,9 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
   const save = () => run(async () => {
     const wantsReminder = reminder === selected.id;
     const result = await accountRequest("memos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memo: archiveMemo(selected), consent: "decision-memo-v1", reminder: wantsReminder, locale, ...(wantsReminder && !session.account.serviceReminders ? { serviceRemindersConsent: "service-reminders-v1" } : {}) }) });
-    setSession(await refreshAccount());
+    const next = await refreshAccount();
+    setSession(next);
+    onSession?.(next);
     if (!record) setMemos((await accountRequest("memos")).memos);
     if (result.trialStarted) { trackProductEvent("trial_started", { locale, source: "first_memo" }); setTrialReturn(readPaymentReturn()); }
     setMessage(en ? "Decision memo saved to your account." : "결정 메모를 계정에 저장했습니다.");

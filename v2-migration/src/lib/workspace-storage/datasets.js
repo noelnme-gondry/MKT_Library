@@ -1,3 +1,4 @@
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { migrateLegacyProject } from "@/lib/project/repository";
 import { DEFAULT_PROJECT_ID, datasetKey, PROJECT_LIMITS, projectMetaKey } from "@/lib/project/projectLimits";
 import { openWorkspaceDb, requestResult, transactionComplete } from "./db";
@@ -10,8 +11,9 @@ function summary(entry) {
   return { ...rest, group: entry.dataGroup || entry.group, remainingDays: remainingRetentionDays(entry, Date.now()) };
 }
 
-export async function saveWorkspaceDataset({ group, fileName, sourceBlob, sourceKind = "csv", headers = [], rowCount = 0, mapping = {}, mappingBindingsV2 = [], worksheetName = null, projectId = DEFAULT_PROJECT_ID, series = null, transform = null, shouldSave = () => true }) {
+export async function saveWorkspaceDataset({ group, fileName, sourceBlob, sourceKind = "csv", headers = [], rowCount = 0, mapping = {}, mappingBindingsV2 = [], worksheetName = null, projectId = DEFAULT_PROJECT_ID, series = null, transform = null, shouldSave = () => true, entitlement = null }) {
   if (!group || !(sourceBlob instanceof Blob)) throw new TypeError("A workspace dataset requires a group and source Blob.");
+  if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
   const db = await openWorkspaceDb();
   const now = Date.now();
   const entry = {
@@ -46,6 +48,7 @@ export async function saveWorkspaceDataset({ group, fileName, sourceBlob, source
       project = migrateLegacyProject(null, [], [], now);
     }
     if (!shouldSave()) throw new Error("STORAGE_CANCELLED");
+    if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
     meta.put({ ...project, lastUsedAt: now });
     store.put(entry);
     await transactionComplete(transaction);

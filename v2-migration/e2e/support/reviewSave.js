@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 
-export async function enableReviewLogin(page) {
-  await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "review-test", email: "review@example.com" }, entitlement: null } }));
+export async function enableReviewLogin(page, { trial = true } = {}) {
+  await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "review-test", email: "review@example.com" }, entitlement: { plan: "paid", account: true, trial, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 } } }));
   await page.route("**/api/account/memos", route => route.fulfill({ json: { memos: [] } }));
 }
 

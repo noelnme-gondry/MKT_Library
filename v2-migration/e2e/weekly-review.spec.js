@@ -134,7 +134,8 @@ test("@light-en weekly review: English first and returning upload", async ({ pag
 });
 
 async function dochiToWeekly(page, locale) {
-  await enableReviewLogin(page);
+  // This journey exports a report, so both account and payment mocks represent a purchase.
+  await enableReviewLogin(page, { trial: false });
   await enablePaidReports(page);
   const en = locale === "en";
   await page.addInitScript(locale => {

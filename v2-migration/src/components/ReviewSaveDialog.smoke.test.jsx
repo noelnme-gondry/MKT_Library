@@ -1,3 +1,4 @@
+import { activePro } from "@/test/proEntitlement";
 // @vitest-environment jsdom
 import { IDBFactory } from "fake-indexeddb";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
@@ -9,12 +10,12 @@ import { listProjects, readProject } from "@/lib/project/repository";
 import { saveProjectReview } from "@/lib/project/saveReview";
 
 vi.mock("@/lib/account/accountClient", () => ({ refreshAccount: vi.fn() }));
-vi.mock("./AccountArchive", () => ({ default: ({ onSession, record }) => record ? <p>Optional account memo consent</p> : <button onClick={() => onSession({ account: { id: "owner" } })}>Complete sign-in</button> }));
+vi.mock("./AccountArchive", () => ({ default: ({ onSession, record }) => record ? <p>Optional account memo consent</p> : <button onClick={() => onSession({ account: { id: "owner" }, entitlement: activePro() })}>Complete sign-in</button> }));
 const record = { toolId: "5-3", action: "Hold budget", dataOrigin: "real" };
 beforeEach(() => {
   vi.stubGlobal("indexedDB", new IDBFactory());
   useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectsReady: true, projects: [], decisionRecords: [], decisionPersistenceEnabled: true });
-  refreshAccount.mockReset().mockResolvedValue({ account: { id: "owner" }, entitlement: null });
+  refreshAccount.mockReset().mockResolvedValue({ account: { id: "owner" }, entitlement: activePro() });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -53,8 +54,8 @@ it("rechecks the session at commit and preserves the pending review after logout
   expect(onClose).toHaveBeenCalledOnce();
 });
 it("saves a standalone decision to the chosen project without switching source data", async () => {
-  await saveProjectReview({ name: "Client A", record });
-  const entitlement = { plan: "pro", expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 };
+  await saveProjectReview({ entitlement: activePro(), name: "Client A", record });
+  const entitlement = { plan: "paid", expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 };
   // Existing multiple projects are readable even when paid access later expires.
   const { projectTransaction, migrateLegacyProject } = await import("@/lib/project/repository");
   await projectTransaction("readwrite", meta => meta.put({ ...migrateLegacyProject(null, [], [], Date.now()), id: "b", key: "project:b", name: "Client B" }));

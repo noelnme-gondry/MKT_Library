@@ -1,4 +1,5 @@
 "use client";
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { TOOL_INPUT_KEYS } from "@/lib/analysis-settings/toolInputs";
 import SavedSetupReview from "./SavedSetupReview";
 import { useState } from "react";
@@ -16,7 +17,8 @@ export default function AnalysisSetupBar({ toolId, locale = "ko" }) {
   const filter = useAppStore(state => state.dashboardFilterGroups[group]);
   const activeId = useAppStore(state => state.activeProjectId);
   const projects = useAppStore(state => state.projects);
-  const enabled = useAppStore(state => state.decisionPersistenceEnabled && state.projectsReady && !state.projectSwitching);
+  const entitlement = useAppStore(state => state.entitlement);
+  const enabled = useAppStore(state => hasPaidAccess(state.entitlement) && state.decisionPersistenceEnabled && state.projectsReady && !state.projectSwitching);
   const applied = useAppStore(state => state.savedSetupAppliedTool === toolId && state.savedSetupAppliedProject === state.activeProjectId && Boolean(state.savedSetupApplied));
   const pending = useAppStore(state => state.pendingSavedAnalysis);
   const applicablePending = pending?.projectId === activeId && pending.item.toolId === toolId ? pending : null;
@@ -35,7 +37,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko" }) {
       const saved = await updateProject(activeId, current => {
         if ((current.savedAnalyses || []).length >= MAX_SAVED_ANALYSES) throw new Error("LIMIT");
         return { savedAnalyses: [...(current.savedAnalyses || []), item] };
-      }, () => useAppStore.getState().activeProjectId === activeId && useAppStore.getState().decisionPersistenceEnabled);
+      }, () => useAppStore.getState().activeProjectId === activeId && useAppStore.getState().decisionPersistenceEnabled && hasPaidAccess(useAppStore.getState().entitlement), entitlement);
       if (!saved) throw new Error("PROJECT_CHANGED");
       await useAppStore.getState().refreshProjects(); setEditing(false);
       setMessage(en ? "Saved. Open it from Projects next time." : "저장했습니다. 다음에는 프로젝트 보관함에서 열어보세요.");
@@ -47,7 +49,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko" }) {
     {applicablePending && <SavedSetupReview key={applicablePending.item.id} pending={applicablePending} locale={locale} />}
     <div className="analysis-setup__context"><strong>{en ? "Current input" : "현재 입력"}</strong><span>{data?.raw?.length?.toLocaleString() || 0} {en ? "source rows" : "원본 행"}</span><span>{en ? "Shared date filter" : "공통 기간 필터"}: {filter?.dateStart || (en ? "Unrestricted" : "제한 없음")} — {filter?.dateEnd || (en ? "Unrestricted" : "제한 없음")}</span></div>
     <div className="workflow-next-step__actions"><button className="btn" type="button" disabled={!enabled || !project || busy} onClick={() => { setName(toolIndexEntry(toolId, locale)?.name || toolId); setEditing(true); }}>{en ? "Save analysis setup" : "분석 설정 저장"}</button><Link className="btn" href={en ? "/en/projects" : "/projects"}>{en ? "Saved setups" : "저장한 설정"}</Link></div>
-    {!project && <p>{en ? "Create a project and enable device storage to save setups." : "프로젝트를 만들고 기기 저장을 켜면 설정을 보관할 수 있습니다."}</p>}
+    {(!project || !hasPaidAccess(entitlement)) && <p>{en ? "Active Pro and a project with device storage are required to save setups." : "유효한 Pro와 기기 저장을 켠 프로젝트가 있어야 설정을 보관할 수 있습니다."}</p>}
     {editing && <form className="analysis-setup__form" onSubmit={save}><label>{en ? "Setup name" : "설정 이름"}<input value={name} maxLength={120} onChange={event => setName(event.target.value)} required /></label><p>{en ? "Saves mappings, shared filters and supported model options. Results and validation approvals are excluded. Check inputs before rerunning." : "컬럼 매핑·공통 필터·지원하는 모델 옵션을 저장합니다. 결과와 검증 완료 상태는 포함하지 않습니다. 입력을 확인한 뒤 다시 분석하세요."}</p><button className="btn primary" disabled={busy || !name.trim()}>{en ? "Save" : "저장"}</button><button className="btn" type="button" disabled={busy} onClick={() => setEditing(false)}>{en ? "Cancel" : "취소"}</button></form>}
     {message && <p role="status">{message}</p>}
   </section>;

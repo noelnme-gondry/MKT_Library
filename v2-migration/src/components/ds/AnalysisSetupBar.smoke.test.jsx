@@ -1,3 +1,4 @@
+import { activePro } from "@/test/proEntitlement";
 import { beforeEach, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
@@ -8,7 +9,7 @@ import { updateProject } from "@/lib/project/repository";
 beforeEach(() => {
   vi.clearAllMocks();
   useAppStore.setState(useAppStore.getInitialState(), true);
-  useAppStore.setState({ activeProjectId: "p", projects: [{ id: "p" }], projectsReady: true, decisionPersistenceEnabled: true, refreshProjects: vi.fn(async () => {}) });
+  useAppStore.setState({ activeProjectId: "p", entitlement: activePro(), projects: [{ id: "p" }], projectsReady: true, decisionPersistenceEnabled: true, refreshProjects: vi.fn(async () => {}) });
   useAppStore.getState().setCurrentRouteId("5-2");
   useAppStore.getState().setCsvData({ raw: [{ date: "2026-09-01" }], headers: ["date"], mapping: { date: "date" } });
 });
@@ -18,7 +19,7 @@ it.each(["ko", "en"])("saves a named setup through the actual %s form", async lo
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "My weekly setup" } });
   fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Save" : "저장", exact: true }));
   await waitFor(() => expect(screen.getByRole("status").textContent).toContain(locale === "en" ? "Saved." : "저장했습니다."));
-  expect(updateProject).toHaveBeenCalledWith("p", expect.any(Function), expect.any(Function));
+  expect(updateProject).toHaveBeenCalledWith("p", expect.any(Function), expect.any(Function), expect.objectContaining({ plan: "paid" }));
 });
 it("never offers saving without a project", () => {
   useAppStore.setState({ projects: [] });

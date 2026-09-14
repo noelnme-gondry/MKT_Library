@@ -97,9 +97,10 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/subscription#purchase`);
     await expect(page.locator("#purchase")).toContainText("5,900");
     const freePlan = page.locator('.plan-card[aria-labelledby="plan-free-title"]');
-    await expect(freePlan).toContainText(en ? "free after the trial" : "체험 종료 후에도 무료");
-    await expect(freePlan).toContainText(en ? "sign in to save" : "저장은 로그인 후");
-    await expect(freePlan).toContainText(en ? "Read and export existing memos" : "기존 메모 읽기·내보내기");
+    await expect(freePlan).not.toContainText(en ? "free after the trial" : "체험 종료 후에도 무료");
+    await expect(freePlan).toContainText(en ? "Analysis without signup" : "가입 없이 분석·결과 확인");
+    await expect(freePlan.locator(".plan-features > div")).toHaveCount(2);
+    await expect(page.locator(".plan-footnote").first()).toContainText(en ? "requires active Pro" : "Pro 기능입니다");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");
     await expect(page).not.toHaveTitle("");
@@ -163,10 +164,9 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/subscription`);
     await expect(page.locator(".subscription-page .account-archive")).toHaveCount(0);
     await page.getByRole("link", { name: en ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#account-archive$`));
-    await expect(page.locator("#account-archive")).toBeInViewport();
-    await expect(page.locator("#account-archive").getByRole("heading", { name: en ? "No saved decisions yet" : "아직 저장한 결정이 없습니다" })).toBeVisible();
-    await expect(page.locator("#account-archive").getByRole("link", { name: en ? "Record your first decision" : "첫 결정 기록하기" })).toHaveAttribute("href", `${prefix}/weekly-review#wr-upload`);
+    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#wr-next$`));
+    await expect(page.locator('.csv-uploader[data-hydrated="true"]').first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New review" : "새 리뷰");
     started = true;
     await page.goto(`${prefix}/subscription`);
     const pro = page.getByRole("article", { name: "Pro", exact: true });

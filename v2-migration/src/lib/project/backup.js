@@ -1,7 +1,7 @@
 import { validateSavedAnalyses } from "./savedAnalyses";
 import { sanitizeEventMarkers } from "./eventMarkers";
 import { validateProjectFile } from "./projectSchema";
-import { canCreateProject } from "@/lib/subscription/entitlement";
+import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requestResult } from "@/lib/workspace-storage/db";
 import { toStoredSnapshot, MAX_SNAPSHOTS, normalizePeriodPreference } from "@/lib/weekly-review/snapshotStore";
 import { projectTransaction } from "./repository";
@@ -83,6 +83,7 @@ export function parseProjectBackup(text) {
 
 // 사용자 확인 후에만 덮어쓴다. 기존 삭제와 새 저장은 같은 트랜잭션이다.
 export async function importProjectBackup(parsed, id, { replace = false, entitlement = null } = {}) {
+  if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
   // 파싱 실패가 기존 프로젝트를 지운 뒤 발견되지 않도록 원본을 먼저 검사한다.
   for (const file of parsed.files) {
     const table = await readStoredTable(file);
@@ -110,6 +111,7 @@ export async function importProjectBackup(parsed, id, { replace = false, entitle
     const allFiles = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
     const others = allFiles.filter(file => (file.projectId || DEFAULT_PROJECT_ID) !== id);
     if (others.reduce((sum, file) => sum + file.byteSize, 0) + parsed.bytes > PROJECT_LIMITS.workspaceBytes) throw new Error("WORKSPACE_STORAGE_LIMIT");
+    if (!hasPaidAccess(entitlement)) throw new Error("PRO_REQUIRED");
     allFiles.filter(file => (file.projectId || DEFAULT_PROJECT_ID) === id).forEach(file => datasets.delete(file.group));
     const now = Date.now();
     parsed.files.forEach(file => datasets.put({ ...file, group: datasetKey(file.group, id), projectId: id, savedAt: now, lastUsedAt: now }));

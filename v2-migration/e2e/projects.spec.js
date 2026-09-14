@@ -76,7 +76,10 @@ for (const locale of ["ko", "en"]) {
     await confirmReviewDialog(page, en);
     await expect(page.locator(".projects-page").getByRole("status")).toContainText(en ? "Could not complete" : "작업을 완료하지 못했습니다");
     expect((await readStored(page)).files[0].text).toBe(initial.files[0].text);
-    // Second project attempts open the report-pass page; existing data remains accessible.
+    // After expiry, any project creation is gated; existing data remains accessible.
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "review-test", email: "review@example.com", trialStartedAt: "2026-01-01" }, entitlement: null } }));
+    await page.reload();
+    await page.locator("#project-backup > summary").click();
     await page.getByRole("textbox", { name: en ? "New project name" : "새 프로젝트 이름" }).fill("Second project");
     await page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
@@ -99,6 +102,10 @@ for (const locale of ["ko", "en"]) {
     page.once("dialog", dialog => dialog.accept());
     await page.getByRole("button", { name: en ? "Delete" : "삭제", exact: true }).click();
     await expect(page.locator(".project-card")).toHaveCount(0);
+    await enableReviewLogin(page);
+    await page.reload();
+    await page.locator("#project-backup > summary").click();
+    await expect(page.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();
     await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles(backupPath);
     await expect(page.locator(".project-import-preview")).toContainText("Client Alpha");
     await page.getByRole("button", { name: en ? "Restore as new project" : "새 프로젝트로 복원", exact: true }).click();
@@ -149,6 +156,7 @@ test("measures an uploaded 10000-row source in actual IndexedDB", async ({ page 
   test.skip(testInfo.project.name !== "desktop-1440", "One desktop capacity observation, not a device capacity guarantee.");
   const rows = Array.from({ length: 10000 }, (_, index) => `2026-08-${String(1 + index % 28).padStart(2, "0")},Synthetic ${index % 10},Google,1000,10,100,10000`);
   const buffer = Buffer.from(`Date,Campaign,Channel,Cost,Actions,Clicks,Impressions\r\n${rows.join("\r\n")}`);
+  await enableReviewLogin(page);
   await page.goto("/weekly-review");
   const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
   await expect(uploader).toBeVisible();

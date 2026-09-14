@@ -118,6 +118,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
       <span>{T.eyebrow}</span>
       <h1>{T.title}</h1>
       <p>{T.intro}</p>
+      <p>{locale === "en" ? "New file and record saves require active Pro. Turning storage on does not start a trial or purchase. Existing records remain readable and exportable after Pro expires." : "새 파일과 기록 저장에는 유효한 Pro가 필요합니다. 저장을 켜도 체험이나 결제가 시작되지는 않습니다. 만료 후 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>
     </header>
     {expiredCount > 0 && <p className="workspace-storage-page__notice" role="status">{T.expired(expiredCount)}</p>}
     {errorCopy && <p className="workspace-storage-page__error" role="alert">{errorCopy}</p>}

@@ -2,7 +2,7 @@ import { sanitizeEventMarkers } from "./eventMarkers";
 import { serializeProject, headerFingerprint } from "./serializeProject";
 import { createProjectRecord, initializeProjects, listProjects, readProject, updateProject, deleteProject, expireProjects } from "./repository";
 import { DEFAULT_PROJECT_ID } from "./projectLimits";
-import { canCreateProject } from "@/lib/subscription/entitlement";
+import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement";
 
 export function projectStoreActions(set, get, emptyData) {
   return {
@@ -40,7 +40,7 @@ export function projectStoreActions(set, get, emptyData) {
       set({ projectSwitching: true });
       try {
         const state = get();
-        if (saveCurrent && state.projects.some(project => project.id === state.activeProjectId)) await updateProject(state.activeProjectId, { decisions: state.decisionRecords, configuration: await serializeProject(state), eventMarkers: sanitizeEventMarkers(state.eventMarkers) });
+        if (saveCurrent && hasPaidAccess(state.entitlement) && state.projects.some(project => project.id === state.activeProjectId)) await updateProject(state.activeProjectId, { decisions: state.decisionRecords, configuration: await serializeProject(state), eventMarkers: sanitizeEventMarkers(state.eventMarkers) }, () => hasPaidAccess(get().entitlement), state.entitlement);
         const target = await readProject(id);
         if (!target) throw new Error("PROJECT_MISSING");
         await updateProject(id, {});

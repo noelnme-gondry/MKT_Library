@@ -1,3 +1,4 @@
+import { activePro } from "@/test/proEntitlement";
 import { describe, it, expect, beforeEach } from "vitest";
 import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP, groupForRoute } from "./useDataStore.js";
 import { buildGroupMap } from "@/lib/toolGroups";
@@ -37,6 +38,7 @@ describe("useDataStore · viewConfig 액션", () => {
 });
 
 describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 CSV 제외 §2.2)", () => {
+  beforeEach(() => useAppStore.setState({ entitlement: activePro() }));
   it("partialize는 설정과 opt-in 상태만 남기고 원본 데이터·필터 제외", () => {
     const fakeState = {
       viewConfig: { "5-2:scorecard": { hidden: ["ctr"], order: [] } },

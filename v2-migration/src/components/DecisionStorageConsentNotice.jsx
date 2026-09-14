@@ -9,7 +9,7 @@ import { downloadCsv } from "@/utils/download";
 const COPY = {
   ko: {
     title: "기기 저장 범위를 다시 확인해 주세요",
-    body: (count) => `현재 보이는 결정 기록 ${count}개는 삭제하지 않고 보존했습니다. 앞으로는 원본 CSV·XLSX와 결정 기록을 함께 저장하므로, 계속 저장할지 직접 선택해 주세요.`,
+    body: (count) => `현재 보이는 결정 기록 ${count}개는 삭제하지 않고 보존했습니다. 새 저장에는 유효한 Pro가 필요하며 원본 CSV·XLSX와 결정 기록을 함께 보관합니다. 기기 저장 여부를 선택해 주세요.`,
     accept: "원본과 기록 계속 저장",
     decline: "이번 세션만 유지",
     export: "먼저 CSV 내보내기",
@@ -17,7 +17,7 @@ const COPY = {
   },
   en: {
     title: "Review the updated device-storage scope",
-    body: (count) => `We kept the ${count} decision record${count === 1 ? "" : "s"} currently visible instead of deleting them. Device storage now covers uploaded CSV/XLSX files together with decision records, so choose whether to keep using it.`,
+    body: (count) => `We kept the ${count} decision record${count === 1 ? "" : "s"} currently visible instead of deleting them. New device saves require active Pro and cover uploaded CSV/XLSX files together with decision records. Choose your storage preference.`,
     accept: "Keep files and records",
     decline: "Keep this session only",
     export: "Export CSV first",

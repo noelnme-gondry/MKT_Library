@@ -1,4 +1,5 @@
 "use client";
+import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
 import React, { useState, useRef, useMemo, useEffect, useImperativeHandle } from "react";
@@ -285,7 +286,7 @@ export default function CsvUploader({
   const csvData = useAppStore((s) => s.csvData);
   const workspaceDatasetSummaries = useAppStore((s) => s.workspaceDatasetSummaries);
   const workspaceStorageError = useAppStore((s) => s.workspaceStorageError);
-  const deviceStorageEnabled = useAppStore((s) => s.decisionPersistenceEnabled);
+  const deviceStorageEnabled = useAppStore((s) => s.decisionPersistenceEnabled && hasPaidAccess(s.entitlement));
   const activeProjectId = useAppStore((s) => s.activeProjectId);
   const writeCsvData = useAppStore((s) => s.setCsvData);
   const setCsvData = data => writeCsvData(data, activeProjectId);
