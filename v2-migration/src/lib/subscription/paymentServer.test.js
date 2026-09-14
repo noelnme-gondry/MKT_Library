@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { passExpiresAt, verifiedPayment } from "./paymentProduct";
-import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, paymentResponse } from "./paymentServer";
+import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, redirectPaymentReview, paymentResponse } from "./paymentServer";
 
 const db = vi.hoisted(() => ({ rows: new Map(), calls: [], active: 0, account: null }));
 vi.mock("@/lib/account/accountServer", async importOriginal => ({ ...await importOriginal(), readAccount: async () => db.account }));
@@ -51,6 +51,35 @@ async function fixture() {
   return { cookie, input };
 }
 describe("payment boundaries", () => {
+  it("exposes only a test widget key for production review without enabling purchases", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TOSS_SECRET_KEY", "");
+    vi.stubEnv("PAYMENTS_DATABASE_URL", "");
+    expect(paymentConfiguration()).toMatchObject({ enabled: false, clientKey: null, reviewClientKey: "test_gck_fixture", requiresAccount: true });
+    expect((await readPaymentAccess(request())).body.entitlement).toBeNull();
+    await expect(createPaymentOrder(request())).rejects.toThrow();
+    expect(db.calls).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
+    for (const key of ["", "live_gck_fixture", "test_ck_fixture"]) {
+      vi.stubEnv("TOSS_CLIENT_KEY", key);
+      expect(paymentConfiguration().reviewClientKey).toBeNull();
+    }
+  });
+  it.each(["ko", "en"])("removes provider fields from a test return without approvals or access cookies (%s)", locale => {
+    vi.stubEnv("NODE_ENV", "production");
+    const response = redirectPaymentReview(new Request(`https://localhost:8080/api/payments/review-return?locale=${locale}&result=returned&paymentKey=private-key&orderId=gop_review_fixture&amount=5900&redirect=https://evil.example`, { headers: { host: "growthoptplaybook.com" } }));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("Location")).toBe(`https://growthoptplaybook.com${locale === "en" ? "/en" : ""}/subscription?payment_review=returned#purchase`);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
+    expect(db.calls).toHaveLength(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("does not expose a review return route when the test widget is unavailable", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TOSS_CLIENT_KEY", "live_gck_fixture");
+    expect(redirectPaymentReview(request()).status).toBe(404);
+  });
   it("does not let the pilot allowlist silently change the purchase identity policy", async () => {
     vi.stubEnv("ACCOUNTS_ENABLED", "true"); vi.stubEnv("GOOGLE_CLIENT_ID", "fixture"); vi.stubEnv("GOOGLE_CLIENT_SECRET", "fixture");
     vi.stubEnv("ACCOUNT_ALLOWED_EMAILS", "owner@example.com");

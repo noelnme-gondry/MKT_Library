@@ -24,7 +24,23 @@ export function paymentConfiguration() {
     && secret.startsWith(`${mode}_gsk_`) && Boolean(process.env.PAYMENTS_DATABASE_URL)
     && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true")
     && (mode !== "test" || process.env.NODE_ENV !== "production");
-  return { enabled: configured, clientKey: configured ? clientKey : null, mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+  // Public review may open a test widget without creating/approving an order.
+  // Keep purchase availability and all entitlement checks unchanged.
+  const reviewClientKey = process.env.NODE_ENV === "production" && /^test_gck_/.test(clientKey) ? clientKey : null;
+  return { enabled: configured, clientKey: configured ? clientKey : null, reviewClientKey, mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+}
+
+export function redirectPaymentReview(request) {
+  if (!paymentConfiguration().reviewClientKey) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
+  const params = new URL(request.url).searchParams;
+  const path = params.get("locale") === "en" ? "/en/subscription" : "/subscription";
+  const result = params.get("result") === "returned" ? "returned" : "closed";
+  // Discard provider identifiers before reaching any page with analytics.
+  // This is a return notice, never proof of authentication, approval or payment.
+  return new Response(null, { status: 303, headers: {
+    Location: `${paymentOrigin(request)}${path}?payment_review=${result}#purchase`,
+    "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex",
+  } });
 }
 function database() {
   if (!paymentConfiguration().enabled) throw new Error("PAYMENTS_NOT_CONFIGURED");
