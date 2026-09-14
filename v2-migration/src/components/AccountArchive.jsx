@@ -65,10 +65,13 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
     return () => { active = false; window.removeEventListener("message", onMessage); window.removeEventListener("focus", refresh); window.removeEventListener("gop-account-changed", refresh); };
   }, [en, locale, record, profile, onSession]);
   if (!session?.enabled) return message ? <p role="status">{message}</p> : profile ? <p role="status">{!session ? (en ? "Checking account…" : "계정을 확인하고 있습니다…") : (en ? "Account sign-in is currently unavailable. Anonymous analysis remains available." : "현재 계정 로그인을 이용할 수 없습니다. 익명 분석은 계속 이용할 수 있습니다.")}</p> : null;
-  const run = async action => {
+  // 호출부가 오류 코드별 문장을 줄 수 있다. 로그인처럼 실패 사유가 갈리는 곳에서
+  // 공통 문장만 띄우면 사용자도 운영자도 무엇을 고쳐야 하는지 알 수 없다.
+  const run = async (action, codeMessages) => {
     setBusy(true); setMessage("");
     try { await action(); }
     catch (error) {
+      if (codeMessages?.[error.message]) { setMessage(codeMessages[error.message]); setBusy(false); return; }
       setMessage(error.message === "NO_PURCHASE" ? (en ? "No active purchased pass was found in this browser. Restore your purchased pass first." : "이 브라우저에서 연결할 구매 이용권을 찾지 못했습니다. 구매한 이용권을 먼저 복원해 주세요.") : error.message === "PRO_REQUIRED" ? (en ? "Active Pro access is required to save or update memos. Existing memos can still be read and exported." : "메모 저장·수정에는 유효한 Pro 이용권이 필요합니다. 기존 메모는 계속 읽고 내보낼 수 있습니다.") : (en ? "Could not complete this action. Your local records remain unchanged." : "처리하지 못했습니다. 로컬 기록은 그대로 유지됩니다."));
     } finally { setBusy(false); }
   };
@@ -122,7 +125,12 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
         비밀번호 로그인은 서버에서 지정한 계정에만 열린다. */}
     {!session.account && session.passwordLoginEnabled && <details className="account-password-login"><summary>{en ? "Sign in with an id and password" : "아이디·비밀번호로 로그인"}</summary>
       <p>{en ? "Your id is the email address registered on the account. This sign-in is available only for accounts enabled for it." : "아이디는 계정에 등록된 이메일 주소입니다. 이 로그인은 지정된 계정에만 열려 있습니다."}</p>
-      <form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("password-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); setPassword(""); trackProductEvent("login_completed", { locale }); setSession(await refreshAccount()); }); }}>
+      <form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("password-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); setPassword(""); trackProductEvent("login_completed", { locale }); setSession(await refreshAccount()); }, {
+        INVALID_LOGIN: en ? "That id and password did not match an account enabled for password sign-in. Repeated attempts are blocked for a while." : "아이디·비밀번호가 맞지 않거나 이 로그인이 열려 있지 않은 계정입니다. 여러 번 실패하면 한동안 잠깁니다.",
+        ACCOUNTS_UNAVAILABLE: en ? "Password sign-in is not enabled on the server right now." : "서버에서 비밀번호 로그인이 켜져 있지 않습니다.",
+        RATE_LIMITED: en ? "Too many attempts. Wait a minute and try again." : "시도가 너무 잦습니다. 1분 뒤에 다시 시도해 주세요.",
+        ACCOUNT_RESTRICTED: en ? "This account is outside the current invited list." : "이 계정은 현재 허용 목록 밖입니다.",
+      }); }}>
         <label>{en ? "Id (email)" : "아이디(이메일)"}<input type="email" required maxLength={254} autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} /></label>
         <label>{en ? "Password" : "비밀번호"}<input type="password" required maxLength={200} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
         <button className="btn" disabled={busy}>{en ? "Sign in" : "로그인"}</button>
