@@ -1,6 +1,7 @@
 ---
 term: "CAC (Customer Acquisition Cost)"
-seoTitle: "CAC Meaning and Formula | Check the LTV:CAC 3x Rule"
+seoTitle: "Customer Acquisition Cost (CAC): Meaning and Formula"
+searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "Cost of acquiring one customer — total acquisition spend divided by customers acquired"
 description: "CAC is the total cost of acquiring one customer. Why your definition of a customer changes the number, plus an LTV:CAC ratio calculator."
 date: "2026-07-18"

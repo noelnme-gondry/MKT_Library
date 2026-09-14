@@ -23,8 +23,8 @@ export async function generateMetadata({ params }) {
   const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": enTerm ? `${SITE_URL}/en/glossary/${slug}` : canonical };
   return {
     // absolute — 루트 layout의 " | Growth Opt Playbook" 접미(21자)를 붙이지 않는다.
-    // 검색결과 제목은 30자 안팎에서 잘려서, 브랜드 접미가 붙으면 정작 차별화
-    // 문구가 화면 밖으로 밀린다(네이버 웹사이트 컬렉션에서 특히 짧게 잘림).
+    // 제목의 핵심 용어가 먼저 보이게 한다. 검색결과 잘림은 기기·표시 폭에
+    // 따라 달라지므로 고정 글자 수를 맞추기 위해 정식 용어를 제거하지 않는다.
     title: { absolute: term.seoTitle || `${term.term} 뜻 — 용어사전` },
     description: term.description,
     keywords: term.keywords || undefined,

@@ -14,7 +14,9 @@ describe("SERP title experiment registry", () => {
       const term = getTermBySlug(experiment.slug, experiment.locale);
       expect(term?.seoTitle).toBe(experiment.controlTitle);
       expect(experiment.candidateTitle).not.toBe(experiment.controlTitle);
-      expect(experiment.candidateTitle.length).toBeLessThanOrEqual(30);
+      for (const concept of term.searchTitleTerms) {
+        expect(experiment.candidateTitle.toLowerCase()).toContain(concept.toLowerCase());
+      }
       expect(experiment.status).toBe("collecting_baseline");
     }
   });

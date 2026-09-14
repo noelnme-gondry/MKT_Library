@@ -3,6 +3,7 @@ title: "Performance Marketing Analysis: Pick the Right First Method"
 description: "Choose between a dashboard, variance decomposition, saturation, A/B testing, incrementality, and MMM based on the question and data you actually have."
 date: "2026-08-09"
 slug: "performance-marketing-analysis-order"
+searchTitleTerms: ["Performance Marketing Analysis"]
 keywords: "performance marketing analysis, marketing data analysis, campaign analysis, MMM data requirements, incrementality analysis, advertising CSV"
 tags: ["Diagnosis", "Analysis Methodology"]
 draft: false

@@ -1,6 +1,7 @@
 ---
 term: "업리프트 (Uplift)"
-seoTitle: "업리프트 뜻 | 홀드아웃으로 보는 광고 순수 증가분"
+seoTitle: "업리프트(Uplift) 뜻 | 광고 순수 증가분"
+searchTitleTerms: ["업리프트", "Uplift"]
 shortDef: "실험군과 대조군의 성과 차이. 유효한 실험 설계가 있어야 광고의 증분 효과로 해석할 수 있음"
 description: "노출군 8%, 홀드아웃 5%면 업리프트는 3%p. ROAS와 다른 이유와 계산법을 예시로 봅니다."
 date: "2026-08-09"

@@ -1,6 +1,7 @@
 ---
 term: "CAC (Customer Acquisition Cost)"
-seoTitle: "CAC 뜻과 계산법 | LTV:CAC 3배 기준 확인"
+seoTitle: "CAC 뜻과 계산 | Customer Acquisition Cost"
+searchTitleTerms: ["CAC", "Customer Acquisition Cost"]
 shortDef: "고객 한 명을 획득하는 데 든 비용 — 획득 비용 ÷ 획득 고객 수"
 description: "고객 한 명을 데려오는 데 든 총비용. 무엇을 '고객'으로 잡느냐로 값이 갈리는 이유와 LTV:CAC 기준 계산까지."
 date: "2026-07-18"

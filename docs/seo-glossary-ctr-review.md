@@ -23,7 +23,7 @@
 
 ## 제목 실험 시작 게이트
 
-제목 후보를 만들었다고 바로 배포하지 않는다. 아래 조건을 모두 만족할 때만 `src/lib/serpExperimentRegistry.js`의 후보를 활성화한다.
+아래 조건은 **CTR 개선 효과를 평가하는 실험**의 기준이다. 제목에서 실제 주제어가 빠진 회귀의 복원이나 잘못된 설명 수정까지 막는 조건은 아니다. 2026-09-14의 핵심 용어 복원은 사용자가 승인한 편집 수정으로 기록하며, CTR 효과가 입증됐다고 해석하지 않는다. 그 이후 추가 제목 실험은 아래 조건을 모두 만족할 때만 `src/lib/serpExperimentRegistry.js`의 후보를 활성화한다.
 
 1. 마지막 본문·내부 링크 변경 이후의 28일이 온전히 쌓였다.
 2. 페이지 노출이 100회 이상이다.
@@ -42,4 +42,10 @@
 | Google | `/glossary/uplift` | 업리프트 뜻 |  |  |  |  |
 | Naver | `/glossary/uplift` | 업리프트 뜻 |  |  |  |  |
 
-현재 화면의 0 클릭·소량 노출은 방향을 정하는 신호이지 결론이 아니다. 2026-08-26 본문·내부 링크 변경 뒤 새 28일 baseline이 기준을 통과하기 전까지 제목 후보는 `collecting_baseline`으로 유지한다.
+현재 화면의 0 클릭·소량 노출은 방향을 정하는 신호이지 결론이 아니다. 2026-09-14의 본문 보강·핵심 용어 복원 뒤 새 28일 baseline이 기준을 통과하기 전까지 추가 제목 후보는 `collecting_baseline`으로 유지한다.
+
+## 제목에서 핵심 개념 보존
+
+`searchTitleTerms`는 해당 원고에서 반드시 보존할 검색 개념이다. 용어사전은 `seoTitle`, 블로그는 `blogSeo.js`를 거친 **최종 제목**과 비교한다. 실제 본문·요약에도 그 개념이 있어야 한다. H1·DefinedTerm의 정식 이름은 별도로 유지한다. 이것은 모든 동의어를 제목에 나열하라는 규칙이 아니다.
+
+KO 30자·EN 60자는 검색엔진의 고정 한도가 아니다. 글자 수를 맞추느라 정식 용어를 지우지 않고 핵심 개념을 먼저 두며 중복 브랜드·상용구를 줄인다. [Google 제목 지침](https://developers.google.com/search/docs/appearance/title-link?hl=ko), [네이버 제목 지침](https://searchadvisor.naver.com/guide/markup-content).

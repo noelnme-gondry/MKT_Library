@@ -1,6 +1,7 @@
 ---
 term: "인크리멘탈리티 (Incrementality)"
-seoTitle: "인크리멘탈리티 뜻 | CPA·ROAS로는 안 보이는 것"
+seoTitle: "인크리멘탈 뜻 | Incrementality·증분성"
+searchTitleTerms: ["인크리멘탈", "Incrementality"]
 shortDef: "광고가 실제로 추가로 만들어낸 순수 성과 — 증분성"
 description: "전환 100건이 다 광고 덕은 아닙니다. 광고가 없었으면 사라질 몫만 세는 법과 CPA의 한계."
 date: "2026-07-18"
