@@ -11144,9 +11144,14 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .plan-price span { font-size: 17px; }
 .plan-card-header .plan-billing { margin-top: 12px; font-size: 14px; }
 .plan-features { margin: 0; padding-inline: 28px; flex: 1; }
-.plan-features > div { border-bottom: 1px solid var(--border); padding-block: 17px; min-height: 90px; }
+/* 두 카드가 같은 행을 가지므로 행 높이를 고정해 비교 줄을 맞춘다. 고정값은 두 줄짜리
+   값이 들어가는 행(다운로드)이 기준이고, 좁은 화면에서는 아래 미디어쿼리가 푼다. */
+.plan-features > div { border-bottom: 1px solid var(--border); padding-block: 16px; min-height: 76px; }
+.plan-features > div:last-child { border-bottom: 0; }
 .plan-features dt { color: var(--text-muted); font-size: 14px; }
 .plan-features dd { margin: 5px 0 0; color: var(--text-primary); font-size: 16px; font-weight: 600; }
+.plan-features dd[data-absent] { color: var(--text-muted); font-weight: 400; }
+.plan-card-note { margin: 0; padding: 16px 28px 0; font-size: 13px; line-height: 1.7; color: var(--text-muted); }
 .plan-card-action { padding: 24px 28px 28px; }
 .plan-card-action .btn { display: flex; width: 100%; justify-content: center; align-items: center; min-height: 52px; }
 .plan-footnote { font-size: 14px; max-width: 85ch; }

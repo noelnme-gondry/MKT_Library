@@ -99,7 +99,12 @@ for (const locale of ["ko", "en"]) {
     const freePlan = page.locator('.plan-card[aria-labelledby="plan-free-title"]');
     await expect(freePlan).not.toContainText(en ? "free after the trial" : "체험 종료 후에도 무료");
     await expect(freePlan).toContainText(en ? "Analysis without signup" : "가입 없이 분석·결과 확인");
-    await expect(freePlan.locator(".plan-features > div")).toHaveCount(2);
+    // 비교표는 두 플랜이 같은 행을 가져야 성립한다. 한쪽 행 수를 그대로 박아 두면
+    // 무료 칼럼이 비어 카드 높이가 어긋난 상태를 가드가 지키게 된다.
+    const proRows = await page.locator('.plan-card[aria-labelledby="plan-pro-title"] .plan-features > div').count();
+    expect(proRows).toBeGreaterThan(2);
+    await expect(freePlan.locator(".plan-features > div")).toHaveCount(proRows);
+    await expect(freePlan.locator(".plan-features dd[data-absent]").first()).toHaveText(en ? "Not included" : "미포함");
     await expect(page.locator(".plan-footnote").first()).toContainText(en ? "requires active Pro" : "Pro 기능입니다");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");
