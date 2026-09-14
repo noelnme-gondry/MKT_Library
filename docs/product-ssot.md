@@ -294,6 +294,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 ### 5.3 제거 또는 하향할 요소
 
+영상 사용 안내는 클릭 후에만 열고 재생은 사용자가 시작한다. CSV 입력·매핑·Sheets·대시보드·분석 조건·주간 리뷰·결정 저장·프로젝트 백업·보고서의 공통 작업을 KO/EN 실제 화면과 가상 데이터로 설명한다. 도구마다 다른 입력 계약은 현재 도구 안내를 우선하며, 영상 속 계정 동작은 로컬 시연이다. 영상·포스터는 안내를 열기 전 요청하지 않고, 단계별 텍스트·자막·키보드 닫기·호출 버튼으로 포커스 복귀를 제공한다. / Video help opens only on request, with explicit playback. KO/EN walkthroughs use actual app screens and synthetic data; account actions are simulated locally. The current tool’s input contract takes precedence. No media is requested before opening; transcripts, captions, keyboard closing and focus restoration are provided.
+
 | 금지 패턴 | 대체 |
 |---|---|
 | 첫 화면에 **동급으로 보이는** CTA 여럿 | primary 1개(채운 배경·큰 글자) + 외곽선 보조 + 텍스트 링크. 금지되는 것은 개수가 아니라 **위계 없음**이다 — 목적이 다른 진입점 3개는 위계가 있으면 정당하다 |

@@ -17,6 +17,7 @@ import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 import { trackProductEvent } from "@/lib/analytics";
 import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 import MyAccountMenu from "./MyAccountMenu";
+import { VideoHelpButton } from "./VideoTutorialHelp";
 
 const HEADER_COPY = {
   ko: {
@@ -262,6 +263,7 @@ export default function Header({ locale = "ko" }) {
               <span className="header-utility-menu__label">{T.utilities}</span>
             </summary>
             <div className="header-utility-menu__panel">
+              <VideoHelpButton locale={locale} className="btn ghost" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current?.querySelector("summary"); }}>{locale === "en" ? "Video guide" : "영상 사용 안내"}</VideoHelpButton>
               <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
               <ProjectSettingsMenu locale={locale} />
               <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>

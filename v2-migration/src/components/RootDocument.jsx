@@ -8,6 +8,7 @@ import { SIDEBAR_COLLAPSED_CLASS, SIDEBAR_STORAGE_KEY } from "@/lib/sidebarColla
 import SkipLink from "@/components/SkipLink";
 import { BRAND } from "@/lib/brandFacts";
 import WorkspaceStorageBootstrap from "@/components/WorkspaceStorageBootstrap";
+import VideoTutorialHelp from "@/components/VideoTutorialHelp";
 
 /* eslint-disable @next/next/no-head-element -- shared by the two App Router root layouts */
 
@@ -80,6 +81,7 @@ export default function RootDocument({ children, locale = "ko" }) {
         />
         <AnalyticsScripts />
         {children}
+        <VideoTutorialHelp locale={locale} />
         <ConsentBanner locale={locale} />
         <Footer />
       </body>
