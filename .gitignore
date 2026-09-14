@@ -45,3 +45,6 @@ demo_pvm.csv
 original_code.csv
 v2_migration_code.csv
 .local-data/
+
+# 심사 계정 발급 스크립트 산출물 — 비밀번호 검증값이 들어 있어 커밋하지 않는다.
+v2-migration/review-account.sql

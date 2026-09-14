@@ -27,7 +27,9 @@ for (const locale of ["ko", "en"]) {
     const review = page.locator(".checkout-review");
     await expect(review.getByRole("heading", { name: en ? "Test checkout for integration review" : "심사용 테스트 결제창" })).toBeVisible();
     expect(await page.evaluate(() => window.__reviewCalls)).toEqual([]);
-    await expect(page.getByText(en ? "Purchases are currently unavailable." : "지금은 구매할 수 없습니다.", { exact: false })).toHaveCount(0);
+    // 심사 경로가 열려 있어도 일반 방문자는 구매 불가 사유와 무료 대안을 먼저 봐야 한다.
+    await expect(page.getByText(en ? "Purchases are currently unavailable." : "지금은 구매할 수 없습니다.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("link", { name: en ? "Free sample reports" : "무료 샘플 보고서" })).toBeVisible();
     const details = page.locator(".checkout-purchase-info");
     await expect(details).not.toHaveAttribute("open");
     await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).not.toBeVisible();
@@ -40,14 +42,18 @@ for (const locale of ["ko", "en"]) {
       const payment = panel.querySelector(".purchase-payment").getBoundingClientRect();
       const button = panel.querySelector(".checkout-review button");
       const style = getComputedStyle(button);
-      return { sideBySide: summary.right <= payment.left + 1, summaryHeight: summary.height, paymentHeight: payment.height,
+      return { sideBySide: summary.right <= payment.left + 1, summaryHeight: summary.height, paymentHeight: payment.height, rowHeight: panel.getBoundingClientRect().height,
         buttonCentered: style.justifyContent === "center" && style.textAlign === "center", buttonHeight: button.getBoundingClientRect().height,
         overflow: panel.scrollWidth > panel.clientWidth + 1 };
     });
     expect(layout.buttonCentered).toBe(true);
     expect(layout.buttonHeight).toBeGreaterThanOrEqual(52);
     expect(layout.overflow).toBe(false);
-    if (layout.sideBySide) expect(layout.summaryHeight).toBeLessThan(layout.paymentHeight);
+    // 뷰포트별 기대 배치를 먼저 단언한다. `if (sideBySide)`로 감싸면 좁은 화면에서는
+    // 아무것도 검사하지 않고, 데스크톱 그리드가 바뀌어도 조용히 통과한다.
+    expect(layout.sideBySide).toBe(page.viewportSize().width > 1000);
+    // 요약 칼럼이 열 구분선과 배경을 소유하므로 나란히 설 때는 행 전체 높이를 채워야 한다.
+    if (layout.sideBySide) expect(layout.summaryHeight).toBeGreaterThanOrEqual(layout.rowHeight - 2);
     await details.locator("summary").click();
     await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).toBeVisible();
     await details.locator("summary").click();

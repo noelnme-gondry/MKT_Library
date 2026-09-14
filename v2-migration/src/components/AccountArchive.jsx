@@ -21,6 +21,7 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
   const [message, setMessage] = useState("");
   const [consent, setConsent] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [reminder, setReminder] = useState("");
   const localRecords = useAppStore(state => state.decisionRecords);
   const entitlement = useAppStore(state => state.entitlement);
@@ -117,6 +118,16 @@ export default function AccountArchive({ locale = "ko", record = null, profile =
       {!record && !profile && <><button className="btn" disabled={!memos.length} onClick={() => downloadCsv(serializeDecisionReviewCsv(memos), "account-decisions")}>{en ? "Export existing memos · free" : "기존 메모 내보내기 · 무료"}</button>{memos.map(memo => <details key={memo.id}><summary>{memo.action} · {memo.reviewDate}</summary><p>{memo.conclusion}</p><p>{memo.learning}</p><button className="btn" disabled={busy || localRecords.some(item => item.id === memo.id)} onClick={() => setPendingCopy(memo)}>{en ? "Copy to this device for review" : "이 기기의 검토 목록으로 복사"}</button><button className="btn" disabled={!memo.reviewDate} onClick={() => downloadCalendar(serializeDecisionReviewIcs(memo, locale), "decision-review")}>{en ? "Add review to calendar" : "검토일 캘린더에 추가"}</button><button className="btn" disabled={busy} onClick={() => run(async () => { await accountRequest(`memos?id=${encodeURIComponent(memo.id)}`, { method: "DELETE" }); setMemos(items => items.filter(item => item.id !== memo.id)); setMessage(en ? "Account copy deleted. Local records were kept." : "계정의 사본을 삭제했습니다. 로컬 기록은 유지됩니다."); })}>{en ? "Delete account copy" : "계정 사본 삭제"}</button></details>)}</>}
       {!compact && <button className="btn" disabled={busy} onClick={() => run(async () => { await accountRequest("session", { method: "DELETE" }); setSession(await refreshAccount()); setMemos([]); })}>{en ? "Sign out" : "로그아웃"}</button>}
     </>}
+    {/* 아이디는 계정에 등록된 이메일 주소다(Google로 만든 계정은 그 Google 이메일).
+        비밀번호 로그인은 서버에서 지정한 계정에만 열린다. */}
+    {!session.account && session.passwordLoginEnabled && <details className="account-password-login"><summary>{en ? "Sign in with an id and password" : "아이디·비밀번호로 로그인"}</summary>
+      <p>{en ? "Your id is the email address registered on the account. This sign-in is available only for accounts enabled for it." : "아이디는 계정에 등록된 이메일 주소입니다. 이 로그인은 지정된 계정에만 열려 있습니다."}</p>
+      <form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("password-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); setPassword(""); trackProductEvent("login_completed", { locale }); setSession(await refreshAccount()); }); }}>
+        <label>{en ? "Id (email)" : "아이디(이메일)"}<input type="email" required maxLength={254} autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} /></label>
+        <label>{en ? "Password" : "비밀번호"}<input type="password" required maxLength={200} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
+        <button className="btn" disabled={busy}>{en ? "Sign in" : "로그인"}</button>
+      </form>
+    </details>}
     {!session.account && session.mailEnabled && <details><summary>{en ? "Existing account: cannot use Google here?" : "기존 계정인데 Google 로그인이 안 되나요?"}</summary><p>{en ? "Request a one-time link for your registered Google email. Open it in this browser within 10 minutes. This does not create a new account or trial." : "등록한 Google 이메일로 일회용 링크를 요청하세요. 10분 안에 이 브라우저에서 열어 주세요. 새 계정이나 체험을 만들지 않습니다."}</p><form onSubmit={event => { event.preventDefault(); run(async () => { await accountRequest("email-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, locale }) }); setMessage(en ? "If this email identifies an existing account, check your inbox for a link." : "기존 계정에 등록된 이메일이라면 받은편지함에서 링크를 확인해 주세요."); }); }}><label>{en ? "Registered email" : "등록된 이메일"}<input type="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} /></label><button className="btn" disabled={busy}>{en ? "Request sign-in link" : "로그인 링크 요청"}</button></form></details>}
     <p role="status">{message}</p>{trialReturn && <Link className="btn primary" href={trialReturn}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</Link>}<Link href={en ? "/en/privacy" : "/privacy"}>{en ? "Privacy policy" : "개인정보처리방침"}</Link>
   </section>;

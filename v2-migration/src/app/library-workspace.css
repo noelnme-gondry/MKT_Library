@@ -637,14 +637,21 @@
   .app .subscription-page > section { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 14px; }
   .app .subscription-page .plan-card { background: var(--library-surface); border: 1px solid var(--library-border); box-shadow: 0 8px 24px rgb(15 30 55 / 5%); }
   .app .subscription-page .plan-card--pro { border: 2px solid var(--library-accent); }
-  .app .subscription-page .plan-card-header { margin: 0; padding: 28px; border-radius: 0; background: var(--library-surface); }
+  /* 두 카드가 같은 구조로 읽히려면 헤더가 양쪽 다 면이어야 한다. 카드와 같은 색을 주면
+     무료 쪽만 헤더 블록이 사라져 좌우가 다른 카드처럼 보인다. */
+  .app .subscription-page .plan-card-header { margin: 0; padding: 28px; border-radius: 0; background: var(--library-background); }
   .app .subscription-page .plan-card--pro .plan-card-header { background: var(--library-accent-surface); }
   .app .subscription-page .plan-card-status { border-bottom: 1px solid var(--library-border); }
   .app .subscription-page .report-preview { background: var(--library-surface); }
   .app .report-preview-item { padding: 24px; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-background); }
   .app :is(.report-paper, .report-workbook) { background: var(--library-surface); box-shadow: 0 6px 16px rgb(15 30 55 / 7%); }
-  .app .subscription-page .subscription-purchase { grid-template-columns: minmax(240px, .75fr) minmax(0, 1.25fr); align-items: start; background: var(--library-surface); }
-  .app .purchase-summary { align-self: start; background: var(--library-accent-surface); border: 0; border-right: 1px solid var(--library-border); }
+  .app .subscription-page .subscription-purchase { grid-template-columns: minmax(240px, .75fr) minmax(0, 1.25fr); align-items: stretch; background: var(--library-surface); }
+  /* 요약 칼럼이 열 구분선과 accent 배경을 소유하므로 행 전체 높이를 채워야 한다.
+     내용에 맞춰 줄이면(align-self: start) 선과 배경이 행 중간에서 끊긴다.
+     남는 공간은 링크를 바닥에 붙여 의도된 여백으로 만든다. */
+  .app .purchase-summary { align-self: stretch; display: flex; flex-direction: column; background: var(--library-accent-surface); border: 0; border-right: 1px solid var(--library-border); }
+  .app .purchase-summary > :is(span, a) { align-self: flex-start; }
+  .app .purchase-summary > a { margin-top: auto; }
   .app .purchase-summary dl > div { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; }
   .app .purchase-summary dd { text-align: right; text-wrap: pretty; }
   .app .purchase-payment { background: var(--library-surface); }
@@ -656,14 +663,22 @@
   .app .subscription-checkout > .btn.primary { width: 100%; min-height: 52px; justify-self: stretch; justify-content: center; font-size: 16px; }
   .app .checkout-access-card { display: grid; justify-items: start; gap: 14px; padding: 20px; border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 10px; background: var(--library-accent-surface); }
   .app .checkout-access-card > p { margin: 0; font-weight: 650; color: var(--library-text); }
-  .app .checkout-review { display: grid; gap: 0; min-width: 0; }
+  /* 결제 칼럼 자체가 이미 카드다. 페이지 전역 `.projects-page section` 상자 규칙을 그대로
+     두면 칼럼 안에 부모와 같은 배경의 테두리가 또 생겨 정보 없는 상자가 된다.
+     칼럼 안 블록은 상자 대신 같은 좌측 기준선 + 같은 구분선 하나로만 나눈다. */
+  .app .checkout-review { display: grid; gap: 0; min-width: 0; padding: 20px 0 0; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: transparent; }
   .app .checkout-review > p { margin: 8px 0 20px; font-size: 14px; line-height: 1.75; color: var(--library-text); text-wrap: pretty; }
   .app .checkout-review > h4 { margin: 0; font-size: 16px; font-weight: 650; }
   .app .checkout-review > div { min-width: 0; }
-  .app .checkout-review > .btn.primary { width: 100%; min-height: 52px; justify-content: center; text-align: center; font-size: 16px; line-height: 1.5; white-space: normal; }
+  .app .checkout-review > .btn { width: 100%; min-height: 52px; justify-content: center; text-align: center; font-size: 16px; line-height: 1.5; white-space: normal; }
   .app .subscription-checkout .btn.primary:hover { background: var(--primary); color: var(--on-primary); }
   .app :is(.checkout-purchase-info, .checkout-existing) { margin: 0; border-top: 1px solid var(--library-border); }
-  .app :is(.checkout-purchase-info, .checkout-existing) > summary { padding: 16px 0; min-height: 44px; font-size: 14px; color: var(--library-text); cursor: pointer; }
+  .app :is(.checkout-purchase-info, .checkout-existing) > summary { display: flex; align-items: center; gap: 10px; padding: 16px 0; min-height: 44px; list-style: none; font-size: 14px; font-weight: 600; color: var(--library-text); cursor: pointer; }
+  .app :is(.checkout-purchase-info, .checkout-existing) > summary::-webkit-details-marker { display: none; }
+  /* 셰브런은 닫힘에서 아래(45deg), 열림에서 위(225deg) — 사이드바 disclosure와 같은 규칙. */
+  .app :is(.checkout-purchase-info, .checkout-existing) > summary::after { content: ''; width: 6px; height: 6px; margin-left: auto; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); flex-shrink: 0; }
+  .app :is(.checkout-purchase-info, .checkout-existing)[open] > summary::after { transform: rotate(225deg); }
+  .app :is(.checkout-purchase-info, .checkout-existing) > summary:hover { color: var(--library-accent); }
   .app .checkout-purchase-info > p { margin: 0 0 16px; font-size: 14px; line-height: 1.75; text-wrap: pretty; }
   .app .purchase-project-transfer { padding-block: 20px; border-block: 1px solid var(--library-border); }
   .app .purchase-project-transfer p { margin: 0 0 14px; font-size: 13px; line-height: 1.75; }
@@ -673,8 +688,10 @@
   .app .checkout-restore .wr-field { display: grid; gap: 8px; min-width: 0; margin: 0; font-size: 13px; }
   .app .checkout-restore input { width: 100%; min-width: 0; min-height: 46px; background: var(--library-background); border: 1px solid var(--library-border); border-radius: 8px; padding: 10px 12px; color: var(--library-text); }
   .app .checkout-restore .btn { min-height: 46px; margin: 0; }
-  .app .purchase-payment .purchase-policy-links { padding-top: 20px; margin: 24px 0 0; border-top: 1px solid var(--library-border); gap: 8px; }
-  .app .purchase-policy-links a { justify-content: center; padding: 8px 12px; border: 1px solid var(--library-border); border-radius: 8px; font-size: 13px; color: var(--library-text); text-decoration: none; }
+  .app .purchase-payment .purchase-policy-links { padding-top: 16px; margin: 16px 0 0; border-top: 1px solid var(--library-border); gap: 0 24px; }
+  /* 정책 링크는 마감 줄이다. 알약 상자 세 개로 두면 결제 행동과 같은 무게로 읽힌다. */
+  .app .purchase-policy-links a { justify-content: flex-start; padding: 0; min-height: 44px; border: 0; border-radius: 0; font-size: 14px; color: var(--library-text); text-decoration: none; }
+  .app .purchase-policy-links a:hover { color: var(--library-accent); text-decoration: underline; }
   .app :is(.library-full-navigation, .sidebar-library-disclosure) > summary { display: flex; align-items: center; justify-content: flex-start; gap: 10px; min-height: 44px; padding: 10px 12px; list-style: none; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-background); color: var(--library-text); font-size: 12px; font-weight: 600; letter-spacing: 0; cursor: pointer; }
   .app :is(.library-full-navigation, .sidebar-library-disclosure) > summary::-webkit-details-marker { display: none; }
   .app :is(.library-full-navigation, .sidebar-library-disclosure) > summary::before { content: none; }
