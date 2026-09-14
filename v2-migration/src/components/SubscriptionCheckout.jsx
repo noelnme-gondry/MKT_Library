@@ -1,5 +1,7 @@
 "use client";
 import PassRecoveryHelp from "./PassRecoveryHelp";
+import PaymentReviewCheckout from "./PaymentReviewCheckout";
+import { loadPaymentSdk } from "@/lib/subscription/paymentSdk";
 import AccountArchive from "./AccountArchive";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
@@ -15,18 +17,6 @@ import { trackProductEvent } from "@/lib/analytics";
 import { trackPaymentEvent, paymentFailureEvent } from "@/lib/subscription/paymentAnalytics";
 import { downloadFile } from "@/utils/download";
 
-let sdkPromise;
-function loadSdk() {
-  if (window.TossPayments) return Promise.resolve(window.TossPayments);
-  sdkPromise ||= new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://js.tosspayments.com/v2/standard";
-    script.onload = () => resolve(window.TossPayments);
-    script.onerror = () => { sdkPromise = null; script.remove(); reject(new Error("SDK_UNAVAILABLE")); };
-    document.head.appendChild(script);
-  });
-  return sdkPromise;
-}
 async function jsonRequest(path, body) {
   const response = await fetch(`/api/payments/${path}`, body === undefined ? { cache: "no-store" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!response.ok) {
@@ -121,7 +111,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     preparing.current = true;
     setBusy(true); setMessage("");
     try {
-      const TossPayments = await loadSdk();
+      const TossPayments = await loadPaymentSdk();
       // UI preparation is not purchase intent and must not create an order.
       widgets.current = TossPayments(config.clientKey).widgets({ customerKey: crypto.randomUUID() });
       await widgets.current.setAmount({ currency: "KRW", value: config.product?.amount ?? SUBSCRIPTION.monthlyKrw });
@@ -178,6 +168,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     {message && <p role="status">{message}</p>}
     {returnStatus === "confirm" && <button type="button" className="btn" disabled={busy} onClick={confirm}>{en ? "Retry approval check" : "승인 확인 재시도"}</button>}
     {returnPath && <button className="btn" disabled={busy} onClick={async () => { try { await restoreCheckoutSnapshot(); router.push(returnPath); } catch { setMessage(en ? "Could not restore this project's temporary copy. Reopen the original project; your current work was not replaced." : "이 프로젝트의 임시본을 복원하지 못했습니다. 원래 프로젝트를 다시 열어 주세요. 현재 작업은 덮어쓰지 않았습니다."); } }}>{en ? "Return to your analysis" : "진행하던 분석으로 돌아가기"}</button>}
+    {!config?.enabled && config?.reviewClientKey && <PaymentReviewCheckout clientKey={config.reviewClientKey} product={config.product} locale={locale} />}
     <details className="checkout-existing"><summary>{en ? "Restore an existing purchase" : "이미 구매한 이용권 복원"}</summary>
     <div className="purchase-project-transfer">
       <p>{en ? "Moving to another device? Restore your pass here, then import the backup exported from Projects on your original device. Your files and review history do not sync automatically." : "다른 기기로 옮기시나요? 여기서 이용권을 복원한 뒤, 원래 기기의 프로젝트 보관함에서 내보낸 백업을 가져오세요. 파일과 검토 이력은 자동 동기화되지 않습니다."}</p>

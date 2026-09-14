@@ -654,6 +654,10 @@
   .app .subscription-checkout > .btn.primary { width: 100%; min-height: 52px; justify-self: stretch; justify-content: center; font-size: 16px; }
   .app .checkout-access-card { display: grid; justify-items: start; gap: 14px; padding: 20px; border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 10px; background: var(--library-accent-surface); }
   .app .checkout-access-card > p { margin: 0; font-weight: 650; color: var(--library-text); }
+  .app .checkout-review { justify-items: stretch; }
+  .app .checkout-review > p { font-weight: 400; }
+  .app .checkout-review > h3 { margin: 0; }
+  .app .checkout-review > div { min-width: 0; }
   .app .purchase-project-transfer { padding-block: 20px; border-block: 1px solid var(--library-border); }
   .app .purchase-project-transfer p { margin: 0 0 14px; font-size: 13px; line-height: 1.75; }
   .app .checkout-restore { margin: 0; padding: 0; border: 0; background: transparent; }
