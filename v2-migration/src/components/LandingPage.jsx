@@ -17,7 +17,7 @@ const COPY = {
     eyebrow: "퍼포먼스 마케팅 의사결정",
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: "실무 가이드로 기준을 잡고, 내 데이터로 확인하세요. 성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다.",
+    deck: ["실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.", "성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다."],
     actionAria: "바로 시작할 작업",
     dataCta: "CSV로 가능한 분석 한 번에",
     dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
@@ -29,7 +29,7 @@ const COPY = {
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
-    assurance: "분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리",
+    assurance: ["분석 무료", "보고서 다운로드는 이용권 구매 후", "원본은 브라우저에서만 처리"],
     continueTitle: "지난 판단을 이어서 검토하세요",
     continueDeck: "이 브라우저에 남아 있는 결정 요약과 직접 올린 파일을 이어서 보여줍니다. 저장 화면에서 언제든 지울 수 있습니다.",
     dueNow: "지금 검토",
@@ -60,7 +60,7 @@ const COPY = {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
     title: "Why did it change?",
     titleAccent: "What should you do next?",
-    deck: "Build your baseline with practical guides and check your data. Connect performance analysis to next week’s decisions in one place.",
+    deck: ["Build your baseline with practical guides and check your data.", "Connect performance analysis to next week’s decisions in one place."],
     actionAria: "Start a task",
     dataCta: "Find analyses for my CSV",
     dataActionHint: "Upload → check columns → supported analyses",
@@ -70,7 +70,7 @@ const COPY = {
     diagnoseCta: "Find the cause",
     demoCta: "Explore a sample",
     dataGuideCta: "Prepare CSV columns",
-    assurance: "Free analysis · paid report downloads · source data stays in your browser",
+    assurance: ["Free analysis", "paid report downloads", "source data stays in your browser"],
     continueTitle: "Continue your last decision",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
     dueNow: "Due now",
@@ -192,7 +192,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
             <span>{T.title}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
-          <p className="dc-hero__deck">{T.deck}</p>
+          <p className="dc-hero__deck">{T.deck.map((sentence, index) => <span key={sentence}>{index > 0 && " "}{sentence}</span>)}</p>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
             <Link
@@ -209,7 +209,7 @@ export default function LandingPage({ locale = "ko", children, reading }) {
           <div className="dc-hero__utility-actions">
             <Link className="dc-text-link dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackLandingNav("diagnose_entry_clicked", "hero")}>{lang === "en" ? "Not sure where to start?" : "어디서 시작할지 모르겠다면"}<span aria-hidden="true"> ↗</span></Link>
           </div>
-          <p className="dc-hero__assurance">{T.assurance}</p>
+          <p className="dc-hero__assurance">{T.assurance.map((condition, index) => <span key={condition}>{index > 0 && " · "}{condition}</span>)}</p>
         </div>
         <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
       </section>

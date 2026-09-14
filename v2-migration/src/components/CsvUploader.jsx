@@ -43,6 +43,7 @@ import SemanticMappingTable from "@/components/data-import/SemanticMappingTable"
 import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
+import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
 
 const STANDARD_FIELD_EN_LABELS = {
@@ -1173,6 +1174,7 @@ export default function CsvUploader({
             </button>
           </div>
         )}
+        <VideoHelpButton topic="mapping" locale={locale} />
         <div className="mapping-grid">
           <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>

@@ -11215,3 +11215,40 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   .header-cmdk__label--mobile { display: none; }
 }
 } /* @layer app 끝 */
+
+/* Contextual video help. Closed state loads no video or poster. */
+.tutorial-launcher { position: fixed; right: 20px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 45; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: calc(100vw - 32px); padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--bg-1); color: var(--text-primary); font: 600 13px/1.4 var(--font-sans); box-shadow: 0 3px 16px rgb(0 0 0 / 12%); cursor: pointer; }
+.tutorial-launcher > span:first-child { color: var(--primary); font-size: 22px; line-height: 1; }
+/* Keep consent, existing dialogs, form entry and focused page controls unobscured. */
+body:has(.consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
+body:has(main :focus-visible, .content :focus-visible, input:focus, textarea:focus, select:focus) .tutorial-launcher { visibility: hidden; }
+.tutorial-inline { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--primary); font: 600 13px/1.4 var(--font-sans); cursor: pointer; }
+.tutorial-overlay { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 24px; background: rgb(9 16 30 / 64%); }
+.tutorial-panel { width: min(1120px, 100%); max-height: calc(100dvh - 48px); overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-1); color: var(--text-primary); box-shadow: 0 24px 80px rgb(0 0 0 / 24%); }
+.tutorial-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.tutorial-header p { margin: 0 0 6px; font-size: 12px; color: var(--text-secondary); }
+.tutorial-header h2 { margin: 0; font-size: clamp(20px, 2vw, 28px); line-height: 1.4; word-break: keep-all; }
+.tutorial-close { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; background: transparent; border: 1px solid var(--border); border-radius: 50%; color: var(--text-primary); font-size: 24px; cursor: pointer; }
+.tutorial-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 24px; }
+.tutorial-main { min-width: 0; }
+.tutorial-video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #eef1f6; border: 1px solid var(--border); border-radius: 8px; }
+.tutorial-note { margin: 10px 0 18px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.tutorial-topics { display: flex; flex-direction: column; gap: 2px; }
+.tutorial-topics button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; font: 500 13px/1.5 var(--font-sans); color: var(--text-primary); border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+.tutorial-topics button[aria-current] { color: var(--primary); background: var(--bg-2); border-color: var(--border); font-weight: 700; }
+.tutorial-topics button:hover { background: var(--bg-2); }
+.tutorial-transcript { border-block: 1px solid var(--border); margin-bottom: 16px; }
+.tutorial-transcript summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-size: 14px; }
+.tutorial-transcript ol { padding-left: 20px; }
+.tutorial-transcript li { padding: 6px 0; }
+.tutorial-transcript button { min-height: 44px; padding: 6px 0; border: 0; background: transparent; color: var(--primary); text-align: left; font: 600 14px/1.5 var(--font-sans); cursor: pointer; }
+.tutorial-transcript p { margin: 4px 0 12px; font-size: 14px; line-height: 1.7; word-break: keep-all; }
+.tutorial-guide-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+@media (max-width: 768px) {
+  .tutorial-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 8px 12px; font-size: 12px; }
+  .tutorial-overlay { padding: 10px; }
+  .tutorial-panel { max-height: calc(100dvh - 20px); padding: 16px; border-radius: 12px; }
+  .tutorial-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .tutorial-topics { border-top: 1px solid var(--border); padding-top: 12px; }
+}
+@media print { .tutorial-launcher, .tutorial-inline, .tutorial-overlay { display: none !important; } }

@@ -73,7 +73,7 @@ describe("home → result → weekly review", () => {
     expect(copied).toContain(en ? "Sample data" : "샘플 데이터");
     expect(copied).toContain(en ? "not a significance" : "통계적 유의성");
     expect(window.gtag).toHaveBeenCalledWith("event", "weekly_review_export", expect.objectContaining({ source: "demo", placement: "verdict_summary", state: "completed" }));
-    expect(screen.getAllByText(en ? "Copied. Paste it into your team workspace." : "복사했습니다. 팀 작업 공간에 붙여넣으세요.")).toHaveLength(1);
+    expect(await screen.findAllByText(en ? "Copied. Paste it into your team workspace." : "복사했습니다. 팀 작업 공간에 붙여넣으세요.")).toHaveLength(1);
     const entry = weekly.container.querySelector("#wr-upload");
     expect(entry.open).toBe(false);
     act(() => { window.history.replaceState(null, "", "#wr-upload"); window.dispatchEvent(new Event("hashchange")); });

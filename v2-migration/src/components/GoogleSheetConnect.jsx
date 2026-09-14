@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Papa from "papaparse";
 import GoogleSheetsGuide from "./GoogleSheetsGuide";
+import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { parseGoogleSheetUrl, sheetValuesToTable, resolveSheetRange } from "@/utils/googleSheets";
 import { forgetSheetSource, listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
@@ -252,6 +253,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
         )}
       </div>
       <span id={`${inputId}-hint`} className="sheet-connect-hint">{T.urlHint}</span>
+      <VideoHelpButton topic="sheets" locale={locale} />
       <GoogleSheetsGuide locale={locale} />
       {recentSources.length > 0 && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
     </form>

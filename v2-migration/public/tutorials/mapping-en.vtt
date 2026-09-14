@@ -1,0 +1,21 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:09.000
+Importing is only the first step
+Automatic mapping is a starting point. Check each column’s values and units in the data preview.
+
+2
+00:00:09.000 --> 00:00:18.000
+Match source columns to analysis fields
+Choose the meaning of each column in mapping settings. Cost is not clicks; installs are not signups.
+
+3
+00:00:18.000 --> 00:00:27.000
+Resolve missing or duplicate fields
+Fix missing required fields or conflicting mappings. Do not invent zeros for data you do not have.
+
+4
+00:00:27.000 --> 00:00:36.000
+Analyze again after changes
+Run analysis again after changing mappings. If data is still insufficient, supply the required columns, rows or periods first.

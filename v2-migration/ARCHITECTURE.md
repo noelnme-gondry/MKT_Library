@@ -30,6 +30,7 @@ v2-migration/
 │  └─ components/
 │     ├─ ds/                        # ★ 공용 데이터 UI (§12.21·§12.27)
 │     ├─ assistant/                  # 홈 전용 도치 데이터 접수·작업대 handoff UI (분석 엔진/원본 데이터 소유 안 함)
+│     ├─ VideoTutorialHelp.jsx       # RootDocument 공용 영상 도움말 + CsvUploader/Sheets 인라인 진입. lib/videoTutorials.js → 문구·주제·자막 SSOT, scripts/tutorials/ → 실제 UI 시연·정적 영상 생성
 │     ├─ tools/                     # route별 도구 1 컴포넌트
 │     ├─ dashboard/                 # 5-2 운영 대시보드 9탭 + 필터바 + 커스텀차트
 │     ├─ data-import/               # 업로드 후 판정 UI (기준바·가능분석·품질리포트·이력)

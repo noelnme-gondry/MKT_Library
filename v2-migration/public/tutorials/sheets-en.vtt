@@ -1,0 +1,21 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:09.000
+Open public Sheets import
+Choose Import from a public Google Sheet in the upload area. This does not sign into a private sheet.
+
+2
+00:00:09.000 --> 00:00:18.000
+Paste an already-public sheet link
+Paste the full URL for the intended tab. Keep private or company sheets private and upload a downloaded CSV instead.
+
+3
+00:00:18.000 --> 00:00:27.000
+Understand the automation boundary
+Manage BigQuery and sheet refreshes at the source. This site does not collect ad accounts or sync them in the background.
+
+4
+00:00:27.000 --> 00:00:36.000
+Check the imported data
+After import, check dates, row counts and columns, then analyze. Import again when you need updated data.

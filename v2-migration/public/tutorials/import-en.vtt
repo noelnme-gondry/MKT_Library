@@ -1,0 +1,21 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:09.000
+Prepare the right file
+The dashboard supports CSV and XLSX. For other tools, check the current screen’s input guide and template.
+
+2
+00:00:09.000 --> 00:00:18.000
+Check what was imported
+Check the file name, row count and dates against your source. Source data is processed in your browser.
+
+3
+00:00:18.000 --> 00:00:27.000
+Check the column mapping
+Distinguish date, cost, installs and conversions. Correct columns with a different meaning before analysis.
+
+4
+00:00:27.000 --> 00:00:36.000
+Run the analysis
+Check required columns, currency and the conversion definition, then select Analyze data. Analysis and on-screen results are free.
