@@ -164,16 +164,24 @@ describe("WeeklyReviewScreen", () => {
     expect(report).toMatch(/■ 성과/);
   });
 
-  it("결정 이력은 지우지 않고 접기 안으로 넣는다", () => {
+  it("지난 결정은 접기가 아니라 목록이고, 계정 저장과 한 자리다", () => {
+    // 접기는 열기 전까지 몇 건인지·무엇인지 보이지 않아 "무엇을 검토해야 하나"에
+    // 답하지 못한다. 그리고 "지난 결정"과 "계정에 저장한 결정"을 따로 두면 한
+    // 기기에서는 거의 같아 보여 차이를 아무도 설명할 수 없다.
     setData(rowsFor());
     useAppStore.setState({ decisionRecords: [] });
     render(<WeeklyReviewScreen />);
-    const summary = screen.getByText(/지난 결정 전체 보기/);
-    expect(summary).toBeTruthy();
-    // 안에 기존 결정 검토함이 실제로 들어 있어야 한다(기능을 지운 게 아니라 위계를 내린 것).
-    expect(screen.getByRole("heading", { name: "이번 주 결정 인박스" })).toBeTruthy();
-    // 흡수된 화면은 자기 h1을 벗는다 — 한 화면에 h1이 둘이면 안 된다.
+    expect(screen.queryByText(/지난 결정 전체 보기/)).toBeNull();
+    expect(screen.getByRole("heading", { name: "지난 결정" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "계정에 저장한 결정" })).toBeNull();
     expect(document.querySelectorAll("h1")).toHaveLength(1);
+  });
+
+  it("다음 주 CSV 접기를 결과 화면에 두지 않는다", () => {
+    // 이번 분석을 보러 온 사람에게 다음 기간 파일을 지금 묻는 이유를 설명할 수 없다.
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    expect(screen.queryByText(/다음 주 CSV 올리기/)).toBeNull();
   });
 
   it("기준·기간을 사용자가 바꿀 수 있다 — 자동 판정이 틀리면 고칠 방법이 있어야 한다", () => {

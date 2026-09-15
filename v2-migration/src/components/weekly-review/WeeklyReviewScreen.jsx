@@ -2,6 +2,7 @@
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
+import DecisionHistoryList from "@/components/weekly-review/DecisionHistoryList";
 import ProjectCreateGate from "@/components/ProjectCreateGate";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
@@ -40,7 +41,6 @@ import { mergeSnapshots, listStoredSnapshots, saveStoredSnapshot, readReviewProj
 import { outcomeLabel, buildReportDraft, describeAction, renderReportText } from "@/lib/weekly-review/reportDraft";
 import { trackProductEvent, trackProductEventOnce, productEventKey } from "@/lib/analytics";
 import JourneyProgress from "@/components/ds/JourneyProgress";
-import WeeklyReview from "@/components/WeeklyReview";
 import WeeklyReviewHandoverNotice from "@/components/weekly-review/WeeklyReviewHandoverNotice";
 import { fmtPct } from "@/utils/format";
 import { buildWorkspaceEvidence, parseReviewTarget, workspaceReportNotes, formatReviewMetric } from "@/lib/weekly-review/workspaceEvidence";
@@ -58,7 +58,6 @@ const COPY = {
     lastHead: "지난 결정 이후의 관측",
     nextHead: "이번 주에 할 것",
     shareHead: "팀 공유 보고서",
-    historyToggle: (n) => `지난 결정 전체 보기 (${n}건)`,
     noData: "아직 프로젝트가 없습니다.",
     newProject: "새 프로젝트 만들기",
     noDataDeck: "프로젝트는 목표와 결정, 그 결과를 한자리에 모읍니다. 새로 만들면 데이터를 올리는 화면으로 이어집니다.",
@@ -95,7 +94,6 @@ const COPY = {
     lastHead: "Observations after the last decision",
     nextHead: "What to do this week",
     shareHead: "Team review report",
-    historyToggle: (n) => `All past decisions (${n})`,
     noData: "No projects yet.",
     newProject: "Create a project",
     noDataDeck: "A project keeps your goal, your decisions and their outcomes in one place. Creating one takes you to the data upload step.",
@@ -409,8 +407,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         </section>
         <ProjectCreateGate locale={locale} open={gateOpen} onClose={() => setGateOpen(false)} onReady={() => { setGatePassed(true); setGateOpen(false); }} />
         <ReviewLoop locale={locale} hasResult={false} />
-        <PastDecisions locale={locale} t={t} count={decisionRecords.length} isSample={isSampleData} />
-        <AccountArchive locale={locale} anchorId="account-archive" />
+        <DecisionHistoryList locale={locale} records={decisionRecords} />
       </article>
     );
   }
@@ -482,7 +479,9 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
       {csvData.sheetUrl && <button className="btn primary" disabled={refreshingConnectedSheet || !workspaceReady} onClick={async () => { document.getElementById("wr-upload").open = true; setRefreshingConnectedSheet(true); try { await sheetRefreshRef.current.refreshSheet(); } finally { setRefreshingConnectedSheet(false); } }}>{refreshingConnectedSheet ? (locale === "en" ? "Fetching…" : "불러오는 중…") : (locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신")}</button>}
-      <details className="wr-upload" id="wr-upload"><summary>{locale === "en" ? "Upload next week's CSV / review mapping" : "다음 주 CSV 올리기 / 매핑 확인"}</summary>{workspaceReady && <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />}</details>
+      {/* 결과가 나온 뒤 "다음 주 CSV"를 접어 두던 자리였다. 이번 분석을 보러 온
+          사람에게 다음 기간 파일을 지금 묻는 이유를 설명할 수 없어 뺐다. 새 기간은
+          프로젝트로 다시 들어와 올린다. */}
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
@@ -782,8 +781,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         {copyStatus?.key === resultEventKey && !copyStatus.summary && <p role="status">{copyStatus.message}</p>}
       </section>
 
-      <PastDecisions locale={locale} t={t} count={decisionRecords.length} isSample={isSampleData} />
-      <AccountArchive locale={locale} anchorId="account-archive" />
+      <DecisionHistoryList locale={locale} records={decisionRecords} />
     </article>
   );
 }
@@ -885,27 +883,13 @@ function ReviewLoop({ locale, hasResult, nextDate }) {
   };
   return <nav className="wr-loop" aria-label={en ? "Weekly review cycle" : "주간 검토 흐름"}>
     <ol>
-      <li><strong>{en ? "1. Compare periods" : "1. 기간 비교"}</strong><p>{en ? "Bring this period and a comparable baseline." : "이번 데이터와 비교할 지난 기간을 준비합니다."}</p><a className="btn" href="#wr-upload" onClick={() => reveal("wr-upload")}>{hasResult ? (en ? "Upload the next period" : "다음 기간 데이터 올리기") : (en ? "Prepare comparison data" : "비교 데이터 준비")}</a></li>
+      <li><strong>{en ? "1. Compare periods" : "1. 기간 비교"}</strong><p>{en ? "Bring this period and a comparable baseline." : "이번 데이터와 비교할 지난 기간을 준비합니다."}</p><a className="btn" href="#wr-upload" onClick={() => reveal("wr-upload")}>{en ? "Prepare comparison data" : "비교 데이터 준비"}</a></li>
       <li><strong>{en ? "2. Record a decision" : "2. 결정 기록"}</strong><p>{en ? "Save the action and conditions you will check." : "확인한 근거와 다음에 볼 조건을 저장합니다."}</p>{hasResult ? <a className="btn" href="#wr-next" onClick={() => reveal("wr-next")}>{en ? "Record this decision" : "이번 결정 기록"}</a> : <span className="wr-note">{en ? "Available after comparison" : "기간 비교 후 기록할 수 있습니다"}</span>}</li>
       <li><strong>{en ? "3. Review the next results" : "3. 다음 결과 검토"}</strong><p>{nextDate ? `${en ? "Next review" : "다음 검토일"}: ${nextDate}` : (en ? "Save a decision to set the next review date." : "결정을 저장하면 다음 검토일이 정해집니다.")}</p><a className="btn" href="#wr-history" onClick={() => reveal("wr-history")}>{en ? "See saved decisions" : "저장한 결정 확인"}</a></li>
     </ol>
   </nav>;
 }
 
-function PastDecisions({ locale, t, count, isSample = false }) {
-  useEffect(() => {
-    const reveal = () => { if (window.location.hash === "#wr-history") document.getElementById("wr-history").open = true; };
-    reveal();
-    window.addEventListener("hashchange", reveal);
-    return () => window.removeEventListener("hashchange", reveal);
-  }, []);
-  return (
-    <details className="wr-history" id="wr-history">
-      <summary>{t.historyToggle(count)}</summary>
-      {isSample ? <p className="wr-note">{locale === "en" ? "Real project decisions are separate from this sample. Open Projects to continue your saved work." : "실제 프로젝트의 결정은 샘플과 별도로 관리합니다. 저장한 작업은 프로젝트에서 이어가세요."} <Link href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Open projects" : "프로젝트 열기"}</Link></p> : <WeeklyReview locale={locale} embedded />}
-    </details>
-  );
-}
 
 function metricRows(metrics, locale) {
   const change = (key) => {

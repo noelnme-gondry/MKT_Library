@@ -34,7 +34,8 @@ describe("home → result → weekly review", () => {
     expect(save).not.toHaveBeenCalled();
     expect(view.container.querySelector(".wr-verdict").textContent).not.toContain("Private");
     expect(view.container.querySelector(".wr-history-entry")).toBeNull();
-    fireEvent.click(view.container.querySelector("#wr-history summary"));
+    // 지난 결정은 이제 접기가 아니라 목록이고, 범위는 호출부가 준다 —
+    // 컴포넌트가 스토어를 직접 읽으면 샘플 화면에 실제 결정이 딸려 나온다.
     expect(view.container.querySelector("#wr-history").textContent).not.toContain("Private decision");
   });
   it.each(["ko", "en"])("opens a real computed sample in one click and preserves its scope to the copied review (%s)", async locale => {
@@ -74,10 +75,9 @@ describe("home → result → weekly review", () => {
     expect(copied).toContain(en ? "not a significance" : "통계적 유의성");
     expect(window.gtag).toHaveBeenCalledWith("event", "weekly_review_export", expect.objectContaining({ source: "demo", placement: "verdict_summary", state: "completed" }));
     expect(await screen.findAllByText(en ? "Copied. Paste it into your team workspace." : "복사했습니다. 팀 작업 공간에 붙여넣으세요.")).toHaveLength(1);
-    const entry = weekly.container.querySelector("#wr-upload");
-    expect(entry.open).toBe(false);
-    act(() => { window.history.replaceState(null, "", "#wr-upload"); window.dispatchEvent(new Event("hashchange")); });
-    expect(entry.open).toBe(true);
+    // 결과 화면의 "다음 주 CSV" 접기는 없앴다 — 이번 분석을 보러 온 사람에게
+    // 다음 기간 파일을 지금 묻는 이유를 설명할 수 없다. 새 기간은 다시 들어와 올린다.
+    expect(weekly.container.querySelector("#wr-upload")).toBeNull();
     const conditions = weekly.container.querySelector(".wr-decision-conditions");
     expect(conditions.open).toBe(false);
     fireEvent.click(conditions.querySelector("summary"));

@@ -4,6 +4,8 @@ import Papa from "papaparse";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 import { MAPPING_MEMORY_SCHEMA_VERSION, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
 import { clearMappingMemory, deleteMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
+import { parseMappingMemory, serializeMappingMemory } from "@/lib/data-import/memory/feedbackFile";
+import { downloadJson } from "@/utils/download";
 
 /**
  * 내 컬럼 매핑 — 사용자가 직접 관리하는 규칙 목록.
@@ -37,6 +39,9 @@ const COPY = {
     readFailed: "CSV를 읽지 못했습니다. 헤더가 있는 파일인지 확인해 주세요.",
     storeFailed: "이 브라우저에 저장하지 못했습니다. 시크릿 창이거나 저장이 차단된 상태일 수 있습니다.",
     duplicate: "이미 저장된 컬럼이라 기존 규칙을 바꿉니다.",
+    exportRules: "규칙 내보내기",
+    importRules: "규칙 가져오기",
+    importFailed: "매핑 파일을 읽지 못했습니다.",
   },
   en: {
     title: "My column mappings",
@@ -59,6 +64,9 @@ const COPY = {
     readFailed: "Could not read the CSV. Check that the file has a header row.",
     storeFailed: "Could not save on this browser. Private windows or blocked storage can cause this.",
     duplicate: "That column is already saved, so the existing rule is replaced.",
+    exportRules: "Export rules",
+    importRules: "Import rules",
+    importFailed: "Could not read this mapping file.",
   },
 };
 
@@ -218,7 +226,26 @@ export default function UserMappingSettings({ locale = "ko" }) {
         }}>{t.add}</button>
       </div>
 
-      {records.length > 0 && <button type="button" className="btn account-mapping__clear" onClick={() => clearMappingMemory().then(reload).catch(() => setMessage(t.storeFailed))}>{t.clearAll}</button>}
+      {/* 내보내기·가져오기는 예전에 업로드 흐름 안에만 있었다. 설정을 여기로 옮기면서
+          같이 옮긴다 — 화면만 치우고 능력을 조용히 잃으면 안 된다. */}
+      <div className="account-mapping__actions">
+        {records.length > 0 && <button type="button" className="btn" onClick={() => downloadJson(serializeMappingMemory(records), "growthopt-mapping-memory", "json")}>{t.exportRules}</button>}
+        <label className="btn account-mapping__import">
+          <span>{t.importRules}</span>
+          <input type="file" accept=".json,application/json" onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            try {
+              const parsed = parseMappingMemory(await file.text());
+              await Promise.all(parsed.map(putMappingMemory));
+              await reload();
+              setMessage("");
+            } catch { setMessage(t.importFailed); }
+          }} />
+        </label>
+        {records.length > 0 && <button type="button" className="btn" onClick={() => clearMappingMemory().then(reload).catch(() => setMessage(t.storeFailed))}>{t.clearAll}</button>}
+      </div>
     </section>
   );
 }
