@@ -21,6 +21,8 @@ rm src/components/dashboard/__probe.smoke.test.jsx
 | `r1-probe.jsx` | 5-2 탭 9개 × 퇴화 입력 6종 — Infinity·NaN·undefined 출현 | R1 |
 | `r1-dash.jsx` | 5-2 전체 화면 × 퇴화 입력 — 차단 여부·결측 고지 위치·가시성 경로 | R1 |
 | `r1-denom.jsx` | 성과 기준(설치/가입) 토글이 탭별로 실제 전파되는가 | R1 |
+| `r2-curve.jsx` | 5-3·5-22 × 퇴화 입력 6종 — 거짓 숫자·throw | R2 |
+| `r2-budget-overrun.jsx` | 5-3 계획 지출이 입력 예산을 넘는가 · `holdLowConfidence` on/off 대조 | R2 |
 
 **주의**: 탐침이 공허하게 통과하지 않는지 먼저 확인할 것. `r1-probe`는 처음에
 아무것도 출력하지 않았는데, 그건 결함이 없어서가 아니라 출력 자체를 안 하고
