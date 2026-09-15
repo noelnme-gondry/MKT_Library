@@ -156,7 +156,7 @@ describe("AhaMomentFinder render smoke", () => {
 
     expect(screen.getByText(/관측 연관이 있지만 인과효과는 확정되지 않았습니다/)).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/share.*통제 실험 한 가지/);
-    expect(screen.getByLabelText("검증 지표").value).toBe("타겟 달성률");
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("rerun:aha_reach");
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("50.0% (관측 base rate)");
     expect(screen.getByLabelText("검토일에 답할 질문").value).toContain("Control보다 높고 관측 base rate 50.0%");
 
@@ -182,7 +182,7 @@ describe("AhaMomentFinder render smoke", () => {
 
     expect(screen.getByText(/observed association.*causation is not established/)).toBeTruthy();
     expect(screen.getByLabelText("What will change?").value).toMatch(/one controlled experiment.*Control.*share/);
-    expect(screen.getByLabelText("Metric to review").value).toBe("Target attainment rate");
+    expect(screen.getByLabelText("Goal (what counts as success)").value).toBe("rerun:aha_reach");
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("50.0% (observed base rate)");
   });
 

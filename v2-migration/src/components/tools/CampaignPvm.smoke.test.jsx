@@ -158,7 +158,9 @@ describe("CampaignPvm render smoke", () => {
     // from the ToolPageShell TOC link of the same name).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
-    expect(screen.getByLabelText("검증 지표").value).toMatch(/CPI|CPA/);
+    // 5-21은 전역 분모 기준에 따라 CPA·CPI 어느 쪽으로도 말한다 — 둘 다 후보에 있어야
+    // 프리필이 목표와 맞는다(없으면 원장과 판정이 다른 지표를 가리킨다).
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toMatch(/^(cpi|cpa|conversions)$/);
     expect(view.container.querySelector(".tool-page-shell__main > .summary")).toBeNull();
   });
 

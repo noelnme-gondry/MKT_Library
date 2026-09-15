@@ -179,7 +179,7 @@ describe("Dashboard render smoke", () => {
     seedWithData();
     render(<Dashboard />);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
-    expect(screen.getByLabelText("검증 지표").value).not.toBe("");
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).not.toBe("");
   });
 
   it("offers one inline review promise without a duplicate save action", () => {

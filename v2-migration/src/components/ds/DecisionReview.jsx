@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
-import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
+import { DECISION_ACTION_KINDS, assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionGuardrails, serializeDecisionReviewCsv, serializeDecisionReviewIcs, toLocalDecisionDate } from "@/lib/decisionReview";
+import { findToolGoal, isRerunGoalMetric, toolDecisionGoals, toolDecisionGuardrails } from "@/lib/decisionGoals";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { latestDecisionDataDate } from "@/lib/decisionComparableActual";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
@@ -31,8 +32,23 @@ function createDraft(prefill = {}, defaults = {}) {
     conclusion: text(source.conclusion),
     action: text(source.action),
     hypothesis: text(source.hypothesis),
-    metric: text(source.metric),
-    targetDirection: ["higher", "lower", "neutral"].includes(text(source.targetDirection)) ? text(source.targetDirection) : "",
+    // `metric`(원장에 보이는 라벨)과 `goalMetric`(판정 키)은 역할이 다르다.
+    // 도구의 프리필 라벨이 더 구체적이므로("Control 대비 Test 전환율") 그쪽을 남기고,
+    // 사용자가 목표 선택을 직접 바꾸면 그때 라벨도 같이 옮긴다(아래 onChange).
+    metric: text(source.metric) || (defaults.goalLabel || ""),
+    targetDirection: ["higher", "lower", "neutral"].includes(text(source.targetDirection))
+      ? text(source.targetDirection)
+      : (defaults.goalTargetDirection || ""),
+    // v9·v10 구조화 필드. 스키마와 스코어러에는 오래 있었지만 이 폼이 읽지 않아
+    // 도구 화면에서 저장된 결정은 전부 `no_terms_recorded`로 판정 불가였다.
+    actionKind: DECISION_ACTION_KINDS.includes(text(source.actionKind)) ? text(source.actionKind) : (defaults.actionKind || ""),
+    actionTarget: text(source.actionTarget),
+    actionAmount: text(source.actionAmount),
+    goalMetric: text(source.goalMetric) || (defaults.goalMetric || ""),
+    goalDirection: ["up", "down", "hold"].includes(text(source.goalDirection)) ? text(source.goalDirection) : (defaults.goalDirection || ""),
+    // 가드레일은 {metric: 임계값} 맵으로 들고 있다가 저장 시 목록으로 직렬화한다.
+    // 값이 빈 가드레일은 "선언되지 않은 것"이라 저장에서 빠진다.
+    guardrailValues: (source.guardrailValues && typeof source.guardrailValues === "object") ? { ...source.guardrailValues } : {},
     comparisonKind: text(source.comparisonKind),
     forecastPeriod: text(source.forecastPeriod),
     forecastTarget: text(source.forecastTarget),
@@ -100,6 +116,23 @@ const COPY = {
     hypothesisPlaceholder: "예: 빈도 과다 캠페인을 줄이면 CPA가 안정된다",
     metric: "검증 지표",
     metricPlaceholder: "예: CPA, ROAS, 전환수",
+    actionKind: "무엇을 하나요?",
+    actionKindUnset: "선택 안 함",
+    actionKindIncrease: "예산 증액",
+    actionKindDecrease: "예산 감액",
+    actionKindHold: "유지",
+    actionKindReplace: "교체",
+    actionKindInvestigate: "더 확인",
+    actionTarget: "대상",
+    actionTargetPlaceholder: "예: Meta / 리타겟팅",
+    actionAmount: "변화량",
+    actionAmountPlaceholder: "예: -30%",
+    goal: "목표 (성공의 정의)",
+    goalCustom: "직접 입력",
+    goalRerunHint: "이 목표는 효율 CSV로 자동 계산되지 않습니다. 검토일에 원본 도구에서 새 데이터로 다시 분석한 뒤 결과를 기록합니다.",
+    guardrails: "지키기 (하나라도 깨지면 실패)",
+    guardrailsHint: "기준값을 적은 항목만 판정에 들어갑니다. 목표만 걸면 \"오가닉은 늘었는데 총량이 줄었다\" 같은 실패를 못 잡습니다.",
+    guardrailPlaceholder: "기준값",
     targetDirection: "무엇이 개선인가요?",
     directionUnset: "방향 선택 · 변화량만 표시",
     directionHigher: "높아지면 개선",
@@ -174,6 +207,23 @@ const COPY = {
     hypothesisPlaceholder: "e.g. Reducing high-frequency campaigns stabilizes CPA",
     metric: "Metric to review",
     metricPlaceholder: "e.g. CPA, ROAS, conversions",
+    actionKind: "What are you doing?",
+    actionKindUnset: "Not set",
+    actionKindIncrease: "Increase budget",
+    actionKindDecrease: "Decrease budget",
+    actionKindHold: "Hold",
+    actionKindReplace: "Replace",
+    actionKindInvestigate: "Investigate",
+    actionTarget: "Target",
+    actionTargetPlaceholder: "e.g. Meta / Retargeting",
+    actionAmount: "Change",
+    actionAmountPlaceholder: "e.g. -30%",
+    goal: "Goal (what counts as success)",
+    goalCustom: "Enter manually",
+    goalRerunHint: "This goal is not computed from the efficiency CSV. At review time, rerun the source tool with new data and record the outcome.",
+    guardrails: "Hold these (failing any one is a failure)",
+    guardrailsHint: "Only rows with a threshold are scored. With a goal alone, \"organic rose but total fell\" still reads as success.",
+    guardrailPlaceholder: "Threshold",
     targetDirection: "What counts as improvement?",
     directionUnset: "Choose a direction · show change only",
     directionHigher: "Higher is better",
@@ -232,7 +282,30 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const activeDataGroup = useAppStore((state) => state.activeDataGroup);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const latestDataDate = useMemo(() => latestDecisionDataDate(csvData?.canonicalData), [csvData?.canonicalData]);
-  const draftDefaults = useMemo(() => ({ baselineDate: latestDataDate, comparisonWindowDays: 7 }), [latestDataDate]);
+  // 도구가 선언한 목표·가드레일. 순서가 곧 기본값이라 첫 항목이 선택된 채로 뜬다 —
+  // 사용자가 손대야 하는 건 대상과 수치뿐이 되게 한다(§9 "기본값은 다 잡아서 다 돌리고").
+  const goalOptions = useMemo(() => toolDecisionGoals(toolId, locale), [toolId, locale]);
+  const guardrailOptions = useMemo(() => toolDecisionGuardrails(toolId, locale), [toolId, locale]);
+  // 도구가 프리필로 지표를 제안했으면(5-3은 사용자의 CPA/ROAS 토글을 따라간다)
+  // 그 지표에 맞는 목표를 기본값으로 삼는다. 목록 첫 항목을 무조건 쓰면
+  // 원장은 프리필 지표를, 판정은 다른 목표를 말하는 상태가 된다.
+  const defaultGoal = useMemo(() => {
+    const prefilledMetric = String(decisionPrefill?.metric ?? "").trim().toLowerCase();
+    const matched = prefilledMetric
+      ? goalOptions.find((goal) => goal.label.toLowerCase() === prefilledMetric || goal.key.toLowerCase() === prefilledMetric)
+      : null;
+    return matched || goalOptions[0] || null;
+  }, [goalOptions, decisionPrefill?.metric]);
+  const draftDefaults = useMemo(() => ({
+    baselineDate: latestDataDate,
+    comparisonWindowDays: 7,
+    goalMetric: defaultGoal?.key || "",
+    goalDirection: defaultGoal?.direction || "",
+    // 원장은 `metric`·`targetDirection`을 읽는다. 기본 목표를 손대지 않고 저장하면
+    // 여기서 같이 채우지 않는 한 지표가 빈칸으로 남는다(스모크가 실제로 잡았다).
+    goalLabel: defaultGoal?.label || "",
+    goalTargetDirection: defaultGoal?.targetDirection || "",
+  }), [latestDataDate, defaultGoal]);
   const resolvedSourcePath = useMemo(() => {
     if (sourcePath) return sourcePath;
     const normalizedPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
@@ -314,6 +387,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       setMessage(t.error);
       return;
     }
+    const selectedGoal = findToolGoal(toolId, draft.goalMetric, locale);
+    const savedGuardrails = guardrailOptions
+      .map((option) => ({ metric: option.key, op: option.op, value: String(draft.guardrailValues?.[option.key] ?? "").replace(/,/g, "").trim() }))
+      .filter((item) => item.value !== "" && Number.isFinite(Number(item.value)));
     const savedRecord = {
       toolId,
       dataOrigin: decisionDataOrigin(csvData),
@@ -324,7 +401,20 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       action: draft.action.trim(),
       hypothesis: draft.hypothesis.trim(),
       metric: draft.metric.trim(),
-      targetDirection: draft.targetDirection || decisionMetricDirection(draft.metric),
+      // 방향은 도구 선언(레지스트리) → 사용자 선택 → 정규식 추측 순으로 정한다.
+      // 정규식이 마지막인 이유: 그게 "강한 잠식 후보"·"최대 VIF"를 못 읽던 자리다.
+      targetDirection: selectedGoal?.targetDirection || draft.targetDirection || decisionMetricDirection(draft.metric),
+      actionKind: draft.actionKind,
+      actionTarget: draft.actionTarget.trim(),
+      actionAmount: draft.actionAmount.trim(),
+      goalMetric: draft.goalMetric,
+      goalDirection: draft.goalDirection,
+      // 단수 필드는 목록의 첫 항목이다(v9 호환). 값이 없으면 셋 다 비워 둔다 —
+      // 반쪽 가드레일은 스코어러에서 "측정 불가"가 되어 판정 전체를 막는다.
+      guardrailMetric: savedGuardrails[0]?.metric || "",
+      guardrailOp: savedGuardrails[0]?.op || "",
+      guardrailValue: savedGuardrails[0]?.value || "",
+      guardrails: serializeDecisionGuardrails(savedGuardrails.slice(1)),
       comparisonKind: draft.comparisonKind,
       forecastPeriod: draft.forecastPeriod,
       forecastTarget: draft.forecastTarget,
@@ -492,9 +582,89 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <input value={draft.hypothesis} onChange={(event) => updateDraft("hypothesis", event.target.value)} placeholder={t.hypothesisPlaceholder} />
           </label>
           <label className="decision-review__field">
-            <span>{t.metric}</span>
-            <input value={draft.metric} onChange={(event) => updateDraft("metric", event.target.value)} placeholder={t.metricPlaceholder} />
+            <span>{t.actionKind}</span>
+            <select aria-label={t.actionKind} value={draft.actionKind} onChange={(event) => updateDraft("actionKind", event.target.value)}>
+              <option value="">{t.actionKindUnset}</option>
+              <option value="increase_budget">{t.actionKindIncrease}</option>
+              <option value="decrease_budget">{t.actionKindDecrease}</option>
+              <option value="hold">{t.actionKindHold}</option>
+              <option value="replace">{t.actionKindReplace}</option>
+              <option value="investigate">{t.actionKindInvestigate}</option>
+            </select>
           </label>
+          <label className="decision-review__field">
+            <span>{t.actionTarget}</span>
+            <input value={draft.actionTarget} onChange={(event) => updateDraft("actionTarget", event.target.value)} placeholder={t.actionTargetPlaceholder} />
+          </label>
+          <label className="decision-review__field">
+            <span>{t.actionAmount}</span>
+            <input value={draft.actionAmount} onChange={(event) => updateDraft("actionAmount", event.target.value)} placeholder={t.actionAmountPlaceholder} />
+          </label>
+          {goalOptions.length > 0 ? (
+            <label className="decision-review__field">
+              <span>{t.goal}</span>
+              <select
+                aria-label={t.goal}
+                value={draft.goalMetric}
+                onChange={(event) => {
+                  const option = goalOptions.find((goal) => goal.key === event.target.value);
+                  setIsDraftDirty(true);
+                  setDraft((current) => ({
+                    ...current,
+                    goalMetric: event.target.value,
+                    goalDirection: option?.direction || "",
+                    // 원장(ledger)은 `metric`·`targetDirection`을 읽는다. 목표를 바꿀 때
+                    // 둘을 같이 옮기지 않으면 화면과 판정이 서로 다른 지표를 말한다.
+                    metric: option ? option.label : current.metric,
+                    targetDirection: option?.targetDirection || current.targetDirection,
+                  }));
+                }}
+              >
+                {goalOptions.map((goal) => (
+                  <option key={goal.key} value={goal.key}>{goal.label}{goal.direction === "up" ? " ↑" : " ↓"}</option>
+                ))}
+                <option value="">{t.goalCustom}</option>
+              </select>
+            </label>
+          ) : (
+            <label className="decision-review__field">
+              <span>{t.metric}</span>
+              <input value={draft.metric} onChange={(event) => updateDraft("metric", event.target.value)} placeholder={t.metricPlaceholder} />
+            </label>
+          )}
+          {goalOptions.length > 0 && !draft.goalMetric && (
+            <label className="decision-review__field">
+              <span>{t.metric}</span>
+              <input value={draft.metric} onChange={(event) => updateDraft("metric", event.target.value)} placeholder={t.metricPlaceholder} />
+            </label>
+          )}
+          {isRerunGoalMetric(draft.goalMetric) && (
+            <p className="decision-review__hint decision-review__field--wide" role="status">{t.goalRerunHint}</p>
+          )}
+          {guardrailOptions.length > 0 && (
+            <fieldset className="decision-review__field decision-review__field--wide decision-review__guardrails">
+              <legend>{t.guardrails}</legend>
+              {guardrailOptions.map((rail) => (
+                <label key={rail.key} className="decision-review__guardrail">
+                  <span>{rail.label}{rail.op === "lte" ? " ≤" : " ≥"}</span>
+                  <input
+                    inputMode="decimal"
+                    value={draft.guardrailValues?.[rail.key] ?? ""}
+                    placeholder={t.guardrailPlaceholder}
+                    onChange={(event) => {
+                      const { value } = event.target;
+                      setIsDraftDirty(true);
+                      setDraft((current) => ({ ...current, guardrailValues: { ...current.guardrailValues, [rail.key]: value } }));
+                    }}
+                  />
+                </label>
+              ))}
+              <small>{t.guardrailsHint}</small>
+            </fieldset>
+          )}
+          {/* 레지스트리 목표를 고르면 방향은 그 선언이 정한다 — 같은 값을 두 컨트롤이
+              들고 있으면 사용자가 둘을 어긋나게 만들 수 있고, 그때 화면과 판정이 갈린다. */}
+          {!draft.goalMetric && (
           <label className="decision-review__field">
             <span>{t.targetDirection}</span>
             <select aria-label={t.targetDirection} value={draft.targetDirection || decisionMetricDirection(draft.metric)} onChange={(event) => updateDraft("targetDirection", event.target.value)}>
@@ -505,6 +675,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             </select>
             <small>{t.directionHint}</small>
           </label>
+          )}
           <label className="decision-review__field">
             <span>{t.baseline}</span>
             <input value={draft.baseline} onChange={(event) => updateDraft("baseline", event.target.value)} placeholder="—" />

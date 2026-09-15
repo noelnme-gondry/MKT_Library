@@ -35,18 +35,101 @@ describe("DecisionReview", () => {
     openDecisionReview(container);
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "Meta 예산 20% 감액" } });
-    fireEvent.change(screen.getByLabelText("검증 지표"), { target: { value: "CPA" } });
-    expect(screen.getByLabelText("무엇이 개선인가요?").value).toBe("lower");
+    // 목표는 도구가 선언한 첫 후보가 이미 골라진 채로 뜬다 — 지표를 타이핑할 필요가 없다.
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
+    // 방향은 그 선언이 정하므로 방향 선택기는 뜨지 않는다(같은 값을 두 컨트롤이 들면 어긋난다).
+    expect(screen.queryByLabelText("무엇이 개선인가요?")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
     confirmReviewSave();
 
     expect(screen.getByText("Meta 예산 20% 감액")).toBeTruthy();
     expect(screen.getByText("다음 주에도 이 결정을 다시 보시겠어요?")).toBeTruthy();
     expect(screen.getByText(/새로고침하거나 페이지를 닫으면 기록이 사라집니다/)).toBeTruthy();
-    expect(screen.getByText("CPA")).toBeTruthy();
-    expect(useAppStore.getState().decisionRecords[0].targetDirection).toBe("lower");
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.targetDirection).toBe("lower");
+    expect(saved.goalMetric).toBe("cpa");
+    expect(saved.goalDirection).toBe("down");
+    expect(saved.metric).toBe("CPA");
     fireEvent.change(screen.getByPlaceholderText("예: CPA 4,980원"), { target: { value: "CPA 4,980원" } });
     expect(screen.getByText("검토 예정")).toBeTruthy();
+  });
+
+  it("도구마다 다른 목표를 제안하고, 고른 목표를 그대로 저장한다", () => {
+    // 5-3은 CPA, 5-18-cannibal은 오가닉 전환수 — 같은 폼이 도구를 따라 달라진다.
+    const { container, unmount } = render(<DecisionReview toolId="5-18-cannibal" />);
+    openDecisionReview(container);
+    const goal = screen.getByLabelText("목표 (성공의 정의)");
+    expect(goal.value).toBe("rerun:organic_conversions");
+    expect([...goal.options].map((option) => option.textContent)).toContain("강한 잠식 후보 수 ↓");
+    // 자동 계산 밖 목표라는 사실을 화면이 말한다 — 조용히 판정 불가로 두지 않는다.
+    expect(container.textContent).toContain("원본 도구에서 새 데이터로 다시 분석");
+    unmount();
+
+    const second = render(<DecisionReview toolId="5-3" />);
+    openDecisionReview(second.container);
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
+    second.unmount();
+  });
+
+  it("잠식 결정에 총량 가드레일을 함께 걸어 저장한다", () => {
+    const { container } = render(<DecisionReview toolId="5-18-cannibal" />);
+    openDecisionReview(container);
+    fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "Meta 예산 30% 감액" } });
+    fireEvent.change(screen.getByLabelText("무엇을 하나요?"), { target: { value: "decrease_budget" } });
+    fireEvent.change(screen.getByLabelText("대상"), { target: { value: "Meta" } });
+    fireEvent.change(screen.getByLabelText("변화량"), { target: { value: "-30%" } });
+    // 가드레일은 기준값을 적은 것만 판정에 들어간다.
+    fireEvent.change(screen.getByLabelText("전환수 유지 ≥"), { target: { value: "5000" } });
+    fireEvent.change(screen.getByLabelText("CPA 유지 ≤"), { target: { value: "8000" } });
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
+
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.actionKind).toBe("decrease_budget");
+    expect(saved.actionTarget).toBe("Meta");
+    expect(saved.actionAmount).toBe("-30%");
+    expect(saved.goalMetric).toBe("rerun:organic_conversions");
+    expect(saved.goalDirection).toBe("up");
+    // 첫 항목은 단수 필드(v9 호환), 나머지는 목록으로.
+    expect(saved.guardrailMetric).toBe("conversions");
+    expect(saved.guardrailOp).toBe("gte");
+    expect(saved.guardrailValue).toBe("5000");
+    expect(saved.guardrails).toBe("cpa|lte|8000");
+    // 방향은 레지스트리 선언에서 온다 — decisionMetricDirection은 이 지표를 못 읽는다.
+    expect(saved.targetDirection).toBe("higher");
+  });
+
+  it("프리필 지표가 목표 후보와 맞으면 그 목표가 기본으로 잡힌다", () => {
+    // 5-3은 사용자의 CPA/ROAS 토글을 따라 지표를 프리필한다. 목록 첫 항목을
+    // 무조건 쓰면 원장은 ROAS를, 판정은 CPA를 말하는 상태가 된다.
+    const { container } = render(<DecisionReview toolId="5-3" decisionPrefill={{ action: "재배분", metric: "ROAS" }} />);
+    openDecisionReview(container);
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("roas");
+  });
+
+  it("도구의 구체적인 프리필 라벨은 원장에 남고, 판정 키는 레지스트리가 준다", () => {
+    // `metric`(보이는 라벨)과 `goalMetric`(판정 키)은 역할이 다르다. 라벨을
+    // 레지스트리 일반명으로 덮으면 "Control 대비 Test 전환율" 같은 정보가 사라진다.
+    const { container } = render(<DecisionReview toolId="5-18-cannibal" decisionPrefill={{ action: "교차 검증", metric: "강한 잠식 후보" }} />);
+    openDecisionReview(container);
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.metric).toBe("강한 잠식 후보");
+    expect(saved.goalMetric).toBe("rerun:organic_conversions");
+    expect(saved.targetDirection).toBe("higher");
+  });
+
+  it("기준값을 비운 가드레일은 저장되지 않는다", () => {
+    // 반쪽 가드레일을 남기면 스코어러가 \"측정 불가\"로 판정 전체를 막는다.
+    const { container } = render(<DecisionReview toolId="5-3" />);
+    openDecisionReview(container);
+    fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "예산 재배분" } });
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.guardrailMetric).toBe("");
+    expect(saved.guardrails).toBe("");
   });
 
   it("asks for storage consent after save and persists only after acceptance", () => {

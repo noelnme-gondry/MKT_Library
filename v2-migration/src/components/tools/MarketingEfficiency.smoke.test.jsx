@@ -132,7 +132,7 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByText("평균 효율 vs 다음 예산 투입 시 한계효율")).toBeTruthy();
     expect(screen.queryByText(/다음 1원/)).toBeNull();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
-    expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpi");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
   });
@@ -202,9 +202,9 @@ describe("MarketingEfficiency render smoke", () => {
     useAppStore.getState().setGroupAnalyzed("5-22");
     render(<MarketingEfficiency />);
 
-    expect(screen.getByLabelText("검증 지표").value).toBe("CPI");
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpi");
     act(() => useAppStore.getState().setDenomBasis("actions"));
-    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
   });
 
   it("uses native buttons to select a response curve from the ranking table", () => {
