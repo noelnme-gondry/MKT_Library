@@ -2,6 +2,7 @@
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
+import AnalysisSelector from "@/components/weekly-review/AnalysisSelector";
 import DecisionHistoryList from "@/components/weekly-review/DecisionHistoryList";
 import ProjectCreateGate from "@/components/ProjectCreateGate";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -478,10 +479,13 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {isSampleData && <p className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"}{sample ? ` · ${sample.channel}` : ""}</strong><span>{locale === "en" ? "Saved project history and targets are excluded. Sample settings are not saved to your project." : "실제 프로젝트의 저장 이력과 목표는 포함하지 않습니다. 체험 설정은 프로젝트에 저장하지 않습니다."}</span></p>}
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
-      {csvData.sheetUrl && <button className="btn primary" disabled={refreshingConnectedSheet || !workspaceReady} onClick={async () => { document.getElementById("wr-upload").open = true; setRefreshingConnectedSheet(true); try { await sheetRefreshRef.current.refreshSheet(); } finally { setRefreshingConnectedSheet(false); } }}>{refreshingConnectedSheet ? (locale === "en" ? "Fetching…" : "불러오는 중…") : (locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신")}</button>}
+      {csvData.sheetUrl && <button className="btn primary" disabled={refreshingConnectedSheet || !workspaceReady} onClick={async () => { setRefreshingConnectedSheet(true); try { await sheetRefreshRef.current.refreshSheet(); } finally { setRefreshingConnectedSheet(false); } }}>{refreshingConnectedSheet ? (locale === "en" ? "Fetching…" : "불러오는 중…") : (locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신")}</button>}
       {/* 결과가 나온 뒤 "다음 주 CSV"를 접어 두던 자리였다. 이번 분석을 보러 온
           사람에게 다음 기간 파일을 지금 묻는 이유를 설명할 수 없어 뺐다. 새 기간은
           프로젝트로 다시 들어와 올린다. */}
+      {/* 무엇을 돌릴지 사용자가 고른다. 예전에는 5-2 하나를 자동으로 돌리고 끝이라
+          이 데이터로 뭘 더 할 수 있는지 화면에 보이지 않았다. */}
+      {!isSampleData && <AnalysisSelector locale={locale} />}
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
