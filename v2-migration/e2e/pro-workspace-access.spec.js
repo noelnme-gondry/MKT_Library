@@ -86,7 +86,6 @@ for (const locale of ["ko", "en"]) {
     await project.getByRole("button", { name: en ? "Export backup" : "백업 내보내기", exact: true }).click();
     expect((await download).suggestedFilename()).toBe("growthopt-project-backup.json");
     const backupPanel = page.locator("#project-backup");
-    await backupPanel.locator(":scope > summary").click();
     await backupPanel.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription$`));
     const after = await storedProjects(page);
