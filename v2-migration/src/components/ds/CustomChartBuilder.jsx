@@ -62,7 +62,7 @@ export default function CustomChartBuilder({
   const hasMetrics = metrics.length > 0;
   const canBuild = hasMetrics && (isScorecard || dims.length > 0);
   const valid = canBuild && name.trim() && (isScorecard || dim) && metric;
-  const sel = { padding: "7px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px", width: "100%" };
+  const sel = { padding: "7px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "var(--fs-sm)", width: "100%" };
 
   const create = () => {
     if (!valid) return;
@@ -79,20 +79,20 @@ export default function CustomChartBuilder({
       panelStyle={{ boxSizing: "border-box", width: "min(500px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
 
         {!hasMetrics ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{T.noMetrics}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noMetrics}</p>
         ) : (
           <>
-            <p className="muted" style={{ fontSize: "11px", margin: "0 0 14px" }}>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 14px" }}>
               {T.intro}
             </p>
 
             {/* 1) 차트 모양 */}
-            <div className="muted" style={{ fontSize: "11px", marginBottom: "5px" }}>{T.shape}</div>
+            <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "5px" }}>{T.shape}</div>
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
               {CHART_TYPES.map((t) => (
                 <button
@@ -108,13 +108,13 @@ export default function CustomChartBuilder({
 
             <div style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
               {!isScorecard && <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
-                <span className="muted" style={{ fontSize: "11px" }}>{T.row}</span>
+                <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.row}</span>
                 <select value={dim} onChange={(e) => setDim(e.target.value)} style={sel}>
                   {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
                 </select>
               </label>}
               <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
-                <span className="muted" style={{ fontSize: "11px" }}>{isScorecard ? T.value : T.value3}</span>
+                <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{isScorecard ? T.value : T.value3}</span>
                 <select value={metric} onChange={(e) => setMetric(e.target.value)} style={sel}>
                   {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
                 </select>
@@ -122,11 +122,11 @@ export default function CustomChartBuilder({
             </div>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
-              <span className="muted" style={{ fontSize: "11px" }}>{isScorecard ? T.name : T.name4}</span>
+              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{isScorecard ? T.name : T.name4}</span>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={T.placeholder} style={sel} />
             </label>
 
-            <div style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px", fontSize: "12px", color: "var(--text-primary)" }}>
+            <div style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px", fontSize: "var(--fs-xs)", color: "var(--text-primary)" }}>
               <strong>{name.trim() || T.newChart}</strong> — {chartTypeLabel(type)} · {isScorecard ? metricLabel(metric) : `${dimLabel(dim)} · ${metricLabel(metric)}`}
             </div>
 
@@ -139,13 +139,13 @@ export default function CustomChartBuilder({
 
         {existing.length > 0 && (
           <div style={{ marginTop: "16px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-            <div className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
+            <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               {existing.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)" }}>
-                  <span style={{ fontSize: "12.5px", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong>{c.name}</strong>
-                    <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{chartTypeLabel(c.type)} · {c.type === "scorecard" ? metricLabel(c.metric) : `${dimLabel(c.dim)} · ${metricLabel(c.metric)}`}</span>
+                    <span className="muted" style={{ marginLeft: "6px", fontSize: "var(--fs-xs)" }}>{chartTypeLabel(c.type)} · {c.type === "scorecard" ? metricLabel(c.metric) : `${dimLabel(c.dim)} · ${metricLabel(c.metric)}`}</span>
                   </span>
                   <button type="button" className="ab-pill" onClick={() => onDelete?.(c.id)} title={T.delete} aria-label={`${T.delete}: ${c.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
                 </div>
@@ -154,7 +154,7 @@ export default function CustomChartBuilder({
           </div>
         )}
 
-        <p className="muted" style={{ fontSize: "11px", marginTop: "12px", textAlign: "right" }}>{T.saved}</p>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px", textAlign: "right" }}>{T.saved}</p>
     </ModalDialog>
   );
 }

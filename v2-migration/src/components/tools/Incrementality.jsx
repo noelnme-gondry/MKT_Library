@@ -176,11 +176,11 @@ export default function Incrementality({ locale = "ko" } = {}) {
       {/* 방법 선택을 첫 행동으로 올리고, 비교 설명은 필요할 때만 펼친다. */}
       <section className="block" id="s-incr-method" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
         <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
-        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
+        <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
           {tr(<>비교군이나 사전 추세를 기준으로 <strong>추정 차이</strong>를 계산합니다. 광고의 인과효과로 해석할 수 있는지는 설계 조건에 달려 있습니다.</>,
             <>Estimate <strong>differences</strong> against a comparison group or prior trend. Whether they represent a causal ad effect depends on the design.</>)}
         </p>
-        <details style={{ marginTop: "9px", color: "var(--text-muted)", fontSize: "11.5px" }}>
+        <details style={{ marginTop: "9px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
           <summary style={{ cursor: "pointer" }}>{tr("세 방법의 차이 보기", "Compare the three methods")}</summary>
           <p style={{ margin: "7px 0 0", lineHeight: 1.55 }}>
             {tr("통제군은 같은 기간의 노출·미노출을 비교해 가장 강합니다. 신규 켜기와 종료는 전후를 비교하며, 대조군이 있으면 계절·추세를 더 잘 분리합니다.", "Control groups compare exposed and unexposed users concurrently and provide the strongest design. Launch and shutdown compare before/after; a control group helps separate seasonality and trend.")}
@@ -214,7 +214,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
         aria-labelledby={`incrementality-tab-${method}`}
         tabIndex={0}
       >
-      <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
+      <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
         {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
         {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군으로 공통 변화를 보정하되, 개입 전 평행추세를 통과해야 DiD 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. A control adjusts for common change, but DiD is reported only after the pre-intervention parallel-trends check passes.")}
         {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교합니다. 대조군 DiD도 개입 전 평행추세를 통과해야 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign. Control-group DiD is reported only after the pre-intervention parallel-trends check passes.")}
@@ -241,7 +241,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
             </div>
             {/* 단위 선언 토글(환산 없음) — ds/FixedRateNote 대상이 아님을 DOM에 남긴다. */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }} data-currency-scope="declare">
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("데이터 통화", "Data currency")}</span>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("데이터 통화", "Data currency")}</span>
               <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
               <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
               {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{tr("⟳ CSV 변경", "⟳ Change CSV")}</button>}
@@ -562,7 +562,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               {series.labels.filter((d) => !start || d >= start).map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </Field>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", maxWidth: "440px", lineHeight: 1.5 }}>{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
+          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", maxWidth: "440px", lineHeight: 1.5 }}>{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
         </div>
       )}
 
@@ -664,7 +664,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       )}
 
       {series && win?.hasPre && (
-        <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+        <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거.", "Nearly identical before the start → evidence the two groups were comparable (balanced).") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
         </p></div></div>
       )}
@@ -684,18 +684,18 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {series && isWindowOrderValid && (
         <div style={{ marginTop: "14px" }}>
-          <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
-          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
+          <h3 style={{ fontSize: "var(--fs-sm)", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
+          <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
       )}
 
       {r && (
-        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is what ads actually created.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
         </p></div></div>
       )}
-      <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
+      <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
         <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>홀드아웃이 <strong>무작위 분할</strong>이고, 홀드아웃 前 두 그룹이 균형(위 확인)일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.</>, <>This can only be interpreted causally if the holdout is a <strong>random split</strong> and the two groups were balanced before the holdout (see above). Confidence drops with a small sample.</>)}
       </p></div></div>
     </section>
@@ -991,11 +991,11 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => { const next = e.target.value; setGroupCol(next); setControlGroup(""); setTreatmentGroup(""); if (!next) setUseDiD(false); }}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
               {groupCol && <Field label={tr("대조군 값", "Control value")}><select className="map-select" value={selectedControl || ""} onChange={(e) => setControlGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
               {groupCol && <Field label={tr("처리군 값", "Treatment value")}><select className="map-select" value={selectedTreatment || ""} onChange={(e) => setTreatmentGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.filter((g) => g !== selectedControl).map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
-              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 공통 변화 보정)", "DiD (adjust common change with a control)")}</label>
+              <label style={{ fontSize: "var(--fs-xs)", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 공통 변화 보정)", "DiD (adjust common change with a control)")}</label>
             </>
           )}
         </div>
-        <p style={{ margin: "9px 0 0", fontSize: "11px", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
+        <p style={{ margin: "9px 0 0", fontSize: "var(--fs-xs)", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
       </section>
 
       {!effCutoff && (
@@ -1116,13 +1116,13 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
             </div>
           </div>
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
-          <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
             <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(
               <>전환 시점 {lost ? "끈" : "켠"} 뒤 처리군 하루 평균이 {fmtNum(displayPreMean, 1)} → {fmtNum(displayPostMean, 1)}로 바뀌었습니다. {isDiD ? `같은 날짜의 대조군 변화를 뺀 순효과는 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}입니다.` : `${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} ${effVal >= 0 ? "올랐" : "떨어졌"}습니다.`}</>,
               <>After the day it was turned {lost ? "off" : "on"}, the treatment daily average changed from {fmtNum(displayPreMean, 1)} to {fmtNum(displayPostMean, 1)}. {isDiD ? `The net effect after subtracting the control on matching dates is ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.` : `It ${effVal >= 0 ? "increased" : "decreased"} by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.`}</>
             )}
           </p></div></div>
-          <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
+          <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
             <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(
               <>단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 관측된 공통 변화를 보정하고 사전추세 위반을 검사했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.</>,
               <>A simple before/after comparison can mix in seasonality, promotions, or market changes over that time. {isDiD ? "Control-group DiD adjusts for observed common change and checks for a pretrend violation, but" : "Adding a control group (a group that didn&apos;t change) and correcting with DiD would be more accurate."} If it wasn&apos;t a randomized experiment, don&apos;t assert causality.</>
@@ -1146,7 +1146,7 @@ function Stat({ label, value, hint, color }) {
 function Field({ label, children }) {
   return (
     <div className="ab-field" style={{ minWidth: "160px" }}>
-      <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>{label}{children}</label>
+      <label style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>{label}{children}</label>
     </div>
   );
 }

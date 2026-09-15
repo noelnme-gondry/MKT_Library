@@ -98,7 +98,8 @@
 
 - N개 동급 항목은 `display:grid; grid-template-columns:repeat(N, minmax(0,1fr))`로 **균등 분배**. `flex`는 왼쪽 쏠림("옹기종기") 유발 → 지양.
 - ①②③는 ①왼쪽 · ②가운데 · ③오른쪽처럼 순서가 위치로 읽히게.
-- Card(`border`+`radius:12px`+옅은 shadow)로 논리 단위 시각 묶음.
+- Card(`border`+`border-radius: var(--radius-lg)`+옅은 shadow)로 논리 단위 시각 묶음. **크기·반경은 리터럴 px로 적지 말 것** — 글자는 `--fs-xs`~`--fs-3xl`, 반경은 `--radius-sm`~`--radius-pill`에서 고르고 `app/typeScale.test.js`·`designTokenSingleSource.test.js`가 강제한다.
+- **차트 축은 무엇인지 말해야 한다**: 직교 좌표 차트는 x·y 모두 `title: { display: true, text: … }`. 축 없는 차트(원형·도넛)는 대상 밖이고, 예외는 `CHART_AXIS_TITLE_EXEMPT` 표식 + 사유로만(`app/chartAxisTitle.test.js`).
 - **범례 많은 차트(회귀 변수 등)**: Chart.js 기본 상단 범례가 캔버스 짓눌러 레이아웃 붕괴 → `legend.position:"right"`+`maxWidth` + 컨테이너 `minHeight` 명시 + x축 `autoSkip:true, maxTicksLimit` + 툴팁 `toLocaleString()`. `maintainAspectRatio:false, responsive:true` 기본.
 - **아코디언/토글 안 차트는 접힘 상태에서 폭 0으로 마운트됨**(§7 0px 함정 재발) → `<details onToggle>`에서 열릴 때 `requestAnimationFrame(()=>window.dispatchEvent(new Event("resize")))`로 재측정. 통계 상세 접어두면 거의 항상 이 문제 생김.
 

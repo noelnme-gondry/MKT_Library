@@ -232,8 +232,16 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
           }
         },
         scales: {
-          x: { ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 14 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: getCssVar("--text-muted") }, grid: { color: getCssVar("--border") } }
+          x: {
+            title: { display: true, text: tr("날짜", "Date"), color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 14 },
+            grid: { color: getCssVar("--border") },
+          },
+          y: {
+            title: { display: true, text: metricOpts.find((o) => o.k === metric)?.label || metric, color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted") },
+            grid: { color: getCssVar("--border") },
+          }
         }
       }
     });
@@ -329,7 +337,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
               <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
             </div>
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "12px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>
                   <tr>
                     <th>{tr("날짜", "Date")}</th>
@@ -406,7 +414,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
               </table>
             </div>
             {orderedAnomalyCols.length === 0 && (
-              <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
             )}
           </>
         ) : (

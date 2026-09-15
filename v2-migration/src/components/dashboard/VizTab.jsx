@@ -743,7 +743,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       const el = canvasRefs.current[def.id];
       if (!el) continue;
       instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
-        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf,
+        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf, locale,
       }));
     }
 
@@ -958,11 +958,11 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
           </div>
         </div>
         {kpiEditMode && (
-          <p className="muted" style={{ fontSize: "12px", margin: "0 0 8px" }}>{T.editHint}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
         {!kpiEditMode && <p className="kpi-grid__hint">{locale === "en" ? "Showing the five core KPIs. Enable the rest in Edit." : "핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다."}</p>}
         {allKpiCards.length === 0 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{T.noKpi}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noKpi}</p>
         ) : (
           <InlineCardEditor
             items={allKpiCards}
@@ -1015,14 +1015,14 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
             store.eventMarkers를 preparedMarkers로 구독해 세로선만 오버레이. */}
 
         {orderedCharts.length === 0 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{T.noChart}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noChart}</p>
         ) : (
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (

@@ -559,7 +559,7 @@ export default function WebRMmmAdvanced({
   return (
     <section className="block" id="s-mmm-webr-challenger">
       <h2 className="section-title"><span className="ix">AUTO</span>{T.title}</h2>
-      <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px", lineHeight: 1.55 }}>{T.desc}</p>
+      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px", lineHeight: 1.55 }}>{T.desc}</p>
       <div className="mmm-model-switcher" role="radiogroup" aria-label={T.modelChoice}>
         <button type="button" role="radio" aria-checked={selectedModel === "bayesian"} className={`mmm-model-choice ${selectedModel === "bayesian" ? "is-selected" : ""}`} onClick={() => select("bayesian")} onKeyDown={onModelKeyDown}>
           <span className="mmm-model-choice__radio" aria-hidden="true" />
@@ -578,7 +578,7 @@ export default function WebRMmmAdvanced({
         <div className="required-banner"><p style={{ margin: 0 }}>{T.blocked(input.n, input.requiredObservations, input.reason)}</p></div>
       ) : (
         <>
-          {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "12px" }}>{T.loading}</p>}
+          {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.loading}</p>}
           {visible.status === "failed" && <div className="required-banner"><p style={{ margin: 0 }}>{T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
             <div>
@@ -712,7 +712,7 @@ export default function WebRMmmAdvanced({
                   <h4>{T.budgetTitle}</h4>
                   <div className="mmm-budget-input"><label>{T.totalBudget} <CommaNumberInput value={Math.round(effectiveBudget)} onCommit={(value) => setBudgetInput({ signature, value })} /></label><span>{T.currentBudget}: {formatSpend(currentBudget)}</span></div>
                   {budgetPlan.status === "blocked" ? (
-                    <div className="required-banner"><strong>{T.budgetBlocked}</strong><p style={{ margin: ".35rem 0 0", fontSize: "11px" }}>{budgetPlan.reasons.map((reason) => T.reason[reason] || reason).join(" · ")}</p></div>
+                    <div className="required-banner"><strong>{T.budgetBlocked}</strong><p style={{ margin: ".35rem 0 0", fontSize: "var(--fs-xs)" }}>{budgetPlan.reasons.map((reason) => T.reason[reason] || reason).join(" · ")}</p></div>
                   ) : <>
                     <div className="table-wrap"><table className="data mmm-webr-table">
                       <thead><tr><th>{T.channel}</th><th className="tnum">{T.currentBudget}</th><th className="tnum">{T.plannedBudget}</th><th className="tnum">{T.change}</th><th className="tnum">{T.predictedIncrement}</th></tr></thead>
@@ -727,7 +727,7 @@ export default function WebRMmmAdvanced({
                   <div className="table-wrap"><table className="data mmm-webr-table"><thead><tr><th>{T.driver}</th><th className="tnum">importance</th></tr></thead><tbody>{(result.importance || []).map((row) => <tr key={`${row.kind}:${row.name}`}><td>{webRMmmDisplayLabel(row.name, locale)}</td><td className="tnum">{row.importance.toFixed(3)}</td></tr>)}</tbody></table></div>
                   <p className="mmm-result-note">{T.caveat}</p>
                 </details>
-              </div> : <p className="muted" style={{ fontSize: "11px" }}>{T.bayesianDetail}</p>}
+              </div> : <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.bayesianDetail}</p>}
             </div>
           )}
         </>

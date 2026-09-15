@@ -150,7 +150,7 @@ export default function BudgetHealthCard({ locale = "ko" }) {
       <div className="body">
         <strong>{T.title}</strong>
         <p>{T.body(health.recentDays, health.flagCount, potential)}</p>
-        <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+        <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)" }}>
           {T.hint}
         </p>
         <button

@@ -212,7 +212,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
       onSubmit={handleSubmit}
       style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}
     >
-      <label htmlFor={inputId} style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.urlLabel}</label>
+      <label htmlFor={inputId} style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{T.urlLabel}</label>
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
         <input
           ref={inputRef}
@@ -226,7 +226,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
           style={{
             flex: "1 1 260px",
             padding: "8px 10px",
-            fontSize: "12.5px",
+            fontSize: "var(--fs-sm)",
             borderRadius: "var(--radius-md, 8px)",
             border: "1px solid var(--border-subtle)",
             background: "var(--surface-container-lowest)",
@@ -255,7 +255,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, onImpo
       <span id={`${inputId}-hint`} className="sheet-connect-hint">{T.urlHint}</span>
       <VideoHelpButton topic="sheets" locale={locale} />
       <GoogleSheetsGuide locale={locale} />
-      {recentSources.length > 0 && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
+      {recentSources.length > 0 && <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
     </form>
   );
 }

@@ -75,21 +75,21 @@ export default function DemoNoticeModal({ locale = "ko" }) {
       overlayStyle={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)", padding: "20px" }}
       panelStyle={{ boxSizing: "border-box", maxWidth: "420px", width: "100%", background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,0.4)", padding: "22px 24px" }}
     >
-      <div style={{ fontSize: "26px", marginBottom: "10px" }}>🧪</div>
-      <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
+      <div style={{ fontSize: "var(--fs-xl)", marginBottom: "10px" }}>🧪</div>
+      <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
         {tr("지금은 데모 데이터를 이용 중입니다", "You're currently viewing demo data")}
       </div>
-      <p style={{ fontSize: "13.5px", lineHeight: 1.65, color: "var(--text-secondary)", margin: "0 0 18px" }}>
+      <p style={{ fontSize: "var(--fs-base)", lineHeight: 1.65, color: "var(--text-secondary)", margin: "0 0 18px" }}>
         {tr(
           "표시된 수치는 예시이며 내 데이터가 아닙니다. 내 CSV는 이 브라우저 안에서만 처리되고 서버로 업로드되지 않습니다.",
           "The numbers shown are examples, not your data. Your CSV is processed only in this browser and is not uploaded to our servers."
         )}
       </p>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap" }}>
-        <button type="button" className="btn" onClick={close} style={{ fontSize: "13px", padding: "9px 18px" }}>
+        <button type="button" className="btn" onClick={close} style={{ fontSize: "var(--fs-sm)", padding: "9px 18px" }}>
           {tr("나중에", "Not now")}
         </button>
-        <button ref={primaryActionRef} type="button" className="btn primary" onClick={useMyCsv} style={{ fontSize: "13px", padding: "9px 18px" }}>
+        <button ref={primaryActionRef} type="button" className="btn primary" onClick={useMyCsv} style={{ fontSize: "var(--fs-sm)", padding: "9px 18px" }}>
           {tr("내 CSV로 바꾸기", "Use my CSV")}
         </button>
       </div>

@@ -25,7 +25,7 @@ import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolCo
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
 // redirect로 먼저 걸러내므로, 아직 번역 안 된 컴포넌트로는 절대 도달하지 않는다.
-const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "13px" }}>Loading…</div> });
+const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div> });
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));

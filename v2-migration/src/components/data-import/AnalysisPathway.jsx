@@ -31,12 +31,12 @@ export default function AnalysisPathway({ csvData, locale = "ko" }) {
   };
   return <section className="block analysis-pathway" aria-label={locale === "en" ? "Next analyses" : "다음 분석"}>
     <h2 className="section-title" style={{ marginBottom: "5px" }}>{locale === "en" ? "Next answers from this analysis" : "이 결과에서 바로 이어서 볼 답"}</h2>
-    <p className="muted" style={{ marginTop: 0, fontSize: "12px" }}>{locale === "en" ? "Open a detail view without uploading the same file again. Data stays in this browser." : "같은 파일을 다시 올리지 않고 상세 분석으로 이어집니다. 데이터는 이 브라우저 안에만 남습니다."}</p>
+    <p className="muted" style={{ marginTop: 0, fontSize: "var(--fs-xs)" }}>{locale === "en" ? "Open a detail view without uploading the same file again. Data stays in this browser." : "같은 파일을 다시 올리지 않고 상세 분석으로 이어집니다. 데이터는 이 브라우저 안에만 남습니다."}</p>
     <div className="analysis-pathway__grid">
       {plans.map((plan, index) => <div key={plan.id} className={`analysis-pathway__item${plan.ready ? " is-ready" : ""}`}>
         <span className="analysis-pathway__index">0{index + 1}</span>
-        <strong style={{ display: "block", fontSize: "13px" }}>{plan.ready ? "✓ " : "○ "}{plan.title}</strong>
-        <p style={{ fontSize: "11.5px", color: "var(--text-muted)", lineHeight: 1.55, minHeight: "54px" }}>{plan.body}</p>
+        <strong style={{ display: "block", fontSize: "var(--fs-sm)" }}>{plan.ready ? "✓ " : "○ "}{plan.title}</strong>
+        <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", lineHeight: 1.55, minHeight: "54px" }}>{plan.body}</p>
         <button className="ab-pill" disabled={!plan.ready} onClick={() => open(plan)}>{plan.ready ? plan.action : (locale === "en" ? "Data needed" : "데이터 보완 필요")}</button>
       </div>)}
     </div>

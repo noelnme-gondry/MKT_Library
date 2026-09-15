@@ -319,6 +319,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
         },
         scales: {
           x: {
+            title: { display: true, text: locale === "en" ? "Date" : "날짜", color: tickColor },
             ticks: { color: tickColor, maxTicksLimit: 14 },
             grid: { color: gridColor },
             afterBuildTicks(ax) {
@@ -328,6 +329,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
             }
           },
           y: {
+            title: { display: true, text: cards.find((c) => c.k === selectedMetric)?.label || selectedMetric, color: tickColor },
             ticks: { color: tickColor },
             grid: { color: gridColor },
           }
@@ -342,7 +344,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics, seriesVal]);
+  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics, seriesVal, cards, locale]);
 
   if (!hasData) {
     return <div className="tab-pane active"><p className="muted">{T.noData}</p></div>;
@@ -376,7 +378,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
           </>}
         />
         {editMode && (
-          <p className="muted" style={{ fontSize: "12px", margin: "8px 0 0" }}>{T.editHint}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0 0" }}>{T.editHint}</p>
         )}
 
         <div style={{ marginTop: "10px" }}>
@@ -389,7 +391,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
             locale={locale}
           />
         </div>
-        <p className="muted" style={{ fontSize: "12px", marginTop: "8px" }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>
           {locale === "en" ? T.scFootnote(windowDays) : C.scFootnote(windowDays)}
         </p>
       </section>
@@ -408,14 +410,14 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
 
       {selectedMetric && (
         <section className="block" id="s-score-daily" style={{ paddingTop: "8px" }}>
-          <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
+          <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
             {T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, Math.min(daily.length, 2 * windowDays))}
           </h3>
-          <p className="muted" style={{ fontSize: "12px", margin: "0 0 8px" }}>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>
             {T.legendHint(windowDays)}
           </p>
           {daily.slice(-2 * windowDays).length < 2 * windowDays && (
-            <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0" }}>
               {T.insufficientData(daily.slice(-2 * windowDays).length)}
             </p>
           )}

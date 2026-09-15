@@ -62,7 +62,7 @@ export default function AnalyticsOptOut({ locale = "ko" }) {
         >
           {granted ? t.disable : t.enable}
         </button>
-        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "12px" }}>{t.note}</p>
+        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "var(--fs-xs)" }}>{t.note}</p>
       </div>
     </div>
   );

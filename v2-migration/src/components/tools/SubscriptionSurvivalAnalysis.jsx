@@ -212,7 +212,11 @@ function ChartCanvas({ table, hazard, locale, isDarkMode }) {
         ...base,
         responsive: true,
         maintainAspectRatio: false,
-        scales: { ...base.scales, y: { ...base.scales?.y, min: 0, max: 100, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } } },
+        scales: {
+          ...base.scales,
+          x: { ...base.scales?.x, title: { display: true, text: tx(locale, "관측 시작 후 경과 기간", "Time since observation start"), color: theme.muted } },
+          y: { ...base.scales?.y, min: 0, max: 100, title: { display: true, text: tx(locale, "생존율 (%)", "Survival (%)"), color: theme.muted }, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } },
+        },
       },
     });
     survivalChart.current = chart;
@@ -230,7 +234,11 @@ function ChartCanvas({ table, hazard, locale, isDarkMode }) {
         labels: hazard.rows.map((row) => row.time),
         datasets: [{ label: tx(locale, "조건부 이탈·종료 위험", "Conditional exit risk"), data: hazard.rows.map((row) => row.hazard == null ? null : row.hazard * 100), backgroundColor: hazard.rows.map((row) => row.atRisk < 5 ? theme.muted : theme.primary) }],
       },
-      options: { ...base, responsive: true, maintainAspectRatio: false, scales: { ...base.scales, y: { ...base.scales?.y, min: 0, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } } } },
+      options: { ...base, responsive: true, maintainAspectRatio: false, scales: {
+        ...base.scales,
+        x: { ...base.scales?.x, title: { display: true, text: tx(locale, "관측 시작 후 경과 기간", "Time since observation start"), color: theme.muted } },
+        y: { ...base.scales?.y, min: 0, title: { display: true, text: tx(locale, "해당 기간 이탈 위험 (%)", "Hazard in period (%)"), color: theme.muted }, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } },
+      } },
     });
     hazardChart.current = chart;
     const cancelResize = scheduleSubscriptionChartResize(chart);
@@ -279,7 +287,11 @@ function SegmentSurvivalChart({ curves, locale, isDarkMode }) {
         ...base,
         responsive: true,
         maintainAspectRatio: false,
-        scales: { ...base.scales, y: { ...base.scales?.y, min: 0, max: 100, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } } },
+        scales: {
+          ...base.scales,
+          x: { ...base.scales?.x, title: { display: true, text: tx(locale, "관측 시작 후 경과 기간", "Time since observation start"), color: theme.muted } },
+          y: { ...base.scales?.y, min: 0, max: 100, title: { display: true, text: tx(locale, "생존율 (%)", "Survival (%)"), color: theme.muted }, ticks: { ...base.scales?.y?.ticks, callback: (value) => `${value}%` } },
+        },
       },
     });
     chartRef.current = chart;

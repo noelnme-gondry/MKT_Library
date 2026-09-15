@@ -108,7 +108,7 @@ function RoleSelect({ col, role, setRole, tr = (ko) => ko }) {
       aria-label={tr(`${col} 역할`, `${col} role`)}
       title={tr("드래그 대신 역할을 직접 선택", "Choose a role instead of dragging")}
       className="map-select"
-      style={{ maxWidth: "112px", minWidth: "0px", fontSize: "11px" }}
+      style={{ maxWidth: "112px", minWidth: "0px", fontSize: "var(--fs-xs)" }}
     >
       {ROLE_OPTIONS.map(([value, ko, en]) => <option key={value} value={value}>{tr(ko, en)}</option>)}
     </select>
@@ -123,7 +123,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }
       className="reg-chip aha-mapper-chip aha-mapper-chip--feature"
       draggable
       onDragStart={() => setDragCol(col)}
-      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
+      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "var(--fs-xs)", cursor: "grab" }}
     >
       <strong title={col} style={MAPPER_CHIP_LABEL_STYLE}>{col}</strong>
       <RoleSelect col={col} role={def.role || "feature"} setRole={setRole} tr={tr} />
@@ -133,7 +133,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }
         onChange={(e) => setField(col, "action", e.target.value.trim() || col)}
         aria-label={tr(`${col} 액션명`, `${col} action name`)}
         title={tr("액션명(같은 이름끼리 윈도우별로 묶임)", "Action name (same names are grouped per window)")}
-        style={{ width: "72px", maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
+        style={{ width: "72px", maxWidth: "100%", minWidth: "0px", fontSize: "var(--fs-xs)" }}
         className="map-select"
       />
       <select
@@ -145,7 +145,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }
           else if (v === "custom") setField(col, "window", def.window === Infinity || WINDOW_PRESETS.includes(def.window) ? 1 : def.window);
           else setField(col, "window", parseInt(v, 10));
         }}
-        style={{ maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
+        style={{ maxWidth: "100%", minWidth: "0px", fontSize: "var(--fs-xs)" }}
       >
         {WINDOW_PRESETS.map((w) => <option key={w} value={w}>D{w}</option>)}
         <option value="all">{tr("전체", "All")}</option>
@@ -164,7 +164,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }
           }}
           placeholder="N"
           title={tr("윈도우 일수 직접 입력", "Enter window days directly")}
-          style={{ width: "44px", maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
+          style={{ width: "44px", maxWidth: "100%", minWidth: "0px", fontSize: "var(--fs-xs)" }}
           className="map-select"
         />
       )}
@@ -179,7 +179,7 @@ function SimpleChip({ col, role, setRole, setDragCol, tr = (ko) => ko }) {
       className="reg-chip aha-mapper-chip aha-mapper-chip--simple"
       draggable
       onDragStart={() => setDragCol(col)}
-      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
+      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "var(--fs-xs)", cursor: "grab" }}
     >
       <strong style={MAPPER_CHIP_LABEL_STYLE}>{col}</strong>
       <RoleSelect col={col} role={role} setRole={setRole} tr={tr} />
@@ -195,16 +195,16 @@ function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragC
       onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, role); setDragCol(null); }}
       style={{ border: "1px dashed var(--border)", borderRadius: "8px", padding: "8px", minHeight: "44px" }}
     >
-      <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{label}</div>
+      <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "4px" }}>{label}</div>
       <div>
         {cols.length
           ? cols.map((c) => (feature
               ? <FeatureChip key={c} col={c} cm={cm} setRole={setRole} setField={setField} setDragCol={setDragCol} tr={tr} />
               : <SimpleChip key={c} col={c} role={role} setRole={setRole} setDragCol={setDragCol} tr={tr} />))
-          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
+          : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
       </div>
       {single && cols.length > 1 && (
-        <div style={{ fontSize: "11px", color: "var(--warning)", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--warning)", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
       )}
     </div>
   );
@@ -284,7 +284,7 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange, local
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
-        <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>
           {tr("컬럼을 역할 영역으로 드래그하거나 각 칩의 역할 선택을 사용하세요. 헤더가 ", "Drag columns onto a role zone or use each chip’s role selector. If a header looks like ")}<code className="inline">{"{action}_d{N}"}</code>{tr(" 형태면 액션·윈도우가 자동 파싱됩니다.", ", the action and window are parsed automatically.")}
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -300,11 +300,11 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange, local
         onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, "ignore"); setDragCol(null); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
-        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
         <div>
           {tray.length
             ? tray.map((h) => <SimpleChip key={h} col={h} role="ignore" setRole={setRole} setDragCol={setDragCol} tr={tr} />)
-            : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
+            : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>

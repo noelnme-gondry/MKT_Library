@@ -1567,7 +1567,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       <div>
         {inRole(role).length
           ? inRole(role).map((c) => <Chip key={c} col={c} withKind={withKind} withPlat={withPlat} />)
-          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
+          : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
       </div>
     </div>
   );
@@ -1589,7 +1589,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>
           {selectedCol
             ? tr(`“${selectedCol}” 선택됨 — 넣을 역할 영역을 한 번 클릭하세요.`, `“${selectedCol}” selected — click the role zone to place it.`)
             : tr("컬럼을 드래그하거나 칩의 역할 선택을 사용하세요. 칩을 클릭한 뒤 역할 영역을 클릭해도 됩니다.", "Drag columns or use each chip’s role selector. You can also click a chip and then a role zone.")}
@@ -1620,9 +1620,9 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), "ignore"); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
-        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
         <div>
-          {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
+          {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>
       <div className="mmm-mapper-zones" style={{ display: "grid", gap: "10px", alignItems: "start" }}>
@@ -1646,11 +1646,11 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
           </div>
         </div>
       )}
-      <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-muted)" }}>
+      <div style={{ marginTop: "10px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
         {tr(`Meridian 입력 상태 · GEO: ${hasGeo ? "매핑됨" : "없음 → National-level"} · Reach: ${hasReach ? "매핑됨" : "없음"} · Frequency: ${hasFrequency ? "매핑됨" : "없음"}`, `Meridian inputs · GEO: ${hasGeo ? "mapped" : "missing → National-level"} · Reach: ${hasReach ? "mapped" : "missing"} · Frequency: ${hasFrequency ? "mapped" : "missing"}`)}
       </div>
       {!hasMappedTime && !hasMappedPlatform && (
-        <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginTop: "10px", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px", color: "var(--text-1)" }}>
+        <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginTop: "10px", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>
           <input
             type="checkbox"
             checked={cm.__mmmRowOrderConfirmed === true}

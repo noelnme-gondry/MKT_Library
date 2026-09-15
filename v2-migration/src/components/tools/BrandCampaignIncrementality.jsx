@@ -130,7 +130,17 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       options: {
         ...commonOptions,
         plugins: { ...commonOptions.plugins, legend: { ...commonOptions.plugins.legend, labels: { ...commonOptions.plugins.legend.labels, color: theme.text } } },
-        scales: { x: { ...commonOptions.scales.x, ticks: { ...commonOptions.scales.x.ticks, maxTicksLimit: 8 } }, y: commonOptions.scales.y },
+        scales: {
+          x: {
+            ...commonOptions.scales.x,
+            title: { display: true, text: tx(locale, "기간", "Period"), color: theme.muted },
+            ticks: { ...commonOptions.scales.x.ticks, maxTicksLimit: 8 },
+          },
+          y: {
+            ...commonOptions.scales.y,
+            title: { display: true, text: tx(locale, "관측 지표", "Observed metric"), color: theme.muted },
+          },
+        },
       },
     });
     requestAnimationFrame(() => chartInstance.current?.resize());
@@ -296,7 +306,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       </div> : <>
         <div className="file-state"><div className="meta-text"><span className="dot"></span><strong>{csvData.fileName}</strong><span className="csv-loaded-stats">{csvData.raw.length.toLocaleString()}{tx(locale, "행", " rows")}</span></div><button className="ab-pill" type="button" onClick={clearCsvGroup}>{tx(locale, "CSV 변경", "Change CSV")}</button></div>
         <div className="mapping-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "10px", margin: "14px 0" }}>
-          {[{ label: tx(locale, "날짜", "Date"), value: resolvedDateColumn, set: setDateColumn, allowed: csvData.headers }, { label: tx(locale, "성과 지표", "Outcome"), value: resolvedOutcomeColumn, set: setOutcomeColumn, allowed: csvData.headers.filter((header) => isNumericColumn(csvData.raw, header)) }, { label: tx(locale, "브랜드 캠페인 집행 여부", "Brand campaign status"), value: resolvedCampaignColumn, set: setCampaignColumn, allowed: csvData.headers }].map((field) => <label key={field.label} style={{ display: "grid", gap: "5px", fontSize: "12px" }}><span>{field.label}</span><select value={field.value} onChange={(event) => { field.set(event.target.value); setAnalysisSignature(""); }}><option value="">{tx(locale, "열 선택", "Select column")}</option>{field.allowed.map((header) => <option key={header} value={header}>{header}</option>)}</select></label>)}
+          {[{ label: tx(locale, "날짜", "Date"), value: resolvedDateColumn, set: setDateColumn, allowed: csvData.headers }, { label: tx(locale, "성과 지표", "Outcome"), value: resolvedOutcomeColumn, set: setOutcomeColumn, allowed: csvData.headers.filter((header) => isNumericColumn(csvData.raw, header)) }, { label: tx(locale, "브랜드 캠페인 집행 여부", "Brand campaign status"), value: resolvedCampaignColumn, set: setCampaignColumn, allowed: csvData.headers }].map((field) => <label key={field.label} style={{ display: "grid", gap: "5px", fontSize: "var(--fs-xs)" }}><span>{field.label}</span><select value={field.value} onChange={(event) => { field.set(event.target.value); setAnalysisSignature(""); }}><option value="">{tx(locale, "열 선택", "Select column")}</option>{field.allowed.map((header) => <option key={header} value={header}>{header}</option>)}</select></label>)}
         </div>
         {resolvedCampaignColumn && (csvData.raw || []).some((row) => parseCampaignFlag(row?.[resolvedCampaignColumn]) == null) && <p className="callout warn">{tx(locale, "집행 여부 열은 on/off, 1/0, 집행/중단처럼 해석 가능한 값만 사용합니다.", "Campaign status must use recognizable values such as on/off, 1/0, or active/inactive.")}</p>}
         {nonNumericOutcome && <p className="callout warn">{tx(locale, "선택한 성과 열에서 숫자를 읽지 못했습니다.", "The selected outcome column does not contain readable numbers.")}</p>}

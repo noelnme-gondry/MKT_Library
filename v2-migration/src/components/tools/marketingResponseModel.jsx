@@ -879,7 +879,7 @@ export function Badge({ tone = "neutral", color, children }) {
   const c = BADGE_TONE[tone] || BADGE_TONE.neutral;
   const finalColor = color || c.color;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", background: color ? `${color}1f` : c.bg, border: `1px solid ${color || c.border}`, color: finalColor, fontWeight: 700, fontSize: "11.5px", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", background: color ? `${color}1f` : c.bg, border: `1px solid ${color || c.border}`, color: finalColor, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
       {children}
     </span>
   );
@@ -897,8 +897,8 @@ export function Card({ children, style }) {
 export function StatHead({ title, hint }) {
   return (
     <div style={{ margin: "18px 0 8px", borderLeft: "3px solid var(--primary, #adc6ff)", paddingLeft: "10px" }}>
-      <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
-      {hint ? <div style={{ fontSize: "11px", color: MUTED, marginTop: "3px", lineHeight: 1.55 }}>{hint}</div> : null}
+      <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
+      {hint ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "3px", lineHeight: 1.55 }}>{hint}</div> : null}
     </div>
   );
 }
@@ -932,8 +932,16 @@ export function ContributionGroupPanel({ label, values, labels, color, locale, f
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${label}: ${formatValue ? formatValue(ctx.parsed.y, { sign: true }) : `${ctx.parsed.y >= 0 ? "+" : ""}${Math.round(ctx.parsed.y).toLocaleString()}${locale === "ko" ? "명" : ""}`}` } } },
         scales: {
-          x: { ticks: { color: muted, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
-          y: { ticks: { color: muted, callback: (v) => formatValue ? formatValue(v) : Math.round(v).toLocaleString() }, grid: { color: grid } },
+          x: {
+            title: { display: true, text: locale === "en" ? "Period" : "기간", color: muted },
+            ticks: { color: muted, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 },
+            grid: { display: false },
+          },
+          y: {
+            title: { display: true, text: label, color: muted },
+            ticks: { color: muted, callback: (v) => formatValue ? formatValue(v) : Math.round(v).toLocaleString() },
+            grid: { color: grid },
+          },
         },
       },
     });
@@ -978,8 +986,16 @@ export function CollinearPairInputChart({ labels, pair, locale }) {
           tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y || 0).toLocaleString()}` } },
         },
         scales: {
-          x: { ticks: { color: muted, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
-          y: { ticks: { color: muted, callback: (value) => Number(value).toLocaleString() }, grid: { color: grid } },
+          x: {
+            title: { display: true, text: locale === "en" ? "Period" : "기간", color: muted },
+            ticks: { color: muted, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 },
+            grid: { display: false },
+          },
+          y: {
+            title: { display: true, text: locale === "en" ? "Channel value" : "채널 값", color: muted },
+            ticks: { color: muted, callback: (value) => Number(value).toLocaleString() },
+            grid: { color: grid },
+          },
         },
       },
     });
@@ -1010,21 +1026,21 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
-        <strong style={{ fontSize: "12px", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "18px", fontWeight: 720, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
-        <span className="muted" style={{ fontSize: "11px" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
+        <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
+        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 720, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
         <div style={{ minWidth: timelineWidth + "px", display: "grid", gridTemplateColumns: "168px 1fr", gap: "6px 10px", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: "11px" }}>{tx("채널", "Channel")}</span>
+          <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("채널", "Channel")}</span>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "15px", alignItems: "end" }}>
-            {labels.map((label, index) => <span key={String(label) + "-" + index} style={{ fontSize: "11px", color: "var(--text-muted)", overflow: "visible", whiteSpace: "nowrap", transform: "translateX(-2px)" }}>{labelIndexes.has(index) ? String(label) : ""}</span>)}
+            {labels.map((label, index) => <span key={String(label) + "-" + index} style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", overflow: "visible", whiteSpace: "nowrap", transform: "translateX(-2px)" }}>{labelIndexes.has(index) ? String(label) : ""}</span>)}
           </div>
           {activeChannels.map((channel, channelIndex) => {
             const maximum = maxByKey[channel.key] || 1;
             const hue = channelIndex % 2 ? "127,119,221" : "93,202,165";
             return <React.Fragment key={channel.key}>
-              <span title={channel.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "11px", color: "var(--text-1)" }}>{channel.label}</span>
+              <span title={channel.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{channel.label}</span>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "18px" }}>
                 {channel.values.map((rawValue, index) => {
                   const value = Math.max(0, Number(rawValue) || 0);
@@ -1036,7 +1052,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
           })}
         </div>
       </div>
-      <p className="muted" style={{ fontSize: "11px", lineHeight: 1.45, margin: "10px 0 0" }}>{tx(
+      <p className="muted" style={{ fontSize: "var(--fs-xs)", lineHeight: 1.45, margin: "10px 0 0" }}>{tx(
         "색이 진할수록 그 채널이 자기 최대 집행 수준에 가까웠다는 뜻입니다. 이 표는 같은 시점에 집행했는지 확인하는 용도이며, 채널 효과나 예산 효율을 뜻하지 않습니다.",
         "Darker cells mean a channel was closer to its own peak input. Use this to inspect timing overlap, not channel effect or budget efficiency.",
       )}</p>
@@ -1051,7 +1067,7 @@ export function NetEffectEvidence({ net, locale }) {
   const coef = Number(net?.net_elasticity);
   const lo = Number(net?.ci_lo);
   const hi = Number(net?.ci_hi);
-  if (![coef, lo, hi].every(Number.isFinite)) return <Card style={{ fontSize: "12px", color: MUTED }}>{tx("순증분 효과를 추정할 데이터가 부족합니다.", "Not enough data to estimate net incremental effect.")}</Card>;
+  if (![coef, lo, hi].every(Number.isFinite)) return <Card style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tx("순증분 효과를 추정할 데이터가 부족합니다.", "Not enough data to estimate net incremental effect.")}</Card>;
   const min = Math.min(lo, 0, coef) - Math.max(0.03, Math.abs(hi - lo) * 0.12);
   const max = Math.max(hi, 0, coef) + Math.max(0.03, Math.abs(hi - lo) * 0.12);
   const pos = (v) => `${((v - min) / Math.max(1e-9, max - min)) * 100}%`;
@@ -1065,15 +1081,15 @@ export function NetEffectEvidence({ net, locale }) {
   const tone = isPositive ? NEG : isNegative ? POS : "#f59e0b";
   return <Card style={{ padding: "14px 16px" }}>
     <div style={{ display: "flex", gap: "18px", alignItems: "baseline", flexWrap: "wrap" }}>
-      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "24px", fontWeight: 750, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
-      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "16px", fontWeight: 650 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
+      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 750, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
+      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 650 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
     </div>
     <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
-      <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "11px", color: MUTED }}>0</span></div>
+      <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "var(--fs-xs)", color: MUTED }}>0</span></div>
       <div style={{ position: "absolute", left: pos(lo), width: `calc(${pos(hi)} - ${pos(lo)})`, top: "18px", height: "5px", borderRadius: "4px", background: tone }}></div>
       <div style={{ position: "absolute", left: pos(coef), top: "11px", width: "18px", height: "18px", marginLeft: "-9px", borderRadius: "50%", background: tone, border: "3px solid var(--bg-2)", boxShadow: "0 0 0 1px var(--border)" }} title={tx("점추정", "Point estimate")}></div>
     </div>
-    <p style={{ fontSize: "11.5px", color: "var(--text-1)", margin: "12px 0 0", lineHeight: 1.5 }}><strong style={{ color: tone }}>{verdict}</strong> {tx("값은 ‘이 채널 지출 1% 증가 시 전체 성과가 몇 % 움직였는가’입니다.", "Value means expected % change in total outcome for a 1% spend increase in this channel.")}</p>
+    <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)", margin: "12px 0 0", lineHeight: 1.5 }}><strong style={{ color: tone }}>{verdict}</strong> {tx("값은 ‘이 채널 지출 1% 증가 시 전체 성과가 몇 % 움직였는가’입니다.", "Value means expected % change in total outcome for a 1% spend increase in this channel.")}</p>
   </Card>;
 }
 
@@ -1120,8 +1136,16 @@ export function MmmBacktestChart({ labels, actual, variants, locale, validationS
           },
         },
         scales: {
-          x: { ticks: { color: muted, autoSkip: true, maxTicksLimit: 12 }, grid: { display: false } },
-          y: { ticks: { color: muted, callback: (value) => formatValue ? formatValue(value) : fmtInt(value) }, grid: { color: grid } },
+          x: {
+            title: { display: true, text: locale === "en" ? "Period" : "기간", color: muted },
+            ticks: { color: muted, autoSkip: true, maxTicksLimit: 12 },
+            grid: { display: false },
+          },
+          y: {
+            title: { display: true, text: locale === "en" ? "Outcome" : "성과", color: muted },
+            ticks: { color: muted, callback: (value) => formatValue ? formatValue(value) : fmtInt(value) },
+            grid: { color: grid },
+          },
         },
       },
     });
@@ -1151,7 +1175,7 @@ export function MmmManualDownload({ locale = "ko", placement = "footer" }) {
       >
         {isEnglish ? "📘 View the MMM manual · PDF" : "📘 MMM 설명서 확인 · PDF"}
       </a>
-      <p className="muted" style={{ fontSize: "11px", margin: "6px 0 0" }}>
+      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 0" }}>
         {isEnglish ? "Inputs, calculations, priors, validation, interpretation, and limitations" : "입력 준비부터 계산·prior·검증·해석·한계까지 한 번에 확인"}
       </p>
     </div>
@@ -1285,7 +1309,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
         <details className="mmm-evidence-ledger__pending">
           <summary style={{ cursor: "pointer", fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</summary>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
-            <table className="data" style={{ fontSize: "11px" }}>
+            <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
               <thead><tr><th>{tx("국가", "Market")}</th><th>{tx("판정", "Status")}</th><th>{tx("반복 검증", "Rolling checks")}</th><th>{tx("평균 RMSE", "Mean RMSE")}</th><th>{tx("기본 대비", "vs base")}</th><th>{tx("근거", "Reason")}</th></tr></thead>
               <tbody>{countryIndividualCandidates.map((candidate) => {
                 const reasonLabels = {
@@ -1372,14 +1396,14 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
         <div className="mmm-evidence-ledger__setup">
           <div className="mmm-evidence-ledger__source">
             <div className="mmm-evidence-ledger__source-head"><span>01</span><div><strong>{tx("홀드아웃 원자료", "Holdout source data")}</strong><p>{tx("On/Off 또는 Geo 실험의 기간·처리군·대조군·KPI·spend를 올립니다.", "Upload time period, treatment/control, KPI, and spend for an On/Off or geo experiment.")}</p></div></div>
-            {hasExperiment ? <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}><div className="mmm-evidence-ledger__file"><b>{evidence.experiment.name}</b><span>{evidence.experiment.rows.toLocaleString()}{tx("행 업로드됨", " rows imported")} · {tx("판별", "Detected")}: {experimentTypeLabel} ({experimentTypeResolution?.source})</span></div><label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px" }}><span>{tx("실험 유형", "Experiment type")}</span><select aria-label={tx("실험 유형", "Experiment type")} value={evidence.experiment.analysisType || "auto"} onChange={(event) => onEvidence((current) => ({ ...current, experiment: { ...current.experiment, analysisType: event.target.value } }))}><option value="auto">{tx("자동 판별", "Auto detect")}</option><option value="onoff">On/Off</option><option value="geo">Geo</option></select></label><button type="button" className="ab-pill" onClick={() => experimentRef.current?.click()}>{tx("수정", "Replace")}</button></div> : <button className="ab-button" onClick={() => experimentRef.current?.click()}>{tx("실험 원자료 선택", "Choose experiment data")}</button>}
+            {hasExperiment ? <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}><div className="mmm-evidence-ledger__file"><b>{evidence.experiment.name}</b><span>{evidence.experiment.rows.toLocaleString()}{tx("행 업로드됨", " rows imported")} · {tx("판별", "Detected")}: {experimentTypeLabel} ({experimentTypeResolution?.source})</span></div><label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "var(--fs-xs)" }}><span>{tx("실험 유형", "Experiment type")}</span><select aria-label={tx("실험 유형", "Experiment type")} value={evidence.experiment.analysisType || "auto"} onChange={(event) => onEvidence((current) => ({ ...current, experiment: { ...current.experiment, analysisType: event.target.value } }))}><option value="auto">{tx("자동 판별", "Auto detect")}</option><option value="onoff">On/Off</option><option value="geo">Geo</option></select></label><button type="button" className="ab-pill" onClick={() => experimentRef.current?.click()}>{tx("수정", "Replace")}</button></div> : <button className="ab-button" onClick={() => experimentRef.current?.click()}>{tx("실험 원자료 선택", "Choose experiment data")}</button>}
             <input ref={experimentRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { parseEvidence(e.target.files?.[0], "experiment"); e.target.value = null; }} />
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
               <button type="button" className="ab-pill" onClick={() => downloadMmmEvidenceTemplate(MMM_EXPERIMENT_ONOFF_TEMPLATE_CSV, "mmm_experiment_onoff_template.csv")}>{tx("On/Off 예시 CSV", "On/Off example CSV")}</button>
               <button type="button" className="ab-pill" onClick={() => downloadMmmEvidenceTemplate(MMM_EXPERIMENT_GEO_WIDE_TEMPLATE_CSV, "mmm_experiment_geo_wide_template.csv")}>{tx("Geo wide 예시 CSV", "Geo wide example CSV")}</button>
               <button type="button" className="ab-pill" onClick={() => downloadMmmEvidenceTemplate(MMM_EXPERIMENT_GEO_LONG_TEMPLATE_CSV, "mmm_experiment_geo_long_template.csv")}>{tx("Geo long 예시 CSV", "Geo long example CSV")}</button>
             </div>
-            <p className="muted" style={{ fontSize: "11px", margin: "7px 0 0" }}>{tx("예시의 registrations·meta_spend는 메인 MMM에서 매핑한 실제 Y·채널 헤더와 똑같이 바꾸세요. type 컬럼이 있으면 우선 판별하며, 위 선택으로 강제할 수 있습니다.", "Replace registrations and meta_spend with the exact Y and channel headers mapped in the main MMM. A type column is used for detection when present, and the selector above can override it.")}</p>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "7px 0 0" }}>{tx("예시의 registrations·meta_spend는 메인 MMM에서 매핑한 실제 Y·채널 헤더와 똑같이 바꾸세요. type 컬럼이 있으면 우선 판별하며, 위 선택으로 강제할 수 있습니다.", "Replace registrations and meta_spend with the exact Y and channel headers mapped in the main MMM. A type column is used for detection when present, and the selector above can override it.")}</p>
           </div>
           <div className="mmm-evidence-ledger__source">
             <div className="mmm-evidence-ledger__source-head"><span>02</span><div><strong>{tx("참고 국가 MMM 데이터", "Reference-market MMM data")}</strong><p>{tx("타깃 국가와 같은 KPI·채널 포맷을 사용하고, 여러 국가라면 country 컬럼을 포함합니다. 앱은 양수 adstock 중앙값으로 채널 spend 규모를 타깃 운용점에 정렬하지만, KPI 정의·통화·전환창의 실질 동등성은 업로드 전에 확인하세요.", "Use the target market's KPI/channel format and include a country column for multiple markets. The app aligns channel spend scale to the target operating point by positive-adstock median, but you must confirm true equivalence of KPI definition, currency, and attribution window.")}</p></div></div>

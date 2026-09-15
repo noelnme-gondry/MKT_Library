@@ -56,7 +56,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
     >
       <div
         style={{
-          fontSize: "12.5px",
+          fontSize: "var(--fs-sm)",
           fontWeight: 700,
           color: "var(--text-1)",
           marginBottom: "8px",
@@ -83,14 +83,14 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
           onChange={(e) => setDate(e.target.value)}
           style={{
             padding: "6px 8px",
-            fontSize: "12px",
+            fontSize: "var(--fs-xs)",
             background: "var(--bg-1)",
             color: "var(--text-1)",
             border: "1px solid var(--border)",
             borderRadius: "4px",
           }}
         />
-        <select aria-label={locale === "en" ? "Event type" : "이벤트 종류"} value={type} onChange={(event) => setType(event.target.value)} style={{ padding: "6px 8px", fontSize: "12px", background: "var(--bg-1)", color: "var(--text-1)", border: "1px solid var(--border)", borderRadius: "4px" }}>
+        <select aria-label={locale === "en" ? "Event type" : "이벤트 종류"} value={type} onChange={(event) => setType(event.target.value)} style={{ padding: "6px 8px", fontSize: "var(--fs-xs)", background: "var(--bg-1)", color: "var(--text-1)", border: "1px solid var(--border)", borderRadius: "4px" }}>
           {EVENT_TYPES.map((entry) => <option key={entry.value} value={entry.value}>{locale === "en" ? entry.en : entry.ko}</option>)}
         </select>
         <input
@@ -104,7 +104,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
             flex: 1,
             minWidth: "160px",
             padding: "6px 8px",
-            fontSize: "12px",
+            fontSize: "var(--fs-xs)",
             background: "var(--bg-1)",
             color: "var(--text-1)",
             border: "1px solid var(--border)",
@@ -133,7 +133,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                fontSize: "11.5px",
+                fontSize: "var(--fs-xs)",
                 color: "var(--text-2)",
               }}
             >
@@ -150,7 +150,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
               <button
                 className="ab-pill"
                 type="button"
-                style={{ padding: "2px 8px", fontSize: "11px" }}
+                style={{ padding: "2px 8px", fontSize: "var(--fs-xs)" }}
                 onClick={() => removeEventMarker(m.id)}
               >
                 {T.deleteBtn}
@@ -159,7 +159,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
           ))}
         </ul>
       ) : (
-        <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: 0 }}>
+        <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: 0 }}>
           {T.empty}
         </p>
       )}
