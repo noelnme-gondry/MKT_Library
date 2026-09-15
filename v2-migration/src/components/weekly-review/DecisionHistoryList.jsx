@@ -1,5 +1,5 @@
 "use client";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { accountRequest, refreshAccount } from "@/lib/account/accountClient";
@@ -27,8 +27,8 @@ const COPY = {
     title: "지난 결정",
     empty: "아직 저장한 결정이 없습니다.",
     loading: "결정을 불러오는 중…",
-    signIn: "로그인하면 저장한 결정을 볼 수 있습니다.",
-    proOnly: "저장한 결정 보기는 Pro 기능입니다. 프로젝트를 만들면 14일 체험이 시작됩니다.",
+    signIn: "이 기기에 저장한 결정입니다. 로그인하면 계정에 보관한 결정도 함께 보입니다.",
+    proNote: "이용권이 없어도 기록은 계속 읽고 내보낼 수 있습니다. 계정 보관과 새 저장에는 Pro가 필요합니다.",
     viewPro: "Pro 이용권 보기",
     onDevice: "이 기기",
     onAccount: "계정 보관됨",
@@ -52,8 +52,8 @@ const COPY = {
     title: "Past decisions",
     empty: "No saved decisions yet.",
     loading: "Loading decisions…",
-    signIn: "Sign in to see your saved decisions.",
-    proOnly: "Viewing saved decisions is a Pro feature. Creating a project starts your 14-day trial.",
+    signIn: "These are the decisions on this device. Sign in to see the ones kept in your account too.",
+    proNote: "You can keep reading and exporting your records without a pass. Keeping them in your account and new saves require Pro.",
     viewPro: "View Pro plans",
     onDevice: "This device",
     onAccount: "In your account",
@@ -77,6 +77,20 @@ const COPY = {
 
 // 기한 지난 것이 먼저다. 사용자가 이 화면에 오는 이유가 그것이다.
 const BUCKET_ORDER = { overdue: 0, today: 1, unscheduled: 2, upcoming: 3, reviewed: 4 };
+
+// 스냅샷은 모듈에 굳힌다 — 매번 새로 읽으면 값이 같아도 참조가 갈려 무한 렌더가 된다.
+let historyHashSnapshot = false;
+const readHistoryHash = () => historyHashSnapshot;
+const serverHistoryHash = () => false;
+function subscribeHistoryHash(onChange) {
+  const sync = () => {
+    const next = window.location.hash === "#wr-history";
+    if (next !== historyHashSnapshot) { historyHashSnapshot = next; onChange(); }
+  };
+  sync();
+  window.addEventListener("hashchange", sync);
+  return () => window.removeEventListener("hashchange", sync);
+}
 
 export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-history", records = null }) {
   const t = COPY[locale === "en" ? "en" : "ko"];
@@ -125,6 +139,15 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
         || String(right.reviewDate || "").localeCompare(String(left.reviewDate || "")));
   }, [localRecords, memos]);
 
+  // 인박스 "열람"은 목록이 그려진 것이 아니라 사용자가 보러 온 것이다(`#wr-history`).
+  // 렌더만으로 쏘면 결과 화면을 지나가기만 해도 퍼널이 부풀어 오른다.
+  const opened = useSyncExternalStore(subscribeHistoryHash, readHistoryHash, serverHistoryHash);
+  const viewedKey = opened && rows.length ? `${anchorId}:${rows.length}` : "";
+  useEffect(() => {
+    if (!viewedKey) return;
+    trackProductEvent("decision_inbox_viewed", { locale, source: "weekly_review", count: rows.length });
+  }, [viewedKey, locale, rows.length]);
+
   const saveToAccount = async (row) => {
     setBusyId(row.id);
     try {
@@ -137,24 +160,13 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
     finally { setBusyId(""); }
   };
 
-  if (!session) return <section id={anchorId} className="wr-history-list"><h2>{t.title}</h2><p role="status">{t.loading}</p></section>;
-  if (!session.account) {
-    return <section id={anchorId} className="wr-history-list">
-      <h2>{t.title}</h2>
-      <p>{t.signIn}</p>
-    </section>;
-  }
-  if (!hasPaidAccess(entitlement || session.entitlement)) {
-    return <section id={anchorId} className="wr-history-list">
-      <h2>{t.title}</h2>
-      <p>{t.proOnly}</p>
-      <Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link>
-    </section>;
-  }
+  const isPro = hasPaidAccess(entitlement || session?.entitlement);
 
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>
       <h2 id={`${anchorId}-title`}>{t.title}</h2>
+      {!session?.account && <p>{t.signIn}</p>}
+      {session?.account && !isPro && <p>{t.proNote} <Link href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link></p>}
       {message && <p role="status">{message}</p>}
       {loading ? <p role="status">{t.loading}</p> : rows.length === 0 ? <p className="wr-history-list__empty">{t.empty}</p> : (
         <ul className="wr-history-list__items">
@@ -179,7 +191,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     {row.actual && <p><strong>{t.actual}</strong> {row.actual} · {outcome.state === "improved" ? t.outcomeImproved : outcome.state === "declined" ? t.outcomeDeclined : outcome.state === "unchanged" ? t.outcomeUnchanged : t.outcomePending}</p>}
                     {row.learning && <p><strong>{t.learning}</strong> {row.learning}</p>}
                     <div className="wr-history-list__actions">
-                      {row.onDevice && !row.onAccount && <button type="button" className="btn" disabled={busyId === row.id} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
+                      {row.onDevice && !row.onAccount && session?.account && <button type="button" className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
                       {!row.onDevice && <button type="button" className="btn" onClick={() => setPendingCopy(row)}>{t.continueReview}</button>}
                       <button type="button" className="btn ghost" onClick={() => setOpenId("")}>{t.close}</button>
                     </div>

@@ -49,18 +49,23 @@ it("결정이 없으면 그냥 없다고 말한다", async () => {
   await waitFor(() => expect(screen.getByText("아직 저장한 결정이 없습니다.")).toBeTruthy());
 });
 
-it("로그인하지 않으면 사유를 말한다", async () => {
+it("로그인하지 않아도 이 기기의 결정은 보이고, 계정 쪽은 사유를 말한다", async () => {
   refreshAccount.mockResolvedValue({ enabled: true, account: null, entitlement: null });
   render(<DecisionHistoryList locale="ko" />);
-  await waitFor(() => expect(screen.getByText(/로그인하면 저장한 결정을/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole("button", { name: /Meta 예산 30% 감액/ })).toBeTruthy());
+  expect(screen.getByText(/로그인하면 계정에 보관한 결정도/)).toBeTruthy();
 });
 
-it("Pro가 아니면 목록 대신 사유와 구독 안내를 준다", async () => {
+it("이용권이 없어도 읽기는 막지 않는다 — 막히는 것은 계정 보관뿐", async () => {
+  // 사이트가 "만료 후 기존 기록의 열람·내보내기·삭제는 유지"를 이미 약속했다.
+  // 읽기를 막으면 그 약속을 깬다(§8).
   useAppStore.setState({ entitlement: null });
   refreshAccount.mockResolvedValue({ enabled: true, account: { id: "a", email: "t@example.com" }, entitlement: null });
   render(<DecisionHistoryList locale="ko" />);
-  await waitFor(() => expect(screen.getByText(/저장한 결정 보기는 Pro 기능입니다/)).toBeTruthy());
-  expect(screen.getByRole("link", { name: "Pro 이용권 보기" })).toBeTruthy();
+  await waitFor(() => expect(screen.getByRole("button", { name: /Meta 예산 30% 감액/ })).toBeTruthy());
+  expect(screen.getByText(/기록은 계속 읽고 내보낼 수 있습니다/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Meta 예산 30% 감액/ }));
+  expect(screen.getByRole("button", { name: "계정에 보관" }).disabled).toBe(true);
 });
 
 it("이 기기에만 있는 결정은 계정 보관을 제안한다", async () => {

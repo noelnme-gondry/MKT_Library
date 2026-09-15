@@ -27,7 +27,7 @@ import { getSampleJourney } from "@/lib/sampleJourney";
  * - 추천과 내 결정을 시각적으로 가른다. 저장되는 것은 언제나 사용자가 고른 값이다.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import CsvUploader from "@/components/CsvUploader";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
@@ -180,6 +180,21 @@ export default function WeeklyReviewScreen({ locale = "ko", embedded = false }) 
   return <ProjectWeeklyReview key={`${activeProjectId}:${isDemoData(csvData) ? "sample" : "workspace"}`} locale={locale} projectId={activeProjectId} embedded={embedded} sample={sample} />;
 }
 
+// `#wr-upload` 딥링크는 구독 CTA·보관함 안내가 실제로 쓰는 경로다. 결과 화면의
+// 상시 접기를 없앤 뒤에도 그 링크로는 업로더가 열려야 한다.
+let uploadHashSnapshot = false;
+const readUploadHash = () => uploadHashSnapshot;
+const serverUploadHash = () => false;
+function subscribeUploadHash(onChange) {
+  const sync = () => {
+    const next = window.location.hash === "#wr-upload";
+    if (next !== uploadHashSnapshot) { uploadHashSnapshot = next; onChange(); }
+  };
+  sync();
+  window.addEventListener("hashchange", sync);
+  return () => window.removeEventListener("hashchange", sync);
+}
+
 function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const entitlement = useAppStore(state => state.entitlement);
   const hasSavedProject = useAppStore(state => state.projects.some(item => item.id === projectId));
@@ -195,6 +210,9 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const existingDecisionCount = decisionRecords.filter((record) => record.toolId !== "weekly-review" && !sessionDecisionIds.has(record.id)).length;
   const [pendingSave, setPendingSave] = useState(null);
   const [gateOpen, setGateOpen] = useState(false);
+  const [showUploader, setShowUploader] = useState(false);
+  const uploadHashOpen = useSyncExternalStore(subscribeUploadHash, readUploadHash, serverUploadHash);
+  const uploaderOpen = showUploader || uploadHashOpen;
   const [gatePassed, setGatePassed] = useState(false);
   const persistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const workspaceStatus = useAppStore((state) => state.workspaceRestoreStatus);
@@ -482,9 +500,18 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {projectSetup(periods, review.historyWeeks, true)}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
       {csvData.sheetUrl && <button className="btn primary" disabled={refreshingConnectedSheet || !workspaceReady} onClick={async () => { setRefreshingConnectedSheet(true); try { await sheetRefreshRef.current.refreshSheet(); } finally { setRefreshingConnectedSheet(false); } }}>{refreshingConnectedSheet ? (locale === "en" ? "Fetching…" : "불러오는 중…") : (locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신")}</button>}
-      {/* 결과가 나온 뒤 "다음 주 CSV"를 접어 두던 자리였다. 이번 분석을 보러 온
-          사람에게 다음 기간 파일을 지금 묻는 이유를 설명할 수 없어 뺐다. 새 기간은
-          프로젝트로 다시 들어와 올린다. */}
+      {/* 예전에는 "다음 주 CSV 올리기 / 매핑 확인" 접기가 결과 화면에 상시 펼쳐져
+          있었다. 이번 분석을 보러 온 사람에게 다음 기간 파일을 지금 묻는 이유를
+          설명할 수 없어 없앴다. 다만 데이터를 바꿀 길까지 사라지면 안 되므로
+          (e2e의 "returning upload"가 이 공백을 잡았다) 명시적 버튼으로 남긴다. */}
+      {!uploaderOpen
+        ? <p className="wr-screen__cta"><button type="button" className="btn" onClick={() => setShowUploader(true)}>{locale === "en" ? "Use different data" : "데이터 바꾸기"}</button></p>
+        : <section id="wr-upload" className="wr-card" aria-label={locale === "en" ? "Replace data" : "데이터 바꾸기"}>
+          {workspaceReady
+            ? <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />
+            : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
+          <button type="button" className="btn ghost" onClick={() => setShowUploader(false)}>{locale === "en" ? "Close" : "닫기"}</button>
+        </section>}
       {/* 무엇을 돌릴지 사용자가 고른다. 예전에는 5-2 하나를 자동으로 돌리고 끝이라
           이 데이터로 뭘 더 할 수 있는지 화면에 보이지 않았다. */}
       {!isSampleData && <AnalysisSelector locale={locale} />}

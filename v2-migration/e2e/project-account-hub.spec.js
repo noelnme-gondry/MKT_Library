@@ -10,8 +10,9 @@ for (const locale of ["ko", "en"]) {
     // 이 기기와 계정의 결정은 이제 한 목록이다. 따로 두면 한 기기에서는 거의 같아
     // 보여 차이를 아무도 설명할 수 없었다.
     const history = page.locator(".wr-history-list");
-    // 이용권이 없으면 목록 대신 사유를 말한다 — 빈 목록으로 위장하지 않는다.
-    await expect(history.getByText(en ? /Viewing saved decisions is a Pro feature/ : /저장한 결정 보기는 Pro 기능입니다/)).toBeVisible();
+    // 이용권이 없어도 기록은 읽을 수 있다 — 사이트가 "만료 후 열람 유지"를 약속했다.
+    // 막히는 것은 계정 보관과 새 저장뿐이고, 화면이 그 사실을 말한다.
+    await expect(history.getByText(en ? /keep reading and exporting your records/ : /기록은 계속 읽고 내보낼 수 있습니다/)).toBeVisible();
     memos = [{ id: "memo-1", action: "Review the campaign budget", conclusion: "Check the next period before increasing spend.", reviewDate: "2026-10-01" }];
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "library", email: "reader@example.com", serviceReminders: false }, entitlement: { plan: "paid", account: true, trial: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
     await page.reload();
