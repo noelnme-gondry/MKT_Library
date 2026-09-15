@@ -99,7 +99,10 @@ export default function ProjectCreateGate({ locale = "ko", open, onClose, onRead
 
   if (!open) return null;
   return (
-    <ModalDialog open onClose={() => { if (!busy) onClose?.(); }} ariaLabelledBy="project-gate-title" panelClassName="project-gate" closeOnBackdrop={!busy} closeOnEscape={!busy}>
+    // `overlayClassName`이 없으면 Radix 오버레이에 클래스가 안 붙어 위치·배경·z-index가
+    // 통째로 없어진다 — 모달이 body 끝에 그냥 쌓여 화면에서는 "아무 일도 안 일어난" 것으로
+    // 보인다. jsdom은 레이아웃을 재지 않아 스모크가 이걸 통과시킨다(§7).
+    <ModalDialog open onClose={() => { if (!busy) onClose?.(); }} ariaLabelledBy="project-gate-title" overlayClassName="review-save-overlay" panelClassName="project-gate" closeOnBackdrop={!busy} closeOnEscape={!busy}>
       <h2 id="project-gate-title">{trialEnded ? t.trialEnded : t.title}</h2>
       {!trialEnded && <p>{t.body}</p>}
       {message && <p role="status">{message}</p>}
