@@ -29,8 +29,8 @@ export default function RouteErrorRecovery({ error, reset, locale = "ko", scope 
   return (
     <main style={{ minHeight: "60vh", display: "grid", placeItems: "center", padding: "40px 20px" }}>
       <section className="card" style={{ width: "min(100%, 540px)", padding: "28px", textAlign: "center" }}>
-        <div aria-hidden="true" style={{ fontSize: "34px", marginBottom: "12px" }}>⚠</div>
-        <h1 style={{ fontSize: "22px", margin: "0 0 10px" }}>
+        <div aria-hidden="true" style={{ fontSize: "var(--fs-2xl)", marginBottom: "12px" }}>⚠</div>
+        <h1 style={{ fontSize: "var(--fs-lg)", margin: "0 0 10px" }}>
           {isSiteWide
             ? (isEnglish ? "This page could not be displayed" : "이 페이지를 표시하지 못했습니다")
             : (isEnglish ? "This analysis could not be displayed" : "이 분석 화면을 표시하지 못했습니다")}

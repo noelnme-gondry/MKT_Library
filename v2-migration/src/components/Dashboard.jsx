@@ -248,7 +248,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         </div>
 
         {!hasData && (
-          <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "13px" }}>
+          <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "var(--fs-sm)" }}>
             {tr(C.noDataIntro, enC.noDataIntro)}
           </p>
         )}
@@ -297,12 +297,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             (게이트는 CsvUploader가 setGroupAnalyzed로 확정). */}
         {hasData && !analyzed && (
           <div className="card" style={{ marginTop: "1rem", textAlign: "center", padding: "2.5rem 1rem" }}>
-            <div style={{ fontSize: "28px", marginBottom: "0.75rem" }}>🗂</div>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "15px", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
-            <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0, lineHeight: 1.6 }}>
+            <div style={{ fontSize: "var(--fs-xl)", marginBottom: "0.75rem" }}>🗂</div>
+            <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: 0, lineHeight: 1.6 }}>
               {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤 ", "After confirming the column mapping above, ")}
               {tr(<><strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요. </>, <>click <strong>&quot;Analyze Data&quot;</strong> to generate the dashboard. </>)}
-              <span style={{ fontSize: "12px" }}>{tr("매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.", "Changing the mapping hides the results until you re-analyze.")}</span>
+              <span style={{ fontSize: "var(--fs-xs)" }}>{tr("매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.", "Changing the mapping hides the results until you re-analyze.")}</span>
             </p>
           </div>
         )}

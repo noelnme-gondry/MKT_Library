@@ -179,7 +179,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
   return (
     <section className="block" id="s-content-webr-random-forest">
       <h2 className="section-title"><span className="ix">ADV</span>{T.title}</h2>
-      <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px" }}>{T.desc}</p>
+      <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px" }}>{T.desc}</p>
       <p>{input.validation.mode === "random_rows"
         ? (locale === "en" ? "Random row validation assumes independent content items; it does not validate future performance or repeated units." : "행 무작위 검증은 콘텐츠별 독립 관측을 가정합니다. 미래 성과나 반복 단위의 예측력을 검증한 것은 아닙니다.")
         : input.validation.mode === "group_cv"
@@ -190,7 +190,7 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
         <p>{T.requirementsBody(requiredObservations)}</p>
       </details>
       <>
-          {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "12px" }}>{T.loading}</p>}
+          {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.loading}</p>}
           {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{visible.error.includes("baseline_regression_not_estimable") ? T.baselineUnavailable : T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}
           {result?.status === "complete" && (
             <div style={{ marginTop: "14px" }}>
@@ -218,13 +218,13 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
                 </button>
               </div>
               {selectedModel === "random_forest" ? <>
-                <h3 className="section-title" style={{ fontSize: "13px" }}>{T.importance}</h3>
-                <div className="table-wrap"><table className="data" style={{ fontSize: "12px" }}>
+                <h3 className="section-title" style={{ fontSize: "var(--fs-sm)" }}>{T.importance}</h3>
+                <div className="table-wrap"><table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                   <thead><tr><th style={{ textAlign: "left" }}>{locale === "en" ? "Element" : "요소"}</th><th style={{ textAlign: "right" }}>importance</th></tr></thead>
                   <tbody>{result.importance.slice(0, 10).map((row) => <tr key={row.name}><td>{row.name}</td><td className="tnum" style={{ textAlign: "right" }}>{row.importance.toFixed(4)}</td></tr>)}</tbody>
                 </table></div>
-                <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{T.caveat}</p>
-              </> : <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{T.baselineDetail}</p>}
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>{T.caveat}</p>
+              </> : <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>{T.baselineDetail}</p>}
             </div>
           )}
         </>

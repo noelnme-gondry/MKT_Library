@@ -767,15 +767,15 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
         <div style={{ marginTop: "12px", display: "grid", gap: "12px" }}>
           <div>
-            <label htmlFor="content-outcome" style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
-            <div style={{ fontSize: "11px", color: MUTED, margin: "2px 0 6px" }}>{T.outcomeHint}</div>
+            <label htmlFor="content-outcome" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.outcomeLabel}</label>
+            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.outcomeHint}</div>
             <select id="content-outcome" className="map-select" value={outcome || ""} onChange={(e) => { setOutcome(e.target.value); setFeatures((prev) => prev.filter((f) => f !== e.target.value)); }}>
               {numericCols.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{T.featureLabel}</label>
-            <div style={{ fontSize: "11px", color: MUTED, margin: "2px 0 6px" }}>{T.featureHint}</div>
+            <label style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{T.featureLabel}</label>
+            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, margin: "2px 0 6px" }}>{T.featureHint}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {numericCols.filter((h) => h !== outcome).map((h) => {
                 const on = features.includes(h);
@@ -787,7 +787,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 );
               })}
             </div>
-            <div style={{ fontSize: "11px", color: MUTED, marginTop: "7px", lineHeight: 1.45 }}>{T.featureDataHint}</div>
+            <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "7px", lineHeight: 1.45 }}>{T.featureDataHint}</div>
           </div>
         </div>
 
@@ -807,14 +807,14 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </div>
         ) : analyzed ? (
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "var(--success)", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
-            <span style={{ color: MUTED, fontSize: "11px" }}>{T.analyzedHint}</span>
+            <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{T.analyzedBadge}</span>
+            <span style={{ color: MUTED, fontSize: "var(--fs-xs)" }}>{T.analyzedHint}</span>
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ {T.readyMsg} <strong>{T.readyStrong}</strong></div>
-            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "13px", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>✅ {T.readyMsg} <strong>{T.readyStrong}</strong></div>
+            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
           </div>
         )}
         </div>
@@ -833,7 +833,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               locale={locale}
             />
             <strong>{T.cantEstimate}</strong>
-            <p style={{ margin: ".35rem 0 0", fontSize: "12.5px" }}>
+            <p style={{ margin: ".35rem 0 0", fontSize: "var(--fs-sm)" }}>
               {fit.error === "no-variance" && T.errNoVariance}
               {fit.error === "too-few-rows" && T.errTooFewRows(fit.n || 0, fit.k || 0)}
               {fit.error === "singular" && T.errSingular}
@@ -939,11 +939,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           {logisticInput && (
             <section className="block" id="s-content-webr-logistic">
               <h2 className="section-title"><span className="ix">ADV</span>{T.advancedTitle}</h2>
-              <p className="muted" style={{ fontSize: "12px", margin: "0 0 12px" }}>{T.advancedDesc}</p>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px" }}>{T.advancedDesc}</p>
               {!logisticInput.ok ? (
                 <div className="required-banner">
                   <strong>{tr("표본 보강 필요", "More outcome support needed")}</strong>
-                  <p style={{ margin: ".35rem 0 0", fontSize: "12.5px" }}>
+                  <p style={{ margin: ".35rem 0 0", fontSize: "var(--fs-sm)" }}>
                     {logisticInput.reason === "insufficient_class_support"
                       ? T.advancedBlocked(logisticInput.minorityCount, logisticInput.requiredMinority)
                       : tr("이진 0/1 결과와 선택 요소를 다시 확인하세요.", "Review the binary 0/1 outcome and selected features.")}
@@ -952,14 +952,14 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span className="muted" style={{ fontSize: "11.5px" }}>
+                    <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>
                       {webRRun.status === "loading" && webRRun.signature === analyzedSig ? T.advancedLoading : T.advancedMethod}
                       {advancedModel.family === "binomial" && ` · 0=${logisticInput.classCounts.zero.toLocaleString()} · 1=${logisticInput.classCounts.one.toLocaleString()}`}
                     </span>
                     {/* 왜 이 모형인지는 배지 한 개로. 자동 라우팅이 조용하면 안 되지만,
                         문장 두 개를 결론 옆에 펴 둘 이유도 없다(§12.14·§12.17). */}
                     {advancedModel.family !== "binomial" && (
-                      <span className="ab-pill" style={{ fontSize: "11px", padding: "2px 8px" }}>
+                      <span className="ab-pill" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px" }}>
                         {advancedModel.family === "beta" ? tr("비율 성과", "Proportion outcome") : tr("건수 성과", "Count outcome")}
                       </span>
                     )}
@@ -988,7 +988,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                           <strong>{advancedTop
                             ? T.advancedTop(advancedTop.name, fmtOddsRatio(effect(advancedTop)))
                             : T.advancedNoSignal}</strong>
-                          <p className="muted" style={{ margin: ".35rem 0 0", fontSize: "11.5px" }}>
+                          <p className="muted" style={{ margin: ".35rem 0 0", fontSize: "var(--fs-xs)" }}>
                             n {webRRun.result.n.toLocaleString()}
                             {Number.isFinite(webRRun.result.pseudoR2) && ` · pseudo R² ${webRRun.result.pseudoR2.toFixed(3)}`}
                             {Number.isFinite(webRRun.result.aic) && ` · AIC ${webRRun.result.aic.toFixed(1)}`}
@@ -996,7 +996,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                           </p>
                         </div>
                         <div className="table-wrap">
-                          <table className="data" style={{ fontSize: "12.5px" }}>
+                          <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                             <thead><tr>
                               <th style={{ textAlign: "left" }}>{T.thElement}</th>
                               <th style={{ textAlign: "right" }}>{effectLabel}</th>
@@ -1042,13 +1042,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           {!fit?.error && clusterCandidates.length > 0 && (
             <section className="block">
               <h2 className="section-title">{tr("같은 대상을 여러 번 측정했나요?", "Repeated measures on the same unit?")}</h2>
-              <p className="muted" style={{ fontSize: "12px", margin: "2px 0 10px" }}>{tr(
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 10px" }}>{tr(
                 "같은 캠페인·카테고리에서 여러 행이 나왔다면 그 차이를 반영해 다시 계산할 수 있습니다.",
                 "If several rows come from the same campaign or category, the analysis can account for that.",
               )}</p>
               <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
                 <div>
-                  <label htmlFor="content-repeated-unit" style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tr("반복 단위 열", "Repeated-unit column")}</label>
+                  <label htmlFor="content-repeated-unit" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>{tr("반복 단위 열", "Repeated-unit column")}</label>
                   <select id="content-repeated-unit" className="map-select" style={{ marginTop: "6px" }} value={clusterColumn} onChange={(event) => { setClusterColumn(event.target.value); setMixedRun({ status: "idle", signature: null, result: null }); }}>
                     <option value="">{tr("선택 안 함", "None")}</option>
                     {clusterCandidates.map((header) => <option key={header} value={header}>{header}</option>)}
@@ -1060,13 +1060,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               </div>
               {/* 무거운 다운로드는 누르기 전에 알린다. */}
               {clusterColumn && mixedInput?.ok && mixedRun.status === "idle" && (
-                <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{tr(
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>{tr(
                   "처음 실행할 때 R 패키지(lme4)를 내려받습니다 — 이 도구에서 가장 큰 다운로드입니다.",
                   "The first run downloads the lme4 R package — the largest download in this tool.",
                 )}</p>
               )}
               {clusterColumn && mixedInput && !mixedInput.ok && (
-                <p className="muted" style={{ fontSize: "11.5px", marginTop: "10px" }}>
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "10px" }}>
                   {mixedInput.reason === "too_few_groups" ? tr(`반복 단위가 ${mixedInput.groups}개뿐입니다 — 최소 ${mixedInput.requiredGroups}개가 필요합니다.`, `Only ${mixedInput.groups} units — at least ${mixedInput.requiredGroups} are needed.`)
                     : mixedInput.reason === "no_repeated_measures" ? tr("각 단위에 행이 하나씩뿐이라 혼합모형을 쓸 이유가 없습니다.", "Each unit has a single row, so a mixed model adds nothing here.")
                       : mixedInput.reason === "insufficient_rows" ? tr(`행이 ${mixedInput.rows}개입니다 — 최소 ${mixedInput.requiredRows}개가 필요합니다.`, `${mixedInput.rows} rows — at least ${mixedInput.requiredRows} are needed.`)
@@ -1074,7 +1074,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 </p>
               )}
               {mixedRun.status === "failed" && (
-                <p className="muted" style={{ fontSize: "11.5px", marginTop: "10px" }}>{tr("혼합모형 실행에 실패했습니다.", "The mixed model failed to run.")}</p>
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "10px" }}>{tr("혼합모형 실행에 실패했습니다.", "The mixed model failed to run.")}</p>
               )}
               {mixedRun.result?.status === "unstable" && (
                 <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{mixedRun.result.reason === "singular_fit"
@@ -1088,11 +1088,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                       `전체 변동의 ${(mixedRun.result.icc * 100).toFixed(0)}%가 단위 간 차이입니다`,
                       `${(mixedRun.result.icc * 100).toFixed(0)}% of the variation is between units`,
                     )}</strong>
-                    <p style={{ margin: "4px 0 0", fontSize: "12.5px" }}>{mixedRun.result.icc >= 0.1
+                    <p style={{ margin: "4px 0 0", fontSize: "var(--fs-sm)" }}>{mixedRun.result.icc >= 0.1
                       ? tr("단위별 기준선 차이가 작지 않습니다. 위 표의 요소 효과는 이 차이를 흡수하지 않은 값이므로, 아래 혼합모형 계수를 함께 보세요.", "Baseline differences between units are not small. The element effects above do not absorb them, so read the mixed-model coefficients below alongside them.")
                       : tr("단위별 기준선 차이가 크지 않아 위 표의 결과와 크게 다르지 않을 것입니다.", "Baseline differences between units are small, so this should not differ much from the table above.")}</p>
                     <div className="table-wrap" style={{ marginTop: "10px" }}>
-                      <table className="data" style={{ fontSize: "12.5px" }}>
+                      <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                         <thead><tr>
                           <th style={{ textAlign: "left" }}>{T.thElement}</th>
                           <th style={{ textAlign: "right" }}>{tr("계수", "Estimate")}</th>
@@ -1125,7 +1125,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">
             <h2 className="section-title">{T.forestTitle}</h2>
-            <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 8px" }}>
               {locale === "en" ? (
                 <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "var(--success)" }}>Green</span> / <span style={{ color: "var(--danger)" }}>red</span> = BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>
               ) : (
@@ -1139,18 +1139,18 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
           {/* ── §2 전문가 표 ── */}
           <details className="block">
-            <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+            <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
               {T.expertSummary}
             </summary>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ fontSize: "12.5px", color: MUTED }}>
+                <div style={{ fontSize: "var(--fs-sm)", color: MUTED }}>
                   R² {(fit.R2).toFixed(3)} · adj.R² {(fit.adjR2).toFixed(3)} · n {fit.n.toLocaleString()} · {T.intercept} {fit.intercept.toFixed(3)}
                   {fit.dropped.length ? ` · ${T.droppedPrefix}${fit.dropped.join(", ")}` : ""}
                 </div>
               </div>
               <div className="table-wrap" style={{ marginTop: "8px" }}>
-                <table className="data" style={{ fontSize: "12.5px" }}>
+                <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                   <thead>
                     <tr>
                       <th style={{ textAlign: "left" }}>{T.thElement}</th>
@@ -1179,7 +1179,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                   </tbody>
                 </table>
               </div>
-              <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>
                 {T.tableFootnote}
               </p>
             </div>

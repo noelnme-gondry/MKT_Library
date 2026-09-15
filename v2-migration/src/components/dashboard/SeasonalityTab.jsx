@@ -140,8 +140,16 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
           plugins: { ...common.plugins, legend: { ...(common.plugins?.legend || {}), display: true } },
           scales: {
             ...common.scales,
-            x: { ...common.scales.x, ticks: { ...common.scales.x?.ticks, maxTicksLimit: 12, autoSkip: true } },
-            y: { ...common.scales.y, ticks: { ...common.scales.y.ticks, callback: valueTickFormat } },
+            x: {
+              ...common.scales.x,
+              title: { display: true, text: locale === "en" ? "Period" : "기간", color: CHART_THEME.muted },
+              ticks: { ...common.scales.x?.ticks, maxTicksLimit: 12, autoSkip: true },
+            },
+            y: {
+              ...common.scales.y,
+              title: { display: true, text: locale === "en" ? "Observed value" : "관측값", color: CHART_THEME.muted },
+              ticks: { ...common.scales.y.ticks, callback: valueTickFormat },
+            },
           },
         },
       });

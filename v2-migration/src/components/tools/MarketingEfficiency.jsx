@@ -427,7 +427,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             `지금 더 늘릴 곳과 멈출 곳을 한계 ${costMetricLabel}/ROAS로 나눕니다.`,
             `Separate where to scale from where to stop using marginal ${costMetricLabel}/ROAS.`,
           )}</p>
-          <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
+          <details style={{ marginTop: "6px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
             <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
               {tr(
@@ -667,7 +667,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
         {okRows.length > 0 && (
           <div className="table-wrap">
-            <table className="data" style={{ fontSize: "12.5px" }}>
+            <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
               <thead>
                 <tr>
                   <th className="tnum">#</th>
@@ -708,7 +708,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                           <strong>{r.name}</strong>
                         </button>
                       </td>
-                      <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                      <td style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                         {r.modelType} <span className="tnum">R²={r.r2 != null ? r.r2.toFixed(2) : "—"}</span>
                       </td>
                       <td className="tnum">{fmtCurrency(r.currentCost, currency)}</td>
@@ -725,10 +725,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                       )}
                       <td className="tnum" style={{ fontWeight: 700, color: vm.color }}>{idxStr}</td>
                       <td>
-                        <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: vm.color, borderColor: `color-mix(in srgb, ${vm.color} 33%, transparent)` }}>
+                        <span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: vm.color, borderColor: `color-mix(in srgb, ${vm.color} 33%, transparent)` }}>
                           <span className="dot" style={{ background: vm.color }}></span>{vm.label}
                         </span>{" "}
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{vm.advice}</span>
+                        <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{vm.advice}</span>
                       </td>
                     </tr>
                   );
@@ -740,10 +740,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
         {badRows.length > 0 && (
           <details style={{ marginTop: "10px" }}>
-            <summary style={{ cursor: "pointer", fontSize: "11.5px", color: "var(--text-muted)" }}>
+            <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
               {tr(`⚠ 분석 제외 ${badRows.length}개 — 보기`, `⚠ ${badRows.length} excluded from analysis — view`)}
             </summary>
-            <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.7 }}>
+            <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.7 }}>
               {badRows.map((r, i) => {
                 const why =
                   r.reason === "insufficient"
@@ -776,14 +776,14 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               {tr("⬇ PNG", "⬇ PNG")}
             </button>
           </div>
-          <p className="muted" style={{ fontSize: "12px", marginTop: "6px" }}>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
             {tr(
               `위 표에서 행을 클릭하면 해당 ${grainLabel}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs ${metricLabel}), 선=적합 곡선, 주황 점선=현 지출점.`,
               `Click a row above to switch to that ${grainLabel}'s curve. Dots = daily observations (cost vs ${metricLabel}), line = fitted curve, orange dashed line = current spend point.`
             )}
           </p>
           {isRoas && (
-            <p className="muted" style={{ fontSize: "11.5px", marginTop: "2px", color: "var(--text-muted)" }}>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "2px", color: "var(--text-muted)" }}>
               {tr(
                 "⚠ ROAS 곡선은 CPA 적합 곡선을 매출/결과 비율로 역변환한 값입니다(직접 적합 아님). 매출 데이터가 희소하거나 결과당 매출 변동이 크면 곡선 신뢰도가 낮아질 수 있습니다.",
                 "⚠ The ROAS curve is derived by inverting the fitted CPA curve using the revenue/result ratio (not fitted directly). If revenue data is sparse or revenue-per-result varies a lot, the curve's reliability may be lower."

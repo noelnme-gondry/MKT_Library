@@ -4,7 +4,28 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
+const RAW_CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
+
+// 2026-09-15: 앱의 px 폰트를 전부 `--fs-*` 스케일 토큰으로 옮겼다. 그 순간 이
+// 가드의 스캐너들은 **리터럴이 하나도 없어 공허하게 통과**하게 됐다(§7 "가드가
+// 있다는 사실이 가드가 없다는 사실을 가린다"). 그래서 스캔 전에 토큰을 값으로
+// 풀어 둔다 — 하한은 이제 "토큰이 가리키는 실제 크기"에 걸린다. 누가 스케일
+// 토큰의 값을 8px로 내려도 여기서 잡힌다.
+export function parseTypeScale(css) {
+  const scale = new Map();
+  for (const match of css.matchAll(/(--fs-[a-z0-9-]+):\s*(\d+(?:\.\d+)?)px/g)) scale.set(match[1], match[2]);
+  return scale;
+}
+
+export function expandTypeScale(text, scale) {
+  return text.replace(/var\((--fs-[a-z0-9-]+)\)/g, (raw, token) => {
+    const value = scale.get(token);
+    return value === undefined ? raw : `${value}px`;
+  });
+}
+
+const TYPE_SCALE = parseTypeScale(RAW_CSS);
+const CSS = expandTypeScale(RAW_CSS, TYPE_SCALE);
 
 // 이 가드는 오래도록 globals.css **한 파일만** 훑었다. 그런데 앱에는 인라인
 // `style={{ fontSize: ... }}`이 581곳 있고, 거기 적힌 크기는 CSS 파일에 나타나지
@@ -74,7 +95,8 @@ describe("inline style typography floor", () => {
   it("keeps every inline fontSize readable", () => {
     const offenders = [];
     for (const file of collectJsxFiles(SRC_ROOT)) {
-      for (const hit of collectUndersizedInlineSizes(stripSourceComments(readFileSync(file, "utf8")))) {
+      const source = expandTypeScale(stripSourceComments(readFileSync(file, "utf8")), TYPE_SCALE);
+      for (const hit of collectUndersizedInlineSizes(source)) {
         offenders.push(`${path.relative(SRC_ROOT, file)}: ${hit}`);
       }
     }

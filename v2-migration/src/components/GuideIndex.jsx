@@ -47,7 +47,7 @@ export default function GuideIndex({ locale = "ko" }) {
           return (
             <div key={g.id} className="phase-card" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "18px" }}>{STEP_ICONS[idx] || "📘"}</span>
+                <span style={{ fontSize: "var(--fs-lg)" }}>{STEP_ICONS[idx] || "📘"}</span>
                 <div className="phase-card-title" style={{ margin: 0 }}>{gTitle}</div>
               </div>
               {g.desc && <div className="phase-card-desc" style={{ margin: 0 }}>{trGroupDesc(g.id, locale, g.desc)}</div>}
@@ -65,7 +65,7 @@ export default function GuideIndex({ locale = "ko" }) {
                       borderRadius: "8px",
                       textDecoration: "none",
                       color: "var(--text-secondary)",
-                      fontSize: "13px",
+                      fontSize: "var(--fs-sm)",
                       transition: "background 0.15s, color 0.15s",
                     }}
                     className="guide-index-item"
@@ -75,7 +75,7 @@ export default function GuideIndex({ locale = "ko" }) {
                   </Link>
                 ))}
               </div>
-              <div className="phase-card-meta tnum" style={{ marginTop: "auto", color: "var(--text-muted)", fontSize: "11.5px" }}>
+              <div className="phase-card-meta tnum" style={{ marginTop: "auto", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
                 {items.length}{C.itemsSuffix}
               </div>
             </div>

@@ -421,12 +421,12 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
       </div>
       <div id="ab-primary-panel" role="tabpanel" aria-labelledby={`ab-primary-tab-${activeTab}`} tabIndex={0}>
       {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
-      <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
+      <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
         {activeTab === "design" && tr("실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다.", "Before you launch the test — calculate how many samples (people) you need to trust the result.")}
         {activeTab === "readout" && tr("두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다.", "After exposing both variants (A vs B) — determine which conversion rate is higher and whether the difference is more than chance.")}
       </p>
       {activeTab === "readout" && (
-        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           {tr(
             <><strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.</>,
             <>Want to see <strong>conversions that would have happened anyway (incrementality)</strong>? → Use the <strong>Incrementality Analysis</strong> tool in the left menu (holdout, before/after). A/B answers &quot;which one is better&quot;, incrementality answers &quot;was running the ad itself worth it&quot;.</>,
@@ -562,7 +562,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         )}
                         <div className="ab-stat"><div className="ab-stat-label">z_α/2 + z_β</div><div className="ab-stat-value tnum">{planResult.zA.toFixed(3)} + {planResult.zB.toFixed(3)}</div></div>
                       </div>
-                      <p style={{ marginTop: "0.75rem", fontSize: "13px", color: "var(--text-secondary)" }}>
+                      <p style={{ marginTop: "0.75rem", fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>
                         {tr(
                           <>일평균 트래픽이 5,000명이면 약 <strong>{Math.ceil(planResult.totalN / 5000)}일</strong>, 10,000명이면 약 <strong>{Math.ceil(planResult.totalN / 10000)}일</strong>의 운영이 필요합니다.</>,
                           <>At 5,000 people/day of average traffic, you&apos;ll need about <strong>{Math.ceil(planResult.totalN / 5000)} days</strong>; at 10,000/day, about <strong>{Math.ceil(planResult.totalN / 10000)} days</strong>.</>,
@@ -574,7 +574,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
                 {testType === "binary" && planResult && !planResult.invalid && <section className="ab-result" aria-labelledby="ab-sequential-plan-title" style={{ marginTop: "14px" }}>
                   <h3 className="sub-title" id="ab-sequential-plan-title" style={{ marginTop: 0 }}>{tr("중간 판독 계획 · O’Brien–Fleming", "Interim-read plan · O’Brien–Fleming")}</h3>
-                  <p style={{ margin: "6px 0 10px", color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.55 }}>{tr("실험 시작 전에 중간 판독 횟수를 정하면, 초반에는 훨씬 엄격한 기준으로만 중단을 검토합니다. 계획 밖의 수시 확인에는 이 표를 적용하지 않습니다.", "Set the number of interim looks before launch. Early looks use much stricter boundaries; this table does not validate unplanned peeks.")}</p>
+                  <p style={{ margin: "6px 0 10px", color: "var(--text-secondary)", fontSize: "var(--fs-xs)", lineHeight: 1.55 }}>{tr("실험 시작 전에 중간 판독 횟수를 정하면, 초반에는 훨씬 엄격한 기준으로만 중단을 검토합니다. 계획 밖의 수시 확인에는 이 표를 적용하지 않습니다.", "Set the number of interim looks before launch. Early looks use much stricter boundaries; this table does not validate unplanned peeks.")}</p>
                   <div className="ab-field" style={{ maxWidth: "280px" }}>
                     <label>{tr("사전 계획한 판독 횟수", "Pre-planned number of looks")}</label>
                     <select value={sequentialLooks} onChange={(event) => setSequentialLooks(event.target.value)}>
@@ -593,11 +593,11 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       { key: "nominalP", label: tr("이 시점 명목 p 경계", "Nominal p boundary"), align: "right", fmt: (value) => value < 0.0001 ? "< 0.0001" : value.toFixed(4) },
                     ]}
                   />}
-                  <p className="muted" style={{ margin: "10px 0 0", fontSize: "11px" }}>{tr("계획한 모든 판독을 합친 양측 1종 오류가 입력한 α가 되도록 경계를 조정합니다. 따라서 마지막 시점의 명목 p 경계도 α보다 작을 수 있습니다. 적응형 중단·연속 모니터링·다른 지표에는 적용하지 않습니다.", "Boundaries are calibrated so the combined two-sided Type I error across all planned looks equals the entered α. The final nominal p boundary can therefore be below α. This does not cover adaptive stopping, continuous monitoring, or other metrics.")}</p>
+                  <p className="muted" style={{ margin: "10px 0 0", fontSize: "var(--fs-xs)" }}>{tr("계획한 모든 판독을 합친 양측 1종 오류가 입력한 α가 되도록 경계를 조정합니다. 따라서 마지막 시점의 명목 p 경계도 α보다 작을 수 있습니다. 적응형 중단·연속 모니터링·다른 지표에는 적용하지 않습니다.", "Boundaries are calibrated so the combined two-sided Type I error across all planned looks equals the entered α. The final nominal p boundary can therefore be below α. This does not cover adaptive stopping, continuous monitoring, or other metrics.")}</p>
                 </section>}
 
                 <h3 className="sub-title" style={{ marginTop: "1.5rem" }}>{tr("예산 계산기", "Budget calculator")}</h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
+                <p style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>
                   {tr("예상 CPR(Cost Per Result)을 입력하면, 위 샘플 사이즈 기준 필요한 총 예산이 계산됩니다. CPR_B를 비우면 A와 동일하다고 가정합니다.", "Enter the expected CPR (Cost Per Result) to calculate the total budget needed for the sample size above. Leaving CPR_B blank assumes it equals A.")}
                 </p>
                 <div className="ab-form-grid">
@@ -622,7 +622,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         <div className="ab-stat"><div className="ab-stat-label">{tr("Arm B 예산", "Arm B budget")}</div><div className="ab-stat-value tnum">{fmtCurrency(budgetResult.costB, currency)}</div></div>
                         <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("총 필요 예산", "Total budget needed")}</div><div className="ab-stat-value tnum">{fmtCurrency(budgetResult.total, currency)}</div></div>
                       </div>
-                      <p style={{ marginTop: "0.5rem", fontSize: "12px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                      <p style={{ marginTop: "0.5rem", fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
                         CPR A = {fmtCurrency(budgetResult.cprA, currency)} · CPR B = {fmtCurrency(budgetResult.cprB, currency)} · n_per_arm = {planResult.n.toLocaleString()}
                       </p>
                     </>
@@ -786,7 +786,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   </table>
                 </div>
                 {thresholdMatrix.kind === "continuous" && (
-                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", marginBottom: "1rem" }}>
                     {tr(
                       <>예시: ARPPU 평균 {sym}3,500, σ {sym}1,200 → CV ≈ 0.34 → MDE 10% 탐지에 그룹당 약 {STATS.sampleSizeContinuous({ baselineMean: 1, mdeRelative: 0.1, sigma: 0.34 }).n.toLocaleString()}명 필요.</>,
                       <>Example: ARPPU average {sym}3,500, σ {sym}1,200 → CV ≈ 0.34 → detecting a 10% MDE needs about {STATS.sampleSizeContinuous({ baselineMean: 1, mdeRelative: 0.1, sigma: 0.34 }).n.toLocaleString()} per arm.</>,
@@ -1029,7 +1029,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                     >
                       <details className="result-action-card__details">
                         <summary>{tr("통계 원값 보기", "View raw statistics")}</summary>
-                        <p className="tnum" style={{ margin: "8px 0 0", color: verdictColor(s.pValue, liftPositive), fontSize: "12px" }}>
+                        <p className="tnum" style={{ margin: "8px 0 0", color: verdictColor(s.pValue, liftPositive), fontSize: "var(--fs-xs)" }}>
                           z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} />
                         </p>
                       </details>
@@ -1060,19 +1060,19 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               {readoutData.mass && readoutData.mass.control && (
                 <section className="block" id="s-readout-mass">
                   <h2 className="section-title">{tr("대량 검정 (arm_id별)", "Mass test (by arm_id)")}</h2>
-                  <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "6px 0 10px" }}>
+                  <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "6px 0 10px" }}>
                     {tr(
                       <>대조군: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, 전환율 {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
                       <>Control: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, conversion rate {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
                     )}
                   </p>
-                  <p className="muted" style={{ fontSize: "11px", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
+                  <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
                   <DataTable
                     rows={readoutData.mass.rows}
                     rowKey={(r, i) => i}
                     emptyText={tr("데이터 없음", "No data")}
                     columns={[
-                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</> },
+                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}> (control)</span> : ""}</> },
                       { key: "n", label: tr("표본수", "Sample size"), align: "right", fmt: (v) => v.toLocaleString() },
                       { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
                       { key: "liftRel", label: tr("대조군 대비 Lift", "Lift vs control"), align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },

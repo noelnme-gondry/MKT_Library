@@ -144,8 +144,20 @@ function CompositionChart({ distribution, locale, isDarkMode }) {
         ...base,
         indexAxis: "y",
         scales: {
-          x: { stacked: true, min: 0, max: 100, ticks: { color: CHART_THEME.text, callback: (value) => `${value}%` }, grid: { color: CHART_THEME.grid } },
-          y: { stacked: true, ticks: { color: CHART_THEME.text }, grid: { display: false } },
+          x: {
+            stacked: true,
+            min: 0,
+            max: 100,
+            title: { display: true, text: tx(locale, "구성 비중 (%)", "Share of total (%)"), color: CHART_THEME.muted },
+            ticks: { color: CHART_THEME.text, callback: (value) => `${value}%` },
+            grid: { color: CHART_THEME.grid },
+          },
+          y: {
+            stacked: true,
+            title: { display: true, text: tx(locale, "비교 시점", "Compared period"), color: CHART_THEME.muted },
+            ticks: { color: CHART_THEME.text },
+            grid: { display: false },
+          },
         },
       },
     });
@@ -153,7 +165,7 @@ function CompositionChart({ distribution, locale, isDarkMode }) {
     // 조건부 마운트 캔버스는 부모 레이아웃 전이라 최초 폭이 0이다(§7).
     const raf = requestAnimationFrame(() => chart.resize());
     return () => { cancelAnimationFrame(raf); chart.destroy(); if (chartRef.current === chart) chartRef.current = null; };
-  }, [data, isDarkMode]);
+  }, [data, isDarkMode, locale]);
 
   return <div className="chart-container" style={{ height: 220 }}>
     <canvas ref={canvasRef} role="img" aria-label={tx(locale, "기간별 구성 비중", "Composition share by period")} />

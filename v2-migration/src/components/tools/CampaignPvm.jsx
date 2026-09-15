@@ -984,7 +984,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
     headlineLines.push(
       flat ? (
-        <li key="head" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
+        <li key="head" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
           {tr(
             <>전체 {ml}는 {pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → {pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}로 큰 변화 없음(±
             {(PVM_SIG_RULES.overallFlatPct * 100).toFixed(0)}% 이내)</>,
@@ -993,7 +993,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           )}
         </li>
       ) : (
-        <li key="head" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
+        <li key="head" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
           {tr("전체", "Overall")} {ml} <strong>{pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → {pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}</strong>{" "}
           {impactChip(cache.deltaCpa)}
         </li>
@@ -1001,7 +1001,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     );
     if (topChannel && pvmIsEntitySignificant(topChannel.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
-        <li key="ch" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
+        <li key="ch" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
           <span style={{ color: "var(--text-muted)" }}>{C.levelChannel}</span>{" "}
           <strong>{topChannel.key || unspec}</strong> {impactChip(topChannel.contribution, { prefix: ml })}
         </li>,
@@ -1009,7 +1009,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
     if (topCampaign && pvmIsEntitySignificant(topCampaign.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
-        <li key="cmp" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
+        <li key="cmp" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
           <span style={{ color: "var(--text-muted)" }}>{C.levelCampaign}</span> {topChannel.key} ›{" "}
           <strong>{topCampaign.key || topCampaign.cmpKey || unspec}</strong>{" "}
           {impactChip(topCampaign.contribution, { prefix: ml })}
@@ -1018,7 +1018,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
     if (topCreative && pvmIsEntitySignificant(topCreative.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
-        <li key="cr" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
+        <li key="cr" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
           <span style={{ color: "var(--text-muted)" }}>{C.levelCreative}</span>{" "}
           <strong>{topCreative.crKey || unspec}</strong>{" "}
           {impactChip(topCreative.contribution, { prefix: ml })}
@@ -1212,8 +1212,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       subRateVal = e.creativeSumRate || 0;
     }
     if (level === "creative") {
-      subMixNode = <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
-      subRateNode = <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
+      subMixNode = <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
+      subRateNode = <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("— (최하위 레벨)", "— (lowest level)")}</span>;
     } else {
       subMixNode = (subMixVal >= 0 ? "+" : "") + pvmFmtMoney(subMixVal, cur);
       subRateNode = (subRateVal >= 0 ? "+" : "") + pvmFmtMoney(subRateVal, cur);
@@ -1234,10 +1234,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       // 자체(e.crKey)는 이모지 없이 그대로 유지되므로 정렬 시 항상 깨끗한 값 기준.
       nameNode = (
         <>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
+          <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
           <strong style={{ verticalAlign: "middle" }}>{e.crKey || unspec}</strong>
           {safeUrl && (
-            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "11px", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
+            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "var(--fs-xs)", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
           )}
         </>
       );
@@ -1263,7 +1263,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <td className="tnum" style={{ whiteSpace: "nowrap", color: pvmColor(subMixVal) }}>{subMixNode}</td>
         <td className="tnum" style={{ whiteSpace: "nowrap", color: pvmColor(subRateVal) }}>{subRateNode}</td>
         <td style={{ textAlign: "center", whiteSpace: "nowrap", position: "relative" }}>
-          <span className="pvm-diag-icon" tabIndex={0} style={{ cursor: "help", fontSize: "14px", opacity: 0.7 }} data-tip={diagText}>💡</span>
+          <span className="pvm-diag-icon" tabIndex={0} style={{ cursor: "help", fontSize: "var(--fs-base)", opacity: 0.7 }} data-tip={diagText}>💡</span>
         </td>
         <td className="tnum" style={{ whiteSpace: "nowrap" }}>
           <strong style={{ color: pvmColor(e.contribution) }}>{impactStr}</strong>
@@ -1417,7 +1417,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         </div>
 
         {periodCaption && (
-          <p style={{ margin: "8px 0 0", fontSize: "11.5px", color: "var(--text-muted)" }}>{periodCaption}</p>
+          <p style={{ margin: "8px 0 0", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{periodCaption}</p>
         )}
 
         {ready ? <>
@@ -1543,7 +1543,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               <ul style={{ margin: "12px 0 10px", padding: 0, listStyle: "none" }}>{headlineLines}</ul>
               <div className="callout warn" style={{ marginTop: "6px" }}>
                 <div className="ico">!</div>
-                <div className="body" style={{ fontSize: "11.5px" }}>{C.causationCallout}</div>
+                <div className="body" style={{ fontSize: "var(--fs-xs)" }}>{C.causationCallout}</div>
               </div>
             </details>
           </ResultActionCard>
@@ -1615,10 +1615,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 </div>
               );
             })()}
-            <p style={{ marginTop: "8px", fontSize: "11.5px", color: "var(--text-muted)" }}>{periodCaption}</p>
+            <p style={{ marginTop: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{periodCaption}</p>
           </>
         ) : (
-          <p className="muted" style={{ fontSize: "12px" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
         )}
       </section>
 
@@ -1627,8 +1627,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <h2 className="section-title">{C.secChannels}</h2>
 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
-          <div style={{ marginTop: "10px", fontSize: "12px", lineHeight: 1.7, color: "var(--text-muted)" }}>
+          <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
+          <div style={{ marginTop: "10px", fontSize: "var(--fs-xs)", lineHeight: 1.7, color: "var(--text-muted)" }}>
             {ready
               ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)
               : tr("항등식 검증을 통과한 경우에만 Mix·Rate 원인 분해를 표시합니다.", "Mix·Rate drivers are shown only after the additive identity passes.")}
@@ -1643,14 +1643,14 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginBottom: "14px" }}>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${ml} 브릿지 — 지난주 전체 → ${C.levelChannel} 기여(±) → 이번주 전체`, `${ml} bridge — prior week total → ${C.levelChannel} contribution (±) → this week total`)}</span>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${ml} 브릿지 — 지난주 전체 → ${C.levelChannel} 기여(±) → 이번주 전체`, `${ml} bridge — prior week total → ${C.levelChannel} contribution (±) → this week total`)}</span>
               <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-waterfall" ref={chartPvmWaterfall}></canvas></div>
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${C.levelChannel}별 Mix·Rate 분해`, `Mix·Rate breakdown by ${C.levelChannel}`)}</span>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${C.levelChannel}별 Mix·Rate 분해`, `Mix·Rate breakdown by ${C.levelChannel}`)}</span>
               <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-channel-stack" ref={chartPvmTrend}></canvas></div>
@@ -1658,7 +1658,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         </div>
 
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>{headerWithName(C.levelChannel, false, "channel", pvmSortChannel, setPvmSortChannel)}</thead>
             <tbody>
               {channelRows.length ? (
@@ -1674,13 +1674,13 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             <div className="ico">{channelIdentity?.ok ? "✓" : "!"}</div>
             <div className="body">
               <strong>{tr(`Σ ${ml} 영향 = 전체 Δ${ml}`, `Σ ${ml} impact = total Δ${ml}`)}</strong>
-              <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+              <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "2px" }}>
                 {pvmFmtMoney(channelSigma, cur)} = {pvmFmtMoney(cache.deltaCpa, cur)} {channelIdentity?.ok
                   ? tr("(구성상 항등식 확인)", "(identity checked by construction)")
                   : tr("(항등식 검증 필요)", "(identity check required)")}
               </p>
               {!channelIdentity?.ok && (
-                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "4px" }}>
                   {tr(`잔차 ${pvmFmtMoney(channelIdentity?.error || 0, cur)} — 데이터 또는 분해 계층을 확인하세요.`, `Residual ${pvmFmtMoney(channelIdentity?.error || 0, cur)} — inspect the data or decomposition layers.`)}
                 </p>
               )}
@@ -1693,7 +1693,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <section className="block" id="s-pvm-campaigns">
         <h2 className="section-title">{C.secCampaigns}</h2>
         {!ready ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
         ) : !cache.campaignMapped ? (
           <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCampaign}</strong></div></div>
         ) : (
@@ -1706,7 +1706,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               options={channelRows.map((ch) => ({ value: ch.key, label: ch.key || unspec }))}
             />
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>{headerWithName(C.levelCampaign, false, "campaign", pvmSortCampaign, setPvmSortCampaign)}</thead>
                 <tbody>
                   {campaignRows.length ? (
@@ -1722,7 +1722,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 <div className="ico">✓</div>
                 <div className="body">
                   <strong>{tr(`Σ = ${drillSel || unspec} ${C.levelChannel} ${ml} 영향`, `Σ = ${drillSel || unspec} ${C.levelChannel} ${ml} impact`)}</strong>
-                  <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(campaignSigma, cur)} = {pvmFmtMoney(drillChContribution, cur)}</p>
+                  <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(campaignSigma, cur)} = {pvmFmtMoney(drillChContribution, cur)}</p>
                 </div>
               </div>
             )}
@@ -1734,7 +1734,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <section className="block" id="s-pvm-creatives">
         <h2 className="section-title">{C.secCreatives}</h2>
         {!ready ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>
         ) : !cache.creativeMapped ? (
           <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCreative}</strong></div></div>
         ) : (
@@ -1762,7 +1762,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               />
             )}
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>{headerWithName(C.levelCreative, true, "creative", pvmSortCreative, setPvmSortCreative)}</thead>
                 <tbody>
                   {creativeRowsPage.length ? (
@@ -1774,20 +1774,20 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               </table>
             </div>
             {crTotal > CR_PER && (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "8px", fontSize: "11.5px", color: "var(--text-muted)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "flex-end", marginTop: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                 <span>{crStart + 1}–{Math.min(crCurPage * CR_PER, crTotal)} / {crTotal.toLocaleString()}{tr("행", " rows")}</span>
                 <button className="ab-pill" disabled={crCurPage <= 1} style={{ opacity: crCurPage <= 1 ? 0.4 : 1, cursor: crCurPage <= 1 ? "default" : "pointer" }} onClick={() => setCrPage((p) => Math.max(1, p - 1))}>{tr("← 이전", "← Prev")}</button>
                 <button className="ab-pill" disabled={crCurPage >= crMaxPage} style={{ opacity: crCurPage >= crMaxPage ? 0.4 : 1, cursor: crCurPage >= crMaxPage ? "default" : "pointer" }} onClick={() => setCrPage((p) => Math.min(crMaxPage, p + 1))}>{tr("다음 →", "Next →")}</button>
               </div>
             )}
-            <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px", cursor: "pointer", marginTop: "10px" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "10px", cursor: "pointer", marginTop: "10px" }}>
               <input type="checkbox" checked={showNew} onChange={(e) => { setShowNew(e.target.checked); setCrPage(1); }} /> {C.showNewLabel}
             </label>
             <div className="callout ok" style={{ marginTop: "6px" }}>
               <div className="ico">✓</div>
               <div className="body">
                 <strong>{tr(`Σ = ${creativeSigmaLabel} ${ml} 영향`, `Σ = ${creativeSigmaLabel} ${ml} impact`)}</strong>
-                <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(creativeSigma, cur)} = {pvmFmtMoney(creativeParentContribution, cur)}</p>
+                <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(creativeSigma, cur)} = {pvmFmtMoney(creativeParentContribution, cur)}</p>
               </div>
             </div>
           </>

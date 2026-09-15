@@ -86,7 +86,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
     return (
       <>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "12px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{availFields.find(f => f.k === rowAxis)?.l} ↓ \ {availFields.find(f => f.k === colAxis)?.l} →</th>
@@ -103,7 +103,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
                     return (
                       <td key={ci} className="tnum" style={{ background: getBg(v) }}>
                         {met.fmt(cell)}
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                           {fmtCurrencyPrecise(cell.cost, dataCurrency)}
                         </div>
                       </td>
@@ -114,7 +114,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
             </tbody>
           </table>
         </div>
-        <p className="muted" style={{ marginTop: "8px", fontSize: "12px" }}>
+        <p className="muted" style={{ marginTop: "8px", fontSize: "var(--fs-xs)" }}>
           {tr("셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위.", "The small number under each cell is that combination's cost (scale). Deep green = relatively strong, red = weak.")} {met.better === "none" ? tr("(Cost는 규모 지표라 색 없음)", "(Cost is a scale metric, so no color)") : ""}
         </p>
       </>
@@ -166,7 +166,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
 
         {renderMatrix(metric)}
 
-        <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
+        <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
         {renderMatrix("cost")}
 
       </section>

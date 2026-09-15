@@ -1103,22 +1103,22 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             {segMeta.map((s) => (
               <React.Fragment key={s.col}>
                 <span style={{ width: "1px", height: "18px", background: "var(--border)" }}></span>
-                <span style={{ fontSize: "11.5px", color: MUTED }}>{s.col}:</span>
+                <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{s.col}:</span>
                 {s.values.map((v) => {
                   const on = validSeg && validSeg.col === s.col && validSeg.value === v.value;
                   return (
                     <button key={v.value} className={`ab-pill ${on ? "active" : ""}`}
                       onClick={() => setActiveSeg(on ? null : { col: s.col, value: v.value })}
                       title={tr(`${v.count.toLocaleString()}행`, `${v.count.toLocaleString()} rows`)}>
-                      {v.value} <span style={{ color: MUTED, fontSize: "11px" }}>{v.count.toLocaleString()}</span>
+                      {v.value} <span style={{ color: MUTED, fontSize: "var(--fs-xs)" }}>{v.count.toLocaleString()}</span>
                     </button>
                   );
                 })}
-                {s.truncated && <span style={{ fontSize: "11px", color: "var(--warning)" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
+                {s.truncated && <span style={{ fontSize: "var(--fs-xs)", color: "var(--warning)" }}>⚠ {tr("상위 20개만", "top 20 only")}</span>}
               </React.Fragment>
             ))}
             {validSeg && (
-              <span style={{ fontSize: "11px", color: MUTED, marginLeft: "auto" }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: MUTED, marginLeft: "auto" }}>
                 {tr("현재", "Currently analyzing")} <strong style={{ color: "var(--text-1)" }}>{validSeg.col}={validSeg.value}</strong>{tr("만 분석 중", " only")}
               </span>
             )}
@@ -1150,8 +1150,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ {tr("CSV 변경", "Change CSV")}</button>}
         </div>
         <details open={!analyzed} style={{ marginTop: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 {tr("컬럼 역할 매핑", "Column role mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 수정)", "(analysis done — expand to edit)") : tr("(자동 추정 — 틀리면 수정)", "(auto-detected — edit if wrong)")}</summary>
-          <p className="muted" style={{ fontSize: "12px", margin: "8px 0" }}>
+          <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 {tr("컬럼 역할 매핑", "Column role mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 수정)", "(analysis done — expand to edit)") : tr("(자동 추정 — 틀리면 수정)", "(auto-detected — edit if wrong)")}</summary>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0" }}>
             {locale === "en" ? (
               <>
                 <strong>If headers look like <code className="inline">{"{action}_d{N}"}</code>, the action and window are auto-parsed</strong> (e.g. <code className="inline">invite_d7</code> → action invite, window d7). The target column is auto-guessed from 0/1 values — pick it manually if wrong. If a revenue column like <code className="inline">revenue_d7</code> was wrongly picked up as a candidate, exclude it via &quot;unused&quot;.
@@ -1201,14 +1201,14 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         ) : analyzed ? (
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "var(--success)", fontSize: "12px", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
-            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
+            <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runAhaAnalysis}>↻ {tr("다시 분석", "Re-analyze")}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
-            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "13px", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
+            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
       </section>
@@ -1225,7 +1225,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
-            <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "-4px", marginBottom: "14px" }}>
               {C.heroSub}
             </p>
             <ResultActionCard
@@ -1324,17 +1324,17 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 [C.statRate, (cache.baseRate * 100).toFixed(1) + "%", tr("아무 조건 없을 때 기준 (base rate)", "baseline with no conditions (base rate)")],
               ].map(([label, val, sub]) => (
                 <div key={label} style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "10px 12px" }}>
-                  <div style={{ fontSize: "11px", color: MUTED }}>{label}</div>
-                  <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{val}</div>
-                  {sub ? <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
+                  <div style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{label}</div>
+                  <div className="tnum" style={{ fontSize: "var(--fs-lg)", fontWeight: 700 }}>{val}</div>
+                  {sub ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
                 </div>
               ))}
             </div>
             {topAction ? (
               <div style={{ background: "var(--surface-container-low)", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "10px", padding: "12px 14px", marginBottom: "12px" }}>
-                <div style={{ fontSize: "12px", color: MUTED, marginBottom: "4px" }}>🏆 {tr("가장 강한 신호", "Strongest signal")}</div>
+                <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginBottom: "4px" }}>🏆 {tr("가장 강한 신호", "Strongest signal")}</div>
                 <div
-                  style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
+                  style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
                   dangerouslySetInnerHTML={{
                     __html: C.leadPhrase(
                       topAction.bestWindow === Infinity ? "전체 기간" : topAction.bestWindow + "일",
@@ -1344,12 +1344,12 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     ),
                   }}
                 />
-                <div style={{ fontSize: "11px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
+                <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
                   {tr("예측력(F1)", "Predictive strength (F1)")} {topAction.holdout.F1.toFixed(2)} · {tr("예측력 표시", "predictive strength")} {confidenceDots(topAction.holdout.F1)}
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: "13px", color: MUTED, marginBottom: "12px" }}>{tr("분석 가능한 액션이 없습니다 — 매핑을 확인하세요.", "No analyzable actions — check the column mapping.")}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: MUTED, marginBottom: "12px" }}>{tr("분석 가능한 액션이 없습니다 — 매핑을 확인하세요.", "No analyzable actions — check the column mapping.")}</div>
             )}
             <div className="callout warn" style={{ margin: 0 }}>
               <div className="ico">⚠</div>
@@ -1407,17 +1407,17 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const c = AHA_TONE[key];
               return (
                 <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
+                  <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                   {list.length ? list.map((r) => (
                     <button type="button" key={r.action} onClick={() => setDrilldownAction(r.action)} aria-pressed={r.action === drillTarget}
                       className="analysis-choice-card"
                       style={{ background: "var(--surface-container-low)", border: `1px solid ${r.action === drillTarget ? "var(--primary)" : "var(--border)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "6px", cursor: "pointer" }}>
-                      <div style={{ fontSize: "13px", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
-                        <span>{r.action}</span><span style={{ fontSize: "11px", color: MUTED }}>›</span>
+                      <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
+                        <span>{r.action}</span><span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>›</span>
                       </div>
-                      <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>{ahaActionPhrase(r, locale)}</div>
+                      <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "2px" }}>{ahaActionPhrase(r, locale)}</div>
                     </button>
-                  )) : <div style={{ fontSize: "11px", color: MUTED }}>{tr("없음", "None")}</div>}
+                  )) : <div style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("없음", "None")}</div>}
                 </div>
               );
             };
@@ -1425,14 +1425,14 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               <section className="block" id="s-aha-kanban">
                 <h2 className="section-title">{C.kanbanTitle}</h2>
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
+                  <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px" }}>
                   {col("strong", tr("강한 Aha 신호", "Strong Aha signal"), "✓")}
                   {col("maybe", tr("살펴볼 만함", "Worth a look"), "?")}
                   {col("weak", tr("약함 · 표본 부족", "Weak · low sample"), "⊘")}
                 </div>
-                <p style={{ fontSize: "11px", color: MUTED, marginTop: "10px" }}>{tr("행동 칩을 클릭하면 아래에서 자세한 근거(윈도우×횟수)를 볼 수 있어요. 강함/애매/약함 기준은 맨 아래 상세 문서에 설명돼 있어요.", "Click an action chip to see the detailed evidence (window × count) below. The strong/maybe/weak criteria are explained in the detailed doc at the bottom.")}</p>
+                <p style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "10px" }}>{tr("행동 칩을 클릭하면 아래에서 자세한 근거(윈도우×횟수)를 볼 수 있어요. 강함/애매/약함 기준은 맨 아래 상세 문서에 설명돼 있어요.", "Click an action chip to see the detailed evidence (window × count) below. The strong/maybe/weak criteria are explained in the detailed doc at the bottom.")}</p>
               </section>
             );
           })()}
@@ -1458,18 +1458,18 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const overfit = drillResult.train.F1 - drillResult.holdout.F1 > 0.2;
               const metric = (q, ans, help, tech) => (
                 <div style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px" }}>
-                  <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
-                  <div style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
-                  <div style={{ fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>{help}</div>
-                  <div style={{ fontSize: "11px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tr("통계 원값(전문가용)", "Raw statistic (expert)")}>{tech}</div>
+                  <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
+                  <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
+                  <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
+                  <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tr("통계 원값(전문가용)", "Raw statistic (expert)")}>{tech}</div>
                 </div>
               );
               return (
                 <>
                   <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "12px 14px", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "999px", background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontWeight: 700, fontSize: "11.5px", whiteSpace: "nowrap" }}>{badge}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "999px", background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
                     <div style={{ flex: 1, minWidth: "240px" }}>
-                      <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.6 }}
+                      <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)", lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{
                           __html: C.drillHeadline(
                             win,
@@ -1482,7 +1482,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                         }}
                       />
                       {overfit && (
-                        <div style={{ fontSize: "11.5px", color: "var(--warning)", marginTop: "6px" }}>⚠ {tr("학습셋에선 잘 맞는데 검증셋(홀드아웃)에서 뚝 떨어져요 — 우연일 수 있으니 표본을 더 확인하세요.", "It fit well on the training set but dropped sharply on the validation set (holdout) — this could be coincidence, so check the sample further.")}</div>
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--warning)", marginTop: "6px" }}>⚠ {tr("학습셋에선 잘 맞는데 검증셋(홀드아웃)에서 뚝 떨어져요 — 우연일 수 있으니 표본을 더 확인하세요.", "It fit well on the training set but dropped sharply on the validation set (holdout) — this could be coincidence, so check the sample further.")}</div>
                       )}
                     </div>
                   </div>
@@ -1495,13 +1495,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 </>
               );
             })()}
-            <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", marginTop: "4px" }}>{tr("어떤 기간·횟수 조합이 가장 강했나?", "Which period × count combination was strongest?")} <span style={{ color: MUTED, fontWeight: 400 }}>{tr("(윈도우 × 횟수 히트맵)", "(window × count heatmap)")}</span></div>
-            <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>{tr("진할수록 예측 정확도(F1)가 높고, 굵은 테두리 = 자동으로 고른 최적 조합.", "Darker means higher accuracy (F1), and the bold border = the auto-selected optimal combination.")} <strong>{tr("한 칸만 튀고 주변이 흐리면 우연(과적합) 의심", "If only one cell stands out while neighbors are faint, suspect coincidence (overfitting)")}</strong>{tr("이에요.", ".")}</p>
+            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", marginTop: "4px" }}>{tr("어떤 기간·횟수 조합이 가장 강했나?", "Which period × count combination was strongest?")} <span style={{ color: MUTED, fontWeight: 400 }}>{tr("(윈도우 × 횟수 히트맵)", "(window × count heatmap)")}</span></div>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 8px" }}>{tr("진할수록 예측 정확도(F1)가 높고, 굵은 테두리 = 자동으로 고른 최적 조합.", "Darker means higher accuracy (F1), and the bold border = the auto-selected optimal combination.")} <strong>{tr("한 칸만 튀고 주변이 흐리면 우연(과적합) 의심", "If only one cell stands out while neighbors are faint, suspect coincidence (overfitting)")}</strong>{tr("이에요.", ".")}</p>
             <div className="table-wrap">
               {(() => {
                 if (!drillResult || !drillResult.grid.length) {
                   return (
-                    <table className="data" style={{ fontSize: "12px" }}>
+                    <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                       <thead><tr><th>{tr("횟수 \\ 기간", "Count \\ period")}</th></tr></thead>
                       <tbody>
                         <tr><td colSpan="1" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{tr("선택된 행동이 없습니다", "No action selected")}</td></tr>
@@ -1515,7 +1515,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 const cellFor = (w, k) => grid.find((g) => g.window === w && g.k === k);
                 const maxF1 = Math.max(...grid.map((g) => g.F1), 0.0001);
                 return (
-                  <table className="data" style={{ fontSize: "12px" }}>
+                  <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                     <thead>
                       <tr>
                         <th title={tr("가로=관측 기간(윈도우), 세로=최소 실행 횟수", "Columns = observation period (window), rows = minimum count")}>{tr("횟수 \\ 기간", "Count \\ period")}</th>
@@ -1558,10 +1558,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
             {kSweep.length > 0 && (
               <div style={{ marginTop: "18px" }}>
-                <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>
+                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)" }}>
                   {tr("횟수(k)를 바꾸면 어떻게 달라지나?", "What changes if you vary the count (k)?")} <span style={{ color: MUTED, fontWeight: 400 }}>({drillResult.bestWindow === Infinity ? tr("전체 기간", "the whole period") : `d${drillResult.bestWindow}`} {tr("고정, k 스윕", "fixed, k sweep")})</span>
                 </div>
-                <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 8px" }}>
                   {tr(
                     <>파랑 실선 = 그 횟수를 기준으로 잡았을 때 예측 정확도(F1) · 초록 점선 = 전체 유저 중 그 횟수 이상을 실제로 하는 비율(%). <span style={{ color: "var(--warning)" }}>●</span> 금색 점 = 자동으로 고른 최적 횟수(≥{drillResult.bestK}). 300회처럼 기준을 높이면 F1은 오르내릴 수 있지만 그만큼 해당하는 유저(초록선)는 줄어들어요.</>,
                     <>Blue solid line = accuracy (F1) when using that count as the threshold · green dashed line = % of all users who actually did it that many times or more. <span style={{ color: "var(--warning)" }}>●</span> Gold dot = the auto-selected optimal count (≥{drillResult.bestK}). Raising the bar (e.g. to 300) can move F1 up or down, but the users who qualify (green line) shrink accordingly.</>,
@@ -1580,20 +1580,20 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
           {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
           <details className="block" onToggle={onExpertToggle}>
-            <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+            <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
               📊 {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정", "Expert view — precision/recall scatter, full metrics table, sort & sample settings")}
             </summary>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", color: MUTED }}>{tr("정렬:", "Sort:")}</span>
+                  <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("정렬:", "Sort:")}</span>
                   <button className={`ab-pill ${sortBy === "f1" ? "active" : ""}`} onClick={() => setSortBy("f1")}>F1</button>
                   <button className={`ab-pill ${sortBy === "lift" ? "active" : ""}`} onClick={() => setSortBy("lift")}>Lift</button>
                   <button className={`ab-pill ${sortBy === "precision" ? "active" : ""}`} onClick={() => setSortBy("precision")}>Precision</button>
                 </div>
                 {availWindows.length > 1 && (
                   <div style={{ display: "flex", gap: "6px", alignItems: "center" }} title={tr("켜면 액션마다 자동 선택된 최적 윈도우 대신, 고른 구간(D1/D7 등) 기준으로만 비교합니다.", "When on, compares actions using the chosen window (D1/D7, etc.) instead of each action's auto-selected optimal window.")}>
-                    <span style={{ fontSize: "12px", color: MUTED }}>{tr("구간:", "Window:")}</span>
+                    <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("구간:", "Window:")}</span>
                     <button className={`ab-pill ${windowFilter == null ? "active" : ""}`} onClick={() => setWindowFilter(null)}>{tr("자동(최적)", "Auto (optimal)")}</button>
                     {availWindows.map((w) => (
                       <button key={w} className={`ab-pill ${windowFilter === w ? "active" : ""}`} onClick={() => setWindowFilter(w)}>D{w}</button>
@@ -1601,17 +1601,17 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   </div>
                 )}
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", color: MUTED }}>{tr("최소 표본(support):", "Min. sample (support):")}</span>
+                  <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("최소 표본(support):", "Min. sample (support):")}</span>
                   <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} style={{ width: "70px" }} className="map-select" />
                 </div>
-                <label style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "12px", color: MUTED, cursor: "pointer" }}>
+                <label style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "var(--fs-xs)", color: MUTED, cursor: "pointer" }}>
                   <input type="checkbox" checked={holdoutOn} onChange={(e) => setHoldoutOn(e.target.checked)} /> Train/Holdout 50:50 split
                 </label>
               </div>
-              <p className="muted" style={{ fontSize: "11.5px", marginBottom: "14px" }}>{tr("윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.", "The window is auto-selected from the grid. k is chosen on the training set and re-evaluated on the holdout to reduce optimism bias (overfitting).")}</p>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "14px" }}>{tr("윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.", "The window is auto-selected from the grid. k is chosen on the training set and re-evaluated on the holdout to reduce optimism bias (overfitting).")}</p>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
+                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
               <p className="muted aha-scatter-intro">{tr(
@@ -1648,7 +1648,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               )}
               <div className="chart-container aha-scatter-chart">
                 {selectedCount === 0 ? (
-                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12.5px" }}>{tr("위 칩에서 표시할 이벤트를 선택하세요.", "Choose an event from the chips above.")}</div>
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "var(--fs-sm)" }}>{tr("위 칩에서 표시할 이벤트를 선택하세요.", "Choose an event from the chips above.")}</div>
                 ) : null}
                 <canvas
                   ref={chartRef}
@@ -1667,15 +1667,15 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </details>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
+                <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
                 <button className="ab-pill" onClick={() => requirePaidExport() && downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title={tr("액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점", "Long-format: every action × window (D1/D7) × threshold (k) combination — is_optimal=1 marks the optimal point")}>⬇ CSV</button>
               </div>
-              <p className="muted" style={{ fontSize: "11.5px" }}>{tr(
+              <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr(
                 <><strong>체크박스</strong> = 위 산점도에 표시 · <strong>행(▸) 클릭</strong> = 달성률 구간별 상세 펼치기. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심). 색 = 산점도 이벤트 색.</>,
                 <><strong>Checkbox</strong> = show in the scatter above · <strong>click row (▸)</strong> = expand reach-bucket detail. Green lift = strong association (≥1.5x). Red F1 = train≫holdout (suspected overfitting). Color = matches the scatter event color.</>,
               )}</p>
               <div className="table-wrap">
-                <table className="data" style={{ fontSize: "12.5px" }}>
+                <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                   <thead><tr><th style={{ width: "30px", textAlign: "center" }}><input type="checkbox" checked={allSelected} onChange={(e) => setAllSel(e.target.checked)} title={tr("전체 표시 토글", "Toggle show all")} /></th><th style={{ width: "22px" }}></th><th>{tr("액션", "Action")}</th><th title={tr("가장 강한 연관을 보인 관측 기간", "Observation period with the strongest association")}>{tr("최적 윈도우", "Best window")}</th><th title={tr("그 기간 내 최소 실행 횟수 (≥k)", "Minimum count within that period (≥k)")}>{tr("기준 횟수", "Threshold count")}</th><th title={tr("타겟 달성 여부와 무관하게, 전체 유저 중 이 조건을 채운 인원·비율", "Regardless of target achievement, the number/share of all users meeting this condition")}>{tr("전체 유저 중", "% of all users")}</th><th title={tr("홀드아웃 F1 = 정밀도·재현율 조화평균", "Holdout F1 = harmonic mean of precision and recall")}>{tr("홀드아웃 F1", "Holdout F1")}</th><th title={tr("Precision — 조건 충족 유저 중 실제 타겟 달성 비율", "Precision — actual target-achievement rate among users meeting the condition")}>{tr("정밀도", "Precision")}</th><th title={tr("Recall — 타겟 달성 유저 중 조건 충족 비율", "Recall — share of target-achieving users who met the condition")}>{tr("재현율", "Recall")}</th><th title={tr("Lift — base rate 대비 정밀도 배수", "Lift — precision multiple vs. base rate")}>Lift</th><th title={tr("조건 충족 유저 수", "Number of users meeting the condition")}>{tr("표본", "Sample")}</th><th title={tr("학습셋 F1 (홀드아웃과 큰 차이 = 과적합)", "Training-set F1 (large gap vs. holdout = overfitting)")}>{tr("학습 F1", "Train F1")}</th></tr></thead>
                   <tbody>
                     {sortedResults.length === 0 ? (
@@ -1701,7 +1701,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                               </td>
                               <td className="tnum">{r.bestWindow === Infinity ? tr("전체", "All") : "d" + r.bestWindow}</td>
                               <td className="tnum">≥{r.bestK}</td>
-                              <td className="tnum">{(r.allSupport || 0).toLocaleString()}{tr("명", "")} <span style={{ color: MUTED, fontSize: "11px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
+                              <td className="tnum">{(r.allSupport || 0).toLocaleString()}{tr("명", "")} <span style={{ color: MUTED, fontSize: "var(--fs-xs)" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
                               <td className="tnum" style={{ color: overfit ? "var(--danger)" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.P.toFixed(3)}</td>
                               <td className="tnum">{r.holdout.R.toFixed(3)}</td>
@@ -1713,16 +1713,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                               <tr>
                                 <td colSpan="12" style={{ padding: "0", background: "var(--surface-container-low)" }}>
                                   <div style={{ padding: "10px 12px 12px 40px", borderLeft: `3px solid ${color}` }}>
-                                    <div style={{ fontSize: "11.5px", color: MUTED, marginBottom: "6px" }}>
+                                    <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginBottom: "6px" }}>
                                       {tr(
                                         <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — 기준({r.bestWindow === Infinity ? "전체 기간" : `d${r.bestWindow}`})을 느슨하게(달성률↑)~빡빡하게(달성률↓) 바꿨을 때 구간별 데이터. <span style={{ color: "var(--warning)" }}>★</span> = 자동으로 고른 최적 지점.</>,
                                         <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — bucketed data as the threshold ({r.bestWindow === Infinity ? "the whole period" : `d${r.bestWindow}`}) is loosened (reach↑) to tightened (reach↓). <span style={{ color: "var(--warning)" }}>★</span> = the auto-selected optimal point.</>,
                                       )}
                                     </div>
                                     {bks.length === 0 ? (
-                                      <div style={{ fontSize: "11.5px", color: MUTED }}>{tr("구간을 만들 데이터가 부족합니다.", "Not enough data to build buckets.")}</div>
+                                      <div style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{tr("구간을 만들 데이터가 부족합니다.", "Not enough data to build buckets.")}</div>
                                     ) : (
-                                      <table className="data" style={{ fontSize: "11.5px", margin: 0 }}>
+                                      <table className="data" style={{ fontSize: "var(--fs-xs)", margin: 0 }}>
                                         <thead>
                                           <tr>
                                             <th title={tr("전체 유저 중 이 조건을 채운 비율", "Share of all users meeting this condition")}>{tr("달성률", "Reach")}</th>
@@ -1765,7 +1765,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
           {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 (claude-ux.md §6 탈출구) ── */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <button className="ab-pill" style={{ fontSize: "12.5px", padding: "9px 18px" }}
+            <button className="ab-pill" style={{ fontSize: "var(--fs-sm)", padding: "9px 18px" }}
               onClick={() => requirePaidExport({ locale }) && textDownload(
                 tr(`${C.docFileStem}_설명_${_today()}.md`, `${C.docFileStem}_explainer_${_today()}.md`),
                 buildAhaGuideDoc(cache, sortedResults, minSupport, C, locale),

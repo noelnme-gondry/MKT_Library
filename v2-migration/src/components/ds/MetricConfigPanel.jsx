@@ -132,7 +132,7 @@ export default function MetricConfigPanel({
     padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)",
   };
   const tagBtn = (on) => ({
-    padding: "2px 9px", borderRadius: "999px", fontSize: "11px", fontWeight: 600,
+    padding: "2px 9px", borderRadius: "999px", fontSize: "var(--fs-xs)", fontWeight: 600,
     border: `1px solid ${on ? "var(--primary, #4c8dff)" : "var(--border)"}`,
     background: on ? "var(--primary, #4c8dff)" : "transparent",
     color: on ? "#fff" : "var(--text-muted)", cursor: "pointer", flex: "none",
@@ -147,10 +147,10 @@ export default function MetricConfigPanel({
       panelStyle={{ width: "min(460px, 93vw)", maxHeight: "84vh", display: "flex", flexDirection: "column", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 2px" }}>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{panelTitle}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{panelTitle}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${panelTitle}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
-        <p className="muted" style={{ fontSize: "11px", margin: "0 18px 10px" }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 18px 10px" }}>
           {T.hint}
         </p>
 
@@ -172,11 +172,11 @@ export default function MetricConfigPanel({
                   onPointerUp={onHandleUp}
                   onPointerCancel={onHandleUp}
                   title={isEn ? "Drag to reorder" : "드래그해서 순서 변경"}
-                  style={{ ...ICON_TOUCH_TARGET, color: "var(--text-muted)", cursor: "grab", fontSize: "16px", lineHeight: 1, padding: "2px 4px", touchAction: "none", userSelect: "none" }}
+                  style={{ ...ICON_TOUCH_TARGET, color: "var(--text-muted)", cursor: "grab", fontSize: "var(--fs-md)", lineHeight: 1, padding: "2px 4px", touchAction: "none", userSelect: "none" }}
                 >⠿</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-sm)", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
-                  {it.desc ? <span className="muted" style={{ fontSize: "11px", marginLeft: "6px" }}>{it.desc}</span> : null}
+                  {it.desc ? <span className="muted" style={{ fontSize: "var(--fs-xs)", marginLeft: "6px" }}>{it.desc}</span> : null}
                 </span>
                 <button type="button" className="ab-pill metric-config-order-btn" style={ICON_TOUCH_TARGET} onClick={() => moveBy(key, -1)} disabled={onKeys[0] === key} aria-label={`${it.label} ${T.moveUp}`}>↑</button>
                 <button type="button" className="ab-pill metric-config-order-btn" style={ICON_TOUCH_TARGET} onClick={() => moveBy(key, 1)} disabled={onKeys[onKeys.length - 1] === key} aria-label={`${it.label} ${T.moveDown}`}>↓</button>
@@ -186,15 +186,15 @@ export default function MetricConfigPanel({
           })}
 
           {offKeys.length > 0 && (
-            <div className="muted" style={{ fontSize: "11px", margin: "8px 2px 2px" }}>{T.hidden} ({offKeys.length}) — {T.restore}</div>
+            <div className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 2px 2px" }}>{T.hidden} ({offKeys.length}) — {T.restore}</div>
           )}
           {offKeys.map((key) => {
             const it = byKey.get(key);
             if (!it) return null;
             return (
               <div key={key} style={{ ...rowBase, background: "transparent", opacity: 0.5 }}>
-                <span aria-hidden style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: 1, flex: "none" }}>⠿</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-muted)", textDecoration: "line-through", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <span aria-hidden style={{ color: "var(--text-muted)", fontSize: "var(--fs-base)", lineHeight: 1, flex: "none" }}>⠿</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: "var(--fs-sm)", color: "var(--text-muted)", textDecoration: "line-through", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
                 </span>
                 <button style={tagBtn(false)} onClick={() => toggle(key)} title={T.hiddenTag}>{isEn ? "Hidden" : "숨김"}</button>
@@ -205,7 +205,7 @@ export default function MetricConfigPanel({
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "14px 18px", borderTop: "1px solid var(--border)", marginTop: "12px" }}>
           <button className="ab-pill" onClick={resetDraft}>{T.reset}</button>
-          <span className="muted" style={{ fontSize: "11px", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
+          <span className="muted" style={{ fontSize: "var(--fs-xs)", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
           <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
           <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>{T.apply}</button>
         </div>
