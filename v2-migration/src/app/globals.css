@@ -4613,7 +4613,15 @@ body:not(.light-mode) .moon-icon {
 .blog-inline-insight__result { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border-subtle); }
 .blog-inline-insight__finding { color: var(--text-primary); font-weight: 700; }
 .blog-inline-insight label, .account-archive label { display: grid; gap: 6px; margin: 10px 0; font-size: 13px; }
-.blog-inline-insight select, .account-archive select { min-width: 0; width: 100%; min-height: 44px; }
+/* input이 빠져 있어 텍스트 칸만 브라우저 기본 폭으로 남았다 — 같은 폼 안에서
+   아이디는 전체 폭, 비밀번호는 짧게 나오던 원인. */
+.blog-inline-insight select, .account-archive select,
+.account-archive :is(input[type="email"], input[type="password"], input[type="text"]) { min-width: 0; width: 100%; min-height: 44px; }
+/* 로그인은 접어 두지 않는다. 두 경로를 같은 얇은 선으로만 나눈다. */
+.account-archive :is(.account-password-login, .account-link-login) { display: grid; gap: 0; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+.account-archive :is(.account-password-login, .account-link-login) > h4 { margin: 0; font-size: 14px; font-weight: 650; }
+.account-archive :is(.account-password-login, .account-link-login) > p { margin: 6px 0 4px; color: var(--text-secondary); }
+.account-archive :is(.account-password-login, .account-link-login) .btn { display: flex; width: 100%; justify-content: center; min-height: 44px; margin-top: 14px; }
 .blog-inline-insight p, .account-archive p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .blog-inline-insight figure { margin: 16px 0; }
 .blog-inline-insight .chart-container { height: 220px; }
@@ -11088,7 +11096,20 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .projects-page a:not(.btn) { color: var(--primary); text-underline-offset: 3px; }
 .projects-page > header { display: grid; gap: 12px; justify-items: start; }
 .projects-page > header h1, .projects-page > header p { margin: 0; }
-.project-start-panel .project-create { margin-top: 20px; align-items: end; }
+/* 접기를 걷어내면서 제목과 줄 간격을 이 패널이 직접 갖는다. `<details>`였을 때는
+   `.projects-page section` 안쪽 여백 규칙에 걸리지 않아 내용이 테두리에 붙어 있었다. */
+.project-start-panel > h2 { margin: 0; font-size: 18px; }
+/* 브랜딩은 이미 카드인 "보고서·브랜딩" 안에 있다. `.projects-page section` 상자 규칙을
+   그대로 두면 박스 안에 박스가 생기므로 얇은 선으로만 나눈다. */
+.projects-page .project-branding { padding: 18px 0 0; margin-top: 18px; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+.projects-page .project-branding > h3 { margin: 0 0 12px; font-size: 15px; }
+/* 라벨을 입력칸 옆에 두면 라벨 길이만큼 칸 폭이 갈린다(회사명 vs 푸터). 위에 둔다. */
+.projects-page .project-branding :is(.wr-field, label) { display: grid; gap: 6px; margin: 0 0 14px; font-size: 13px; }
+.projects-page .project-branding :is(.wr-field, label) input { width: 100%; min-width: 0; }
+.projects-page .project-branding > .btn { min-height: 44px; }
+.project-report-reader { display: grid; gap: 12px; margin-block: 12px; }
+.project-report-reader > .btn { justify-self: start; }
+.project-start-panel .project-create { margin-top: 18px; align-items: end; }
 .project-create .wr-field { display: grid; gap: 8px; flex: 1 1 240px; margin: 0; }
 .project-create .wr-field input { width: 100%; }
 .project-empty { grid-column: 1 / -1; }

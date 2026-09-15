@@ -21,6 +21,18 @@ import { requirePaidExport } from "@/lib/subscription/paidExport";
 function nextReview(project) {
   return (project.decisions || []).filter(record => record.status !== "reviewed" && record.reviewDate).map(record => record.reviewDate).sort()[0] || "";
 }
+// 저장된 브랜딩을 초기값으로 갖는다. 부모가 들고 있으면 프로젝트가 바뀔 때 채워 줄
+// 방법이 effect뿐이라(§5 금지) `key`로 다시 마운트해 초기값을 잡는다.
+function ProjectBrandingForm({ en, initial, disabled, onLogo, onSave }) {
+  const [branding, setBranding] = useState(initial || { company: "", footer: "", logo: "" });
+  return <section className="project-branding" aria-labelledby="project-branding-title">
+    <h3 id="project-branding-title">{en ? "Report branding" : "보고서 브랜딩"}</h3>
+    <label className="wr-field">{en ? "Company" : "회사명"}<input maxLength={120} value={branding.company} onChange={event => setBranding(value => ({ ...value, company: event.target.value }))} /></label>
+    <label className="wr-field">{en ? "Footer" : "푸터"}<input maxLength={300} value={branding.footer} onChange={event => setBranding(value => ({ ...value, footer: event.target.value }))} /></label>
+    <label>{en ? "Logo: PNG/JPEG/WebP, up to 1 MiB and 4096px" : "로고: PNG/JPEG/WebP, 1 MiB·4096px 이하"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => onLogo(event, logo => setBranding(value => ({ ...value, logo })))} /></label>
+    <button className="btn" disabled={disabled} onClick={() => onSave(branding)}>{en ? "Save branding" : "브랜딩 저장"}</button>
+  </section>;
+}
 export default function ProjectsPage({ locale = "ko", embedded = false, onReview }) {
   const en = locale === "en";
   const backupInput = useRef(null);
@@ -38,7 +50,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
   const [backup, setBackup] = useState(null);
   const [pendingRestore, setPendingRestore] = useState(null);
   const [batch, setBatch] = useState(false);
-  const [branding, setBranding] = useState({ company: "", footer: "", logo: "" });
+  const [openReport, setOpenReport] = useState("");
   const active = projects.find(project => project.id === activeId);
   useEffect(() => { useAppStore.getState().refreshProjects(); }, []);
   const upgrade = reason => { useAppStore.setState({ upgradeReason: reason }); router.push(en ? "/en/subscription" : "/subscription"); };
@@ -88,7 +100,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
     await useAppStore.getState().refreshProjects(); setBackup(null);
     setMessage(en ? "Backup restored. Source files are ready; run analysis to refresh results." : "백업을 복원했습니다. 원본 파일을 불러왔으며 최신 결과는 분석을 실행해 확인하세요.");
   });
-  const loadLogo = event => {
+  const loadLogo = (event, apply) => {
     const file = event.target.files?.[0]; event.target.value = "";
     if (!file) return;
     run(async () => {
@@ -97,18 +109,18 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
       const bitmap = await createImageBitmap(file);
       if (bitmap.width > 4096 || bitmap.height > 4096) { bitmap.close(); throw new Error("LOGO_DIMENSIONS"); }
       bitmap.close();
-      const logo = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
-      setBranding(value => ({ ...value, logo }));
+      apply(await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }));
     });
   };
   return <div className="projects-page">
     {pendingRestore && <ReviewSaveDialog locale={locale} onConfirm={pendingRestore} onClose={() => setPendingRestore(null)} />}
     {!embedded && <header><h1>{en ? "My projects" : "내 프로젝트"}</h1><p>{en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다."}</p></header>}
     {!projects.length && <section className="project-empty"><h2>{en ? "Start with a review" : "리뷰부터 시작하세요"}</h2><p>{en ? "No project setup is needed to analyze. Name your project when you save your first decision." : "분석 전에 프로젝트를 만들 필요는 없습니다. 첫 결정을 저장할 때 프로젝트 이름을 정하세요."}</p>{embedded ? <button className="btn primary" onClick={onReview}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</button> : <Link className="btn primary" href={en ? "/en/weekly-review" : "/weekly-review"}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</Link>}</section>}
-    <details className="project-start-panel" id="project-backup">
-      <summary>{en ? "Create a project or restore a backup" : "새 프로젝트 만들기·백업 복원"}</summary>
+    {/* 프로젝트를 만드는 것은 이 화면의 주된 행동이다. 주된 행동을 토글 뒤에 두지 않는다. */}
+    <section className="project-start-panel" id="project-backup" aria-labelledby="project-start-title">
+      <h2 id="project-start-title">{en ? "Create a project or restore a backup" : "새 프로젝트 만들기·백업 복원"}</h2>
       <div className="project-create"><label className="wr-field"><span>{en ? "New project name" : "새 프로젝트 이름"}</span><input value={name} onChange={event => setName(event.target.value)} maxLength={120} placeholder={en ? "Client or app name" : "고객 또는 앱 이름"} /></label><button className="btn primary" type="button" disabled={!storageEnabled || !ready || busy || switching} onClick={create}>{en ? "Create project" : "프로젝트 만들기"}</button><button className="btn" type="button" disabled={!storageEnabled || busy || switching || !ready} onClick={() => backupInput.current?.click()}>{en ? "Import project backup" : "프로젝트 백업 가져오기"}</button><input ref={backupInput} hidden type="file" accept="application/json,.json" disabled={!storageEnabled || busy || switching || !ready} onChange={preview} /></div>
-    </details>
+    </section>
     {!storageEnabled && <section><h2>{en ? "Keep your next review on this device" : "다음 리뷰를 이 기기에 보관하세요"}</h2><p>{en ? "Device storage is off. Enable it to keep or restore projects; files stay in this browser." : "기기 저장이 꺼져 있습니다. 저장을 켜면 프로젝트를 보관·복원할 수 있습니다. 파일은 이 브라우저에만 저장됩니다."}</p><button className="btn primary" disabled={busy} onClick={async () => { setBusy(true); try { useAppStore.getState().setDecisionPersistenceEnabled(true); await useAppStore.getState().initializeProjects(); } catch { setMessage(en ? "Could not enable storage. Check your browser settings." : "저장을 켜지 못했습니다. 브라우저 설정을 확인해 주세요."); } finally { setBusy(false); } }}>{en ? "Enable device storage" : "기기 저장 켜기"}</button> <Link href={en ? "/en/storage" : "/storage"}>{en ? "Storage settings" : "저장 설정"}</Link></section>}
     {!hasPaidAccess(entitlement) && <p className="wr-notice">{en ? "Analysis is free. Creating projects, saving reviews and restoring backups requires Pro. Existing records remain readable and exportable." : "분석은 무료입니다. 프로젝트 생성·리뷰 저장·백업 복원은 Pro 기능이며, 기존 기록은 계속 읽고 내보낼 수 있습니다."} <Link href={en ? "/en/subscription" : "/subscription"}>{en ? "View Pro" : "Pro 안내"}</Link></p>}
     {storageError && <p role="alert">{en ? "Project storage is unavailable or a write failed. Keep a downloaded copy of your current results; saved records may not include the latest changes." : "프로젝트 저장소를 사용할 수 없거나 저장에 실패했습니다. 현재 결과를 내려받아 보관해 주세요. 저장된 기록에는 최신 변경이 빠져 있을 수 있습니다."}</p>}
@@ -122,7 +134,11 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
         return <article className="project-card" key={project.id}>
           <h2>{project.name || (en ? "Existing records" : "기존 기록")}{project.id === activeId ? (en ? " · Current" : " · 현재") : ""}</h2>
           <p>{project.settings?.metric?.toUpperCase() || "—"} · {project.settings?.currency || "—"}</p>
-          {project.report?.text && <details><summary>{en ? "Read saved report" : "저장한 보고서 읽기"}</summary><p>{project.report.generatedAt}</p><WeeklyReportDocument text={project.report.text} /></details>}
+          {/* 보고서 본문은 길어 목록을 밀어내므로 기본은 닫아 두되, 여는 것은 버튼이다. */}
+          {project.report?.text && <div className="project-report-reader">
+            <button type="button" className="btn" aria-expanded={openReport === project.id} onClick={() => setOpenReport(openReport === project.id ? "" : project.id)}>{openReport === project.id ? (en ? "Close saved report" : "저장한 보고서 닫기") : (en ? "Read saved report" : "저장한 보고서 읽기")}</button>
+            {openReport === project.id && <><p>{project.report.generatedAt}</p><WeeklyReportDocument text={project.report.text} /></>}
+          </div>}
           <dl><dt>{en ? "Latest snapshot period end" : "최근 집계 기간 종료일"}</dt><dd>{end || "—"}</dd><dt>{en ? "Next review" : "다음 검토일"}</dt><dd>{due || "—"}</dd><dt>{en ? "Open decisions" : "미완료 결정"}</dt><dd>{(project.decisions || []).filter(record => record.status !== "reviewed").length}</dd></dl>
           <section className="project-next-work">{dueRecords.length > 0 && <p className="project-review-due"><strong>{en ? `${dueRecords.length} decisions due for review` : `오늘까지 검토할 결정 ${dueRecords.length}개`}</strong></p>}<h3>{en ? "Next actions" : "이 프로젝트의 다음 할 일"}</h3><p>{due ? (en ? `Review your open decisions, starting with ${due}.` : `${due} 검토 예정인 결정부터 결과를 확인하세요.`) : (en ? "Upload the next period and record a decision to check later." : "다음 기간 데이터를 올리고, 나중에 확인할 결정을 기록하세요.")}</p><div className="workflow-next-step__actions"><button className="btn" disabled={busy || switching || !ready} onClick={() => open(project.id, "/start")}>{en ? "Upload next CSV" : "다음 CSV 분석"}</button></div></section>
           {!!project.savedAnalyses?.length && <section className="saved-analysis-list"><h3>{en ? "Saved analysis setups" : "저장한 분석 설정"}</h3><p>{en ? "Load saved mappings, filters and supported tool inputs. Compare the file before applying." : "매핑·필터·지원하는 도구 입력값을 불러옵니다. 적용 전 새 파일과의 차이를 확인하세요."}</p>{project.savedAnalyses.map(item => <article key={item.id}><strong>{item.name}</strong><span>{toolIndexEntry(item.toolId, locale)?.name || item.toolId}</span><div className="workflow-next-step__actions"><button className="btn primary" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, "newFile")}>{en ? "Continue with a new CSV" : "새 CSV로 이어서 분석"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, true)}>{en ? "Keep current period" : "현재 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => restoreSetup(project, item, false)}>{en ? "Use saved period" : "저장한 기간으로 불러오기"}</button><button className="btn" disabled={busy || switching || !ready} onClick={() => run(async () => { await updateProject(project.id, current => ({ savedAnalyses: (current.savedAnalyses || []).filter(saved => saved.id !== item.id) })); await useAppStore.getState().refreshProjects(); })}>{en ? "Remove setup" : "설정 삭제"}</button></div></article>)}</section>}
@@ -131,7 +147,8 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
       })}
     </div>
     <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(!batch) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Reports contain the last explicitly saved review for each project, with its period and save date. Missing reports are not estimated." : "프로젝트마다 명시적으로 저장한 마지막 리뷰를 기간·저장일과 함께 모읍니다. 보고서가 없으면 추정해서 채우지 않습니다."}</p>
-      <details key={activeId} onToggle={event => { if (event.currentTarget.open) setBranding(active?.branding || { company: "", footer: "", logo: "" }); }}><summary>{en ? "Report branding" : "보고서 브랜딩"}</summary><label className="wr-field">{en ? "Company" : "회사명"}<input maxLength={120} value={branding.company} onChange={event => setBranding(value => ({ ...value, company: event.target.value }))} /></label><label className="wr-field">{en ? "Footer" : "푸터"}<input maxLength={300} value={branding.footer} onChange={event => setBranding(value => ({ ...value, footer: event.target.value }))} /></label><label>{en ? "Logo: PNG/JPEG/WebP, up to 1 MiB and 4096px" : "로고: PNG/JPEG/WebP, 1 MiB·4096px 이하"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={loadLogo} /></label><button className="btn" disabled={!active || busy || switching || !ready} onClick={() => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })}>{en ? "Save branding" : "브랜딩 저장"}</button></details>
+      {/* 접기를 걷어내면서 현재 프로젝트 값 채우기를 onToggle이 아니라 마운트에 건다. */}
+      <ProjectBrandingForm key={activeId} en={en} initial={active?.branding} disabled={!active || busy || switching || !ready} onLogo={loadLogo} onSave={branding => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })} />
     </section>
     {batch && hasPaidAccess(entitlement) && <section className="project-batch"><h2>{en ? "Saved weekly reports" : "저장된 주간 보고서"}</h2><button className="btn no-print" onClick={() => { if (requirePaidExport({ locale, format: "print" })) window.print(); }}>{en ? "Print / save PDF" : "인쇄 / PDF 저장"}</button>{projects.map(project => <article key={project.id}><h3>{project.name || (en ? "Existing records" : "기존 기록")}</h3>{project.branding?.logo && <Image unoptimized src={project.branding.logo} alt={project.branding.company || ""} width={120} height={60} />}<p>{project.branding?.company}</p><p>{project.report?.generatedAt || "—"}</p>{project.report?.text ? <WeeklyReportDocument text={project.report.text} /> : <p>{en ? "No saved report." : "저장된 보고서가 없습니다."}</p>}<p>{project.branding?.footer}</p></article>)}</section>}
     <ProjectStorageSummary locale={locale} refreshKey={projects} />
