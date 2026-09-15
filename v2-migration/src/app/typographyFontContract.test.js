@@ -36,9 +36,17 @@ describe("Korean typography contract", () => {
     expect(css).toMatch(/:where\(pre, code, kbd, samp, \.mono, \.tnum, \.kpi-card \.value\)/);
   });
 
-  it("raises shared body and Korean metadata sizes", () => {
-    expect(css).toContain("--type-body: 14px");
-    expect(css).toContain("--type-meta: 11px");
-    expect(css).toMatch(/table\.data thead th[\s\S]*font-size:\s*11px/);
+  // 이 검사는 오래 리터럴 px를 그대로 적고 있었다(`--type-body: 14px` ·
+  // `thead th … 11px`). 그러면 크기를 고치는 순간 테스트가 먼저 반대한다 — §7
+  // "가드가 '지금 값'을 그대로 적으면 그 순간부터 버그를 지킨다"의 실제 사례다.
+  // 게다가 `--type-*`는 `--fs-*`와 나란히 존재하던 **두 번째 타입 토큰 계열**이라,
+  // 이 가드가 그 분열을 고정하고 있었다. 지금은 한국어 본문에 필요한 **관계**만
+  // 지킨다: 본문은 스케일의 본문 단을 쓰고, 표 헤더는 본문보다 작지 않은 메타 단을
+  // 쓰며, 크기는 전부 스케일 토큰에서 온다(스케일 자체는 typeScale.test.js가 소유).
+  it("keeps Korean body and table metadata on the shared scale", () => {
+    expect(css).toMatch(/--fs-base:\s*14px/);
+    expect(css).toMatch(/--fs-xs:\s*12px/);
+    expect(css).toMatch(/table\.data thead th[\s\S]{0,400}?font-size:\s*var\(--fs-(xs|sm)\)/);
+    expect(css).not.toMatch(/--type-(body|meta|title|display-lg)\s*:/);
   });
 });

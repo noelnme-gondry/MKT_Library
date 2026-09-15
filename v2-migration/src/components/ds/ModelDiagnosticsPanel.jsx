@@ -136,12 +136,12 @@ export default function ModelDiagnosticsPanel({ scope, fit, X, labels = [], loca
         <h2 className="section-title">{tx(locale, "모델 신뢰도 점검", "Model reliability checks")}</h2>
         <span className="ab-pill">{tx(locale, "분석가 모드", "Analyst mode")}</span>
       </div>
-      <p style={{ margin: "7px 0 14px", fontSize: "13px", lineHeight: 1.55 }}>{summary}</p>
+      <p style={{ margin: "7px 0 14px", fontSize: "var(--fs-sm)", lineHeight: 1.55 }}>{summary}</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "잔차 vs 적합값", "Residuals vs fitted")}</strong><DiagnosticChart {...chartConfigs.residual} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Q-Q 플롯 (시각 점검)", "Q-Q plot (visual check)")}</strong><DiagnosticChart {...chartConfigs.qq} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "Scale–Location", "Scale–Location")}</strong><DiagnosticChart {...chartConfigs.scaleLocation} /></div>
-        <div><strong style={{ fontSize: "12px" }}>{tx(locale, "영향점 (Cook's D)", "Influence (Cook's D)")}</strong><DiagnosticChart type="bar" {...chartConfigs.cooks} /></div>
+        <div><strong style={{ fontSize: "var(--fs-xs)" }}>{tx(locale, "잔차 vs 적합값", "Residuals vs fitted")}</strong><DiagnosticChart {...chartConfigs.residual} /></div>
+        <div><strong style={{ fontSize: "var(--fs-xs)" }}>{tx(locale, "Q-Q 플롯 (시각 점검)", "Q-Q plot (visual check)")}</strong><DiagnosticChart {...chartConfigs.qq} /></div>
+        <div><strong style={{ fontSize: "var(--fs-xs)" }}>{tx(locale, "Scale–Location", "Scale–Location")}</strong><DiagnosticChart {...chartConfigs.scaleLocation} /></div>
+        <div><strong style={{ fontSize: "var(--fs-xs)" }}>{tx(locale, "영향점 (Cook's D)", "Influence (Cook's D)")}</strong><DiagnosticChart type="bar" {...chartConfigs.cooks} /></div>
       </div>
       <div style={{ marginTop: "14px" }}>
         <DataTable
@@ -157,10 +157,10 @@ export default function ModelDiagnosticsPanel({ scope, fit, X, labels = [], loca
         />
       </div>
       {vifRows.length > 0 && <div style={{ marginTop: "12px" }}>
-        <p className="muted" style={{ margin: "0 0 6px", fontSize: "11px" }}>{tx(locale, `VIF 5 이상은 주의, 10 이상은 심각으로 읽습니다.`, `Read VIF ≥5 as a warning and ≥10 as severe.`)}</p>
+        <p className="muted" style={{ margin: "0 0 6px", fontSize: "var(--fs-xs)" }}>{tx(locale, `VIF 5 이상은 주의, 10 이상은 심각으로 읽습니다.`, `Read VIF ≥5 as a warning and ≥10 as severe.`)}</p>
         <DataTable ariaLabel={tx(locale, "변수별 VIF", "VIF by variable")} columns={[{ key: "variable", label: tx(locale, "변수", "Variable") }, { key: "value", label: "VIF", align: "right" }]} rows={vifRows} rowKey={(row) => row.variable} />
       </div>}
-      <p className="muted" style={{ margin: "12px 0 0", fontSize: "11px", lineHeight: 1.5 }}>{tx(locale, "Q-Q 플롯은 소표본 t-검정·신뢰구간 해석의 참고용입니다. 잔차 정규성은 OLS 계수 추정의 필수 조건이 아닙니다.", "The Q-Q plot informs small-sample t-test and interval interpretation. Normal residuals are not required to estimate OLS coefficients.")}</p>
+      <p className="muted" style={{ margin: "12px 0 0", fontSize: "var(--fs-xs)", lineHeight: 1.5 }}>{tx(locale, "Q-Q 플롯은 소표본 t-검정·신뢰구간 해석의 참고용입니다. 잔차 정규성은 OLS 계수 추정의 필수 조건이 아닙니다.", "The Q-Q plot informs small-sample t-test and interval interpretation. Normal residuals are not required to estimate OLS coefficients.")}</p>
     </section>
   );
 }

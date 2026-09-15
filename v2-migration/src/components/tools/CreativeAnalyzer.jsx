@@ -970,7 +970,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
           <div>
             <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
-            <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
+            <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
               {tr("교체할 소재, 다음 제작 후보, 성과 변화 신호를 한 번에 정리합니다.", "See what to replace, what to produce next, and what changed performance.")}
             </p>
           </div>
@@ -997,7 +997,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         </div>
 
-        <details style={{ marginTop: "9px", fontSize: "11px", color: "var(--text-secondary)", cursor: "pointer" }}>
+        <details style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
           <summary>{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</summary>
           <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
             {C.heroCausationBody}
@@ -1163,7 +1163,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
-        <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
+        <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
         <div style={{ marginTop: "10px" }}>
           <ToolTemplateAction
             toolId={C.uploaderToolId}
@@ -1185,8 +1185,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               <strong>{tr(`${validation.droppedRows}개 row 제외 / ${validation.errors.length}개 이슈`, `${validation.droppedRows} row(s) excluded / ${validation.errors.length} issue(s)`)}</strong>
               {validation.errors.length > 0 && (
                 <details style={{ marginTop: "6px" }}>
-                  <summary style={{ cursor: "pointer", fontSize: "12px" }}>{tr("상세", "Details")}</summary>
-                  <ul style={{ margin: "6px 0 0 18px", fontSize: "11px", color: "var(--text-muted)" }}>
+                  <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tr("상세", "Details")}</summary>
+                  <ul style={{ margin: "6px 0 0 18px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                     {validation.errors.slice(0, 20).map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
@@ -1210,7 +1210,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       {health && (
         <section className="block" id="s-velocity">
           <h2 className="section-title">{C.healthTitle}</h2>
-          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
             {C.healthDescPre}<strong>{C.healthDescS1}</strong>{tr(", 얼마나 빠르게 ", ", how fast we're ")}<strong>{C.healthDescS2}</strong>{tr(", 하나가 얼마나 ", ", and how long one lasts before it ")}<strong>{C.healthDescS3}</strong>.
           </p>
           <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
@@ -1244,7 +1244,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               <div className="ab-stat-hint">{health.fatiguedN}/{health.fatigueN}</div>
             </div>
           </div>
-          <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>
+          <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
             <strong>{tr("이긴 비율(Win-rate)", "Win-rate")}</strong>{C.healthCalloutT1}
             {" "}<strong>{C.healthCalloutS2}</strong>{C.healthCalloutT2}
             {" "}<strong>{C.healthCalloutS3}</strong>{C.healthCalloutT3}
@@ -1254,7 +1254,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <section className="block" id="s-metrics">
         <h2 className="section-title">{tr("어떤 소재가 성과를 만들었나?", "Which creatives produced results?")} {selectedCell ? tr("(필터됨)", "(filtered)") : tr("(상위 50, 노출수 순)", "(top 50, by impressions)")}</h2>
-        <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "12px" }}>{C.metricsDesc}</p>
+        <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{C.metricsDesc}</p>
         {selectedCell && (
           <div className="callout" style={{ marginBottom: "8px" }}>
             <div className="ico">i</div>
@@ -1265,7 +1265,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         )}
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{C.colCreativeId}</th><th>Channel</th><th title={tr("데이터가 존재하는 일수", "Number of days with data")}>Days</th>
@@ -1278,7 +1278,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               {sortedMetrics.length ? (
                 sortedMetrics.map((m) => (
                   <tr key={m.creative_id}>
-                    <td><code className="inline" style={{ fontSize: "11px" }}>{String(m.creative_id).slice(0, 24)}</code></td>
+                    <td><code className="inline" style={{ fontSize: "var(--fs-xs)" }}>{String(m.creative_id).slice(0, 24)}</code></td>
                     <td>{String(m.channel || "")}</td>
                     <td className="tnum">{m.days}</td>
                     <td className="tnum">{(m.impressions || 0).toLocaleString()}</td>
@@ -1321,7 +1321,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </h2>
         {hasDecompose ? (
           <>
-            <details style={{ marginBottom: "8px", fontSize: "11.5px", color: "var(--text-muted)", cursor: "pointer" }}>
+            <details style={{ marginBottom: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", cursor: "pointer" }}>
               <summary>{tr("어떻게 계산하나요? (분석 방법 펼치기)", "How is this calculated? (expand methodology)")}</summary>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
                 {tr(
@@ -1355,7 +1355,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               ]} />
               </div>
             </div>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-6px" }}>
+            <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "-6px" }}>
               {tr("분석에 쓰인 행 수(n)", "Rows used in analysis (n)")}={curDecompose?.diag?.n || 0} · <span title={tr("모델이 데이터를 얼마나 잘 설명하는지 (0~1, 높을수록 설명력 높음)", "How well the model explains the data (0~1, higher = better fit)")}>{tr("설명력(R²)", "Explanatory power (R²)")}</span>={fmtNum(curDecompose?.diag?.R2)}
               {(curDecompose?.dropped || []).length ? tr(` · 제외(다중공선성): ${curDecompose.dropped.map(localizeEngineMsg).join(", ")}`, ` · Dropped (multicollinearity): ${curDecompose.dropped.map(localizeEngineMsg).join(", ")}`) : ""}
               {curDecompose?.diag?.error ? tr(` · 추정 불가: ${localizeEngineMsg(curDecompose.diag.error)}`, ` · Cannot estimate: ${localizeEngineMsg(curDecompose.diag.error)}`) : ""}
@@ -1379,7 +1379,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                   </div>
                 </div>
                 <div className="table-wrap">
-                  <table className="data" style={{ fontSize: "11.5px" }}>
+                  <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                     <thead>
                       <tr>
                         <th title={tr("비교 대상 속성", "Attribute being compared")}>{tr("속성 (Factor)", "Attribute (Factor)")}</th>
@@ -1399,12 +1399,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                         return (
                           <tr key={i}>
                             <td>{e.factor}</td>
-                            <td><strong>{e.level}</strong> <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>vs {e.ref}</span></td>
+                            <td><strong>{e.level}</strong> <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>vs {e.ref}</span></td>
                             <td className="tnum">{e.ref}</td>
                             <td className="tnum"><strong style={{ color }}>{decMeta.fmtVal(e.coef)}</strong></td>
                             <td className="tnum">{fmtNum(e.z, 2)}</td>
                             <td className="tnum"><strong>{fmtNum(e.pAdj)}</strong></td>
-                            <td className="tnum" style={{ fontSize: "11px", color: "var(--text-muted)" }}>[{decMeta.fmtVal(e.ciLow)}, {decMeta.fmtVal(e.ciHigh)}]</td>
+                            <td className="tnum" style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>[{decMeta.fmtVal(e.ciLow)}, {decMeta.fmtVal(e.ciHigh)}]</td>
                             <td className="tnum">{e.n}</td>
                           </tr>
                         );
@@ -1440,7 +1440,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <section className="block" id="s-fatigue">
         <h2 className="section-title">{tr("어떤 소재가 지치기 시작했나?", "Which creatives are starting to fatigue?")}</h2>
-        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
           {C.fatigueDesc((fatigue || []).length, fatiguedCount)}
         </p>
         <p>{tr(`노출·기간 근거 부족으로 보류 ${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length}개. 피로 비율의 분모는 근거 기준을 충족한 소재만 포함합니다. 노출 기준 ${CREATIVE_CONFIG.minImpressions}회는 운영 휴리스틱이며 통계적 유의성 기준이 아닙니다.`, `${(fatigue || []).filter((row) => row.qualityStatus !== "reviewable").length} held for insufficient exposure or history. The fatigue share includes only eligible creatives. The ${CREATIVE_CONFIG.minImpressions}-impression threshold is an operating heuristic, not statistical significance.`)}</p>
@@ -1463,7 +1463,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         )}
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{tr("상태", "Status")}</th>
@@ -1479,9 +1479,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               {fatiguedRows.length ? (
                 fatiguedRows.map((f, i) => (
                   <tr key={i}>
-                    <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{C.fatiguedBadge}</span></td>
-                    <td><code className="inline" style={{ fontSize: "11px" }}>{String(f.creative_id).slice(0, 24)}</code></td>
-                    <td className="tnum" style={{ fontSize: "11px" }}>{f.peakDate || ""}</td>
+                    <td><span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{C.fatiguedBadge}</span></td>
+                    <td><code className="inline" style={{ fontSize: "var(--fs-xs)" }}>{String(f.creative_id).slice(0, 24)}</code></td>
+                    <td className="tnum" style={{ fontSize: "var(--fs-xs)" }}>{f.peakDate || ""}</td>
                     <td className="tnum">{fmtPct(f.peakValue)}</td>
                     <td className="tnum">{fmtPct(f.currentValue)}</td>
                     <td className="tnum"><strong style={{ color: "var(--danger)" }}>−{(f.dropPct * 100).toFixed(1)}%</strong></td>
@@ -1498,11 +1498,11 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
       <section className="block" id="s-fatigue-alert">
         <h2 className="section-title">{C.fatigueAlertTitle}</h2>
-        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
           {C.fatigueAlertDesc((fatigueAlerts || []).length, alertNowN)}
         </p>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{tr("상태", "Status")}</th>
@@ -1528,8 +1528,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                           : "#22c55e";
                   return (
                     <tr key={i}>
-                      <td>{a.alert ? <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>—</span>}</td>
-                      <td><code className="inline" style={{ fontSize: "11px" }}>{String(a.creative_id).slice(0, 24)}</code></td>
+                      <td>{a.alert ? <span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>—</span>}</td>
+                      <td><code className="inline" style={{ fontSize: "var(--fs-xs)" }}>{String(a.creative_id).slice(0, 24)}</code></td>
                       <td className="tnum">{a.days}{tr("일", "d")}</td>
                       <td className="tnum"><strong style={{ color: scoreColor }}>{a.score == null ? "—" : (a.score * 100).toFixed(0) + "%"}</strong></td>
                       <td className="tnum" style={{ color: (a.ctrTrendPctPerDay || 0) < 0 ? "var(--danger)" : "var(--text-muted)" }}>{fmtPctDay(a.ctrTrendPctPerDay, locale)}</td>
@@ -1537,7 +1537,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "var(--danger)" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
                       <td className="tnum">
                         {a.etaDays == null ? (
-                          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
                         ) : a.etaDays === 0 ? (
                           <strong style={{ color: "var(--danger)" }}>{tr("즉시", "Immediate")}</strong>
                         ) : (
@@ -1559,7 +1559,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <h2 className="section-title">
           {tr("누적 집행 위험 구간 · 과거 신호 적중률", "Cumulative delivery risk zone · historical signal hit rate")}
         </h2>
-        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px", lineHeight: 1.6 }}>
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           {tr(
             `빈도나 고유 도달을 추정하지 않습니다. ${CREATIVE_CONFIG.fatigueRisk.rollingWindow}일 CTR이 고점 대비 ${(CREATIVE_CONFIG.fatigueRisk.dropPct * 100).toFixed(0)}% 이상 낮은 상태가 ${CREATIVE_CONFIG.fatigueRisk.confirmDays}일 이어진 최초 시점의 집행일수·누적 노출·누적 비용을 과거 ${domain === "content" ? "콘텐츠" : "소재"}와 비교합니다.`,
             `This does not estimate frequency or unique reach. It compares age, cumulative impressions, and cumulative spend at the first point where ${CREATIVE_CONFIG.fatigueRisk.rollingWindow}-day CTR stayed at least ${(CREATIVE_CONFIG.fatigueRisk.dropPct * 100).toFixed(0)}% below its peak for ${CREATIVE_CONFIG.fatigueRisk.confirmDays} days.`,
@@ -1592,7 +1592,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         {riskProfiles.length ? (
           <>
             <div className="table-wrap" style={{ marginBottom: "12px" }}>
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>
                   <tr>
                     <th>{tr("비교 기준", "Comparison scope")}</th>
@@ -1617,7 +1617,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             </div>
 
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>
                   <tr>
                     <th>{tr("상태", "Status")}</th>
@@ -1635,12 +1635,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     riskZoneRows.slice(0, 30).map((item) => (
                       <tr key={item.seriesKey}>
                         <td>
-                          <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: item.signalDate ? "var(--danger)" : "var(--warning)" }}>
+                          <span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: item.signalDate ? "var(--danger)" : "var(--warning)" }}>
                             <span className="dot" style={{ background: item.signalDate ? "var(--danger)" : "var(--warning)" }}></span>
                             {item.signalDate ? tr("하락 신호 발생", "Decline signaled") : tr("위험 구간 진입", "Entered risk zone")}
                           </span>
                         </td>
-                        <td><code className="inline" style={{ fontSize: "11px" }}>{String(item.creative_id).slice(0, 24)}</code></td>
+                        <td><code className="inline" style={{ fontSize: "var(--fs-xs)" }}>{String(item.creative_id).slice(0, 24)}</code></td>
                         <td>{item.channel || tr("미분류", "Unclassified")}</td>
                         <td className="tnum">{tr(`${item.ageDays}일`, `${item.ageDays}d`)}</td>
                         <td className="tnum">{Math.round(item.cumulativeImpressions).toLocaleString()}</td>
@@ -1670,7 +1670,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             </div>
           </div>
         )}
-        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "10px", lineHeight: 1.6 }}>
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "10px", lineHeight: 1.6 }}>
           {tr(
             `위험 구간은 과거 최초 신호 시점의 25~75백분위이며, 현재 판정은 하단값 3개 중 2개 이상 진입했을 때 표시합니다. 적중은 신호 이후 CTR이 추가 ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% 이상 하락한 경우입니다. 관측 우선순위이지 피로의 인과 판정은 아닙니다.`,
             `Risk ranges are the 25th–75th percentiles at historical first-signal points. Current items are flagged after crossing at least 2 of 3 lower bounds. A hit means CTR fell at least ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% further after the signal. This is an observed priority, not a causal fatigue verdict.`,
@@ -1685,11 +1685,11 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             const buckets = CREATIVE_FATIGUE.ganttBuckets(autoPlan.plan, ganttWeeks);
             return (
               <>
-                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
                   {C.plannerDesc}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "8px 0 12px", flexWrap: "wrap" }}>
-                  <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>{C.plannerVelocityLabel}</label>
+                  <label style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{C.plannerVelocityLabel}</label>
                   <input
                     type="number"
                     min="0.5"
@@ -1699,9 +1699,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       const v = parseFloat(e.target.value);
                       setWeeklyVelocity(isFinite(v) && v > 0 ? v : CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity);
                     }}
-                    style={{ width: "70px", padding: "4px 8px", background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--text-1)", fontSize: "12px" }}
+                    style={{ width: "70px", padding: "4px 8px", background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--text-1)", fontSize: "var(--fs-xs)" }}
                   />
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("개/주", "/wk")}</span>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("개/주", "/wk")}</span>
                 </div>
                 <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
                   <div className="ab-stat">
@@ -1720,23 +1720,23 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 {autoPlan.isUndersupplied ? (
                   <div className="callout warning"><div className="ico">!</div><div className="body"><strong>{tr("공급 부족", "Undersupplied")}</strong><p>{C.plannerUndersupplyBody(autoPlan.urgentCount, autoPlan.weeklyVelocity, autoPlan.recommendedWeeklyVelocity)}</p></div></div>
                 ) : (
-                  <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>{C.plannerOkBody(autoPlan.weeklyVelocity)}</p></div></div>
+                  <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>{C.plannerOkBody(autoPlan.weeklyVelocity)}</p></div></div>
                 )}
                 <div className="alloc-card" style={{ marginTop: "12px" }}>
                   <div className="cann-card-header"><div className="alloc-card-title">{C.plannerGanttTitle(ganttWeeks)}</div></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
                     {buckets.map((b) => (
                       <div key={b.week} style={{ display: "flex", alignItems: "stretch", gap: "8px" }}>
-                        <div style={{ width: "54px", flexShrink: 0, fontSize: "11px", color: "var(--text-muted)", paddingTop: "4px" }}>W+{b.week}</div>
+                        <div style={{ width: "54px", flexShrink: 0, fontSize: "var(--fs-xs)", color: "var(--text-muted)", paddingTop: "4px" }}>W+{b.week}</div>
                         <div style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
                           {b.items.length === 0 ? (
-                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>—</span>
+                            <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>—</span>
                           ) : (
                             b.items.map((p) => (
                               <span
                                 key={p.queueRank}
                                 title={`${String(p.creative_id)} · ${(URGENCY_LABEL[locale] || URGENCY_LABEL.ko)[p.urgency]} · score=${p.score == null ? "—" : (p.score * 100).toFixed(0) + "%"}`}
-                                style={{ display: "inline-block", padding: "2px 7px", borderRadius: "4px", fontSize: "11px", background: URGENCY_COLOR[p.urgency] + "33", border: `1px solid ${URGENCY_COLOR[p.urgency]}88`, color: "var(--text-1)" }}
+                                style={{ display: "inline-block", padding: "2px 7px", borderRadius: "4px", fontSize: "var(--fs-xs)", background: URGENCY_COLOR[p.urgency] + "33", border: `1px solid ${URGENCY_COLOR[p.urgency]}88`, color: "var(--text-1)" }}
                               >
                                 #{p.queueRank} {String(p.creative_id).slice(0, 12)}
                               </span>
@@ -1746,18 +1746,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       </div>
                     ))}
                   </div>
-                  <div style={{ marginTop: "10px", fontSize: "11px", color: "var(--text-muted)" }}>
+                  <div style={{ marginTop: "10px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                     <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: URGENCY_COLOR.urgent, marginRight: "4px" }}></span>{tr(`긴급(즉시 경고 또는 ${CREATIVE_CONFIG.autoPlanner.urgentDays}일 내)`, `Urgent (immediate alert or within ${CREATIVE_CONFIG.autoPlanner.urgentDays}d)`)}
                     <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: URGENCY_COLOR.soon, margin: "0 4px 0 12px" }}></span>{tr(`곧(${CREATIVE_CONFIG.autoPlanner.soonDays}일 내)`, `Soon (within ${CREATIVE_CONFIG.autoPlanner.soonDays}d)`)}
                     <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: URGENCY_COLOR.planned, margin: "0 4px 0 12px" }}></span>{tr("예정", "Planned")}
                   </div>
                 </div>
-                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "8px" }}>{C.plannerFootnote}</p>
+                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "8px" }}>{C.plannerFootnote}</p>
               </>
             );
           })()
         ) : (
-          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.plannerEmpty}</p>
+          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{C.plannerEmpty}</p>
         )}
       </section>
 
@@ -1765,7 +1765,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <h2 className="section-title">{tr("어떤 요소 조합이 좋았나?", "Which element combinations worked?")}{matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
         {matrix && matrix.grid.length ? (
           <>
-            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.matrixDesc1}</p>
+            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{C.matrixDesc1}</p>
             {/* 조합 상호작용 판정. 칸 평균만 보면 "어느 칸이 제일 높나"까지밖에 못 읽고,
                 그 차이가 조합 때문인지 각 축의 주효과가 겹친 결과인지 알 수 없다. */}
             {conceptInteraction?.ok && (
@@ -1789,19 +1789,19 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               </div>
             )}
             {conceptInteraction && !conceptInteraction.ok && conceptInteraction.reason !== "invalid_input" && (
-              <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{tr(
+              <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0 0" }}>{tr(
                 "조합별 소재가 더 쌓이면 조합 효과를 판정할 수 있습니다.",
                 "Once more creatives accumulate per combination, the combination effect can be judged.",
               )}</p>
             )}
-            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
               {tr("셀 상태:", "Cell status:")} <span style={{ background: MATRIX_STATUS_COLOR.validated, padding: "2px 8px", borderRadius: "4px" }} title={tr("효과가 검증됐다는 뜻이 아니라 판단에 필요한 관측량이 충분한 조합", "Enough observations to evaluate; this does not mean the effect is validated")}>{tr("충분히 관측", "Enough data")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.promising, padding: "2px 8px", borderRadius: "4px" }} title={tr("좋아 보이지만 아직 데이터가 적어 확정하기 어려운 조합", "Looks promising but too little data to confirm yet")}>{tr("유망", "Promising")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.insufficient, padding: "2px 8px", borderRadius: "4px" }} title={tr("시도는 했지만 판단하기엔 데이터가 너무 적은 조합", "Tried, but too little data to judge")}>{tr("데이터 부족", "Insufficient data")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.empty, padding: "2px 8px", borderRadius: "4px" }} title={tr("아직 한 번도 시도하지 않은 조합 — 다음 테스트 후보", "Never tried yet — candidate for the next test")}>{tr("미관측 (탐색 후보)", "Unobserved (explore candidate)")}</span>
             </p>
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "11px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <tbody>
                   <tr>
                     <th style={{ background: "var(--bg-2)", textAlign: "left", whiteSpace: "nowrap" }}><strong>{rowAttr}</strong> ↓ \ <strong>{colAttr}</strong> →</th>
@@ -1817,7 +1817,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                         const clickable = cell.status !== "empty";
                         const cellContent = (
                           <>
-                            <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)" }}>
+                            <span style={{ display: "block", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                               {(MATRIX_STATUS_LABEL[locale] || MATRIX_STATUS_LABEL.ko)[cell.status]}{cell.n ? ` · n=${cell.n}` : ""}{isSel ? tr(" ★ 선택됨", " ★ selected") : ""}
                             </span>
                             {cell.status !== "empty" ? (
@@ -1836,7 +1836,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                             style={{
                               background: MATRIX_STATUS_COLOR[cell.status],
                               padding: 0,
-                              fontSize: "11px",
+                              fontSize: "var(--fs-xs)",
                               lineHeight: 1.5,
                               textAlign: "left",
                               verticalAlign: "top",
@@ -1873,14 +1873,14 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <h2 className="section-title">{tr("다음 테스트에서 무엇을 확인할까?", "What should the next test check?")}</h2>
         {nextTest && nextTest.length ? (
           <>
-            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "6px", lineHeight: 1.5 }}>
+            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "6px", lineHeight: 1.5 }}>
               {tr(
                 `지금까지의 분석을 바탕으로 다음에 무엇을 테스트하면 좋을지 제안합니다. 아직 집행한 적 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 더 필요한 조합(🎯 최적화), 통계적으로 효과가 뚜렷하게 나빠서 배제를 권장하는 속성(❌ 제거)을 자동으로 골라줍니다. (한 번에 최대 ${CREATIVE_CONFIG.test.batchSize}개)`,
                 `Based on the analysis so far, we suggest what to test next: combinations never run before (🔍 explore), promising combinations that need more confirmation (🎯 exploit), and attributes with a clearly negative statistical effect that should be excluded (❌ kill). (up to ${CREATIVE_CONFIG.test.batchSize} at a time)`,
               )}
             </p>
             <div className="table-wrap">
-              <table className="data" style={{ fontSize: "11.5px" }}>
+              <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                 <thead>
                   <tr>
                     <th>{tr("유형", "Type")}</th>
@@ -1897,16 +1897,16 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td>
                         <span
                           className={`chip ${h.type === "kill" ? "danger" : h.type === "exploit" ? "ok" : "warn"}`}
-                          style={{ fontSize: "11px", padding: "2px 8px" }}
+                          style={{ fontSize: "var(--fs-xs)", padding: "2px 8px" }}
                         >
                           <span className="dot"></span>{NEXT_TEST_ICON[h.type]} {(NEXT_TEST_LABEL[locale] || NEXT_TEST_LABEL.ko)[h.type]}
                         </span>
                       </td>
                       <td><strong>{h.cell}</strong></td>
                       <td className="tnum">{h.arms}</td>
-                      <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>{h.rationale}</td>
+                      <td style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{h.rationale}</td>
                       <td className="tnum">{h.sampleSize ? h.sampleSize.toLocaleString() : "—"}</td>
-                      <td style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                      <td style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                         {(h.gates || []).map((g, gi) => (
                           <div key={gi}>· {g}</div>
                         ))}
@@ -1916,10 +1916,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 </tbody>
               </table>
             </div>
-            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "8px" }}>{tr("⚠ 이 추천은 실제 운영 데이터를 관찰해서 만든 가설입니다. 확정은 실험 분석 도구(5-4)에서 A/B 테스트로 검증하는 것을 권장합니다.", "⚠ This recommendation is a hypothesis derived from observing live operating data. Confirm it with an A/B test in the experiment analysis tool (5-4).")}</p>
+            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "8px" }}>{tr("⚠ 이 추천은 실제 운영 데이터를 관찰해서 만든 가설입니다. 확정은 실험 분석 도구(5-4)에서 A/B 테스트로 검증하는 것을 권장합니다.", "⚠ This recommendation is a hypothesis derived from observing live operating data. Confirm it with an A/B test in the experiment analysis tool (5-4).")}</p>
           </>
         ) : (
-          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
+          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
         )}
       </section>
     </div>

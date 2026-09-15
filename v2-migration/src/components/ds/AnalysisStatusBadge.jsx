@@ -35,7 +35,7 @@ export default function AnalysisStatusBadge({ status, locale = "ko", compact = f
         borderRadius: "999px",
         color: tone.color,
         background: tone.background,
-        fontSize: "11px",
+        fontSize: "var(--fs-xs)",
         fontWeight: 600,
         lineHeight: 1.2,
         whiteSpace: "nowrap",

@@ -137,7 +137,7 @@ export default function DownloadHub({
                 padding: "8px 10px",
                 cursor: "pointer",
                 color: "var(--text-secondary)",
-                fontSize: "13px",
+                fontSize: "var(--fs-sm)",
                 lineHeight: 1.4,
               }}
               onFocus={(event) => { event.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))"; }}
@@ -156,7 +156,7 @@ export default function DownloadHub({
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
-    {exportError && <span role="alert" style={{ maxWidth: "260px", fontSize: "11px", color: "var(--danger, #c94c4c)" }}>{exportError}</span>}
+    {exportError && <span role="alert" style={{ maxWidth: "260px", fontSize: "var(--fs-xs)", color: "var(--danger, #c94c4c)" }}>{exportError}</span>}
     </span>
   );
 }

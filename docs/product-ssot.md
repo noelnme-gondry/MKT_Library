@@ -360,6 +360,7 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 대상 | 규칙 |
 |---|---|
 | 차트 제목 | '무엇을 보여주는가'가 아니라 **'무슨 판단에 답하는가'** |
+| 축 레이블 | 직교 좌표 차트는 x·y 모두 축 제목을 갖고 **단위를 함께** 적는다(KO/EN). 눈금만 있으면 `0~9`가 무엇인지 알 수 없다 |
 | 텍스트 대체 | 핵심 결론·수치·비교 대상을 차트 **밖** 본문·표에서도 확인 가능 |
 | 범례 조작 | 범례 필터링이 가능하면 키보드·스크린리더로도 같은 조작 가능 |
 | 색상 외 구분 | 선 스타일·마커·직접 레이블·표 병행 |
@@ -505,7 +506,9 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 | 가드 | 파일 | 강제 내용 |
 |---|---|---|
 | 버튼 대비 | `src/app/buttonContrast.test.js` | `--on-primary` 사용·라이트/다크 대비 |
-| 타이포 하한 | `src/app/typographyFloor.test.js` | 9.5px 하한(CSS + JSX 인라인) |
+| 타이포 하한 | `src/app/typographyFloor.test.js` | 9.5px 하한 · 1차 표면 12px 하한(CSS + JSX 인라인, 스케일 토큰을 값으로 풀어 검사) |
+| 크기·반경 스케일 | `src/app/typeScale.test.js`·`designTokenSingleSource.test.js` | 글자 `--fs-xs`~`--fs-3xl` 8단·모서리 `--radius-*` 5단 밖 px 금지, 토큰 중복 정의 금지, 표면 재질 위계 |
+| 차트 축 | `src/app/chartAxisTitle.test.js` | 직교 좌표 차트의 x·y 축 제목(예외는 `CHART_AXIS_TITLE_EXEMPT` 표식 + 사유) |
 | 앱 셸 시맨틱 | `src/app/appShellSemantics.test.js` | 랜드마크·셸 구조 |
 | 콘텐츠 레지스트리 | `lib/contentRegistry.test.js`·`topicClusters.test.js`·`aeoAnswer.test.js` | 블로그 6곳 배선 |
 | 라우트 SEO | `routeSeo.test.js`·`toolOg.test.js`·`redirects.test.js` | 파생 커버리지 |

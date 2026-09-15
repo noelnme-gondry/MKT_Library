@@ -114,7 +114,7 @@ export function formatCustomScorecardValue(model, currency = "KRW", locale = "ko
 // def={type,dim,metric,name} · rows=표준키 매핑 행 · opts={cohort,denomBasis,
 // resolveMetricCompute(metricKey)=>fn, metricLabelOf(metricKey)=>string}
 export function buildCustomChartConfig(def, rows, opts) {
-  const { cohort = 7, denomBasis = "installs", resolveMetricCompute, metricLabelOf } = opts || {};
+  const { cohort = 7, denomBasis = "installs", resolveMetricCompute, metricLabelOf, locale = "ko" } = opts || {};
   const groups = groupAggByDim(rows, def.dim, cohort, denomBasis);
   const series = buildChartSeries(groups, resolveMetricCompute(def.metric), { topN: 20, sortDesc: def.type !== "line" });
   const colors = series.labels.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]);
@@ -141,9 +141,22 @@ export function buildCustomChartConfig(def, rows, opts) {
     options: isPie ? {
       responsive: common.responsive, maintainAspectRatio: common.maintainAspectRatio, animation: common.animation, cutout: def.type === "doughnut" ? "62%" : 0,
       plugins: { legend: { position: "right", labels: { ...common.plugins.legend.labels, color: CHART_THEME.text, padding: 10 } }, tooltip: common.plugins.tooltip },
-    } : {
-      ...common, indexAxis: def.type === "hbar" ? "y" : "x",
-      plugins: { ...common.plugins, legend: { display: false } },
-    },
+    } : (() => {
+      const dim = DIM_CANDIDATES.find((candidate) => candidate.key === def.dim);
+      const dimLabel = dim ? (locale === "en" ? dim.labelEn || dim.label : dim.label) : def.dim;
+      const metricLabel = metricLabelOf ? metricLabelOf(def.metric) : def.metric;
+      const horizontal = def.type === "hbar";
+      const axisTitle = (text) => ({ display: true, text, color: CHART_THEME.muted });
+      return {
+        ...common,
+        indexAxis: horizontal ? "y" : "x",
+        plugins: { ...common.plugins, legend: { display: false } },
+        scales: {
+          ...common.scales,
+          x: { ...common.scales?.x, title: axisTitle(horizontal ? metricLabel : dimLabel) },
+          y: { ...common.scales?.y, title: axisTitle(horizontal ? dimLabel : metricLabel) },
+        },
+      };
+    })(),
   };
 }

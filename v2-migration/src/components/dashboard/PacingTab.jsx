@@ -230,8 +230,16 @@ export default function PacingTab({ locale = "ko" } = {}) {
           legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
         },
         scales: {
-          x: { ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 12 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: getCssVar("--text-muted") }, grid: { color: getCssVar("--border") } }
+          x: {
+            title: { display: true, text: locale === "en" ? "Day of month" : "이번 달 일자", color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 12 },
+            grid: { color: getCssVar("--border") },
+          },
+          y: {
+            title: { display: true, text: locale === "en" ? `Cumulative ${metricLabel}` : `누적 ${metricLabel}`, color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted") },
+            grid: { color: getCssVar("--border") },
+          }
         }
       }
     });
@@ -239,7 +247,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, paceData, target, metric, isDarkMode, T]);
+  }, [hasData, paceData, target, metric, isDarkMode, T, locale, metricLabel]);
 
   if (!hasData) {
     return (
@@ -285,7 +293,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
                 { value: "weekday", label: <>{T.weekday}{!wdOk && T.locked}</>, disabled: !wdOk },
               ]}
             />
-            {!wdOk && <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>{T.weekdayHint}</p>}
+            {!wdOk && <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0" }}>{T.weekdayHint}</p>}
           </>
         )}
 
@@ -301,14 +309,14 @@ export default function PacingTab({ locale = "ko" } = {}) {
                 { value: "purchase", label: T.purchase },
               ]}
             />
-            <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>{T.actionDefHint}</p>
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "4px 0 0" }}>{T.actionDefHint}</p>
           </>
         )}
 
         <div className="callout" style={{ margin: "8px 0", padding: "8px 12px" }}>
           <div className="ico">i</div>
           <div className="body">
-            <p style={{ margin: 0, fontSize: "12px" }}>{T.revenueNotice}</p>
+            <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>{T.revenueNotice}</p>
           </div>
         </div>
 

@@ -106,7 +106,7 @@ export default function CustomChartsSection({
       const el = canvasRefs.current[def.id];
       if (!el) continue;
       instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
-        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf,
+        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf, locale,
       }));
     }
     // 조건부 마운트 캔버스 최초 폭 0 방지(§7) — 1회 resize.
@@ -147,11 +147,11 @@ export default function CustomChartsSection({
       </div>
 
       {!hasData ? (
-        <p className="muted" style={{ fontSize: "12px" }}>{T.noData}</p>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noData}</p>
       ) : chartMetas.length === 0 ? (
-        <p className="muted" style={{ fontSize: "12px" }}>{T.empty}</p>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.empty}</p>
       ) : orderedCharts.length === 0 ? (
-        <p className="muted" style={{ fontSize: "12px" }}>{T.allHidden}</p>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.allHidden}</p>
       ) : (
         <div className="chart-grid cols-2">
           {orderedCharts.map((c) => (

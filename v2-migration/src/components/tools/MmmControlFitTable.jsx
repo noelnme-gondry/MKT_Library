@@ -27,7 +27,7 @@ export default function MmmControlFitTable({ rows = [], locale = "ko" }) {
       ]}
       rows={rows}
       rowKey={(row) => row.key}
-      tableStyle={{ fontSize: "11.5px" }}
+      tableStyle={{ fontSize: "var(--fs-xs)" }}
     />
   );
 }

@@ -14,7 +14,7 @@ export default function FixedRateNote({ sourceCurrency, displayCurrency, locale 
   if (!isCurrencyConverted(sourceCurrency, displayCurrency)) return null;
   const rate = USD_KRW_RATE.toLocaleString("en-US");
   return (
-    <p className="muted fixed-rate-note" style={{ fontSize: "11px", margin: "6px 0 0" }}>
+    <p className="muted fixed-rate-note" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 0" }}>
       {locale === "en"
         ? `Converted at a fixed ₩${rate} / $1 — an approximate reference rate, not a live quote. Compare amounts in the original currency for accounting.`
         : `고정 환율 ₩${rate}/$1로 환산한 값입니다. 실시간 시세가 아닌 대략적 기준값이라 정산에는 원본 통화 금액을 쓰세요.`}

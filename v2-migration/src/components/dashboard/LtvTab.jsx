@@ -293,8 +293,16 @@ export default function LtvTab({ locale = "ko" } = {}) {
           },
         },
         scales: {
-          x: { ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 14 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: getCssVar("--text-muted"), callback: (v) => fmtCurrencyPrecise(v, dataCurrency) }, grid: { color: getCssVar("--border") } }
+          x: {
+            title: { display: true, text: locale === "en" ? "Days since install" : "설치 후 경과일", color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted"), maxTicksLimit: 14 },
+            grid: { color: getCssVar("--border") },
+          },
+          y: {
+            title: { display: true, text: locale === "en" ? `Cumulative LTV (${dataCurrency})` : `누적 LTV (${dataCurrency})`, color: getCssVar("--text-muted") },
+            ticks: { color: getCssVar("--text-muted"), callback: (v) => fmtCurrencyPrecise(v, dataCurrency) },
+            grid: { color: getCssVar("--border") },
+          }
         }
       }
     });
@@ -302,7 +310,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, rows, dataCurrency, isDarkMode, luLabel]);
+  }, [hasData, rows, dataCurrency, isDarkMode, luLabel, locale]);
 
   if (!hasData) {
     return <div className="tab-pane active" id="tab-ltv"><p className="muted">{T.noData}</p></div>;
@@ -349,7 +357,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     ) : "—") },
     { k: "ratio", label: T.colRatio, cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },
     { k: "payback", label: T.colPayback, render: (r) => fmtPb(r.payback) },
-    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "12px" }, render: (r) => r.fitKind },
+    { k: "fitKind", label: T.colFit, cellStyle: { color: "var(--text-muted)", fontSize: "var(--fs-xs)" }, render: (r) => r.fitKind },
   ];
   const orderedLtvCols = applyMetricView(ltvCols, ltvTableCfg, (c) => c.k);
 
@@ -393,7 +401,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           {T.s2Desc(HEALTHY_RATIO, WARN_RATIO)}
         </p>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "12px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{T.unitTh}</th>
@@ -421,12 +429,12 @@ export default function LtvTab({ locale = "ko" } = {}) {
           </table>
         </div>
         {orderedLtvCols.length === 0 && (
-          <p className="muted" style={{ fontSize: "12px" }}>{T.noVisibleCols}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noVisibleCols}</p>
         )}
         <div className="callout" style={{ marginTop: "10px" }}>
           <div className="ico">i</div>
           <div className="body">
-            <p style={{ margin: 0, fontSize: "12px" }}>
+            <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
               {T.s2CalloutPrefix}<strong>{T.s2CalloutStrong}</strong>{T.s2CalloutSuffix}
             </p>
           </div>
@@ -479,7 +487,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
         </div>
 
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "12px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{T.matUnitTh}</th>
@@ -524,7 +532,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                       <td className="tnum">{fmtCur(u.cost)}</td>
                       {showCols.map((d) => <td key={d} className="tnum">{fmtCell(d)}</td>)}
                       <td className="tnum">{mat != null ? mat.toFixed(2) + "×" : "—"}</td>
-                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{u.fit?.kind || "—"}</td>
+                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{u.fit?.kind || "—"}</td>
                     </tr>
                   );
                 })
@@ -543,14 +551,14 @@ export default function LtvTab({ locale = "ko" } = {}) {
           <div className="callout" style={{ marginTop: "8px" }}>
             <div className="ico">i</div>
             <div className="body">
-              <p style={{ margin: 0, fontSize: "12px" }}>
+              <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
                 <strong style={{ color: "var(--success)" }}>{T.empiricalCalloutStrong}</strong>: {T.empiricalCalloutBody(maturation.empiricalBase)}
               </p>
             </div>
           </div>
         )}
 
-        <h3 style={{ margin: "20px 0 10px", fontSize: "13px", fontWeight: 600 }}>
+        <h3 style={{ margin: "20px 0 10px", fontSize: "var(--fs-sm)", fontWeight: 600 }}>
           {T.suffTitle}
           <small style={{ color: "var(--text-muted)", fontWeight: 400, marginLeft: "8px" }}>{T.suffSub(matHorizon)}</small>
           <PillGroup
@@ -562,7 +570,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           />
         </h3>
         <div className="table-wrap">
-          <table className="data" style={{ fontSize: "12px" }}>
+          <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
             <thead>
               <tr>
                 <th>{T.suffSetTh}</th>
@@ -575,7 +583,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
               {maturation && maturation.suffData ? (
                 maturation.suffData.steps.map((s, i) => (
                   <tr key={i} style={s.converged ? { background: "rgba(158,206,106,0.06)" } : {}}>
-                    <td><code style={{ fontSize: "12px" }}>[{s.set.map((d) => "D" + d).join(", ")}]</code></td>
+                    <td><code style={{ fontSize: "var(--fs-xs)" }}>[{s.set.map((d) => "D" + d).join(", ")}]</code></td>
                     <td className="tnum"><strong>{s.pred != null ? (s.pred * 100).toFixed(1) + "%" : "—"}</strong></td>
                     <td className="tnum">{s.chg != null ? (s.chg * 100).toFixed(1) + "%" : "—"}</td>
                     <td>
@@ -604,7 +612,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
             <div className="callout" style={{ marginTop: "8px", borderColor: "rgba(158,206,106,0.4)", background: "rgba(158,206,106,0.05)" }}>
               <div className="ico" style={{ color: "var(--success)" }}>✓</div>
               <div className="body">
-                <p style={{ margin: 0, fontSize: "12px" }}>
+                <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
                   <strong>{T.convergedStrong(maturation.suffData.convergedAt.map((d) => "D" + d).join(", "), matHorizon)}</strong>{T.convergedRest}
                 </p>
               </div>
@@ -613,7 +621,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
             <div className="callout warn" style={{ marginTop: "8px" }}>
               <div className="ico">⚠</div>
               <div className="body">
-                <p style={{ margin: 0, fontSize: "12px" }}>
+                <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
                   {T.notConvergedCallout(matHorizon)}
                 </p>
               </div>
@@ -623,7 +631,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
         <div className="callout" style={{ marginTop: "12px" }}>
           <div className="ico">i</div>
           <div className="body">
-            <p style={{ margin: 0, fontSize: "12px" }}>
+            <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
               {T.s4CalloutPrefix}<strong>{T.s4CalloutStrong}</strong>{T.s4CalloutSuffix}
             </p>
           </div>

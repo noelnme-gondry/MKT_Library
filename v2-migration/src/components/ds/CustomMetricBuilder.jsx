@@ -100,7 +100,7 @@ export default function CustomMetricBuilder({
     resetForm();
   };
 
-  const sel = { padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" };
+  const sel = { padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "var(--fs-sm)" };
 
   // 항 하나의 피연산자 편집기 — 컬럼(드롭다운) 또는 숫자(입력) 토글.
   const operandEditor = (t, i) => {
@@ -138,19 +138,19 @@ export default function CustomMetricBuilder({
       panelStyle={{ boxSizing: "border-box", width: "min(520px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
+          <h3 style={{ margin: 0, fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
           <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
-        <p className="muted" style={{ fontSize: "11px", margin: "0 0 14px" }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 14px" }}>
           {T.intro}
         </p>
 
         {fields.length < 1 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>{T.noFields}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.noFields}</p>
         ) : (
           <>
             <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "12px" }}>
-              <span className="muted" style={{ fontSize: "11px" }}>{T.name}</span>
+              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.name}</span>
               <input
                 type="text" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder={T.namePlaceholder}
@@ -161,7 +161,7 @@ export default function CustomMetricBuilder({
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "10px" }}>
               {/* 첫 항 (연산자 없음) */}
               <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <span className="muted" style={{ fontSize: "11px", width: "34px", flex: "none" }}>{T.start}</span>
+                <span className="muted" style={{ fontSize: "var(--fs-xs)", width: "34px", flex: "none" }}>{T.start}</span>
                 {operandEditor(terms[0], 0)}
                 <span style={{ width: "26px", flex: "none" }} />
               </div>
@@ -182,7 +182,7 @@ export default function CustomMetricBuilder({
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
-              <span className="muted" style={{ fontSize: "11px" }}>{T.chartShape}</span>
+              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.chartShape}</span>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button type="button" onClick={() => setChartType("bar")} className={`ab-pill ${chartType === "bar" ? "active" : ""}`} style={{ fontWeight: chartType === "bar" ? 700 : 400 }}>{T.bar}</button>
                 <button type="button" onClick={() => setChartType("line")} className={`ab-pill ${chartType === "line" ? "active" : ""}`} style={{ fontWeight: chartType === "line" ? 700 : 400 }}>{T.line}</button>
@@ -190,16 +190,16 @@ export default function CustomMetricBuilder({
             </div>
 
             <div style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px" }}>
-              <div style={{ fontSize: "12px", color: "var(--text-primary)", wordBreak: "break-word" }}>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-primary)", wordBreak: "break-word" }}>
                 <strong>{name.trim() || T.newMetric}</strong> = {customMetricFormula(def, labelOf)}
               </div>
-              <div className="muted" style={{ fontSize: "11px", marginTop: "3px" }}>
+              <div className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "3px" }}>
                 {T.preview}: <span style={{ color: "var(--text-primary)" }}>{previewStr}</span>
               </div>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px" }}>
-              {editingId && <span className="muted" style={{ fontSize: "11px", marginRight: "auto" }}>{T.editing}</span>}
+              {editingId && <span className="muted" style={{ fontSize: "var(--fs-xs)", marginRight: "auto" }}>{T.editing}</span>}
               {editingId && <button className="ab-pill" onClick={resetForm}>{T.cancel}</button>}
               {!editingId && <button className="ab-pill" onClick={onClose}>{T.close}</button>}
               <button className={`ab-pill ${valid ? "active" : ""}`} onClick={submit} disabled={!valid} style={{ fontWeight: 700, opacity: valid ? 1 : 0.5 }}>
@@ -211,13 +211,13 @@ export default function CustomMetricBuilder({
 
         {existing.length > 0 && (
           <div style={{ marginTop: "16px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-            <div className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
+            <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "6px" }}>{T.mine} ({existing.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               {existing.map((m) => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 8px", borderRadius: "6px", border: `1px solid ${editingId === m.id ? "var(--primary, #4c8dff)" : "var(--border)"}` }}>
-                  <span style={{ fontSize: "12.5px", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong>{m.name}</strong>
-                    <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{customMetricFormula(m, labelOf)}</span>
+                    <span className="muted" style={{ marginLeft: "6px", fontSize: "var(--fs-xs)" }}>{customMetricFormula(m, labelOf)}</span>
                   </span>
                   <button type="button" className="ab-pill" onClick={() => startEdit(m)} title={T.edit} aria-label={`${T.edit}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✏️</button>
                   <button type="button" className="ab-pill" onClick={() => onDelete?.(m.id)} title={T.delete} aria-label={`${T.delete}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
@@ -227,7 +227,7 @@ export default function CustomMetricBuilder({
           </div>
         )}
 
-        <p className="muted" style={{ fontSize: "11px", marginTop: "12px", textAlign: "right" }}>
+        <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px", textAlign: "right" }}>
           {T.shown}
         </p>
     </ModalDialog>

@@ -786,7 +786,7 @@ export default function CsvUploader({
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
             <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.workbookDesc(pendingWorkbook.sheets.length)}</p>
-            <label style={{ display: "grid", gap: "5px", maxWidth: "440px", fontSize: "12px" }}>
+            <label style={{ display: "grid", gap: "5px", maxWidth: "440px", fontSize: "var(--fs-xs)" }}>
               <span>{T.workbookSelectLabel}</span>
               <select value={selectedWorkbookSheet} onChange={(event) => setSelectedWorkbookSheet(event.target.value)}>
                 {pendingWorkbook.sheets.map((sheet) => <option key={sheet.name} value={sheet.name}>{sheet.name} · {sheet.raw.length.toLocaleString()}행</option>)}
@@ -801,7 +801,7 @@ export default function CsvUploader({
           <section className="required-banner" style={{ borderLeftColor: "var(--warning)" }}>
             <strong>{T.wideTransformTitle}</strong>
             <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.wideTransformDesc(pendingWideImport.insights.signature.evidence.periodColumns)}</p>
-            <p className="muted" style={{ margin: "0 0 12px", fontSize: "12px" }}>{T.wideWarning}</p>
+            <p className="muted" style={{ margin: "0 0 12px", fontSize: "var(--fs-xs)" }}>{T.wideWarning}</p>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button className="ab-button" onClick={handleWideTransform} disabled={isImporting}>{T.wideTransformBtn}</button>
               <button className="ab-pill" onClick={cancelPendingImport}>{T.cancelImportBtn}</button>
@@ -1009,7 +1009,7 @@ export default function CsvUploader({
       {requiresSourceCurrency && !isDemo && (
         <section className="required-banner" data-currency-scope="declare" style={{ borderLeftColor: currencyMissing ? "var(--warning)" : "var(--primary)" }}>
           <strong>{T.sourceCurrencyLabel}</strong>
-          <p className="muted" style={{ margin: "0.35rem 0 0.7rem", fontSize: "12px" }}>
+          <p className="muted" style={{ margin: "0.35rem 0 0.7rem", fontSize: "var(--fs-xs)" }}>
             {currencyMissing ? T.sourceCurrencyMissing : T.sourceCurrencyHint}
           </p>
           <div className="analysis-control-group" role="group" aria-label={T.sourceCurrencyLabel}>
@@ -1049,7 +1049,7 @@ export default function CsvUploader({
             />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
               <button
                 type="button"
                 className="ab-pill"

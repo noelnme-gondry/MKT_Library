@@ -124,7 +124,7 @@ export default function InlineCardEditor({
 
   const ctlBtn = {
     display: "inline-flex", alignItems: "center", justifyContent: "center",
-    width: "44px", height: "44px", borderRadius: "6px", fontSize: "12px",
+    width: "44px", height: "44px", borderRadius: "6px", fontSize: "var(--fs-xs)",
     border: "1px solid var(--border)", background: "var(--surface-base, var(--bg-1))",
     color: "var(--text-muted)", cursor: "pointer", lineHeight: 1, padding: 0,
   };
