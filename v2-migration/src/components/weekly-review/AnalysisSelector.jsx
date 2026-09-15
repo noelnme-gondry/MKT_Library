@@ -41,6 +41,7 @@ const COPY = {
     expand: "펼치기",
     changeSelection: "분석 다시 고르기",
     empty: "지금 올린 데이터로 돌릴 수 있는 분석이 없습니다. 매핑을 먼저 확인해 주세요.",
+    otherGrain: "데이터 단위가 다른 분석(주간 패널·증분·소재 등)은 여기서 돌지 않습니다. 그 도구 화면에서 결과를 본 뒤 ‘프로젝트로 넘기기’로 이어 오세요.",
   },
   en: {
     title: "Analyses available for this data",
@@ -53,6 +54,7 @@ const COPY = {
     expand: "Expand",
     changeSelection: "Change selection",
     empty: "No analysis can run on this data yet. Check the mapping first.",
+    otherGrain: "Analyses on a different data grain (weekly panel, incrementality, creatives) do not run here. Read the result on that tool's page, then use ‘Carry into a project’ to bring it back.",
   },
 };
 
@@ -129,6 +131,9 @@ export default function AnalysisSelector({ locale = "ko" }) {
           <button type="button" className="btn primary" disabled={!readySelected} onClick={start}>{t.run(readySelected)}</button>
           {!readySelected && <span className="analysis-selector__hint">{t.none}</span>}
         </div>
+        {/* 여기서 못 돌리는 분석이 있다는 사실을 적어 둔다. 말하지 않으면
+            사용자는 없는 경로를 찾아 헤맨다(§8 — 못 하는 것은 못 한다고). */}
+        <p className="analysis-selector__hint">{t.otherGrain}</p>
       </>}
 
       {running.length > 0 && <>
