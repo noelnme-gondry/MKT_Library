@@ -60,3 +60,14 @@ export async function clearMappingMemory() {
     request.onerror = () => reject(request.error || new Error("MAPPING_MEMORY_CLEAR_FAILED"));
   }).finally(() => db.close());
 }
+
+// 마이페이지에서 규칙 하나만 지운다. 전체 삭제(`clearMappingMemory`)만 있으면
+// 잘못 저장한 한 줄을 고치려고 나머지를 전부 버려야 한다.
+export async function deleteMappingMemory(normalizedColumnName) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).delete(normalizedColumnName);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error("MAPPING_MEMORY_DELETE_FAILED"));
+  }).finally(() => db.close());
+}

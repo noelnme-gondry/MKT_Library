@@ -14,6 +14,7 @@ import StartGate from "@/components/StartGate";
 import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
+import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
 import DochiAssistant from "@/components/assistant/DochiAssistant";
 import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
@@ -101,6 +102,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "projects" && <ProjectsPage locale="ko" />}
             {routeId === "subscription" && <SubscriptionPage locale="ko" />}
             {routeId === "storage" && <WorkspaceStoragePage />}
+            {routeId === "account" && <MyAccountPage locale="ko" />}
             {routeId === "dochi-result" && <DochiResultWorkspace />}
 
             {routeId === "5-2" && <Dashboard />}

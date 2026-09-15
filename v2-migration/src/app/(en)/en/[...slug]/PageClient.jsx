@@ -11,6 +11,7 @@ import StartGate from "@/components/StartGate";
 import ProjectsPage from "@/components/ProjectsPage";
 import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
+import MyAccountPage from "@/components/MyAccountPage";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
@@ -88,6 +89,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
             {routeId === "projects" && <ProjectsPage locale="en" />}
             {routeId === "subscription" && <SubscriptionPage locale="en" />}
             {routeId === "storage" && <WorkspaceStoragePage locale="en" />}
+            {routeId === "account" && <MyAccountPage locale="en" />}
             {routeId === "dochi-result" && <DochiResultWorkspace locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
