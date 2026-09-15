@@ -39,8 +39,6 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } fro
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
-import SemanticMappingTable from "@/components/data-import/SemanticMappingTable";
-import MappingMemorySettings from "@/components/data-import/MappingMemorySettings";
 import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
@@ -144,7 +142,7 @@ const CSV_COPY = {
     mappingBlockedTitle: "⚠ 필수 매핑을 확인해야 분석을 시작할 수 있습니다",
     mappingBlockedConflict: "같은 표준 필드에 여러 CSV 컬럼이 선택됐습니다. 하나만 남겨 주세요.",
     mappingBlockedConfirm: "'확인 필요' 상태인 필수 컬럼을 확인해 주세요.",
-    semanticBlocked: "전역 역할이 확인되지 않은 필수 컬럼이 있습니다. Semantic Mapper V2에서 역할을 확인해 주세요.",
+    semanticBlocked: "아직 의미가 정해지지 않은 필수 컬럼이 있습니다. 위 매핑에서 그 컬럼의 항목을 골라 주세요. 자주 쓰는 컬럼이면 마이페이지의 ‘내 컬럼 매핑’에 저장해 두면 다음부터 자동으로 적용됩니다.",
     signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
     wideWarning: "기간이 열로 펼쳐진 형식입니다. 날짜 열을 행으로 바꾼 뒤 값의 의미를 직접 매핑해 주세요.",
     wideTransformTitle: "날짜 열 전개형 보고서를 찾았습니다",
@@ -229,7 +227,7 @@ const CSV_COPY = {
     mappingBlockedTitle: "⚠ Confirm required mappings before analysis",
     mappingBlockedConflict: "Multiple CSV columns are assigned to the same standard field. Keep only one.",
     mappingBlockedConfirm: "Confirm every required column marked “Confirmation needed.”",
-    semanticBlocked: "A required canonical role is unresolved. Confirm it in Semantic Mapper V2.",
+    semanticBlocked: "A required column has no meaning yet. Choose its field in the mapping above. If you use that column often, save it under ‘My column mappings’ in My account and it will apply automatically next time.",
     signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
     wideWarning: "This is a period-as-columns report. Convert date columns to rows, then map the value meaning yourself.",
     wideTransformTitle: "Date-column report detected",
@@ -623,27 +621,6 @@ export default function CsvUploader({
     setPreviewOpen(true);
   };
 
-  const handleSemanticBindingChange = (sourceColumn, canonicalKey) => {
-    const field = canonicalKey ? CANONICAL_FIELDS[canonicalKey] : null;
-    const bindings = (csvData.mappingBindingsV2 || []).map((binding) => binding.sourceColumn === sourceColumn ? {
-      ...binding,
-      canonicalKey: field?.key || null,
-      role: field?.family || "UNKNOWN",
-      decision: field ? "SUGGEST" : "UNKNOWN",
-      evidence: field ? [{ kind: "manual", code: "USER_SELECTED_CANONICAL_ROLE" }] : [],
-      source: "user",
-    } : binding);
-    const mapping = projectSemanticBindingsToLegacyMapping({ toolId, legacyMapping: csvData.mapping, bindings });
-    setCsvData({
-      ...csvData,
-      mapping,
-      mappingBindingsV2: bindings,
-      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
-      mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping: mapping, semanticBindings: bindings, toolId }),
-      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
-    });
-    setPreviewOpen(true);
-  };
 
   const applySemanticFallback = () => {
     // 2단계는 화면을 하나 더 여는 대신, 확인된 semantic 후보를 같은 CSV 매핑표에
@@ -1226,7 +1203,6 @@ export default function CsvUploader({
             );
           })}
         </div>
-        {isRouterMode && showMappingReview && mappingReviewStage === "combined" && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
       </details>}
       {showMappingCoach && <DochiMappingCoach
         locale={locale}
@@ -1240,20 +1216,11 @@ export default function CsvUploader({
           </button>
         </div>
       )}
-      {!isRouterMode && <SemanticMappingTable bindings={csvData.mappingBindingsV2} semanticMapping={csvData.semanticMapping} locale={locale} onBindingChange={handleSemanticBindingChange} open={semanticBlocked} />}
-      {!isRouterMode && <MappingMemorySettings
-        enabled={isMappingMemoryEnabled}
-        count={mappingMemoryRecords.length}
-        records={mappingMemoryRecords}
-        locale={locale}
-        onEnabledChange={(enabled) => {
-          setMappingMemoryEnabled(enabled);
-          setIsMappingMemoryEnabled(enabled);
-          if (enabled) listMappingMemory().then(setMappingMemoryRecords).catch(() => setMappingMemoryRecords([]));
-        }}
-        onImport={(records) => Promise.all(records.map(putMappingMemory)).then(() => listMappingMemory()).then(setMappingMemoryRecords)}
-        onClear={() => clearMappingMemory().then(() => setMappingMemoryRecords([])).catch(() => {})}
-      />}
+      {/* 시멘틱 표는 흐름에서 뺐다(§9). 컬럼을 고치는 곳은 위 매핑 화면 하나이고,
+          저장된 규칙은 마이페이지에서 관리한다. 막혔을 때만 무엇이 막혔는지 위
+          안내가 말하고, 남은 컬럼은 위 매핑 화면에서 고른다. */}
+      {/* 매핑 기억 설정은 마이페이지 ‘내 컬럼 매핑’으로 옮겼다(§9 — 분석하러 온
+          사람이 설정을 먼저 공부하게 하지 않는다). 내보내기·가져오기도 함께 갔다. */}
       {afterFileSummary}
 
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.

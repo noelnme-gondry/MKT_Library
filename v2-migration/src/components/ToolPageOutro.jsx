@@ -1,6 +1,8 @@
 "use client";
 
 import ToolConnections from "@/components/ToolConnections";
+import ProjectHandoffNote from "@/components/ProjectHandoffNote";
+import { TOOL_GROUP } from "@/lib/toolGroups";
 import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
 import ToolLongform from "@/components/ToolLongform";
 import { getNextTools } from "@/lib/toolConnections";
@@ -24,12 +26,15 @@ const COPY = {
 };
 
 export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [], withConnections = false }) {
+  // 도구 라우트에서만 "이 결과를 프로젝트로" 안내가 참이다. 가이드·SOP 라우트에는
+  // 이어 갈 결과가 없다.
+  const hasHandoff = withConnections && Boolean(TOOL_GROUP[toolId]);
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const hasConnections = withConnections && getNextTools(toolId, lang).length > 0;
   const hasLongform = Boolean(getToolSearchContent(toolId, lang));
   const hasEvidence = evidenceLinks.length > 0;
-  if (!hasConnections && !hasLongform && !hasEvidence) return null;
+  if (!hasConnections && !hasLongform && !hasEvidence && !hasHandoff) return null;
 
   // 도구 라우트(5-x·9-x)에서만 "분석 결과"라는 말이 참이다. 가이드·SOP 라우트는
   // 위쪽이 분석이 아니므로 경계 문구를 참고 영역 안내로 바꾼다(§8 정직성).
@@ -43,6 +48,11 @@ export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [
         <span id={`tool-outro-${toolId}`}>{boundaryLabel}</span>
         <small>{T.hint}</small>
       </p>
+      {hasHandoff && (
+        <div className="tool-outro__section tool-outro__section--handoff">
+          <ProjectHandoffNote toolId={toolId} locale={lang} />
+        </div>
+      )}
       {hasConnections && (
         <div className="tool-outro__section tool-outro__section--next">
           <ToolConnections toolId={toolId} locale={lang} />

@@ -7,7 +7,7 @@ export function trialRemainingBucket(start, now = Date.now()) {
   return days <= 0 ? "expired" : days < 3 ? "under_3d" : days <= 7 ? "3_7d" : "8_14d";
 }
 // Deliberately excludes snapshots, raw rows, filenames, mappings and computed datasets.
-export const ARCHIVE_FIELDS = Object.freeze({ id: 120, toolId: 32, action: 500, conclusion: 500, hypothesis: 500, metric: 120, reviewDate: 10, learning: 1000, actual: 160, status: 32, actionKind: 32, actionTarget: 120, actionAmount: 32, goalMetric: 120, goalDirection: 16, guardrailMetric: 120, guardrailOp: 16, guardrailValue: 40, baseline: 160, baselineDate: 10, target: 160, targetDirection: 16 });
+export const ARCHIVE_FIELDS = Object.freeze({ id: 120, toolId: 32, action: 500, conclusion: 500, hypothesis: 500, metric: 120, reviewDate: 10, learning: 1000, actual: 160, status: 32, actionKind: 32, actionTarget: 120, actionAmount: 32, goalMetric: 120, goalDirection: 16, guardrailMetric: 120, guardrailOp: 16, guardrailValue: 40, guardrails: 400, baseline: 160, baselineDate: 10, target: 160, targetDirection: 16 });
 export function archiveMemo(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("INVALID_MEMO");
   const memo = Object.fromEntries(Object.entries(ARCHIVE_FIELDS).map(([key, max]) => [key, String(record[key] ?? "").trim().slice(0, max)]));

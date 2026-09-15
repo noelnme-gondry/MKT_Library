@@ -234,3 +234,88 @@ describe("결정론", () => {
     expect(result.reason).toBe("no_decision");
   });
 });
+
+describe("v10 — 가드레일이 둘 이상일 때", () => {
+  it("하나라도 깨지면 목표를 달성해도 MIXED다", () => {
+    // 목표(전환 증가)는 달성했지만 비용 상한을 넘겼다. 단일 가드레일 시절에는
+    // CPA만 보고 WORKED가 나왔다 — 그게 "총량을 잃고도 성공"이 새던 자리다.
+    const result = score(CURRENT_WORKED, {
+      decision: { guardrails: "spend|lte|38000" },
+    });
+    expect(result.checks.guardrails).toHaveLength(2);
+    expect(result.checks.guardrails.map((g) => g.metric)).toEqual(["cpa", "spend"]);
+    expect(result.checks.guardrails[0].pass).toBe(true);   // CPA 7.03 ≤ 8
+    expect(result.checks.guardrails[1].pass).toBe(false);  // 비용 41,076 > 38,000
+    expect(result.outcome).toBe(DECISION_OUTCOME.MIXED);
+  });
+
+  it("전부 지켜지면 WORKED 그대로다", () => {
+    const result = score(CURRENT_WORKED, { decision: { guardrails: "spend|lte|42000" } });
+    expect(result.checks.guardrails.every((g) => g.pass)).toBe(true);
+    expect(result.outcome).toBe(DECISION_OUTCOME.WORKED);
+  });
+
+  it("하나라도 못 재면 합격시키지 않는다", () => {
+    // 잰 것만 보고 합격시키면 가드레일을 더 걸수록 판정이 후해지는 뒤집힌 유인이 생긴다.
+    const result = score(CURRENT_WORKED, { decision: { guardrails: "roas|gte|2" } });
+    expect(result.outcome).toBe(DECISION_OUTCOME.UNSCORED);
+    expect(result.reason).toBe("guardrail_not_measurable");
+  });
+
+  it("checks.guardrail은 첫 항목으로 남아 옛 화면이 계속 읽는다", () => {
+    const result = score(CURRENT_WORKED, { decision: { guardrails: "spend|lte|42000" } });
+    expect(result.checks.guardrail).toEqual(result.checks.guardrails[0]);
+    expect(result.checks.guardrail.metric).toBe("cpa");
+  });
+
+  it("v9 레코드(단수 필드만)는 목록 1개짜리로 읽힌다", () => {
+    const result = score(CURRENT_WORKED);
+    expect(result.checks.guardrails).toHaveLength(1);
+    expect(result.outcome).toBe(DECISION_OUTCOME.WORKED);
+  });
+
+  it("단수 필드 없이 목록만 있어도 판정된다", () => {
+    // 새 폼은 첫 가드레일을 단수 필드에 넣지만, 목록만 있는 레코드도 죽으면 안 된다.
+    const result = score(CURRENT_WORKED, {
+      decision: { guardrailMetric: "", guardrailOp: "", guardrailValue: "", guardrails: "cpa|lte|8" },
+    });
+    expect(result.outcome).toBe(DECISION_OUTCOME.WORKED);
+  });
+
+  it("가드레일이 아예 없으면 예전처럼 판정하지 않는다", () => {
+    const result = score(CURRENT_WORKED, {
+      decision: { guardrailMetric: "", guardrailOp: "", guardrailValue: "", guardrails: "" },
+    });
+    expect(result.outcome).toBe(DECISION_OUTCOME.UNSCORED);
+    expect(result.reason).toBe("no_terms_recorded");
+    expect(result.missing).toContain("guardrail");
+  });
+});
+
+describe("v10 — 잠식 결정의 자기기만 방지", () => {
+  /** Meta 30% 감액 후: 오가닉 귀속은 늘었지만 총 전환은 줄었다. */
+  const CURRENT_SHIFTED = [
+    { campaign: "Meta AAP", cost: 25_200, actions: 3_400 },
+    { campaign: "ASA Brand", cost: 5_000, actions: 700 },
+  ];
+
+  it("총량 가드레일이 어트리뷰션 이동을 실패로 잡는다", () => {
+    // 광고를 끄면 오가닉 귀속이 늘어나는 건 잠식이 줄어서가 아니라 어트리뷰션이
+    // 옮겨간 것일 수 있다. 목표만 걸면 이 결정이 "성공"으로 남는다.
+    const result = score(CURRENT_SHIFTED, {
+      decision: {
+        actionKind: "decrease_budget",
+        actionAmount: "-30%",
+        goalMetric: "conversions",
+        goalDirection: "up",
+        guardrailMetric: "conversions",
+        guardrailOp: "gte",
+        guardrailValue: 5_000,
+        guardrails: "cpa|lte|8",
+      },
+    });
+    const volume = result.checks.guardrails.find((g) => g.metric === "conversions");
+    expect(volume.pass).toBe(false); // 3,400 < 5,000
+    expect(result.outcome).not.toBe(DECISION_OUTCOME.WORKED);
+  });
+});

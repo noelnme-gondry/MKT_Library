@@ -299,8 +299,10 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   await page.locator(".decision-review__weekly-link").click();
 
   await expect(page).toHaveURL(/\/weekly-review#wr-history$/);
-  await expect(page.locator("#wr-history")).toHaveAttribute("open", "");
-  await expect(page.locator(".weekly-review-record")).toHaveCount(1);
+  // 지난 결정은 접기가 아니라 버튼 목록이다 — 열기 전까지 몇 건인지 안 보이면
+  // "무엇을 검토해야 하나"에 답하지 못한다.
+  await expect(page.locator("#wr-history.wr-history-list")).toBeVisible();
+  await expect(page.locator(".wr-history-list__row")).toHaveCount(1);
   await expectPageHierarchy(page, { primaryRegion: ".weekly-review-page" });
   await expectNoSeriousAccessibilityViolations(page);
 });

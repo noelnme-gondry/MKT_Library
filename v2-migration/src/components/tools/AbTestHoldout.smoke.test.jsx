@@ -131,7 +131,8 @@ describe("AbTestHoldout render smoke", () => {
 
     expect(screen.getByText("Test 전환율이 Control보다 유의하게 높았습니다")).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toContain("제한적으로 롤아웃");
-    expect(screen.getByLabelText("검증 지표").value).toBe("Control 대비 Test 전환율");
+    // 도구의 구체적 라벨은 살아 있고, 판정 키는 5-4가 선언한 첫 목표(CVR)다.
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cvr");
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("5.00% (Control 전환율)");
     expect(screen.getByLabelText("검토일에 답할 질문").value).toContain("Control 기준 5.00%");
 
@@ -180,7 +181,7 @@ describe("AbTestHoldout render smoke", () => {
 
     expect(screen.getByText("The current sample cannot distinguish the Test and Control conversion rates")).toBeTruthy();
     expect(screen.getByLabelText("What will change?").value).toContain("pre-planned sample size");
-    expect(screen.getByLabelText("Metric to review").value).toBe("Test conversion rate vs Control");
+    expect(screen.getByLabelText("Goal (what counts as success)").value).toBe("cvr");
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("5.00% (Control conversion rate)");
   });
 

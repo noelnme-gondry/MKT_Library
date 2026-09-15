@@ -19,6 +19,7 @@
 
 import { HIGHER_IS_BETTER, LOWER_IS_BETTER, assessChange } from "./significance";
 import { deriveMetrics, sumRows } from "./snapshot";
+import { decisionGuardrailList } from "@/lib/decisionReview";
 
 export const DECISION_OUTCOME = Object.freeze({
   WORKED: "WORKED",
@@ -120,10 +121,9 @@ export function scoreDecision({
   if (!decision) return { ...empty, reason: "no_decision" };
 
   const hasGoal = Boolean(decision.goalMetric) && Boolean(decision.goalDirection);
-  const hasGuardrail =
-    Boolean(decision.guardrailMetric) &&
-    Boolean(decision.guardrailOp) &&
-    toFiniteNumber(decision.guardrailValue) !== null;
+  // v10: 가드레일은 목록이다. 옛 단수 필드는 그 목록의 첫 항목으로 합쳐진다.
+  const guardrailTerms = decisionGuardrailList(decision);
+  const hasGuardrail = guardrailTerms.length > 0;
 
   if (!hasGoal || !hasGuardrail) {
     // v8 레코드에는 이 필드들이 아예 없다. 짐작해서 채우지 않는다.
@@ -172,7 +172,7 @@ export function scoreDecision({
       outcome: DECISION_OUTCOME.NOT_APPLIED,
       reason: "spend_did_not_move",
       meansNoEffect: false,
-      checks: { applied, goal: null, guardrail: null },
+      checks: { applied, goal: null, guardrail: null, guardrails: [] },
       target: decision.actionTarget ?? null,
     };
   }
@@ -202,18 +202,21 @@ export function scoreDecision({
 
   // ── 가드레일 ───────────────────────────────────────────────
   // 선언된 한계선이므로 유의미성을 묻지 않는다. 넘었으면 넘은 것이다.
-  const guardrailActual = metricValue(currentMetrics, decision.guardrailMetric);
-  const guardrailPass = compare(guardrailActual, decision.guardrailOp, toFiniteNumber(decision.guardrailValue));
-  const guardrail = {
-    metric: decision.guardrailMetric,
-    op: decision.guardrailOp,
-    threshold: toFiniteNumber(decision.guardrailValue),
-    actual: guardrailActual,
-    pass: guardrailPass,
-  };
+  const guardrails = guardrailTerms.map((term) => {
+    const threshold = toFiniteNumber(term.value);
+    const actual = metricValue(currentMetrics, term.metric);
+    return { metric: term.metric, op: term.op, threshold, actual, pass: compare(actual, term.op, threshold) };
+  });
+  // 첫 항목은 `checks.guardrail`로 그대로 남긴다 — 기존 화면·테스트가 이 모양을 읽는다.
+  const guardrail = guardrails[0] ?? null;
+  // 하나라도 못 재면 판정을 만들지 않는다. 잰 것만 보고 합격시키면
+  // 가드레일을 더 걸수록 판정이 후해지는 뒤집힌 유인이 생긴다.
+  const guardrailPass = guardrails.some((item) => item.pass === null)
+    ? null
+    : guardrails.every((item) => item.pass);
 
   if (goalUnavailable) {
-    return { ...empty, reason: decision.goalDirection === "hold" ? "hold_margin_not_recorded" : "goal_not_measurable", checks: { applied, goal, guardrail }, target: decision.actionTarget };
+    return { ...empty, reason: decision.goalDirection === "hold" ? "hold_margin_not_recorded" : "goal_not_measurable", checks: { applied, goal, guardrail, guardrails }, target: decision.actionTarget };
   }
 
   if (guardrailPass === null) {
@@ -221,7 +224,7 @@ export function scoreDecision({
       outcome: DECISION_OUTCOME.UNSCORED,
       reason: "guardrail_not_measurable",
       meansNoEffect: false,
-      checks: { applied, goal, guardrail },
+      checks: { applied, goal, guardrail, guardrails },
       target: decision.actionTarget ?? null,
     };
   }
@@ -236,7 +239,7 @@ export function scoreDecision({
     // 1주 표본으로 효과를 부정할 검정력이 없다. NO_EFFECT는 "변화를 확인하지 못했다"이지
     // "효과가 없다"가 아니다 — 화면 문구가 이 플래그를 따라야 한다.
     meansNoEffect: false,
-    checks: { applied, goal, guardrail },
+    checks: { applied, goal, guardrail, guardrails },
     target: decision.actionTarget ?? null,
   };
 }

@@ -37,8 +37,11 @@ async function runJourney(page, locale) {
   await articleLink.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
   const upload = async (buffer) => {
+    // 결과 화면의 "다음 주 CSV" 상시 접기는 없앴다. 데이터를 바꿀 때만 명시적으로 연다.
     const details = page.locator("details").filter({ has: page.locator(".csv-uploader") }).first();
     if (await details.count() && !await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+    const replace = page.getByRole("button", { name: en ? "Use different data" : "데이터 바꾸기", exact: true });
+    if (await replace.count()) await replace.click();
     const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
     await expect(uploader).toBeVisible();
     const change = uploader.locator(".csv-change-btn");
@@ -195,7 +198,9 @@ async function dochiToWeekly(page, locale) {
   expect(csv).toContain("Review Campaign");
   expect(csv).toContain("7000,10500,10,15");
   await page.getByRole("link", { name: en ? "See saved decisions" : "저장한 결정 확인", exact: true }).click();
-  await expect(page.locator("#wr-history")).toHaveAttribute("open", "");
+  // 지난 결정은 접기가 아니라 버튼 목록이다 — 열기 전까지 몇 건인지 안 보이면
+  // "무엇을 검토해야 하나"에 답하지 못한다.
+  await expect(page.locator("#wr-history.wr-history-list")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__journeyEvents.some(event => event[1] === "decision_inbox_viewed"))).toBe(true);
   await expectNoSeriousAccessibilityViolations(page);
 }

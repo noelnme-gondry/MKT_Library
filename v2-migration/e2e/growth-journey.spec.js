@@ -34,8 +34,10 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
     await criteria.locator("summary").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByLabel(en ? "Guardrail value" : "가드레일 값")).toBeVisible();
+    // 결과 화면의 상시 접기는 없앴지만 `#wr-upload` 딥링크는 살아 있어야 한다 —
+    // 구독 CTA와 보관함 안내가 실제로 그 주소를 쓴다.
     await page.evaluate(() => { location.hash = "wr-upload"; });
-    await expect(page.locator("#wr-upload")).toHaveAttribute("open");
+    await expect(page.locator("#wr-upload")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect(errors).toEqual([]);
   });

@@ -138,7 +138,9 @@ describe("ResultActionCard decision-first hierarchy", () => {
       />,
     );
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Explicit action");
-    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+    // 목표는 도구 선언(`lib/decisionGoals`)에서 오고, 원장 라벨은 프리필을 남긴다.
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
+    expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("5,240");
     expect(container.querySelector(".decision-review__tape-main").textContent).toContain("Explicit action");
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });

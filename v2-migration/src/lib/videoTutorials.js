@@ -36,6 +36,9 @@ export const VIDEO_TUTORIALS = [
     step("causal", "판단 보류에는 확인할 조건이 있습니다", "실험·증분 분석은 배정 방식·동시 변경 등 설계를 확인합니다. 조건을 충족하지 못했다면 효과 없음이 아니라 추가 확인이 필요합니다.", "A withheld conclusion needs evidence", "For experiments and incrementality, check assignment and simultaneous changes. Unmet conditions call for more evidence, not a claim of no effect."),
   ] },
   { id: "review", ko: "주간 리뷰 만들기", en: "Create a weekly review", guide: "/weekly-review", steps: [
+    // 이 문구는 녹화된 영상의 자막(.vtt)과 짝이다. 화면 이름이 "프로젝트"로 바뀌었지만
+    // 영상은 아직 "주간 리뷰"라고 말하므로 문구만 고치면 자막이 영상과 어긋난다.
+    // 이름을 맞추려면 영상을 다시 찍어야 한다(골든이 이 짝을 강제한다).
     step("review-empty", "주간 리뷰에 데이터를 올리세요", "새 리뷰에서 캠페인 데이터를 올립니다. 저장할 프로젝트는 분석을 확인한 뒤 정할 수 있습니다.", "Upload data to a new review", "Upload campaign data in a new review. You can choose its project after checking the analysis."),
     step("periods", "비교할 두 기간을 확인하세요", "이번 기간·이전 기간과 전환 기준을 확인합니다. 불완전한 주나 겹치는 기간이 섞이지 않았는지 살펴보세요.", "Check both comparison periods", "Check the current and previous periods and the outcome definition. Watch for incomplete weeks or overlapping periods."),
     step("verdict", "전체 변화에서 캠페인별 근거로 내려가세요", "요약을 읽고 캠페인별 변화를 확인합니다. 관측 변화의 분해는 인과 효과의 증명이 아닙니다.", "Move from summary to campaign evidence", "Read the summary, then inspect campaign changes. Decomposing an observed change does not prove a causal effect."),

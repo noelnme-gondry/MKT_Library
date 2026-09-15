@@ -57,9 +57,10 @@ export const WORKSPACE_NAV = [
     group: "work",
     href: "/weekly-review",
     icon: "◷",
-    // 이 주소는 이제 주간 리뷰 제품이다(명세 §1). 지난 결정 이력은 그 안 접기로 들어갔다.
-    ko: { name: "프로젝트 리뷰", desc: "프로젝트별 주간 비교·결정·보고서" },
-    en: { name: "Project review", desc: "Weekly comparisons, decisions and reports by project" },
+    // 이 주소가 프로젝트 제품이다. "프로젝트 리뷰"·"새 리뷰"가 서로 겹쳐 읽혀
+    // 이름을 하나로 줄였다 — 리뷰는 프로젝트 안에서 하는 일이지 별개 목적지가 아니다.
+    ko: { name: "프로젝트", desc: "목표·결정·결과를 프로젝트별로" },
+    en: { name: "Projects", desc: "Goals, decisions and outcomes by project" },
   },
   {
     id: "projects",
@@ -69,6 +70,14 @@ export const WORKSPACE_NAV = [
     icon: "▣",
     ko: { name: "내 프로젝트 관리", desc: "프로젝트 리뷰의 저장·백업 관리" },
     en: { name: "Manage my projects", desc: "Storage and backups within project review" },
+  },
+  {
+    id: "account",
+    group: "manage",
+    href: "/account",
+    icon: "◉",
+    ko: { name: "마이페이지", desc: "계정·이용권·프로젝트와 내 컬럼 매핑" },
+    en: { name: "My account", desc: "Account, pass, projects and my column mappings" },
   },
   {
     id: "subscription",

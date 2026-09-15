@@ -66,11 +66,19 @@ describe("WeeklyReviewScreen", () => {
     useAppStore.setState({ decisionPersistenceEnabled: persistence });
   });
 
-  it("데이터가 없으면 결론을 지어내지 않고 업로드를 안내한다", () => {
+  it("프로젝트가 없으면 업로드가 아니라 새로 만들기를 먼저 준다", () => {
+    // 프로젝트를 만들러 온 사람에게 먼저 보여야 하는 것은 CSV 매핑이 아니다.
     render(<WeeklyReviewScreen />);
-    expect(screen.getByRole("heading", { name: "이번 주 데이터를 올려주세요." })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "데이터 올리기" }).getAttribute("href")).toBe("/start");
+    expect(screen.getByRole("heading", { name: "아직 프로젝트가 없습니다." })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "새 프로젝트 만들기" })).toBeTruthy();
     expect(screen.queryByText(/이번 주 결론/)).toBeNull();
+  });
+
+  it("새 프로젝트 만들기는 Pro 관문을 먼저 연다", () => {
+    // 관문을 지나야 업로드가 시작된다 — 여기가 14일 체험을 켜는 유일한 자리다.
+    render(<WeeklyReviewScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "새 프로젝트 만들기" }));
+    expect(screen.getByText("프로젝트는 Pro 기능입니다")).toBeTruthy();
   });
 
   it("프로젝트 목표를 다른 KPI 단위로 재사용하지 않는다", () => {
@@ -156,16 +164,24 @@ describe("WeeklyReviewScreen", () => {
     expect(report).toMatch(/■ 성과/);
   });
 
-  it("결정 이력은 지우지 않고 접기 안으로 넣는다", () => {
+  it("지난 결정은 접기가 아니라 목록이고, 계정 저장과 한 자리다", () => {
+    // 접기는 열기 전까지 몇 건인지·무엇인지 보이지 않아 "무엇을 검토해야 하나"에
+    // 답하지 못한다. 그리고 "지난 결정"과 "계정에 저장한 결정"을 따로 두면 한
+    // 기기에서는 거의 같아 보여 차이를 아무도 설명할 수 없다.
     setData(rowsFor());
     useAppStore.setState({ decisionRecords: [] });
     render(<WeeklyReviewScreen />);
-    const summary = screen.getByText(/지난 결정 전체 보기/);
-    expect(summary).toBeTruthy();
-    // 안에 기존 결정 검토함이 실제로 들어 있어야 한다(기능을 지운 게 아니라 위계를 내린 것).
-    expect(screen.getByRole("heading", { name: "이번 주 결정 인박스" })).toBeTruthy();
-    // 흡수된 화면은 자기 h1을 벗는다 — 한 화면에 h1이 둘이면 안 된다.
+    expect(screen.queryByText(/지난 결정 전체 보기/)).toBeNull();
+    expect(screen.getByRole("heading", { name: "지난 결정" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "계정에 저장한 결정" })).toBeNull();
     expect(document.querySelectorAll("h1")).toHaveLength(1);
+  });
+
+  it("다음 주 CSV 접기를 결과 화면에 두지 않는다", () => {
+    // 이번 분석을 보러 온 사람에게 다음 기간 파일을 지금 묻는 이유를 설명할 수 없다.
+    setData(rowsFor());
+    render(<WeeklyReviewScreen />);
+    expect(screen.queryByText(/다음 주 CSV 올리기/)).toBeNull();
   });
 
   it("기준·기간을 사용자가 바꿀 수 있다 — 자동 판정이 틀리면 고칠 방법이 있어야 한다", () => {
@@ -243,7 +259,7 @@ describe("WeeklyReviewScreen", () => {
   it("EN도 같은 구조로 렌더된다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen locale="en" />);
-    expect(screen.getByRole("heading", { name: "Weekly Review" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Projects" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Why" })).toBeTruthy();
     expect(screen.getByText(/“Result share” is the share of conversions/)).toBeTruthy();
   });

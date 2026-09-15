@@ -16,9 +16,12 @@ describe("ToolPageOutro", () => {
     expect(outro).toBeTruthy();
     expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("분석 결과는 여기까지");
 
-    // 다음 단계 · 참고 자료 · 관련 글이 모두 하나의 마감 박스 안에 있어야 한다.
+    // 프로젝트 이어가기 · 다음 단계 · 참고 자료 · 관련 글이 모두 하나의 마감 박스 안에.
     const sections = outro.querySelectorAll(":scope > .tool-outro__section");
-    expect(sections).toHaveLength(3);
+    expect(sections).toHaveLength(4);
+    // 프로젝트 화면이 못 돌리는 분석은 자기 화면에서 프로젝트로 넘어간다 —
+    // 그 경로를 화면에 적어 두지 않으면 사용자는 없는 경로를 찾아 헤맨다.
+    expect(outro.querySelector(".project-handoff")).toBeTruthy();
     expect(outro.querySelector(".tool-connections")).toBeTruthy();
     expect(outro.querySelector(".tool-longform")).toBeTruthy();
     expect(outro.querySelector(".tool-evidence")).toBeTruthy();
@@ -38,7 +41,7 @@ describe("ToolPageOutro", () => {
     const { container } = render(<ToolPageOutro toolId="5-2" locale="en" evidenceLinks={LINKS.map((item) => ({ ...item, title: "Item" }))} withConnections />);
     const outro = container.querySelector(".tool-outro");
     expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("End of analysis");
-    expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
+    expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(4);
     expect(outro.querySelector(".tool-outro__boundary").textContent).not.toMatch(/[가-힣]/);
   });
 

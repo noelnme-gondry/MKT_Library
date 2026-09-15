@@ -4,11 +4,14 @@
 import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
+import { isRerunGoalMetric } from "@/lib/decisionGoals";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
 // v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 9;
+// v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
+// `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
+export const DECISION_REVIEW_SCHEMA_VERSION = 10;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -26,6 +29,8 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "guardrailMetric",
   "guardrailOp",
   "guardrailValue",
+  // v10 — 추가 가드레일. "metric|op|value" 를 ";"로 이은 문자열(재조립 후 저장).
+  "guardrails",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -68,6 +73,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "guardrail_metric",
   "guardrail_op",
   "guardrail_value",
+  "guardrails",
   "hypothesis",
   "metric",
   "target_direction",
@@ -105,6 +111,7 @@ const FIELD_LIMITS = Object.freeze({
   action: 500,
   hypothesis: 500,
   metric: 120,
+  guardrails: 400,
   baseline: 160,
   comparisonScope: 5000,
   datasetSnapshot: 1200,
@@ -286,6 +293,72 @@ function asForecastPlatform(value) {
   return ["all", "android", "ios"].includes(normalized) ? normalized : "";
 }
 
+// ── v10 가드레일 목록 ────────────────────────────────────────────
+// 가드레일은 "넘었으면 넘은 것"이라 유의미성을 묻지 않는 선언적 한계선이다(decisionScore §정직성③).
+// 하나로는 부족한 경우가 있다 — 잠식 결정에서 "오가닉 전환 ↑"만 걸면, 광고를 끈 뒤
+// 어트리뷰션이 오가닉으로 옮겨가 총 전환이 줄어도 성공으로 읽힌다. 총량 가드레일이
+// 그 자기기만을 막는 자리이고, 그러려면 가드레일이 둘 이상이어야 한다.
+//
+// 저장은 문자열 하나로 한다(`comparisonScope`·`datasetSnapshot`과 같은 결). 파싱은
+// 허용 필드만 새로 조립하므로(§12.29) 저장된 값이 변조돼도 형식 밖 값은 들어오지 않는다.
+const GUARDRAIL_LIST_SEPARATOR = ";";
+const GUARDRAIL_PART_SEPARATOR = "|";
+const MAX_GUARDRAILS = 4;
+
+export function parseDecisionGuardrails(value) {
+  const text = asText(value, FIELD_LIMITS.guardrails);
+  if (!text) return [];
+  const seen = new Set();
+  const list = [];
+  for (const chunk of text.split(GUARDRAIL_LIST_SEPARATOR)) {
+    const [rawMetric, rawOp, rawValue] = chunk.split(GUARDRAIL_PART_SEPARATOR);
+    const metric = asText(rawMetric, FIELD_LIMITS.metric);
+    const op = asGuardrailOp(rawOp);
+    const numberText = asFiniteNumberText(rawValue);
+    // 셋이 다 있어야 비교가 성립한다. 하나라도 비면 조용히 버린다 —
+    // 반쪽 가드레일을 남기면 스코어러가 "측정 불가"로 판정 전체를 막는다.
+    if (!metric || !op || !numberText) continue;
+    if (seen.has(metric)) continue;
+    seen.add(metric);
+    list.push({ metric, op, value: numberText });
+    if (list.length >= MAX_GUARDRAILS) break;
+  }
+  return list;
+}
+
+export function serializeDecisionGuardrails(list) {
+  if (!Array.isArray(list)) return "";
+  const text = list
+    .slice(0, MAX_GUARDRAILS)
+    .map((item) => [item?.metric, item?.op, item?.value].join(GUARDRAIL_PART_SEPARATOR))
+    .join(GUARDRAIL_LIST_SEPARATOR);
+  // 재조립으로 한 번 더 거른다 — 직렬화 입력이 이미 검증됐다고 가정하지 않는다.
+  const parsed = parseDecisionGuardrails(text);
+  return parsed.map((item) => [item.metric, item.op, item.value].join(GUARDRAIL_PART_SEPARATOR)).join(GUARDRAIL_LIST_SEPARATOR);
+}
+
+/**
+ * 레코드가 실제로 걸고 있는 가드레일 전부.
+ *
+ * 옛 레코드(v9)는 단수 필드만 갖는다. 그걸 첫 항목으로 두고 목록을 이어 붙여,
+ * 스코어러가 두 세대를 같은 모양으로 읽게 한다. 같은 지표가 양쪽에 있으면
+ * 단수 쪽이 이긴다(화면이 그 값을 보여 주고 있었으므로).
+ */
+export function decisionGuardrailList(record = {}) {
+  const list = [];
+  const primaryMetric = asText(record.guardrailMetric ?? record.guardrail_metric, FIELD_LIMITS.metric);
+  const primaryOp = asGuardrailOp(record.guardrailOp ?? record.guardrail_op);
+  const primaryValue = asFiniteNumberText(record.guardrailValue ?? record.guardrail_value);
+  if (primaryMetric && primaryOp && primaryValue) list.push({ metric: primaryMetric, op: primaryOp, value: primaryValue });
+  const seen = new Set(list.map((item) => item.metric));
+  for (const item of parseDecisionGuardrails(record.guardrails)) {
+    if (seen.has(item.metric)) continue;
+    seen.add(item.metric);
+    list.push(item);
+  }
+  return list.slice(0, MAX_GUARDRAILS);
+}
+
 function asFiniteNumberText(value) {
   const normalized = asText(value, 80).replace(/[,\s]/g, "");
   if (!normalized) return "";
@@ -317,6 +390,9 @@ function hasComparableMetric(metric) {
 // 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
 export function decisionReviewFollowUpMode(record = {}) {
   if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
+  // 도구가 "이 목표는 효율 CSV로 계산되지 않는다"고 선언했으면 그 선언이 이긴다.
+  // 표시 라벨을 정규식으로 읽어 추측하는 것보다 정확하다 — 라벨은 번역·리네임으로 바뀐다.
+  if (isRerunGoalMetric(record.goalMetric ?? record.goal_metric)) return "rerun_manual";
   if (!hasComparableMetric(record.metric)) return "rerun_manual";
   const baselineDate = asDate(record.baselineDate ?? record.baseline_date);
   const scope = readDecisionComparisonScope(record.comparisonScope ?? record.comparison_scope);
@@ -401,6 +477,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     guardrailMetric: asText(field(row, "guardrailMetric", "guardrail_metric"), FIELD_LIMITS.metric),
     guardrailOp: asGuardrailOp(field(row, "guardrailOp", "guardrail_op")),
     guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
+    guardrails: serializeDecisionGuardrails(parseDecisionGuardrails(field(row, "guardrails"))),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),

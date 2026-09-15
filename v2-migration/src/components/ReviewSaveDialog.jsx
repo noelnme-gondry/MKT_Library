@@ -86,7 +86,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       {session?.account && !hasPaidAccess(entitlement || session.entitlement) && <section className="review-next-visit">
         <h3>{en ? "Keep your work with Pro" : "Pro로 기록을 이어가세요"}</h3>
         {!session.account.trialStartedAt ? <>
-          <p>{en ? "Your first account memo save starts a 14-day Pro trial, with no automatic payment. Review the selected memo and consent below, then save this local review." : "결정 메모를 계정에 처음 보관하면 14일 Pro 체험이 시작되며 자동 결제되지 않습니다. 보낼 메모를 확인하고 동의한 뒤, 이 기기의 리뷰 저장을 진행하세요."}</p>
+          <p>{en ? "Create a project to start your 14-day Pro trial, with no automatic payment." : "프로젝트를 만들면 14일 Pro 체험이 시작되며 자동 결제되지 않습니다."}</p>
           {draftRecord ? <AccountArchive record={draftRecord} locale={locale} onSession={setSession} /> : <Link className="btn" href={`${en ? "/en" : ""}/weekly-review#wr-next`} onClick={onClose}>{en ? "Draft a decision to start your trial" : "결정을 작성하고 체험 시작하기"}</Link>}
         </> : <p>{en ? "Your trial has ended. Renew Pro to save or update projects and reviews. Existing records remain readable and exportable." : "체험이 종료되었습니다. 프로젝트·리뷰를 저장하거나 수정하려면 Pro 이용권이 필요합니다. 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>}
         <Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "View Pro plans" : "Pro 이용권 보기"}</Link>

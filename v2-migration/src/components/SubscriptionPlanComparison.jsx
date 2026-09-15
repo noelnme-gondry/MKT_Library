@@ -45,7 +45,7 @@ export default function SubscriptionPlanComparison({ locale = "ko", paid = false
         <div className="plan-card-action">{pro ? <a className="btn primary" href="#purchase">{paid ? (en ? "Manage my Pro pass" : "내 Pro 이용권 확인") : (en ? "Choose Pro" : "Pro 이용권 선택")}</a> : <Link className="btn" href={en ? "/en/start" : "/start"}>{en ? "Start a free analysis" : "무료로 분석 시작"}</Link>}</div>
       </article>)}
     </div>
-    <p className="plan-footnote">{en ? "Creating projects and saving or updating reviews and decisions requires active Pro. The 14-day trial starts with your first successful account memo save. After expiry, existing records remain readable, exportable and deletable; new saves and backup restores require Pro." : "프로젝트 생성·리뷰와 결정 기록 저장·수정은 Pro 기능입니다. 첫 계정 메모 저장이 성공한 날부터 14일간 체험할 수 있습니다. 만료 후 기존 기록의 열람·내보내기·삭제는 유지되며, 새 저장과 백업 복원에는 Pro가 필요합니다."}</p>
+    <p className="plan-footnote">{en ? "Creating projects and saving or updating reviews and decisions requires active Pro. The 14-day trial starts when you create your first project. After expiry, existing records remain readable, exportable and deletable; new saves and backup restores require Pro." : "프로젝트 생성·리뷰와 결정 기록 저장·수정은 Pro 기능입니다. 첫 프로젝트를 만든 날부터 14일간 체험할 수 있습니다. 만료 후 기존 기록의 열람·내보내기·삭제는 유지되며, 새 저장과 백업 복원에는 Pro가 필요합니다."}</p>
     <p className="plan-footnote">{en ? "* Browser storage limits apply to both plans. Your saved projects remain readable and exportable as backups after Pro expires; source data does not sync across devices." : "* 브라우저 저장 한도는 두 플랜에 동일하게 적용됩니다. Pro가 만료돼도 기존 프로젝트 읽기·백업은 가능하며, 원본 데이터는 기기 간 자동 동기화되지 않습니다."} <a href="#project-storage-heading">{en ? "See storage limits" : "저장 한도 보기"}</a></p>
   </div>;
 }

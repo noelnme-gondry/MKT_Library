@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   DECISION_ACTION_KINDS,
+  DECISION_REVIEW_COLUMNS,
   DECISION_REVIEW_SAFE_FIELDS,
   assessDecisionOutcome,
-  decisionReviewAgeBucket,
+  decisionGuardrailList,
   decisionMetricDirection,
-  decisionReviewFollowUpMode,
   decisionNumericComparison,
+  decisionReviewAgeBucket,
+  decisionReviewFollowUpMode,
   getDecisionReviewBucket,
   getDecisionReviewStatus,
   normalizeDecisionReviewRows,
+  parseDecisionGuardrails,
   sanitizeDecisionReviewRecord,
   sanitizeDecisionReviewRecords,
+  serializeDecisionGuardrails,
   serializeDecisionReviewCsv,
   serializeDecisionReviewIcs,
   summarizeDecisionOutcomes,
@@ -273,5 +277,85 @@ describe("v9 자동 판정 필드", () => {
     const record = sanitizeDecisionReviewRecord({ ...base, actionKind: DECISION_ACTION_KINDS[0] });
     for (const key of DECISION_REVIEW_SAFE_FIELDS) expect(record).toHaveProperty(key);
     expect(DECISION_ACTION_KINDS.length).toBeGreaterThan(1);
+  });
+});
+
+describe("v10 가드레일 목록", () => {
+  it("빈 항목·중복·형식 밖 값은 재조립에서 떨어진다", () => {
+    // 저장된 문자열이 변조돼도 허용 필드만 새로 조립한다(§12.29).
+    expect(parseDecisionGuardrails("cpa|lte|8000;conversions|gte|1200")).toEqual([
+      { metric: "cpa", op: "lte", value: "8000" },
+      { metric: "conversions", op: "gte", value: "1200" },
+    ]);
+    // 값 없음 · 지표 없음 · 연산자 밖 — 셋 다 버려지고, 뒤의 온전한 항목은 살아남는다.
+    expect(parseDecisionGuardrails("cpa|lte|;|gte|5;roas|bogus|2;cvr|gte|9")).toEqual([
+      { metric: "cvr", op: "gte", value: "9" },
+    ]);
+    expect(parseDecisionGuardrails("cpa|lte|;|gte|5;roas|bogus|2")).toEqual([]);
+    expect(parseDecisionGuardrails("cpa|lte|8000;cpa|gte|1")).toEqual([{ metric: "cpa", op: "lte", value: "8000" }]);
+    expect(parseDecisionGuardrails("")).toEqual([]);
+    expect(parseDecisionGuardrails(null)).toEqual([]);
+  });
+
+  it("4개를 넘으면 자른다", () => {
+    const many = ["cpa|lte|1", "cpi|lte|2", "ctr|gte|3", "cvr|gte|4", "roas|gte|5"].join(";");
+    expect(parseDecisionGuardrails(many)).toHaveLength(4);
+  });
+
+  it("직렬화는 파싱의 역이고, 형식 밖 입력은 통과하지 못한다", () => {
+    const list = [{ metric: "cpa", op: "lte", value: "8000" }, { metric: "conversions", op: "gte", value: "1200" }];
+    expect(serializeDecisionGuardrails(list)).toBe("cpa|lte|8000;conversions|gte|1200");
+    expect(serializeDecisionGuardrails([{ metric: "cpa", op: "nope", value: "1" }])).toBe("");
+    expect(serializeDecisionGuardrails("not-an-array")).toBe("");
+  });
+
+  it("옛 v9 단수 레코드도 같은 목록 모양으로 읽힌다", () => {
+    // 두 세대를 스코어러가 같은 코드로 읽어야 한다 — 분기를 만들면 한쪽만 고쳐진다.
+    expect(decisionGuardrailList({ guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "8000" }))
+      .toEqual([{ metric: "cpa", op: "lte", value: "8000" }]);
+    expect(decisionGuardrailList({})).toEqual([]);
+    // 반쪽 가드레일(값 없음)은 목록에 들어가지 않는다.
+    expect(decisionGuardrailList({ guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "" })).toEqual([]);
+  });
+
+  it("같은 지표가 양쪽에 있으면 단수 필드가 이긴다", () => {
+    // 화면이 보여 주던 값이 단수 쪽이므로, 그걸 목록이 조용히 덮으면 안 된다.
+    expect(decisionGuardrailList({
+      guardrailMetric: "cpa", guardrailOp: "lte", guardrailValue: "8000",
+      guardrails: "cpa|gte|1;conversions|gte|1200",
+    })).toEqual([
+      { metric: "cpa", op: "lte", value: "8000" },
+      { metric: "conversions", op: "gte", value: "1200" },
+    ]);
+  });
+
+  it("sanitize가 guardrails를 재조립해 저장한다", () => {
+    const record = sanitizeDecisionReviewRecord({
+      action: "Meta 30% 감액",
+      guardrails: "conversions|gte|1200;bogus||;cpa|lte|8000",
+    }, "5-18-cannibal");
+    expect(record.guardrails).toBe("conversions|gte|1200;cpa|lte|8000");
+  });
+
+  it("guardrails가 CSV 열과 안전 필드 양쪽에 있다", () => {
+    // 한쪽에만 넣으면 내보낸 CSV를 다시 올렸을 때 조용히 사라진다.
+    expect(DECISION_REVIEW_SAFE_FIELDS).toContain("guardrails");
+    expect(DECISION_REVIEW_COLUMNS).toContain("guardrails");
+  });
+});
+
+describe("v10 후속 검토 모드는 선언을 먼저 본다", () => {
+  it("rerun: 목표는 라벨과 무관하게 재실행으로 간다", () => {
+    // 라벨이 우연히 "CPA"를 포함해도 선언이 이긴다. 라벨은 번역·리네임으로 바뀐다.
+    expect(decisionReviewFollowUpMode({ goalMetric: "rerun:organic_conversions", metric: "CPA" })).toBe("rerun_manual");
+  });
+
+  it("선언이 없는 옛 레코드는 기존 라벨 판정으로 폴백한다", () => {
+    expect(decisionReviewFollowUpMode({ metric: "CPA", baselineDate: "2026-09-01", comparisonScope: "" })).toBe("period_setup");
+    expect(decisionReviewFollowUpMode({ metric: "강한 잠식 후보" })).toBe("rerun_manual");
+  });
+
+  it("계산 가능한 목표는 재실행으로 강등되지 않는다", () => {
+    expect(decisionReviewFollowUpMode({ goalMetric: "cpa", metric: "CPA" })).toBe("period_setup");
   });
 });

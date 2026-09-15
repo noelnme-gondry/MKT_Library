@@ -79,6 +79,9 @@ export const ROUTES = [
   { id: "projects", slug: "/projects", component: "ProjectsPage", publication: "preview" },
   { id: "subscription", slug: "/subscription", component: "SubscriptionPage", publication: "preview" },
   { id: "storage", slug: "/storage", component: "WorkspaceStoragePage", publication: "preview" },
+  // 마이페이지 — 계정·구독·프로젝트 요약과 사용자 설정(컬럼 매핑)을 한곳에 둔다.
+  // 색인 대상이 아니다(로그인해야 내용이 있다) → publication: "preview".
+  { id: "account", slug: "/account", component: "MyAccountPage", publication: "preview" },
   // 도치가 받은 파일의 매핑·결과 전용 작업대. 사용자 데이터가 브라우저 메모리에만
   // 있으므로 검색 랜딩이 아닌 일회성 화면(publication: preview)으로 둔다.
   { id: "dochi-result", slug: "/dochi-result", component: "DochiResult", publication: "preview" },

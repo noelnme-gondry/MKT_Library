@@ -102,6 +102,40 @@ export async function logoutAccount(request) {
   await accountDatabase().query("DELETE FROM gop_account_sessions WHERE token_hash=$1", [hash(readCookie(request, sessionCookie))]);
   return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store", "Set-Cookie": cookie(sessionCookie, "", 0) } });
 }
+/**
+ * 프로젝트를 만들 때 한 번만 도는 체험 시작.
+ *
+ * 왜 서버인가: 체험 기간은 서버 시계로 재야 한다. 클라이언트가 시작하게 하면
+ * 기기 시계를 되돌려 무한 체험이 된다. `SELECT NOW()`가 그 기준이다.
+ *
+ * 왜 프로젝트 생성인가: 예전에는 "첫 계정 메모 저장"이 트리거였는데, 그러면
+ * 리뷰를 저장하러 온 사람이 처음 듣는 다른 저장을 먼저 해야 했다. 지금은
+ * 프로젝트 기능 자체가 로그인·Pro 전용이므로, 그 관문에서 한 번 켠다.
+ *
+ * 이미 시작했거나 결제한 계정은 아무것도 바꾸지 않고 현재 권한만 돌려준다.
+ */
+export async function startAccountTrial(request) {
+  accountSameOrigin(request);
+  const owner = await requireAccount(request);
+  const client = await accountDatabase().connect();
+  try {
+    await client.query("BEGIN");
+    const account = (await client.query("SELECT * FROM gop_accounts WHERE id=$1 FOR UPDATE", [owner.id])).rows[0];
+    const now = (await client.query("SELECT NOW() AS now")).rows[0].now;
+    const trialStarted = !account.trial_started_at;
+    if (trialStarted) {
+      await client.query("UPDATE gop_accounts SET trial_started_at=$2 WHERE id=$1", [owner.id, now]);
+      account.trial_started_at = now;
+    }
+    const entitlement = accountEntitlement({ ...account, paid_until: owner.paid_until }, new Date(now).getTime());
+    await client.query("COMMIT");
+    // 체험도 결제도 없는 계정(체험을 이미 쓰고 만료)은 entitlement가 null이다.
+    // 거절하지 않고 그대로 돌려준다 — 화면이 "체험 종료, 구독 필요"를 말해야 한다.
+    return { entitlement, trialStarted };
+  } catch (error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+}
+
 export async function saveAccountMemo(request, input) {
   accountSameOrigin(request);
   const owner = await requireAccount(request);
@@ -114,12 +148,8 @@ export async function saveAccountMemo(request, input) {
     await client.query("BEGIN");
     const account = (await client.query("SELECT * FROM gop_accounts WHERE id=$1 FOR UPDATE", [owner.id])).rows[0];
     const now = (await client.query("SELECT NOW() AS now")).rows[0].now;
-    const trialStarted = !account.trial_started_at;
-    // The first successful write starts one server-clock trial; failed writes roll it back.
-    if (trialStarted) {
-      await client.query("UPDATE gop_accounts SET trial_started_at=$2 WHERE id=$1", [owner.id, now]);
-      account.trial_started_at = now;
-    }
+    // 체험 시작은 `startAccountTrial`(프로젝트 생성) 하나만 한다. 여기서도 시작하면
+    // 트리거가 두 벌이 되어 한쪽만 고치게 된다 — 메모 저장은 이미 Pro인 사람만 한다.
     const entitlement = accountEntitlement({ ...account, paid_until: owner.paid_until }, new Date(now).getTime());
     if (!entitlement) throw new Error("PRO_REQUIRED");
     const count = (await client.query("SELECT count(*)::int AS count FROM gop_decision_memos WHERE account_id=$1", [owner.id])).rows[0].count;
@@ -131,7 +161,7 @@ export async function saveAccountMemo(request, input) {
     if (input.serviceRemindersConsent === "service-reminders-v1") await client.query("UPDATE gop_accounts SET service_reminders=true WHERE id=$1", [owner.id]);
     if (input.locale) await client.query("UPDATE gop_accounts SET locale=$2 WHERE id=$1", [owner.id, input.locale]);
     await client.query("COMMIT");
-    return { memo, entitlement, trialStarted };
+    return { memo, entitlement };
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
 }
