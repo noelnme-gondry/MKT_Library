@@ -4979,7 +4979,7 @@ body:not(.light-mode) .moon-icon {
 .search-topic-hub__grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
 .search-topic-hub__card { position: relative; min-height: 160px; padding: 15px; border: 1px solid var(--border-subtle); color: inherit; text-decoration: none; background: var(--surface-container-lowest); transition: border-color .16s, transform .16s; }
 .search-topic-hub__card:hover { transform: translateY(-2px); border-color: var(--primary); }
-.search-topic-hub__index { position: absolute; right: 12px; top: 10px; color: var(--border-stronger); font: 700 var(--fs-md) var(--font-sans); }
+.search-topic-hub__index { position: absolute; right: 12px; top: 10px; color: var(--text-muted); font: 700 var(--fs-md) var(--font-sans); }
 .search-topic-hub__kicker { display: block; color: var(--primary); font-size: var(--fs-xs); font-weight: 700; }
 .search-topic-hub__card strong { display: block; margin-top: 8px; color: var(--text-primary); font-size: var(--fs-md); line-height: 1.35; letter-spacing: -.02em; }
 .search-topic-hub__desc { display: block; margin-top: 6px; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.52; }
@@ -6549,7 +6549,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .analysis-pathway__grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
 .analysis-pathway__item { position: relative; min-height: 170px; padding: 15px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: color-mix(in srgb,var(--surface-container-lowest) 78%,var(--surface-container-low)); }
 .analysis-pathway__item.is-ready { border-color: var(--border); background: var(--surface-container-lowest); }
-.analysis-pathway__index { position: absolute; top: 10px; right: 11px; color: var(--border-stronger); font: 700 var(--fs-sm) var(--font-sans); }
+.analysis-pathway__index { position: absolute; top: 10px; right: 11px; color: var(--text-muted); font: 700 var(--fs-sm) var(--font-sans); }
 .analysis-pathway__item > strong { padding-right: 24px; font-family: var(--font-sans); font-size: var(--fs-sm) !important; }
 .analysis-pathway__item p { min-height: 62px !important; }
 .analysis-recommendations { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
