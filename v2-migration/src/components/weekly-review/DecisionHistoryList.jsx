@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { accountRequest, refreshAccount } from "@/lib/account/accountClient";
@@ -7,6 +7,10 @@ import { archiveMemo } from "@/lib/account/archiveContract";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { assessDecisionOutcome, decisionGuardrailList, getDecisionReviewBucket } from "@/lib/decisionReview";
 import { trackProductEvent } from "@/lib/analytics";
+
+// 계정에만 있는 결정을 이 기기의 검토 목록으로 가져온다. 예전 보관함이 하던 일이라
+// 목록을 합치면서 같이 옮겼다 — 화면만 치우고 능력을 조용히 잃으면 안 된다.
+const ReviewSaveDialog = lazy(() => import("@/components/ReviewSaveDialog"));
 
 /**
  * 지난 결정 — 이 기기와 계정에 있는 결정을 **한 목록**으로 본다.
@@ -29,6 +33,8 @@ const COPY = {
     onDevice: "이 기기",
     onAccount: "계정 보관됨",
     accountOnly: "계정에만 있음",
+    continueReview: "검토 이어하기",
+    opening: "가져오는 중…",
     noDate: "검토일 미정",
     close: "닫기",
     conclusion: "결론",
@@ -52,6 +58,8 @@ const COPY = {
     onDevice: "This device",
     onAccount: "In your account",
     accountOnly: "Account only",
+    continueReview: "Continue review",
+    opening: "Opening…",
     noDate: "No review date",
     close: "Close",
     conclusion: "Conclusion",
@@ -83,6 +91,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [pendingCopy, setPendingCopy] = useState(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -171,6 +180,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     {row.learning && <p><strong>{t.learning}</strong> {row.learning}</p>}
                     <div className="wr-history-list__actions">
                       {row.onDevice && !row.onAccount && <button type="button" className="btn" disabled={busyId === row.id} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
+                      {!row.onDevice && <button type="button" className="btn" onClick={() => setPendingCopy(row)}>{t.continueReview}</button>}
                       <button type="button" className="btn ghost" onClick={() => setOpenId("")}>{t.close}</button>
                     </div>
                   </div>
@@ -180,6 +190,9 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
           })}
         </ul>
       )}
+      {pendingCopy && <Suspense fallback={<p role="status">{t.opening}</p>}>
+        <ReviewSaveDialog locale={locale} record={pendingCopy} onClose={() => setPendingCopy(null)} />
+      </Suspense>}
     </section>
   );
 }

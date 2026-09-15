@@ -7,11 +7,11 @@ import SubscriptionPlanComparison from "./SubscriptionPlanComparison";
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/account/accountClient", () => ({ refreshAccount: refresh }));
 afterEach(() => { cleanup(); useAppStore.setState({ entitlement: null }); refresh.mockReset(); });
-it.each(["ko", "en"])("offers a first-save route without starting a trial (%s)", async locale => {
+it.each(["ko", "en"])("offers a project-creation route without starting a trial (%s)", async locale => {
   refresh.mockResolvedValue({ enabled: true, account: null });
   render(<SubscriptionTrialOffer locale={locale} />);
-  const link = await screen.findByRole("link", { name: locale === "en" ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기" });
-  expect(link.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/weekly-review#wr-next`);
+  const link = await screen.findByRole("link", { name: locale === "en" ? "Create a project to try Pro" : "프로젝트 만들고 Pro 체험하기" });
+  expect(link.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/weekly-review#wr-upload`);
   expect(refresh).toHaveBeenCalledOnce();
 });
 it("does not offer a second trial to an expired account", async () => {

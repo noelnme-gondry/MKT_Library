@@ -6,19 +6,20 @@ for (const locale of ["ko", "en"]) {
     let memos = [];
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "library", email: "reader@example.com", serviceReminders: false }, entitlement: null } }));
     await page.route("**/api/account/memos", route => route.fulfill({ json: { memos } }));
-    await page.goto(`${en ? "/en" : ""}/weekly-review#account-archive`);
-    const library = page.locator(".account-library");
-    await expect(library.getByRole("heading", { name: en ? "No saved decisions yet" : "아직 저장한 결정이 없습니다" })).toBeVisible();
-    await expect(library.getByRole("combobox")).toHaveCount(0);
-    await expect(library.getByRole("checkbox")).toHaveCount(0);
+    await page.goto(`${en ? "/en" : ""}/weekly-review#wr-history`);
+    // 이 기기와 계정의 결정은 이제 한 목록이다. 따로 두면 한 기기에서는 거의 같아
+    // 보여 차이를 아무도 설명할 수 없었다.
+    const history = page.locator(".wr-history-list");
+    // 이용권이 없으면 목록 대신 사유를 말한다 — 빈 목록으로 위장하지 않는다.
+    await expect(history.getByText(en ? /Viewing saved decisions is a Pro feature/ : /저장한 결정 보기는 Pro 기능입니다/)).toBeVisible();
     memos = [{ id: "memo-1", action: "Review the campaign budget", conclusion: "Check the next period before increasing spend.", reviewDate: "2026-10-01" }];
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "library", email: "reader@example.com", serviceReminders: false }, entitlement: { plan: "paid", account: true, trial: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
     await page.reload();
-    await expect(library.getByRole("heading", { name: memos[0].action })).toBeVisible();
-    await expect(library.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
-    await expect(library.getByRole("button", { name: en ? "Sign out" : "로그아웃" })).toHaveCount(0);
-    await library.getByText(en ? "Account settings" : "계정 설정", { exact: true }).click();
-    await expect(library.getByRole("checkbox", { name: en ? /Email reminders/ : /이메일 알림 받기/ })).toBeVisible();
-    expect(await library.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    await expect(history.getByRole("button", { name: new RegExp(memos[0].action) })).toBeVisible();
+    // 계정에만 있는 결정은 이 기기로 가져올 수 있어야 한다(옛 보관함이 하던 일).
+    await history.getByRole("button", { name: new RegExp(memos[0].action) }).click();
+    await expect(history.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
+    expect(await history.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
   });
   test(`signed-in account copy stays aligned (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
@@ -47,7 +48,7 @@ for (const locale of ["ko", "en"]) {
     const prefix = en ? "/en" : "";
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
     await page.goto(`${prefix}/weekly-review`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New review" : "새 리뷰");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New project" : "새 프로젝트");
     await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
     await expect(page.locator(".wr-screen .journey-progress a")).toHaveCount(0);
     await expect(page.locator(".wr-screen__eyebrow")).toHaveCount(0);

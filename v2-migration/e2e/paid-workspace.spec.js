@@ -168,10 +168,12 @@ for (const locale of ["ko", "en"]) {
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: { id: "fixture", email: "reader@example.com", trialStartedAt: started ? new Date(trialStartedAt).toISOString() : null }, entitlement: started ? { plan: "paid", account: true, trial: true, expiresAt: trialStartedAt + 14 * 86400000, offlineUntil: Date.now() + 300000 } : null } }));
     await page.goto(`${prefix}/subscription`);
     await expect(page.locator(".subscription-page .account-archive")).toHaveCount(0);
-    await page.getByRole("link", { name: en ? "Save a decision to try Pro" : "결정 저장하고 Pro 체험하기", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#wr-next$`));
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]').first()).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New review" : "새 리뷰");
+    await page.getByRole("link", { name: en ? "Create a project to try Pro" : "프로젝트 만들고 Pro 체험하기", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#wr-upload$`));
+    // 체험은 이제 "첫 결정 저장"이 아니라 프로젝트 생성에서 시작한다. 그래서
+    // 프로젝트가 없는 사람에게는 업로더가 아니라 관문이 먼저 선다.
+    await expect(page.getByRole("button", { name: en ? "Create a project" : "새 프로젝트 만들기" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New project" : "새 프로젝트");
     started = true;
     await page.goto(`${prefix}/subscription`);
     const pro = page.getByRole("article", { name: "Pro", exact: true });

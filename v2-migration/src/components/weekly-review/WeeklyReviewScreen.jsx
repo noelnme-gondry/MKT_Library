@@ -252,9 +252,11 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const changeKpi = value => { changeProject(setKpiMetric)(value); setTargetValue(""); setTargetCurrency(null); };
   const changeBasis = value => { changeProject(setBasis)(value); setTargetValue(""); setTargetCurrency(null); };
   const changePeriod = value => { changeProject(setCustomPeriod)(value); setTargetValue(""); setTargetCurrency(null); };
-  // 이미 Pro인 사용자에게는 관문이 할 일이 없다(체험은 계정당 1회). 파생값으로
-  // 통과시킨다 — effect에서 setState로 열면 §5의 set-state-in-effect에 걸린다.
-  const gateAdmitted = gatePassed || hasPaidAccess(entitlement);
+  // 관문은 **프로젝트를 만들 때**만 선다. 이미 프로젝트가 있는 사람은 그걸 쓰러
+  // 온 것이므로 업로더가 바로 나와야 한다 — 관문을 세우면 이용권이 없을 때
+  // 기존 프로젝트를 열고도 파일을 올릴 길이 사라진다(e2e가 이 회귀를 잡았다).
+  // effect에서 setState로 열면 §5의 set-state-in-effect에 걸리므로 파생값으로 둔다.
+  const gateAdmitted = gatePassed || hasSavedProject || hasPaidAccess(entitlement);
   const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={hasSavedProject && hasPaidAccess(entitlement) && !isSampleData && projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} proActive={hasPaidAccess(entitlement)} hasResult={hasResult} onSave={async () => {
       if (isSampleData || !projectReady || !workspaceReady || !targetUnitReady || !targetCurrencyMatches || targetInvalid) return false;
       const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, entitlement, shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement) && useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
