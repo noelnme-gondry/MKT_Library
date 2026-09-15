@@ -55,14 +55,14 @@ describe("account archive consent and re-entry", () => {
   });
   it("refreshes every archive after a successful account mutation", async () => {
     render(<><AccountArchive record={{ id: "decision_1", action: "Review budget" }} /><AccountArchive profile /></>);
-    await waitFor(() => expect(screen.getAllByText(/첫 저장 시 체험 시작/)).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText(/첫 프로젝트 생성 시 체험 시작/)).toHaveLength(2));
     mocks.refresh.mockResolvedValue({ enabled: true, account: { id: "owner", email: "owner@example.com", trialStartedAt: Date.now() }, entitlement: { expiresAt: Date.now() + 14 * 86400000 }, mailEnabled: false });
     // The real client emits only for mutations; reads must not emit recursively.
     mocks.request.mockImplementation(async (path, options) => { if (options?.method === "POST") window.dispatchEvent(new Event("gop-account-changed")); return { trialStarted: true, memos: [] }; });
     fireEvent.click(screen.getByLabelText("선택한 메모를 계정에 보관합니다."));
     fireEvent.click(screen.getByRole("button", { name: "결정 메모 계정에 저장" }));
     await waitFor(() => expect(screen.getAllByText("Pro 만료")).toHaveLength(2));
-    expect(screen.queryByText(/첫 저장 시 체험 시작/)).toBeNull();
+    expect(screen.queryByText(/첫 프로젝트 생성 시 체험 시작/)).toBeNull();
   });
   it.each(["ko", "en"])("only sends the selected memo after consent, never source rows (%s)", async locale => {
     const en = locale === "en";

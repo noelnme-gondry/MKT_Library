@@ -66,11 +66,19 @@ describe("WeeklyReviewScreen", () => {
     useAppStore.setState({ decisionPersistenceEnabled: persistence });
   });
 
-  it("데이터가 없으면 결론을 지어내지 않고 업로드를 안내한다", () => {
+  it("프로젝트가 없으면 업로드가 아니라 새로 만들기를 먼저 준다", () => {
+    // 프로젝트를 만들러 온 사람에게 먼저 보여야 하는 것은 CSV 매핑이 아니다.
     render(<WeeklyReviewScreen />);
-    expect(screen.getByRole("heading", { name: "이번 주 데이터를 올려주세요." })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "데이터 올리기" }).getAttribute("href")).toBe("/start");
+    expect(screen.getByRole("heading", { name: "아직 프로젝트가 없습니다." })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "새 프로젝트 만들기" })).toBeTruthy();
     expect(screen.queryByText(/이번 주 결론/)).toBeNull();
+  });
+
+  it("새 프로젝트 만들기는 Pro 관문을 먼저 연다", () => {
+    // 관문을 지나야 업로드가 시작된다 — 여기가 14일 체험을 켜는 유일한 자리다.
+    render(<WeeklyReviewScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "새 프로젝트 만들기" }));
+    expect(screen.getByText("프로젝트는 Pro 기능입니다")).toBeTruthy();
   });
 
   it("프로젝트 목표를 다른 KPI 단위로 재사용하지 않는다", () => {
@@ -243,7 +251,7 @@ describe("WeeklyReviewScreen", () => {
   it("EN도 같은 구조로 렌더된다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen locale="en" />);
-    expect(screen.getByRole("heading", { name: "Weekly Review" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Projects" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Why" })).toBeTruthy();
     expect(screen.getByText(/“Result share” is the share of conversions/)).toBeTruthy();
   });

@@ -2,6 +2,7 @@
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
+import ProjectCreateGate from "@/components/ProjectCreateGate";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildWeeklyReviewExport } from "@/lib/analysis-export/weeklyReviewExport";
@@ -50,16 +51,17 @@ import WeeklyHistoryEvidence, { baselineExplanation } from "./WeeklyHistoryEvide
 
 const COPY = {
   ko: {
-    eyebrow: "WEEKLY REVIEW",
-    title: "주간 리뷰",
+    eyebrow: "PROJECT",
+    title: "프로젝트",
     verdictHead: "이번 주 결론",
     whyHead: "왜 그랬나",
     lastHead: "지난 결정 이후의 관측",
     nextHead: "이번 주에 할 것",
     shareHead: "팀 공유 보고서",
     historyToggle: (n) => `지난 결정 전체 보기 (${n}건)`,
-    noData: "이번 주 데이터를 올려주세요.",
-    noDataDeck: "처음에는 비교할 두 기간의 캠페인 CSV를 올리세요. 이후에는 다음 기간 CSV와 이 기기에 저장한 집계로 비교하고, 지난 결정 이후의 변화를 검토합니다. 날짜·캠페인·비용·전환 또는 설치 열이 필요합니다.",
+    noData: "아직 프로젝트가 없습니다.",
+    newProject: "새 프로젝트 만들기",
+    noDataDeck: "프로젝트는 목표와 결정, 그 결과를 한자리에 모읍니다. 새로 만들면 데이터를 올리는 화면으로 이어집니다.",
     goUpload: "데이터 올리기",
     quiet: "설정한 확인 기준을 넘는 변화가 없습니다.",
     unknown: "이번 기간의 핵심 지표를 잴 수 없었습니다.",
@@ -86,16 +88,17 @@ const COPY = {
     guardHint: "가드레일을 비우면 다음 주에 자동으로 판정할 수 없습니다.",
   },
   en: {
-    eyebrow: "WEEKLY REVIEW",
-    title: "Weekly Review",
+    eyebrow: "PROJECT",
+    title: "Projects",
     verdictHead: "This week",
     whyHead: "Why",
     lastHead: "Observations after the last decision",
     nextHead: "What to do this week",
     shareHead: "Team review report",
     historyToggle: (n) => `All past decisions (${n})`,
-    noData: "Upload this week's data.",
-    noDataDeck: "Start with a campaign CSV covering both periods. Next time, compare the next period with an aggregate saved on this device and review changes after your decision. Include date, campaign, spend, and conversions or installs.",
+    noData: "No projects yet.",
+    newProject: "Create a project",
+    noDataDeck: "A project keeps your goal, your decisions and their outcomes in one place. Creating one takes you to the data upload step.",
     goUpload: "Upload data",
     quiet: "No change crossed the configured review criteria.",
     unknown: "This period's headline metric could not be measured.",
@@ -192,6 +195,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const sessionDecisionIds = useAppStore((state) => state.decisionSessionRecordIds);
   const existingDecisionCount = decisionRecords.filter((record) => record.toolId !== "weekly-review" && !sessionDecisionIds.has(record.id)).length;
   const [pendingSave, setPendingSave] = useState(null);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gatePassed, setGatePassed] = useState(false);
   const persistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const workspaceStatus = useAppStore((state) => state.workspaceRestoreStatus);
   const workspaceReady = !persistenceEnabled || ["ready", "failed"].includes(workspaceStatus);
@@ -248,6 +253,9 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const changeKpi = value => { changeProject(setKpiMetric)(value); setTargetValue(""); setTargetCurrency(null); };
   const changeBasis = value => { changeProject(setBasis)(value); setTargetValue(""); setTargetCurrency(null); };
   const changePeriod = value => { changeProject(setCustomPeriod)(value); setTargetValue(""); setTargetCurrency(null); };
+  // 이미 Pro인 사용자에게는 관문이 할 일이 없다(체험은 계정당 1회). 파생값으로
+  // 통과시킨다 — effect에서 setState로 열면 §5의 set-state-in-effect에 걸린다.
+  const gateAdmitted = gatePassed || hasPaidAccess(entitlement);
   const projectSetup = (periods, historyWeeks, hasResult) => <WeeklyProjectSetup locale={locale} name={projectName} setName={changeProject(setProjectName)} target={targetValue} setTarget={value => { changeProject(setTargetValue)(value); setTargetCurrency(csvData.currency); }} metric={kpiMetric} currency={csvData.currency} canSave={hasSavedProject && hasPaidAccess(entitlement) && !isSampleData && projectReady && workspaceReady && persistenceEnabled && targetCurrencyMatches && targetUnitReady && !targetInvalid} targetInvalid={targetInvalid} status={projectStatus} persistenceEnabled={persistenceEnabled} proActive={hasPaidAccess(entitlement)} hasResult={hasResult} onSave={async () => {
       if (isSampleData || !projectReady || !workspaceReady || !targetUnitReady || !targetCurrencyMatches || targetInvalid) return false;
       const result = await saveReviewProject({ name: projectName, metric: kpiMetric, basis, target: parsedTarget ?? "", period: customPeriod, currency: csvData?.currency }, { projectId, entitlement, shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement) && useAppStore.getState().decisionPersistenceEnabled === true && useAppStore.getState().activeProjectId === projectId });
@@ -380,17 +388,26 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         </header>}
         <JourneyProgress stage="prepare" locale={locale} placement="weekly_review" />
         <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
+        {/* 빈 상태에서 바로 업로드 화면을 펴지 않는다 — 프로젝트를 만들러 온 사람에게
+            먼저 보여야 하는 것은 CSV 매핑이 아니라 "새로 만들기"다. 업로드는 관문을
+            통과한 뒤 이어진다(`gateAdmitted`). */}
         <section className="wr-screen__empty wr-card" id="wr-upload" aria-labelledby="wr-empty">
-          <h2 id="wr-empty">{t.noData}</h2>
-          <p>{t.noDataDeck}</p>
+          <h2 id="wr-empty">{gateAdmitted ? t.title : t.noData}</h2>
+          {!gateAdmitted && <p>{t.noDataDeck}</p>}
       {persistenceEnabled && snapshotStatus === "failed" && <p className="wr-notice" role="status">{locale === "en" ? "The aggregate could not be saved. Keep a CSV covering both periods for your next review." : "집계를 저장하지 못했습니다. 다음 리뷰에는 비교할 두 기간의 CSV가 필요합니다."}</p>}
           {review.reason && REASON_TEXT[locale]?.[review.reason] && (
             <p className="wr-screen__reason">{REASON_TEXT[locale][review.reason]}</p>
           )}
-          {workspaceReady ? <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview /> : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
-          {projectSetup(review.periods || null, 0, false)}
-          <Link href={locale === "en" ? "/en/start" : "/start"}>{t.goUpload}</Link>
+          {!gateAdmitted
+            ? <p className="wr-screen__cta"><button type="button" className="btn primary" onClick={() => setGateOpen(true)}>{t.newProject}</button></p>
+            : workspaceReady
+              ? <>
+                <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />
+                {projectSetup(review.periods || null, 0, false)}
+              </>
+              : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
         </section>
+        <ProjectCreateGate locale={locale} open={gateOpen} onClose={() => setGateOpen(false)} onReady={() => { setGatePassed(true); setGateOpen(false); }} />
         <ReviewLoop locale={locale} hasResult={false} />
         <PastDecisions locale={locale} t={t} count={decisionRecords.length} isSample={isSampleData} />
         <AccountArchive locale={locale} anchorId="account-archive" />
