@@ -10723,6 +10723,54 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 }
 .tool-index__item.is-dim .tool-index__link { opacity: .48; }
 
+/* 버튼 격자(density="grid") — 업로드 화면. 갈래마다 한 줄(≤3개)이라 상세를 줄
+   바로 아래에 열어도 누른 버튼이 제자리에 있다. 열 수를 개수로 적지 않고
+   auto-fit으로 두어 갈래가 늘어도 빈 줄이 생기지 않는다(§12.31). */
+.tool-index__grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;
+}
+.tool-index__cell { display: flex; }
+.tool-index__chip {
+  flex: 1 1 auto; display: grid; gap: 6px; align-content: start; min-height: 64px;
+  padding: 14px 15px; text-align: left; cursor: pointer;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-2); color: var(--text-primary);
+  transition: border-color .12s ease, background .12s ease;
+}
+.tool-index__chip:hover { border-color: var(--primary); background: var(--bg-1); }
+.tool-index__chip.is-open { border-color: var(--primary); background: var(--bg-1); }
+/* 자격은 흐림이 아니라 묶음 제목과 글자가 말한다 — 흐림은 다른 파일이 취소할 수
+   있고, 취소되면 판정이 화면에서 통째로 사라진다(§7). */
+.tool-index__stage-tag {
+  justify-self: start; font-size: var(--fs-xs); color: var(--text-muted);
+}
+.tool-index__count {
+  margin-left: 8px; padding: 1px 8px; border-radius: var(--radius-pill);
+  font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums;
+  color: var(--on-primary); background: var(--primary);
+}
+.tool-index__stage--blocked .tool-index__count { color: var(--text-muted); background: var(--bg-3); }
+.tool-index__stage--blocked .tool-index__chip { background: transparent; }
+.tool-index__blocked-note { font-size: var(--fs-sm); color: var(--text-secondary); }
+.tool-index__missing {
+  justify-self: start; font-size: var(--fs-xs); font-weight: 600;
+  color: var(--warning); line-height: 1.45;
+}
+.tool-index__template { justify-self: start; margin-top: 2px; }
+.tool-index--grid .tool-index__stage-desc { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--text-secondary); }
+/* 누른 버튼 다음 줄 전체. `1 / -1`이라 열 수가 몇이든 한 줄을 통째로 쓴다 —
+   개수를 CSS에 적지 않으므로 갈래가 늘어도 어긋나지 않는다(§12.31). */
+.tool-index__panel-row { grid-column: 1 / -1; }
+.tool-index__panel {
+  display: grid; gap: 8px; padding: 16px 17px;
+  border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--bg-1);
+}
+.tool-index__panel p { margin: 0; }
+.tool-index__panel .tool-index__link { justify-self: start; margin-top: 4px; }
+.tool-index--grid .tool-index__stage + .tool-index__stage { margin-top: 22px; }
+.tool-index--grid .tool-index__stage-head { margin-bottom: 10px; }
+
 
 /* 사이드바 상단 "할 수 있는 분석 전체" — 접힘 상태와 무관하게 늘 보이는 입구. */
 .inner-workspace-label__all {

@@ -1,6 +1,7 @@
 "use client";
 
 import { isDemoData } from "@/lib/dataOrigin";
+import { blockersText } from "@/lib/assistant/blockerText";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ANALYSIS_CATALOG, analysisCatalogEntry } from "@/lib/assistant/analysisCatalog";
@@ -266,19 +267,6 @@ export function analysisInputSignature(csvData) {
     for (const header of headers) hash = fingerprintStep(hash, row?.[header]);
   }
   return `v1:${csvData.raw?.length || 0}:${headers.length}:${(hash >>> 0).toString(36)}`;
-}
-
-function blockersText(result, locale) {
-  const first = result.blockers?.[0];
-  if (!first) return locale === "en" ? "Review the detailed tool requirements." : "상세 도구의 데이터 조건을 확인해 주세요.";
-  if (first.code === "missing_fields") return locale === "en"
-    ? `Missing: ${(first.alternatives || []).flat().join(" / ")}`
-    : `필요: ${(first.alternatives || []).flat().join(" / ")}`;
-  if (first.code === "grain_mismatch") return locale === "en" ? "This file has a different data grain." : "이 파일은 다른 데이터 단위입니다.";
-  if (first.code === "no_rows") return locale === "en" ? "No readable rows were found." : "읽을 수 있는 행이 없습니다.";
-  if (first.code === "min_rows") return locale === "en" ? `Needs at least ${first.required} rows (currently ${first.current}).` : `최소 ${first.required}행 필요 (현재 ${first.current}행).`;
-  if (first.code === "min_periods") return locale === "en" ? `Needs at least ${first.required} periods.` : `최소 ${first.required}개 기간이 필요합니다.`;
-  return locale === "en" ? "This analysis needs additional data or review." : "이 분석에는 추가 데이터 또는 확인이 필요합니다.";
 }
 
 function titleFor(toolId, getTitle) {

@@ -10,6 +10,7 @@ import CsvUploader from "@/components/CsvUploader";
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import ToolIndex from "@/components/ds/ToolIndex";
+import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
 import { DOCHI_HANDOFF_KEY, DochiArrivalTransition } from "@/components/assistant/DochiHandoffMotion";
@@ -30,8 +31,9 @@ const COPY = {
     deck: "CSV나 Google Sheets의 컬럼과 기간을 브라우저에서 확인해 지금 실행 가능한 분석만 보여줍니다. 도구를 미리 고를 필요 없습니다.",
     open: "이 분석 시작 →",
     indexTitle: "할 수 있는 분석 전체",
-    indexDeck: "판단 단계별로 묶었습니다. 필요한 데이터가 무엇인지도 함께 적혀 있어요.",
-    indexDeckWithData: "올리신 파일로 지금 바로 되는 분석을 진하게 표시했습니다. 흐린 것은 컬럼이 더 필요합니다.",
+    indexTitleWithData: "이 파일로 할 수 있는 분석",
+    indexDeck: "판단 단계별로 묶었습니다. 눌러 보면 무엇이 나오고 어떤 데이터가 필요한지 볼 수 있어요.",
+    indexDeckWithData: "올리신 파일로 지금 되는 분석을 위에 모았습니다. 아래는 컬럼을 더 주면 되는 것들이에요.",
     directEyebrow: "파일 없이 바로",
     calculatorTag: "빠른 계산",
     diagnoseTag: "원인 찾기",
@@ -53,8 +55,9 @@ const COPY = {
     deck: "We inspect CSV or Google Sheets columns and date coverage in your browser, then show only the analyses you can run now. You do not need to choose a tool first.",
     open: "Start this →",
     indexTitle: "Every analysis you can run",
-    indexDeck: "Grouped by the decision each one supports, with the columns it needs.",
-    indexDeckWithData: "Analyses your file can run right now are shown in full; dimmed ones need more columns.",
+    indexTitleWithData: "What you can run with this file",
+    indexDeck: "Grouped by the decision each one supports. Open one to see what it returns and what it needs.",
+    indexDeckWithData: "Analyses your file can run right now are grouped at the top; below are the ones that need more columns.",
     directEyebrow: "START WITHOUT A FILE",
     calculatorTag: "QUICK MATH",
     diagnoseTag: "ROOT CAUSE",
@@ -152,8 +155,16 @@ export default function StartGate({ locale = "ko" }) {
       headers: csvData.headers,
       mapping: csvData.mapping,
       ids: eligibility.filter((result) => result.status !== "blocked").map((result) => result.toolId),
+      // 안 되는 이유를 함께 들고 온다. "안 됩니다"만 말하면 사용자가 할 수 있는 일이
+      // 없다 — 무엇이 빠졌는지와 어떻게 채우는지가 같은 자리에 있어야 한다.
+      blocked: Object.fromEntries(eligibility
+        .filter((result) => result.status === "blocked")
+        .map((result) => [result.toolId, {
+          fields: blockerFieldLabels(result, locale),
+          hint: blockersText(result, locale),
+        }])),
     });
-  }, [csvData.headers, csvData.mapping, csvData.raw]);
+  }, [csvData.headers, csvData.mapping, csvData.raw, locale]);
   const getTitle = (id) => {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
     return meta ? trItemTitle(id, locale, meta.title) : id;
@@ -238,13 +249,14 @@ export default function StartGate({ locale = "ko" }) {
           도구도 숨기지 않고 흐리게만 둔다(숨기면 존재 자체를 못 본다). */}
       <section className="block start-tool-index" aria-labelledby="start-tool-index-title">
         <h2 className="section-title" id="start-tool-index-title" style={{ margin: "0 0 4px", border: "none", padding: 0 }}>
-          {C.indexTitle}
+          {hasPreparedData ? C.indexTitleWithData : C.indexTitle}
         </h2>
         <p className="muted" style={{ margin: "0 0 16px" }}>{hasPreparedData ? C.indexDeckWithData : C.indexDeck}</p>
         <ToolIndex
           locale={locale}
-          density="full"
+          density="grid"
           eligibleIds={eligibleIds}
+          blockedInfo={isEligibilityCurrent ? eligibilitySnapshot.blocked : null}
           onSelect={(toolId) => (hasPreparedData ? openRecommended(toolId) : goTool(toolId))}
         />
       </section>

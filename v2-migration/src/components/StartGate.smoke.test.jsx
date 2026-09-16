@@ -9,6 +9,7 @@ import { buildDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } fr
 
 // 이름은 레지스트리에서 — 손으로 적으면 리네임마다 깨진다.
 const nameOf = (id, locale = "ko") => toolIndexEntry(id, locale).name;
+const questionOf = (id, locale = "ko") => toolIndexEntry(id, locale).question;
 
 describe("StartGate render smoke", () => {
   beforeEach(() => {
@@ -71,9 +72,10 @@ describe("StartGate render smoke", () => {
     expect(() => render(<StartGate />)).not.toThrow();
     // 진입 시 데모 자동로드 억제 플래그 on.
     expect(useAppStore.getState().demoDisabled).toBe(true);
-    // 도구 인덱스가 발행 도구를 전부 펴 놓는다. 예전에는 <details>로 접혀 있어
-    // "무엇을 할 수 있는지"가 첫 화면에 없었다.
-    expect(document.querySelectorAll(".tool-index__link")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+    // 도구 인덱스가 발행 도구를 전부 버튼으로 내놓는다. 예전에는 <details>로 접혀
+    // 있어 "무엇을 할 수 있는지"가 첫 화면에 없었다. 격자로 바뀐 뒤에도 개수 계약은
+    // 같다 — 접는 것과 격자에 담는 것은 다르다(상세만 눌러서 연다).
+    expect(document.querySelectorAll(".tool-index__chip")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(screen.getByText(/데이터를 올리면 첫 분석을 골라드립니다/)).toBeTruthy();
     expect(screen.getByText(/도구별 데이터 조건/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "⬇ 기본 CSV 템플릿 받기" })).toBeTruthy();
@@ -181,8 +183,8 @@ describe("StartGate render smoke", () => {
     });
 
     render(<StartGate />);
-    const itemFor = (toolId) => [...document.querySelectorAll(".tool-index__item")]
-      .find((item) => item.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
+    const itemFor = (toolId) => [...document.querySelectorAll(".tool-index__cell")]
+      .find((cell) => cell.querySelector(".tool-index__q")?.textContent === questionOf(toolId));
 
     await waitFor(() => {
       expect(itemFor("5-2").classList.contains("is-dim")).toBe(false);
@@ -206,10 +208,27 @@ describe("StartGate render smoke", () => {
     });
 
     render(<StartGate />);
-    const pickTool = (toolId) => [...document.querySelectorAll(".tool-index__link")]
-      .find((link) => link.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
+    // 격자에서는 버튼을 눌러 상세를 연 뒤 그 안의 실행 링크를 누른다 — 목록이
+    // 세로로 길어 도구 이름이 늘 보이던 시절의 한 단계 클릭과 다르다.
+    const chipFor = (toolId) => [...document.querySelectorAll(".tool-index__chip")]
+      .find((button) => button.querySelector(".tool-index__q")?.textContent === questionOf(toolId));
+    // 여는 것은 멱등이어야 한다 — waitFor가 콜백을 여러 번 돌리므로 매번 토글하면
+    // 짝수 번째에 도로 닫힌다.
+    const openTool = (toolId) => {
+      const chip = chipFor(toolId);
+      if (chip.getAttribute("aria-expanded") !== "true") fireEvent.click(chip);
+      return chip;
+    };
+    // 상세는 한 번에 하나만 열린다 — 연 뒤의 유일한 실행 링크가 그 도구의 것이다.
+    const pickTool = (toolId) => {
+      openTool(toolId);
+      const links = document.querySelectorAll(".tool-index__panel .tool-index__link");
+      expect(links).toHaveLength(1);
+      return links[0];
+    };
 
-    await waitFor(() => expect(pickTool("5-2").closest(".tool-index__item").classList.contains("is-dim")).toBe(false));
+    // 5-2는 이 파일로 되는 분석이므로 위쪽 묶음에 있어야 한다.
+    await waitFor(() => expect(chipFor("5-2").closest(".tool-index__stage").classList.contains("tool-index__stage--ready")).toBe(true));
     fireEvent.click(pickTool("5-2"));
     act(() => useAppStore.getState().setCurrentRouteId("5-2"));
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
@@ -244,8 +263,24 @@ describe("StartGate render smoke", () => {
 
     // 인덱스에서 도구를 고르면 올린 CSV가 그 도구용으로 다시 매핑돼 따라가야 한다.
     // 평범한 링크 이동이 되면 도구가 빈 상태로 열린다.
-    const pickTool = (toolId) => [...document.querySelectorAll(".tool-index__link")]
-      .find((link) => link.querySelector(".tool-index__name")?.textContent === nameOf(toolId));
+    // 격자에서는 버튼을 눌러 상세를 연 뒤 그 안의 실행 링크를 누른다 — 목록이
+    // 세로로 길어 도구 이름이 늘 보이던 시절의 한 단계 클릭과 다르다.
+    const chipFor = (toolId) => [...document.querySelectorAll(".tool-index__chip")]
+      .find((button) => button.querySelector(".tool-index__q")?.textContent === questionOf(toolId));
+    // 여는 것은 멱등이어야 한다 — waitFor가 콜백을 여러 번 돌리므로 매번 토글하면
+    // 짝수 번째에 도로 닫힌다.
+    const openTool = (toolId) => {
+      const chip = chipFor(toolId);
+      if (chip.getAttribute("aria-expanded") !== "true") fireEvent.click(chip);
+      return chip;
+    };
+    // 상세는 한 번에 하나만 열린다 — 연 뒤의 유일한 실행 링크가 그 도구의 것이다.
+    const pickTool = (toolId) => {
+      openTool(toolId);
+      const links = document.querySelectorAll(".tool-index__panel .tool-index__link");
+      expect(links).toHaveLength(1);
+      return links[0];
+    };
 
     fireEvent.click(pickTool("5-23"));
     // handoff는 대상 그룹에 먼저 쓰고, 실제 페이지 전환이 csvData 미러를 대상
