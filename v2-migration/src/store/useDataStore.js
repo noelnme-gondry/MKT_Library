@@ -550,8 +550,15 @@ const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => 
 // persist 스키마 버전 마이그레이션 훅. v2부터 opt-in 결정 요약을 지원하며, v1
 // payload에 우연히 같은 키가 있어도 동의로 간주하지 않고 제거한다.
 export function persistMigrate(persistedState, version) {
-  const state = persistedState && typeof persistedState === "object" ? { ...persistedState } : {};
-  const needsExpandedStorageConsent = version >= 2 && version < 5 && state.decisionPersistenceEnabled === true;
+  const isPlainObject = persistedState && typeof persistedState === "object" && !Array.isArray(persistedState);
+  const state = isPlainObject ? { ...persistedState } : {};
+  // 앞으로 감은 버전에서 되돌아온 payload(배포 롤백 등)는 동의 범위를 신뢰하지
+  // 않는다. v2~v4의 ON이 "결정 요약"만이었다가 v5에서 원본 파일까지로 넓어졌듯,
+  // 미래 버전의 ON이 무엇에 대한 동의였는지 이 코드는 알 수 없다. 모르는 동의를
+  // 넓게 해석하느니 다시 묻는다(§8) — 아래 확대 분기와 같은 자세다.
+  const isFromFutureVersion = Number.isFinite(version) && version > APP_PERSIST_VERSION;
+  const needsExpandedStorageConsent = (version >= 2 && version < 5 && state.decisionPersistenceEnabled === true)
+    || (isFromFutureVersion && state.decisionPersistenceEnabled === true);
   // v3 전 payload에는 분석가 모드가 없었다. 기존 마케터 UX를 보존하기 위해 off가 기본이다.
   state.analystMode = version >= 3 && state.analystMode === true;
   if (version < 2) {
@@ -876,6 +883,9 @@ export const useAppStore = create(persist((set, get) => ({
   workspaceRestoreStatus: "idle",
   workspaceStorageError: null,
   workspaceExpiredCount: 0,
+  // 복원 시도했지만 읽지 못한 그룹. 화면이 "몇 건이 안 열렸는지"를 말할 수 있게
+  // 개수가 아니라 그룹 이름을 남긴다.
+  workspaceUnreadableGroups: [],
   refreshWorkspaceDatasets: async () => {
     const projectId = get().activeProjectId;
     try {
@@ -894,10 +904,20 @@ export const useAppStore = create(persist((set, get) => ({
     try {
       const sweep = await sweepExpiredWorkspaceDatasets(Date.now(), projectId);
       const summaries = sweep.keep;
-      const restored = await Promise.all(summaries.map(async (summary) => {
-        const entry = await readWorkspaceDataset(summary.group, projectId);
-        return entry ? [summary.group, await restoreWorkspaceSlice(entry)] : null;
+      // 한 건이 못 읽혀도 나머지는 복원한다. Promise.all은 첫 거부에서 전체를
+      // 버려서, 손상된 파일 하나가 멀쩡한 작업 전부를 "복원 실패"로 만들었다.
+      // 못 읽은 건은 세어서 화면이 몇 건인지 말할 수 있게 남긴다(§8 — 조용히
+      // 사라지게 두지 않는다).
+      const outcomes = await Promise.all(summaries.map(async (summary) => {
+        try {
+          const entry = await readWorkspaceDataset(summary.group, projectId);
+          return entry ? [summary.group, await restoreWorkspaceSlice(entry)] : null;
+        } catch {
+          return { unreadableGroup: summary.group };
+        }
       }));
+      const unreadableGroups = outcomes.filter((item) => item && item.unreadableGroup).map((item) => item.unreadableGroup);
+      const restored = outcomes.filter((item) => Array.isArray(item));
       set((state) => {
         if (state.activeProjectId !== projectId || !state.decisionPersistenceEnabled) return {};
         const csvGroups = { ...state.csvGroups };
@@ -911,6 +931,7 @@ export const useAppStore = create(persist((set, get) => ({
           workspaceDatasetSummaries: summaries,
           workspaceRestoreStatus: "ready",
           workspaceExpiredCount: sweep.expired.length,
+          workspaceUnreadableGroups: unreadableGroups,
         };
       });
       const project = await readProject(projectId);
