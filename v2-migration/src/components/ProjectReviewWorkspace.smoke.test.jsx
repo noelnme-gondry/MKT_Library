@@ -32,3 +32,47 @@ it("opens project management from the account menu's hash entry", async () => {
   window.location.hash = "project-management";
   await waitFor(() => expect(screen.getByRole("button", { name: "Open selected review" })).toBeTruthy());
 });
+
+it("업로드한 파일이 있으면 전환 전에 무엇을 잃는지 묻는다", async () => {
+  // 삭제는 확인을 받는데 전환은 안 받고 있었다 — 잃는 양은 비슷하다.
+  const switchProject = vi.fn(async id => { useAppStore.setState({ activeProjectId: id }); return true; });
+  const slice = { raw: [{ a: 1 }], headers: ["a"], mapping: {}, fileName: "real.csv" };
+  useAppStore.setState({ switchProject, csvData: slice });
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  render(<ProjectReviewWorkspace />);
+  fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
+  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(confirm.mock.calls[0][0]).toContain("올린 파일");
+  // 거절하면 전환하지 않는다.
+  expect(switchProject).not.toHaveBeenCalled();
+  expect(useAppStore.getState().activeProjectId).toBe("a");
+  confirm.mockRestore();
+});
+
+it("잃을 것이 없으면 묻지 않는다 — 매번 묻는 확인창은 아무도 읽지 않는다", () => {
+  const switchProject = vi.fn(async id => { useAppStore.setState({ activeProjectId: id }); return true; });
+  useAppStore.setState({ switchProject });
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  render(<ProjectReviewWorkspace />);
+  fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
+  expect(confirm).not.toHaveBeenCalled();
+  confirm.mockRestore();
+});
+
+it("같은 목적지로 가는 버튼을 한 화면에 둘 두지 않는다", () => {
+  // "내 프로젝트"와 "프로젝트 목록·백업"이 둘 다 show("manage")였다.
+  useAppStore.setState({ activeProjectId: "a" });
+  render(<ProjectReviewWorkspace />);
+  expect(screen.getAllByRole("button", { name: /내 프로젝트|프로젝트 목록/ })).toHaveLength(1);
+});
+
+it("프로젝트를 연 뒤 결과가 비어 있는 이유를 말한다", async () => {
+  // 저장된 파일은 복원되는데 분석 게이트는 닫힌 채로 온다 — 말하지 않으면
+  // 파일 이름은 보이는데 결과가 없는 화면을 고장으로 읽는다.
+  const switchProject = vi.fn(async id => { useAppStore.setState({ activeProjectId: id }); return true; });
+  useAppStore.setState({ switchProject });
+  render(<ProjectReviewWorkspace />);
+  fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
+  await waitFor(() => expect(switchProject).toHaveBeenCalled());
+  await waitFor(() => expect(screen.getByText(/분석하기’를 다시/)).toBeTruthy());
+});

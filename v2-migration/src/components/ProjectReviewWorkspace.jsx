@@ -8,6 +8,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
   const en = locale === "en";
   const [view, setView] = useState(initialView);
   const [error, setError] = useState(false);
+  const [switched, setSwitched] = useState(false);
   const projects = useAppStore(state => state.projects);
   const activeId = useAppStore(state => state.activeProjectId);
   const switching = useAppStore(state => state.projectSwitching);
@@ -19,6 +20,19 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
     return () => window.removeEventListener("hashchange", hash);
   }, [initialView]);
   const show = next => { setView(next); window.history.replaceState(null, "", next === "manage" ? "#project-management" : window.location.pathname); };
+  // 실제로 잃는 것만 이름 붙여 묻는다. 잃을 게 없으면 묻지 않는다 — 매번 묻는
+  // 확인창은 곧 아무도 읽지 않는 확인창이 된다.
+  const confirmSwitch = () => {
+    const state = useAppStore.getState();
+    const losing = [
+      state.csvData.raw?.length ? (en ? "the uploaded file and its analysis" : "올린 파일과 분석 결과") : null,
+      state.reportDraft?.blocks?.length ? (en ? "the report draft" : "작성 중인 보고서") : null,
+    ].filter(Boolean);
+    if (!losing.length) return true;
+    return window.confirm(en
+      ? `Switching projects clears ${losing.join(" and ")}, plus anything typed in this review. Saved decisions stay. Continue?`
+      : `프로젝트를 바꾸면 ${losing.join("·")}과 이 화면에 입력 중인 내용이 사라집니다. 저장한 결정은 남습니다. 계속할까요?`);
+  };
   return <div className="project-review-workspace">
     <header className="project-review-workspace__bar">
       <div className="project-review-workspace__title">
@@ -31,15 +45,24 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
       <label>{en ? "Current project" : "현재 프로젝트"}<select value={activeId} disabled={!ready || switching || !projects.length} onChange={async event => {
         setError(false);
         if (event.target.value === activeId) return;
+        // 프로젝트를 바꾸면 작성 중인 결정 초안·기간 설정이 사라지고(리뷰 화면이
+        // key로 리마운트된다) 올린 CSV·분석 게이트·보고서 초안도 비워진다. 삭제는
+        // 확인을 받는데 전환은 안 받고 있었다 — 잃는 양은 비슷하다.
+        if (!confirmSwitch(event.target.value)) { event.target.value = activeId; return; }
+        setSwitched(false);
         const ok = await useAppStore.getState().switchProject(event.target.value);
-        if (ok) show("review"); else setError(true);
+        if (ok) { setSwitched(true); show("review"); } else setError(true);
       }}>{projects.map(project => <option key={project.id} value={project.id}>{project.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}</select></label>}
-      {/* 버튼 하나를 감추려고 접기를 쓰지 않는다. */}
-      {active && <button className="btn" onClick={() => show("manage")}>{en ? "Projects and backups" : "프로젝트 목록·백업"}</button>}
       </div>}
     </header>
     {error && <p role="alert">{en ? "Could not open this project. Your current review remains available." : "프로젝트를 열지 못했습니다. 현재 리뷰는 유지됩니다."}</p>}
     {switching && <p role="status">{en ? "Opening project…" : "프로젝트를 불러오는 중입니다…"}</p>}
+    {/* 저장된 파일은 복원되지만 분석 게이트는 닫힌 채로 온다(매핑을 다시 확인해야
+        하므로 의도된 동작이다). 그 사실을 말하지 않으면 사용자는 파일 이름이
+        보이는데 결과가 비어 있는 화면을 보고 고장으로 읽는다(§8). */}
+    {switched && !switching && <p role="status" className="wr-notice">{en
+      ? "Project opened. Saved files are restored, but each tool needs “Run analysis” again so its column mapping is confirmed against this project."
+      : "프로젝트를 열었습니다. 저장된 파일은 복원되지만, 결과는 각 도구에서 ‘분석하기’를 다시 눌러야 나옵니다(컬럼 매핑을 다시 확인합니다)."}</p>}
     <div hidden={view !== "review" || switching}><WeeklyReviewScreen key={activeId} locale={locale} embedded /></div>
     {view === "manage" && <section id="project-management"><ProjectsPage locale={locale} embedded onReview={() => show("review")} /></section>}
   </div>;
