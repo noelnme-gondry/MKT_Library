@@ -10750,7 +10750,10 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums;
   color: var(--on-primary); background: var(--primary);
 }
-.tool-index__stage--blocked .tool-index__count { color: var(--text-muted); background: var(--bg-3); }
+/* `--bg-3`을 쓰지 말 것: `:root`에서 `var(--surface-container)`로 **한 번만**
+   선언돼 있어 `body.light-mode`의 재정의가 닿지 않는다(치환은 선언된 :root 기준).
+   라이트에서도 다크 표면(#202632)으로 굳어 글자색만 뒤집히고 대비가 2.4:1이 된다. */
+.tool-index__stage--blocked .tool-index__count { color: var(--text-secondary); background: var(--bg-2); }
 .tool-index__stage--blocked .tool-index__chip { background: transparent; }
 .tool-index__blocked-note { font-size: var(--fs-sm); color: var(--text-secondary); }
 .tool-index__missing {
