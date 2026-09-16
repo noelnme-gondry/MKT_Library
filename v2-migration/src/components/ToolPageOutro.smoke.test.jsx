@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { useAppStore } from "@/store/useDataStore";
 
 import ToolPageOutro from "@/components/ToolPageOutro";
 
@@ -11,6 +12,8 @@ const LINKS = [
 
 describe("ToolPageOutro", () => {
   it("closes the analysis with one boundary and wraps every follow-up block in a single box", () => {
+    // 프로젝트 이어가기는 넘길 결과가 있을 때만 뜬다 — 게이트를 먼저 연다.
+    useAppStore.getState().setGroupAnalyzed("5-2", true);
     const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
     const outro = container.querySelector(".tool-outro");
     expect(outro).toBeTruthy();
@@ -55,4 +58,14 @@ describe("ToolPageOutro", () => {
     const { container } = render(<ToolPageOutro toolId="1-1" evidenceLinks={[]} />);
     expect(container.querySelector(".tool-outro")).toBeNull();
   });
+});
+
+it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", () => {
+  // 자식만 null을 돌려주고 래퍼가 남으면 **빈 박스**가 생긴다. 조건을 래퍼가
+  // 소유해야 구조적으로 안 생긴다(§7 "쓸 수 없는 기능은 조건이 갖춰졌을 때만").
+  useAppStore.setState(useAppStore.getInitialState(), true);
+  const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
+  const outro = container.querySelector(".tool-outro");
+  expect(outro.querySelector(".tool-outro__section--handoff")).toBeNull();
+  expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
 });

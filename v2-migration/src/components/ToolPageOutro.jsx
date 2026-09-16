@@ -3,6 +3,7 @@
 import ToolConnections from "@/components/ToolConnections";
 import ProjectHandoffNote from "@/components/ProjectHandoffNote";
 import { TOOL_GROUP } from "@/lib/toolGroups";
+import { useAppStore } from "@/store/useDataStore";
 import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
 import ToolLongform from "@/components/ToolLongform";
 import { getNextTools } from "@/lib/toolConnections";
@@ -28,7 +29,11 @@ const COPY = {
 export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [], withConnections = false }) {
   // 도구 라우트에서만 "이 결과를 프로젝트로" 안내가 참이다. 가이드·SOP 라우트에는
   // 이어 갈 결과가 없다.
-  const hasHandoff = withConnections && Boolean(TOOL_GROUP[toolId]);
+  // 넘길 결과가 없으면 이 안내는 지금 할 수 없는 일을 말한다(§12.17). 판정은
+  // 분석 게이트와 같은 기준이고(§12.5), **래퍼를 그리는 여기서** 본다 — 자식만
+  // null을 돌려주면 빈 `div.tool-outro__section`이 남는다.
+  const isAnalyzed = useAppStore((state) => state.isGroupAnalyzed(toolId));
+  const hasHandoff = withConnections && Boolean(TOOL_GROUP[toolId]) && isAnalyzed;
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const hasConnections = withConnections && getNextTools(toolId, lang).length > 0;
