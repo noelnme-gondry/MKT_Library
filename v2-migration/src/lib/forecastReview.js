@@ -1,3 +1,4 @@
+import { parseNumericStrict } from "@/utils/parseNumeric";
 const FORECAST_TARGETS = new Set(["Traffic", "Regs", "React", "Purchasers", "Revenue"]);
 const FORECAST_PLATFORMS = new Set(["all", "android", "ios"]);
 
@@ -37,8 +38,8 @@ function finiteNumber(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   const match = String(value ?? "").match(/[+-]?(?:\d[\d,\s]*)(?:\.\d+)?/);
   if (!match) return null;
-  const number = Number(match[0].replace(/[,\s]/g, ""));
-  return Number.isFinite(number) ? number : null;
+  // 토큰 추출은 여기, 숫자 해석은 SSOT(utils/parseNumeric).
+  return parseNumericStrict(match[0]);
 }
 
 export function createForecastReviewSnapshot({ forecast, target, platform = "all", sourceThrough } = {}) {

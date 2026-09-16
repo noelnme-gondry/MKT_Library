@@ -4,6 +4,7 @@
 // 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
 // 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
 import { getMonFilteredRows, getMappedRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { DERIVED_METRICS, computeMetrics } from "@/utils/metrics/metricRegistry";
 import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
@@ -34,6 +35,7 @@ export function buildDashboardVerdict({
   denomBasis = "installs",
   displayCurrency = "KRW",
   windowDays = 7,
+  cohort = 7,
   locale = "ko",
 } = {}) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
@@ -66,18 +68,32 @@ export function buildDashboardVerdict({
   const mapped = new Set(Object.values(csvData.mapping || {}));
   const basis = effectiveDenomBasis(csvData, denomBasis);
   const sum = (arr, k) => arr.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+  // 매출·리텐션은 선택한 코호트(Dn)를 따른다. 예전엔 여기가 revenue_d7에 못박혀
+  // 있어서, D30을 고른 사용자가 같은 화면에서 KPI 카드 ROAS 600%와 결론 카드
+  // ROAS 100%를 동시에 봤다(둘 다 라벨은 "ROAS"였다).
+  const revKey = `revenue_d${cohort}`;
+  const hasRevenue = mapped.has(revKey);
   const agg = (arr) => {
     const cost = sum(arr, "cost"), imp = sum(arr, "impressions"), clk = sum(arr, "clicks");
-    const inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, "revenue_d7");
+    const inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, revKey);
+    // 파생식은 metricRegistry(SSOT)가 소유한다. 여기서 다시 적으면 KPI 카드와
+    // 갈린다 — 실제로 cvr이 분모 기준을 무시해 가입 기준에서 4배로 벌어져 있었다.
+    const derived = computeMetrics(
+      { cost, impressions: imp, clicks: clk, installs: inst, actions: act,
+        revenue: rev, purchases: null, denom: basis === "actions" ? act : inst },
+      DERIVED_METRICS,
+    );
     return {
       cost, imp, clk, inst, act, rev,
+      // CPI·CPA는 표가 두 행을 나란히 보여주므로 분모를 각각 고정한다(레지스트리의
+      // cpi는 분모 기준 하나를 따르는 단일 지표라 두 행을 동시에 못 만든다).
       cpi: inst > 0 ? cost / inst : null,
       cpa: act > 0 ? cost / act : null,
-      ctr: imp > 0 ? clk / imp : null,
-      cvr: clk > 0 ? inst / clk : null,
-      roas: cost > 0 && rev > 0 ? rev / cost : null,
-      profit: mapped.has("revenue_d7") ? rev - cost : null,
-      ret: computeWeightedRetention(arr, 7, basis).rate,
+      ctr: derived.ctr,
+      cvr: derived.cvr,
+      roas: derived.roas,
+      profit: hasRevenue ? rev - cost : null,
+      ret: computeWeightedRetention(arr, cohort, basis).rate,
     };
   };
   const R = agg(recentRaw), P = agg(prevRaw);
@@ -92,7 +108,7 @@ export function buildDashboardVerdict({
   const dEff = effKey ? pct(R[effKey], P[effKey]) : null;
   const dConv = pct(R[convKey], P[convKey]);
   const dCost = pct(R.cost, P.cost);
-  const dRoas = mapped.has("revenue_d7") ? pct(R.roas, P.roas) : null;
+  const dRoas = hasRevenue ? pct(R.roas, P.roas) : null;
 
   // "원인"을 인과처럼 단정하지 않고, 관측상 가장 크게 움직인 채널·신규 소재를
   // 바로 제시한다. 정확한 비용효율 귀속은 PVM 도구의 무잔차 분해로 이어진다.
@@ -233,10 +249,10 @@ export function buildDashboardVerdict({
     mapped.has("actions") && { key: "cpa", label: "CPA", fmt: fc, csv: (v) => v },
     mapped.has("impressions") && mapped.has("clicks") && { key: "ctr", label: "CTR", fmt: asPctStr, csv: asPctStr },
     mapped.has("clicks") && mapped.has("installs") && { key: "cvr", label: "CVR", fmt: asPctStr, csv: asPctStr },
-    mapped.has("revenue_d7") && { key: "roas", label: "ROAS", fmt: asRoasStr, csv: asRoasStr },
-    mapped.has("revenue_d7") && { key: "rev", label: tr("매출(D7)", "Revenue (D7)"), fmt: fc, csv: (v) => v },
-    mapped.has("revenue_d7") && { key: "profit", label: tr("이익", "Profit"), fmt: fc, csv: (v) => v },
-    mapped.has("ret_d7") && { key: "ret", label: tr("리텐션(D7)", "Retention (D7)"), fmt: asPctStr, csv: asPctStr },
+    hasRevenue && { key: "roas", label: `ROAS (D${cohort})`, fmt: asRoasStr, csv: asRoasStr },
+    hasRevenue && { key: "rev", label: tr(`매출(D${cohort})`, `Revenue (D${cohort})`), fmt: fc, csv: (v) => v },
+    hasRevenue && { key: "profit", label: tr("이익", "Profit"), fmt: fc, csv: (v) => v },
+    mapped.has(`ret_d${cohort}`) && { key: "ret", label: tr(`리텐션(D${cohort})`, `Retention (D${cohort})`), fmt: asPctStr, csv: asPctStr },
   ].filter(Boolean);
 
   const metricRows = M.map((m) => ({ ...m, prev: P[m.key], recent: R[m.key], wow: pct(R[m.key], P[m.key]) }));

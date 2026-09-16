@@ -1,3 +1,4 @@
+import { parseNumericStrict } from "@/utils/parseNumeric";
 /* ============================================================
  * segmentPanel — SegmentPanelV1 정규화 계약 (5-29 구성 변화 분석)
  *
@@ -64,8 +65,8 @@ const clean = (value) => String(value ?? "").trim();
 const parseNumber = (value) => {
   const source = clean(value);
   if (!source) return null;
-  const parsed = Number(source.replace(/,/g, ""));
-  return Number.isFinite(parsed) ? parsed : NaN;
+  const parsed = parseNumericStrict(source);
+  return parsed == null ? NaN : parsed;
 };
 
 // 비율은 단위를 추측하지 않는다. `%` 접미사가 실제로 붙어 있을 때만 100으로 나누고,

@@ -19,6 +19,7 @@
  */
 
 import { formatUtcDate, parseUtcDate } from "./period";
+import { parseNumericStrict } from "@/utils/parseNumeric";
 
 /** 합산 가능한 필드. 여기 없는 것(비율)은 저장하지 않는다. */
 export const ADDITIVE_FIELDS = Object.freeze([
@@ -34,8 +35,10 @@ function toFiniteNumber(value) {
   if (value === null || value === undefined || typeof value === "boolean") return null;
   if (typeof value === "string" && value.trim() === "") return null;
   // CSV는 "2,488"처럼 천단위 콤마를 담고 온다. parseFloat는 여기서 2를 돌려준다.
-  const num = Number(typeof value === "string" ? value.replace(/,/g, "") : value);
-  return Number.isFinite(num) ? num : null;
+  // 숫자 표기 해석은 utils/parseNumeric(SSOT). 콤마만 벗기면 유럽식 소수
+  // 구분자가 1,000배 축소된 채 통과한다(2026-09-16 감사).
+  const num = typeof value === "string" ? parseNumericStrict(value) : Number(value);
+  return num !== null && Number.isFinite(num) ? num : null;
 }
 
 function text(value) {

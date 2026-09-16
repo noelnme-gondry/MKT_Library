@@ -1,11 +1,11 @@
+import { parseNumericStrict } from "./parseNumeric";
 const DAY_MS = 86400000;
 
+// 숫자 표기 해석은 utils/parseNumeric(SSOT)이 소유한다 — 자체 파서를 두면
+// 같은 CSV 셀이 도구마다 다른 숫자가 된다(2026-09-16 감사).
 function parseNumber(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-  const text = String(value ?? "").trim();
-  if (!text) return NaN;
-  const parsed = Number(text.replace(/[,\s]/g, ""));
-  return Number.isFinite(parsed) ? parsed : NaN;
+  const parsed = parseNumericStrict(value);
+  return parsed == null ? NaN : parsed;
 }
 
 function mondayTimestamp(value) {

@@ -79,6 +79,7 @@ function dashboardAdapter(input) {
     denomBasis: options.denomBasis || "installs",
     displayCurrency: options.displayCurrency || "KRW",
     windowDays: options.windowDays || 7,
+    cohort: options.cohort || 7,
     locale,
   });
   if (verdict.insufficient) {

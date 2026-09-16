@@ -1,12 +1,9 @@
+import { parseNumericStrict } from "@/utils/parseNumeric";
 const METRIC_PRIORITY = ["cost", "actions", "installs", "revenue", "clicks", "impressions"];
 
-function parseNumber(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  const normalized = String(value ?? "").replace(/[,$₩\s]/g, "");
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
+// 숫자 표기 해석은 utils/parseNumeric(SSOT)이 소유한다 — 자체 파서를 두면
+// 같은 CSV 셀이 도구마다 다른 숫자가 된다(2026-09-16 감사).
+const parseNumber = parseNumericStrict;
 
 function parseDate(value) {
   if (!value) return null;

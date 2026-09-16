@@ -5,6 +5,7 @@ import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 import { isRerunGoalMetric } from "@/lib/decisionGoals";
+import { parseNumericStrict } from "@/utils/parseNumeric";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
 // v8까지는 `action`이 자유 문자열이라 "예산 +15%"가 성공인지 판단할 근거가 없었다.
@@ -254,8 +255,8 @@ function firstNumericValue(value) {
   // 배치하지만, 사용자가 "D7 ROAS 1.2"로 입력해도 7을 읽지 않게 한다.
   const match = String(value ?? "").replace(/\bD\d+\b/gi, "").match(/[+-]?(?:\d[\d,\s]*)(?:\.\d+)?/);
   if (!match) return null;
-  const parsed = Number(match[0].replace(/[,\s]/g, ""));
-  return Number.isFinite(parsed) ? parsed : null;
+  // 토큰을 뽑는 건 여기가 하고, 그 토큰을 숫자로 읽는 규칙은 SSOT가 소유한다.
+  return parseNumericStrict(match[0]);
 }
 
 const LOWER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(CPA|CPI|CAC|CPR|WMAPE|MAPE|RMSE|MAE)(?=$|[^A-Z0-9])/;

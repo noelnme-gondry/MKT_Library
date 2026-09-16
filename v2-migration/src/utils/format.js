@@ -1,3 +1,4 @@
+import { parseNumericStrict } from "./parseNumeric";
 // ── Shared number / currency / percent formatting (design-system baseline) ──
 // SSOT for all display formatting. Tools MUST use these instead of ad-hoc
 // toLocaleString / manual currency strings (docs/design-system-baseline.md §1.1).
@@ -82,10 +83,7 @@ export function fmtCompact(value) {
 // Prevents parseFloat("72,341,057") === 72 (§7 함정). Read sites use this.
 export function parseNum(str) {
   if (str == null) return null;
-  const cleaned = String(str).replace(/[,\s₩$%]/g, "");
-  if (cleaned === "") return null;
-  const n = parseFloat(cleaned);
-  return Number.isFinite(n) ? n : null;
+  return parseNumericStrict(str);
 }
 
 export const CURRENCY_SYMBOLS = CURRENCY_SYMBOL;

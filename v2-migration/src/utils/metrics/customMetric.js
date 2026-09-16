@@ -1,3 +1,4 @@
+import { parseNumericStrict } from "../parseNumeric";
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOM METRIC — 유저가 "조립"하는 커스텀 지표 (Phase C, eval 없는 안전 빌더)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ export function defToTerms(def) {
 // 항 하나의 값 — 상수면 숫자(콤마 허용), 필드면 agg[value]. 비수치 → null.
 function operandValue(term, agg) {
   const v = term && term.type === "const"
-    ? Number(String(term.value).replace(/,/g, ""))
+    ? parseNumericStrict(term.value)
     : Number(agg && agg[term && term.value]);
   return isFinite(v) ? v : null;
 }

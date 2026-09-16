@@ -20,6 +20,7 @@
 import { HIGHER_IS_BETTER, LOWER_IS_BETTER, assessChange } from "./significance";
 import { deriveMetrics, sumRows } from "./snapshot";
 import { decisionGuardrailList } from "@/lib/decisionReview";
+import { parseNumericStrict } from "@/utils/parseNumeric";
 
 export const DECISION_OUTCOME = Object.freeze({
   WORKED: "WORKED",
@@ -39,8 +40,10 @@ const BUDGET_ACTIONS = new Set(["increase_budget", "decrease_budget"]);
 function toFiniteNumber(value) {
   if (value === null || value === undefined || typeof value === "boolean") return null;
   if (typeof value === "string" && value.trim() === "") return null;
-  const num = Number(typeof value === "string" ? value.replace(/,/g, "") : value);
-  return Number.isFinite(num) ? num : null;
+  // 숫자 표기 해석은 utils/parseNumeric(SSOT). 콤마만 벗기면 유럽식 소수
+  // 구분자가 1,000배 축소된 채 통과한다(2026-09-16 감사).
+  const num = typeof value === "string" ? parseNumericStrict(value) : Number(value);
+  return num !== null && Number.isFinite(num) ? num : null;
 }
 
 /** "+15%" · "-10 %" · 15 → 0.15 / -0.10. 퍼센트가 아니면 null. */
@@ -48,7 +51,8 @@ export function parsePercentAmount(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value / 100 : null;
   const text = String(value ?? "").trim();
   if (!/%\s*$/.test(text)) return null;
-  const num = toFiniteNumber(text.replace(/%\s*$/, ""));
+  // 후행 %는 SSOT가 벗긴다 — 여기서 또 벗기면 규칙이 두 벌이 된다.
+  const num = toFiniteNumber(text);
   return num === null ? null : num / 100;
 }
 

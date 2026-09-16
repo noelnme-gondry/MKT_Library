@@ -119,6 +119,9 @@ function appendSheet(workbook, name, rows, options = {}) {
   XLSX.utils.book_append_sheet(workbook, sheetFromRows(rows, options), name);
 }
 
+// PARSE_NUMERIC_EXEMPT: 이 함수의 입력은 CSV 셀이 아니라 **앱이 방금 만든 표시
+// 문자열**이다(`₩1,234` · `12.3%`). 계약이 사용자 파일의 표기가 아니라 우리 포맷터의
+// 출력이므로 SSOT의 "판별 못 하면 거부" 규칙 대신 표시 형식을 그대로 되읽는다.
 function singleMetricValue(displayValue) {
   const raw = asText(displayValue).trim();
   if (!raw || raw === "—" || /(?:~|\bto\b)/i.test(raw)) return null;

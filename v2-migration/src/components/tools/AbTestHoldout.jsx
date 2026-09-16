@@ -1015,8 +1015,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                           title: tr("arm별 엔진 출력", "Engine output by arm"),
                           note: tr("다중 비교의 Holm 보정과 Bayesian 승률은 브라우저 엔진 출력", "Holm adjustment and Bayesian win probability are browser-engine outputs"),
                           rows: [
-                            ["arm", "is_control", "sample_size", "conversion_rate_engine", "relative_lift_engine", "z_engine", "holm_p_engine", "ci_low_engine", "ci_high_engine", "bayesian_win_probability_engine"],
-                            ...readoutData.mass.rows.map((row) => [row.name, row.isControl ? 1 : 0, row.n, row.rate, row.liftRel ?? "", row.z ?? "", row.pValue ?? "", row.ciLow95 ?? "", row.ciHigh95 ?? "", row.probBWins ?? ""]),
+                            ["arm", "is_control", "sample_size", "conversion_rate_engine", "relative_lift_engine", "z_engine", "holm_p_engine", "test_method_engine", "ci_low_engine", "ci_high_engine", "bayesian_win_probability_engine"],
+                            ...readoutData.mass.rows.map((row) => [row.name, row.isControl ? 1 : 0, row.n, row.rate, row.liftRel ?? "", row.z ?? "", row.pValue ?? "", row.testMethod ?? "", row.ciLow95 ?? "", row.ciHigh95 ?? "", row.probBWins ?? ""]),
                           ],
                         }] : [])],
                         method: {
@@ -1066,7 +1066,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       <>Control: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, conversion rate {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
                     )}
                   </p>
-                  <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
+                  <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 전환이 적은 변형은 정규근사가 p를 과소평가하므로 정확검정(Fisher)으로 판정합니다 — 어느 검정을 썼는지는 '검정' 열에 있습니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. For low-conversion arms the normal approximation understates p, so the verdict moves to the exact (Fisher) test — the Test column says which one ran. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
                   <DataTable
                     rows={readoutData.mass.rows}
                     rowKey={(r, i) => i}
@@ -1078,6 +1078,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       { key: "liftRel", label: tr("대조군 대비 Lift", "Lift vs control"), align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
                       { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
                       { key: "pValue", label: "Holm p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
+                      { key: "testMethod", label: tr("검정", "Test"), align: "left", fmt: (_, r) => r.isControl ? "—" : r.testMethod === "fisher" ? <span title={tr("전환이 적어 정규근사 대신 정확검정으로 판정했습니다.", "Low conversion counts: the verdict uses the exact test instead of the normal approximation.")}>{tr("정확검정", "Exact")}</span> : r.approxUnreliable ? <span title={tr("전환이 적지만 셀 값이 정수가 아니라 정확검정을 쓸 수 없습니다. p가 낙관적일 수 있습니다.", "Low conversion counts, but non-integer cells rule out the exact test. This p may be optimistic.")}>{tr("근사 (주의)", "Approx. (caution)")}</span> : tr("근사", "Approx.") },
                       { key: "ci", label: tr("95% CI (절대차)", "95% CI (abs. diff.)"), align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
                       { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
                       { key: "sigv", label: tr("유의성", "Significance"), align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">{tr("대조군", "Control")}</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">{tr("비유의", "Not sig.")}</span> },
