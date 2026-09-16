@@ -1,5 +1,5 @@
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
-import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
+import { normalizeDateValue, normalizeNumericValue, parseDateValue } from "./normalizeValues";
 
 // 범주/식별 차원은 수치 품질 검사 대상이 아니다. 검색어·매치 타입을 지표로 남기면
 // Apple Ads export가 "유효한 핵심 지표 없음"으로 차단된다.
@@ -45,6 +45,8 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
   const issues = [];
   let emptyRowsRemoved = 0;
   let summaryRowsRemoved = 0;
+  // 숫자만으로 M/D·D/M을 가를 수 없던 날짜 셀 수(§P3-001).
+  let ambiguousDateCount = 0;
 
   raw.forEach((row, index) => {
     if (!row || headers.every((header) => EMPTY(row[header]))) {
@@ -61,6 +63,7 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
     const extras = {};
     let date = null;
 
+
     headers.forEach((header) => {
       const value = row[header];
       const standardKey = mapping[header];
@@ -70,6 +73,7 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
         return;
       }
       const normalized = normalizeFieldValue(value, field);
+      if (field.type === "date" && normalized && parseDateValue(value)?.ambiguous) ambiguousDateCount += 1;
       if (standardKey === "date") {
         date = normalized;
         if (!normalized && !EMPTY(value)) issues.push({ rowNumber: index + 2, header, code: "invalid_date" });
@@ -89,6 +93,20 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
     records.push({ date, dimensions, metrics, source: { rowNumber: index + 2 }, extras });
   });
 
+  // 두 원본 컬럼이 같은 표준키로 매핑되면 mapRowsToStandard에서 뒤쪽이 앞쪽을
+  // 조용히 덮는다 — 합계가 줄어드는데 화면은 아무 말도 안 했다(2026-09-16 감사).
+  // 행을 돌 필요 없이 매핑만으로 판별되므로 여기서 한 번만 센다.
+  const headersByStandardKey = new Map();
+  headers.forEach((header) => {
+    const standardKey = mapping[header];
+    if (!standardKey || standardKey === "__ignore__") return;
+    if (!headersByStandardKey.has(standardKey)) headersByStandardKey.set(standardKey, []);
+    headersByStandardKey.get(standardKey).push(header);
+  });
+  const duplicateMappings = [...headersByStandardKey.entries()]
+    .filter(([, mappedHeaders]) => mappedHeaders.length > 1)
+    .map(([standardKey, mappedHeaders]) => ({ standardKey, headers: mappedHeaders }));
+
   return {
     records,
     summary: {
@@ -97,6 +115,8 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
       emptyRowsRemoved,
       summaryRowsRemoved,
       invalidValueCount: issues.length,
+      duplicateMappings,
+      ambiguousDateCount,
     },
     issues,
   };

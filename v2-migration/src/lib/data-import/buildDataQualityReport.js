@@ -92,6 +92,17 @@ export function buildDataQualityReport(canonicalData, { metricKeys, requiresDate
   if (missingDateCount) issues.push({ code: "missing_date", count: missingDateCount });
   if (duplicateCount) issues.push({ code: "duplicates", count: duplicateCount });
   if (summary.invalidValueCount) issues.push({ code: "invalid_values", count: summary.invalidValueCount });
+  // 같은 표준키에 두 컬럼을 매핑하면 한쪽이 조용히 버려진다 — 합계가 줄어드는
+  // 문제라 사용자가 보정할 수 있게 어느 컬럼인지 이름으로 말한다.
+  if (summary.duplicateMappings?.length) {
+    issues.push({
+      code: "duplicate_mappings",
+      count: summary.duplicateMappings.length,
+      fields: summary.duplicateMappings.map(({ standardKey, headers: mappedHeaders }) => `${standardKey}: ${mappedHeaders.join(" · ")}`),
+    });
+  }
+  // M/D로 읽었지만 D/M일 수도 있었던 날짜. 판별 근거가 없으므로 고치지 않고 알린다.
+  if (summary.ambiguousDateCount) issues.push({ code: "ambiguous_date_format", count: summary.ambiguousDateCount });
   if (periodStats.gapCount) issues.push({ code: "period_gaps", count: periodStats.gapCount });
 
   const highMissingFields = selectedMetricKeys.filter((key) => metricStats[key]?.validCount > 0 && metricStats[key].missingRate > 0.2);

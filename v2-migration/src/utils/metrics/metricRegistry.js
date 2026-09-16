@@ -18,9 +18,13 @@
 //   · denom = 전역 분모 기준(설치 or 액션)으로 소비처가 이미 해석한 값(§12.18).
 //   · revenue/purchases = 선택 코호트(Dn)의 매출/결제 합(소비처가 cohort 해석).
 
-// 분모가 falsy(0/NaN/undefined)면 null. mult로 CPM(×1000) 등 스케일.
-// calculateKPIs의 `den ? num/den : null` 가드와 byte-identical.
-export const ratio = (num, den, mult = 1) => (den ? (num / den) * mult : null);
+// 분모가 0·NaN·undefined·**음수**면 null. mult로 CPM(×1000) 등 스케일.
+// 왜 음수까지 막나(2026-09-16 감사): 노출·클릭·설치·결제는 정의상 음수가 될 수
+// 없는 카운트다. 그런데 `den ?` falsy 가드는 음수를 통과시켜, 매체 리포트의 환불·
+// 조정 행이나 오매핑된 컬럼이 섞이면 CPM −2,000원 · CPI −50원 같은 값이 화면에
+// 그대로 떴다. 음수 효율은 "계산 불가"지 "아주 저렴함"이 아니다 — 정렬에서 최상위로
+// 올라와 가장 좋은 채널로 읽힌다. 양수 분모에서는 동작이 전과 같다(골든 불변).
+export const ratio = (num, den, mult = 1) => (den > 0 ? (num / den) * mult : null);
 
 // ── base 필드(집계 차원) — agg를 구성하는 원자 합계. 파생지표의 deps가 이 키를 참조. ──
 export const BASE_FIELDS = [
