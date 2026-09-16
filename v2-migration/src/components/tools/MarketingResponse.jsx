@@ -16,7 +16,7 @@ import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayes
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
 import { analysisResultEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { createForecastReviewSnapshot, findForecastActualMatches, forecastReviewDate } from "@/lib/forecastReview";
-import { toLocalDecisionDate } from "@/lib/decisionReview";
+import { toLocalDecisionDate, appendDecisionEpisode } from "@/lib/decisionReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
@@ -2701,7 +2701,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (!match?.reviewDate || match.reviewDate > toLocalDecisionDate()) return;
     const actual = targetValueLabel(match.actualValue, { perWeek: true });
     setPendingReviewSave(() => () => {
-    updateDecisionRecord(match.recordId, { actual, status: "reviewed", reviewedAt: new Date().toISOString() });
+    // 예측 검토는 기간마다 돌아온다 — 관측을 덮어쓰지 않고 이력에 쌓는다(v11).
+    // `appendDecisionEpisode`가 `actual`·`reviewedAt` 미러까지 함께 준다.
+    const record = useAppStore.getState().decisionRecords.find((item) => item.id === match.recordId);
+    const patch = appendDecisionEpisode(record || {}, { actual });
+    if (!patch) return;
+    updateDecisionRecord(match.recordId, { ...patch, status: "reviewed" });
     trackProductEvent("forecast_actual_applied", {
       tool_id: "5-18",
       source: "forecast_review",

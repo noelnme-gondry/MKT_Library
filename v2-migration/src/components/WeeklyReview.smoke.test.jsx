@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
 import { createDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { useAppStore } from "@/store/useDataStore";
+import { appendDecisionEpisode, decisionEpisodeList } from "@/lib/decisionReview";
 
 describe("WeeklyReview", () => {
   beforeEach(() => {
@@ -216,5 +217,64 @@ describe("WeeklyReview", () => {
     expect(screen.getByRole("link", { name: /Open source tool/ }).getAttribute("href")).toBe("/en/tools/marketing-response?stage=mmm");
     expect(screen.getByText("Rerun with new data, then record")).toBeTruthy();
     expect(screen.getByText(/VIF, ASA, and incrementality/)).toBeTruthy();
+  });
+
+  // v11 관측 이력 — 골든(decisionEpisodes.test.js)은 엔진만 본다. 실제 사용자
+  // 경로에서 두 번째 관측이 첫 관측을 덮지 않는지는 화면을 밟아야 나온다
+  // (§7 "순수함수 밖은 골든이 못 잡는다 → 스모크").
+  it("검토를 마친 뒤 관측을 고쳐 저장해도 앞선 관측이 남는다", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    useAppStore.setState({
+      entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 },
+      decisionRecords: [{
+        id: "d1",
+        toolId: "5-2",
+        locale: "ko",
+        action: "Meta 예산 20% 증액",
+        actual: "",
+        learning: "",
+        reviewDate: today,
+        status: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }],
+    });
+    render(<WeeklyReview />);
+
+    // ① 1주차 관측을 적고 검토 완료
+    fireEvent.change(screen.getByLabelText("실제 결과 — Meta 예산 20% 증액"), { target: { value: "1주차 CPA 1,200원" } });
+    fireEvent.click(screen.getByRole("button", { name: "검토 완료로 저장" }));
+    confirmReviewSave();
+    expect(useAppStore.getState().decisionRecords[0].actual).toBe("1주차 CPA 1,200원");
+
+    // ② 2주차 관측으로 고쳐 저장 — 예전에는 여기서 1주차가 사라졌다
+    fireEvent.change(screen.getByLabelText("실제 결과 — Meta 예산 20% 증액"), { target: { value: "2주차 CPA 950원" } });
+    fireEvent.click(screen.getByRole("button", { name: "검토 내용 저장" }));
+    confirmReviewSave();
+
+    const saved = useAppStore.getState().decisionRecords[0];
+    const episodes = decisionEpisodeList(saved);
+    expect(episodes.map((item) => item.actual)).toEqual(["1주차 CPA 1,200원", "2주차 CPA 950원"]);
+    // 미러는 최신 관측 — 읽는 소비처 13곳이 그대로 도는 근거다.
+    expect(saved.actual).toBe("2주차 CPA 950원");
+  });
+
+  it("관측이 두 번 쌓이면 이력을 화면에서 펼 수 있다", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const first = appendDecisionEpisode({}, { actual: "1주차 CPA 1,200원", learning: "아직 이르다" });
+    const second = appendDecisionEpisode({ ...first }, { actual: "2주차 CPA 950원" });
+    useAppStore.setState({
+      entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000 },
+      decisionRecords: [{
+        id: "d2", toolId: "5-2", locale: "ko", action: "Meta 예산 20% 증액",
+        reviewDate: today, status: "reviewed", ...second,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      }],
+    });
+    render(<WeeklyReview />);
+    // 쌓아 놓고 읽는 곳이 없으면 §16 "신호를 만들어 놓고 안 배선한 자리"다.
+    expect(screen.getByText("관측 이력 2회")).toBeTruthy();
+    expect(screen.getByText("1주차 CPA 1,200원")).toBeTruthy();
+    expect(screen.getByText("아직 이르다")).toBeTruthy();
   });
 });

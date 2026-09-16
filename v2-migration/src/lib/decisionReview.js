@@ -11,7 +11,7 @@ import { isRerunGoalMetric } from "@/lib/decisionGoals";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 10;
+export const DECISION_REVIEW_SCHEMA_VERSION = 11;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -31,6 +31,9 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "guardrailValue",
   // v10 — 추가 가드레일. "metric|op|value" 를 ";"로 이은 문자열(재조립 후 저장).
   "guardrails",
+  // v11 — 관측 이력. 한 결정은 여러 번 관측된다(§관측 이력). `actual`·`learning`은
+  // 최신 에피소드의 미러로 남겨 기존 소비처 13곳을 그대로 둔다.
+  "episodes",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -74,6 +77,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "guardrail_op",
   "guardrail_value",
   "guardrails",
+  "episodes",
   "hypothesis",
   "metric",
   "target_direction",
@@ -112,6 +116,9 @@ const FIELD_LIMITS = Object.freeze({
   hypothesis: 500,
   metric: 120,
   guardrails: 400,
+  // 에피소드는 자유 텍스트를 퍼센트 인코딩해 담는다 — 한글 한 글자가 9자로
+  // 늘어나므로(UTF-8 3바이트 × %XX) 한도를 넉넉히 잡는다.
+  episodes: 6000,
   baseline: 160,
   comparisonScope: 5000,
   datasetSnapshot: 1200,
@@ -359,6 +366,124 @@ export function decisionGuardrailList(record = {}) {
   return list.slice(0, MAX_GUARDRAILS);
 }
 
+// ── v11 관측 이력(에피소드) ──────────────────────────────────────
+// 한 결정은 한 번만 관측되지 않는다. 예측 검토는 기간마다 돌아오고, 잠식 결정은
+// 광고를 끈 다음 주와 그 다음 주가 다르게 읽힌다. 그런데 `actual`·`learning`이
+// 레코드당 한 칸뿐이라 두 번째 관측이 첫 관측을 **말없이 덮어썼다** — 5-18 예측의
+// "관측값 적용"에는 완료 게이트조차 없어 누를 때마다 이전 기록이 사라졌다.
+//
+// 저장은 `guardrails`(v10)와 같은 결로 문자열 하나에 담는다. 다만 가드레일의 각
+// 조각은 지표명·연산자·숫자라 구분자가 섞일 일이 없는 반면 **에피소드는 자유
+// 텍스트**다 — 사용자가 "CPA 1,200원; 목표 미달|재검토"라고 적으면 구분자가 그대로
+// 깨진다. 그래서 자유 텍스트 조각만 퍼센트 인코딩해 담는다: `encodeURIComponent`는
+// `;`·`|`·`,`·줄바꿈을 전부 `%XX`로 바꾸므로 구분자도 CSV도 안전하다.
+const EPISODE_LIST_SEPARATOR = ";";
+const EPISODE_PART_SEPARATOR = "|";
+// 주간 검토 기준 한 분기. 넘으면 오래된 것부터 버린다 — 최신 관측이 화면에
+// 보이는 값이므로 뒤를 남긴다.
+const MAX_DECISION_EPISODES = 12;
+
+function encodeEpisodePart(value, limit) {
+  const text = asText(value, limit);
+  return text ? encodeURIComponent(text) : "";
+}
+
+function decodeEpisodePart(value, limit) {
+  const raw = typeof value === "string" ? value : "";
+  if (!raw) return "";
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    // 잘린 `%` 시퀀스는 던진다. 저장된 값이 손상됐더라도 조각을 통째로 버리기보다
+    // 원문을 그대로 보여 주는 편이 사용자에게 낫다(§8 정직한 빈 상태보다 나은 경우).
+    decoded = raw;
+  }
+  return asText(decoded, limit);
+}
+
+export function parseDecisionEpisodes(value) {
+  const text = asText(value, FIELD_LIMITS.episodes);
+  if (!text) return [];
+  const list = [];
+  for (const chunk of text.split(EPISODE_LIST_SEPARATOR)) {
+    if (!chunk) continue;
+    const [rawObservedAt, rawActual, rawLearning] = chunk.split(EPISODE_PART_SEPARATOR);
+    const observedAt = asTimestamp(decodeEpisodePart(rawObservedAt, 40));
+    const actual = decodeEpisodePart(rawActual, FIELD_LIMITS.actual);
+    const learning = decodeEpisodePart(rawLearning, FIELD_LIMITS.learning);
+    // 관측 내용이 없으면 에피소드가 아니다. 시각만 남은 줄은 조용히 버린다 —
+    // 빈 칸을 이력에 남기면 "몇 번 봤나"가 거짓이 된다.
+    if (!actual) continue;
+    list.push({ observedAt, actual, learning });
+    if (list.length >= MAX_DECISION_EPISODES) break;
+  }
+  return list;
+}
+
+export function serializeDecisionEpisodes(list) {
+  if (!Array.isArray(list)) return "";
+  const text = list
+    .slice(-MAX_DECISION_EPISODES)
+    .map((item) => [
+      encodeEpisodePart(item?.observedAt, 40),
+      encodeEpisodePart(item?.actual, FIELD_LIMITS.actual),
+      encodeEpisodePart(item?.learning, FIELD_LIMITS.learning),
+    ].join(EPISODE_PART_SEPARATOR))
+    .join(EPISODE_LIST_SEPARATOR);
+  // 가드레일과 같은 규율 — 재조립으로 한 번 더 거른다. 직렬화 입력이 이미
+  // 검증됐다고 가정하지 않는다(§12.29 공유 링크 재조립).
+  const parsed = parseDecisionEpisodes(asText(text, FIELD_LIMITS.episodes));
+  return parsed
+    .map((item) => [
+      encodeEpisodePart(item.observedAt, 40),
+      encodeEpisodePart(item.actual, FIELD_LIMITS.actual),
+      encodeEpisodePart(item.learning, FIELD_LIMITS.learning),
+    ].join(EPISODE_PART_SEPARATOR))
+    .join(EPISODE_LIST_SEPARATOR);
+}
+
+/**
+ * 레코드가 실제로 가진 관측 전부, 오래된 것부터.
+ *
+ * v10 이하 레코드는 `episodes`가 없고 `actual`·`learning` 한 벌만 갖는다. 그걸
+ * 첫 에피소드로 세워 두 세대를 같은 모양으로 읽게 한다(v10이 `guardrailMetric`을
+ * 첫 항목으로 세운 것과 같은 방식). 이미 `episodes`가 있으면 그쪽이 정본이다 —
+ * `actual`은 그 목록의 미러이므로 다시 더하면 최신 관측이 두 번 세어진다.
+ */
+export function decisionEpisodeList(record = {}) {
+  const episodes = parseDecisionEpisodes(record.episodes);
+  if (episodes.length) return episodes;
+  const actual = asText(record.actual, FIELD_LIMITS.actual);
+  if (!actual) return [];
+  return [{
+    observedAt: asTimestamp(record.reviewedAt ?? record.reviewed_at),
+    actual,
+    learning: asText(record.learning, FIELD_LIMITS.learning),
+  }];
+}
+
+/**
+ * 관측 하나를 이력 끝에 붙이고, `actual`·`learning`을 최신 값으로 맞춘 패치를 준다.
+ *
+ * 미러를 함께 갱신하는 것이 이 설계의 핵심이다 — `actual`을 읽는 소비처가 13곳인데
+ * 전부 고치는 대신 최신 관측을 그 자리에 계속 넣어 준다. 소비처는 "지금 값"을
+ * 그대로 보고, 이력이 필요한 화면만 `decisionEpisodeList`를 부른다.
+ */
+export function appendDecisionEpisode(record = {}, episode = {}) {
+  const actual = asText(episode.actual, FIELD_LIMITS.actual);
+  if (!actual) return null;
+  const learning = asText(episode.learning, FIELD_LIMITS.learning);
+  const observedAt = asTimestamp(episode.observedAt) || new Date().toISOString();
+  const next = [...decisionEpisodeList(record), { observedAt, actual, learning }];
+  return {
+    episodes: serializeDecisionEpisodes(next),
+    actual,
+    learning,
+    reviewedAt: observedAt,
+  };
+}
+
 function asFiniteNumberText(value) {
   const normalized = asText(value, 80).replace(/[,\s]/g, "");
   if (!normalized) return "";
@@ -478,6 +603,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     guardrailOp: asGuardrailOp(field(row, "guardrailOp", "guardrail_op")),
     guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
     guardrails: serializeDecisionGuardrails(parseDecisionGuardrails(field(row, "guardrails"))),
+    episodes: serializeDecisionEpisodes(parseDecisionEpisodes(field(row, "episodes"))),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),

@@ -6074,6 +6074,16 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .weekly-review-record__outcome > span { color: var(--outcome-accent); font-size: var(--fs-xs); font-weight: 780; }
 .weekly-review-record__outcome > strong { color: var(--outcome-accent); font-size: var(--fs-xs); white-space: nowrap; }
 .weekly-review-record__outcome > small { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: var(--fs-xs); text-overflow: ellipsis; white-space: nowrap; }
+/* v11 관측 이력. 한 결정이 여러 번 관측되면 그 목록을 접어 둔다 — 화면 기본값은
+   최신 관측(위 `실제 결과` 칸)이고, 이력은 필요할 때 편다. 크기·반경은 토큰에서
+   고른다(app/typeScale.test.js · designTokenSingleSource.test.js). */
+.weekly-review-record__episodes { margin: 10px 0 0; }
+.weekly-review-record__episodes > summary { color: var(--text-muted); font-size: var(--fs-xs); cursor: pointer; }
+.weekly-review-record__episodes ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 8px; }
+.weekly-review-record__episodes li { display: grid; gap: 2px; }
+.weekly-review-record__episodes li > span { color: var(--text-muted); font-size: var(--fs-xs); }
+.weekly-review-record__episodes li > strong { color: var(--text-primary); font-size: var(--fs-sm); font-weight: 650; }
+.weekly-review-record__episodes li > em { color: var(--text-secondary); font-size: var(--fs-xs); font-style: normal; }
 .weekly-review-record__fields { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
 .weekly-review-record__fields label > span { display: block; margin-bottom: 4px; color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .04em; }
 .weekly-review-record__fields input { box-sizing: border-box; width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); outline: 0; background: var(--surface-container-low); color: var(--text-primary); font: 500 var(--fs-xs) var(--font-sans); }
