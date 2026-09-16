@@ -5193,9 +5193,17 @@ body.light-mode {
   --text-2: #53647a;
   --bg-1: #eef2f7;
   --bg-2: #ffffff;
+  /* 별칭 토큰은 라이트에서도 다시 선언해야 한다. `--bg-3: var(--surface-container)`는
+     `:root`에서 값이 확정되므로, 여기서 `--surface-container`만 밝게 바꿔도 `--bg-3`은
+     다크값(#202632)으로 굳은 채 남는다 — 배경만 어둡고 글자색은 라이트로 뒤집혀
+     실효 대비가 1.08~2.79:1까지 떨어졌다. `app/themeAliasTokens.test.js`가 강제한다. */
+  --bg-3: var(--surface-container);
+  --bg-4: var(--surface-container-high);
+  --surface-hover: var(--surface-container);
   --border: #d8e0ea;
   --border-subtle: rgba(49,110,232,.11);
   --border-stronger: #becbda;
+  --border-strong: var(--border-stronger);
   --topbar-bg: rgba(238,242,247,.92);
   --page-sticky-bg: rgba(238,242,247,.95);
   --success: #0c765f;
