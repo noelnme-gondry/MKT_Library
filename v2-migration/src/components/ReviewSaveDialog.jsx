@@ -13,6 +13,59 @@ import { downloadCalendar } from "@/utils/download";
 import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 
+/**
+ * 저장 실패 안내.
+ *
+ * 예전에는 Pro·로그인 말고는 전부 "로그인·기기 저장 상태를 확인하고 다시
+ * 시도하세요" 하나로 수렴했다. 거기엔 **다시 시도해도 절대 안 되는 것**이
+ * 섞여 있었다 — 프로젝트 메타데이터 10 MiB 초과는 재시도로 안 풀리고,
+ * 저장 도중 프로젝트가 바뀐 것은 로그인·저장 설정과 무관하다. 사용자를
+ * 무한 재시도로 보내는 안내는 안내가 아니다(§8).
+ */
+export function saveFailureMessage(code, en) {
+  if (["PROJECT_LIMIT", "PRO_REQUIRED"].includes(code)) {
+    return en
+      ? "Saving projects and reviews requires active Pro, including a trial. Your draft is unchanged."
+      : "프로젝트·리뷰 저장에는 유효한 Pro가 필요합니다. 14일 체험도 포함되며, 작성 내용은 그대로 있습니다.";
+  }
+  if (code === "LOGIN_REQUIRED") {
+    return en
+      ? "Sign in before saving. Your draft is still here."
+      : "저장하려면 로그인해 주세요. 작성 내용은 그대로 있습니다.";
+  }
+  if (code === "PROJECT_METADATA_LIMIT") {
+    return en
+      ? "This project has reached its saved-record limit, so retrying will not help. Export a backup, then start a new project for the next reviews. Your draft is unchanged."
+      : "이 프로젝트에 쌓인 기록이 상한에 닿아 다시 시도해도 저장되지 않습니다. 백업을 내보낸 뒤 다음 리뷰는 새 프로젝트에 저장하세요. 작성 내용은 그대로 있습니다.";
+  }
+  if (code === "SAVE_CONTEXT_CHANGED") {
+    return en
+      ? "The active project changed while saving, so nothing was written. Reopen the project you meant and save again. Your draft is unchanged."
+      : "저장하는 동안 열린 프로젝트가 바뀌어 아무것도 쓰지 않았습니다. 저장하려던 프로젝트를 다시 연 뒤 저장하세요. 작성 내용은 그대로 있습니다.";
+  }
+  if (code === "STORAGE_DISABLED") {
+    return en
+      ? "Device storage is off, so this review cannot be kept. Turn it on above, then save. Your draft is unchanged."
+      : "기기 저장이 꺼져 있어 리뷰를 보관할 수 없습니다. 위에서 저장을 켠 뒤 저장하세요. 작성 내용은 그대로 있습니다.";
+  }
+  if (code === "PROJECT_NAME_REQUIRED") {
+    return en ? "Name the project before saving." : "저장할 프로젝트 이름을 입력해 주세요.";
+  }
+  if (code === "INVALID_REVIEW") {
+    return en
+      ? "This review is missing required fields, so it was not saved. Check the decision and its conditions."
+      : "필수 항목이 비어 있어 저장하지 않았습니다. 결정과 확인 조건을 다시 봐 주세요.";
+  }
+  if (code === "PROJECT_MISSING") {
+    return en
+      ? "That project no longer exists on this device. Choose another project or create one."
+      : "그 프로젝트가 이 기기에 없습니다. 다른 프로젝트를 고르거나 새로 만들어 주세요.";
+  }
+  return en
+    ? "Could not save. Check sign-in and device storage, then retry. Your draft is unchanged."
+    : "저장하지 못했습니다. 로그인·기기 저장 상태를 확인하고 다시 시도하세요. 작성 내용은 그대로 있습니다.";
+}
+
 export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm }) {
   const en = locale === "en";
   const entitlement = useAppStore(state => state.entitlement);
@@ -59,7 +112,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       setSaved(result);
       onSaved?.(result);
     } catch (error) {
-      setMessage(["PROJECT_LIMIT", "PRO_REQUIRED"].includes(error.message) ? (en ? "Saving projects and reviews requires active Pro, including a trial. Your draft is unchanged." : "프로젝트·리뷰 저장에는 유효한 Pro가 필요합니다. 14일 체험도 포함되며, 작성 내용은 그대로 있습니다.") : error.message === "LOGIN_REQUIRED" ? (en ? "Sign in before saving. Your draft is still here." : "저장하려면 로그인해 주세요. 작성 내용은 그대로 있습니다.") : (en ? "Could not save. Check sign-in and device storage, then retry. Your draft is unchanged." : "저장하지 못했습니다. 로그인·기기 저장 상태를 확인하고 다시 시도하세요. 작성 내용은 그대로 있습니다."));
+      setMessage(saveFailureMessage(error.message, en));
     } finally { setBusy(false); }
   };
   return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={en ? "Save review" : "리뷰 저장"} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>

@@ -2,6 +2,7 @@
 
 import ToolConnections from "@/components/ToolConnections";
 import ProjectHandoffNote from "@/components/ProjectHandoffNote";
+import ToolContinuityIndex from "@/components/ToolContinuityIndex";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { useAppStore } from "@/store/useDataStore";
 import ToolEvidenceLinks from "@/components/ToolEvidenceLinks";
@@ -34,12 +35,20 @@ export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [
   // null을 돌려주면 빈 `div.tool-outro__section`이 남는다.
   const isAnalyzed = useAppStore((state) => state.isGroupAnalyzed(toolId));
   const hasHandoff = withConnections && Boolean(TOOL_GROUP[toolId]) && isAnalyzed;
+  // 업로드 화면에서 하나를 고르면 나머지 후보가 화면에서 사라진다. 같은 CSV로
+  // 이어서 볼 수 있는 것들을 여기서 다시 보여 흐름을 잇는다. 판정이 무거우므로
+  // (카탈로그 19개 × 매핑 계약) 분석 게이트 뒤에서만 **마운트**한다 — 훅은
+  // 조건부로 못 부르니 게이트를 여기서 쥐어야 한다(§4.4).
+  // 자식이 null을 돌려주면 빈 `div.tool-outro__section`이 남는다(PR #885에서
+  // 같은 실수를 이미 했다) — 행이 없으면 여기서 미리 접는다.
+  const hasRows = useAppStore((state) => state.csvData.raw?.length > 0);
+  const hasContinuity = hasHandoff && hasRows;
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const hasConnections = withConnections && getNextTools(toolId, lang).length > 0;
   const hasLongform = Boolean(getToolSearchContent(toolId, lang));
   const hasEvidence = evidenceLinks.length > 0;
-  if (!hasConnections && !hasLongform && !hasEvidence && !hasHandoff) return null;
+  if (!hasConnections && !hasLongform && !hasEvidence && !hasHandoff && !hasContinuity) return null;
 
   // 도구 라우트(5-x·9-x)에서만 "분석 결과"라는 말이 참이다. 가이드·SOP 라우트는
   // 위쪽이 분석이 아니므로 경계 문구를 참고 영역 안내로 바꾼다(§8 정직성).
@@ -56,6 +65,11 @@ export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [
       {hasHandoff && (
         <div className="tool-outro__section tool-outro__section--handoff">
           <ProjectHandoffNote toolId={toolId} locale={lang} />
+        </div>
+      )}
+      {hasContinuity && (
+        <div className="tool-outro__section tool-outro__section--continuity">
+          <ToolContinuityIndex toolId={toolId} locale={lang} />
         </div>
       )}
       {hasConnections && (

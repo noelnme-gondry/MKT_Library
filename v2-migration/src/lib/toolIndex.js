@@ -25,6 +25,24 @@ const PUBLISHED_TOOL_IDS = publishedToolIds();
 // 필요한 컬럼을 사람이 읽는 라벨로. oneOf는 "둘 중 하나"라 슬래시로 잇는다.
 const MAX_NEEDS = 4;
 
+/**
+ * 표준 키를 사람이 읽는 라벨로. 자격 판정이 돌려주는 "빠진 컬럼"은 `cost`나
+ * `installs/actions` 같은 내부 키라, 그대로 화면에 내면 사용자가 자기 CSV에서
+ * 무엇을 고쳐야 하는지 알 수 없다. oneOf는 판정 쪽에서 이미 `a/b`로 합쳐 온다.
+ */
+export function fieldLabels(keys = [], locale = "ko") {
+  const label = (key) => {
+    const field = STANDARD_FIELDS[key];
+    if (!field) return null;
+    // EN 라벨이 없으면 한글을 그대로 내보내지 않는다 — 반쪽 번역보다 생략이 낫다(§2.11).
+    return locale === "en" ? field.labelEn || null : field.label || null;
+  };
+  return keys.map((key) => {
+    const parts = String(key).split("/").map(label);
+    return parts.every(Boolean) ? parts.join("/") : null;
+  }).filter(Boolean);
+}
+
 function requiredLabels(toolId, locale = "ko") {
   const fields = TOOL_REQUIRED_FIELDS[toolId] || [];
   const label = (key) => {

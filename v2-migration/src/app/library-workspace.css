@@ -403,9 +403,11 @@
   .dc-intake:not([hidden]) { margin-block: 22px; padding: 22px; border: 1px solid var(--library-border); border-radius: 10px; background: var(--library-surface); }
   .dochi-help-trigger { border: 0; background: transparent; color: var(--library-accent); min-height: 44px; cursor: pointer; font-size: 12px; }
   .app .content { max-width: 1480px; }
-  /* Availability is explained in the card; dimming its whole link also dims
-     the explanation and makes it unreadable on the light surface. */
-  .app .tool-index__item.is-dim .tool-index__link { opacity: 1; }
+  /* 예전에는 여기서 흐림을 통째로 취소했다. 사유는 "자격은 카드가 설명하니 링크를
+     흐리게 하면 설명까지 안 읽힌다"였는데, 카드의 `필요 데이터` 줄은 올린 CSV와
+     비교한 값이 아니라 정적 계약이라 자격을 설명한 적이 없다. 그래서 업로드
+     화면에서는 판정이 화면에 전혀 드러나지 않았다. 지금은 격자 버튼이 자격을
+     글자(`.tool-index__avail`)로 말하므로 취소할 이유가 없다. */
   .app .btn.primary { box-shadow: none; }
   .kpi-grid--overview { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 10px; overflow: hidden; }
   .dashboard-section, .dashboard-card, .wr-card, .dochi-workspace__card { border-radius: 10px; background: var(--library-surface); }
