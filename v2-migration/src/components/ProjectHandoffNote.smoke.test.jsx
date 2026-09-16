@@ -51,3 +51,16 @@ it("EN은 EN 경로로 보낸다", () => {
   fireEvent.click(screen.getByRole("button", { name: "Open my projects" }));
   expect(push).toHaveBeenCalledWith("/en/weekly-review");
 });
+
+// 감사에서 실측하니 `/dashboard` 첫 진입(CSV도 없는 상태)에서 이 버튼이 화면의
+// **유일한 `btn primary`** 였다 — 진짜 다음 행동인 "CSV 올리기"보다 강하게 표시됐다.
+// 노출 조건은 래퍼(`ToolPageOutro`)가 소유한다(자식만 null을 돌려주면 빈 박스가
+// 남는다) — 그 계약은 `ToolPageOutro.smoke.test.jsx`가 지킨다. 여기서는 이
+// 컴포넌트가 게이트를 **중복으로 갖지 않는다**는 것만 고정한다: 조건이 두 곳에
+// 있으면 다음 사람이 한쪽만 고친다.
+it("노출 조건을 중복으로 갖지 않는다 — 게이트는 래퍼의 몫이다", () => {
+  useAppStore.setState(useAppStore.getInitialState(), true);
+  expect(useAppStore.getState().isGroupAnalyzed("5-18-cannibal")).toBe(false);
+  render(<ProjectHandoffNote toolId="5-18-cannibal" locale="ko" />);
+  expect(screen.getByRole("heading", { name: "이 결과를 프로젝트로 이어가기" })).toBeTruthy();
+});
