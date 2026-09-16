@@ -1,4 +1,5 @@
 import { PVM_MATH } from "@/utils/pvmMath";
+import { parseNumericOrZero } from "./parseNumeric";
 
 /* ============================================================
  * asoStoreMath — 스토어 전환 분석 (5-27)
@@ -14,11 +15,9 @@ import { PVM_MATH } from "@/utils/pvmMath";
  * 정확히 같은 질문이 된다 — 수학은 골든으로 고정된 PVM_MATH를 그대로 쓴다.
  * ============================================================ */
 
-const num = (value) => {
-  if (value == null || value === "") return 0;
-  const parsed = Number(String(value).replace(/,/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+// 숫자 표기 해석은 utils/parseNumeric(SSOT)이 소유한다 — 자체 파서를 두면
+// 같은 CSV 셀이 도구마다 다른 숫자가 된다(2026-09-16 감사).
+const num = parseNumericOrZero;
 
 // 노출 → 제품 페이지 조회 → 설치. 각 단계 통과율과 전체 전환율.
 export function storeFunnel(rows) {

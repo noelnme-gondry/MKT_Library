@@ -1,13 +1,13 @@
 import { DERIVED_METRICS, computeMetrics } from "./metrics/metricRegistry.js";
 import { mapRowsToStandard } from "./mappedRows";
+import { parseNumericStrict } from "./parseNumeric";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 const DENOM_AVAILABILITY_CACHE = new WeakMap();
 
 function usableNumber(value) {
-  const normalized = typeof value === "string" ? value.replace(/[\s,]/g, "") : value;
-  const number = Number(normalized);
-  return Number.isFinite(number) && number > 0;
+  const number = parseNumericStrict(value);
+  return number !== null && number > 0;
 }
 
 function denomAvailability(csvData) {

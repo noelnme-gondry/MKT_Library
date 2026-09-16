@@ -3,6 +3,7 @@
    in ALLOC_MATH (allocationMath.js); these helpers add constrained greedy/weighted
    allocation, channel history summaries, and the summary-card reducer. */
 import { ALLOC_MATH } from "@/utils/allocationMath";
+import { parseNumericStrict } from "./parseNumeric";
 
 /* ── 그룹 키: index.html getRowGroupKey를 unitField 기준으로 이식 ── */
 export function getRowGroupKey(row, unit) {
@@ -34,7 +35,7 @@ export function getRowGroupKey(row, unit) {
 }
 
 export function allocParseNum(s) {
-  const n = parseFloat(String(s == null ? "" : s).replace(/[,\s]/g, ""));
+  const n = parseNumericStrict(s);
   return isNaN(n) ? null : n;
 }
 export function allocFmtNum(n) {

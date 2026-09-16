@@ -1,13 +1,10 @@
+import { parseNumericStrict } from "./parseNumeric";
 const DAY_MS = 86400000;
 export const PAID_ORGANIC_MIN_MOVE_PCT = 1;
 
-export function parseTrendNumber(value) {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  const normalized = String(value ?? "").replace(/[,%\s]/g, "");
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
+// 숫자 표기 해석은 utils/parseNumeric(SSOT)이 소유한다 — 자체 파서를 두면
+// 같은 CSV 셀이 도구마다 다른 숫자가 된다(2026-09-16 감사).
+export const parseTrendNumber = parseNumericStrict;
 
 function normalizedHeader(value) {
   return String(value || "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9가-힣]+/g, "");

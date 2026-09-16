@@ -13,6 +13,9 @@ export function detectHeaderRow(table = [], maxRows = 20) {
     const cells = (row || []).map(clean).filter(Boolean);
     if (cells.length < 2) return;
     const unique = new Set(cells.map((cell) => cell.toLowerCase())).size / cells.length;
+    // PARSE_NUMERIC_EXEMPT: 값을 숫자로 **쓰려는** 게 아니라 "이 행이 숫자처럼
+    // 생겼나"를 세는 휴리스틱이다. 여기서 SSOT의 엄격 규칙을 쓰면 판별 못 하는
+    // 표기가 전부 "텍스트"로 잡혀 데이터 행이 헤더로 뽑힌다.
     const text = cells.filter((cell) => Number.isNaN(Number(cell.replace(/[,$₩%]/g, "")))).length / cells.length;
     const next = candidates[index + 1] || [];
     const nextFilled = next.map(clean).filter(Boolean).length;

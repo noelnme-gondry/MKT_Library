@@ -85,8 +85,11 @@ function strictIsoWeek(year, week, minYear, maxYear) {
   return actual.year === year && actual.week === week ? date : null;
 }
 
-function parsedResult(date, grain, canonical) {
-  return { date, grain, canonical, isoDate: date.toISOString().slice(0, 10) };
+// ambiguous: 숫자만으로는 M/D인지 D/M인지 판별할 수 없었던 값(예: 03/04/2026).
+// 규칙은 결정론적으로 M/D를 고르되, **무엇으로 읽었는지 화면이 말할 수 있게**
+// 사실을 같이 돌려준다 — 추측을 조용히 하면 3월 4일과 4월 3일이 뒤집힌다(§8).
+function parsedResult(date, grain, canonical, ambiguous = false) {
+  return { date, grain, canonical, isoDate: date.toISOString().slice(0, 10), ambiguous };
 }
 
 /**
@@ -143,8 +146,11 @@ export function parseDateValue(value, { minYear = 2000, maxYear = 2100 } = {}) {
     const month = first > 12 ? second : first;
     const day = first > 12 ? first : second;
     const year = Number(match[3]);
+    // 둘 다 12 이하면 어느 쪽이 월인지 데이터만으로는 알 수 없다. M/D로 고정하되
+    // 모호했다는 사실을 남긴다(유럽식 export에서 3월 4일 ↔ 4월 3일이 뒤집힌다).
+    const isAmbiguous = first <= 12 && second <= 12;
     const date = strictDay(year, month, day, minYear, maxYear);
-    return date ? parsedResult(date, "day", date.toISOString().slice(0, 10)) : null;
+    return date ? parsedResult(date, "day", date.toISOString().slice(0, 10), isAmbiguous) : null;
   }
 
   match = raw.match(/^([a-z]+)\s+(\d{1,2}),?\s+(\d{4})$/i)

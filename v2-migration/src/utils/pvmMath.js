@@ -1,17 +1,14 @@
+import { parseNumericOrNaN } from "./parseNumeric";
+
+// 숫자 표기 해석은 utils/parseNumeric(SSOT)이 소유한다 — 자체 파서를 두면
+// 같은 CSV 셀이 도구마다 다른 숫자가 된다(2026-09-16 감사).
 export const PVM_MATH = (function () {
   const ZERO_RESULT_COST_CODE = "POSITIVE_COST_WITH_ZERO_RESULT";
   const INVALID_NUMERIC_CODE = "INVALID_NUMERIC_VALUE";
   const NUMERIC_PATTERN = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/;
 
-  function parseNumericValue(value) {
-    if (value == null) return 0;
-    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-    const normalized = String(value).trim().replace(/[,\s\u00a0]/g, "");
-    if (!normalized) return 0;
-    if (!NUMERIC_PATTERN.test(normalized)) return NaN;
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : NaN;
-  }
+  // 빈 값은 0(결측), 읽을 수 없는 값은 NaN(오염) — 계약 검증이 둘을 다르게 다룬다.
+  const parseNumericValue = parseNumericOrNaN;
 
   function addNumericField(target, targetKey, rawValue, fieldName) {
     const parsed = parseNumericValue(rawValue);

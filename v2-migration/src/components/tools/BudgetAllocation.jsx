@@ -2643,6 +2643,21 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <button type="button" className={allocMode === "c" ? "active" : ""} aria-pressed={allocMode === "c"} onClick={() => setAllocMode("c")}>{tr("안정적 효율 가중", "Stable efficiency weighting")}</button>
               <button type="button" className={allocMode === "b" ? "active" : ""} aria-pressed={allocMode === "b"} onClick={() => setAllocMode("b")}>{tr("한계효용 그리디", "Marginal-utility greedy")}</button>
             </div>
+            {/* 두 방식의 차이를 말하지 않으면 "안정적 효율 가중"이 포화까지 본다고
+                오해된다. 실제로는 배분 가중치가 평균 CPR(1/avgCPR)이고 포화 곡선은
+                결과 예측에만 쓰인다 — 곡선이 "여기 더 넣지 마라"고 말하는 채널에도
+                평균 효율만 보고 예산이 들어갈 수 있다(2026-09-16 감사). */}
+            <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 10px" }}>
+              {allocMode === "c"
+                ? tr(
+                  "안정적 효율 가중은 최근 평균 효율(CPR)에 비례해 나눕니다. 수확체감 곡선은 결과 예측에만 쓰이고 배분에는 반영되지 않으므로, 이미 포화된 채널에도 예산이 들어갈 수 있습니다. 포화를 반영하려면 한계효용 그리디를 쓰세요.",
+                  "Stable efficiency weighting splits budget in proportion to recent average efficiency (CPR). The diminishing-returns curve is used only to predict results, not to allocate, so an already-saturated channel can still receive budget. Use marginal-utility greedy to account for saturation.",
+                )
+                : tr(
+                  "한계효용 그리디는 마지막 1원이 만드는 결과(한계효율)가 큰 채널부터 채웁니다. 평균 효율 순서와 달라도 정상입니다 — 포화된 채널은 평균이 좋아도 뒤로 밀립니다.",
+                  "Marginal-utility greedy fills the channel whose next unit of spend produces the most results. It can disagree with average-efficiency ranking — a saturated channel drops back even when its average looks good.",
+                )}
+            </p>
             {/* 자동 판정은 조용하면 안 된다 — 무엇을 왜 고정했는지 말하고 뒤집을 수
                 있어야 사용자가 판단을 되찾는다(§8.8 · product-ssot D-14). */}
             <div className="alloc-hold-low">

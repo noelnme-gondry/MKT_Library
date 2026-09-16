@@ -68,6 +68,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const dashWindowDays = useAppStore((state) => state.dashWindowDays);
+  // 결론 카드의 매출·ROAS·리텐션은 KPI 카드와 같은 코호트를 따라야 한다.
+  const selectedCohort = useAppStore((state) => state.selectedCohort);
   const setDashWindowDays = useAppStore((state) => state.setDashWindowDays);
   // #4 분석 게이트: 업로드·자동매핑만으로는 바로 분석하지 않는다. 사용자가
   // CsvUploader의 "분석하기"를 눌러 매핑을 확정해야(그룹 sig 저장) 결과가 열림.
@@ -93,14 +95,15 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
   const syncVerdict = useMemo(() => {
     if (!showResults || shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0)) return null;
-    return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency: dataCurrency, windowDays: dashWindowDays, locale });
-  }, [showResults, csvData, dashboardFilter, denomBasis, dataCurrency, dashWindowDays, locale]);
+    return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency: dataCurrency, windowDays: dashWindowDays, cohort: selectedCohort, locale });
+  }, [showResults, csvData, dashboardFilter, denomBasis, dataCurrency, dashWindowDays, selectedCohort, locale]);
 
   const workerKey = JSON.stringify({
     toolId,
     fileName: csvData?.fileName || "",
     rows: csvData?.raw?.length || 0,
     windowDays: dashWindowDays,
+    cohort: selectedCohort,
     denomBasis,
     displayCurrency: dataCurrency,
     locale,
@@ -116,7 +119,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     const useWorker = showResults && shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0);
     if (!useWorker) return undefined;
     let active = true;
-    runDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency: dataCurrency, windowDays: dashWindowDays, locale })
+    runDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency: dataCurrency, windowDays: dashWindowDays, cohort: selectedCohort, locale })
       .then((result) => {
         if (!active) return;
         setWorkerState({ key: workerKey, result });
@@ -126,7 +129,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         setWorkerState({ key: workerKey, result: { insufficient: true, workerError: true } });
       });
     return () => { active = false; };
-  }, [showResults, csvData, dashboardFilter, denomBasis, dataCurrency, dashWindowDays, locale, workerKey]);
+  }, [showResults, csvData, dashboardFilter, denomBasis, dataCurrency, dashWindowDays, selectedCohort, locale, workerKey]);
 
   const useDashboardWorker = showResults && shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0);
   const workerPending = useDashboardWorker && workerState.key !== workerKey;

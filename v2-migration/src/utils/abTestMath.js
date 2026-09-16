@@ -490,6 +490,8 @@ export const STATS = (() => {
           z: 0,
           pValue: 1,
           rawPValue: 1,
+          testMethod: null,
+          approxUnreliable: false,
           ciLow95: 0,
           ciHigh95: 0,
           probBWins: 0.5,
@@ -497,6 +499,16 @@ export const STATS = (() => {
         };
       }
       const freq = twoPropZTest(control.n, control.x, a.n, a.x);
+      // 근사를 못 믿는 구간에서는 판정 기준을 정확검정으로 옮긴다 — 2-arm 수동
+      // 경로(AbTestHoldout)와 같은 규칙이다. 예전엔 여기만 z의 p를 그대로 판정에
+      // 썼기 때문에 같은 숫자가 수동 화면에서는 "비유의", CSV 화면에서는
+      // "p<0.05"로 갈렸다(n=50/50, 전환 0 vs 5 → z 0.0218 / Fisher 0.0563).
+      // Fisher는 정수 셀에서만 정의되므로(조건부 초기하 분포) CSV 합계가 소수인
+      // 경우엔 근사를 쓰되 어느 검정이었는지 행에 남겨 표시층이 말하게 한다.
+      const preferExact = shouldPreferExactTest(control.n, control.x, a.n, a.x);
+      const exact = preferExact ? fisherExact2x2(control.n, control.x, a.n, a.x) : null;
+      const rawPValue = exact ? exact.pValue : freq.pValue;
+      const testMethod = exact ? "fisher" : "normal";
       // Reuse the same posterior engine as the two-arm readout. The legacy
       // creative grid integrates over all of [0,1] and collapses sparse,
       // million-row posteriors into one bin, which can reverse the verdict.
@@ -515,12 +527,16 @@ export const STATS = (() => {
         rate: freq.pB,
         liftRel: freq.liftRel,
         z: freq.z,
-        pValue: freq.pValue,
-        rawPValue: freq.pValue,
+        pValue: rawPValue,
+        rawPValue,
+        testMethod,
+        // 근사가 못 미더워 정확검정으로 옮겼는데 정수가 아니어서 못 옮긴 경우.
+        // 표시층이 "근사 주의"를 말할 수 있게 사실 자체를 남긴다.
+        approxUnreliable: preferExact && !exact,
         ciLow95: freq.ciLow95,
         ciHigh95: freq.ciHigh95,
         probBWins,
-        sig: freq.pValue < 0.05,
+        sig: rawPValue < 0.05,
       };
     });
     const variants = rows.filter((row) => !row.isControl).sort((a, b) => a.rawPValue - b.rawPValue);

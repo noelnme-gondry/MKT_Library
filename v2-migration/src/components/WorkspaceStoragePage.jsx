@@ -29,6 +29,7 @@ const COPY = {
     lastUsed: "마지막 사용",
     remaining: (days) => `남은 기간 ${days}일`,
     expired: (count) => `90일 넘게 안 쓴 데이터 ${count}건을 지웠어요.`,
+    unreadable: (count) => `저장된 데이터 ${count}건을 열지 못했어요. 파일이 손상됐거나 이 버전이 읽을 수 없는 형식입니다. 해당 항목을 지우고 다시 올려주세요.`,
     unavailable: "이 브라우저에서는 저장이 안 돼요. 분석은 그대로 됩니다.",
     quota: "기기 공간이 부족해 저장하지 못했어요. 지난 데이터를 지우면 됩니다.",
     privacy: "저장 방식과 삭제 범위는 개인정보 처리방침에서 확인할 수 있어요.",
@@ -51,6 +52,7 @@ const COPY = {
     lastUsed: "Last used",
     remaining: (days) => `${days} days left`,
     expired: (count) => `We removed ${count} dataset${count === 1 ? "" : "s"} unused for over 90 days.`,
+    unreadable: (count) => `${count} stored dataset${count === 1 ? "" : "s"} could not be opened — the file is damaged or in a format this version cannot read. Remove those entries and upload again.`,
     unavailable: "Storage is unavailable in this browser. Analysis still works.",
     quota: "Your device is out of space, so we could not save this file. Remove old data and try again.",
     privacy: "Read the Privacy Policy for storage and deletion details.",
@@ -80,6 +82,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
   const enabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const datasets = useAppStore((state) => state.workspaceDatasetSummaries);
   const expiredCount = useAppStore((state) => state.workspaceExpiredCount);
+  const unreadableGroups = useAppStore((state) => state.workspaceUnreadableGroups);
   const error = useAppStore((state) => state.workspaceStorageError);
   const refresh = useAppStore((state) => state.refreshWorkspaceDatasets);
   const restore = useAppStore((state) => state.restoreWorkspaceDatasets);
@@ -121,6 +124,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
       <p>{locale === "en" ? "New file and record saves require active Pro. Turning storage on does not start a trial or purchase. Existing records remain readable and exportable after Pro expires." : "새 파일과 기록 저장에는 유효한 Pro가 필요합니다. 저장을 켜도 체험이나 결제가 시작되지는 않습니다. 만료 후 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>
     </header>
     {expiredCount > 0 && <p className="workspace-storage-page__notice" role="status">{T.expired(expiredCount)}</p>}
+    {unreadableGroups.length > 0 && <p className="workspace-storage-page__notice" role="status">{T.unreadable(unreadableGroups.length)}</p>}
     {errorCopy && <p className="workspace-storage-page__error" role="alert">{errorCopy}</p>}
     <DecisionStorageConsentNotice locale={locale} source="storage_page_reconsent" />
     <section className="workspace-storage-page__toggle" aria-label={T.enabled}>
