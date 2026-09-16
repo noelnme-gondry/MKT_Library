@@ -22,6 +22,8 @@ describe("ToolPageOutro", () => {
     // 프로젝트 이어가기 · 다음 단계 · 참고 자료 · 관련 글이 모두 하나의 마감 박스 안에.
     const sections = outro.querySelectorAll(":scope > .tool-outro__section");
     expect(sections).toHaveLength(4);
+    // 행이 없으면 이어서 볼 것도 없다 — 빈 구획을 남기지 않는다(PR #885).
+    expect(outro.querySelector(".tool-continuity")).toBeNull();
     // 프로젝트 화면이 못 돌리는 분석은 자기 화면에서 프로젝트로 넘어간다 —
     // 그 경로를 화면에 적어 두지 않으면 사용자는 없는 경로를 찾아 헤맨다.
     expect(outro.querySelector(".project-handoff")).toBeTruthy();
@@ -45,6 +47,7 @@ describe("ToolPageOutro", () => {
     const outro = container.querySelector(".tool-outro");
     expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("End of analysis");
     expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(4);
+
     expect(outro.querySelector(".tool-outro__boundary").textContent).not.toMatch(/[가-힣]/);
   });
 

@@ -27,7 +27,7 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
  * 방금 본 도구가 어디 있었는지 매번 다시 찾아야 했다. 갈래가 2~3개짜리로
  * 고르게 나뉜 뒤로는 전부 펴 두는 게 더 짧고, 위치가 고정된다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
@@ -58,7 +58,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
     };
 
   if (density === "grid") {
-    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, labels, Heading, onSelect, onItemClick }} />;
+    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick }} />;
   }
 
   return (
@@ -146,16 +146,23 @@ function summarize(fields, labels) {
  * 상세는 그 묶음의 격자 **바로 다음**에 둔다. 버튼 사이에 끼우면 누를 때마다
  * 뒤 버튼이 밀려 방금 본 것을 다시 찾게 된다(§12.31).
  */
-function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, labels, Heading, onSelect, onItemClick }) {
+function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick }) {
   const [openId, setOpenId] = useState(null);
   const base = useId();
-  const flat = stages.flatMap((stage) => stage.tools.map((tool) => ({ ...tool, stage: stage.title })));
+  // 지금 보고 있는 도구는 "이어서 볼 것"이 아니다. 목록에서 통째로 뺀다 —
+  // 자격에서만 빼면 "안 되는 분석"으로 내려가 거짓말이 된다.
+  const skip = new Set(excludeIds || []);
+  const flat = stages.flatMap((stage) => stage.tools
+    .filter((tool) => !skip.has(tool.id))
+    .map((tool) => ({ ...tool, stage: stage.title })));
   const groups = eligibleIds
     ? [
       { id: "ready", title: labels.readyGroup, desc: labels.readyDesc, ready: true, tools: flat.filter((tool) => eligibleIds.includes(tool.id)) },
       { id: "blocked", title: labels.blockedGroup, desc: labels.blockedDesc, ready: false, tools: flat.filter((tool) => !eligibleIds.includes(tool.id)) },
     ].filter((group) => group.tools.length > 0)
-    : stages.map((stage) => ({ id: stage.id, title: stage.title, desc: stage.description, label: stage.label, ready: null, tools: stage.tools }));
+    : stages
+      .map((stage) => ({ id: stage.id, title: stage.title, desc: stage.description, label: stage.label, ready: null, tools: stage.tools.filter((tool) => !skip.has(tool.id)) }))
+      .filter((group) => group.tools.length > 0);
 
   return (
     <div className="tool-index tool-index--grid">

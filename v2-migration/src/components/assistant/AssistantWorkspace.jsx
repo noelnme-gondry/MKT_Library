@@ -2,6 +2,7 @@
 
 import { isDemoData } from "@/lib/dataOrigin";
 import { blockersText } from "@/lib/assistant/blockerText";
+import { mappedKeys, mergedToolMapping, profileFor } from "@/lib/assistant/csvEligibility";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ANALYSIS_CATALOG, analysisCatalogEntry } from "@/lib/assistant/analysisCatalog";
@@ -190,61 +191,6 @@ const COPY = {
     status: { ready: "Ready", confirm_model: "Confirm model", confirm_design: "Confirm design", manual: "Manual setup", blocked: "Needs data" },
   },
 };
-
-function mappedKeys(mapping = {}) {
-  return new Set(Object.values(mapping).filter((value) => value && value !== "__ignore__"));
-}
-
-function detectedGrain(entry, fields, cadence) {
-  const has = (key) => fields.has(key);
-  if (has("tenure_periods") && has("event_observed")) return "subscription_episode";
-  if (has("search_term")) return "asa_keyword_daily";
-  if (has("creative_id") && has("impressions")) {
-    // A creative dimension does not invalidate additive campaign metrics.
-    // Keep creative-only spend schemas separate; efficiency requires its cost key.
-    if (has("date") && has("cost")) {
-      if (entry.supportedGrains.includes("campaign_daily")) return "campaign_daily";
-      if (entry.supportedGrains.includes("channel_spend_timeseries") && (has("channel") || has("campaign_name"))) return "channel_spend_timeseries";
-    }
-    return "creative_daily";
-  }
-  if (has("store_source") && has("product_page_views")) return "store_funnel_daily";
-  if (entry.supportedGrains.includes("weekly_panel")
-    && (has("week") || has("date") || has("iso_week_start"))
-    && ["daily", "weekly", "monthly"].includes(cadence)) return "weekly_panel";
-  if (has("iso_week_start") || has("mmm_reg") || [...fields].some((key) => key.startsWith("ch_"))) return "weekly_panel";
-  if (has("is_control") || has("arm_id")) return "experiment_aggregate";
-  if (entry.toolId === "5-25" && has("date") && has("cost") && (has("channel") || has("campaign_name"))) return "channel_spend_timeseries";
-  if (has("date") && (has("cost") || has("spend"))) return "campaign_daily";
-  return "unknown";
-}
-
-function profileFor(entry, { raw = [], headers = [], mapping = {} } = {}) {
-  const fields = mappedKeys(mapping);
-  const cadence = inferMappedDateCadence({ raw, headers, mapping });
-  const headerFor = (field) => headers.find((header) => mapping[header] === field);
-  const tenureHeader = headerFor("tenure_periods");
-  const periodCount = entry.supportedGrains.includes("weekly_panel") && cadence.cadence === "daily"
-    ? cadence.weeklyPeriodCount
-    : cadence.periodCount;
-  return {
-    rowCount: raw.length,
-    periodCount,
-    cadence: cadence.cadence,
-    grain: detectedGrain(entry, fields, cadence.cadence),
-    validEpisodeCount: entry.toolId === "5-28"
-      ? raw.filter((row) => Number.isFinite(Number(row?.[tenureHeader]))).length
-      : undefined,
-  };
-}
-
-function mergedToolMapping(mappingContract, globalMapping = {}) {
-  const mapping = { ...(mappingContract?.mapping || {}) };
-  Object.entries(globalMapping).forEach(([header, field]) => {
-    if (field && field !== "__ignore__") mapping[header] = field;
-  });
-  return mapping;
-}
 
 function fingerprintStep(hash, value) {
   const text = String(value ?? "");
