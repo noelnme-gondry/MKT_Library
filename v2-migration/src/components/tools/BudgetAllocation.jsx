@@ -2643,15 +2643,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               <button type="button" className={allocMode === "c" ? "active" : ""} aria-pressed={allocMode === "c"} onClick={() => setAllocMode("c")}>{tr("안정적 효율 가중", "Stable efficiency weighting")}</button>
               <button type="button" className={allocMode === "b" ? "active" : ""} aria-pressed={allocMode === "b"} onClick={() => setAllocMode("b")}>{tr("한계효용 그리디", "Marginal-utility greedy")}</button>
             </div>
-            {/* 두 방식의 차이를 말하지 않으면 "안정적 효율 가중"이 포화까지 본다고
-                오해된다. 실제로는 배분 가중치가 평균 CPR(1/avgCPR)이고 포화 곡선은
-                결과 예측에만 쓰인다 — 곡선이 "여기 더 넣지 마라"고 말하는 채널에도
-                평균 효율만 보고 예산이 들어갈 수 있다(2026-09-16 감사). */}
+            {/* 두 방식의 차이를 말하지 않으면 "안정적 효율 가중"이 한계효율까지
+                본다고 오해된다. 곡선은 `getAllocationEvidenceLimits`가 채널별 상한
+                (관측 최대 지출 · ∩형 꼭짓점)으로 반영하지만, 상한 안에서 나누는
+                비율은 최근 평균 CPR의 역수다 — 한계효율이 떨어지는 구간에서도
+                평균이 좋으면 계속 배분된다. */}
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 10px" }}>
               {allocMode === "c"
                 ? tr(
-                  "안정적 효율 가중은 최근 평균 효율(CPR)에 비례해 나눕니다. 수확체감 곡선은 결과 예측에만 쓰이고 배분에는 반영되지 않으므로, 이미 포화된 채널에도 예산이 들어갈 수 있습니다. 포화를 반영하려면 한계효용 그리디를 쓰세요.",
-                  "Stable efficiency weighting splits budget in proportion to recent average efficiency (CPR). The diminishing-returns curve is used only to predict results, not to allocate, so an already-saturated channel can still receive budget. Use marginal-utility greedy to account for saturation.",
+                  "안정적 효율 가중은 최근 평균 효율(CPR)에 비례해 나눕니다. 수확체감 곡선은 채널별 상한(관측 최대 지출·∩형 곡선의 꼭짓점)으로 반영되며, 그 상한 안에서 나누는 비율에는 쓰이지 않습니다 — 한계효율이 떨어지는 구간에서도 평균이 좋으면 계속 배분됩니다. 나누는 비율까지 한계효율로 정하려면 한계효용 그리디를 쓰세요.",
+                  "Stable efficiency weighting splits budget in proportion to recent average efficiency (CPR). The diminishing-returns curve sets each channel's ceiling (observed maximum spend, and the vertex for an inverted-U curve) but does not shape the split below that ceiling — a channel keeps receiving budget while its average looks good, even where its marginal efficiency is falling. Use marginal-utility greedy to let marginal efficiency drive the split too.",
                 )
                 : tr(
                   "한계효용 그리디는 마지막 1원이 만드는 결과(한계효율)가 큰 채널부터 채웁니다. 평균 효율 순서와 달라도 정상입니다 — 포화된 채널은 평균이 좋아도 뒤로 밀립니다.",

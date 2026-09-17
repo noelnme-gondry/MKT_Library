@@ -29,6 +29,7 @@ const COPY = {
     lastUsed: "마지막 사용",
     remaining: (days) => `남은 기간 ${days}일`,
     expired: (count) => `90일 넘게 안 쓴 데이터 ${count}건을 지웠어요.`,
+    remapped: (count) => `저장된 데이터 ${count}건은 저장 당시와 컬럼 인식 규칙이 달라져, 파일은 그대로 두고 매핑만 지금 규칙으로 다시 잡았어요. 분석 전에 매핑을 확인해 주세요.`,
     unreadable: (count) => `저장된 데이터 ${count}건을 열지 못했어요. 파일이 손상됐거나 이 버전이 읽을 수 없는 형식입니다. 해당 항목을 지우고 다시 올려주세요.`,
     unavailable: "이 브라우저에서는 저장이 안 돼요. 분석은 그대로 됩니다.",
     quota: "기기 공간이 부족해 저장하지 못했어요. 지난 데이터를 지우면 됩니다.",
@@ -52,6 +53,7 @@ const COPY = {
     lastUsed: "Last used",
     remaining: (days) => `${days} days left`,
     expired: (count) => `We removed ${count} dataset${count === 1 ? "" : "s"} unused for over 90 days.`,
+    remapped: (count) => `${count} stored dataset${count === 1 ? "" : "s"} were saved under older column-recognition rules, so the file was kept and only the mapping was re-detected with the current rules. Check the mapping before analyzing.`,
     unreadable: (count) => `${count} stored dataset${count === 1 ? "" : "s"} could not be opened — the file is damaged or in a format this version cannot read. Remove those entries and upload again.`,
     unavailable: "Storage is unavailable in this browser. Analysis still works.",
     quota: "Your device is out of space, so we could not save this file. Remove old data and try again.",
@@ -83,6 +85,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
   const datasets = useAppStore((state) => state.workspaceDatasetSummaries);
   const expiredCount = useAppStore((state) => state.workspaceExpiredCount);
   const unreadableGroups = useAppStore((state) => state.workspaceUnreadableGroups);
+  const remappedGroups = useAppStore((state) => state.workspaceRemappedGroups);
   const error = useAppStore((state) => state.workspaceStorageError);
   const refresh = useAppStore((state) => state.refreshWorkspaceDatasets);
   const restore = useAppStore((state) => state.restoreWorkspaceDatasets);
@@ -125,6 +128,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
     </header>
     {expiredCount > 0 && <p className="workspace-storage-page__notice" role="status">{T.expired(expiredCount)}</p>}
     {unreadableGroups.length > 0 && <p className="workspace-storage-page__notice" role="status">{T.unreadable(unreadableGroups.length)}</p>}
+    {remappedGroups.length > 0 && <p className="workspace-storage-page__notice" role="status">{T.remapped(remappedGroups.length)}</p>}
     {errorCopy && <p className="workspace-storage-page__error" role="alert">{errorCopy}</p>}
     <DecisionStorageConsentNotice locale={locale} source="storage_page_reconsent" />
     <section className="workspace-storage-page__toggle" aria-label={T.enabled}>
