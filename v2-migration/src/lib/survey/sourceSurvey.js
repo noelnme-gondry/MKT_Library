@@ -19,9 +19,12 @@ export const SOURCE_SURVEY_SESSION_KEY = "mkt-library-source-survey-seen";
 // 화면이 받은 답변을 서버가 거절한다.
 export const SOURCE_SURVEY_MAX_LENGTH = 300;
 
-// 첫 화면을 가리지 않도록 잠시 기다린 뒤 묻는다. 진입 직후에 띄우면 무엇을 하는
-// 곳인지 보기도 전에 질문부터 받게 되고, 그 답은 유입 경로가 아니라 짜증이다.
-export const SOURCE_SURVEY_DWELL_MS = 25000;
+// 기다리지 않는다 — 도치 인사를 닫으면 바로 묻는다.
+//
+// 0인데도 타이머를 남기는 이유가 있다: `setTimeout(…, 0)`은 마운트 이펙트가 전부 돈
+// **뒤에** 실행된다. 이게 없으면 첫 렌더에서 아직 아무도 "인사가 떠 있다"를 선언하기
+// 전이라 판정이 잠깐 통과해, 서베이가 한 프레임 번쩍였다가 인사에 가려진다.
+export const SOURCE_SURVEY_OPEN_DELAY_MS = 0;
 
 export const SOURCE_SURVEY_LOCALES = ["ko", "en"];
 
@@ -30,12 +33,12 @@ export const SOURCE_SURVEY_LOCALES = ["ko", "en"];
 export function shouldShowSourceSurvey({
   storageAllows = true,
   welcomeOpen = false,
-  dwellElapsed = false,
+  delayElapsed = false,
   closed = false,
 } = {}) {
   if (!storageAllows) return false;
   if (welcomeOpen) return false;
-  if (!dwellElapsed) return false;
+  if (!delayElapsed) return false;
   if (closed) return false;
   return true;
 }

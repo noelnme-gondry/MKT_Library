@@ -37,7 +37,7 @@ describe("유입 경로 서베이 답변 정규화", () => {
 });
 
 describe("노출 판정", () => {
-  const allow = { storageAllows: true, welcomeOpen: false, dwellElapsed: true, closed: false };
+  const allow = { storageAllows: true, welcomeOpen: false, delayElapsed: true, closed: false };
 
   it("네 조건이 모두 맞을 때만 뜬다", () => {
     expect(shouldShowSourceSurvey(allow)).toBe(true);
@@ -47,7 +47,7 @@ describe("노출 판정", () => {
   it.each([
     ["이미 답했거나 끈 사람", { storageAllows: false }],
     ["도치 인사가 떠 있는 동안", { welcomeOpen: true }],
-    ["체류 예산 전", { dwellElapsed: false }],
+    ["열기 판정 전(마운트 직후 한 틱)", { delayElapsed: false }],
     ["사용자가 닫은 뒤", { closed: true }],
   ])("%s 에는 뜨지 않는다", (_label, override) => {
     expect(shouldShowSourceSurvey({ ...allow, ...override })).toBe(false);

@@ -9,7 +9,7 @@ import {
   welcomePresenceServerSnapshot,
 } from "@/lib/assistant/overlayPresence";
 import {
-  SOURCE_SURVEY_DWELL_MS,
+  SOURCE_SURVEY_OPEN_DELAY_MS,
   SOURCE_SURVEY_MAX_LENGTH,
   markSourceSurveySessionSeen,
   normalizeSourceSurveyAnswer,
@@ -24,13 +24,12 @@ const subscribeStorage = () => () => {};
 
 // 유입 경로 서베이 — "어디서 오셨어요?"를 주관식 한 칸으로 묻는다.
 //
-// 전면 모달이 아니라 화면 구석에 붙는 비차단 카드다. 첫 방문자에게 본문을 통째로
-// 가리는 모달을 띄우면 ① 무엇을 하는 곳인지 보기도 전에 질문부터 받고 ② 모바일
-// 전면 광고(구글 인터스티셜) 판정에 걸린다(§12.29b에서 도치 인사가 같은 이유로
-// ≤720px에서 하단 시트로 내려간다). 카드는 뒤 콘텐츠를 가리지 않으므로 그 판정
-// 밖이고, 읽던 사람은 무시하고 계속 읽을 수 있다.
+// 화면 가운데 뜨지만 **배경을 덮는 오버레이는 없다**. 반투명 백드롭을 깔면 뒤가
+// 통째로 잠겨 모바일 전면 광고(구글 인터스티셜) 판정에 걸리고, 읽던 사람이 질문에
+// 답해야만 계속 읽을 수 있게 된다. 지금은 카드 바깥이 그대로 살아 있어 무시하고
+// 스크롤할 수 있다 — 자리만 가운데다.
 //
-// 도치 첫 방문 인사와 절대 겹치지 않는다 — 인사가 닫힌 뒤에만 뜬다
+// 도치 첫 방문 인사와 절대 겹치지 않는다 — 인사가 닫히면 바로 뜬다
 // (lib/assistant/overlayPresence.js).
 export const SOURCE_SURVEY_COPY = {
   ko: {
@@ -70,7 +69,7 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState("editing");
   const [closed, setClosed] = useState(false);
-  const [dwellElapsed, setDwellElapsed] = useState(false);
+  const [delayElapsed, setDelayElapsed] = useState(false);
   const [dontAsk, setDontAsk] = useState(false);
   const closeTimerRef = useRef(null);
 
@@ -85,19 +84,20 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
     welcomePresenceServerSnapshot,
   );
 
-  // 체류 예산. 타이머는 저장소가 이미 막은 사람에게는 걸지도 않는다.
+  // 마운트 이펙트 다음 틱으로 한 번만 미룬다(위 상수 주석 참조).
+  // 저장소가 이미 막은 사람에게는 타이머를 걸지도 않는다.
   useEffect(() => {
-    if (!storageAllows || dwellElapsed) return undefined;
-    const timer = window.setTimeout(() => setDwellElapsed(true), SOURCE_SURVEY_DWELL_MS);
+    if (!storageAllows || delayElapsed) return undefined;
+    const timer = window.setTimeout(() => setDelayElapsed(true), SOURCE_SURVEY_OPEN_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [storageAllows, dwellElapsed]);
+  }, [storageAllows, delayElapsed]);
 
   useEffect(() => () => {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
   }, []);
 
   // 열림은 렌더 파생이다(effect에서 setState로 열지 않는다, §5).
-  const open = shouldShowSourceSurvey({ storageAllows, welcomeOpen, dwellElapsed, closed });
+  const open = shouldShowSourceSurvey({ storageAllows, welcomeOpen, delayElapsed, closed });
 
   useEffect(() => {
     if (!open) return;

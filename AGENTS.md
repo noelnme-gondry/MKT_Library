@@ -503,7 +503,8 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 "어디서 왔나"를 GA4가 답하지 못하는 유입(다이렉트)을 사람에게 직접 묻는다. 판정·정규화 SSOT는 `lib/survey/sourceSurvey.js`, 저장은 `gop_source_survey`(`scripts/source-survey-schema.sql`, 손으로 적용), 읽기는 `scripts/source-survey-report.mjs`.
 - **답변 상한은 화면과 서버 CHECK 두 곳에 있다 — 테스트가 SQL을 파싱해 정합을 강제한다**(한쪽만 고치면 화면이 받은 답변을 서버가 거절한다).
 - **첫 방문 오버레이가 둘이 되면 겹친다**: `lib/assistant/overlayPresence.js`가 "인사가 떠 있는가"를 들고 서베이가 그 뒤에만 뜬다. 컴포넌트끼리 직접 import하면 배선이 n²이 된다.
-- **전면 모달로 만들지 말 것**: 첫 방문 전면 오버레이는 모바일 인터스티셜 판정에 걸린다(§12.29b). 구석 카드는 뒤 콘텐츠를 안 가리므로 그 밖이고, 스모크가 `inset:0` 부재를 단언한다.
+- **가운데에 띄우되 백드롭은 깔지 말 것**: 뒤를 덮는 오버레이는 모바일 인터스티셜 판정에 걸리고 답해야만 계속 읽게 만든다(§12.29b). 스모크가 `inset:0` 부재를 단언한다. **중앙 정렬을 `transform`으로 하면 등장 모션도 같은 transform 안에서 움직여야 한다** — `translateY`만 쓰면 정렬이 통째로 덮여 카드가 튄다(가드를 부러뜨려 확인했다).
+- **기다리게 하지 않는다**: 인사를 닫으면 바로 묻는다(`SOURCE_SURVEY_OPEN_DELAY_MS = 0`). 0인데도 타이머를 남기는 이유는 `setTimeout(…,0)`이 **마운트 이펙트 뒤**에 돌기 때문이다 — 없으면 인사가 자기 존재를 선언하기 전에 판정이 통과해 서베이가 한 프레임 번쩍인다.
 - **답변 원문은 GA4에 싣지 않는다**(§16 계측 규칙). 횟수는 GA4, 내용은 DB — 합산 금지(`docs/ga4-product-events.md`).
 
 ### 12.30 하단 마감 영역 = `ToolPageOutro` 한 박스 (2026-08)
