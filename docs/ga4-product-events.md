@@ -29,6 +29,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `weekly_review_saved` / `weekly_review_save_failed` | 다음 비교에 쓸 두 기간 집계의 기기 저장 성공/실패 | `tool_id=weekly-review`, `source`, `state=device`, `locale` |
 | `weekly_project_saved` / `weekly_project_save_failed` | 프로젝트 설정 저장 성공/실패 | `tool_id=weekly-review`, `source`, `locale` |
 | `weekly_decision_saved` | 리뷰에서 사용자가 이번 결정을 저장 | `tool_id=weekly-review`, `source`, `locale` |
+| `project_review_saved` / `project_review_save_failed` | 리뷰 저장 창에서 프로젝트 저장이 실제로 확정/실패 | `tool_id`, `state=new_project\|existing_project`(성공) 또는 사유 코드(실패), `result_state=review\|report\|review_report`, `locale` |
 | `weekly_review_blocked` | 업로드 후 기간·필드 조건 때문에 리뷰 생성 불가 | `state`(사유 코드), `source`, `locale` |
 | `review_history_opened` | 리뷰 상단의 저장된 결정 바로가기 선택 | `placement=review_header`, `locale` |
 | `weekly_review_export` | 보고서 복사 완료 또는 인쇄 요청 | `download_type`, `state=completed|requested`, `source`, `locale` |
@@ -113,6 +114,10 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - 예측→실제 대조: `decision_record_added(tool_id=5-18)` → `forecast_actual_match_viewed` → `forecast_actual_applied`
 
 `decision_record_added`는 기존 이벤트를 그대로 사용한다. 같은 행동을 새 이름으로 중복 집계하지 않는다.
+
+`project_review_saved`는 예외가 아니라 **단일 통과 지점**이다 — 도구·리뷰·보관함의 모든 저장이 `ReviewSaveDialog` 하나를 지나므로, "프로젝트 리뷰 저장을 쓰는 사람이 몇인가"는 이 이벤트로만 답한다. `decision_record_added`·`weekly_decision_saved`·`weekly_report_saved`는 같은 저장을 각 퍼널의 단계로 본 것이라 **이 이벤트와 합산하지 않는다**. 실패 사유(`state`)는 코드에 열거된 범주형 코드만 싣고 목록 밖 메시지는 `unknown`으로 접는다 — 저장 실패 원문에는 사용자 데이터가 섞일 수 있다.
+
+서버에는 저장 사실이 남지 않는다(IndexedDB 전용, §2.2). 계정 단위로 볼 수 있는 것은 `scripts/account-usage-report.mjs`가 세는 저장 자격(체험·결제)과 별도 동의로 올린 계정 메모뿐이다.
 
 `row_count`, `column_count`, `mapped_count`, `conflict_count`, `missing_required_count`는
 이벤트 범위의 custom metric(숫자)으로 등록한다.

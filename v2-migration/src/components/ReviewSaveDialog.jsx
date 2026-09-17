@@ -66,6 +66,17 @@ export function saveFailureMessage(code, en) {
     : "저장하지 못했습니다. 로그인·기기 저장 상태를 확인하고 다시 시도하세요. 작성 내용은 그대로 있습니다.";
 }
 
+// 저장 실패 사유는 범주형 코드만 GA에 싣는다. 목록 밖 메시지(IndexedDB 원문 등)는
+// 사용자 데이터가 섞일 수 있으므로 통째로 "unknown"으로 접는다(§2.2).
+const SAVE_FAILURE_STATES = new Set([
+  "PRO_REQUIRED", "LOGIN_REQUIRED", "PROJECT_LIMIT", "PROJECT_METADATA_LIMIT",
+  "SAVE_CONTEXT_CHANGED", "STORAGE_DISABLED", "PROJECT_NAME_REQUIRED", "INVALID_REVIEW", "PROJECT_MISSING",
+]);
+
+export function saveFailureState(code) {
+  return (SAVE_FAILURE_STATES.has(code) ? code : "UNKNOWN").toLowerCase();
+}
+
 export default function ReviewSaveDialog({ locale = "ko", record, report, onSaved, onClose, onConfirm }) {
   const en = locale === "en";
   const entitlement = useAppStore(state => state.entitlement);
@@ -111,8 +122,20 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       }
       setSaved(result);
       onSaved?.(result);
+      // 저장 실행의 단일 통과 지점. 표면별 이벤트(weekly_decision_saved 등)는 각 퍼널의
+      // 단계이고, 이 이벤트만이 "프로젝트 리뷰 저장이 실제로 일어난 횟수"다 — 합산 금지.
+      trackProductEvent("project_review_saved", {
+        ...(result.record?.toolId ? { tool_id: result.record.toolId } : {}),
+        state: target ? "existing_project" : "new_project",
+        result_state: result.record ? (report ? "review_report" : "review") : "report",
+        locale,
+      });
     } catch (error) {
       setMessage(saveFailureMessage(error.message, en));
+      if (!onConfirm) trackProductEvent("project_review_save_failed", {
+        ...(draftRecord?.toolId ? { tool_id: draftRecord.toolId } : {}),
+        state: saveFailureState(error.message), locale,
+      });
     } finally { setBusy(false); }
   };
   return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={en ? "Save review" : "리뷰 저장"} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
