@@ -120,7 +120,10 @@ describe("5-29 구성 변화 — 전 단위 비율 하락 + 전체 비율 상승
 describe("PVM 믹스 서술 — 네 사분면이 사실과 맞는다", () => {
   // mix 부호 하나로는 문장을 만들 수 없다. 악화도 개선도 각각 두 경로가 있고,
   // 경로를 안 가르면 "비중이 줄었는데 늘었다"·"최저가인데 비싼 편" 같은 거짓이 나간다.
-  const plain = (entity) => PVM_MATH.classifyNarrative(entity, "X").replace(/<[^>]+>/g, "");
+  // 엔진 출력을 그대로 단언한다. 검사하는 문구는 전부 태그 바깥이라 벗길 이유가 없고,
+  // 정규식으로 태그를 걷어내는 건 불완전 위생처리라 CodeQL이 옳게 지적한다 — 무엇보다
+  // 출력과 단언 사이에 변환을 끼우면 그 변환이 틀렸을 때 검사가 조용히 무의미해진다.
+  const narrativeOf = (entity) => PVM_MATH.classifyNarrative(entity, "X");
   // rate를 0으로 두어 믹스 문장만 나오게 한다(dualEffect·leadMix 분기 배제).
   const entity = ({ s1, s2, mix }) => ({ s1, s2, mix, rate: 0, cpa1: 10, cpa2: 10, contribution: mix });
 
@@ -130,7 +133,7 @@ describe("PVM 믹스 서술 — 네 사분면이 사실과 맞는다", () => {
     { name: "싼 것의 비중 증가 → 개선", s1: 0.2, s2: 0.6, mix: -5, up: true, costly: false },
     { name: "비싼 것의 비중 감소 → 개선", s1: 0.7, s2: 0.3, mix: -5, up: false, costly: true },
   ])("$name", ({ s1, s2, mix, up, costly }) => {
-    const text = plain(entity({ s1, s2, mix }));
+    const text = narrativeOf(entity({ s1, s2, mix }));
     // 방향은 실제 비중 변화와 같아야 한다 — 반대말이 들어가면 실패.
     expect(text).toContain(up ? "늘었고" : "줄었고");
     expect(text).not.toContain(up ? "줄었고" : "늘었고");
@@ -142,7 +145,7 @@ describe("PVM 믹스 서술 — 네 사분면이 사실과 맞는다", () => {
   });
 
   it("비중이 그대로면 방향을 주장하지 않는다", () => {
-    const text = plain(entity({ s1: 0.4, s2: 0.4, mix: 0 }));
+    const text = narrativeOf(entity({ s1: 0.4, s2: 0.4, mix: 0 }));
     expect(text).toContain("그대로");
     expect(text).not.toContain("늘었고");
     expect(text).not.toContain("줄었고");
@@ -154,7 +157,7 @@ describe("PVM 믹스 서술 — 네 사분면이 사실과 맞는다", () => {
       PVM_MATH.aggregate([{ ch: "A", spend: "200", res: "50" }, { ch: "B", spend: "1800", res: "40" }], "ch", "res"),
     );
     const cheapShrinking = decomposed.entities.find((item) => item.key === "A");
-    const narrative = plain(cheapShrinking);
+    const narrative = narrativeOf(cheapShrinking);
     // 비중이 줄어든 최저가 캠페인 — 예전엔 "늘었고 … 비싼 편"으로 나갔다.
     expect(narrative).toContain("줄었고");
     expect(narrative).toContain("저렴한");
