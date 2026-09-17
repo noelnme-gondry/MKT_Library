@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+import { SOURCE_SURVEY_ANSWERED_KEY, SOURCE_SURVEY_SEEN_KEY } from "./support/sourceSurvey.js";
+
 // 유입 경로 서베이는 `playwright.config.js`가 모든 스펙에서 "이미 답함"으로 시드해
 // 둔다(카드가 화면 가운데라 다른 스펙의 클릭을 가로챈다). 그래서 서베이를 실제로
 // 보는 곳은 여기 하나뿐이다 — 시드가 기능을 통째로 가리지 않도록 붙잡는 역할이다.
@@ -7,14 +9,14 @@ import { test, expect } from "@playwright/test";
 // jsdom 스모크가 못 보는 것만 본다: 실제 박스가 화면 가운데 있는가, 그리고 카드가
 // 뒤 콘텐츠를 잠그지 않는가.
 const clearSeed = async (page) => {
-  await page.addInitScript(() => {
+  await page.addInitScript(([answeredKey, seenKey]) => {
     try {
-      localStorage.removeItem("mkt-library-source-survey-answered");
-      sessionStorage.removeItem("mkt-library-source-survey-seen");
+      localStorage.removeItem(answeredKey);
+      sessionStorage.removeItem(seenKey);
       // 도치 인사가 떠 있으면 서베이는 그 뒤로 미뤄진다 — 여기서는 서베이만 본다.
       localStorage.setItem("mkt-library-dochi-welcome-dismissed", "1");
     } catch { /* 저장소가 막히면 노출 쪽으로 떨어진다(그래도 테스트는 성립한다). */ }
-  });
+  }, [SOURCE_SURVEY_ANSWERED_KEY, SOURCE_SURVEY_SEEN_KEY]);
 };
 
 test("유입 경로 서베이는 가운데 뜨고 뒤를 잠그지 않는다", async ({ page }) => {
