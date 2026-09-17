@@ -7,6 +7,7 @@ import CsvUploader from "@/components/CsvUploader";
 import DochiSprite from "@/components/assistant/DochiSprite";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { trackProductEvent } from "@/lib/analytics";
+import { setWelcomeOpen } from "@/lib/assistant/overlayPresence";
 import {
   dochiWelcomeServerSnapshot,
   markDochiWelcomeSessionSeen,
@@ -107,6 +108,13 @@ export default function DochiWelcomeOverlay({ locale = "ko", manual = false }) {
     || workspaceRestoreStatus === "failed";
   const displayStep = savedDatasets.length > 0 ? DOCHI_WELCOME_STEPS.length - 1 : step;
   const open = (manual ? requested : shouldShowDochiWelcome({ dismissed: !storageAllows })) && isRestoreResolved && !closed;
+
+  // 인사가 떠 있는 동안에는 유입 경로 서베이가 뜨지 않는다(모달 두 겹 방지).
+  // 언마운트로 닫히는 경로에서도 표식이 남지 않도록 정리 함수에서 되돌린다.
+  useEffect(() => {
+    setWelcomeOpen(open);
+    return () => setWelcomeOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
