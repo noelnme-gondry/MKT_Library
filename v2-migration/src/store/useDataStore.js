@@ -23,6 +23,7 @@ import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { executionPreflight } from "@/lib/analysis-router/executionPreflight";
 import { buildCanonicalDatasetV2 } from "@/lib/data-import/canonical-v2/buildCanonicalDatasetV2";
 import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
+import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import {
   clearWorkspaceDatasets,
   listWorkspaceDatasets,
@@ -30,6 +31,7 @@ import {
   removeWorkspaceDataset,
   saveWorkspaceDataset,
   sweepExpiredWorkspaceDatasets,
+  isCurrentDatasetSchema,
 } from "@/lib/workspace-storage";
 
 export { TOOL_GROUP, groupForRoute };
@@ -98,10 +100,24 @@ function toolIdForGroup(group) {
 
 async function restoreWorkspaceSlice(entry) {
   const table = await readStoredTable(entry);
-  const mapping = entry.mapping && typeof entry.mapping === "object" ? entry.mapping : {};
-  const mappingBindingsV2 = Array.isArray(entry.mappingBindingsV2) ? entry.mappingBindingsV2 : [];
   const toolId = toolIdForGroup(entry.group);
+  const storedMapping = entry.mapping && typeof entry.mapping === "object" ? entry.mapping : {};
+  const storedBindings = Array.isArray(entry.mappingBindingsV2) ? entry.mappingBindingsV2 : [];
+  // 구세대 레코드의 매핑은 저장 시점의 표준키 어휘로 굳어 있다. 그대로 복원하면
+  // 지금 엔진이 안 읽는 키를 가리켜 파일은 열리는데 숫자만 빠진다 — 파일은 살리고
+  // **매핑만 버린 뒤 현재 규칙으로 다시 인식한다**. 자동 인식이 실패하면(빈 매핑)
+  // 저장본을 그대로 쓰는 게 낫다 — 아무것도 못 읽는 것보다 옛 매핑이 낫다.
+  const isStaleSchema = !isCurrentDatasetSchema(entry);
+  const refreshed = isStaleSchema
+    ? buildMappingContract({ toolId, headers: table.headers, rows: table.raw, source: entry.fileName || "device_storage" }).mapping
+    : null;
+  const didRefresh = Boolean(refreshed && Object.values(refreshed).some((field) => field && field !== "__ignore__"));
+  const mapping = didRefresh ? refreshed : storedMapping;
+  // 의미 바인딩(V2)은 표준키가 아니라 자체 레시피라 새 매핑과 짝이 안 맞는다.
+  // 매핑을 다시 인식했으면 바인딩은 비우고 V2 경로가 다시 만들게 둔다.
+  const mappingBindingsV2 = didRefresh ? [] : storedBindings;
   return {
+    mappingRefreshed: didRefresh,
     raw: table.raw,
     headers: table.headers,
     mapping,
@@ -886,6 +902,8 @@ export const useAppStore = create(persist((set, get) => ({
   // 복원 시도했지만 읽지 못한 그룹. 화면이 "몇 건이 안 열렸는지"를 말할 수 있게
   // 개수가 아니라 그룹 이름을 남긴다.
   workspaceUnreadableGroups: [],
+  // 저장 당시와 표준키 어휘가 달라져 복원하며 매핑을 다시 인식한 그룹.
+  workspaceRemappedGroups: [],
   refreshWorkspaceDatasets: async () => {
     const projectId = get().activeProjectId;
     try {
@@ -918,6 +936,9 @@ export const useAppStore = create(persist((set, get) => ({
       }));
       const unreadableGroups = outcomes.filter((item) => item && item.unreadableGroup).map((item) => item.unreadableGroup);
       const restored = outcomes.filter((item) => Array.isArray(item));
+      // 구세대 레코드라 매핑을 다시 인식한 그룹. 조용히 바꾸면 사용자가 예전에
+      // 손으로 고친 매핑이 사라진 걸 모른다 — 화면이 말하게 한다(§8).
+      const remappedGroups = restored.filter(([, slice]) => slice?.mappingRefreshed).map(([group]) => group);
       set((state) => {
         if (state.activeProjectId !== projectId || !state.decisionPersistenceEnabled) return {};
         const csvGroups = { ...state.csvGroups };
@@ -932,6 +953,7 @@ export const useAppStore = create(persist((set, get) => ({
           workspaceRestoreStatus: "ready",
           workspaceExpiredCount: sweep.expired.length,
           workspaceUnreadableGroups: unreadableGroups,
+          workspaceRemappedGroups: remappedGroups,
         };
       });
       const project = await readProject(projectId);

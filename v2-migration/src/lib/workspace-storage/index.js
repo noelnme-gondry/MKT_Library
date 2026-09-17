@@ -7,4 +7,6 @@ export {
   removeWorkspaceDataset,
   clearWorkspaceDatasets,
   sweepExpiredWorkspaceDatasets,
+  WORKSPACE_DATASET_SCHEMA_VERSION,
+  isCurrentDatasetSchema,
 } from "./datasets";

@@ -5,6 +5,18 @@ import { openWorkspaceDb, requestResult, transactionComplete } from "./db";
 import { SNAPSHOT_META_KEY, PROJECT_META_KEY, listStoredSnapshots, readReviewProject } from "@/lib/weekly-review/snapshotStore";
 import { partitionByExpiry, remainingRetentionDays } from "./expiry";
 
+// 저장 레코드의 스키마 세대. 원본 파일(sourceBlob)은 읽을 때 다시 파싱하므로
+// 드리프트에 강하지만, `mapping`(원본헤더 → 표준키)은 저장 시점의 표준키 어휘로
+// 굳는다. 표준키가 바뀌면 90일 전 레코드가 **지금 엔진이 안 읽는 키로 매핑된 채**
+// 복원되어 파일은 멀쩡히 열리고 숫자만 빠진다(2026-09-16 감사). 세대를 적어 두고
+// 복원 시 구세대면 매핑을 버리고 현재 규칙으로 다시 인식한다.
+export const WORKSPACE_DATASET_SCHEMA_VERSION = 1;
+
+// 세대 표식이 없는 레코드(이 필드 도입 전 저장분)도 구세대로 본다.
+export function isCurrentDatasetSchema(entry) {
+  return entry?.schemaVersion === WORKSPACE_DATASET_SCHEMA_VERSION;
+}
+
 function summary(entry) {
   if (!entry) return null;
   const { sourceBlob, ...rest } = entry;
@@ -28,6 +40,7 @@ export async function saveWorkspaceDataset({ group, fileName, sourceBlob, source
     mapping: mapping && typeof mapping === "object" ? mapping : {},
     mappingBindingsV2: Array.isArray(mappingBindingsV2) ? mappingBindingsV2 : [],
     worksheetName: worksheetName || null,
+    schemaVersion: WORKSPACE_DATASET_SCHEMA_VERSION,
     savedAt: now,
     lastUsedAt: now,
   };
