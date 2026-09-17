@@ -438,11 +438,22 @@ export const PVM_MATH = (function () {
     const dualEffect =
       Math.abs(e.mix) >= 0.2 * absC && Math.abs(e.rate) >= 0.2 * absC;
     const leadMix = Math.abs(e.mix) >= Math.abs(e.rate);
-    const mixWorse = e.mix >= 0;
     const rateWorse = e.rate >= 0;
-    const mixText = mixWorse
-      ? `<strong>${label}</strong>의 비중이 ${fmtPct(e.s1)}→${fmtPct(e.s2)}로 늘었고 평균보다 비싼 편(CPA ${fmt0(e.cpa2)}원)이라 전체를 <strong style="color:#f87171;">+${fmt0(e.mix)}원</strong> 끌어올림`
-      : `<strong>${label}</strong>의 비중이 ${fmtPct(e.s1)}→${fmtPct(e.s2)}로 ${e.s2 >= e.s1 ? "늘었고" : "줄었고"} 평균보다 저렴해 전체를 <strong style="color:#22c55e;">${fmt0(e.mix)}원</strong> 끌어내림`;
+    // 믹스 서술은 **두 축**에서 파생한다: 비중이 늘었나 줄었나, 그리고 이 단위가
+    // 전체 평균보다 비싼가 싼가. 예전엔 `mix >= 0`(=전체를 악화시켰나) 하나만 보고
+    // "비중이 늘었고 평균보다 비싼 편"을 고정 문구로 썼는데, mix가 양수가 되는
+    // 경로는 둘이다 — (비싼 것 × 비중↑)과 (싼 것 × 비중↓). 후자에서 문장이 방향·
+    // 가격 둘 다 반대로 나갔다(비중 98.9%→55.6%인데 "늘었고", 최저가인데 "비싼 편").
+    // mix = (cpāᵢ − C̄)·Δs 이므로 C̄를 새로 넘기지 않고 두 부호에서 되찾을 수 있다.
+    const shareUp = e.s2 > e.s1;
+    const shareFlat = e.s2 === e.s1;
+    const costlier = (e.mix >= 0) === shareUp;
+    const mixEffect = e.mix >= 0
+      ? `전체를 <strong style="color:#f87171;">+${fmt0(e.mix)}원</strong> 끌어올림`
+      : `전체를 <strong style="color:#22c55e;">${fmt0(e.mix)}원</strong> 끌어내림`;
+    const mixText = shareFlat
+      ? `<strong>${label}</strong>의 비중은 ${fmtPct(e.s1)}로 그대로라 구성 효과가 거의 없음`
+      : `<strong>${label}</strong>의 비중이 ${fmtPct(e.s1)}→${fmtPct(e.s2)}로 ${shareUp ? "늘었고" : "줄었고"} 평균보다 ${costlier ? "비싼" : "저렴한"} 편(CPA ${fmt0(e.cpa1)}→${fmt0(e.cpa2)}원)이라 ${mixEffect}`;
     const rateText = rateWorse
       ? `<strong>${label}</strong> 자체의 CPA가 ${fmt0(e.cpa1)}→${fmt0(e.cpa2)}원으로 상승해 전체를 <strong style="color:#f87171;">+${fmt0(e.rate)}원</strong> 끌어올림(소재 피로/경쟁 심화 가능성)`
       : `<strong>${label}</strong> 자체의 CPA가 ${fmt0(e.cpa1)}→${fmt0(e.cpa2)}원으로 개선돼 전체를 <strong style="color:#22c55e;">${fmt0(e.rate)}원</strong> 끌어내림`;
