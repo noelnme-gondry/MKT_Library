@@ -20,6 +20,9 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `tool_view` | 분석 도구 URL 진입 | `tool_id`, `source=route`, `locale` |
 | `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
+| `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
+| `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
+| `source_survey_dismissed` | 답하지 않고 닫음 | `placement=source_survey`, `state=skipped\|closed`, `locale` |
 | `journey_page_viewed` | 최초 및 SPA 경로 변경 | `scope=home|blog|glossary|guide|tool|start|dochi|review|other`, `journey_entry`, `locale` |
 | `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택 | `source`, `placement`, `locale` |
 | `dochi_mapping_confirmed` | 도치 컬럼 확인을 마치고 계산 작업대로 진행 | `tool_id=start-gate`, `placement=dochi_mapping`, `locale` |
@@ -121,3 +124,10 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 `row_count`, `column_count`, `mapped_count`, `conflict_count`, `missing_required_count`는
 이벤트 범위의 custom metric(숫자)으로 등록한다.
+
+## 유입 경로 서베이 답변은 GA4에 없다
+
+주관식 답변 원문은 GA4로 보내지 않는다(이 문서 최상단 원칙 — 범주형 파라미터만).
+위 이벤트는 **노출·제출·이탈 횟수**만 세고, 답변 내용은 우리 DB(`gop_source_survey`)에만
+있다. "몇 명이 답했나"는 GA4로, "뭐라고 답했나"는 `scripts/source-survey-report.mjs`로 본다.
+둘을 합산하지 말 것 — GA4는 광고 차단기가 있는 방문자를 못 세므로 제출 수가 DB보다 적다.

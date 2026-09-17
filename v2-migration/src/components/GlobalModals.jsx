@@ -9,6 +9,7 @@ import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import LegacyPillGroupA11y from "@/components/ds/LegacyPillGroupA11y";
 import SubscriptionPurchasePrompt from "@/components/SubscriptionPurchasePrompt";
+import SourceSurveyPopup from "@/components/assistant/SourceSurveyPopup";
 // 워크스페이스 목적지 이름은 사이드바·헤더·푸터와 같은 SSOT에서 받는다.
 import { workspaceNavItem } from "@/lib/workspaceNav";
 
@@ -206,6 +207,8 @@ export default function GlobalModals({ locale = "ko" }) {
 
   return <>
     <SubscriptionPurchasePrompt />
+    {/* 유입 경로 서베이 — 진입면과 무관하게 첫 방문에 한 번. 도치 인사가 닫힌 뒤에만 뜬다. */}
+    <SourceSurveyPopup locale={locale} />
     <LegacyPillGroupA11y />
     <div id="toast-container" className="toast-container" role="status" aria-live="polite"></div>
     <div id="cmdk" className="cmdk-overlay" hidden={!isCmdkOpen} onMouseDown={(event) => { if (event.target === event.currentTarget) setCmdkOpen(false); }}>

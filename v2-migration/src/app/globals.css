@@ -11405,6 +11405,34 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   .topbar-actions .my-account-menu__trigger { font-size: var(--fs-xs); padding-inline: 5px; }
   .header-cmdk__label--mobile { display: none; }
 }
+
+/* ===== 유입 경로 서베이(주관식) =====
+   전면 모달이 아니다 — 뒤 콘텐츠를 가리지 않는 구석 카드라 모바일 전면 광고
+   판정(§12.29b) 밖이고, 읽던 사람은 무시하고 계속 읽을 수 있다.
+   좁은 화면에서는 하단 시트로 내려가되 높이를 콘텐츠만큼만 차지한다. */
+.source-survey { position: fixed; right: 20px; bottom: 20px; z-index: 110; width: min(360px, calc(100vw - 40px)); padding: 16px 18px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-xl); background: var(--surface-container-lowest); box-shadow: 0 18px 44px color-mix(in srgb, var(--bg-1) 46%, transparent); animation: source-survey-rise .26s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes source-survey-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .source-survey { animation: none; } }
+.source-survey__close { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text-muted); font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
+.source-survey__close:hover { color: var(--text-primary); background: var(--surface-container-low); }
+.source-survey__heading { margin: 0 44px 4px 0; color: var(--text-primary); font: 750 var(--fs-base)/1.4 var(--font-sans); letter-spacing: -.02em; word-break: keep-all; }
+.source-survey__lead { margin: 0 0 10px; color: var(--text-secondary); font-size: var(--fs-xs); line-height: 1.5; word-break: keep-all; }
+.source-survey__input { display: block; width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-container-low); color: var(--text-primary); font: 400 var(--fs-sm)/1.5 var(--font-sans); resize: vertical; }
+.source-survey__count { margin: 4px 0 0; color: var(--text-muted); font-size: var(--fs-xs); text-align: right; }
+.source-survey__error { margin: 6px 0 0; color: var(--danger); font-size: var(--fs-xs); line-height: 1.5; }
+.source-survey__actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.source-survey__send { min-width: 92px; min-height: 44px; padding: 10px 18px; border: 0; border-radius: var(--radius-lg); background: var(--primary); color: var(--on-primary); font: 750 var(--fs-sm) var(--font-sans); cursor: pointer; }
+.source-survey__send:hover:not(:disabled) { filter: brightness(1.06); }
+.source-survey__send:disabled { opacity: .5; cursor: not-allowed; }
+.source-survey__skip { min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: transparent; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); cursor: pointer; }
+.source-survey__optout { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--text-secondary); font-size: var(--fs-xs); cursor: pointer; }
+.source-survey__optout input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.source-survey__privacy { margin: 0; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.5; word-break: keep-all; }
+.source-survey__thanks { margin: 0 44px 0 0; color: var(--text-primary); font: 700 var(--fs-sm)/1.5 var(--font-sans); word-break: keep-all; }
+@media (max-width: 720px) {
+  .source-survey { right: 8px; left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; }
+}
+
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */

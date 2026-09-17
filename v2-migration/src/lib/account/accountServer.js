@@ -11,10 +11,18 @@ const hash = accountHash;
 const sessionCookie = "gop_account";
 export const accountsEnabled = () => (!process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT_NAME === "production") && process.env.ACCOUNTS_ENABLED === "true" && Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.PAYMENTS_DATABASE_URL);
 const origin = () => new URL(process.env.ACCOUNTS_ORIGIN || SITE_URL).origin;
-export function accountDatabase() {
-  if (!accountsEnabled()) throw new Error("ACCOUNTS_UNAVAILABLE");
+// 계정 기능과 무관한 표(유입 경로 서베이 등)도 같은 Railway PostgreSQL을 쓴다.
+// 풀을 새로 만들면 연결이 두 벌이 되므로 풀 생성만 여기서 나눠 갖고, 계정
+// 게이트(accountsEnabled)는 accountDatabase가 계속 소유한다 — 서베이는 구글
+// OAuth 자격증명이 없어도 돌아야 한다.
+export function paymentsDatabase() {
+  if (!process.env.PAYMENTS_DATABASE_URL) throw new Error("ACCOUNTS_UNAVAILABLE");
   pool ||= new pg.Pool({ connectionString: process.env.PAYMENTS_DATABASE_URL, max: 4, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000 });
   return pool;
+}
+export function accountDatabase() {
+  if (!accountsEnabled()) throw new Error("ACCOUNTS_UNAVAILABLE");
+  return paymentsDatabase();
 }
 export function readCookie(request, name) {
   return (request.headers.get("cookie") || "").split(";").map(value => value.trim()).find(value => value.startsWith(name + "="))?.slice(name.length + 1) || "";
