@@ -1,3 +1,4 @@
+import { SOURCE_SURVEY_ANSWERED_KEY } from "./support/sourceSurvey.js";
 import { enablePaidReports } from "./support/paidReports";
 import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
 import path from "node:path";
@@ -74,10 +75,13 @@ async function navigateToTool(page, href, section, query) {
 
 test.beforeEach(async ({ page }, testInfo) => {
   const theme = testInfo.project.use.colorScheme === "light" ? "light" : "dark";
-  await page.addInitScript((initialTheme) => {
+  await page.addInitScript(([initialTheme, surveyKey]) => {
     window.localStorage.clear();
     window.localStorage.setItem("mkt-library-theme", initialTheme);
-  }, theme);
+    // `clear()`가 설정의 서베이 시드까지 지운다 — 다시 세우지 않으면 화면 가운데
+    // 카드가 이 스펙의 클릭을 전부 가로챈다(실제로 5건이 그렇게 깨졌다).
+    window.localStorage.setItem(surveyKey, "1");
+  }, [theme, SOURCE_SURVEY_ANSWERED_KEY]);
 });
 
 async function verifyHoldoutDesign(page, locale) {

@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { SOURCE_SURVEY_ANSWERED_KEY } from "./e2e/support/sourceSurvey.js";
 
 const isCi = Boolean(process.env.CI);
 
@@ -11,6 +12,15 @@ export default defineConfig({
   reporter: isCi ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: "http://127.0.0.1:3100",
+    // 유입 경로 서베이를 기본으로 끈다(사유·계약은 e2e/support/sourceSurvey.js).
+    // 이 시드를 지우면 e2e/source-survey.spec.js가 먼저 빨개진다.
+    storageState: {
+      cookies: [],
+      origins: [{
+        origin: "http://127.0.0.1:3100",
+        localStorage: [{ name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" }],
+      }],
+    },
     browserName: "chromium",
     colorScheme: "dark",
     reducedMotion: "reduce",
