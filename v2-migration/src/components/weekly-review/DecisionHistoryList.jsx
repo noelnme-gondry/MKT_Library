@@ -1,5 +1,5 @@
 "use client";
-import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { accountRequest, refreshAccount } from "@/lib/account/accountClient";
@@ -11,6 +11,7 @@ import { trackProductEvent } from "@/lib/analytics";
 // 계정에만 있는 결정을 이 기기의 검토 목록으로 가져온다. 예전 보관함이 하던 일이라
 // 목록을 합치면서 같이 옮겼다 — 화면만 치우고 능력을 조용히 잃으면 안 된다.
 const ReviewSaveDialog = lazy(() => import("@/components/ReviewSaveDialog"));
+const DecisionReviewEditor = lazy(() => import("@/components/WeeklyReview"));
 
 /**
  * 지난 결정 — 이 기기와 계정에 있는 결정을 **한 목록**으로 본다.
@@ -76,6 +77,17 @@ const COPY = {
 };
 
 // 기한 지난 것이 먼저다. 사용자가 이 화면에 오는 이유가 그것이다.
+const MEMO_LABELS = {
+  toolId: ["분석 도구", "Analysis tool"], action: ["결정", "Action"], conclusion: ["결론", "Conclusion"],
+  hypothesis: ["가설", "Hypothesis"], metric: ["지표", "Metric"], reviewDate: ["검토일", "Review date"],
+  learning: ["배운 점", "Learning"], actual: ["실제 결과", "Actual outcome"], status: ["검토 상태", "Review status"],
+  actionKind: ["행동 종류", "Action type"], actionTarget: ["대상", "Target"], actionAmount: ["변경량", "Change"],
+  goalMetric: ["목표 지표", "Goal metric"], goalDirection: ["목표 방향", "Goal direction"],
+  guardrailMetric: ["유지할 지표", "Guardrail metric"], guardrailOp: ["기준 방향", "Threshold direction"],
+  guardrailValue: ["기준값", "Threshold"], guardrails: ["추가 조건", "Additional guardrails"],
+  baseline: ["기준 결과", "Baseline"], baselineDate: ["기준일", "Baseline date"], target: ["목표값", "Target value"],
+  targetDirection: ["개선 방향", "Improvement direction"],
+};
 const BUCKET_ORDER = { overdue: 0, today: 1, unscheduled: 2, upcoming: 3, reviewed: 4 };
 
 // 스냅샷은 모듈에 굳힌다 — 매번 새로 읽으면 값이 같아도 참조가 갈려 무한 렌더가 된다.
@@ -92,7 +104,7 @@ function subscribeHistoryHash(onChange) {
   return () => window.removeEventListener("hashchange", sync);
 }
 
-export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-history", records = null }) {
+export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-history", records = null, isSample = false }) {
   const t = COPY[locale === "en" ? "en" : "ko"];
   const en = locale === "en";
   // 범위는 호출부가 정한다. 스토어를 직접 읽으면 샘플 화면에서도 실제 프로젝트의
@@ -107,37 +119,51 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   const [busyId, setBusyId] = useState("");
   const [pendingCopy, setPendingCopy] = useState(null);
   const [message, setMessage] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reload, setReload] = useState(0);
+  const loadVersion = useRef(0);
+  const accountOwner = useRef(null);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
+      if (isSample) { setLoading(false); return; }
+      const version = ++loadVersion.current;
       try {
         const next = await refreshAccount();
-        if (!active) return;
+        if (!active || version !== loadVersion.current) return;
+        if (accountOwner.current !== next?.account?.id) setMemos([]);
+        accountOwner.current = next?.account?.id || null;
         setSession(next);
-        if (!next?.account) { setMemos([]); setLoading(false); return; }
+        if (!next?.account) { setMemos([]); setLoading(false); setLoadFailed(false); return; }
         const result = await accountRequest("memos");
-        if (active) { setMemos(result.memos || []); setLoading(false); }
-      } catch { if (active) { setMemos([]); setLoading(false); } }
+        if (active && version === loadVersion.current) { setMemos(result.memos || []); setLoading(false); setLoadFailed(false); }
+      } catch { if (active && version === loadVersion.current) { setLoadFailed(true); setLoading(false); } }
     };
     load();
     window.addEventListener("gop-account-changed", load);
     return () => { active = false; window.removeEventListener("gop-account-changed", load); };
-  }, []);
+  }, [isSample, reload]);
 
   // 한 목록으로 합친다. 같은 id면 같은 결정이고, 배지로만 출처를 가른다.
   const rows = useMemo(() => {
-    const accountIds = new Set(memos.map((memo) => memo.id));
+    const visibleMemos = isSample ? [] : memos;
+    const accountIds = new Set(visibleMemos.map((memo) => memo.id));
     const localIds = new Set(localRecords.map((record) => record.id));
     const merged = [
-      ...localRecords.map((record) => ({ ...record, onDevice: true, onAccount: accountIds.has(record.id) })),
-      ...memos.filter((memo) => !localIds.has(memo.id)).map((memo) => ({ ...memo, onDevice: false, onAccount: true })),
+      ...localRecords.map((record) => {
+        const remote = visibleMemos.find(memo => memo.id === record.id);
+        const conflict = remote && JSON.stringify(archiveMemo(record)) !== JSON.stringify(archiveMemo(remote));
+        return { ...record, onDevice: true, onAccount: accountIds.has(record.id), remote: conflict ? remote : null };
+      }),
+      ...visibleMemos.filter((memo) => !localIds.has(memo.id)).map((memo) => ({ ...memo, onDevice: false, onAccount: true })),
     ];
     return merged
       .map((row) => ({ ...row, bucket: getDecisionReviewBucket(row) }))
       .sort((left, right) => (BUCKET_ORDER[left.bucket] ?? 9) - (BUCKET_ORDER[right.bucket] ?? 9)
         || String(right.reviewDate || "").localeCompare(String(left.reviewDate || "")));
-  }, [localRecords, memos]);
+  }, [localRecords, memos, isSample]);
 
   // 인박스 "열람"은 목록이 그려진 것이 아니라 사용자가 보러 온 것이다(`#wr-history`).
   // 렌더만으로 쏘면 결과 화면을 지나가기만 해도 퍼널이 부풀어 오른다.
@@ -152,10 +178,13 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
     setBusyId(row.id);
     try {
       await accountRequest("memos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ memo: archiveMemo(row), consent: "decision-memo-v1", reminder: false, locale }) });
-      const result = await accountRequest("memos");
-      setMemos(result.memos || []);
+      // A committed write is success; background refresh must not undo it.
+      ++loadVersion.current;
+      setMemos(current => [archiveMemo(row), ...current.filter(memo => memo.id !== row.id)]);
+      setLoading(false);
+      setLoadFailed(false);
       trackProductEvent("decision_archived", { locale, source: "decision_history" });
-      setMessage("");
+      setMessage(en ? "Saved to your account." : "계정에 보관했습니다.");
     } catch { setMessage(en ? "Could not save to your account. Your local record is unchanged." : "계정에 보관하지 못했습니다. 이 기기의 기록은 그대로입니다."); }
     finally { setBusyId(""); }
   };
@@ -165,10 +194,13 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>
       <h2 id={`${anchorId}-title`}>{t.title}</h2>
+      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => setEditorOpen(value => !value)}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
+      {!isSample && editorOpen && <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor locale={locale} embedded /></Suspense>}
       {!session?.account && <p>{t.signIn}</p>}
       {session?.account && !isPro && <p>{t.proNote} <Link href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link></p>}
       {message && <p role="status">{message}</p>}
-      {loading ? <p role="status">{t.loading}</p> : rows.length === 0 ? <p className="wr-history-list__empty">{t.empty}</p> : (
+      {!isSample && loadFailed && <p role="alert">{en ? "Could not load account decisions. Previously loaded and device records remain available." : "계정의 결정을 불러오지 못했습니다. 이전에 불러온 기록과 기기 기록은 계속 볼 수 있습니다."} <button className="btn" onClick={() => setReload(value => value + 1)}>{en ? "Retry loading" : "다시 불러오기"}</button></p>}
+      {loading ? <p role="status">{t.loading}</p> : rows.length === 0 ? (!loadFailed || isSample) && <p className="wr-history-list__empty">{t.empty}</p> : (
         <ul className="wr-history-list__items">
           {rows.map((row) => {
             const outcome = assessDecisionOutcome(row);
@@ -190,6 +222,13 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     {decisionGuardrailList(row).length > 0 && <p><strong>{t.guardrails}</strong> {decisionGuardrailList(row).map((item) => `${item.metric} ${item.op === "lte" ? "≤" : "≥"} ${item.value}`).join(" · ")}</p>}
                     {row.actual && <p><strong>{t.actual}</strong> {row.actual} · {outcome.state === "improved" ? t.outcomeImproved : outcome.state === "declined" ? t.outcomeDeclined : outcome.state === "unchanged" ? t.outcomeUnchanged : t.outcomePending}</p>}
                     {row.learning && <p><strong>{t.learning}</strong> {row.learning}</p>}
+                    {row.remote && <section className="wr-notice">
+                      <strong>{en ? "Account and device copies differ" : "계정과 기기의 내용이 다릅니다"}</strong>
+                      <p>{en ? "The record above is from this device. Compare the account copy before replacing either version." : "위 기록은 이 기기의 내용입니다. 계정 내용을 비교한 뒤 어느 쪽을 바꿀지 선택하세요."}</p>
+                      <dl>{Object.entries(archiveMemo(row.remote)).filter(([key, value]) => value !== archiveMemo(row)[key]).map(([key, value]) => <div key={key}><dt>{MEMO_LABELS[key]?.[en ? 1 : 0] || (en ? "Record" : "기록")}</dt><dd>{value || "—"}</dd></div>)}</dl>
+                      <button className="btn" onClick={() => setPendingCopy(row.remote)}>{en ? "Use account copy on this device" : "계정 내용으로 기기 기록 바꾸기"}</button>
+                      <button className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Update account with device copy" : "기기 내용으로 계정 갱신"}</button>
+                    </section>}
                     <div className="wr-history-list__actions">
                       {row.onDevice && !row.onAccount && session?.account && <button type="button" className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
                       {!row.onDevice && <button type="button" className="btn" onClick={() => setPendingCopy(row)}>{t.continueReview}</button>}

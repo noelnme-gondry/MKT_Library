@@ -1,4 +1,5 @@
 "use client";
+import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
@@ -245,6 +246,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   });
   const [savedDecision, setSavedDecision] = useState(null);
   const [savedReport, setSavedReport] = useState(null);
+  useReviewDraftGuard(Boolean(pendingSave) || projectStatus.includes("미저장") || projectStatus.startsWith("Unsaved") || Boolean(decision.actionTarget || decision.actionAmount || decision.guardrailValue) && (!savedDecision || savedDecision.draft !== decision));
   const decisionContext = JSON.stringify([projectName, kpiMetric, basis, customPeriod, csvData.currency]);
   const isSavedDecisionCurrent = Boolean(savedDecision && savedDecision.raw === csvData.raw && savedDecision.context === decisionContext);
   useEffect(() => {
@@ -428,7 +430,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         </section>
         <ProjectCreateGate locale={locale} open={gateOpen} onClose={() => setGateOpen(false)} onReady={() => { setGatePassed(true); setGateOpen(false); }} />
         <ReviewLoop locale={locale} hasResult={false} />
-        <DecisionHistoryList locale={locale} records={decisionRecords} />
+        <DecisionHistoryList locale={locale} records={decisionRecords} isSample={isSampleData} />
       </article>
     );
   }
@@ -504,9 +506,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
           있었다. 이번 분석을 보러 온 사람에게 다음 기간 파일을 지금 묻는 이유를
           설명할 수 없어 없앴다. 다만 데이터를 바꿀 길까지 사라지면 안 되므로
           (e2e의 "returning upload"가 이 공백을 잡았다) 명시적 버튼으로 남긴다. */}
-      {!uploaderOpen
-        ? <p className="wr-screen__cta"><button type="button" className="btn" onClick={() => setShowUploader(true)}>{locale === "en" ? "Use different data" : "데이터 바꾸기"}</button></p>
-        : <section id="wr-upload" className="wr-card" aria-label={locale === "en" ? "Replace data" : "데이터 바꾸기"}>
+      {!uploaderOpen && <p className="wr-screen__cta"><button type="button" className="btn" onClick={() => setShowUploader(true)}>{locale === "en" ? "Use different data" : "데이터 바꾸기"}</button></p>}
+      {(uploaderOpen || csvData.sheetUrl) && <section id="wr-upload" className="wr-card" hidden={!uploaderOpen} aria-label={locale === "en" ? "Replace data" : "데이터 바꾸기"}>
           {workspaceReady
             ? <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />
             : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
@@ -798,7 +799,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         <button type="button" className="btn primary" disabled={!persistenceEnabled || reviewSource === "demo"} onClick={() => setPendingSave({ report: { text: renderReportText(draft, { number: money }), period: periods.current, generatedAt: new Date().toISOString() }, raw: csvData.raw, context: decisionContext })}>{locale === "en" ? "Save report to project" : "프로젝트에 보고서 저장"}</button>
         {pendingSave && <ReviewSaveDialog locale={locale} record={pendingSave.record} report={pendingSave.report} onClose={() => setPendingSave(null)} onSaved={result => {
           if (result.record) {
-            setSavedDecision({ record: result.record, raw: pendingSave.raw, context: pendingSave.context });
+            setSavedDecision({ record: result.record, draft: decision, raw: pendingSave.raw, context: pendingSave.context });
             trackProductEvent("weekly_decision_saved", { locale, tool_id: "weekly-review", source: reviewSource });
           } else {
             setSavedReport({ raw: pendingSave.raw, context: pendingSave.context, ok: true });
@@ -814,7 +815,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         {copyStatus?.key === resultEventKey && !copyStatus.summary && <p role="status">{copyStatus.message}</p>}
       </section>
 
-      <DecisionHistoryList locale={locale} records={decisionRecords} />
+      <DecisionHistoryList locale={locale} records={decisionRecords} isSample={isSampleData} />
     </article>
   );
 }

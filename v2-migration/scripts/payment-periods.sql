@@ -1,5 +1,7 @@
 -- Additive, idempotent migration. Existing approval/expiry timestamps are preserved.
 ALTER TABLE gop_payment_orders ADD COLUMN IF NOT EXISTS starts_at timestamptz;
+-- Keep original provider identity after switching the checkout provider.
+ALTER TABLE gop_payment_orders ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'toss';
 
 -- Card-network review needs a plain id/password sign-in. Accounts provisioned that way
 -- have no Google identity, so google_sub stops being required; it stays unique.

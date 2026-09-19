@@ -275,7 +275,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
 
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", {
       tool_id: "5-3",
-      source: "csv",
+      interaction_source: "csv",
       row_count: 1,
       analysis_type: "budget_allocation",
       result_state: "ready",

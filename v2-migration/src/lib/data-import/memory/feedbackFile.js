@@ -1,5 +1,5 @@
 import { CANONICAL_FIELDS } from "../schema/canonicalFields";
-import { MAPPING_MEMORY_SCHEMA_VERSION } from "./mappingMemory";
+import { MAPPING_MEMORY_SCHEMA_VERSION, USER_RULE_SOURCE } from "./mappingMemory";
 
 const BLOCKED = new Set(["__proto__", "prototype", "constructor"]);
 
@@ -24,6 +24,7 @@ export function serializeMappingMemory(records = []) {
       context: record.context,
       confirmationCount: record.confirmationCount,
       confirmedAt: record.confirmedAt,
+      ...(record.source === USER_RULE_SOURCE ? { source: USER_RULE_SOURCE } : {}),
     })),
   };
 }
@@ -42,6 +43,7 @@ export function parseMappingMemory(text) {
       context: record.context || {},
       confirmationCount: Math.max(1, Number(record.confirmationCount) || 1),
       confirmedAt: Number(record.confirmedAt) || 0,
+      ...(record.source === USER_RULE_SOURCE ? { source: USER_RULE_SOURCE } : {}),
     };
   });
 }

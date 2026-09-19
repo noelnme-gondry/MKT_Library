@@ -90,7 +90,7 @@ describe("StartGate render smoke", () => {
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "start-gate",
-      source: "csv_guide",
+      interaction_source: "csv_guide",
       placement: "before_upload",
       locale: "ko",
     });

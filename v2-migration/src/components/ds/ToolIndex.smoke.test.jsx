@@ -140,6 +140,16 @@ describe("ToolIndex", () => {
     expect(panel.querySelector(".tool-index__link").textContent).toBe("그래도 열어 보기");
   });
 
+  it.each(["ko", "en"])("connects each open grid button to its actual panel without uploaded data (%s)", locale => {
+    const { container } = render(<ToolIndex density="grid" locale={locale} />);
+    for (const button of container.querySelectorAll(".tool-index__chip")) {
+      fireEvent.click(button);
+      const target = button.getAttribute("aria-controls");
+      expect(target).toBeTruthy();
+      expect(document.getElementById(target)?.getAttribute("role")).toBe("region");
+    }
+  });
+
   it("EN은 한글 없이 그린다", () => {
     const { container } = render(<ToolIndex locale="en" />);
     expect(container.textContent).not.toMatch(/[가-힣]/);

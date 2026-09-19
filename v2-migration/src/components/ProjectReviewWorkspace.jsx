@@ -20,19 +20,6 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
     return () => window.removeEventListener("hashchange", hash);
   }, [initialView]);
   const show = next => { setView(next); window.history.replaceState(null, "", next === "manage" ? "#project-management" : window.location.pathname); };
-  // 실제로 잃는 것만 이름 붙여 묻는다. 잃을 게 없으면 묻지 않는다 — 매번 묻는
-  // 확인창은 곧 아무도 읽지 않는 확인창이 된다.
-  const confirmSwitch = () => {
-    const state = useAppStore.getState();
-    const losing = [
-      state.csvData.raw?.length ? (en ? "the uploaded file and its analysis" : "올린 파일과 분석 결과") : null,
-      state.reportDraft?.blocks?.length ? (en ? "the report draft" : "작성 중인 보고서") : null,
-    ].filter(Boolean);
-    if (!losing.length) return true;
-    return window.confirm(en
-      ? `Switching projects clears ${losing.join(" and ")}, plus anything typed in this review. Saved decisions stay. Continue?`
-      : `프로젝트를 바꾸면 ${losing.join("·")}과 이 화면에 입력 중인 내용이 사라집니다. 저장한 결정은 남습니다. 계속할까요?`);
-  };
   return <div className="project-review-workspace">
     <header className="project-review-workspace__bar">
       <div className="project-review-workspace__title">
@@ -48,10 +35,9 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
         // 프로젝트를 바꾸면 작성 중인 결정 초안·기간 설정이 사라지고(리뷰 화면이
         // key로 리마운트된다) 올린 CSV·분석 게이트·보고서 초안도 비워진다. 삭제는
         // 확인을 받는데 전환은 안 받고 있었다 — 잃는 양은 비슷하다.
-        if (!confirmSwitch(event.target.value)) { event.target.value = activeId; return; }
         setSwitched(false);
         const ok = await useAppStore.getState().switchProject(event.target.value);
-        if (ok) { setSwitched(true); show("review"); } else setError(true);
+        if (ok) { setSwitched(true); show("review"); } else if (!useAppStore.getState().projectSwitchCancelled) setError(true);
       }}>{projects.map(project => <option key={project.id} value={project.id}>{project.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}</select></label>}
       </div>}
     </header>

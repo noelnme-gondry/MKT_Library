@@ -51,7 +51,7 @@ describe("CsvGuide", () => {
     expect(onTryExample).toHaveBeenCalledTimes(1);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-18",
-      source: "csv_guide",
+      interaction_source: "csv_guide",
       placement: "before_upload",
       locale: "ko",
     });

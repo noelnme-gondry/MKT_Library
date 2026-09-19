@@ -16,7 +16,7 @@ it("sends a standard live purchase once with only public transaction fields", ()
   expect(trackPaymentEvent("purchase", data)).toBe(false);
   expect(window.gtag).toHaveBeenCalledTimes(1);
   expect(window.gtag.mock.calls[0]).toEqual(["event", "purchase", {
-    locale: "en", source: "subscription_page", state: "live", currency: "KRW", value: 5900,
+    locale: "en", interaction_source: "subscription_page", state: "live", currency: "KRW", value: 5900,
     transaction_id: transaction.orderId, items: [{ item_id: "report-pass-month-v1", price: 5900, quantity: 1 }], send_to: "G-DK12TNR0GW",
   }]);
 });

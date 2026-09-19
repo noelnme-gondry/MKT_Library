@@ -9,7 +9,7 @@ import { activePro } from "@/test/proEntitlement";
 vi.mock("@/lib/account/accountClient", () => ({ refreshAccount: vi.fn(), accountRequest: vi.fn() }));
 
 const LOCAL = {
-  id: "d-local", toolId: "5-2", action: "Meta 예산 30% 감액", reviewDate: "2026-09-20",
+  id: "d-local", actual: "", learning: "", toolId: "5-2", action: "Meta 예산 30% 감액", reviewDate: "2026-09-20",
   conclusion: "강한 잠식 후보 2개", metric: "오가닉 전환수", baseline: "5,000",
   guardrailMetric: "conversions", guardrailOp: "gte", guardrailValue: "5000", guardrails: "cpa|lte|8000",
 };
@@ -80,4 +80,55 @@ it("이 기기에만 있는 결정은 계정 보관을 제안한다", async () =
 it("EN도 같은 구조로 렌더된다", async () => {
   render(<DecisionHistoryList locale="en" />);
   await waitFor(() => expect(screen.getByRole("heading", { name: "Past decisions" })).toBeTruthy());
+});
+
+it.each(["ko", "en"])("keeps the device review editor reachable from the actual history surface (%s)", async locale => {
+  render(<DecisionHistoryList locale={locale} />);
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Review / export device records" : "기기 기록 검토·내보내기" }));
+  await waitFor(() => expect(document.querySelector(".weekly-review-page.is-embedded")).toBeTruthy());
+  expect(screen.getByRole("textbox", { name: `${locale === "en" ? "Actual outcome" : "실제 결과"} — ${LOCAL.action}` })).toBeTruthy();
+});
+it("does not fetch real account decisions inside a sample", async () => {
+  render(<DecisionHistoryList locale="ko" records={[]} isSample />);
+  await screen.findByText("아직 저장한 결정이 없습니다.");
+  expect(accountRequest).not.toHaveBeenCalled();
+  expect(refreshAccount).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "기기 기록 검토·내보내기" })).toBeNull();
+});
+it("hides already loaded account decisions when switching to a sample", async () => {
+  const view = render(<DecisionHistoryList locale="ko" />);
+  await screen.findByRole("button", { name: /Google 증액/ });
+  view.rerender(<DecisionHistoryList locale="ko" records={[]} isSample />);
+  expect(screen.queryByRole("button", { name: /Google 증액/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Meta 예산/ })).toBeNull();
+});
+
+
+it.each(["ko", "en"])("shows a retry instead of an empty account on read failure (%s)", async locale => {
+  useAppStore.setState({ decisionRecords: [] });
+  accountRequest.mockRejectedValue(new Error("offline"));
+  render(<DecisionHistoryList locale={locale} />);
+  await screen.findByRole("alert");
+  expect(screen.queryByText(locale === "en" ? "No saved decisions yet." : "아직 저장한 결정이 없습니다.")).toBeNull();
+  accountRequest.mockResolvedValue({ memos: [REMOTE] });
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Retry loading" : "다시 불러오기" }));
+  await screen.findByRole("button", { name: /Google 증액/ });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+it("does not require a successful second read to acknowledge an account write", async () => {
+  accountRequest.mockResolvedValueOnce({ memos: [] }).mockResolvedValueOnce({ memo: LOCAL }).mockRejectedValue(new Error("offline"));
+  render(<DecisionHistoryList />);
+  fireEvent.click(await screen.findByRole("button", { name: /Meta 예산 30% 감액/ }));
+  fireEvent.click(screen.getByRole("button", { name: "계정에 보관" }));
+  await screen.findByText("계정에 보관했습니다.");
+  expect(accountRequest).toHaveBeenCalledTimes(2);
+  expect(screen.getByText(/계정 보관됨/)).toBeTruthy();
+});
+it.each(["ko", "en"])("shows both versions and explicit conflict choices (%s)", async locale => {
+  accountRequest.mockResolvedValue({ memos: [{ ...LOCAL, actual: "CPA 3000", learning: "Remote learning", status: "reviewed" }] });
+  render(<DecisionHistoryList locale={locale} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Meta 예산 30% 감액/ }));
+  expect(screen.getByText("Remote learning")).toBeTruthy();
+  expect(screen.getByRole("button", { name: locale === "en" ? "Use account copy on this device" : "계정 내용으로 기기 기록 바꾸기" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: locale === "en" ? "Update account with device copy" : "기기 내용으로 계정 갱신" })).toBeTruthy();
 });

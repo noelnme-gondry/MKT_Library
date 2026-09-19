@@ -92,7 +92,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator("#purchase")).toContainText("Word");
     await expect(page.locator("#purchase")).toContainText("Excel");
     const events = await page.evaluate(() => window.__projectEvents);
-    expect(events.some(event => event[1] === "subscription_gate_viewed" && event[2].source === "project_limit")).toBe(true);
+    expect(events.some(event => event[1] === "subscription_gate_viewed" && event[2].interaction_source === "project_limit")).toBe(true);
     expect(JSON.stringify(events)).not.toContain("Client Alpha");
     await expectNoSeriousAccessibilityViolations(page);
     await page.goto(`${prefix}/projects`);

@@ -64,7 +64,7 @@ for (const locale of ["ko", "en"]) {
     await target.fill("9999");
     await bar.getByRole("link").click();
     await page.getByRole("button", { name: en ? "Keep current period" : "현재 기간으로 불러오기" }).click();
-    await page.getByRole("button", { name: en ? "Compare current CSV" : "현재 CSV와 비교" }).click();
+    await expect(page.getByRole("button", { name: en ? "Compare current CSV" : "현재 CSV와 비교" })).toHaveCount(0);
     await page.getByRole("button", { name: en ? "Apply checked setup" : "확인한 설정 적용" }).click();
     await expect(page.getByRole("textbox", { name: en ? "Target CPA" : "목표 CPA", exact: true })).toHaveValue("7250");
     await page.goto(`${prefix}/subscription`);

@@ -72,6 +72,7 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   const [delayElapsed, setDelayElapsed] = useState(false);
   const [dontAsk, setDontAsk] = useState(false);
   const closeTimerRef = useRef(null);
+  const submissionRef = useRef(null);
 
   const storageAllows = useSyncExternalStore(
     subscribeStorage,
@@ -118,6 +119,7 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   const send = async (event) => {
     event.preventDefault();
     if (!canSend) return;
+    if (submissionRef.current?.answer !== normalized) submissionRef.current = { answer: normalized, id: crypto.randomUUID() };
     setStatus("sending");
     try {
       // 답변 원문은 우리 서버로만 간다. GA4 이벤트에는 절대 싣지 않는다
@@ -126,7 +128,7 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: crypto.randomUUID(),
+          id: submissionRef.current.id,
           answer: normalized,
           locale,
           pathname: window.location?.pathname || "",

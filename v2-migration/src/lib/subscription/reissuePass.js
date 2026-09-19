@@ -8,7 +8,7 @@ export async function reissuePass({ db, orderId, mode, fetchPayment, writeSecret
   const { rows } = await db.query("SELECT * FROM gop_payment_orders WHERE id=$1", [orderId]);
   const order = rows[0];
   if (!order || order.mode !== mode || order.status !== "paid" || (!Number.isFinite(Date.parse(order.expires_at)) || Date.parse(order.expires_at) <= now) || !order.payment_key) throw new Error("PASS_NOT_ACTIVE");
-  const payment = await fetchPayment(order.payment_key);
+  const payment = await fetchPayment(order.payment_key, order);
   if (!verifiedPayment(payment, order)) throw new Error("PAYMENT_NOT_VERIFIED");
   const token = randomBytes(32).toString("hex");
   const digest = createHash("sha256").update(token).digest("hex");

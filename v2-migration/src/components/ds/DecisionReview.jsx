@@ -1,4 +1,5 @@
 "use client";
+import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -168,6 +169,7 @@ const COPY = {
     importError: "읽을 수 있는 결정 기록 행이 없습니다. 내보낸 CSV 형식인지 확인해 주세요.",
     imported: (count) => `${count}개의 결정 기록을 불러왔습니다.`,
     error: "실행할 변경 내용을 먼저 적어 주세요.",
+    guardrailError: "기준값은 숫자로 입력하거나, 사용하지 않을 항목은 비워 주세요.",
     ledger: "BASELINE → ACTUAL",
     change: "기준 대비",
     improved: "지표 개선",
@@ -259,6 +261,7 @@ const COPY = {
     importError: "No usable decision rows found. Check that this is an exported decision-review CSV.",
     imported: (count) => `Imported ${count} decision ${count === 1 ? "record" : "records"}.`,
     error: "Add the action you plan to take first.",
+    guardrailError: "Enter a number for each threshold, or clear it to leave it unused.",
     ledger: "BASELINE → ACTUAL",
     change: "vs baseline",
     improved: "Metric improved",
@@ -327,14 +330,15 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const allRecords = useAppStore((state) => state.decisionRecords);
   const [recordDrafts, setRecordDrafts] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  useReviewDraftGuard(Object.keys(recordDrafts).length > 0 || isDraftDirty);
   const records = allRecords.filter((record) => record.toolId === toolId).map(record => ({ ...record, ...recordDrafts[record.id] }));
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const isPersistencePromptSeen = useAppStore((state) => state.decisionPersistencePromptSeen);
   const markPersistencePromptSeen = useAppStore((state) => state.markDecisionPersistencePromptSeen);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
   const [pendingSave, setPendingSave] = useState(null);
-  const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
-  const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
+  const importDecisionRecords = useAppStore((state) => state.commitImportedDecisionRecords);
+  const updateDecisionRecord = useAppStore((state) => state.commitDecisionRecord);
   const removeDecisionRecord = useAppStore((state) => state.removeDecisionRecord);
 
   useEffect(() => {
@@ -390,7 +394,11 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
     const selectedGoal = findToolGoal(toolId, draft.goalMetric, locale);
     const savedGuardrails = guardrailOptions
       .map((option) => ({ metric: option.key, op: option.op, value: String(draft.guardrailValues?.[option.key] ?? "").replace(/,/g, "").trim() }))
-      .filter((item) => item.value !== "" && Number.isFinite(Number(item.value)));
+      .filter((item) => item.value !== "");
+    if (savedGuardrails.some((item) => !Number.isFinite(Number(item.value)))) {
+      setMessage(t.guardrailError);
+      return;
+    }
     const savedRecord = {
       toolId,
       dataOrigin: decisionDataOrigin(csvData),
@@ -426,7 +434,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       baseline: draft.baseline.trim(),
       baselineDate: draft.baselineDate,
       comparisonWindowDays: draft.comparisonWindowDays,
-      comparisonScope: allowAutomaticComparison ? createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter }) : null,
+      comparisonScope: allowAutomaticComparison ? createDecisionComparisonScope({ dataGroup: activeDataGroup, filter: dashboardFilter,
+        weeklyReview: activeDataGroup === "efficiency" ? { basis: useAppStore.getState().denomBasis, currency: csvData?.currency } : null }) : null,
       datasetSnapshot: serializeDatasetContinuitySnapshot(buildDatasetContinuitySnapshot(csvData?.canonicalData, {
         dataGroup: activeDataGroup,
         mapping: csvData?.mapping,
@@ -496,8 +505,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       setMessage(t.importError);
       return;
     }
-    setPendingAction(() => () => {
-      importDecisionRecords(imported, toolId);
+    setPendingAction(() => async () => {
+      await importDecisionRecords(imported, toolId);
       setMessage(t.imported(imported.length));
       trackProductEvent("decision_record_imported", { tool_id: toolId, source: "decision_review", placement: "result_action_card", locale });
     });
@@ -782,8 +791,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                   </div>}
                 </div>
                 <div className="decision-review__record-footer">
-                  {recordDrafts[record.id] && <button type="button" className="btn primary" onClick={() => setPendingAction(() => () => {
-                    updateDecisionRecord(record.id, recordDrafts[record.id]);
+                  {recordDrafts[record.id] && <button type="button" className="btn primary" onClick={() => setPendingAction(() => async () => {
+                    await updateDecisionRecord(record.id, recordDrafts[record.id]);
                     setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
                   })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
                   <span>{record.reviewDate || "—"}</span>

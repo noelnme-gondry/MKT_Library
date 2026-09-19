@@ -5,7 +5,18 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import WeeklyReviewScreen from "@/components/weekly-review/WeeklyReviewScreen";
 import { HANDOVER_DISMISS_KEY, HANDOVER_SESSION_KEY, resetHandoverSnapshot } from "@/lib/weeklyReviewHandover";
 import { useAppStore } from "@/store/useDataStore";
-vi.mock("@/components/CsvUploader", () => ({ default: () => <div data-testid="weekly-uploader" /> }));
+const sheetRefresh = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("@/components/CsvUploader", async () => {
+  const { useEffect } = await import("react");
+  return { default: function Uploader({ refreshRef }) {
+    useEffect(() => {
+      if (!refreshRef) return;
+      refreshRef.current = { refreshSheet: sheetRefresh };
+      return () => { refreshRef.current = null; };
+    }, [refreshRef]);
+    return <div data-testid="weekly-uploader" />;
+  } };
+});
 
 /** 이번 주(08-31~09-06)와 지난주(08-24~08-30)를 담은 매핑 완료 행. */
 function rowsFor({ worsen = true } = {}) {
@@ -45,6 +56,16 @@ function setData(rows) {
 }
 
 describe("WeeklyReviewScreen", () => {
+  it.each(["ko", "en"])("can refresh a connected sheet before opening the hidden uploader (%s)", async locale => {
+    sheetRefresh.mockClear();
+    useAppStore.setState({ decisionPersistenceEnabled: false });
+    setData(rowsFor());
+    useAppStore.getState().setCsvData({ ...useAppStore.getState().csvData, sheetUrl: "https://docs.google.com/spreadsheets/d/fixture" });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    render(<WeeklyReviewScreen locale={locale} />);
+    fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Refresh connected sheet" : "연결한 시트로 이번 주 갱신" }));
+    await waitFor(() => expect(sheetRefresh).toHaveBeenCalledOnce());
+  });
   beforeEach(() => {
     useAppStore.setState({ csvData: {}, decisionRecords: [], findingsByGroup: {} });
     window.localStorage.clear();
@@ -59,7 +80,7 @@ describe("WeeklyReviewScreen", () => {
     setData(rowsFor().filter(row => row.date >= "2026-08-31"));
     render(<WeeklyReviewScreen />);
     await waitFor(() => expect(window.gtag.mock.calls.find(call => call[1] === "weekly_review_blocked")?.[2]).toMatchObject({
-      tool_id: "weekly-review", state: "no_previous_data", locale: "ko", source: "csv",
+      tool_id: "weekly-review", state: "no_previous_data", locale: "ko", interaction_source: "csv",
     }));
     expect(window.gtag.mock.calls.some(call => call[1] === "weekly_review_completed")).toBe(false);
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("UAC A");

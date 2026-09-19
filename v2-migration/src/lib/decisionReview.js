@@ -107,6 +107,9 @@ export const DECISION_REVIEW_COLUMNS = [
   "record_id",
 ];
 
+const MAX_DECISION_EPISODES = 12;
+const ACTUAL_TEXT_LIMIT = 500;
+const LEARNING_TEXT_LIMIT = 1000;
 const FIELD_LIMITS = Object.freeze({
   id: 120,
   toolId: 32,
@@ -117,16 +120,16 @@ const FIELD_LIMITS = Object.freeze({
   hypothesis: 500,
   metric: 120,
   guardrails: 400,
-  // 에피소드는 자유 텍스트를 퍼센트 인코딩해 담는다 — 한글 한 글자가 9자로
-  // 늘어나므로(UTF-8 3바이트 × %XX) 한도를 넉넉히 잡는다.
-  episodes: 6000,
+  // UTF-16 한 단위당 최대 9자 인코딩 + 시각(40자)·구분자를 모두 수용한다.
+  // 임의 6000자 절단은 한글 기록의 최신 관측과 % 시퀀스를 잘라 버렸다.
+  episodes: MAX_DECISION_EPISODES * ((ACTUAL_TEXT_LIMIT + LEARNING_TEXT_LIMIT + 40) * 9 + 3),
   baseline: 160,
   comparisonScope: 5000,
   datasetSnapshot: 1200,
   reviewQuestion: 500,
   sourcePeriod: 160,
-  actual: 500,
-  learning: 1000,
+  actual: ACTUAL_TEXT_LIMIT,
+  learning: LEARNING_TEXT_LIMIT,
 });
 
 const FORECAST_TARGETS = new Set(["Traffic", "Regs", "React", "Purchasers", "Revenue"]);
@@ -382,7 +385,6 @@ const EPISODE_LIST_SEPARATOR = ";";
 const EPISODE_PART_SEPARATOR = "|";
 // 주간 검토 기준 한 분기. 넘으면 오래된 것부터 버린다 — 최신 관측이 화면에
 // 보이는 값이므로 뒤를 남긴다.
-const MAX_DECISION_EPISODES = 12;
 
 function encodeEpisodePart(value, limit) {
   const text = asText(value, limit);

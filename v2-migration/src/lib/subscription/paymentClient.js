@@ -20,12 +20,15 @@ export async function refreshPaymentAccess(previous = null) {
     if (!response.ok) throw new Error("UNAVAILABLE");
     const { entitlement } = await response.json();
     const current = useAppStore.getState().entitlement;
+    // The payment-cookie endpoint does not own account trials/session access.
+    if (current?.account && !current.payment && hasPaidAccess(current) && !entitlement) return current;
     if (current?.payment && current.verifiedAt >= startedAt) return current;
     rememberPaymentAccess(entitlement);
     if (!entitlement) { try { sessionStorage.setItem(emptyCheckKey, String(Date.now())); } catch { /* Optional. */ } }
     return entitlement;
   } catch {
     const current = useAppStore.getState().entitlement;
+    if (current?.account && !current.payment && hasPaidAccess(current)) return current;
     if (current?.payment && current.verifiedAt >= startedAt) return current;
     const cached = previous?.payment && hasPaidAccess(previous) ? { ...previous, offline: true } : null;
     rememberPaymentAccess(cached);

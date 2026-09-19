@@ -12,51 +12,51 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
-| `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `source`, `state=depth_25\|50\|75\|100`, `locale` |
-| `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `source`, `rank`(세션 내 몇 번째), `locale` |
+| `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
+| `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
 | `blog_cta_viewed` | 글·용어의 행동 패널이 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|blog_bridge`, `locale` |
 | `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_answer\|article_mid\|article_post\|blog_bridge`, `locale` |
-| `blog_bridge_dismissed` | 블로그 도치 브리지를 닫음 | `content_slug`, `content_type`, `source`, `placement=blog_bridge`, `state=session\|permanent`, `locale` |
-| `tool_view` | 분석 도구 URL 진입 | `tool_id`, `source=route`, `locale` |
-| `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `source=landing`, `placement=hero|weekly_loop`, `locale` |
-| `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
+| `blog_bridge_dismissed` | 블로그 도치 브리지를 닫음 | `content_slug`, `content_type`, `interaction_source`, `placement=blog_bridge`, `state=session\|permanent`, `locale` |
+| `tool_view` | 분석 도구 URL 진입 | `tool_id`, `interaction_source=route`, `locale` |
+| `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
 | `source_survey_dismissed` | 답하지 않고 닫음 | `placement=source_survey`, `state=skipped\|closed`, `locale` |
 | `journey_page_viewed` | 최초 및 SPA 경로 변경 | `scope=home|blog|glossary|guide|tool|start|dochi|review|other`, `journey_entry`, `locale` |
-| `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택 | `source`, `placement`, `locale` |
+| `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택 | `interaction_source`, `placement`, `locale` |
 | `dochi_mapping_confirmed` | 도치 컬럼 확인을 마치고 계산 작업대로 진행 | `tool_id=start-gate`, `placement=dochi_mapping`, `locale` |
 | `weekly_review_viewed` | 리뷰 화면 진입(기기 복원 후), 재진입도 기록 | `tool_id=weekly-review`, `visit_type=with_history|without_history`, `locale` |
-| `weekly_review_completed` | 기간 비교 결과 계산 완료 | `source`, `result_state`, `data_continuity=saved_snapshot|uploaded_periods`, `elapsed_bucket`, `locale` |
-| `weekly_review_result_viewed` | 계산된 리뷰의 결론이 실제 화면에 노출 | `source`, `result_state`, `locale` |
-| `weekly_review_saved` / `weekly_review_save_failed` | 다음 비교에 쓸 두 기간 집계의 기기 저장 성공/실패 | `tool_id=weekly-review`, `source`, `state=device`, `locale` |
-| `weekly_project_saved` / `weekly_project_save_failed` | 프로젝트 설정 저장 성공/실패 | `tool_id=weekly-review`, `source`, `locale` |
-| `weekly_decision_saved` | 리뷰에서 사용자가 이번 결정을 저장 | `tool_id=weekly-review`, `source`, `locale` |
+| `weekly_review_completed` | 기간 비교 결과 계산 완료 | `interaction_source`, `result_state`, `data_continuity=saved_snapshot|uploaded_periods`, `elapsed_bucket`, `locale` |
+| `weekly_review_result_viewed` | 계산된 리뷰의 결론이 실제 화면에 노출 | `interaction_source`, `result_state`, `locale` |
+| `weekly_review_saved` / `weekly_review_save_failed` | 다음 비교에 쓸 두 기간 집계의 기기 저장 성공/실패 | `tool_id=weekly-review`, `interaction_source`, `state=device`, `locale` |
+| `weekly_project_saved` / `weekly_project_save_failed` | 프로젝트 설정 저장 성공/실패 | `tool_id=weekly-review`, `interaction_source`, `locale` |
+| `weekly_decision_saved` | 리뷰에서 사용자가 이번 결정을 저장 | `tool_id=weekly-review`, `interaction_source`, `locale` |
 | `project_review_saved` / `project_review_save_failed` | 리뷰 저장 창에서 프로젝트 저장이 실제로 확정/실패 | `tool_id`, `state=new_project\|existing_project`(성공) 또는 사유 코드(실패), `result_state=review\|report\|review_report`, `locale` |
-| `weekly_review_blocked` | 업로드 후 기간·필드 조건 때문에 리뷰 생성 불가 | `state`(사유 코드), `source`, `locale` |
+| `weekly_review_blocked` | 업로드 후 기간·필드 조건 때문에 리뷰 생성 불가 | `state`(사유 코드), `interaction_source`, `locale` |
 | `review_history_opened` | 리뷰 상단의 저장된 결정 바로가기 선택 | `placement=review_header`, `locale` |
-| `weekly_review_export` | 보고서 복사 완료 또는 인쇄 요청 | `download_type`, `state=completed|requested`, `source`, `locale` |
-| `calculator_entry_clicked` | 홈 또는 `/start`에서 마케팅 지표 계산기 선택 | `source=landing|start`, `placement`, `locale` |
-| `diagnose_entry_clicked` | 홈 또는 `/start`에서 성과 문제 진단 선택 | `source=landing|start`, `placement`, `locale` |
-| `data_import_start` | CSV/XLSX 선택 또는 Google Sheets 불러오기 시작 | `tool_id`, `source`, `locale` |
+| `weekly_review_export` | 보고서 복사 완료 또는 인쇄 요청 | `download_type`, `state=completed|requested`, `interaction_source`, `locale` |
+| `calculator_entry_clicked` | 홈 또는 `/start`에서 마케팅 지표 계산기 선택 | `interaction_source=landing|start`, `placement`, `locale` |
+| `diagnose_entry_clicked` | 홈 또는 `/start`에서 성과 문제 진단 선택 | `interaction_source=landing|start`, `placement`, `locale` |
+| `data_import_start` | CSV/XLSX 선택 또는 Google Sheets 불러오기 시작 | `tool_id`, `interaction_source`, `locale` |
 | `data_import_success` | CSV/XLSX/Sheets 파싱 성공 | `tool_id`, `row_count`, `column_count`, `mapped_count`, `locale` |
-| `data_import_failed` | 가져오기 실패 또는 빈 데이터 확인 | `tool_id`, `source`, `state`, `locale` |
+| `data_import_failed` | 가져오기 실패 또는 빈 데이터 확인 | `tool_id`, `interaction_source`, `state`, `locale` |
 | `data_profile_completed` | 자동 매핑 후보 생성 | `tool_id`, `conflict_count`, `locale` |
 | `mapping_confirmed` | 사용자가 매핑 확정 | `tool_id`, `confidence_bucket`, `missing_required_count`, `locale` |
 | `analysis_started` | 분석 실행 클릭 또는 자동 분석 가능 상태 진입 | `tool_id`, `analysis_type`, `row_count`, `locale` |
-| `analysis_blocked` | 필수 매핑·데이터 조건 때문에 분석할 수 없는 상태 진입 | `tool_id`, `source`, `state`, 집계 개수, `locale` |
+| `analysis_blocked` | 필수 매핑·데이터 조건 때문에 분석할 수 없는 상태 진입 | `tool_id`, `interaction_source`, `state`, 집계 개수, `locale` |
 | `analysis_completed` | 결과 또는 정직한 추정 불가 상태 생성 | `tool_id`, `analysis_type`, `result_state`, `locale` |
 | `dashboard_tab_view` | 대시보드 탭 선택 | `tool_id`, `tab_name` |
 | `result_downloaded` | 결과 CSV/텍스트 다운로드 | `tool_id`, `download_type` |
-| `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 | `tool_id`, `source=landing|csv_guide|start`, `placement`, `locale` |
-| `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
-| `analysis_history_viewed` | 이전 분석 요약이 실제 viewport에 노출 | `tool_id`, `source=local_history`, `result_state=previous_available`, `data_continuity=summary_only`, `locale` |
-| `decision_review_opened` | 결과에서 다음 검토 약속 열기 | `tool_id`, `source`, `placement`, `locale` |
-| `decision_record_added` | 결정 요약 저장 | `tool_id`, `source=decision_review`, `placement`, `locale` |
-| `decision_inbox_viewed` | 펼친 결정 이력이 실제 화면에 노출(접힌 상태 제외) | `source=weekly_review`, `result_state=empty|due|active`, `locale` |
-| `decision_review_completed` | 보류 결정에 실제 결과 또는 배운 점을 처음 기록 | `tool_id`, `source=weekly_review`, `result_state=reviewed`, `locale` |
-| `forecast_actual_match_viewed` | 5-18 새 CSV에서 저장된 예측과 같은 주차·타깃·플랫폼 실제값 발견 | `tool_id=5-18`, `source=forecast_review`, `result_state=matched`, `locale` |
-| `forecast_actual_applied` | 사용자가 제안된 실제값을 결정 기록에 반영 | `tool_id=5-18`, `source=forecast_review`, `result_state=reviewed`, `locale` |
+| `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 | `tool_id`, `interaction_source=landing|csv_guide|start`, `placement`, `locale` |
+| `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `interaction_source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
+| `analysis_history_viewed` | 이전 분석 요약이 실제 viewport에 노출 | `tool_id`, `interaction_source=local_history`, `result_state=previous_available`, `data_continuity=summary_only`, `locale` |
+| `decision_review_opened` | 결과에서 다음 검토 약속 열기 | `tool_id`, `interaction_source`, `placement`, `locale` |
+| `decision_record_added` | 결정 요약 저장 | `tool_id`, `interaction_source=decision_review`, `placement`, `locale` |
+| `decision_inbox_viewed` | 펼친 결정 이력이 실제 화면에 노출(접힌 상태 제외) | `interaction_source=weekly_review`, `result_state=empty|due|active`, `locale` |
+| `decision_review_completed` | 보류 결정에 실제 결과 또는 배운 점을 처음 기록 | `tool_id`, `interaction_source=weekly_review`, `result_state=reviewed`, `locale` |
+| `forecast_actual_match_viewed` | 5-18 새 CSV에서 저장된 예측과 같은 주차·타깃·플랫폼 실제값 발견 | `tool_id=5-18`, `interaction_source=forecast_review`, `result_state=matched`, `locale` |
+| `forecast_actual_applied` | 사용자가 제안된 실제값을 결정 기록에 반영 | `tool_id=5-18`, `interaction_source=forecast_review`, `result_state=reviewed`, `locale` |
 
 `tool_id`는 내부 라우트 ID만 사용한다. 5-18의 독립 검색 진입 경로
 (`5-18-trend/cannibal/mmm/forecast`)는 후속 이벤트와 같은 퍼널로 연결되도록
@@ -76,7 +76,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - `result_state`
 - `tab_name`
 - `download_type`
-- `source`
+- `interaction_source`
 - `confidence_bucket`
 - `placement`
 - `locale`
@@ -100,7 +100,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 ### 관리자 설정과 코드 검증의 경계
 
-`journey_entry`, `visit_type`, `placement`, `result_state`, `data_continuity`, `tool_id`, `source`, `locale`를 이벤트 범위 맞춤 측정기준으로 확인한다. GA 탐색은 비연속 단계(중간 페이지 이동 허용), 실데이터 `source != demo`, 코드 완료와 화면 노출을 분리한 퍼널로 구성한다. 저장 핵심 이벤트는 사용자가 저장한 두 이벤트만 후보이며 자동 집계 저장이나 단순 방문은 포함하지 않는다.
+`journey_entry`, `visit_type`, `placement`, `result_state`, `data_continuity`, `tool_id`, `interaction_source`, `locale`를 이벤트 범위 맞춤 측정기준으로 확인한다. GA 탐색은 비연속 단계(중간 페이지 이동 허용), 실데이터 `interaction_source != demo`, 코드 완료와 화면 노출을 분리한 퍼널로 구성한다. 저장 핵심 이벤트는 사용자가 저장한 두 이벤트만 후보이며 자동 집계 저장이나 단순 방문은 포함하지 않는다.
 
 이벤트 호출·개인 데이터 미포함은 테스트로 검증한다. GA 관리 화면의 실제 수신, 맞춤 측정기준 등록, Enhanced Measurement/GTM 중복 여부는 별도 실측 대상이다. 관리 설정을 열지 못했다면 코드 테스트 통과만으로 수신 완료라고 보고하지 않는다.
 
@@ -131,3 +131,12 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 위 이벤트는 **노출·제출·이탈 횟수**만 세고, 답변 내용은 우리 DB(`gop_source_survey`)에만
 있다. "몇 명이 답했나"는 GA4로, "뭐라고 답했나"는 `scripts/source-survey-report.mjs`로 본다.
 둘을 합산하지 말 것 — GA4는 광고 차단기가 있는 방문자를 못 세므로 제출 수가 DB보다 적다.
+
+## 2026-09-19 감사 및 주요 이벤트
+
+- `purchase`는 이미 GA 속성 542428327의 주요 이벤트였다. `project_review_saved`를 주요 이벤트로 추가했으며 임의 금전 가치는 설정하지 않았다. 두 이벤트 모두 확인 당시 최근 28일 활성 스트림 데이터는 없었다. 주요 이벤트 등록과 실제 수신은 별개다.
+- 이벤트 범위 맞춤 측정기준 `interaction_source`, `analysis_type`, `state`를 관리자 화면에 등록하고 저장을 확인했다. 기존 `source` 정의는 과거 기록을 위해 유지한다.
+- GA 전송 직전에 내부 `source`를 `interaction_source`로 변환한다. 호출부와 내부 퍼널 판별은 기존 `source` 계약을 유지한다. 실제 세션 소스에 `blog / (not set)`, `route / (not set)`, `subscription_page / (not set)`가 나타나 유입 출처와 내부 위치를 분리했다. 과거 기록은 이 수정으로 소급 복구되지 않는다.
+- 운영 스트림의 브라우저 기록 기반 페이지 조회는 꺼져 있었다. 공개 GTM 컨테이너의 태그·규칙은 빈 배열이었다. 확인 시점에는 이 두 경로의 페이지뷰 중복 설정은 발견하지 못했다.
+- 구매는 서버 확인 뒤 브라우저에서 전송하므로 광고 차단·동의 상태·승인 후 탭 종료에 따라 누락될 수 있다. GA를 결제 원장으로 쓰지 않는다. 웹훅만으로 승인 완료된 거래의 구매 이벤트를 서버에서 보내는 경로는 현재 없다.
+- 새 코드 배포 뒤 GA DebugView/실시간에서 실제 저장 1회와 새 거래번호의 구매 1회를 대조해야 최종 수신 검증이다. 기존 날짜의 수신 없음만으로 코드가 실패했다고 판단하지 않는다.

@@ -51,10 +51,14 @@ export async function listProjects() {
 export async function readProject(id = DEFAULT_PROJECT_ID) {
   return projectTransaction("readonly", meta => requestResult(meta.get(projectMetaKey(id))));
 }
-export async function updateProject(id, patch, shouldSave = () => true, entitlement = null) {
+export async function updateProject(id, patch, shouldSave = () => true, entitlement = null, { initializeEmpty = false } = {}) {
   return projectTransaction("readwrite", async meta => {
     const key = projectMetaKey(id);
-    const existing = await requestResult(meta.get(key));
+    let existing = await requestResult(meta.get(key));
+    if (!existing && initializeEmpty && id === DEFAULT_PROJECT_ID && hasPaidAccess(entitlement)) {
+      const projects = (await requestResult(meta.getAll())).filter(record => record.key === `project:${record.id}`);
+      if (!projects.length) existing = migrateLegacyProject(null, [], [], Date.now());
+    }
     if (!shouldSave() || !existing) return null;
     const changes = typeof patch === "function" ? patch(existing) : patch;
     // Expiry must not prevent reading or deleting a user's own saved records.

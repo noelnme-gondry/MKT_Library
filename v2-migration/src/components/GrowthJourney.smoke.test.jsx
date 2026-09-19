@@ -73,7 +73,7 @@ describe("home → result → weekly review", () => {
     expect(copied).toContain(getSampleJourney(data).channel);
     expect(copied).toContain(en ? "Sample data" : "샘플 데이터");
     expect(copied).toContain(en ? "not a significance" : "통계적 유의성");
-    expect(window.gtag).toHaveBeenCalledWith("event", "weekly_review_export", expect.objectContaining({ source: "demo", placement: "verdict_summary", state: "completed" }));
+    expect(window.gtag).toHaveBeenCalledWith("event", "weekly_review_export", expect.objectContaining({ interaction_source: "demo", placement: "verdict_summary", state: "completed" }));
     expect(await screen.findAllByText(en ? "Copied. Paste it into your team workspace." : "복사했습니다. 팀 작업 공간에 붙여넣으세요.")).toHaveLength(1);
     // 결과 화면의 "다음 주 CSV" 접기는 없앴다 — 이번 분석을 보러 온 사람에게
     // 다음 기간 파일을 지금 묻는 이유를 설명할 수 없다. 새 기간은 다시 들어와 올린다.

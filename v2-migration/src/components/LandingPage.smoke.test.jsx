@@ -109,7 +109,7 @@ describe("LandingPage render smoke", () => {
     clickWithoutNavigation(reopen);
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_continue_tool_clicked", {
       tool_id: "5-3",
-      source: "landing",
+      interaction_source: "landing",
       placement: "continue_panel",
       locale: "ko",
     });
@@ -126,7 +126,7 @@ describe("LandingPage render smoke", () => {
     expect(useAppStore.getState().isGroupAnalyzed("dochi-result")).toBe(true);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-2",
-      source: "landing",
+      interaction_source: "landing",
       placement: "hero_example",
       locale: "ko",
     });
@@ -141,7 +141,7 @@ describe("LandingPage render smoke", () => {
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("x.csv");
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_tool_pick", {
       tool_id: "5-2",
-      source: "landing",
+      interaction_source: "landing",
       placement: "question_card",
       locale: "ko",
     });
@@ -156,19 +156,19 @@ describe("LandingPage render smoke", () => {
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
       journey_entry: "home",
-      source: "landing",
+      interaction_source: "landing",
       placement: "hero",
       locale: "ko",
     });
     expect(window.gtag).toHaveBeenCalledWith("event", "calculator_entry_clicked", {
       journey_entry: "home",
-      source: "landing",
+      interaction_source: "landing",
       placement: "hero",
       locale: "ko",
     });
     expect(window.gtag).toHaveBeenCalledWith("event", "diagnose_entry_clicked", {
       journey_entry: "home",
-      source: "landing",
+      interaction_source: "landing",
       placement: "hero",
       locale: "ko",
     });

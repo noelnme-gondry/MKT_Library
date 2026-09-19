@@ -15,7 +15,7 @@ import { downloadJson } from "@/utils/download";
  * 바꾸고 싶을 때만 이 화면에 온다.
  *
  * 규칙은 이 기기에만 저장된다(IndexedDB). 서버로 보내지 않는다(§2.2).
- * CSV로 컬럼을 불러올 때도 **헤더 한 줄만** 읽고 데이터 행은 읽지 않는다.
+ * CSV에서 헤더를 추출하며 원본 파일은 서버로 보내지 않는다.
  */
 const COPY = {
   ko: {
@@ -29,7 +29,8 @@ const COPY = {
     empty: "아직 저장한 매핑이 없습니다.",
     addTitle: "매핑 추가",
     fromCsv: "CSV에서 컬럼 불러오기",
-    fromCsvHint: "헤더 한 줄만 읽습니다. 데이터 행은 읽지도, 저장하지도 않습니다.",
+    fromCsvHint: "CSV에서 컬럼 이름을 추출합니다. 원본 파일은 서버로 보내지 않으며 매핑 규칙만 저장합니다.",
+    loadFailed: "저장한 매핑을 불러오지 못했습니다. 저장된 규칙이 없는지는 확인할 수 없습니다.",
     manual: "직접 입력",
     sourcePlaceholder: "예: mkt_country",
     choose: "항목 선택",
@@ -54,7 +55,8 @@ const COPY = {
     empty: "No saved mappings yet.",
     addTitle: "Add a mapping",
     fromCsv: "Load columns from a CSV",
-    fromCsvHint: "Only the header row is read. Data rows are never read or stored.",
+    fromCsvHint: "Extract column names from the CSV. The file is never sent to a server; only mapping rules are saved.",
+    loadFailed: "Could not load saved mappings. We cannot tell whether any rules are stored.",
     manual: "Enter manually",
     sourcePlaceholder: "e.g. mkt_country",
     choose: "Choose a field",
@@ -106,6 +108,7 @@ export default function UserMappingSettings({ locale = "ko" }) {
   const t = COPY[locale === "en" ? "en" : "ko"];
   const en = locale === "en";
   const [records, setRecords] = useState([]);
+  const [loadState, setLoadState] = useState("loading");
   const enabled = useSyncExternalStore(subscribeEnabled, readEnabledSnapshot, serverEnabledSnapshot);
   const [message, setMessage] = useState("");
   const [headers, setHeaders] = useState([]);
@@ -117,23 +120,24 @@ export default function UserMappingSettings({ locale = "ko" }) {
     .map((field) => ({ key: field.key, label: en ? (field.labelEn || field.label) : field.label, family: field.family }))
     .sort((left, right) => left.family.localeCompare(right.family) || left.label.localeCompare(right.label)), [en]);
 
-  const reload = () => listMappingMemory().then(setRecords).catch(() => setRecords([]));
+  const reload = () => listMappingMemory().then(items => { setRecords(items); setLoadState("ready"); }).catch(() => setLoadState("failed"));
   // setState는 외부 저장소 콜백에서만 부른다 — 이펙트 본문에서 동기로 부르면
   // 연쇄 렌더가 되고 lint가 막는다.
   useEffect(() => { reload(); }, []);
 
   const save = async (sourceColumn, canonicalKey) => {
     const name = normalize(sourceColumn);
-    if (!name || !CANONICAL_FIELDS[canonicalKey]) return;
+    if (!name || !CANONICAL_FIELDS[canonicalKey]) return false;
     try {
       await putMappingMemory(buildUserRule(name, canonicalKey));
       await reload();
-    } catch { setMessage(t.storeFailed); }
+      return true;
+    } catch { setMessage(t.storeFailed); return false; }
   };
 
   const readHeaders = (file) => {
     if (!file) return;
-    // 헤더 한 줄만 파싱한다(`preview: 1`). 데이터 행은 메모리에도 올리지 않는다.
+    // preview로 파싱 결과를 제한한다. 파일 리더는 헤더 뒤 바이트도 포함한 청크를 읽을 수 있다.
     Papa.parse(file, {
       header: false, preview: 1, skipEmptyLines: true,
       complete: (result) => {
@@ -158,9 +162,10 @@ export default function UserMappingSettings({ locale = "ko" }) {
       </label>
       <p className="account-mapping__hint">{t.enableHint}</p>
       {message && <p className="account-mapping__hint" role="status">{message}</p>}
+      {loadState === "failed" && <p role="alert">{t.loadFailed}</p>}
 
       {records.length === 0
-        ? <p className="account-mapping__empty">{t.empty}</p>
+        ? loadState === "ready" && <p className="account-mapping__empty">{t.empty}</p>
         : <table className="account-mapping__table">
           <thead><tr><th scope="col">{t.sourceHead}</th><th scope="col">{t.canonicalHead}</th><th scope="col"><span className="sr-only">{t.remove}</span></th></tr></thead>
           <tbody>
@@ -198,7 +203,7 @@ export default function UserMappingSettings({ locale = "ko" }) {
             <tr key={header}>
               <th scope="row">{header}</th>
               <td>
-                <select aria-label={`${header} → ${t.canonicalHead}`} defaultValue="" onChange={(event) => { if (event.target.value) { save(header, event.target.value); setHeaders((list) => list.filter((item) => item !== header)); } }}>
+                <select aria-label={`${header} → ${t.canonicalHead}`} defaultValue="" onChange={async (event) => { if (event.target.value && await save(header, event.target.value)) setHeaders((list) => list.filter((item) => item !== header)); }}>
                   <option value="">{t.choose}</option>
                   {fieldOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                 </select>
@@ -222,7 +227,7 @@ export default function UserMappingSettings({ locale = "ko" }) {
         </label>
         <button type="button" className="btn primary" disabled={!draftSource.trim() || !draftKey} onClick={() => {
           if (records.some((record) => record.normalizedColumnName === normalize(draftSource))) setMessage(t.duplicate);
-          save(draftSource, draftKey).then(() => { setDraftSource(""); setDraftKey(""); });
+          save(draftSource, draftKey).then(saved => { if (saved) { setDraftSource(""); setDraftKey(""); } });
         }}>{t.add}</button>
       </div>
 

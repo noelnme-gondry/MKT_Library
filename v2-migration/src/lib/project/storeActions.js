@@ -3,11 +3,12 @@ import { serializeProject, headerFingerprint } from "./serializeProject";
 import { createProjectRecord, initializeProjects, listProjects, readProject, updateProject, deleteProject, expireProjects } from "./repository";
 import { DEFAULT_PROJECT_ID } from "./projectLimits";
 import { canCreateProject, hasPaidAccess } from "@/lib/subscription/entitlement";
+import { confirmProjectExit } from "./reviewDraftGuard";
 
 export function projectStoreActions(set, get, emptyData) {
   return {
     activeProjectId: DEFAULT_PROJECT_ID, projects: [], projectsReady: false, projectSwitching: false,
-    projectError: null, entitlement: null, upgradeReason: null,
+    projectSwitchCancelled: false, projectError: null, entitlement: null, upgradeReason: null,
     setEntitlement: entitlement => set({ entitlement }),
     restoreProjectConfiguration: async project => {
       if (!project || get().activeProjectId !== project.id) return;
@@ -35,8 +36,10 @@ export function projectStoreActions(set, get, emptyData) {
       try { const projects = await listProjects(); set({ projects }); return projects; }
       catch { set({ projectError: "storage_unavailable" }); return []; }
     },
-    switchProject: async (id, { saveCurrent = true } = {}) => {
+    switchProject: async (id, { saveCurrent = true, confirmExit = true } = {}) => {
       if (get().projectSwitching || !get().projectsReady) return false;
+      set({ projectSwitchCancelled: false });
+      if (confirmExit && id !== get().activeProjectId && !confirmProjectExit(get())) { set({ projectSwitchCancelled: true }); return false; }
       set({ projectSwitching: true });
       try {
         const state = get();
@@ -56,10 +59,11 @@ export function projectStoreActions(set, get, emptyData) {
       const projects = await listProjects();
       if (!canCreateProject(projects.length, get().entitlement)) { set({ upgradeReason: "project_limit" }); return { ok: false, reason: "project_limit" }; }
       const id = projects.length === 0 ? DEFAULT_PROJECT_ID : crypto.randomUUID();
+      if (id !== get().activeProjectId && !confirmProjectExit(get())) return { ok: false, reason: "cancelled" };
       try { await createProjectRecord(id, name, get().entitlement); }
       catch (error) { if (error.message === "PROJECT_LIMIT") return { ok: false, reason: "project_limit" }; throw error; }
       await get().refreshProjects();
-      const opened = await get().switchProject(id, { saveCurrent: id !== get().activeProjectId });
+      const opened = await get().switchProject(id, { saveCurrent: id !== get().activeProjectId, confirmExit: false });
       return opened ? { ok: true, id } : { ok: false, reason: "storage_unavailable" };
     },
     deleteProject: async id => {

@@ -1,4 +1,5 @@
 "use client";
+import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 
 import { canTrackDecisionReview } from "@/lib/dataOrigin";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -329,6 +330,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const storedRecords = useAppStore((state) => state.decisionRecords);
   const [recordDrafts, setRecordDrafts] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
+  useReviewDraftGuard(Object.keys(recordDrafts).length > 0);
   const records = useMemo(() => storedRecords.map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts]);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
@@ -337,8 +339,8 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const decisionSessionRecordIds = useAppStore((state) => state.decisionSessionRecordIds);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
-  const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
-  const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
+  const importDecisionRecords = useAppStore((state) => state.commitImportedDecisionRecords);
+  const updateDecisionRecord = useAppStore((state) => state.commitDecisionRecord);
   const removeDecisionRecord = useAppStore((state) => state.removeDecisionRecord);
   const clearDecisionRecords = useAppStore((state) => state.clearDecisionRecords);
   const todayKey = toLocalDecisionDate();
@@ -411,7 +413,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
       setMessage(t.importError);
       return;
     }
-    setPendingAction(() => () => { importDecisionRecords(imported); setMessage(t.imported(imported.length)); });
+    setPendingAction(() => async () => { await importDecisionRecords(imported); setMessage(t.imported(imported.length)); });
   };
 
   const updateRecord = (id, key, value) => setRecordDrafts(current => ({ ...current, [id]: { ...current[id], [key]: value } }));
@@ -419,7 +421,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const storedRecordOf = (id) => storedRecords.find((item) => item.id === id) || {};
   const completeReview = (record, actual = record.actual, source = "weekly_review") => {
     if (!record || !record.reviewDate || record.reviewDate > todayKey || !String(actual || "").trim()) return;
-    setPendingAction(() => () => {
+    setPendingAction(() => async () => {
     // 관측은 쌓는다(v11). 초안에 적힌 `배운 점`을 이 관측에 함께 실어 보내고,
     // 초안의 나머지 필드(검토일 등)는 그대로 패치에 남긴다.
     const draft = recordDrafts[record.id] || {};
@@ -429,7 +431,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
     });
     if (!patch) return;
     const { actual: _draftActual, learning: _draftLearning, ...restDraft } = draft;
-    updateDecisionRecord(record.id, { ...restDraft, ...patch, status: "reviewed" });
+    await updateDecisionRecord(record.id, { ...restDraft, ...patch, status: "reviewed" });
     if (canTrackDecisionReview(record, useAppStore.getState().csvGroups[groupForRoute(record.toolId)], source === "comparable_data")) trackProductEvent("decision_review_completed", {
       tool_id: record.toolId,
       source,
@@ -731,7 +733,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
-              {recordDrafts[record.id] && <button type="button" className="btn small" onClick={() => setPendingAction(() => () => {
+              {recordDrafts[record.id] && <button type="button" className="btn small" onClick={() => setPendingAction(() => async () => {
                 // 검토 전이면 초안은 아직 작성 중인 값이라 그대로 덮어쓰는 게 맞다.
                 // 검토를 마친 뒤 `실제 결과`를 고치는 것은 정정인지 새 관측인지
                 // 화면이 알 수 없으므로 **쌓는다** — 덮어쓰면 앞선 관측이 사라진다(v11).
@@ -743,9 +745,9 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
                   : null;
                 if (patch) {
                   const { actual: _a, learning: _l, ...rest } = draft;
-                  updateDecisionRecord(record.id, { ...rest, ...patch });
+                  await updateDecisionRecord(record.id, { ...rest, ...patch });
                 } else {
-                  updateDecisionRecord(record.id, draft);
+                  await updateDecisionRecord(record.id, draft);
                 }
                 setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
               })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}

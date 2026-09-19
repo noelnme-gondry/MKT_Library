@@ -419,10 +419,10 @@ describe("MarketingResponse render smoke", () => {
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
     expect(eventCalls.filter(([, name]) => name === "data_import_start")).toHaveLength(4);
     expect(eventCalls.filter(([, name]) => name === "data_import_success")).toEqual([
-      ["event", "data_import_success", expect.objectContaining({ tool_id: "5-18", source: "csv", row_count: 1, column_count: 2 })],
+      ["event", "data_import_success", expect.objectContaining({ tool_id: "5-18", interaction_source: "csv", row_count: 1, column_count: 2 })],
     ]);
     expect(eventCalls.filter(([, name]) => name === "data_import_failed")).toEqual([
-      ["event", "data_import_failed", expect.objectContaining({ tool_id: "5-18", source: "csv", state: "parse_error" })],
+      ["event", "data_import_failed", expect.objectContaining({ tool_id: "5-18", interaction_source: "csv", state: "parse_error" })],
     ]);
     expect(JSON.stringify(eventCalls)).not.toMatch(/a\.csv|b\.csv|broken\.csv|late\.csv|Regs|g_spend/);
     delete window.gtag;
@@ -1804,7 +1804,7 @@ describe("MarketingResponse render smoke", () => {
 
     expect(useAppStore.getState().decisionRecords[0].actual).toContain("명/주");
     expect(window.gtag).toHaveBeenCalledWith("event", "forecast_actual_applied", expect.objectContaining({
-      tool_id: "5-18", source: "forecast_review", result_state: "reviewed", locale: "ko",
+      tool_id: "5-18", interaction_source: "forecast_review", result_state: "reviewed", locale: "ko",
     }));
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain(String(latest.Regs));
   });

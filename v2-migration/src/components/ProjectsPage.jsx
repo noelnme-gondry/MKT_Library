@@ -1,4 +1,6 @@
 "use client";
+import ProjectCreateGate from "./ProjectCreateGate";
+import { refreshAccount } from "@/lib/account/accountClient";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -45,6 +47,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
   const switching = useAppStore(state => state.projectSwitching);
   const entitlement = useAppStore(state => state.entitlement);
   const [name, setName] = useState("");
+  const [createGateOpen, setCreateGateOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [backup, setBackup] = useState(null);
@@ -62,18 +65,25 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
     finally { setBusy(false); }
   };
   const create = () => run(async () => {
+    const session = await refreshAccount();
+    if (!hasPaidAccess(useAppStore.getState().entitlement)) {
+      if (session.account?.trialStartedAt) return upgrade("project_limit");
+      setCreateGateOpen(true); return;
+    }
+    if (!name.trim()) { setMessage(en ? "Enter a project name." : "프로젝트 이름을 입력해 주세요."); return; }
     const result = await useAppStore.getState().createProject(name);
     if (result.reason === "project_limit") return upgrade("project_limit");
+    if (result.reason === "cancelled") return;
     if (!result.ok) throw new Error("PROJECT_CREATE_FAILED");
     if (onReview) onReview(); else router.push(en ? "/en/weekly-review" : "/weekly-review");
   });
   const open = (id, path = "/weekly-review") => run(async () => {
-    if (id !== activeId && !await useAppStore.getState().switchProject(id)) throw new Error("PROJECT_OPEN_FAILED");
+    if (id !== activeId && !await useAppStore.getState().switchProject(id)) { if (useAppStore.getState().projectSwitchCancelled) return; throw new Error("PROJECT_OPEN_FAILED"); }
     if (path === "/weekly-review" && onReview) return onReview();
     router.push(en ? `/en${path}` : path);
   });
   const restoreSetup = (project, item, currentPeriod) => run(async () => {
-    if (project.id !== activeId && !await useAppStore.getState().switchProject(project.id)) throw new Error("PROJECT_OPEN_FAILED");
+    if (project.id !== activeId && !await useAppStore.getState().switchProject(project.id)) { if (useAppStore.getState().projectSwitchCancelled) return; throw new Error("PROJECT_OPEN_FAILED"); }
     useAppStore.setState({ pendingSavedAnalysis: { projectId: project.id, item, currentPeriod } });
     const entry = toolIndexEntry(item.toolId, locale);
     if (entry) router.push(en ? `/en${entry.href}` : entry.href);
@@ -113,6 +123,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
     });
   };
   return <div className="projects-page">
+    {createGateOpen && <ProjectCreateGate locale={locale} open onClose={() => setCreateGateOpen(false)} onReady={() => { setCreateGateOpen(false); create(); }} />}
     {pendingRestore && <ReviewSaveDialog locale={locale} onConfirm={pendingRestore} onClose={() => setPendingRestore(null)} />}
     {!embedded && <header><h1>{en ? "My projects" : "내 프로젝트"}</h1><p>{en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다."}</p></header>}
     {!projects.length && <section className="project-empty"><h2>{en ? "Start with a review" : "리뷰부터 시작하세요"}</h2><p>{en ? "Analyzing needs no project. Create one here to keep reviews together, or just name it when you save your first decision." : "분석만 할 거면 프로젝트가 없어도 됩니다. 리뷰를 모아 두려면 아래에서 만들고, 아니면 첫 결정을 저장할 때 이름을 정해도 됩니다."}</p>{embedded ? <button className="btn primary" onClick={onReview}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</button> : <Link className="btn primary" href={en ? "/en/weekly-review" : "/weekly-review"}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</Link>}</section>}
@@ -157,7 +168,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
     </div>
     <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(!batch) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Reports contain the last explicitly saved review for each project, with its period and save date. Missing reports are not estimated." : "프로젝트마다 명시적으로 저장한 마지막 리뷰를 기간·저장일과 함께 모읍니다. 보고서가 없으면 추정해서 채우지 않습니다."}</p>
       {/* 접기를 걷어내면서 현재 프로젝트 값 채우기를 onToggle이 아니라 마운트에 건다. */}
-      <ProjectBrandingForm key={activeId} en={en} initial={active?.branding} disabled={!active || busy || switching || !ready} onLogo={loadLogo} onSave={branding => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })} />
+      <ProjectBrandingForm key={`${activeId}:${Boolean(active)}`} en={en} initial={active?.branding} disabled={!active || busy || switching || !ready} onLogo={loadLogo} onSave={branding => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })} />
     </section>
     {batch && hasPaidAccess(entitlement) && <section className="project-batch"><h2>{en ? "Saved weekly reports" : "저장된 주간 보고서"}</h2><button className="btn no-print" onClick={() => { if (requirePaidExport({ locale, format: "print" })) window.print(); }}>{en ? "Print / save PDF" : "인쇄 / PDF 저장"}</button>{projects.map(project => <article key={project.id}><h3>{project.name || (en ? "Existing records" : "기존 기록")}</h3>{project.branding?.logo && <Image unoptimized src={project.branding.logo} alt={project.branding.company || ""} width={120} height={60} />}<p>{project.branding?.company}</p><p>{project.report?.generatedAt || "—"}</p>{project.report?.text ? <WeeklyReportDocument text={project.report.text} /> : <p>{en ? "No saved report." : "저장된 보고서가 없습니다."}</p>}<p>{project.branding?.footer}</p></article>)}</section>}
     <ProjectStorageSummary locale={locale} refreshKey={projects} />
