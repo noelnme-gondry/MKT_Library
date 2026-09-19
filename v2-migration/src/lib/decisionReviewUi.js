@@ -14,3 +14,5 @@ export function requestDecisionReviewOpen(toolId, source = "external") {
   target.dispatchEvent(new EventCtor(DECISION_REVIEW_OPEN_EVENT, { detail: { source } }));
   return true;
 }
+
+export const PROJECT_REVIEW_TOOL_EVENT = "gop-project-review-tool";

@@ -12,6 +12,7 @@
  * 소유하므로 여기서 다시 만들지 않고 렌더러가 주입받는다.
  */
 
+import { formatReviewMetric } from "./workspaceEvidence";
 import { DECISION_OUTCOME } from "./decisionScore";
 
 /** 판정 → 화면·보고서 문구. `NO_EFFECT`를 "효과 없음"이라고 쓰지 않는다. */
@@ -52,6 +53,8 @@ function section(id, title, body) {
 export function buildReportDraft({
   locale = "ko",
   notes = [],
+  metrics = null,
+  currency = "KRW",
   project = {},
   period = null,
   previousPeriod = null,
@@ -78,6 +81,7 @@ export function buildReportDraft({
       outcome: assessment.outcome,
       significant: assessment.significant,
       baselineKnown: assessment.baselineKnown,
+      ...(metrics ? { previousValue: metrics.previous?.[kpiName], currentValue: metrics.current?.[kpiName], currency } : {}),
     }));
   } else {
     sections.push(section("performance", "성과", {
@@ -216,9 +220,13 @@ function localizeSection(item) {
         : "A change was observed, but its campaign-level breakdown is unavailable.";
   return { ...item, title: titles[item.id], text };
 }
+function absoluteMetricEvidence(item, locale) {
+  if (!Object.hasOwn(item, "currentValue")) return "";
+  return `${formatReviewMetric(item.previousValue, item.metric, item.currency, locale)} → ${formatReviewMetric(item.currentValue, item.metric, item.currency, locale)} · `;
+}
 function renderEnglishSection(item, fmt) {
   switch (item.id) {
-    case "performance": return item.unmeasured ? "The headline metric could not be measured." : `${item.metric} ${fmt.percent(item.deltaPct)}` + (item.baselineKnown ? "" : " (usual variation is unknown)");
+    case "performance": return item.unmeasured ? "The headline metric could not be measured." : `${item.metric} ${absoluteMetricEvidence(item, "en")}${fmt.percent(item.deltaPct)}` + (item.baselineKnown ? "" : " (usual variation is unknown)");
     case "what_changed": return item.text;
     case "why": return `${item.metric || "CPA"}-change contributions within the breakdown scope: efficiency ${fmt.percent(item.efficiency)}, result mix ${fmt.percent(item.mix)}. Arithmetic decomposition, not causal effects.`;
     case "last_decision": return `${item.action || "Last decision"} → ${item.label}` + (item.outcome === "NO_EFFECT" ? ". This does not establish no effect." : "");
@@ -232,7 +240,7 @@ function renderSection(item, fmt) {
   switch (item.id) {
     case "performance":
       if (item.unmeasured) return "핵심 지표를 잴 수 없었습니다.";
-      return `${item.metric ?? "핵심 지표"} ${fmt.percent(item.deltaPct)}`
+      return `${item.metric ?? "핵심 지표"} ${absoluteMetricEvidence(item, "ko")}${fmt.percent(item.deltaPct)}`
         + (item.baselineKnown ? "" : " (평소 변동 범위는 아직 모름)");
     case "what_changed":
       return item.text;

@@ -18,6 +18,7 @@ import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNot
 import AccountArchive from "@/components/AccountArchive";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import { decisionDataOrigin } from "@/lib/dataOrigin";
+import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import ProjectReviewLink from "@/components/ProjectReviewLink";
 
 function nextWeekDate() {
@@ -275,7 +276,7 @@ const COPY = {
   },
 };
 
-export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "", sourcePath = "", analyticsPlacement = "result_action_card", allowAutomaticComparison = true }) {
+export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "", analysisEvidence = null, sourcePath = "", analyticsPlacement = "result_action_card", allowAutomaticComparison = true }) {
   const t = COPY[locale] || COPY.ko;
   const instanceId = useId();
   const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
@@ -317,6 +318,9 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   }, [pathname, searchParams, sourcePath]);
   const [draft, setDraft] = useState(() => createDraft(decisionPrefill, draftDefaults));
   const [isDraftDirty, setIsDraftDirty] = useState(false);
+  const [draftBasis, setDraftBasis] = useState(null);
+  const evidenceSignature = JSON.stringify([serializeReviewEvidence(analysisEvidence), decisionPrefillKey, activeDataGroup, dashboardFilter, csvData?.currency]);
+  const hasChangedBasis = isDraftDirty && draftBasis && (draftBasis.signature !== evidenceSignature || draftBasis.data !== csvData?.canonicalData);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [savedDecision, setSavedDecision] = useState(null);
@@ -383,10 +387,12 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   }, [decisionPrefill, decisionPrefillKey, draftDefaults, isDraftDirty, toolId]);
 
   const updateDraft = (key, value) => {
+    if (!isDraftDirty) setDraftBasis({ signature: evidenceSignature, data: csvData?.canonicalData });
     setIsDraftDirty(true);
     setDraft((current) => ({ ...current, [key]: value }));
   };
   const addRecord = () => {
+    if (hasChangedBasis) return;
     if (!draft.action.trim()) {
       setMessage(t.error);
       return;
@@ -405,6 +411,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       sourcePath: resolvedSourcePath,
       locale,
       createdAt: new Date().toISOString(),
+      evidence: serializeReviewEvidence(analysisEvidence ? { ...analysisEvidence, capturedAt: new Date().toISOString() } : null),
       conclusion: draft.conclusion.trim(),
       action: draft.action.trim(),
       hypothesis: draft.hypothesis.trim(),
@@ -706,7 +713,8 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.reviewQuestion}</span>
             <input value={draft.reviewQuestion} onChange={(event) => updateDraft("reviewQuestion", event.target.value)} placeholder={t.reviewQuestionPlaceholder} />
           </label>
-          <button type="button" className="btn primary decision-review__add" onClick={addRecord}>{t.add}</button>
+          {hasChangedBasis && <div role="alert"><p>{locale === "en" ? "Analysis changed while you were editing. Review the current result before saving; your draft is still here." : "작성 중 분석 근거가 바뀌었습니다. 초안은 유지되어 있으니 현재 결과를 확인한 뒤 저장해 주세요."}</p><button type="button" className="btn" onClick={() => { setDraft(createDraft(decisionPrefill, draftDefaults)); setIsDraftDirty(false); setDraftBasis(null); }}>{locale === "en" ? "Start a new draft from this result" : "현재 결과로 초안 다시 만들기"}</button></div>}
+          <button type="button" className="btn primary decision-review__add" disabled={Boolean(hasChangedBasis)} onClick={addRecord}>{t.add}</button>
         </div>
 
         {pendingSave && <ReviewSaveDialog locale={locale} record={pendingSave} onSaved={finishSave} onClose={() => setPendingSave(null)} />}

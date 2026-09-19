@@ -1,12 +1,11 @@
 "use client";
 
 import { requirePaidExport } from "@/lib/subscription/paidExport";
-import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
+import { buildCollectedReviewExport } from "@/lib/analysis-export/collectedReviewExport";
 import Link from "next/link";
 import { useState } from "react";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { serializeReportDraft } from "@/lib/reports/reportSchema";
-import { renderReportMarkdown } from "@/lib/reports/renderMarkdown";
 import { downloadFile } from "@/utils/download";
 import { downloadXlsx } from "@/utils/download";
 import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
@@ -84,9 +83,11 @@ export default function WeeklyReport({ locale = "ko" }) {
     if (!requirePaidExport({ locale })) return;
     const safe = serializeReportDraft({ ...draft, title });
     try {
-      const payload = buildAnalysisExportPayload({ toolId: "weekly-report", toolTitle: title, locale, headline: title, points: renderReportMarkdown(safe, locale).split("\n").filter(Boolean).map(text => ({ text })), source: { rows: [] }, addon: { method: { name: "Collected analysis conclusions", limitations: [locale === "en" ? "Collected conclusions only; use each tool workbook for raw data and calculations." : "수집한 결론만 포함합니다. 원본과 계산식은 각 도구의 워크북을 이용하세요."] } } });
+      const state = useAppStore.getState();
+      const payload = buildCollectedReviewExport(safe, { locale, projectName: state.projects?.find(project => project.id === state.activeProjectId)?.name || "", reviewRecords: state.decisionRecords });
       const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
       downloadFile(await createAnalysisDocument(payload), "weekly-performance-report.docx");
+      trackProductEvent("result_downloaded", { source: "weekly_report", download_type: "docx", locale });
     } catch { setWorkbookError(t.workbookError); }
   };
   const downloadWorkbook = async () => {
@@ -148,7 +149,7 @@ export default function WeeklyReport({ locale = "ko" }) {
               <h2>{block.headline}</h2>
               {block.stats.length > 0 && (
                 <div className="weekly-review-record__baseline">
-                  {block.stats.map((stat) => <span key={stat.label}><b>{stat.label}</b> {stat.displayValue}</span>)}
+                  {block.stats.map((stat) => <span key={stat.label}><b>{stat.label}</b> {stat.displayValue}{stat.detail && <small> · {stat.detail}</small>}</span>)}
                 </div>
               )}
               {block.points.length > 0 && <ul>{block.points.map((point) => <li key={point}>{point}</li>)}</ul>}

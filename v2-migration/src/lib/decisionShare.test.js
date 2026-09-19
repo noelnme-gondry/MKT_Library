@@ -87,3 +87,15 @@ describe("decisionShare", () => {
     }
   });
 });
+
+it("retains comparison dates, uncertainty and limitations without leaking filter details", () => {
+  const decoded = decodeSharePayload(encodeSharePayload({ ...base,
+    stats: [{ label: "Effect", value: "3%", detail: "95% CI −2% ~ 8%" }],
+    context: { dateStart: "2026-09-01", comparisonStart: "2026-08-01", currency: "KRW", campaigns: ["Private campaign"], fileName: "private.csv" },
+    limitations: ["Not a causal effect"],
+  }));
+  expect(decoded.s[0].d).toBe("95% CI −2% ~ 8%");
+  expect(decoded.c).toEqual({ dateStart: "2026-09-01", comparisonStart: "2026-08-01", currency: "KRW" });
+  expect(decoded.w).toEqual(["Not a causal effect"]);
+  expect(JSON.stringify(decoded)).not.toContain("private");
+});

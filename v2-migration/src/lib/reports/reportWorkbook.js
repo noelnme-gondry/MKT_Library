@@ -54,7 +54,7 @@ export async function createWeeklyReportWorkbook(draft = {}, locale = "ko") {
       periodFor(block),
       text(block.headline, 240),
       (block.points || []).map((point) => text(point, 500)).join("\n"),
-      (block.stats || []).map((stat) => `${text(stat.label, 120)}: ${text(stat.displayValue, 160)}`).join("\n"),
+      (block.stats || []).map((stat) => `${text(stat.label, 120)}: ${text(stat.displayValue, 160)}${stat.detail ? ` (${text(stat.detail, 500)})` : ""}`).join("\n"),
     ]),
   ];
   XLSX.utils.book_append_sheet(workbook, sheetFromRows(XLSX, overviewRows), "00_OVERVIEW");

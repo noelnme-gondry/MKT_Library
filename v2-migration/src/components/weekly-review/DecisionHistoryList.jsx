@@ -1,5 +1,6 @@
 "use client";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { PROJECT_REVIEW_TOOL_EVENT } from "@/lib/decisionReviewUi";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { accountRequest, refreshAccount } from "@/lib/account/accountClient";
@@ -120,6 +121,12 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   const [pendingCopy, setPendingCopy] = useState(null);
   const [message, setMessage] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+  const [toolFilter, setToolFilter] = useState("");
+  useEffect(() => {
+    const openTool = event => { if (!isSample) { setToolFilter(String(event.detail?.toolId || "")); setEditorOpen(true); } };
+    window.addEventListener(PROJECT_REVIEW_TOOL_EVENT, openTool);
+    return () => window.removeEventListener(PROJECT_REVIEW_TOOL_EVENT, openTool);
+  }, [isSample]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const loadVersion = useRef(0);
@@ -194,8 +201,9 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>
       <h2 id={`${anchorId}-title`}>{t.title}</h2>
-      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => setEditorOpen(value => !value)}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
-      {!isSample && editorOpen && <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor locale={locale} embedded /></Suspense>}
+      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => { setToolFilter(""); setEditorOpen(value => !value); }}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
+      {!isSample && editorOpen && toolFilter && <button className="btn" onClick={() => setToolFilter("")}>{en ? "Show decisions from all tools" : "모든 도구의 결정 보기"}</button>}
+      {!isSample && editorOpen && <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor toolFilter={toolFilter} locale={locale} embedded /></Suspense>}
       {!session?.account && <p>{t.signIn}</p>}
       {session?.account && !isPro && <p>{t.proNote} <Link href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link></p>}
       {message && <p role="status">{message}</p>}

@@ -1,4 +1,6 @@
 "use client";
+import DecisionEvidence from "@/components/weekly-review/DecisionEvidence";
+import DecisionFollowUp from "@/components/weekly-review/DecisionFollowUp";
 import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 
 import { canTrackDecisionReview } from "@/lib/dataOrigin";
@@ -320,7 +322,7 @@ export function buildBrief(records, t, locale) {
  * 제품이 가져갔고 이 화면은 그 안의 접기 섹션으로 들어간다(명세 §1.1). 기능을 지우는 것이
  * 아니라 위계를 내리는 것이라, `embedded`일 때 페이지 셸과 h1만 벗는다.
  */
-export default function WeeklyReview({ locale = "ko", embedded = false }) {
+export default function WeeklyReview({ locale = "ko", embedded = false, toolFilter = "" }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
   const [clearPending, setClearPending] = useState(false);
@@ -331,7 +333,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   const [recordDrafts, setRecordDrafts] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   useReviewDraftGuard(Object.keys(recordDrafts).length > 0);
-  const records = useMemo(() => storedRecords.map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts]);
+  const records = useMemo(() => storedRecords.filter(record => !toolFilter || record.toolId === toolFilter).map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts, toolFilter]);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
   const csvGroups = useAppStore((state) => state.csvGroups);
@@ -446,12 +448,12 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
   // 도구들이 결론을 이 저장소에 넣고 있었는데 읽는 화면이 없었다 — 정렬 함수까지
   // 있는데 소비처가 0이었다(§16 "계산해 놓고 판정에 안 쓰는 신호"). 여기가 그 소비처다.
   const rankedFindings = useMemo(
-    () => Object.values(findingsByGroup || {}).flatMap((list) => rankFindings(list || [])).slice(0, 8),
-    [findingsByGroup],
+    () => Object.values(findingsByGroup || {}).flatMap((list) => rankFindings(list || [])).filter(finding => !toolFilter || finding.toolId === toolFilter).slice(0, 8),
+    [findingsByGroup, toolFilter],
   );
   const findingConflicts = useMemo(
-    () => Object.values(findingsByGroup || {}).flatMap((list) => detectFindingConflicts(list || [], { locale })),
-    [findingsByGroup, locale],
+    () => Object.values(findingsByGroup || {}).flatMap((list) => detectFindingConflicts((list || []).filter(finding => !toolFilter || finding.toolId === toolFilter), { locale })),
+    [findingsByGroup, locale, toolFilter],
   );
 
   const Shell = embedded ? "div" : "article";
@@ -592,14 +594,14 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
         <button
           type="button"
           className="btn text weekly-review-page__clear"
-          disabled={!records.length}
+          disabled={!records.length || Boolean(toolFilter)}
           onClick={() => setClearPending(true)}
         >
           {t.clear}
         </button>
         {message && <span role="status">{message}</span>}
       </section>
-      {clearPending && <section className="weekly-review-page__clear-confirm" role="alertdialog" aria-labelledby="weekly-review-clear-title">
+      {clearPending && !toolFilter && <section className="weekly-review-page__clear-confirm" role="alertdialog" aria-labelledby="weekly-review-clear-title">
         <p id="weekly-review-clear-title">{t.clearConfirm}</p>
         <div>
           <button type="button" className="btn small" onClick={() => setClearPending(false)}>{t.cancel}</button>
@@ -635,6 +637,8 @@ export default function WeeklyReview({ locale = "ko", embedded = false }) {
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
+              <DecisionEvidence record={record} locale={locale} />
+              <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} />
               {record.conclusion && <p className="weekly-review-record__context"><span>{t.conclusion}</span>{record.conclusion}</p>}
               {record.hypothesis && <p>{record.hypothesis}</p>}
               {record.reviewQuestion && <div className="weekly-review-record__question"><span>{t.reviewQuestion}</span><strong>{record.reviewQuestion}</strong></div>}

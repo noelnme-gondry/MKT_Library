@@ -5,6 +5,7 @@ import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 import { isRerunGoalMetric } from "@/lib/decisionGoals";
+import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import { parseNumericStrict } from "@/utils/parseNumeric";
 
 // v9: Weekly Review가 지난 결정을 자동 판정하려면 목표와 가드레일이 결정과 함께 기록돼야 한다.
@@ -12,7 +13,7 @@ import { parseNumericStrict } from "@/utils/parseNumeric";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 11;
+export const DECISION_REVIEW_SCHEMA_VERSION = 12;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -35,6 +36,8 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   // v11 — 관측 이력. 한 결정은 여러 번 관측된다(§관측 이력). `actual`·`learning`은
   // 최신 에피소드의 미러로 남겨 기존 소비처 13곳을 그대로 둔다.
   "episodes",
+  "evidence",
+  "parentDecisionId",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -79,6 +82,8 @@ export const DECISION_REVIEW_COLUMNS = [
   "guardrail_value",
   "guardrails",
   "episodes",
+  "evidence",
+  "parent_decision_id",
   "hypothesis",
   "metric",
   "target_direction",
@@ -607,6 +612,8 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
     guardrails: serializeDecisionGuardrails(parseDecisionGuardrails(field(row, "guardrails"))),
     episodes: serializeDecisionEpisodes(parseDecisionEpisodes(field(row, "episodes"))),
+    evidence: serializeReviewEvidence(field(row, "evidence")),
+    parentDecisionId: asText(field(row, "parentDecisionId", "parent_decision_id"), FIELD_LIMITS.id),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),

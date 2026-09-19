@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import ProjectsPage from "./ProjectsPage";
+import ProjectReviewPortfolio from "./weekly-review/ProjectReviewPortfolio";
 import WeeklyReviewScreen from "./weekly-review/WeeklyReviewScreen";
 
 export default function ProjectReviewWorkspace({ locale = "ko", initialView = "review" }) {
@@ -49,7 +50,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
     {switched && !switching && <p role="status" className="wr-notice">{en
       ? "Project opened. Saved files are restored, but each tool needs “Run analysis” again so its column mapping is confirmed against this project."
       : "프로젝트를 열었습니다. 저장된 파일은 복원되지만, 결과는 각 도구에서 ‘분석하기’를 다시 눌러야 나옵니다(컬럼 매핑을 다시 확인합니다)."}</p>}
-    <div hidden={view !== "review" || switching}><WeeklyReviewScreen key={activeId} locale={locale} embedded /></div>
+    <div hidden={view !== "review" || switching}><ProjectReviewPortfolio locale={locale} /><WeeklyReviewScreen key={activeId} locale={locale} embedded /></div>
     {view === "manage" && <section id="project-management"><ProjectsPage locale={locale} embedded onReview={() => show("review")} /></section>}
   </div>;
 }

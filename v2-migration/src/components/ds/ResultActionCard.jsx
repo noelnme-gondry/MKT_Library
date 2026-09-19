@@ -3,6 +3,7 @@ import { isDemoData } from "@/lib/dataOrigin";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { buildReviewEvidence } from "@/lib/reviewEvidence";
 import DecisionReview from "@/components/ds/DecisionReview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 import AnalysisScopeEvidence from "@/components/ds/AnalysisScopeEvidence";
@@ -226,12 +227,14 @@ export default function ResultActionCard({
         const addon = (typeof workbookExport === "function" ? workbookExport() : workbookExport) || {};
         return { ...addon, calculationTables: [...(addon.calculationTables || []), scopeEvidenceTable(scopeEvidence)] };
       } : workbookExport,
+      projectName: isDemoData(csvData) ? "" : useAppStore.getState().projects.find(project => project.id === useAppStore.getState().activeProjectId)?.name,
+      reviewRecords: isDemoData(csvData) ? [] : useAppStore.getState().decisionRecords.filter(record => record.toolId === toolId),
       generatedAt: new Date().toISOString(),
     }),
   }), [csvData?.fileName, csvData?.importSource, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
   const copyShareLink = async () => {
     setShareError("");
-    const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale });
+    const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale, context: { ...resultScope, currency: csvData?.currency }, limitations: [locale === "en" ? "A shared result summary. Verify comparison conditions, uncertainty and study design before acting." : "공유된 결과 요약입니다. 실행 전에 비교 조건·불확실성·분석 설계를 함께 확인하세요."] });
     const url = token && shareUrlFromPayload(token, locale, typeof window === "undefined" ? "" : window.location.origin);
     if (!url) { setShareError(locale === "en" ? "This result is too large for a share link. Use a report instead." : "공유 링크에 담기에는 결과가 큽니다. 보고서를 이용해 주세요."); return; }
     try {
@@ -339,6 +342,7 @@ export default function ResultActionCard({
         <DecisionReview
           toolId={toolId}
           locale={locale}
+          analysisEvidence={buildReviewEvidence({ headline, points, stats, scope: { ...resultScope, currency: csvData?.currency }, analysisType: resolvedAnalysisType, resultState })}
           decisionPrefill={resolvedDecisionPrefill}
           allowAutomaticComparison={hasDecisionPrefill}
           decisionPrefillKey={resolvedDecisionPrefillKey}

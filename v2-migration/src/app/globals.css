@@ -11477,3 +11477,17 @@ body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launche
   .tutorial-topics { border-top: 1px solid var(--border); padding-top: 12px; }
 }
 @media print { .tutorial-launcher, .tutorial-inline, .tutorial-overlay { display: none !important; } }
+
+/* A review agenda is based on saved decisions, not a synthetic performance score. */
+.project-review-portfolio { margin-block: 20px; }
+.project-review-portfolio__counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding-block: 16px; border-block: 1px solid var(--border); }
+.project-review-portfolio__counts dt { color: var(--text-muted); font-size: var(--fs-sm); }
+.project-review-portfolio__counts dd { margin: 6px 0 0; font-size: var(--fs-xl); font-weight: 700; }
+.project-review-portfolio__tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.project-review-portfolio__tools article { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); }
+.decision-evidence, .decision-follow-up { margin-block: 16px; padding: 16px; background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius); }
+.decision-evidence summary { cursor: pointer; font-weight: 600; }
+.decision-follow-up__form { display: grid; gap: 12px; }
+.decision-follow-up__form label { display: grid; gap: 6px; }
+.decision-follow-up__form textarea { min-height: 80px; width: 100%; }
+@media (max-width: 640px) { .project-review-portfolio__counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

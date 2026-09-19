@@ -1,3 +1,4 @@
+import { reviewBriefRows } from "./reviewBrief.js";
 import * as XLSX from "xlsx";
 import { writeWorkbookWithCharts } from "./nativeCharts.js";
 
@@ -57,9 +58,10 @@ function isSafeInternalFormula(value) {
   return remainder === "";
 }
 
-function formulaCell(value, numberFormat) {
+function formulaCell(value, numberFormat, cachedValue) {
   const formula = asText(value).replace(/^=/, "");
   const cell = { t: "n", f: formula };
+  if (typeof cachedValue === "number" && Number.isFinite(cachedValue)) cell.v = cachedValue;
   if (numberFormat) cell.z = numberFormat;
   return cell;
 }
@@ -67,7 +69,7 @@ function formulaCell(value, numberFormat) {
 function trustedFormulaAt(table, rowIndex, columnIndex, value) {
   if (value && typeof value === "object" && !Array.isArray(value) && typeof value.formula === "string") {
     return isSafeInternalFormula(value.formula)
-      ? formulaCell(value.formula, value.numberFormat)
+      ? formulaCell(value.formula, value.numberFormat, value.value)
       : textCell(value.formula);
   }
   const isRuleMatch = (table.formulaRules || []).some((rule) => (
@@ -166,6 +168,7 @@ function summaryRows(payload) {
     [tx(locale, "결론", "Conclusion"), payload.toolTitle, summary.headline, ""],
     ...summary.stats.map((stat) => [tx(locale, "핵심 수치", "Key figure"), stat.label, stat.value, stat.detail]),
     ...summary.points.map((point) => [tx(locale, "근거·다음 확인", "Evidence / next check"), point.label, point.text, point.detail]),
+    ...reviewBriefRows(payload.review, locale).map(([label, value]) => [tx(locale, "결정 검토", "Decision review"), label, value, ""]),
   ];
 }
 

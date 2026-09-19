@@ -204,3 +204,9 @@ describe("결정론", () => {
     expect(renderReportText(draft())).toBe(renderReportText(draft()));
   });
 });
+
+it.each(["ko", "en"])("%s shared review keeps actual baseline and current KPI with units", locale => {
+  const text = renderReportText(draft({ locale, currency: "KRW", metrics: { previous: { cpa: 100 }, current: { cpa: 150 } } }));
+  expect(text).toContain("100 KRW → 150 KRW");
+  expect(renderReportText(draft({ locale, metrics: { previous: { cpa: null }, current: { cpa: null } } }))).not.toContain("0 KRW");
+});
