@@ -70,6 +70,13 @@ describe("구세대 레코드 복원", () => {
     const state = await restoreWith(entryFor({ mapping: staleMapping, schemaVersion: undefined }));
     expect(state.workspaceRemappedGroups).toContain("efficiency");
   });
+  it("keeps valid manual choices and ignored columns when repairing obsolete keys", async () => {
+    const stored = { Date: "date", Cost: "revenue_d7", Clicks: "__ignore__", Installs: "legacy_installs_key" };
+    const state = await restoreWith(entryFor({ mapping: stored }));
+    expect(state.csvGroups.efficiency.mapping.Cost).toBe("revenue_d7");
+    expect(state.csvGroups.efficiency.mapping.Clicks).toBe("__ignore__");
+    expect(state.csvGroups.efficiency.mapping.Installs).toBe("installs");
+  });
 });
 
 describe("현재 세대 레코드 복원", () => {

@@ -15,6 +15,7 @@ const ALLOWED_PARAMS = new Set([
   "scope",
   "journey_entry", "visit_type",
   "gate_reason", "trial_remaining_bucket",
+  "count", "tool_ids",
 ]);
 
 let weeklyImportStartedAt = null;
@@ -91,6 +92,9 @@ const ANALYSIS_TYPE_BY_TOOL = {
   "5-24": "brand_incrementality",
   "5-25": "multicollinearity",
   "5-26": "asa_keyword",
+  "5-27": "aso_store",
+  "5-28": "subscription_survival",
+  "5-29": "segment_composition",
   "9-1": "content_elements",
   "9-2": "content_aha",
   "9-3": "pvm",
@@ -113,6 +117,9 @@ export function sanitizeProductEventParams(params = {}, name) {
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
   if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
   if (safe.trial_remaining_bucket && !["not_started", "expired", "under_3d", "3_7d", "8_14d"].includes(safe.trial_remaining_bucket)) delete safe.trial_remaining_bucket;
+  if (Object.hasOwn(safe, "count") && (!Number.isSafeInteger(safe.count) || safe.count < 0)) delete safe.count;
+  if (Object.hasOwn(safe, "tool_ids") && (typeof safe.tool_ids !== "string" || safe.tool_ids.length > 100
+    || !safe.tool_ids.split(",").every(id => Object.hasOwn(ANALYSIS_TYPE_BY_TOOL, id)))) delete safe.tool_ids;
   if (["begin_checkout", "purchase", "test_begin_checkout", "test_purchase"].includes(name)
     && params.currency === "KRW" && Number.isSafeInteger(params.value) && params.value > 0
     && params.items?.length === 1 && params.items[0].item_id === PAYMENT_PRODUCT.id) {
@@ -158,6 +165,12 @@ export function trackProductEvent(name, params = {}) {
     : params;
   // 동의 기본값 스크립트가 큐만 먼저 만든 경우에도 config 이전 목적지를 명시한다.
   const safeParams = sanitizeProductEventParams(enriched, name);
+  // `source` is acquisition metadata in GA. Internal UI/data origins must not
+  // overwrite it (observed session sources: blog / (not set), route / (not set)).
+  if (Object.hasOwn(safeParams, "source")) {
+    safeParams.interaction_source = safeParams.source;
+    delete safeParams.source;
+  }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
   window.gtag("event", name, safeParams);
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;

@@ -120,6 +120,18 @@ describe("DecisionReview", () => {
     expect(saved.targetDirection).toBe("higher");
   });
 
+  it.each(["ko", "en"])("rejects a nonnumeric guardrail without silently dropping it (%s)", (locale) => {
+    const { container } = render(<DecisionReview toolId="5-18-cannibal" locale={locale} decisionPrefill={{ action: "Review budget" }} />);
+    openDecisionReview(container);
+    const threshold = screen.getAllByPlaceholderText(locale === "en" ? "Threshold" : "기준값")[0];
+    fireEvent.change(threshold, { target: { value: "abc" } });
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Save for next review" : "다음 검토로 저장" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(locale === "en" ? "Enter a number for each threshold, or clear it to leave it unused." : "기준값은 숫자로 입력하거나, 사용하지 않을 항목은 비워 주세요.")).toBeTruthy();
+    expect(threshold.value).toBe("abc");
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+  });
+
   it("기준값을 비운 가드레일은 저장되지 않는다", () => {
     // 반쪽 가드레일을 남기면 스코어러가 \"측정 불가\"로 판정 전체를 막는다.
     const { container } = render(<DecisionReview toolId="5-3" />);

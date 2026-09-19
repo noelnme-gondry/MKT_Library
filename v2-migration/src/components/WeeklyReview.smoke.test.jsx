@@ -154,7 +154,7 @@ describe("WeeklyReview", () => {
     expect(window.gtag).not.toHaveBeenCalledWith("event", "decision_inbox_viewed", expect.anything());
     showInbox([{ isIntersecting: true }]);
     expect(window.gtag).toHaveBeenCalledWith("event", "decision_inbox_viewed", {
-      source: "weekly_review",
+      interaction_source: "weekly_review",
       result_state: "active",
       locale: "ko",
     });

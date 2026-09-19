@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { passExpiresAt, verifiedPayment } from "./paymentProduct";
-import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, redirectPaymentReview, paymentResponse } from "./paymentServer";
+import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, redirectPaymentReview, redirectNicepayResult, paymentResponse, reconcilePaymentWebhook } from "./paymentServer";
 
 const db = vi.hoisted(() => ({ rows: new Map(), calls: [], active: 0, account: null }));
 vi.mock("@/lib/account/accountServer", async importOriginal => ({ ...await importOriginal(), readAccount: async () => db.account }));
@@ -20,7 +20,7 @@ vi.mock("pg", () => ({ default: { Pool: class {
     }
     if (sql.startsWith("SELECT") && sql.includes("WHERE account_id=$1")) return { rows: [...db.rows.values()].filter(row => row.account_id === args[0] && row.mode === args[1] && (!sql.includes("AND status='pending'") || row.status === "pending" && row.payment_key)) };
     if (sql.startsWith("SELECT")) return { rows: db.rows.has(args[0]) ? [{ ...db.rows.get(args[0]) }] : [] };
-    if (sql.startsWith("INSERT")) db.rows.set(args[0], { id: args[0], access_hash: args[1], amount: args[2], product_id: args[3], idempotency_key: args[4], mode: args[5], account_id: args[6], status: "pending", created_at: new Date() });
+    if (sql.startsWith("INSERT")) db.rows.set(args[0], { id: args[0], access_hash: args[1], amount: args[2], product_id: args[3], idempotency_key: args[4], mode: args[5], account_id: args[6], provider: args[7], status: "pending", created_at: new Date() });
     if (sql.startsWith("UPDATE")) {
       const row = db.rows.get(args[0]);
       if (sql.includes("status='paid'")) { if (row.status === "revoked") return { rowCount: 0 }; Object.assign(row, { status: "paid", approved_at: args[1], expires_at: args[2], starts_at: args[3] }); }
@@ -50,6 +50,106 @@ async function fixture() {
   payment = { orderId: input.orderId, paymentKey: input.paymentKey, totalAmount: 5900, currency: "KRW", status: "DONE", approvedAt: new Date().toISOString() };
   return { cookie, input };
 }
+
+describe("NICEPAY server approval", () => {
+  const sha = value => createHash("sha256").update(value).digest("hex");
+  const tid = "nicuntct1m0101210727200708A058";
+  function configureNicepay() {
+    vi.stubEnv("PAYMENTS_PROVIDER", "nicepay");
+    vi.stubEnv("NICEPAY_APPROVAL_MODEL", "server-basic");
+    vi.stubEnv("NICEPAY_MODE", "test");
+    vi.stubEnv("NICEPAY_CLIENT_KEY", "nice-client-fixture");
+    vi.stubEnv("NICEPAY_SECRET_KEY", "nice-secret-fixture");
+  }
+  async function niceFixture() {
+    configureNicepay();
+    const created = await createPaymentOrder(request());
+    const input = { orderId: created.body.orderId, amount: 5900, tid, paymentKey: tid,
+      clientId: "nice-client-fixture", authResultCode: "0000", authToken: "a".repeat(40) };
+    input.signature = sha(`${input.authToken}${input.clientId}${input.amount}nice-secret-fixture`);
+    payment = { resultCode: "0000", orderId: input.orderId, tid, amount: 5900, balanceAmt: 5900,
+      currency: "KRW", status: "paid", paidAt: new Date().toISOString(), ediDate: new Date().toISOString(), payMethod: "card" };
+    payment.signature = sha(`${tid}5900${payment.ediDate}nice-secret-fixture`);
+    return { input, cookie: created.cookie.split(";")[0] };
+  }
+  it("fails closed for unknown provider/model, production test and unapproved live rollout", () => {
+    configureNicepay();
+    expect(paymentConfiguration()).toMatchObject({ provider: "nicepay", enabled: true, mode: "test" });
+    expect(JSON.stringify(paymentConfiguration())).not.toContain("nice-secret");
+    vi.stubEnv("NICEPAY_APPROVAL_MODEL", "client");
+    expect(paymentConfiguration().enabled).toBe(false);
+    vi.stubEnv("NICEPAY_APPROVAL_MODEL", "server-basic");
+    vi.stubEnv("NODE_ENV", "production");
+    expect(paymentConfiguration().enabled).toBe(false);
+    vi.stubEnv("NICEPAY_MODE", "live");
+    expect(paymentConfiguration().enabled).toBe(false);
+    vi.stubEnv("PAYMENTS_LIVE_ENABLED", "true");
+    expect(paymentConfiguration().enabled).toBe(true);
+    vi.stubEnv("PAYMENTS_PROVIDER", "unknown");
+    expect(paymentConfiguration().enabled).toBe(false);
+  });
+  it("verifies a cross-site form, redirects without tokens and approves only once for its owner", async () => {
+    const { input, cookie } = await niceFixture();
+    const response = await redirectNicepayResult(new Request("https://example.com/api/payments/nicepay/return?locale=en", {
+      method: "POST", body: new URLSearchParams(input),
+    }));
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://example.com/en/subscription?payment=confirm#purchase");
+    expect(fetch).not.toHaveBeenCalled();
+    const callbackCookie = response.headers.get("set-cookie").split(";")[0];
+    const result = await confirmPayment(request(`${cookie}; ${callbackCookie}`), {});
+    expect(result.body.entitlement.plan).toBe("paid");
+    expect(db.rows.get(input.orderId).provider).toBe("nicepay");
+    expect(fetch.mock.calls[0][0]).toBe(`https://sandbox-api.nicepay.co.kr/v1/payments/${tid}`);
+    expect(fetch.mock.calls[0][1]).toMatchObject({ method: "POST", body: '{"amount":5900}' });
+    await confirmPayment(request(cookie), input);
+    expect(fetch.mock.calls.filter(([, options]) => options.method === "POST")).toHaveLength(1);
+  });
+  it.each(["signature", "amount", "owner"])("rejects forged %s before contacting NICEPAY", async field => {
+    const { input, cookie } = await niceFixture();
+    if (field === "signature") input.signature = "0".repeat(64);
+    if (field === "amount") input.amount = 1;
+    if (field === "owner") db.account = { id: "someone-else" };
+    await expect(confirmPayment(request(field === "owner" ? "" : cookie), input)).rejects.toThrow("INVALID_ORDER");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("checks authoritative response identity and signature before granting access", async () => {
+    const { input, cookie } = await niceFixture();
+    payment.signature = "0".repeat(64);
+    await expect(confirmPayment(request(cookie), input)).rejects.toThrow("PAYMENT_MISMATCH");
+    expect(db.rows.get(input.orderId).status).toBe("pending");
+  });
+  it("cancels uncertain network approval and never submits it a second time", async () => {
+    const { input, cookie } = await niceFixture();
+    fetch.mockRejectedValueOnce(new DOMException("timeout", "TimeoutError"));
+    await expect(confirmPayment(request(cookie), input)).rejects.toThrow("timeout");
+    expect(fetch.mock.calls[1][0]).toContain("/netcancel");
+    payment.status = "cancelled";
+    await expect(confirmPayment(request(cookie), input)).rejects.toThrow("PAYMENT_NOT_COMPLETED");
+    expect(fetch.mock.calls.filter(([url, options]) => !url.endsWith("/netcancel") && options.method === "POST")).toHaveLength(1);
+  });
+  it("reconciles cancellation from a lookup, ignoring a forged webhook paid status", async () => {
+    const { input, cookie } = await niceFixture();
+    await confirmPayment(request(cookie), input);
+    payment.status = "partialCancelled";
+    await reconcilePaymentWebhook({ orderId: input.orderId, status: "paid", amount: 1 }, "nicepay");
+    expect(db.rows.get(input.orderId).status).toBe("revoked");
+  });
+  it("keeps previous Toss orders on Toss after the provider switch", async () => {
+    const { input, cookie } = await fixture();
+    configureNicepay();
+    await confirmPayment(request(cookie), input);
+    expect(fetch.mock.calls[0][0]).toContain("api.tosspayments.com");
+  });
+  it("rejects invalid and oversized return forms without exposing their payload", async () => {
+    configureNicepay();
+    for (const body of ["authResultCode=0000&signature=bad", `authToken=${"x".repeat(5000)}`]) {
+      const response = await redirectNicepayResult(new Request("https://example.com/api/payments/nicepay/return", { method: "POST", body: new URLSearchParams(body) }));
+      expect(response.headers.get("location")).toBe("https://example.com/subscription?payment=failed#purchase");
+      expect(response.headers.has("set-cookie")).toBe(false);
+    }
+  });
+});
 describe("payment boundaries", () => {
   it("exposes only a test widget key for production review without enabling purchases", async () => {
     vi.stubEnv("NODE_ENV", "production");

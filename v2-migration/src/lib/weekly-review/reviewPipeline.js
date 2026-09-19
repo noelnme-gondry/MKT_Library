@@ -10,6 +10,7 @@
  */
 
 import { readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
+import { decisionGuardrailList } from "@/lib/decisionReview";
 import { resolveComparisonPeriods, parseUtcDate, formatUtcDate, addDaysUtc } from "./period";
 import { buildSnapshot, deriveMetrics, snapshotMetrics, sumRows } from "./snapshot";
 import { historySeriesFor, historyFromSeries } from "./snapshotStore";
@@ -38,17 +39,18 @@ export function kpiFor(metric, basis = "actions") {
 }
 
 /** 결정 레코드 중 이번 리뷰가 채점할 것 하나 — 검토일이 지났고 판정에 필요한 항목이 있는 가장 최근 것. */
-export function pickDecisionToScore(records = [], { currentPeriodStart = null } = {}) {
+export function pickDecisionToScore(records = [], { currentPeriodStart = null, currentPeriodEnd = currentPeriodStart, isComparable = () => true } = {}) {
   const candidates = (Array.isArray(records) ? records : []).filter((record) => {
     if (!record) return false;
     const decidedAt = String(record.createdAt || record.reviewDate || "").slice(0, 10);
     // 이번 기간이 시작되기 전에 내린 결정만 이번 주 결과로 채점할 수 있다.
     const baselineEnd = parseUtcDate(record.baselineDate) ? record.baselineDate : decidedAt;
-    return baselineEnd && (!currentPeriodStart || baselineEnd < currentPeriodStart);
+    return baselineEnd && (!currentPeriodStart || baselineEnd < currentPeriodStart)
+      && (!record.reviewDate || !currentPeriodEnd || record.reviewDate <= currentPeriodEnd);
   });
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  return candidates[0];
+  return candidates.find(record => record.goalMetric && record.goalDirection && decisionGuardrailList(record).length && isComparable(record)) || candidates[0];
 }
 
 /**
@@ -118,17 +120,21 @@ export function runReview({
   const variance = runsVariance && ["cpa", "cpi"].includes(project.kpi?.metric)
     ? buildVariance({ current, previous, basis: project.kpi.metric === "cpi" ? "installs" : basis }) : null;
 
-  const candidate = pickDecisionToScore(decisionRecords, { currentPeriodStart: periods.current.start });
-  const scope = candidate ? readDecisionComparisonScope(candidate.comparisonScope) : null;
-  const contextMatches = candidate?.toolId !== "weekly-review" || (
+  const isComparable = record => {
+    const scope = readDecisionComparisonScope(record.comparisonScope);
+    return scope?.dataGroup === "efficiency" &&
     scope?.baselineDateStart === periods.previous.start && scope?.baselineDateEnd === periods.previous.end
     && scope?.weeklyReview?.basis === basis && scope?.weeklyReview?.currency === (project.currency || "")
     && periods.current.days === periods.previous.days
-  );
+    // Weekly snapshots cannot reconstruct country/platform/source-filtered decisions.
+    && Object.values(scope.dimensions).every(values => values.length === 0);
+  };
+  const candidate = pickDecisionToScore(decisionRecords, { currentPeriodStart: periods.current.start, currentPeriodEnd: periods.current.end, isComparable });
+  const contextMatches = candidate && isComparable(candidate);
   const lastDecision = candidate
     ? {
       decision: candidate,
-      score: !contextMatches ? { outcome: "UNSCORED", reason: "comparison_context_mismatch", meansNoEffect: false, checks: null } : scoreDecision({
+      score: !contextMatches ? { outcome: "UNSCORED", reason: candidate.goalMetric ? "comparison_context_mismatch" : "no_terms_recorded", meansNoEffect: false, checks: null } : scoreDecision({
         decision: candidate,
         current,
         previous,

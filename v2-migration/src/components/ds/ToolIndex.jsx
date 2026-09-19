@@ -187,7 +187,7 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
                       type="button"
                       className={`tool-index__chip${isOpen ? " is-open" : ""}`}
                       aria-expanded={isOpen}
-                      aria-controls={`${base}-${group.id}-panel`}
+                      aria-controls={isOpen ? `${base}-${tool.id}-panel` : undefined}
                       onClick={() => setOpenId(isOpen ? null : tool.id)}
                     >
                       <span className="tool-index__q">{tool.question}</span>
@@ -220,7 +220,7 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
   function renderPanel(open) {
     const group = eligibleIds ? (eligibleIds.includes(open.id) ? { ready: true, id: "ready" } : { ready: false, id: "blocked" }) : { ready: null, id: "stage" };
     return (
-              <div className="tool-index__panel" id={`${base}-${group.id}-panel`} role="region" aria-label={open.question}>
+              <div className="tool-index__panel" id={`${base}-${open.id}-panel`} role="region" aria-label={open.question}>
                 {open.answer && <p className="tool-index__answer">{open.answer}</p>}
                 <p className="tool-index__meta">
                   <span className="tool-index__meta-label">{labels.tool}</span>

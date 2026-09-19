@@ -15,7 +15,7 @@ export default function ProjectReviewLink({ projectId, locale = "ko", children, 
     setBusy(true); setError(false);
     try {
       const state = useAppStore.getState();
-      if (projectId && projectId !== state.activeProjectId && !await state.switchProject(projectId)) throw new Error("PROJECT_OPEN_FAILED");
+      if (projectId && projectId !== state.activeProjectId && !await state.switchProject(projectId)) { if (useAppStore.getState().projectSwitchCancelled) return; throw new Error("PROJECT_OPEN_FAILED"); }
       onNavigate?.();
       router.push(href);
     } catch { setError(true); }

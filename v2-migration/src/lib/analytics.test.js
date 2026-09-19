@@ -6,6 +6,17 @@ afterEach(() => {
 });
 
 describe("privacy-safe product analytics", () => {
+  it("keeps aggregate batch/history counts and only known tool identifiers", () => {
+    expect(sanitizeProductEventParams({ count: 2, tool_ids: "5-2,5-3" })).toEqual({ count: 2, tool_ids: "5-2,5-3" });
+    expect(sanitizeProductEventParams({ count: "client name", tool_ids: "private.csv" })).toEqual({});
+    expect(sanitizeProductEventParams({ count: NaN, tool_ids: "5-2,private" })).toEqual({});
+  });
+  it.each(["blog", "route", "subscription_page", "csv"])("keeps internal %s out of GA acquisition source", source => {
+    globalThis.window = { gtag: vi.fn() };
+    trackProductEvent("tool_view", { source });
+    expect(window.gtag).toHaveBeenCalledWith("event", "tool_view", { interaction_source: source });
+    expect(window.gtag.mock.lastCall[2]).not.toHaveProperty("source");
+  });
   it("only allows categorical gate reasons and trial buckets, not free text", () => {
     expect(sanitizeProductEventParams({ gate_reason: "price", trial_remaining_bucket: "under_3d", email: "private@example.com" })).toEqual({ gate_reason: "price", trial_remaining_bucket: "under_3d" });
     expect(sanitizeProductEventParams({ gate_reason: "private company", trial_remaining_bucket: "private date" })).toEqual({});
@@ -13,7 +24,7 @@ describe("privacy-safe product analytics", () => {
   it("queues early production events with an explicit destination and no private fields", () => {
     globalThis.window = { location: { hostname: "growthoptplaybook.com", pathname: "/" } };
     expect(trackProductEvent("data_import_start", { source: "csv", fileName: "private.csv" })).toBe(true);
-    expect(Array.from(window.dataLayer[0])).toEqual(["event", "data_import_start", { source: "csv", send_to: "G-DK12TNR0GW" }]);
+    expect(Array.from(window.dataLayer[0])).toEqual(["event", "data_import_start", { interaction_source: "csv", send_to: "G-DK12TNR0GW" }]);
   });
   it("does not initialize tracking on preview or localhost", () => {
     for (const hostname of ["localhost", "preview.up.railway.app"]) {
@@ -125,7 +136,7 @@ describe("privacy-safe product analytics", () => {
     expect(gtag).toHaveBeenCalledTimes(1);
     expect(gtag).toHaveBeenCalledWith("event", "analysis_completed", {
       tool_id: "5-3",
-      source: "csv",
+      interaction_source: "csv",
       row_count: 42,
     });
     expect(JSON.stringify(gtag.mock.calls)).not.toContain("private-client.csv");

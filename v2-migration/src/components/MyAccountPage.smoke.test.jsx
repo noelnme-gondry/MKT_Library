@@ -44,7 +44,7 @@ it("구매 이용권의 시작일을 지어내지 않는다", async () => {
   // 서버가 구매 시작일을 내려주지 않는다 — 없는 값을 채우면 그게 거짓 숫자다(§8).
   signedIn({ entitlement: activePro({ trial: false }) });
   render(<MyAccountPage locale="ko" />);
-  await waitFor(() => expect(screen.getByText("Pro 구독 중")).toBeTruthy());
+  await waitFor(() => expect(screen.getByText("Pro 이용권 사용 중")).toBeTruthy());
   expect(screen.getByText(/시작일을 서버에서 내려주지 않아/)).toBeTruthy();
 });
 
@@ -71,12 +71,21 @@ it("EN도 같은 구조로 렌더된다", async () => {
   expect(screen.getByRole("link", { name: "Open projects" }).getAttribute("href")).toBe("/en/weekly-review");
 });
 
+it.each(["ko", "en"])("does not claim zero projects when device storage cannot be read (%s)", async locale => {
+  signedIn();
+  vi.stubGlobal("indexedDB", { open: () => { throw new Error("blocked"); } });
+  render(<MyAccountPage locale={locale} />);
+  const warning = await screen.findByText(locale === "en" ? /Could not read the project count/ : /프로젝트 개수를 확인하지 못했습니다/);
+  expect(warning.getAttribute("role")).toBe("alert");
+  expect(screen.queryByText(locale === "en" ? "0" : "0개")).toBeNull();
+});
+
 it("직접 입력으로 저장한 매핑이 이 기기에 남는다", async () => {
   signedIn();
   window.localStorage.setItem(MAPPING_MEMORY_ENABLED_KEY, "true");
   render(<MyAccountPage locale="ko" />);
   await waitFor(() => expect(screen.getByRole("heading", { name: "내 컬럼 매핑" })).toBeTruthy());
-  expect(screen.getByText("아직 저장한 매핑이 없습니다.")).toBeTruthy();
+  expect(await screen.findByText("아직 저장한 매핑이 없습니다.")).toBeTruthy();
 
   fireEvent.change(screen.getByLabelText("직접 입력"), { target: { value: "mkt_country" } });
   fireEvent.change(screen.getByLabelText("이 도구가 쓰는 항목"), { target: { value: "country" } });

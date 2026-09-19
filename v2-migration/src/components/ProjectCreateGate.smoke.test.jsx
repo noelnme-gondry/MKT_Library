@@ -15,6 +15,20 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
+it("admits once when duplicate login messages arrive during a pending trial request", async () => {
+  let resolveTrial;
+  accountRequest.mockReturnValue(new Promise(resolve => { resolveTrial = resolve; }));
+  const onReady = vi.fn();
+  render(<ProjectCreateGate locale="ko" open onReady={onReady} />);
+  await waitFor(() => expect(refreshAccount).toHaveBeenCalled());
+  for (let i = 0; i < 2; i++) window.dispatchEvent(new MessageEvent("message", { data: { type: "gop-account-ready" }, origin: window.location.origin }));
+  expect(accountRequest).toHaveBeenCalledTimes(1);
+  resolveTrial({ entitlement: activePro({ trial: true }), trialStarted: true });
+  await waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
+  window.dispatchEvent(new MessageEvent("message", { data: { type: "gop-account-ready" }, origin: window.location.origin }));
+  expect(accountRequest).toHaveBeenCalledTimes(1);
+});
+
 const signedOut = () => refreshAccount.mockResolvedValue({ enabled: true, account: null, entitlement: null });
 
 it.each([

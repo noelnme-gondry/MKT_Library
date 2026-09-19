@@ -21,11 +21,11 @@ const COPY = {
     title: "마이페이지",
     deck: "계정과 이용권, 프로젝트를 한곳에서 확인합니다.",
     accountHead: "계정",
-    email: "Google 계정",
+    email: "이메일",
     planHead: "이용권",
     plan: "구독 상태",
     planTrial: "Pro 체험 중",
-    planPaid: "Pro 구독 중",
+    planPaid: "Pro 이용권 사용 중",
     planTrialEnded: "체험 종료",
     planNone: "이용권 없음",
     start: "이용 시작",
@@ -41,16 +41,17 @@ const COPY = {
     signedOut: "로그인하면 계정과 이용권 정보를 볼 수 있습니다. 분석은 로그인 없이 계속 이용할 수 있습니다.",
     loading: "계정을 확인하고 있습니다…",
     projectsLocal: "프로젝트는 이 기기에 저장됩니다.",
+    projectsFailed: "프로젝트 개수를 확인하지 못했습니다. 이 기기의 저장 공간을 확인하고 다시 열어 주세요.",
   },
   en: {
     title: "My account",
     deck: "Your account, your pass and your projects in one place.",
     accountHead: "Account",
-    email: "Google account",
+    email: "Email",
     planHead: "Pass",
     plan: "Subscription",
     planTrial: "Pro trial active",
-    planPaid: "Pro subscription active",
+    planPaid: "Pro pass active",
     planTrialEnded: "Trial ended",
     planNone: "No active pass",
     start: "Starts",
@@ -66,6 +67,7 @@ const COPY = {
     signedOut: "Sign in to see your account and pass. Analysis stays available without signing in.",
     loading: "Checking your account…",
     projectsLocal: "Projects are stored on this device.",
+    projectsFailed: "Could not read the project count. Check this device’s storage and reopen the page.",
   },
 };
 
@@ -79,12 +81,13 @@ export default function MyAccountPage({ locale = "ko" }) {
   const en = locale === "en";
   const [session, setSession] = useState(null);
   const [projectCount, setProjectCount] = useState(null);
+  const [projectsFailed, setProjectsFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     const load = () => {
       refreshAccount().then((next) => { if (active) setSession(next); }).catch(() => { if (active) setSession({ enabled: false }); });
-      listProjects().then((list) => { if (active) setProjectCount(list.length); }).catch(() => { if (active) setProjectCount(0); });
+      listProjects().then((list) => { if (active) { setProjectCount(list.length); setProjectsFailed(false); } }).catch(() => { if (active) { setProjectCount(null); setProjectsFailed(true); } });
     };
     load();
     // 로그인 팝업이 끝나면 여기 숫자도 같이 바뀌어야 한다.
@@ -139,6 +142,7 @@ export default function MyAccountPage({ locale = "ko" }) {
           <div><dt>{t.projectCount}</dt><dd>{projectCount === null ? t.unknown : t.projectUnit(projectCount)}</dd></div>
         </dl>
         <p className="account-page__hint">{t.projectsLocal}</p>
+        {projectsFailed && <p role="alert">{t.projectsFailed}</p>}
         <Link className="btn" href={en ? "/en/weekly-review" : "/weekly-review"}>{t.openProjects}</Link>
       </section>
 

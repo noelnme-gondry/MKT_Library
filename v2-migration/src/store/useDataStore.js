@@ -82,6 +82,24 @@ function isSameImportedDecision(existing, incoming) {
   return existing.toolId === incoming.toolId && existing.action === incoming.action;
 }
 
+function mergedDecisionRecords(state, rows, fallbackToolId = "") {
+    const now = new Date().toISOString();
+    const normalizedRows = normalizeDecisionReviewRows(rows, fallbackToolId);
+    if (!normalizedRows.length) return state.decisionRecords;
+    const nextRecords = [...state.decisionRecords];
+    normalizedRows.forEach((record) => {
+      const existingIndex = record.id ? nextRecords.findIndex((item) => item.id === record.id) : -1;
+      if (existingIndex >= 0 && isSameImportedDecision(nextRecords[existingIndex], record)) {
+        const existing = nextRecords[existingIndex];
+        nextRecords[existingIndex] = { ...record, id: existing.id, createdAt: existing.createdAt || record.createdAt || now, updatedAt: now };
+        return;
+      }
+      const id = record.id && existingIndex < 0 ? record.id : nextDecisionRecordId(nextRecords);
+      nextRecords.unshift({ ...record, id, createdAt: record.createdAt || now, updatedAt: now });
+    });
+    return nextRecords;
+}
+
 function canUseDecisionStorage() {
   if (typeof window === "undefined") return true;
   try {
@@ -103,19 +121,21 @@ async function restoreWorkspaceSlice(entry) {
   const toolId = toolIdForGroup(entry.group);
   const storedMapping = entry.mapping && typeof entry.mapping === "object" ? entry.mapping : {};
   const storedBindings = Array.isArray(entry.mappingBindingsV2) ? entry.mappingBindingsV2 : [];
-  // 구세대 레코드의 매핑은 저장 시점의 표준키 어휘로 굳어 있다. 그대로 복원하면
-  // 지금 엔진이 안 읽는 키를 가리켜 파일은 열리는데 숫자만 빠진다 — 파일은 살리고
-  // **매핑만 버린 뒤 현재 규칙으로 다시 인식한다**. 자동 인식이 실패하면(빈 매핑)
-  // 저장본을 그대로 쓰는 게 낫다 — 아무것도 못 읽는 것보다 옛 매핑이 낫다.
+  // Repair obsolete keys without discarding valid manual choices or ignored columns.
   const isStaleSchema = !isCurrentDatasetSchema(entry);
   const refreshed = isStaleSchema
     ? buildMappingContract({ toolId, headers: table.headers, rows: table.raw, source: entry.fileName || "device_storage" }).mapping
     : null;
-  const didRefresh = Boolean(refreshed && Object.values(refreshed).some((field) => field && field !== "__ignore__"));
-  const mapping = didRefresh ? refreshed : storedMapping;
-  // 의미 바인딩(V2)은 표준키가 아니라 자체 레시피라 새 매핑과 짝이 안 맞는다.
-  // 매핑을 다시 인식했으면 바인딩은 비우고 V2 경로가 다시 만들게 둔다.
-  const mappingBindingsV2 = didRefresh ? [] : storedBindings;
+  const mapping = { ...storedMapping };
+  for (const [header, field] of Object.entries(refreshed || {})) {
+    const stored = storedMapping[header];
+    if (stored === "__ignore__" || Object.hasOwn(STANDARD_FIELDS, stored)) continue;
+    if (field && field !== "__ignore__") mapping[header] = field;
+  }
+  const changedHeaders = new Set(Object.keys(mapping).filter(header => mapping[header] !== storedMapping[header]));
+  const didRefresh = changedHeaders.size > 0;
+  // Bindings on untouched columns still express the user's explicit interpretation.
+  const mappingBindingsV2 = storedBindings.filter(binding => !changedHeaders.has(binding.sourceColumn));
   return {
     mappingRefreshed: didRefresh,
     raw: table.raw,
@@ -126,6 +146,7 @@ async function restoreWorkspaceSlice(entry) {
     currency: entry.series?.currency || undefined,
     worksheetName: entry.worksheetName || null,
     workspaceSource: { blob: entry.sourceBlob, kind: entry.sourceKind || "csv", transform: entry.transform, originalFileName: entry.fileName },
+    workspacePersistedSource: entry.sourceBlob,
     canonicalData: buildCanonicalDataset({ raw: table.raw, headers: table.headers, mapping }),
     mappedRows: buildLegacyRows({ raw: table.raw, legacyMapping: mapping, semanticBindings: mappingBindingsV2, toolId }),
     mappingBindingsV2,
@@ -728,21 +749,7 @@ export const useAppStore = create(persist((set, get) => ({
   }),
   importDecisionRecords: (rows, fallbackToolId = "") => set((state) => {
     if (!hasPaidAccess(state.entitlement)) return { upgradeReason: "project_limit" };
-    const now = new Date().toISOString();
-    const normalizedRows = normalizeDecisionReviewRows(rows, fallbackToolId);
-    if (!normalizedRows.length) return {};
-    const nextRecords = [...state.decisionRecords];
-    normalizedRows.forEach((record) => {
-      const existingIndex = record.id ? nextRecords.findIndex((item) => item.id === record.id) : -1;
-      if (existingIndex >= 0 && isSameImportedDecision(nextRecords[existingIndex], record)) {
-        const existing = nextRecords[existingIndex];
-        nextRecords[existingIndex] = { ...record, id: existing.id, createdAt: existing.createdAt || record.createdAt || now, updatedAt: now };
-        return;
-      }
-      const id = record.id && existingIndex < 0 ? record.id : nextDecisionRecordId(nextRecords);
-      nextRecords.unshift({ ...record, id, createdAt: record.createdAt || now, updatedAt: now });
-    });
-    return { decisionRecords: nextRecords };
+    return { decisionRecords: mergedDecisionRecords(state, rows, fallbackToolId) };
   }),
   updateDecisionRecord: (id, patch) => set((state) => !hasPaidAccess(state.entitlement) ? ({ upgradeReason: "project_limit" }) : ({
     decisionRecords: state.decisionRecords.map((record) => {
@@ -751,6 +758,33 @@ export const useAppStore = create(persist((set, get) => ({
       return normalized ? { ...normalized, updatedAt: new Date().toISOString() } : record;
     }),
   })),
+  commitDecisionRecords: async (records, previousRecords) => {
+    const state = get();
+    if (!hasPaidAccess(state.entitlement)) throw new Error("PRO_REQUIRED");
+    if (!state.decisionPersistenceEnabled) throw new Error("STORAGE_DISABLED");
+    const shouldSave = () => get().activeProjectId === state.activeProjectId && !get().projectSwitching
+      && get().decisionPersistenceEnabled && hasPaidAccess(get().entitlement) && get().decisionRecords === previousRecords;
+    // First import and its default project commit atomically, too.
+    const saved = await updateProject(state.activeProjectId, { decisions: records }, shouldSave, state.entitlement, { initializeEmpty: !state.projects.length });
+    if (!saved) throw new Error("SAVE_CONTEXT_CHANGED");
+    set(current => current.activeProjectId !== state.activeProjectId || current.decisionRecords !== previousRecords ? {} : {
+      decisionRecords: saved.decisions, projects: current.projects.some(project => project.id === saved.id)
+        ? current.projects.map(project => project.id === saved.id ? saved : project) : [...current.projects, saved], projectError: null,
+    });
+    return saved;
+  },
+  commitDecisionRecord: async (id, patch) => {
+    const state = get();
+    const existing = state.decisionRecords.find(record => record.id === id);
+    if (!existing) throw new Error("INVALID_REVIEW");
+    const record = sanitizeDecisionReviewRecord({ ...existing, ...patch, id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() });
+    if (!record) throw new Error("INVALID_REVIEW");
+    return get().commitDecisionRecords(state.decisionRecords.map(item => item.id === id ? record : item), state.decisionRecords);
+  },
+  commitImportedDecisionRecords: async (rows, fallbackToolId = "") => {
+    const state = get();
+    return get().commitDecisionRecords(mergedDecisionRecords(state, rows, fallbackToolId), state.decisionRecords);
+  },
   removeDecisionRecord: (id) => set((state) => ({
     decisionRecords: state.decisionRecords.filter((record) => record.id !== id),
     decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds].filter((recordId) => recordId !== id)),
@@ -950,7 +984,6 @@ export const useAppStore = create(persist((set, get) => ({
           csvGroups,
           csvData: csvGroups[state.activeDataGroup] || EMPTY_SLICE(),
           workspaceDatasetSummaries: summaries,
-          workspaceRestoreStatus: "ready",
           workspaceExpiredCount: sweep.expired.length,
           workspaceUnreadableGroups: unreadableGroups,
           workspaceRemappedGroups: remappedGroups,
@@ -958,6 +991,7 @@ export const useAppStore = create(persist((set, get) => ({
       });
       const project = await readProject(projectId);
       if (get().activeProjectId === projectId) await get().restoreProjectConfiguration(project);
+      if (get().activeProjectId === projectId) set({ workspaceRestoreStatus: "ready" });
       return summaries;
     } catch (error) {
       set({ workspaceRestoreStatus: "failed", workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" });
@@ -1074,10 +1108,18 @@ export const useAppStore = create(persist((set, get) => ({
         mapping: data.mapping,
         mappingBindingsV2: data.mappingBindingsV2,
         worksheetName: data.worksheetName,
-      }).then((saved) => { get().refreshProjects(); set((state) => state.activeProjectId !== projectId ? {} : ({
-        workspaceDatasetSummaries: [saved, ...state.workspaceDatasetSummaries.filter((entry) => entry.group !== saved.group)],
-        workspaceStorageError: null,
-      })); return true; }).catch((error) => { set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }); return false; });
+      }).then((saved) => { get().refreshProjects(); set((state) => {
+        if (state.activeProjectId !== projectId) return {};
+        const slice = state.csvGroups[group];
+        const currentSource = slice?.workspaceSource?.blob === source.blob;
+        const storedSlice = currentSource ? { ...slice, workspacePersistedSource: source.blob } : slice;
+        return {
+          csvGroups: { ...state.csvGroups, [group]: storedSlice },
+          ...(state.activeDataGroup === group ? { csvData: storedSlice } : {}),
+          workspaceDatasetSummaries: [saved, ...state.workspaceDatasetSummaries.filter((entry) => entry.group !== saved.group)],
+          workspaceStorageError: null,
+        };
+      }); return true; }).catch((error) => { set({ workspaceStorageError: error?.code || "WORKSPACE_STORAGE_UNKNOWN" }); return false; });
     }
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을

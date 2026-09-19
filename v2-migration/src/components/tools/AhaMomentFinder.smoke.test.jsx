@@ -117,7 +117,7 @@ describe("AhaMomentFinder render smoke", () => {
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "data_import_failed", expect.objectContaining({ tool_id: "5-20", state: "empty_file" })));
 
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
-    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-20", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-20", interaction_source: "csv", row_count: 1, column_count: 2 })]);
     expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "5-20", state: "empty_file" })]);
     expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-users|private_action|classified|secret_value|999/);
     delete window.gtag;

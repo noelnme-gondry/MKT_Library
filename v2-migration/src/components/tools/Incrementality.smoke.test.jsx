@@ -78,7 +78,7 @@ describe("Incrementality render smoke", () => {
     }));
 
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
-    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-23", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "5-23", interaction_source: "csv", row_count: 1, column_count: 2 })]);
     expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "5-23", state: "parse_error" })]);
     expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-holdout|private_group|classified|secret_metric|777/);
     delete window.gtag;
