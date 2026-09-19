@@ -23,6 +23,23 @@ describe("DecisionReview", () => {
     });
   });
 
+  it("keeps a dirty draft but prevents mixing changed analysis evidence", () => {
+    const first = { headline: "CPA 100", stats: [{ label: "CPA", value: "100" }] };
+    const view = render(<DecisionReview toolId="5-3" analysisEvidence={first} decisionPrefill={{ action: "Hold", conclusion: "CPA 100" }} />);
+    openDecisionReview(view.container);
+    fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "My edited action" } });
+    view.rerender(<DecisionReview toolId="5-3" analysisEvidence={{ headline: "CPA 200", stats: [{ label: "CPA", value: "200" }] }} decisionPrefill={{ action: "Investigate", conclusion: "CPA 200" }} />);
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("My edited action");
+    expect(screen.getByRole("button", { name: "다음 검토로 저장" }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "현재 결과로 초안 다시 만들기" }));
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Investigate");
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    confirmReviewSave();
+    const saved = useAppStore.getState().decisionRecords[0];
+    expect(saved.conclusion).toBe("CPA 200");
+    expect(JSON.parse(saved.evidence).stats[0].value).toBe("200");
+  });
+
   it("records a concrete action and lets the user enter its outcome", () => {
     const { container } = render(<DecisionReview toolId="5-3" />);
     expect(container.textContent).toContain("7일 뒤 검토");

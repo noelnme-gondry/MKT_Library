@@ -1,3 +1,4 @@
+import { reviewScopeRows } from "@/lib/reviewEvidence";
 function escapeCell(value) {
   return String(value || "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
@@ -9,9 +10,10 @@ export function renderReportMarkdown(draft, locale = "ko") {
   }
   draft.blocks.forEach((block) => {
     lines.push(`## ${block.toolTitle}`, "", block.headline, "");
+    for (const [label, value] of reviewScopeRows(block.scope, locale)) lines.push(`${label}: ${value}`);
     if (block.stats?.length) {
-      lines.push(`| ${locale === "en" ? "Metric" : "지표"} | ${locale === "en" ? "Value" : "값"} |`, "|---|---:|");
-      block.stats.forEach((stat) => lines.push(`| ${escapeCell(stat.label)} | ${escapeCell(stat.displayValue)} |`));
+      lines.push(`| ${locale === "en" ? "Metric" : "지표"} | ${locale === "en" ? "Value" : "값"} | ${locale === "en" ? "Context" : "설명"} |`, "|---|---:|---|");
+      block.stats.forEach((stat) => lines.push(`| ${escapeCell(stat.label)} | ${escapeCell(stat.displayValue)} | ${escapeCell(stat.detail)} |`));
       lines.push("");
     }
     block.points?.forEach((point) => lines.push(`- ${point}`));

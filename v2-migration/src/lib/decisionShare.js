@@ -27,7 +27,7 @@ function base64UrlDecode(token) {
 }
 
 // 입력 객체를 펼치지 않고 허용 필드만 새로 조립한다(금지 키가 흘러들 경로를 없앤다).
-export function buildSharePayload({ toolId, toolTitle, headline, points = [], stats = [], locale = "ko" }) {
+export function buildSharePayload({ toolId, toolTitle, headline, points = [], stats = [], locale = "ko", context = {}, limitations = [] }) {
   const id = typeof toolId === "string" ? toolId : "";
   const line = plain(headline, LIMITS.headline);
   // idToSlug는 Object.fromEntries 산물이라 프로토타입 체인이 살아 있다. `id`가
@@ -40,14 +40,16 @@ export function buildSharePayload({ toolId, toolTitle, headline, points = [], st
     n: plain(toolTitle, 80),
     h: line,
     p: points
-      .map((item) => plain([item?.label, item?.text].filter(Boolean).join(" · "), LIMITS.point))
+      .map((item) => plain([item?.label, item?.text, item?.detail].filter(Boolean).join(" · "), LIMITS.point))
       .filter(Boolean)
       .slice(0, LIMITS.points),
     s: stats
-      .map((item) => ({ l: plain(item?.label, LIMITS.statLabel), v: plain(item?.value, LIMITS.statValue) }))
+      .map((item) => ({ l: plain(item?.label, LIMITS.statLabel), v: plain(item?.value, LIMITS.statValue), ...(plain(item?.detail, 140) ? { d: plain(item.detail, 140) } : {}) }))
       .filter((item) => item.l && item.v)
       .slice(0, LIMITS.stats),
     l: locale === "en" ? "en" : "ko",
+    ...(Object.keys(context).length ? { c: Object.fromEntries(["dateStart", "dateEnd", "comparisonStart", "comparisonEnd", "currency"].map(key => [key, plain(context[key], 80)]).filter(([, value]) => value)) } : {}),
+    ...(limitations.length ? { w: limitations.slice(0, 2).map(value => plain(value, 200)).filter(Boolean) } : {}),
   };
 }
 
@@ -69,8 +71,10 @@ export function decodeSharePayload(token) {
       toolTitle: parsed.n,
       headline: parsed.h,
       points: Array.isArray(parsed.p) ? parsed.p.map((text) => ({ text })) : [],
-      stats: Array.isArray(parsed.s) ? parsed.s.map((item) => ({ label: item?.l, value: item?.v })) : [],
+      stats: Array.isArray(parsed.s) ? parsed.s.map((item) => ({ label: item?.l, value: item?.v, detail: item?.d })) : [],
       locale: parsed.l,
+      context: parsed.c && typeof parsed.c === "object" && !Array.isArray(parsed.c) ? parsed.c : {},
+      limitations: Array.isArray(parsed.w) ? parsed.w : [],
     });
   } catch {
     return null;

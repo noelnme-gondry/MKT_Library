@@ -1,3 +1,4 @@
+import { buildReviewBrief } from "./reviewBrief";
 const VALID_CALCULATION_MODES = new Set([
   "exact_after_preprocessing",
   "hybrid_engine_output",
@@ -106,6 +107,8 @@ export function buildAnalysisExportPayload({
   manifest = null,
   addon = null,
   generatedAt = null,
+  projectName = "",
+  reviewRecords = [],
 } = {}) {
   const resolvedAddon = resolveAddon(addon);
   const rawRows = normalizeRows(resolvedAddon.source?.rows ?? source.rows);
@@ -136,6 +139,7 @@ export function buildAnalysisExportPayload({
       points: points.map(plainPoint).filter(Boolean),
       stats: stats.map(plainStat).filter(Boolean),
     },
+    review: buildReviewBrief({ projectName, records: reviewRecords, locale }),
     calculationMode,
     calculationTables: (resolvedAddon.calculationTables || []).map(normalizeTable).filter(Boolean),
     method: {

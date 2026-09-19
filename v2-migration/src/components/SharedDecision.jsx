@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 
+import { reviewScopeRows } from "@/lib/reviewEvidence";
 import { trackProductEvent } from "@/lib/analytics";
 import { decodeSharePayload, toolHrefForShare } from "@/lib/decisionShare";
 
@@ -54,6 +55,7 @@ function SharedDecisionBody({ locale }) {
       {payload.s.map((stat) => <div key={`${stat.l}-${stat.v}`}>
         <span>{stat.l}</span>
         <strong>{stat.v}</strong>
+        {stat.d && <p>{stat.d}</p>}
       </div>)}
     </div>}
 
@@ -64,6 +66,8 @@ function SharedDecisionBody({ locale }) {
       </ul>
     </>}
 
+    {Object.keys(payload.c || {}).length > 0 && <section><h2>{locale === "en" ? "Comparison scope" : "비교 범위"}</h2><dl>{reviewScopeRows(payload.c, locale).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></section>}
+    {payload.w?.length > 0 && <section><h2>{locale === "en" ? "Interpretation limits" : "해석 시 확인할 점"}</h2>{payload.w.map(text => <p key={text}>{text}</p>)}</section>}
     <div className="shared-decision__actions">
       {toolHref && <Link
         className="btn primary"

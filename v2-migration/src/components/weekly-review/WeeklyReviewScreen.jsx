@@ -4,6 +4,7 @@ import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import AccountArchive from "@/components/AccountArchive";
 import AnalysisSelector from "@/components/weekly-review/AnalysisSelector";
+import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import DecisionHistoryList from "@/components/weekly-review/DecisionHistoryList";
 import ProjectCreateGate from "@/components/ProjectCreateGate";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
@@ -376,6 +377,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
   const saveDecision = (recommendedLabel) => {
     const record = {
       toolId: "weekly-review",
+      evidence: serializeReviewEvidence({ capturedAt: new Date().toISOString(), headline: `${project.kpi.metric.toUpperCase()} · ${review.periods.current.start} ~ ${review.periods.current.end}`, resultState: review.routing.status, scope: { previous: `${review.periods.previous.start} ~ ${review.periods.previous.end}`, current: `${review.periods.current.start} ~ ${review.periods.current.end}`, currency: csvData.currency, denomBasis: project.kpi.basis }, stats: [{ label: project.kpi.metric.toUpperCase(), value: formatReviewMetric(review.metrics.current[project.kpi.metric], project.kpi.metric, csvData.currency, locale), detail: `${locale === "en" ? "Previous" : "지난 기간"}: ${formatReviewMetric(review.metrics.previous[project.kpi.metric], project.kpi.metric, csvData.currency, locale)}` }] }),
       dataOrigin: decisionDataOrigin(csvData),
       locale,
       action: [decision.actionTarget || recommendedLabel, decision.actionKind, decision.actionAmount]
@@ -455,6 +457,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
     ];
   const draft = buildReportDraft({
     locale,
+    metrics: review.metrics,
+    currency: csvData.currency,
     notes: [...workspaceReportNotes(evidence, review, locale), ...reviewNotes],
     project,
     period: periods.current,
@@ -810,7 +814,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         <div className="wr-report-actions">
         <button type="button" className="btn" onClick={() => copyReview()}>{locale === "en" ? "Copy for Slack / Notion" : "Slack / Notion용 복사"}</button>
         <button type="button" className="btn" onClick={() => { if (!requirePaidExport({ locale })) return; trackProductEvent("weekly_review_export", { locale, tool_id: "weekly-review", source: reviewSource, download_type: "print", state: "requested" }); window.print(); }}>{locale === "en" ? "Print / PDF" : "인쇄 / PDF"}</button>
-        <AnalysisExportProvider value={{ buildPayload: () => buildWeeklyReviewExport({ csvData, evidence, review, text: renderReportText(draft, { number: money }), locale }) }}><DownloadHub toolId="weekly-review" locale={locale} label={locale === "en" ? "Download Word / Excel" : "Word / Excel 보고서 받기"} /></AnalysisExportProvider>
+        <AnalysisExportProvider value={{ buildPayload: () => buildWeeklyReviewExport({ csvData, evidence, review, text: renderReportText(draft, { number: money }), locale, projectName: project.name, reviewRecords: isSampleData ? [] : decisionRecords, basis: project.kpi.basis }) }}><DownloadHub toolId="weekly-review" locale={locale} label={locale === "en" ? "Download Word / Excel" : "Word / Excel 보고서 받기"} /></AnalysisExportProvider>
         </div>
         {copyStatus?.key === resultEventKey && !copyStatus.summary && <p role="status">{copyStatus.message}</p>}
       </section>

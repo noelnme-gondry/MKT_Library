@@ -744,3 +744,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - CSV 실습 대상은 발행 글의 `blogInsightRegistry` 배치에서 파생한다. 개별 재현 예제가 없는 글은 해당 분석 도구의 기존 합성 데모를 브라우저에서 CSV로 생성한다. 단순 집계가 글의 모형 결과처럼 보이지 않도록 새 실습은 상세 도구의 매핑·분석 조건 확인으로 이어진다. 설정·커리어 등 CSV 부적합 사유가 있는 글에는 데모 안내를 만들지 않는다.
 - 공통 안내: ‘데모를 바로 열거나 CSV를 선택한 뒤 상세 도구에서 필요한 열과 분석 조건을 확인하세요. / Open the demo or choose a CSV, then check the columns and analysis settings in the full tool.’, ‘예제는 분석 흐름을 익히기 위한 합성 데이터입니다. 글의 수치나 실제 계정의 효과를 재현하는 자료가 아닙니다. / This synthetic example teaches the analysis workflow. It does not reproduce the article’s figures or effects in a real account.’ 도구별 질문·결과 항목은 `toolIndex`의 기존 문구를 재사용한다.
 - 모든 발행 글 하단에 해당 도구·CSV 컬럼 준비를 연결한다. 실습 대상 글은 ‘본문 데모 실습으로 / Try the article’s demo’로 연결하고, 주간 리뷰는 효율 데이터 그룹을 다루는 실습 글에만 제공한다. 다른 데이터 그룹의 파일이 주간 리뷰로 그대로 이어진다고 약속하지 않는다.
+
+### 프로젝트 의사결정·전달 품질 (2026-09-20)
+
+- 프로젝트 리뷰는 효율 CSV 하나의 재분석 화면에 한정하지 않는다. 실제 저장된 모든 도구의 결정을 도구별 검토 목록으로 제공한다. 검토 대기·관측 완료·후속 결정은 실제 기록으로 집계하며 성공률이나 품질 점수를 임의 생성하지 않는다.
+- 결정 저장 시 화면에서 확인한 결론·핵심 수치·근거·비교 범위·분석 상태를 작은 기기 전용 근거 기록으로 함께 보존한다. 원본 행·파일명은 근거 기록과 공유 링크에 넣지 않는다. 과거 기록에 근거가 없으면 미보관으로 표시한다. 계정 메모 API는 이 상세 근거를 자동 업로드하지 않는다.
+- 관측 결과와 배운 점을 저장한 결정에서 후속 결정을 만들 수 있다. 부모 결정과 연결하되 이전 결정의 결과·이력을 덮어쓰지 않는다. 새 결정의 검토일·행동은 사용자가 확정하며 과거 비교 범위를 새 실험의 자동 판정 기준으로 재사용하지 않는다.
+- 보고서와 공유 브리프는 결론, 실제 핵심 수치와 비교 기간·통화, 근거, 저장된 결정·검토 조건, 방법과 한계를 전달한다. 현재 결과와 과거 결정의 작성 시점을 구분한다. Word·미리보기·Excel은 같은 전달 데이터를 사용한다.
+- 넓은 표를 Word의 앞 6열로 잘라 핵심 결과를 숨기지 않는다. 열을 나누어 첫 식별 열과 함께 모두 보여 주고, 행 제한과 전체 Excel 범위를 명시한다. 수식 결과를 계산하지 못하면 추정하지 않는다. 계산 모드·입력 출처·결측·통계적 한계를 함께 남긴다.
+- KR/EN 동등 제공. 복사·다운로드 성공 이벤트는 실제 동작 성공 뒤에만 전송하고 원자료나 결정 내용은 이벤트에 포함하지 않는다. / The review loop preserves source evidence and links observations to a separate next decision; reports and shared briefs retain scope, real results and limitations without inventing missing data.

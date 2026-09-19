@@ -39,6 +39,7 @@ export function reportBlockFromResultCard({ toolId, toolTitle, headline, points,
     stats: (stats || []).map((item) => ({
       label: plain(item.label) || "",
       displayValue: plain(item.value) || "",
+      detail: plain(item.detail) || "",
     })).filter((item) => item.label && item.displayValue).slice(0, 8),
     scope,
     inputSignature,

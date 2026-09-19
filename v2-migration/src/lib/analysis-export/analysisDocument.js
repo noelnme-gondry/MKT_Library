@@ -1,8 +1,11 @@
+import { documentTableBands, reportCellText } from "./reviewBrief";
+import { reviewScopeRows } from "@/lib/reviewEvidence";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, ImageRun, Footer, PageNumber } from "docx";
 
 export async function createAnalysisDocument(payload) {
   const en = payload.locale === "en";
-  const text = value => value == null ? "—" : typeof value === "object" ? (value.formula ? (en ? "See Excel formula" : "Excel 수식 참조") : JSON.stringify(value)) : String(value);
+  const recordOnly = payload.source.importSource === "project_records";
+  const text = value => reportCellText(value, payload.locale);
   const p = value => new Paragraph({ children: [new TextRun(text(value))], spacing: { after: 140 } });
   const h = value => new Paragraph({ text: value, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 160 }, keepNext: true });
   const table = rows => new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: rows.map((row, index) => new TableRow({ tableHeader: index === 0, cantSplit: true, children: row.map(value => new TableCell({ shading: index === 0 ? { fill: "EAF0F8" } : undefined, children: [p(value)] })) })) });
@@ -11,11 +14,16 @@ export async function createAnalysisDocument(payload) {
     p(`Growth Opt Playbook | ${payload.generatedAt}`),
     h(en ? "Decision summary" : "핵심 결론"), p(payload.summary.headline),
     h(en ? "Analysis scope" : "분석 범위"),
-    table([[en ? "Item" : "항목", en ? "Value" : "값"], [en ? "Source" : "원본", payload.source.fileName || (en ? "Manual inputs" : "수동 입력")], [en ? "Uploaded rows" : "업로드 원본 행", payload.source.rows.length], ...Object.entries(payload.scope)]),
-    p(en ? "Source row count is not the number of observations used by every calculation. Filters and method-specific exclusions are listed in the evidence sheets." : "원본 행 수가 모든 계산의 분석 표본 수를 뜻하지는 않습니다. 필터와 방법별 제외 조건은 근거 시트에서 확인하세요."),
+    table([[en ? "Item" : "항목", en ? "Value" : "값"], [en ? "Source" : "원본", payload.source.fileName || (payload.source.importSource === "project_records" ? (en ? "Saved project decisions" : "보관한 프로젝트 결정") : (en ? "Manual inputs" : "수동 입력"))], ...(!recordOnly ? [[en ? "Uploaded rows" : "업로드 원본 행", payload.source.rows.length]] : []), ...reviewScopeRows(payload.scope, payload.locale)]),
+    ...(!recordOnly ? [p(en ? "Source row count is not the number of observations used by every calculation. Filters and method-specific exclusions are listed in the evidence sheets." : "원본 행 수가 모든 계산의 분석 표본 수를 뜻하지는 않습니다. 필터와 방법별 제외 조건은 근거 시트에서 확인하세요.")] : []),
   ];
   if (payload.summary.stats.length) contents.push(h(en ? "Key results" : "핵심 수치"), table([[en ? "Metric" : "지표", en ? "Result" : "결과", en ? "Context" : "설명"], ...payload.summary.stats.map(stat => [stat.label, stat.value, stat.detail])]));
   if (payload.summary.points.length) contents.push(h(en ? "Evidence and next steps" : "근거와 다음 행동"), ...payload.summary.points.flatMap(point => [p([point.label, point.text].filter(Boolean).join(" — ")), ...(point.detail ? [p(point.detail)] : [])]));
+  if (payload.review?.decisions.length) {
+    contents.push(h(en ? "Decision review and follow-up" : "결정 검토와 후속 행동"), p(payload.review.projectName), p(en ? "Historical saved records; observed changes do not establish causal effects." : "저장된 과거 기록입니다. 관측 변화만으로 인과효과를 입증하지 않습니다."));
+    for (const decision of payload.review.decisions) contents.push(p(decision.action), table([[en ? "Review item" : "검토 항목", en ? "Recorded content" : "기록한 내용"], ...decision.fields]));
+    if (payload.review.total > payload.review.decisions.length) contents.push(p(en ? `Latest ${payload.review.decisions.length} of ${payload.review.total} decisions shown.` : `전체 ${payload.review.total}건 중 최근 ${payload.review.decisions.length}건을 담았습니다.`));
+  }
   for (const chart of payload.charts || []) {
     if (!chart.image || !chart.width || !chart.height) continue;
     const scale = Math.min(580 / chart.width, 420 / chart.height);
@@ -24,11 +32,10 @@ export async function createAnalysisDocument(payload) {
   for (const calculation of payload.calculationTables || []) {
     contents.push(h(calculation.title || calculation.name));
     if (calculation.note) contents.push(p(calculation.note));
-    const rows = calculation.rows.slice(0, 21).map(row => row.slice(0, 6));
-    if (rows.length) contents.push(table(rows));
-    if (calculation.rows.length > 21 || calculation.rows.some(row => row.length > 6)) contents.push(p(en ? "This report shows the first 20 records and 6 columns. The companion Excel workbook contains the full table and formulas." : "이 문서는 앞 20개 기록과 6개 열을 보여줍니다. 전체 표와 계산식은 함께 제공되는 Excel 워크북에서 확인하세요."));
+    for (const rows of documentTableBands(calculation.rows)) contents.push(table(rows));
+    if (calculation.rows.length > 21) contents.push(p(en ? "The first 20 records are shown. All columns are preserved; the Excel workbook contains every record and formula." : "앞 20개 기록을 표시합니다. 모든 열은 나누어 보여 주며, 전체 기록과 수식은 Excel 워크북에 담깁니다."));
   }
-  contents.push(h(en ? "Method and limitations" : "분석 방법과 해석 한계"), p(`${payload.method.name} | ${payload.method.engine} | ${payload.method.version || "—"}`), ...payload.method.assumptions.map(p), ...payload.method.limitations.map(p), p(payload.calculationMode === "exact_after_preprocessing" ? (en ? "Excel formulas recalculate from prepared inputs. Raw edits do not automatically rerun preprocessing." : "Excel 수식은 전처리된 입력부터 다시 계산합니다. 원본 수정만으로 전처리가 다시 실행되지는 않습니다.") : (en ? "Statistical model estimates are browser-engine outputs. Excel preserves those outputs and downstream formulas; edit inputs and rerun the website analysis to refit the model." : "통계 모델 추정치는 브라우저 엔진 산출물입니다. Excel에는 이 산출물과 후속 계산식을 보존합니다. 모델을 다시 추정하려면 데이터를 바꾸고 사이트에서 분석을 재실행하세요.")), p(en ? "This report supports decisions; observed differences alone do not establish causal effects." : "이 보고서는 의사결정을 돕는 자료입니다. 관측 차이만으로 인과효과가 입증되는 것은 아닙니다."));
+  contents.push(h(en ? "Method and limitations" : "분석 방법과 해석 한계"), p(`${payload.method.name} | ${payload.method.engine} | ${payload.method.version || "—"}`), ...payload.method.assumptions.map(p), ...payload.method.limitations.map(p), ...(!recordOnly ? [p(payload.calculationMode === "exact_after_preprocessing" ? (en ? "Excel formulas recalculate from prepared inputs. Raw edits do not automatically rerun preprocessing." : "Excel 수식은 전처리된 입력부터 다시 계산합니다. 원본 수정만으로 전처리가 다시 실행되지는 않습니다.") : (en ? "Statistical model estimates are browser-engine outputs. Excel preserves those outputs and downstream formulas; edit inputs and rerun the website analysis to refit the model." : "통계 모델 추정치는 브라우저 엔진 산출물입니다. Excel에는 이 산출물과 후속 계산식을 보존합니다. 모델을 다시 추정하려면 데이터를 바꾸고 사이트에서 분석을 재실행하세요."))] : []), p(en ? "This report supports decisions; observed differences alone do not establish causal effects." : "이 보고서는 의사결정을 돕는 자료입니다. 관측 차이만으로 인과효과가 입증되는 것은 아닙니다."));
   const document = new Document({ creator: "Growth Opt Playbook", title: payload.toolTitle, styles: { default: { document: { run: { font: "Arial", size: 22, color: "182230" }, paragraph: { spacing: { line: 300 } } } } }, sections: [{ properties: { page: { margin: { top: 1000, bottom: 1000, left: 900, right: 900 } } }, footers: { default: new Footer({ children: [new Paragraph({ children: [new TextRun("Growth Opt Playbook  |  "), new TextRun({ children: [PageNumber.CURRENT] })] })] }) }, children: contents }] });
   return Packer.toBlob(document);
 }

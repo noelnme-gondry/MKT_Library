@@ -37,7 +37,7 @@ export default function DownloadHub({
       setIsExporting(true); setExportError("");
       try {
         const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
-        const payload = { ...analysisExport.buildPayload(manifest), charts: await captureAnalysisCharts() };
+        const payload = { ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() };
         return downloadFile(await createAnalysisDocument(payload), `${payload.toolId}_analysis_report.docx`);
       } catch { setExportError(locale === "en" ? "Could not create the report. Please try again." : "보고서를 만들지 못했습니다. 다시 시도해 주세요."); return false; }
       finally { setIsExporting(false); }
@@ -45,7 +45,7 @@ export default function DownloadHub({
   } : null;
   const workbookItem = analysisExport?.buildPayload ? {
     label: locale === "en" ? "Detailed workbook (XLSX)" : "상세 워크북 (XLSX)",
-    desc: locale === "en"
+    desc: analysisExport.recordOnly ? (locale === "en" ? "Saved decisions, observations, learning and next review dates" : "저장한 결정·관측 결과·배운 점·다음 검토일") : locale === "en"
       ? "Complete raw data · mapping · formulas · engine boundary · result evidence"
       : "원본 전체 · 매핑 · 계산식 · 엔진 경계 · 결과 근거",
     icon: "▦",
@@ -55,7 +55,7 @@ export default function DownloadHub({
       setIsExporting(true);
       setExportError("");
       try {
-        const payload = { ...analysisExport.buildPayload(manifest), charts: await captureAnalysisCharts() };
+        const payload = { ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() };
         const bytes = await createAnalysisWorkbook(payload);
         return downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
       } catch {
