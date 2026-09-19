@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import ProjectReviewWorkspace from "./ProjectReviewWorkspace";
+import { confirmProjectExit } from "@/lib/project/reviewDraftGuard";
 vi.mock("./weekly-review/WeeklyReviewScreen", () => ({ default: function Review() { const [text, setText] = useState(""); return <input aria-label="Draft decision" value={text} onChange={event => setText(event.target.value)} />; } }));
 vi.mock("./ProjectsPage", () => ({ default: ({ onReview }) => <button onClick={onReview}>Open selected review</button> }));
 beforeEach(() => { window.history.replaceState(null, "", "/weekly-review"); useAppStore.setState({ ...useAppStore.getInitialState(), projectsReady: true, activeProjectId: "a", projects: [{ id: "a", name: "Client A" }, { id: "b", name: "Client B" }] }); });
@@ -33,19 +34,13 @@ it("opens project management from the account menu's hash entry", async () => {
   await waitFor(() => expect(screen.getByRole("button", { name: "Open selected review" })).toBeTruthy());
 });
 
-it("업로드한 파일이 있으면 전환 전에 무엇을 잃는지 묻는다", async () => {
-  // 삭제는 확인을 받는데 전환은 안 받고 있었다 — 잃는 양은 비슷하다.
-  const switchProject = vi.fn(async id => { useAppStore.setState({ activeProjectId: id }); return true; });
+it("uploaded-file confirmation is owned by the shared switch guard", () => {
   const slice = { raw: [{ a: 1 }], headers: ["a"], mapping: {}, fileName: "real.csv" };
-  useAppStore.setState({ switchProject, csvData: slice });
+  useAppStore.setState({ csvData: slice });
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-  render(<ProjectReviewWorkspace />);
-  fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
+  expect(confirmProjectExit(useAppStore.getState())).toBe(false);
   expect(confirm).toHaveBeenCalledTimes(1);
-  expect(confirm.mock.calls[0][0]).toContain("올린 파일");
-  // 거절하면 전환하지 않는다.
-  expect(switchProject).not.toHaveBeenCalled();
-  expect(useAppStore.getState().activeProjectId).toBe("a");
+  expect(confirm.mock.calls[0][0]).toContain("저장하지 않은 리뷰 입력");
   confirm.mockRestore();
 });
 

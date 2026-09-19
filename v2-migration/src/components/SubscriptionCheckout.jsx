@@ -1,7 +1,7 @@
 "use client";
 import PassRecoveryHelp from "./PassRecoveryHelp";
 import PaymentReviewCheckout from "./PaymentReviewCheckout";
-import { loadPaymentSdk } from "@/lib/subscription/paymentSdk";
+import { loadPaymentSdk, loadNicepaySdk } from "@/lib/subscription/paymentSdk";
 import AccountArchive from "./AccountArchive";
 import { readPaymentReturn } from "@/lib/subscription/paymentReturnPath";
 import Link from "next/link";
@@ -111,6 +111,11 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     preparing.current = true;
     setBusy(true); setMessage("");
     try {
+      if (config.provider === "nicepay") {
+        widgets.current = await loadNicepaySdk();
+        setReady(true);
+        return;
+      }
       const TossPayments = await loadPaymentSdk();
       // UI preparation is not purchase intent and must not create an order.
       widgets.current = TossPayments(config.clientKey).widgets({ customerKey: crypto.randomUUID() });
@@ -139,6 +144,18 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       trackPaymentEvent("begin_checkout", { locale, mode: config?.mode, transaction: order.current });
       trackProductEvent("checkout_started", { locale, source: "subscription_page", state: config.mode });
       trackPaymentEvent("payment_submitted", { locale, mode: config?.mode });
+      if (config.provider === "nicepay") {
+        widgets.current.requestPay({ clientId: config.clientKey, method: "card", currency: "KRW",
+          orderId: order.current.orderId, amount: order.current.amount,
+          goodsName: "Growth Opt Playbook Pro 1 month", language: en ? "EN" : "KO",
+          returnUrl: `${location.origin}/api/payments/nicepay/return?locale=${locale}`,
+          fnError: () => {
+            trackPaymentEvent("payment_failed", { locale, mode: config.mode });
+            setMessage(en ? "Payment was closed or did not complete. Check its status before retrying." : "결제창이 닫혔거나 결제가 완료되지 않았습니다. 상태를 확인한 뒤 다시 시도해 주세요.");
+          },
+        });
+        return;
+      }
       await widgets.current.requestPayment({ orderId: order.current.orderId, orderName: order.current.orderName, successUrl: `${location.origin}/api/payments/return?locale=${locale}`, failUrl: `${location.origin}/api/payments/failure?locale=${locale}` });
     } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(error.message === "LINK_PURCHASE_FIRST" ? (en ? "Link your existing purchased pass in My account before renewing so its remaining days are kept." : "남은 기간을 유지하려면 마이페이지에서 기존 구매 이용권을 계정에 연결한 뒤 연장해 주세요.") : ["LOGIN_REQUIRED", "ACCOUNT_CHANGED"].includes(error.message) ? (en ? "Your sign-in changed. Sign in again before paying; no new payment was submitted." : "로그인 상태가 바뀌었습니다. 다시 로그인한 뒤 결제해 주세요. 새 결제는 요청하지 않았습니다.") : error.message === "PAYMENT_PENDING" ? (en ? "An earlier payment is still pending. Check its status before starting another payment." : "처리 중인 이전 결제가 있습니다. 다시 결제하기 전에 기존 결제 상태를 확인해 주세요.") : error.message === "RATE_LIMITED" ? (en ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.") : (en ? "Payment did not complete. Check browser storage and your payment method, then retry. Your current analysis remains open." : "결제가 완료되지 않았습니다. 브라우저 저장 공간과 결제수단을 확인하고 다시 시도해 주세요. 현재 분석은 그대로 열려 있습니다.")); }
     finally { setBusy(false); }
@@ -161,7 +178,8 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     {renewing && <p>{en ? "One-time extension; no automatic renewal. Your remaining days are kept. By purchasing, you agree to the terms and refund policy below. Your analysis is temporarily saved in this browser before checkout; nothing is uploaded." : "남은 기간을 유지하는 1회 연장 결제이며 자동 갱신되지 않습니다. 구매 시 아래 이용약관과 환불정책에 동의합니다. 결제 전에 분석을 이 브라우저에 임시 보관하며 서버로 보내지 않습니다."}</p>}
     {paid ? <div className="checkout-access-card"><p role="status">{en ? "Your report pass is active until" : "보고서 이용권 사용 중 · 만료일"} {new Date(entitlement.expiresAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>{(recoveryCode || entitlement?.payment) && <button type="button" className="btn" onClick={saveRecovery}>{en ? "Save pass recovery code" : "이용권 복원 코드 보관"}</button>}</div> : config?.enabled ? <><p>{en ? "One-time payment. No automatic renewal. By purchasing, you agree to the terms and refund policy below." : "자동 갱신 없는 1회 결제입니다. 구매 시 아래 이용약관과 환불정책에 동의합니다."}</p>{config.mode === "test" && <p>{en ? "Test checkout · no actual charge" : "테스트 결제 · 실제 청구되지 않음"}</p>}</> : <p>{config ? (en ? "Purchases are currently unavailable. You can keep analyzing or try a free sample report." : "지금은 구매할 수 없습니다. 분석을 계속하거나 무료 샘플 보고서를 확인하세요.") : (en ? "Checking checkout availability…" : "구매 가능 여부 확인 중…")} {config && <a href="#report-preview-title">{en ? "Free sample reports" : "무료 샘플 보고서"}</a>}</p>}
     {waitingOrder && <section role="status"><h3>{en ? "Waiting for your deposit" : "입금 확인을 기다리고 있습니다"}</h3><p>{en ? "This payment has not activated new Pro time yet. Do not pay again. Sign in after depositing and check the status below." : "이 결제로 추가될 Pro 기간은 아직 활성화되지 않았습니다. 다시 결제하지 마세요. 입금 후 로그인해 아래에서 상태를 확인해 주세요."}</p><p>{en ? "Order" : "주문번호"}: {waitingOrder}</p><button className="btn" disabled={busy} onClick={async () => { setBusy(true); try { const result = await jsonRequest("access"); if (result.entitlement && result.status !== "waiting_for_deposit") { rememberPaymentAccess(result.entitlement); setWaitingOrder(null); setRenewing(false); if (result.transaction) trackPaymentEvent("purchase", { locale, mode: result.mode, transaction: result.transaction }); } else setMessage(en ? "Deposit has not been confirmed. Keep your order number and contact support if needed." : "아직 입금 완료가 확인되지 않았습니다. 주문번호를 보관하고 필요하면 고객센터로 문의해 주세요."); } catch { setMessage(en ? "Status could not be checked. Please retry; do not pay again." : "상태를 확인하지 못했습니다. 다시 결제하지 말고 조회를 재시도해 주세요."); } finally { setBusy(false); } }}>{en ? "Check deposit status" : "입금 상태 확인"}</button></section>}
-    <div className="checkout-widgets" hidden={!config?.enabled || !checkoutOpen || Boolean(waitingOrder)}><div id="toss-payment-methods" /><div id="toss-payment-agreement" /></div>
+    <div className="checkout-widgets" hidden={config?.provider === "nicepay" || !config?.enabled || !checkoutOpen || Boolean(waitingOrder)}><div id="toss-payment-methods" /><div id="toss-payment-agreement" /></div>
+    {config?.provider === "nicepay" && config.enabled && checkoutOpen && <p>{en ? "Card payment opens in NICEPAY's secure checkout." : "카드 결제는 나이스페이 결제창에서 진행합니다."}</p>}
     {checkoutOpen && config?.enabled && config?.requiresAccount && !checkoutAccount && <div className="checkout-signin"><p>{en ? "Sign in to link this purchase to your verified email. Marketing consent is not required." : "구매 이용권을 검증된 이메일에 연결하려면 로그인해 주세요. 마케팅 수신 동의는 필요하지 않습니다."}</p><AccountArchive locale={locale} profile /></div>}
     {checkoutOpen && !waitingOrder && config?.enabled && (!config.requiresAccount || checkoutAccount) && <button className="btn primary" type="button" disabled={busy} onClick={ready ? pay : prepare}>{busy ? (en ? "Processing…" : "처리 중…") : ready ? (en ? `Pay KRW ${SUBSCRIPTION.monthlyKrw.toLocaleString("en-US")}` : `${SUBSCRIPTION.monthlyKrw.toLocaleString("ko-KR")}원 결제하기`) : (en ? "Reload checkout" : "결제 화면 다시 불러오기")}</button>}
     {message && <p role="status">{message}</p>}

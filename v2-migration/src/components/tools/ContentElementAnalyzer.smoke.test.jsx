@@ -199,7 +199,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     await act(async () => queued[1].options.error(new Error("parse")));
 
     const eventCalls = window.gtag.mock.calls.filter(([kind]) => kind === "event");
-    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "9-1", source: "csv", row_count: 1, column_count: 2 })]);
+    expect(eventCalls).toContainEqual(["event", "data_import_success", expect.objectContaining({ tool_id: "9-1", interaction_source: "csv", row_count: 1, column_count: 2 })]);
     expect(eventCalls).toContainEqual(["event", "data_import_failed", expect.objectContaining({ tool_id: "9-1", state: "parse_error" })]);
     expect(JSON.stringify(eventCalls)).not.toMatch(/confidential-content|private_hook|classified|secret_ctr|9\.99/);
     delete window.gtag;

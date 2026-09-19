@@ -35,3 +35,16 @@ it("does not cache network failures as an anonymous visitor", async () => {
   expect(fetch).toHaveBeenCalledTimes(2);
   vi.unstubAllGlobals();
 });
+
+
+it.each([false, true])("late payment-cookie lookup cannot erase account access (offline=%s)", async fail => {
+  let release;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve, reject) => { release = () => fail ? reject(new Error("offline")) : resolve(Response.json({ entitlement: null })); })));
+  const pending = refreshPaymentAccess();
+  const accountAccess = { plan: "paid", account: true, trial: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 };
+  useAppStore.getState().setEntitlement(accountAccess);
+  release();
+  expect(await pending).toEqual(accountAccess);
+  expect(useAppStore.getState().entitlement).toEqual(accountAccess);
+  vi.unstubAllGlobals();
+});

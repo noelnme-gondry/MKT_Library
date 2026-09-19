@@ -6,10 +6,14 @@ import { fireEvent, screen } from "@testing-library/react";
 vi.mock("@/components/ReviewSaveDialog", async () => {
   const { useAppStore } = await import("@/store/useDataStore");
   return { default: function SaveBoundary({ record, onSaved, onClose, onConfirm }) {
-    return <button onClick={() => {
+    return <button onClick={async () => {
       // This boundary represents a verified signed-in Pro user.
       useAppStore.getState().setEntitlement({ plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 86400000 });
-      if (onConfirm) onConfirm();
+      if (onConfirm) {
+        // Producer-only boundary. Persistence failures are tested with the real dialog/store.
+        useAppStore.setState({ commitDecisionRecords: records => { useAppStore.setState({ decisionRecords: records }); return Promise.resolve({ decisions: records }); } });
+        await onConfirm();
+      }
       else {
         useAppStore.getState().addDecisionRecord(record);
         onSaved?.({ record: useAppStore.getState().decisionRecords[0], project: { id: "default" } });

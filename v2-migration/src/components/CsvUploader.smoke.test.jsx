@@ -272,7 +272,7 @@ describe("CsvUploader render smoke", () => {
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "data_import_failed", {
       placement: "uploader",
       tool_id: "5-2",
-      source: "csv",
+      interaction_source: "csv",
       state: "empty_file",
       locale: "ko",
     }));
@@ -319,7 +319,7 @@ describe("CsvUploader render smoke", () => {
 
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "analysis_blocked", expect.objectContaining({
       tool_id: "5-2",
-      source: "csv",
+      interaction_source: "csv",
       row_count: 1,
       state: "missing_required",
       locale: "ko",

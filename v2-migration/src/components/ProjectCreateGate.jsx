@@ -68,7 +68,11 @@ export default function ProjectCreateGate({ locale = "ko", open, onClose, onRead
   useEffect(() => {
     if (!open) return undefined;
     let active = true;
+    let admitting = false;
+    let admitted = false;
     const admit = async () => {
+      if (!active || admitting || admitted) return;
+      admitting = true;
       setBusy(true);
       setMessage("");
       try {
@@ -80,11 +84,12 @@ export default function ProjectCreateGate({ locale = "ko", open, onClose, onRead
           setMessage(t.trialOn);
         }
         if (!hasPaidAccess(result.entitlement)) { setTrialEnded(true); return; }
+        admitted = true;
         onReadyRef.current?.(result);
       } catch (error) {
         if (!active) return;
         setMessage(error?.message === "ACCOUNT_RESTRICTED" ? t.restricted : error?.message === "LOGIN_REQUIRED" ? "" : t.unavailable);
-      } finally { if (active) setBusy(false); }
+      } finally { admitting = false; if (active) setBusy(false); }
     };
     const onMessage = (event) => {
       if (event.origin !== window.location.origin) return;

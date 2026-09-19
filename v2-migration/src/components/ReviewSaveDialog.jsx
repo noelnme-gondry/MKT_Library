@@ -12,6 +12,7 @@ import { serializeDecisionReviewIcs } from "@/lib/decisionReview";
 import { downloadCalendar } from "@/utils/download";
 import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_GROUP } from "@/lib/toolGroups";
+import ProjectCreateGate from "./ProjectCreateGate";
 
 /**
  * 저장 실패 안내.
@@ -91,10 +92,12 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState(null);
+  const [trialGateOpen, setTrialGateOpen] = useState(false);
   const needsName = !target || !projects.find(item => item.id === target)?.name?.trim();
   const save = async () => {
     if (busy) return;
     setBusy(true); setMessage("");
+    let committed = null;
     try {
       const verified = await refreshAccount();
       setSession(verified);
@@ -102,11 +105,19 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       const access = verified.entitlement || useAppStore.getState().entitlement;
       if (!hasPaidAccess(access)) throw new Error("PRO_REQUIRED");
       if (useAppStore.getState().activeProjectId !== sourceId) throw new Error("SAVE_CONTEXT_CHANGED");
-      if (onConfirm) { await onConfirm(); onClose(); return; }
       if (!useAppStore.getState().decisionPersistenceEnabled) throw new Error("STORAGE_DISABLED");
+      if (onConfirm) { await onConfirm(); onClose(); return; }
       const result = await saveProjectReview({ projectId: target, name, record: draftRecord, report, entitlement: access,
         initialDecisions: useAppStore.getState().decisionRecords,
         shouldSave: () => hasPaidAccess(useAppStore.getState().entitlement || verified.entitlement) && useAppStore.getState().decisionPersistenceEnabled && useAppStore.getState().activeProjectId === sourceId });
+      committed = result;
+      // Count the committed write, regardless of later list refresh/file/callback failures.
+      trackProductEvent("project_review_saved", {
+        ...(result.record?.toolId ? { tool_id: result.record.toolId } : {}),
+        state: target ? "existing_project" : "new_project",
+        result_state: result.record ? (report ? "review_report" : "review") : "report",
+        locale,
+      });
       if (result.project.id === useAppStore.getState().activeProjectId && result.record) {
         const state = useAppStore.getState();
         useAppStore.setState({ decisionRecords: result.project.decisions, decisionSessionRecordIds: new Set([...state.decisionSessionRecordIds, result.record.id]) });
@@ -121,16 +132,12 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
         if (!fileSaved) result.fileSaveFailed = true;
       }
       setSaved(result);
-      onSaved?.(result);
-      // 저장 실행의 단일 통과 지점. 표면별 이벤트(weekly_decision_saved 등)는 각 퍼널의
-      // 단계이고, 이 이벤트만이 "프로젝트 리뷰 저장이 실제로 일어난 횟수"다 — 합산 금지.
-      trackProductEvent("project_review_saved", {
-        ...(result.record?.toolId ? { tool_id: result.record.toolId } : {}),
-        state: target ? "existing_project" : "new_project",
-        result_state: result.record ? (report ? "review_report" : "review") : "report",
-        locale,
-      });
+      await onSaved?.(result);
     } catch (error) {
+      if (committed) {
+        setSaved({ ...committed, postSaveFailed: true });
+        return;
+      }
       setMessage(saveFailureMessage(error.message, en));
       if (!onConfirm) trackProductEvent("project_review_save_failed", {
         ...(draftRecord?.toolId ? { tool_id: draftRecord.toolId } : {}),
@@ -138,10 +145,15 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       });
     } finally { setBusy(false); }
   };
+  if (trialGateOpen) return <ProjectCreateGate locale={locale} open onClose={() => setTrialGateOpen(false)} onReady={async () => {
+    setSession(await refreshAccount());
+    setTrialGateOpen(false);
+  }} />;
   return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={en ? "Save review" : "리뷰 저장"} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
     <h2>{saved ? (en ? "Review saved" : "리뷰를 저장했습니다") : (en ? "Save review" : "리뷰 저장")}</h2>
     {saved ? <>
       <p role="status">{en ? `Saved on this device in ${saved.project.name || "your existing project"}.` : `이 기기의 ‘${saved.project.name || "기존 프로젝트"}’에 저장했습니다.`}</p>
+      {saved.postSaveFailed && <p role="alert">{en ? "The review was saved. A follow-up step failed, so reopen the project to check the record and keep the original source file." : "리뷰는 저장했습니다. 후속 처리가 끝나지 않았으니 프로젝트를 다시 열어 기록을 확인하고 원본 파일을 보관해 주세요."}</p>}
       {saved.fileSaveFailed && <p role="alert">{en ? "The review was saved, but the source file was not. Keep the original file for your next visit." : "리뷰는 저장했지만 원본 파일은 저장하지 못했습니다. 다음 방문을 위해 원본 파일을 따로 보관해 주세요."}</p>}
       {saved.record && <section className="review-next-visit">
         <h3>{en ? "For your next review" : "다음 검토 준비"}</h3>
@@ -163,7 +175,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
         <h3>{en ? "Keep your work with Pro" : "Pro로 기록을 이어가세요"}</h3>
         {!session.account.trialStartedAt ? <>
           <p>{en ? "Create a project to start your 14-day Pro trial, with no automatic payment." : "프로젝트를 만들면 14일 Pro 체험이 시작되며 자동 결제되지 않습니다."}</p>
-          {draftRecord ? <AccountArchive record={draftRecord} locale={locale} onSession={setSession} /> : <Link className="btn" href={`${en ? "/en" : ""}/weekly-review#wr-next`} onClick={onClose}>{en ? "Draft a decision to start your trial" : "결정을 작성하고 체험 시작하기"}</Link>}
+          <button type="button" className="btn" onClick={() => setTrialGateOpen(true)}>{en ? "Start project trial" : "프로젝트 체험 시작"}</button>
         </> : <p>{en ? "Your trial has ended. Renew Pro to save or update projects and reviews. Existing records remain readable and exportable." : "체험이 종료되었습니다. 프로젝트·리뷰를 저장하거나 수정하려면 Pro 이용권이 필요합니다. 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>}
         <Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "View Pro plans" : "Pro 이용권 보기"}</Link>
       </section>}
@@ -171,9 +183,9 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
         <label>{en ? "Save to project" : "저장할 프로젝트"}<select value={target} onChange={event => setTarget(event.target.value)} disabled={busy}>{projects.map(item => <option key={item.id} value={item.id}>{item.name || (en ? "Existing project" : "기존 프로젝트")}</option>)}<option value="">{en ? "New project" : "새 프로젝트"}</option></select></label>
         {needsName && <label>{en ? "Project name" : "프로젝트 이름"}<input value={name} onChange={event => setName(event.target.value)} maxLength={120} placeholder={en ? "Client or app name" : "고객 또는 앱 이름"} disabled={busy} /></label>}
         {target && target !== activeId && <p>{en ? "Only this record is saved to the selected project. Its CSV and analysis setup are not moved." : "선택한 프로젝트에는 이 기록만 저장합니다. CSV·분석 설정은 옮기지 않습니다."}</p>}
-        {!persistence && <label><input type="checkbox" checked={false} onChange={() => useAppStore.getState().setDecisionPersistenceEnabled(true)} />{en ? "Enable device storage to keep this review (90 days since last use)." : "이 기기에 리뷰 보관하기 (마지막 사용 후 90일)"}</label>}
       </>}
-      <button className="btn primary" disabled={busy || !session?.account || !hasPaidAccess(entitlement || session?.entitlement) || (!onConfirm && (!persistence || (needsName && !name.trim())))} onClick={save}>{busy ? (en ? "Saving…" : "저장 중…") : !target && !onConfirm ? (en ? "Create project and save" : "프로젝트 만들고 저장") : (en ? "Save review" : "리뷰 저장")}</button>
+      {!persistence && <label><input type="checkbox" checked={false} onChange={() => useAppStore.getState().setDecisionPersistenceEnabled(true)} />{en ? "Enable device storage to keep this review (90 days since last use)." : "이 기기에 리뷰 보관하기 (마지막 사용 후 90일)"}</label>}
+      <button className="btn primary" disabled={busy || !session?.account || !hasPaidAccess(entitlement || session?.entitlement) || !persistence || (!onConfirm && needsName && !name.trim())} onClick={save}>{busy ? (en ? "Saving…" : "저장 중…") : !target && !onConfirm ? (en ? "Create project and save" : "프로젝트 만들고 저장") : (en ? "Save review" : "리뷰 저장")}</button>
       {message && <p role="alert">{message} <Link href={en ? "/en/subscription" : "/subscription"}>{en ? "Plans" : "요금제"}</Link></p>}
     </>}
     <button className="btn" disabled={busy} onClick={onClose}>{saved ? (en ? "Done" : "닫기") : (en ? "Cancel" : "취소")}</button>

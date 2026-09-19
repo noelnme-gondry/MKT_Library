@@ -25,6 +25,10 @@ test("유입 경로 서베이는 가운데 뜨고 뒤를 잠그지 않는다", a
 
   const card = page.locator(".source-survey");
   await expect(card).toBeVisible();
+  // 보이기 시작한 순간은 등장 모션 도중이다. 허용 오차를 늘리지 않고 정착을 기다린다.
+  await card.evaluate(async node => {
+    await Promise.all(node.getAnimations().map(animation => animation.finished));
+  });
 
   // ① 실제로 가운데인가 — jsdom은 좌표를 못 재므로 여기서만 확인할 수 있다.
   const centered = await page.evaluate(() => {

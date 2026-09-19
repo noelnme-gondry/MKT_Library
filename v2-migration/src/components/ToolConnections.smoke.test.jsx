@@ -68,7 +68,7 @@ describe("ToolConnections", () => {
     expect(gtag).toHaveBeenCalledWith("event", "tool_connection_pick", {
       tool_id: "5-3",
       source_tool_id: "5-22",
-      source: "analysis_tool",
+      interaction_source: "analysis_tool",
       placement: "next_decision",
       data_continuity: "same_csv",
       rank: 1,

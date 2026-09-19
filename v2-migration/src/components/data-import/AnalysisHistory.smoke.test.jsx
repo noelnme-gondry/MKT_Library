@@ -50,7 +50,7 @@ describe("AnalysisHistory revisit telemetry", () => {
 
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_history_viewed", {
       tool_id: "5-2",
-      source: "local_history",
+      interaction_source: "local_history",
       result_state: "previous_available",
       data_continuity: "summary_only",
       locale: "ko",

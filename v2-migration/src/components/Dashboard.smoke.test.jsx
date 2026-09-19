@@ -215,7 +215,7 @@ describe("Dashboard render smoke", () => {
     expect(container.querySelector(".result-action-card")).toBeNull();
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
       tool_id: "5-2",
-      source: "csv",
+      interaction_source: "csv",
       analysis_type: "dashboard",
       result_state: "ready",
       locale: "ko",

@@ -15,6 +15,21 @@ import {
 //   ② 관측을 더해도 앞의 관측이 남는다
 //   ③ `actual`은 최신 관측의 미러다(소비처 13곳이 그대로 동작하는 근거)
 describe("관측 이력은 덮어쓰지 않고 쌓인다", () => {
+  it("긴 한글 관측도 최신 항목을 온전히 보존하고 저장 왕복이 안정적이다", () => {
+    let record = { action: "예산 점검", toolId: "5-3" };
+    for (let index = 0; index < 8; index += 1) {
+      record = { ...record, ...appendDecisionEpisode(record, {
+        actual: `${index}주차 ${"관측".repeat(70)}`,
+        learning: "배운점".repeat(100),
+      }) };
+    }
+    const restored = sanitizeDecisionReviewRecord(record);
+    const latest = decisionEpisodeList(restored).at(-1);
+    expect(latest.actual).toBe(record.actual);
+    expect(latest.learning).toBe(record.learning);
+    expect(restored.episodes).toBe(record.episodes);
+    expect(decisionEpisodeList(restored)).toHaveLength(8);
+  });
   it("스키마 버전이 v11이다", () => {
     expect(DECISION_REVIEW_SCHEMA_VERSION).toBe(11);
   });

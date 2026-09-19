@@ -7,7 +7,22 @@ const tracking = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/subscription/paymentAnalytics", () => ({ trackPaymentEvent: tracking, paymentFailureEvent: () => "payment_failed" }));
 vi.mock("@/lib/subscription/paymentClient", () => ({ rememberPaymentAccess: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
-afterEach(() => { vi.unstubAllGlobals(); delete window.TossPayments; tracking.mockClear(); window.history.replaceState(null, "", "/"); });
+afterEach(() => { vi.unstubAllGlobals(); delete window.TossPayments; delete window.AUTHNICE; tracking.mockClear(); window.history.replaceState(null, "", "/"); });
+
+it.each(["ko", "en"])("opens NICEPAY only after intent and does not count authentication as purchase (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", clientKey: "nice-fixture" }
+    : { orderId: "gop_fixture", amount: 5900 } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  const button = await screen.findByRole("button", { name: locale === "en" ? "Pay KRW 5,900" : "5,900원 결제하기" });
+  expect(window.AUTHNICE.requestPay).not.toHaveBeenCalled();
+  fireEvent.click(button);
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  expect(window.AUTHNICE.requestPay.mock.calls[0][0]).toMatchObject({ method: "card", amount: 5900, language: locale === "en" ? "EN" : "KO", returnUrl: `${location.origin}/api/payments/nicepay/return?locale=${locale}` });
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
 it.each(["ko", "en"])("only emits purchase after a successful approval response (%s)", async locale => {
   const transaction = { orderId: "gop_12345678-1234-1234-1234-123456789abc", amount: 5900 };
   window.history.replaceState(null, "", "/subscription?payment=confirm");

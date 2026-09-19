@@ -4,6 +4,7 @@ import { SITE_URL } from "@/lib/routeMap";
 import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduct";
 import { readAccount, accountsEnabled } from "@/lib/account/accountServer";
 import { SUBSCRIPTION } from "./entitlement";
+import { nicepayConfigured, verifyNicepayAuthentication, approveNicepayPayment, readNicepayPayment } from "./nicepayServer";
 
 let pool;
 const cookieName = "gop_payment_access";
@@ -17,6 +18,15 @@ function cachedPaymentEntitlement(order, now = Date.now()) {
   return order.status === "paid" && verifiedAt <= now && offlineUntil > now ? { plan: "paid", expiresAt, verifiedAt, offlineUntil, payment: true, offline: true } : null;
 }
 export function paymentConfiguration() {
+  const provider = process.env.PAYMENTS_PROVIDER || "toss";
+  if (provider !== "toss") {
+    const mode = process.env.NICEPAY_MODE === "live" ? "live" : "test";
+    const enabled = provider === "nicepay" && nicepayConfigured() && Boolean(process.env.PAYMENTS_DATABASE_URL)
+      && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true")
+      && (mode !== "test" || process.env.NODE_ENV !== "production");
+    return { provider, enabled, clientKey: enabled ? process.env.NICEPAY_CLIENT_KEY : null, reviewClientKey: null,
+      mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+  }
   const clientKey = process.env.TOSS_CLIENT_KEY || "";
   const secret = process.env.TOSS_SECRET_KEY || "";
   const mode = clientKey.startsWith("live_") ? "live" : "test";
@@ -27,7 +37,7 @@ export function paymentConfiguration() {
   // Public review may open a test widget without creating/approving an order.
   // Keep purchase availability and all entitlement checks unchanged.
   const reviewClientKey = process.env.NODE_ENV === "production" && /^test_gck_/.test(clientKey) ? clientKey : null;
-  return { enabled: configured, clientKey: configured ? clientKey : null, reviewClientKey, mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+  return { provider, enabled: configured, clientKey: configured ? clientKey : null, reviewClientKey, mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
 }
 
 export function redirectPaymentReview(request) {
@@ -71,11 +81,17 @@ export function assertSameOrigin(request) {
   if (request.headers.get("origin") !== paymentOrigin(request)) throw new Error("INVALID_ORIGIN");
 }
 async function toss(path, options = {}) {
+  if (!process.env.TOSS_SECRET_KEY) throw new Error("PAYMENTS_NOT_CONFIGURED");
   const response = await fetch(`https://api.tosspayments.com/v1/payments${path}`, {
     ...options, headers: { Authorization: `Basic ${Buffer.from(`${process.env.TOSS_SECRET_KEY}:`).toString("base64")}`, "Content-Type": "application/json", ...options.headers }, signal: AbortSignal.timeout(15000), cache: "no-store",
   });
   if (!response.ok) throw new Error("PAYMENT_VERIFICATION_FAILED");
   return response.json();
+}
+function readProviderPayment(order) {
+  if (order.provider === "nicepay") return readNicepayPayment(order);
+  if (order.provider && order.provider !== "toss") throw new Error("PAYMENTS_NOT_CONFIGURED");
+  return toss(`/${encodeURIComponent(order.payment_key)}`);
 }
 async function syncOrder(client, order, payment) {
   if (payment.orderId !== order.id || payment.paymentKey !== order.payment_key || payment.totalAmount !== order.amount || payment.currency !== "KRW") throw new Error("PAYMENT_MISMATCH");
@@ -142,7 +158,7 @@ export async function createPaymentOrder(request) {
     const { rows } = await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [previous.id]);
     const order = rows[0];
     if (owns(order, previous.token) && order.status === "pending" && order.payment_key) throw new Error("PAYMENT_PENDING");
-    if (owns(order, previous.token) && order.status === "pending" && (!account || !order.account_id || order.account_id === account.id) && Date.now() - new Date(order.created_at).getTime() < 20 * 60000) {
+    if (owns(order, previous.token) && order.status === "pending" && (order.provider || "toss") === paymentConfiguration().provider && order.mode === paymentConfiguration().mode && (!account || !order.account_id || order.account_id === account.id) && Date.now() - new Date(order.created_at).getTime() < 20 * 60000) {
       if (account) {
         const linked = await database().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1 AND (account_id IS NULL OR account_id=$2)", [order.id, account.id]);
         if (!linked.rowCount) throw new Error("INVALID_ORDER");
@@ -153,7 +169,7 @@ export async function createPaymentOrder(request) {
   const pending = await database().query("SELECT id FROM gop_payment_orders WHERE account_id=$1 AND mode=$2 AND status='pending' AND payment_key IS NOT NULL LIMIT 1", [account.id, paymentConfiguration().mode]);
   if (pending.rows.length) throw new Error("PAYMENT_PENDING");
   const id = `gop_${randomUUID()}`, token = randomBytes(32).toString("hex");
-  await database().query("INSERT INTO gop_payment_orders(id,access_hash,amount,product_id,idempotency_key,mode,account_id) VALUES($1,$2,$3,$4,$5,$6,$7)", [id, hash(token), PAYMENT_PRODUCT.amount, PAYMENT_PRODUCT.id, randomUUID(), paymentConfiguration().mode, account.id]);
+  await database().query("INSERT INTO gop_payment_orders(id,access_hash,amount,product_id,idempotency_key,mode,account_id,provider) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, hash(token), PAYMENT_PRODUCT.amount, PAYMENT_PRODUCT.id, randomUUID(), paymentConfiguration().mode, account.id, paymentConfiguration().provider]);
   return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, ...(account ? { accountId: account.id } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
 }
 export async function confirmPayment(request, input) {
@@ -172,6 +188,11 @@ export async function confirmPayment(request, input) {
     const { rows } = await client.query("SELECT * FROM gop_payment_orders WHERE id=$1 FOR UPDATE", [input.orderId]);
     const order = rows[0];
     if (!authorized(order) || order.amount !== input.amount || order.mode !== paymentConfiguration().mode || order.status === "revoked" || (order.payment_key && order.payment_key !== input.paymentKey)) throw new Error("INVALID_ORDER");
+    const alreadySubmitted = Boolean(order.payment_key);
+    if (order.provider === "nicepay") {
+      verifyNicepayAuthentication(input);
+      if (input.tid !== input.paymentKey) throw new Error("INVALID_ORDER");
+    }
     await client.query("UPDATE gop_payment_orders SET payment_key=$2 WHERE id=$1", [order.id, input.paymentKey]);
     await client.query("COMMIT");
     client.release();
@@ -180,8 +201,11 @@ export async function confirmPayment(request, input) {
     // No database connection or row lock is held during provider HTTP.
     // Confirm retries use the same persisted idempotency key. A lost response must not charge twice.
     let payment;
-    try { payment = await toss(`/${encodeURIComponent(input.paymentKey)}`); } catch { /* Not yet approved; confirm below. */ }
-    if (!payment || payment.status === "READY" || payment.status === "IN_PROGRESS") payment = await toss("/confirm", { method: "POST", headers: { "Idempotency-Key": order.idempotency_key }, body: JSON.stringify({ paymentKey: input.paymentKey, orderId: order.id, amount: order.amount }) });
+    if (order.provider === "nicepay") payment = await approveNicepayPayment(order, input, alreadySubmitted);
+    else {
+      try { payment = await readProviderPayment(order); } catch { /* Not yet approved; confirm below. */ }
+      if (!payment || payment.status === "READY" || payment.status === "IN_PROGRESS") payment = await toss("/confirm", { method: "POST", headers: { "Idempotency-Key": order.idempotency_key }, body: JSON.stringify({ paymentKey: input.paymentKey, orderId: order.id, amount: order.amount }) });
+    }
     client = await database().connect();
     await client.query("BEGIN");
     const latest = (await client.query("SELECT * FROM gop_payment_orders WHERE id=$1 FOR UPDATE", [order.id])).rows[0];
@@ -192,7 +216,12 @@ export async function confirmPayment(request, input) {
       // This is an ownership credential, not a paid entitlement. Keep it for delayed deposits.
       return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
     }
-    if (!entitlement || entitlement.expiresAt <= Date.now()) throw new Error("PAYMENT_NOT_COMPLETED");
+    if (!entitlement || entitlement.expiresAt <= Date.now()) {
+      // Preserve an authoritative cancellation written by syncOrder.
+      await client.query("COMMIT");
+      client.release(); client = null;
+      throw new Error("PAYMENT_NOT_COMPLETED");
+    }
     await client.query("COMMIT");
     client.release(); client = null;
     entitlement = await accountCoverage(latest, entitlement);
@@ -223,7 +252,7 @@ export async function readPaymentAccess(request, recoveryCode) {
   let payment, entitlement;
   if (recoveryCode === undefined && cached && Date.now() - cached.verifiedAt < 300000) entitlement = { ...cached, offline: false };
   else {
-    try { payment = await toss(`/${encodeURIComponent(order.payment_key)}`); }
+    try { payment = await readProviderPayment(order); }
     catch (error) { if (!cached) throw error; entitlement = cached; }
     // A confirmed cancellation/mismatch must never fall back to a cached entitlement.
     if (payment) entitlement = await syncExternalOrder(order, payment);
@@ -236,14 +265,49 @@ export async function readPaymentAccess(request, recoveryCode) {
   const active = entitlement?.expiresAt > Date.now();
   return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
-export async function reconcilePaymentWebhook(input) {
-  const id = input?.data?.orderId;
+export async function reconcilePaymentWebhook(input, provider = "toss") {
+  const id = provider === "nicepay" ? input?.orderId : input?.data?.orderId;
   if (!idPattern.test(id || "")) return;
   const { rows } = await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [id]);
   const order = rows[0];
-  if (!order?.payment_key) return;
-  // Webhook payload is untrusted: fetch authoritative status from Toss before changing access.
-  await syncExternalOrder(order, await toss(`/${encodeURIComponent(order.payment_key)}`));
+  if (!order?.payment_key || (order.provider || "toss") !== provider) return;
+  // Webhook payload is untrusted: fetch authoritative provider status before changing access.
+  await syncExternalOrder(order, await readProviderPayment(order));
+}
+
+export async function redirectNicepayResult(request) {
+  const locale = new URL(request.url).searchParams.get("locale") === "en" ? "/en" : "";
+  const headers = new Headers({ "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" });
+  let status = "failed";
+  try {
+    if (paymentConfiguration().provider !== "nicepay" || !paymentConfiguration().enabled
+      || !request.headers.get("content-type")?.startsWith("application/x-www-form-urlencoded")) throw new Error("INVALID_ORDER");
+    const reader = request.body?.getReader();
+    if (!reader) throw new Error("INVALID_ORDER");
+    let bytes = 0, text = "";
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > 4096) { await reader.cancel(); throw new Error("INVALID_ORDER"); }
+        text += decoder.decode(value, { stream: true });
+      }
+      text += decoder.decode();
+    } finally { reader.releaseLock(); }
+    const form = new URLSearchParams(text);
+    const input = Object.fromEntries(["authResultCode", "clientId", "tid", "orderId", "authToken", "signature"].map(key => [key, form.get(key)]));
+    input.amount = Number(form.get("amount"));
+    verifyNicepayAuthentication(input);
+    input.paymentKey = input.tid;
+    // Cross-site POST has no SameSite=Lax login cookie. Approval is deferred until
+    // the same-origin confirmation checks the logged-in owner/pending-order token.
+    headers.set("Set-Cookie", cookie("gop_payment_return", Buffer.from(JSON.stringify(input)).toString("base64url"), request, 900));
+    status = "confirm";
+  } catch { /* Never place provider tokens or error text in an analytics-visible URL. */ }
+  headers.set("Location", `${paymentOrigin(request)}${locale}/subscription?payment=${status}#purchase`);
+  return new Response(null, { status: 303, headers });
 }
 export function paymentResponse(result) {
   const headers = new Headers({ "Cache-Control": "no-store" });

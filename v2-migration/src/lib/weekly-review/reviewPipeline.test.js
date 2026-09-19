@@ -118,6 +118,7 @@ describe("지난 결정 채점이 화면까지 연결된다", () => {
   const decision = {
     id: "d1",
     createdAt: "2026-08-25",
+    comparisonScope: JSON.stringify({ dataGroup: "efficiency", baselineDateStart: "2026-08-24", baselineDateEnd: "2026-08-30", weeklyReview: { basis: "actions", currency: "" }, dimensions: {} }),
     actionKind: "increase_budget",
     actionTarget: "Google / UAC A",
     actionAmount: "+15%",

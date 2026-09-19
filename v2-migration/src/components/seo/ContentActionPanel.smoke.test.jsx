@@ -92,7 +92,7 @@ describe("ContentActionPanel blog conversion paths", () => {
       expect(window.gtag).toHaveBeenCalledTimes(1);
       expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", {
         tool_id: toolId,
-        source: "blog",
+        interaction_source: "blog",
         locale,
         placement,
         content_slug: slug,

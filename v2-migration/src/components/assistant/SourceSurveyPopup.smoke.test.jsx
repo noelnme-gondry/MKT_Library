@@ -90,6 +90,18 @@ describe("노출 타이밍", () => {
 });
 
 describe("제출", () => {
+  it("reuses the submission ID when retrying the same answer after response loss", async () => {
+    let id = 0;
+    vi.stubGlobal("crypto", { randomUUID: () => `submission-${++id}` });
+    fetch.mockRejectedValueOnce(new TypeError("response lost")).mockResolvedValue({ ok: true });
+    render(<SourceSurveyPopup />);
+    settle();
+    fireEvent.change(answerBox(), { target: { value: "coworker" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: KO.submit })); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: KO.submit })); });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetch.mock.calls[1][1].body).id).toBe(JSON.parse(fetch.mock.calls[0][1].body).id);
+  });
   it("빈 답변으로는 보낼 수 없다", () => {
     render(<SourceSurveyPopup />);
     settle();

@@ -18,7 +18,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko" }) {
   const activeId = useAppStore(state => state.activeProjectId);
   const projects = useAppStore(state => state.projects);
   const entitlement = useAppStore(state => state.entitlement);
-  const enabled = useAppStore(state => hasPaidAccess(state.entitlement) && state.decisionPersistenceEnabled && state.projectsReady && !state.projectSwitching);
+  const enabled = useAppStore(state => hasPaidAccess(state.entitlement) && state.decisionPersistenceEnabled && state.projectsReady && !state.projectSwitching && state.workspaceRestoreStatus !== "loading");
   const applied = useAppStore(state => state.savedSetupAppliedTool === toolId && state.savedSetupAppliedProject === state.activeProjectId && Boolean(state.savedSetupApplied));
   const pending = useAppStore(state => state.pendingSavedAnalysis);
   const applicablePending = pending?.projectId === activeId && pending.item.toolId === toolId ? pending : null;

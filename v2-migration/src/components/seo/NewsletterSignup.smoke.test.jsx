@@ -14,7 +14,7 @@ describe("NewsletterSignup conversion telemetry", () => {
     fireEvent.submit(container.querySelector("form"));
 
     expect(window.gtag).toHaveBeenCalledWith("event", "newsletter_submit_attempt", {
-      source: "blog",
+      interaction_source: "blog",
       locale: "ko",
       placement: "post",
     });
@@ -30,7 +30,7 @@ describe("NewsletterSignup conversion telemetry", () => {
     expect(container.querySelector('input[name="metadata__marketing_consent"][required]')).toBeTruthy();
     fireEvent.submit(container.querySelector("form"));
     expect(window.gtag).toHaveBeenCalledWith("event", "newsletter_submit_attempt", {
-      source: "product",
+      interaction_source: "product",
       locale: "en",
       placement: "weekly_report",
     });

@@ -121,3 +121,17 @@ it("folds an unlisted failure message into unknown so raw text never reaches GA"
   expect(saveFailureState("IndexedDB write failed for Client A")).toBe("unknown");
   expect(saveFailureState(undefined)).toBe("unknown");
 });
+
+it.each(["refresh", "callback"])("keeps a committed save successful when post-save %s fails", async failure => {
+  if (failure === "refresh") useAppStore.setState({ refreshProjects: vi.fn().mockRejectedValue(new Error("refresh failed")) });
+  const onSaved = failure === "callback" ? () => { throw new Error("callback failed"); } : vi.fn();
+  render(<ReviewSaveDialog record={record} onSaved={onSaved} onClose={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "프로젝트 이름" }), { target: { value: "Client A" } });
+  fireEvent.click(screen.getByRole("button", { name: "프로젝트 만들고 저장" }));
+  await screen.findByRole("heading", { name: "리뷰를 저장했습니다" });
+  expect((await readProject("default")).decisions).toHaveLength(1);
+  expect(trackProductEvent.mock.calls.filter(([name]) => name === "project_review_saved")).toHaveLength(1);
+  expect(trackProductEvent).not.toHaveBeenCalledWith("project_review_save_failed", expect.anything());
+  expect(screen.getByRole("alert").textContent).toContain("저장했습니다");
+});
