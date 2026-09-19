@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import DecisionHistoryList from "./DecisionHistoryList";
 import { useAppStore } from "@/store/useDataStore";
 import { refreshAccount, accountRequest } from "@/lib/account/accountClient";
+import { IDBFactory } from "fake-indexeddb";
+import { createProjectRecord, updateProject, readProject } from "@/lib/project/repository";
 import { activePro } from "@/test/proEntitlement";
 
 vi.mock("@/lib/account/accountClient", () => ({ refreshAccount: vi.fn(), accountRequest: vi.fn() }));
@@ -22,7 +24,7 @@ beforeEach(() => {
   refreshAccount.mockResolvedValue({ enabled: true, account: { id: "a", email: "t@example.com" }, entitlement: activePro({ trial: true }) });
   accountRequest.mockResolvedValue({ memos: [REMOTE] });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it("이 기기와 계정의 결정을 한 목록으로 보여준다", async () => {
   render(<DecisionHistoryList locale="ko" />);
@@ -129,6 +131,28 @@ it.each(["ko", "en"])("shows both versions and explicit conflict choices (%s)", 
   render(<DecisionHistoryList locale={locale} />);
   fireEvent.click(await screen.findByRole("button", { name: /Meta 예산 30% 감액/ }));
   expect(screen.getByText("Remote learning")).toBeTruthy();
-  expect(screen.getByRole("button", { name: locale === "en" ? "Use account copy on this device" : "계정 내용으로 기기 기록 바꾸기" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: locale === "en" ? "Keep account copy as a separate record" : "계정 내용을 별도 기록으로 보관" })).toBeTruthy();
   expect(screen.getByRole("button", { name: locale === "en" ? "Update account with device copy" : "기기 내용으로 계정 갱신" })).toBeTruthy();
+});
+
+it.each(["ko", "en"])("keeps local review history when importing a conflicting account memo (%s)", async locale => {
+  vi.stubGlobal("indexedDB", new IDBFactory());
+  const local = { ...LOCAL, sourcePeriod: "Private device comparison history", actual: "100" };
+  await createProjectRecord("default", "Original", activePro());
+  const project = await updateProject("default", { decisions: [local] }, () => true, activePro());
+  useAppStore.setState({ projectSwitching: true, projectsReady: true, projects: [project], decisionRecords: [local], decisionPersistenceEnabled: true });
+  useAppStore.setState({ projectSwitching: false });
+  accountRequest.mockResolvedValue({ memos: [{ ...LOCAL, actual: "2500", learning: "Remote learning" }] });
+  render(<DecisionHistoryList locale={locale} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Meta 예산 30% 감액/ }));
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Keep account copy as a separate record" : "계정 내용을 별도 기록으로 보관" }));
+  const dialog = await screen.findByRole("dialog", { name: locale === "en" ? "Save review" : "리뷰 저장" });
+  const save = within(dialog).getByRole("button", { name: locale === "en" ? "Save review" : "리뷰 저장", exact: true });
+  await waitFor(() => expect(save.disabled).toBe(false));
+  fireEvent.click(save);
+  await waitFor(() => expect(within(dialog).getByRole("heading", { name: locale === "en" ? "Review saved" : "리뷰를 저장했습니다" })).toBeTruthy());
+  const saved = await readProject("default");
+  expect(saved.decisions).toHaveLength(2);
+  expect(saved.decisions.find(record => record.id === LOCAL.id)).toMatchObject({ actual: "100", sourcePeriod: "Private device comparison history" });
+  expect(saved.decisions.find(record => record.id !== LOCAL.id)).toMatchObject({ actual: "2500", learning: "Remote learning" });
 });

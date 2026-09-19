@@ -224,9 +224,9 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     {row.learning && <p><strong>{t.learning}</strong> {row.learning}</p>}
                     {row.remote && <section className="wr-notice">
                       <strong>{en ? "Account and device copies differ" : "계정과 기기의 내용이 다릅니다"}</strong>
-                      <p>{en ? "The record above is from this device. Compare the account copy before replacing either version." : "위 기록은 이 기기의 내용입니다. 계정 내용을 비교한 뒤 어느 쪽을 바꿀지 선택하세요."}</p>
+                      <p>{en ? "The record above is from this device. Keep the account copy as a separate record to preserve device-only review history, or update the account memo from this device." : "위 기록은 이 기기의 내용입니다. 계정 내용은 별도 기록으로 보관해 기기에만 있는 검토 이력을 유지하거나, 기기 내용으로 계정 메모를 갱신할 수 있습니다."}</p>
                       <dl>{Object.entries(archiveMemo(row.remote)).filter(([key, value]) => value !== archiveMemo(row)[key]).map(([key, value]) => <div key={key}><dt>{MEMO_LABELS[key]?.[en ? 1 : 0] || (en ? "Record" : "기록")}</dt><dd>{value || "—"}</dd></div>)}</dl>
-                      <button className="btn" onClick={() => setPendingCopy(row.remote)}>{en ? "Use account copy on this device" : "계정 내용으로 기기 기록 바꾸기"}</button>
+                      <button className="btn" onClick={() => setPendingCopy({ ...row.remote, id: crypto.randomUUID() })}>{en ? "Keep account copy as a separate record" : "계정 내용을 별도 기록으로 보관"}</button>
                       <button className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Update account with device copy" : "기기 내용으로 계정 갱신"}</button>
                     </section>}
                     <div className="wr-history-list__actions">
