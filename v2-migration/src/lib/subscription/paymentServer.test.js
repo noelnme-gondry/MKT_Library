@@ -464,3 +464,13 @@ it("does not downgrade a committed deposit when an older waiting lookup arrives 
   expect(restored.body.entitlement.plan).toBe("paid");
   expect(restored.body.status).toBeUndefined();
 });
+
+it("returns the authenticated email for both fresh and reused orders", async () => {
+  db.account = { id: "verified-owner", email: "owner@example.com" };
+  const created = await createPaymentOrder(request());
+  expect(created.body.buyerEmail).toBe("owner@example.com");
+  const reused = await createPaymentOrder(request(created.cookie.split(";")[0]));
+  expect(reused.body.orderId).toBe(created.body.orderId);
+  expect(reused.body.buyerEmail).toBe("owner@example.com");
+  expect(reused.body).not.toHaveProperty("buyerName");
+});

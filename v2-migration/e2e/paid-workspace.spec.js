@@ -31,7 +31,7 @@ for (const locale of ["ko", "en"]) {
         await page.locator(".header-print").click();
         await expect(gate).toBeVisible();
         expect(await page.evaluate(() => window.__prints)).toBe(0);
-        await gate.getByRole("link", { name: en ? "View the pass and purchase" : "이용권 확인하고 구매", exact: true }).click();
+        await gate.getByRole("link", { name: en ? "Continue to Pro checkout" : "Pro 구매로 계속", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
       }
       expect(downloads).toHaveLength(0);

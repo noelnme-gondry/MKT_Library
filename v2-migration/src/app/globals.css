@@ -11372,9 +11372,18 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .report-workbook-tabs span { border: 1px solid var(--border); padding: 4px 10px; border-radius: var(--radius-sm); }
 .report-preview-item > p, .report-preview-note { font-size: var(--fs-base); }
 .report-preview-note { border-top: 1px solid var(--border); padding-top: 20px; }
-.subscription-page .subscription-purchase { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); padding: 0; overflow: hidden; }
+.subscription-page .subscription-purchase { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); padding: 0; overflow: hidden; align-items: start; }
 .purchase-summary, .purchase-payment { padding: clamp(20px, 3vw, 36px); min-width: 0; }
 .purchase-summary { background: var(--bg-1); border-right: 1px solid var(--border); }
+.purchase-deliverables { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 18px; }
+.purchase-deliverables li { display: grid; gap: 4px; }
+.purchase-deliverables span, .checkout-account-summary small { color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.6; }
+.checkout-account-summary { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.checkout-account-summary span { overflow-wrap: anywhere; }
+.checkout-status { padding: 14px 16px; border-left: 3px solid var(--primary); background: var(--bg-1); }
+.checkout-next-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.checkout-provider-note { color: var(--text-muted); font-size: var(--fs-sm); }
+
 .purchase-plan-badge { display: inline-block; background: var(--primary); color: var(--on-primary); border-radius: var(--radius-sm); padding: 4px 12px; font-weight: 700; margin-bottom: 20px; }
 .purchase-summary dl { margin-block: 24px; }
 .purchase-summary dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding-block: 12px; }
