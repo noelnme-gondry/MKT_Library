@@ -4,6 +4,8 @@ import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
 for (const locale of ["ko", "en"]) {
   test(`decision agenda → direct result → next action → early closure (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const duplicateKeys = [];
+    page.on("console", message => { if (/same key/.test(message.text())) duplicateKeys.push(message.text()); });
     const en = locale === "en", prefix = en ? "/en" : "";
     await enableReviewLogin(page);
     await page.goto(`${prefix}/projects`);
@@ -60,6 +62,7 @@ for (const locale of ["ko", "en"]) {
     await page.reload();
     await expect(card.locator(".weekly-review-record__status")).toHaveText(en ? "Redesign required" : "설계 오류로 재설계");
     await expect(card.getByRole("textbox", { name: en ? "Actual outcome — Review campaign" : "실제 결과 — Review campaign" })).toHaveValue("CPA 110; population differs");
+    expect(duplicateKeys).toEqual([]);
     await expectNoSeriousAccessibilityViolations(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   });

@@ -171,14 +171,14 @@ export async function createPaymentOrder(request) {
         const linked = await database().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1 AND (account_id IS NULL OR account_id=$2)", [order.id, account.id]);
         if (!linked.rowCount) throw new Error("INVALID_ORDER");
       }
-      return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id, provider: order.provider || "toss", mode: order.mode, ...(account ? { accountId: account.id } : {}) } };
+      return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id, provider: order.provider || "toss", mode: order.mode, ...(account ? { accountId: account.id, buyerEmail: account.email } : {}) } };
     }
   }
   const pending = await database().query("SELECT id FROM gop_payment_orders WHERE account_id=$1 AND mode=$2 AND status='pending' AND payment_key IS NOT NULL LIMIT 1", [account.id, paymentConfiguration().mode]);
   if (pending.rows.length) throw new Error("PAYMENT_PENDING");
   const id = `gop_${randomUUID()}`, token = randomBytes(32).toString("hex");
   await database().query("INSERT INTO gop_payment_orders(id,access_hash,amount,product_id,idempotency_key,mode,account_id,provider) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, hash(token), PAYMENT_PRODUCT.amount, PAYMENT_PRODUCT.id, randomUUID(), paymentConfiguration().mode, account.id, paymentConfiguration().provider]);
-  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, provider: paymentConfiguration().provider, mode: paymentConfiguration().mode, ...(account ? { accountId: account.id } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
+  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, provider: paymentConfiguration().provider, mode: paymentConfiguration().mode, ...(account ? { accountId: account.id, buyerEmail: account.email } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
 }
 export async function confirmPayment(request, input) {
   assertSameOrigin(request);
