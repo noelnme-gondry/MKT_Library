@@ -155,6 +155,26 @@ it.each(["ko", "en"])("passes owner email and checks status before another payme
   expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
 });
 
+it("recovers a pending virtual account from the payment status check", async () => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  let issued = false;
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", clientKey: "fixture", methods: ["vbank"] }
+    : path.endsWith("order") ? { orderId: "gop_fixture", amount: 5900 }
+    : path.endsWith("access") && issued ? { entitlement: null, status: "waiting_for_deposit", orderId: "gop_fixture", deposit: { bank: "Fixture Bank", number: "123456", amount: 5900 } }
+    : { entitlement: null, account: null } })));
+  render(<SubscriptionCheckout />);
+  fireEvent.click(await screen.findByRole("button", { name: "5,900원 결제하기" }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  issued = true;
+  act(() => window.AUTHNICE.requestPay.mock.calls[0][0].fnError());
+  fireEvent.click(screen.getByRole("button", { name: "결제 상태 확인" }));
+  await screen.findByText("Fixture Bank 123456");
+  expect(screen.queryByRole("button", { name: "5,900원 결제하기" })).toBeNull();
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
+
 it("does not reopen payment when status lookup fails", async () => {
   useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
   window.AUTHNICE = { requestPay: vi.fn() };

@@ -145,6 +145,11 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
       rememberPaymentAccess(result.entitlement || null);
       await refreshAccount();
       setNeedsStatusCheck(false);
+      if (result.status === "waiting_for_deposit") {
+        setWaitingOrder(result.orderId); setDeposit(result.deposit || null);
+        setMessage(en ? "Your account is issued. Your new pass starts after the deposit is confirmed." : "입금 계좌가 발급됐습니다. 입금 확인 후 새 이용권이 시작됩니다.");
+        return;
+      }
       setMessage(result.entitlement
         ? (en ? "Your purchased pass is confirmed. Continue your work below." : "구매 이용권을 확인했습니다. 아래에서 작업을 이어가세요.")
         : (en ? "No active purchased pass was found. If your card was charged, contact support before paying again." : "활성화된 구매 이용권이 없습니다. 카드 승인 내역이 있다면 다시 결제하지 말고 고객센터로 문의해 주세요."));

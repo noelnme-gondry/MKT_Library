@@ -268,13 +268,14 @@ export async function readPaymentAccess(request, recoveryCode) {
     // A confirmed cancellation/mismatch must never fall back to a cached entitlement.
     if (payment) entitlement = await syncExternalOrder(order, payment);
   }
+  const waitingForDeposit = payment?.status === "WAITING_FOR_DEPOSIT" && !entitlement;
   entitlement = await accountCoverage(order, entitlement);
   if (payment && credential) {
     const latest = (await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [order.id])).rows[0];
     if (!owns(latest, credential.token)) return { body: { entitlement: null } };
   }
   const active = entitlement?.expiresAt > Date.now();
-  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
+  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(waitingForDeposit ? { status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
 export async function reconcilePaymentWebhook(input, provider = "toss") {
   const id = provider === "nicepay" ? input?.orderId : input?.data?.orderId;
