@@ -14,7 +14,7 @@ import { parseNumericStrict } from "@/utils/parseNumeric";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 13;
+export const DECISION_REVIEW_SCHEMA_VERSION = 14;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -41,6 +41,8 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "parentDecisionId",
   "reviewPlan",
   "targetActual",
+  "effectEvidence",
+  "effectSourceId",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -89,6 +91,8 @@ export const DECISION_REVIEW_COLUMNS = [
   "parent_decision_id",
   "review_plan",
   "target_actual",
+  "effect_evidence",
+  "effect_source_id",
   "hypothesis",
   "metric",
   "target_direction",
@@ -620,6 +624,8 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     episodes: serializeDecisionEpisodes(parseDecisionEpisodes(field(row, "episodes"))),
     reviewPlan: serializeDecisionPlan(field(row, "reviewPlan", "review_plan")),
     targetActual: asFiniteNumberText(field(row, "targetActual", "target_actual")),
+    effectEvidence: serializeReviewEvidence(field(row, "effectEvidence", "effect_evidence")),
+    effectSourceId: asText(field(row, "effectSourceId", "effect_source_id"), FIELD_LIMITS.id),
     evidence: serializeReviewEvidence(field(row, "evidence")),
     parentDecisionId: asText(field(row, "parentDecisionId", "parent_decision_id"), FIELD_LIMITS.id),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),

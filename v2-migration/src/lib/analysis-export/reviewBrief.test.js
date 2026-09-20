@@ -7,7 +7,8 @@ import { createAnalysisDocument } from "./analysisDocument";
 import { buildAnalysisWorkbook } from "./analysisWorkbook";
 
 const successPlan = JSON.stringify({ method: "holdout", target: "Brand search", control: "Control regions", window: "Oct 1–14", mode: "increase_percent", baseline: "5000", value: "10", unit: "people", metric: "Organic users" });
-const record = { reviewPlan: successPlan, targetActual: "5500", id: "d", toolId: "5-29", action: "국가별 구성 확인", conclusion: "구성 효과", learning: "국가 비중 변화를 분리", actual: "−4.2%", reviewDate: "2026-09-20", raw: [{ private: true }] };
+const effectEvidence = JSON.stringify({ version: 1, headline: "Partial recovery estimate", stats: [{ label: "95% CI", value: "-100 to +700 people" }], points: [{ text: "Uncertain, not proof of no effect" }], scope: { start: "2026-10-01" } });
+const record = { effectEvidence, reviewPlan: successPlan, targetActual: "5500", id: "d", toolId: "5-29", action: "국가별 구성 확인", conclusion: "구성 효과", learning: "국가 비중 변화를 분리", actual: "−4.2%", reviewDate: "2026-09-20", raw: [{ private: true }] };
 it("keeps all columns and repeats the identifier without inventing formula values", () => {
   const headers = Array.from({ length: 13 }, (_, index) => `column-${index}`);
   const bands = documentTableBands([headers, ["campaign", ...Array.from({ length: 12 }, (_, index) => index)]]);
@@ -25,7 +26,7 @@ it.each(["ko", "en"])("preserves evidence and saved feedback in the actual Word 
   expect(xml).toContain("7,250");
   expect(xml).toContain("95% CI");
   expect(xml).toContain(record.learning);
-  for (const value of ["Control regions", "Organic users", "5500", "10%", locale === "en" ? "not causal proof" : "인과효과 입증 아님"]) {
+  for (const value of ["Control regions", "Organic users", "5,500", "10%", "-100 to +700 people", "Uncertain, not proof of no effect", locale === "en" ? "effect evidence must be reviewed separately" : "효과 근거는 별도 검토"]) {
     expect(xml).toContain(value);
     expect(renderAnalysisBrief(payload)).toContain(value);
     expect(JSON.stringify(buildAnalysisWorkbook(payload).Sheets)).toContain(value);

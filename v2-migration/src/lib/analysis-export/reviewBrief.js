@@ -1,4 +1,4 @@
-import { decisionPlanRows, assessDecisionPlan } from "@/lib/decisionPlan";
+import { decisionPlanRows, decisionObservationRows } from "@/lib/decisionPlan";
 import { decisionEpisodeList, decisionGuardrailList, getDecisionReviewBucket } from "@/lib/decisionReview";
 import { reviewScopeRows, readReviewEvidence } from "@/lib/reviewEvidence";
 
@@ -9,6 +9,7 @@ export function buildReviewBrief({ projectName = "", records = [], locale = "ko"
   const selected = records.filter(record => record?.action).slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   return { projectName: text(projectName, 120), total: selected.length, decisions: selected.slice(0, 20).map(record => {
     const evidence = readReviewEvidence(record.evidence);
+    const effect = readReviewEvidence(record.effectEvidence);
     const episodes = decisionEpisodeList(record);
     const parent = records.find(item => item.id === record.parentDecisionId);
     return { action: text(record.action, 500), fields: [
@@ -16,7 +17,8 @@ export function buildReviewBrief({ projectName = "", records = [], locale = "ko"
       [en ? "Review status" : "검토 상태", statuses[getDecisionReviewBucket(record)]],
       [en ? "Decision basis" : "판단 근거", text(record.conclusion)],
       ...decisionPlanRows(record.reviewPlan, locale),
-      ...(record.targetActual ? [[en ? "Target observation (same units)" : "목표 관측값 (동일 단위)", record.targetActual], [en ? "Numeric threshold check" : "수치 기준 대조", ({ met: en ? "Met (not causal proof)" : "충족 (인과효과 입증 아님)", not_met: en ? "Not met" : "미충족", waiting: en ? "Waiting" : "관측 대기", incomplete: en ? "Incomplete criteria" : "기준 미완성" })[assessDecisionPlan(record.reviewPlan, record.targetActual).state]]] : []),
+      ...decisionObservationRows(record.reviewPlan, record.targetActual, locale),
+      ...(effect ? [[en ? "Linked effect analysis" : "연결한 효과 분석", effect.headline], [en ? "Effect estimate and uncertainty" : "효과 추정치와 불확실성", effect.stats.map(stat => `${stat.label}: ${stat.value}${stat.detail ? ` (${stat.detail})` : ""}`).join(" · ")], [en ? "Effect analysis scope" : "효과 분석 범위", reviewScopeRows(effect.scope, locale).map(([key, value]) => `${key}: ${value}`).join(" · ")], [en ? "Design and limitations" : "설계와 한계", effect.points.map(point => [point.label, point.text, point.detail].filter(Boolean).join(" · ")).join("; ")]] : record.reviewPlan ? [[en ? "Effect evidence" : "효과 근거", en ? "Not linked; an operating target does not establish or rule out cannibalization" : "미연결 · 운영 목표 도달 여부로 카니발 유무를 판정하지 않음"]] : []),
       [en ? "Hypothesis" : "가설", text(record.hypothesis)],
       [en ? "Metric / baseline" : "지표 / 기준값", [record.metric || record.goalMetric, record.baseline].filter(Boolean).map(value => text(value, 160)).join(" / ")],
       [en ? "Guardrails" : "유지할 조건", decisionGuardrailList(record).map(rail => `${rail.metric} ${rail.op === "lte" ? "≤" : "≥"} ${rail.value}`).join(" · ")],
