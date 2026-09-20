@@ -6,6 +6,8 @@ import { archiveMemo } from "./account/archiveContract";
 import Papa from "papaparse";
 const plan = { method: "holdout", target: "Google brand", control: "Unchanged control regions", window: "Oct 1–14", mode: "increase_percent", baseline: "5000", value: "10", unit: "people", metric: "Organic users" };
 it("compares percent recovery and absolute recovery without conflating them", () => {
+  expect(assessDecisionPlan({ ...plan, baseline: "0.1" }, "0.11").state).toBe("met");
+  expect(assessDecisionPlan({ ...plan, baseline: "0.1" }, "0.109999999").state).toBe("not_met");
   expect(assessDecisionPlan(plan, "5499").state).toBe("not_met");
   expect(assessDecisionPlan(plan, "5500").state).toBe("met");
   expect(assessDecisionPlan({ ...plan, mode: "increase_absolute", value: "500" }, "5500").state).toBe("met");

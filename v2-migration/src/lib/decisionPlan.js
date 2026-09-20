@@ -35,7 +35,10 @@ export function assessDecisionPlan(input, observed) {
   const measured = p.mode.startsWith("at_") ? actual : p.mode.endsWith("percent") ? (actual - baseline) / baseline * 100 : actual - baseline;
   if (!Number.isFinite(measured)) return { state: "incomplete" };
   const decreasing = p.mode.startsWith("decrease");
-  const met = p.mode === "at_most" ? measured <= target : decreasing ? -measured >= target : measured >= target;
+  // Ignore only floating-point roundoff, never a business-level tolerance.
+  const compared = decreasing ? -measured : measured;
+  const equalWithinRoundoff = Math.abs(compared - target) <= Number.EPSILON * Math.max(Math.abs(compared), Math.abs(target)) * 8;
+  const met = equalWithinRoundoff || (p.mode === "at_most" ? measured <= target : compared >= target);
   return { state: met ? "met" : "not_met", measured, target };
 }
 export function decisionPlanRows(input, locale = "ko") {
