@@ -781,6 +781,7 @@ export default function CsvUploader({
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
+        <div className="tutorial-upload-entry"><VideoHelpButton topic="import" locale={locale}>{locale === "en" ? "How to upload" : "업로드 방법 보기"}</VideoHelpButton></div>
         {showGuide && <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />}
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>

@@ -23,13 +23,21 @@ function useLauncherClearance(ref, active) {
       if (scrolling) return;
       const launcher = ref.current;
       if (!launcher) return;
-      const rect = launcher.getBoundingClientRect();
-      let overlaps = false;
-      for (let x = rect.left + 1; x < rect.right && !overlaps; x += 16) {
-        for (let y = rect.top + 1; y < rect.bottom && !overlaps; y += 16) {
-          overlaps = document.elementsFromPoint(x, y).some(node =>
-            !launcher.contains(node) && node.closest(PAGE_CONTROLS));
+      if (launcher === document.activeElement) return;
+      let overlaps = true;
+      // Try nearby clear space before disappearing behind the first-screen CTA.
+      for (const lift of [0, 64, 128, 192]) {
+        launcher.style.transform = `translateY(-${lift}px)`;
+        const rect = launcher.getBoundingClientRect();
+        if (rect.top < 80) break;
+        overlaps = false;
+        for (let x = rect.left + 1; x < rect.right && !overlaps; x += 16) {
+          for (let y = rect.top + 1; y < rect.bottom && !overlaps; y += 16) {
+            overlaps = document.elementsFromPoint(x, y).some(node =>
+              !launcher.contains(node) && node.closest(PAGE_CONTROLS));
+          }
         }
+        if (!overlaps) break;
       }
       launcher.toggleAttribute("data-obscures-control", overlaps);
     };
@@ -98,7 +106,7 @@ function TutorialLauncher({ pathname, locale }) {
       const projectManagement = !!document.querySelector("#project-management");
       const contextual = tutorialIdsForPath(pathname, { projectManagement });
       select(contextual[0] || ids[0]);
-    }}><span aria-hidden="true">▷</span><span>{en ? "Video guide" : "영상 사용 안내"}</span></button>
+    }}><span aria-hidden="true">?</span><span>{en ? "Tutorial" : "튜토리얼"}</span></button>
     <ModalDialog open={!!tutorial} onClose={close} ariaLabel={en ? "Video guide" : "영상 사용 안내"} initialFocusRef={closeRef} returnFocusRef={triggerRef} overlayClassName="tutorial-overlay" panelClassName="tutorial-panel">
       {tutorial && <>
         <header className="tutorial-header"><div><p>{en ? "FOLLOW ALONG" : "화면을 보며 따라 하기"}</p><h2>{tutorial[locale]}</h2></div><button type="button" className="tutorial-close" ref={closeRef} onClick={close} aria-label={en ? "Close video guide" : "영상 안내 닫기"}>×</button></header>

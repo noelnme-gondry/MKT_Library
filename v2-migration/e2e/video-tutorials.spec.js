@@ -66,12 +66,7 @@ for (const locale of ["ko", "en"]) {
   });
   test(`floating home guide opens preparation and restores focus (${locale})`, async ({ page }) => {
     await page.goto(`${prefix}/`);
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-      // Desktop task cards occupy the lower initial viewport. At the end of
-      // the page the launcher has clear space; mobile has clear space at top.
-      if (innerWidth >= 1024) window.scrollTo(0, document.documentElement.scrollHeight);
-    });
+    await page.evaluate(async () => { await document.fonts.ready; });
     const launcher = page.locator(".tutorial-launcher");
     await expect(launcher).toBeVisible();
     await launcher.click();
@@ -121,5 +116,30 @@ for (const locale of ["ko", "en"]) {
     const campaign = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) });
     await expect(campaign).toContainText("1,500");
     await expect(campaign).toContainText("1,200");
+  });
+}
+
+for (const locale of ["ko", "en"]) {
+  const en = locale === "en";
+  test(`upload help stays discoverable and yields to survey (${locale})`, async ({ page }) => {
+    await page.goto(`${en ? "/en" : ""}/dashboard`);
+    const help = page.getByRole("button", { name: en ? "How to upload" : "업로드 방법 보기" });
+    await expect(help).toBeVisible();
+    await help.click();
+    const dialog = page.getByRole("dialog", { name: en ? "Video guide" : "영상 사용 안내", exact: true });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(help).toBeFocused();
+    const launcher = page.locator(".tutorial-launcher");
+    await expect(launcher).toBeVisible();
+    await page.evaluate(() => {
+      const survey = document.createElement("section");
+      survey.className = "source-survey";
+      survey.textContent = "Survey";
+      document.body.append(survey);
+    });
+    await expect(launcher).toBeHidden();
+    await page.evaluate(() => document.querySelector(".source-survey").remove());
+    await expect(launcher).toBeVisible();
   });
 }
