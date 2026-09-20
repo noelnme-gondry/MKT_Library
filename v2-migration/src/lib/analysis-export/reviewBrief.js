@@ -1,3 +1,4 @@
+import { decisionPlanRows, assessDecisionPlan } from "@/lib/decisionPlan";
 import { decisionEpisodeList, decisionGuardrailList, getDecisionReviewBucket } from "@/lib/decisionReview";
 import { reviewScopeRows, readReviewEvidence } from "@/lib/reviewEvidence";
 
@@ -14,6 +15,8 @@ export function buildReviewBrief({ projectName = "", records = [], locale = "ko"
       [en ? "Recorded / review date" : "작성일 / 검토일", `${String(record.createdAt || "").slice(0, 10) || "—"} / ${record.reviewDate || "—"}`],
       [en ? "Review status" : "검토 상태", statuses[getDecisionReviewBucket(record)]],
       [en ? "Decision basis" : "판단 근거", text(record.conclusion)],
+      ...decisionPlanRows(record.reviewPlan, locale),
+      ...(record.targetActual ? [[en ? "Target observation (same units)" : "목표 관측값 (동일 단위)", record.targetActual], [en ? "Numeric threshold check" : "수치 기준 대조", ({ met: en ? "Met (not causal proof)" : "충족 (인과효과 입증 아님)", not_met: en ? "Not met" : "미충족", waiting: en ? "Waiting" : "관측 대기", incomplete: en ? "Incomplete criteria" : "기준 미완성" })[assessDecisionPlan(record.reviewPlan, record.targetActual).state]]] : []),
       [en ? "Hypothesis" : "가설", text(record.hypothesis)],
       [en ? "Metric / baseline" : "지표 / 기준값", [record.metric || record.goalMetric, record.baseline].filter(Boolean).map(value => text(value, 160)).join(" / ")],
       [en ? "Guardrails" : "유지할 조건", decisionGuardrailList(record).map(rail => `${rail.metric} ${rail.op === "lte" ? "≤" : "≥"} ${rail.value}`).join(" · ")],

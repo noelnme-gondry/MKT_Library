@@ -231,7 +231,7 @@ export default function ResultActionCard({
       reviewRecords: isDemoData(csvData) ? [] : useAppStore.getState().decisionRecords.filter(record => record.toolId === toolId),
       generatedAt: new Date().toISOString(),
     }),
-  }), [csvData?.fileName, csvData?.importSource, csvData?.headers, csvData?.mapping, csvData?.raw, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
+  }), [csvData, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
   const copyShareLink = async () => {
     setShareError("");
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale, context: { ...resultScope, currency: csvData?.currency }, limitations: [locale === "en" ? "A shared result summary. Verify comparison conditions, uncertainty and study design before acting." : "공유된 결과 요약입니다. 실행 전에 비교 조건·불확실성·분석 설계를 함께 확인하세요."] });

@@ -753,3 +753,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 보고서와 공유 브리프는 결론, 실제 핵심 수치와 비교 기간·통화, 근거, 저장된 결정·검토 조건, 방법과 한계를 전달한다. 현재 결과와 과거 결정의 작성 시점을 구분한다. Word·미리보기·Excel은 같은 전달 데이터를 사용한다.
 - 넓은 표를 Word의 앞 6열로 잘라 핵심 결과를 숨기지 않는다. 열을 나누어 첫 식별 열과 함께 모두 보여 주고, 행 제한과 전체 Excel 범위를 명시한다. 수식 결과를 계산하지 못하면 추정하지 않는다. 계산 모드·입력 출처·결측·통계적 한계를 함께 남긴다.
 - KR/EN 동등 제공. 복사·다운로드 성공 이벤트는 실제 동작 성공 뒤에만 전송하고 원자료나 결정 내용은 이벤트에 포함하지 않는다. / The review loop preserves source evidence and links observations to a separate next decision; reports and shared briefs retain scope, real results and limitations without inventing missing data.
+
+### 도구별 목표와 실험 후속 검토 (2026-09-20)
+
+- 공개 분석 도구의 결정 및 후속 결정은 해당 도구의 목표 목록을 제공한다. 기여 분석에서는 오가닉 전환수·사용자 수도 선택할 수 있다. 목표를 바꾸면 이전 지표의 기준값을 새 목표에 전용하지 않는다.
+- 성공 기준은 목표값 이상·이하, 기준 대비 상대 % 증감, 절대 수량 증감을 구분한다. 기준값·목표값·측정 단위를 함께 보관한다. 5,000명 대비 10% 증가는 5,500명이며, 10명 증가와 다르다.
+- 홀드아웃·대조군 실험 계획은 대상 채널·집단, 비교군, 관측 기간을 기록한다. 기여 추정에서 인과효과를 단정하지 않으며 증분 분석으로 이동할 경로를 제공한다. 실험 집행은 자동화하지 않는다.
+- 수치 목표 및 실험 계획은 일반 효율 집계로 자동 성공 판정하지 않는다. 동일 범위의 실제 관측값을 입력해 수치 기준을 대조하고 가드레일·통계적 유의성·인과효과는 별도로 검토한다.
+- 계획과 관측값은 기기 내 결정 기록·CSV·보고서에 보존한다. 계정 메모나 분석 이벤트에 자동 전송하지 않는다.
+- KR/EN 동등 제공. / Tool-specific goals, relative and absolute targets, experiment scope and observations persist through follow-up reviews and reports. Numeric threshold compliance is not proof of causal lift or statistical significance.

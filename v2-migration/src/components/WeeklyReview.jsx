@@ -1,4 +1,6 @@
 "use client";
+import DecisionPlanReview from "@/components/weekly-review/DecisionPlanReview";
+import { readDecisionPlan, assessDecisionPlan } from "@/lib/decisionPlan";
 import DecisionEvidence from "@/components/weekly-review/DecisionEvidence";
 import DecisionFollowUp from "@/components/weekly-review/DecisionFollowUp";
 import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
@@ -637,6 +639,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
+              <DecisionPlanReview record={record} locale={locale} onChange={value => { updateRecord(record.id, "targetActual", value); const plan = readDecisionPlan(record.reviewPlan); if (["met", "not_met"].includes(assessDecisionPlan(plan, value).state)) updateRecord(record.id, "actual", `${plan.metric || record.metric} ${value} ${plan.unit}`); }} />
               <DecisionEvidence record={record} locale={locale} />
               <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} />
               {record.conclusion && <p className="weekly-review-record__context"><span>{t.conclusion}</span>{record.conclusion}</p>}
@@ -737,7 +740,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
-              {recordDrafts[record.id] && <button type="button" className="btn small" onClick={() => setPendingAction(() => async () => {
+              {recordDrafts[record.id] && <button type="button" className="btn small" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={() => setPendingAction(() => async () => {
                 // 검토 전이면 초안은 아직 작성 중인 값이라 그대로 덮어쓰는 게 맞다.
                 // 검토를 마친 뒤 `실제 결과`를 고치는 것은 정정인지 새 관측인지
                 // 화면이 알 수 없으므로 **쌓는다** — 덮어쓰면 앞선 관측이 사라진다(v11).

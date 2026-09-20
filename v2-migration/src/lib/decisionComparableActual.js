@@ -1,3 +1,4 @@
+import { needsExplicitPlanReview } from "@/lib/decisionPlan";
 import { canonicalRowMatchesDecisionScope, readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 
 function asDate(value) {
@@ -56,6 +57,7 @@ export function latestDecisionDataDate(canonicalData = {}) {
 // 기준일 다음 날부터 약속한 길이만 비교한다. 검토일 당일에 그 구간이 모두 찼는지
 // 확인하므로, 오래된 CSV의 마지막 기간도 미래 데이터도 실제 성과로 오인하지 않는다.
 export function buildComparableDecisionActual(record = {}, { canonicalData, today, dataGroup } = {}) {
+  if (needsExplicitPlanReview(record.reviewPlan)) return { state: "explicit_target_review_required" };
   const baselineDate = asDate(record.baselineDate ?? record.baseline_date);
   const reviewDate = asDate(record.reviewDate ?? record.review_date);
   const normalizedToday = asDate(today);

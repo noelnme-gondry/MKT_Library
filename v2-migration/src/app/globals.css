@@ -11491,3 +11491,7 @@ body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launche
 .decision-follow-up__form label { display: grid; gap: 6px; }
 .decision-follow-up__form textarea { min-height: 80px; width: 100%; }
 @media (max-width: 640px) { .project-review-portfolio__counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.decision-plan-fields { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.decision-plan-fields label { display: grid; gap: 6px; }
+.decision-plan-fields input, .decision-plan-fields select { width: 100%; min-width: 0; }

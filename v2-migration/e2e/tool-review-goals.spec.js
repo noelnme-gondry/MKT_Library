@@ -1,0 +1,53 @@
+import { test, expect } from "@playwright/test";
+import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
+for (const locale of ["ko", "en"]) {
+  test(`contribution hypothesis → organic holdout target → observed review (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const en = locale === "en", prefix = en ? "/en" : "";
+    await enableReviewLogin(page);
+    await page.goto(`${prefix}/projects`);
+    await expect(page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true })).toBeEnabled();
+    await page.evaluate(async () => {
+      const db = await new Promise(resolve => { const request = indexedDB.open("mkt_workspace"); request.onsuccess = () => resolve(request.result); });
+      const tx = db.transaction("meta", "readwrite");
+      tx.objectStore("meta").put({ key: "project:default", id: "default", name: "Goal workflow", snapshots: [], settings: null, createdAt: Date.now(), lastUsedAt: Date.now(), decisions: [{ id: "attribution", toolId: "5-18", sourcePath: "/tools/marketing-response?stage=mmm", action: "Review contribution", actual: "Model reviewed", learning: "Validate Google brand", reviewDate: "2026-01-01", createdAt: "2025-12-25T00:00:00Z", status: "reviewed", goalMetric: "roas", goalDirection: "up", metric: "ROAS" }] });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
+    });
+    await page.goto(`${prefix}/weekly-review`);
+    await page.locator(".wr-handover").getByRole("button", { name: en ? "Got it" : "알겠어요", exact: true }).click();
+    await page.locator(".project-review-portfolio").getByRole("link", { name: en ? "Review these decisions" : "이 도구의 결정 검토" }).click();
+    await page.getByRole("button", { name: en ? "Turn this learning into the next decision" : "배운 점으로 다음 결정 만들기" }).click();
+    const form = page.locator(".decision-follow-up__form");
+    await form.getByLabel(en ? "Next action" : "다음에 실행할 행동", { exact: true }).fill("Hold out Google brand");
+    await form.getByLabel(en ? "Goal for the next decision" : "다음 결정의 목표").selectOption("rerun:organic_users");
+    await form.getByRole("combobox", { name: en ? "Review method" : "검토 방법", exact: true }).selectOption("holdout");
+    await form.getByLabel(en ? "Target channel / group" : "대상 채널·집단").fill("Google brand");
+    await form.getByLabel(en ? "Comparison group" : "비교군", { exact: true }).fill("Control regions");
+    await form.getByLabel(en ? "Observation window" : "관측 기간").fill("Oct 1–14");
+    await form.getByLabel(en ? "Success threshold type" : "성공 기준 유형").selectOption("increase_percent");
+    await form.getByLabel(en ? "Target value" : "목표값", { exact: true }).fill("10");
+    await form.getByLabel(en ? "Measurement unit" : "측정 단위").fill("people");
+    await form.getByLabel(en ? "Baseline for this decision" : "이번 결정의 기준값").fill("5000");
+    await form.getByRole("button", { name: en ? "Save next decision" : "다음 결정 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await page.reload();
+    await expect(page.locator(".project-review-portfolio article")).toHaveCount(2);
+    await page.getByRole("button", { name: en ? "Review / export device records" : "기기 기록 검토·내보내기" }).click();
+    const card = page.locator(".weekly-review-record").filter({ has: page.getByRole("heading", { name: "Hold out Google brand", exact: true }) });
+    const actual = card.getByLabel(en ? "Target observation — Hold out Google brand" : "목표 관측값 — Hold out Google brand");
+    await expect(card).toContainText("Control regions");
+    await actual.fill("5499");
+    await expect(card.getByRole("status")).toContainText(en ? "Numeric target not met" : "수치 목표 미충족");
+    await actual.fill("5500");
+    await expect(card.getByRole("status")).toContainText(en ? "Numeric target met" : "수치 목표 충족");
+    await card.getByRole("button", { name: en ? "Save review changes" : "검토 내용 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await page.reload();
+    await expect(page.locator(".project-review-portfolio article")).toHaveCount(2);
+    await page.getByRole("button", { name: en ? "Review / export device records" : "기기 기록 검토·내보내기" }).click();
+    await expect(actual).toHaveValue("5500");
+    await page.locator(".project-review-portfolio").getByRole("button", { name: en ? "Share / download project review" : "프로젝트 리뷰 공유·다운로드" }).click();
+    await page.getByRole("menuitem", { name: en ? /Preview my report/ : /내 보고서 미리보기/ }).click();
+    const preview = page.getByRole("dialog", { name: en ? "Your report preview" : "내 보고서 미리보기" });
+    await expect(preview).toContainText("Control regions"); await expect(preview).toContainText("10%"); await expect(preview).toContainText("5500");
+  });
+}

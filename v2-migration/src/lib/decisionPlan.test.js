@@ -1,0 +1,36 @@
+import { expect, it } from "vitest";
+import { assessDecisionPlan, decisionPlanError, serializeDecisionPlan, readDecisionPlan } from "./decisionPlan";
+import { normalizeDecisionReviewRows, serializeDecisionReviewCsv } from "./decisionReview";
+import { scoreDecision } from "./weekly-review/decisionScore";
+import { archiveMemo } from "./account/archiveContract";
+import Papa from "papaparse";
+const plan = { method: "holdout", target: "Google brand", control: "Unchanged control regions", window: "Oct 1–14", mode: "increase_percent", baseline: "5000", value: "10", unit: "people", metric: "Organic users" };
+it("compares percent recovery and absolute recovery without conflating them", () => {
+  expect(assessDecisionPlan(plan, "5499").state).toBe("not_met");
+  expect(assessDecisionPlan(plan, "5500").state).toBe("met");
+  expect(assessDecisionPlan({ ...plan, mode: "increase_absolute", value: "500" }, "5500").state).toBe("met");
+  expect(assessDecisionPlan({ ...plan, mode: "increase_absolute", value: "10" }, "5010").state).toBe("met");
+  expect(assessDecisionPlan({ ...plan, mode: "decrease_percent", value: "10" }, "4500").state).toBe("met");
+});
+it("rejects incomplete and mathematically undefined criteria", () => {
+  for (const patch of [{ baseline: "0" }, { value: "NaN" }, { unit: "" }, { control: "" }, { window: "" }, { baseline: "" }]) expect(decisionPlanError({ ...plan, ...patch })).not.toBe("");
+  expect(assessDecisionPlan(plan, "").state).toBe("waiting");
+  expect(assessDecisionPlan(plan, "5500 people").state).toBe("waiting");
+  expect(assessDecisionPlan({ mode: "at_most", value: "0", unit: "errors" }, "0").state).toBe("met");
+});
+it("preserves the plan and observation through CSV while excluding them from account memos", () => {
+  const row = { id: "decision", toolId: "5-18-mmm", action: "Hold out brand search", reviewPlan: serializeDecisionPlan({ ...plan, raw: ["private"] }), targetActual: "5500" };
+  const [back] = normalizeDecisionReviewRows(Papa.parse(serializeDecisionReviewCsv([row]), { header: true }).data);
+  expect(readDecisionPlan(back.reviewPlan)).toEqual(plan);
+  expect(back.targetActual).toBe("5500");
+  expect(archiveMemo(back)).not.toHaveProperty("reviewPlan");
+  expect(scoreDecision({ decision: { ...row, goalMetric: "conversions", goalDirection: "up" } })).toMatchObject({ outcome: "UNSCORED", reason: "explicit_target_review_required" });
+});
+
+it("never fills an experiment observation from a generic period aggregate", async () => {
+  const { buildComparableDecisionActual } = await import("./decisionComparableActual");
+  const { decisionReviewFollowUpMode } = await import("./decisionReview");
+  const record = { metric: "CPA", goalMetric: "cpa", baselineDate: "2026-01-01", reviewPlan: serializeDecisionPlan(plan) };
+  expect(decisionReviewFollowUpMode(record)).toBe("rerun_manual");
+  expect(buildComparableDecisionActual(record)).toEqual({ state: "explicit_target_review_required" });
+});

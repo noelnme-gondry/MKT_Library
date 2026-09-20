@@ -1773,9 +1773,9 @@ describe("MarketingResponse render smoke", () => {
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
     await flushRaf();
-    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeNull();
+    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18-trend"]')).toBeNull();
     for (const [label, value] of [["추적·어트리뷰션 정책", "consistent"], ["계절성·프로모션 조건", "reviewed"], ["광고 집행 연속성", "continuous"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
-    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeTruthy();
+    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18-trend"]')).toBeTruthy();
     expect(container.textContent).toContain("다음 검토 약속 만들기");
     clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
@@ -1816,6 +1816,11 @@ describe("MarketingResponse render smoke", () => {
     await flushRaf();
     clickByText(container, "기여 분해");
     expect(document.body.textContent).toContain("같은 구간 기준선 오차");
+    const decisionEditor = container.querySelector('[data-decision-review-tool="5-18-mmm"]');
+    expect(decisionEditor).toBeTruthy();
+    fireEvent.click(decisionEditor.querySelector("summary"));
+    expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("rerun:oos_error");
+    expect([...screen.getByLabelText("목표 (성공의 정의)").options].map(option => option.value)).toContain("rerun:organic_users");
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");

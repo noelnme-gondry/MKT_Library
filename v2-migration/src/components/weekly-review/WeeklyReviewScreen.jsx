@@ -673,7 +673,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
           {lastDecision.score.checks?.goal?.assessment && <p className="wr-note">{locale === "en" ? "Observed goal change" : "관측된 목표 지표 변화"}: {pct(lastDecision.score.checks.goal.assessment.deltaPct)}</p>}
           {lastDecision.score.checks?.guardrail && <p className="wr-note">{locale === "en" ? "Observed guardrail value / limit" : "관측된 가드레일 값 / 기준"}: {money(lastDecision.score.checks.guardrail.actual)} / {money(lastDecision.score.checks.guardrail.threshold)}</p>}
           {lastDecision.score.reason === "comparison_context_mismatch" && <p className="wr-note">{locale === "en" ? "The baseline dates, currency, conversion basis, or period lengths differ from the saved decision." : "저장 당시와 기준 기간·통화·전환 기준 또는 기간 길이가 달라 판정을 보류했습니다."}</p>}
-          {lastDecision.score.outcome === DECISION_OUTCOME.UNSCORED && (
+          {lastDecision.score.reason === "explicit_target_review_required" && <p className="wr-note">{locale === "en" ? "This decision has explicit targets or an experiment design. Review its saved criteria and same-scope observations in the decision history; an aggregate direction change does not score it." : "목표값 또는 실험 설계가 있는 결정입니다. 결정 기록에서 저장한 기준과 동일 조건의 관측값을 검토하세요. 전체 지표의 방향 변화로 자동 판정하지 않습니다."}</p>}
+          {lastDecision.score.outcome === DECISION_OUTCOME.UNSCORED && lastDecision.score.reason !== "explicit_target_review_required" && (
             <p className="wr-note">
               {locale === "en"
                 ? "The recorded terms or available observations are insufficient to score this decision. A hold goal needs a predeclared equivalence margin."

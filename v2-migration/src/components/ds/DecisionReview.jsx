@@ -19,6 +19,8 @@ import AccountArchive from "@/components/AccountArchive";
 import ReviewSaveDialog from "@/components/ReviewSaveDialog";
 import { decisionDataOrigin } from "@/lib/dataOrigin";
 import { serializeReviewEvidence } from "@/lib/reviewEvidence";
+import DecisionPlanFields from "./DecisionPlanFields";
+import { serializeDecisionPlan, decisionPlanError } from "@/lib/decisionPlan";
 import ProjectReviewLink from "@/components/ProjectReviewLink";
 
 function nextWeekDate() {
@@ -31,6 +33,7 @@ function createDraft(prefill = {}, defaults = {}) {
   const source = prefill && typeof prefill === "object" && !Array.isArray(prefill) ? prefill : {};
   const text = (value) => typeof value === "string" ? value : String(value ?? "");
   return {
+    reviewPlan: source.reviewPlan || "",
     conclusion: text(source.conclusion),
     action: text(source.action),
     hypothesis: text(source.hypothesis),
@@ -294,12 +297,14 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   // 그 지표에 맞는 목표를 기본값으로 삼는다. 목록 첫 항목을 무조건 쓰면
   // 원장은 프리필 지표를, 판정은 다른 목표를 말하는 상태가 된다.
   const defaultGoal = useMemo(() => {
+    const declared = goalOptions.find(goal => goal.key === decisionPrefill?.goalMetric);
+    if (declared) return declared;
     const prefilledMetric = String(decisionPrefill?.metric ?? "").trim().toLowerCase();
     const matched = prefilledMetric
       ? goalOptions.find((goal) => goal.label.toLowerCase() === prefilledMetric || goal.key.toLowerCase() === prefilledMetric)
       : null;
     return matched || goalOptions[0] || null;
-  }, [goalOptions, decisionPrefill?.metric]);
+  }, [goalOptions, decisionPrefill?.metric, decisionPrefill?.goalMetric]);
   const draftDefaults = useMemo(() => ({
     baselineDate: latestDataDate,
     comparisonWindowDays: 7,
@@ -389,10 +394,12 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const updateDraft = (key, value) => {
     if (!isDraftDirty) setDraftBasis({ signature: evidenceSignature, data: csvData?.canonicalData });
     setIsDraftDirty(true);
-    setDraft((current) => ({ ...current, [key]: value }));
+    setDraft((current) => ({ ...current, ...(typeof key === "object" ? key : { [key]: value }) }));
   };
   const addRecord = () => {
     if (hasChangedBasis) return;
+    const planError = decisionPlanError(draft.reviewPlan, locale);
+    if (planError) { setMessage(planError); return; }
     if (!draft.action.trim()) {
       setMessage(t.error);
       return;
@@ -411,6 +418,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       sourcePath: resolvedSourcePath,
       locale,
       createdAt: new Date().toISOString(),
+      reviewPlan: serializeDecisionPlan(draft.reviewPlan) ? serializeDecisionPlan({ ...JSON.parse(serializeDecisionPlan(draft.reviewPlan)), metric: draft.metric }) : "",
       evidence: serializeReviewEvidence(analysisEvidence ? { ...analysisEvidence, capturedAt: new Date().toISOString() } : null),
       conclusion: draft.conclusion.trim(),
       action: draft.action.trim(),
@@ -624,16 +632,17 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                 value={draft.goalMetric}
                 onChange={(event) => {
                   const option = goalOptions.find((goal) => goal.key === event.target.value);
-                  setIsDraftDirty(true);
-                  setDraft((current) => ({
-                    ...current,
+                  updateDraft({
+                    reviewPlan: "",
+                    baseline: "",
+                    baselineDate: "",
                     goalMetric: event.target.value,
                     goalDirection: option?.direction || "",
                     // 원장(ledger)은 `metric`·`targetDirection`을 읽는다. 목표를 바꿀 때
                     // 둘을 같이 옮기지 않으면 화면과 판정이 서로 다른 지표를 말한다.
-                    metric: option ? option.label : current.metric,
-                    targetDirection: option?.targetDirection || current.targetDirection,
-                  }));
+                    metric: option ? option.label : draft.metric,
+                    targetDirection: option?.targetDirection || draft.targetDirection,
+                  });
                 }}
               >
                 {goalOptions.map((goal) => (
@@ -713,6 +722,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.reviewQuestion}</span>
             <input value={draft.reviewQuestion} onChange={(event) => updateDraft("reviewQuestion", event.target.value)} placeholder={t.reviewQuestionPlaceholder} />
           </label>
+          <DecisionPlanFields locale={locale} value={draft.reviewPlan} onChange={value => updateDraft("reviewPlan", value)} />
           {hasChangedBasis && <div role="alert"><p>{locale === "en" ? "Analysis changed while you were editing. Review the current result before saving; your draft is still here." : "작성 중 분석 근거가 바뀌었습니다. 초안은 유지되어 있으니 현재 결과를 확인한 뒤 저장해 주세요."}</p><button type="button" className="btn" onClick={() => { setDraft(createDraft(decisionPrefill, draftDefaults)); setIsDraftDirty(false); setDraftBasis(null); }}>{locale === "en" ? "Start a new draft from this result" : "현재 결과로 초안 다시 만들기"}</button></div>}
           <button type="button" className="btn primary decision-review__add" disabled={Boolean(hasChangedBasis)} onClick={addRecord}>{t.add}</button>
         </div>
