@@ -281,7 +281,6 @@ export default function ResultActionCard({
             ))}
           </div>
         )}
-        {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
         {(analysisMeta || (analysisBasis && toolId)) && (
           <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Data and method information" : "데이터 기준과 신뢰도"}>
             {analysisBasis && toolId && (
@@ -299,6 +298,7 @@ export default function ResultActionCard({
           </aside>
         )}
       </div>
+      {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
 
       {stats.length > 0 && (
         <div className="result-action-card__stats" aria-label={locale === "en" ? "Key figures" : "핵심 수치"}>

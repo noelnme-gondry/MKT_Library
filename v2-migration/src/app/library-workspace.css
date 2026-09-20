@@ -165,6 +165,7 @@
   .app:not(.is-home) .sidebar.library-sidebar .nav-item { color: var(--library-muted); }
   .app:not(.is-home) .sidebar.library-sidebar .nav-item:is(.active, :hover) { color: var(--library-accent); background: var(--library-accent-surface); }
   .app .library-full-navigation .sidebar-search { background: var(--library-background); color: var(--library-muted); border-color: var(--library-border); }
+  .app .sidebar-search > span, .app .sidebar-search kbd { color: var(--library-muted); }
   .app .sidebar-library-disclosure { border-color: var(--library-border); margin-top: 5px; }
   .app .sidebar-library-disclosure > summary { display: flex; font-size: 12px; letter-spacing: 0; padding: 12px 10px; color: var(--library-muted); }
   .app .sidebar.library-sidebar .sidebar-library-link { color: var(--library-muted); background: transparent; }

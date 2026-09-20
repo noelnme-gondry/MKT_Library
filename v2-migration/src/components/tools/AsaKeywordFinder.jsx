@@ -1,5 +1,6 @@
 "use client";
 
+import { useClientReady } from "@/lib/useClientReady";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useMemo, useState } from "react";
@@ -28,6 +29,7 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
   const tr = (ko, en) => locale === "en" ? en : ko;
   const csvData = useAppStore((state) => state.csvData);
   const analyzed = useAppStore((state) => state.isGroupAnalyzed("5-26"));
+  const clientReady = useClientReady();
   const [settings, setSettings] = useSavedToolInput("5-26", "settings", { budget: "", cpa: "", cpt: "" });
   const [maturityDeclaration, setMaturityDeclaration] = useState(null);
   const maturity = maturityDeclaration?.raw === csvData.raw ? maturityDeclaration.value : "unknown";
@@ -79,9 +81,9 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
         <h2 className="section-title">{tr("판정 기준", "Decision thresholds")}</h2>
         <p>{tr("CSV에 캠페인 일일 예산·목표 CPA·현재 CPT가 있으면 그대로 씁니다. 없다면 아래 공통값을 넣으세요. 예산 소진률은 캠페인 단위로 계산하고, 검색어 성과와 함께 CPT 조치에 반영합니다. 입력값은 이 화면에서만 사용됩니다.", "When campaign daily budget, target CPA, and current CPT are in the CSV, they are used directly. Otherwise enter shared values below. Pacing is calculated per campaign, then paired with each search term's performance for CPT actions. These inputs are used only in this screen.")}</p>
         <div className="asa-tool__inputs">
-          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
-          <label>{tr("목표 CPA", "Target CPA")}<input inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
-          <label>{tr("목표 CPT", "Target CPT")}<input inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
+          <label>{tr("캠페인 일일 예산", "Campaign daily budget")}<input disabled={!clientReady} inputMode="decimal" value={settings.budget} onChange={set("budget")} placeholder={tr("선택", "Optional")} /></label>
+          <label>{tr("목표 CPA", "Target CPA")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpa} onChange={set("cpa")} placeholder={tr("권장", "Recommended")} /></label>
+          <label>{tr("목표 CPT", "Target CPT")}<input disabled={!clientReady} inputMode="decimal" value={settings.cpt} onChange={set("cpt")} placeholder={tr("선택", "Optional")} /></label>
         </div>
         <p className="asa-tool__note">{tr("소진이 예산의 70% 미만이면서 목표를 달성하면 CPT를 +10%(40% 미만이면 +15%) 제안합니다. 110%를 넘겨 소진하면서 목표를 못 맞추면 −10%(140% 초과면 −15%)를 제안합니다. 목표가 없으면 임의로 입찰을 추천하지 않습니다.", "Below 70% pacing and meeting target: suggest +10% CPT (+15% below 40%). Above 110% pacing while missing target: suggest −10% (−15% above 140%). Without a target, the tool will not invent a bid recommendation.")}</p>
       </section>

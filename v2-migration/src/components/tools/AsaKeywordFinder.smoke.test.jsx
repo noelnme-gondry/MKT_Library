@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
+import { renderToString } from "react-dom/server";
 import { useAppStore } from "@/store/useDataStore";
 import AsaKeywordFinder from "@/components/tools/AsaKeywordFinder";
 
@@ -36,6 +37,16 @@ function rows() {
 describe("AsaKeywordFinder render smoke", () => {
   beforeEach(() => {
     useAppStore.setState(useAppStore.getInitialState(), true);
+  });
+
+  it("keeps threshold inputs disabled until their event handlers are attached", () => {
+    const server = document.createElement("div");
+    server.innerHTML = renderToString(<AsaKeywordFinder />);
+    const inputs = server.querySelectorAll(".asa-tool__inputs input");
+    expect(inputs).toHaveLength(3);
+    for (const input of inputs) expect(input.disabled).toBe(true);
+    render(<AsaKeywordFinder />);
+    expect(screen.getByRole("textbox", { name: "목표 CPA", exact: true }).disabled).toBe(false);
   });
 
   it("실제 진입 경로(setCurrentRouteId → 미러 스왑)로 데이터 없이 마운트된다", () => {
