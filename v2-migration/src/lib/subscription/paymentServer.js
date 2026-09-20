@@ -5,6 +5,7 @@ import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduc
 import { readAccount, accountsEnabled } from "@/lib/account/accountServer";
 import { SUBSCRIPTION } from "./entitlement";
 import { nicepayConfigured, verifyNicepayAuthentication, approveNicepayPayment, readNicepayPayment } from "./nicepayServer";
+import { configuredNicepayMethods } from "./nicepayMethods";
 
 let pool;
 const cookieName = "gop_payment_access";
@@ -25,7 +26,7 @@ export function paymentConfiguration() {
       && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true")
       && (mode !== "test" || process.env.NODE_ENV !== "production");
     return { provider, enabled, clientKey: enabled ? process.env.NICEPAY_CLIENT_KEY : null, reviewClientKey: null,
-      mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+      mode, methods: configuredNicepayMethods(process.env.NICEPAY_METHODS), product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
   }
   const clientKey = process.env.TOSS_CLIENT_KEY || "";
   const secret = process.env.TOSS_SECRET_KEY || "";
@@ -223,7 +224,7 @@ export async function confirmPayment(request, input) {
     if (payment.status === "WAITING_FOR_DEPOSIT" && !entitlement) {
       await client.query("COMMIT");
       // This is an ownership credential, not a paid entitlement. Keep it for delayed deposits.
-      return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
+      return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
     }
     if (!entitlement || entitlement.expiresAt <= Date.now()) {
       // Preserve an authoritative cancellation written by syncOrder.
@@ -273,7 +274,7 @@ export async function readPaymentAccess(request, recoveryCode) {
     if (!owns(latest, credential.token)) return { body: { entitlement: null } };
   }
   const active = entitlement?.expiresAt > Date.now();
-  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
+  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
 export async function reconcilePaymentWebhook(input, provider = "toss") {
   const id = provider === "nicepay" ? input?.orderId : input?.data?.orderId;

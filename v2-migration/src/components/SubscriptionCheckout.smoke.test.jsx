@@ -9,6 +9,31 @@ vi.mock("@/lib/subscription/paymentClient", () => ({ rememberPaymentAccess: vi.f
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 afterEach(() => { vi.unstubAllGlobals(); delete window.TossPayments; delete window.AUTHNICE; tracking.mockClear(); window.history.replaceState(null, "", "/"); });
 
+it.each(["ko", "en"])("submits the selected approved payment method (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", clientKey: "fixture", methods: ["card", "cellphone"] }
+    : { orderId: "gop_fixture", amount: 5900 } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  fireEvent.click(await screen.findByRole("radio", { name: locale === "en" ? "Mobile phone billing" : "휴대폰 결제" }));
+  expect(screen.queryByRole("radio", { name: /Kakao|카카오/ })).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Pay KRW 5,900" : "5,900원 결제하기" }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  expect(window.AUTHNICE.requestPay.mock.calls[0][0]).toMatchObject({ method: "cellphone", isDigital: true });
+});
+
+it.each(["ko", "en"])("restores virtual-account deposit instructions without offering another payment (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", methods: ["card", "vbank"] }
+    : { status: "waiting_for_deposit", orderId: "gop_fixture", deposit: { bank: "Fixture Bank", number: "123456", holder: "Fixture", amount: 5900, expiresAt: "2026-09-21" } } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  await screen.findByText("Fixture Bank 123456");
+  expect(screen.queryByRole("button", { name: /Pay KRW|5,900원 결제하기/ })).toBeNull();
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
+
 it.each(["ko", "en"])("does not send a new-provider order to an old open checkout (%s)", async locale => {
   useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
   window.AUTHNICE = { requestPay: vi.fn() };

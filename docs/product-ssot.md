@@ -70,6 +70,8 @@
 
 ## 2. 제품 사실 카드 (F)
 
+- NICEPAY 결제수단: 운영 승인된 수단만 표시한다. 카드, 무통장입금(가상계좌), 네이버페이(카드 전액·포인트 미지원), 카카오페이, 휴대폰 결제를 지원하는 연동을 제공한다. 가상계좌는 24시간 유효하며 계좌 발급으로 이용권을 활성화하지 않는다. 검증된 입금 완료 뒤 이용권이 시작된다. / Show only merchant-approved NICEPAY methods. Virtual accounts expire after 24 hours; issuance does not activate a pass. A pass starts after verified payment. Naver Pay supports card payment only, without points. 자동 갱신과 환불정책은 결제수단 추가로 변경하지 않는다.
+
 **`조건·한계` 열을 만족하지 못하는 주장은 공개하지 않는다.** 이 표가 `src/lib/brandFacts.js`의 정본이다.
 
 | ID | 승인 문구 (KO) | 조건·근거·금지 확장 | 코드 상태 |
