@@ -27,6 +27,8 @@ export default function DownloadHub({
   const [exportError, setExportError] = useState("");
   const [preview, setPreview] = useState(null);
   const triggerRef = useRef(null);
+  const previewButtonRef = useRef(null);
+  const previewReturnRef = useRef(null);
   const analysisExport = useAnalysisExport();
   const documentItem = analysisExport?.buildPayload ? {
     label: locale === "en" ? "Analysis report (Word)" : "분석 보고서 (Word)",
@@ -89,7 +91,15 @@ export default function DownloadHub({
 
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-    {preview && <AnalysisReportPreview payload={preview} locale={locale} returnFocusRef={triggerRef} onClose={() => setPreview(null)} />}
+    {previewItem && <button ref={previewButtonRef} type="button" className="btn ghost" onClick={() => { previewReturnRef.current = previewButtonRef.current; previewItem.onSelect(); }}>{locale === "en" ? "Preview my report · free" : "내 보고서 미리보기 · 무료"}</button>}
+    {preview && <AnalysisReportPreview payload={preview} locale={locale} returnFocusRef={previewReturnRef} onClose={() => setPreview(null)} onExport={format => {
+      const item = format === "docx" ? documentItem : workbookItem;
+      setPreview(null);
+      requestAnimationFrame(async () => {
+        if (!item || !requirePaidExport({ toolId, locale, format })) return;
+        if (await item.onSelect() !== false) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: format });
+      });
+    }} />}
     <DropdownMenu.Root open={open} onOpenChange={next => { if (!next || previewItem || requirePaidExport({ toolId, locale })) setOpen(next); }} modal={false}>
       <DropdownMenu.Trigger asChild>
         <button
@@ -122,6 +132,7 @@ export default function DownloadHub({
             <DropdownMenu.Item
               key={`${item.analyticsType || "item"}-${item.label}`}
               onSelect={async () => {
+                previewReturnRef.current = triggerRef.current;
                 if (!item.free) triggerRef.current?.focus();
                 if (!item.free && !requirePaidExport({ toolId, locale, format: item.analyticsType })) return;
                 try { if (await item.onSelect() !== false && !item.free) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" }); }

@@ -90,7 +90,7 @@ export default function ResultActionCard({
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const publishFinding = useAppStore((state) => state.publishFinding);
   const addReportBlock = useAppStore((state) => state.addReportBlock);
-  const [reportAdded, setReportAdded] = useState(false);
+  const reportDraft = useAppStore((state) => state.reportDraft);
   const [shareCopied, setShareCopied] = useState(false);
   const [shareError, setShareError] = useState("");
   const inputSignature = computeAnalyzeSig(csvData);
@@ -139,6 +139,7 @@ export default function ResultActionCard({
   // 보고서는 판단 가능한 결과만 수집한다. 표본 부족·차단·미결론 결과를
   // "결론"으로 보관하면 다음 주 검토에서 실제 판단처럼 보이기 때문이다.
   const canCollectReport = Boolean(generatedReportBlock && resultState === "ready");
+  const reportAdded = Boolean(generatedReportBlock && reportDraft?.blocks?.some(block => block.id === generatedReportBlock.id && JSON.stringify(block) === JSON.stringify(generatedReportBlock)));
   const resolvedDecisionPrefill = useMemo(() => decisionPrefill || { conclusion: typeof headline === "string" ? headline : "" }, [decisionPrefill, headline]);
   const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(resolvedDecisionPrefill), [resolvedDecisionPrefill]);
   const hasDecisionPrefill = Boolean(
@@ -250,7 +251,6 @@ export default function ResultActionCard({
   const collectForReport = () => {
     if (!generatedReportBlock) return;
     addReportBlock(generatedReportBlock);
-    setReportAdded(true);
     trackProductEvent("weekly_report_block_added", { tool_id: toolId, locale });
   };
   return (

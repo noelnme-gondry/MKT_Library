@@ -9,7 +9,7 @@ import { isDemoData } from "@/lib/dataOrigin";
 
 // Render the same payload used by Word/XLSX. Never send it to analytics/storage.
 // React text nodes escape user-provided names and conclusions.
-export default function AnalysisReportPreview({ payload, locale = "ko", onClose, returnFocusRef }) {
+export default function AnalysisReportPreview({ payload, locale = "ko", onClose, returnFocusRef, onExport }) {
   const en = locale === "en";
   const summary = payload.summary;
   const recordOnly = payload.source.importSource === "project_records";
@@ -31,6 +31,7 @@ export default function AnalysisReportPreview({ payload, locale = "ko", onClose,
     {summary.points.length > 0 && <section><h3>{en ? "Evidence and next steps" : "근거와 다음 행동"}</h3>{summary.points.map((point, index) => <div key={index}><p><strong>{point.label}</strong> {point.text}</p>{point.detail && <p>{point.detail}</p>}</div>)}</section>}
     {payload.review?.decisions.length > 0 && <section><h3>{en ? "Decision review and follow-up" : "결정 검토와 후속 행동"}</h3><p>{en ? "Historical saved records; these are not a new causal assessment." : "저장된 과거 기록이며, 이번 분석의 인과효과 판정을 뜻하지 않습니다."}</p>{payload.review.decisions.map((decision, index) => <article key={index}><h4>{decision.action}</h4><dl>{decision.fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></article>)}{payload.review.total > payload.review.decisions.length && <p>{en ? `Latest ${payload.review.decisions.length} of ${payload.review.total} decisions shown.` : `전체 ${payload.review.total}건 중 최근 ${payload.review.decisions.length}건을 담았습니다.`}</p>}</section>}
     <button className="btn" onClick={copyBrief}>{en ? "Copy review brief" : "검토 브리프 복사"}</button>{copyState && <p role="status">{copyState}</p>}
+    {onExport && <section className="analysis-report-preview__next"><h3>{en ? "Bring this analysis to your next meeting" : "이 분석을 다음 회의 자료로 남기세요"}</h3><p>{en ? "Word brings the conclusion, evidence and next actions together. Excel includes detailed evidence for review. Downloads require a purchased Pro pass." : "Word에는 결론·근거·다음 행동을, Excel에는 검토할 상세 근거를 담습니다. 다운로드에는 구매한 Pro 이용권이 필요합니다."}</p><button type="button" className="btn primary" onClick={() => onExport("docx")}>{en ? "Download Word report · Pro" : "Word 보고서 다운로드 · Pro"}</button><button type="button" className="btn" onClick={() => onExport("xlsx")}>{en ? "Download Excel workbook · Pro" : "Excel 워크북 다운로드 · Pro"}</button></section>}
     <section><h3>{en ? "Method and limitations" : "분석 방법과 해석 한계"}</h3><p>{payload.method.name}</p>
       {[...payload.method.assumptions, ...payload.method.limitations].map((text, index) => <p key={index}>{text}</p>)}
       {!recordOnly && <p>{payload.calculationMode === "exact_after_preprocessing" ? (en ? "Workbook formulas recalculate prepared inputs. Editing raw rows does not rerun preprocessing." : "워크북 수식은 전처리된 입력부터 다시 계산합니다. 원본 수정만으로 전처리가 다시 실행되지는 않습니다.") : (en ? "Model estimates are browser-engine outputs. Refit the model on the website after changing data." : "통계 모델 추정치는 브라우저 엔진 산출물입니다. 데이터를 바꾸면 사이트에서 모델을 다시 추정해야 합니다.")}</p>}
