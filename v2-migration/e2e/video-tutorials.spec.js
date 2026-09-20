@@ -121,7 +121,7 @@ for (const locale of ["ko", "en"]) {
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
-  test(`upload help stays discoverable and yields to survey (${locale})`, async ({ page }) => {
+  test(`upload guide opens and home launcher yields to survey (${locale})`, async ({ page }) => {
     await page.goto(`${en ? "/en" : ""}/dashboard`);
     const help = page.getByRole("button", { name: en ? "How to upload" : "업로드 방법 보기" });
     await expect(help).toBeVisible();
@@ -130,6 +130,10 @@ for (const locale of ["ko", "en"]) {
     await expect(dialog).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(help).toBeFocused();
+    // The uploader can occupy every candidate floating footprint on a tablet.
+    // Its inline entry stays usable; test survey precedence on the clear home
+    // viewport instead of requiring the launcher to cover upload controls.
+    await page.goto(en ? "/en" : "/");
     const launcher = page.locator(".tutorial-launcher");
     await expect(launcher).toBeVisible();
     await page.evaluate(() => {
