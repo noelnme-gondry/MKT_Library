@@ -15,6 +15,20 @@ vi.mock("@/lib/analysis-export/workbookClient", () => ({ createAnalysisWorkbook:
 vi.mock("@/utils/download", () => ({ downloadJson: vi.fn(), downloadXlsx: vi.fn() }));
 
 describe("DownloadHub", () => {
+  it.each(["ko", "en"])("opens a free preview directly and gates its paid download (%s)", async locale => {
+    useAppStore.setState({ entitlement: null, purchasePrompt: null });
+    vi.clearAllMocks();
+    const payload = buildAnalysisExportPayload({ toolId: "5-21", locale, headline: "Actual current result", source: { rows: [] } });
+    render(<AnalysisExportProvider value={{ toolId: "5-21", buildPayload: () => payload }}><DownloadHub toolId="5-21" locale={locale} /></AnalysisExportProvider>);
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Preview my report · free" : "내 보고서 미리보기 · 무료" }));
+    await screen.findByRole("dialog");
+    expect(screen.getByText("Actual current result")).toBeTruthy();
+    expect(useAppStore.getState().purchasePrompt).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Download Word report · Pro" : "Word 보고서 다운로드 · Pro" }));
+    await waitFor(() => expect(useAppStore.getState().purchasePrompt?.toolId).toBe("5-21"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(createAnalysisWorkbook).not.toHaveBeenCalled();
+  });
   it.each(["ko", "en"])("previews actual evidence without a purchase, file generation or analytics disclosure (%s)", async locale => {
     useAppStore.setState({ entitlement: null, purchasePrompt: null });
     vi.clearAllMocks();

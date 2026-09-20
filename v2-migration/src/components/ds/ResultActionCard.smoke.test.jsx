@@ -12,6 +12,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
       csvData: { raw: [], headers: [], mapping: {}, fileName: "" },
       decisionRecords: [],
       decisionPersistenceEnabled: false,
+      reportDraft: { schemaVersion: 1, blocks: [], notes: [] },
     });
   });
 
@@ -79,10 +80,26 @@ describe("ResultActionCard decision-first hierarchy", () => {
     }
     // 머리에 남는 것은 다운로드(그리고 도구별 controls)뿐이다.
     const headControls = head.querySelector(".result-action-card__controls");
-    if (headControls) expect(headControls.querySelectorAll("button, a").length).toBeLessThanOrEqual(1);
+    // 현재 결과 미리보기와 다운로드만 허용한다. 공유·저장 동선은 아래에 둔다.
+    if (headControls) expect(headControls.querySelectorAll("button, a").length).toBeLessThanOrEqual(2);
     // 보조 줄은 수치·근거 뒤에 온다.
     const stats = container.querySelector(".result-action-card__stats");
     expect(stats.compareDocumentPosition(utilities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("requires adding changed results again and restores the actual draft state on remount", () => {
+    const props = { toolId: "5-3", analysisBasis: false, decisionReview: false };
+    const view = render(<ResultActionCard {...props} headline="Original conclusion" />);
+    fireEvent.click(screen.getByRole("button", { name: "보고서에 추가" }));
+    expect(screen.getByRole("link", { name: /보고서 열기/ })).toBeTruthy();
+    view.rerender(<ResultActionCard {...props} headline="Changed conclusion" />);
+    expect(screen.getByRole("button", { name: "보고서에 추가" })).toBeTruthy();
+    expect(useAppStore.getState().reportDraft.blocks[0].headline).toBe("Original conclusion");
+    fireEvent.click(screen.getByRole("button", { name: "보고서에 추가" }));
+    view.unmount();
+    render(<ResultActionCard {...props} headline="Changed conclusion" />);
+    expect(screen.getByRole("link", { name: /보고서 열기/ })).toBeTruthy();
+    expect(useAppStore.getState().reportDraft.blocks[0].headline).toBe("Changed conclusion");
   });
 
   it("localizes the key-figure landmark for English", () => {

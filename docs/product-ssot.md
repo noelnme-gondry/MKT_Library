@@ -70,6 +70,8 @@
 
 ## 2. 제품 사실 카드 (F)
 
+- 분석 후 전환: 현재 결과로 만든 무료 보고서 미리보기를 결과 화면에서 바로 제공한다. 결론·수치·한계를 확인한 뒤 Word/Excel 다운로드로 이어지며 Pro 범위를 명시한다. 다음 행동·검토일을 정하는 목적은 이후 데이터에서 실제 변화와 배운 점을 기록하는 것이다. 보고서 추가 완료 표시는 현재 결과와 실제 초안이 일치할 때만 유지한다. / Offer a direct free preview of the current result with transparent Pro downloads. Explain follow-up value and show a result as added only while it matches the actual draft. 저장 피드백은 짧게 한 번만 강조하며 동작 줄이기 설정에서는 움직이지 않는다.
+
 - NICEPAY 결제수단: 운영 승인된 수단만 표시한다. 카드, 무통장입금(가상계좌), 네이버페이(카드 전액·포인트 미지원), 카카오페이, 휴대폰 결제를 지원하는 연동을 제공한다. 가상계좌는 24시간 유효하며 계좌 발급으로 이용권을 활성화하지 않는다. 검증된 입금 완료 뒤 이용권이 시작된다. / Show only merchant-approved NICEPAY methods. Virtual accounts expire after 24 hours; issuance does not activate a pass. A pass starts after verified payment. Naver Pay supports card payment only, without points. 자동 갱신과 환불정책은 결제수단 추가로 변경하지 않는다.
 
 **`조건·한계` 열을 만족하지 못하는 주장은 공개하지 않는다.** 이 표가 `src/lib/brandFacts.js`의 정본이다.

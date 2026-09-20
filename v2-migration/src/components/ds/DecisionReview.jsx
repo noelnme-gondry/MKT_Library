@@ -544,6 +544,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
         <span className="decision-review__tape-main">
           <small>{t.suggestedAction}</small>
           <strong>{draft.action || t.emptyAction}</strong>
+          <span className="decision-review__purpose">{locale === "en" ? "Save the basis now. Return with the next results to record what changed." : "지금의 근거를 남기고, 다음 결과에서 무엇이 달라졌는지 검토하세요."}</span>
         </span>
         <span className="decision-review__tape-date">
           <small>{reviewDateCue(draft.reviewDate, locale)}</small>
