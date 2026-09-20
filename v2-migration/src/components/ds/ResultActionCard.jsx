@@ -325,8 +325,8 @@ export default function ResultActionCard({
       )}
 
       {hiddenPoints.length > 0 && (
-        <details className="result-action-card__details">
-          <summary>{locale === "en" ? `View ${hiddenPoints.length} more supporting point(s)` : `근거 ${hiddenPoints.length}개 더 보기`}</summary>
+        <section data-information-section="" className="result-action-card__details">
+          <header data-information-heading="">{locale === "en" ? `View ${hiddenPoints.length} more supporting point(s)` : `근거 ${hiddenPoints.length}개 더 보기`}</header>
           <ul className="result-action-card__points result-action-card__points--nested">
             {hiddenPoints.map((p, i) => (
               <li key={i} className={`${p.cls || ""} ${p.label ? "is-structured" : ""}`.trim()}>
@@ -336,7 +336,7 @@ export default function ResultActionCard({
               </li>
             ))}
           </ul>
-        </details>
+        </section>
       )}
 
       {canScheduleDecision && !isDemoData(csvData) && <LinkAnalysisToDecision toolId={toolId} metric={resolvedDecisionPrefill?.metric} locale={locale} evidence={buildReviewEvidence({ headline, points, stats, scope: { ...resultScope, currency: csvData?.currency, metric: resolvedDecisionPrefill?.metric }, analysisType: resolvedAnalysisType, resultState })} />}

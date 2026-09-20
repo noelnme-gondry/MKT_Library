@@ -97,7 +97,7 @@ export default function AnalysisSelector({ locale = "ko" }) {
   const start = () => {
     const ids = candidates.filter((item) => item.ready && selected.has(item.id)).map((item) => item.id);
     setRunning(ids);
-    // 한 번에 여러 개를 펴면 어느 것을 읽는지 알 수 없다. 첫 번째만 펴고 나머지는 접는다.
+    // 첫 결과를 선택하며, 무거운 도구는 선택한 탭 하나만 마운트한다.
     setOpenId(ids[0] || "");
     trackProductEvent("analysis_batch_started", { locale, count: ids.length, tool_ids: ids.join(",") });
   };
@@ -140,27 +140,22 @@ export default function AnalysisSelector({ locale = "ko" }) {
         <div className="analysis-selector__actions">
           <button type="button" className="btn" onClick={() => { setRunning([]); setOpenId(""); }}>{t.changeSelection}</button>
         </div>
-        {/* 분석 하나당 접기 하나. 4~5개를 골라도 버튼 하나로 하나씩 관리된다. */}
-        {running.map((id) => {
+        <div className="analysis-selector__tabs" role="tablist" aria-label={locale === "en" ? "Analysis results" : "분석 결과"} onKeyDown={event => {
+          const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+          if (!keys.includes(event.key)) return;
+          event.preventDefault();
+          const index = running.indexOf(openId);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? running.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + running.length) % running.length;
+          setOpenId(running[next]);
+          document.getElementById(`analysis-tab-${running[next]}`)?.focus();
+        }}>
+          {running.map(id => <button key={id} type="button" role="tab" id={`analysis-tab-${id}`} aria-controls={`analysis-panel-${id}`} aria-selected={openId === id} tabIndex={openId === id ? 0 : -1} onClick={() => setOpenId(id)}>{candidates.find(item => item.id === id)?.name || id}</button>)}
+        </div>
+        {running.map(id => {
           const Tool = TOOL_COMPONENTS[id];
-          const entry = candidates.find((item) => item.id === id);
-          const open = openId === id;
-          return (
-            <section key={id} className="analysis-selector__result">
-              <button
-                type="button"
-                className="analysis-selector__result-toggle"
-                aria-expanded={open}
-                onClick={() => setOpenId(open ? "" : id)}
-              >
-                <strong>{entry?.name || id}</strong>
-                <span>{open ? t.collapse : t.expand}</span>
-              </button>
-              {/* 닫으면 언마운트한다 — 무거운 도구 넷을 동시에 붙들고 있으면 메인
-                  스레드가 멈춘다(§7 무거운 compute). 다시 열면 게이트 뒤 캐시가 산다. */}
-              {open && <div className="analysis-selector__result-body"><Tool locale={locale} /></div>}
-            </section>
-          );
+          return <section key={id} role="tabpanel" id={`analysis-panel-${id}`} aria-labelledby={`analysis-tab-${id}`} hidden={openId !== id}>
+            {openId === id && <div className="analysis-selector__result-body"><Tool locale={locale} /></div>}
+          </section>;
         })}
       </>}
     </section>

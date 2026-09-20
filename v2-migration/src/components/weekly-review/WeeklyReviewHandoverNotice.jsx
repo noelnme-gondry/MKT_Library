@@ -90,8 +90,7 @@ export default function WeeklyReviewHandoverNotice({ locale = "ko", decisionCoun
     dismissForever();
     const details = document.querySelector(".wr-history");
     if (details) {
-      details.open = true;
-      details.querySelector("summary")?.focus();
+      details.querySelector("button, a")?.focus();
       details.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };

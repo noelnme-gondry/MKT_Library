@@ -281,7 +281,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [outcome, setOutcome] = useSavedToolInput("9-1", "outcome", null);
   const [features, setFeatures] = useSavedToolInput("9-1", "features", []);
   const [analyzedSig, setAnalyzedSig] = useState(null);
-  const [mappingOpen, setMappingOpen] = useState(true);
   const [seededKey, setSeededKey] = useState(null);
   const [webRRun, setWebRRun] = useState({ status: "idle", signature: null, result: null });
   // 혼합모형은 lme4(Matrix·Rcpp 동반)를 받아야 해서 이 레지스트리에서 가장 무겁다.
@@ -355,7 +354,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     setOutcome(o);
     setFeatures(f);
     setAnalyzedSig(demoPending && hasData ? analyzeSig(o, f, fileName) : null);
-    setMappingOpen(!(demoPending && hasData));
     if (demoPending) setDemoPending(false);
   }
 
@@ -371,7 +369,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     });
     requestAd(() => {
       setAnalyzedSig(nextSig);
-      setMappingOpen(false);
     });
   };
 
@@ -750,11 +747,11 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       )}
 
       {/* ── §0 매핑 ── */}
-      <details className="block analysis-data-mapping" id="s-content-mapping" open={mappingOpen} onToggle={(event) => setMappingOpen(event.currentTarget.open)}>
-        <summary>
+      <section data-information-section="" className="block analysis-data-mapping" id="s-content-mapping"  >
+        <header data-information-heading="">
           <span>{T.mappingTitle}</span>
           {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
-        </summary>
+        </header>
         <div className="analysis-data-mapping__body">
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
@@ -818,7 +815,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </div>
         )}
         </div>
-      </details>
+      </section>
 
       {analyzed && fit && fit.error && (
         <section className="block">
@@ -995,7 +992,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
                           </p>
                         </div>
-                        <div className="table-wrap">
+                        <div className="table-wrap" tabIndex={0} role="region" aria-label={locale === "en" ? "Analysis details table" : "상세 분석 표"}>
                           <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                             <thead><tr>
                               <th style={{ textAlign: "left" }}>{T.thElement}</th>
@@ -1015,8 +1012,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                             ))}</tbody>
                           </table>
                         </div>
-                        <details className="stat-method">
-                          <summary>{tr("이 숫자를 어떻게 읽나요?", "How do I read these numbers?")}</summary>
+                        <section data-information-section="" className="stat-method">
+                          <header data-information-heading="">{tr("이 숫자를 어떻게 읽나요?", "How do I read these numbers?")}</header>
                           <p>
                             {isCount
                               ? tr("표의 숫자는 건수가 몇 배가 되는지를 뜻합니다(발생률비). ", "The numbers show how many times the expected count changes (rate ratio). ")
@@ -1029,7 +1026,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                             )}
                             {tr("관측된 연관이며 인과효과가 아닙니다.", "This is an observed association, not a causal effect.")}
                           </p>
-                        </details>
+                        </section>
                       </div>
                     );
                   })()}
@@ -1091,7 +1088,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                     <p style={{ margin: "4px 0 0", fontSize: "var(--fs-sm)" }}>{mixedRun.result.icc >= 0.1
                       ? tr("단위별 기준선 차이가 작지 않습니다. 위 표의 요소 효과는 이 차이를 흡수하지 않은 값이므로, 아래 혼합모형 계수를 함께 보세요.", "Baseline differences between units are not small. The element effects above do not absorb them, so read the mixed-model coefficients below alongside them.")
                       : tr("단위별 기준선 차이가 크지 않아 위 표의 결과와 크게 다르지 않을 것입니다.", "Baseline differences between units are small, so this should not differ much from the table above.")}</p>
-                    <div className="table-wrap" style={{ marginTop: "10px" }}>
+                    <div className="table-wrap" tabIndex={0} role="region" aria-label={locale === "en" ? "Analysis details table" : "상세 분석 표"} style={{ marginTop: "10px" }}>
                       <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                         <thead><tr>
                           <th style={{ textAlign: "left" }}>{T.thElement}</th>
@@ -1109,13 +1106,13 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                         ))}</tbody>
                       </table>
                     </div>
-                    <details className="stat-method">
-                      <summary>{tr("계산 방법", "How this was calculated")}</summary>
+                    <section data-information-section="" className="stat-method">
+                      <header data-information-heading="">{tr("계산 방법", "How this was calculated")}</header>
                       <p>{tr(
                         `단위 ${mixedRun.result.groupCount}개 · 단위 간 SD ${mixedRun.result.groupSd.toFixed(3)} · 잔차 SD ${mixedRun.result.residualSd.toFixed(3)}. 단위별 기준선 차이를 random effect로 두고 적합했습니다(선형혼합모형). p값은 대표본 근사(Wald)입니다 — 정확한 분모 자유도는 제공되지 않습니다. 관측 연관이며 인과효과가 아닙니다.`,
                         `${mixedRun.result.groupCount} units · between-unit SD ${mixedRun.result.groupSd.toFixed(3)} · residual SD ${mixedRun.result.residualSd.toFixed(3)}. Per-unit baseline differences were fitted as a random effect (linear mixed model). p-values are large-sample (Wald) approximations — exact denominator df are not available. This is an observed association, not a causal effect.`,
                       )}</p>
-                    </details>
+                    </section>
                   </div>
                 </div>
               )}
@@ -1138,10 +1135,10 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </section>
 
           {/* ── §2 전문가 표 ── */}
-          <details className="block">
-            <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+          <section data-information-section="" className="block">
+            <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
               {T.expertSummary}
-            </summary>
+            </header>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "var(--fs-sm)", color: MUTED }}>
@@ -1149,7 +1146,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                   {fit.dropped.length ? ` · ${T.droppedPrefix}${fit.dropped.join(", ")}` : ""}
                 </div>
               </div>
-              <div className="table-wrap" style={{ marginTop: "8px" }}>
+              <div className="table-wrap" tabIndex={0} role="region" aria-label={locale === "en" ? "Analysis details table" : "상세 분석 표"} style={{ marginTop: "8px" }}>
                 <table className="data" style={{ fontSize: "var(--fs-sm)" }}>
                   <thead>
                     <tr>
@@ -1183,7 +1180,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 {T.tableFootnote}
               </p>
             </div>
-          </details>
+          </section>
 
           {/* 예측 모델 비교는 핵심 연관 해석을 다 읽은 뒤 필요한 사람만 본다. */}
           {validationDates.length > 0 && <section className="block">

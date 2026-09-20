@@ -116,7 +116,7 @@ describe("SegmentCompositionChange render smoke", () => {
   it("매핑을 고치는 경로는 접어 두되 사라지지 않는다", () => {
     const { container } = mount();
     const editor = container.querySelector(".segment-mapping-edit");
-    expect(editor.tagName).toBe("DETAILS");
+    expect(editor.tagName).toBe("SECTION");
     expect(editor.textContent).toContain("고치기");
     // 열면 역할 선택기가 그대로 있다.
     expect(within(editor).getByLabelText("기간 (날짜·주차)")).toBeTruthy();

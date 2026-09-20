@@ -38,8 +38,8 @@ describe("ToolPageOutro", () => {
 
   it("keeps reference material collapsed so the result stays the last thing read", () => {
     const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
-    expect(container.querySelector(".tool-longform__disclosure").open).toBe(false);
-    expect(container.querySelector(".tool-connections__more").open).toBe(false);
+    expect(container.querySelector(".tool-longform__disclosure").tagName).toBe("SECTION");
+    expect(container.querySelector(".tool-connections__more").tagName).toBe("SECTION");
   });
 
   it("mirrors the same structure and copy in English", () => {

@@ -997,12 +997,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         </div>
 
-        <details style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-          <summary>{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</summary>
+        <section data-information-section="" style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
+          <header data-information-heading="">{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</header>
           <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
             {C.heroCausationBody}
           </div>
-        </details>
+        </section>
       </section>
 
       <ResultActionCard
@@ -1162,8 +1162,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </div>
       </section>
 
-      <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
-        <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
+      <section data-information-section="" className="block" id="s-prep" style={{ padding: "13px 16px" }}>
+        <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</header>
         <div style={{ marginTop: "10px" }}>
           <ToolTemplateAction
             toolId={C.uploaderToolId}
@@ -1174,7 +1174,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           />
           <CsvUploader toolId={C.uploaderToolId} analyticsToolId="9-6" locale={locale} />
         </div>
-      </details>
+      </section>
 
       <section className="block" id="s-validation">
         <h2 className="section-title">{tr("판단할 만큼 데이터가 충분한가?", "Is there enough data to decide?")}</h2>
@@ -1184,15 +1184,15 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             <div className="body">
               <strong>{tr(`${validation.droppedRows}개 row 제외 / ${validation.errors.length}개 이슈`, `${validation.droppedRows} row(s) excluded / ${validation.errors.length} issue(s)`)}</strong>
               {validation.errors.length > 0 && (
-                <details style={{ marginTop: "6px" }}>
-                  <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tr("상세", "Details")}</summary>
+                <section data-information-section="" style={{ marginTop: "6px" }}>
+                  <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tr("상세", "Details")}</header>
                   <ul style={{ margin: "6px 0 0 18px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                     {validation.errors.slice(0, 20).map((e, i) => (
                       <li key={i}>{e}</li>
                     ))}
                     {validation.errors.length > 20 && <li>... +{validation.errors.length - 20}{tr("개", " more")}</li>}
                   </ul>
-                </details>
+                </section>
               )}
             </div>
           </div>
@@ -1321,8 +1321,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </h2>
         {hasDecompose ? (
           <>
-            <details style={{ marginBottom: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", cursor: "pointer" }}>
-              <summary>{tr("어떻게 계산하나요? (분석 방법 펼치기)", "How is this calculated? (expand methodology)")}</summary>
+            <section data-information-section="" style={{ marginBottom: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", cursor: "pointer" }}>
+              <header data-information-heading="">{tr("어떻게 계산하나요?", "How is this calculated?")}</header>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
                 {tr(
                   <>{decMeta.weightLabel}로 가중한 선형회귀(weighted least squares)로 {decMeta.desc}를 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 가중치를 {decMeta.weightLabel}로 두는 이유는 분모가 큰(=추정이 정밀한) {C.entity}에 더 큰 비중을 주기 위함입니다. 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
@@ -1331,7 +1331,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                   {" "}⚠ This is observational analysis of live operating data, so it may contain selection bias from {C.decomposeBiasSource}&apos;s exposure — treat it as correlational only; confirm with the experiment analysis tool (5-4).</>,
                 )}
               </div>
-            </details>
+            </section>
             <div className="analysis-local-controls" aria-label={tr("속성 효과 분석 조건", "Attribute-effect analysis settings")}>
               <div className="analysis-local-controls__inner">
                 <span className="analysis-local-controls__label">{tr("분석 조건", "Analysis settings")}</span>
@@ -1778,13 +1778,13 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                   <p style={{ margin: "4px 0 0" }}>{conceptInteraction.interaction.isSignificant
                     ? tr(`${rowAttr}와 ${colAttr}를 따로 고르지 말고 위 표에서 조합 단위로 고르세요.`, `Pick a combination from the table above instead of choosing ${rowAttr} and ${colAttr} separately.`)
                     : tr("지금은 각 축을 따로 봐도 됩니다. 근거 부족은 '조합 효과 없음'이 아니라 아직 구분되지 않는다는 뜻입니다.", "For now the axes can be read separately. Not established is not the same as no effect.")}</p>
-                  <details className="stat-method">
-                    <summary>{tr("판정 근거 보기", "Show the basis for this verdict")}</summary>
+                  <section data-information-section="" className="stat-method">
+                    <header data-information-heading="">{tr("판정 근거 보기", "Show the basis for this verdict")}</header>
                     <p>{tr(
                       `${conceptInteraction.metric.toUpperCase()} 기준으로 두 축이 서로의 효과를 바꾸는지 검정했습니다(이원배치 분산분석, Type II). p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)} · 소재 ${conceptInteraction.n}개 · 잔차 자유도 ${conceptInteraction.residual.df}. 배분 알고리즘의 선택 편향이 포함돼 있어 연관이지 인과가 아닙니다.`,
                       `Tested on ${conceptInteraction.metric.toUpperCase()} whether the two axes change each other's effect (two-way ANOVA, Type II). p=${conceptInteraction.interaction.p == null ? "—" : conceptInteraction.interaction.p < 0.001 ? "<0.001" : conceptInteraction.interaction.p.toFixed(3)} · ${conceptInteraction.n} creatives · residual df ${conceptInteraction.residual.df}. Delivery-algorithm selection bias is included, so read this as association, not causation.`,
                     )}</p>
-                  </details>
+                  </section>
                 </div>
               </div>
             )}

@@ -13,8 +13,8 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/dashboard`);
     const menu = page.locator(".header-utility-menu");
     expect(mediaRequests).toEqual([]);
-    await menu.locator(":scope > summary").click();
-    await menu.getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
+    await menu.locator(".header-utility-menu__trigger").click();
+    await page.locator(".utility-popover-panel").getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: en ? "Video guide" : "영상 사용 안내", exact: true });
     await expect(dialog.getByRole("heading", { name: en ? "Use the dashboard and filters" : "대시보드와 필터 사용", exact: true })).toBeVisible();
     await expect(dialog.getByRole("button", { name: en ? "Close video guide" : "영상 안내 닫기", exact: true })).toBeFocused();
@@ -26,7 +26,6 @@ for (const locale of ["ko", "en"]) {
     expect(await video.evaluate(node => node.duration)).toBeCloseTo(24, 1);
     await dialog.getByRole("button", { name: en ? "Fix CSV column mapping" : "CSV 컬럼 매핑 바로잡기", exact: true }).click();
     expect(await video.evaluate(node => node.paused)).toBe(true);
-    await dialog.locator(".tutorial-transcript summary").click();
     await expect(dialog.locator(".tutorial-transcript li")).toHaveCount(4);
     await dialog.locator(".tutorial-transcript li button").nth(2).click();
     await expect.poll(() => video.evaluate(node => node.currentTime)).toBeCloseTo(12, 0);
@@ -34,18 +33,18 @@ for (const locale of ["ko", "en"]) {
     await expectNoSeriousAccessibilityViolations(page);
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
-    await expect(menu.locator(":scope > summary")).toBeFocused();
+    await expect(menu.locator(".header-utility-menu__trigger")).toBeFocused();
     await page.goto(`${prefix}/weekly-review`);
     // Persistent menu access remains available when the floating entry yields
     // to a page control beneath it.
-    await menu.locator(":scope > summary").click();
-    await menu.getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
+    await menu.locator(".header-utility-menu__trigger").click();
+    await page.locator(".utility-popover-panel").getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
     await expect(dialog.getByRole("heading", { name: en ? "Create a weekly review" : "주간 리뷰 만들기", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(menu.locator(":scope > summary")).toBeFocused();
+    await expect(menu.locator(".header-utility-menu__trigger")).toBeFocused();
     await page.getByRole("button", { name: en ? "My projects" : "내 프로젝트", exact: true }).click();
-    await menu.locator(":scope > summary").click();
-    await menu.getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
+    await menu.locator(".header-utility-menu__trigger").click();
+    await page.locator(".utility-popover-panel").getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
     await expect(dialog.getByRole("heading", { name: en ? "Manage projects and backups" : "프로젝트 관리와 백업", exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -85,7 +84,7 @@ for (const locale of ["ko", "en"]) {
     await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles("public/examples/weekly-report-campaigns.csv");
     await expect(uploader.locator(".file-state")).toContainText("weekly-report-campaigns.csv");
     const mappingBlock = uploader.locator(".csv-mapping-block").filter({ has: page.locator(".mapping-grid") });
-    if (!await mappingBlock.evaluate(node => node.open)) await mappingBlock.locator(":scope > summary").click();
+    await expect(mappingBlock).toBeVisible();
     const button = mappingBlock.locator(".tutorial-inline");
     await expect(button).toBeVisible();
     await button.click();
@@ -145,5 +144,25 @@ for (const locale of ["ko", "en"]) {
     await expect(launcher).toBeHidden();
     await page.evaluate(() => document.querySelector(".source-survey").remove());
     await expect(launcher).toBeVisible();
+  });
+}
+
+for (const en of [false, true]) {
+  test(`tutorial launcher remains fixed and visible throughout scrolling (${en ? "en" : "ko"})`, async ({ page }) => {
+    await page.goto(en ? "/en/" : "/");
+    const launcher = page.locator(".tutorial-launcher");
+    await expect(launcher).toBeVisible();
+    const samples = await launcher.evaluate(async node => {
+      const results = [];
+      for (const top of [0, 200, 500, 1000, 2000, 100, 0]) {
+        window.scrollTo(0, top);
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+        results.push({ top: box.top, display: style.display, visibility: style.visibility, opacity: style.opacity });
+      }
+      return results;
+    });
+    expect(samples.every(sample => sample.display !== "none" && sample.visibility === "visible" && Number(sample.opacity) > 0)).toBe(true);
+    expect(Math.max(...samples.map(sample => sample.top)) - Math.min(...samples.map(sample => sample.top))).toBeLessThan(1);
   });
 }

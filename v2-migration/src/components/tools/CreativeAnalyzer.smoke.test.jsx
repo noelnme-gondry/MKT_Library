@@ -201,9 +201,10 @@ describe("CreativeAnalyzer render smoke", () => {
     // 그 상태를 고정하고 있었다 — 이제 실제로 열리는 내용을 본다(product-ssot §6.3).
     const sectionHelp = container.querySelector(".help-tip");
     expect(sectionHelp).toBeTruthy();
-    expect(sectionHelp.textContent).toContain("분석 기준 지표");
+    fireEvent.click(sectionHelp);
+    expect(screen.getByRole("dialog").textContent).toContain("분석 기준 지표");
     // details는 닫혀도 노드가 남는다. 설명이 기본 화면을 차지하지 않는지를 본다.
-    expect(sectionHelp.closest("details").open).toBe(false);
+    expect(sectionHelp.getAttribute("aria-expanded")).toBe("true");
     // The combination section remains present even when the seed produces an honest empty state.
     expect(screen.getAllByText(/어떤 요소 조합이 좋았나/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText(/다음 검토 약속/));

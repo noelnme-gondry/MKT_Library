@@ -39,8 +39,6 @@ async function runJourney(page, locale) {
   await page.getByRole("button", { name: en ? "Compare weekly performance" : "주간 성과 비교", exact: true }).click();
   const upload = async (buffer) => {
     // 결과 화면의 "다음 주 CSV" 상시 접기는 없앴다. 데이터를 바꿀 때만 명시적으로 연다.
-    const details = page.locator("details").filter({ has: page.locator(".csv-uploader") }).first();
-    if (await details.count() && !await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
     const replace = page.getByRole("button", { name: en ? "Use different data" : "데이터 바꾸기", exact: true });
     if (await replace.count()) await replace.click();
     const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
@@ -76,7 +74,6 @@ async function runJourney(page, locale) {
   expect(typeSizes.section).toBeGreaterThan(typeSizes.body);
   expect(typeSizes.section).toBeLessThan(typeSizes.title);
   expect(await page.locator(".wr-screen").evaluate(node => parseFloat(getComputedStyle(node).paddingLeft))).toBeGreaterThanOrEqual(12);
-  await page.getByRole("button", { name: en ? "Edit project settings" : "프로젝트 기준 편집", exact: true }).click();
   await page.getByLabel(en ? "Project name" : "프로젝트 이름", { exact: true }).fill("App growth review");
   await page.getByLabel(en ? "KPI target (optional)" : "KPI 목표 (선택)", { exact: true }).fill("20");
   await expect(page.getByText(en ? "Target met" : "목표 범위 충족", { exact: true })).toBeVisible();
@@ -116,8 +113,8 @@ async function runJourney(page, locale) {
   await upload(campaignCsv(38, 7));
   await expect(page.getByText(en ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다.", { exact: true })).toBeVisible();
   await expect(page.locator(".wr-report")).toContainText("2026-09-07");
-  const evidence = page.locator("details").filter({ has: page.locator("caption", { hasText: en ? "Values used to assess historical variation" : "평소 변동 폭 비교에 사용한 값" }) });
-  await evidence.locator(":scope > summary").click();
+  const evidence = page.locator("[data-information-section]").filter({ has: page.locator("caption", { hasText: en ? "Values used to assess historical variation" : "평소 변동 폭 비교에 사용한 값" }) });
+  await expect(evidence).toBeVisible();
   await expect(evidence.getByRole("row")).toHaveCount(3); // 헤더 + 복원한 과거 2기간
   await expect(evidence.getByRole("table")).toContainText("2026-08-24 ~ 2026-08-30");
   await expect(evidence.getByRole("table")).toContainText("2026-08-31 ~ 2026-09-06");
@@ -171,10 +168,10 @@ async function dochiToWeekly(page, locale) {
   if (await confirm.isVisible()) await confirm.click();
   const decision = page.locator(".dochi-workspace__result.is-success .decision-review").first();
   await expect(decision).toBeVisible();
-  await decision.locator(":scope > summary").click();
-  await decision.getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }).click();
+  await decision.locator(".decision-review-launch").click();
+  await page.getByRole("dialog").getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }).click();
   await confirmReviewDialog(page, en);
-  await expect(decision).toContainText(en ? "Decision saved" : "결정 저장됨");
+  await expect(page.getByRole("dialog")).toContainText(en ? "Decision saved" : "결정 저장됨");
   const events = await page.evaluate(() => window.__journeyEvents);
   expect(events.find(event => event[1] === "data_import_success")?.[2]).toMatchObject({ placement: "dochi_home", journey_entry: "home" });
   for (const name of ["analysis_started", "analysis_completed", "analysis_result_viewed", "decision_record_added"]) {
@@ -182,6 +179,7 @@ async function dochiToWeekly(page, locale) {
   }
   expect(JSON.stringify(events)).not.toContain("Review Campaign");
   expect(JSON.stringify(events)).not.toContain("weekly-dochi.csv");
+  await page.getByRole("dialog").getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
   const weekly = page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true });
   await expect(weekly).toBeEnabled();
   await weekly.click();

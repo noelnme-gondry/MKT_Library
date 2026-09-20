@@ -5,7 +5,7 @@
 // the pure PVM_MATH decomposition; this asserts the component MOUNTS without
 // throwing in the no-data and with-data states.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import CampaignPvm, { buildPvmCache } from "@/components/tools/CampaignPvm";
 
@@ -157,9 +157,11 @@ describe("CampaignPvm render smoke", () => {
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     // 5-21은 전역 분모 기준에 따라 CPA·CPI 어느 쪽으로도 말한다 — 둘 다 후보에 있어야
     // 프리필이 목표와 맞는다(없으면 원장과 판정이 다른 지표를 가리킨다).
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toMatch(/^(cpi|cpa|conversions)$/);
     expect(view.container.querySelector(".tool-page-shell__main > .summary")).toBeNull();
   });

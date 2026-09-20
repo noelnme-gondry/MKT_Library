@@ -18,6 +18,7 @@ import { parseNumericStrict } from "@/utils/parseNumeric";
 export const DECISION_REVIEW_SCHEMA_VERSION = 15;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
+  "schemaVersion",
   "toolId",
   "sourcePath",
   "dataOrigin",
@@ -122,6 +123,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "created_at",
   "updated_at",
   "record_id",
+  "schema_version",
 ];
 
 const MAX_DECISION_EPISODES = 12;
@@ -534,8 +536,8 @@ function hasComparableMetric(metric) {
 // 새 CSV로 자동 대조할 수 있는 기록과, 같은 도구에서 재분석한 값을 사용자가
 // 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
 export function decisionReviewFollowUpMode(record = {}) {
-  if (needsExplicitPlanReview(record.reviewPlan)) return "rerun_manual";
   if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
+  if (needsExplicitPlanReview(record.reviewPlan)) return "rerun_manual";
   // 도구가 "이 목표는 효율 CSV로 계산되지 않는다"고 선언했으면 그 선언이 이긴다.
   // 표시 라벨을 정규식으로 읽어 추측하는 것보다 정확하다 — 라벨은 번역·리네임으로 바뀐다.
   if (isRerunGoalMetric(record.goalMetric ?? record.goal_metric)) return "rerun_manual";
@@ -609,6 +611,9 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   const locale = asText(field(row, "locale"), FIELD_LIMITS.locale).toLowerCase() === "en" ? "en" : "ko";
   const comparisonKind = asText(field(row, "comparisonKind", "comparison_kind"), 24) === "forecast_actual" ? "forecast_actual" : "";
   const record = {
+    // Legacy records are normalized into the current allowlisted shape on read.
+    // Record the written format; never erase user observations for a version bump.
+    schemaVersion: DECISION_REVIEW_SCHEMA_VERSION,
     id: asText(field(row, "id", "record_id"), FIELD_LIMITS.id),
     toolId: asText(field(row, "toolId", "tool_id"), FIELD_LIMITS.toolId) || asText(fallbackToolId, FIELD_LIMITS.toolId),
     dataOrigin: ["real", "demo"].includes(field(row, "dataOrigin", "data_origin")) ? field(row, "dataOrigin", "data_origin") : "unknown",

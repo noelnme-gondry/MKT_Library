@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Popover } from "radix-ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber, isNumberedDocItem } from "@/store/useDataStore";
@@ -112,26 +113,9 @@ export default function Header({ locale = "ko" }) {
   const switchLocale = locale === "en" ? "ko" : "en";
   const hasRestoredTheme = useRef(false);
   const utilityMenuRef = useRef(null);
-  const closeUtilityMenu = () => utilityMenuRef.current?.removeAttribute("open");
+  const [utilityOpen, setUtilityOpen] = useState(false);
+  const closeUtilityMenu = () => setUtilityOpen(false);
 
-  useEffect(() => {
-    const closeOnOutsidePointer = (event) => {
-      const menu = utilityMenuRef.current;
-      if (menu?.open && !menu.contains(event.target)) menu.removeAttribute("open");
-    };
-    const closeOnEscape = (event) => {
-      const menu = utilityMenuRef.current;
-      if (event.key !== "Escape" || !menu?.open) return;
-      menu.removeAttribute("open");
-      menu.querySelector(":scope > summary")?.focus();
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, []);
 
   // 부팅 인라인 스크립트가 첫 페인트 전에 이미 클래스를 붙여 뒀다 — 렌더는 그것을 읽기만 한다.
   const sidebarCollapsed = useSyncExternalStore(subscribeSidebar, readSidebarSnapshot, sidebarServerSnapshot);
@@ -257,13 +241,13 @@ export default function Header({ locale = "ko" }) {
             <span className="header-cmdk__label header-cmdk__label--mobile">{T.allTools}</span>
             <span className="kbd">⌘K</span>
           </button>
-          <details ref={utilityMenuRef} className="header-utility-menu">
-            <summary className="btn ghost header-utility-menu__trigger" aria-label={T.utilities}>
+          <div className="header-utility-menu"><Popover.Root open={utilityOpen} onOpenChange={setUtilityOpen}>
+            <Popover.Trigger ref={utilityMenuRef} className="btn ghost header-utility-menu__trigger" aria-label={T.utilities}>
               <span className="header-utility-menu__dots" aria-hidden="true">•••</span>
               <span className="header-utility-menu__label">{T.utilities}</span>
-            </summary>
-            <div className="header-utility-menu__panel">
-              <VideoHelpButton locale={locale} className="btn ghost" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current?.querySelector("summary"); }}>{locale === "en" ? "Video guide" : "영상 사용 안내"}</VideoHelpButton>
+            </Popover.Trigger>
+            <Popover.Portal><Popover.Content className="utility-popover-panel" sideOffset={10} align="end" collisionPadding={12}>
+              <VideoHelpButton locale={locale} className="btn ghost" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current; }}>{locale === "en" ? "Video guide" : "영상 사용 안내"}</VideoHelpButton>
               <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
               <ProjectSettingsMenu locale={locale} />
               <Link href={locale === "en" ? "/en/storage" : "/storage"} className="btn ghost" onClick={closeUtilityMenu}>{T.storage}</Link>
@@ -293,8 +277,8 @@ export default function Header({ locale = "ko" }) {
                 )}
                 <span>{T.themeTitle}</span>
               </button>
-            </div>
-          </details>
+            </Popover.Content></Popover.Portal>
+          </Popover.Root></div>
           <MyAccountMenu locale={locale} />
         </div>
       </div>

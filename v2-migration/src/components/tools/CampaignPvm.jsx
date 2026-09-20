@@ -1532,8 +1532,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               />
             )}
           >
-            <details className="result-action-card__details">
-              <summary>{tr("추가 변동 근거 보기", "View additional variance evidence")}</summary>
+            <section data-information-section="" className="result-action-card__details">
+              <header data-information-heading="">{tr("추가 변동 근거 보기", "View additional variance evidence")}</header>
               {(upMover || downMover) && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
                   {upMover && moverCard(upMover, "up")}
@@ -1545,7 +1545,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 <div className="ico">!</div>
                 <div className="body" style={{ fontSize: "var(--fs-xs)" }}>{C.causationCallout}</div>
               </div>
-            </details>
+            </section>
           </ResultActionCard>
           {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
         </> : (
@@ -1626,8 +1626,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <section className="block" id="s-pvm-channels">
         <h2 className="section-title">{C.secChannels}</h2>
 
-        <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
+        <section data-information-section="" className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
+          <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요?`, `❓ What are Mix, Rate, and ${ml} impact?`)}</header>
           <div style={{ marginTop: "10px", fontSize: "var(--fs-xs)", lineHeight: 1.7, color: "var(--text-muted)" }}>
             {ready
               ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)
@@ -1638,7 +1638,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               <li><strong>{tr(`${ml} 영향 = Mix + Rate`, `${ml} impact = Mix + Rate`)}</strong> — {tr(`그 항목이 전체 ${ml}를 실제로 몇 원 움직였나.`, `How much this item actually moved the total ${ml}.`)}</li>
             </ul>
           </div>
-        </details>
+        </section>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginBottom: "14px" }}>
           <div>

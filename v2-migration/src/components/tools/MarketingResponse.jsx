@@ -222,7 +222,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [fcRegimeTrainingWeeks, setFcRegimeTrainingWeeks] = useState(null);
   const [isRegimeWindowScanRequested, setIsRegimeWindowScanRequested] = useState(false);
   const [forecastRegimeStateSignature, setForecastRegimeStateSignature] = useState(null);
-  const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
   const [cannibQuestion, setCannibQuestion] = useSavedToolInput(settingsToolId, "cannibQuestion", "precedence");
   const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
@@ -3362,16 +3361,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 그대로 써서 과거 적합 + 미래 외삽. buildPanelFromColMap이 타깃을 플랫폼 합산하므로 토글도 자동 반영.
 
   /* ------------------------------ RENDER ------------------------------ */
-  // 아코디언 안 차트는 접힘 상태에서 폭 0으로 마운트됨(§7 함정) → 펼칠 때 resize 이벤트로 재측정.
-  const onAccordionToggle = (e) => {
-    if (!e.currentTarget.open) return;
-    const details = e.currentTarget;
-    requestAnimationFrame(() => {
-      details.querySelectorAll("canvas").forEach((canvas) => Chart.getChart?.(canvas)?.resize());
-      window.dispatchEvent(new Event("resize"));
-    });
-  };
-
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
   // §12.15대로 회귀·미래예측(lab)에 흡수. 카드: no·아이콘·제목·설명 + active 하이라이트.
   const renderTabs = () => {
@@ -4037,10 +4026,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               </Link>
             ))}
           </div>
-          <details style={{ marginTop: "16px" }} onToggle={onAccordionToggle}>
-            <summary>{tx("컬럼 매핑 다시 보기·수정", "Review or edit column mapping")}</summary>
+          <section data-information-section="" style={{ marginTop: "16px" }} >
+            <header data-information-heading="">{tx("컬럼 매핑 다시 보기·수정", "Review or edit column mapping")}</header>
             <div style={{ marginTop: "12px" }}>{mmmMapperSection()}</div>
-          </details>
+          </section>
         </section>
       </div>
     );
@@ -4389,10 +4378,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           {stage === "trend" && (
             <section className="block" id="s-trend">
               <h2 className="section-title">{tx("광고 전에: 자연 추세·계절성을 먼저 분리합니다", "Before ads: separate natural trend and seasonality")}</h2>
-                <details className="result-action-card__details" style={{ marginBottom: "10px" }}>
-                  <summary>{tx("추세 분리 방식 보기", "How trend is separated")}</summary>
+                <section data-information-section="" className="result-action-card__details" style={{ marginBottom: "10px" }}>
+                  <header data-information-heading="">{tx("추세 분리 방식 보기", "How trend is separated")}</header>
                   <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0 0" }}>{tx("먼저 MMM Performance 기여를 실제 RR에서 빼고, 그 Performance 제외 성과를 baseline = 추세 + 계절성 + 잔차로 STL 분해합니다. 파란선은 광고에 잡힌 Performance 하락을 자연 추세로 다시 세지 않은 베이스라인 추세입니다. Branding은 입력에 남아 있으므로 완전한 미디어 0 반사실이 아닙니다.", "First subtract MMM Performance contribution from actual RR, then decompose the Performance-excluded outcome as baseline = trend + seasonality + residual. The blue line is the baseline trend without reclassifying paid Performance decline as natural trend. Branding remains in the input, so this is not a fully media-zero counterfactual.")}</p>
-                </details>
+                </section>
               {trend ? <>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
                   <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
@@ -4603,10 +4592,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               })()}
 
               {/* ── 통계 근거·방법론 전부 여기로 격리(기본 접힘) — 비전문 유저는 위 칸반·평어만 보면 됨 ── */}
-              <details className="block" style={{ marginBottom: "14px" }} onToggle={onAccordionToggle}>
-                <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+              <section data-information-section="" className="block" style={{ marginBottom: "14px" }} >
+                <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
                   {tx("카니발이 뭐고, 이 판정은 어떻게 나온 건가요? — 추세·데이터 위생·단순모델 점검 (통계 상세)", "What is cannibalization, and how was this verdict reached? — trend, data hygiene, naive-model check (statistics detail)")}
-                </summary>
+                </header>
                 <div style={{ marginTop: "12px" }}>
                   <p className="muted" style={{ fontSize: "var(--fs-xs)", lineHeight: 1.7, marginBottom: "10px" }}>
                     <strong>{tx("카니발리제이션(잠식)", "Cannibalization")}</strong>{tx("이란 유료 광고가 원래 공짜로 들어올 오가닉 유입을 빼앗는 현상입니다. 이 도구는 선택한 성과(유저수·매출 등)와 지출의 4가지 신호(①시간 선행성 ②탈추세·방향 반복 ③순증분 탄력성 ④그랜저 인과)를 종합해 의심 채널을 좁힙니다. 관측 데이터만으로 오가닉을 분리하거나 인과를 확정할 수 없으며, 확정은 홀드아웃 실험(5-4)에서만 가능합니다.", " is when paid ads take away organic traffic that would have come for free. This tool combines four signals between spend and the selected outcome (users, revenue, and so on): ① temporal precedence ② detrended and repeated-direction movement ③ net-incremental elasticity ④ Granger causality. Observational data can only narrow down suspects; it cannot isolate organic traffic or prove causality. Confirmation requires a holdout experiment (5-4).")}
@@ -4695,12 +4684,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </p>
                 )}
                 {mmm.validate?.warnings?.length ? (
-                  <details style={{ marginTop: "8px" }}>
-                    <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", color: "var(--warning)" }}>{tx(`⚠ 데이터 위생 경고 ${mmm.validate.warnings.length}건 (펼치기)`, `⚠ ${mmm.validate.warnings.length} data hygiene warnings (expand)`)}</summary>
+                  <section data-information-section="" style={{ marginTop: "8px" }}>
+                    <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", color: "var(--warning)" }}>{tx(`⚠ 데이터 위생 경고 ${mmm.validate.warnings.length}건`, `⚠ ${mmm.validate.warnings.length} data hygiene warnings`)}</header>
                     <ul style={{ fontSize: "var(--fs-xs)", color: "var(--warning)", marginTop: "4px" }}>
                       {mmm.validate.warnings.map((w, i) => (<li key={i}>{w}</li>))}
                     </ul>
-                  </details>
+                  </section>
                 ) : null}
                 {diag && diag.absorb && diag.absorb.notices.length > 0 && (
                   <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.35)", borderRadius: "8px", padding: "9px 12px", fontSize: "var(--fs-xs)", color: "var(--text-1)", marginTop: "10px" }}>
@@ -4789,7 +4778,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 );
               })()}
                 </div>
-              </details>
+              </section>
 
               {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 ── */}
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
@@ -5044,8 +5033,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </> : <div className="required-banner"><p>{tx("실제값과 적합값을 계산할 수 없습니다.", "Actual and fitted values are unavailable.")}</p></div>}
                 </section>
 
-                <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="expert" onToggle={onAccordionToggle}>
-                  <summary>{tx("외부 근거·모델 건강·자동 선택 상세", "External evidence, model health, and automatic-selection details")}</summary>
+                <section data-information-section="" className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="expert" >
+                  <header data-information-heading="">{tx("외부 근거·모델 건강·자동 선택 상세", "External evidence, model health, and automatic-selection details")}</header>
                 <MmmEvidenceLedger
                   locale={locale}
                   selectedEvidence={selectedEvidence}
@@ -5115,15 +5104,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     {mmm.run.businessContributionPrior?.enabled && <div className="stat-card"><div className="lbl">{tx("비즈니스 기여 prior", "Business contribution prior")}</div><div className="val">{Math.round(mmm.run.businessContributionPrior.meanShare * 100)}% ± {Math.round(mmm.run.businessContributionPrior.shareSd * 100)}%p</div></div>}
                     {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("결합 변환 posterior", "Joint transform posterior")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
                   </div>
-                  {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <details style={{ display: "none", margin: "8px 0 0" }}>
-                    <summary className="muted" style={{ fontSize: "var(--fs-xs)", cursor: "pointer" }}>ⓘ {tx("자동 검증 상세", "Automatic validation details")}</summary>
+                  {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <section data-information-section="" style={{ display: "none", margin: "8px 0 0" }}>
+                    <header data-information-heading="" className="muted" style={{ fontSize: "var(--fs-xs)", }}>ⓘ {tx("자동 검증 상세", "Automatic validation details")}</header>
                     <p className="muted" style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, margin: "6px 0 0" }}>
                     {mmm.run.baselineSelection?.enabled ? tx(`Baseline은 78주 이상 데이터에서 0·1·2개 knot 후보를 비교했으며, BIC가 ${mmm.run.baselineSelection.selected ? "충분히 개선되어 적용" : "충분히 개선되지 않아 기본 추세 유지"}되었습니다.`, `With at least 78 weeks, baseline compared 0/1/2-knot candidates; the base trend was ${mmm.run.baselineSelection.selected ? "replaced because BIC improved materially" : "retained because improvement was not material"}.`) : ""}
                     {seasonalityValidationText ? ` ${seasonalityValidationText}` : ""}
                     {mmm.run.mediaPenaltySelection?.enabled ? ` ${tx(`매체 계수 규제는 최근 ${mmm.run.mediaPenaltySelection.selected.folds}개 12주 구간을 당시 실제 지출로 순방향 검증해 ${mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)}를 선택했습니다. 최저 오차와 사실상 동률이면 더 보수적인 값을 유지하므로, 기여를 크게 보이게 하려고 낮춘 값이 아닙니다.`, `Media regularization was selected as ${mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)} using forward validation across ${mmm.run.mediaPenaltySelection.selected.folds} recent 12-week windows with actual spend. Near ties retain the more conservative value, so this is not tuned to inflate contribution.`)}` : ""}
                     {mmm.run.jointTransform?.enabled ? ` ${tx(`변환 불확실성이 큰 ${mmm.run.jointTransform.channels.length}개 채널은 ${mmm.run.jointTransform.candidateCount}개 조합을 함께 적합해 기여 구간에 반영했습니다. 점추정의 합계는 주간 분해와 맞추고, 조합이 엇갈릴수록 범위를 넓힙니다.`, `${mmm.run.jointTransform.channels.length} channels with the largest transform uncertainty were jointly fit across ${mmm.run.jointTransform.candidateCount} combinations and incorporated into contribution intervals. Point-estimate totals stay reconciled with weekly decomposition, while disagreement widens the range.`)}` : ""}
                     </p>
-                  </details>}
+                  </section>}
                   {health.flags?.length > 0 ? (
                     <div
                       className="callout warn mmm-health-warning"
@@ -5166,7 +5155,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </p>
                 </section>
               )}
-                </details>
+                </section>
               {/* ── 메인: 무엇이 성과를 움직였나 — RMS 기여 크기 비중 ── */}
               <section className="mmm-result-step" data-mmm-flow-step="drivers" aria-labelledby="mmm-bayesian-driver-title">
                 <div className="mmm-result-step__head">
@@ -5177,14 +5166,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                 </div>
                 {controlFitRows.length > 0 && (
-                  <details className="mmm-result-note" data-mmm-control-fit>
-                    <summary>{tx(`연속형 컨트롤 ${controlFitRows.length}개 적용 상태`, `${controlFitRows.length} continuous-control status`)}</summary>
+                  <section data-information-section="" className="mmm-result-note" data-mmm-control-fit>
+                    <header data-information-heading="">{tx(`연속형 컨트롤 ${controlFitRows.length}개 적용 상태`, `${controlFitRows.length} continuous-control status`)}</header>
                     <p>{tx(
                       "컨트롤은 평소 대비 상대 변화로 바꿔 광고와 함께 추정합니다. 관측된 연관을 조정하는 변수이며 인과효과를 보장하지 않습니다. 채널 기여·ROAS·예산 추천에는 포함하지 않습니다.",
                       "Controls are converted to change relative to their typical level and estimated jointly with media. They adjust observed associations but do not prove causality, and are excluded from channel contribution, ROAS, and budget recommendations.",
                     )}</p>
                     <MmmControlFitTable rows={controlFitRows} locale={locale} />
-                  </details>
+                  </section>
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                   <strong className="mmm-result-subtitle">{tx("주별 기여 크기", "Weekly contribution magnitude")}</strong>
@@ -5296,8 +5285,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
               {/* 기간 전체에서 실제로 집행된 주만 평균낸 채널별 모델 성과 — 전문가 상세. */}
               {displayedWeeklyChannelPerformance.length > 0 && (
-                <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="allocation" onToggle={onAccordionToggle}>
-                  <summary>{tx("채널별 배분·공선성·집행 시점 상세", "Channel allocation, collinearity, and spend-timing details")}</summary>
+                <section data-information-section="" className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="allocation" >
+                  <header data-information-heading="">{tx("채널별 배분·공선성·집행 시점 상세", "Channel allocation, collinearity, and spend-timing details")}</header>
                 <section className="mmm-weekly-performance" id="s-mmm-weekly-performance">
                   <div className="mmm-weekly-performance__head">
                     <div>
@@ -5465,12 +5454,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </Card>
                   )}
                 </section>
-                </details>
+                </section>
               )}
 
               {/* ── ② 전문가 상세: 주별 드라이버와 튀는 주 ── */}
-              <details className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="driver-detail" onToggle={onAccordionToggle}>
-                <summary>{tx("주별 드라이버·이상 구간 상세", "Weekly driver and spike details")}</summary>
+              <section data-information-section="" className="mmm-result-details mmm-bayesian-expert" data-mmm-flow-step="driver-detail" >
+                <header data-information-heading="">{tx("주별 드라이버·이상 구간 상세", "Weekly driver and spike details")}</header>
                 <div style={{ marginTop: "12px" }}>
                   {dateScopedDecomp ? (
                     <>
@@ -5619,7 +5608,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("분해를 계산할 수 없습니다(ridge 특이·데이터 부족).", "Can't compute the decomposition (ridge singularity/insufficient data).")}</p>
                   )}
                 </div>
-              </details>
+              </section>
 
               {/* ── ④ 반응곡선·한계효과 ── */}
               <section className="mmm-result-step" data-mmm-flow-step="response" aria-labelledby="mmm-bayesian-response-title">
@@ -5630,8 +5619,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <p>{tx("관측한 지출 범위 안에서 채널 반응과 CPA·ROAS 변화를 확인합니다. 평평해질수록 추가 지출 효율이 낮습니다.", "Inspect channel response and CPA/ROAS within observed spend. A flatter curve means lower efficiency from additional spend.")}</p>
                   </div>
                 </div>
-                <details className="mmm-result-details" onToggle={onAccordionToggle}>
-                  <summary>{tx("광고 여운·포화 변환 상세", "Carryover and saturation-transform details")}</summary>
+                <section data-information-section="" className="mmm-result-details" >
+                  <header data-information-heading="">{tx("광고 여운·포화 변환 상세", "Carryover and saturation-transform details")}</header>
                   <div style={{ marginTop: "12px" }}>
                   <StatHead title={tx("① 채널별 광고 여운·포화", "① Per-channel carryover and saturation")} hint={tx("한 번에 한 채널씩 α × 반포화점 × Hill 기울기 profile 후보를 비교합니다. 이 표는 기본 기여·예측에 쓰는 대표 후보를 보여 주고, 아래 효과 신뢰도는 profile 후보 차이를 BIC 가중 평균합니다.", "Profile candidates compare α × half-saturation × Hill slope one channel at a time. This table shows the representative candidate used for base contribution and forecast; effect confidence below BIC-averages variation across profile candidates.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
@@ -5686,7 +5675,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <StatHead title={tx("③ RMS 기여 크기 비중", "③ RMS contribution-magnitude share")} hint={tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눕니다. 인과 확정·설명된 R² 배분·Shapley 값이 아닙니다.", "Divides each driver's mean squared weekly contribution by the total. It is not causal attribution, allocated explained R², or a Shapley value.")} />
                   <div className="chart-container" style={{ height: "200px", marginBottom: "8px" }}><canvas ref={shapleyRef}></canvas></div>
                   </div>
-                </details>
+                </section>
                   <strong className="mmm-result-subtitle">{tx("채널 반응곡선", "Channel response curves")}</strong>
                   <div className="mmm-channel-selector" role="group" aria-label={tx("Bayesian 반응 채널", "Bayesian response channel")}>
                     {Object.values(sat).map((channel) => (
@@ -5740,8 +5729,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
               {/* 결과를 읽을 때 반드시 감안할 구조적 한계. 결론 옆에 두지 않으면
                   "퍼포먼스가 브랜드보다 N배 효율"이 그대로 예산 결정이 된다(D-16). */}
-              <details className="stat-method mmm-reading-limits">
-                <summary>{tx("이 숫자를 읽을 때 감안할 것 3가지", "Three things to keep in mind when reading these numbers")}</summary>
+              <section data-information-section="" className="stat-method mmm-reading-limits">
+                <header data-information-heading="">{tx("이 숫자를 읽을 때 감안할 것 3가지", "Three things to keep in mind when reading these numbers")}</header>
                 <ul>
                   {getMmmInterpretationLimits(locale).map((limit) => (
                     <li key={limit.id}>
@@ -5750,7 +5739,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </li>
                   ))}
                 </ul>
-              </details>
+              </section>
 
               {/* ── 맨 밑: 상세 설명 문서 다운로드 ──
                   DownloadHub(결과 최상단 드롭다운)을 쓰지 않는 자리다. 5-18은 CSV·매핑
@@ -5879,8 +5868,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           {tx("전 구간 10% 인증은 엄격하게 유지합니다. 검증된 단기 구간만 열고, 그 이후는 최근값 naive로 전환합니다.", "The every-window 10% gate remains strict. Only validated short-term horizons are opened; later horizons fall back to the recent-value naive forecast.")}
                         </p>
                       )}
-                      <details style={{ marginTop: "8px" }}>
-                        <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("26·52·78주 학습 기간 비교", "Compare 26-, 52-, and 78-week training windows")}</summary>
+                      <section data-information-section="" style={{ marginTop: "8px" }}>
+                        <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("26·52·78주 학습 기간 비교", "Compare 26-, 52-, and 78-week training windows")}</header>
                         <div className="table-wrap" style={{ marginTop: "7px" }}>
                           <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                             <thead><tr><th>{tx("학습 기간", "Training window")}</th><th>{tx("검증 선택 경로", "Validated route")}</th><th>{tx("선택용 과거 OOS", "Selection-history OOS")}</th><th>{tx("전체 라이브 OOS", "Full live OOS")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th></tr></thead>
@@ -5898,9 +5887,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             </tbody>
                           </table>
                         </div>
-                      </details>
-                      <details style={{ marginTop: "8px" }}>
-                        <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("전체 OOS 오차 흐름 보기", "View full OOS error trajectory")}</summary>
+                      </section>
+                      <section data-information-section="" style={{ marginTop: "8px" }}>
+                        <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("전체 OOS 오차 흐름 보기", "View full OOS error trajectory")}</header>
                         <div className="table-wrap" style={{ marginTop: "7px" }}>
                           <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                             <thead><tr><th>{tx("뒤에서 제외", "Excluded from end")}</th><th>{tx("검증 기간", "Validation period")}</th><th>{tx("라이브", "Live")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th><th>{tx("변화", "Break")}</th></tr></thead>
@@ -5918,9 +5907,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             </tbody>
                           </table>
                         </div>
-                      </details>
-                      <details style={{ marginTop: "8px" }}>
-                        <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("예측 거리별 정확도·naive 비교", "Accuracy and naive benchmark by horizon")}</summary>
+                      </section>
+                      <section data-information-section="" style={{ marginTop: "8px" }}>
+                        <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("예측 거리별 정확도·naive 비교", "Accuracy and naive benchmark by horizon")}</header>
                         <div className="table-wrap" style={{ marginTop: "7px" }}>
                           <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                             <thead><tr><th>h</th><th>{tx("라이브 wMAPE", "Live wMAPE")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th><th>MASE</th><th>{tx("선택", "Choice")}</th></tr></thead>
@@ -5938,7 +5927,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             </tbody>
                           </table>
                         </div>
-                      </details>
+                      </section>
                       {forecast.structuralDiagnostics && (
                         <p style={{ margin: "7px 0 0", fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>
                           {tx(
@@ -6018,8 +6007,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               </span>
                             ))}
                           </div>
-                          <details style={{ marginTop: "8px" }}>
-                            <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("Android·iOS 성분 검증", "Android/iOS component validation")}</summary>
+                          <section data-information-section="" style={{ marginTop: "8px" }}>
+                            <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("Android·iOS 성분 검증", "Android/iOS component validation")}</header>
                             <div className="table-wrap" style={{ marginTop: "6px" }}>
                               <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                                 <thead><tr><th>OS</th><th>{tx("성분", "Component")}</th><th>{tx(`최근 ${fcHorizon}주 wMAPE`, `Latest-${fcHorizon}-week wMAPE`)}</th></tr></thead>
@@ -6036,9 +6025,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 </tbody>
                               </table>
                             </div>
-                          </details>
-                          <details style={{ marginTop: "8px" }}>
-                            <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("자동 선택된 4개 성분 모델", "Four automatically selected component models")}</summary>
+                          </section>
+                          <section data-information-section="" style={{ marginTop: "8px" }}>
+                            <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("자동 선택된 4개 성분 모델", "Four automatically selected component models")}</header>
                             <div className="table-wrap" style={{ marginTop: "6px" }}>
                               <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                                 <thead><tr><th>OS</th><th>{tx("성분", "Component")}</th><th>{tx("선택 구조", "Selected structure")}</th><th>{tx("미래 결합", "Future blend")}</th><th>OOS</th></tr></thead>
@@ -6071,7 +6060,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 </tbody>
                               </table>
                             </div>
-                          </details>
+                          </section>
                         </>
                       )}
                       {!forecast.isPaidOrganicSplit && (forecast.components || []).map((component) => {
@@ -6116,8 +6105,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             </span>
                           </div>
                           {!forecast.annualQualified && <div className="forecast-validation-card__action">{tx("지금은 기본 예측만 참고하고, 예산 증감·광고 OFF 판단은 보류하세요.", "Use only the base forecast for now; hold budget-change and ad-off decisions.")}</div>}
-                          <details className="forecast-validation-card__details">
-                            <summary>{tx("모델 검증 상세", "Model validation details")}</summary>
+                          <section data-information-section="" className="forecast-validation-card__details">
+                            <header data-information-heading="">{tx("모델 검증 상세", "Model validation details")}</header>
                             <p>{(forecast.annualCandidates || []).map((candidate) => `${annualCandidateRouteLabel(candidate.route, tx)} · ${tx("선택용", "development")} ${forecastPct(candidate.developmentWmape)} · ${tx("봉인", "sealed")} ${forecastPct(candidate.latestWmape)}${candidate.comparisonOrigins ? ` · n=${candidate.comparisonOrigins}` : ""}`).join(" / ")}</p>
 	                            <p><strong>{tx("선택 근거: ", "Selection: ")}</strong>{forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}</p>
 	                            <p><strong>{tx("안전장치: ", "Guardrail: ")}</strong>{forecastGuardrailSummaryText(forecast.modelSearch, locale)}</p>
@@ -6142,7 +6131,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                   {(forecast.annualOsGuardrail || []).map((component) => <span className="ab-pill" key={component.component} style={component.passed ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}>{`${component.component} · ${tx("과거", "history")} ${forecastPct(component.developmentWmape)} · ${tx("최근", "latest")} ${forecastPct(component.latestWmape)}`}</span>)}
                                 </div>
                               )}
-                          </details>
+                          </section>
                         </Card>
                       );
                     }
@@ -6382,19 +6371,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, margin: "8px 0 0" }}>
                         {forecastIntervalNote(forecast, locale)}
                       </p>
-                      <details style={{ marginTop: "8px" }}>
-                        <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)" }}>{tx("재현성 정보", "Reproducibility details")}</summary>
+                      <section data-information-section="" style={{ marginTop: "8px" }}>
+                        <header data-information-heading="" style={{ fontSize: "var(--fs-xs)" }}>{tx("재현성 정보", "Reproducibility details")}</header>
                         <pre style={{ whiteSpace: "pre-wrap", fontSize: "var(--fs-xs)", color: MUTED, margin: "6px 0 0" }}>{JSON.stringify(forecastEnhancement.provenance, null, 2)}</pre>
-                      </details>
+                      </section>
                     </Card>
                   )}
                   {forecastScenarioResults && forecastScenario.eligible && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
                         <strong>{tx("미래 시나리오 비교", "Future scenario comparison")}</strong>
-                        <button className="ab-pill" onClick={() => setFcScenarioOpen((value) => !value)}>{fcScenarioOpen ? tx("접기", "Hide") : tx("열기", "Show")}</button>
                       </div>
-                      {fcScenarioOpen && <>
+                      {<>
                         <ForecastBudgetControls currency={sourceCurrency} locale={locale} total={fcTotalBudget} minimum={fcMinBudget} maximum={fcMaxBudget} onTotal={setFcTotalBudget} onMinimum={setFcMinBudget} onMaximum={setFcMaxBudget} />
                         <div className="table-wrap"><table className="data" style={{ fontSize: "var(--fs-xs)" }}><thead><tr><th>{tx("시나리오", "Scenario")}</th><th>{tx("평균/주", "Average/wk")}</th><th>{tx("기준 대비", "vs baseline")}</th><th>{tx("상태", "Status")}</th></tr></thead><tbody>
                           {forecastScenarioResults.results.map((scenario) => <tr key={scenario.key}><td><strong>{tx({ baseline: "기준 예산", "media-off": "미디어 OFF", "plus-10": "+10% 증액", "minus-10": "-10% 감액" }[scenario.key] || scenario.label, scenario.label)}</strong></td><td className="tnum">{scenario.summary?.average == null ? "—" : targetValueLabel(scenario.summary.average, { perWeek: true })}</td><td className="tnum">{scenario.summary?.percentFromBaseline == null ? "—" : `${scenario.summary.percentFromBaseline >= 0 ? "+" : ""}${scenario.summary.percentFromBaseline.toFixed(1)}%`}</td><td>{scenario.key === "baseline" ? tx("표시", "Shown") : forecastScenario.eligible ? tx("참고 시나리오", "Reference scenario") : tx("식별 게이트 잠금", "Identification locked")}</td></tr>)}
@@ -6581,8 +6569,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   </div>
 
-                  <details style={{ marginTop: "12px" }}>
-                    <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{tx("미래 예측 상세 (기간별)", "Forecast detail (by period)")}</summary>
+                  <section data-information-section="" style={{ marginTop: "12px" }}>
+                    <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", fontWeight: 600 }}>{tx("미래 예측 상세 (기간별)", "Forecast detail (by period)")}</header>
                     <div className="table-wrap" style={{ marginTop: "8px" }}>
                       <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
                         <thead>
@@ -6601,7 +6589,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         </tbody>
                       </table>
                     </div>
-                  </details>
+                  </section>
                 </>
               ) : (
                 <div className="callout warn"><div className="ico">!</div><div className="body">

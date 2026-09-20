@@ -166,7 +166,7 @@ describe("ToolIndex", () => {
 
   it("갈래를 접지 않는다 — 펼 때마다 위치가 달라지면 방금 본 도구를 다시 찾게 된다", () => {
     const { container } = render(<ToolIndex />);
-    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector("[data-information-section]")).toBeNull();
     expect(container.querySelectorAll(".tool-index__stage")).toHaveLength(TOOL_JOURNEY.length);
   });
 });

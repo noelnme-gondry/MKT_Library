@@ -31,8 +31,8 @@ for (const locale of ["ko", "en"]) {
     await expect(page.getByText(en ? "Purchases are currently unavailable." : "지금은 구매할 수 없습니다.", { exact: false })).toBeVisible();
     await expect(page.getByRole("link", { name: en ? "Free sample reports" : "무료 샘플 보고서" })).toBeVisible();
     const details = page.locator(".checkout-purchase-info");
-    await expect(details).not.toHaveAttribute("open");
-    await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).not.toBeVisible();
+    await expect(details).toBeVisible();
+    await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).toBeVisible();
 
     await review.getByRole("button", { name: en ? "Show test payment methods" : "테스트 결제수단 확인" }).click();
     const open = review.getByRole("button", { name: en ? "Open KRW 5,900 test checkout" : "5,900원 테스트 결제창 열기" });
@@ -54,9 +54,7 @@ for (const locale of ["ko", "en"]) {
     expect(layout.sideBySide).toBe(page.viewportSize().width > 1000);
     // 요약 칼럼이 열 구분선과 배경을 소유하므로 나란히 설 때는 행 전체 높이를 채워야 한다.
     if (layout.sideBySide) expect(layout.summaryHeight).toBeGreaterThanOrEqual(layout.rowHeight - 2);
-    await details.locator("summary").click();
     await expect(details.getByText(en ? /Sign in before purchasing/ : /구매 시 로그인이 필요/)).toBeVisible();
-    await details.locator("summary").click();
 
     await open.click();
     await expect.poll(() => page.evaluate(() => window.__reviewCalls.filter(call => call.name === "request").length)).toBe(1);

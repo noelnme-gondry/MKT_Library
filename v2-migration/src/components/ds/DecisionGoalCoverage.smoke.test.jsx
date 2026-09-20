@@ -14,7 +14,7 @@ it("has a nonempty published-tool coverage boundary", () => expect(ids.length).t
 it.each(ids)("%s creates first and follow-up decisions with registered goals through the shared result UI", toolId => {
   const goals = toolDecisionGoals(toolId);
   const view = render(<ResultActionCard toolId={toolId} headline="Observed evidence" analysisBasis={false} />);
-  fireEvent.click(view.container.querySelector(".decision-review > summary"));
+  fireEvent.click(view.container.querySelector(".decision-review-launch"));
   expect([...screen.getByLabelText("목표 (성공의 정의)").options].map(option => option.value)).toEqual([...goals.map(goal => goal.key), ""]);
   fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "Test the next hypothesis" } });
   fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" })); confirmReviewSave();

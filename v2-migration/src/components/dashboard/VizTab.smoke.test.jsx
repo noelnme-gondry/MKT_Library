@@ -105,10 +105,11 @@ describe("VizTab render smoke", () => {
     expect(container.querySelector("#s-cohort")?.classList.contains("dashboard-cohort-control")).toBe(true);
     expect(container.querySelector("#s-cohort")?.classList.contains("block")).toBe(false);
     const help = container.querySelector(".help-tip");
-    expect(help?.textContent).toContain("매출/결제/잔존율");
+    fireEvent.click(help);
+    expect(screen.getByRole("dialog").textContent).toContain("매출/결제/잔존율");
     // 예전에는 "문장이 DOM에 없다"로 확인했다. HelpTip은 details라 닫힌 채로도 노드는
     // 남고 브라우저가 접근성 트리에서 숨긴다 — 검사는 "기본적으로 펼쳐져 있지 않다"로 본다.
-    expect(help.closest("details").open).toBe(false);
+    expect(help.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("keeps the dashboard visualization surface free of Korean UI copy in English", () => {

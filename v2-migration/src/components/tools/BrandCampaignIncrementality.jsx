@@ -356,8 +356,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
             ? tx(locale, "AR(1) 계수 불확실성까지 반영해도 관찰상 증가 신호가 남습니다. 그래도 통제군 없는 인과 증명은 아닙니다.", "An observational lift signal remains after accounting for AR(1) parameter uncertainty. This is still not causal proof without a control.")
             : tx(locale, "AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.", "After accounting for AR(1) parameter uncertainty, lift cannot be distinguished from no change.")}</strong><p>{tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`)}</p></div></div>
       <div className="chart-container" style={{ height: "320px", marginTop: "16px" }}><canvas ref={chartRef} /></div>
-      <details style={{ marginTop: "14px" }}>
-        <summary>{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</summary>
+      <section data-information-section="" style={{ marginTop: "14px" }}>
+        <header data-information-heading="">{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</header>
         <ul>
           <li>{tx(locale, `사전 ${result.prePeriods}기간 · 집행 ${result.postPeriods}기간 · AR(1) MLE 사전 추세 일평균 변화 ${result.profileTrend?.slope == null ? "추정 불가" : result.profileTrend.slope.toFixed(2)}`, `${result.prePeriods} pre periods · ${result.postPeriods} campaign periods · AR(1) MLE pre-trend daily change ${result.profileTrend?.slope == null ? "not estimable" : result.profileTrend.slope.toFixed(2)}`)}</li>
           <li>{tx(locale, `95% 프로파일 구간은 rho MLE ${profile?.rhoMle == null ? "추정 불가" : profile.rhoMle.toFixed(2)}와 가능한 rho 범위 ${profile ? `${profile.rhoInterval[0].toFixed(2)} ~ ${profile.rhoInterval[1].toFixed(2)}` : "추정 불가"}를 함께 반영합니다.`, `The 95% profile interval includes rho MLE ${profile?.rhoMle == null ? "not estimable" : profile.rhoMle.toFixed(2)} and plausible rho range ${profile ? `${profile.rhoInterval[0].toFixed(2)} to ${profile.rhoInterval[1].toFixed(2)}` : "not estimable"}.`)}</li>
@@ -369,7 +369,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           <li>{tx(locale, "AR(1) 프로파일 구간은 rho 추정오차를 포함한 보수적 근사입니다. 계절성·PR·프로모션 교란을 제거하거나 통제군 없는 인과를 증명하지는 못합니다.", "The AR(1) profile interval is a conservative approximation that includes rho estimation uncertainty. It does not remove seasonality, PR, or promotion confounding, or prove causality without a control.")}</li>
           <li>{tx(locale, "다음 캠페인에서는 비집행 지역·오디언스를 남겨 홀드아웃/DiD로 인과 근거를 강화하세요.", "For the next campaign, retain an unexposed region or audience to strengthen causal evidence with holdout / DiD.")}</li>
         </ul>
-      </details>
+      </section>
     </section>}
   </div>;
 }

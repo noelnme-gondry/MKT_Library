@@ -138,13 +138,13 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
             ? (locale === "en" ? "Separated validation is unavailable. Check row alignment, YYYY-MM-DD dates, at least four units for group validation, and sufficient training/test observations after removing shared units." : "분리 검증 불가: 행 대응·YYYY-MM-DD 날짜·단위별 검증의 최소 4개 단위·중복 단위 제외 후 학습/검증 표본을 확인하세요.")
             : T.invalid;
     return (
-      <details className="rf-help" id="s-content-webr-random-forest">
-        <summary><span aria-hidden="true">ⓘ</span> {T.whyBlocked}</summary>
+      <section data-information-section="" className="rf-help" id="s-content-webr-random-forest">
+        <header data-information-heading=""><span aria-hidden="true">ⓘ</span> {T.whyBlocked}</header>
         <div className="rf-help__body">
           <strong>{reason}</strong>
           <p>{T.requirementsBody(requiredObservations)}</p>
         </div>
-      </details>
+      </section>
     );
   }
 
@@ -185,10 +185,10 @@ export default function WebRRandomForestPanel({ fit, signature, locale = "ko", s
         : input.validation.mode === "group_cv"
           ? (locale === "en" ? `Validation separates units across ${input.validation.folds} folds. ${input.validation.validationN} rows are evaluated; this does not validate future performance.` : `단위가 겹치지 않는 ${input.validation.folds}개 분할에서 ${input.validation.validationN}행을 검증합니다. 미래 성과 검증은 아닙니다.`)
           : (locale === "en" ? `Past-to-future holdout: ${input.validation.validationN} validation rows; ${input.validation.purgedN} past rows of shared units excluded. One historical holdout does not guarantee future accuracy.` : `과거→미래 홀드아웃: 검증 ${input.validation.validationN}행, 겹치는 단위의 과거 ${input.validation.purgedN}행 제외. 한 과거 구간의 검증은 미래 정확도를 보장하지 않습니다.`)}</p>
-      <details className="rf-requirements">
-        <summary><span aria-hidden="true">ⓘ</span> {T.requirements}</summary>
+      <section data-information-section="" className="rf-requirements">
+        <header data-information-heading=""><span aria-hidden="true">ⓘ</span> {T.requirements}</header>
         <p>{T.requirementsBody(requiredObservations)}</p>
-      </details>
+      </section>
       <>
           {(visible.status === "loading" || visible.status === "idle") && <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.loading}</p>}
           {visible.status === "failed" && <div className="required-banner" style={{ marginTop: "12px" }}><p style={{ margin: 0 }}>{visible.error.includes("baseline_regression_not_estimable") ? T.baselineUnavailable : T.failed}</p><button className="ab-button" style={{ marginTop: "8px" }} onClick={execute}>{T.run}</button></div>}

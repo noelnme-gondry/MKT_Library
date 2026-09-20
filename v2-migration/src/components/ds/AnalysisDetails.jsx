@@ -70,11 +70,11 @@ export default function AnalysisDetails({
   }
 
   return (
-    <details className={`analysis-details analysis-details--${statusTone}`}>
-      <summary>
+    <section data-information-section="" className={`analysis-details analysis-details--${statusTone}`}>
+      <header data-information-heading="">
         <span className="analysis-details__summary-label">{tr("신뢰도·방법", "Reliability & method")}</span>
         {hasValue(statusLabel) && <span className="analysis-details__status">{statusLabel}</span>}
-      </summary>
+      </header>
       <div className="analysis-details__body">
         <div className="analysis-details__grid">
           <MetaItem
@@ -106,8 +106,8 @@ export default function AnalysisDetails({
         )}
 
         {hasProvenance && (
-          <details className="analysis-details__technical">
-            <summary>{tr("실행 정보 보기", "View run details")}</summary>
+          <section data-information-section="" className="analysis-details__technical">
+            <header data-information-heading="">{tr("실행 정보 보기", "View run details")}</header>
             <div className="analysis-details__technical-grid">
               <MetaItem label={tr("방법", "Method")} value={method} />
               <MetaItem label={tr("엔진 버전", "Engine version")} value={version} />
@@ -125,9 +125,9 @@ export default function AnalysisDetails({
                 )}
               </p>
             )}
-          </details>
+          </section>
         )}
       </div>
-    </details>
+    </section>
   );
 }

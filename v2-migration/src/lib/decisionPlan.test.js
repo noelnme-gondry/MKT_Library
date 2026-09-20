@@ -20,12 +20,12 @@ it("rejects incomplete and mathematically undefined criteria", () => {
   expect(assessDecisionPlan(plan, "5500 people").state).toBe("waiting");
   expect(assessDecisionPlan({ mode: "at_most", value: "0", unit: "errors" }, "0").state).toBe("met");
 });
-it("preserves the plan and observation through CSV while excluding them from account memos", () => {
+it("preserves the plan and observation through CSV and selected account memos", () => {
   const row = { id: "decision", toolId: "5-18-mmm", action: "Hold out brand search", reviewPlan: serializeDecisionPlan({ ...plan, raw: ["private"] }), targetActual: "5500" };
   const [back] = normalizeDecisionReviewRows(Papa.parse(serializeDecisionReviewCsv([row]), { header: true }).data);
   expect(readDecisionPlan(back.reviewPlan)).toEqual(plan);
   expect(back.targetActual).toBe("5500");
-  expect(archiveMemo(back)).not.toHaveProperty("reviewPlan");
+  expect(archiveMemo(back).reviewPlan).toBe(back.reviewPlan);
   expect(scoreDecision({ decision: { ...row, goalMetric: "conversions", goalDirection: "up" } })).toMatchObject({ outcome: "UNSCORED", reason: "explicit_target_review_required" });
 });
 
@@ -45,7 +45,7 @@ it("keeps partial recovery visible independently of an operating target", () => 
   expect(decisionObservationRows({ ...plan, baseline: "0" }, "300", "en").flat().join(" ")).not.toMatch(/Infinity|NaN/);
   expect(decisionObservationRows(plan, "", "en")).toEqual([]);
 });
-it("preserves linked experimental uncertainty through CSV but excludes it from account memos", async () => {
+it("preserves linked experimental uncertainty through CSV and selected account memos", async () => {
   const { serializeReviewEvidence, readReviewEvidence } = await import("./reviewEvidence");
   const effectEvidence = serializeReviewEvidence({ headline: "Estimate +300; interval crosses zero, not proof of no effect", stats: [{ label: "95% CI", value: "-100 to +700 people" }], points: [{ text: "Confirm assignment and total conversions" }], scope: { start: "2026-10-01" }, raw: ["private"] });
   const row = { id: "review", toolId: "5-18-mmm", action: "Review holdout", reviewPlan: serializeDecisionPlan(plan), targetActual: "5300", effectEvidence, effectSourceId: "experiment" };
@@ -53,6 +53,11 @@ it("preserves linked experimental uncertainty through CSV but excludes it from a
   expect(back.effectSourceId).toBe("experiment");
   expect(readReviewEvidence(back.effectEvidence).stats[0].value).toBe("-100 to +700 people");
   expect(back.effectEvidence).not.toContain("private");
-  expect(archiveMemo(back)).not.toHaveProperty("effectEvidence");
-  expect(archiveMemo(back)).not.toHaveProperty("effectSourceId");
+  expect(archiveMemo(back).effectEvidence).toBe(back.effectEvidence);
+  expect(archiveMemo(back).effectSourceId).toBe(back.effectSourceId);
+});
+
+it("keeps forecast comparison automatic even when an explicit operating target is saved", async () => {
+  const { decisionReviewFollowUpMode } = await import("./decisionReview");
+  expect(decisionReviewFollowUpMode({ comparisonKind: "forecast_actual", forecastPeriod: "2026-10-01", reviewPlan: serializeDecisionPlan(plan) })).toBe("forecast_auto");
 });

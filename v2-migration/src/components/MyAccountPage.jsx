@@ -32,7 +32,6 @@ const COPY = {
     end: "이용 종료",
     trialStart: "체험 시작",
     unknown: "—",
-    unknownHint: "구매 이용권은 시작일을 서버에서 내려주지 않아 표시하지 않습니다.",
     projectHead: "프로젝트",
     projectCount: "프로젝트 개수",
     projectUnit: (count) => `${count}개`,
@@ -58,7 +57,6 @@ const COPY = {
     end: "Ends",
     trialStart: "Trial started",
     unknown: "—",
-    unknownHint: "A purchased pass does not expose a start date from the server, so it is not shown.",
     projectHead: "Projects",
     projectCount: "Projects",
     projectUnit: (count) => `${count}`,
@@ -120,7 +118,7 @@ export default function MyAccountPage({ locale = "ko" }) {
           </dl>
         ) : <p>{t.signedOut}</p>}
         {/* 로그인·로그아웃·알림·구매 연결은 이미 있는 컨트롤을 그대로 쓴다. */}
-        <AccountArchive locale={locale} profile hideIdentity />
+        <AccountArchive locale={locale} profile hideIdentity onSession={setSession} />
       </section>
 
       {session?.account && (
@@ -128,10 +126,9 @@ export default function MyAccountPage({ locale = "ko" }) {
           <h2 id="account-page-plan">{t.planHead}</h2>
           <dl className="account-page__facts">
             <div><dt>{t.plan}</dt><dd>{planLabel}</dd></div>
-            <div><dt>{entitlement?.trial || !active ? t.trialStart : t.start}</dt><dd>{startLabel || t.unknown}</dd></div>
+            {startLabel && <div><dt>{t.trialStart}</dt><dd>{startLabel}</dd></div>}
             <div><dt>{t.end}</dt><dd>{endLabel || t.unknown}</dd></div>
           </dl>
-          {active && !entitlement.trial && <p className="account-page__hint">{t.unknownHint}</p>}
           {!active && <Link className="btn primary" href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link>}
         </section>
       )}
@@ -143,11 +140,11 @@ export default function MyAccountPage({ locale = "ko" }) {
         </dl>
         <p className="account-page__hint">{t.projectsLocal}</p>
         {projectsFailed && <p role="alert">{t.projectsFailed}</p>}
-        <Link className="btn" href={en ? "/en/weekly-review" : "/weekly-review"}>{t.openProjects}</Link>
+        <Link className="btn" href={en ? "/en/weekly-review#project-management" : "/weekly-review#project-management"}>{t.openProjects}</Link>
       </section>
 
       <section className="account-page__card">
-        <UserMappingSettings locale={locale} />
+        <UserMappingSettings key={session?.account?.id || "signed-out"} locale={locale} accountId={session?.account?.id || null} />
       </section>
     </article>
   );

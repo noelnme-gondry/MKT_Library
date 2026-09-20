@@ -18,8 +18,8 @@ export default function WeeklyHistoryEvidence({ review, metric, currency, locale
   // summarizeBaseline과 같은 유효값·최근 기간 창. 새로운 통계 계산은 하지 않는다.
   const used = (review.historySeries || []).filter(point => Number.isFinite(point.metrics[metric]))
     .slice(-SIGNIFICANCE_CONFIG.lookbackWeeks);
-  return <details className="wr-settings">
-    <summary>{en ? `History used in this review · ${used.length} periods` : `이번 판정에 쓴 이력 · ${used.length}개 기간`}</summary>
+  return <section data-information-section="" className="wr-settings">
+    <header data-information-heading="">{en ? `History used in this review · ${used.length} periods` : `이번 판정에 쓴 이력 · ${used.length}개 기간`}</header>
     <div className="wr-card">
       <p>{baselineExplanation(review.routing?.kpi?.baseline, locale)}</p>
       <p className="wr-note">{en
@@ -34,5 +34,5 @@ export default function WeeklyHistoryEvidence({ review, metric, currency, locale
         </tr>)}</tbody>
       </table></div>}
     </div>
-  </details>;
+  </section>;
 }

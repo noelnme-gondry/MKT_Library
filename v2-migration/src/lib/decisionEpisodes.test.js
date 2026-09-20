@@ -31,7 +31,11 @@ describe("관측 이력은 덮어쓰지 않고 쌓인다", () => {
     expect(decisionEpisodeList(restored)).toHaveLength(8);
   });
   it("관측 이력과 분석 근거를 보존하는 v15 스키마다", () => {
-    expect(DECISION_REVIEW_SCHEMA_VERSION).toBe(15);
+    const legacy = sanitizeDecisionReviewRecord({ id: "legacy", action: "Keep reviewing", actual: "CPA 950", learning: "Still uncertain" });
+    expect(legacy.schemaVersion).toBe(DECISION_REVIEW_SCHEMA_VERSION);
+    expect(sanitizeDecisionReviewRecord(legacy)).toEqual(legacy);
+    expect(legacy.actual).toBe("CPA 950");
+    expect(legacy.learning).toBe("Still uncertain");
   });
 
   it("구분자·줄바꿈·콤마가 든 자유 텍스트가 왕복에서 그대로 살아온다", () => {

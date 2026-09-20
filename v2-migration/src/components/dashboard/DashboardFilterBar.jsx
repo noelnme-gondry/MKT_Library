@@ -197,11 +197,11 @@ export default function DashboardFilterBar({ locale = "ko" }) {
           )}
 
           {segmentFilterCount > 0 && (
-            <details className="dashboard-filter-more" open={activeSegmentCount > 0}>
-              <summary>
+            <section data-information-section="" className="dashboard-filter-more" >
+              <header data-information-heading="">
                 {locale === "en" ? "Segments" : "세그먼트"}
                 <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>
-              </summary>
+              </header>
               <div className="dashboard-filter-more__body">
                 {platforms.length > 0 && (
                   <MultiSelect
@@ -240,7 +240,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
                   />
                 )}
               </div>
-            </details>
+            </section>
           )}
 
           {activeCount > 0 && (

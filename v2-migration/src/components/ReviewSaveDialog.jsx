@@ -164,7 +164,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
           if (calendar && downloadCalendar(calendar, "decision-review") !== false) trackProductEvent("review_calendar_downloaded", { locale, source: "review_save" });
         }}>{en ? `Add ${saved.record.reviewDate} to calendar · free` : `${saved.record.reviewDate} 캘린더에 추가 · 무료`}</button>}
       </section>}
-      {saved.record && <details><summary>{en ? "Keep a memo in my account (optional)" : "계정에 메모 보관 (선택)"}</summary><p>{en ? "Optional: keep the selected memo in your account to revisit it on another device. Your local project has been saved; source files are not synced." : "선택 사항: 선택한 메모를 계정에 보관하면 다른 기기에서도 읽을 수 있습니다. 이 기기의 프로젝트 저장은 끝났으며, 원본 파일은 동기화되지 않습니다."}</p><AccountArchive record={saved.record} locale={locale} /></details>}
+      {saved.record && <section data-information-section=""><header data-information-heading="">{en ? "Keep a memo in my account (optional)" : "계정에 메모 보관 (선택)"}</header><p>{en ? "Optional: keep the selected memo in your account to revisit it on another device. Your local project has been saved; source files are not synced." : "선택 사항: 선택한 메모를 계정에 보관하면 다른 기기에서도 읽을 수 있습니다. 이 기기의 프로젝트 저장은 끝났으며, 원본 파일은 동기화되지 않습니다."}</p><AccountArchive record={saved.record} locale={locale} /></section>}
       {saved.record && <ProjectReviewLink projectId={saved.project.id} locale={locale} onNavigate={onClose} />}
       <Link className="btn" href={`${en ? "/en" : ""}/weekly-review#project-management`}>{en ? "Open my projects" : "내 프로젝트 열기"}</Link>
     </> : <>

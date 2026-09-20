@@ -1,4 +1,5 @@
 "use client";
+import ModalDialog from "./ds/ModalDialog";
 import ProjectCreateGate from "./ProjectCreateGate";
 import { refreshAccount } from "@/lib/account/accountClient";
 import { useEffect, useRef, useState } from "react";
@@ -28,11 +29,22 @@ function nextReview(project) {
 function ProjectBrandingForm({ en, initial, disabled, onLogo, onSave }) {
   const [branding, setBranding] = useState(initial || { company: "", footer: "", logo: "" });
   return <section className="project-branding" aria-labelledby="project-branding-title">
-    <h3 id="project-branding-title">{en ? "Report branding" : "보고서 브랜딩"}</h3>
+    <h3 id="project-branding-title">{en ? "Make the report yours" : "내 회사의 보고서로 완성하기"}</h3>
+    <p>{en ? "Add your company name, logo and a closing note to this project’s report. Keep a consistent identity when sharing saved reviews with clients or your team." : "이 프로젝트의 보고서에 회사명·로고·하단 문구를 넣습니다. 고객사나 팀에 전달할 때 매번 표지를 고치지 않고 같은 형식으로 공유할 수 있습니다."}</p>
+    <div className="project-branding-layout"><div className="project-branding-fields">
     <label className="wr-field">{en ? "Company" : "회사명"}<input maxLength={120} value={branding.company} onChange={event => setBranding(value => ({ ...value, company: event.target.value }))} /></label>
-    <label className="wr-field">{en ? "Footer" : "푸터"}<input maxLength={300} value={branding.footer} onChange={event => setBranding(value => ({ ...value, footer: event.target.value }))} /></label>
+    <label className="wr-field">{en ? "Closing note / contact" : "보고서 하단 문구·연락처"}<input maxLength={300} value={branding.footer} onChange={event => setBranding(value => ({ ...value, footer: event.target.value }))} /></label>
     <label>{en ? "Logo: PNG/JPEG/WebP, up to 1 MiB and 4096px" : "로고: PNG/JPEG/WebP, 1 MiB·4096px 이하"}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => onLogo(event, logo => setBranding(value => ({ ...value, logo })))} /></label>
-    <button className="btn" disabled={disabled} onClick={() => onSave(branding)}>{en ? "Save branding" : "브랜딩 저장"}</button>
+    <button className="btn primary" disabled={disabled} onClick={() => onSave(branding)}>{en ? "Save for this project" : "이 프로젝트에 저장"}</button>
+    <p className="wr-note">{en ? "Saved on this device for the selected project. Original data stays in your browser." : "선택한 프로젝트에 기기 내 저장됩니다. 원본 데이터는 브라우저에 남습니다."}</p>
+    </div><aside className="project-branding-preview" aria-label={en ? "Branding preview" : "브랜딩 미리보기"}>
+      <small>{en ? "LAYOUT PREVIEW · SAMPLE" : "적용 모습 · 예시"}</small>
+      {branding.logo && <Image unoptimized src={branding.logo} alt="" width={120} height={60} />}
+      <strong>{branding.company || (en ? "Your company" : "회사명")}</strong>
+      <h4>{en ? "Weekly performance review" : "주간 성과 리뷰"}</h4>
+      <p>{en ? "Key changes → saved decisions → next review" : "핵심 변화 → 저장한 결정 → 다음 검토"}</p>
+      <footer>{branding.footer || (en ? "Your closing note appears here." : "보고서 하단 문구가 여기에 표시됩니다.")}</footer>
+    </aside></div>
   </section>;
 }
 export default function ProjectsPage({ locale = "ko", embedded = false, onReview }) {
@@ -148,10 +160,10 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
         return <article className="project-card" key={project.id}>
           <h2>{project.name || (en ? "Existing records" : "기존 기록")}{project.id === activeId ? (en ? " · Current" : " · 현재") : ""}</h2>
           <p>{project.settings?.metric?.toUpperCase() || "—"} · {project.settings?.currency || "—"}</p>
-          {/* 보고서 본문은 길어 목록을 밀어내므로 기본은 닫아 두되, 여는 것은 버튼이다. */}
+          {/* 보고서는 별도 읽기 창에서 확인한다. */}
           {project.report?.text && <div className="project-report-reader">
-            <button type="button" className="btn" aria-expanded={openReport === project.id} onClick={() => setOpenReport(openReport === project.id ? "" : project.id)}>{openReport === project.id ? (en ? "Close saved report" : "저장한 보고서 닫기") : (en ? "Read saved report" : "저장한 보고서 읽기")}</button>
-            {openReport === project.id && <><p>{project.report.generatedAt}</p><WeeklyReportDocument text={project.report.text} /></>}
+            <button type="button" className="btn" aria-haspopup="dialog" onClick={() => setOpenReport(project.id)}>{en ? "Read saved report" : "저장한 보고서 읽기"}</button>
+            {openReport === project.id && <ModalDialog open onClose={() => setOpenReport("")} ariaLabel={en ? "Saved report" : "저장한 보고서"} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><header className="decision-editor-header"><h2>{project.name}</h2><button className="btn" onClick={() => setOpenReport("")}>{en ? "Close" : "닫기"}</button></header><p>{project.report.generatedAt}</p><WeeklyReportDocument text={project.report.text} /></ModalDialog>}
           </div>}
           <dl><dt>{en ? "Latest snapshot period end" : "최근 집계 기간 종료일"}</dt><dd>{end || "—"}</dd><dt>{en ? "Next review" : "다음 검토일"}</dt><dd>{due || "—"}</dd><dt>{en ? "Open decisions" : "미완료 결정"}</dt><dd>{(project.decisions || []).filter(record => record.status !== "reviewed").length}</dd></dl>
           <section className="project-next-work">{dueRecords.length > 0 && <p className="project-review-due"><strong>{en ? `${dueRecords.length} decisions due for review` : `오늘까지 검토할 결정 ${dueRecords.length}개`}</strong></p>}<h3>{en ? "Next actions" : "이 프로젝트의 다음 할 일"}</h3><p>{due ? (en ? `Review your open decisions, starting with ${due}.` : `${due} 검토 예정인 결정부터 결과를 확인하세요.`) : (en ? "Upload the next period and record a decision to check later." : "다음 기간 데이터를 올리고, 나중에 확인할 결정을 기록하세요.")}</p><div className="workflow-next-step__actions"><button className="btn" disabled={busy || switching || !ready} onClick={() => open(project.id, "/start")}>{en ? "Upload next CSV" : "다음 CSV 분석"}</button></div></section>
@@ -166,7 +178,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
         </article>;
       })}
     </div>
-    <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(!batch) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Reports contain the last explicitly saved review for each project, with its period and save date. Missing reports are not estimated." : "프로젝트마다 명시적으로 저장한 마지막 리뷰를 기간·저장일과 함께 모읍니다. 보고서가 없으면 추정해서 채우지 않습니다."}</p>
+    <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(true) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Bring the latest saved reviews from several projects into one meeting or client handoff. Each includes its analysis period and save date. Save a review in each project before opening batch reports." : "여러 프로젝트의 최신 저장 리뷰를 한 번에 모아 회의·고객사 공유 자료로 만듭니다. 리뷰별 분석 기간과 저장일을 함께 확인할 수 있습니다. 먼저 각 프로젝트에서 리뷰를 저장한 뒤 일괄 보고서를 여세요."}</p>
       {/* 접기를 걷어내면서 현재 프로젝트 값 채우기를 onToggle이 아니라 마운트에 건다. */}
       <ProjectBrandingForm key={`${activeId}:${Boolean(active)}`} en={en} initial={active?.branding} disabled={!active || busy || switching || !ready} onLogo={loadLogo} onSave={branding => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })} />
     </section>

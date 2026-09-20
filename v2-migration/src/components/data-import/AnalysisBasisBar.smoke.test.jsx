@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 
 function dataWithDays(days = 14) {
@@ -44,7 +44,8 @@ describe("AnalysisBasisBar", () => {
     const { canonicalData, mappedRows } = dataWithDays();
     render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
 
-    expect(screen.getByRole("tooltip").textContent).toMatch(/Data basis/);
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.getByRole("dialog").textContent).toMatch(/Data basis/);
   });
 
   it("shows an undated survival dataset as usable without a fabricated period count", () => {

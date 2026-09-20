@@ -79,7 +79,7 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelector(".sidebar-social")).toBe(null);
     expect(document.querySelector('a[href*="youtube.com"]')).toBe(null);
     expect(document.querySelector('.library-nav-item[aria-current="page"]')).toBeTruthy();
-    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
+    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
   });
   it("with-data mounts", () => {
     pathname = "/dashboard";
@@ -91,7 +91,7 @@ describe("Sidebar render smoke", () => {
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
     expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
-    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
+    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
   });
   // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면
   // 헤더(01~05)와 앞자리가 어긋나고 가이드 번호와도 겹친다. 도구 칩엔 번호 없음,
@@ -123,7 +123,7 @@ describe("Sidebar render smoke", () => {
     const { container } = render(<Sidebar />);
     expect(container.querySelector(".library-nav")).toBeTruthy();
     expect(container.querySelector(".sidebar-primary-nav")).toBeTruthy();
-    expect(container.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(true);
+    expect(container.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
   });
   it("surfaces decisions due now in the recurring workspace flow", () => {
     useAppStore.setState({
@@ -141,7 +141,7 @@ describe("Sidebar render smoke", () => {
       const item = workspaceNavItem(id, locale);
       const link = container.querySelector(`.library-nav a[href="${locale === "en" ? "/en" : ""}${item.href}"]`);
       expect(link, id).toBeTruthy();
-      expect(link.closest("details"), id).toBeNull();
+      expect(link.closest("[data-information-section]"), id).toBeNull();
     }
   });
 

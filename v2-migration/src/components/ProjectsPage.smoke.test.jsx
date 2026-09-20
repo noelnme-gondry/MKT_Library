@@ -14,5 +14,5 @@ it.each(["ko", "en"])("loads saved branding when the active project's async read
   render(<ProjectsPage locale={locale} />);
   act(() => useAppStore.setState({ projectsReady: true, projects: [{ id: "p1", name: "Project", branding: { company: "Existing company", footer: "Existing footer", logo: "" } }] }));
   expect(screen.getByRole("textbox", { name: locale === "en" ? "Company" : "회사명" }).value).toBe("Existing company");
-  expect(screen.getByRole("textbox", { name: locale === "en" ? "Footer" : "푸터" }).value).toBe("Existing footer");
+  expect(screen.getByRole("textbox", { name: locale === "en" ? "Closing note / contact" : "보고서 하단 문구·연락처" }).value).toBe("Existing footer");
 });

@@ -531,8 +531,8 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       {auto.review.length && !manualMapping ? <p className="muted">{tx(locale,
         `확인이 필요해 자동으로 넣지 않은 컬럼: ${auto.review.map((item) => item.header).join(", ")}`,
         `Left out pending your check: ${auto.review.map((item) => item.header).join(", ")}`)}</p> : null}
-      <details className="segment-mapping-edit">
-        <summary>{tx(locale, "다르게 읽혔다면 여기서 고치기", "Read it wrong? Fix it here")}</summary>
+      <section data-information-section="" className="segment-mapping-edit">
+        <header data-information-heading="">{tx(locale, "다르게 읽혔다면 여기서 고치기", "Read it wrong? Fix it here")}</header>
         <SegmentRoleMapper
           headers={headers}
           rows={rows}
@@ -541,7 +541,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           quality={panel?.quality || null}
           locale={locale}
         />
-      </details>
+      </section>
     </section>}
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">

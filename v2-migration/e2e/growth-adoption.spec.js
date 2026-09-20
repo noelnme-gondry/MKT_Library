@@ -16,14 +16,11 @@ for (const locale of ["ko", "en"]) {
       expect(bounds.height).toBeGreaterThanOrEqual(44);
       expect(bounds.width).toBeGreaterThanOrEqual(44);
     }
-    await page.getByText(en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드", { exact: true }).click();
-    await expect(page.locator(".source-export-guide details[open]")).toContainText(en ? "Keep the sheet private" : "공개 범위를 바꾸지");
+    await expect(page.locator(".source-export-guide [data-information-section]").filter({ hasText: en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드" })).toContainText(en ? "Keep the sheet private" : "공개 범위를 바꾸지");
     const sheetsGuide = page.locator(".google-sheets-guide");
-    const bigQuery = sheetsGuide.locator("summary").filter({ hasText: "BigQuery" });
-    await bigQuery.focus();
-    await page.keyboard.press("Enter");
-    await expect(sheetsGuide.locator("details[open]").filter({ hasText: "BigQuery" })).toContainText(en ? "These are separate schedules" : "두 예약은 별개");
-    for (const link of await sheetsGuide.locator("details[open] a").all()) {
+    await expect(sheetsGuide.locator("[data-information-heading]").filter({ hasText: "BigQuery" })).toBeVisible();
+    await expect(sheetsGuide.locator("[data-information-section]").filter({ hasText: "BigQuery" })).toContainText(en ? "These are separate schedules" : "두 예약은 별개");
+    for (const link of await sheetsGuide.locator("[data-information-section] a").all()) {
       expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
     }
     await expectNoSeriousAccessibilityViolations(page);

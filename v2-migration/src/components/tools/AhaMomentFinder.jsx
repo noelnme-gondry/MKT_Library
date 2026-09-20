@@ -753,19 +753,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       return next;
     });
 
-  // 전문가 뷰 아코디언 열릴 때 산점도 재측정 (claude-ux.md §5: 접힌 <details> 안 차트는 폭 0으로 마운트)
-  const onExpertToggle = (e) => {
-    if (e.currentTarget.open && chartInstance.current) {
-      requestAnimationFrame(() => {
-        try {
-          chartInstance.current && chartInstance.current.resize();
-        } catch {
-          /* noop */
-        }
-      });
-    }
-  };
-
   // 버블 차트 PNG 다운로드 (index.html data-pngdownload="aha-scatter" 이식)
   const handleScatterPng = () => {
     if (!chartRef.current) {
@@ -1149,8 +1136,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
           {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ {tr("CSV 변경", "Change CSV")}</button>}
         </div>
-        <details open={!analyzed} style={{ marginTop: "10px" }}>
-          <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 {tr("컬럼 역할 매핑", "Column role mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 수정)", "(analysis done — expand to edit)") : tr("(자동 추정 — 틀리면 수정)", "(auto-detected — edit if wrong)")}</summary>
+        <section data-information-section=""  style={{ marginTop: "10px" }}>
+          <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 {tr("컬럼 역할 매핑", "Column role mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 수정)", "(analysis done — expand to edit)") : tr("(자동 추정 — 틀리면 수정)", "(auto-detected — edit if wrong)")}</header>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0" }}>
             {locale === "en" ? (
               <>
@@ -1163,7 +1150,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             )}
           </p>
           <AhaColumnMapper headers={headers} rows={csvData.raw} colMap={colMap} onChange={setColMap} locale={locale} />
-        </details>
+        </section>
         {missing.length > 0 ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>
             <AnalysisBlockedTelemetry
@@ -1315,8 +1302,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 />
               )}
             >
-            <details className="result-action-card__details">
-              <summary>{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</summary>
+            <section data-information-section="" className="result-action-card__details">
+              <header data-information-heading="">{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</header>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
               {[
                 [C.statAll, cache.n.toLocaleString(), null],
@@ -1387,7 +1374,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 tr("강한 신호도 실험·홀드아웃으로 인과효과를 확인해야 합니다.", "Even a strong signal requires an experiment or holdout to confirm incrementality."),
               ]}
             />
-            </details>
+            </section>
             </ResultActionCard>
           </section>
 
@@ -1579,10 +1566,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </section>
 
           {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
-          <details className="block" onToggle={onExpertToggle}>
-            <summary style={{ cursor: "pointer", fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+          <section data-information-section="" className="block" >
+            <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
               📊 {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정", "Expert view — precision/recall scatter, full metrics table, sort & sample settings")}
-            </summary>
+            </header>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -1658,13 +1645,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   style={{ display: selectedCount === 0 ? "none" : undefined }}
                 ></canvas>
               </div>
-              <details className="aha-scatter-explainer">
-                <summary>{tr("점 읽는 법", "How to read this")}</summary>
+              <section data-information-section="" className="aha-scatter-explainer">
+                <header data-information-heading="">{tr("점 읽는 법", "How to read this")}</header>
                 <p>{tr(
                   <>가로축은 조건을 채운 유저의 타겟 달성 비율(정밀도), 세로축은 타겟 달성 유저 중 조건을 채운 비율(재현율)입니다. 각 점은 전체 유저 달성률 5% 구간이고, 점이 클수록 해당 인원이 많습니다. 선을 따라가면 기준을 느슨하거나 엄격하게 바꿀 때 두 값의 변화를 볼 수 있습니다.</>,
                   <>The x-axis is the target-achievement rate among users meeting the condition (precision); the y-axis is the share of target achievers meeting it (recall). Each point is a 5% reach bucket, and a larger point means more users. Follow a line to see both measures change as the threshold loosens or tightens.</>,
                 )}</p>
-              </details>
+              </section>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
@@ -1761,7 +1748,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 </table>
               </div>
             </div>
-          </details>
+          </section>
 
           {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 (claude-ux.md §6 탈출구) ── */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>

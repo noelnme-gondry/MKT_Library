@@ -1,4 +1,6 @@
 "use client";
+import { accountRequest } from "@/lib/account/accountClient";
+import { applyAccountMappings } from "@/lib/account/mappingContract";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { isDemoData } from "@/lib/dataOrigin";
 import { useClientReady } from "@/lib/useClientReady";
@@ -256,12 +258,12 @@ function xlsxFailureState(error) {
 export default function CsvUploader({
   toolId,
   refreshRef = null,
+  onAnalyzed = null,
   analyticsToolId = toolId,
   showToolGuide = true,
   locale = "ko",
   afterFileSummary = null,
   showMappingReview = false,
-  collapseMappingReview = false,
   showMappingCoach = false,
   mappingCoachLeaving = false,
   onMappingReviewConfirmed = null,
@@ -309,9 +311,6 @@ export default function CsvUploader({
   const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
   const [importAnnouncement, setImportAnnouncement] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  // Preview table is auto-shown while mapping and collapsed after analysis.
-  // User can re-expand it manually anytime (independent of gate state).
-  const [previewOpen, setPreviewOpen] = useState(true);
   // 구글 시트 연동 상태(§sheet refresh/change UX). refreshingSheet=재조회 중,
   // sheetChangeOpen=hasFile 화면에서 "시트 변경" 눌러 URL 폼을 다시 펼친 상태.
   const [refreshingSheet, setRefreshingSheet] = useState(false);
@@ -326,6 +325,13 @@ export default function CsvUploader({
   const [selectedWorkbookSheet, setSelectedWorkbookSheet] = useState("");
   const [pendingWideImport, setPendingWideImport] = useState(null);
   const preparationRequestRef = useRef(0);
+  useEffect(() => {
+    const invalidate = () => { preparationRequestRef.current += 1; };
+    const onLogin = event => { if (event.origin === window.location.origin && event.data?.type === "gop-account-ready") invalidate(); };
+    window.addEventListener("gop-account-changed", invalidate);
+    window.addEventListener("message", onLogin);
+    return () => { window.removeEventListener("gop-account-changed", invalidate); window.removeEventListener("message", onLogin); };
+  }, []);
   const importTaskRef = useRef(0);
   const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
     placement: analyticsPlacement,
@@ -388,9 +394,27 @@ export default function CsvUploader({
     }
     const recipe = await getTransformRecipe(headers).catch(() => null);
     const hasValidRecipe = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header));
-    const mapping = hasValidRecipe ? recipe.mapping : insights.selections;
-    const semanticMapping = isMappingMemoryEnabled ? applyCompatibleMemory(prepared.semanticMapping, mappingMemoryRecords) : prepared.semanticMapping;
-    const canonicalData = hasValidRecipe ? buildCanonicalDataset({ raw, headers, mapping }) : prepared.canonicalData;
+    let mapping = hasValidRecipe ? recipe.mapping : insights.selections;
+    let semanticMapping = isMappingMemoryEnabled ? applyCompatibleMemory(prepared.semanticMapping, mappingMemoryRecords) : prepared.semanticMapping;
+    let accountMappingNotice = "";
+    {
+      try {
+        // Only fetch names/rules; source rows and profiles never leave this browser.
+        const saved = await accountRequest("mappings", { signal: AbortSignal.timeout(8000) });
+        if (saved.canApply && saved.enabled) {
+          const applied = applyAccountMappings({ headers, mapping, semanticMapping, rules: saved.rules, toolId });
+          mapping = applied.mapping;
+          semanticMapping = applied.semanticMapping;
+          if (applied.applied || applied.skipped.length) accountMappingNotice = locale === "en"
+            ? `Account rules applied: ${applied.applied}. Rules requiring review: ${applied.skipped.length}. Check the column mapping before analysis.`
+            : `계정 규칙 ${applied.applied}개 적용 · 확인이 필요한 규칙 ${applied.skipped.length}개. 분석 전 컬럼 연결을 확인해 주세요.`;
+        }
+      } catch (error) {
+        if (error.message !== "LOGIN_REQUIRED" && hasPaidAccess(useAppStore.getState().entitlement)) accountMappingNotice = locale === "en" ? "Account mappings could not be loaded. Automatic mapping is shown; check it before analysis." : "계정 매핑을 불러오지 못해 자동 매핑을 표시합니다. 분석 전 연결을 확인해 주세요.";
+      }
+    }
+    if (requestId !== preparationRequestRef.current || activeProjectId !== useAppStore.getState().activeProjectId) return;
+    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
     const mappedRows = buildLegacyRows({ raw, legacyMapping: mapping, semanticBindings: semanticMapping?.bindings || [], toolId });
     const canonicalDataV2 = buildCanonicalDatasetV2({ raw, headers, bindings: semanticMapping?.bindings || [], valueBindingRecipes: semanticMapping?.valueBindingRecipes || [], representation: semanticMapping?.profile?.representation || "tabular" });
     const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
@@ -401,6 +425,7 @@ export default function CsvUploader({
       mapping,
       fileName: displayName,
       importSource: source,
+      accountMappingNotice,
       worksheetName,
       ...(sheetUrl ? { sheetUrl } : {}),
       ...(fileModifiedAt != null ? { fileModifiedAt } : {}),
@@ -414,10 +439,9 @@ export default function CsvUploader({
       ...(prepared.parityReport ? { semanticParityReport: prepared.parityReport } : {}),
     });
     setConfirmedHeaders(new Set());
-    setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
+    setImportAnnouncement([T.importSuccess(displayName, raw.length, headers.length), accountMappingNotice].filter(Boolean).join(" "));
     trackProductEvent("data_import_success", { tool_id: eventToolId, source, placement: analyticsPlacement, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length, locale });
     trackProductEvent("data_profile_completed", { tool_id: eventToolId, source, placement: analyticsPlacement, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length, locale });
-    setPreviewOpen(true);
     onPrepared?.({ fileName: displayName, rowCount: raw.length, columnCount: headers.length, source });
   };
 
@@ -616,9 +640,7 @@ export default function CsvUploader({
       canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
     });
     setConfirmedHeaders((previous) => new Set([...previous, header]));
-    // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
-    // the user re-checks the columns before pressing 분석하기 again.
-    setPreviewOpen(true);
+    // Mapping changes invalidate the analysis gate; the preview stays visible.
   };
 
 
@@ -646,7 +668,6 @@ export default function CsvUploader({
   const handleReset = async () => {
     await clearCsvGroup();
     setImportAnnouncement("");
-    setPreviewOpen(true);
   };
 
   // Load a deterministic demo dataset for this tool's group and auto-confirm the
@@ -659,7 +680,7 @@ export default function CsvUploader({
     setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: buildLegacyRows({ raw: demo.raw, legacyMapping: demo.mapping, toolId }) });
     if (demo.currency) setDisplayCurrency(demo.currency);
     setGroupAnalyzed(toolId);
-    setPreviewOpen(false);
+    onAnalyzed?.();
   };
 
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
@@ -927,8 +948,8 @@ export default function CsvUploader({
       window.requestAnimationFrame(() => {
         requestAd(() => {
           setGroupAnalyzed(toolId);
-          setPreviewOpen(false);
           setIsStartingAnalysis(false);
+          onAnalyzed?.();
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
       });
@@ -1019,6 +1040,7 @@ export default function CsvUploader({
           </div>
         </section>
       )}
+      {csvData.accountMappingNotice && <p className="csv-account-mapping-notice" role="status">{csvData.accountMappingNotice}</p>}
       {csvData.dataContinuity && <div className="csv-memory-note" role="status">
         {locale === "en" ? "Within the selected project: " : "선택한 프로젝트 기준: "}
         {({ unconfirmed: locale === "en" ? "First upload or period unconfirmed." : "첫 업로드이거나 기간을 확인할 수 없습니다.", next_period: locale === "en" ? "The next period follows the saved data." : "저장된 데이터의 다음 기간입니다.", gap: locale === "en" ? "Newer period, with a gap." : "더 최근 기간이며 날짜 공백이 있습니다.", same_period: locale === "en" ? "Same period; values may differ." : "같은 기간이며 값은 다를 수 있습니다.", overlap: locale === "en" ? "Periods overlap." : "기간이 겹칩니다.", historical: locale === "en" ? "Earlier period." : "이전보다 과거 기간입니다.", schema_changed: locale === "en" ? "Mapped columns changed; check compatibility." : "매핑된 컬럼이 달라졌습니다. 비교 가능 여부를 확인하세요.", currency_changed: locale === "en" ? "Currency changed; amounts are not comparable as-is." : "통화가 달라져 금액을 그대로 비교할 수 없습니다." })[csvData.dataContinuity]}
@@ -1117,13 +1139,12 @@ export default function CsvUploader({
 
       {!isRouterMode && csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
-      {(!isRouterMode || showMappingReview) && <details
+      {(!isRouterMode || showMappingReview) && <section data-information-section=""
         className={`csv-mapping-block${showMappingCoach ? " is-dochi-highlighted" : ""}`}
         ref={mappingDetailsRef}
         aria-describedby={showMappingCoach ? "dochi-mapping-coach-title" : undefined}
-        open={collapseMappingReview ? undefined : isRouterMode || mappingNeedsAttention || undefined}
       >
-        <summary className="csv-mapping-header">
+        <header data-information-heading="" className="csv-mapping-header">
           <div className="csv-mapping-heading">
             <strong className="csv-mapping-title">{T.mappingHeader}</strong>
             <span className="csv-mapping-progress">
@@ -1131,8 +1152,7 @@ export default function CsvUploader({
             </span>
           </div>
           <span className="csv-mapping-hint">{T.mappingHint}</span>
-          <span className="csv-mapping-chevron" aria-hidden="true">⌄</span>
-        </summary>
+        </header>
         {importInsights && (
           <div className={`csv-recognition-summary ${mappingConflicts.length ? "has-conflict" : ""}`}>
             <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
@@ -1163,7 +1183,6 @@ export default function CsvUploader({
             const sel = csvData.mapping[h] || "__ignore__";
             const isUnmapped = sel === "__ignore__";
             const assessment = assessmentByHeader[h] || { state: "ignored", reasons: [] };
-            
             const outOfScope = !isUnmapped && STANDARD_FIELDS[sel] && allowKeys.size > 0 && !allowKeys.has(sel);
 
             return (
@@ -1204,7 +1223,7 @@ export default function CsvUploader({
             );
           })}
         </div>
-      </details>}
+      </section>}
       {showMappingCoach && <DochiMappingCoach
         locale={locale}
         isLeaving={mappingCoachLeaving}
@@ -1224,8 +1243,7 @@ export default function CsvUploader({
           사람이 설정을 먼저 공부하게 하지 않는다). 내보내기·가져오기도 함께 갔다. */}
       {afterFileSummary}
 
-      {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
-          사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}
+      {/* 확인한 컬럼과 첫 행을 항상 함께 보여준다. */}
       {!isRouterMode && preview.cols.length > 0 && preview.rows.length > 0 && (
         <div className="csv-preview-block">
           <div className="csv-preview-header">
@@ -1235,16 +1253,10 @@ export default function CsvUploader({
                 {preview.usingMapped ? T.previewUsingMapped : T.previewAll} · {T.previewRows(preview.rows.length, preview.totalRows)}
               </span>
             </div>
-            <button
-              className="ab-pill"
-              aria-expanded={previewOpen}
-              onClick={() => setPreviewOpen((o) => !o)}
-            >
-              {previewOpen ? T.collapse : T.expand}
-            </button>
+
           </div>
-          {previewOpen && (
-            <div className="table-wrap csv-preview-table-wrap">
+          {(
+            <div className="table-wrap csv-preview-table-wrap" tabIndex={0} role="region" aria-label={T.previewTitle}>
               <table className="data csv-preview-table" aria-label={T.previewTitle}>
                 <caption className="sr-only">{T.previewTitle}</caption>
                 <thead>

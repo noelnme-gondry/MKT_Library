@@ -78,6 +78,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
       >
         <input
           type="date"
+          aria-label={locale === "en" ? "Event date" : "이벤트 날짜"}
           lang={locale === "en" ? "en" : "ko"}
           value={date}
           onChange={(e) => setDate(e.target.value)}

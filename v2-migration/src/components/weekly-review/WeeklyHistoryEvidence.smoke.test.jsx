@@ -8,7 +8,7 @@ describe("판정 이력 근거", () => {
     const historySeries = ["2026-08-03", "2026-08-10", "2026-08-17"].map(start => ({ period: { start, end: start }, metrics: { cpa: 12.5 } }));
     const review = { historySeries, routing: { kpi: { baseline: summarizeBaseline([12.5, 12.5, 12.5]) } } };
     const { container } = render(<WeeklyHistoryEvidence review={review} metric="cpa" currency="USD" locale={locale} />);
-    expect(container.querySelector("details").open).toBe(false);
+    expect(container.querySelector("[data-information-section]").tagName).toBe("SECTION");
     expect(container.textContent).toContain(locale === "en" ? "saved values are identical" : "지표값이 모두 같아");
     expect(container.textContent).not.toMatch(/too few|이력이 짧/);
     expect(screen.getAllByText("12.5 USD")).toHaveLength(3);

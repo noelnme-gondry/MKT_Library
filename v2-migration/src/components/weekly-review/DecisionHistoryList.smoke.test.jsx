@@ -38,7 +38,7 @@ it("이 기기와 계정의 결정을 한 목록으로 보여준다", async () =
 it("접기가 아니라 버튼이고, 누르면 상세가 열린다", async () => {
   render(<DecisionHistoryList locale="ko" />);
   const row = await screen.findByRole("button", { name: /Meta 예산 30% 감액/ });
-  expect(row.getAttribute("aria-expanded")).toBe("false");
+  expect(row.getAttribute("aria-haspopup")).toBe("dialog");
   fireEvent.click(row);
   await screen.findByText("결정 당시 근거·비교 조건");
   fireEvent.click(screen.getByText("결정 당시 근거·비교 조건"));

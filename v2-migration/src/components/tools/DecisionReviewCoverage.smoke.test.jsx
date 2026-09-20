@@ -124,9 +124,10 @@ describe("decision review coverage for diagnostic tools", () => {
   it("preserves the engine's uncomputed VIF without inventing infinity or zero", () => {
     seedVifPanel((day, channelIndex) => (day + 1) * 100 * (channelIndex + 1));
     const { container } = render(<MulticollinearityChecker />);
-    expect(container.textContent).toContain("최대 VIF 계산 불가");
-    expect(container.textContent).not.toContain("최대 VIF ∞");
-    expect(container.textContent).not.toContain("최대 VIF 0.00");
+    fireEvent.click(container.querySelector(".decision-review-launch"));
+    expect(document.body.textContent).toContain("최대 VIF 계산 불가");
+    expect(document.body.textContent).not.toContain("최대 VIF ∞");
+    expect(document.body.textContent).not.toContain("최대 VIF 0.00");
     expect(container.querySelector('[data-decision-review-tool="5-25"]')).toBeTruthy();
   });
 });

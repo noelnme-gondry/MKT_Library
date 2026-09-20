@@ -52,27 +52,27 @@ it("여러 개를 함께 고를 수 있다", () => {
   expect(pressed.length).toBeGreaterThan(1);
 });
 
-it("고른 개수만큼 접기가 생기고, 처음에는 하나만 펴진다", () => {
+it("고른 결과를 탭으로 보여주고 처음 결과를 선택한다", () => {
   render(<AnalysisSelector locale="ko" />);
   const options = screen.getAllByRole("button").filter((node) => node.className.includes("analysis-selector__option") && !node.disabled);
   fireEvent.click(options[1]);
   fireEvent.click(screen.getByRole("button", { name: /분석 시작/ }));
   expect(screen.getByRole("heading", { name: "분석 결과" })).toBeTruthy();
   // 고른 수만큼 접기가 생긴다 — 4~5개를 골라도 버튼 하나로 하나씩 관리된다.
-  expect(document.querySelectorAll(".analysis-selector__result-toggle")).toHaveLength(2);
+  expect(screen.getAllByRole("tab")).toHaveLength(2);
   // 한 번에 여러 개를 펴면 어느 것을 읽는지 알 수 없다.
-  expect(screen.getAllByRole("button", { expanded: true })).toHaveLength(1);
-  expect(screen.getAllByRole("button", { expanded: false })).toHaveLength(1);
+  expect(screen.getAllByRole("tab", { selected: true })).toHaveLength(1);
+  expect(screen.getAllByRole("tab", { selected: false })).toHaveLength(1);
 });
 
-it("접기 하나가 도구 하나를 열고 닫는다", () => {
+it("선택된 탭을 다시 눌러도 결과가 사라지지 않는다", () => {
   render(<AnalysisSelector locale="ko" />);
   fireEvent.click(screen.getByRole("button", { name: /분석 시작/ }));
-  const open = screen.getByRole("button", { expanded: true });
+  const open = screen.getByRole("tab", { selected: true });
   expect(document.querySelectorAll(".analysis-selector__result-body")).toHaveLength(1);
   fireEvent.click(open);
   // 닫으면 언마운트한다 — 무거운 도구 넷을 동시에 붙들고 있으면 메인 스레드가 멈춘다.
-  expect(document.querySelectorAll(".analysis-selector__result-body")).toHaveLength(0);
+  expect(document.querySelectorAll(".analysis-selector__result-body")).toHaveLength(1);
 });
 
 it("다시 고를 수 있다", () => {

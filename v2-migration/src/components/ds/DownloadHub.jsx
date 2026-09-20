@@ -120,6 +120,9 @@ export default function DownloadHub({
           onCloseAutoFocus={event => { if (preview) event.preventDefault(); }}
           style={{
             minWidth: "220px",
+            maxWidth: "calc(100vw - 24px)",
+            maxHeight: "var(--radix-dropdown-menu-content-available-height)",
+            overflowY: "auto",
             zIndex: 50,
             background: "var(--bg-1)",
             border: "1px solid var(--border)",

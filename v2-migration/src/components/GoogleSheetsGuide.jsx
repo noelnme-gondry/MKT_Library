@@ -3,26 +3,26 @@ export default function GoogleSheetsGuide({ locale = "ko" }) {
   return <section className="google-sheets-guide">
     <h3>{en ? "Use Sheets for repeat imports" : "Google Sheets로 반복 입력 준비하기"}</h3>
     <p>{en ? "Keep one input tab with stable columns. Choose a method that matches its sharing permissions." : "같은 컬럼을 쓰는 입력용 탭을 두면 다음 기간도 이어서 준비하기 편합니다. 시트의 공개 범위에 맞는 방법을 선택하세요."}</p>
-    <details>
-      <summary>{en ? "Public sheet → import its tab link" : "공개 Google Sheets → 탭 링크로 불러오기"}</summary>
+    <section data-information-section="">
+      <header data-information-heading="">{en ? "Public sheet → import its tab link" : "공개 Google Sheets → 탭 링크로 불러오기"}</header>
       <ol>
         <li>{en ? "Use a sheet already approved for public viewing. Signing into this product does not grant access to a private Google Sheet." : "공개가 허용된 시트에만 사용하세요. 이 사이트에 로그인해도 비공개 Google Sheets 접근 권한이 생기지는 않습니다."}</li>
         <li>{en ? "Open the input tab and copy its full address, including gid when present. Use the normal spreadsheet URL, not a Publish to web link." : "가져올 탭을 연 뒤 주소창의 전체 링크를 복사하세요. gid가 있으면 포함하고, ‘웹에 게시’ 링크가 아닌 일반 스프레드시트 주소를 사용하세요."}</li>
         <li>{en ? "Choose Import from a public Google Sheet in the data input area, paste the link and select Import. Check the column mapping, dates and currency, then run the analysis." : "데이터 입력 영역에서 ‘공개 Google Sheets에서 불러오기’를 선택하고 링크를 붙여 넣어 불러오세요. 컬럼 연결·기간·통화를 확인한 뒤 ‘분석하기’를 누르세요."}</li>
         <li>{en ? "When the source changes, select Fetch latest data and check the imported period before analyzing again. The browser reads Google directly when you request it; this is not background synchronization." : "원본을 갱신한 뒤에는 ‘최신 데이터 불러오기’를 누르고 가져온 기간을 확인해 다시 분석하세요. 요청할 때 브라우저가 Google에서 직접 읽으며, 백그라운드 자동 동기화는 아닙니다."}</li>
       </ol>
-    </details>
-    <details>
-      <summary>{en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드"}</summary>
+    </section>
+    <section data-information-section="">
+      <header data-information-heading="">{en ? "Private Google Sheets → CSV upload" : "비공개 Google Sheets → CSV 업로드"}</header>
       <ol>
         <li>{en ? "Keep the sheet private. In Google Sheets, open the tab containing the rows you want to analyze." : "공개 범위를 바꾸지 마세요. Google Sheets에서 분석할 행이 들어 있는 탭을 여세요."}</li>
         <li>{en ? "Choose File → Download → Comma-separated values (.csv, current sheet). CSV downloads contain the selected tab, not every tab in the workbook." : "파일 → 다운로드 → 쉼표로 구분된 값(.csv, 현재 시트)을 선택하세요. CSV에는 선택한 탭이 담기며 모든 탭이 합쳐지지 않습니다."}</li>
         <li>{en ? "Upload the file here. Confirm the mapped columns and full comparison period before analyzing. On the next visit, download the updated tab and use the same project." : "이 사이트에 파일을 올리고 컬럼 연결과 비교할 전체 기간을 확인해 분석하세요. 다음에는 갱신된 탭을 다시 내려받아 같은 프로젝트에서 사용하세요."}</li>
       </ol>
       <a href="https://support.google.com/docs/answer/9330963" target="_blank" rel="noreferrer">{en ? "Google Sheets export help" : "Google Sheets 내보내기 도움말"}</a>
-    </details>
-    <details>
-      <summary>{en ? "Already using BigQuery? Schedule data preparation" : "BigQuery를 쓰고 있다면 데이터 준비 자동화"}</summary>
+    </section>
+    <section data-information-section="">
+      <header data-information-heading="">{en ? "Already using BigQuery? Schedule data preparation" : "BigQuery를 쓰고 있다면 데이터 준비 자동화"}</header>
       <p className="google-sheets-guide__flow">{en ? "BigQuery summary table → Connected Sheets extract → CSV upload or public-sheet refresh" : "BigQuery 집계 테이블 → Connected Sheets 추출 탭 → CSV 업로드 또는 공개 시트 재조회"}</p>
       <ol>
         <li>{en ? "Arrange ingestion into your own BigQuery project first. Scheduled queries transform available data; they do not connect every ad account for you. Google Cloud billing and the required dataset/query permissions must be configured." : "먼저 사용자 측 BigQuery에 원천 데이터가 들어오도록 수집을 구성하세요. 예약 쿼리는 들어온 데이터를 가공하는 기능이며, 광고 계정을 자동으로 연결해 주지는 않습니다. Google Cloud 결제 설정과 데이터 조회·쿼리 실행 권한이 필요합니다."}</li>
@@ -37,6 +37,6 @@ export default function GoogleSheetsGuide({ locale = "ko" }) {
         <a href="https://support.google.com/docs/answer/9702507" target="_blank" rel="noreferrer">{en ? "Connect Sheets" : "Sheets 연결"}</a>
         <a href="https://support.google.com/docs/answer/9703214" target="_blank" rel="noreferrer">{en ? "Extract and refresh" : "추출·새로고침"}</a>
       </nav>
-    </details>
+    </section>
   </section>;
 }

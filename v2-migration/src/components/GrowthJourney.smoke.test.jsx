@@ -79,8 +79,8 @@ describe("home → result → weekly review", () => {
     // 다음 기간 파일을 지금 묻는 이유를 설명할 수 없다. 새 기간은 다시 들어와 올린다.
     expect(weekly.container.querySelector("#wr-upload")).toBeNull();
     const conditions = weekly.container.querySelector(".wr-decision-conditions");
-    expect(conditions.open).toBe(false);
-    fireEvent.click(conditions.querySelector("summary"));
+    expect(conditions.tagName).toBe("SECTION");
+    fireEvent.click(conditions.querySelector("[data-information-heading], .decision-review-launch"));
     expect(within(conditions).getByRole("textbox", { name: en ? "Guardrail value" : "가드레일 값" })).toBeTruthy();
   });
 

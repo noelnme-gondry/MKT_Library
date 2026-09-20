@@ -12,7 +12,7 @@ describe("MMM result workflow UI contract", () => {
   it("recreates Bayesian charts when the selected result model changes", () => {
     expect(marketingResponse).toMatch(/\[stage, mmmResultModel, mmm,/);
     expect(marketingResponse).toContain('mmmResultModel === "bayesian"');
-    expect(marketingResponse).toContain("Chart.getChart?.(canvas)?.resize()");
+    expect(marketingResponse).not.toMatch(/<details[\s>]/);
   });
 
   it("uses a defined accessible model switch instead of an unstyled stat-card button", () => {

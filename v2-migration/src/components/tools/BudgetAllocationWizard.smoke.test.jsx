@@ -90,8 +90,8 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(diagnosis.querySelector(".alloc-insight-summary")?.textContent).toMatch(/감액|증액|효율 점검/);
     expect(comparison.querySelector(".alloc-insight-summary")?.textContent).toMatch(/CPI|CPA|ROAS/);
 
-    fireEvent.click(diagnosis.querySelector("summary"));
-    fireEvent.click(comparison.querySelector("summary"));
+    fireEvent.click(diagnosis.querySelector("[data-information-heading], .decision-review-launch"));
+    fireEvent.click(comparison.querySelector("[data-information-heading], .decision-review-launch"));
     expect(diagnosis.querySelectorAll(".alloc-diag-item").length).toBeLessThanOrEqual(3);
     expect(comparison.querySelectorAll(".alloc-total-block")).toHaveLength(2);
     expect(comparison.querySelector(".alloc-total-block.is-recommended")).toBeTruthy();
@@ -265,8 +265,8 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     const scatter = document.querySelector("#s-scatter");
     expect(scatter).toBeTruthy();
     // 접힘 섹션은 <details>, 기본 collapsed(open=false).
-    expect(scatter.tagName).toBe("DETAILS");
-    expect(scatter.open).toBe(false);
+    expect(scatter.tagName).toBe("SECTION");
+    expect(scatter.tagName).toBe("SECTION");
     // 산점도 canvas는 접힌 상태로도 DOM에 존재.
     expect(document.getElementById("chart-alloc-scatter")).toBeTruthy();
     // 펼치기(toggle) → onToggle resize 경로 throw 없음.

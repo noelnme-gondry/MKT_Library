@@ -54,7 +54,7 @@ for (const locale of ["ko", "en"]) {
       const other = await otherContext.newPage();
       await enableReviewLogin(other);
       await other.goto(new URL(`${prefix}/subscription`, page.url()).href);
-      await other.locator(".checkout-existing > summary").click();
+      await other.locator(".checkout-recovery-link").click();
       await other.getByRole("link", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true }).click();
       await expect(other).toHaveURL(/weekly-review#project-management$/);
       await expect(other.getByRole("button", { name: en ? "Import project backup" : "프로젝트 백업 가져오기", exact: true })).toBeEnabled();

@@ -11,17 +11,17 @@ export default function EditorialTrust({ locale = "ko", reviewer, reviewedAt, so
   const isGlossary = contentType === "glossary";
   if (!reviewer && !reviewedAt && sources.length === 0) return null;
   if (compact) return (
-    <details className="editorial-trust editorial-trust--compact">
-      <summary>
+    <section data-information-section="" className="editorial-trust editorial-trust--compact">
+      <header data-information-heading="">
         <span>{isEnglish ? "Sources and review" : "출처·검토"}</span>
         {sources.length > 0 && <span className="editorial-trust__count">{isEnglish ? `${sources.length} references` : `근거 자료 ${sources.length}개`}</span>}
-      </summary>
+      </header>
       <div className="editorial-trust__body">
         {reviewedAt && <p><time dateTime={reviewedAt}>{isEnglish ? "Reviewed " : "검토일 "}{formatDate(reviewedAt, locale)}</time></p>}
         {reviewer && <p>{isEnglish ? "Reviewed by " : "검토 "}{reviewer}</p>}
         {sources.length > 0 && <ul>{sources.map(source => <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul>}
       </div>
-    </details>
+    </section>
   );
   return (
     <section className="editorial-trust" aria-label={isEnglish ? "Editorial review and sources" : "검토 기준과 출처"}>

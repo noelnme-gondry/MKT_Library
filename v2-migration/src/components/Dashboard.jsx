@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
+import ModalDialog from "@/components/ds/ModalDialog";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
@@ -82,9 +83,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   useEffect(() => {
     if (isContent && !CONTENT_TABS.includes(dashboardTab)) setDashboardTab("viz");
   }, [isContent, dashboardTab, setDashboardTab]);
-  // 분석 완료 후 접힌 "데이터 매핑 설정" details — native <details>는 열림/닫힘 상태를
-  // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
-  const [mappingOpen, setMappingOpen] = useState(false);
+  const [mappingEditorOpen, setMappingEditorOpen] = useState(false);
   const [workerState, setWorkerState] = useState({ key: "", result: null });
 
   const hasData = csvData && csvData.raw.length > 0;
@@ -189,10 +188,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     locale,
   }), [verdict, csvData?.mapping, domain, locale]);
   const isDemo = isDemoData(csvData);
-  const openMapping = () => {
-    setMappingOpen(true);
-    requestAnimationFrame(() => document.getElementById("dashboard-data-setup")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
+  const openMapping = () => setMappingEditorOpen(true);
   const selectRecommendedView = (item) => {
     setDashboardTab(item.tab);
     trackProductEvent("dashboard_recommendation_open", { tool_id: toolId, tab_name: item.tab, rank: item.rank, confidence: item.confidence });
@@ -256,12 +252,13 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
           </p>
         )}
 
-        {/* Csv Uploader — 상태별 3분기:
-            ① 데이터 없음: 업로드 안내 + 드롭존(펼침).
-            ② 데이터 有 · 미분석(#4): 매핑을 바로 볼 수 있게 펼친 상태로 노출 →
-               사용자가 "데이터 분석하기"를 눌러 확정(CsvUploader가 게이트 세팅).
-            ③ 데이터 有 · 분석 완료: 매핑을 접어(details) 결과에 집중. */}
-        {!hasData ? (
+        {/* 분석 전에는 매핑을 확인하고, 분석 후에는 별도 편집창에서 수정한다. */}
+        {mappingEditorOpen ? (
+          <ModalDialog open onClose={() => setMappingEditorOpen(false)} ariaLabel={tr("데이터·매핑 편집", "Edit data and mappings")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
+            <header><h2>{tr("데이터·매핑 편집", "Edit data and mappings")}</h2><button className="btn" onClick={() => setMappingEditorOpen(false)}>{tr("닫기", "Close")}</button></header>
+            <CsvUploader toolId={toolId} locale={locale} onAnalyzed={() => setMappingEditorOpen(false)} />
+          </ModalDialog>
+        ) : !hasData ? (
           <div className="block dashboard-data-setup dashboard-data-setup--empty" id="dashboard-data-setup">
             <h2 className="section-title">{tr("데이터 업로드", "Upload Data")}</h2>
             <p className="card-desc" style={{ marginBottom: "1rem" }}>{tr(C.uploadDesc, enC.uploadDesc)}</p>
@@ -275,24 +272,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : (
-          <details
-            className="dashboard-data-disclosure"
-            id="dashboard-data-setup"
-            open={mappingOpen}
-            onToggle={(e) => setMappingOpen(e.target.open)}
-          >
-            <summary className="dashboard-data-disclosure__summary">
-              <span className="dashboard-data-disclosure__title"><span aria-hidden="true">⚙</span> {tr("데이터 매핑 설정", "Data Mapping Settings")}</span>
-              <small>{tr("필요할 때만 열어 수정", "Open only when you need to edit")}</small>
-              <b aria-hidden="true">{mappingOpen ? "−" : "＋"}</b>
-            </summary>
-            <div className="dashboard-data-disclosure__body">
-              <div className="dashboard-data-setup__privacy">
-                {tr("🔒 CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장이 켜져 있으면 마지막 사용 후 90일까지 보관됩니다. 저장소에서 끄거나 삭제할 수 있습니다.", "🔒 CSV data is processed in your browser and is not sent to a server. When device storage is enabled, files are kept for up to 90 days after last use. Turn storage off or delete files in Storage.")} <a href={locale === "en" ? "/en/storage" : "/storage"}>{tr("기기 저장 관리", "Manage device storage")}</a>
-              </div>
-              <CsvUploader toolId={toolId} locale={locale} />
-            </div>
-          </details>
+          <div className="dashboard-data-toolbar" id="dashboard-data-setup">
+            <button type="button" className="btn ghost" onClick={openMapping}>{tr("데이터·매핑 편집", "Edit data and mappings")}</button>
+          </div>
         )}
 
         {/* #4 분석 대기: 데이터는 있으나 아직 "분석하기" 미확정 → 탭/결과 대신
@@ -419,11 +401,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
                 />
-                <details className="dashboard-next-actions">
-                  <summary>
+                <section data-information-section="" className="dashboard-next-actions">
+                  <header data-information-heading="">
                     <span><small>NEXT STEP</small><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
                     <b aria-hidden="true">⌄</b>
-                  </summary>
+                  </header>
                   <div className="dashboard-next-actions__body">
                     <div className="dashboard-next-actions__utility">
                       <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
@@ -435,7 +417,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                       onSelect={selectRecommendedView}
                     />
                   </div>
-                </details>
+                </section>
               </section>
             )}
 
@@ -459,18 +441,18 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               )}
             </div>
             {verdict && !verdict.insufficient && (
-              <details className="dashboard-support-tools" id="dashboard-support-tools">
-                <summary>
+              <section data-information-section="" className="dashboard-support-tools" id="dashboard-support-tools">
+                <header data-information-heading="">
                   <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
                   <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>
                   <b aria-hidden="true">＋</b>
-                </summary>
+                </header>
                 <div className="dashboard-support-tools__body">
                   <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
                   <AnalysisPathway csvData={csvData} locale={locale} />
                   <MonEventMarkerUI locale={locale} />
                 </div>
-              </details>
+              </section>
             )}
           </div>
         )}

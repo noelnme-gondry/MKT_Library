@@ -27,10 +27,10 @@ export default function DashboardRecommendedViews({ recommendations = [], additi
         ))}
       </div>
       {additional.length > 0 && (
-        <details className="dashboard-recommendations__more">
-          <summary><ListTree size={14} aria-hidden="true" /> {tr("나머지 탭도 직접 보기", "See the other views")}</summary>
+        <section data-information-section="" className="dashboard-recommendations__more">
+          <header data-information-heading=""><ListTree size={14} aria-hidden="true" /> {tr("나머지 탭도 직접 보기", "See the other views")}</header>
           <div>{additional.map((item) => <button key={item.tab} type="button" onClick={() => onSelect?.(item)}>{item.title}</button>)}</div>
-        </details>
+        </section>
       )}
     </section>
   );

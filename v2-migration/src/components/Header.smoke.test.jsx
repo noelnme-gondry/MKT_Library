@@ -82,6 +82,7 @@ describe("Header render smoke", () => {
   it("with-data mounts", () => {
     seedWithData();
     expect(() => render(<Header />)).not.toThrow();
+    fireEvent.click(screen.getByRole("button", { name: "기타 설정" }));
     expect(document.querySelector("#theme-toggle")).toBeTruthy();
     expect(screen.getByLabelText("현재 데이터: x.csv").textContent).toContain("x.csv");
     expect(document.querySelector(".topbar-context")).toBeTruthy();
@@ -112,39 +113,31 @@ describe("Header render smoke", () => {
     render(<Header locale="en" />);
     expect(screen.getByRole("link", { name: `${workspaceNavItem("review", "en").name}, 1 decision due now` }).getAttribute("href")).toBe("/en/weekly-review");
   });
-  it("keeps lower-frequency controls in one localized utility menu", () => {
+  it("keeps lower-frequency controls in a keyboard-operable localized popover", () => {
     const { unmount } = render(<Header />);
-    const koMenu = document.querySelector(".header-utility-menu");
-    expect(koMenu).toBeTruthy();
-    expect(koMenu?.querySelector("summary")?.getAttribute("aria-label")).toBe("기타 설정");
-    expect(koMenu?.querySelector("#theme-toggle")?.getAttribute("aria-label")).toBe("테마 전환");
+    fireEvent.click(screen.getByRole("button", { name: "기타 설정" }));
+    expect(screen.getByRole("button", { name: "테마 전환" })).toBeTruthy();
     unmount();
     render(<Header locale="en" />);
-    expect(document.querySelector(".header-utility-menu > summary")?.getAttribute("aria-label")).toBe("More settings");
+    expect(screen.getByRole("button", { name: "More settings" }).getAttribute("aria-haspopup")).toBe("dialog");
     expect(screen.getByRole("link", { name: workspaceNavItem("review", "en").name })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "All tools" })).toBeTruthy();
   });
-  it("keeps analyst mode in the utility menu and exposes its active state", () => {
+  it("changes analyst mode through the utility popover", () => {
     render(<Header />);
-    expect(document.querySelector(".topbar-actions__primary .header-analyst-mode")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "기타 설정" }));
     const toggle = document.querySelector(".header-analyst-mode-menu");
-    expect(toggle).toBeTruthy();
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(toggle);
     expect(useAppStore.getState().analystMode).toBe(true);
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    expect(toggle.textContent).toContain("✓");
+    fireEvent.click(screen.getByRole("button", { name: "기타 설정" }));
+    expect(document.querySelector(".header-analyst-mode-menu").getAttribute("aria-pressed")).toBe("true");
   });
-  it("closes the utility menu on Escape and outside pointer input", () => {
+  it("closes utility settings on Escape", () => {
     render(<Header />);
-    const menu = document.querySelector(".header-utility-menu");
-    const trigger = menu?.querySelector(":scope > summary");
-    menu?.setAttribute("open", "");
+    const trigger = screen.getByRole("button", { name: "기타 설정" });
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(menu?.hasAttribute("open")).toBe(false);
-    expect(document.activeElement).toBe(trigger);
-    menu?.setAttribute("open", "");
-    fireEvent.pointerDown(document.body);
-    expect(menu?.hasAttribute("open")).toBe(false);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
 });

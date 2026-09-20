@@ -30,9 +30,6 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
     await page.getByRole("link", { name: en ? "Record the next decision" : "다음 결정 기록", exact: true }).click();
     await expect(page.getByLabel(en ? "Review date" : "검토일", { exact: true })).toBeVisible();
     const criteria = page.locator(".wr-decision-conditions");
-    await expect(criteria).not.toHaveAttribute("open");
-    await criteria.locator("summary").focus();
-    await page.keyboard.press("Enter");
     await expect(page.getByLabel(en ? "Guardrail value" : "가드레일 값")).toBeVisible();
     // 결과 화면의 상시 접기는 없앴지만 `#wr-upload` 딥링크는 살아 있어야 한다 —
     // 구독 CTA와 보관함 안내가 실제로 그 주소를 쓴다.

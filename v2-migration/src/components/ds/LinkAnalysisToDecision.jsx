@@ -21,7 +21,7 @@ export default function LinkAnalysisToDecision({ evidence, toolId, metric, local
   const confirmationKey = JSON.stringify([source.evidence, chosen?.record]);
   const confirmed = confirmedBasis === confirmationKey;
   if (!candidates.length || !source.evidence) return null;
-  return <details className="decision-evidence"><summary>{en ? "Link this result to an existing decision" : "이 결과를 기존 결정에 연결"}</summary>
+  return <section data-information-section="" className="decision-evidence"><header data-information-heading="">{en ? "Link this result to an existing decision" : "이 결과를 기존 결정에 연결"}</header>
     <p>{en ? "Attach this analysis snapshot without creating another decision. Source data stays on this device." : "새 결정을 추가하지 않고 이번 분석의 근거를 붙입니다. 원본 데이터는 기기에만 남습니다."}</p>
     <label>{en ? "Decision to review" : "결과를 검토할 결정"}<select value={selected} onChange={event => { setSelected(event.target.value); setConfirmedBasis(""); setSaved(""); }}><option value="">{en ? "Choose a decision" : "결정을 선택하세요"}</option>{candidates.map(({ record, match }) => <option key={record.id} value={record.id}>{match.recommended ? (en ? "Matching metric · " : "지표 일치 · ") : ""}{record.action} · {record.reviewDate}</option>)}</select></label>
     {chosen && <><EvidenceCompatibility match={chosen.match} locale={locale} /><label><input type="checkbox" checked={confirmed} onChange={event => setConfirmedBasis(event.target.checked ? confirmationKey : "")} />{en ? "I checked the metric, treatment direction, population and period, including differences or missing details." : "지표·처치 방향·집단·기간과 다르거나 미확인인 조건을 확인했습니다."}</label><button className="btn" disabled={!confirmed} onClick={() => setPending({ id: selected, evidence: serializeReviewEvidence({ ...evidence, capturedAt: new Date().toISOString() }) })}>{en ? "Save linked result" : "연결한 결과 저장"}</button></>}
@@ -32,5 +32,5 @@ export default function LinkAnalysisToDecision({ evidence, toolId, metric, local
       await useAppStore.getState().commitDecisionRecord(pending.id, { effectEvidence: pending.evidence, effectSourceId: "" });
       setSaved(pending.id);
     }} />}
-  </details>;
+  </section>;
 }

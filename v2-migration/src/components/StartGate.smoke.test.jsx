@@ -51,21 +51,21 @@ describe("StartGate render smoke", () => {
     expect(document.querySelector(".dochi-arrival")).toBeNull();
     expect(screen.getByText("컬럼을 확인해 주세요!")).toBeTruthy();
     const mapping = document.querySelector(".csv-mapping-block");
-    expect(mapping.open).toBe(false);
+    expect(mapping.tagName).toBe("SECTION");
     expect(mapping.classList.contains("is-dochi-highlighted")).toBe(true);
     const coach = document.querySelector(".dochi-mapping-coach");
     expect(coach.querySelector('img[src*="dochi-point-up.png"]')).toBeTruthy();
     expect(mapping.compareDocumentPosition(coach) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "확인" }));
-    expect(mapping.open).toBe(false);
+    expect(mapping.tagName).toBe("SECTION");
     expect(document.querySelector(".dochi-mapping-coach").classList.contains("is-leaving")).toBe(true);
     act(() => vi.advanceTimersByTime(360));
     expect(document.querySelector(".dochi-mapping-coach")).toBeNull();
     expect(mapping.classList.contains("is-dochi-highlighted")).toBe(false);
-    fireEvent.click(mapping.querySelector("summary"));
-    expect(mapping.open).toBe(true);
-    fireEvent.click(mapping.querySelector("summary"));
-    expect(mapping.open).toBe(false);
+    fireEvent.click(mapping.querySelector("[data-information-heading], .decision-review-launch"));
+    expect(mapping.tagName).toBe("SECTION");
+    fireEvent.click(mapping.querySelector("[data-information-heading], .decision-review-launch"));
+    expect(mapping.tagName).toBe("SECTION");
   });
 
   it("mounts with upload first, direct no-file actions, and tool browser", () => {
@@ -140,7 +140,7 @@ describe("StartGate render smoke", () => {
     expect(workspace).toBeTruthy();
     expect(screen.getByText(/도치가 찾은 분석 지도/)).toBeTruthy();
     expect(mapping).toBeTruthy();
-    expect(mapping.open).toBe(false);
+    expect(mapping.tagName).toBe("SECTION");
     expect(mapping.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

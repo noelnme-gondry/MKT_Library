@@ -11,14 +11,14 @@ describe("decision evidence storage", () => {
     expect(safe.stats[0].detail).toContain("95% CI");
     expect(JSON.stringify(safe)).not.toMatch(/private|secret|fileName/);
   });
-  it("round-trips Korean evidence and the parent link through decision CSV; excludes both from account memos", () => {
+  it("round-trips Korean evidence and the parent link through decision CSV; preserves both in selected account memos", () => {
     const record = sanitizeDecisionReviewRecord({ id: "child", toolId: "5-29", action: "검토", evidence: serializeReviewEvidence(evidence), parentDecisionId: "parent" });
     const restored = normalizeDecisionReviewRows(Papa.parse(serializeDecisionReviewCsv([record]), { header: true }).data)[0];
     expect(restored.evidence).toBe(record.evidence);
     expect(restored.parentDecisionId).toBe("parent");
     expect(readReviewEvidence(restored.evidence).stats[0].value).toBe("−4.2%");
-    expect(archiveMemo(restored)).not.toHaveProperty("evidence");
-    expect(archiveMemo(restored)).not.toHaveProperty("parentDecisionId");
+    expect(archiveMemo(restored).evidence).toBe(restored.evidence);
+    expect(archiveMemo(restored).parentDecisionId).toBe(restored.parentDecisionId);
   });
   it("leaves old records without invented evidence and rejects malformed input", () => {
     expect(sanitizeDecisionReviewRecord({ toolId: "5-3", action: "Old" }).evidence).toBe("");

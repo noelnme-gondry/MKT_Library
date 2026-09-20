@@ -1,6 +1,7 @@
 "use client";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import InfoPopover from "@/components/ds/InfoPopover";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import Link from "next/link";
@@ -45,7 +46,6 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
   const setAnalysisHandoff = useAppStore((state) => state.setAnalysisHandoff);
   const [anomalyCfgOpen, setAnomalyCfgOpen] = useState(false);
-  const [expandedDate, setExpandedDate] = useState(null);
 
   const [metric, setMetric] = useState("cost");
   const [win, setWin] = useState(14);
@@ -347,28 +347,12 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
                 <tbody>
                   {anomalies.slice(0, 40).map((a) => {
                     const attribution = attributionCache.byDate?.[a.date];
-                    const isOpen = expandedDate === a.date;
                     return (
                       <React.Fragment key={a.date}>
                         <tr>
                           <td className="tnum">
                             {a.date}
-                            <button
-                              className="ab-pill"
-                              type="button"
-                              style={{ marginLeft: "8px" }}
-                              onClick={() => setExpandedDate(isOpen ? null : a.date)}
-                            >
-                              {isOpen ? tr("접기", "Close") : tr("원인 보기", "View drivers")}
-                            </button>
-                          </td>
-                          {orderedAnomalyCols.map((col) => (
-                            <td key={col.k} className={`tnum ${col.cellClass ? col.cellClass(a) : ""}`.trim()}>{col.render(a)}</td>
-                          ))}
-                        </tr>
-                        {isOpen && (
-                          <tr>
-                            <td colSpan={orderedAnomalyCols.length + 1}>
+                            <InfoPopover label={`${a.date} · ${tr("변동 기여 항목", "Change contributors")}`}>
                               {attribution && !attribution.unavailable ? (
                                 <div className="callout info" style={{ margin: "8px 0" }}>
                                   <div className="body">
@@ -404,9 +388,13 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
                                   </div>
                                 </div>
                               ) : <p className="muted">{attributionReason()}</p>}
-                            </td>
-                          </tr>
-                        )}
+                            </InfoPopover>
+                          </td>
+                          {orderedAnomalyCols.map((col) => (
+                            <td key={col.k} className={`tnum ${col.cellClass ? col.cellClass(a) : ""}`.trim()}>{col.render(a)}</td>
+                          ))}
+                        </tr>
+
                       </React.Fragment>
                     );
                   })}

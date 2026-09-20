@@ -12,9 +12,9 @@ for (const locale of ["ko", "en"]) {
       await page.addInitScript(() => { window.__prints = 0; window.print = () => { window.__prints += 1; }; });
       const downloads = []; page.on("download", download => downloads.push(download));
       await page.goto(`${prefix}/dashboard`);
-      await page.locator(".my-account-menu > summary").click();
-      await expect(page.locator(".my-account-menu__panel")).toContainText("test@example.com");
-      await page.keyboard.press("Escape");
+      await page.locator(".my-account-menu__trigger").click();
+      await expect(page.locator(".account-page")).toContainText("test@example.com");
+      await page.goto(`${prefix}/dashboard`);
       await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
       await page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" }).getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
@@ -27,7 +27,7 @@ for (const locale of ["ko", "en"]) {
         await expect(gate).toBeVisible();
         await expect(gate).toContainText(en ? "14-day trial do not unlock downloads" : "14일 체험만으로는 다운로드할 수 없습니다");
         await page.keyboard.press("Escape");
-        await page.locator(".header-utility-menu > summary").click();
+        await page.locator(".header-utility-menu__trigger").click();
         await page.locator(".header-print").click();
         await expect(gate).toBeVisible();
         expect(await page.evaluate(() => window.__prints)).toBe(0);
@@ -152,8 +152,9 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/subscription#purchase$`));
     await expect(page.locator(".checkout-widgets")).toBeHidden();
     await expect(page.locator(".checkout-access-card").getByRole("button")).toBeVisible();
-    await page.locator(".checkout-existing > summary").click();
+    await page.locator(".checkout-recovery-link").click();
     await expect(page.getByLabel(en ? "Private recovery code" : "이용권 복원 코드", { exact: true })).toBeVisible();
+    await page.getByRole("dialog", { name: en ? "Restore your pass" : "이용권 복원" }).getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: en ? "Save pass recovery code" : "이용권 복원 코드 보관", exact: true }).click();
     expect((await download).suggestedFilename()).toBe("growthopt-pass-recovery.txt");

@@ -427,25 +427,25 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             `지금 더 늘릴 곳과 멈출 곳을 한계 ${costMetricLabel}/ROAS로 나눕니다.`,
             `Separate where to scale from where to stop using marginal ${costMetricLabel}/ROAS.`,
           )}</p>
-          <details style={{ marginTop: "6px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-            <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
+          <section data-information-section="" style={{ marginTop: "6px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
+            <header data-information-heading="">{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</header>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
               {tr(
                 `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁘다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
                 `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means marginal efficiency on the next budget increase is worse than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`
               )}
             </div>
-          </details>
+          </section>
         </>
       }
       toc={analyzed && okRows.length ? buildSatToc(tr) : undefined}
       stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
     >
       {/* 데이터 매핑은 결과 범위 제어와 다른 작업이다. sticky 헤드 밖에서 필요할 때만 연다. */}
-      <details className="block analysis-data-mapping" open={!analyzed}>
-        <summary>
+      <section data-information-section="" className="block analysis-data-mapping" >
+        <header data-information-heading="">
           {tr("데이터·매핑", "Data & mapping")} {analyzed ? tr("— 변경하기", "— change") : tr("— 확인 후 분석", "— check before analysis")}
-        </summary>
+        </header>
         <div className="analysis-data-mapping__body">
           <CsvUploader toolId="5-22" locale={locale} />
           <div className="analysis-data-mapping__footer">
@@ -455,7 +455,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <span>{tr("효율 CSV는 대시보드·예산 배분과 공유합니다.", "This efficiency CSV is shared with Dashboard and Budget Allocation.")}</span>
           </div>
         </div>
-      </details>
+      </section>
       {!analyzed ? (
         <section className="block" id="s-sat-gate">
           <div className="callout" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
@@ -739,10 +739,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         )}
 
         {badRows.length > 0 && (
-          <details style={{ marginTop: "10px" }}>
-            <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+          <section data-information-section="" style={{ marginTop: "10px" }}>
+            <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
               {tr(`⚠ 분석 제외 ${badRows.length}개 — 보기`, `⚠ ${badRows.length} excluded from analysis — view`)}
-            </summary>
+            </header>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.7 }}>
               {badRows.map((r, i) => {
                 const why =
@@ -758,7 +758,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                 return <div key={i}>• <strong>{r.name}</strong> — {why}</div>;
               })}
             </div>
-          </details>
+          </section>
         )}
       </section>
 

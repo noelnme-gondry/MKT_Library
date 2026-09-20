@@ -1,4 +1,5 @@
 "use client";
+import ModalDialog from "../ds/ModalDialog";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { decisionClosureLabel } from "@/lib/decisionClosure";
 import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
@@ -222,10 +223,10 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>
       <h2 id={`${anchorId}-title`}>{t.title}</h2>
-      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => { if (confirmReviewExit(activeProjectId, locale)) { setToolFilter(""); setOpenId(""); window.history.replaceState(null, "", "#wr-history"); setEditorOpen(value => !value); } }}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
+      {!isSample && <button type="button" className="btn" aria-haspopup="dialog" onClick={() => { if (confirmReviewExit(activeProjectId, locale)) { setToolFilter(""); setOpenId(""); window.history.replaceState(null, "", "#wr-history"); setEditorOpen(true); } }}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
       {!editorOpen && <label className="wr-field">{en ? "Review timing" : "검토 시점"}<select value={statusFilter} onChange={event => { if (confirmReviewExit(activeProjectId, locale)) { setStatusFilter(event.target.value); setOpenId(""); window.history.replaceState(null, "", "#wr-history"); } }}><option value="all">{en ? "All decisions" : "전체 결정"}</option><option value="due">{en ? "Review now" : "지금 검토"}</option><option value="upcoming">{en ? "Awaiting results" : "결과 대기"}</option><option value="reviewed">{en ? "Reviewed / closed" : "검토 완료·종료"}</option></select></label>}
       {!isSample && toolFilter && <button className="btn" onClick={() => setToolFilter("")}>{en ? "Show decisions from all tools" : "모든 도구의 결정 보기"}</button>}
-      {!isSample && editorOpen && <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor toolFilter={toolFilter} locale={locale} embedded /></Suspense>}
+      {!isSample && editorOpen && <ModalDialog open onClose={() => { if (confirmReviewExit(activeProjectId, locale)) setEditorOpen(false); }} ariaLabel={en ? "Review device records" : "기기 기록 검토"} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel"><header className="decision-editor-header"><h2>{en ? "Review device records" : "기기 기록 검토"}</h2><button className="btn" onClick={() => { if (confirmReviewExit(activeProjectId, locale)) setEditorOpen(false); }}>{t.close}</button></header><Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor toolFilter={toolFilter} locale={locale} embedded /></Suspense></ModalDialog>}
       {!session?.account && <p>{t.signIn}</p>}
       {session?.account && !isPro && <p>{t.proNote} <Link href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link></p>}
       {!editorOpen && rows.length > 0 && !visibleRows.length && <p role="status">{en ? "No decisions match these filters." : "이 조건에 맞는 결정이 없습니다."}</p>}
@@ -238,7 +239,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
             const open = openId === row.id;
             return (
               <li key={row.id}>
-                <button type="button" className="wr-history-list__row" aria-expanded={open} aria-controls={open ? `decision-${row.id}` : undefined} onClick={() => changeOpen(open ? "" : row.id)}>
+                <button type="button" className="wr-history-list__row" aria-haspopup="dialog" onClick={() => changeOpen(row.id)}>
                   <span className="wr-history-list__date">{row.reviewDate || t.noDate}</span>
                   <span className="wr-history-list__action">{row.action}</span>
                   <span className="wr-history-list__badges">
@@ -247,7 +248,9 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                   </span>
                 </button>
                 {open && (
+                  <ModalDialog open onClose={() => changeOpen("")} ariaLabel={row.action} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
                   <div className="wr-history-list__detail" id={`decision-${row.id}`} tabIndex={-1}>
+                    <header className="decision-editor-header"><h2>{en ? "Review decision" : "결정 검토"}</h2><button type="button" className="btn ghost" onClick={() => changeOpen("")}>{t.close}</button></header>
                     {row.onDevice && !isSample ? <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor key={row.id} locale={locale} embedded compact decisionId={row.id} /></Suspense> : <>
                     {row.conclusion && <p><strong>{t.conclusion}</strong> {row.conclusion}</p>}
                     {row.metric && <p><strong>{t.goal}</strong> {row.metric}{row.baseline ? ` · ${row.baseline}` : ""}</p>}
@@ -265,9 +268,9 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     <div className="wr-history-list__actions">
                       {row.onDevice && !row.onAccount && session?.account && <button type="button" className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
                       {!row.onDevice && <button type="button" className="btn" onClick={() => setPendingCopy(row)}>{t.continueReview}</button>}
-                      <button type="button" className="btn ghost" onClick={() => changeOpen("")}>{t.close}</button>
                     </div>
                   </div>
+                  </ModalDialog>
                 )}
               </li>
             );

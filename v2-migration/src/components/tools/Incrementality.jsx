@@ -180,12 +180,12 @@ export default function Incrementality({ locale = "ko" } = {}) {
           {tr(<>비교군이나 사전 추세를 기준으로 <strong>추정 차이</strong>를 계산합니다. 광고의 인과효과로 해석할 수 있는지는 설계 조건에 달려 있습니다.</>,
             <>Estimate <strong>differences</strong> against a comparison group or prior trend. Whether they represent a causal ad effect depends on the design.</>)}
         </p>
-        <details style={{ marginTop: "9px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
-          <summary style={{ cursor: "pointer" }}>{tr("세 방법의 차이 보기", "Compare the three methods")}</summary>
+        <section data-information-section="" style={{ marginTop: "9px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
+          <header data-information-heading="" style={{ }}>{tr("세 방법의 차이 보기", "Compare the three methods")}</header>
           <p style={{ margin: "7px 0 0", lineHeight: 1.55 }}>
             {tr("통제군은 같은 기간의 노출·미노출을 비교해 가장 강합니다. 신규 켜기와 종료는 전후를 비교하며, 대조군이 있으면 계절·추세를 더 잘 분리합니다.", "Control groups compare exposed and unexposed users concurrently and provide the strongest design. Launch and shutdown compare before/after; a control group helps separate seasonality and trend.")}
           </p>
-        </details>
+        </section>
       </section>
 
       {/* 방법 탭 */}
