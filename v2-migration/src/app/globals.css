@@ -11492,7 +11492,8 @@ body:has(textarea:focus, input:not([type="file"]):focus, [contenteditable="true"
 .tutorial-transcript p { margin: 4px 0 12px; font-size: var(--fs-base); line-height: 1.7; word-break: keep-all; }
 .tutorial-guide-link { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-base); }
 @media (max-width: 768px) {
-  .tutorial-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 8px 12px; font-size: var(--fs-xs); }
+  .tutorial-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 52px; padding: 10px; justify-content: center; font-size: var(--fs-xs); }
+  .tutorial-launcher > span:last-child { display: none; }
   .tutorial-overlay { padding: 10px; }
   .tutorial-panel { max-height: calc(100dvh - 20px); padding: 16px; border-radius: var(--radius-lg); }
   .tutorial-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }

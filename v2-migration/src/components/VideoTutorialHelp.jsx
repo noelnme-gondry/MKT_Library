@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import ModalDialog from "@/components/ds/ModalDialog";
@@ -7,6 +7,10 @@ import { VIDEO_TUTORIALS, TUTORIAL_STEP_SECONDS, tutorialIdsForPath, tutorialMed
 import { trackProductEvent } from "@/lib/analytics";
 
 const OPEN_EVENT = "gop:video-tutorial";
+let pendingOpen = null;
+const subscribeHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 const PAGE_CONTROLS = 'button, a[href], input, select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]';
 
 // A floating help entry must yield to the real task underneath it. Probe only
@@ -26,7 +30,7 @@ function useLauncherClearance(ref, active) {
       if (launcher === document.activeElement) return;
       let overlaps = true;
       // Try nearby clear space before disappearing behind the first-screen CTA.
-      for (const lift of [0, 64, 128, 192]) {
+      for (const lift of [0, 64, 128, 192, 256, 320]) {
         launcher.style.transform = `translateY(-${lift}px)`;
         const rect = launcher.getBoundingClientRect();
         if (rect.top < 80) break;
@@ -65,9 +69,12 @@ function useLauncherClearance(ref, active) {
   }, [ref, active]);
 }
 export function VideoHelpButton({ topic, locale = "ko", className = "tutorial-inline", onOpen, children }) {
-  return <button type="button" className={className} aria-haspopup="dialog" onClick={event => {
+  const ready = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
+  return <button type="button" disabled={!ready} className={className} aria-haspopup="dialog" onClick={event => {
     const trigger = onOpen?.() || event.currentTarget;
-    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { topic, trigger } }));
+    // Streaming hydration can make the uploader interactive before the root host.
+    pendingOpen = { topic, trigger, pathname: window.location.pathname };
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: pendingOpen }));
   }}><span aria-hidden="true">▷</span> {children || (locale === "en" ? "Video guide" : "영상으로 보기")}</button>;
 }
 
@@ -89,19 +96,25 @@ function TutorialLauncher({ pathname, locale }) {
     const open = event => {
       const requested = event.detail?.topic || tutorialIdsForPath(pathname, { projectManagement: !!document.querySelector("#project-management") })[0] || "import";
       if (!VIDEO_TUTORIALS.some(item => item.id === requested)) return;
+      pendingOpen = null;
       triggerRef.current = event.detail?.trigger;
       setFailed(false);
       setChapter(0);
       setTopic(requested);
     };
     window.addEventListener(OPEN_EVENT, open);
+    if (pendingOpen) {
+      const request = pendingOpen;
+      pendingOpen = null;
+      if (request.trigger?.isConnected && request.pathname === window.location.pathname) open({ detail: request });
+    }
     return () => window.removeEventListener(OPEN_EVENT, open);
   }, [pathname]);
   if (!ids.length && !tutorial) return null;
   const close = () => { videoRef.current?.pause(); setTopic(null); };
   const event = name => trackProductEvent(name, { source: "video_tutorial", content_slug: topic, locale });
   return <>
-    <button ref={launcherRef} type="button" className="tutorial-launcher no-print" aria-haspopup="dialog" onClick={event => {
+    <button ref={launcherRef} type="button" className="tutorial-launcher no-print" aria-label={en ? "Tutorial" : "튜토리얼"} aria-haspopup="dialog" onClick={event => {
       triggerRef.current = event.currentTarget;
       const projectManagement = !!document.querySelector("#project-management");
       const contextual = tutorialIdsForPath(pathname, { projectManagement });
