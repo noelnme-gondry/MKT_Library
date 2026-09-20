@@ -70,7 +70,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
         {["decisions", "weekly"].map(next => <button key={next} disabled={!ready} className="btn ghost" aria-pressed={mode === next} onClick={() => { if (next !== mode && confirmReviewExit(activeId, locale)) { setMode(next); window.history.replaceState(null, "", next === "weekly" ? "#weekly-performance" : "#wr-history"); } }}>{next === "decisions" ? (en ? "Decision review" : "결정 검토") : (en ? "Compare weekly performance" : "주간 성과 비교")}</button>)}
         <Link className="btn ghost" onClick={event => { if (!confirmReviewExit(activeId, locale)) event.preventDefault(); }} href={en ? "/en/start" : "/start"}>{en ? "Start a new analysis" : "새 분석 시작"}</Link>
       </nav>
-      {mode === "decisions" ? <><ProjectReviewPortfolio key={activeId} locale={locale} /><DecisionHistoryList key={activeId} locale={locale} /></> : <WeeklyReviewScreen key={activeId} locale={locale} embedded />}
+      {mode === "decisions" ? <><ProjectReviewPortfolio key={`portfolio:${activeId}`} locale={locale} /><DecisionHistoryList key={`history:${activeId}`} locale={locale} /></> : <WeeklyReviewScreen key={activeId} locale={locale} embedded />}
     </div>
     {view === "manage" && <section id="project-management"><ProjectsPage locale={locale} embedded onReview={() => show("review")} /></section>}
   </div>;

@@ -72,6 +72,22 @@ describe("NICEPAY server approval", () => {
     payment.signature = sha(`${tid}5900${payment.ediDate}nice-secret-fixture`);
     return { input, cookie: created.cookie.split(";")[0] };
   }
+  it("keeps virtual-account issuance pending and activates only after verified deposit", async () => {
+    const { input, cookie } = await niceFixture();
+    payment.payMethod = "vbank"; payment.status = "ready"; payment.paidAt = "0";
+    payment.vbank = { vbankName: "Fixture", vbankNumber: "123456", vbankHolder: "Fixture", vbankExpDate: "2026-09-21" };
+    const result = await confirmPayment(request(cookie), input);
+    expect(result.body).toMatchObject({ entitlement: null, status: "waiting_for_deposit", deposit: { number: "123456", amount: 5900 } });
+    expect(db.rows.get(input.orderId).status).toBe("pending");
+    const access = await readPaymentAccess(request(result.cookie.split(";")[0]));
+    expect(access.body).toMatchObject({ status: "waiting_for_deposit", deposit: { number: "123456" } });
+    payment.status = "paid"; payment.paidAt = new Date().toISOString();
+    await reconcilePaymentWebhook({ orderId: input.orderId }, "nicepay");
+    expect(db.rows.get(input.orderId).status).toBe("paid");
+    payment.status = "cancelled";
+    await reconcilePaymentWebhook({ orderId: input.orderId }, "nicepay");
+    expect(db.rows.get(input.orderId).status).toBe("revoked");
+  });
   it("fails closed for unknown provider/model, production test and unapproved live rollout", () => {
     configureNicepay();
     expect(paymentConfiguration()).toMatchObject({ provider: "nicepay", enabled: true, mode: "test" });
@@ -447,4 +463,14 @@ it("does not downgrade a committed deposit when an older waiting lookup arrives 
   expect(db.rows.get(input.orderId).status).toBe("paid");
   expect(restored.body.entitlement.plan).toBe("paid");
   expect(restored.body.status).toBeUndefined();
+});
+
+it("returns the authenticated email for both fresh and reused orders", async () => {
+  db.account = { id: "verified-owner", email: "owner@example.com" };
+  const created = await createPaymentOrder(request());
+  expect(created.body.buyerEmail).toBe("owner@example.com");
+  const reused = await createPaymentOrder(request(created.cookie.split(";")[0]));
+  expect(reused.body.orderId).toBe(created.body.orderId);
+  expect(reused.body.buyerEmail).toBe("owner@example.com");
+  expect(reused.body).not.toHaveProperty("buyerName");
 });

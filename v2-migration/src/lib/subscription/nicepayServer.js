@@ -40,9 +40,17 @@ export function normalizeNicepayPayment(data, order) {
   if (data.orderId !== order.id || data.tid !== order.payment_key || data.amount !== order.amount || data.currency !== "KRW"
     || !matches(data.signature, `${data.tid}${data.amount}${data.ediDate}${process.env.NICEPAY_SECRET_KEY}`)) throw new Error("PAYMENT_MISMATCH");
   const statuses = { paid: "DONE", ready: "READY", failed: "ABORTED", cancelled: "CANCELED", partialCancelled: "PARTIAL_CANCELED", expired: "EXPIRED" };
-  if (!statuses[data.status] || (data.status === "paid" && (data.balanceAmt !== order.amount || data.payMethod !== "card"))) throw new Error("PAYMENT_MISMATCH");
+  const supported = ["card", "vbank", "naverpay", "kakaopay", "cellphone"];
+  if (!statuses[data.status] || !supported.includes(data.payMethod)
+    || (data.status === "paid" && data.balanceAmt !== order.amount)) throw new Error("PAYMENT_MISMATCH");
+  const waiting = data.status === "ready" && data.payMethod === "vbank";
+  const deposit = waiting && data.vbank ? {
+    bank: data.vbank.vbankName, number: data.vbank.vbankNumber,
+    holder: data.vbank.vbankHolder, expiresAt: data.vbank.vbankExpDate, amount: order.amount,
+  } : null;
   return { orderId: data.orderId, paymentKey: data.tid, totalAmount: data.amount, currency: data.currency,
-    status: statuses[data.status], approvedAt: data.paidAt, cancels: data.cancels };
+    status: waiting ? "WAITING_FOR_DEPOSIT" : statuses[data.status], approvedAt: data.paidAt, cancels: data.cancels,
+    ...(deposit ? { deposit } : {}) };
 }
 export async function readNicepayPayment(order) {
   if (order.mode !== process.env.NICEPAY_MODE) throw new Error("PAYMENT_MISMATCH");

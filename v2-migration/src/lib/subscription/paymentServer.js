@@ -5,6 +5,7 @@ import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduc
 import { readAccount, accountsEnabled } from "@/lib/account/accountServer";
 import { SUBSCRIPTION } from "./entitlement";
 import { nicepayConfigured, verifyNicepayAuthentication, approveNicepayPayment, readNicepayPayment } from "./nicepayServer";
+import { configuredNicepayMethods } from "./nicepayMethods";
 
 let pool;
 const cookieName = "gop_payment_access";
@@ -25,7 +26,7 @@ export function paymentConfiguration() {
       && (mode !== "live" || process.env.PAYMENTS_LIVE_ENABLED === "true")
       && (mode !== "test" || process.env.NODE_ENV !== "production");
     return { provider, enabled, clientKey: enabled ? process.env.NICEPAY_CLIENT_KEY : null, reviewClientKey: null,
-      mode, product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
+      mode, methods: configuredNicepayMethods(process.env.NICEPAY_METHODS), product: PAYMENT_PRODUCT, requiresAccount: true, accountAvailable: accountsEnabled() };
   }
   const clientKey = process.env.TOSS_CLIENT_KEY || "";
   const secret = process.env.TOSS_SECRET_KEY || "";
@@ -171,14 +172,14 @@ export async function createPaymentOrder(request) {
         const linked = await database().query("UPDATE gop_payment_orders SET account_id=$2 WHERE id=$1 AND (account_id IS NULL OR account_id=$2)", [order.id, account.id]);
         if (!linked.rowCount) throw new Error("INVALID_ORDER");
       }
-      return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id, provider: order.provider || "toss", mode: order.mode, ...(account ? { accountId: account.id } : {}) } };
+      return { body: { orderId: order.id, amount: order.amount, orderName: PAYMENT_PRODUCT.name, customerKey: order.id, provider: order.provider || "toss", mode: order.mode, ...(account ? { accountId: account.id, buyerEmail: account.email } : {}) } };
     }
   }
   const pending = await database().query("SELECT id FROM gop_payment_orders WHERE account_id=$1 AND mode=$2 AND status='pending' AND payment_key IS NOT NULL LIMIT 1", [account.id, paymentConfiguration().mode]);
   if (pending.rows.length) throw new Error("PAYMENT_PENDING");
   const id = `gop_${randomUUID()}`, token = randomBytes(32).toString("hex");
   await database().query("INSERT INTO gop_payment_orders(id,access_hash,amount,product_id,idempotency_key,mode,account_id,provider) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, hash(token), PAYMENT_PRODUCT.amount, PAYMENT_PRODUCT.id, randomUUID(), paymentConfiguration().mode, account.id, paymentConfiguration().provider]);
-  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, provider: paymentConfiguration().provider, mode: paymentConfiguration().mode, ...(account ? { accountId: account.id } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
+  return { body: { orderId: id, amount: PAYMENT_PRODUCT.amount, orderName: PAYMENT_PRODUCT.name, customerKey: id, provider: paymentConfiguration().provider, mode: paymentConfiguration().mode, ...(account ? { accountId: account.id, buyerEmail: account.email } : {}) }, cookie: cookie(pendingName, `${id}.${token}`, request, 86400) };
 }
 export async function confirmPayment(request, input) {
   assertSameOrigin(request);
@@ -223,7 +224,7 @@ export async function confirmPayment(request, input) {
     if (payment.status === "WAITING_FOR_DEPOSIT" && !entitlement) {
       await client.query("COMMIT");
       // This is an ownership credential, not a paid entitlement. Keep it for delayed deposits.
-      return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
+      return { body: { entitlement: null, status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) }, ...(credential ? { cookie: cookie(cookieName, `${credential.id}.${credential.token}`, request) } : {}), clearReturn: true };
     }
     if (!entitlement || entitlement.expiresAt <= Date.now()) {
       // Preserve an authoritative cancellation written by syncOrder.
@@ -267,13 +268,14 @@ export async function readPaymentAccess(request, recoveryCode) {
     // A confirmed cancellation/mismatch must never fall back to a cached entitlement.
     if (payment) entitlement = await syncExternalOrder(order, payment);
   }
+  const waitingForDeposit = payment?.status === "WAITING_FOR_DEPOSIT" && !entitlement;
   entitlement = await accountCoverage(order, entitlement);
   if (payment && credential) {
     const latest = (await database().query("SELECT * FROM gop_payment_orders WHERE id=$1", [order.id])).rows[0];
     if (!owns(latest, credential.token)) return { body: { entitlement: null } };
   }
   const active = entitlement?.expiresAt > Date.now();
-  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(payment?.status === "WAITING_FOR_DEPOSIT" && !active ? { status: "waiting_for_deposit", orderId: order.id } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
+  return { body: { entitlement: active ? ownedEntitlement(order, entitlement, credential) : null, ...(waitingForDeposit ? { status: "waiting_for_deposit", orderId: order.id, ...(payment.deposit ? { deposit: payment.deposit } : {}) } : {}), ...(active ? { mode: order.mode, transaction: { orderId: order.id, amount: order.amount, productId: order.product_id } } : {}), ...(active && credential ? { recoveryCode: `${credential.id}.${credential.token}` } : {}) }, ...(recoveryCode && active ? { cookie: cookie(cookieName, recoveryCode, request) } : {}) };
 }
 export async function reconcilePaymentWebhook(input, provider = "toss") {
   const id = provider === "nicepay" ? input?.orderId : input?.data?.orderId;

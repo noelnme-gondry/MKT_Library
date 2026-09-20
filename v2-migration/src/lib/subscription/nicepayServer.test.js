@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
-import { readNicepayPayment } from "./nicepayServer";
+import { readNicepayPayment, normalizeNicepayPayment } from "./nicepayServer";
+import { configuredNicepayMethods, nicepayMethodOptions } from "./nicepayMethods";
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 function setup(mode) {
   vi.stubEnv("NICEPAY_APPROVAL_MODEL", "server-basic");
@@ -23,4 +24,27 @@ it("does not query a live order with sandbox credentials", async () => {
   order.mode = "live";
   await expect(readNicepayPayment(order)).rejects.toThrow("PAYMENT_MISMATCH");
   expect(fetch).not.toHaveBeenCalled();
+});
+it.each(["vbank", "naverpay", "kakaopay", "cellphone"])("accepts a verified paid %s transaction", async payMethod => {
+  const order = setup("test");
+  const data = await (await fetch()).json();
+  expect(normalizeNicepayPayment({ ...data, payMethod }, order).status).toBe("DONE");
+  expect(() => normalizeNicepayPayment({ ...data, payMethod, amount: 1 }, order)).toThrow("PAYMENT_MISMATCH");
+});
+it("does not grant a pass for a virtual account issued before deposit", async () => {
+  const order = setup("test");
+  const data = await (await fetch()).json();
+  const vbank = { vbankName: "Fixture bank", vbankNumber: "123456", vbankHolder: "Fixture", vbankExpDate: "2026-09-21T12:00:00+09:00" };
+  const result = normalizeNicepayPayment({ ...data, status: "ready", payMethod: "vbank", paidAt: "0", vbank }, order);
+  expect(result.status).toBe("WAITING_FOR_DEPOSIT");
+  expect(result.deposit).toEqual({ bank: vbank.vbankName, number: vbank.vbankNumber, holder: vbank.vbankHolder, expiresAt: vbank.vbankExpDate, amount: 5900 });
+  expect(normalizeNicepayPayment({ ...data, status: "expired", payMethod: "vbank" }, order).status).toBe("EXPIRED");
+});
+it("only advertises configured methods and adds required method fields", () => {
+  expect(configuredNicepayMethods()).toEqual(["card"]);
+  expect(configuredNicepayMethods("card, cellphone,unknown,card")).toEqual(["card", "cellphone"]);
+  expect(configuredNicepayMethods("")).toEqual([]);
+  expect(nicepayMethodOptions("cellphone")).toEqual({ method: "cellphone", isDigital: true });
+  expect(nicepayMethodOptions("vbank")).toMatchObject({ vbankHolder: "Growth Opt Playbook", vbankValidHours: 24 });
+  expect(() => nicepayMethodOptions("unknown")).toThrow();
 });

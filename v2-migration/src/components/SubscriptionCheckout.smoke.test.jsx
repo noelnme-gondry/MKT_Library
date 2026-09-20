@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { render, waitFor, screen, fireEvent } from "@testing-library/react";
+import { render, waitFor, screen, fireEvent, act } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import SubscriptionCheckout from "./SubscriptionCheckout";
 
@@ -8,6 +8,31 @@ vi.mock("@/lib/subscription/paymentAnalytics", () => ({ trackPaymentEvent: track
 vi.mock("@/lib/subscription/paymentClient", () => ({ rememberPaymentAccess: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 afterEach(() => { vi.unstubAllGlobals(); delete window.TossPayments; delete window.AUTHNICE; tracking.mockClear(); window.history.replaceState(null, "", "/"); });
+
+it.each(["ko", "en"])("submits the selected approved payment method (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", clientKey: "fixture", methods: ["card", "cellphone"] }
+    : { orderId: "gop_fixture", amount: 5900 } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  fireEvent.click(await screen.findByRole("radio", { name: locale === "en" ? "Mobile phone billing" : "휴대폰 결제" }));
+  expect(screen.queryByRole("radio", { name: /Kakao|카카오/ })).toBeNull();
+  fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Pay KRW 5,900" : "5,900원 결제하기" }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  expect(window.AUTHNICE.requestPay.mock.calls[0][0]).toMatchObject({ method: "cellphone", isDigital: true });
+});
+
+it.each(["ko", "en"])("restores virtual-account deposit instructions without offering another payment (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", methods: ["card", "vbank"] }
+    : { status: "waiting_for_deposit", orderId: "gop_fixture", deposit: { bank: "Fixture Bank", number: "123456", holder: "Fixture", amount: 5900, expiresAt: "2026-09-21" } } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  await screen.findByText("Fixture Bank 123456");
+  expect(screen.queryByRole("button", { name: /Pay KRW|5,900원 결제하기/ })).toBeNull();
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
 
 it.each(["ko", "en"])("does not send a new-provider order to an old open checkout (%s)", async locale => {
   useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
@@ -105,4 +130,62 @@ it.each(["ko", "en"])("opens an explicit renewal without creating an order until
   expect(screen.getByText(locale === "en" ? /Your remaining days are kept/ : /남은 기간을 유지하는/)).toBeTruthy();
   fireEvent.click(button);
   await waitFor(() => expect(requestPayment).toHaveBeenCalledOnce());
+});
+
+it.each(["ko", "en"])("passes owner email and checks status before another payment (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "live", clientKey: "fixture" }
+    : path.endsWith("order") ? { orderId: "gop_fixture", amount: 5900, buyerEmail: "owner@example.com" }
+    : { entitlement: null, account: null } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  const label = locale === "en" ? "Pay KRW 5,900" : "5,900원 결제하기";
+  fireEvent.click(await screen.findByRole("button", { name: label }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  const request = window.AUTHNICE.requestPay.mock.calls[0][0];
+  expect(request.buyerEmail).toBe("owner@example.com");
+  expect(request).not.toHaveProperty("buyerName");
+  expect(request).not.toHaveProperty("buyerTel");
+  act(() => request.fnError());
+  expect(screen.queryByRole("button", { name: label })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Check payment status" : "결제 상태 확인" }));
+  await screen.findByText(locale === "en" ? /No active purchased pass/ : /활성화된 구매 이용권이 없습니다/);
+  expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce();
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
+
+it("recovers a pending virtual account from the payment status check", async () => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  let issued = false;
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "test", clientKey: "fixture", methods: ["vbank"] }
+    : path.endsWith("order") ? { orderId: "gop_fixture", amount: 5900 }
+    : path.endsWith("access") && issued ? { entitlement: null, status: "waiting_for_deposit", orderId: "gop_fixture", deposit: { bank: "Fixture Bank", number: "123456", amount: 5900 } }
+    : { entitlement: null, account: null } })));
+  render(<SubscriptionCheckout />);
+  fireEvent.click(await screen.findByRole("button", { name: "5,900원 결제하기" }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  issued = true;
+  act(() => window.AUTHNICE.requestPay.mock.calls[0][0].fnError());
+  fireEvent.click(screen.getByRole("button", { name: "결제 상태 확인" }));
+  await screen.findByText("Fixture Bank 123456");
+  expect(screen.queryByRole("button", { name: "5,900원 결제하기" })).toBeNull();
+  expect(tracking.mock.calls.some(([name]) => name === "purchase")).toBe(false);
+});
+
+it("does not reopen payment when status lookup fails", async () => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: !path.endsWith("access"), json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "live", clientKey: "fixture" }
+    : { orderId: "gop_fixture", amount: 5900 } })));
+  render(<SubscriptionCheckout />);
+  fireEvent.click(await screen.findByRole("button", { name: "5,900원 결제하기" }));
+  await waitFor(() => expect(window.AUTHNICE.requestPay).toHaveBeenCalledOnce());
+  act(() => window.AUTHNICE.requestPay.mock.calls[0][0].fnError());
+  fireEvent.click(screen.getByRole("button", { name: "결제 상태 확인" }));
+  await screen.findByText(/결제 상태를 확인하지 못했습니다/);
+  expect(screen.queryByRole("button", { name: "5,900원 결제하기" })).toBeNull();
 });

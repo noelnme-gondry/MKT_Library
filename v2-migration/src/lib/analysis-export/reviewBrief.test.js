@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { unzipSync, strFromU8 } from "fflate";
 import { buildAnalysisExportPayload } from "./exportContract";
 import { buildWeeklyReviewExport } from "./weeklyReviewExport";
-import { documentTableBands, reportCellText, renderAnalysisBrief } from "./reviewBrief";
+import { buildReviewBrief, documentTableBands, reportCellText, renderAnalysisBrief } from "./reviewBrief";
 import { createAnalysisDocument } from "./analysisDocument";
 import { buildAnalysisWorkbook } from "./analysisWorkbook";
 
@@ -18,7 +18,7 @@ it("keeps all columns and repeats the identifier without inventing formula value
   expect(reportCellText({ formula: "=A1", value: 0 })).toBe("0");
 });
 it.each(["ko", "en"])("preserves evidence and saved feedback in the actual Word document (%s)", async locale => {
-  const payload = buildAnalysisExportPayload({ toolId: "5-29", toolTitle: "Composition", locale, headline: "Observed shift", stats: [{ label: "Effect", value: "−4.2%", detail: "95% CI −6% ~ −2%" }], scope: { dateStart: "2026-09-01", currency: "KRW" }, reviewRecords: [record], addon: { calculationTables: [{ name: "WIDE", rows: [Array.from({ length: 13 }, (_, i) => `Header${i}`), ["campaign", 1, 2, 3, 4, 5, 6, 7, 8, { formula: "=A1", value: 7250 }, 10, 11, "Final observation"]] }], method: { limitations: ["Not causal"] } } });
+  const payload = buildAnalysisExportPayload({ toolId: "5-29", toolTitle: "Composition", locale, headline: "Observed shift", stats: [{ label: "Effect", value: "−4.2%", detail: "95% CI −6% ~ −2%" }], scope: { dateStart: "2026-09-01", currency: "KRW" }, reviewRecords: [record, { id: "followup", parentDecisionId: "d", action: "Extend holdout observation", reviewDate: "2026-10-15" }], addon: { calculationTables: [{ name: "WIDE", rows: [Array.from({ length: 13 }, (_, i) => `Header${i}`), ["campaign", 1, 2, 3, 4, 5, 6, 7, 8, { formula: "=A1", value: 7250 }, 10, 11, "Final observation"]] }], method: { limitations: ["Not causal"] } } });
   const doc = await createAnalysisDocument(payload);
   const xml = strFromU8(unzipSync(new Uint8Array(await doc.arrayBuffer()))["word/document.xml"]);
   expect(xml).toContain("Header12");
@@ -26,7 +26,7 @@ it.each(["ko", "en"])("preserves evidence and saved feedback in the actual Word 
   expect(xml).toContain("7,250");
   expect(xml).toContain("95% CI");
   expect(xml).toContain(record.learning);
-  for (const value of ["Control regions", "Organic users", "5,500", "10%", "-100 to +700 people", "Uncertain, not proof of no effect", locale === "en" ? "effect evidence must be reviewed separately" : "효과 근거는 별도 검토"]) {
+  for (const value of ["Extend holdout observation", "2026-10-15", "Control regions", "Organic users", "5,500", "10%", "-100 to +700 people", "Uncertain, not proof of no effect", locale === "en" ? "effect evidence must be reviewed separately" : "효과 근거는 별도 검토"]) {
     expect(xml).toContain(value);
     expect(renderAnalysisBrief(payload)).toContain(value);
     expect(JSON.stringify(buildAnalysisWorkbook(payload).Sheets)).toContain(value);
@@ -52,4 +52,16 @@ it("builds collected Word sections with per-tool scope, stats and uncertainty", 
   expect(xml).toContain("2026-09-01");
   expect(xml).toContain("Wait for full week");
   expect(xml).not.toContain("Statistical model estimates are browser-engine outputs");
+});
+
+it.each(["ko", "en"])("keeps zero baselines and next actions in reports (%s)", locale => {
+  const review = buildReviewBrief({ locale, records: [
+    { id: "parent", action: "Hold out search", metric: "Organic users", baseline: 0 },
+    { id: "child", parentDecisionId: "parent", action: "Extend observation", reviewDate: "2026-10-10" },
+  ] });
+  const fields = review.decisions.find(item => item.action === "Hold out search").fields;
+  expect(fields).toContainEqual([locale === "en" ? "Metric / baseline" : "지표 / 기준값", "Organic users / 0"]);
+  const followup = fields.find(([label]) => label === (locale === "en" ? "Follow-up decisions" : "이어지는 다음 행동"))[1];
+  expect(followup).toContain("Extend observation");
+  expect(followup).toContain("2026-10-10");
 });
