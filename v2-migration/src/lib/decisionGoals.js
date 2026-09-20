@@ -1,3 +1,5 @@
+import { resolvePathToId } from "@/lib/routeMap";
+import { RESPONSE_STAGES, responseStageHref } from "@/lib/responseStage";
 /**
  * decisionGoals — 도구별 "이 결과로 걸 수 있는 목표·가드레일" 레지스트리(SSOT).
  *
@@ -57,6 +59,8 @@ const rail = (key, label, labelEn, op) => ({ key, label, labelEn, op });
 const RAIL_CPA = rail("cpa", "CPA 유지", "Hold CPA", "lte");
 const RAIL_CPI = rail("cpi", "CPI 유지", "Hold CPI", "lte");
 const RAIL_SPEND = rail("spend", "비용 상한", "Spend cap", "lte");
+const ORGANIC_GOAL = g(`${RERUN_GOAL_PREFIX}organic_conversions`, "오가닉 전환수", "Organic conversions", "up");
+const ORGANIC_USERS = g(`${RERUN_GOAL_PREFIX}organic_users`, "오가닉 사용자 수", "Organic users", "up");
 const RAIL_VOLUME = rail("conversions", "전환수 유지", "Hold conversions", "gte");
 
 /**
@@ -118,6 +122,7 @@ export const TOOL_DECISION_GOALS = Object.freeze({
   "5-18-paid-organic": {
     goals: [
       g(`${RERUN_GOAL_PREFIX}organic_share`, "오가닉 비중", "Organic share", "up"),
+      ORGANIC_GOAL, ORGANIC_USERS,
       g("conversions", "전환수", "Conversions", "up"),
     ],
     // 오가닉 비중만 오르고 총량이 주는 건 성공이 아니다.
@@ -132,7 +137,7 @@ export const TOOL_DECISION_GOALS = Object.freeze({
   },
   "5-18-cannibal": {
     goals: [
-      g(`${RERUN_GOAL_PREFIX}organic_conversions`, "오가닉 전환수", "Organic conversions", "up"),
+      ORGANIC_GOAL, ORGANIC_USERS,
       g(`${RERUN_GOAL_PREFIX}cannib_candidates`, "강한 잠식 후보 수", "Strong cannibalization candidates", "down"),
     ],
     // 광고를 끄면 오가닉 귀속이 늘어나는 건 잠식이 줄어서가 아니라 어트리뷰션이
@@ -144,8 +149,9 @@ export const TOOL_DECISION_GOALS = Object.freeze({
       g("roas", "ROAS", "ROAS", "up"),
       g("cpa", "CPA", "CPA", "down"),
       g(`${RERUN_GOAL_PREFIX}oos_error`, "시간순 검증 오차", "Time-ordered validation error", "down"),
+      ORGANIC_GOAL, ORGANIC_USERS,
     ],
-    guardrails: [RAIL_SPEND, RAIL_CPA],
+    guardrails: [RAIL_SPEND, RAIL_CPA, RAIL_VOLUME],
   },
   "5-18-forecast": {
     goals: [
@@ -235,7 +241,7 @@ function localized(entry, locale) {
 
 /** 도구가 제안하는 목표 후보. 등록되지 않은 도구는 빈 배열 — 폼은 직접 입력으로 남는다. */
 export function toolDecisionGoals(toolId, locale = "ko") {
-  const entry = TOOL_DECISION_GOALS[String(toolId ?? "")];
+  const entry = TOOL_DECISION_GOALS[String(toolId === "weekly-review" ? "5-2" : toolId ?? "")];
   if (!entry) return [];
   return entry.goals.map((goal) => ({
     key: goal.key,
@@ -248,7 +254,7 @@ export function toolDecisionGoals(toolId, locale = "ko") {
 
 /** 도구가 제안하는 가드레일 후보. */
 export function toolDecisionGuardrails(toolId, locale = "ko") {
-  const entry = TOOL_DECISION_GOALS[String(toolId ?? "")];
+  const entry = TOOL_DECISION_GOALS[String(toolId === "weekly-review" ? "5-2" : toolId ?? "")];
   if (!entry) return [];
   return entry.guardrails.map((guardrail) => ({
     key: guardrail.key,
@@ -277,4 +283,17 @@ export function findToolGuardrail(toolId, key, locale = "ko") {
 export function registryTargetDirection(toolId, goalMetric) {
   const goal = findToolGoal(toolId, goalMetric);
   return goal ? goal.targetDirection : null;
+}
+
+// Historical shared-response records keep their ID. Only an explicit source path
+// or forecast contract resolves the tool for a NEW follow-up decision.
+export function decisionSourceToolId(record) {
+  if (record.toolId !== "5-18") return record.toolId;
+  const [path, query = ""] = String(record.sourcePath || "").split("?");
+  const id = resolvePathToId(path.replace(/^\/en(?=\/|$)/, ""));
+  if (id?.startsWith("5-18-")) return id;
+  const stage = new URLSearchParams(query).get("stage");
+  if (id === "5-18" && RESPONSE_STAGES.includes(stage) && stage !== "hub") return resolvePathToId(responseStageHref(stage));
+  if (record.comparisonKind === "forecast_actual") return "5-18-forecast";
+  return record.toolId;
 }

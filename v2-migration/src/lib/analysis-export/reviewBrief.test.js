@@ -6,7 +6,8 @@ import { documentTableBands, reportCellText, renderAnalysisBrief } from "./revie
 import { createAnalysisDocument } from "./analysisDocument";
 import { buildAnalysisWorkbook } from "./analysisWorkbook";
 
-const record = { id: "d", toolId: "5-29", action: "국가별 구성 확인", conclusion: "구성 효과", learning: "국가 비중 변화를 분리", actual: "−4.2%", reviewDate: "2026-09-20", raw: [{ private: true }] };
+const successPlan = JSON.stringify({ method: "holdout", target: "Brand search", control: "Control regions", window: "Oct 1–14", mode: "increase_percent", baseline: "5000", value: "10", unit: "people", metric: "Organic users" });
+const record = { reviewPlan: successPlan, targetActual: "5500", id: "d", toolId: "5-29", action: "국가별 구성 확인", conclusion: "구성 효과", learning: "국가 비중 변화를 분리", actual: "−4.2%", reviewDate: "2026-09-20", raw: [{ private: true }] };
 it("keeps all columns and repeats the identifier without inventing formula values", () => {
   const headers = Array.from({ length: 13 }, (_, index) => `column-${index}`);
   const bands = documentTableBands([headers, ["campaign", ...Array.from({ length: 12 }, (_, index) => index)]]);
@@ -24,6 +25,11 @@ it.each(["ko", "en"])("preserves evidence and saved feedback in the actual Word 
   expect(xml).toContain("7,250");
   expect(xml).toContain("95% CI");
   expect(xml).toContain(record.learning);
+  for (const value of ["Control regions", "Organic users", "5500", "10%", locale === "en" ? "not causal proof" : "인과효과 입증 아님"]) {
+    expect(xml).toContain(value);
+    expect(renderAnalysisBrief(payload)).toContain(value);
+    expect(JSON.stringify(buildAnalysisWorkbook(payload).Sheets)).toContain(value);
+  }
   expect(xml).not.toContain("private");
   expect(renderAnalysisBrief(payload)).toContain("2026-09-01");
   expect(renderAnalysisBrief(payload)).toContain("Not causal");

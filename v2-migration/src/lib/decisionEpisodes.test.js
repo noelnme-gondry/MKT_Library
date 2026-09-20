@@ -30,8 +30,8 @@ describe("관측 이력은 덮어쓰지 않고 쌓인다", () => {
     expect(restored.episodes).toBe(record.episodes);
     expect(decisionEpisodeList(restored)).toHaveLength(8);
   });
-  it("관측 이력과 분석 근거를 보존하는 v12 스키마다", () => {
-    expect(DECISION_REVIEW_SCHEMA_VERSION).toBe(12);
+  it("관측 이력과 분석 근거를 보존하는 v13 스키마다", () => {
+    expect(DECISION_REVIEW_SCHEMA_VERSION).toBe(13);
   });
 
   it("구분자·줄바꿈·콤마가 든 자유 텍스트가 왕복에서 그대로 살아온다", () => {

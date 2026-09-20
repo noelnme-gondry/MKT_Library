@@ -1,3 +1,4 @@
+import { needsExplicitPlanReview } from "@/lib/decisionPlan";
 /**
  * 지난 결정의 결과 판정.
  *
@@ -123,6 +124,8 @@ export function scoreDecision({
   const empty = { outcome: DECISION_OUTCOME.UNSCORED, reason: null, meansNoEffect: false, checks: null, target: null };
 
   if (!decision) return { ...empty, reason: "no_decision" };
+
+  if (needsExplicitPlanReview(decision.reviewPlan)) return { ...empty, reason: "explicit_target_review_required" };
 
   const hasGoal = Boolean(decision.goalMetric) && Boolean(decision.goalDirection);
   // v10: 가드레일은 목록이다. 옛 단수 필드는 그 목록의 첫 항목으로 합쳐진다.

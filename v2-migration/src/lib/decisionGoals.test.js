@@ -120,3 +120,11 @@ describe("decisionGoals — 잠식 결정의 자기기만 방지", () => {
     expect(toolDecisionGuardrails("5-18-paid-organic").map((rail) => rail.key)).toContain("conversions");
   });
 });
+
+it("resolves historical response follow-ups only from explicit source evidence", async () => {
+  const { decisionSourceToolId } = await import("./decisionGoals");
+  expect(decisionSourceToolId({ toolId: "5-18", sourcePath: "/tools/marketing-response?stage=mmm" })).toBe("5-18-mmm");
+  expect(decisionSourceToolId({ toolId: "5-18", sourcePath: "/en/tools/marketing-forecast" })).toBe("5-18-forecast");
+  expect(decisionSourceToolId({ toolId: "5-18" })).toBe("5-18");
+  expect(toolDecisionGoals("weekly-review")).toEqual(toolDecisionGoals("5-2"));
+});

@@ -3669,6 +3669,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             ? tx(`강한 잠식 후보 ${strong}개를 기여 분해에서 교차 검증한다`, `Cross-check ${strong} strong candidate(s) in contribution analysis`)
             : tx("현재 판단을 유지하고 다음 데이터에서 잠식 신호를 다시 확인한다", "Keep the current call and re-check cannibalization with the next data update"),
           hypothesis: tx("단일 신호가 아니라 기여 분해와 함께 보면 과잉 대응을 줄일 수 있습니다", "Cross-checking with contribution reduces overreaction to a single signal"),
+          goalMetric: "rerun:cannib_candidates", goalDirection: "down",
           metric: tx("강한 잠식 후보", "Strong candidates"),
           baseline: String(strong),
           reviewQuestion: tx("다음 검토에서도 같은 후보와 방향이 반복됐는가?", "Did the same candidates and direction persist at the next review?"),
@@ -3707,6 +3708,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             ? tx("모델 경고를 해소하기 전 대규모 예산 이동을 보류한다", "Hold large budget moves until model warnings are resolved")
             : tx("기여 상위 채널의 예산 가설을 미래예측에서 검증한다", "Validate the leading channel budget hypothesis in Forecast"),
           hypothesis: tx("시간순 검증과 모델 경고를 함께 지키면 기여도 과신을 줄일 수 있습니다", "Using time-ordered validation and model warnings together reduces overconfidence in contribution"),
+          goalMetric: "rerun:oos_error", goalDirection: "down",
           metric: tx("OOS 오차", "OOS error"),
           baseline: Number.isFinite(oos) ? `${oos.toFixed(1)}%` : "—",
           reviewQuestion: tx("OOS 오차와 모델 경고가 운영 가능한 수준을 유지했는가?", "Did OOS error and model warnings remain operationally usable?"),
@@ -3767,6 +3769,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           "같은 주차·타깃의 예측과 실제를 대조하면 다음 판단에 쓸 수 있는 오차 기록이 남습니다",
           "Matching forecast and actual for the same period and target creates an error record for the next decision",
         ),
+        goalMetric: "rerun:forecast_error", goalDirection: "down",
         metric: forecastTargetLabel,
         baseline: forecastValueText,
         targetDirection: "neutral",
@@ -3783,6 +3786,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         conclusion: tx(`예측 사용 보류 · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`, `Hold forecast use · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`),
         action: tx("예산 변경을 보류하고 데이터를 추가한 뒤 백테스트를 다시 실행한다", "Hold budget changes, add data, and rerun the backtest"),
         hypothesis: tx("인증 전 변경을 보류하면 불안정한 예측으로 인한 예산 손실을 줄일 수 있습니다", "Holding changes before certification reduces budget risk from unstable forecasts"),
+        goalMetric: "rerun:forecast_error", goalDirection: "down",
         metric: "wMAPE",
         baseline: Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—",
         reviewQuestion: tx("새 데이터에서도 wMAPE와 예측 방향이 유지됐는가?", "Did wMAPE and forecast direction hold with the new data?"),
@@ -4289,7 +4293,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         }
         return (
           <ResultActionCard
-            toolId="5-18"
+            toolId={stageToolId}
             locale={locale}
             analysisKey={`${mmmAnalyzedSig}|${target}|${effPlatformFilter}|${stage}|${isObservationalComparison ? Object.values(comparisonConditions.values).join(":") : ""}`}
             analysisType={stage === "hub" ? "mapping" : stage}
@@ -4302,7 +4306,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             workbookExport={stageWorkbookExport}
             download={stageDownloadItems.length ? (
               <DownloadHub
-                toolId={stage === "lab" ? "5-18-forecast" : "5-18-trend"}
+                toolId={stageToolId}
                 locale={locale}
                 label={tx("결과 받기", "Get results")}
                 items={stageDownloadItems}

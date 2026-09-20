@@ -69,7 +69,7 @@ export function findForecastActualMatches(records = [], panel = null, platform =
   if (!dates.length || dates.some((date) => !date)) return [];
   const dateIndexes = new Map(dates.map((date, index) => [date, index]));
   return records.flatMap((record) => {
-    if (record?.toolId !== "5-18" || record.comparisonKind !== "forecast_actual" || String(record.actual || "").trim()) return [];
+    if (!["5-18", "5-18-forecast"].includes(record?.toolId) || record.comparisonKind !== "forecast_actual" || String(record.actual || "").trim()) return [];
     if (record.forecastPlatform !== platform || !FORECAST_TARGETS.has(record.forecastTarget)) return [];
     if (activeTarget && record.forecastTarget !== activeTarget) return [];
     const predictedValue = finiteNumber(record.forecastValue);

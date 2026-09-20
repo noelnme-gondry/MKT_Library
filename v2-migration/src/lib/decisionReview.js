@@ -5,6 +5,7 @@ import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
 import { isRerunGoalMetric } from "@/lib/decisionGoals";
+import { serializeDecisionPlan, needsExplicitPlanReview } from "@/lib/decisionPlan";
 import { serializeReviewEvidence } from "@/lib/reviewEvidence";
 import { parseNumericStrict } from "@/utils/parseNumeric";
 
@@ -13,7 +14,7 @@ import { parseNumericStrict } from "@/utils/parseNumeric";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 12;
+export const DECISION_REVIEW_SCHEMA_VERSION = 13;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -38,6 +39,8 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "episodes",
   "evidence",
   "parentDecisionId",
+  "reviewPlan",
+  "targetActual",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -84,6 +87,8 @@ export const DECISION_REVIEW_COLUMNS = [
   "episodes",
   "evidence",
   "parent_decision_id",
+  "review_plan",
+  "target_actual",
   "hypothesis",
   "metric",
   "target_direction",
@@ -522,6 +527,7 @@ function hasComparableMetric(metric) {
 // 새 CSV로 자동 대조할 수 있는 기록과, 같은 도구에서 재분석한 값을 사용자가
 // 기록해야 하는 진단형 결정을 구분한다. 후자를 자동 성과처럼 만들지 않는다.
 export function decisionReviewFollowUpMode(record = {}) {
+  if (needsExplicitPlanReview(record.reviewPlan)) return "rerun_manual";
   if (String(record.comparisonKind ?? record.comparison_kind) === "forecast_actual") return "forecast_auto";
   // 도구가 "이 목표는 효율 CSV로 계산되지 않는다"고 선언했으면 그 선언이 이긴다.
   // 표시 라벨을 정규식으로 읽어 추측하는 것보다 정확하다 — 라벨은 번역·리네임으로 바뀐다.
@@ -612,6 +618,8 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     guardrailValue: asFiniteNumberText(field(row, "guardrailValue", "guardrail_value")),
     guardrails: serializeDecisionGuardrails(parseDecisionGuardrails(field(row, "guardrails"))),
     episodes: serializeDecisionEpisodes(parseDecisionEpisodes(field(row, "episodes"))),
+    reviewPlan: serializeDecisionPlan(field(row, "reviewPlan", "review_plan")),
+    targetActual: asFiniteNumberText(field(row, "targetActual", "target_actual")),
     evidence: serializeReviewEvidence(field(row, "evidence")),
     parentDecisionId: asText(field(row, "parentDecisionId", "parent_decision_id"), FIELD_LIMITS.id),
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),

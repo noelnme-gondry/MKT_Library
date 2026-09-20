@@ -47,6 +47,7 @@ describe("forecast review contract", () => {
       { id: "done", toolId: "5-18", comparisonKind: "forecast_actual", forecastPeriod: "2026-08-03", forecastTarget: "Regs", forecastPlatform: "all", forecastValue: "120", actual: "126" },
     ];
     expect(findForecastActualMatches(records, panel, "all")).toEqual([expect.objectContaining({ recordId: "match", actualValue: 126, predictedValue: 120 })]);
+    expect(findForecastActualMatches([{ ...records[0], toolId: "5-18-forecast" }], panel, "all")).toEqual([expect.objectContaining({ recordId: "match", actualValue: 126 })]);
     expect(findForecastActualMatches(records, panel, "all", "Revenue")).toEqual([]);
   });
 
