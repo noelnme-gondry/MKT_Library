@@ -141,6 +141,26 @@ describe("NICEPAY server approval", () => {
     await confirmPayment(request(cookie), input);
     expect(fetch.mock.calls[0][0]).toContain("api.tosspayments.com");
   });
+  it("keeps NICEPAY cancellation reconciliation working after closing new live purchases", async () => {
+    const { input, cookie } = await niceFixture();
+    await confirmPayment(request(cookie), input);
+    vi.stubEnv("PAYMENTS_PROVIDER", "toss");
+    vi.stubEnv("TOSS_CLIENT_KEY", "live_gck_fixture");
+    vi.stubEnv("TOSS_SECRET_KEY", "live_gsk_fixture");
+    vi.stubEnv("PAYMENTS_LIVE_ENABLED", "false");
+    expect(paymentConfiguration().enabled).toBe(false);
+    payment.status = "cancelled";
+    await reconcilePaymentWebhook({ orderId: input.orderId }, "nicepay");
+    expect(db.rows.get(input.orderId).status).toBe("revoked");
+  });
+  it("accepts a valid NICEPAY return after switching new orders back to Toss", async () => {
+    const { input, cookie } = await niceFixture();
+    vi.stubEnv("PAYMENTS_PROVIDER", "toss");
+    const response = await redirectNicepayResult(new Request("https://example.com/api/payments/nicepay/return", { method: "POST", body: new URLSearchParams(input) }));
+    expect(response.headers.get("location")).toContain("payment=confirm");
+    expect((await confirmPayment(request(cookie), input)).body.entitlement.plan).toBe("paid");
+    expect(fetch.mock.calls[0][0]).toContain("sandbox-api.nicepay.co.kr");
+  });
   it("rejects invalid and oversized return forms without exposing their payload", async () => {
     configureNicepay();
     for (const body of ["authResultCode=0000&signature=bad", `authToken=${"x".repeat(5000)}`]) {
@@ -149,6 +169,24 @@ describe("NICEPAY server approval", () => {
       expect(response.headers.has("set-cookie")).toBe(false);
     }
   });
+});
+
+it("restores a live Toss pass while NICEPAY is selected but not opened", async () => {
+  vi.stubEnv("TOSS_CLIENT_KEY", "live_gck_fixture");
+  vi.stubEnv("TOSS_SECRET_KEY", "live_gsk_fixture");
+  vi.stubEnv("PAYMENTS_LIVE_ENABLED", "true");
+  const { cookie, input } = await fixture();
+  const approved = await confirmPayment(request(cookie), input);
+  const accessCookie = approved.cookie.split(";")[0];
+  vi.stubEnv("PAYMENTS_PROVIDER", "nicepay");
+  vi.stubEnv("NICEPAY_MODE", "live");
+  vi.stubEnv("PAYMENTS_LIVE_ENABLED", "false");
+  expect(paymentConfiguration().enabled).toBe(false);
+  expect((await readPaymentAccess(request(accessCookie))).body.entitlement.plan).toBe("paid");
+  payment.status = "CANCELED";
+  await reconcilePaymentWebhook({ data: { orderId: input.orderId } });
+  expect(db.rows.get(input.orderId).status).toBe("revoked");
+  await expect(createPaymentOrder(request())).rejects.toThrow("PAYMENTS_NOT_CONFIGURED");
 });
 describe("payment boundaries", () => {
   it("exposes only a test widget key for production review without enabling purchases", async () => {
@@ -290,7 +328,8 @@ it("blocks production test orders, confirmations and existing test access server
   await expect(createPaymentOrder(request())).rejects.toThrow("PAYMENTS_NOT_CONFIGURED");
   await expect(confirmPayment(request(cookie), input)).rejects.toThrow("PAYMENTS_NOT_CONFIGURED");
   expect((await readPaymentAccess(request(cookie))).body.entitlement).toBeNull();
-  expect(db.calls).toHaveLength(0);
+  // Read the persisted order's mode; the selected checkout provider is not its owner.
+  expect(db.calls.some(({ sql }) => /^(INSERT|UPDATE|DELETE)/.test(sql))).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
 });
 

@@ -137,6 +137,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     try {
       await saveCheckoutSnapshot();
       order.current = await jsonRequest("order", {});
+      if (order.current.provider && (order.current.provider !== (config.provider || "toss") || order.current.mode !== config.mode)) throw new Error("CHECKOUT_CHANGED");
       // Revalidate identity just before handing control to the payment provider.
       if (config?.requiresAccount) {
         if (order.current.accountId !== checkoutAccount?.id) throw new Error("ACCOUNT_CHANGED");
@@ -157,7 +158,7 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
         return;
       }
       await widgets.current.requestPayment({ orderId: order.current.orderId, orderName: order.current.orderName, successUrl: `${location.origin}/api/payments/return?locale=${locale}`, failUrl: `${location.origin}/api/payments/failure?locale=${locale}` });
-    } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(error.message === "LINK_PURCHASE_FIRST" ? (en ? "Link your existing purchased pass in My account before renewing so its remaining days are kept." : "남은 기간을 유지하려면 마이페이지에서 기존 구매 이용권을 계정에 연결한 뒤 연장해 주세요.") : ["LOGIN_REQUIRED", "ACCOUNT_CHANGED"].includes(error.message) ? (en ? "Your sign-in changed. Sign in again before paying; no new payment was submitted." : "로그인 상태가 바뀌었습니다. 다시 로그인한 뒤 결제해 주세요. 새 결제는 요청하지 않았습니다.") : error.message === "PAYMENT_PENDING" ? (en ? "An earlier payment is still pending. Check its status before starting another payment." : "처리 중인 이전 결제가 있습니다. 다시 결제하기 전에 기존 결제 상태를 확인해 주세요.") : error.message === "RATE_LIMITED" ? (en ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.") : (en ? "Payment did not complete. Check browser storage and your payment method, then retry. Your current analysis remains open." : "결제가 완료되지 않았습니다. 브라우저 저장 공간과 결제수단을 확인하고 다시 시도해 주세요. 현재 분석은 그대로 열려 있습니다.")); }
+    } catch (error) { trackPaymentEvent(paymentFailureEvent(error), { locale, mode: config?.mode }); setMessage(error.message === "CHECKOUT_CHANGED" ? (en ? "Checkout settings changed. Refresh this page before paying. No payment was submitted." : "결제 설정이 변경됐습니다. 페이지를 새로고침한 뒤 결제해 주세요. 결제는 요청하지 않았습니다.") : error.message === "LINK_PURCHASE_FIRST" ? (en ? "Link your existing purchased pass in My account before renewing so its remaining days are kept." : "남은 기간을 유지하려면 마이페이지에서 기존 구매 이용권을 계정에 연결한 뒤 연장해 주세요.") : ["LOGIN_REQUIRED", "ACCOUNT_CHANGED"].includes(error.message) ? (en ? "Your sign-in changed. Sign in again before paying; no new payment was submitted." : "로그인 상태가 바뀌었습니다. 다시 로그인한 뒤 결제해 주세요. 새 결제는 요청하지 않았습니다.") : error.message === "PAYMENT_PENDING" ? (en ? "An earlier payment is still pending. Check its status before starting another payment." : "처리 중인 이전 결제가 있습니다. 다시 결제하기 전에 기존 결제 상태를 확인해 주세요.") : error.message === "RATE_LIMITED" ? (en ? "Too many requests. Wait one minute before trying again." : "요청이 많습니다. 1분 후 다시 시도해 주세요.") : (en ? "Payment did not complete. Check browser storage and your payment method, then retry. Your current analysis remains open." : "결제가 완료되지 않았습니다. 브라우저 저장 공간과 결제수단을 확인하고 다시 시도해 주세요. 현재 분석은 그대로 열려 있습니다.")); }
     finally { setBusy(false); }
   };
   const restore = async () => {
