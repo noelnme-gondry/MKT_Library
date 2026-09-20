@@ -1,21 +1,21 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:09.000
-Upload data to a new review
-Upload campaign data in a new review. You can choose its project after checking the analysis.
+00:00:00.000 --> 00:00:06.000
+What changed this week?
+Upload a CSV in the project’s weekly comparison.
 
 2
-00:00:09.000 --> 00:00:18.000
-Check both comparison periods
-Check the current and previous periods and the outcome definition. Watch for incomplete weeks or overlapping periods.
+00:00:06.000 --> 00:00:12.000
+Two comparable periods
+Align dates, currency and outcome definitions.
 
 3
-00:00:18.000 --> 00:00:27.000
-Move from summary to campaign evidence
-Read the summary, then inspect campaign changes. Decomposing an observed change does not prove a causal effect.
+00:00:12.000 --> 00:00:18.000
+From numbers to evidence
+Inspect campaign changes; keep hypotheses separate.
 
 4
-00:00:27.000 --> 00:00:36.000
-Record the action and review date
-Record your action, reasoning and review date. Saving requires sign-in and active Pro or a trial.
+00:00:18.000 --> 00:00:24.000
+End with an action
+Record action, evidence and review date. Saving needs sign-in and Pro/trial.

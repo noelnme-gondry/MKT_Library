@@ -23,7 +23,7 @@ describe("optional blog practice", () => {
       expect(headings.at(-1)[1]).toContain(concepts[slug]);
       expect(post.html).not.toMatch(/같은 결과를 재현해 보세요|Reproduce the result/);
       expect(split.after).toMatch(/^<h2/);
-      expect(practice.steps).toHaveLength(3);
+      expect(practice.steps).toHaveLength(slug === "weekly-marketing-report-template" ? 4 : 3);
       expect(practice.title).toBeTruthy();
       expect(practice.limit).toBeTruthy();
       const csv = Papa.parse(fs.readFileSync(path.join(process.cwd(), "public", practice.href), "utf8"), { header: true, skipEmptyLines: true });

@@ -11457,13 +11457,18 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 
 /* Contextual video help. Closed state loads no video or poster. */
 .tutorial-launcher { position: fixed; right: 20px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 45; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: calc(100vw - 32px); padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--bg-1); color: var(--text-primary); font: 600 var(--fs-sm)/1.4 var(--font-sans); box-shadow: 0 3px 16px rgb(0 0 0 / 12%); cursor: pointer; }
-.tutorial-launcher > span:first-child { color: var(--primary); font-size: var(--fs-lg); line-height: 1; }
+.tutorial-launcher { min-height: 52px; border-color: var(--primary); background: var(--primary); color: var(--on-primary); font-weight: 750; box-shadow: 0 5px 20px rgb(0 0 0 / 22%); }
+.tutorial-launcher > span:first-child { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid currentColor; border-radius: 50%; color: inherit; font-size: var(--fs-lg); line-height: 1; }
 /* Keep consent, existing dialogs, form entry and focused page controls unobscured. */
-body:has(.consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
-/* Pointer focus must also keep help hidden: otherwise it can appear between
-   pointerdown and pointerup and steal the underlying control's click. */
-body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launcher,
+body:has(.source-survey, .consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
+/* Hide while typing; ordinary button focus must not remove help indefinitely.
+   Footprint checks still protect controls underneath the floating entry. */
+body:has(textarea:focus, input:not([type="file"]):focus, [contenteditable="true"]:focus) .tutorial-launcher,
 .tutorial-launcher[data-obscures-control] { visibility: hidden; }
+.tutorial-upload-entry { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.tutorial-upload-entry .tutorial-inline { border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-container-low); }
+/* Welcome already is a modal; avoid stacking the video dialog inside it. */
+.dochi-welcome .tutorial-upload-entry { display: none; }
 .tutorial-inline { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--primary); font: 600 var(--fs-sm)/1.4 var(--font-sans); cursor: pointer; }
 .tutorial-overlay { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 24px; background: rgb(9 16 30 / 64%); }
 .tutorial-panel { width: min(1120px, 100%); max-height: calc(100dvh - 48px); overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--bg-1); color: var(--text-primary); box-shadow: 0 24px 80px rgb(0 0 0 / 24%); }
@@ -11487,7 +11492,8 @@ body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launche
 .tutorial-transcript p { margin: 4px 0 12px; font-size: var(--fs-base); line-height: 1.7; word-break: keep-all; }
 .tutorial-guide-link { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-base); }
 @media (max-width: 768px) {
-  .tutorial-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); padding: 8px 12px; font-size: var(--fs-xs); }
+  .tutorial-launcher { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: 52px; padding: 10px; justify-content: center; font-size: var(--fs-xs); }
+  .tutorial-launcher > span:last-child { display: none; }
   .tutorial-overlay { padding: 10px; }
   .tutorial-panel { max-height: calc(100dvh - 20px); padding: 16px; border-radius: var(--radius-lg); }
   .tutorial-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
