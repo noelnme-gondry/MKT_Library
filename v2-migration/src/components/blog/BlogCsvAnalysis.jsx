@@ -10,6 +10,8 @@ import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/u
 import { FUNNEL_MATH } from "@/utils/funnelMath";
 import { trackProductEvent } from "@/lib/analytics";
 import BlogInsightChart from "./BlogInsightChart";
+import { tutorialDuration } from "@/lib/videoTutorials";
+import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 
 export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null }) {
   const en = locale === "en", id = useId(), router = useRouter();
@@ -133,6 +135,7 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       <ol>{practice.steps.map(step => <li key={step}>{step}</li>)}</ol>
       <p className="blog-practice__limit">{practice.limit}</p>
     </details>}
+    {slug === "weekly-marketing-report-template" && <VideoHelpButton topic="decisions" locale={locale}>{en ? `Save and revisit · ${tutorialDuration("decisions")}-second guide` : `저장·재검토 ${tutorialDuration("decisions")}초 가이드`}</VideoHelpButton>}
     {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
     <div className="blog-practice__actions">
       {practice && <button className="btn primary" disabled={inputDisabled} onClick={openDemo}>{en ? "Open analysis with demo" : "데모로 분석 열기"}</button>}

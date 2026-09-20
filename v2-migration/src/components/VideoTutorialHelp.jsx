@@ -109,7 +109,7 @@ function TutorialLauncher({ pathname, locale }) {
               <track kind="captions" src={media.captions} srcLang={locale} label={en ? "English" : "한국어"} />
               {en ? "Read the steps below if video is unavailable." : "영상 재생이 지원되지 않으면 아래 설명을 확인하세요."}
             </video>
-            <p id="tutorial-video-note" className="tutorial-note">{en ? "36 sec · silent, with on-screen instructions · synthetic demo data" : "36초 · 소리 없이 화면 설명으로 안내 · 가상 데모 데이터"}</p>
+            <p id="tutorial-video-note" className="tutorial-note">{en ? `${tutorial.steps.length * TUTORIAL_STEP_SECONDS} sec · silent quick guide · synthetic demo data` : `${tutorial.steps.length * TUTORIAL_STEP_SECONDS}초 · 소리 없이 핵심만 · 가상 데모 데이터`}</p>
             {["import", "mapping", "sheets"].includes(topic) && <p className="tutorial-note">{en ? "Demonstrated in the dashboard. Required fields and supported file types differ by tool; use the input guide on your current screen." : "운영 대시보드의 입력 화면을 기준으로 설명합니다. 도구별 필수 컬럼과 지원 파일은 현재 화면의 입력 안내를 따르세요."}</p>}
             {failed && <p role="alert">{en ? "Video could not load. Read the steps below or reopen this guide to retry." : "영상을 불러오지 못했습니다. 아래 설명을 읽거나 안내를 다시 열어 재시도하세요."}</p>}
             <details className="tutorial-transcript"><summary>{en ? "Read the steps" : "단계별 설명 읽기"}</summary><ol>{tutorial.steps.map((step, index) => <li key={index}><button type="button" onClick={() => {

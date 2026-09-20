@@ -1,0 +1,10 @@
+﻿Field,Completed example
+Type,Synthetic learning data; not an analysis input or project backup
+Comparison,2026-09-07–13 → 2026-09-14–20; KRW; same install attribution and maturity assumed
+Previous decision,Hold further scaling of A; maintain current spend on B
+New observation,A: spend 420000 unchanged; installs 280→350; CPI 1500→1200. B: spend 420000 and installs 420 unchanged
+Total,Spend 840000 unchanged; installs 700→770; CPI 1200→about1091
+Reasoning,A CPI is 20% below week 2 but 20% above the baseline week of 1000
+Next action,"Keep scaling on hold; inspect placement, creative, tracking history and next complete week"
+Owner and review,Example campaign owner; 2026-09-28; check actual data maturity
+Limitations,Not a controlled experiment; cause of recovery and extra-budget effect unidentified

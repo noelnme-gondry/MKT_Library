@@ -25,23 +25,25 @@ Run from the repository root, with the application dev server on port 3100.
 
 The capture script uses isolated browser profiles, actual controls and synthetic
 campaign data. Payment and account API responses are local test fixtures; it
-never sends a real account memo or performs a real purchase. The end-to-end
-capture exercises column mapping, currency selection, analysis, trial activation
-from a consented synthetic memo, project saving, export and backup inspection.
+never sends a real account memo or performs a real purchase. Capture waits for hydration, dismisses the survey through a local preference,
+and follows in-app navigation into weekly comparison. The end-to-end
+capture exercises column mapping, currency selection, analysis, device project
+saving, an optional consented account memo, export and backup inspection. Paid
+access is a local fixture for the weekly workflow; the memo does not activate it.
+The decision guide uploads the three-week fixture to show a real follow-up result.
 
 Inspect the generated scene contact sheets before publishing. Each video has
-four nine-second chapters. HyperFrames checks every midpoint (layout, runtime,
-contrast); FFprobe checks 1280×720 dimensions and 36-second duration. Native
+four six-second chapters. HyperFrames checks every midpoint (layout, runtime,
+contrast); FFprobe checks 1280×720 dimensions and 24-second duration. Native
 browser tests cover actual playback, no automatic playback, seeking, responsive
 layout and keyboard closing. Re-capture whenever the demonstrated controls change.
 Do not refresh a video date or claim it reflects the current UI without doing so.
 
 ## Tool version
 
-The current reproducible render command uses HyperFrames 0.8.30 with `--quality high`.
-On 2026-09-14 its upgrade probe offered 0.8.38, but the installed npm package-age
-policy rejected that release. The temporary project pin was restored to 0.8.30;
-its composition check passed. No npm security configuration was changed.
+The refreshed render command uses HyperFrames 0.8.36 with `--quality high`.
+The 2026-09-20 probe found no project package pin; the scripts now explicitly use
+0.8.36. No npm security configuration was changed.
 
 Generated working captures, compositions and local fixture backups stay outside
 the repository. Only compressed MP4, JPEG posters and VTT captions are published.

@@ -1,21 +1,21 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:09.000
+00:00:00.000 --> 00:00:06.000
 Run analysis first
-Check the file and mapping, then start analysis. Metrics without data may need additional columns.
+Check your file and mapping to reveal results.
 
 2
-00:00:09.000 --> 00:00:18.000
-Read the summary in context
-Check the period and KPI denominator. Similar-looking metrics such as CPA and CPI can use different outcomes.
+00:00:06.000 --> 00:00:12.000
+Read the change
+Check the period and the KPI denominator together.
 
 3
-00:00:18.000 --> 00:00:27.000
-Narrow the period and channel
-After changing filters, check the active scope and results. Do not compare mismatched periods, currencies or outcomes.
+00:00:12.000 --> 00:00:18.000
+Narrow the scope
+Compare consistent currency and outcome definitions.
 
 4
-00:00:27.000 --> 00:00:36.000
-Choose the tab for your question
-For LTV and ROAS, check the observation window and denominator. A revenue ratio alone does not establish profit or justify scaling.
+00:00:18.000 --> 00:00:24.000
+Choose your question
+For LTV and ROAS, check the observation window.

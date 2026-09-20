@@ -63,3 +63,24 @@ it.each(["ko", "en"])("%s worksheets are writing resources and GA4 has seven act
   expect(checks).toEqual([1, 2, 3, 4, 5, 6, 7]);
   expect(post.title).toContain("7");
 });
+
+it.each(["5-21", "5-2"])("three-week review preserves the baseline and actual totals in %s", toolId => {
+  const parsed = fixture("weekly-report-three-weeks.csv");
+  expect(parsed.data.slice(0, 28)).toEqual(fixture("weekly-report-campaigns.csv").data);
+  const rows = getMappedRows(prepareDatasetForTool({ raw: parsed.data, headers: parsed.meta.fields, toolId }));
+  expect(rows).toHaveLength(42);
+  const current = rows.filter(row => row.date >= "2026-09-14");
+  expect(current).toHaveLength(14);
+  const sum = (list, key) => list.reduce((n, row) => n + Number(row[key]), 0);
+  expect(sum(current, "cost")).toBe(840000);
+  expect(sum(current, "installs")).toBe(770);
+  const key = toolId === "5-21" ? "campaign_id" : "campaign_name";
+  const a = current.filter(row => row[key] === "A");
+  expect(sum(a, "installs")).toBe(350);
+  expect(sum(a, "cost") / sum(a, "installs")).toBe(1200);
+  for (const locale of ["ko", "en"]) {
+    const report = fixture(`weekly-report-followup-${locale}.csv`).data;
+    expect(report).toHaveLength(9);
+    expect(Object.values(report.at(-1))[1]).toMatch(/추정 불가|unidentified/);
+  }
+});

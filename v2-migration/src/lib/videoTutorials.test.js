@@ -27,12 +27,12 @@ describe("video tutorial publishing contract", () => {
     expect(new Set(VIDEO_TUTORIALS.map(item => item.id)).size).toBe(VIDEO_TUTORIALS.length);
     for (const item of VIDEO_TUTORIALS) for (const locale of ["ko", "en"]) {
       const media = tutorialMedia(item.id, locale);
-      for (const url of Object.values(media)) expect(existsSync(path.join(process.cwd(), "public", url)), url).toBe(true);
-      const video = readFileSync(path.join(process.cwd(), "public", media.video));
+      for (const url of Object.values(media)) expect(existsSync(path.join(process.cwd(), "public", url.split("?")[0])), url).toBe(true);
+      const video = readFileSync(path.join(process.cwd(), "public", media.video.split("?")[0]));
       expect(video.subarray(4, 8).toString()).toBe("ftyp");
-      const captions = readFileSync(path.join(process.cwd(), "public", media.captions), "utf8");
+      const captions = readFileSync(path.join(process.cwd(), "public", media.captions.split("?")[0]), "utf8");
       expect(captions.startsWith("WEBVTT\n")).toBe(true);
-      expect(item.steps.length * TUTORIAL_STEP_SECONDS).toBe(36);
+      expect(item.steps.length * TUTORIAL_STEP_SECONDS).toBe(24);
       for (const step of item.steps) {
         expect(captions).toContain(step[locale].title);
         expect(captions).toContain(step[locale].body);

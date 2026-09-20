@@ -30,7 +30,12 @@ const WEEKLY_REPORT_PRACTICE = {
 // Numeric examples are verified against these files by editorialExamples.test.js.
 export const BLOG_PRACTICES = {
   "marketing-report-sheets-bigquery": WEEKLY_REPORT_PRACTICE,
-  "weekly-marketing-report-template": WEEKLY_REPORT_PRACTICE,
+  "weekly-marketing-report-template": {
+    ...WEEKLY_REPORT_PRACTICE,
+    file: "weekly-report-three-weeks.csv",
+    ko: { ...WEEKLY_REPORT_PRACTICE.ko, title: "3주 데이터로 비교와 재검토 실습", steps: [...WEEKLY_REPORT_PRACTICE.ko.steps, "다음에는 9월 7~13일과 14~20일을 비교하세요. 비용 840,000원 유지, 설치 700→770건입니다. A 증액 보류를 유지할 근거와 다음 검토 계획을 남기세요."] },
+    en: { ...WEEKLY_REPORT_PRACTICE.en, title: "Compare and revisit decisions with three weeks of data", steps: [...WEEKLY_REPORT_PRACTICE.en.steps, "Next compare September 7–13 with 14–20: spend stays at KRW 840,000; installs rise from 700 to 770. Record why A stays on hold and what to review next."] },
+  },
   "budget-scaling-limit": {
     file: "saturation-sparse.csv",
     currency: "KRW",
