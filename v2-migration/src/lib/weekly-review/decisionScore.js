@@ -124,6 +124,7 @@ export function scoreDecision({
   const empty = { outcome: DECISION_OUTCOME.UNSCORED, reason: null, meansNoEffect: false, checks: null, target: null };
 
   if (!decision) return { ...empty, reason: "no_decision" };
+  if (decision.closureReason) return { ...empty, reason: "closed_without_effect_verdict" };
 
   if (needsExplicitPlanReview(decision.reviewPlan)) return { ...empty, reason: "explicit_target_review_required" };
 

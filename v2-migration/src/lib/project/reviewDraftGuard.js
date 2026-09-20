@@ -28,3 +28,9 @@ export function useReviewDraftGuard(dirty) {
     return () => { drafts.delete(id); window.removeEventListener("beforeunload", unload); };
   }, [dirty, id, projectId]);
 }
+
+export function confirmReviewExit(projectId, locale = "ko") {
+  return !hasReviewDraft(projectId) || window.confirm(locale === "en"
+    ? "Leave this decision? Unsaved review input will be lost."
+    : "다른 검토로 이동할까요? 저장하지 않은 리뷰 입력이 사라집니다.");
+}

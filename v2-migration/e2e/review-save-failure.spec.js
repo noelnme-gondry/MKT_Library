@@ -14,7 +14,6 @@ for (const locale of ["ko", "en"]) {
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
     });
     await page.goto(`${prefix}/weekly-review`);
-    await page.locator(".wr-handover").getByRole("button", { name: en ? "Got it" : "알겠어요", exact: true }).click();
     await page.getByRole("button", { name: en ? "Review / export device records" : "기기 기록 검토·내보내기" }).click();
     const actual = page.getByRole("textbox", { name: en ? "Actual outcome — Budget review" : "실제 결과 — Budget review", includeHidden: true });
     await actual.fill("2500");

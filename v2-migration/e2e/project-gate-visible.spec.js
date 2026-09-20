@@ -6,7 +6,7 @@ for (const locale of ["ko", "en"]) {
   test(`project gate is actually visible on screen (${locale})`, async ({ page }) => {
     const en = locale === "en";
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
-    await page.goto(`${en ? "/en" : ""}/weekly-review`);
+    await page.goto(`${en ? "/en" : ""}/weekly-review#weekly-performance`);
     const create = page.getByRole("button", { name: en ? "Create a project" : "새 프로젝트 만들기", exact: true });
     await expect(async () => {
       await create.click();

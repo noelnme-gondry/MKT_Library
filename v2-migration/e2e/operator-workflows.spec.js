@@ -307,7 +307,7 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   // "무엇을 검토해야 하나"에 답하지 못한다.
   await expect(page.locator("#wr-history.wr-history-list")).toBeVisible();
   await expect(page.locator(".wr-history-list__row")).toHaveCount(1);
-  await expectPageHierarchy(page, { primaryRegion: ".weekly-review-page" });
+  await expectPageHierarchy(page, { primaryRegion: ".wr-history-list" });
   await expectNoSeriousAccessibilityViolations(page);
 });
 

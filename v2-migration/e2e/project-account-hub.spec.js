@@ -21,7 +21,8 @@ for (const locale of ["ko", "en"]) {
     await history.getByRole("button", { name: new RegExp(memos[0].action) }).click();
     await expect(history.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
     expect(await history.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
-    await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
+    await expect(page.locator(".csv-uploader")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: en ? "Decision review" : "결정 검토", exact: true })).toHaveAttribute("aria-pressed", "true");
   });
   test(`signed-in account copy stays aligned (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
     const en = locale === "en";
@@ -50,7 +51,8 @@ for (const locale of ["ko", "en"]) {
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
     await page.goto(`${prefix}/weekly-review`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New project" : "새 프로젝트");
-    await expect(page.locator('.wr-screen .journey-progress [aria-current="step"]')).toHaveText(en ? "1Prepare data" : "1데이터 준비");
+    await expect(page.locator(".csv-uploader")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: en ? "Decision review" : "결정 검토", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".wr-screen .journey-progress a")).toHaveCount(0);
     await expect(page.locator(".wr-screen__eyebrow")).toHaveCount(0);
     const trigger = page.locator(".my-account-menu > summary");
@@ -92,8 +94,8 @@ for (const locale of ["ko", "en"]) {
     await trigger.click();
     await panel.getByRole("link", { name: en ? "My projects" : "내 프로젝트", exact: true }).click();
     await expect(page.getByRole("heading", { name: en ? "My projects" : "내 프로젝트", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: en ? "Start your first review" : "첫 리뷰 시작하기", exact: true }).click();
-    await expect(page.locator("#wr-upload")).toBeVisible();
+    await page.getByRole("link", { name: en ? "Start your first review" : "첫 리뷰 시작하기", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
     await trigger.click();
     await page.keyboard.press("Escape");
     await expect(trigger).toBeFocused();

@@ -1,20 +1,21 @@
 import { decisionPlanRows, decisionObservationRows } from "@/lib/decisionPlan";
+import { decisionClosureLabel } from "@/lib/decisionClosure";
 import { decisionEpisodeList, decisionGuardrailList, getDecisionReviewBucket } from "@/lib/decisionReview";
 import { reviewScopeRows, readReviewEvidence } from "@/lib/reviewEvidence";
 
 const text = (value, limit = 1000) => ["string", "number"].includes(typeof value) ? String(value).slice(0, limit) : "";
-export function buildReviewBrief({ projectName = "", records = [], locale = "ko" } = {}) {
+export function buildReviewBrief({ projectName = "", records = [], locale = "ko", limit = 20 } = {}) {
   const en = locale === "en";
   const statuses = en ? { overdue: "Overdue", today: "Review today", upcoming: "Upcoming", unscheduled: "Date not set", reviewed: "Reviewed" } : { overdue: "기한 지남", today: "오늘 검토", upcoming: "검토 예정", unscheduled: "검토일 미정", reviewed: "검토 완료" };
   const selected = records.filter(record => record?.action).slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
-  return { projectName: text(projectName, 120), total: selected.length, decisions: selected.slice(0, 20).map(record => {
+  return { projectName: text(projectName, 120), total: selected.length, decisions: selected.slice(0, Number.isInteger(limit) && limit >= 0 ? limit : 20).map(record => {
     const evidence = readReviewEvidence(record.evidence);
     const effect = readReviewEvidence(record.effectEvidence);
     const episodes = decisionEpisodeList(record);
     const parent = records.find(item => item.id === record.parentDecisionId);
     return { action: text(record.action, 500), fields: [
       [en ? "Recorded / review date" : "작성일 / 검토일", `${String(record.createdAt || "").slice(0, 10) || "—"} / ${record.reviewDate || "—"}`],
-      [en ? "Review status" : "검토 상태", statuses[getDecisionReviewBucket(record)]],
+      [en ? "Review status" : "검토 상태", decisionClosureLabel(record.closureReason, locale) || statuses[getDecisionReviewBucket(record)]],
       [en ? "Decision basis" : "판단 근거", text(record.conclusion)],
       ...decisionPlanRows(record.reviewPlan, locale),
       ...decisionObservationRows(record.reviewPlan, record.targetActual, locale),

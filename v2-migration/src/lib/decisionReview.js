@@ -1,6 +1,7 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
+import { DECISION_CLOSURE_REASONS } from "./decisionClosure";
 import { normalizeDecisionComparisonScope, readDecisionComparisonScope } from "@/lib/decisionComparisonScope";
 import { readDatasetContinuitySnapshot, serializeDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { resolvePathToId } from "@/lib/routeMap";
@@ -14,7 +15,7 @@ import { parseNumericStrict } from "@/utils/parseNumeric";
 // 옛 레코드는 이 필드들이 비어 있고, `decisionScore`가 추측하지 않고 UNSCORED로 남긴다.
 // v10: 가드레일이 하나뿐이면 "오가닉은 늘었는데 총량이 줄었다" 같은 실패를 못 잡는다.
 // `guardrails`가 목록을 들고, 옛 단수 필드는 그 목록의 첫 항목으로 계속 유효하다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 14;
+export const DECISION_REVIEW_SCHEMA_VERSION = 15;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -43,6 +44,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "targetActual",
   "effectEvidence",
   "effectSourceId",
+  "closureReason",
   "hypothesis",
   "metric",
   "targetDirection",
@@ -93,6 +95,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "target_actual",
   "effect_evidence",
   "effect_source_id",
+  "closure_reason",
   "hypothesis",
   "metric",
   "target_direction",
@@ -574,6 +577,7 @@ export function decisionNumericComparison(record = {}) {
 // "판단이 맞았다"는 인과 주장을 하지 않는다. 저장된 목표 방향과 기준값에 비춰
 // 지표가 좋아졌는지만 분류하고, 방향이 없으면 변화량만 제공한다.
 export function assessDecisionOutcome(record = {}) {
+  if (record.closureReason) return { state: "unscored", direction: "", comparison: null };
   const comparison = decisionNumericComparison(record);
   const explicitDirection = asTargetDirection(record.targetDirection ?? record.target_direction);
   const direction = explicitDirection || decisionMetricDirection(record.metric);
@@ -590,7 +594,7 @@ export function summarizeDecisionOutcomes(records = []) {
     const outcome = assessDecisionOutcome(record);
     if (outcome.state === "incomplete") return;
     summary[outcome.state] += 1;
-    summary.comparable += 1;
+    if (outcome.comparison) summary.comparable += 1;
   });
   return summary;
 }
@@ -625,6 +629,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     reviewPlan: serializeDecisionPlan(field(row, "reviewPlan", "review_plan")),
     targetActual: asFiniteNumberText(field(row, "targetActual", "target_actual")),
     effectEvidence: serializeReviewEvidence(field(row, "effectEvidence", "effect_evidence")),
+    closureReason: Object.hasOwn(DECISION_CLOSURE_REASONS, field(row, "closureReason", "closure_reason")) ? field(row, "closureReason", "closure_reason") : "",
     effectSourceId: asText(field(row, "effectSourceId", "effect_source_id"), FIELD_LIMITS.id),
     evidence: serializeReviewEvidence(field(row, "evidence")),
     parentDecisionId: asText(field(row, "parentDecisionId", "parent_decision_id"), FIELD_LIMITS.id),

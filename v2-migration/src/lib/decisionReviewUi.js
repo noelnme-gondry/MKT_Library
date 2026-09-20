@@ -16,3 +16,7 @@ export function requestDecisionReviewOpen(toolId, source = "external") {
 }
 
 export const PROJECT_REVIEW_TOOL_EVENT = "gop-project-review-tool";
+
+export function decisionReviewHref(locale, id) {
+  return `${locale === "en" ? "/en" : ""}/weekly-review#decision-${encodeURIComponent(id)}`;
+}

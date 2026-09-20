@@ -14,9 +14,9 @@ for (const locale of ["ko", "en"]) {
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
     });
     await page.goto(`${prefix}/weekly-review`);
-    await page.locator(".wr-handover").getByRole("button", { name: en ? "Got it" : "알겠어요", exact: true }).click();
     const agenda = page.locator(".project-review-portfolio");
     await expect(agenda.locator("article")).toHaveCount(2);
+    await agenda.getByText(en ? "Browse decisions by tool" : "도구별 결정 찾아보기", { exact: true }).click();
     await agenda.locator("article").filter({ hasText: en ? "Budget" : "예산" }).getByRole("link").click();
     const editor = page.locator(".weekly-review-page.is-embedded");
     await expect(editor.getByRole("heading", { name: "Budget review", exact: true })).toBeVisible();

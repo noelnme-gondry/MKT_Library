@@ -1,0 +1,66 @@
+import { test, expect } from "@playwright/test";
+import { enableReviewLogin, confirmReviewDialog } from "./support/reviewSave";
+import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+
+for (const locale of ["ko", "en"]) {
+  test(`decision agenda → direct result → next action → early closure (${locale})${locale === "en" ? " @light-en" : ""}`, async ({ page }) => {
+    const en = locale === "en", prefix = en ? "/en" : "";
+    await enableReviewLogin(page);
+    await page.goto(`${prefix}/projects`);
+    await expect(page.getByRole("button", { name: en ? "Create project" : "프로젝트 만들기", exact: true })).toBeEnabled();
+    await page.evaluate(async () => {
+      const db = await new Promise(resolve => { const req = indexedDB.open("mkt_workspace"); req.onsuccess = () => resolve(req.result); });
+      const tx = db.transaction("meta", "readwrite");
+      tx.objectStore("meta").put({ key: "project:default", id: "default", name: "Review usability", snapshots: [], settings: null, createdAt: Date.now(), lastUsedAt: Date.now(), decisions: [{ id: "parent", toolId: "5-2", action: "Review campaign", dataOrigin: "real", reviewDate: "2099-10-01", createdAt: "2026-09-01T00:00:00Z", status: "pending", goalMetric: "cpa", goalDirection: "down", metric: "CPA", baseline: "100", actual: "", learning: "" }] });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
+    });
+    await page.goto(`${prefix}/weekly-review`);
+    await expect(page.locator(".csv-uploader")).toHaveCount(0);
+    await page.locator(".wr-history-list__row").click();
+    const card = page.locator(".weekly-review-record");
+    await expect(card).toHaveCount(1);
+    await expect(card.getByRole("textbox", { name: en ? "Actual outcome — Review campaign" : "실제 결과 — Review campaign" })).toBeVisible();
+    await page.getByRole("button", { name: en ? "Compare weekly performance" : "주간 성과 비교", exact: true }).click();
+    await expect(page.getByText(en ? /saved target uses a different currency/i : /저장된 목표와 원본 통화가 다릅니다/)).toHaveCount(0);
+    await page.goto(`${prefix}/dashboard`);
+    const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
+    await uploader.locator('input[type="file"][accept*="csv"]').setInputFiles("e2e/fixtures/efficiency.csv");
+    await expect(uploader.locator(".file-state")).toContainText("efficiency.csv");
+    await uploader.locator('[data-currency-scope="declare"]').getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
+    const confirmations = page.getByRole("button", { name: en ? "Confirm" : "확인", exact: true });
+    while (await confirmations.count()) await confirmations.first().click();
+    await page.getByRole("button", { name: en ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+    const result = page.locator(".dashboard-briefing .result-action-card");
+    await result.getByText(en ? "Link this result to an existing decision" : "이 결과를 기존 결정에 연결", { exact: true }).click();
+    await result.getByRole("combobox", { name: en ? "Decision to review" : "결과를 검토할 결정" }).selectOption("parent");
+    const linkSave = result.getByRole("button", { name: en ? "Save linked result" : "연결한 결과 저장", exact: true });
+    await expect(linkSave).toBeDisabled();
+    await result.getByRole("checkbox", { name: en ? /I checked the metric/ : /지표·처치 방향·집단·기간/ }).check();
+    await linkSave.click(); await confirmReviewDialog(page, en);
+    await result.getByRole("link", { name: en ? /Result linked. Continue/ : /결과를 연결했습니다/ }).click();
+    await expect(card).toHaveCount(1);
+    await expect(page.locator(".wr-history-list__row")).toHaveCount(1);
+    await expect(card.getByText(en ? /Linked effect analysis — estimate, interval and design/ : /연결한 효과 분석 — 추정치·구간·설계/)).toBeVisible();
+    await card.getByRole("textbox", { name: en ? "Actual outcome — Review campaign" : "실제 결과 — Review campaign" }).fill("CPA 110; population differs");
+    await card.getByRole("textbox", { name: en ? /^Learning.*Review campaign$/ : /^배운 점.*Review campaign$/ }).fill("Redesign the comparison");
+    await card.getByRole("button", { name: en ? "Save observation and plan next action" : "관측 저장 후 다음 행동 정하기" }).click();
+    await confirmReviewDialog(page, en);
+    const follow = card.locator(".decision-follow-up__form");
+    await expect(follow).toBeVisible();
+    await expect(follow.getByRole("combobox", { name: en ? "Review method" : "검토 방법", exact: true })).toHaveCount(0);
+    await follow.getByRole("textbox", { name: en ? "Next action" : "다음에 실행할 행동", exact: true }).fill("Run a matched comparison");
+    await follow.getByRole("button", { name: en ? "Save next decision" : "다음 결정 저장", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await card.getByRole("link", { name: "Run a matched comparison", exact: true }).click();
+    await expect(card.getByRole("heading", { name: "Run a matched comparison", exact: true })).toBeVisible();
+    await card.getByRole("link", { name: "Review campaign", exact: true }).click();
+    await card.getByText(en ? "Stop or redesign this decision" : "이 결정 중단·재설계", { exact: true }).click();
+    await card.getByRole("button", { name: en ? "Redesign required" : "설계 오류로 재설계", exact: true }).click();
+    await confirmReviewDialog(page, en);
+    await page.reload();
+    await expect(card.locator(".weekly-review-record__status")).toHaveText(en ? "Redesign required" : "설계 오류로 재설계");
+    await expect(card.getByRole("textbox", { name: en ? "Actual outcome — Review campaign" : "실제 결과 — Review campaign" })).toHaveValue("CPA 110; population differs");
+    await expectNoSeriousAccessibilityViolations(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  });
+}

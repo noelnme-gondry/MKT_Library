@@ -50,7 +50,7 @@ describe("DochiResultWorkspace", () => {
     const button = screen.getByRole("button", { name: locale === "en" ? "Build weekly review" : "주간 리뷰 만들기" });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
-    expect(push).toHaveBeenCalledWith(locale === "en" ? "/en/weekly-review" : "/weekly-review");
+    expect(push).toHaveBeenCalledWith(locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance");
     useAppStore.getState().setCurrentRouteId("weekly-review");
     expect(useAppStore.getState().csvData.raw).toEqual(data.raw);
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);

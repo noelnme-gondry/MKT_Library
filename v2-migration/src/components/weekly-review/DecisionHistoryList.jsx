@@ -1,5 +1,7 @@
 "use client";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { decisionClosureLabel } from "@/lib/decisionClosure";
+import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
 import { PROJECT_REVIEW_TOOL_EVENT } from "@/lib/decisionReviewUi";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
@@ -121,12 +123,30 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
   const [pendingCopy, setPendingCopy] = useState(null);
   const [message, setMessage] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+  const activeProjectId = useAppStore(state => state.activeProjectId);
+  const changeOpen = id => { if (id === openId || confirmReviewExit(activeProjectId, locale)) { setOpenId(id); if (!isSample) window.history.replaceState(null, "", id ? `#decision-${encodeURIComponent(id)}` : "#wr-history"); } };
   const [toolFilter, setToolFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   useEffect(() => {
-    const openTool = event => { if (!isSample) { setToolFilter(String(event.detail?.toolId || "")); setEditorOpen(true); } };
+    const openTool = event => { if (!isSample && confirmReviewExit(activeProjectId, locale)) { const tool = String(event.detail?.toolId || ""); setToolFilter(tool); setStatusFilter("all"); setEditorOpen(false); setOpenId(localRecords.find(record => !tool || record.toolId === tool)?.id || ""); } };
     window.addEventListener(PROJECT_REVIEW_TOOL_EVENT, openTool);
     return () => window.removeEventListener(PROJECT_REVIEW_TOOL_EVENT, openTool);
-  }, [isSample]);
+  }, [isSample, activeProjectId, locale, localRecords]);
+  useEffect(() => {
+    const openDecision = () => {
+      if (isSample || !window.location.hash.startsWith("#decision-")) return;
+      let id; try { id = decodeURIComponent(window.location.hash.slice(10)); } catch { return; }
+      if (id !== openId && localRecords.some(record => record.id === id)) {
+        if (!confirmReviewExit(activeProjectId, locale)) { window.history.replaceState(null, "", openId ? `#decision-${encodeURIComponent(openId)}` : "#wr-history"); return; }
+        setToolFilter(""); setStatusFilter("all"); setEditorOpen(false); setOpenId(id);
+      }
+    };
+    openDecision(); window.addEventListener("hashchange", openDecision);
+    return () => window.removeEventListener("hashchange", openDecision);
+  }, [localRecords, activeProjectId, isSample, locale, openId]);
+  useEffect(() => {
+    if (openId && window.location.hash === `#decision-${encodeURIComponent(openId)}`) document.getElementById(`decision-${openId}`)?.focus();
+  }, [openId]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const loadVersion = useRef(0);
@@ -196,40 +216,45 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
     finally { setBusyId(""); }
   };
 
+  const visibleRows = rows.filter(row => (!toolFilter || row.toolId === toolFilter) && (statusFilter === "all" || statusFilter === "due" && ["overdue", "today", "unscheduled"].includes(row.bucket) || row.bucket === statusFilter));
   const isPro = hasPaidAccess(entitlement || session?.entitlement);
 
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>
       <h2 id={`${anchorId}-title`}>{t.title}</h2>
-      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => { setToolFilter(""); setEditorOpen(value => !value); }}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
-      {!isSample && editorOpen && toolFilter && <button className="btn" onClick={() => setToolFilter("")}>{en ? "Show decisions from all tools" : "모든 도구의 결정 보기"}</button>}
+      {!isSample && <button type="button" className="btn" aria-expanded={editorOpen} onClick={() => { if (confirmReviewExit(activeProjectId, locale)) { setToolFilter(""); setOpenId(""); window.history.replaceState(null, "", "#wr-history"); setEditorOpen(value => !value); } }}>{en ? "Review / export device records" : "기기 기록 검토·내보내기"}</button>}
+      {!editorOpen && <label className="wr-field">{en ? "Review timing" : "검토 시점"}<select value={statusFilter} onChange={event => { if (confirmReviewExit(activeProjectId, locale)) { setStatusFilter(event.target.value); setOpenId(""); window.history.replaceState(null, "", "#wr-history"); } }}><option value="all">{en ? "All decisions" : "전체 결정"}</option><option value="due">{en ? "Review now" : "지금 검토"}</option><option value="upcoming">{en ? "Awaiting results" : "결과 대기"}</option><option value="reviewed">{en ? "Reviewed / closed" : "검토 완료·종료"}</option></select></label>}
+      {!isSample && toolFilter && <button className="btn" onClick={() => setToolFilter("")}>{en ? "Show decisions from all tools" : "모든 도구의 결정 보기"}</button>}
       {!isSample && editorOpen && <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor toolFilter={toolFilter} locale={locale} embedded /></Suspense>}
       {!session?.account && <p>{t.signIn}</p>}
       {session?.account && !isPro && <p>{t.proNote} <Link href={en ? "/en/subscription" : "/subscription"}>{t.viewPro}</Link></p>}
+      {!editorOpen && rows.length > 0 && !visibleRows.length && <p role="status">{en ? "No decisions match these filters." : "이 조건에 맞는 결정이 없습니다."}</p>}
       {message && <p role="status">{message}</p>}
       {!isSample && loadFailed && <p role="alert">{en ? "Could not load account decisions. Previously loaded and device records remain available." : "계정의 결정을 불러오지 못했습니다. 이전에 불러온 기록과 기기 기록은 계속 볼 수 있습니다."} <button className="btn" onClick={() => setReload(value => value + 1)}>{en ? "Retry loading" : "다시 불러오기"}</button></p>}
-      {loading ? <p role="status">{t.loading}</p> : rows.length === 0 ? (!loadFailed || isSample) && <p className="wr-history-list__empty">{t.empty}</p> : (
-        <ul className="wr-history-list__items">
-          {rows.map((row) => {
+      {loading && !rows.length ? <p role="status">{t.loading}</p> : rows.length === 0 ? (!loadFailed || isSample) && <p className="wr-history-list__empty">{t.empty}</p> : (
+        !editorOpen && <ul className="wr-history-list__items">
+          {visibleRows.map((row) => {
             const outcome = assessDecisionOutcome(row);
             const open = openId === row.id;
             return (
               <li key={row.id}>
-                <button type="button" className="wr-history-list__row" aria-expanded={open} onClick={() => setOpenId(open ? "" : row.id)}>
+                <button type="button" className="wr-history-list__row" aria-expanded={open} aria-controls={open ? `decision-${row.id}` : undefined} onClick={() => changeOpen(open ? "" : row.id)}>
                   <span className="wr-history-list__date">{row.reviewDate || t.noDate}</span>
                   <span className="wr-history-list__action">{row.action}</span>
                   <span className="wr-history-list__badges">
-                    <span className="wr-history-list__badge">{t.bucket[row.bucket] || row.bucket}</span>
+                    <span className="wr-history-list__badge">{decisionClosureLabel(row.closureReason, locale) || t.bucket[row.bucket] || row.bucket}</span>
                     {row.onAccount && <span className="wr-history-list__badge">☁ {row.onDevice ? t.onAccount : t.accountOnly}</span>}
                   </span>
                 </button>
                 {open && (
-                  <div className="wr-history-list__detail">
+                  <div className="wr-history-list__detail" id={`decision-${row.id}`} tabIndex={-1}>
+                    {row.onDevice && !isSample ? <Suspense fallback={<p role="status">{t.loading}</p>}><DecisionReviewEditor key={row.id} locale={locale} embedded compact decisionId={row.id} /></Suspense> : <>
                     {row.conclusion && <p><strong>{t.conclusion}</strong> {row.conclusion}</p>}
                     {row.metric && <p><strong>{t.goal}</strong> {row.metric}{row.baseline ? ` · ${row.baseline}` : ""}</p>}
                     {decisionGuardrailList(row).length > 0 && <p><strong>{t.guardrails}</strong> {decisionGuardrailList(row).map((item) => `${item.metric} ${item.op === "lte" ? "≤" : "≥"} ${item.value}`).join(" · ")}</p>}
                     {row.actual && <p><strong>{t.actual}</strong> {row.actual} · {outcome.state === "improved" ? t.outcomeImproved : outcome.state === "declined" ? t.outcomeDeclined : outcome.state === "unchanged" ? t.outcomeUnchanged : t.outcomePending}</p>}
                     {row.learning && <p><strong>{t.learning}</strong> {row.learning}</p>}
+                    </>}
                     {row.remote && <section className="wr-notice">
                       <strong>{en ? "Account and device copies differ" : "계정과 기기의 내용이 다릅니다"}</strong>
                       <p>{en ? "The record above is from this device. Keep the account copy as a separate record to preserve device-only review history, or update the account memo from this device." : "위 기록은 이 기기의 내용입니다. 계정 내용은 별도 기록으로 보관해 기기에만 있는 검토 이력을 유지하거나, 기기 내용으로 계정 메모를 갱신할 수 있습니다."}</p>
@@ -240,7 +265,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                     <div className="wr-history-list__actions">
                       {row.onDevice && !row.onAccount && session?.account && <button type="button" className="btn" disabled={busyId === row.id || !isPro} onClick={() => saveToAccount(row)}>{en ? "Keep in my account" : "계정에 보관"}</button>}
                       {!row.onDevice && <button type="button" className="btn" onClick={() => setPendingCopy(row)}>{t.continueReview}</button>}
-                      <button type="button" className="btn ghost" onClick={() => setOpenId("")}>{t.close}</button>
+                      <button type="button" className="btn ghost" onClick={() => changeOpen("")}>{t.close}</button>
                     </div>
                   </div>
                 )}

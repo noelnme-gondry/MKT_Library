@@ -4,6 +4,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildReviewEvidence } from "@/lib/reviewEvidence";
+import LinkAnalysisToDecision from "./LinkAnalysisToDecision";
 import DecisionReview from "@/components/ds/DecisionReview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 import AnalysisScopeEvidence from "@/components/ds/AnalysisScopeEvidence";
@@ -338,6 +339,7 @@ export default function ResultActionCard({
         </details>
       )}
 
+      {canScheduleDecision && !isDemoData(csvData) && <LinkAnalysisToDecision toolId={toolId} metric={resolvedDecisionPrefill?.metric} locale={locale} evidence={buildReviewEvidence({ headline, points, stats, scope: { ...resultScope, currency: csvData?.currency, metric: resolvedDecisionPrefill?.metric }, analysisType: resolvedAnalysisType, resultState })} />}
       {canScheduleDecision && (
         <DecisionReview
           toolId={toolId}

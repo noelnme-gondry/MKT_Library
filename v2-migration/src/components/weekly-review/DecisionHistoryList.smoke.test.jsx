@@ -18,6 +18,7 @@ const LOCAL = {
 const REMOTE = { id: "d-remote", toolId: "5-3", action: "Google 증액", reviewDate: "2026-09-25", conclusion: "여력 있음" };
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/weekly-review");
   useAppStore.setState(useAppStore.getInitialState(), true);
   vi.clearAllMocks();
   useAppStore.setState({ entitlement: activePro({ trial: true }), decisionRecords: [LOCAL] });
@@ -39,7 +40,9 @@ it("접기가 아니라 버튼이고, 누르면 상세가 열린다", async () =
   const row = await screen.findByRole("button", { name: /Meta 예산 30% 감액/ });
   expect(row.getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(row);
-  await waitFor(() => expect(screen.getByText("강한 잠식 후보 2개")).toBeTruthy());
+  await screen.findByText("결정 당시 근거·비교 조건");
+  fireEvent.click(screen.getByText("결정 당시 근거·비교 조건"));
+  expect(screen.getByText("강한 잠식 후보 2개")).toBeTruthy();
   // 가드레일 목록이 단수·복수 양쪽에서 합쳐져 보인다.
   expect(screen.getByText(/conversions ≥ 5000 · cpa ≤ 8000/)).toBeTruthy();
 });
