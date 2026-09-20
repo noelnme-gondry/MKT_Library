@@ -24,3 +24,14 @@ it.each(["ko", "en"])("links a snapshot directly without creating a decision (%s
   expect(useAppStore.getState().decisionRecords).toHaveLength(2);
   expect(screen.getByRole("link").getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review#decision-a`);
 });
+it("requires conditions to be checked again when the displayed analysis changes", () => {
+  const props = { toolId: "5-23", metric: "Organic users", evidence: { headline: "Recovery +300", scope: { metric: "Organic users" } } };
+  const view = render(<LinkAnalysisToDecision {...props} />);
+  fireEvent.click(screen.getByText("이 결과를 기존 결정에 연결"));
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "a" } });
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("button", { name: "연결한 결과 저장" }).disabled).toBe(false);
+  view.rerender(<LinkAnalysisToDecision {...props} evidence={{ headline: "Recovery -100", scope: { metric: "Organic users", channel: "Different population" } }} />);
+  expect(screen.getByRole("checkbox").checked).toBe(false);
+  expect(screen.getByRole("button", { name: "연결한 결과 저장" }).disabled).toBe(true);
+});
