@@ -762,3 +762,12 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 수치 목표 및 실험 계획은 일반 효율 집계로 자동 성공 판정하지 않는다. 동일 범위의 실제 관측값을 입력해 수치 기준을 대조하고 가드레일·통계적 유의성·인과효과는 별도로 검토한다.
 - 계획과 관측값은 기기 내 결정 기록·CSV·보고서에 보존한다. 계정 메모나 분석 이벤트에 자동 전송하지 않는다.
 - KR/EN 동등 제공. / Tool-specific goals, relative and absolute targets, experiment scope and observations persist through follow-up reviews and reports. Numeric threshold compliance is not proof of causal lift or statistical significance.
+
+### 운영 목표와 실험 효과의 분리 (2026-09-20 보완)
+
+- 운영 목표값은 통계적 효과 탐지 기준이 아니다. 목표 미달을 카니발 없음·효과 없음으로 표현하지 않는다. 목표를 넘어도 인과효과가 확인됐다고 표현하지 않는다.
+- 리뷰는 효과 추정치·불확실성·설계 근거를 운영 목표 비교와 분리해 제공한다. 관측 변화량과 상대 변화, 운영 목표 진행률은 실제 입력값에서 계산하며 진행률을 카니발 회복률이나 통계적 신뢰도로 부르지 않는다.
+- 예: 기준 5,000명·상대 증가 목표 10%·관측 5,300명이면 관측 변화 +300명(+6%), 운영 목표 진행률 60%다. 이것만으로 카니발 유무를 판정하지 않는다. 유효한 오가닉 회복 실험에서 양의 추정치와 불확실성이 제시되면 목표보다 작은 부분 회복도 해당 근거와 함께 읽는다.
+- 같은 프로젝트에 저장한 후속 분석의 근거 사본을 명시적으로 선택해 연결한다. 원본 분석의 추정치·신뢰구간·기간·설계 한계를 보존한다. 연결만으로 지표·처치 방향·집단·기간의 일치나 설계 타당성을 검증했다고 간주하지 않는다. 광고 순증분과 오가닉 회복은 서로 다른 추정 대상이다.
+- 근거가 없으면 불확실성 추정 불가로 남긴다. 0을 포함하는 구간은 효과 없음의 증거로 취급하지 않는다. 수학 엔진이나 구간을 임의로 완화하지 않는다.
+- KR/EN 및 기기 저장·CSV·Word·Excel·보고서에 동일 적용. 연결 근거는 계정 메모나 분석 이벤트에 자동 전송하지 않는다. / Operating targets do not define statistical detection. Preserve partial observed changes and linked experimental estimates, intervals and design limitations without inventing causal conclusions.

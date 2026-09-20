@@ -639,7 +639,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
-              <DecisionPlanReview record={record} locale={locale} onChange={value => { updateRecord(record.id, "targetActual", value); const plan = readDecisionPlan(record.reviewPlan); if (["met", "not_met"].includes(assessDecisionPlan(plan, value).state)) updateRecord(record.id, "actual", `${plan.metric || record.metric} ${value} ${plan.unit}`); }} />
+              <DecisionPlanReview record={record} locale={locale} onEvidenceChange={source => { updateRecord(record.id, "effectEvidence", source?.evidence || ""); updateRecord(record.id, "effectSourceId", source?.id || ""); }} onChange={value => { updateRecord(record.id, "targetActual", value); const plan = readDecisionPlan(record.reviewPlan); if (["met", "not_met"].includes(assessDecisionPlan(plan, value).state)) updateRecord(record.id, "actual", `${plan.metric || record.metric} ${value} ${plan.unit}`); }} />
               <DecisionEvidence record={record} locale={locale} />
               <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} />
               {record.conclusion && <p className="weekly-review-record__context"><span>{t.conclusion}</span>{record.conclusion}</p>}

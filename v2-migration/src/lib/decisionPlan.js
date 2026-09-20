@@ -43,10 +43,32 @@ export function assessDecisionPlan(input, observed) {
 }
 export function decisionPlanRows(input, locale = "ko") {
   const p = readDecisionPlan(input), en = locale === "en", lang = en ? 1 : 0;
-  return [[en ? "Review method" : "검토 방법", PLAN_METHODS[p.method]?.[lang]], [en ? "Target channel / group" : "대상 채널·집단", p.target], [en ? "Comparison group" : "비교군", p.control], [en ? "Observation window" : "관측 기간", p.window], [en ? "Success metric" : "목표 지표", p.metric], [en ? "Success threshold" : "성공 기준", p.mode ? `${PLAN_MODES[p.mode][lang]} ${p.value}${p.mode.endsWith("percent") ? "%" : ` ${p.unit}`}` : ""], [en ? "Baseline" : "기준값", p.baseline !== "" && p.baseline != null ? `${p.baseline} ${p.unit}` : ""]].filter(([, value]) => value);
+  return [[en ? "Review method" : "검토 방법", PLAN_METHODS[p.method]?.[lang]], [en ? "Target channel / group" : "대상 채널·집단", p.target], [en ? "Comparison group" : "비교군", p.control], [en ? "Observation window" : "관측 기간", p.window], [en ? "Success metric" : "목표 지표", p.metric], [en ? "Operating target" : "운영 목표", p.mode ? `${PLAN_MODES[p.mode][lang]} ${p.value}${p.mode.endsWith("percent") ? "%" : ` ${p.unit}`}` : ""], [en ? "Baseline" : "기준값", p.baseline !== "" && p.baseline != null ? `${p.baseline} ${p.unit}` : ""]].filter(([, value]) => value);
 }
 
 export function needsExplicitPlanReview(input) {
   const p = readDecisionPlan(input);
   return Boolean(p.mode || ["holdout", "controlled"].includes(p.method));
+}
+
+// Descriptive change and operating progress are not an experiment effect estimate.
+export function decisionObservationRows(input, observed, locale = "ko") {
+  const p = readDecisionPlan(input), en = locale === "en";
+  const actual = number(observed), baseline = number(p.baseline), target = number(p.value);
+  if (actual === null) return [];
+  const fmt = value => value.toLocaleString(en ? "en-US" : "ko-KR", { maximumFractionDigits: 2 });
+  const signed = value => `${value > 0 ? "+" : ""}${fmt(value)}`;
+  const rows = [[en ? "Observed value" : "실제 관측값", `${fmt(actual)} ${p.unit || ""}`]];
+  if (baseline !== null) {
+    const change = actual - baseline;
+    if (Number.isFinite(change)) rows.push([en ? "Observed change (not causal lift)" : "관측 변화량 (인과효과 아님)", `${signed(change)} ${p.unit}${baseline > 0 && Number.isFinite(change / baseline * 100) ? ` (${signed(change / baseline * 100)}%)` : ""}`]);
+  }
+  const assessment = assessDecisionPlan(p, observed);
+  if (["met", "not_met"].includes(assessment.state)) {
+    const changed = !p.mode.startsWith("at_");
+    const measured = p.mode.startsWith("decrease") ? -assessment.measured : assessment.measured;
+    if (changed && target > 0 && Number.isFinite(measured / target * 100)) rows.push([en ? "Operating target progress (not recovery share)" : "운영 목표 진행률 (카니발 회복률 아님)", `${fmt(measured / target * 100)}%`]);
+    rows.push([en ? "Operating target comparison" : "운영 목표 비교", assessment.state === "met" ? (en ? "Reached; effect evidence must be reviewed separately" : "목표 도달 · 효과 근거는 별도 검토") : (en ? "Below target; this does not mean no effect" : "목표 미달 · 효과 없음이라는 뜻 아님")]);
+  }
+  return rows;
 }
