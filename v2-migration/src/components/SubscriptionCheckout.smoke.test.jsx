@@ -9,6 +9,19 @@ vi.mock("@/lib/subscription/paymentClient", () => ({ rememberPaymentAccess: vi.f
 vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
 afterEach(() => { vi.unstubAllGlobals(); delete window.TossPayments; delete window.AUTHNICE; tracking.mockClear(); window.history.replaceState(null, "", "/"); });
 
+it.each(["ko", "en"])("does not send a new-provider order to an old open checkout (%s)", async locale => {
+  useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
+  window.AUTHNICE = { requestPay: vi.fn() };
+  vi.stubGlobal("fetch", vi.fn(async path => ({ ok: true, json: async () => path.endsWith("config")
+    ? { enabled: true, provider: "nicepay", mode: "live", clientKey: "fixture" }
+    : { orderId: "gop_fixture", amount: 5900, provider: "toss", mode: "live" } })));
+  render(<SubscriptionCheckout locale={locale} />);
+  fireEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Pay KRW 5,900" : "5,900원 결제하기" }));
+  await screen.findByText(locale === "en" ? /Checkout settings changed/ : /결제 설정이 변경됐습니다/);
+  expect(window.AUTHNICE.requestPay).not.toHaveBeenCalled();
+  expect(tracking.mock.calls.some(([name]) => name === "begin_checkout")).toBe(false);
+});
+
 it.each(["ko", "en"])("opens NICEPAY only after intent and does not count authentication as purchase (%s)", async locale => {
   useAppStore.setState({ ...useAppStore.getInitialState(), entitlement: null });
   window.AUTHNICE = { requestPay: vi.fn() };

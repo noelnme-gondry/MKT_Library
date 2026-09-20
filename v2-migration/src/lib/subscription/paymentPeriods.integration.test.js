@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import pg from "pg";
 import { readFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 const identity = vi.hoisted(() => ({ account: { id: "00000000-0000-4000-8000-000000000001" } }));
 vi.mock("@/lib/account/accountServer", () => ({ readAccount: async () => identity.account, accountsEnabled: () => true }));
@@ -64,4 +64,42 @@ it.skipIf(!enabled)("retains legacy periods, caps expiry and does not bridge a r
   await query("UPDATE gop_payment_orders SET starts_at='2026-10-01' WHERE id=$1", [id]);
   await query("UPDATE gop_accounts SET trial_started_at='2026-09-17' WHERE id=$1", [identity.account.id]);
   expect((await until("2026-09-20")).toISOString()).toBe("2026-11-01T00:00:00.000Z");
+});
+
+it.skipIf(!enabled)("preserves mixed PG periods and applies refunds while new checkout is closed", async () => {
+  await query("UPDATE gop_payment_orders SET status='revoked'");
+  await query("UPDATE gop_accounts SET trial_started_at=NULL WHERE id=$1", [identity.account.id]);
+  vi.stubEnv("PAYMENTS_PROVIDER", "toss");
+  vi.stubEnv("TOSS_CLIENT_KEY", "live_gck_fixture");
+  vi.stubEnv("TOSS_SECRET_KEY", "live_gsk_fixture");
+  vi.stubEnv("PAYMENTS_LIVE_ENABLED", "true");
+  const approvedAt = new Date().toISOString();
+  const old = await server.createPaymentOrder(request());
+  const oldInput = { orderId: old.body.orderId, paymentKey: "old-toss-payment", amount: 5900 };
+  const toss = { ...oldInput, totalAmount: 5900, currency: "KRW", status: "DONE", approvedAt };
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json(toss)));
+  await server.confirmPayment(request(old.cookie.split(";")[0]), oldInput);
+  vi.stubEnv("PAYMENTS_PROVIDER", "nicepay");
+  vi.stubEnv("NICEPAY_APPROVAL_MODEL", "server-basic");
+  vi.stubEnv("NICEPAY_MODE", "live");
+  vi.stubEnv("NICEPAY_CLIENT_KEY", "nice-client");
+  vi.stubEnv("NICEPAY_SECRET_KEY", "nice-secret");
+  const next = await server.createPaymentOrder(request());
+  const tid = "n".repeat(30), sha = value => createHash("sha256").update(value).digest("hex");
+  const input = { orderId: next.body.orderId, paymentKey: tid, tid, amount: 5900, clientId: "nice-client", authResultCode: "0000", authToken: "a".repeat(40) };
+  input.signature = sha(`${input.authToken}${input.clientId}5900nice-secret`);
+  const nice = { resultCode: "0000", orderId: input.orderId, tid, amount: 5900, balanceAmt: 5900, currency: "KRW", payMethod: "card", status: "paid", paidAt: approvedAt, ediDate: approvedAt };
+  nice.signature = sha(`${tid}5900${approvedAt}nice-secret`);
+  fetch.mockImplementation(async url => Response.json(url.includes("nicepay.co.kr") ? nice : toss));
+  await server.confirmPayment(request(next.cookie.split(";")[0]), input);
+  const periods = (await query("SELECT provider,starts_at,expires_at FROM gop_payment_orders WHERE status='paid' ORDER BY expires_at")).rows;
+  expect(periods.map(row => row.provider)).toEqual(["toss", "nicepay"]);
+  expect(periods[1].starts_at.toISOString()).toBe(periods[0].expires_at.toISOString());
+  vi.stubEnv("PAYMENTS_LIVE_ENABLED", "false");
+  await expect(server.createPaymentOrder(request())).rejects.toThrow("PAYMENTS_NOT_CONFIGURED");
+  nice.status = "cancelled";
+  await server.reconcilePaymentWebhook({ orderId: input.orderId }, "nicepay");
+  const coverage = (await query("SELECT gop_paid_until($1,'live',NOW()) AS until", [identity.account.id])).rows[0].until;
+  expect(coverage.toISOString()).toBe(periods[0].expires_at.toISOString());
+  expect((await server.readPaymentAccess(request())).body.entitlement.expiresAt).toBe(periods[0].expires_at.getTime());
 });
