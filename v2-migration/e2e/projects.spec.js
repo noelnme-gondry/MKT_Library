@@ -137,6 +137,7 @@ test("existing projects remain separate and readable without a license", async (
     await expect(page.locator(".project-card")).toHaveCount(2);
     await page.locator(".project-card").filter({ has: page.getByRole("heading", { name: new RegExp(id) }) }).getByRole("button", { name: "리뷰 열기", exact: true }).click();
     await expect(page).toHaveURL(/\/weekly-review$/);
+    await page.getByRole("button", { name: "주간 성과 비교", exact: true }).click();
     await expect(page.locator(".csv-uploader .file-state").first()).toContainText(`${id}.csv`);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("mkt_view_config")).state.eventMarkers[0]?.label)).toBe(id);
   }
@@ -151,7 +152,7 @@ test("measures an uploaded 10000-row source in actual IndexedDB", async ({ page 
   const rows = Array.from({ length: 10000 }, (_, index) => `2026-08-${String(1 + index % 28).padStart(2, "0")},Synthetic ${index % 10},Google,1000,10,100,10000`);
   const buffer = Buffer.from(`Date,Campaign,Channel,Cost,Actions,Clicks,Impressions\r\n${rows.join("\r\n")}`);
   await enableReviewLogin(page);
-  await page.goto("/weekly-review");
+  await page.goto("/weekly-review#weekly-performance");
   const uploader = page.locator('.csv-uploader[data-hydrated="true"]').first();
   await expect(uploader).toBeVisible();
   await uploader.locator('input[type="file"][accept*="csv"]').first().setInputFiles({ name: "renamed-10000.csv", mimeType: "text/csv", buffer });

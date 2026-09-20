@@ -4,14 +4,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import ProjectReviewWorkspace from "./ProjectReviewWorkspace";
-import { confirmProjectExit } from "@/lib/project/reviewDraftGuard";
-vi.mock("./weekly-review/WeeklyReviewScreen", () => ({ default: function Review() { const [text, setText] = useState(""); return <input aria-label="Draft decision" value={text} onChange={event => setText(event.target.value)} />; } }));
+import { confirmProjectExit, useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
+vi.mock("./weekly-review/WeeklyReviewScreen", () => ({ default: function Review() { const [text, setText] = useState(""); useReviewDraftGuard(Boolean(text)); return <input aria-label="Draft decision" value={text} onChange={event => setText(event.target.value)} />; } }));
 vi.mock("./ProjectsPage", () => ({ default: ({ onReview }) => <button onClick={onReview}>Open selected review</button> }));
 beforeEach(() => { window.history.replaceState(null, "", "/weekly-review"); useAppStore.setState({ ...useAppStore.getInitialState(), projectsReady: true, activeProjectId: "a", projects: [{ id: "a", name: "Client A" }, { id: "b", name: "Client B" }] }); });
 afterEach(cleanup);
 it.each(["ko", "en"])("keeps the draft when managing projects and returning (%s)", locale => {
   const en = locale === "en";
   render(<ProjectReviewWorkspace locale={locale} />);
+  fireEvent.click(screen.getByRole("button", { name: en ? "Compare weekly performance" : "주간 성과 비교" }));
   fireEvent.change(screen.getByRole("textbox", { name: "Draft decision" }), { target: { value: "Keep current draft" } });
   expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Client A");
   fireEvent.click(screen.getByRole("button", { name: en ? "My projects" : "내 프로젝트" }));
@@ -23,6 +24,7 @@ it("switches through the project store before showing another project's review",
   const switchProject = vi.fn(async id => { useAppStore.setState({ activeProjectId: id }); return true; });
   useAppStore.setState({ switchProject });
   render(<ProjectReviewWorkspace />);
+  fireEvent.click(screen.getByRole("button", { name: "주간 성과 비교" }));
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "Project A only" } });
   fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
   await waitFor(() => expect(switchProject).toHaveBeenCalledWith("b"));
@@ -70,4 +72,19 @@ it("프로젝트를 연 뒤 결과가 비어 있는 이유를 말한다", async 
   fireEvent.change(screen.getByRole("combobox", { name: "현재 프로젝트" }), { target: { value: "b" } });
   await waitFor(() => expect(switchProject).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByText(/분석하기’를 다시/)).toBeTruthy());
+});
+
+it("keeps unsaved input when the user cancels leaving the weekly task", () => {
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  render(<ProjectReviewWorkspace />);
+  expect(screen.queryByRole("textbox", { name: "Draft decision" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "주간 성과 비교" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Draft decision" }), { target: { value: "Keep my work" } });
+  fireEvent.click(screen.getByRole("button", { name: "결정 검토", exact: true }));
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(screen.getByRole("textbox", { name: "Draft decision" }).value).toBe("Keep my work");
+  confirm.mockReturnValue(true);
+  fireEvent.click(screen.getByRole("button", { name: "결정 검토", exact: true }));
+  expect(screen.queryByRole("textbox", { name: "Draft decision" })).toBeNull();
+  confirm.mockRestore();
 });

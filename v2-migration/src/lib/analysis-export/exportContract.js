@@ -109,6 +109,7 @@ export function buildAnalysisExportPayload({
   generatedAt = null,
   projectName = "",
   reviewRecords = [],
+  reviewLimit = 20,
 } = {}) {
   const resolvedAddon = resolveAddon(addon);
   const rawRows = normalizeRows(resolvedAddon.source?.rows ?? source.rows);
@@ -139,7 +140,7 @@ export function buildAnalysisExportPayload({
       points: points.map(plainPoint).filter(Boolean),
       stats: stats.map(plainStat).filter(Boolean),
     },
-    review: buildReviewBrief({ projectName, records: reviewRecords, locale }),
+    review: buildReviewBrief({ projectName, records: reviewRecords, locale, limit: reviewLimit }),
     calculationMode,
     calculationTables: (resolvedAddon.calculationTables || []).map(normalizeTable).filter(Boolean),
     method: {

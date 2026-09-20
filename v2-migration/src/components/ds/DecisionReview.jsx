@@ -722,7 +722,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.reviewQuestion}</span>
             <input value={draft.reviewQuestion} onChange={(event) => updateDraft("reviewQuestion", event.target.value)} placeholder={t.reviewQuestionPlaceholder} />
           </label>
-          <DecisionPlanFields locale={locale} value={draft.reviewPlan} onChange={value => updateDraft("reviewPlan", value)} />
+          <details className="decision-review__field--wide"><summary>{locale === "en" ? "Set a numeric target or experiment design" : "수치 목표·실험 설계 설정"}</summary><DecisionPlanFields locale={locale} value={draft.reviewPlan} onChange={value => updateDraft("reviewPlan", value)} /></details>
           {hasChangedBasis && <div role="alert"><p>{locale === "en" ? "Analysis changed while you were editing. Review the current result before saving; your draft is still here." : "작성 중 분석 근거가 바뀌었습니다. 초안은 유지되어 있으니 현재 결과를 확인한 뒤 저장해 주세요."}</p><button type="button" className="btn" onClick={() => { setDraft(createDraft(decisionPrefill, draftDefaults)); setIsDraftDirty(false); setDraftBasis(null); }}>{locale === "en" ? "Start a new draft from this result" : "현재 결과로 초안 다시 만들기"}</button></div>}
           <button type="button" className="btn primary decision-review__add" disabled={Boolean(hasChangedBasis)} onClick={addRecord}>{t.add}</button>
         </div>

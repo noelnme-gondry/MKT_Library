@@ -13,12 +13,13 @@ for (const locale of ["ko", "en"]) {
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; }); db.close();
     });
     await page.goto(`${prefix}/weekly-review`);
-    await page.locator(".wr-handover").getByRole("button", { name: en ? "Got it" : "알겠어요", exact: true }).click();
+    await page.getByText(en ? "Browse decisions by tool" : "도구별 결정 찾아보기", { exact: true }).click();
     await page.locator(".project-review-portfolio").getByRole("link", { name: en ? "Review these decisions" : "이 도구의 결정 검토" }).click();
     await page.getByRole("button", { name: en ? "Turn this learning into the next decision" : "배운 점으로 다음 결정 만들기" }).click();
     const form = page.locator(".decision-follow-up__form");
     await form.getByLabel(en ? "Next action" : "다음에 실행할 행동", { exact: true }).fill("Hold out Google brand");
     await form.getByLabel(en ? "Goal for the next decision" : "다음 결정의 목표").selectOption("rerun:organic_users");
+    await form.getByText(en ? "Set a numeric target or experiment design" : "수치 목표·실험 설계 설정", { exact: true }).click();
     await form.getByRole("combobox", { name: en ? "Review method" : "검토 방법", exact: true }).selectOption("holdout");
     await form.getByLabel(en ? "Target channel / group" : "대상 채널·집단").fill("Google brand");
     await form.getByLabel(en ? "Comparison group" : "비교군", { exact: true }).fill("Control regions");
@@ -43,6 +44,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? "Review / export device records" : "기기 기록 검토·내보내기" }).click();
     const card = page.locator(".weekly-review-record").filter({ has: page.getByRole("heading", { name: "Hold out Google brand", exact: true }) });
     const actual = card.getByLabel(en ? "Target observation — Hold out Google brand" : "목표 관측값 — Hold out Google brand");
+    await card.getByText(en ? "Saved operating target and design" : "저장한 운영 목표와 설계", { exact: true }).click();
     await expect(card).toContainText("Control regions");
     await actual.fill("5499");
     await expect(card.getByRole("status")).toContainText(en ? "Below target; this does not mean no effect" : "목표 미달 · 효과 없음이라는 뜻 아님");
@@ -51,7 +53,9 @@ for (const locale of ["ko", "en"]) {
     await actual.fill("5300");
     await expect(card.getByRole("status")).toContainText("+300 people (+6%)");
     await expect(card.getByRole("status")).toContainText("60%");
+    await card.getByRole("checkbox", { name: en ? "Show other saved analyses (conditions may differ)" : "다른 저장 분석도 보기 (조건이 다를 수 있음)" }).check();
     await card.getByRole("combobox", { name: en ? "Link saved follow-up analysis" : "후속 분석 근거 연결" }).selectOption("effect-analysis");
+    await card.getByRole("button", { name: en ? "Conditions checked — use this evidence" : "조건 확인 후 이 근거 사용" }).click();
     await expect(card).toContainText("+100 to +500 people");
     await card.getByRole("button", { name: en ? "Save review changes" : "검토 내용 저장", exact: true }).click();
     await confirmReviewDialog(page, en);

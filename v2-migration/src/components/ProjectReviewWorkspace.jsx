@@ -1,5 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import DecisionHistoryList from "./weekly-review/DecisionHistoryList";
+import { confirmReviewExit } from "@/lib/project/reviewDraftGuard";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import ProjectsPage from "./ProjectsPage";
 import ProjectReviewPortfolio from "./weekly-review/ProjectReviewPortfolio";
@@ -8,25 +11,37 @@ import WeeklyReviewScreen from "./weekly-review/WeeklyReviewScreen";
 export default function ProjectReviewWorkspace({ locale = "ko", initialView = "review" }) {
   const en = locale === "en";
   const [view, setView] = useState(initialView);
+  const [mode, setMode] = useState("decisions");
   const [error, setError] = useState(false);
   const [switched, setSwitched] = useState(false);
   const projects = useAppStore(state => state.projects);
   const activeId = useAppStore(state => state.activeProjectId);
   const switching = useAppStore(state => state.projectSwitching);
   const ready = useAppStore(state => state.projectsReady);
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
   const active = projects.find(project => project.id === activeId);
   useEffect(() => {
-    const hash = () => setView(window.location.hash === "#project-management" ? "manage" : initialView);
+    const hash = () => {
+      setView(window.location.hash === "#project-management" ? "manage" : initialView);
+      const hash = window.location.hash;
+      const nextMode = ["#wr-upload", "#wr-next", "#weekly-performance"].includes(hash) ? "weekly" : hash === "#wr-history" || hash.startsWith("#decision-") ? "decisions" : modeRef.current;
+      if (nextMode !== modeRef.current && !confirmReviewExit(useAppStore.getState().activeProjectId, locale)) {
+        window.history.replaceState(null, "", modeRef.current === "weekly" ? "#weekly-performance" : "#wr-history");
+        return;
+      }
+      setMode(nextMode);
+    };
     hash(); window.addEventListener("hashchange", hash);
     return () => window.removeEventListener("hashchange", hash);
-  }, [initialView]);
+  }, [initialView, locale]);
   const show = next => { setView(next); window.history.replaceState(null, "", next === "manage" ? "#project-management" : window.location.pathname); };
   return <div className="project-review-workspace">
     <header className="project-review-workspace__bar">
       <div className="project-review-workspace__title">
         {view === "review" && <button className="btn ghost" onClick={() => show("manage")}>{en ? "My projects" : "내 프로젝트"}</button>}
         <h1>{view === "manage" ? (en ? "My projects" : "내 프로젝트") : active ? (active.name || (en ? "Existing project" : "기존 프로젝트")) : (en ? "New project" : "새 프로젝트")}</h1>
-        <p>{view === "manage" ? (en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다.") : active ? (en ? "Review this week, then check your previous decisions below." : "이번 주 성과를 확인하고, 아래에서 지난 결정의 결과를 검토하세요.") : (en ? "Start with your data. Choose a project when you save." : "데이터부터 확인하세요. 저장할 때 프로젝트를 정하면 됩니다.")}</p>
+        <p>{view === "manage" ? (en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다.") : active ? (en ? "Choose a decision, record what happened, then plan the next action." : "검토할 결정을 선택하고, 관측 결과를 기록한 뒤 다음 행동을 정하세요.") : (en ? "Start an analysis and save a decision to begin your project." : "분석을 시작하고 결정을 저장하면 프로젝트 리뷰를 이어갈 수 있습니다.")}</p>
       </div>
       {view === "review" && <div className="project-review-workspace__tools">
       {projects.length > 0 &&
@@ -50,7 +65,13 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
     {switched && !switching && <p role="status" className="wr-notice">{en
       ? "Project opened. Saved files are restored, but each tool needs “Run analysis” again so its column mapping is confirmed against this project."
       : "프로젝트를 열었습니다. 저장된 파일은 복원되지만, 결과는 각 도구에서 ‘분석하기’를 다시 눌러야 나옵니다(컬럼 매핑을 다시 확인합니다)."}</p>}
-    <div hidden={view !== "review" || switching}><ProjectReviewPortfolio locale={locale} /><WeeklyReviewScreen key={activeId} locale={locale} embedded /></div>
+    <div hidden={view !== "review" || switching}>
+      <nav className="project-review-workspace__tools" aria-label={en ? "Review task" : "리뷰 작업"}>
+        {["decisions", "weekly"].map(next => <button key={next} disabled={!ready} className="btn ghost" aria-pressed={mode === next} onClick={() => { if (next !== mode && confirmReviewExit(activeId, locale)) { setMode(next); window.history.replaceState(null, "", next === "weekly" ? "#weekly-performance" : "#wr-history"); } }}>{next === "decisions" ? (en ? "Decision review" : "결정 검토") : (en ? "Compare weekly performance" : "주간 성과 비교")}</button>)}
+        <Link className="btn ghost" onClick={event => { if (!confirmReviewExit(activeId, locale)) event.preventDefault(); }} href={en ? "/en/start" : "/start"}>{en ? "Start a new analysis" : "새 분석 시작"}</Link>
+      </nav>
+      {mode === "decisions" ? <><ProjectReviewPortfolio key={activeId} locale={locale} /><DecisionHistoryList key={activeId} locale={locale} /></> : <WeeklyReviewScreen key={activeId} locale={locale} embedded />}
+    </div>
     {view === "manage" && <section id="project-management"><ProjectsPage locale={locale} embedded onReview={() => show("review")} /></section>}
   </div>;
 }

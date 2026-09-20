@@ -229,7 +229,7 @@ function renderEnglishSection(item, fmt) {
     case "performance": return item.unmeasured ? "The headline metric could not be measured." : `${item.metric} ${absoluteMetricEvidence(item, "en")}${fmt.percent(item.deltaPct)}` + (item.baselineKnown ? "" : " (usual variation is unknown)");
     case "what_changed": return item.text;
     case "why": return `${item.metric || "CPA"}-change contributions within the breakdown scope: efficiency ${fmt.percent(item.efficiency)}, result mix ${fmt.percent(item.mix)}. Arithmetic decomposition, not causal effects.`;
-    case "last_decision": return `${item.action || "Last decision"} → ${item.label}` + (item.reason === "explicit_target_review_required" ? " (Review the saved numeric target and experiment conditions separately.)" : "") + (item.outcome === "NO_EFFECT" ? ". This does not establish no effect." : "");
+    case "last_decision": return `${item.action || "Last decision"} → ${item.label}` + (item.reason === "closed_without_effect_verdict" ? " (Closed without an effect verdict.)" : item.reason === "explicit_target_review_required" ? " (Review the saved numeric target and experiment conditions separately.)" : "") + (item.outcome === "NO_EFFECT" ? ". This does not establish no effect." : "");
     case "this_decision": return item.action;
     case "watch_next": return `${item.metric} ${OP_TEXT[item.op] || item.op} ${fmt.number(item.value)}`;
     default: return null;
@@ -251,7 +251,7 @@ function renderSection(item, fmt) {
     }
     case "last_decision": {
       const head = `${item.action ?? "지난 결정"} → ${item.label ?? "판정 불가"}`;
-      if (item.outcome === "UNSCORED") return `${head} (${item.reason === "explicit_target_review_required" ? "저장한 목표값·실험 조건에 따른 별도 검토가 필요합니다" : item.reason === "no_terms_recorded" ? "목표·가드레일이 기록되지 않았습니다" : item.reason === "comparison_context_mismatch" ? "저장 당시와 비교 기간·통화·전환 기준이 다릅니다" : "관측 근거 또는 사전 판정 기준이 부족합니다"})`;
+      if (item.outcome === "UNSCORED") return `${head} (${item.reason === "closed_without_effect_verdict" ? "취소·중단·재설계로 종료하여 효과를 판정하지 않습니다" : item.reason === "explicit_target_review_required" ? "저장한 목표값·실험 조건에 따른 별도 검토가 필요합니다" : item.reason === "no_terms_recorded" ? "목표·가드레일이 기록되지 않았습니다" : item.reason === "comparison_context_mismatch" ? "저장 당시와 비교 기간·통화·전환 기준이 다릅니다" : "관측 근거 또는 사전 판정 기준이 부족합니다"})`;
       if (item.outcome === "NO_EFFECT") {
         // "효과가 없다"고 쓰지 않는다 — 1주 표본으로 효과를 부정할 검정력이 없다.
         return `${head}. 효과가 없다는 뜻은 아닙니다.`;

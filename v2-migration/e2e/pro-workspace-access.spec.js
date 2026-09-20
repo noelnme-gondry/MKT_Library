@@ -45,7 +45,7 @@ for (const locale of ["ko", "en"]) {
       const push = window.dataLayer.push.bind(window.dataLayer);
       window.dataLayer.push = (...items) => { for (const item of items) if (item?.[0] === "event" && item[1] === "weekly_review_save_failed") window.__saveFailures.push(item[1]); return push(...items); };
     });
-    await page.goto(`${prefix}/weekly-review`);
+    await page.goto(`${prefix}/weekly-review#weekly-performance`);
     // 프로젝트가 없으면 업로더가 아니라 관문이 먼저 선다. 여기가 14일 체험을 켜는
     // 유일한 자리다 — 예전에는 "첫 계정 메모 저장"이었다.
     //
@@ -89,6 +89,7 @@ for (const locale of ["ko", "en"]) {
     await expect(dialog.getByRole("heading", { name: en ? "Review saved" : "리뷰를 저장했습니다" })).toBeVisible();
 
     // 계정 보관은 저장 이후에 별개 동의로 제안된다 — 이 기기 저장과 다른 결정이다.
+    await dialog.getByText(en ? "Keep a memo in my account (optional)" : "계정에 메모 보관 (선택)", { exact: true }).click();
     const accountSave = dialog.getByRole("button", { name: en ? "Save decision to account" : "결정 메모 계정에 저장", exact: true });
     await expect(accountSave).toBeDisabled();
     expect(sentMemos).toEqual([]);

@@ -36,6 +36,7 @@ async function runJourney(page, locale) {
   await expect.poll(() => page.evaluate(() => window.__weeklyEvents.some(event => event[1] === "blog_cta_viewed" && event[2].tool_id === "weekly-review" && event[2].placement === "article_body"))).toBe(true);
   await articleLink.click();
   await expect(page).toHaveURL(new RegExp(`${url}$`));
+  await page.getByRole("button", { name: en ? "Compare weekly performance" : "주간 성과 비교", exact: true }).click();
   const upload = async (buffer) => {
     // 결과 화면의 "다음 주 CSV" 상시 접기는 없앴다. 데이터를 바꿀 때만 명시적으로 연다.
     const details = page.locator("details").filter({ has: page.locator(".csv-uploader") }).first();
@@ -184,7 +185,7 @@ async function dochiToWeekly(page, locale) {
   const weekly = page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true });
   await expect(weekly).toBeEnabled();
   await weekly.click();
-  await expect(page).toHaveURL(/\/weekly-review$/);
+  await expect(page).toHaveURL(/\/weekly-review#weekly-performance$/);
   await expect(page.locator("#wr-verdict")).toBeVisible();
   await expect(page.locator(".wr-campaign-table")).toContainText("Review Campaign");
   await expect.poll(() => page.evaluate(() => window.__journeyEvents.some(event => event[1] === "weekly_review_completed" && event[2].journey_entry === "home"))).toBe(true);

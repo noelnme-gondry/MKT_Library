@@ -72,7 +72,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".dochi-workspace__decision-focus")).toBeVisible();
     await expect(page.locator(".dochi-workspace__queue")).not.toContainText(en ? "Running" : "실행 중");
     await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review$`));
+    await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#weekly-performance$`));
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("#wr-verdict")).toBeVisible();
     await expect(page.locator(".header-data-context")).toContainText("demo_efficiency.csv");

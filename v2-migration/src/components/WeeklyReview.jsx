@@ -1,9 +1,10 @@
 "use client";
+import { DECISION_CLOSURE_REASONS, decisionClosureLabel } from "@/lib/decisionClosure";
 import DecisionPlanReview from "@/components/weekly-review/DecisionPlanReview";
 import { readDecisionPlan, assessDecisionPlan } from "@/lib/decisionPlan";
 import DecisionEvidence from "@/components/weekly-review/DecisionEvidence";
 import DecisionFollowUp from "@/components/weekly-review/DecisionFollowUp";
-import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
+import { confirmReviewExit, useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 
 import { canTrackDecisionReview } from "@/lib/dataOrigin";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import Link from "next/link";
 import Papa from "papaparse";
 import {
   assessDecisionOutcome,
+  decisionGuardrailList,
   decisionReviewAgeBucket,
   decisionReviewFollowUpMode,
   getDecisionReviewBucket,
@@ -303,12 +305,13 @@ export function buildBrief(records, t, locale) {
     lines.push(`- ${t.baseline}: ${record.metric || t.noMetric} ${record.baseline || "—"}`);
     lines.push(`- ${getDecisionReviewBucket(record, today) === "reviewed" ? t.briefReviewed : t.briefPending}: ${record.actual || "—"}`);
     const outcome = assessDecisionOutcome(record);
-    const forecastAssessment = assessForecastActual(record);
+    const forecastAssessment = record.closureReason ? null : assessForecastActual(record);
     if (forecastAssessment && forecastAssessment.state !== "incomplete") {
       lines.push(`- ${t.forecastComparison}: ${t[forecastAssessment.state]} · ${forecastErrorLabel(forecastAssessment, locale)}`);
     } else if (outcome.comparison && t.outcome && t[outcome.state]) {
       lines.push(`- ${t.outcome}: ${t[outcome.state]} · ${comparisonLabel(outcome.comparison, locale)}`);
     }
+    if (record.closureReason) lines.push(`- ${locale === "en" ? "Closed without effect verdict" : "효과 판정 없이 종료"}: ${decisionClosureLabel(record.closureReason, locale)}`);
     lines.push(`- ${t.learning}: ${record.learning || "—"}`);
     if (record.hypothesis) lines.push(`- ${t.hypothesis}: ${record.hypothesis}`);
     if (record.conclusion) lines.push(`- ${t.conclusion}: ${record.conclusion}`);
@@ -324,7 +327,7 @@ export function buildBrief(records, t, locale) {
  * 제품이 가져갔고 이 화면은 그 안의 접기 섹션으로 들어간다(명세 §1.1). 기능을 지우는 것이
  * 아니라 위계를 내리는 것이라, `embedded`일 때 페이지 셸과 h1만 벗는다.
  */
-export default function WeeklyReview({ locale = "ko", embedded = false, toolFilter = "" }) {
+export default function WeeklyReview({ locale = "ko", embedded = false, toolFilter = "", decisionId = "", compact = false }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
   const [clearPending, setClearPending] = useState(false);
@@ -333,9 +336,10 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
   const inboxRef = useRef(null);
   const storedRecords = useAppStore((state) => state.decisionRecords);
   const [recordDrafts, setRecordDrafts] = useState({});
+  const [nextRequest, setNextRequest] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   useReviewDraftGuard(Object.keys(recordDrafts).length > 0);
-  const records = useMemo(() => storedRecords.filter(record => !toolFilter || record.toolId === toolFilter).map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts, toolFilter]);
+  const records = useMemo(() => storedRecords.filter(record => (!toolFilter || record.toolId === toolFilter) && (!decisionId || record.id === decisionId)).map(record => ({ ...record, ...recordDrafts[record.id] })), [storedRecords, recordDrafts, toolFilter, decisionId]);
   const findingsByGroup = useAppStore((state) => state.findingsByGroup);
   const csvData = useAppStore((state) => state.csvData);
   const csvGroups = useAppStore((state) => state.csvGroups);
@@ -388,7 +392,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
     return [record.id, classifyDatasetContinuity(record.datasetSnapshot, current)];
   })), [activeDataGroup, csvData, csvGroups, records]);
   const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
-    const assessment = assessForecastActual(record);
+    const assessment = record.closureReason ? null : assessForecastActual(record);
     return assessment && assessment.state !== "incomplete";
   }).length, [sortedRecords]);
 
@@ -447,6 +451,19 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
     });
   };
 
+  const saveDraft = async record => {
+    const draft = recordDrafts[record.id] || {};
+    const stored = storedRecordOf(record.id);
+    const changedActual = String(draft.actual ?? "").trim();
+    const patch = getDecisionReviewBucket(stored, todayKey) === "reviewed" && changedActual && changedActual !== stored.actual
+      ? appendDecisionEpisode(stored, { actual: changedActual, learning: draft.learning ?? record.learning }) : null;
+    if (patch) {
+      const { actual: _a, learning: _l, ...rest } = draft;
+      await updateDecisionRecord(record.id, { ...rest, ...patch });
+    } else await updateDecisionRecord(record.id, draft);
+    setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
+  };
+
   // 도구들이 결론을 이 저장소에 넣고 있었는데 읽는 화면이 없었다 — 정렬 함수까지
   // 있는데 소비처가 0이었다(§16 "계산해 놓고 판정에 안 쓰는 신호"). 여기가 그 소비처다.
   const rankedFindings = useMemo(
@@ -462,7 +479,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
   return (
     <Shell ref={inboxRef} className={embedded ? "weekly-review-page is-embedded" : "page-inner weekly-review-page"}>
       {pendingAction && <ReviewSaveDialog locale={locale} onConfirm={pendingAction} onClose={() => setPendingAction(null)} />}
-      {embedded ? (
+      {!compact && <>{embedded ? (
         // 흡수돼도 제목은 남긴다 — h1만 벗고 h2로 낮춘다. 제목을 통째로 지우면 보조기술이
         // 이 섹션의 시작을 알 수 없다.
         <header className="weekly-review-page__head is-embedded">
@@ -610,17 +627,17 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
           <button type="button" className="btn small primary" onClick={() => { clearDecisionRecords(); setClearPending(false); }}>{t.clearAction}</button>
         </div>
       </section>}
-      <p className="weekly-review-page__privacy">{isPersistenceEnabled ? t.privacySaved : t.privacySession}</p>
+      <p className="weekly-review-page__privacy">{isPersistenceEnabled ? t.privacySaved : t.privacySession}</p></>}
       {sortedRecords.length > 0 && <section className="weekly-review-page__ledger" aria-label={t.title}>
           {sortedRecords.map((record) => {
             const status = getDecisionReviewBucket(record, todayKey);
             const episodes = decisionEpisodeList(record);
-            const statusLabel = t[status];
+            const statusLabel = decisionClosureLabel(record.closureReason, locale) || t[status];
             const outcome = assessDecisionOutcome(record);
             const comparison = outcome.comparison;
             const targetDirection = record.targetDirection || decisionMetricDirection(record.metric);
             const outcomeHint = outcome.direction === "lower" ? t.lowerHint : outcome.direction === "higher" ? t.higherHint : t.unscoredHint;
-            const forecastAssessment = assessForecastActual(record);
+            const forecastAssessment = record.closureReason ? null : assessForecastActual(record);
             const isForecastReview = Boolean(forecastAssessment);
             const forecastHint = forecastAssessment?.state === "within_range"
               ? t.withinRangeHint
@@ -635,13 +652,14 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
             const isReviewDue = Boolean(record.reviewDate) && record.reviewDate <= todayKey;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
-                {sourceHref ? <Link className="weekly-review-record__source" href={sourceHref}>{toolName(record.toolId, locale)} <span aria-hidden="true">→</span></Link> : <span>{toolName(record.toolId, locale)}</span>}
+                {sourceHref ? <Link className="weekly-review-record__source" href={sourceHref} onClick={event => { if (!confirmReviewExit(useAppStore.getState().activeProjectId, locale)) event.preventDefault(); }}>{toolName(record.toolId, locale)} <span aria-hidden="true">→</span></Link> : <span>{toolName(record.toolId, locale)}</span>}
                 <em className={`weekly-review-record__status ${status}`}>{statusLabel}</em>
               </div>
               <h2>{record.action}</h2>
               <DecisionPlanReview record={record} locale={locale} onEvidenceChange={source => { updateRecord(record.id, "effectEvidence", source?.evidence || ""); updateRecord(record.id, "effectSourceId", source?.id || ""); }} onChange={value => { updateRecord(record.id, "targetActual", value); const plan = readDecisionPlan(record.reviewPlan); if (["met", "not_met"].includes(assessDecisionPlan(plan, value).state)) updateRecord(record.id, "actual", `${plan.metric || record.metric} ${value} ${plan.unit}`); }} />
               <DecisionEvidence record={record} locale={locale} />
-              <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} />
+              {decisionGuardrailList(record).length > 0 && <p>{locale === "en" ? "Guardrails" : "유지할 조건"}: {decisionGuardrailList(record).map(rail => `${rail.metric} ${rail.op === "lte" ? "≤" : "≥"} ${rail.value}`).join(" · ")}</p>}
+              <details><summary>{locale === "en" ? "Original decision and comparison conditions" : "결정 당시 근거·비교 조건"}</summary>
               {record.conclusion && <p className="weekly-review-record__context"><span>{t.conclusion}</span>{record.conclusion}</p>}
               {record.hypothesis && <p>{record.hypothesis}</p>}
               {record.reviewQuestion && <div className="weekly-review-record__question"><span>{t.reviewQuestion}</span><strong>{record.reviewQuestion}</strong></div>}
@@ -665,7 +683,7 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                   <Link href={locale === "en" ? "/en/tools/marketing-forecast" : "/tools/marketing-forecast"}>{t.openForecast}</Link>
                 </div>}
               </div>}
-              {!isForecastReview && <label className="weekly-review-record__direction">
+              {!isForecastReview && !record.reviewPlan && <label className="weekly-review-record__direction">
                 <span>{t.targetDirection}</span>
                 <select aria-label={`${t.targetDirection} — ${record.action}`} value={targetDirection} onChange={(event) => updateRecord(record.id, "targetDirection", event.target.value)}>
                   <option value="">{t.directionUnset}</option>
@@ -724,7 +742,8 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                           ? t.candidateDatasetMismatch
                       : t.candidateMissingBasis}</p>}
               </div>}
-              {sourceHref && <Link className="weekly-review-record__source-link" href={sourceHref}>{t.openSource} <span aria-hidden="true">→</span></Link>}
+              {sourceHref && <Link className="weekly-review-record__source-link" href={sourceHref} onClick={event => { if (!confirmReviewExit(useAppStore.getState().activeProjectId, locale)) event.preventDefault(); }}>{t.openSource} <span aria-hidden="true">→</span></Link>}
+              </details>
               {episodes.length > 1 && <details className="weekly-review-record__episodes">
                 <summary>{locale === "en" ? `Observation history (${episodes.length})` : `관측 이력 ${episodes.length}회`}</summary>
                 <ol>
@@ -741,33 +760,21 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
               {recordDrafts[record.id] && <button type="button" className="btn small" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={() => setPendingAction(() => async () => {
-                // 검토 전이면 초안은 아직 작성 중인 값이라 그대로 덮어쓰는 게 맞다.
-                // 검토를 마친 뒤 `실제 결과`를 고치는 것은 정정인지 새 관측인지
-                // 화면이 알 수 없으므로 **쌓는다** — 덮어쓰면 앞선 관측이 사라진다(v11).
-                const draft = recordDrafts[record.id] || {};
-                const stored = storedRecordOf(record.id);
-                const changedActual = String(draft.actual ?? "").trim();
-                const patch = status === "reviewed" && changedActual && changedActual !== stored.actual
-                  ? appendDecisionEpisode(stored, { actual: changedActual, learning: draft.learning ?? record.learning })
-                  : null;
-                if (patch) {
-                  const { actual: _a, learning: _l, ...rest } = draft;
-                  await updateDecisionRecord(record.id, { ...rest, ...patch });
-                } else {
-                  await updateDecisionRecord(record.id, draft);
-                }
-                setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; });
+                await saveDraft(record);
               })}>{locale === "en" ? "Save review changes" : "검토 내용 저장"}</button>}
+              {recordDrafts[record.id] && Boolean(record.actual?.trim() || record.learning?.trim()) && <button className="btn primary" disabled={Boolean(record.targetActual) && assessDecisionPlan(record.reviewPlan, record.targetActual).state === "waiting"} onClick={() => setPendingAction(() => async () => { await saveDraft(record); setNextRequest(current => ({ ...current, [record.id]: (current[record.id] || 0) + 1 })); })}>{locale === "en" ? "Save observation and plan next action" : "관측 저장 후 다음 행동 정하기"}</button>}
+              <DecisionFollowUp record={storedRecords.find(item => item.id === record.id) || record} locale={locale} requestOpen={nextRequest[record.id] || 0} />
               {status !== "reviewed" && <div className="weekly-review-record__complete">
                 <button type="button" className="btn small primary" disabled={!isReviewDue || !record.actual.trim()} onClick={() => completeReview(record)}>{t.completeReview}</button>
                 {!isReviewDue && <small>{t.completeLocked}</small>}
               </div>}
+              {status !== "reviewed" && <details><summary>{locale === "en" ? "Stop or redesign this decision" : "이 결정 중단·재설계"}</summary><p>{locale === "en" ? "Close the decision without declaring statistical success or failure. The original review date and observations are preserved." : "통계적 성공·실패를 판정하지 않고 결정을 종료합니다. 원래 검토일과 관측 기록은 남습니다."}</p>{Object.entries(DECISION_CLOSURE_REASONS).map(([reason, labels]) => <button key={reason} className="btn" onClick={() => setPendingAction(() => async () => { await updateDecisionRecord(record.id, { ...(recordDrafts[record.id] || {}), closureReason: reason, status: "reviewed", reviewedAt: new Date().toISOString() }); setRecordDrafts(current => { const next = { ...current }; delete next[record.id]; return next; }); })}>{labels[locale === "en" ? 1 : 0]}</button>)}</details>}
               <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>
             </article>;
           })}
         </section>}
       {!embedded && <AccountArchive locale={locale} />}
-      {sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
+      {!compact && sortedRecords.length > 0 && <NewsletterSignup locale={locale} source="product" placement="weekly_review" />}
     </Shell>
   );
 }

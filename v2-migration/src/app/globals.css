@@ -11490,8 +11490,25 @@ body:has(:focus:not(.tutorial-launcher, .tutorial-launcher *)) .tutorial-launche
 .decision-follow-up__form { display: grid; gap: 12px; }
 .decision-follow-up__form label { display: grid; gap: 6px; }
 .decision-follow-up__form textarea { min-height: 80px; width: 100%; }
+.project-review-workspace > div > nav.project-review-workspace__tools,
+.project-review-workspace > div > .wr-history-list,
+.project-review-workspace > div > .project-review-portfolio { max-width: var(--container-max); margin-inline: auto; padding-inline: clamp(12px, 3vw, 42px); }
+.project-review-workspace > div > nav.project-review-workspace__tools { justify-content: flex-start; }
+.wr-history-list__detail .weekly-review-record { margin: 0; border: 0; padding: 0; box-shadow: none; }
+.wr-history-list__detail .weekly-review-page { padding: 0; }
+.decision-follow-up details > summary,
+.project-review-report-scope > summary,
+.weekly-review-record > details > summary { min-height: 44px; padding-block: 12px; cursor: pointer; font-weight: 600; }
+.decision-follow-up details[open], .project-review-report-scope[open] { display: grid; gap: 12px; }
+.project-review-report-scope label { display: grid; gap: 6px; }
+.project-review-report-scope input, .project-review-report-scope select,
+.decision-follow-up input, .decision-follow-up select, .decision-evidence select { max-width: 100%; min-height: 44px; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--border); padding: 8px; font: inherit; }
+.decision-evidence dl > div { overflow-wrap: anywhere; }
 @media (max-width: 640px) { .project-review-portfolio__counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .decision-plan-fields { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
 .decision-plan-fields label { display: grid; gap: 6px; }
 .decision-plan-fields input, .decision-plan-fields select { width: 100%; min-width: 0; }
+
+.project-review-workspace > div > nav.project-review-workspace__tools .btn { min-height: 44px; color: var(--text-1); background: var(--bg-1); transition: none; }
+.project-review-workspace > div > nav.project-review-workspace__tools .btn[aria-pressed="true"] { border-color: var(--primary); background: var(--bg-2); font-weight: 700; }

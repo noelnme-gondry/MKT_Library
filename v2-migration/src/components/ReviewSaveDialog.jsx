@@ -164,12 +164,11 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
           if (calendar && downloadCalendar(calendar, "decision-review") !== false) trackProductEvent("review_calendar_downloaded", { locale, source: "review_save" });
         }}>{en ? `Add ${saved.record.reviewDate} to calendar · free` : `${saved.record.reviewDate} 캘린더에 추가 · 무료`}</button>}
       </section>}
-      {saved.record && <p>{en ? "Optional: keep the selected memo in your account to revisit it on another device. Your local project has been saved; source files are not synced." : "선택 사항: 선택한 메모를 계정에 보관하면 다른 기기에서도 읽을 수 있습니다. 이 기기의 프로젝트 저장은 끝났으며, 원본 파일은 동기화되지 않습니다."}</p>}
-      {saved.record && <AccountArchive record={saved.record} locale={locale} />}
+      {saved.record && <details><summary>{en ? "Keep a memo in my account (optional)" : "계정에 메모 보관 (선택)"}</summary><p>{en ? "Optional: keep the selected memo in your account to revisit it on another device. Your local project has been saved; source files are not synced." : "선택 사항: 선택한 메모를 계정에 보관하면 다른 기기에서도 읽을 수 있습니다. 이 기기의 프로젝트 저장은 끝났으며, 원본 파일은 동기화되지 않습니다."}</p><AccountArchive record={saved.record} locale={locale} /></details>}
       {saved.record && <ProjectReviewLink projectId={saved.project.id} locale={locale} onNavigate={onClose} />}
       <Link className="btn" href={`${en ? "/en" : ""}/weekly-review#project-management`}>{en ? "Open my projects" : "내 프로젝트 열기"}</Link>
     </> : <>
-      <p>{en ? "Saving requires sign-in and active Pro, including the 14-day trial. Source CSVs and full reports stay on this device; account memo storage requires separate consent." : "리뷰 저장은 로그인과 유효한 Pro가 필요합니다. 14일 체험도 포함됩니다. CSV·전체 보고서는 이 기기에만 보관하며, 결정 메모의 계정 보관은 별도 동의를 받습니다."}</p>
+      <p>{en ? "Save this review in your project on this device. Sign-in and active Pro (including the trial) are required. Account memo storage is a separate, optional step." : "이 기기의 프로젝트에 리뷰를 저장합니다. 로그인과 유효한 Pro(체험 포함)가 필요하며, 계정 메모 보관은 저장 후 따로 선택합니다."}</p>
       <AccountArchive profile compact locale={locale} onSession={setSession} />
       {session?.account && !hasPaidAccess(entitlement || session.entitlement) && <section className="review-next-visit">
         <h3>{en ? "Keep your work with Pro" : "Pro로 기록을 이어가세요"}</h3>
