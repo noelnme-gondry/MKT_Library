@@ -22,6 +22,7 @@ for (const locale of ["ko", "en"]) {
     const card = page.locator(".weekly-review-record");
     await expect(card).toHaveCount(1);
     await expect(card.getByRole("textbox", { name: en ? "Actual outcome — Review campaign" : "실제 결과 — Review campaign" })).toBeVisible();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: en ? "Compare weekly performance" : "주간 성과 비교", exact: true }).click();
     await expect(page.getByText(en ? /saved target uses a different currency/i : /저장된 목표와 원본 통화가 다릅니다/)).toHaveCount(0);
     await page.goto(`${prefix}/dashboard`);
@@ -49,7 +50,7 @@ for (const locale of ["ko", "en"]) {
     await confirmReviewDialog(page, en);
     const follow = card.locator(".decision-follow-up__form");
     await expect(follow).toBeVisible();
-    await expect(follow.getByRole("combobox", { name: en ? "Review method" : "검토 방법", exact: true })).toHaveCount(0);
+    await expect(follow.getByRole("combobox", { name: en ? "Review method" : "검토 방법", exact: true })).toBeVisible();
     await follow.getByRole("textbox", { name: en ? "Next action" : "다음에 실행할 행동", exact: true }).fill("Run a matched comparison");
     await follow.getByRole("button", { name: en ? "Save next decision" : "다음 결정 저장", exact: true }).click();
     await confirmReviewDialog(page, en);

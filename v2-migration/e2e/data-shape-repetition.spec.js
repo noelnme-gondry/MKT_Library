@@ -1,25 +1,13 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
-// 외부 글("바이브 코딩 대시보드가 형편없어 보이는 10가지 이유") 7번은 "데이터셋이
-// 몇 건인지를 상단·막대·요약 지표에서 거듭 보여준다"였다. 우리 대시보드를 재 보니
-// 행 수를 말하는 자리가 다섯인데, 그중 **셋은 닫힌 `<details>` 안**이고 밖에서
-// 항상 보이던 것은 둘(sticky 칩 · 저장 설정 바)이었다.
-//
-// 처음엔 `getBoundingClientRect()`로 가시성을 판정해 "다섯 곳이 전부 보인다"고
-// 잘못 읽었다 — 이 API는 `content-visibility`를 반영하지 않아 **접힌 내용도 0이
-// 아닌 박스를 돌려준다**. 그 잘못된 실측 위에서 두 곳을 지웠고, 그 둘이 하필
-// 항상 보이던 자리라 대시보드에서 행 수가 0번 보이는 회귀가 났다.
-//
-// 그래서 이 가드는 두 가지를 함께 지킨다:
-//   ① 접기를 열지 않고도 행 수를 알 수 있다 (0이면 규모를 알 길이 없다)
-//   ② 같은 사실을 여러 번 말하지 않는다 (기사 7번)
-// 판정은 반드시 `checkVisibility()`로 한다 — 박스 크기로 세면 접힌 것까지 센다.
+// 결과 화면에는 원본 행 수를 한 번만 보여준다. 매핑·미리보기는 별도 편집창에서 확인한다.
+// checkVisibility로 실제 표시 여부를 검사하고 편집 진입 경로도 함께 검증한다.
 const VISIBLE_ROW_MENTIONS = 1;
 
 const fixture = (name) => path.join(process.cwd(), "e2e", "fixtures", name);
 
-test("대시보드는 행 수를 접기 밖에서 정확히 한 번 말한다", async ({ page }) => {
+test("대시보드는 행 수를 한 번 표시하고 데이터 편집창을 제공한다", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
   await page.locator('.csv-uploader input[type="file"][accept*="csv"]').first().setInputFiles(fixture("efficiency.csv"));
@@ -63,7 +51,9 @@ test("대시보드는 행 수를 접기 밖에서 정확히 한 번 말한다", 
     "답하는지 먼저 확인할 것.",
   ).toBe(VISIBLE_ROW_MENTIONS);
 
-  // 가드의 근거 — 접힌 자리가 실제로 있어야 이 검사가 의미를 갖는다. 접기가
-  // 사라졌는데 이 숫자만 지키면 "한 번만 말한다"가 우연히 성립한 것일 수 있다.
-  expect(scan.hidden.length, "접기 안의 상세가 통째로 사라졌으면 이 가드를 다시 설계할 것").toBeGreaterThan(0);
+  await expect(page.locator(".csv-uploader")).toHaveCount(0);
+  await page.getByRole("button", { name: "데이터·매핑 편집" }).click();
+  const editor = page.getByRole("dialog", { name: "데이터·매핑 편집" });
+  await expect(editor.locator(".csv-uploader .file-state")).toContainText("16");
+  await expect(editor.locator(".csv-preview-table-wrap")).toBeVisible();
 });

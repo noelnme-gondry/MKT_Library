@@ -12,7 +12,7 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".dc-hero .mobile-quick-start")).toHaveCount(0);
     await expect(page.locator(".home-result-preview header img")).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
-    await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeHidden();
+    await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
     await expect(page.locator(".home-result-preview__kpis dd")).toHaveCount(3);
     for (const light of [true, false]) {
       await page.evaluate(value => document.body.classList.toggle("light-mode", value), light);

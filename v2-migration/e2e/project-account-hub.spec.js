@@ -19,7 +19,9 @@ for (const locale of ["ko", "en"]) {
     await expect(history.getByRole("button", { name: new RegExp(memos[0].action) })).toBeVisible();
     // 계정에만 있는 결정은 이 기기로 가져올 수 있어야 한다(옛 보관함이 하던 일).
     await history.getByRole("button", { name: new RegExp(memos[0].action) }).click();
-    await expect(history.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
+    const detail = page.getByRole("dialog", { name: memos[0].action });
+    await expect(detail.getByRole("button", { name: en ? "Continue review" : "검토 이어하기", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
     expect(await history.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await expect(page.locator(".csv-uploader")).toHaveCount(0);
     await expect(page.getByRole("button", { name: en ? "Decision review" : "결정 검토", exact: true })).toHaveAttribute("aria-pressed", "true");
