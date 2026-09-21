@@ -22,8 +22,13 @@ for (const en of [false, true]) {
     await manual.fill("custom_budget");
     await settings.getByRole("combobox", { name: en ? "Field this tool uses" : "이 도구가 쓰는 항목", exact: true }).selectOption("media_spend");
     await settings.getByRole("button", { name: en ? "Add" : "추가", exact: true }).click();
-    await expect(settings.getByRole("rowheader", { name: "custom_budget" })).toBeVisible();
-    expect(writes).toEqual([{ rules: [{ normalizedColumnName: "custom_budget", canonicalKey: "media_spend" }] }]);
+    // Separate a missing write from an inaccessible or stale result after saving.
+    await expect.poll(() => writes).toEqual([{ rules: [{ normalizedColumnName: "custom_budget", canonicalKey: "media_spend" }] }]);
+    try { await expect(settings.getByRole("rowheader", { name: "custom_budget" })).toBeVisible(); }
+    catch (error) {
+      console.log("Mapping UI after save:", JSON.stringify({ rules, text: await settings.innerText(), dialogs: await page.getByRole("dialog").allTextContents() }));
+      throw error;
+    }
     await expectNoSeriousAccessibilityViolations(page);
 
     const context = await browser.newContext({ viewport: page.viewportSize(), storageState: { cookies: [], origins: [] } });
