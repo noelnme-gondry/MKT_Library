@@ -47,7 +47,9 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `analysis_blocked` | 필수 매핑·데이터 조건 때문에 분석할 수 없는 상태 진입 | `tool_id`, `interaction_source`, `state`, 집계 개수, `locale` |
 | `analysis_completed` | 결과 또는 정직한 추정 불가 상태 생성 | `tool_id`, `analysis_type`, `result_state`, `locale` |
 | `dashboard_tab_view` | 대시보드 탭 선택 | `tool_id`, `tab_name` |
-| `result_downloaded` | 결과 CSV/텍스트 다운로드 | `tool_id`, `download_type` |
+| `result_download_attempted` | 다운로드 버튼을 누른 순간(게이트 판정 **전**) | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
+| `result_downloaded` | 파일 생성·다운로드 요청 성공 | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
+| `result_download_failed` | 파일 생성이 예외로 실패 | `tool_id`, `download_type`, `source`, `state=실패 사유`, `locale` |
 | `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 | `tool_id`, `interaction_source=landing|csv_guide|start`, `placement`, `locale` |
 | `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `interaction_source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
 | `analysis_history_viewed` | 이전 분석 요약이 실제 viewport에 노출 | `tool_id`, `interaction_source=local_history`, `result_state=previous_available`, `data_continuity=summary_only`, `locale` |
@@ -146,3 +148,16 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - `report_brief_copied`: 보고서 미리보기에서 실제 클립보드 복사가 성공한 뒤 1회. `tool_id`, `locale`, `interaction_source=report_preview`만 전달하며 문서 내용은 전달하지 않는다.
 - `decision_follow_up_saved`: 관측·배운 점에서 만든 후속 결정의 기기 저장 성공 뒤 1회. 저장 시도나 실패는 성공으로 세지 않는다. `tool_id`, `locale`, `interaction_source=project_review`만 전달한다.
 - 기존 `result_downloaded`는 파일 생성·다운로드 요청 성공 경계다. 사용자가 파일을 열거나 팀에 실제 전송했다는 뜻은 아니다. 실제 업무 활용은 별도 피드백으로 확인해야 한다.
+- **다운로드 3종은 합산하지 않는다.** `attempted`가 분모이고 그 뒤는 서로 배타적인
+  네 갈래로 갈린다 — 성공(`result_downloaded`) · 이용권에 막힘
+  (`subscription_gate_viewed`) · 사용자가 취소(이벤트 없음) · 생성 실패
+  (`result_download_failed`). 셋을 더하면 한 번의 다운로드를 두 번 세게 된다.
+- `result_downloaded`의 의미가 2026-09-21에 넓어졌다. 그 전에는 **유료 항목의
+  성공만** 셌고(무료 CSV·PNG는 아예 안 세어졌다) 실패는 한 건도 찍히지 않았다.
+  지금은 무료 성공도 포함하며 `state`로 가른다 — `state=paid`로 필터하면 종전
+  시계열과 같으므로 과거 데이터와 이어서 볼 수 있다.
+- 실패 사유(`state`)는 열거형만 싣는다: `storage_full` · `aborted` · `too_large`
+  · `build_failed` · `unknown`. 예외 원문에는 파일명·컬럼명 같은 사용자 데이터가
+  섞일 수 있어 절대 싣지 않는다(§2.2).
+- 정적 설명서 PDF 링크는 분석 결과가 아니므로 이 경로를 쓰지 않는다
+  (`DOWNLOAD_TELEMETRY_EXEMPT` 표식 + 사유로만 통과한다).

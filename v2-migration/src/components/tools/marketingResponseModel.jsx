@@ -1171,6 +1171,10 @@ export function MmmManualDownload({ locale = "ko", placement = "footer" }) {
         className="ab-button"
         href={href}
         download={fileName}
+        /* DOWNLOAD_TELEMETRY_EXEMPT: 저장소에 있는 정적 설명서 PDF 링크다.
+           분석 결과가 아니라 문서이므로 이용권 게이트도, 생성 실패 경로도,
+           비동기 단계도 없다. runGatedDownload를 끼우면 무료 문서에 시도·차단
+           이벤트가 붙어 분석 다운로드 지표를 오염시킨다. */
         onClick={() => trackProductEvent("result_downloaded", { tool_id: "5-18", source: "manual", download_type: "pdf", locale, placement })}
       >
         {isEnglish ? "📘 View the MMM manual · PDF" : "📘 MMM 설명서 확인 · PDF"}

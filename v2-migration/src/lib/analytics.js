@@ -119,6 +119,9 @@ export function sanitizeProductEventParams(params = {}, name) {
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
   if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
   if (safe.method && !["google", "email_link", "password", "unknown"].includes(safe.method)) delete safe.method;
+  // 다운로드 결과·실패 사유는 열거형만 통과시킨다(downloadTelemetry).
+  if (["result_download_attempted", "result_downloaded", "result_download_failed"].includes(name)
+    && safe.state && !["free", "paid", "storage_full", "aborted", "too_large", "build_failed", "unknown"].includes(safe.state)) delete safe.state;
   if (safe.trial_remaining_bucket && !["not_started", "expired", "under_3d", "3_7d", "over_7d"].includes(safe.trial_remaining_bucket)) delete safe.trial_remaining_bucket;
   if (Object.hasOwn(safe, "count") && (!Number.isSafeInteger(safe.count) || safe.count < 0)) delete safe.count;
   if (Object.hasOwn(safe, "tool_ids") && (typeof safe.tool_ids !== "string" || safe.tool_ids.length > 100
