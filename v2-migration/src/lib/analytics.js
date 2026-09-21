@@ -16,6 +16,8 @@ const ALLOWED_PARAMS = new Set([
   "journey_entry", "visit_type",
   "gate_reason", "trial_remaining_bucket",
   "count", "tool_ids",
+  // 로그인 방식 — 열거형만 통과시킨다(loginTelemetry.LOGIN_METHODS).
+  "method",
 ]);
 
 let weeklyImportStartedAt = null;
@@ -116,7 +118,8 @@ export function sanitizeProductEventParams(params = {}, name) {
     .filter(([key, value]) => ALLOWED_PARAMS.has(key) && value != null)
     .map(([key, value]) => [key, key === "tool_id" ? normalizeProductToolId(value) : value]));
   if (safe.gate_reason && !["price", "identity", "trust", "refund", "later"].includes(safe.gate_reason)) delete safe.gate_reason;
-  if (safe.trial_remaining_bucket && !["not_started", "expired", "under_3d", "3_7d", "8_14d"].includes(safe.trial_remaining_bucket)) delete safe.trial_remaining_bucket;
+  if (safe.method && !["google", "email_link", "password", "unknown"].includes(safe.method)) delete safe.method;
+  if (safe.trial_remaining_bucket && !["not_started", "expired", "under_3d", "3_7d", "over_7d"].includes(safe.trial_remaining_bucket)) delete safe.trial_remaining_bucket;
   if (Object.hasOwn(safe, "count") && (!Number.isSafeInteger(safe.count) || safe.count < 0)) delete safe.count;
   if (Object.hasOwn(safe, "tool_ids") && (typeof safe.tool_ids !== "string" || safe.tool_ids.length > 100
     || !safe.tool_ids.split(",").every(id => Object.hasOwn(ANALYSIS_TYPE_BY_TOOL, id)))) delete safe.tool_ids;

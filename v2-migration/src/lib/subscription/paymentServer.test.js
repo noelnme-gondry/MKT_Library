@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { passExpiresAt, verifiedPayment } from "./paymentProduct";
 import { assertSameOrigin, confirmPayment, createPaymentOrder, paymentConfiguration, readPaymentAccess, redirectPaymentResult, redirectPaymentReview, redirectNicepayResult, paymentResponse, reconcilePaymentWebhook } from "./paymentServer";
+import { trialMsFor } from "@/lib/account/archiveContract";
 
 const db = vi.hoisted(() => ({ rows: new Map(), calls: [], active: 0, account: null }));
 vi.mock("@/lib/account/accountServer", async importOriginal => ({ ...await importOriginal(), readAccount: async () => db.account }));
@@ -12,7 +13,7 @@ vi.mock("pg", () => ({ default: { Pool: class {
     db.calls.push({ sql, args });
     if (sql.startsWith("SELECT GREATEST")) {
       const ends = [...db.rows.values()].filter(row => row.account_id === args[0] && row.mode === args[1] && row.status === "paid").map(row => Date.parse(row.expires_at));
-      return { rows: [{ starts_at: new Date(Math.max(Date.parse(args[2]), ...ends, db.account?.trial_started_at ? Date.parse(db.account.trial_started_at) + 14 * 86400000 : 0)).toISOString() }] };
+      return { rows: [{ starts_at: new Date(Math.max(Date.parse(args[2]), ...ends, db.account?.trial_started_at ? Date.parse(db.account.trial_started_at) + trialMsFor(db.account.trial_started_at) : 0)).toISOString() }] };
     }
     if (sql.startsWith("SELECT gop_paid_until")) {
       const ends = [...db.rows.values()].filter(row => row.account_id === args[0] && row.mode === args[1] && row.status === "paid").map(row => Date.parse(row.expires_at));
@@ -440,7 +441,11 @@ it("starts expired renewals at approval and preserves an active first-save trial
   expect((await confirmPayment(request(second.cookie), second.input)).body.entitlement.expiresAt).toBe(Date.parse("2026-11-11T03:00:00Z"));
   db.rows.clear(); db.account.trial_started_at = new Date().toISOString();
   const trial = await fixture();
-  expect((await confirmPayment(request(trial.cookie), trial.input)).body.entitlement.expiresAt).toBe(Date.parse("2026-11-25T03:00:00Z"));
+  // 유료 이용권은 체험이 끝난 뒤부터 센다. 날짜를 손으로 적으면 체험 길이를
+  // 바꿀 때마다 여기가 조용히 틀려지므로 정책에서 파생한다.
+  const trialEnds = Date.parse("2026-10-11T03:00:00Z") + trialMsFor(db.account.trial_started_at);
+  expect((await confirmPayment(request(trial.cookie), trial.input)).body.entitlement.expiresAt)
+    .toBe(Date.parse(passExpiresAt(new Date(trialEnds).toISOString())));
 });
 it("blocks anonymous new orders even when account rollout is disabled", async () => {
   db.account = null; vi.stubEnv("ACCOUNTS_ENABLED", "false");
