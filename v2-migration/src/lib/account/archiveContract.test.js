@@ -1,35 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { ARCHIVE_FIELDS, accountEntitlement, archiveMemo, PRO_TRIAL_DAYS, PRO_TRIAL_DAYS_LEGACY, PRO_TRIAL_MS, PRO_TRIAL_POLICY_CUTOVER, trialMsFor, trialRemainingBucket } from "./archiveContract";
+import { ARCHIVE_FIELDS, accountEntitlement, archiveMemo, PRO_TRIAL_DAYS, PRO_TRIAL_MS, trialMsFor, trialRemainingBucket } from "./archiveContract";
 import { DECISION_REVIEW_SAFE_FIELDS, decisionGuardrailList } from "@/lib/decisionReview";
 describe("account archive boundary", () => {
   it("never starts a trial just by logging in", () => expect(accountEntitlement({ email: "reader@example.com" })).toBeNull());
   it("expires exactly one week after the first save", () => {
-    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER);
+    const start = Date.parse("2026-09-21T00:00:00Z");
     const account = { trial_started_at: new Date(start).toISOString() };
     expect(PRO_TRIAL_DAYS).toBe(7);
     expect(accountEntitlement(account, start + PRO_TRIAL_MS - 1)?.trial).toBe(true);
     expect(accountEntitlement(account, start + PRO_TRIAL_MS)).toBeNull();
   });
-  // 정책을 소급하면 이미 쓰고 있는 사람의 남은 기간이 말없이 줄어든다.
-  // 기준일 이전에 시작한 체험은 예전 길이를 그대로 지킨다.
-  it("keeps the old length for trials that started before the policy change", () => {
-    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER) - 86400000;
-    const account = { trial_started_at: new Date(start).toISOString() };
-    const legacyMs = PRO_TRIAL_DAYS_LEGACY * 86400000;
-    expect(trialMsFor(account.trial_started_at)).toBe(legacyMs);
-    // 새 길이만 적용했다면 여기서 이미 만료였을 시점.
-    expect(accountEntitlement(account, start + PRO_TRIAL_MS + 1)?.trial).toBe(true);
-    expect(accountEntitlement(account, start + legacyMs)).toBeNull();
+  // 길이는 전 계정 공통이다 — 시작 시점으로 갈리지 않는다(소급 적용).
+  // 갈리기 시작하면 화면·메일·결제 기산일이 각각 다른 날짜를 말하게 된다.
+  it("applies the same length no matter when the trial started", () => {
+    const old = Date.parse("2026-08-01T00:00:00Z");
+    const account = { trial_started_at: new Date(old).toISOString() };
+    expect(trialMsFor(account.trial_started_at)).toBe(PRO_TRIAL_MS);
+    expect(accountEntitlement(account, old + PRO_TRIAL_MS - 1)?.trial).toBe(true);
+    // 예전 14일 기준이면 아직 남아 있었을 시점에도 만료다.
+    expect(accountEntitlement(account, old + PRO_TRIAL_MS)).toBeNull();
+    expect(accountEntitlement(account, old + 14 * 86400000 - 1)).toBeNull();
   });
   it("reports remaining time as a coarse bucket, never a raw date", () => {
-    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER);
+    const start = Date.parse("2026-09-21T00:00:00Z");
     expect(trialRemainingBucket(null)).toBe("not_started");
     expect(trialRemainingBucket(new Date(start).toISOString(), start + PRO_TRIAL_MS)).toBe("expired");
     expect(trialRemainingBucket(new Date(start).toISOString(), start + 5 * 86400000)).toBe("under_3d");
     expect(trialRemainingBucket(new Date(start).toISOString(), start)).toBe("3_7d");
-    // 7일 정책에서 7일 초과는 구정책 체험에서만 나온다.
-    const legacyStart = Date.parse(PRO_TRIAL_POLICY_CUTOVER) - 86400000;
-    expect(trialRemainingBucket(new Date(legacyStart).toISOString(), legacyStart)).toBe("over_7d");
+    // 7일 초과 구간은 더 이상 나올 수 없다.
+    const older = start - 30 * 86400000;
+    expect(trialRemainingBucket(new Date(older).toISOString(), start)).toBe("expired");
   });
   it("uses purchased account access after a trial", () => expect(accountEntitlement({ paid_until: "2026-10-01T00:00:00Z", trial_started_at: "2026-08-01" }, Date.parse("2026-09-11"))?.trial).toBe(false));
   it("allows the same offline verification window without extending the actual expiry", () => {

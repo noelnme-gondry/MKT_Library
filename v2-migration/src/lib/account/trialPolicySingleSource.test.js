@@ -3,8 +3,6 @@ import { readFileSync } from "node:fs";
 import { globSync } from "node:fs";
 import {
   PRO_TRIAL_DAYS,
-  PRO_TRIAL_DAYS_LEGACY,
-  PRO_TRIAL_POLICY_CUTOVER,
   trialUntilSql,
 } from "./archiveContract";
 
@@ -36,14 +34,15 @@ describe("trial length has one source", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("the shared SQL expression carries both policies and the cutover", () => {
+  it("the shared SQL expression carries the one policy", () => {
     const sql = trialUntilSql("a");
     expect(sql).toContain("a.trial_started_at");
     expect(sql).toContain(`INTERVAL '${PRO_TRIAL_DAYS} days'`);
-    expect(sql).toContain(`INTERVAL '${PRO_TRIAL_DAYS_LEGACY} days'`);
-    expect(sql).toContain(PRO_TRIAL_POLICY_CUTOVER);
+    // 길이가 시작 시점으로 갈리지 않는다 — 분기가 남아 있으면 계정마다 다른
+    // 만료일이 나오고 화면·메일·결제 기산일이 어긋난다.
+    expect(sql).not.toContain("CASE WHEN");
     // 별칭 없이도 같은 컬럼을 가리켜야 한다(결제 경로가 이 형태를 쓴다).
-    expect(trialUntilSql()).toContain("(trial_started_at+CASE WHEN trial_started_at <");
+    expect(trialUntilSql()).toBe(`(trial_started_at+INTERVAL '${PRO_TRIAL_DAYS} days')`);
   });
 
   // 주의: "파일에 INTERVAL이 있나"로 세면 OAuth 시도·세션 TTL 같은 무관한
