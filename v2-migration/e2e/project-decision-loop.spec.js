@@ -21,7 +21,7 @@ for (const locale of ["ko", "en"]) {
     const editor = page.locator(".weekly-review-page.is-embedded");
     await expect(editor.getByRole("heading", { name: "Budget review", exact: true })).toBeVisible();
     await expect(editor.getByRole("heading", { name: "Experiment review", exact: true })).toHaveCount(0);
-    await editor.locator(".decision-evidence > summary").click();
+    await expect(editor.locator(".decision-evidence")).toBeVisible();
     await expect(editor.getByText("95% CI 80–120", { exact: true })).toBeVisible();
     await editor.getByRole("button", { name: en ? "Turn this learning into the next decision" : "배운 점으로 다음 결정 만들기" }).click();
     await editor.getByRole("textbox", { name: en ? "Next action" : "다음에 실행할 행동", exact: true }).fill("Test new creative next week");

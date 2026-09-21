@@ -105,7 +105,6 @@ describe("WeeklyReviewScreen", () => {
   it("프로젝트 목표를 다른 KPI 단위로 재사용하지 않는다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen />);
-    fireEvent.click(screen.getByRole("button", { name: "프로젝트 기준 편집" }));
     const target = screen.getByLabelText("KPI 목표 (선택)");
     fireEvent.change(target, { target: { value: "25,000" } });
     expect(screen.getByText("목표 범위 충족")).toBeTruthy();
@@ -119,7 +118,7 @@ describe("WeeklyReviewScreen", () => {
     render(<WeeklyReviewScreen />);
     fireEvent.click(screen.getByRole("button", { name: "결정 기록: Google / UAC A" }));
     expect(document.getElementById("wr-decision-target").value).toBe("Google / UAC A");
-    expect(document.getElementById("wr-decision-target").closest("details").open).toBe(true);
+    expect(document.getElementById("wr-decision-target").closest("[data-information-section]").tagName).toBe("SECTION");
   });
 
   it("유지 목표를 고를 때 판정 제한을 즉시 알린다", () => {
@@ -152,7 +151,7 @@ describe("WeeklyReviewScreen", () => {
     render(<WeeklyReviewScreen />);
     expect(screen.getByText("설정한 확인 기준을 넘는 변화가 없습니다.")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "왜 그랬나" })).toBeNull();
-    expect(screen.getByText("내 다음 결정 기록").closest("details").open).toBe(false);
+    expect(screen.getByText("내 다음 결정 기록").closest("[data-information-section]").tagName).toBe("SECTION");
   });
 
   it("결과 비중이 비용 비중으로 오독되지 않게 라벨을 단다", () => {

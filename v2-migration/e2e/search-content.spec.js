@@ -15,9 +15,7 @@ for (const locale of ["ko", "en"]) for (const theme of ["dark", "light"]) {
       expect(await page.locator("body").evaluate(node => node.classList.contains("light-mode"))).toBe(theme === "light");
       if (path.startsWith("blog/")) {
         const sources = page.locator(".editorial-trust--compact");
-        await sources.locator("summary").focus();
-        await page.keyboard.press("Enter");
-        await expect(sources).toHaveAttribute("open");
+        await expect(sources).toBeVisible();
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), path).toBe(true);
       const table = page.locator(".blog-prose .table-scroll").first();

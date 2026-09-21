@@ -1,5 +1,6 @@
 "use client";
 
+import ModalDialog from "./ds/ModalDialog";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { headerFingerprint, parseProjectText, serializeProject } from "@/lib/project/serializeProject";
@@ -36,6 +37,7 @@ const COPY = {
 
 export default function ProjectSettingsMenu({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
+  const [open, setOpen] = useState(false);
   const csvGroups = useAppStore((state) => state.csvGroups);
   const pendingProjectConfig = useAppStore((state) => state.pendingProjectConfig);
   const setPendingProjectConfig = useAppStore((state) => state.setPendingProjectConfig);
@@ -87,12 +89,12 @@ export default function ProjectSettingsMenu({ locale = "ko" }) {
   };
 
   return (
-    <details className="project-settings no-print">
-      <summary className="btn ghost" aria-label={t.menu}>
+    <div className="project-settings no-print">
+      <button type="button" className="btn ghost" aria-label={t.menu} aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <span className="project-settings__label">{t.menu}</span>
         <span className="project-settings__mobile-icon" aria-hidden="true">⚙</span>
-      </summary>
-      <div className="project-settings__panel">
+      </button>
+      <ModalDialog open={open} onClose={() => setOpen(false)} ariaLabel={t.menu} overlayClassName="tutorial-overlay" panelClassName="checkout-recovery-panel"><header><h2>{t.menu}</h2><button className="btn" onClick={() => setOpen(false)}>{t.close}</button></header>
         <p>{t.privacy}</p>
         <div>
           <button className="btn ghost" type="button" onClick={exportSettings}>{t.export}</button>
@@ -111,7 +113,7 @@ export default function ProjectSettingsMenu({ locale = "ko" }) {
             <button className="btn primary" type="button" onClick={apply}>{t.apply}</button>
           </section>
         )}
-      </div>
-    </details>
+      </ModalDialog>
+    </div>
   );
 }

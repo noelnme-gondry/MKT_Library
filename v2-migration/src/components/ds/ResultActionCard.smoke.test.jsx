@@ -21,9 +21,9 @@ describe("ResultActionCard decision-first hierarchy", () => {
       scopeEvidence={{ denominatorKey: "installs", currency: "KRW", observationUnit: "cells", filters: { channels: ["Selected A"] }, periods: [{ id: "after", start: "2026-08-08", end: "2026-08-14", observations: 7, denominator: 140 }] }} />);
     const summary = screen.getByText(locale === "en" ? "Actual analysis scope and denominator" : "실제 분석 범위·분모 확인");
     fireEvent.click(summary);
-    expect(summary.closest("details").textContent).toContain("140");
-    expect(summary.closest("details").textContent).toContain("Selected A");
-    expect(summary.closest("details").textContent).toContain(locale === "en" ? "missing/invalid input cells: Unmeasured" : "입력 결측·비정상 셀: 미집계");
+    expect(summary.closest("[data-information-section]").textContent).toContain("140");
+    expect(summary.closest("[data-information-section]").textContent).toContain("Selected A");
+    expect(summary.closest("[data-information-section]").textContent).toContain(locale === "en" ? "missing/invalid input cells: Unmeasured" : "입력 결측·비정상 셀: 미집계");
   });
 
   it("publishes the actual result period instead of the broader upload filter", () => {
@@ -154,8 +154,10 @@ describe("ResultActionCard decision-first hierarchy", () => {
         decisionPrefill={{ action: "Explicit action", metric: "CPA", baseline: "5,240" }}
       />,
     );
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Explicit action");
     // 목표는 도구 선언(`lib/decisionGoals`)에서 오고, 원장 라벨은 프리필을 남긴다.
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("5,240");
     expect(container.querySelector(".decision-review__tape-main").textContent).toContain("Explicit action");
@@ -239,10 +241,12 @@ describe("ResultActionCard decision-first hierarchy", () => {
     );
     const view = render(card("Initial suggestion"));
     view.rerender(card("Fresh suggestion"));
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Fresh suggestion");
 
     fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "My edited action" } });
     view.rerender(card("Newest result suggestion"));
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("My edited action");
 
     view.rerender(
@@ -253,6 +257,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
         decisionPrefill={{ action: "Different tool suggestion", metric: "ROAS" }}
       />,
     );
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Different tool suggestion");
   });
 

@@ -16,29 +16,29 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
       <p className="tool-longform__question">{content.question}</p>
       <p>{content.answer}</p>
     </div> : null}
-    <details className="tool-longform__disclosure">
-      <summary className="tool-longform__summary">
+    <section data-information-section="" className="tool-longform__disclosure">
+      <header data-information-heading="" className="tool-longform__summary">
         <span id={`tool-longform-${toolId}`} className="tool-longform__title" role="heading" aria-level="2">{sectionTitle}</span>
         <span className="tool-longform__hint">{localeKey === "en" ? "Open only when you need the methodology" : "필요할 때만 펼쳐보세요"}</span>
-      </summary>
+      </header>
       <div className="tool-longform__content">
-        <details className="tool-longform__details">
-          <summary>{content.detailsLabel}</summary>
+        <section data-information-section="" className="tool-longform__details">
+          <header data-information-heading="">{content.detailsLabel}</header>
           <div className="tool-longform__body">
             {content.sections.map(([title, body]) => <section key={title}>
               <h3>{title}</h3>
               <p>{body}</p>
             </section>)}
           </div>
-        </details>
+        </section>
         {content.faq?.length ? <section className="tool-longform__faq" aria-labelledby={`tool-longform-faq-${toolId}`}>
           <h3 id={`tool-longform-faq-${toolId}`}>{localeKey === "en" ? "Frequently asked questions" : "자주 묻는 질문"}</h3>
-          {content.faq.map((item) => <details key={item.q}>
-            <summary>{item.q}</summary>
+          {content.faq.map((item) => <section data-information-section="" key={item.q}>
+            <header data-information-heading="">{item.q}</header>
             <p>{item.a}</p>
-          </details>)}
+          </section>)}
         </section> : null}
       </div>
-    </details>
+    </section>
   </section>;
 }

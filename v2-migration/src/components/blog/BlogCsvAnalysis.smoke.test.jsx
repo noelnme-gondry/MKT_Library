@@ -134,7 +134,7 @@ describe("blog CSV to full analysis", () => {
     const target = container.querySelector(jump.getAttribute("href"));
     expect(target).toBe(screen.getByRole("complementary", { name: practice.title }));
     expect(target.tabIndex).toBe(-1);
-    expect(target.querySelector("details").open).toBe(false);
+    expect(target.querySelector("[data-information-section]").tagName).toBe("SECTION");
     await upload(locale, "Date,Search Term,Taps,Installs,Spend\n2026-08-01,example,10,3,1000");
     expect(screen.queryByRole("button", { name: locale === "en" ? "Show result" : "결과 보기" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open detailed analysis" : "더 자세한 분석 보기" }));

@@ -29,7 +29,7 @@ export default function HomeResultPreview({ locale, onTrySample }) {
       <p className="home-result-preview__difference">{en ? `${money(lead.recent.cpa - lead.prior.cpa)} more per action` : `한 건당 ${money(lead.recent.cpa - lead.prior.cpa)} 더 지출`} <span>({percent(lead.cpaChange)})</span></p>
     </figure>
     <div className="home-result-preview__insight"><strong>{en ? "What to check next" : "다음으로 확인할 것"}</strong><p>{en ? "Compare campaign spend and actions before changing the budget." : "예산을 바꾸기 전에, 캠페인별 비용과 전환 변화를 확인하세요."}</p></div>
-    <details className="home-result-preview__method"><summary>{en ? "Sample data & comparison basis" : "샘플 데이터·비교 기준"}</summary><p className="home-result-preview__basis">{en ? "Channel with the largest percentage increase in CPA. Conversion means a key action; shorter bars indicate lower cost." : "전환당 비용 상승률이 가장 높은 채널입니다. 전환은 핵심행동 수 기준이며 막대가 짧을수록 비용이 적습니다."}<br />{result.dates[0]} – {result.dates[6]}<br />{result.dates[7]} – {result.dates.at(-1)}</p></details>
+    <section data-information-section="" className="home-result-preview__method"><header data-information-heading="">{en ? "Sample data & comparison basis" : "샘플 데이터·비교 기준"}</header><p className="home-result-preview__basis">{en ? "Channel with the largest percentage increase in CPA. Conversion means a key action; shorter bars indicate lower cost." : "전환당 비용 상승률이 가장 높은 채널입니다. 전환은 핵심행동 수 기준이며 막대가 짧을수록 비용이 적습니다."}<br />{result.dates[0]} – {result.dates[6]}<br />{result.dates[7]} – {result.dates.at(-1)}</p></section>
     <button type="button" className="ab-button" onClick={onTrySample}>{en ? "Explore a sample" : "샘플로 체험하기"} →</button>
     </div>
   </aside>;

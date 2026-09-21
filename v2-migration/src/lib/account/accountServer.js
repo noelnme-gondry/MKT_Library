@@ -49,7 +49,7 @@ export function accountResponse(body, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 export function accountError(error) {
-  const statuses = { LOGIN_REQUIRED: 401, INVALID_ORIGIN: 403, ACCOUNT_RESTRICTED: 403, NO_PURCHASE: 404, INVALID_MEMO: 400, PRO_REQUIRED: 402, INVALID_LOGIN: 400, ACCOUNTS_UNAVAILABLE: 503, ARCHIVE_LIMIT: 409 };
+  const statuses = { LOGIN_REQUIRED: 401, INVALID_ORIGIN: 403, ACCOUNT_RESTRICTED: 403, NO_PURCHASE: 404, INVALID_MEMO: 400, INVALID_MAPPING: 400, MAPPING_LIMIT: 409, PRO_REQUIRED: 402, INVALID_LOGIN: 400, ACCOUNTS_UNAVAILABLE: 503, ARCHIVE_LIMIT: 409 };
   const code = Object.hasOwn(statuses, error?.message) ? error.message : "ACCOUNTS_UNAVAILABLE";
   return accountResponse({ error: code }, statuses[code]);
 }

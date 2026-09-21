@@ -166,8 +166,8 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
           `${robustnessWarnings.length} channel pair(s) differ between Pearson and rank-based correlation. Outliers or nonlinear monotonic movement may be involved, so do not use Pearson alone to decide MMM channel separation.`,
         )}</p>}
         {(result?.pairs || []).length > 0 && (
-          <details className="stat-method">
-            <summary>{tr("판정 근거 숫자 보기", "Show the numbers behind the verdict")}</summary>
+          <section data-information-section="" className="stat-method">
+            <header data-information-heading="">{tr("판정 근거 숫자 보기", "Show the numbers behind the verdict")}</header>
             <div>
               <p style={{ margin: "0 0 8px" }}>{tr(
                 `채널쌍이 ${result?.correlation?.comparisons ?? 0}개라 우연히 강하게 움직인 쌍이 섞일 수 있습니다. 그 몫을 덜어낸 값(Holm 보정 p)으로 판정했습니다. 95% 구간은 각 쌍을 따로 본 구간입니다. Pearson이 주 판정이고, 순위 기준 p는 동률을 보정한 t 근사로 강건성만 점검합니다.`,
@@ -186,7 +186,7 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
                 emptyText=""
               />
             </div>
-          </details>
+          </section>
         )}
       </section>
     </>}

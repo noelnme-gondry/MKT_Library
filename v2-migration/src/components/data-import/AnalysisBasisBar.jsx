@@ -152,8 +152,8 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
         </div>
       )}
 
-      <details className="analysis-basis-bar__details">
-        <summary>{issueCount ? `${T.details} · ${issueCount}` : T.details}</summary>
+      <section data-information-section="" className="analysis-basis-bar__details">
+        <header data-information-heading="">{issueCount ? `${T.details} · ${issueCount}` : T.details}</header>
         <div>
           {report.issues.length === 0 ? <p>{T.noIssues}</p> : (
             <ul>{report.issues.map((issue) => <li key={issue.code}>{T[issue.code] || issue.code}</li>)}</ul>
@@ -166,7 +166,7 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
             </div>
           )}
         </div>
-      </details>
+      </section>
     </section>
   );
 }

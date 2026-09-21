@@ -7,7 +7,7 @@ import WeeklyReview from "@/components/WeeklyReview";
 import { useAppStore } from "@/store/useDataStore";
 
 function openDecisionReview(container) {
-  fireEvent.click(container.querySelector(".decision-review > summary"));
+  fireEvent.click(container.querySelector(".decision-review-launch"));
 }
 
 describe("DecisionReview", () => {
@@ -45,7 +45,7 @@ describe("DecisionReview", () => {
     expect(container.textContent).toContain("7일 뒤 검토");
     expect(container.querySelector(".decision-review__tape-cta").textContent).toContain("다음 검토 약속 만들기");
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
-    const summary = container.querySelector(".decision-review > summary");
+    const summary = container.querySelector(".decision-review-launch");
     expect(summary.tabIndex).toBe(0);
     summary.focus();
     expect(document.activeElement).toBe(summary);
@@ -79,7 +79,7 @@ describe("DecisionReview", () => {
     expect(goal.value).toBe("rerun:organic_conversions");
     expect([...goal.options].map((option) => option.textContent)).toContain("강한 잠식 후보 수 ↓");
     // 자동 계산 밖 목표라는 사실을 화면이 말한다 — 조용히 판정 불가로 두지 않는다.
-    expect(container.textContent).toContain("원본 도구에서 새 데이터로 다시 분석");
+    expect(document.body.textContent).toContain("원본 도구에서 새 데이터로 다시 분석");
     unmount();
 
     const second = render(<DecisionReview toolId="5-3" />);
@@ -143,7 +143,7 @@ describe("DecisionReview", () => {
     const threshold = screen.getAllByPlaceholderText(locale === "en" ? "Threshold" : "기준값")[0];
     fireEvent.change(threshold, { target: { value: "abc" } });
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Save for next review" : "다음 검토로 저장" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByText(locale === "en" ? "Enter a number for each threshold, or clear it to leave it unused." : "기준값은 숫자로 입력하거나, 사용하지 않을 항목은 비워 주세요.")).toBeTruthy();
     expect(threshold.value).toBe("abc");
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
@@ -223,7 +223,7 @@ describe("DecisionReview", () => {
     }} />);
     openDecisionReview(container);
     expect(screen.getByText("다음 CSV와 자동 대조")).toBeTruthy();
-    expect(container.textContent).toContain("2026-08-03 · 가입 1,240명/주");
+    expect(document.body.textContent).toContain("2026-08-03 · 가입 1,240명/주");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
     confirmReviewSave();
 

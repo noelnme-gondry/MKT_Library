@@ -131,7 +131,9 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByRole("img", { name: /채널 Cost와 CPA 의사결정 지도/ })).toBeTruthy();
     expect(screen.getByText("평균 효율 vs 다음 예산 투입 시 한계효율")).toBeTruthy();
     expect(screen.queryByText(/다음 1원/)).toBeNull();
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpi");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
@@ -202,8 +204,10 @@ describe("MarketingEfficiency render smoke", () => {
     useAppStore.getState().setGroupAnalyzed("5-22");
     render(<MarketingEfficiency />);
 
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpi");
     act(() => useAppStore.getState().setDenomBasis("actions"));
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
   });
 

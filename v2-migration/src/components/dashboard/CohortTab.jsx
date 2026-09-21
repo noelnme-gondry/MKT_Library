@@ -338,8 +338,8 @@ export default function CohortTab({ locale = "ko" } = {}) {
                 <> · For D{longestObservedDay}, only cohorts on or before <strong>{maturityCutoff}</strong> are mature.</>
               )}
             </p>
-            <details open={maturitySnapshot.source === "unknown"} style={{ marginTop: "8px" }}>
-              <summary style={{ cursor: "pointer", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("기준일 수정·확인", "Edit or confirm snapshot date")}</summary>
+            <section data-information-section=""  style={{ marginTop: "8px" }}>
+              <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{tr("기준일 수정·확인", "Edit or confirm snapshot date")}</header>
               <div style={{ display: "flex", alignItems: "end", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
                 <label style={{ display: "grid", gap: "3px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                   {tr("기준일 직접 지정", "Set snapshot date")}
@@ -350,7 +350,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
                   {tr("오늘 날짜를 쓰지 않습니다. 과거 다운로드 파일이면 실제 추출 기준일을 입력하세요.", "Today is never used. For an older export, enter its actual extraction date.")}
                 </span>
               </div>
-            </details>
+            </section>
           </div>
         </div>
 

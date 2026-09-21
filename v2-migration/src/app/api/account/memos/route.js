@@ -12,7 +12,7 @@ async function readMemoInput(request) {
       const part = await reader.read();
       if (part.done) break;
       bytes += part.value.byteLength;
-      if (bytes > 24000) { await reader.cancel(); throw new Error("INVALID_MEMO"); }
+      if (bytes > 768000) { await reader.cancel(); throw new Error("INVALID_MEMO"); }
       text += decoder.decode(part.value, { stream: true });
     }
     return JSON.parse(text + decoder.decode());

@@ -103,6 +103,7 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByText(en ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     declareDesign(locale);
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
     fireEvent.change(screen.getByLabelText(en ? "Window and stopping rule" : "기간·중단 규칙"), { target: { value: "changed" } });
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
@@ -125,6 +126,7 @@ describe("Incrementality render smoke", () => {
     expect(container.querySelector("#s-incr-method")).toBeTruthy();
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
     declareDesign();
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/무작위 홀드아웃.*재검증/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toMatch(/×$/);
 
@@ -188,6 +190,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
 
     declareDesign("en");
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("What will change?").value).toMatch(/limited follow-up window/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
@@ -211,6 +214,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
 
     declareDesign();
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/대조군.*DiD.*재검증/);
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
     confirmReviewSave();
@@ -241,6 +245,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-01-03" } });
 
     declareDesign();
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/확대하지 않고.*재설계/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));

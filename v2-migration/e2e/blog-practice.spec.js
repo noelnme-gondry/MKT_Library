@@ -46,10 +46,7 @@ for (const locale of ["ko", "en"]) {
       await page.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
       await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
       const trust = page.locator(".editorial-trust--compact");
-      await expect(trust).not.toHaveAttribute("open");
-      await trust.locator("summary").focus();
-      await page.keyboard.press("Enter");
-      await expect(trust).toHaveAttribute("open");
+      await expect(trust).toBeVisible();
       await expect(trust.locator("a").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const demo = page.getByRole("button", { name: en ? "Open analysis with demo" : "데모로 분석 열기", exact: true });
@@ -116,10 +113,7 @@ for (const locale of ["ko", "en"]) {
       const panel = page.getByRole("complementary", { name: practice.title });
       await expect(panel).toBeFocused();
       const instructions = panel.locator(".blog-practice__instructions");
-      await expect(instructions).not.toHaveAttribute("open");
-      await instructions.locator("summary").focus();
-      await page.keyboard.press("Enter");
-      await expect(instructions).toHaveAttribute("open");
+      await expect(instructions).toBeVisible();
       await expect(instructions).toContainText(practice.limit);
       await panel.getByLabel(en ? "Choose CSV" : "CSV 선택", { exact: true }).setInputFiles(path.join(process.cwd(), "public", practice.href));
       await expect(panel.getByText(en ? "Check columns" : "열 확인", { exact: true })).toBeVisible();

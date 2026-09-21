@@ -1,6 +1,7 @@
 "use client";
 import { useReviewDraftGuard } from "@/lib/project/reviewDraftGuard";
 
+import ModalDialog from "./ModalDialog";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -528,16 +529,15 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   };
 
   return (
-    <details
+    <section
       ref={detailsRef}
       id={detailsId}
       className="decision-review"
       data-decision-review-tool={toolId}
-      open={isOpen}
-      onToggle={(event) => setIsOpen(event.currentTarget.open)}
     >
-      <summary
+      <button type="button" className="decision-review-launch" aria-haspopup="dialog"
         onClick={() => {
+          setIsOpen(true);
           if (!isOpen) trackProductEvent("decision_review_opened", { tool_id: toolId, source: "result_tape", placement: analyticsPlacement, locale });
         }}
       >
@@ -550,9 +550,11 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           <small>{reviewDateCue(draft.reviewDate, locale)}</small>
           <strong>{formatReviewDate(draft.reviewDate, locale)}</strong>
         </span>
-        <span className="decision-review__tape-cta">{isOpen ? t.closeEditor : t.summary}<b aria-hidden="true">{isOpen ? "↑" : "→"}</b></span>
+        <span className="decision-review__tape-cta">{t.summary}<b aria-hidden="true">→</b></span>
         {records.length > 0 && <em>{records.length}</em>}
-      </summary>
+      </button>
+      <ModalDialog open={isOpen} onClose={() => setIsOpen(false)} ariaLabel={t.summary} initialFocusRef={actionInputRef} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
+      <header className="decision-editor-header"><h2>{t.summary}</h2><button type="button" className="btn" onClick={() => setIsOpen(false)}>{locale === "en" ? "Close" : "닫기"}</button></header>
       <div className="decision-review__body">
         <p className="decision-review__helper">{t.helper}</p>
         {!allowAutomaticComparison && <p className="decision-review__helper">{locale === "en" ? "This summary is saved for manual review. Bring the next results to Weekly Review and record what changed; no automatic outcome match is promised." : "이 요약은 직접 검토할 결정으로 저장됩니다. 다음 결과를 주간 리뷰에서 확인하고 변화를 기록하세요. 자동 실제값 대조는 제공하지 않습니다."}</p>}
@@ -723,7 +725,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.reviewQuestion}</span>
             <input value={draft.reviewQuestion} onChange={(event) => updateDraft("reviewQuestion", event.target.value)} placeholder={t.reviewQuestionPlaceholder} />
           </label>
-          <details className="decision-review__field--wide"><summary>{locale === "en" ? "Set a numeric target or experiment design" : "수치 목표·실험 설계 설정"}</summary><DecisionPlanFields locale={locale} value={draft.reviewPlan} onChange={value => updateDraft("reviewPlan", value)} /></details>
+          <section data-information-section="" className="decision-review__field--wide"><header data-information-heading="">{locale === "en" ? "Set a numeric target or experiment design" : "수치 목표·실험 설계 설정"}</header><DecisionPlanFields locale={locale} value={draft.reviewPlan} onChange={value => updateDraft("reviewPlan", value)} /></section>
           {hasChangedBasis && <div role="alert"><p>{locale === "en" ? "Analysis changed while you were editing. Review the current result before saving; your draft is still here." : "작성 중 분석 근거가 바뀌었습니다. 초안은 유지되어 있으니 현재 결과를 확인한 뒤 저장해 주세요."}</p><button type="button" className="btn" onClick={() => { setDraft(createDraft(decisionPrefill, draftDefaults)); setIsDraftDirty(false); setDraftBasis(null); }}>{locale === "en" ? "Start a new draft from this result" : "현재 결과로 초안 다시 만들기"}</button></div>}
           <button type="button" className="btn primary decision-review__add" disabled={Boolean(hasChangedBasis)} onClick={addRecord}>{t.add}</button>
         </div>
@@ -828,6 +830,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
           </div>
         )}
       </div>
-    </details>
+      </ModalDialog>
+    </section>
   );
 }

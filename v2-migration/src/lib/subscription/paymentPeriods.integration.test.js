@@ -20,6 +20,8 @@ beforeAll(async () => {
   await query(await readFile(new URL("../../../../scripts/accounts-schema.sql", import.meta.url), "utf8"));
   const migration = await readFile(new URL("../../../scripts/payment-periods.sql", import.meta.url), "utf8");
   await query(migration); await query(migration);
+  const mappings = await readFile(new URL("../../../scripts/account-mappings.sql", import.meta.url), "utf8");
+  await query(mappings); await query(mappings);
   await query("INSERT INTO gop_accounts(id,google_sub,email) VALUES($1,'fixture','fixture@example.com')", [identity.account.id]);
   const url = new URL(process.env.PAYMENTS_TEST_DATABASE_URL);
   url.searchParams.set("options", `-c search_path=${schema}`);
@@ -102,4 +104,16 @@ it.skipIf(!enabled)("preserves mixed PG periods and applies refunds while new ch
   const coverage = (await query("SELECT gop_paid_until($1,'live',NOW()) AS until", [identity.account.id])).rows[0].until;
   expect(coverage.toISOString()).toBe(periods[0].expires_at.toISOString());
   expect((await server.readPaymentAccess(request())).body.entitlement.expiresAt).toBe(periods[0].expires_at.getTime());
+});
+
+it.skipIf(!enabled)("mapping schema preserves account isolation, rule limits and deletion cleanup", async () => {
+  const other = randomUUID();
+  await query("INSERT INTO gop_accounts(id,google_sub,email) VALUES($1,$2,'mapping@example.com')", [other, other]);
+  const rules = [{ normalizedColumnName: "my_budget", canonicalKey: "media_spend" }];
+  await query("INSERT INTO gop_account_mappings(account_id,rules) VALUES($1,$2)", [other, JSON.stringify(rules)]);
+  expect((await query("SELECT rules FROM gop_account_mappings WHERE account_id=$1", [identity.account.id])).rows).toEqual([]);
+  expect((await query("SELECT rules FROM gop_account_mappings WHERE account_id=$1", [other])).rows[0].rules).toEqual(rules);
+  await expect(query("UPDATE gop_account_mappings SET rules=$2 WHERE account_id=$1", [other, JSON.stringify(Array(201).fill(rules[0]))])).rejects.toMatchObject({ code: "23514" });
+  await query("DELETE FROM gop_accounts WHERE id=$1", [other]);
+  expect((await query("SELECT rules FROM gop_account_mappings WHERE account_id=$1", [other])).rows).toEqual([]);
 });

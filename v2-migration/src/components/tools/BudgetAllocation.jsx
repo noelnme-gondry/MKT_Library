@@ -2636,8 +2636,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           <small>{tr("최근 N일 평균으로 반응 곡선과 기준 KPI를 계산", "Response curves and baseline KPI use the last N-day average")}</small>
         </div>
 
-        <details className="prism-driver__method">
-          <summary>{tr("배분 방식과 관측 지출 상한", "Allocation method and observed-spend ceilings")}</summary>
+        <section data-information-section="" className="prism-driver__method">
+          <header data-information-heading="">{tr("배분 방식과 관측 지출 상한", "Allocation method and observed-spend ceilings")}</header>
           <div>
             <div className="alloc-mode-toggle" role="group" aria-label={tr("배분 방식", "Allocation method")}>
               <button type="button" className={allocMode === "c" ? "active" : ""} aria-pressed={allocMode === "c"} onClick={() => setAllocMode("c")}>{tr("안정적 효율 가중", "Stable efficiency weighting")}</button>
@@ -2684,7 +2684,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </div>
             <p>{tr("PRISM은 각 채널의 관측 최대 지출을 넘지 않도록 자동 배분합니다. 마지막 효율을 관측 밖 비용에 연장해 목표 예산을 부풀리지 않습니다. 이는 관측된 비용·성과 관계를 쓴 시뮬레이션이며 인과 효과 보장은 아닙니다.", "PRISM auto-allocates without exceeding each channel's observed maximum spend. It does not extend the last efficiency beyond observed spend to inflate a target budget. This is a simulation from observed cost-performance relationships, not a causal guarantee.")}</p>
           </div>
-        </details>
+        </section>
       </section>
 
       {/* 전역 driver 뒤에만 결과를 노출한다. */}
@@ -2890,15 +2890,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       />}
 
       {/* §1 효율·추세선 분석 — PRISM 결과-먼저(P5): 진단 산점도는 기본 접힘, 펼칠 때 canvas resize(§7 0px). */}
-      <details
+      <section data-information-section=""
         className="block alloc-fold"
         id="s-scatter"
-        onToggle={(e) => { if (e.currentTarget.open) requestAnimationFrame(() => chartInstance.current?.resize()); }}
       >
-        <summary className="section-title alloc-fold-summary" style={{ cursor: "pointer" }}>
+        <header data-information-heading="" className="section-title alloc-fold-summary" style={{ }}>
           {tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}
           <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontWeight: 400, marginLeft: "6px" }}>{tr("추세선 모델·이상치·산점도 — 펼쳐서 검증", "Trendline model · outliers · scatter — expand to verify")}</span>
-        </summary>
+        </header>
         <div className="alloc-card" style={{ marginTop: "12px" }}>
           {advancedPanel}
           {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
@@ -2933,16 +2932,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
           </div>
         </div>
-      </details>
+      </section>
 
       {/* §0 진단 카드 — 지금 어디가 문제인가 (PRISM P5: 결론카드가 헤드라인, 상세 진단은 접힘) */}
       {diagnosis && (
-        <details className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
-          <summary className="alloc-insight-summary">
+        <section data-information-section="" className={`alloc-diag-card alloc-fold is-${diagnosis.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
             <span className="alloc-insight-summary__title">{tr("진단", "Diagnosis")}</span>
             <strong>{diagnosis.summary}</strong>
             <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
-          </summary>
+          </header>
           <div className="alloc-diag-grid">
           {diagnosis.insufficient ? (
             <article className="alloc-diag-item muted">
@@ -2965,17 +2964,17 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             ))
           )}
           </div>
-        </details>
+        </section>
       )}
 
       {/* 총 합계 비교 카드 */}
       {summary && (
-        <details className="alloc-total-card alloc-fold">
-          <summary className="alloc-insight-summary alloc-total-summary">
+        <section data-information-section="" className="alloc-total-card alloc-fold">
+          <header data-information-heading="" className="alloc-insight-summary alloc-total-summary">
             <span className="alloc-insight-summary__title">{tr("총 합계 비교", "Total comparison")}</span>
             <strong>{comparisonHeadline}</strong>
             <span className="alloc-insight-summary__action">{tr("수치 보기", "View figures")}</span>
-          </summary>
+          </header>
           <div className="alloc-total-meta">
             {tr(
               `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${planBudgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
@@ -3014,22 +3013,22 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               {summary.nextROAS != null && <div className="alloc-total-row"><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
             </section>
           </div>
-        </details>
+        </section>
       )}
 
       {/* §5 배분 점검 스트립 — PRISM P5: 접힘. summary에 tone별 한 줄 헤드라인만 노출(펼치면 상세). */}
       {verify && plannedDailyBudget > 0 && items.length >= 2 && (
-        <details className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
-          <summary className="alloc-insight-summary">
+        <section data-information-section="" className={`alloc-verify-strip alloc-fold ${verify.tone}`}>
+          <header data-information-heading="" className="alloc-insight-summary">
             <span className="alloc-insight-summary__title">{tr("배분 점검", "Allocation check")}</span>
             <strong>{verify.head}</strong>
             <span className="alloc-insight-summary__action">{tr("근거 보기", "View evidence")}</span>
-          </summary>
+          </header>
           <div className="alloc-verify-detail">
             <span>{verify.body}</span>
             {verify.note && <small>{verify.note}</small>}
           </div>
-        </details>
+        </section>
       )}
 
       {showTable && (() => {

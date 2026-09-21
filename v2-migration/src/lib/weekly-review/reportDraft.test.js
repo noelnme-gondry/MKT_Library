@@ -210,3 +210,8 @@ it.each(["ko", "en"])("%s shared review keeps actual baseline and current KPI wi
   expect(text).toContain("100 KRW → 150 KRW");
   expect(renderReportText(draft({ locale, metrics: { previous: { cpa: null }, current: { cpa: null } } }))).not.toContain("0 KRW");
 });
+
+it.each(["ko", "en"])("does not print a missing absolute metric pair (%s)", locale => {
+  const text = renderReportText({ ok: true, locale, title: "Review", period: PERIOD, sections: [{ id: "performance", type: "performance", title: "Performance", metric: "CPA", currentValue: undefined, previousValue: undefined, deltaPct: 0.1 }] });
+  expect(text).not.toContain("→");
+});

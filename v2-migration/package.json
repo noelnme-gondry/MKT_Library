@@ -8,8 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "prestart": "node scripts/migrate-payment-periods.mjs",
-    "start": "GOP_SERVICE_WORKER=true next start -p $PORT",
+    "start": "node scripts/migrate-payment-periods.mjs && GOP_SERVICE_WORKER=true next start -p $PORT",
     "generate:icons": "node scripts/generate-brand-icons.mjs",
     "lint": "eslint",
     "test": "vitest run --project golden",

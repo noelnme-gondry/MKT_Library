@@ -13,11 +13,11 @@ export default function MobileQuickStart({ locale = "ko", onTrySample }) {
       <Link className="btn" href={`${prefix}/calculator`}>{en ? "Calculators" : "계산기"}</Link>
       <Link className="btn" href={`${prefix}/diagnose`}>{en ? "Diagnose" : "간단 진단"}</Link>
     </nav>
-    <details><summary>{en ? "Prepare your own data" : "내 데이터로 분석 준비하기"}</summary>
+    <section data-information-section=""><header data-information-heading="">{en ? "Prepare your own data" : "내 데이터로 분석 준비하기"}</header>
       <Link className="btn" href={`${prefix}/templates`}>{en ? "CSV templates" : "CSV 템플릿"}</Link>
       <button className="btn" onClick={async () => { try { await navigator.clipboard.writeText(`${location.origin}${location.pathname}`); setMessage(en ? "Page link copied. Open it on your PC; CSVs are not transferred." : "페이지 링크를 복사했습니다. PC에서 열어 주세요. CSV는 전달되지 않습니다."); trackProductEvent("continue_on_desktop", { locale, source: "mobile", data_continuity: "page_link_only" }); } catch { setMessage(en ? "Copy this page's address and open it on your PC." : "주소창의 페이지 주소를 복사해 PC에서 열어 주세요."); } }}>{en ? "Continue on PC" : "PC에서 이어하기"}</button>
-    </details>
-    <details><summary>{en ? "Get new articles by email" : "새 글 이메일로 받기"}</summary><NewsletterSignup locale={locale} source="mobile" placement="quick_start" /></details>
+    </section>
+    <section data-information-section=""><header data-information-heading="">{en ? "Get new articles by email" : "새 글 이메일로 받기"}</header><NewsletterSignup locale={locale} source="mobile" placement="quick_start" /></section>
     {message && <p role="status">{message}</p>}
   </section>;
 }

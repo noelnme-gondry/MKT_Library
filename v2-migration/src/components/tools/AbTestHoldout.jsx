@@ -675,13 +675,13 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                           {/* 계산 방법은 접기 한 줄. 근거를 결론과 같은 층에 펴지 않는다(§12.14).
                               문구는 쉬운 말 먼저, 용어는 뒤에(§12.17). */}
                           {exact && (
-                            <details className="stat-method">
-                              <summary>{tr("전환이 적어 정확한 계산을 썼습니다", "Low conversion counts — an exact calculation was used")}</summary>
+                            <section data-information-section="" className="stat-method">
+                              <header data-information-heading="">{tr("전환이 적어 정확한 계산을 썼습니다", "Low conversion counts — an exact calculation was used")}</header>
                               <p>{tr(
                                 `전환 수가 적으면 흔히 쓰는 근사 계산(z 검정)이 차이를 실제보다 크게 봅니다. 그래서 근사 없이 세는 방식(Fisher 정확검정)으로 판정했습니다. 참고로 근사 계산의 p값은 ${freq.pValue.toFixed(4)}입니다.`,
                                 `With few conversions the usual approximation (z-test) overstates the difference, so the verdict uses an exact count-based calculation (Fisher's exact test). For reference, the approximate p-value is ${freq.pValue.toFixed(4)}.`,
                               )}</p>
-                            </details>
+                            </section>
                           )}
                         </div>
                         <div className="ab-result-block">
@@ -836,8 +836,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             </div>
           </section>
 
-          <details className="block" id="s-notes">
-            <summary className="section-title" style={{ cursor: "pointer" }}>{tr("전문가용 통계 노트 펼치기", "Open statistical notes for experts")}</summary>
+          <section data-information-section="" className="block" id="s-notes">
+            <header data-information-heading="" className="section-title" style={{ }}>{tr("전문가용 통계 노트", "Statistical notes for experts")}</header>
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. {tr("p-value < α 시 귀무가설 기각.", "Reject the null hypothesis when p-value < α.")}</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -846,7 +846,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               <li><strong>{tr("예산 계산", "Budget calculation")}</strong>: <code className="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>.</li>
               <li><strong>{tr("파워 커브", "Power curve")}</strong>: {tr("sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE 도출.", "Derived by inverting sample size (binary search) to find the minimum detectable MDE.")}</li>
             </ul>
-          </details>
+          </section>
         </>
       )}
 
@@ -1027,12 +1027,12 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         },
                       })}
                     >
-                      <details className="result-action-card__details">
-                        <summary>{tr("통계 원값 보기", "View raw statistics")}</summary>
+                      <section data-information-section="" className="result-action-card__details">
+                        <header data-information-heading="">{tr("통계 원값 보기", "View raw statistics")}</header>
                         <p className="tnum" style={{ margin: "8px 0 0", color: verdictColor(s.pValue, liftPositive), fontSize: "var(--fs-xs)" }}>
                           z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} />
                         </p>
-                      </details>
+                      </section>
                       <AnalysisDetails
                         locale={locale}
                         statusLabel={s.pValue < 0.05 ? tr("통계적 차이 후보", "Statistical-difference candidate") : tr("판정 보류", "Inconclusive")}

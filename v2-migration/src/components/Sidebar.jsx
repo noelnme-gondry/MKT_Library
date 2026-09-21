@@ -153,8 +153,8 @@ function SidebarContents({ locale = "ko", onNavigate }) {
           })}
         </div>)}
       </nav>
-      <details className="library-full-navigation" open={!isHome && (currentRouteId.startsWith("5-") || currentRouteId.startsWith("9-") || currentRouteId === "8-1")}>
-        <summary>{locale === "en" ? "Browse every tool and guide" : "전체 도구와 가이드 탐색"}</summary>
+      <section data-information-section="" className="library-full-navigation" >
+        <header data-information-heading="">{locale === "en" ? "Browse every tool and guide" : "전체 도구와 가이드 탐색"}</header>
       <div className="inner-workspace-label inner-workspace-label--stacked">
         <span>{T.workspaceLabel}</span>
         {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
@@ -307,14 +307,14 @@ function SidebarContents({ locale = "ko", onNavigate }) {
           );
         })}
       </nav>
-      </details>
+      </section>
 
       {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 해당 리소스·계산기
           페이지에서만 펼치고, 홈과 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
-      <details className="sidebar-library-disclosure" open={isLibraryRoute || isCalculator}>
-        <summary className="sidebar-resource-label">
+      <section data-information-section="" className="sidebar-library-disclosure" >
+        <header data-information-heading="" className="sidebar-resource-label">
           <span>{T.resourceLabel}</span>
-        </summary>
+        </header>
         <section className="sidebar-library" data-section="resources">
         <Link
           href={locale === "en" ? "/en/calculator" : "/calculator"}
@@ -345,7 +345,7 @@ function SidebarContents({ locale = "ko", onNavigate }) {
           <span><strong>{T.compare}</strong></span><b>↗</b>
         </Link>
         </section>
-      </details>
+      </section>
 
       <div className="home-sidebar-local"><span>{T.localOnly}</span></div>
     </aside>

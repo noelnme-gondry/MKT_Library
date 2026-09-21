@@ -18,6 +18,7 @@ export default function SubscriptionPlanComparison({ locale = "ko", paid = false
     ["Batch report branding", absent, "Logo, company name and footer"],
     ["Your project backups", absent, "Export and restore"],
     ["Account decision memos", absent, "Save and update memos"],
+    ["Saved column mappings", absent, "Reuse CSV / Sheets rules across devices"],
   ] : [
     ["분석 도구", "모든 도구 사용", "모든 도구 사용"],
     ["분석 결과", "사이트에서 확인", "사이트에서 확인"],
@@ -28,6 +29,7 @@ export default function SubscriptionPlanComparison({ locale = "ko", paid = false
     ["일괄 보고서 브랜딩", absent, "로고·회사명·푸터 설정"],
     ["내 프로젝트 백업", absent, "내보내기·복원"],
     ["계정 결정 메모", absent, "새 메모 저장·수정"],
+    ["내 컬럼 매핑", absent, "CSV·Sheets 규칙을 다른 기기에서도 재사용"],
   ];
   return <div id="plans" className="plan-comparison">
     <div className="plan-comparison-grid">

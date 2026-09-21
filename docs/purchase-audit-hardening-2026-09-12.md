@@ -25,7 +25,7 @@
 - 조기 재구매는 현재 만료일(활성 체험 포함) 뒤 1개월, 만료 후 구매는 승인부터 1개월. 주문별 starts_at/expires_at은 최초 승인에만 배정한다. 계정 단위 트랜잭션 잠금으로 동시 승인을 직렬화하고 HTTP 동안 잠금을 잡지 않는다.
 - 만료로 기록을 삭제하지 않는다. Pro는 즉시 잠그고 기존 열람·내보내기·백업은 유지한다. 7일 후 삭제 제안은 취소됐다. 브라우저 저장소 자체의 기존 90일 미사용 정리는 별도다.
 - 라이브 키는 사용자가 별도로 설정한다. 실입금·실거래·실환불·실메일 수신·인앱 복귀는 운영 검증이며 테스트 통과로 대체하지 않는다. 수동 환불 정책은 유지한다.
-- npm start의 prestart가 scripts/payment-periods.sql을 트랜잭션으로 실행한다. nullable starts_at 추가와 gop_paid_until 함수만 도입하며 기존 승인·만료일·기록은 보존한다. 실패하면 앱 기동을 중단한다. 재실행 가능하다.
+- npm start에 명시된 migration 단계가 scripts/payment-periods.sql을 트랜잭션으로 실행한다. nullable starts_at 추가와 gop_paid_until 함수만 도입하며 기존 승인·만료일·기록은 보존한다. 실패하면 앱 기동을 중단한다. 재실행 가능하다.
 - 롤백: 연장 주문 생성 후 #861 이전 바이너리로 되돌리지 않는다(이전 재조회가 만료일을 줄임). 판매만 PAYMENTS_LIVE_ENABLED=false로 차단하고 새 원장 reader/writer를 유지하는 forward fix를 사용한다. 열·함수·기록을 삭제하지 않는다.
 - 내부 메일 worker는 개발/빌드에서 실행하지 않는다. ACCOUNT_MAIL_ENABLED=false로 중단 가능하다. 외부 jobs 경로는 선택적이며 기존 인증을 유지한다. DB lease로 다중 인스턴스를 조정한다.
 - Railway PR/staging 환경은 상속된 설정이 있어도 계정 기능·DB migration·자동 메일을 실행하지 않는다. worker는 Railway production만 허용한다.

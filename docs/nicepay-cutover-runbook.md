@@ -27,7 +27,7 @@ node scripts/check-nicepay-readiness.mjs --database --expect-ready
 
 - 첫 명령: 승인 모델·키 존재·DB 설정·로그인·환경 분리 확인. 키가 실제 유효한지는 입증하지 않는다.
 - 두 번째: 주문 테이블·provider/기간 컬럼·기간 합산 함수 및 PG/모드별 주문 건수 확인. 기존 PG 키가 빠지면 차단 사유를 출력한다. 실제 결제 성공 여부를 `ready`로 위장하지 않는다.
-- 스키마는 기존 `prestart` migration을 사용한다. `provider`는 기본 `toss`로 추가된다. 배포 시작 로그에서 migration 성공을 확인한다. 수동으로 기존 주문의 provider를 변경하지 않는다.
+- 스키마는 `npm start`에 명시된 startup migration을 사용한다. `provider`는 기본 `toss`로 추가된다. 배포 시작 로그에서 migration 성공을 확인한다. 수동으로 기존 주문의 provider를 변경하지 않는다.
 - 로컬 sandbox는 분리한 DB와 테스트 키, `NICEPAY_MODE=test`, `PAYMENTS_PROVIDER=nicepay`, `PAYMENTS_LIVE_ENABLED=false`로 실행한다. `NODE_ENV=production`의 테스트 결제는 차단된다. 테스트 로그인 설정도 별도로 준비해야 한다.
 
 ## 상점 개통 후 남는 작업

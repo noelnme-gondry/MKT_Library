@@ -179,7 +179,7 @@ export const EN_READY_GUIDE_IDS = new Set([
 
 export function hasEnVersion(id) {
   // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
-  return id === "home" || id === "guide-index" || id === "start-gate" || id === "storage" || id === "projects" || id === "subscription" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
+  return id === "home" || id === "guide-index" || id === "start-gate" || id === "storage" || id === "account" || id === "projects" || id === "subscription" || id === "dochi-result" || EN_READY_TOOL_IDS.has(id) || EN_READY_UNLISTED_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null

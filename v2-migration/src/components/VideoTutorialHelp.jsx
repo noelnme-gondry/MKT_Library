@@ -11,63 +11,6 @@ let pendingOpen = null;
 const subscribeHydration = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
-const PAGE_CONTROLS = 'button, a[href], input, select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [contenteditable="true"]';
-
-// A floating help entry must yield to the real task underneath it. Probe only
-// its small viewport footprint instead of reading every control on every scroll.
-function useLauncherClearance(ref, active) {
-  useEffect(() => {
-    if (!active) return;
-    let frame = 0;
-    let settleTimer = 0;
-    let scrolling = false;
-    const mountedLauncher = ref.current;
-    const check = () => {
-      frame = 0;
-      if (scrolling) return;
-      const launcher = ref.current;
-      if (!launcher) return;
-      if (launcher === document.activeElement) return;
-      let overlaps = true;
-      // Try nearby clear space before disappearing behind the first-screen CTA.
-      for (const lift of [0, 64, 128, 192, 256, 320]) {
-        launcher.style.transform = `translateY(-${lift}px)`;
-        const rect = launcher.getBoundingClientRect();
-        if (rect.top < 80) break;
-        overlaps = false;
-        for (let x = rect.left + 1; x < rect.right && !overlaps; x += 16) {
-          for (let y = rect.top + 1; y < rect.bottom && !overlaps; y += 16) {
-            overlaps = document.elementsFromPoint(x, y).some(node =>
-              !launcher.contains(node) && node.closest(PAGE_CONTROLS));
-          }
-        }
-        if (!overlaps) break;
-      }
-      launcher.toggleAttribute("data-obscures-control", overlaps);
-    };
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(check); };
-    const onScroll = () => {
-      // Stay out of the way through scrolling and its settling frames.
-      scrolling = true;
-      ref.current?.setAttribute("data-obscures-control", "");
-      clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => { scrolling = false; schedule(); }, 150);
-    };
-    const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    window.addEventListener("resize", schedule);
-    schedule();
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(settleTimer);
-      observer.disconnect();
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", schedule);
-      mountedLauncher?.removeAttribute("data-obscures-control");
-    };
-  }, [ref, active]);
-}
 export function VideoHelpButton({ topic, locale = "ko", className = "tutorial-inline", onOpen, children }) {
   const ready = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
   return <button type="button" disabled={!ready} className={className} aria-haspopup="dialog" onClick={event => {
@@ -84,7 +27,6 @@ function TutorialLauncher({ pathname, locale }) {
   const [chapter, setChapter] = useState(0);
   const videoRef = useRef(null);
   const launcherRef = useRef(null);
-  useLauncherClearance(launcherRef, !topic);
   const triggerRef = useRef(null);
   const closeRef = useRef(null);
   const en = locale === "en";
@@ -133,7 +75,7 @@ function TutorialLauncher({ pathname, locale }) {
             <p id="tutorial-video-note" className="tutorial-note">{en ? `${tutorial.steps.length * TUTORIAL_STEP_SECONDS} sec · silent quick guide · synthetic demo data` : `${tutorial.steps.length * TUTORIAL_STEP_SECONDS}초 · 소리 없이 핵심만 · 가상 데모 데이터`}</p>
             {["import", "mapping", "sheets"].includes(topic) && <p className="tutorial-note">{en ? "Demonstrated in the dashboard. Required fields and supported file types differ by tool; use the input guide on your current screen." : "운영 대시보드의 입력 화면을 기준으로 설명합니다. 도구별 필수 컬럼과 지원 파일은 현재 화면의 입력 안내를 따르세요."}</p>}
             {failed && <p role="alert">{en ? "Video could not load. Read the steps below or reopen this guide to retry." : "영상을 불러오지 못했습니다. 아래 설명을 읽거나 안내를 다시 열어 재시도하세요."}</p>}
-            <details className="tutorial-transcript"><summary>{en ? "Read the steps" : "단계별 설명 읽기"}</summary><ol>{tutorial.steps.map((step, index) => <li key={index}><button type="button" onClick={() => {
+            <section className="tutorial-transcript"><h3>{en ? "Read the steps" : "단계별 설명 읽기"}</h3><ol>{tutorial.steps.map((step, index) => <li key={index}><button type="button" onClick={() => {
               const player = videoRef.current;
               if (player) {
                 const time = index * TUTORIAL_STEP_SECONDS;
@@ -142,7 +84,7 @@ function TutorialLauncher({ pathname, locale }) {
                 else { player.preload = "metadata"; player.load(); }
                 player.focus();
               }
-            }}>{String(index * TUTORIAL_STEP_SECONDS).padStart(2, "0")}s · {step[locale].title}</button><p>{step[locale].body}</p></li>)}</ol></details>
+            }}>{String(index * TUTORIAL_STEP_SECONDS).padStart(2, "0")}s · {step[locale].title}</button><p>{step[locale].body}</p></li>)}</ol></section>
             <Link className="tutorial-guide-link" href={`${en ? "/en" : ""}${tutorial.guide}`} onClick={close}>{en ? "Open the related page" : "관련 화면 열기"} →</Link>
           </div>
           <nav className="tutorial-topics" aria-label={en ? "Tutorial topics" : "영상 안내 주제"}>{[...new Set([...ids, ...VIDEO_TUTORIALS.map(item => item.id)])].map(id => {

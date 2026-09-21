@@ -5874,7 +5874,7 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .account-page__facts { display: grid; gap: 8px; margin: 0 0 10px; }
 .account-page__facts > div { display: grid; grid-template-columns: minmax(0, 160px) minmax(0, 1fr); gap: 10px; align-items: baseline; }
 .account-page__facts dt { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 700; }
-.account-page__facts dd { margin: 0; color: var(--text-primary); font-size: var(--fs-sm); }
+.account-page__facts dd { overflow-wrap: anywhere; margin: 0; color: var(--text-primary); font-size: var(--fs-sm); }
 .account-page__hint { margin: 0 0 10px; color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.45; }
 
 /* 내 컬럼 매핑 — 왼쪽이 내 파일의 컬럼, 오른쪽이 이 도구가 쓰는 항목. */
@@ -6654,7 +6654,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .dochi-workspace__card { display:flex;flex-direction:column;align-items:start;min-height:185px;padding:12px;border:1px solid var(--border-subtle);border-radius: var(--radius-lg);background:var(--surface-container-low); }
 .dochi-workspace__card-top { display:flex;justify-content:space-between;width:100%;gap:8px;color:var(--text-muted);font: 650 var(--fs-xs) var(--font-sans);letter-spacing:.07em; }
 .dochi-workspace__card-top em { color:var(--text-secondary);font-style:normal; }
-.dochi-workspace__card.is-blocked { opacity:.76; }
+.dochi-workspace__card.is-blocked { border-style: dashed; }
 .dochi-workspace__card h3 { margin:8px 0 5px;color:var(--text-primary);font: 650 var(--fs-base) var(--font-sans);letter-spacing:-.025em; }
 .dochi-workspace__card p { margin:0;color:var(--text-secondary);font-size: var(--fs-xs);line-height:1.5; }
 .dochi-workspace__card small { margin-top:8px;color:var(--warning);font-size: var(--fs-xs);line-height:1.4; }
@@ -10421,7 +10421,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .header-cmdk__menu-icon { display: inline; }
   .header-utility-menu__panel { position: absolute; top: calc(100% + 9px); right: 0; }
   .header-utility-menu__panel .project-settings__panel { position: static; width: 100%; }
-  .header-utility-menu .header-print { display: flex !important; }
+  .utility-popover-panel .header-print { display: flex !important; }
   .header-utility-menu .project-settings__label { display: inline !important; }
   .header-utility-menu .project-settings__mobile-icon { display: none; }
   .tool-context-header { margin-bottom: 18px; padding: 7px 0 18px 13px; }
@@ -11461,10 +11461,9 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .tutorial-launcher > span:first-child { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid currentColor; border-radius: 50%; color: inherit; font-size: var(--fs-lg); line-height: 1; }
 /* Keep consent, existing dialogs, form entry and focused page controls unobscured. */
 body:has(.source-survey, .consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
-/* Hide while typing; ordinary button focus must not remove help indefinitely.
-   Footprint checks still protect controls underneath the floating entry. */
-body:has(textarea:focus, input:not([type="file"]):focus, [contenteditable="true"]:focus) .tutorial-launcher,
-.tutorial-launcher[data-obscures-control] { visibility: hidden; }
+/* Keep help hidden through the entire form interaction. Showing it between
+   input blur and a submit button's mouseup can intercept that very click. */
+body:has(form:focus-within, fieldset:focus-within, select:focus, textarea:focus, input:not([type="file"]):focus, [contenteditable="true"]:focus) .tutorial-launcher { visibility: hidden; }
 .tutorial-upload-entry { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .tutorial-upload-entry .tutorial-inline { border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-container-low); }
 /* Welcome already is a modal; avoid stacking the video dialog inside it. */
@@ -11535,3 +11534,59 @@ body:has(textarea:focus, input:not([type="file"]):focus, [contenteditable="true"
 
 .project-review-workspace > div > nav.project-review-workspace__tools .btn { min-height: 44px; color: var(--text-1); background: var(--bg-1); transition: none; }
 .project-review-workspace > div > nav.project-review-workspace__tools .btn[aria-pressed="true"] { border-color: var(--primary); background: var(--bg-2); font-weight: 700; }
+
+/* Compact payment choices retain native radio semantics. */
+.subscription-checkout .checkout-methods { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.checkout-methods legend { padding: 0; margin-bottom: 12px; font-size: var(--fs-base); font-weight: 650; }
+.checkout-method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.subscription-checkout .checkout-method { position: relative; display: flex; align-items: center; gap: 10px; min-height: 60px; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; font-size: var(--fs-sm); background: var(--bg-1); }
+.subscription-checkout .checkout-method.is-selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.checkout-method input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.checkout-method:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 3px; }
+.checkout-method:has(input:disabled) { cursor: wait; opacity: .65; }
+.checkout-method-mark { margin-left: auto; color: var(--primary); font-weight: 700; }
+.checkout-methods p { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-muted); }
+.checkout-purchase-info { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 24px; }
+.checkout-purchase-info h3 { font-size: var(--fs-base); margin: 0 0 12px; }
+.checkout-purchase-info p { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.65; }
+.checkout-recovery-link { min-height: 44px; padding: 10px 0; border: 0; background: transparent; color: var(--primary); text-align: left; cursor: pointer; }
+.checkout-recovery-panel { width: min(640px, 94vw); max-height: 85dvh; overflow: auto; padding: 24px; background: var(--bg-1); color: var(--text-1); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.checkout-recovery-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.account-mapping__editor { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
+.account-mapping__editor legend { font-weight: 650; margin-bottom: 16px; }
+.account-mapping__editor:disabled { opacity: .6; }
+.tutorial-transcript h3 { font-size: var(--fs-base); margin-top: 20px; }
+@media (max-width: 480px) { .checkout-method-grid { grid-template-columns: 1fr; } }
+
+/* Evidence stays in the reading flow; editing has its own focused surface. */
+[data-information-section] { margin-block: 16px; }
+[data-information-section] > [data-information-heading] { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-weight: 650; line-height: 1.5; padding-block: 12px; cursor: default; color: var(--text-1); }
+[data-information-heading]::before, [data-information-heading]::after { content: none !important; }
+[data-information-section] > [data-information-heading] + * { margin-top: 8px; }
+.info-popover-trigger { display: inline-grid; place-items: center; border: 0; background: transparent; color: var(--text-muted); cursor: help; min-width: 44px; min-height: 44px; padding: 4px; vertical-align: middle; }
+.info-popover-content { z-index: 1200; width: min(360px, calc(100vw - 32px)); padding: 18px 42px 18px 18px; color: var(--text-1); background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 12px 32px #0003; line-height: 1.65; font-size: var(--fs-sm); }
+.info-popover-content > strong { display: block; margin-bottom: 6px; }
+.info-popover-close { position: absolute; right: 4px; top: 4px; border: 0; background: none; color: inherit; width: 44px; height: 44px; cursor: pointer; }
+.utility-popover-panel { z-index: 300; display: grid; gap: 8px; min-width: 230px; max-height: 80dvh; overflow-y: auto; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; box-shadow: 0 12px 32px #0003; }
+.utility-popover-panel .btn { justify-content: flex-start; min-height: 44px; }
+.decision-review-launch { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; text-align: left; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.decision-editor-panel { width: min(920px, 95vw); max-height: 90dvh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-1); color: var(--text-1); padding: 24px; }
+.decision-editor-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.project-branding-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .8fr); gap: 28px; align-items: start; margin-top: 24px; }
+.project-branding-fields { display: grid; gap: 16px; }
+.project-branding-preview { display: grid; gap: 20px; padding: 28px; min-height: 300px; background: var(--bg-1); border: 1px solid var(--border); box-shadow: 0 8px 24px #0001; }
+.project-branding-preview small { color: var(--text-muted); letter-spacing: .06em; font-size: var(--fs-xs); }
+.project-branding-preview img { object-fit: contain; object-position: left; }
+.project-branding-preview footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--text-muted); overflow-wrap: anywhere; }
+@media (max-width: 720px) { .project-branding-layout { grid-template-columns: 1fr; } .decision-review-launch { flex-wrap: wrap; } }
+
+.analysis-selector__tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-block: 16px; }
+.analysis-selector__tabs [role="tab"] { min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-1); background: var(--bg-1); cursor: pointer; }
+.analysis-selector__tabs [aria-selected="true"] { border-color: var(--primary); color: var(--primary); background: var(--bg-2); font-weight: 700; }
+.csv-account-mapping-notice { padding: 12px 16px; border-left: 3px solid var(--primary); color: var(--text-2); background: var(--bg-2); line-height: 1.6; }
+
+/* Keep selected small text readable on the tinted light surface. */
+body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--text-primary); }
+
+.project-review-report-scope label { display: grid; gap: 6px; min-width: 0; margin-block: 12px; }
+.project-review-report-scope :is(select, input) { width: 100%; min-width: 0; max-width: 100%; }

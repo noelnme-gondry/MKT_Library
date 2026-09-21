@@ -79,7 +79,7 @@ export default function EnglishTemplatesPage() {
       </section>
       <section className="blog-faq" aria-label="Frequently asked questions">
         <h2>Frequently asked questions</h2>
-        {FAQ.map(([question, answer]) => <details key={question} className="blog-faq-item"><summary>{question}</summary><div className="blog-faq-item-answer">{answer}</div></details>)}
+        {FAQ.map(([question, answer]) => <section data-information-section="" key={question} className="blog-faq-item"><header data-information-heading="">{question}</header><div className="blog-faq-item-answer">{answer}</div></section>)}
       </section>
     </main>
   );

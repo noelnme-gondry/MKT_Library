@@ -830,7 +830,7 @@ describe("MarketingResponse render smoke", () => {
 
     const second = render(<MarketingResponse initialStage="hub" />);
     await waitFor(() => expect(second.container.querySelectorAll('a[href^="/tools/"]')).toHaveLength(5));
-    expect(second.container.querySelector("details")?.open).toBe(false);
+    expect(second.container.querySelector("[data-information-section]").tagName).toBe("SECTION");
     expect(second.container.querySelector('[role="tablist"]')).toBeNull();
   });
 
@@ -1818,7 +1818,7 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("같은 구간 기준선 오차");
     const decisionEditor = container.querySelector('[data-decision-review-tool="5-18-mmm"]');
     expect(decisionEditor).toBeTruthy();
-    fireEvent.click(decisionEditor.querySelector("summary"));
+    fireEvent.click(decisionEditor.querySelector("[data-information-heading], .decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("rerun:oos_error");
     expect([...screen.getByLabelText("목표 (성공의 정의)").options].map(option => option.value)).toContain("rerun:organic_users");
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
@@ -1861,7 +1861,7 @@ describe("MarketingResponse render smoke", () => {
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
     // T2: 계산 상세 아코디언 열면 ① 변환 파라미터 Laplace 90% 구간 범례가 throw 없이 렌더.
-    const detailSummary = Array.from(container.querySelectorAll("summary")).find((summary) => summary.textContent.includes("광고 여운·포화 변환 상세"));
+    const detailSummary = Array.from(container.querySelectorAll("[data-information-heading]")).find((summary) => summary.textContent.includes("광고 여운·포화 변환 상세"));
     expect(detailSummary).toBeTruthy();
     expect(() => fireEvent.click(detailSummary)).not.toThrow();
     await flushRaf();
@@ -1880,9 +1880,9 @@ describe("MarketingResponse render smoke", () => {
     fireEvent.click(exclude);
     expect(exclude?.className).toContain("active");
     // 해석 도움말은 hover 전용 title이 아니라 열리는 HelpTip이어야 한다(product-ssot §6.3).
-    const chartHelp = Array.from(document.querySelectorAll(".help-tip"))
-      .find((node) => node.textContent.includes("기본 수요·추세를 분모와 표시에서 제외"));
-    expect(chartHelp).toBeTruthy();
+    const chartHelp = screen.getByRole("button", { name: "기여도 차트 해석 도움말" });
+    fireEvent.click(chartHelp);
+    expect(screen.getByRole("dialog").textContent).toContain("기본 수요·추세를 분모와 표시에서 제외");
 
     // 결론 옆에 구조적 한계가 붙어 있어야 "퍼포먼스가 브랜드보다 N배 효율"이
     // 그대로 예산 결정이 되지 않는다(D-16). 문장은 SSOT에서 조회해 대조한다 —

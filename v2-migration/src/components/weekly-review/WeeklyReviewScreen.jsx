@@ -313,8 +313,6 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       const id = window.location.hash.slice(1);
       if (!["wr-upload", "wr-next", "wr-history"].includes(id)) return;
       const target = document.getElementById(id);
-      const details = target?.closest("details");
-      if (details) details.open = true;
       target?.scrollIntoView?.({ block: "start" });
     };
     revealTarget();
@@ -523,7 +521,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {review.previousSource === "snapshot" && <p role="note">{locale === "en" ? "The comparison period uses a saved aggregate snapshot." : "지난 기간은 저장된 집계 스냅샷을 사용합니다."}</p>}
 
       <nav className="wr-review-nav" aria-label={locale === "en" ? "Review sections" : "리뷰 순서"}>
-        <a className="btn" href="#wr-verdict">{t.verdictHead}</a><a className="btn" href="#wr-evidence-title">{locale === "en" ? "Campaign evidence" : "캠페인 근거"}</a><a className="btn" href="#wr-next" onClick={() => { const section = document.getElementById("wr-next")?.closest("details"); if (section) section.open = true; }}>{locale === "en" ? "Next decision" : "다음 결정"}</a><a className="btn" href="#wr-share">{t.shareHead}</a>
+        <a className="btn" href="#wr-verdict">{t.verdictHead}</a><a className="btn" href="#wr-evidence-title">{locale === "en" ? "Campaign evidence" : "캠페인 근거"}</a><a className="btn" href="#wr-next">{locale === "en" ? "Next decision" : "다음 결정"}</a><a className="btn" href="#wr-share">{t.shareHead}</a>
       </nav>
 
       {/* ── 1. 결론 ─────────────────────────────── */}
@@ -549,7 +547,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         </div>
         <div className="wr-verdict-actions">
           <button type="button" className="btn primary" onClick={() => copyReview(true)}>{locale === "en" ? "Copy summary" : "요약 복사"}</button>
-          <a className="btn" href="#wr-next" onClick={() => { const details = document.getElementById("wr-next")?.closest("details"); if (details) details.open = true; }}>{locale === "en" ? "Record the next decision" : "다음 결정 기록"}</a>
+          <a className="btn" href="#wr-next">{locale === "en" ? "Record the next decision" : "다음 결정 기록"}</a>
           <span>{locale === "en" ? "Free copy · paste into Slack or Notion" : "무료 복사 · Slack·Notion에 붙여넣기"}</span>
         </div>
         {copyStatus?.key === resultEventKey && copyStatus.summary && <p className="wr-note" role="status">{copyStatus.message}</p>}
@@ -581,9 +579,6 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
 
       <WeeklyEvidencePanel evidence={evidence} review={review} locale={locale} onChooseCampaign={label => {
         setDecision(prev => ({ ...prev, actionTarget: label, actionKind: "investigate" }));
-        const section = document.getElementById("wr-next");
-        const disclosure = section?.closest("details");
-        if (disclosure) disclosure.open = true;
         window.requestAnimationFrame(() => document.getElementById("wr-decision-target")?.focus());
       }} />
 
@@ -688,8 +683,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       <WeeklyHistoryEvidence review={review} metric={kpiMetric} currency={csvData.currency} locale={locale} />
 
       {/* ── 4. 이번 주에 할 것 ─────────────────────── */}
-      <details open={!quiet && !unknown} className="wr-settings">
-        <summary>{locale === "en" ? "Record my next decision" : "내 다음 결정 기록"}</summary>
+      <section data-information-section=""  className="wr-settings">
+        <header data-information-heading="">{locale === "en" ? "Record my next decision" : "내 다음 결정 기록"}</header>
         <section className="wr-card" aria-labelledby="wr-next">
           <h2 className="wr-card__title" id="wr-next">{t.nextHead}</h2>
 
@@ -738,8 +733,8 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
               <span>{locale === "en" ? "Review date" : "검토일"}</span>
               <input type="date" value={decision.reviewDateContext === resultEventKey && decision.reviewDate || nextReviewDate(periods.current.end)} onChange={event => setDecision(previous => ({ ...previous, reviewDate: event.target.value, reviewDateContext: resultEventKey }))} />
             </label>
-            <details className="wr-decision-conditions">
-              <summary>{locale === "en" ? "Review criteria · optional" : "재검토 기준 · 선택"}</summary>
+            <section data-information-section="" className="wr-decision-conditions">
+              <header data-information-heading="">{locale === "en" ? "Review criteria · optional" : "재검토 기준 · 선택"}</header>
             <label className="wr-field">
               <span>{t.goalLabel}</span>
               <select
@@ -788,13 +783,13 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
             </label>
             {/* 가드레일을 강제하지 않는다 — 강제하면 아무 값이나 넣어 판정이 거짓이 된다. */}
             {project.target && <button type="button" className="btn" disabled={!targetCurrencyMatches} onClick={() => setDecision((prev) => ({ ...prev, goalMetric: kpiMetric, goalDirection: project.kpi.direction === LOWER_IS_BETTER ? "down" : "up", guardrailMetric: kpiMetric, guardrailOp: project.kpi.direction === LOWER_IS_BETTER ? "lte" : "gte", guardrailValue: String(parsedTarget) }))}>{locale === "en" ? "Use project KPI and target" : "프로젝트 KPI·목표 적용"}</button>}
-            </details>
+            </section>
             {!decision.guardrailValue && <p className="wr-note">{t.guardHint}</p>}
             <button type="button" className="btn primary" onClick={() => saveDecision(recommended?.label || "")}>{t.save}</button>
             {isSavedDecisionCurrent && <><AccountArchive record={savedDecision.record} locale={locale} /><p className="wr-note" role="status">{t.saved} · {savedDecision.record.reviewDate}</p><button type="button" className="btn" onClick={() => downloadCalendar(serializeDecisionReviewIcs(savedDecision.record, locale), "weekly_review")}>{locale === "en" ? "Download review reminder (.ics)" : "다음 검토일 캘린더 받기 (.ics)"}</button></>}
           </div>
         </section>
-      </details>
+      </section>
 
       {/* ── 5. 공유 ───────────────────────────────── */}
       <ReviewLoop locale={locale} hasResult nextDate={isSavedDecisionCurrent ? savedDecision.record.reviewDate : null} />
@@ -909,7 +904,6 @@ function ReviewSettings({
 function ReviewHistoryEntry({ count, locale }) {
   if (!count) return null;
   return <a className="wr-history-entry" href="#wr-history" onClick={() => {
-    document.getElementById("wr-history").open = true;
     trackProductEvent("review_history_opened", { source: "weekly_review", placement: "review_header", locale });
   }}><strong>{locale === "en" ? `${count} saved decision${count === 1 ? "" : "s"}` : `저장한 결정 ${count}개`}</strong><span>{locale === "en" ? "Review outcomes and record the next action →" : "지난 결과를 확인하고 다음 행동 기록 →"}</span></a>;
 }
@@ -917,9 +911,7 @@ function ReviewHistoryEntry({ count, locale }) {
 function ReviewLoop({ locale, hasResult, nextDate }) {
   const en = locale === "en";
   const reveal = id => {
-    const node = document.getElementById(id);
-    const disclosure = node?.closest("details");
-    if (disclosure) disclosure.open = true;
+    document.getElementById(id)?.scrollIntoView({ block: "start" });
   };
   return <nav className="wr-loop" aria-label={en ? "Weekly review cycle" : "주간 검토 흐름"}>
     <ol>

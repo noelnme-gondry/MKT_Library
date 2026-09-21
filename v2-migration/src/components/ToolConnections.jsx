@@ -117,8 +117,8 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
           </Link>
         ))}
       </div>
-      <details className="tool-connections__more">
-        <summary>{T.expand} <span aria-hidden="true">＋</span></summary>
+      <section data-information-section="" className="tool-connections__more">
+        <header data-information-heading="">{T.expand} <span aria-hidden="true">＋</span></header>
         {journey && (
           <div className="tool-connections__map" aria-label={T.mapDeck}>
             <div>
@@ -144,7 +144,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
             source={`connection_from_${toolId}`}
           />
         )}
-      </details>
+      </section>
     </section>
   );
 }

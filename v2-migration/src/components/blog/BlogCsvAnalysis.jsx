@@ -130,11 +130,11 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     {practice && <span className="blog-practice__eyebrow">{practice.eyebrow}</span>}
     <h2 id={id}>{practice ? practice.title : custom ? (en ? "Inspect the data behind this section" : "이 문단의 데이터 먼저 살펴보기") : (en ? "Check this with your CSV" : "이 내용을 내 CSV로 확인")}</h2>
     <p>{practice ? practice.introduction : en ? "One chart and the result. CSV processing stays in this browser." : "차트 하나와 결과만 확인하세요. CSV는 이 브라우저에서 처리합니다."}</p>
-    {practice && <details className="blog-practice__instructions">
-      <summary>{practice.instructions}</summary>
+    {practice && <section data-information-section="" className="blog-practice__instructions">
+      <header data-information-heading="">{practice.instructions}</header>
       <ol>{practice.steps.map(step => <li key={step}>{step}</li>)}</ol>
       <p className="blog-practice__limit">{practice.limit}</p>
-    </details>}
+    </section>}
     {slug === "weekly-marketing-report-template" && <VideoHelpButton topic="decisions" locale={locale}>{en ? `Save and revisit · ${tutorialDuration("decisions")}-second guide` : `저장·재검토 ${tutorialDuration("decisions")}초 가이드`}</VideoHelpButton>}
     {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
     <div className="blog-practice__actions">
@@ -143,10 +143,10 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     </div>
     {projectPreparing && <p role="status">{en ? "Checking device storage…" : "기기 저장 상태를 확인하고 있습니다…"}</p>}
     {csv && <>
-      {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <details open={!result}><summary>{en ? "Check columns" : "열 확인"}</summary>
+      {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <section data-information-section="" ><header data-information-heading="">{en ? "Check columns" : "열 확인"}</header>
         {custom ? ["category", "value", "denominator"].map((key, index) => <label key={key}>{(en ? ["Group / date", "Value column (counts or amounts)", "Denominator (optional)"] : ["그룹 / 날짜", "값 열 (건수·금액)", "분모 열 (선택)"])[index]}<select disabled={busy} value={selection[key]} onChange={event => { setSelection(value => ({ ...value, [key]: event.target.value })); setResult(null); }}><option value="">—</option>{csv.headers.map(header => <option key={header}>{header}</option>)}</select></label>) : csv.headers.map(header => <label key={header}>{header}<select disabled={busy} value={csv.mapping[header] || "__ignore__"} onChange={event => { setCsv(value => ({ ...value, mapping: { ...value.mapping, [header]: event.target.value } })); setResult(null); }}><option value="__ignore__">{en ? "Ignore" : "사용 안 함"}</option>{Object.entries(STANDARD_FIELDS).filter(([key]) => allowedFields.has(key)).map(([key, field]) => <option key={key} value={key}>{en ? key : field.label}</option>)}</select></label>)}
         {hasMoney && config.type === "adapter" && <label data-currency-scope="declare">{en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)"}<select disabled={busy} value={csv.currency || ""} onChange={event => { setCsv(value => ({ ...value, currency: event.target.value })); setResult(null); }}><option value="">—</option><option value="KRW">KRW</option><option value="USD">USD</option></select></label>}
-      </details>}
+      </section>}
       {practice?.mode !== "detail" && <button className="btn primary" disabled={busy} onClick={analyze}>{busy ? (en ? "Calculating…" : "계산 중…") : (en ? "Show result" : "결과 보기")}</button>}
     </>}
     {error && <p role="alert">{error}</p>}

@@ -48,7 +48,7 @@
 ## 메일 작업 구성
 
 - 2026-09-12 구현: 기본 npm start는 계정/메일 설정이 켜져 있으면 기동 10초 후와 15분마다 내부 worker를 실행한다. 개발·빌드에서는 발송하지 않는다. 아래 외부 스케줄러·ACCOUNT_JOB_SECRET 구성은 선택 사항이다. 성공은 account_mail_worker의 sent/failed 집계와 실제 수신으로 확인한다. 앱이 중지되면 발송도 지연된다.
-- 같은 명령의 prestart가 이용기간 additive migration을 적용한다. 배포·롤백 제약은 purchase-audit-hardening-2026-09-12.md를 따른다.
+- 같은 시작 명령에 명시된 migration 단계가 이용기간 additive migration을 적용한다. 배포·롤백 제약은 purchase-audit-hardening-2026-09-12.md를 따른다.
 
 - Resend 연결은 `SMTP_HOST=smtp.resend.com`·`SMTP_USER=resend`이면 HTTPS API를 사용한다. 기존 `SMTP_PASS`에 저장한 Resend 키를 재사용하며 새 키 입력은 필요 없다. Railway Pro 미만의 SMTP 차단을 피하기 위한 전송 방식이며, 다른 SMTP 제공자의 TLS 발송 경로는 유지한다. 수신처·본문·동의 범위는 바뀌지 않는다. API 수락은 받은편지함 도착을 뜻하지 않는다.
 - 2026-09-11 운영 DB에 `scripts/accounts-schema.sql`을 단일 트랜잭션으로 적용했다(COMMIT 및 계정 테이블 6개 확인). 변경 전 pg_dump custom-format 백업은 DB 볼륨의 `/var/lib/postgresql/data/gop-pre-account-EJBGSH/database.dump`에 권한 600으로 생성했고 pg_restore 목록을 확인했다. 같은 볼륨이므로 재해 복구용 외부 백업이나 실제 복원 검증을 대체하지 않는다. Railway 기본 백업 기능은 현재 요금제에서 사용할 수 없다. DB 설정 화면의 기존 리전 `europe-west4-drams3a` 경고는 미해결이며 임의 이동하지 않았다.

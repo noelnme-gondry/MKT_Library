@@ -240,8 +240,10 @@ function localized(entry, locale) {
 }
 
 /** 도구가 제안하는 목표 후보. 등록되지 않은 도구는 빈 배열 — 폼은 직접 입력으로 남는다. */
+const goalToolId = toolId => String(toolId === "weekly-review" ? "5-2" : toolId ?? "");
+
 export function toolDecisionGoals(toolId, locale = "ko") {
-  const entry = TOOL_DECISION_GOALS[String(toolId === "weekly-review" ? "5-2" : toolId ?? "")];
+  const entry = TOOL_DECISION_GOALS[goalToolId(toolId)];
   if (!entry) return [];
   return entry.goals.map((goal) => ({
     key: goal.key,
@@ -254,7 +256,7 @@ export function toolDecisionGoals(toolId, locale = "ko") {
 
 /** 도구가 제안하는 가드레일 후보. */
 export function toolDecisionGuardrails(toolId, locale = "ko") {
-  const entry = TOOL_DECISION_GOALS[String(toolId === "weekly-review" ? "5-2" : toolId ?? "")];
+  const entry = TOOL_DECISION_GOALS[goalToolId(toolId)];
   if (!entry) return [];
   return entry.guardrails.map((guardrail) => ({
     key: guardrail.key,

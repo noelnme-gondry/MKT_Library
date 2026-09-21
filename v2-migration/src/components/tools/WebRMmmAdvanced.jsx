@@ -639,7 +639,7 @@ export default function WebRMmmAdvanced({
                     <div className="chart-container mmm-result-chart"><canvas ref={fitChartRef} /></div>
                     <p className="mmm-result-note">{T.fitCaveat}</p>
                   </> : <div className="required-banner"><p style={{ margin: 0 }}>{T.unavailable}</p></div>}
-                  <details className="mmm-result-details mmm-model-setup-details"><summary>{T.modelSetup}</summary><div className="mmm-model-setup"><span>folds {result.folds} × {result.horizon}</span><span>α {result.alpha.toFixed(2)}</span><span>λ factor {formatCoefficient(result.lambdaFactor)}</span><span>nonzero {result.nonzeroFeatures}</span></div></details>
+                  <section data-information-section="" className="mmm-result-details mmm-model-setup-details"><header data-information-heading="">{T.modelSetup}</header><div className="mmm-model-setup"><span>folds {result.folds} × {result.horizon}</span><span>α {result.alpha.toFixed(2)}</span><span>λ factor {formatCoefficient(result.lambdaFactor)}</span><span>nonzero {result.nonzeroFeatures}</span></div></section>
                 </section>
 
                 <section className="mmm-result-step" aria-labelledby="mmm-webr-driver-title">
@@ -668,14 +668,14 @@ export default function WebRMmmAdvanced({
                       <td className="tnum">{channel.hasCompleteFoldEvidence ? `${(channel.positiveFoldShare * 100).toFixed(0)}%` : "—"}</td>
                     </tr>)}</tbody>
                   </table></div>
-                  <details className="mmm-result-details"><summary>{T.allCoefficients}</summary>
+                  <section data-information-section="" className="mmm-result-details"><header data-information-heading="">{T.allCoefficients}</header>
                     <div className="table-wrap"><table className="data mmm-webr-table">
                       <thead><tr><th>{T.driver}</th><th>{T.term}</th><th className="tnum">{T.coefficient}</th><th className="tnum">{T.coefficientFoldRange}</th></tr></thead>
                       <tbody>{(result.coefficients || []).map((row) => <tr key={row.name}>
                         <td>{webRMmmDisplayLabel(row.group, locale)}</td><td>{webRMmmDisplayLabel(row.name, locale)}</td><td className="tnum">{formatCoefficient(row.coefficient)}</td><td className="tnum">{coefficientRange(row.foldCoefficients)}</td>
                       </tr>)}</tbody>
                     </table></div>
-                  </details>
+                  </section>
                 </section>
 
                 <section className="mmm-result-step" aria-labelledby="mmm-webr-response-title">
@@ -723,10 +723,10 @@ export default function WebRMmmAdvanced({
                   <div className="callout warn"><div className="body"><p>{T.predictiveOnly}</p></div></div>
                 </section>
 
-                <details className="mmm-result-details"><summary>{T.importance}</summary>
+                <section data-information-section="" className="mmm-result-details"><header data-information-heading="">{T.importance}</header>
                   <div className="table-wrap"><table className="data mmm-webr-table"><thead><tr><th>{T.driver}</th><th className="tnum">importance</th></tr></thead><tbody>{(result.importance || []).map((row) => <tr key={`${row.kind}:${row.name}`}><td>{webRMmmDisplayLabel(row.name, locale)}</td><td className="tnum">{row.importance.toFixed(3)}</td></tr>)}</tbody></table></div>
                   <p className="mmm-result-note">{T.caveat}</p>
-                </details>
+                </section>
               </div> : <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{T.bayesianDetail}</p>}
             </div>
           )}

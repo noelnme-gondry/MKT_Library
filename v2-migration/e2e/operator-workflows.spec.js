@@ -34,10 +34,10 @@ async function downloadBuffer(download) {
   return Buffer.concat(chunks);
 }
 
-async function openDetails(details) {
-  if (!await details.evaluate((node) => node.open)) {
-    await details.locator("> summary").click();
-  }
+async function openDetails(panel) {
+  const editor = panel.locator(":scope > .decision-review-launch");
+  if (await editor.count()) await editor.click();
+  else await expect(panel).toBeVisible();
 }
 
 async function addVisibleResultToReport(page) {
@@ -282,7 +282,7 @@ test("Apple Ads 검색어 CSV를 5-26 권장 조치까지 연결한다", async (
   await expect(page.getByLabel("업로드 기간의 전환 성숙도")).toHaveValue("unknown");
   await expect(page.getByText("전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
   await page.getByLabel("업로드 기간의 전환 성숙도").selectOption("mature");
-  await expect(page.getByText("sample planner", { exact: true })).toBeVisible();
+  await expect(page.locator("#asa-actions").getByText("sample planner", { exact: true }).first()).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: "#asa-summary" });
   await expectNoSeriousAccessibilityViolations(page);
 });
@@ -297,7 +297,7 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   await page.getByRole("button", { name: "데이터 분석하기" }).click();
   await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
 
-  await page.locator(".decision-review > summary").click();
+  await page.locator(".decision-review-launch").click();
   await page.getByRole("button", { name: "다음 검토로 저장" }).click();
   await confirmReviewDialog(page);
   await page.locator(".decision-review__weekly-link").click();
@@ -318,10 +318,13 @@ test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용�
   const confirmations = page.getByRole("button", { name: "확인", exact: true });
   while (await confirmations.count()) await confirmations.first().click();
 
-  const utilities = page.locator(".header-utility-menu");
-  await openDetails(utilities);
-  const projectSettings = utilities.locator(".project-settings");
-  await openDetails(projectSettings);
+  const utilities = page.locator(".utility-popover-panel");
+  const openSettings = async () => {
+    if (!await utilities.isVisible()) await page.locator(".header-utility-menu__trigger").click();
+    await utilities.getByRole("button", { name: "프로젝트 설정", exact: true }).click();
+  };
+  const projectSettings = page.getByRole("dialog", { name: "프로젝트 설정", exact: true });
+  await openSettings();
 
   const downloadPromise = page.waitForEvent("download");
   await projectSettings.getByRole("button", { name: "설정 내보내기" }).click();
@@ -332,11 +335,11 @@ test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용�
   expect(exportedText).toContain('"headerFingerprint"');
   expect(exportedText).not.toContain("efficiency.csv");
 
+  await projectSettings.getByRole("button", { name: "닫기", exact: true }).click();
   await utilities.getByRole("button", { name: "CSV 변경" }).click();
   await expect(page.locator(".header-data-context")).toHaveCount(0);
 
-  await openDetails(utilities);
-  await openDetails(projectSettings);
+  await openSettings();
   const chooserPromise = page.waitForEvent("filechooser");
   await projectSettings.getByRole("button", { name: "설정 가져오기" }).click();
   const chooser = await chooserPromise;
@@ -359,14 +362,16 @@ test("프로젝트 설정은 동일 헤더를 다시 선택한 뒤에만 적용�
   }
   await expect(projectSettings.getByText("efficiency — CSV 재선택 필요")).toBeVisible();
 
-  await utilities.locator("> summary").click();
+  await projectSettings.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.keyboard.press("Escape");
   await uploadCsv(page, "efficiency.csv");
   while (await confirmations.count()) await confirmations.first().click();
 
-  await openDetails(utilities);
-  await openDetails(projectSettings);
+  await openSettings();
   await expect(projectSettings.getByText("efficiency — 헤더 일치 · 적용 가능")).toBeVisible();
   await projectSettings.getByRole("button", { name: "호환 설정 적용" }).click();
+  await projectSettings.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.keyboard.press("Escape");
 
   await expect(page.locator(".dashboard-briefing .result-action-card")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "데이터 분석하기" })).toBeVisible();
@@ -412,7 +417,7 @@ test("입력 매핑이 바뀌면 이전 주간 보고서 블록을 stale로 표�
   await page.goBack();
   await expect(page).toHaveURL(/\/dashboard$/);
 
-  await openDetails(page.locator(".dashboard-data-disclosure"));
+  await page.getByRole("button", { name: "데이터·매핑 편집" }).click();
   const mappingBlock = page.locator(".csv-mapping-block:not(.semantic-mapping-block)");
   await openDetails(mappingBlock);
   await page.getByRole("combobox", { name: "Installs: 표준 필드" }).selectOption("actions");
@@ -473,7 +478,7 @@ async function verifyContentValidationSplit(page, en = false) {
   await expect(page.getByText(en ? /Past-to-future holdout: 32 validation rows/ : /과거→미래 홀드아웃: 검증 32행/)).toBeVisible();
   await page.getByLabel(en ? "Repeated-unit column" : "반복 단위 열").selectOption("post_id");
   const help = page.locator("#s-content-webr-random-forest");
-  await help.locator("summary").click();
+  await expect(help).toBeVisible();
   await expect(help.getByText(en ? /Separated validation is unavailable/ : /분리 검증 불가/)).toBeVisible();
   await expect(page.getByRole("radio", { name: /Random Forest/ })).toHaveCount(0);
   await expectNoSeriousAccessibilityViolations(page);

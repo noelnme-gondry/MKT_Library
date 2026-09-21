@@ -70,10 +70,10 @@ export default function ComparePage({ slug, locale = "ko" }) {
       <h2>{t.faq}</h2>
       <div className="compare-page__faq">
         {page.faq.map((item) => (
-          <details key={item.q}>
-            <summary>{item.q}</summary>
+          <section data-information-section="" key={item.q}>
+            <header data-information-heading="">{item.q}</header>
             <p>{item.a}</p>
-          </details>
+          </section>
         ))}
       </div>
 

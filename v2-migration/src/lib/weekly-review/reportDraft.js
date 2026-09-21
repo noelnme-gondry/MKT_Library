@@ -221,7 +221,7 @@ function localizeSection(item) {
   return { ...item, title: titles[item.id], text };
 }
 function absoluteMetricEvidence(item, locale) {
-  if (!Object.hasOwn(item, "currentValue")) return "";
+  if (!Number.isFinite(item.currentValue) || !Number.isFinite(item.previousValue)) return "";
   return `${formatReviewMetric(item.previousValue, item.metric, item.currency, locale)} → ${formatReviewMetric(item.currentValue, item.metric, item.currency, locale)} · `;
 }
 function renderEnglishSection(item, fmt) {

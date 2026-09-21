@@ -292,7 +292,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             </article>
           </>
         )}
-        <details className="seasonality-note"><summary>{locale === "en" ? "How to read this / methodology" : "읽는 법 (방법론)"}</summary>
+        <section data-information-section="" className="seasonality-note"><header data-information-heading="">{locale === "en" ? "How to read this / methodology" : "읽는 법 (방법론)"}</header>
           <p>{detrend ? (locale === "en" ? "Trend removed uses a centred moving-average baseline (13 weeks / 5 months). +20% means the period is typically 20% above its surrounding trend. This is a repeated pattern, not proof of cause." : "추세 제외는 중앙 이동평균(주 13개/월 5개 구간)을 기준으로 계산합니다. +20%는 주변 추세보다 평균 20% 높다는 뜻입니다. 반복 패턴이지 원인 확정은 아닙니다.") : (locale === "en" ? "Actual-value view preserves the scale of each year. The bar chart and heatmap still compare each period against that year’s average so years of different size remain comparable." : "실제값 보기는 연도별 규모를 그대로 보여줍니다. 막대와 히트맵은 각 연도 평균 대비로 표시해 규모가 다른 연도도 비교할 수 있습니다.")}</p>
           <p><strong>{locale === "en" ? "How 'Remove trend' is computed" : "‘추세 제외’ 계산 방법"}</strong>{locale === "en"
             ? " — (1) sum the metric per calendar period (day input is grouped into ISO weeks or calendar months; ratio metrics like CPI/CPA/ROAS sum numerator & denominator first, then divide once). (2) Build a centred moving-average trend over the chronological timeline (radius 6 weeks → 13-point window, or 2 months → 5-point window). (3) Index = value ÷ trend × 100. The 'verification' chart above plots the actual line against this trend line so you can see exactly what was divided out."
@@ -300,7 +300,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
           <p><strong>{locale === "en" ? "Download" : "데이터 받기"}</strong>{locale === "en"
             ? " — One XLSX contains the complete raw file with ISO annotations, separate Total/Paid/Organic chart sheets, channel-level chart data, and an export_info sheet with filters and method settings."
             : " — XLSX 한 파일에 업로드 원본 전체 + ISO 주석, 전체/Paid/Organic 그래프 시트, 채널별 그래프 데이터, 적용 필터·계산 설정이 함께 들어갑니다."}</p>
-        </details>
+        </section>
       </section>
     </div>
   );

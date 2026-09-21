@@ -54,10 +54,10 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
         <span>FAQ</span>
         <h2>{isEn ? "Questions before using this number" : "이 숫자를 쓰기 전 확인할 것"}</h2>
         {calculator.faq.map(([question, answer]) => (
-          <details key={question}>
-            <summary>{question}</summary>
+          <section data-information-section="" key={question}>
+            <header data-information-heading="">{question}</header>
             <p>{answer}</p>
-          </details>
+          </section>
         ))}
       </section>
 

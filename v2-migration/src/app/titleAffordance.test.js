@@ -127,7 +127,10 @@ describe("title affordance", () => {
     const component = stripSourceComments(readFileSync(path.join(SRC, "ds/HelpTip.jsx"), "utf-8"));
     // details 기반이라 키보드·터치·SR 계약이 네이티브로 따라온다. 이걸 span으로
     // 되돌리면 D-04가 그대로 재발한다.
-    expect(component).toMatch(/<details/);
-    expect(component).toMatch(/<summary/);
+    expect(component).toMatch(/<InfoPopover/);
+    const popover = stripSourceComments(readFileSync(path.join(SRC, "ds/InfoPopover.jsx"), "utf-8"));
+    expect(popover).toContain("Popover.Trigger");
+    expect(popover).toContain("aria-label={label}");
+    expect(popover).toContain("Popover.Close");
   });
 });

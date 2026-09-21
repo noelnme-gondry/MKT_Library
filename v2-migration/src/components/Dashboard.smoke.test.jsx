@@ -165,20 +165,23 @@ describe("Dashboard render smoke", () => {
     expect(container.querySelectorAll(".dashboard-tabs__items")).toHaveLength(3);
   });
 
-  it("keeps analyzed mapping controls in a quiet disclosure", () => {
+  it("edits analyzed mappings in a separate dialog without pushing results down", () => {
     seedWithData();
     const { container } = render(<Dashboard />);
-    const disclosure = container.querySelector("#dashboard-data-setup.dashboard-data-disclosure");
-    expect(disclosure).toBeTruthy();
-    expect(disclosure?.classList.contains("block")).toBe(false);
-    expect(disclosure?.hasAttribute("open")).toBe(false);
-    expect(disclosure?.querySelector(".dashboard-data-disclosure__summary")).toBeTruthy();
+    expect(container.querySelector(".csv-uploader")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "데이터·매핑 편집" }));
+    expect(screen.getByRole("dialog", { name: "데이터·매핑 편집" })).toBeTruthy();
+    expect(document.querySelector(".csv-uploader")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("prefills a conservative next review from the visible verdict", () => {
     seedWithData();
     render(<Dashboard />);
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).not.toBe("");
   });
 
@@ -189,11 +192,11 @@ describe("Dashboard render smoke", () => {
     const review = reviews[0];
     expect(reviews).toHaveLength(1);
     expect(review).toBeTruthy();
-    expect(review.open).toBe(false);
+    expect(review.tagName).toBe("SECTION");
 
-    fireEvent.click(review.querySelector("summary"));
+    fireEvent.click(review.querySelector("[data-information-heading], .decision-review-launch"));
 
-    expect(review.open).toBe(true);
+    expect(review.tagName).toBe("SECTION");
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "결과 기록" })).toBeNull();
   });

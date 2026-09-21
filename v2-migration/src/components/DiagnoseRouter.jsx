@@ -117,8 +117,8 @@ export default function DiagnoseRouter({ locale = "ko" }) {
           </div>
 
           {alternatives.length > 0 && (
-            <details className="diagnose-alternatives">
-              <summary>{t.alternatives(alternatives.length)}</summary>
+            <section data-information-section="" className="diagnose-alternatives">
+              <header data-information-heading="">{t.alternatives(alternatives.length)}</header>
               <ol>
                 {alternatives.map((item) => (
                   <li key={item.toolId}>
@@ -134,7 +134,7 @@ export default function DiagnoseRouter({ locale = "ko" }) {
                   </li>
                 ))}
               </ol>
-            </details>
+            </section>
           )}
 
           <aside>

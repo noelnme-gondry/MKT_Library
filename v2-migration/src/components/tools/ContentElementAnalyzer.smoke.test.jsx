@@ -216,11 +216,11 @@ describe("ContentElementAnalyzer render smoke", () => {
     seedWithData();
     const { container } = render(<ContentElementAnalyzer />);
     const mapping = container.querySelector("#s-content-mapping");
-    expect(mapping.open).toBe(true);
+    expect(mapping.tagName).toBe("SECTION");
 
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
 
-    expect(mapping.open).toBe(false);
+    expect(mapping.tagName).toBe("SECTION");
     const stats = container.querySelector(".result-action-card__stats");
     const points = container.querySelector(".result-action-card__points");
     expect(stats).toBeTruthy();
@@ -238,6 +238,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     }
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
 
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/A\/B 테스트 초안.*나머지 요소.*고정/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
@@ -266,6 +267,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     }
     fireEvent.click(screen.getByRole("button", { name: "▶ Analyze" }));
 
+    fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("What will change?").value).toMatch(/Draft an A\/B test.*holding every other element.*fixed/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
@@ -289,10 +291,10 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(screen.getByText("유의한 요소를 확정할 증거가 아직 부족합니다.")).toBeTruthy();
     expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
-    const rfHelp = screen.getByText("왜 Random Forest 분석이 안 되나요?").closest("details");
+    const rfHelp = screen.getByText("왜 Random Forest 분석이 안 되나요?").closest("[data-information-section]");
     expect(rfHelp).toBeTruthy();
-    expect(rfHelp.open).toBe(false);
-    fireEvent.click(rfHelp.querySelector("summary"));
+    expect(rfHelp.tagName).toBe("SECTION");
+    fireEvent.click(rfHelp.querySelector("[data-information-heading], .decision-review-launch"));
     expect(screen.getByText(/현재 완전한 행은 60개.*최소 100개/)).toBeTruthy();
   });
 
@@ -372,7 +374,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(randomForest.getAttribute("aria-checked")).toBe("true");
     expect(screen.getAllByRole("radio").filter((choice) => choice.getAttribute("aria-checked") === "true")).toHaveLength(1);
     expect(screen.getByText(/Permutation importance/)).toBeTruthy();
-    const expertPanel = screen.getByText(/전문가 뷰/).closest("details");
+    const expertPanel = screen.getByText(/전문가 뷰/).closest("[data-information-section]");
     const randomForestPanel = container.querySelector("#s-content-webr-random-forest");
     expect(expertPanel.compareDocumentPosition(randomForestPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /로지스틱 회귀/ }));

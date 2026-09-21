@@ -55,13 +55,13 @@ describe("Dochi analysis workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: en ? "Run summary analyses" : "요약 분석 실행" }));
     await waitFor(() => expect(view.container.querySelectorAll(".dochi-workspace__result.is-success .decision-review").length).toBeGreaterThan(0));
     const editor = view.container.querySelector(".dochi-workspace__result.is-success .decision-review");
-    fireEvent.click(editor.querySelector("summary"));
-    fireEvent.click(within(editor).getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }));
+    fireEvent.click(editor.querySelector("[data-information-heading], .decision-review-launch"));
+    fireEvent.click(screen.getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }));
     confirmReviewSave();
     const record = useAppStore.getState().decisionRecords[0];
     expect(record.action.length).toBeGreaterThan(0);
     expect(record.comparisonScope).toBeFalsy();
-    expect(within(editor).getByRole("link", { name: en ? "Open weekly review →" : "주간 리뷰 열기 →" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review#wr-history`);
+    expect(screen.getByRole("link", { name: en ? "Open weekly review →" : "주간 리뷰 열기 →" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review#wr-history`);
     for (const name of ["analysis_started", "analysis_completed", "decision_record_added"]) expect(window.gtag).toHaveBeenCalledWith("event", name, expect.objectContaining({ placement: "dochi_workspace", locale }));
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("campaign.csv");
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("Meta");
@@ -121,7 +121,7 @@ describe("Dochi analysis workspace", () => {
     const onOpenTool = vi.fn();
     render(<AssistantWorkspace csvData={slice()} getTitle={(toolId) => `도구 ${toolId}`} onOpenTool={onOpenTool} />);
     expect(screen.getByText(/표준 역할 매핑/)).toBeTruthy();
-    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("details").open).toBe(true);
+    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("[data-information-section]").tagName).toBe("SECTION");
     fireEvent.click(screen.getAllByRole("button", { name: /추가 차트·상세 분석 열기/ })[0]);
     expect(screen.getByText("상세 분석 화면을 준비하고 있습니다.")).toBeTruthy();
     await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
@@ -181,9 +181,9 @@ describe("Dochi analysis workspace", () => {
     await waitFor(() => expect(screen.getByText("분석 결과")).toBeTruthy());
     await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy());
     const findings = document.querySelector(".dochi-workspace__findings-summary");
-    expect(findings.open).toBe(false);
-    fireEvent.click(findings.querySelector("summary"));
-    expect(findings.querySelector("summary").textContent).toMatch(/도치가 확인한 발견 \d+건/);
+    expect(findings.tagName).toBe("SECTION");
+    fireEvent.click(findings.querySelector("[data-information-heading], .decision-review-launch"));
+    expect(findings.querySelector("[data-information-heading], .decision-review-launch").textContent).toMatch(/도치가 확인한 발견 \d+건/);
     expect(findings.querySelectorAll("li").length).toBeGreaterThan(1);
     const focus = within(document.querySelector(".dochi-workspace__decision-focus"));
     expect(focus.getByText("현재 근거")).toBeTruthy();
@@ -204,14 +204,14 @@ describe("Dochi analysis workspace", () => {
     const decisionIndex = directChildren.findIndex((child) => child.classList.contains("dochi-workspace__decision-focus"));
     expect(judgmentIndex).toBe(-1); // A completed result replaces the preparation pitch.
     expect(contextIndex).toBeLessThan(decisionIndex);
-    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("details").open).toBe(false);
+    expect(screen.getByText("이 화면에서 계산 가능한 요약").closest("[data-information-section]").tagName).toBe("SECTION");
 
     const decision = container.querySelector(".dochi-workspace__decision-focus");
     expect(decision.querySelector(".dochi-workspace__decision-tape")).toBeTruthy();
     expect(decision.querySelector(".dochi-workspace__result-action")).toBeTruthy();
-    const details = decision.querySelector("details");
+    const details = decision.querySelector("[data-information-section]");
     expect(details).toBeTruthy();
-    expect(details.open).toBe(false);
+    expect(details.tagName).toBe("SECTION");
   });
 
   it("automatically advances every baseline item after the first result commits", async () => {
@@ -254,7 +254,7 @@ describe("Dochi analysis workspace", () => {
   it("shows only actual completed results in the embedded home view, with dashboard open first", async () => {
     const { container } = render(<AssistantWorkspace autoStart presentation="embedded" csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} />);
     const workspace = container.querySelector(".dochi-workspace--embedded");
-    await waitFor(() => expect(workspace.querySelector(".dochi-workspace__embedded-result")?.open).toBe(true));
+    await waitFor(() => expect(workspace.querySelector(".dochi-workspace__embedded-result").tagName).toBe("SECTION"));
     expect(screen.queryByRole("button", { name: /추가 차트·상세 분석 열기/ })).toBeNull();
     expect(screen.queryByText("현재 판단 상태")).toBeNull();
   });

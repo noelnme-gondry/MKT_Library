@@ -192,10 +192,10 @@ export default async function EnBlogPostPage({ params }) {
         <section className="blog-faq" aria-label="Frequently asked questions">
           <h2>Frequently asked questions</h2>
           {post.faq.map((item, i) => (
-            <details key={i} className="blog-faq-item">
-              <summary>{item.q}</summary>
+            <section data-information-section="" key={i} className="blog-faq-item">
+              <header data-information-heading="">{item.q}</header>
               <div className="blog-faq-item-answer">{item.a}</div>
-            </details>
+            </section>
           ))}
         </section>
       )}

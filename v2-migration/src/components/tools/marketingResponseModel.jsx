@@ -1306,8 +1306,8 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
         </div>
       )}
       {selectedEvidence.country && countryIndividualCandidates.length > 0 && (
-        <details className="mmm-evidence-ledger__pending">
-          <summary style={{ cursor: "pointer", fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</summary>
+        <section data-information-section="" className="mmm-evidence-ledger__pending">
+          <header data-information-heading="" style={{ fontWeight: 700 }}>{tx(`개별 국가 1차 평가 ${countryIndividualCandidates.length}개`, `${countryIndividualCandidates.length} individual market screening results`)}</header>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
             <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
               <thead><tr><th>{tx("국가", "Market")}</th><th>{tx("판정", "Status")}</th><th>{tx("반복 검증", "Rolling checks")}</th><th>{tx("평균 RMSE", "Mean RMSE")}</th><th>{tx("기본 대비", "vs base")}</th><th>{tx("근거", "Reason")}</th></tr></thead>
@@ -1350,7 +1350,7 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
               })}</tbody>
             </table>
           </div>
-        </details>
+        </section>
       )}
       {selectedEvidence.country && countryPlan && (
         <div className="mmm-evidence-ledger__pending">

@@ -44,7 +44,7 @@ export default function EnglishDiagnosePage() {
       <DiagnoseRouter locale="en" />
       <section className="calculator-faq" aria-label="Frequently asked questions">
         <span>FAQ</span><h2>Before you diagnose</h2>
-        {FAQ.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}
+        {FAQ.map(([question, answer]) => <section data-information-section="" key={question}><header data-information-heading="">{question}</header><p>{answer}</p></section>)}
       </section>
     </article>
   );
