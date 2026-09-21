@@ -90,7 +90,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
           <Header />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" slot="context" />}
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
@@ -148,6 +148,9 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             )}
             {/* 분석 결과 아래는 하나의 마감 박스로 묶는다 — 다음 단계·참고 자료·관련 글이
                 결과와 같은 층위로 흐르지 않게(§12.30). */}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" slot="actions" />}
+            {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
+                이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}
             {routeId !== "dochi-result" && !["storage", "projects", "subscription"].includes(routeId) && <ToolPageOutro
               toolId={routeId}
               evidenceLinks={evidenceLinks}

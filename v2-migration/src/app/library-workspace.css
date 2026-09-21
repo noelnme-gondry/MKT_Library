@@ -783,6 +783,15 @@
   .saved-analysis-list > article { display: grid; gap: 12px; padding: 18px 0; border-top: 1px solid var(--library-border); }
   .saved-analysis-list > article > span { color: var(--library-muted); }
   .analysis-setup .btn, .saved-analysis-list .btn, .project-next-work .btn, .sample-report-downloads .btn { min-height: 44px; white-space: normal; }
+  /* 결과 뒤 설정 보관 줄. 바로 아래가 마감 박스(ToolPageOutro)이므로 박스를
+     하나 더 쌓지 않는다 — 앱 본문은 테두리 없는 구획이고 닫힌 박스는 마감
+     영역만이다(§12.30). 얇은 윗선으로 결과와 구분만 한다. */
+  .analysis-setup--actions { padding: 16px 0 0; margin: 20px 0 0; border: 0; border-top: 1px solid var(--operator-line, var(--library-border)); border-radius: 0; background: none; }
+  .analysis-setup--actions .workflow-next-step__actions { align-items: center; }
+  /* 보관함은 이동이므로 버튼이 아니라 텍스트 링크다. 저장 버튼과 같은 모양이면
+     §5.3이 금지하는 "동급으로 보이는 CTA 여럿"이 된다. */
+  .analysis-setup__link { align-self: center; padding: 0 4px; color: var(--library-muted); font-size: var(--fs-sm); text-decoration: underline; text-underline-offset: 3px; }
+  .analysis-setup__link:hover { color: var(--library-text); }
   @media (max-width: 600px) {
     .analysis-setup, .project-next-work, .sample-report-downloads { padding: 16px; }
     .saved-analysis-list .workflow-next-step__actions, .sample-report-downloads .workflow-next-step__actions { display: grid; grid-template-columns: 1fr; }
