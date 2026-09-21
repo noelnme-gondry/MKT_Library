@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+// 체험 일수를 여기 다시 적지 않는다 — 정책을 바꾸는 순간 화면은 따라가고
+// 테스트만 옛 숫자를 지켜 빨개진다(실제로 14→7에서 그렇게 됐다).
+import { PRO_TRIAL_DAYS } from "../src/lib/account/archiveContract";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en", prefix = en ? "/en" : "", tag = en ? " @light-en" : "";
@@ -25,7 +28,7 @@ for (const locale of ["ko", "en"]) {
         await page.getByRole("menuitem", { name: /Word/ }).click();
         const gate = page.locator(".purchase-dialog");
         await expect(gate).toBeVisible();
-        await expect(gate).toContainText(en ? "14-day trial do not unlock downloads" : "14일 체험만으로는 다운로드할 수 없습니다");
+        await expect(gate).toContainText(en ? `${PRO_TRIAL_DAYS}-day trial do not unlock downloads` : `${PRO_TRIAL_DAYS}일 체험만으로는 다운로드할 수 없습니다`);
         await page.keyboard.press("Escape");
         await page.locator(".header-utility-menu__trigger").click();
         await page.locator(".header-print").click();
@@ -178,7 +181,7 @@ for (const locale of ["ko", "en"]) {
     started = true;
     await page.goto(`${prefix}/subscription`);
     const pro = page.getByRole("article", { name: "Pro", exact: true });
-    await expect(pro).toContainText(en ? "Pro trial · 14 days left" : "Pro 체험 중 · 14일 남음");
+    await expect(pro).toContainText(en ? `Pro trial · ${PRO_TRIAL_DAYS} days left` : `Pro 체험 중 · ${PRO_TRIAL_DAYS}일 남음`);
     await expect(pro).not.toContainText(en ? "Your current plan" : "현재 이용 플랜");
     await expect(pro.getByRole("link", { name: en ? "Choose Pro" : "Pro 이용권 선택" })).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
