@@ -11461,10 +11461,9 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .tutorial-launcher > span:first-child { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid currentColor; border-radius: 50%; color: inherit; font-size: var(--fs-lg); line-height: 1; }
 /* Keep consent, existing dialogs, form entry and focused page controls unobscured. */
 body:has(.source-survey, .consent-banner, [role="dialog"][aria-modal="true"]:not([hidden], [hidden] *)) .tutorial-launcher,
-/* Hide while typing; ordinary button focus must not remove help indefinitely.
-   Footprint checks still protect controls underneath the floating entry. */
-body:has(textarea:focus, input:not([type="file"]):focus, [contenteditable="true"]:focus) .tutorial-launcher,
-.tutorial-launcher[data-obscures-control] { visibility: hidden; }
+/* Keep help hidden through the entire form interaction. Showing it between
+   input blur and a submit button's mouseup can intercept that very click. */
+body:has(form:focus-within, fieldset:focus-within, select:focus, textarea:focus, input:not([type="file"]):focus, [contenteditable="true"]:focus) .tutorial-launcher { visibility: hidden; }
 .tutorial-upload-entry { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .tutorial-upload-entry .tutorial-inline { border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface-container-low); }
 /* Welcome already is a modal; avoid stacking the video dialog inside it. */

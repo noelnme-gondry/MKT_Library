@@ -21,7 +21,17 @@ for (const en of [false, true]) {
     await expect(manual).toBeEnabled();
     await manual.fill("custom_budget");
     await settings.getByRole("combobox", { name: en ? "Field this tool uses" : "이 도구가 쓰는 항목", exact: true }).selectOption("media_spend");
-    await settings.getByRole("button", { name: en ? "Add" : "추가", exact: true }).click();
+    const add = settings.getByRole("button", { name: en ? "Add" : "추가", exact: true });
+    // Linux focuses buttons on pointerdown. Help must stay hidden through
+    // the transition from the source input to Add, including mouseup.
+    await add.scrollIntoViewIfNeeded();
+    await manual.focus();
+    const box = await add.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await add.focus();
+    await expect(page.locator(".tutorial-launcher")).toBeHidden();
+    await page.mouse.up();
     // Separate a missing write from an inaccessible or stale result after saving.
     await expect.poll(() => writes).toEqual([{ rules: [{ normalizedColumnName: "custom_budget", canonicalKey: "media_spend" }] }]);
     try { await expect(settings.getByRole("rowheader", { name: "custom_budget" })).toBeVisible(); }

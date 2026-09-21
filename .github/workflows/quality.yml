@@ -63,4 +63,3 @@ jobs:
             v2-migration/test-results/
             v2-migration/playwright-report/
           retention-days: 7
-
