@@ -1,10 +1,18 @@
 import Link from "next/link";
 import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
-import { PRO_TRIAL_DAYS } from "@/lib/account/archiveContract";
+import { PRO_TRIAL_DAYS, PRO_TRIAL_DAYS_LEGACY } from "@/lib/account/archiveContract";
 
 export default function SubscriptionPlanComparison({ locale = "ko", paid = false, trialEndsAt = null, now }) {
   const en = locale === "en";
-  const trialDays = Math.min(PRO_TRIAL_DAYS, Math.max(0, Math.ceil((trialEndsAt - now) / 86400000)));
+  // 남은 일수는 두 가지를 동시에 지켜야 한다.
+  //   ① 서버 응답이 화면의 분 단위 시계 스냅샷보다 조금 늦게 와서 "정책 길이 +1ms"가
+  //      되면 `Math.ceil`이 하루를 더 올린다 → 오차 허용치를 먼저 뺀다.
+  //   ② 상한은 "현재 정책 길이"가 아니라 "활성일 수 있는 체험 중 가장 긴 것"이다.
+  //      PRO_TRIAL_DAYS로 clamp하면 기준일 이전에 시작한 14일 체험자에게 남은
+  //      기간이 7일로 줄어 보인다 — 정책 상수를 낮추는 순간 생기는 회귀다.
+  // 예전에는 clamp가 곧 정책 길이여서 ①이 ②에 가려 보이지 않았다.
+  const CLOCK_SKEW_MS = 60000;
+  const trialDays = Math.min(PRO_TRIAL_DAYS_LEGACY, Math.max(0, Math.ceil((trialEndsAt - now - CLOCK_SKEW_MS) / 86400000)));
   // 비교표는 두 플랜이 같은 행을 같은 순서로 가져야 성립한다. 한쪽만 행을 적으면
   // 카드 높이가 어긋나 빈 구멍이 생기고, 적히지 않은 항목이 "없음"인지 "안 적음"인지 알 수 없다.
   const absent = en ? "Not included" : "미포함";
@@ -43,11 +51,11 @@ export default function SubscriptionPlanComparison({ locale = "ko", paid = false
         </div>
         <dl className="plan-features">{rows.map(([label, free, proValue]) => { const value = pro ? proValue : free; return <div key={label}><dt>{label}</dt><dd data-absent={value === absent ? "true" : undefined}>{value}</dd></div>; })}</dl>
         {/* 자격 단서는 헤더 위에 띠를 하나 더 쌓지 않고, 그것이 한정하는 행 바로 뒤에 둔다. */}
-        {pro && <p className="plan-card-note">{trialEndsAt ? `${en ? "Trial ends" : "체험 종료일"}: ${new Date(trialEndsAt).toLocaleDateString(en ? "en-US" : "ko-KR")} · ` : ""}{en ? "Analysis downloads require an active purchase and are not included in the 14-day trial." : "분석자료 다운로드는 유효한 구매 이용권 전용이며 14일 체험에 포함되지 않습니다."}</p>}
+        {pro && <p className="plan-card-note">{trialEndsAt ? `${en ? "Trial ends" : "체험 종료일"}: ${new Date(trialEndsAt).toLocaleDateString(en ? "en-US" : "ko-KR")} · ` : ""}{en ? `Analysis downloads require an active purchase and are not included in the ${PRO_TRIAL_DAYS}-day trial.` : `분석자료 다운로드는 유효한 구매 이용권 전용이며 ${PRO_TRIAL_DAYS}일 체험에 포함되지 않습니다.`}</p>}
         <div className="plan-card-action">{pro ? <a className="btn primary" href="#purchase">{paid ? (en ? "Manage my Pro pass" : "내 Pro 이용권 확인") : (en ? "Choose Pro" : "Pro 이용권 선택")}</a> : <Link className="btn" href={en ? "/en/start" : "/start"}>{en ? "Start a free analysis" : "무료로 분석 시작"}</Link>}</div>
       </article>)}
     </div>
-    <p className="plan-footnote">{en ? "Creating projects and saving or updating reviews and decisions requires active Pro. The 14-day trial starts when you create your first project. After expiry, existing records remain readable, exportable and deletable; new saves and backup restores require Pro." : "프로젝트 생성·리뷰와 결정 기록 저장·수정은 Pro 기능입니다. 첫 프로젝트를 만든 날부터 14일간 체험할 수 있습니다. 만료 후 기존 기록의 열람·내보내기·삭제는 유지되며, 새 저장과 백업 복원에는 Pro가 필요합니다."}</p>
+    <p className="plan-footnote">{en ? `Creating projects and saving or updating reviews and decisions requires active Pro. The ${PRO_TRIAL_DAYS}-day trial starts when you create your first project. After expiry, existing records remain readable, exportable and deletable; new saves and backup restores require Pro.` : `프로젝트 생성·리뷰와 결정 기록 저장·수정은 Pro 기능입니다. 첫 프로젝트를 만든 날부터 ${PRO_TRIAL_DAYS}일간 체험할 수 있습니다. 만료 후 기존 기록의 열람·내보내기·삭제는 유지되며, 새 저장과 백업 복원에는 Pro가 필요합니다.`}</p>
     <p className="plan-footnote">{en ? "* Browser storage limits apply to both plans. Your saved projects remain readable and exportable as backups after Pro expires; source data does not sync across devices." : "* 브라우저 저장 한도는 두 플랜에 동일하게 적용됩니다. Pro가 만료돼도 기존 프로젝트 읽기·백업은 가능하며, 원본 데이터는 기기 간 자동 동기화되지 않습니다."} <a href="#project-storage-heading">{en ? "See storage limits" : "저장 한도 보기"}</a></p>
   </div>;
 }

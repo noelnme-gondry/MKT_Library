@@ -1,7 +1,7 @@
 ---
 term: "Incrementality"
 searchTitleTerms: ["Incrementality"]
-seoTitle: "Incrementality: What CPA and ROAS Cannot Show You"
+seoTitle: "Incrementality Meaning: How to Measure Ad Lift"
 shortDef: "The pure additional performance an ad actually caused"
 description: "What did advertising add? Compare incrementality, attribution, uplift, CPA and iCPA with calculation examples and design limits."
 date: "2026-07-18"
@@ -26,6 +26,12 @@ faq:
 ## In one line
 
 A hundred conversions does not mean advertising caused a hundred conversions. Subtract the people who would have arrived anyway and what remains is incrementality.
+
+```
+Incremental conversions = observed conversions with ads − expected conversions without ads
+```
+
+The right-hand term is never observed. So measuring incrementality is really about deciding what stands in for "without ads" — holdouts, geo splits and pre/post comparisons are competing ways to choose that stand-in.
 
 | Concept | Question it answers | Typical output |
 | --- | --- | --- |
@@ -55,4 +61,4 @@ In the [Incrementality Analysis tool](/tools/incrementality), check the data sha
 
 ## Go deeper
 
-The three practical ways to measure incrementality (holdout, ramp-up, ramp-down) are covered in [Measuring Incrementality](/blog/incrementality-measurement).
+The three practical ways to measure incrementality (holdout, ramp-up, ramp-down) are covered in [Measuring Incrementality](/blog/incrementality-measurement). When randomization is impractical and only a time series exists — brand campaigns are the usual case — [Brand Campaign Incrementality](/tools/brand-campaign-incrementality) reads the intervention against its own pre-trend.

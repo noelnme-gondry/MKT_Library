@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { idToSlug } from "@/lib/routeMap";
-import { primaryToolForContent } from "@/lib/contentToolRegistry";
+import { primaryCalculatorForContent, primaryToolForContent } from "@/lib/contentToolRegistry";
+import { getCalculator } from "@/lib/calculators";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { growthUseCase } from "@/lib/growthUseCases";
 import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
@@ -121,6 +122,14 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const template = useCase && TEMPLATE_PAGES.find(page => page.toolId === resolvedTool);
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
   const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
+  // 계산기가 등록된 용어는 계산기가 1차 CTA다. 분석 도구는 전부 CSV를 요구하는데
+  // "CAC 뜻"으로 들어온 검색 방문자에게는 파일이 없어서, 도구를 1차로 주면 실제로는
+  // 갈 수 있는 곳이 없다. 도구 링크는 지우지 않고 2차로 내린다(§12.31).
+  // 제목·설명도 계산기 것으로 바꾼다 — 버튼만 갈아끼우면 대시보드 문구 밑에
+  // 계산기 버튼이 붙어 화면이 두 가지를 약속하게 된다.
+  const calculator = getCalculator(primaryCalculatorForContent(content?.slug, contentType), lang);
+  const calculatorHref = calculator ? `${locale === "en" ? "/en" : ""}/calculator/${calculator.slug}` : "";
+  const primaryHref = calculator ? calculatorHref : href;
   const trackClick = (targetToolId, targetPlacement) => {
     trackProductEvent("blog_tool_cta_clicked", {
       tool_id: targetToolId,
@@ -160,20 +169,25 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const isAnswerLink = placement === "article_answer";
   if (isAnswerLink) {
     return <p ref={panelRef} className="content-answer__action">
-      <Link href={href} onClick={() => trackClick(resolvedTool, placement)}>
-        {lang === "en" ? "Check this with your own data" : "이 판단을 내 데이터로 확인하기"} · {copy.label} <span aria-hidden>→</span>
+      <Link href={primaryHref} onClick={() => trackClick(resolvedTool, calculator ? `${placement}_calculator` : placement)}>
+        {calculator
+          ? `${lang === "en" ? "Run the numbers now" : "지금 숫자로 계산하기"} · ${calculator.name}`
+          : `${lang === "en" ? "Check this with your own data" : "이 판단을 내 데이터로 확인하기"} · ${copy.label}`} <span aria-hidden>→</span>
       </Link>
     </p>;
   }
   return <aside ref={panelRef} className={`content-action-panel${isInline ? " content-action-panel--inline" : ""}`}>
     <div>
-      <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
-      <h2>{copy.title}</h2>
-      <p>{copy.desc}</p>
+      <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : (calculator?.eyebrow || copy.label)}</span>
+      <h2>{calculator?.title || copy.title}</h2>
+      <p>{calculator?.summary || copy.desc}</p>
       {!isInline && <p className="content-action-panel__journey">{useCase?.description || (lang === "en" ? "Analyze your data, save a decision, then return to Weekly Review to check what changed." : "내 데이터로 분석하고 결정을 저장하세요. 다음 결과는 주간 리뷰에서 다시 확인합니다.")}</p>}
     </div>
     <div className="content-action-panel__links">
-      <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>
+      {calculator
+        ? <Link href={calculatorHref} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, `${placement}_calculator`)}>{calculator.name} <span aria-hidden>→</span></Link>
+        : <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>}
+      {calculator && !isInline && <Link href={href} className="content-action-panel__secondary" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>}
       {!isInline && useCase && <>
         {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(useCase.practiceToolId, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
         {template && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/templates/${template.slug}`} onClick={() => trackClick(resolvedTool, "article_case_template")}>{lang === "en" ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →"}</Link>}

@@ -48,8 +48,11 @@ describe("SERP title experiment registry", () => {
 
   it("콘텐츠 변경 뒤의 28일·충분한 노출·4~10위에서 제목 하나만 바꿀 때 열린다", () => {
     const decision = evaluateSerpExperiment(SERP_TITLE_EXPERIMENTS[1], {
-      start: "2026-09-15",
-      end: "2026-10-12",
+      // lastMaterialChange(2026-09-21) 다음 날 시작하는 28일 창.
+      // 날짜를 여기 적는 이유는 "변경 이후"라는 성질을 고정하기 위해서다 —
+      // 레지스트리의 변경일을 옮기면 이 창도 함께 옮겨야 한다.
+      start: "2026-09-22",
+      end: "2026-10-19",
       impressions: SERP_EXPERIMENT_POLICY.minimumImpressions,
       averagePosition: 8.2,
     });

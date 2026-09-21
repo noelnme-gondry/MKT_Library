@@ -3,6 +3,7 @@ import pg from "pg";
 import { SITE_URL } from "@/lib/routeMap";
 import { PAYMENT_PRODUCT, passExpiresAt, verifiedPayment } from "./paymentProduct";
 import { readAccount, accountsEnabled } from "@/lib/account/accountServer";
+import { trialUntilSql } from "@/lib/account/archiveContract";
 import { SUBSCRIPTION } from "./entitlement";
 import { nicepayConfigured, verifyNicepayAuthentication, approveNicepayPayment, readNicepayPayment } from "./nicepayServer";
 import { configuredNicepayMethods } from "./nicepayMethods";
@@ -114,7 +115,7 @@ async function syncOrder(client, order, payment) {
     let expiresAt = order.expires_at;
     if (!expiresAt) {
       if (order.account_id) {
-        const { rows } = await client.query("SELECT GREATEST($3::timestamptz, trial_started_at+INTERVAL '14 days', gop_paid_until(id,$2,$3::timestamptz)) AS starts_at FROM gop_accounts WHERE id=$1", [order.account_id, order.mode, payment.approvedAt]);
+        const { rows } = await client.query(`SELECT GREATEST($3::timestamptz, ${trialUntilSql()}, gop_paid_until(id,$2,$3::timestamptz)) AS starts_at FROM gop_accounts WHERE id=$1`, [order.account_id, order.mode, payment.approvedAt]);
         if (!rows[0]) throw new Error("INVALID_ORDER");
         startsAt = rows[0].starts_at;
       }

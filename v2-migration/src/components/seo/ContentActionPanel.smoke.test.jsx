@@ -7,7 +7,9 @@ import { getAllPosts } from "@/lib/blog";
 import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { normalizeProductToolId } from "@/lib/analytics";
-import { primaryToolForContent } from "@/lib/contentToolRegistry";
+import { PRIMARY_CALCULATOR_MAPS, primaryToolForContent } from "@/lib/contentToolRegistry";
+import { idToSlug } from "@/lib/routeMap";
+import { getCalculator } from "@/lib/calculators";
 import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
 
 const TARGET_POSTS = [
@@ -190,5 +192,50 @@ describe("panel impression tracking", () => {
       content_slug: "answer-probe", placement: "article_answer", tool_id: "5-22",
     }));
     expect(observers[0].disconnected).toBe(true);
+  });
+});
+
+// "CAC 뜻"으로 들어온 사람에게는 CSV가 없다. 레지스트리만 검사하면 이 화면이
+// 실제로 무엇을 그리는지 알 수 없으므로(§7 — 엔진만 읽고 화면을 단정하지 말 것)
+// 1차 CTA의 목적지와 도구 경로 보존을 렌더에서 확인한다.
+// 대상을 손으로 적지 않고 레지스트리에서 파생한다 — 한 용어만 돌면 나머지는
+// 검사된 적이 없고, 가드가 있다는 사실이 가드가 없다는 사실을 가린다.
+describe("glossary calculator-first CTA", () => {
+  afterEach(() => { delete window.gtag; });
+
+  const CASES = Object.entries(PRIMARY_CALCULATOR_MAPS.glossary)
+    .flatMap(([slug, calc]) => ["ko", "en"].map((locale) => [slug, calc, locale]));
+
+  it("covers every mapped glossary term", () => {
+    expect(CASES.length).toBe(Object.keys(PRIMARY_CALCULATOR_MAPS.glossary).length * 2);
+    expect(CASES.length).toBeGreaterThan(2);
+  });
+
+  it.each(CASES)("%s → %s in %s leads with the calculator and keeps the tool reachable", (slug, calc, locale) => {
+    window.gtag = vi.fn();
+    const prefix = locale === "en" ? "/en" : "";
+    const { container } = render(<ContentActionPanel locale={locale} term={{ slug }} />);
+
+    const cta = container.querySelector(".content-action-panel__cta");
+    expect(cta?.getAttribute("href")).toBe(`${prefix}/calculator/${calc}`);
+    // 제목·설명도 계산기 것이어야 한다 — 버튼만 바뀌면 화면이 두 가지를 약속한다.
+    expect(container.querySelector("h2")?.textContent).toBe(getCalculator(calc, locale).title);
+
+    // 도구를 지우지 않는다 — 파일이 있는 사람의 경로가 사라지면 안 된다.
+    const toolHref = `${prefix}${idToSlug[primaryToolForContent(slug, "glossary")]}`;
+    expect([...container.querySelectorAll("a")].map((link) => link.getAttribute("href"))).toContain(toolHref);
+
+    clickWithoutNavigation(cta);
+    // 새 이벤트 이름을 만들지 않는다 — 같은 행동을 두 이름으로 세면 분모가 갈린다.
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
+      content_slug: slug, content_type: "glossary", placement: "article_post_calculator", locale,
+    }));
+  });
+
+  it("keeps the dashboard as the primary CTA where no calculator is mapped", () => {
+    window.gtag = vi.fn();
+    expect(PRIMARY_CALCULATOR_MAPS.glossary.ecpi).toBeUndefined();
+    const { container } = render(<ContentActionPanel term={{ slug: "ecpi" }} />);
+    expect(container.querySelector(".content-action-panel__cta")?.getAttribute("href")).toBe("/dashboard");
   });
 });

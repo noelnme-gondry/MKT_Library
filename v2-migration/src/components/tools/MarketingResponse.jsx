@@ -52,6 +52,7 @@ import { buildForecastProvenance, buildForecastScenarioDefinitions, forecastResi
 import { buildAttributedForecastDataset } from "@/utils/attributedForecastDataset";
 import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "@/utils/attributedForecastLiveMath";
 import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
+import { runGatedDownload } from "@/lib/subscription/downloadTelemetry";
 import {
   BADGE_TONE,
   Badge,
@@ -5469,9 +5470,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           className="ab-pill"
                           title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}
                           onClick={() => {
-                            if (!requirePaidExport({ locale })) return;
-                            csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(viewedDecomp, contributionLabels, groupPanels));
-                            trackProductEvent("result_downloaded", { tool_id: "5-18", source: "weekly_group_contribution", download_type: "csv", locale });
+                            runGatedDownload({ toolId: "5-18", locale, format: "csv", source: "weekly_group_contribution", run: () => {
+                              csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(viewedDecomp, contributionLabels, groupPanels));
+                            } }).catch(() => {});
                           }}
                         >
                           {tx("⬇ 차트 데이터 CSV", "⬇ Chart data CSV")}

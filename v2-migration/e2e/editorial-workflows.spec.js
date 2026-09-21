@@ -47,7 +47,13 @@ for (const locale of ["ko", "en"]) {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       const followup = slug === "weekly-marketing-report-template";
       await expect(page.locator(`[title="${followup ? "weekly-report-three-weeks.csv" : "weekly-report-campaigns.csv"}"]`)).toBeAttached();
-      await expect(page.getByRole("region", { name: locale === "en" ? "Data and saved setup" : "데이터와 저장 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);
+      // 현재 입력은 본문 맨 위(§5.2 읽기 순서 1번), 설정 보관은 결과 뒤다.
+      // 두 자리가 각각 제 역할을 갖는지 함께 확인한다 — 한쪽으로 몰리면
+      // "아래 입력을 확인한 뒤" 문구가 거짓이 되거나 프로젝트 동선이 끊긴다.
+      await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);
+      const keepSetup = page.getByRole("region", { name: locale === "en" ? "Keep this setup" : "이 설정 보관하기", exact: true });
+      await expect(keepSetup.getByRole("button", { name: locale === "en" ? "Save this setup to the project" : "이 설정을 프로젝트에 저장", exact: true })).toBeVisible();
+      await expect(keepSetup.getByRole("link", { name: locale === "en" ? "Open saved setups" : "저장한 설정 보관함", exact: true })).toBeVisible();
       if (slug === "weekly-marketing-report-template") {
         await expect(page.getByRole("heading", { level: 2, name: /CPI.*1,200.*1,091/ })).toBeVisible();
         const campaigns = page.getByRole("table", { name: locale === "en" ? "By Channel · Campaign table" : "채널·캠페인별 결과 데이터 표", exact: true });

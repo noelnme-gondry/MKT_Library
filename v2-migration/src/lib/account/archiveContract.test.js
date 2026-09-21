@@ -1,13 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { ARCHIVE_FIELDS, accountEntitlement, archiveMemo, PRO_TRIAL_MS } from "./archiveContract";
+import { ARCHIVE_FIELDS, accountEntitlement, archiveMemo, PRO_TRIAL_DAYS, PRO_TRIAL_DAYS_LEGACY, PRO_TRIAL_MS, PRO_TRIAL_POLICY_CUTOVER, trialMsFor, trialRemainingBucket } from "./archiveContract";
 import { DECISION_REVIEW_SAFE_FIELDS, decisionGuardrailList } from "@/lib/decisionReview";
 describe("account archive boundary", () => {
   it("never starts a trial just by logging in", () => expect(accountEntitlement({ email: "reader@example.com" })).toBeNull());
-  it("expires exactly fourteen days after the first save", () => {
-    const start = Date.parse("2026-09-11T00:00:00Z");
+  it("expires exactly one week after the first save", () => {
+    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER);
     const account = { trial_started_at: new Date(start).toISOString() };
+    expect(PRO_TRIAL_DAYS).toBe(7);
     expect(accountEntitlement(account, start + PRO_TRIAL_MS - 1)?.trial).toBe(true);
     expect(accountEntitlement(account, start + PRO_TRIAL_MS)).toBeNull();
+  });
+  // 정책을 소급하면 이미 쓰고 있는 사람의 남은 기간이 말없이 줄어든다.
+  // 기준일 이전에 시작한 체험은 예전 길이를 그대로 지킨다.
+  it("keeps the old length for trials that started before the policy change", () => {
+    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER) - 86400000;
+    const account = { trial_started_at: new Date(start).toISOString() };
+    const legacyMs = PRO_TRIAL_DAYS_LEGACY * 86400000;
+    expect(trialMsFor(account.trial_started_at)).toBe(legacyMs);
+    // 새 길이만 적용했다면 여기서 이미 만료였을 시점.
+    expect(accountEntitlement(account, start + PRO_TRIAL_MS + 1)?.trial).toBe(true);
+    expect(accountEntitlement(account, start + legacyMs)).toBeNull();
+  });
+  it("reports remaining time as a coarse bucket, never a raw date", () => {
+    const start = Date.parse(PRO_TRIAL_POLICY_CUTOVER);
+    expect(trialRemainingBucket(null)).toBe("not_started");
+    expect(trialRemainingBucket(new Date(start).toISOString(), start + PRO_TRIAL_MS)).toBe("expired");
+    expect(trialRemainingBucket(new Date(start).toISOString(), start + 5 * 86400000)).toBe("under_3d");
+    expect(trialRemainingBucket(new Date(start).toISOString(), start)).toBe("3_7d");
+    // 7일 정책에서 7일 초과는 구정책 체험에서만 나온다.
+    const legacyStart = Date.parse(PRO_TRIAL_POLICY_CUTOVER) - 86400000;
+    expect(trialRemainingBucket(new Date(legacyStart).toISOString(), legacyStart)).toBe("over_7d");
   });
   it("uses purchased account access after a trial", () => expect(accountEntitlement({ paid_until: "2026-10-01T00:00:00Z", trial_started_at: "2026-08-01" }, Date.parse("2026-09-11"))?.trial).toBe(false));
   it("allows the same offline verification window without extending the actual expiry", () => {

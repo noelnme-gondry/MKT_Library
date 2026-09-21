@@ -9,8 +9,8 @@ import { serializeReportDraft } from "@/lib/reports/reportSchema";
 import { downloadFile } from "@/utils/download";
 import { downloadXlsx } from "@/utils/download";
 import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
-import { trackProductEvent } from "@/lib/analytics";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
+import { runGatedDownload } from "@/lib/subscription/downloadTelemetry";
 
 const COPY = {
   ko: {
@@ -80,25 +80,26 @@ export default function WeeklyReport({ locale = "ko" }) {
   const title = draft.title || t.defaultTitle;
   const hasMixedPeriods = new Set(draft.blocks.map(reportPeriodKey).filter(Boolean)).size > 1;
   const download = async () => {
-    if (!requirePaidExport({ locale })) return;
     const safe = serializeReportDraft({ ...draft, title });
     try {
-      const state = useAppStore.getState();
-      const payload = buildCollectedReviewExport(safe, { locale, projectName: state.projects?.find(project => project.id === state.activeProjectId)?.name || "", reviewRecords: state.decisionRecords });
-      const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
-      downloadFile(await createAnalysisDocument(payload), "weekly-performance-report.docx");
-      trackProductEvent("result_downloaded", { source: "weekly_report", download_type: "docx", locale });
+      await runGatedDownload({ locale, format: "docx", source: "weekly_report", run: async () => {
+        const state = useAppStore.getState();
+        const payload = buildCollectedReviewExport(safe, { locale, projectName: state.projects?.find(project => project.id === state.activeProjectId)?.name || "", reviewRecords: state.decisionRecords });
+        const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
+        downloadFile(await createAnalysisDocument(payload), "weekly-performance-report.docx");
+      } });
     } catch { setWorkbookError(t.workbookError); }
   };
   const downloadWorkbook = async () => {
-    if (isWorkbookExporting || !requirePaidExport({ locale })) return;
+    if (isWorkbookExporting) return;
     setWorkbookError("");
     setIsWorkbookExporting(true);
     try {
       const safe = serializeReportDraft({ ...draft, title });
-      const bytes = await createWeeklyReportWorkbook(safe, locale);
-      downloadXlsx(bytes, locale === "en" ? "weekly-performance-report" : "주간-성과-보고서");
-      trackProductEvent("result_downloaded", { source: "weekly_report", download_type: "xlsx", locale });
+      await runGatedDownload({ locale, format: "xlsx", source: "weekly_report", run: async () => {
+        const bytes = await createWeeklyReportWorkbook(safe, locale);
+        downloadXlsx(bytes, locale === "en" ? "weekly-performance-report" : "주간-성과-보고서");
+      } });
     } catch {
       setWorkbookError(t.workbookError);
     } finally {

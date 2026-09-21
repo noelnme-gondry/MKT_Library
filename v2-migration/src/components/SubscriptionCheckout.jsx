@@ -18,6 +18,7 @@ import { rememberPaymentAccess } from "@/lib/subscription/paymentClient";
 import { trackProductEvent } from "@/lib/analytics";
 import { trackPaymentEvent, paymentFailureEvent } from "@/lib/subscription/paymentAnalytics";
 import { downloadFile } from "@/utils/download";
+import { trackLoginCompleted } from "@/lib/account/loginTelemetry";
 
 async function jsonRequest(path, body) {
   const response = await fetch(`/api/payments/${path}`, body === undefined ? { cache: "no-store" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -73,10 +74,10 @@ export default function SubscriptionCheckout({ locale = "ko" }) {
     if (!config?.requiresAccount) return;
     let active = true;
     const refresh = async () => { try { const result = await refreshAccount(); if (active) setCheckoutAccount(result.account); } catch { if (active) setCheckoutAccount(null); } };
-    const onMessage = event => { if (event.origin === location.origin && event.data?.type === "gop-account-ready") refresh(); };
+    const onMessage = event => { if (event.origin === location.origin && event.data?.type === "gop-account-ready") { trackLoginCompleted(event, { locale, source: "checkout" }); refresh(); } };
     refresh(); window.addEventListener("focus", refresh); window.addEventListener("message", onMessage);
     return () => { active = false; window.removeEventListener("focus", refresh); window.removeEventListener("message", onMessage); };
-  }, [config?.requiresAccount]);
+  }, [config?.requiresAccount, locale]);
   const confirm = useCallback(async () => {
     if (confirming.current) return;
     // Approval owns this visit, even after it removes the query string and before the store rerenders.

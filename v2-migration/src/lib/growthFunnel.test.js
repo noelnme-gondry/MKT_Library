@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGrowthFunnel, parseGrowthFunnelRows } from "./growthFunnel";
+import { buildGrowthFunnel, parseGrowthFunnelRows, buildToolFunnels } from "./growthFunnel";
 
 describe("growth funnel GA4 export parser", () => {
   it("keeps weekly work and commerce separate from analysis counts", () => {
@@ -49,5 +49,64 @@ describe("growth funnel GA4 export parser", () => {
 
   it("rejects exports without an event-name dimension", () => {
     expect(parseGrowthFunnelRows([{ date: "20260801", count: 2 }])).toMatchObject({ ok: false, reason: "missing_event_name" });
+  });
+});
+
+// 도구별 퍼널 — `tool_id`가 파싱만 되고 소비처가 0곳이던 자리를 메운다.
+describe("per-tool analysis funnel", () => {
+  const rows = (extra = []) => [
+    { event_name: "tool_view", event_count: 100, tool_id: "5-2", source: "route", result_state: "" },
+    { event_name: "data_import_success", event_count: 40, tool_id: "5-2", source: "csv", result_state: "" },
+    { event_name: "mapping_confirmed", event_count: 30, tool_id: "5-2", source: "csv", result_state: "" },
+    { event_name: "analysis_completed", event_count: 25, tool_id: "5-2", source: "csv", result_state: "ready" },
+    { event_name: "tool_view", event_count: 10, tool_id: "5-3", source: "route", result_state: "" },
+    { event_name: "analysis_completed", event_count: 4, tool_id: "5-3", source: "csv", result_state: "ready" },
+    ...extra,
+  ];
+
+  it("splits the funnel by tool and keeps adjacent ratios only", () => {
+    const funnels = buildToolFunnels(parseGrowthFunnelRows(rows()));
+    expect(funnels.ok).toBe(true);
+    expect(funnels.tools.map((tool) => tool.toolId)).toEqual(["5-2", "5-3"]);
+
+    const dashboard = funnels.tools[0];
+    expect(dashboard.stages.map((stage) => [stage.id, stage.count])).toEqual([
+      ["viewed", 100], ["imported", 40], ["mapped", 30], ["completed", 25],
+    ]);
+    // 인접 비율: 40/100 · 30/40 · 25/30
+    expect(dashboard.stages[1].rateFromPrevious).toBeCloseTo(0.4, 10);
+    expect(dashboard.stages[2].rateFromPrevious).toBeCloseTo(0.75, 10);
+    expect(dashboard.stages[3].rateFromPrevious).toBeCloseTo(25 / 30, 10);
+    expect(dashboard.completionRate).toBeCloseTo(0.25, 10);
+  });
+
+  it("does not count demo runs or unfinished results as completions", () => {
+    const funnels = buildToolFunnels(parseGrowthFunnelRows(rows([
+      { event_name: "analysis_completed", event_count: 99, tool_id: "5-2", source: "demo", result_state: "ready" },
+      { event_name: "analysis_completed", event_count: 7, tool_id: "5-2", source: "csv", result_state: "blocked" },
+    ])));
+    expect(funnels.tools[0].stages.find((stage) => stage.id === "completed").count).toBe(25);
+  });
+
+  it("reports import failures separately instead of as progress", () => {
+    const funnels = buildToolFunnels(parseGrowthFunnelRows(rows([
+      { event_name: "data_import_failed", event_count: 6, tool_id: "5-2", source: "csv", result_state: "" },
+    ])));
+    expect(funnels.tools[0].importFailures).toBe(6);
+    // 실패가 임포트 단계를 부풀리지 않는다.
+    expect(funnels.tools[0].stages.find((stage) => stage.id === "imported").count).toBe(40);
+  });
+
+  it("refuses to split when the export has no tool_id column", () => {
+    const parsed = parseGrowthFunnelRows([{ event_name: "tool_view", event_count: 5 }]);
+    expect(buildToolFunnels(parsed)).toEqual({ ok: false, reason: "missing_tool_id", tools: [] });
+  });
+
+  it("leaves the rate unknown rather than 0% when nobody entered the tool", () => {
+    const funnels = buildToolFunnels(parseGrowthFunnelRows([
+      { event_name: "analysis_completed", event_count: 3, tool_id: "5-4", source: "csv", result_state: "ready" },
+    ]));
+    expect(funnels.tools[0].completionRate).toBeNull();
+    expect(funnels.tools[0].stages[0].count).toBe(0);
   });
 });

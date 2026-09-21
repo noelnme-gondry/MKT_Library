@@ -103,10 +103,12 @@ describe("DownloadHub", () => {
     await waitFor(() => expect(createAnalysisWorkbook).toHaveBeenCalledWith({ ...payload, charts: [] }));
     expect(downloadXlsx).toHaveBeenCalledWith(expect.any(ArrayBuffer), "5-21_analysis_workbook");
     expect(buildPayload).toHaveBeenCalledWith(null);
+    // 시도가 먼저 찍혀야 "눌렀는데 못 받은 비율"의 분모가 생긴다.
+    expect(trackProductEvent).toHaveBeenCalledWith("result_download_attempted", {
+      tool_id: "5-21", source: "export", download_type: "xlsx", locale: "ko", state: "paid",
+    });
     expect(trackProductEvent).toHaveBeenCalledWith("result_downloaded", {
-      tool_id: "5-21",
-      source: "export",
-      download_type: "xlsx",
+      tool_id: "5-21", source: "export", download_type: "xlsx", locale: "ko", state: "paid",
     });
     expect(JSON.stringify(trackProductEvent.mock.calls)).not.toContain("never-send");
   });

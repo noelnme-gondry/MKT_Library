@@ -6182,6 +6182,16 @@ body.is-sidebar-collapsed .app { grid-template-columns: minmax(0, 1fr); }
 .growth-funnel-sources h2 { margin:0 0 12px;font-size: var(--fs-md); }
 .growth-funnel-sources > div { display:flex;flex-wrap:wrap;gap:8px; }
 .growth-funnel-sources span { display:flex;gap:12px;padding:8px 10px;border-radius: var(--radius-md);background:var(--surface-container-low);font-size: var(--fs-xs); }
+/* 도구별 퍼널 표. 숫자는 우측 정렬, 도구 이름(행헤더)만 좌측.
+   공용 `td{vertical-align:top}`은 <th>에 안 먹으므로 행헤더에 명시한다(§7). */
+.growth-funnel-tools { width:100%;border-collapse:collapse;font-size: var(--fs-xs); }
+.growth-funnel-tools th,
+.growth-funnel-tools td { padding:8px 10px;border-bottom:1px solid var(--border);text-align:right; }
+.growth-funnel-tools thead th { color:var(--text-muted);font-weight:600;white-space:nowrap; }
+.growth-funnel-tools tbody th[scope="row"] { text-align:left;vertical-align:top;font-weight:600; }
+.growth-funnel-tools tbody tr:last-child th,
+.growth-funnel-tools tbody tr:last-child td { border-bottom:0; }
+.growth-funnel-note { margin:12px 0 0;color:var(--text-muted);font-size: var(--fs-xs);line-height:1.5; }
 @media (max-width:768px) {
   .growth-funnel-page { padding:20px 14px 48px; }
   .growth-funnel-meta { grid-template-columns:1fr 1fr; }

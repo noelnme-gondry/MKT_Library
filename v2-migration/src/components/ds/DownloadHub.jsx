@@ -9,6 +9,7 @@ import { workbookFileBase } from "@/lib/analysis-export/exportContract";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { captureAnalysisCharts } from "@/lib/analysis-export/chartSnapshots";
 import AnalysisReportPreview from "./AnalysisReportPreview";
+import { runGatedDownload } from "@/lib/subscription/downloadTelemetry";
 
 // 결과 다운로드 허브 — Radix 포털과 roving focus를 사용해 glass/sticky 조상과
 // 무관하게 메뉴를 배치하고 키보드 동작을 표준화한다.
@@ -96,8 +97,9 @@ export default function DownloadHub({
       const item = format === "docx" ? documentItem : workbookItem;
       setPreview(null);
       requestAnimationFrame(async () => {
-        if (!item || !requirePaidExport({ toolId, locale, format })) return;
-        if (await item.onSelect() !== false) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: format });
+        if (!item) return;
+        try { await runGatedDownload({ toolId, locale, format, source: "export", run: item.onSelect }); }
+        catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
       });
     }} />}
     <DropdownMenu.Root open={open} onOpenChange={next => { if (!next || previewItem || requirePaidExport({ toolId, locale })) setOpen(next); }} modal={false}>
@@ -137,8 +139,7 @@ export default function DownloadHub({
               onSelect={async () => {
                 previewReturnRef.current = triggerRef.current;
                 if (!item.free) triggerRef.current?.focus();
-                if (!item.free && !requirePaidExport({ toolId, locale, format: item.analyticsType })) return;
-                try { if (await item.onSelect() !== false && !item.free) trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: item.analyticsType || "other" }); }
+                try { await runGatedDownload({ toolId, locale, format: item.analyticsType || "other", source: "export", free: item.free, run: item.onSelect }); }
                 catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
               }}
               style={{

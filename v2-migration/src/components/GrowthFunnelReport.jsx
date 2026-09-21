@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
-import { buildGrowthFunnel, parseGrowthFunnelRows } from "@/lib/growthFunnel";
+import { buildGrowthFunnel, buildToolFunnels, parseGrowthFunnelRows } from "@/lib/growthFunnel";
+import { findMeta } from "@/store/useDataStore";
 import { downloadCsv } from "@/utils/download";
 
 const SAMPLE_ROWS = [
@@ -44,6 +45,12 @@ const COPY = {
     aggregate: "이 수치는 사용자·세션 코호트가 아니라 집계 이벤트량입니다. 실제 전환율은 GA4에서 동일 사용자/세션 기준으로 다시 확인하세요.",
     rowMode: "각 행을 이벤트 1건으로 셌습니다. 세션 전환율은 아닙니다.",
     stages: { intent: "분석 의도", imported: "데이터 가져오기 성공", completed: "비데모 분석 완료", decided: "결정 저장", reviewed: "결정 재검토" },
+    toolTitle: "도구별 분석 퍼널",
+    toolStages: { viewed: "도구 진입", imported: "업로드 성공", mapped: "컬럼 확정", completed: "분석 완료" },
+    toolCompletion: "진입→완료",
+    toolFailures: "업로드 실패",
+    toolMissing: "tool_id 열이 없어 도구별로 나눌 수 없습니다. GA4 내보내기에 tool_id를 등록해 함께 내보내세요.",
+    toolNote: "비율은 직전 단계 대비입니다. 같은 사람이 한 도구를 여러 번 쓴 경우가 포함되므로 사용자 전환율이 아닙니다.",
     weeklyTitle: "주간 리뷰 사용",
     commerceTitle: "체험·구매 행동",
     separate: "각 행동의 이벤트량입니다. 주간 계산은 결정 검토 완료가 아니며, 체험 없이 구매할 수도 있습니다. 같은 사용자의 반복 행동을 포함하고 미수집 이벤트는 확인할 수 없습니다.",
@@ -94,6 +101,7 @@ export default function GrowthFunnelReport({ locale = "ko" }) {
   const [error, setError] = useState("");
   const parsed = useMemo(() => parseGrowthFunnelRows(rows), [rows]);
   const report = useMemo(() => buildGrowthFunnel(parsed), [parsed]);
+  const toolFunnels = useMemo(() => buildToolFunnels(parsed), [parsed]);
   const maxCount = report.ok ? Math.max(1, ...report.stages.map((stage) => stage.count)) : 1;
 
   const loadFile = (file) => {
@@ -154,6 +162,36 @@ export default function GrowthFunnelReport({ locale = "ko" }) {
         </article>)}
       </section>
       <p className="growth-funnel-file">{t.separate}</p>
+      <section className="growth-funnel-sources" aria-label={t.toolTitle}>
+        <h2>{t.toolTitle}</h2>
+        {/* tool_id가 없으면 나눌 수 없다고 말한다 — 전체를 한 도구로 뭉치면
+            없는 도구의 성과를 만들어내는 셈이다(§8). */}
+        {!toolFunnels.ok ? <p className="growth-funnel-note">{toolFunnels.reason === "missing_tool_id" ? t.toolMissing : t.toolNote}</p> : <>
+          <table className="growth-funnel-tools">
+            <thead>
+              <tr>
+                <th scope="col">{locale === "en" ? "Tool" : "도구"}</th>
+                {["viewed", "imported", "mapped", "completed"].map((id) => <th key={id} scope="col">{t.toolStages[id]}</th>)}
+                <th scope="col">{t.toolCompletion}</th>
+                <th scope="col">{t.toolFailures}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {toolFunnels.tools.map((tool) => <tr key={tool.toolId}>
+                <th scope="row">{findMeta(tool.toolId)?.title || tool.toolId}</th>
+                {tool.stages.map((stage) => <td key={stage.id}>
+                  {stage.count.toLocaleString()}
+                  {stage.rateFromPrevious == null ? "" : ` (${Math.round(stage.rateFromPrevious * 100)}%)`}
+                </td>)}
+                {/* 진입이 0이면 비율을 만들지 않는다 — 0%로 적으면 "아무도 완료하지 않았다"로 읽힌다. */}
+                <td>{tool.completionRate == null ? "—" : `${Math.round(tool.completionRate * 100)}%`}</td>
+                <td>{tool.importFailures.toLocaleString()}</td>
+              </tr>)}
+            </tbody>
+          </table>
+          <p className="growth-funnel-note">{t.toolNote}</p>
+        </>}
+      </section>
       {[[t.weeklyTitle, report.weeklyStages], [t.commerceTitle, report.commerceStages]].map(([title, stages]) => <section className="growth-funnel-sources" key={title}>
         <h2>{title}</h2><div>{stages.map(stage => <span key={stage.id}><b>{t.otherStages[stage.id]}</b><strong>{stage.count.toLocaleString()}</strong></span>)}</div>
       </section>)}

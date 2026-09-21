@@ -13,6 +13,7 @@ import { downloadCalendar } from "@/utils/download";
 import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import ProjectCreateGate from "./ProjectCreateGate";
+import { PRO_TRIAL_DAYS } from "@/lib/account/archiveContract";
 
 /**
  * 저장 실패 안내.
@@ -27,7 +28,7 @@ export function saveFailureMessage(code, en) {
   if (["PROJECT_LIMIT", "PRO_REQUIRED"].includes(code)) {
     return en
       ? "Saving projects and reviews requires active Pro, including a trial. Your draft is unchanged."
-      : "프로젝트·리뷰 저장에는 유효한 Pro가 필요합니다. 14일 체험도 포함되며, 작성 내용은 그대로 있습니다.";
+      : `프로젝트·리뷰 저장에는 유효한 Pro가 필요합니다. ${PRO_TRIAL_DAYS}일 체험도 포함되며, 작성 내용은 그대로 있습니다.`;
   }
   if (code === "LOGIN_REQUIRED") {
     return en
@@ -173,7 +174,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
       {session?.account && !hasPaidAccess(entitlement || session.entitlement) && <section className="review-next-visit">
         <h3>{en ? "Keep your work with Pro" : "Pro로 기록을 이어가세요"}</h3>
         {!session.account.trialStartedAt ? <>
-          <p>{en ? "Create a project to start your 14-day Pro trial, with no automatic payment." : "프로젝트를 만들면 14일 Pro 체험이 시작되며 자동 결제되지 않습니다."}</p>
+          <p>{en ? `Create a project to start your ${PRO_TRIAL_DAYS}-day Pro trial, with no automatic payment.` : `프로젝트를 만들면 ${PRO_TRIAL_DAYS}일 Pro 체험이 시작되며 자동 결제되지 않습니다.`}</p>
           <button type="button" className="btn" onClick={() => setTrialGateOpen(true)}>{en ? "Start project trial" : "프로젝트 체험 시작"}</button>
         </> : <p>{en ? "Your trial has ended. Renew Pro to save or update projects and reviews. Existing records remain readable and exportable." : "체험이 종료되었습니다. 프로젝트·리뷰를 저장하거나 수정하려면 Pro 이용권이 필요합니다. 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>}
         <Link className="btn" href={en ? "/en/subscription" : "/subscription"}>{en ? "View Pro plans" : "Pro 이용권 보기"}</Link>

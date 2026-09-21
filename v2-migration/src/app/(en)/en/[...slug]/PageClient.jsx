@@ -81,7 +81,7 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" slot="context" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
@@ -118,6 +118,9 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
               <SopContent routeId={routeId} locale="en" initialData={initialSopData} />
             </>}
             {/* KR과 동일한 하단 마감 계층(§12.30) */}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" slot="actions" />}
+            {/* 설정 저장·보관함은 결과 뒤에 둔다. 분석 전에 "설정 저장"을 물을
+                이유가 없고, 맨 위에 있으면 결론을 본 사용자에게는 화면 밖이다. */}
             {routeId !== "dochi-result" && !["storage", "projects", "subscription"].includes(routeId) && <ToolPageOutro
               toolId={routeId}
               locale="en"

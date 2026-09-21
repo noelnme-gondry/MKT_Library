@@ -45,6 +45,7 @@ import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
+import { trackLoginCompleted } from "@/lib/account/loginTelemetry";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -327,11 +328,11 @@ export default function CsvUploader({
   const preparationRequestRef = useRef(0);
   useEffect(() => {
     const invalidate = () => { preparationRequestRef.current += 1; };
-    const onLogin = event => { if (event.origin === window.location.origin && event.data?.type === "gop-account-ready") invalidate(); };
+    const onLogin = event => { if (event.origin === window.location.origin && event.data?.type === "gop-account-ready") { trackLoginCompleted(event, { locale, source: "uploader" }); invalidate(); } };
     window.addEventListener("gop-account-changed", invalidate);
     window.addEventListener("message", onLogin);
     return () => { window.removeEventListener("gop-account-changed", invalidate); window.removeEventListener("message", onLogin); };
-  }, []);
+  }, [locale]);
   const importTaskRef = useRef(0);
   const trackImportFailure = (source, state) => trackProductEvent("data_import_failed", {
     placement: analyticsPlacement,

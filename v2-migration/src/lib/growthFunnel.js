@@ -150,3 +150,93 @@ export function buildGrowthFunnel(parsed) {
 }
 
 export { FUNNEL_STAGES };
+/* ============================================================
+ * 도구별 분석 퍼널 — "어떤 도구를 써서 어디까지 갔나".
+ *
+ * 왜 따로 두나: 위 FUNNEL_STAGES는 사이트 전체의 한 줄기(유입 의도 → 임포트 →
+ * 완료 → 결정 → 검토)라 도구를 구분하지 않는다. 그런데 `tool_id`는 파싱만
+ * 되고 소비처가 0곳이었다 — 이벤트는 다 찍히는데 도구별로 볼 수단이 없었다
+ * (§16 신호 미배선).
+ *
+ * 단계는 사용자가 실제로 지나는 순서다.
+ *   viewed   `tool_view`        도구 화면 진입(라우트 단위)
+ *   imported `data_import_*`    CSV·시트를 실제로 올린 것
+ *   mapped   `mapping_confirmed` 컬럼 확정 = 분석하기를 누른 순간
+ *   completed`analysis_completed` 결과가 나온 것
+ *
+ * 인접 비율만 쓴다. 전체 대비로 적으면 한 도구를 여러 번 쓴 사람이 분모를
+ * 부풀려 "진입 대비 완료 120%"가 나온다.
+ * ============================================================ */
+const TOOL_FUNNEL_STAGES = [
+  { id: "viewed", events: ["tool_view"] },
+  // 임포트 시작이 아니라 성공만 센다 — 실패·취소를 진행으로 세면 다음 단계
+  // 이탈률이 실제보다 나쁘게 보인다. 실패는 따로 돌려준다.
+  { id: "imported", events: ["data_import_success"] },
+  { id: "mapped", events: ["mapping_confirmed"] },
+  { id: "completed", events: ["analysis_completed"] },
+];
+
+export { TOOL_FUNNEL_STAGES };
+
+/**
+ * 도구별 퍼널. 같은 파싱 결과를 받아 `tool_id`로 나눈다.
+ * `tool_id` 컬럼이 없으면 나눌 수 없다고 말한다 — 전체를 한 도구로 뭉치면
+ * 없는 도구의 성과를 만들어내는 셈이다(§8).
+ */
+export function buildToolFunnels(parsed) {
+  if (!parsed?.ok) return { ok: false, reason: parsed?.reason || "invalid", tools: [] };
+  if (!parsed.columns?.toolId) return { ok: false, reason: "missing_tool_id", tools: [] };
+
+  const hasSource = Boolean(parsed.columns?.source);
+  const hasResultState = Boolean(parsed.columns?.resultState);
+  const stageEvents = new Set(TOOL_FUNNEL_STAGES.flatMap((stage) => stage.events));
+
+  const byTool = new Map();
+  for (const event of parsed.events) {
+    if (!event.toolId || !stageEvents.has(event.eventName)) continue;
+    // 데모 데이터와 미완성 결과는 완료로 세지 않는다(위 퍼널과 같은 규칙).
+    if (!isCompletedEventIncluded(event, hasSource, hasResultState)) continue;
+    if (!byTool.has(event.toolId)) byTool.set(event.toolId, []);
+    byTool.get(event.toolId).push(event);
+  }
+
+  const failuresByTool = new Map();
+  for (const event of parsed.events) {
+    if (event.eventName !== "data_import_failed" || !event.toolId) continue;
+    failuresByTool.set(event.toolId, (failuresByTool.get(event.toolId) || 0) + event.count);
+  }
+
+  const tools = [...byTool.entries()].map(([toolId, events]) => {
+    const stages = countStages(TOOL_FUNNEL_STAGES, events, true);
+    const viewed = stages.find((stage) => stage.id === "viewed")?.count || 0;
+    const completed = stages.find((stage) => stage.id === "completed")?.count || 0;
+    return {
+      toolId,
+      stages,
+      importFailures: failuresByTool.get(toolId) || 0,
+      // 진입이 0이면 비율을 만들지 않는다. 0으로 나눈 자리를 0%로 적으면
+      // "아무도 완료하지 않았다"로 읽힌다 — 실제로는 모르는 것이다.
+      completionRate: viewed > 0 ? completed / viewed : null,
+    };
+  });
+
+  // 완료 많은 순, 동률이면 진입 순, 그 다음 id — 결정론적으로 정렬한다.
+  tools.sort((a, b) => {
+    const done = (t) => t.stages.find((stage) => stage.id === "completed")?.count || 0;
+    const seen = (t) => t.stages.find((stage) => stage.id === "viewed")?.count || 0;
+    return done(b) - done(a) || seen(b) - seen(a) || a.toolId.localeCompare(b.toolId);
+  });
+
+  return {
+    ok: tools.length > 0,
+    reason: tools.length ? "" : "no_tool_events",
+    mode: parsed.mode,
+    tools,
+    warnings: [
+      !hasSource ? "missing_source" : "",
+      !hasResultState ? "missing_result_state" : "",
+      parsed.mode === "aggregated_event_volume" ? "aggregate_not_cohort" : "rows_not_sessions",
+    ].filter(Boolean),
+  };
+}
+

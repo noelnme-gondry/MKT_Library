@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { SITE_URL } from "@/lib/routeMap";
 import { accountDatabase } from "./accountServer";
-import { accountEntitlement } from "./archiveContract";
+import { accountEntitlement, trialUntilSql } from "./archiveContract";
 export const mailEnabled = () => process.env.ACCOUNT_MAIL_ENABLED === "true" && Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_FROM);
 export async function sendAccountMail(to, subject, text, messageId) {
   if (!mailEnabled()) throw new Error("MAIL_UNAVAILABLE");
@@ -43,7 +43,7 @@ export async function dispatchAccountMail() {
   const db = accountDatabase();
   // Discover receipts from the authoritative live payment ledger, even after a webhook-only completion.
   await db.query(`INSERT INTO gop_account_mail(id,account_id,kind,reference,due_at) SELECT 'receipt:'||p.id,p.account_id,'receipt',p.id,NOW() FROM gop_payment_orders p WHERE p.account_id IS NOT NULL AND p.status='paid' AND p.mode='live' ON CONFLICT(id) DO NOTHING`);
-  await db.query(`INSERT INTO gop_account_mail(id,account_id,kind,reference,due_at) SELECT 'expiry:'||a.id::text||':'||x.until::text,a.id,'expiry',x.until::text,x.until-INTERVAL '7 days' FROM gop_accounts a CROSS JOIN LATERAL (SELECT GREATEST(a.trial_started_at+INTERVAL '14 days',gop_paid_until(a.id,'live',NOW())) AS until) x WHERE a.service_reminders AND x.until>NOW() ON CONFLICT(id) DO NOTHING`);
+  await db.query(`INSERT INTO gop_account_mail(id,account_id,kind,reference,due_at) SELECT 'expiry:'||a.id::text||':'||x.until::text,a.id,'expiry',x.until::text,x.until-INTERVAL '7 days' FROM gop_accounts a CROSS JOIN LATERAL (SELECT GREATEST(${trialUntilSql("a")},gop_paid_until(a.id,'live',NOW())) AS until) x WHERE a.service_reminders AND x.until>NOW() ON CONFLICT(id) DO NOTHING`);
   await db.query(`INSERT INTO gop_account_mail(id,account_id,kind,reference,due_at) SELECT 'review:'||m.account_id::text||':'||m.id||':'||(m.memo->>'reviewDate'),m.account_id,'review',m.id,((m.memo->>'reviewDate')||' 09:00:00+09')::timestamptz FROM gop_decision_memos m JOIN gop_accounts a ON a.id=m.account_id WHERE a.service_reminders AND m.reminder_enabled AND (m.memo->>'reviewDate')~'^\\d{4}-\\d{2}-\\d{2}$' AND COALESCE(m.memo->>'status','')<>'reviewed' ON CONFLICT(id) DO NOTHING`);
   let sent = 0, failed = 0;
   // Atomic row leases exclude concurrent workers. SMTP accepts may still duplicate on a crash after send.
@@ -63,7 +63,7 @@ export async function dispatchAccountMail() {
           const memo = (await db.query("SELECT memo,reminder_enabled FROM gop_decision_memos WHERE account_id=$1 AND id=$2", [job.account_id, job.reference])).rows[0];
           eligible &&= Boolean(accountEntitlement(owner) && memo?.reminder_enabled && memo.memo.status !== "reviewed" && job.id.endsWith(`:${memo.memo.reviewDate}`) && Date.now() - new Date(job.due_at).getTime() < 86400000);
         } else {
-          const current = (await db.query("SELECT GREATEST(a.trial_started_at+INTERVAL '14 days',gop_paid_until(a.id,'live',NOW())) AS until FROM gop_accounts a WHERE a.id=$1", [job.account_id])).rows[0]?.until;
+          const current = (await db.query(`SELECT GREATEST(${trialUntilSql("a")},gop_paid_until(a.id,'live',NOW())) AS until FROM gop_accounts a WHERE a.id=$1`, [job.account_id])).rows[0]?.until;
           eligible &&= Boolean(current && new Date(current).getTime() === new Date(job.reference).getTime() && Date.now() - new Date(job.due_at).getTime() < 86400000);
         }
       }

@@ -6,11 +6,13 @@ import { accountRequest, refreshAccount } from "@/lib/account/accountClient";
 import { trackProductEvent } from "@/lib/analytics";
 import { useAppStore } from "@/store/useDataStore";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
+import { PRO_TRIAL_DAYS } from "@/lib/account/archiveContract";
+import { trackLoginCompleted, trackLoginStarted } from "@/lib/account/loginTelemetry";
 
 /**
  * 프로젝트 생성 관문.
  *
- * 프로젝트 기능은 로그인·Pro 전용이고, **여기가 14일 체험을 켜는 유일한 자리**다.
+ * 프로젝트 기능은 로그인·Pro 전용이고, **여기가 ${PRO_TRIAL_DAYS}일 체험을 켜는 유일한 자리**다.
  * 예전에는 "첫 계정 메모 저장"이 트리거였는데, 그러면 리뷰를 저장하러 온 사람이
  * 처음 듣는 다른 저장을 먼저 해야 했다(둘 다 UI에서 "저장"이라 불렸다).
  *
@@ -23,31 +25,31 @@ import { hasPaidAccess } from "@/lib/subscription/entitlement";
 const COPY = {
   ko: {
     title: "프로젝트는 Pro 기능입니다",
-    body: "Pro 이용권이 있는 계정으로 로그인하세요. 처음이시라면 14일 무료 체험이 바로 시작되며, 자동 결제되지 않습니다.",
+    body: `Pro 이용권이 있는 계정으로 로그인하세요. 처음이시라면 ${PRO_TRIAL_DAYS}일 무료 체험이 바로 시작되며, 자동 결제되지 않습니다.`,
     login: "Google로 로그인하고 시작",
     cancel: "취소",
     popupBlocked: "로그인 창을 열지 못했습니다. 팝업을 허용하고 다시 시도해 주세요.",
     failed: "로그인을 완료하지 못했습니다. 이 창에서 다시 시도해 주세요.",
     restricted: "계정 기능은 현재 초대된 계정만 이용할 수 있습니다. 분석은 로그인 없이 계속 이용할 수 있습니다.",
     unavailable: "지금은 계정 로그인을 이용할 수 없습니다. 분석은 로그인 없이 계속 이용할 수 있습니다.",
-    trialEnded: "이 계정의 14일 체험은 이미 사용했습니다. 프로젝트를 만들려면 Pro 이용권이 필요합니다.",
+    trialEnded: `이 계정의 ${PRO_TRIAL_DAYS}일 체험은 이미 사용했습니다. 프로젝트를 만들려면 Pro 이용권이 필요합니다.`,
     viewPro: "Pro 이용권 보기",
     starting: "준비하고 있습니다…",
-    trialOn: "14일 체험을 시작했습니다.",
+    trialOn: `${PRO_TRIAL_DAYS}일 체험을 시작했습니다.`,
   },
   en: {
     title: "Projects are a Pro feature",
-    body: "Sign in with an account that has Pro. If this is your first time, a 14-day free trial starts right away, with no automatic payment.",
+    body: `Sign in with an account that has Pro. If this is your first time, a ${PRO_TRIAL_DAYS}-day free trial starts right away, with no automatic payment.`,
     login: "Sign in with Google and start",
     cancel: "Cancel",
     popupBlocked: "The sign-in window did not open. Allow popups and try again.",
     failed: "Sign-in did not complete. Retry from this window.",
     restricted: "Account features are limited to invited accounts right now. Analysis stays available without signing in.",
     unavailable: "Account sign-in is unavailable right now. Analysis stays available without signing in.",
-    trialEnded: "This account has already used its 14-day trial. Creating a project requires Pro.",
+    trialEnded: `This account has already used its ${PRO_TRIAL_DAYS}-day trial. Creating a project requires Pro.`,
     viewPro: "View Pro plans",
     starting: "Getting things ready…",
-    trialOn: "Your 14-day trial has started.",
+    trialOn: `Your ${PRO_TRIAL_DAYS}-day trial has started.`,
   },
 };
 
@@ -93,7 +95,7 @@ export default function ProjectCreateGate({ locale = "ko", open, onClose, onRead
     };
     const onMessage = (event) => {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type === "gop-account-ready") { trackProductEvent("login_completed", { locale }); admit(); }
+      if (event.data?.type === "gop-account-ready") { trackLoginCompleted(event, { locale, source: "project_create" }); admit(); }
       if (event.data?.type === "gop-account-failed") setMessage(event.data.code === "ACCOUNT_RESTRICTED" ? t.restricted : t.failed);
     };
     window.addEventListener("message", onMessage);
@@ -120,7 +122,7 @@ export default function ProjectCreateGate({ locale = "ko", open, onClose, onRead
             if (!popup) { setMessage(t.popupBlocked); return; }
             setBusy(true);
             accountRequest("login", { method: "POST" })
-              .then((result) => { popup.location.replace(result.url); trackProductEvent("login_started", { locale, source: "project_create" }); })
+              .then((result) => { popup.location.replace(result.url); trackLoginStarted("google", { locale, source: "project_create" }); })
               .catch(() => { popup.close(); setMessage(t.unavailable); })
               .finally(() => setBusy(false));
           }}>{t.login}</button>}
