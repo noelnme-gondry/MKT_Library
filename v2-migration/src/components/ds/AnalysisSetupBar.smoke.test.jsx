@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AnalysisSetupBar from "./AnalysisSetupBar";
+import { TOOL_INPUT_KEYS } from "@/lib/analysis-settings/toolInputs";
 vi.mock("@/lib/project/repository", () => ({ updateProject: vi.fn(async (_id, patch) => patch({ savedAnalyses: [] })) }));
 vi.mock("@/lib/project/savedAnalyses", () => ({ MAX_SAVED_ANALYSES: 20, captureSavedAnalysis: vi.fn(async (_state, toolId, name) => ({ id: "setup", toolId, name })) }));
 import { updateProject } from "@/lib/project/repository";
@@ -45,9 +46,21 @@ it("keeps the pre-analysis context and the post-result actions in separate slots
   expect(shelf?.classList.contains("btn")).toBe(false);
 });
 
-it("renders no empty actions block before any data is loaded", () => {
+it("renders no empty actions block for a CSV-only tool with no data", () => {
   useAppStore.setState(useAppStore.getInitialState(), true);
   useAppStore.getState().setCurrentRouteId("5-2");
+  expect(TOOL_INPUT_KEYS["5-2"]).toEqual([]);
   const { container } = render(<AnalysisSetupBar toolId="5-2" slot="actions" />);
   expect(container.firstChild).toBeNull();
+});
+
+// 회귀 방지: 헤더 유무로 막았더니 CSV 없이 수동 입력만 쓰는 도구에서 저장
+// 동선이 통째로 사라졌다. 저장할 설정이 있는지는 컬럼이 아니라 도구 계약이 안다.
+it("still offers saving for a tool whose setup is manual inputs, with no CSV", () => {
+  useAppStore.setState(useAppStore.getInitialState(), true);
+  useAppStore.setState({ activeProjectId: "p", entitlement: activePro(), projects: [{ id: "p" }], projectsReady: true, decisionPersistenceEnabled: true });
+  useAppStore.getState().setCurrentRouteId("5-26");
+  expect(TOOL_INPUT_KEYS["5-26"].length).toBeGreaterThan(0);
+  const { container } = render(<AnalysisSetupBar toolId="5-26" slot="actions" />);
+  expect(container.querySelector("button.btn.primary")).toBeTruthy();
 });

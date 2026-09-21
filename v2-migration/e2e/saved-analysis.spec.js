@@ -14,8 +14,8 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader input[type="file"]').first()).toBeEnabled();
     await page.locator('.csv-uploader input[type="file"]').first().setInputFiles("e2e/fixtures/efficiency.csv");
-    const bar = page.locator(".analysis-setup");
-    await bar.getByRole("button", { name: en ? "Save analysis setup" : "분석 설정 저장" }).click();
+    const bar = page.locator(".analysis-setup--actions");
+    await bar.getByRole("button", { name: en ? "Save this setup to the project" : "이 설정을 프로젝트에 저장" }).click();
     await bar.getByRole("textbox").fill("Weekly CPA");
     await bar.getByRole("button", { name: en ? "Save" : "저장", exact: true }).click();
     await expect(bar.getByRole("status")).toContainText(en ? "Saved." : "저장했습니다.");
@@ -24,7 +24,7 @@ for (const locale of ["ko", "en"]) {
     await page.reload();
     await page.getByRole("button", { name: en ? "Keep current period" : "현재 기간으로 불러오기" }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dashboard$`));
-    await expect(page.locator(".analysis-setup")).toBeVisible();
+    await expect(page.locator(".analysis-setup--actions")).toBeVisible();
     await page.getByRole("button", { name: en ? "Compare current CSV" : "현재 CSV와 비교" }).click();
     await page.getByRole("button", { name: en ? "Apply checked setup" : "확인한 설정 적용" }).click();
     await expect(page.locator(".saved-setup-review")).toHaveCount(0);
@@ -54,10 +54,10 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/tools/asa-keyword-finder`);
     const target = page.getByRole("textbox", { name: en ? "Target CPA" : "목표 CPA", exact: true });
     await expect(target).toBeEnabled();
-    const bar = page.locator(".analysis-setup");
-    await expect(bar.getByRole("button", { name: en ? "Save analysis setup" : "분석 설정 저장" })).toBeEnabled();
+    const bar = page.locator(".analysis-setup--actions");
+    await expect(bar.getByRole("button", { name: en ? "Save this setup to the project" : "이 설정을 프로젝트에 저장" })).toBeEnabled();
     await target.fill("7250");
-    await bar.getByRole("button", { name: en ? "Save analysis setup" : "분석 설정 저장" }).click();
+    await bar.getByRole("button", { name: en ? "Save this setup to the project" : "이 설정을 프로젝트에 저장" }).click();
     await bar.getByRole("textbox").fill("CPA 7250");
     await bar.getByRole("button", { name: en ? "Save" : "저장", exact: true }).click();
     await expect(bar.getByRole("status")).toContainText(en ? "Saved." : "저장했습니다.");

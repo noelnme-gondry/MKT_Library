@@ -169,7 +169,7 @@ for (const locale of ["ko", "en"]) {
     await page.route("**/api/payments/config", route => route.fulfill({ json: { enabled: false, mode: "test" } }));
     await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: null } }));
     await page.route("**/api/account/memos", route => route.fulfill({ json: { memos: [] } }));
-    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: { id: "fixture", email: "reader@example.com", trialStartedAt: started ? new Date(trialStartedAt).toISOString() : null }, entitlement: started ? { plan: "paid", account: true, trial: true, expiresAt: trialStartedAt + 14 * 86400000, offlineUntil: Date.now() + 300000 } : null } }));
+    await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: { id: "fixture", email: "reader@example.com", trialStartedAt: started ? new Date(trialStartedAt).toISOString() : null }, entitlement: started ? { plan: "paid", account: true, trial: true, expiresAt: trialStartedAt + PRO_TRIAL_DAYS * 86400000, offlineUntil: Date.now() + 300000 } : null } }));
     await page.goto(`${prefix}/subscription`);
     await expect(page.locator(".subscription-page .account-archive")).toHaveCount(0);
     await page.getByRole("link", { name: en ? "Create a project to try Pro" : "프로젝트 만들고 Pro 체험하기", exact: true }).click();

@@ -64,8 +64,10 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
       <div className="analysis-setup__context"><strong>{en ? "Current input" : "현재 입력"}</strong><span>{data?.raw?.length?.toLocaleString() || 0} {en ? "source rows" : "원본 행"}</span><span>{en ? "Shared date filter" : "공통 기간 필터"}: {filter?.dateStart || (en ? "Unrestricted" : "제한 없음")} — {filter?.dateEnd || (en ? "Unrestricted" : "제한 없음")}</span></div>
     </section>;
   }
-  // 저장할 것이 아직 없으면 결과 뒤에 빈 칸을 만들지 않는다.
-  if (!data?.headers?.length) return null;
+  // 여기서 데이터 유무를 다시 막지 않는다. 위의 최상단 가드가 이미
+  // "CSV도 없고 저장할 수동 입력도 없으면 null"을 처리한다. 헤더만 보고
+  // 막았더니 CSV 없이 수동 입력만 쓰는 도구(ASA 키워드의 목표 CPA 등)에서
+  // 저장 동선이 통째로 사라졌다 — e2e가 잡았다.
   return <section className="analysis-setup analysis-setup--actions no-print" aria-label={en ? "Keep this setup" : "이 설정 보관하기"}>
     {/* 위계를 준다 — 저장이 행동이고 보관함은 이동이다. 둘을 같은 버튼으로 두면
         §5.3이 금지하는 "동급으로 보이는 CTA 여럿"이 된다. */}
