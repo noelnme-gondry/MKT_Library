@@ -192,3 +192,36 @@ describe("panel impression tracking", () => {
     expect(observers[0].disconnected).toBe(true);
   });
 });
+
+// "CAC 뜻"으로 들어온 사람에게는 CSV가 없다. 레지스트리만 검사하면 이 화면이
+// 실제로 무엇을 그리는지 알 수 없으므로(§7 — 엔진만 읽고 화면을 단정하지 말 것)
+// 1차 CTA의 목적지와 도구 경로 보존을 렌더에서 확인한다.
+describe("glossary calculator-first CTA", () => {
+  afterEach(() => { delete window.gtag; });
+
+  it.each([
+    ["ko", "/calculator/ltv-cac", "/dashboard"],
+    ["en", "/en/calculator/ltv-cac", "/en/dashboard"],
+  ])("cac in %s leads with the calculator and keeps the tool reachable", (locale, calcHref, toolHref) => {
+    window.gtag = vi.fn();
+    const { container } = render(<ContentActionPanel locale={locale} term={{ slug: "cac" }} />);
+
+    const cta = container.querySelector(".content-action-panel__cta");
+    expect(cta?.getAttribute("href")).toBe(calcHref);
+    // 도구를 지우지 않는다 — 파일이 있는 사람의 경로가 사라지면 안 된다.
+    const hrefs = [...container.querySelectorAll("a")].map((link) => link.getAttribute("href"));
+    expect(hrefs).toContain(toolHref);
+
+    clickWithoutNavigation(cta);
+    // 새 이벤트 이름을 만들지 않는다 — 같은 행동을 두 이름으로 세면 분모가 갈린다.
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
+      content_slug: "cac", content_type: "glossary", placement: "article_post_calculator", locale,
+    }));
+  });
+
+  it("keeps the dashboard as the primary CTA where no calculator is mapped", () => {
+    window.gtag = vi.fn();
+    const { container } = render(<ContentActionPanel term={{ slug: "ecpi" }} />);
+    expect(container.querySelector(".content-action-panel__cta")?.getAttribute("href")).toBe("/dashboard");
+  });
+});

@@ -171,3 +171,31 @@ export function relatedGlossaryForPost(slug) {
 export const PUBLISHED_BLOG_TOOL_MAP = BLOG_PRIMARY_TOOL;
 export const PUBLISHED_GLOSSARY_TOOL_MAP = GLOSSARY_PRIMARY_TOOL;
 export const PUBLISHED_BLOG_GLOSSARY_MAP = BLOG_RELATED_GLOSSARY;
+
+/* ============================================================
+ * 계산기 목적지 — 도구(CSV 업로드)보다 앞에 세울 곳만 등록한다.
+ *
+ * 왜 따로 두나: `*_PRIMARY_TOOL`이 가리키는 분석 도구는 전부 CSV를 요구한다.
+ * "CAC 뜻"으로 들어온 검색 방문자는 파일이 없으므로, 그 사람에게 운영 대시보드를
+ * 1차 CTA로 주면 실제로는 아무 데도 못 간다. 숫자 몇 개로 답이 나오는 계산기가
+ * 있으면 그쪽이 1차고, 도구는 2차로 남긴다(§12.31 — 길을 막지는 않는다).
+ *
+ * 등록 기준: 그 계산기가 **용어 자체를 계산**할 때만. 주제가 겹치는 정도로 넣으면
+ * 읽은 내용과 다른 화면이 열린다. 비어 있는 표면(blog)은 폴백 없이 null이다.
+ * 슬러그 실재는 `contentActionPanel.test.js`가 CALCULATOR_ORDER에서 파생 검사한다.
+ * ============================================================ */
+const GLOSSARY_PRIMARY_CALCULATOR = {
+  cac: "ltv-cac",
+};
+
+const BLOG_PRIMARY_CALCULATOR = {};
+
+export const PRIMARY_CALCULATOR_MAPS = {
+  glossary: GLOSSARY_PRIMARY_CALCULATOR,
+  blog: BLOG_PRIMARY_CALCULATOR,
+};
+
+export function primaryCalculatorForContent(slug, type = "blog") {
+  const registry = type === "glossary" ? GLOSSARY_PRIMARY_CALCULATOR : BLOG_PRIMARY_CALCULATOR;
+  return registry[slug] || null;
+}
