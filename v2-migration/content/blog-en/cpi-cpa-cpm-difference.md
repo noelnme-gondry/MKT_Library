@@ -94,6 +94,20 @@ When CPA is high, this is where it splits:
 
 So CPA is the result; CPM, CTR, and conversion rate are arithmetic components. Stare at the result alone and you cannot decide whether to swap creative, change targeting, or fix the landing page.
 
+## When CPI and CPA move in opposite directions
+
+CPI and CPA have different denominators, so nothing guarantees they move together. The moments they diverge are the informative ones.
+
+| What you see | Arithmetically possible path | Check first |
+| --- | --- | --- |
+| CPI fell but CPA rose | Installs got cheaper while the install-to-action rate fell further | Whether creative or targeting shifted, and whether the installing users changed |
+| CPA fell but CPI rose | Installs got pricier while those users converted at a much higher rate | Whether the expensive installs genuinely buy more, and whether recent days are still maturing |
+| Both rose | Something upstream moved — CPM or CTR | Separate auction price from click-through rate before anything else |
+
+Reuse the chain above and the reason surfaces. `CPI = CPM ÷ (1,000 × CTR × click-to-install rate)` and `CPA = CPI ÷ install-to-action rate`. Exactly **one** term sits between CPI and CPA, so when the two diverge, that term moved.
+
+The common trap here is calling cheap installs bad traffic straight away. If your app records the action late, the most recent days have not matured and CPA looks worse than it is. Align the windows and look again; if they still diverge, put both metrics side by side per campaign in the [operations dashboard](/dashboard) to see which campaign is pulling the average.
+
 ## What to optimize toward
 
 Set the goal first, then pick the matching metric.

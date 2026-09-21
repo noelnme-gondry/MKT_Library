@@ -27,6 +27,16 @@ faq:
 
 Compare outcomes in a group assigned to advertising with a control assigned to have that advertising withheld. Interpreting this uplift as incremental impact requires checking random assignment, aligned observation windows and interference between groups.
 
+```
+Absolute uplift = exposed conversion rate − holdout conversion rate
+Relative uplift = absolute uplift ÷ holdout conversion rate
+Incremental conversions = absolute uplift × addressable audience
+```
+
+Absolute is in percentage points, relative in percent. Reporting the same test in both units is how 3pp gets read as 60%.
+
+[Incrementality](/glossary/incrementality) sits one layer above. Uplift is the difference itself; incrementality asks whether that difference may be credited to advertising at all. Without random assignment uplift still computes — it just cannot be called incremental.
+
 ![Conversion-rate difference between an exposed group and a holdout group](/blog-assets-en/uplift/holdout-uplift.svg)
 
 ## Why it matters
