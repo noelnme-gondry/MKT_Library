@@ -830,24 +830,14 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   if (!hasData) {
     return (
       <div className="tab-pane active" id="tab-creative">
-        <section className="block" id="s-prep">
-          <h2 className="section-title">{tr("데이터 준비", "Data setup")}</h2>
-          <div className="callout warning">
-            <div className="ico">!</div>
-            <div className="body">
-              <strong>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
-              <p>{C.noDataDesc}</p>
-              <div style={{ marginTop: "1rem" }}>
-                <ToolTemplateAction
-                  toolId={C.uploaderToolId}
-                  locale={locale}
-                  reason={tr("소재 성과·속성 컬럼을 먼저 맞춘 뒤 업로드하세요", "Align creative performance and attribute columns before uploading")}
-                  source="creative_empty_state"
-                />
-                <CsvUploader toolId={C.uploaderToolId} analyticsToolId="9-6" locale={locale} />
-              </div>
-            </div>
-          </div>
+        <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
+          <CsvUploader toolId={C.uploaderToolId} analyticsToolId="9-6" locale={locale} />
+          <ToolTemplateAction
+            toolId={C.uploaderToolId}
+            locale={locale}
+            reason={tr("소재 성과·속성 컬럼을 먼저 맞춘 뒤 업로드하세요", "Align creative performance and attribute columns before uploading")}
+            source="creative_empty_state"
+          />
         </section>
       </div>
     );

@@ -64,3 +64,10 @@ it("still offers saving for a tool whose setup is manual inputs, with no CSV", (
   const { container } = render(<AnalysisSetupBar toolId="5-26" slot="actions" />);
   expect(container.querySelector("button.btn.primary")).toBeTruthy();
 });
+
+it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)", locale => {
+  useAppStore.setState(useAppStore.getInitialState(), true);
+  useAppStore.getState().setCurrentRouteId("5-21");
+  const { container } = render(<AnalysisSetupBar toolId="5-21" locale={locale} />);
+  expect(container.childElementCount).toBe(0);
+});

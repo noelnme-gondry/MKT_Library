@@ -313,33 +313,9 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         <ToolPageShell
           locale={locale}
           title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
-          summary={<p>{tr(
-            "효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 한계 CPA/ROAS를 진단합니다 — 증액하면 효율이 꺾이는지 판정합니다. 5-3 예산 배분과 같은 효율 CSV를 공유합니다.",
-            "Upload an efficiency CSV once (daily channel/campaign cost and results) to diagnose each channel's marginal CPA/ROAS — this determines whether increasing spend will hurt efficiency. Shares the same efficiency CSV with 5-3 Budget Allocation."
-          )}</p>}
         >
-          <section className="block" id="s-prep">
-            <h2 className="section-title">{tr("데이터 준비", "Data preparation")}</h2>
-            <div className="callout warning">
-              <div className="ico">!</div>
-              <div className="body">
-                <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
-                <p>
-                  {tr(
-                    "효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 포화도를 진단합니다.",
-                    "Upload an efficiency CSV once (daily channel/campaign cost and results) to diagnose each channel's saturation."
-                  )}
-                  {" "}
-                  {tr(
-                    "5-3 예산 배분과 같은 효율 CSV를 공유합니다.",
-                    "Shares the same efficiency CSV with 5-3 Budget Allocation."
-                  )}
-                </p>
-                <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-22" locale={locale} />
-                </div>
-              </div>
-            </div>
+          <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
+            <CsvUploader toolId="5-22" locale={locale} />
           </section>
         </ToolPageShell>
       </div>

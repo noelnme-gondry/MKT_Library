@@ -1,12 +1,25 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 
+import { useAppStore } from "@/store/useDataStore";
 import ToolConnections from "@/components/ToolConnections";
 import { getNextTools, NEXT_TOOL_IDS } from "@/lib/toolConnections";
 import { hasToolTemplate } from "@/components/ds/csvTemplate";
 
 describe("ToolConnections", () => {
+  beforeEach(() => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    useAppStore.getState().setCurrentRouteId("5-2");
+    useAppStore.getState().setCsvData({ raw: [{ date: "2026-09-01", cost: "100" }], headers: ["date", "cost"], fileName: "campaign.csv" });
+  });
+
+  it.each(["ko", "en"])("does not promise a CSV handoff before uploading (%s)", (locale) => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    const { container } = render(<ToolConnections toolId="5-2" locale={locale} />);
+    expect(container.querySelectorAll(".is-same-data")).toHaveLength(0);
+    expect(container.textContent).toContain(locale === "en" ? "Prepare CSV to analyze" : "CSV 준비 후 분석하기");
+  });
   it("keeps the rail to two immediate KR next steps with the full journey tucked away", () => {
     const { container } = render(<ToolConnections toolId="5-2" />);
     expect(container.querySelectorAll(".tool-connection-card")).toHaveLength(2);

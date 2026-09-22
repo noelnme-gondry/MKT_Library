@@ -1670,36 +1670,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           locale={locale}
           titleLevel={2}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
-          chips={
-            <span className="chip warning">
-              <span className="dot"></span>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}
-            </span>
-          }
-          summary={
-            <p>
-              {tr(
-                "필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 퍼널·세그먼트 진단은 무료 운영 대시보드(5-2)에서 확인하세요.",
-                "Required: date, cost, (channel or campaign), (installs or actions). Funnel/segment diagnostics are available in the free Ops Dashboard (5-2)."
-              )}
-            </p>
-          }
-          toc={[{ id: "s-prep", title: tr("데이터 준비", "Data setup") }]}
         >
-          <section className="block" id="s-prep">
-            <h2 className="section-title">{tr("데이터 준비", "Data setup")}</h2>
-            <div className="callout warning">
-              <div className="ico">!</div>
-              <div className="body">
-                <strong>{hasRawData ? tr("매핑 확인 후 분석하기", "Confirm mapping, then Analyze") : tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
-                <p>{tr(
-                  "효율 CSV 한 번 업로드로 채널별 예산 배분을 분석합니다. 그리디(Greedy) 방식은 '가장 효율이 좋은 곳에 예산을 1순위로' 배분합니다.",
-                  "Upload your efficiency CSV once to analyze per-channel budget allocation. The greedy method allocates budget ‘to the most efficient spot first.’"
-                )}</p>
-                <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-3" locale={locale} />
-                </div>
-              </div>
-            </div>
+          <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
+            <CsvUploader toolId="5-3" locale={locale} />
           </section>
         </ToolPageShell>
       </div>

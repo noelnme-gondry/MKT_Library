@@ -9221,7 +9221,9 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
   border-bottom: 1px solid var(--operator-line);
   background: transparent;
 }
-.tool-instrument-header__copy { min-width: 0; }
+.tool-instrument-header__copy,
+.tool-instrument-header__heading { min-width: 0; }
+.tool-instrument-header__title { overflow-wrap: anywhere; white-space: normal; }
 .tool-instrument-header__eyebrow { color: var(--text-muted); font: 600 var(--fs-xs) var(--font-sans); letter-spacing: .1em; text-transform: uppercase; }
 .tool-instrument-header__description {
   max-width: 900px;
@@ -11600,3 +11602,12 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 
 .project-review-report-scope label { display: grid; gap: 6px; min-width: 0; margin-block: 12px; }
 .project-review-report-scope :is(select, input) { width: 100%; min-width: 0; max-width: 100%; }
+
+/* Keep upload help beside the input guidance, not on an otherwise empty row. */
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 0 0 16px; border: 0; }
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions > button { min-height: 44px; padding: 8px 12px; font-size: var(--fs-sm); }
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-dropzone { min-height: 160px; padding: 24px 16px; }
+.tool-upload-entry { margin-top: 16px; }
+
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .sheet-connect-btn { width: fit-content; max-width: 100%; min-height: 44px; padding: 10px 14px; font-size: var(--fs-sm); }
