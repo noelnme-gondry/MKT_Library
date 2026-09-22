@@ -3,6 +3,7 @@ const db = vi.hoisted(() => ({ query: vi.fn(), write: vi.fn(), release: vi.fn(),
 vi.mock("pg", () => ({ default: { Pool: class { query(...args) { return db.query(...args); } connect() { return db.connect(); } } } }));
 import { saveAccountMemo, startAccountTrial, readAccount, accountSameOrigin } from "./accountServer";
 import { GET, DELETE } from "@/app/api/account/memos/route";
+import { PRO_TRIAL_MS } from "./archiveContract";
 const now = new Date("2026-09-11T00:00:00.000Z");
 const request = (method = "POST", extra = "") => new Request(`https://growthoptplaybook.com/api/account/memos${extra}`, { method, headers: { origin: "https://growthoptplaybook.com", cookie: `gop_account=${"a".repeat(64)}` } });
 const input = { memo: { id: "decision_1", toolId: "5-2", action: "Review acquisition cost", reviewDate: "2026-09-18" }, consent: "decision-memo-v1" };
@@ -58,12 +59,15 @@ describe("server-controlled account archive", () => {
     expect(db.write.mock.calls.some(([sql]) => sql.startsWith("UPDATE gop_accounts SET trial_started_at"))).toBe(false);
     expect(db.write.mock.calls.at(-1)[0]).toBe("ROLLBACK");
   });
-  it("starts exactly 14 days on the first project, with a row lock and server clock", async () => {
+  it("starts exactly one trial length on the first project, with a row lock and server clock", async () => {
     // 서버 시계로 재야 한다 — 클라이언트가 시작하면 기기 시계를 되돌려 무한 체험이 된다.
     account.trial_started_at = null;
     const result = await startAccountTrial(request());
     expect(result.trialStarted).toBe(true);
-    expect(result.entitlement.expiresAt).toBe(now.getTime() + 14 * 86400000);
+    // 일수를 여기 다시 적지 않는다 — 정책을 바꾸면 화면은 따라가고 테스트만
+    // 옛 숫자를 지킨다. 소급 분기가 있던 동안 이 단언은 픽스처 날짜 덕에
+    // 조용히 통과하고 있었다.
+    expect(result.entitlement.expiresAt).toBe(now.getTime() + PRO_TRIAL_MS);
     expect(result.entitlement.trial).toBe(true);
     expect(db.write.mock.calls.map(([sql]) => sql)).toContain("SELECT * FROM gop_accounts WHERE id=$1 FOR UPDATE");
     expect(db.write).toHaveBeenCalledWith("UPDATE gop_accounts SET trial_started_at=$2 WHERE id=$1", ["owner-a", now]);

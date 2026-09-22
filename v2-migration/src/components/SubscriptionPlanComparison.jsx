@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { SUBSCRIPTION } from "@/lib/subscription/entitlement";
-import { PRO_TRIAL_DAYS, PRO_TRIAL_DAYS_LEGACY } from "@/lib/account/archiveContract";
+import { PRO_TRIAL_DAYS } from "@/lib/account/archiveContract";
 
 export default function SubscriptionPlanComparison({ locale = "ko", paid = false, trialEndsAt = null, now }) {
   const en = locale === "en";
   // 남은 일수는 두 가지를 동시에 지켜야 한다.
   //   ① 서버 응답이 화면의 분 단위 시계 스냅샷보다 조금 늦게 와서 "정책 길이 +1ms"가
   //      되면 `Math.ceil`이 하루를 더 올린다 → 오차 허용치를 먼저 뺀다.
-  //   ② 상한은 "현재 정책 길이"가 아니라 "활성일 수 있는 체험 중 가장 긴 것"이다.
-  //      PRO_TRIAL_DAYS로 clamp하면 기준일 이전에 시작한 14일 체험자에게 남은
-  //      기간이 7일로 줄어 보인다 — 정책 상수를 낮추는 순간 생기는 회귀다.
+  //   ② 상한은 "활성일 수 있는 체험 중 가장 긴 것"이다. 길이가 전 계정 공통이
+  //      된 지금은 그것이 곧 PRO_TRIAL_DAYS다. 길이가 다시 갈리면 여기 상한도
+  //      가장 긴 쪽으로 올려야 한다 — 낮은 쪽으로 clamp하면 긴 체험자의 남은
+  //      기간이 줄어 보인다(실제로 14→7 때 그 회귀가 났다).
   // 예전에는 clamp가 곧 정책 길이여서 ①이 ②에 가려 보이지 않았다.
   const CLOCK_SKEW_MS = 60000;
-  const trialDays = Math.min(PRO_TRIAL_DAYS_LEGACY, Math.max(0, Math.ceil((trialEndsAt - now - CLOCK_SKEW_MS) / 86400000)));
+  const trialDays = Math.min(PRO_TRIAL_DAYS, Math.max(0, Math.ceil((trialEndsAt - now - CLOCK_SKEW_MS) / 86400000)));
   // 비교표는 두 플랜이 같은 행을 같은 순서로 가져야 성립한다. 한쪽만 행을 적으면
   // 카드 높이가 어긋나 빈 구멍이 생기고, 적히지 않은 항목이 "없음"인지 "안 적음"인지 알 수 없다.
   const absent = en ? "Not included" : "미포함";

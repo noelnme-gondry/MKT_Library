@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import SubscriptionTrialOffer from "./SubscriptionTrialOffer";
 import SubscriptionPlanComparison from "./SubscriptionPlanComparison";
-import { PRO_TRIAL_DAYS, PRO_TRIAL_DAYS_LEGACY } from "@/lib/account/archiveContract";
+import { PRO_TRIAL_DAYS } from "@/lib/account/archiveContract";
 const refresh = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/account/accountClient", () => ({ refreshAccount: refresh }));
 afterEach(() => { cleanup(); useAppStore.setState({ entitlement: null }); refresh.mockReset(); });
@@ -36,11 +36,10 @@ it.each(["ko", "en"])("distinguishes trial time from a purchased pass (%s)", loc
   expect(screen.getByRole("link", { name: locale === "en" ? "Choose Pro" : "Pro 이용권 선택" }).getAttribute("href")).toBe("#purchase");
 });
 
-// 정책 상수를 낮추면 표시 상한이 같이 내려가 구정책 체험자의 남은 기간을
-// 줄여 보여주는 회귀가 난다. 실제로 7일로 바꾸는 순간 그렇게 됐다.
-it.each(["ko", "en"])("never under-reports a grandfathered trial's remaining days (%s)", locale => {
+// 상한은 "활성일 수 있는 체험 중 가장 긴 것"이다. 길이가 전 계정 공통이 된
+// 지금은 그것이 곧 PRO_TRIAL_DAYS이고, 그보다 긴 값이 와도 늘려 보이지 않는다.
+it.each(["ko", "en"])("never shows more than one trial length (%s)", locale => {
   const now = Date.UTC(2026, 8, 11);
-  render(<SubscriptionPlanComparison locale={locale} paid={false} trialEndsAt={now + PRO_TRIAL_DAYS_LEGACY * 86400000 + 1} now={now} />);
-  expect(screen.getByText(locale === "en" ? `Pro trial · ${PRO_TRIAL_DAYS_LEGACY} days left` : `Pro 체험 중 · ${PRO_TRIAL_DAYS_LEGACY}일 남음`)).toBeTruthy();
-  expect(PRO_TRIAL_DAYS_LEGACY).toBeGreaterThan(PRO_TRIAL_DAYS);
+  render(<SubscriptionPlanComparison locale={locale} paid={false} trialEndsAt={now + 30 * 86400000} now={now} />);
+  expect(screen.getByText(locale === "en" ? `Pro trial · ${PRO_TRIAL_DAYS} days left` : `Pro 체험 중 · ${PRO_TRIAL_DAYS}일 남음`)).toBeTruthy();
 });
