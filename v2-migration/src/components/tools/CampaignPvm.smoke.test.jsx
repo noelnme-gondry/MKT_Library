@@ -146,8 +146,11 @@ describe("CampaignPvm render smoke", () => {
   it("mounts without throwing in the no-data state (upload screen)", () => {
     // 데모 자동로드를 없앴으므로 no-data는 업로드/데이터 준비 화면이 정상이다.
     expect(() => render(<CampaignPvm />)).not.toThrow();
-    // No-data → CsvUploader auto-loads sample data, replacing the uploader-prep block.
-    expect(screen.queryByRole("heading", { name: "데이터 준비" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "데이터 준비" })).toBeTruthy();
+    expect(screen.queryByText("핵심 요약")).toBeNull();
+    expect(document.querySelector(".callout.warning")).toBeNull();
+    expect(document.querySelectorAll("h1")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "업로드 방법 보기" }).closest(".csv-guide-actions")).toBeTruthy();
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {

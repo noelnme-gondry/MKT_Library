@@ -58,11 +58,11 @@ const GUIDE_COPY = {
   },
 };
 
-export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = null, locale = "ko" }) {
+export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = null, locale = "ko", helpAction = null }) {
   const [open, setOpen] = useState(false);
   const T = GUIDE_COPY[locale] || GUIDE_COPY.ko;
   const guide = getToolGuide(toolId, locale);
-  if (!guide) return null;
+  if (!guide) return helpAction ? <div className="csv-guide-actions">{helpAction}</div> : null;
 
   const requiredNeeds = guide.needs.filter((n) => n.required);
   const reqCols = requiredNeeds.map((n) => n.label).join(" · ");
@@ -99,6 +99,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>
         </div>
         <div className="csv-guide-actions">
+          {helpAction}
           {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}

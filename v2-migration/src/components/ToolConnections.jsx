@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useAppStore } from "@/store/useDataStore";
+import { groupForRoute } from "@/lib/toolGroups";
 
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { hasToolTemplate } from "@/components/ds/csvTemplate";
@@ -13,6 +15,7 @@ const COPY = {
     connected: "연결 분석",
     afterVerdict: "판정 후 선택",
     sameData: "같은 CSV로 이어보기",
+    uploadData: "CSV 준비 후 분석하기",
     newData: "새 데이터 준비",
     back: "앞 단계로",
     here: "같은 단계에서",
@@ -31,6 +34,7 @@ const COPY = {
     connected: "Connected analysis",
     afterVerdict: "Choose after the verdict",
     sameData: "Continue with the same CSV",
+    uploadData: "Prepare CSV to analyze",
     newData: "Prepare a new dataset",
     back: "Previous stage",
     here: "Same-stage options",
@@ -48,6 +52,7 @@ const COPY = {
 
 export default function ToolConnections({ toolId, locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
+  const hasSourceData = useAppStore(state => Boolean(state.csvGroups[groupForRoute(toolId)]?.raw?.length));
   const nextTools = getNextTools(toolId, lang);
   const journey = getJourneyContext(toolId, lang);
   const sourceTool = localizedTool(toolId, lang);
@@ -60,7 +65,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
     && nextTools.slice(0, 2).every((tool) => !tool.isSameData)
     && hasToolTemplate(templateTarget.id),
   );
-  // 상단 레일은 "바로 갈 곳" 두 개만 보여주고, 나머지 경로는 접어서 제공한다.
+  // 상단 레일은 "바로 갈 곳" 두 개만 보여주고, 나머지 경로는 아래에 제공한다.
   // 고정 폭 카드 3개가 좁은 도구 셸 밖으로 밀리던 문제를 없애며 선택 부담도 줄인다.
   const visibleNextTools = needsPreparationShortcut ? nextTools.slice(0, 1) : nextTools.slice(0, 2);
 
@@ -101,15 +106,15 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
               source_tool_id: toolId,
               source: "analysis_tool",
               placement: "next_decision",
-              data_continuity: tool.isSameData ? "same_csv" : "new_data",
+              data_continuity: tool.isSameData && hasSourceData ? "same_csv" : "new_data",
               rank: index + 1,
               locale: lang,
             })}
           >
             <div className="tool-connection-card__meta">
               <span>{isVerdictDependent ? T.afterVerdict : index === 0 ? T.recommended : T.connected}</span>
-              <em className={tool.isSameData ? "is-same-data" : ""}>
-                {tool.isSameData ? T.sameData : T.newData}
+              <em className={tool.isSameData && hasSourceData ? "is-same-data" : ""}>
+                {tool.isSameData ? (hasSourceData ? T.sameData : T.uploadData) : T.newData}
               </em>
             </div>
             <strong>{tool.title}</strong>
@@ -118,7 +123,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         ))}
       </div>
       <section data-information-section="" className="tool-connections__more">
-        <header data-information-heading="">{T.expand} <span aria-hidden="true">＋</span></header>
+        <header data-information-heading="">{T.expand}</header>
         {journey && (
           <div className="tool-connections__map" aria-label={T.mapDeck}>
             <div>

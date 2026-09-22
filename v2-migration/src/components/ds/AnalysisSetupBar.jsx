@@ -58,6 +58,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
     finally { setBusy(false); }
   };
   if (slot === "context") {
+    if (!data?.raw?.length && !applicablePending && !applied) return null;
     return <section className="analysis-setup no-print" aria-label={en ? "Data and applied setup" : "데이터와 적용된 설정"}>
       {applied && !applicablePending && <p className="setup-applied-note">{en ? "Saved settings applied. Check the inputs below before using the results." : "저장한 설정을 적용했습니다. 아래 입력을 확인한 뒤 결과를 사용하세요."}</p>}
       {applicablePending && <SavedSetupReview key={applicablePending.item.id} pending={applicablePending} locale={locale} />}

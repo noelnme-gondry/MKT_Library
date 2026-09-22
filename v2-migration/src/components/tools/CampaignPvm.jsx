@@ -905,24 +905,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <ToolPageShell
           locale={locale}
           title={C.title}
-          chips={<span className="chip warning"><span className="dot"></span>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</span>}
-          summary={
-            <p>{C.noDataSummary}</p>
-          }
-          toc={[{ id: "s-prep", title: tr("데이터 준비", "Data Preparation") }]}
         >
-          <section className="block" id="s-prep">
-            <h2 className="section-title">{tr("데이터 준비", "Data Preparation")}</h2>
-            <div className="callout warning">
-              <div className="ico">!</div>
-              <div className="body">
-                <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
-                <p>{C.noDataCalloutBody}</p>
-                <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId={C.uploaderToolId} locale={locale} />
-                </div>
-              </div>
-            </div>
+          <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
+            <CsvUploader toolId={C.uploaderToolId} locale={locale} />
           </section>
         </ToolPageShell>
       </div>

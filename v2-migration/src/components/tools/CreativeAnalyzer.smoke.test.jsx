@@ -169,8 +169,7 @@ describe("CreativeAnalyzer render smoke", () => {
   it("mounts without throwing in the no-data state (upload screen)", () => {
     // 데모 자동로드를 없앴으므로 no-data는 업로드/데이터 준비 화면이 정상이다.
     expect(() => render(<CreativeAnalyzer />)).not.toThrow();
-    // No-data → CsvUploader auto-loads sample data, replacing the uploader-prep block.
-    expect(screen.queryByText("데이터 준비")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "데이터 준비" })).toBeTruthy();
   });
 
   it.each(["ko", "en"])("does not label low-exposure creatives healthy (%s)", (locale) => {

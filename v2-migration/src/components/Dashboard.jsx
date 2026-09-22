@@ -246,12 +246,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
           )}
         </div>
 
-        {!hasData && (
-          <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "var(--fs-sm)" }}>
-            {tr(C.noDataIntro, enC.noDataIntro)}
-          </p>
-        )}
-
         {/* 분석 전에는 매핑을 확인하고, 분석 후에는 별도 편집창에서 수정한다. */}
         {mappingEditorOpen ? (
           <ModalDialog open onClose={() => setMappingEditorOpen(false)} ariaLabel={tr("데이터·매핑 편집", "Edit data and mappings")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
@@ -260,8 +254,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
           </ModalDialog>
         ) : !hasData ? (
           <div className="block dashboard-data-setup dashboard-data-setup--empty" id="dashboard-data-setup">
-            <h2 className="section-title">{tr("데이터 업로드", "Upload Data")}</h2>
-            <p className="card-desc" style={{ marginBottom: "1rem" }}>{tr(C.uploadDesc, enC.uploadDesc)}</p>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : !analyzed ? (
