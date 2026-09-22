@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import DochiSprite from "@/components/assistant/DochiSprite";
 import { actionCopyFor } from "@/components/seo/ContentActionPanel";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { getBrandFacts } from "@/lib/brandFacts";
@@ -29,19 +28,19 @@ const PERSISTENT_OFF_KEY = "gop:blog:bridge-off";
 const COPY = {
   ko: {
     lead: (count) => `이번 세션에서 ${count}편째 읽고 계시네요.`,
-    intro: "안녕하세요, 도치예요.",
+    intro: "읽은 내용을 데이터에 적용해 보세요.",
     fields: "필요한 컬럼 먼저 보기",
     close: "닫기",
-    label: "도치의 분석 안내",
+    label: "관련 분석 안내",
     stop: "이 안내 그만 보기",
     desktop: "표와 차트는 PC 화면이 편해요. 지금 저장해 두셨다가 열어보셔도 돼요.",
   },
   en: {
     lead: (count) => `That’s article ${count} in this session.`,
-    intro: "Hi, I’m Dochi.",
+    intro: "Apply what you read to your data.",
     fields: "See the columns you’ll need",
     close: "Close",
-    label: "Analysis suggestion from Dochi",
+    label: "Related analysis",
     stop: "Stop showing this",
     desktop: "Tables and charts are easier on a wider screen — saving this for later works too.",
   },
@@ -173,7 +172,6 @@ export default function BlogDochiBridge({ slug, toolId, locale = "ko", targetSel
 
   return (
     <aside className="blog-dochi-bridge" aria-label={copy.label}>
-      <DochiSprite pose="point" className="blog-dochi-bridge__sprite" />
       <div className="blog-dochi-bridge__body">
         <p className="blog-dochi-bridge__lead">{copy.lead(articleCount)} {copy.intro}</p>
         <h2>{action.title}</h2>

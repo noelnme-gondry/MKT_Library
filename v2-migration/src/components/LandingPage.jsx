@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import HomeResultPreview from "@/components/landing/HomeResultPreview";
 import MobileQuickStart from "@/components/MobileQuickStart";
 import useSampleAnalysis from "@/components/useSampleAnalysis";
@@ -99,27 +100,18 @@ const COPY = {
   },
 };
 
-export default function LandingPage({ locale = "ko", children, reading }) {
+export default function LandingPage({ locale = "ko", reading }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const launchSample = useSampleAnalysis(lang);
   const rootRef = useRef(null);
-  const intakeRef = useRef(null);
-  const openIntake = () => {
-    if (!intakeRef.current) return;
-    intakeRef.current.hidden = false;
-    requestAnimationFrame(() => {
-      const target = intakeRef.current?.querySelector("#dochi-upload");
-      target?.focus();
-      target?.scrollIntoView?.({ block: "start" });
-    });
-  };
+  const router = useRouter();
   useEffect(() => {
-    const revealFromHash = () => { if (window.location.hash === "#dochi-upload") openIntake(); };
+    const revealFromHash = () => { if (window.location.hash === "#dochi-upload") router.replace(lang === "en" ? "/en/start" : "/start"); };
     revealFromHash();
     window.addEventListener("hashchange", revealFromHash);
     return () => window.removeEventListener("hashchange", revealFromHash);
-  }, []);
+  }, [lang, router]);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
   const activeDecisionRecords = decisionRecords.filter((record) => getDecisionReviewBucket(record) !== "reviewed");
   const dueDecisionRecords = activeDecisionRecords.filter((record) => ["overdue", "today"].includes(getDecisionReviewBucket(record)));
@@ -198,10 +190,10 @@ export default function LandingPage({ locale = "ko", children, reading }) {
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
-              href="#dochi-upload"
-              onClick={() => { openIntake(); trackLandingNav("landing_data_start_clicked", "hero"); }}
+              href={lang === "en" ? "/en/start" : "/start"}
+              onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
-              <strong>{lang === "en" ? "Upload your CSV" : "내 CSV로 분석하기"}</strong>
+              <strong>{lang === "en" ? "Start with my data" : "내 데이터로 시작"}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
 
@@ -214,21 +206,6 @@ export default function LandingPage({ locale = "ko", children, reading }) {
         <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
       </section>
       <MobileQuickStart locale={lang} />
-
-      <section className="dc-intake" ref={intakeRef} hidden aria-labelledby="csv-upload-heading">
-        <div className="dc-intake__header">
-          <h2 id="csv-upload-heading">{lang === "en" ? "CSV upload" : "CSV 업로드"}</h2>
-          <button className="dc-intake__close" type="button" aria-label={lang === "en" ? "Close CSV upload" : "CSV 업로드 닫기"} onClick={() => {
-            intakeRef.current.hidden = true;
-            if (window.location.hash === "#dochi-upload") window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
-            rootRef.current?.querySelector(".dc-action-route--primary")?.focus();
-          }}><span aria-hidden="true">×</span></button>
-        </div>
-        <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>{T.dataGuideCta} →</Link>
-        {children}
-      </section>
-
-
 
       <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">
         <header className="dc-section-head">

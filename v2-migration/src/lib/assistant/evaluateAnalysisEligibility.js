@@ -71,12 +71,17 @@ function copyMode(entry, hasMappingConfirmation, confirmedDesign) {
 
 // UI/스토어와 분리된 단일 도구 판정. empty profile은 "데이터 없음"을 날조하지
 // 않기 위해 blocked이며, profile을 생략하면 구조 계약만 검사한다.
-export function evaluateAnalysisEligibility({ toolId, mapping = {}, mappingContract = null, profile = {}, confirmedDesign = false, locale = "ko" } = {}) {
+export function evaluateAnalysisEligibility({ toolId, mapping = {}, mappingContract = null, profile = {}, confirmedDesign = false, responseColMap = null, locale = "ko" } = {}) {
   const entry = analysisCatalogEntry(toolId);
   if (!entry) return { toolId, status: "blocked", blockers: [{ code: "not_declared" }], missing: [], requiresConfirmation: [] };
 
   const fields = mappedFields(mapping);
-  const missing = missingRequiredGroups(entry.requiredFieldGroups, fields);
+  const responseRoles = responseColMap && toolId.startsWith("5-18-") ? new Set(Object.values(responseColMap).map(value => value?.role)) : null;
+  const missing = responseRoles ? [
+    ...(["date", "week"].some(role => responseRoles.has(role)) ? [] : [["response_time"]]),
+    ...(["reg", "react", "revenue", "traffic", "purchasers"].some(role => responseRoles.has(role)) ? [] : [["response_outcome"]]),
+    ...(responseRoles.has("channel") ? [] : [["response_channel"]]),
+  ] : missingRequiredGroups(entry.requiredFieldGroups, fields);
   const ownedRequired = requiredOwnedRoles(entry.toolOwnedRoles);
   const missingOwned = ownedRequired.filter((field) => !fields.has(field));
   const problems = profileProblems(entry, profile);

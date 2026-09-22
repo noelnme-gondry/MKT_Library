@@ -1157,8 +1157,8 @@ export default function CsvUploader({
         {importInsights && (
           <div className={`csv-recognition-summary ${mappingConflicts.length ? "has-conflict" : ""}`}>
             <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
-            <span className="csv-recognition-hint">{T.recognitionHint}</span>
-            {datasetSignature && <div className="csv-recognition-signature">{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
+            {!isRouterMode && <span className="csv-recognition-hint">{T.recognitionHint}</span>}
+            {!isRouterMode && datasetSignature && <div className="csv-recognition-signature">{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
           </div>
         )}
         {attentionHeaders.length > 0 && (
@@ -1295,7 +1295,7 @@ export default function CsvUploader({
         </div>
       )}
 
-      {toolId !== "start-gate" && missing.length === 0 && !analysisBlocked && (
+      {(isRouterMode || missing.length === 0) && !analysisBlocked && !mappingReviewActionLabel && (
         isAnalyzed ? (
           <div className="csv-analysis-cta-row is-analyzed">
             <span className="csv-analysis-status">{T.analyzedBadge}</span>

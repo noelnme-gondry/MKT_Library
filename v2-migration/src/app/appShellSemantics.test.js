@@ -31,12 +31,12 @@ describe("shared application-shell semantics", () => {
     expect(mainIndex).toBeGreaterThan(headerIndex);
   });
 
-  it("keeps the English Dochi intake, result workspace, and remembered-analysis dock reachable", () => {
+  it("keeps legacy English results reachable without duplicate mascot intake or dock", () => {
     const homeSource = readAppSource("(en)/en/page.js");
     const routeSource = readAppSource("(en)/en/[...slug]/PageClient.jsx");
 
-    expect(homeSource).toContain('<DochiAssistant locale="en" />');
+    expect(homeSource).not.toContain('<DochiAssistant');
     expect(routeSource).toContain('<DochiResultWorkspace locale="en" />');
-    expect(routeSource).toContain('<DochiAnalysisDock locale="en" />');
+    expect(routeSource).not.toContain('<DochiAnalysisDock');
   });
 });

@@ -57,7 +57,7 @@ describe("DochiResultWorkspace", () => {
   });
   it("does not invent a result when opened without a CSV", () => {
     render(<DochiResultWorkspace />);
-    expect(screen.getByRole("heading", { name: "먼저 도치에게 CSV를 맡겨 주세요" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "분석할 데이터를 먼저 올려 주세요" })).toBeTruthy();
   });
 
   it("keeps one CSV mapping UI while using semantic mapping only as an internal fallback", async () => {
@@ -73,14 +73,9 @@ describe("DochiResultWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
     expect(screen.getByRole("button", { name: "확인하고 결과 가져오기" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "확인하고 결과 가져오기" }));
-    expect(document.querySelector(".dochi-journey.is-running")).toBeTruthy();
-    expect(document.querySelector(".dochi-journey__mascot .dochi-sprite.is-delivery")).toBeTruthy();
-    expect(document.querySelectorAll(".dochi-journey__books i")).toHaveLength(3);
-    expect(document.querySelector(".dochi-journey__data-card")).toBeTruthy();
-    expect(document.querySelector(".dochi-journey__chart-card")).toBeTruthy();
-    expect(screen.getByText("아하!")).toBeTruthy();
-    expect(document.querySelector(".dochi-journey__runner")).toBeNull();
-    act(() => vi.advanceTimersByTime(1100));
+    expect(screen.getByRole("status").textContent).toBe("분석을 준비하고 있습니다");
+    expect(document.querySelector(".dochi-sprite")).toBeNull();
+    act(() => vi.advanceTimersByTime(0));
     await act(async () => { await Promise.resolve(); });
 
     expect(screen.getByRole("heading", { name: "분석 결과" })).toBeTruthy();

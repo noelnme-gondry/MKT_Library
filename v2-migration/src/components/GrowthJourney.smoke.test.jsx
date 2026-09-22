@@ -52,7 +52,7 @@ describe("home → result → weekly review", () => {
     const result = render(<DochiResultWorkspace locale={locale} />);
     expect(result.container.querySelector(".dochi-result-workspace").dataset.phase).toBe("results");
     await waitFor(() => expect(result.container.querySelector('[data-queue-settled="true"]')).toBeTruthy(), { timeout: 10000 });
-    const focus = result.container.querySelector(".dochi-workspace__decision-focus");
+    const focus = result.container.querySelector(".workspace-next-action");
     expect(focus.textContent).toContain(preview);
     expect(focus.textContent).toContain("CPA");
     expect(result.container.querySelector(".dochi-workspace__judgment")).toBeNull();

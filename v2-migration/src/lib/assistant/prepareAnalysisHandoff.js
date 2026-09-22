@@ -24,5 +24,19 @@ export function prepareAnalysisHandoff(csvData, toolId) {
     toolId,
     source: csvData.fileName || "dataset",
   });
-  return applyGlobalMapping(prepared, csvData.mapping, toolId);
+  const explicitBindings = (csvData.mappingBindingsV2 || []).filter(binding => binding.source === "user");
+  const explicitHeaders = new Set(explicitBindings.map(binding => binding.sourceColumn));
+  const mapping = { ...prepared.mapping };
+  for (const header of explicitHeaders) {
+    if (csvData.mapping?.[header] === "__ignore__") mapping[header] = "__ignore__";
+  }
+  return applyGlobalMapping({
+    ...prepared,
+    mapping,
+    currency: csvData.currency,
+    mappingBindingsV2: [
+      ...(prepared.mappingBindingsV2 || []).filter(binding => !explicitHeaders.has(binding.sourceColumn)),
+      ...explicitBindings,
+    ],
+  }, csvData.mapping, toolId);
 }

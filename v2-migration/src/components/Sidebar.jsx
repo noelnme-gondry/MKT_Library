@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort, findMeta } from "@/store/useDataStore";
-import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
-import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useAppStore } from "@/store/useDataStore";
 import { localizedHref } from "@/lib/localizedHref";
 import { WORKSPACE_NAV_GROUPS, workspaceNavItems } from "@/lib/workspaceNav";
 import { trackProductEvent } from "@/lib/analytics";
-import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
-import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
 import ModalDialog from "@/components/ds/ModalDialog";
@@ -67,49 +63,16 @@ const SIDEBAR_COPY = {
   },
 };
 
-function SidebarContents({ locale = "ko", onNavigate }) {
+function SidebarContents({ locale = "ko", onNavigate, isMethods = false }) {
   const T = SIDEBAR_COPY[locale] || SIDEBAR_COPY.ko;
-  // 개수를 손으로 적으면 도구가 늘 때 이 줄만 낡는다 — 레지스트리에서 센다(§7).
-  const allToolsDesc = T.allToolsDesc(PUBLISHED_TOOL_IDS.length);
-  // 번역된 항목만 /en 유지, 나머지는 KR 페이지로(반쪽 번역 노출 방지 — §plan).
-  const navHref = (id) =>
-    locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
-  // Active id is derived from the URL (SSOT) so highlight is correct even before
-  // the page-level store-sync effect runs (avoids a first-paint race).
   const pathname = usePathname();
-  const currentRouteId = resolvePathToId(pathname) ?? "home";
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
-  const isHome = cleanPath === "/";
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
-  const isLibraryRoute = /^\/(blog|guide|templates|glossary|compare)(\/|$)/.test(cleanPath);
-  const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
-  const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
-  const session = useAppStore((state) => state.dochiAnalysisSession);
-  const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const dueDecisionCount = decisionRecords.reduce((count, record) => {
     const bucket = getDecisionReviewBucket(record);
     return count + (bucket === "overdue" || bucket === "today" ? 1 : 0);
   }, 0);
-
-  // Keep track of collapsed states
-  // By default, expand if an item is active, otherwise collapsed
-  // But we need to manage local toggle state.
-  // Actually, let's derive it from active route initially, and allow local toggle.
-  const [collapsedSections, setCollapsedSections] = useState({});
-  const [collapsedGroups, setCollapsedGroups] = useState({});
-
-  // 첫 클릭 무반응 버그(§7): prev[id]가 아직 undefined일 때 !prev[id]로 토글하면
-  // "화면에 파생상태로 보이던 값"과 무관하게 무조건 true(닫힘)로 저장돼, 이미
-  // 파생상태로 열려 있던 섹션/그룹은 첫 클릭에 아무 변화가 없고 두 번째 클릭에야
-  // 실제로 뒤집힘. 클릭 시점의 "현재 표시된" 값을 받아 그 반대를 명시적으로 저장.
-  const toggleSection = (sectionId, currentlyCollapsed) => {
-    setCollapsedSections((prev) => ({ ...prev, [sectionId]: !currentlyCollapsed }));
-  };
-
-  const toggleGroup = (groupId, currentlyCollapsed) => {
-    setCollapsedGroups((prev) => ({ ...prev, [groupId]: !currentlyCollapsed }));
-  };
 
   return (
     <aside className="sidebar library-sidebar" id="sidebar" aria-label={locale === "en" ? "Site navigation" : "사이트 메뉴"} onClick={(event) => {
@@ -134,7 +97,7 @@ function SidebarContents({ locale = "ko", onNavigate }) {
           <div className="library-nav-group__label">{group[locale === "en" ? "en" : "ko"]}</div>
           {workspaceNavItems(locale).filter((item) => item.group === group.id && !item.secondary).map((item) => {
             const isReview = item.id === "review";
-            const isActive = cleanPath === item.href || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
+            const isActive = (item.id === "methods" ? cleanPath === "/start" && isMethods : item.id === "start" ? cleanPath === "/start" && !isMethods : cleanPath === item.href) || (["blog", "guide"].includes(item.id) && cleanPath.startsWith(`${item.href}/`));
             return <Link key={item.id}
               href={localizedHref(item.href, locale)}
               className={`sidebar-primary-nav__item library-nav-item${isActive ? " active" : ""}`}
@@ -143,7 +106,6 @@ function SidebarContents({ locale = "ko", onNavigate }) {
               title={item.desc}
               onClick={(event) => {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                if (item.id === "results" && session?.sourceData?.raw?.length) handoffCsvToRoute("dochi-result", session.sourceData);
                 if (isReview) trackProductEvent("review_entry_clicked", { source: "navigation", placement: "sidebar", locale });
               }}>
               <span className="library-nav-item__icon" aria-hidden="true">{item.icon}</span>
@@ -153,162 +115,6 @@ function SidebarContents({ locale = "ko", onNavigate }) {
           })}
         </div>)}
       </nav>
-      <section data-information-section="" className="library-full-navigation" >
-        <header data-information-heading="">{locale === "en" ? "Browse every tool and guide" : "전체 도구와 가이드 탐색"}</header>
-      <div className="inner-workspace-label inner-workspace-label--stacked">
-        <span>{T.workspaceLabel}</span>
-        {/* 사이드바가 접혀 있으면 무엇을 할 수 있는지 볼 방법이 없었다. 접힘 여부와
-            무관하게 전체 목록으로 가는 길을 상시 노출한다. */}
-        <Link className="inner-workspace-label__all" href={localizedHref("/start", locale)}>{T.allTools}</Link>
-      </div>
-      <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder} aria-haspopup="dialog" aria-controls="cmdk" aria-expanded={isCmdkOpen}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <span>{T.searchPlaceholder}</span>
-        <kbd>⌘K</kbd>
-      </button>
-
-      <nav id="nav" data-rendered="1">
-        {/* §UX 개선: "분석"(실제 도구)이 메인 제품이라 렌더 순서상 먼저 보여주고
-            시각적으로도 강조(phase-tag--primary). SECTIONS 데이터 자체의 순서는
-            안 건드림(번호 계산이 section.groups.indexOf 기반이라 순서 무관하지만,
-            다른 소비처(LandingPage 등)에 예기치 않은 영향 안 주려고 렌더링에서만 정렬). */}
-        {[...SECTIONS].sort((a, b) => (a.id === "analysis" ? -1 : b.id === "analysis" ? 1 : 0)).map((section) => {
-          const isPrimarySection = section.id === "analysis";
-          const sectionGroups = IA.filter((g) => section.groups.includes(g.id));
-          const workflowToolIds = TOOL_JOURNEY.flatMap((stage) => stage.tools);
-          const sectionHasActive = isPrimarySection
-            ? workflowToolIds.includes(currentRouteId) || currentRouteId === "8-1"
-            : sectionGroups.some((g) => g.items.some((it) => it.id === currentRouteId));
-
-          // If it hasn't been explicitly toggled, use the derived state. 분석
-          // 섹션은 메인 제품이라 홈에서도 기본 펼침(다른 섹션은 기존 로직 유지).
-          const isSectionCollapsed = collapsedSections[section.id] !== undefined
-            ? collapsedSections[section.id]
-            : isPrimarySection ? false : !sectionHasActive;
-
-          return (
-            <section
-              key={section.id}
-              className={`phase-section ${isPrimarySection ? "phase-section--primary" : ""} ${isSectionCollapsed ? "collapsed" : ""}`}
-              data-section={section.id}
-            >
-              <button
-                className="phase-header"
-                type="button"
-                onClick={() => toggleSection(section.id, isSectionCollapsed)}
-                aria-expanded={!isSectionCollapsed}
-              >
-                <span className="phase-header-left">
-                  <span className={`phase-tag ${isPrimarySection ? "phase-tag--primary" : ""}`}>{trSectionLabel(section.id, locale, section.label)}</span>
-                </span>
-                <svg className="phase-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-
-              <div className="phase-body">
-                {isPrimarySection ? (
-                  <>
-                    <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`} aria-current={currentRouteId === "8-1" ? "page" : undefined}>
-                      <span>{T.dataGuide}</span>
-                    </Link>
-                    {TOOL_JOURNEY.map((stage) => {
-                      const hasActive = stage.tools.includes(currentRouteId);
-                      const stageKey = `journey-${stage.id}`;
-                      // 활성 스테이지만 펼친다. 발견("무엇을 할 수 있나")은 이제 홈과
-                      // /start의 인덱스가 맡으므로, 사이드바까지 전부 펴면 세션 중
-                      // 이동용 내비가 벽이 된다(CSV 올린 화면에서 특히).
-                      const isGroupCollapsed = collapsedGroups[stageKey] !== undefined
-                        ? collapsedGroups[stageKey]
-                        : !hasActive;
-                      return (
-                        <div key={stage.id} className={`nav-group sidebar-workflow-stage ${isGroupCollapsed ? "collapsed" : ""}`} data-stage={stage.id}>
-                          <button
-                            type="button"
-                            className="nav-group-header"
-                            onClick={() => toggleGroup(stageKey, isGroupCollapsed)}
-                            aria-expanded={!isGroupCollapsed}
-                          >
-                            <span className="nav-group-title">
-                              <span>{stage.title[locale === "en" ? "en" : "ko"]}</span>
-                            </span>
-                            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                          </button>
-                          <div className="nav-items">
-                            {stage.tools.map((toolId) => {
-                              const tool = localizedTool(toolId, locale);
-                              const meta = findMeta(toolId);
-                              const title = meta ? trItemTitle(toolId, locale, meta.title) : tool.title;
-                              return (
-                                <Link
-                                  key={toolId}
-                                  href={navHref(toolId)}
-                                  className={`nav-item ${toolId === currentRouteId ? "active" : ""}`}
-                                  data-route={toolId}
-                                  aria-current={toolId === currentRouteId ? "page" : undefined}
-                                >
-                                  {/* 도구 번호 칩 없음 — 스테이지 헤더(01~05)가 순서를 보여주고,
-                                      IA 그룹 기준 번호는 이 계층과 축이 달라 어긋났다. */}
-                                  <span>{title}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : sectionGroups.map((group) => {
-                  const hasActive = group.items.some((it) => it.id === currentRouteId);
-                  const isGroupCollapsed = collapsedGroups[group.id] !== undefined
-                    ? collapsedGroups[group.id]
-                    : !hasActive;
-
-                  return (
-                    <div key={group.id} className={`nav-group ${isGroupCollapsed ? "collapsed" : ""}`} data-group={group.id}>
-                      <button
-                        type="button"
-                        className="nav-group-header"
-                        onClick={() => toggleGroup(group.id, isGroupCollapsed)}
-                        aria-expanded={!isGroupCollapsed}
-                      >
-                        <span className="nav-group-title">
-                          <span className="nav-group-index">{displayGroupNumberShort(group.id)}</span>
-                          <span>{trGroupTitle(group.id, locale, group.title)}</span>
-                        </span>
-                        <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      </button>
-                      <div className="nav-items">
-                        {group.items.filter((it) => !it.hidden).map((it) => (
-                          <Link
-                            key={it.id}
-                            href={navHref(it.id)}
-                            className={`nav-item ${it.id === currentRouteId ? "active" : ""}`}
-                            data-route={it.id}
-                            aria-current={it.id === currentRouteId ? "page" : undefined}
-                          >
-                            <span className="ix tnum">{displayItemNumberShort(it.id)}</span>
-                            <span>{trItemTitle(it.id, locale, it.title)}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </nav>
-      </section>
-
       {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 해당 리소스·계산기
           페이지에서만 펼치고, 홈과 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
       <section data-information-section="" className="sidebar-library-disclosure" >
@@ -353,6 +159,14 @@ function SidebarContents({ locale = "ko", onNavigate }) {
 }
 
 
+function QuerySidebar(props) {
+  const isMethods = useSearchParams().get("view") === "methods";
+  return <SidebarContents {...props} isMethods={isMethods} />;
+}
+function RoutedSidebar(props) {
+  return <Suspense fallback={<SidebarContents {...props} />}><QuerySidebar {...props} /></Suspense>;
+}
+
 export default function Sidebar({ locale = "ko" }) {
   const pathname = usePathname();
   const { isMobile, isOpen } = useMobileNavigation();
@@ -361,10 +175,10 @@ export default function Sidebar({ locale = "ko" }) {
     setMobileNavigationOpen(false);
     return () => setMobileNavigationOpen(false);
   }, [pathname, isMobile]);
-  if (!isMobile) return <SidebarContents locale={locale} />;
+  if (!isMobile) return <RoutedSidebar locale={locale} />;
   return <ModalDialog open={isOpen} onClose={() => setMobileNavigationOpen(false)}
     ariaLabel={locale === "en" ? "Site navigation" : "사이트 메뉴"}
     overlayClassName="library-nav-overlay" panelClassName="library-nav-dialog">
-    <SidebarContents locale={locale} onNavigate={() => setMobileNavigationOpen(false)} />
+    <RoutedSidebar locale={locale} onNavigate={() => setMobileNavigationOpen(false)} />
   </ModalDialog>;
 }

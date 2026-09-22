@@ -3,8 +3,6 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import LandingPage from "@/components/LandingPage";
 import HomeReading from "@/components/HomeReading";
-import DochiAssistant from "@/components/assistant/DochiAssistant";
-import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 
@@ -42,7 +40,7 @@ export default function EnHomePage() {
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
-              <LandingPage locale="en" reading={<HomeReading locale="en" />}><DochiAssistant locale="en" /><DochiWelcomeOverlay locale="en" manual /></LandingPage>
+              <LandingPage locale="en" reading={<HomeReading locale="en" />} />
             </article>
           </main>
         </div>

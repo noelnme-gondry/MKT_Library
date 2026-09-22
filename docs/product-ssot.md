@@ -783,3 +783,11 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 같은 프로젝트에 저장한 후속 분석의 근거 사본을 명시적으로 선택해 연결한다. 원본 분석의 추정치·신뢰구간·기간·설계 한계를 보존한다. 연결만으로 지표·처치 방향·집단·기간의 일치나 설계 타당성을 검증했다고 간주하지 않는다. 광고 순증분과 오가닉 회복은 서로 다른 추정 대상이다.
 - 근거가 없으면 불확실성 추정 불가로 남긴다. 0을 포함하는 구간은 효과 없음의 증거로 취급하지 않는다. 수학 엔진이나 구간을 임의로 완화하지 않는다.
 - KR/EN 및 기기 저장·CSV·Word·Excel·보고서에 동일 적용. 연결 근거는 계정 메모나 분석 이벤트에 자동 전송하지 않는다. / Operating targets do not define statistical detection. Preserve partial observed changes and linked experimental estimates, intervals and design limitations without inventing causal conclusions.
+
+## 데이터 작업대 개편 (2026-09-22)
+
+- 데이터로 적용하기: 내 데이터로 시작 / 분석 방법 둘러보기. 내 워크스페이스: 마이페이지 / 내 프로젝트 / 이 기기 데이터 / 구독 및 서비스. 기존 도구 주소와 계산을 유지한다.
+- 파일·시트 업로드 → 매핑 확인 → 명시적 분석하기. 실행 후 입력은 요약 카드로 줄이고 수정 시 이전 결과를 무효화한다.
+- 분석 목록은 한 번만 표시한다. 선택한 카드에 근거·그래프·한계·다음 행동을 제공한다. 내부 번호·대기열·결정 테이프는 공개하지 않는다.
+- 추천 행동과 근거를 프로젝트로 추적한다. 근거 없는 증액률·목표를 생성하지 않는다.
+- EN: Start with my data / Browse analyses; My account / My projects / Data on this device / Plans & service. Upload → confirm mapping → explicitly analyze. Show one catalog and selected evidence; preserve computation and privacy.

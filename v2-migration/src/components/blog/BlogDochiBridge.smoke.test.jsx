@@ -186,7 +186,7 @@ describe("BlogDochiBridge in English", () => {
 
     const panel = document.querySelector(".blog-dochi-bridge");
     expect(panel).toBeTruthy();
-    expect(panel.getAttribute("aria-label")).toBe("Analysis suggestion from Dochi");
+    expect(panel.getAttribute("aria-label")).toBe("Related analysis");
     expect(panel.textContent).toContain("That’s article 2 in this session.");
     expect(document.querySelector(".blog-dochi-bridge__cta").getAttribute("href")).toBe("/en/tools/budget-allocation");
     expect(document.querySelector(".blog-dochi-bridge__secondary").getAttribute("href")).toBe("/en/templates/budget-allocation");

@@ -47,16 +47,16 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["샘플로 체험하기", "내 CSV로 분석하기"]);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["샘플로 체험하기", "내 데이터로 시작"]);
     expect(actions[0].tagName).toBe("BUTTON");
-    expect(actions[1].getAttribute("href")).toBe("#dochi-upload");
+    expect(actions[1].getAttribute("href")).toBe("/start");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
     expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고");
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리");
-    expect(document.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelector(".home-result-preview button")?.textContent).toContain("샘플로 체험하기");
@@ -97,10 +97,8 @@ describe("LandingPage render smoke", () => {
       status: "pending",
     }] });
     window.gtag = vi.fn();
-    const { container } = render(<LandingPage><div data-testid="intake-slot" /></LandingPage>);
-    const intake = container.querySelector('[data-testid="intake-slot"]');
-    expect(container.querySelector(".dc-hero").compareDocumentPosition(intake) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(intake.compareDocumentPosition(container.querySelector(".dc-questions")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const { container } = render(<LandingPage />);
+    expect(container.querySelector(".dc-intake")).toBeNull();
     expect(container.querySelector(".dc-return").compareDocumentPosition(container.querySelector(".dc-hero")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(container.querySelector('.dc-return a[href="/projects"]')).toBeTruthy();
     expect(container.querySelector(".dc-return__status strong")?.textContent).toBe("1");
@@ -151,7 +149,7 @@ describe("LandingPage render smoke", () => {
   it("tracks each hero action without attaching CSV values", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="#dochi-upload"]'));
+    clickWithoutNavigation(container.querySelector('a.dc-action-route[href="/start"]'));
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/calculator"]'));
     clickWithoutNavigation(container.querySelector('a.dc-text-link[href="/diagnose"]'));
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_data_start_clicked", {
@@ -195,9 +193,9 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Explore a sample", "Upload your CSV"]);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Explore a sample", "Start with my data"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did it change?What should you do next?");
-    expect(container.querySelector('a.dc-action-route[href="#dochi-upload"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
@@ -220,16 +218,12 @@ describe("LandingPage render smoke", () => {
     // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
     expect(document.querySelector(".dc-catalog")).toBeNull();
   });
-  it.each(["ko", "en"])("opens intake on demand and covers all tools through purposes (%s)", (locale) => {
-    const { container } = render(<LandingPage locale={locale}><section id="dochi-upload" tabIndex={-1}><input aria-label="file" /></section></LandingPage>);
-    const intake = container.querySelector(".dc-intake");
-    expect(intake.hidden).toBe(true);
+  it.each(["ko", "en"])("uses the shared data entry and covers all tools through purposes (%s)", (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelector(".dc-intake")).toBeNull();
     clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
-    expect(intake.hidden).toBe(false);
-    fireEvent.click(container.querySelector(".dc-intake__close"));
-    expect(intake.hidden).toBe(true);
-    clickWithoutNavigation(container.querySelector('.dc-action-route--primary'));
-    expect(intake.hidden).toBe(false);
+    expect(container.querySelector(".dc-intake")).toBeNull();
+    expect(container.querySelector('.dc-action-route--primary').getAttribute("href")).toBe(locale === "en" ? "/en/start" : "/start");
     const found = new Set();
     for (const button of container.querySelectorAll(".home-tool-finder__purposes button")) {
       fireEvent.click(button);

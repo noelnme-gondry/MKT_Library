@@ -16,9 +16,6 @@ import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
-import DochiAssistant from "@/components/assistant/DochiAssistant";
-import DochiWelcomeOverlay from "@/components/assistant/DochiWelcomeOverlay";
-import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -96,7 +93,7 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
-            {routeId === "home" && <><LandingPage reading={reading}><DochiAssistant /><DochiWelcomeOverlay manual /></LandingPage></>}
+            {routeId === "home" && <><LandingPage reading={reading} /></>}
             {routeId === "guide-index" && <GuideIndex />}
             {routeId === "start-gate" && <StartGate />}
             {routeId === "projects" && <ProjectsPage locale="ko" />}
@@ -162,7 +159,6 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
       </div>
       {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}
-      {routeId !== "home" && routeId !== "dochi-result" && !["storage", "projects", "subscription"].includes(routeId) && <DochiAnalysisDock />}
       <GlobalModals />
       <UiSemantics />
     </>

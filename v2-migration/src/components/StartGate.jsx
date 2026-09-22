@@ -1,10 +1,10 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { IA, SECTIONS } from "@/store/useDataStore";
+import { useRouter, useSearchParams } from "next/navigation";
+import { IA } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
-import { trItemTitle, trGroupTitle } from "@/lib/enNavCopy";
+import { trItemTitle } from "@/lib/enNavCopy";
 import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
 import { trackProductEvent } from "@/lib/analytics";
@@ -13,7 +13,7 @@ import ToolIndex from "@/components/ds/ToolIndex";
 import { blockerFieldLabels, blockersText } from "@/lib/assistant/blockerText";
 import JourneyProgress from "@/components/ds/JourneyProgress";
 import AssistantWorkspace from "@/components/assistant/AssistantWorkspace";
-import { DOCHI_HANDOFF_KEY, DochiArrivalTransition } from "@/components/assistant/DochiHandoffMotion";
+import { DOCHI_HANDOFF_KEY } from "@/components/assistant/DochiHandoffMotion";
 import DecisionDataUpdateGuide from "@/components/ds/DecisionDataUpdateGuide";
 import { buildDatasetContinuitySnapshot, classifyDatasetContinuity, readDatasetContinuitySnapshot } from "@/lib/dataContinuity";
 import { groupForRoute } from "@/lib/toolGroups";
@@ -21,9 +21,6 @@ import { groupForRoute } from "@/lib/toolGroups";
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
 // 화면. "예시부터 둘러보기"를 고르면 demoDisabled=false로 되돌리고 대시보드 데모로.
-const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
-const OPS_GROUP_IDS = new Set(ANALYSIS_SECTION ? ANALYSIS_SECTION.groups : []);
-const DATA_GUIDE_GROUP = "08";
 const COPY = {
   ko: {
     eyebrow: "내 데이터 분석",
@@ -75,57 +72,28 @@ const COPY = {
   },
 };
 
-export default function StartGate({ locale = "ko" }) {
+function StartGateContent({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
   const router = useRouter();
+  const browseMethods = useSearchParams().get("view") === "methods";
+  const [submittedInput, setSubmittedInput] = useState(null);
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
   const decisionRecords = useAppStore((s) => s.decisionRecords);
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
-  const [isDochiArrival, setIsDochiArrival] = useState(false);
-  const [mappingCoachPhase, setMappingCoachPhase] = useState("hidden");
   const [eligibilitySnapshot, setEligibilitySnapshot] = useState(null);
-  const mappingCoachTimerRef = useRef(null);
   const workspaceRef = useRef(null);
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
-    startMyData();
-    let beginTimer;
-    let timer;
-    try {
-      const handoff = JSON.parse(window.sessionStorage.getItem(DOCHI_HANDOFF_KEY) || "null");
-      const isRecent = handoff?.startedAt && Date.now() - handoff.startedAt < 15000;
-      const hasReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      if (isRecent) {
-        beginTimer = window.setTimeout(() => {
-          window.sessionStorage.removeItem(DOCHI_HANDOFF_KEY);
-          if (hasReducedMotion) {
-            setMappingCoachPhase("showing");
-            return;
-          }
-          setIsDochiArrival(true);
-          timer = window.setTimeout(() => {
-            setIsDochiArrival(false);
-            setMappingCoachPhase("showing");
-          }, 1500);
-        }, 0);
-      } else {
-        window.sessionStorage.removeItem(DOCHI_HANDOFF_KEY);
-      }
-    } catch {
-      // 저장소 접근이 막혀도 일반 /start 진입은 그대로 유지한다.
-    }
-    return () => {
-      window.clearTimeout(beginTimer);
-      window.clearTimeout(timer);
-      window.clearTimeout(mappingCoachTimerRef.current);
-    };
-  }, [startMyData]);
+    if (!browseMethods) startMyData();
+    try { window.sessionStorage.removeItem(DOCHI_HANDOFF_KEY); } catch { /* Optional legacy handoff marker. */ }
+  }, [startMyData, browseMethods]);
 
-  const groups = IA.filter((g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
+  const hasSubmitted = hasPreparedData && submittedInput?.raw === csvData.raw && submittedInput?.mapping === csvData.mapping;
+  const analyze = () => { setSubmittedInput({ raw: csvData.raw, mapping: csvData.mapping }); };
   // 사용자가 비교 방식이나 데이터 상태를 다시 판정할 필요 없도록, 같은 데이터
   // 그룹에서 가장 최근에 저장한 판단 하나를 현재 업로드와 먼저 대조한다. 원본 행은
   // 결정 기록에 남지 않으며, 이 비교도 날짜 범위와 비가역 지문만 사용한다.
@@ -178,49 +146,29 @@ export default function StartGate({ locale = "ko" }) {
     handoffCsvToRoute(id, prepared, { markAnalyzed: Boolean(isEligibilityCurrent && eligibleIds.includes(id)) });
     goTool(id);
   };
-  const finishMappingReview = () => {
-    setMappingCoachPhase("leaving");
-    window.clearTimeout(mappingCoachTimerRef.current);
-    mappingCoachTimerRef.current = window.setTimeout(() => setMappingCoachPhase("hidden"), 360);
-  };
-  const showMappingCoach = () => {
-    window.clearTimeout(mappingCoachTimerRef.current);
-    setMappingCoachPhase("showing");
-  };
   const continueWithNewAnalysis = () => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
-      <DochiArrivalTransition active={isDochiArrival} locale={locale} />
       <div className="page-eyebrow">{C.eyebrow}</div>
-      <h1 className="page-title">{C.title}</h1>
-      <p className="page-deck">{C.deck}</p>
-      <JourneyProgress stage="prepare" locale={locale} placement="start" />
+      <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
+      <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
+      {!browseMethods && <JourneyProgress stage={hasSubmitted ? "analyze" : "prepare"} locale={locale} placement="start" />}
 
-      <section className="block start-upload-panel">
-        <CsvUploader
-          toolId="start-gate"
-          locale={locale}
-          showMappingReview
-          collapseMappingReview
-          showMappingCoach={mappingCoachPhase !== "hidden"}
-          mappingCoachLeaving={mappingCoachPhase === "leaving"}
-          onMappingReviewConfirmed={finishMappingReview}
-          onPrepared={showMappingCoach}
-          afterFileSummary={hasPreparedData ? (
-            <>
-              <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
-              <div ref={workspaceRef}>
-                <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart={isDochiArrival || mappingCoachPhase !== "hidden"} />
-              </div>
-            </>
-          ) : null}
-        />
-      </section>
+      {!browseMethods && <>
+        {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · mapping confirmed" : "행 · 매핑 확인 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}
+        <section className="block start-upload-panel" hidden={hasSubmitted}>
+          <CsvUploader toolId="start-gate" locale={locale} showMappingReview collapseMappingReview onAnalyzed={analyze} />
+        </section>
+        {hasSubmitted && <div ref={workspaceRef}>
+          <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
+          <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
+        </div>}
+      </>}
 
       {/* 업로드 전에만 보이던 세 카드는, 정작 "올렸는데 되는 분석이 없는" 사람에게서
           사라지고 있었다. 업로드 뒤에도 남기되 도구 인덱스 아래로 순서만 내린다. */}
-      {!hasPreparedData && <section className="start-direct-actions" aria-labelledby="start-direct-title">
+      {browseMethods && <section className="start-direct-actions" aria-labelledby="start-direct-title">
         <header>
           <span>{C.directEyebrow}</span>
           <h2 id="start-direct-title">{C.directTitle}</h2>
@@ -247,43 +195,25 @@ export default function StartGate({ locale = "ko" }) {
       {/* 도구 인덱스 — 예전에는 <details>로 접혀 있어서 "무엇을 할 수 있는지"가
           화면에 없었다. 항상 펴 두고 질문 단계로 묶는다. 지금 올린 CSV로 안 되는
           도구도 숨기지 않고 흐리게만 둔다(숨기면 존재 자체를 못 본다). */}
-      <section className="block start-tool-index" aria-labelledby="start-tool-index-title">
+      {browseMethods && <section className="block start-tool-index" aria-labelledby="start-tool-index-title">
         <h2 className="section-title" id="start-tool-index-title" style={{ margin: "0 0 4px", border: "none", padding: 0 }}>
-          {hasPreparedData ? C.indexTitleWithData : C.indexTitle}
+          {C.indexTitle}
         </h2>
-        <p className="muted" style={{ margin: "0 0 16px" }}>{hasPreparedData ? C.indexDeckWithData : C.indexDeck}</p>
+        <p className="muted" style={{ margin: "0 0 16px" }}>{C.indexDeck}</p>
         <ToolIndex
           locale={locale}
           density="grid"
-          eligibleIds={eligibleIds}
-          blockedInfo={isEligibilityCurrent ? eligibilitySnapshot.blocked : null}
-          onSelect={(toolId) => (hasPreparedData ? openRecommended(toolId) : goTool(toolId))}
+          eligibleIds={null}
+          blockedInfo={null}
+          onSelect={goTool}
         />
-      </section>
-
-      {hasPreparedData && <section className="start-direct-actions" aria-labelledby="start-direct-title-after">
-        <header>
-          <span>{C.directEyebrow}</span>
-          <h2 id="start-direct-title-after">{C.directTitle}</h2>
-        </header>
-        <div className="start-direct-actions__grid">
-          <Link
-            href={locale === "en" ? "/en/calculator" : "/calculator"}
-            onClick={() => trackProductEvent("calculator_entry_clicked", { source: "start", placement: "after_upload_index", locale })}
-          >
-            <span>{C.calculatorTag}</span><strong>{C.calculatorTitle}</strong><p>{C.calculatorDesc}</p><b>{C.calculatorCta} →</b>
-          </Link>
-          <Link
-            href={locale === "en" ? "/en/diagnose" : "/diagnose"}
-            onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "after_upload_index", locale })}
-          >
-            <span>{C.diagnoseTag}</span><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p><b>{C.diagnoseCta} →</b>
-          </Link>
-          <Link href={locale === "en" ? "/en/tools/brand-campaign-incrementality" : "/tools/brand-campaign-incrementality"}>
-            <span>{C.brandTag}</span><strong>{C.brandTitle}</strong><p>{C.brandDesc}</p><b>{C.brandCta} →</b>
-          </Link>
-        </div>
       </section>}
+
+
     </>
   );
+}
+
+export default function StartGate(props) {
+  return <Suspense fallback={<p role="status">{props.locale === "en" ? "Loading workspace…" : "분석 화면을 준비하고 있습니다…"}</p>}><StartGateContent {...props} /></Suspense>;
 }

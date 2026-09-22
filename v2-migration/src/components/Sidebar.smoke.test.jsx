@@ -10,8 +10,10 @@ import Sidebar from "@/components/Sidebar";
 import { WORKSPACE_NAV, workspaceNavItem } from "@/lib/workspaceNav";
 
 let pathname = "/";
+let search = "";
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(search),
 }));
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -42,19 +44,18 @@ function seedWithData() {
 describe("Sidebar render smoke", () => {
   beforeEach(() => {
     pathname = "/";
+    search = "";
     seedNoData();
   });
-  it("restores the unified source after a detail tool changes the active CSV", () => {
+  it("keeps a single data entry without exposing the old result destination", () => {
     seedWithData();
     const source = useAppStore.getState().csvData;
     useAppStore.setState({ dochiAnalysisSession: { sourceData: source, analyses: [] }, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV } });
     const { container } = render(<Sidebar />);
-    const link = container.querySelector('.library-nav-item[href="/dochi-result"]');
-    link.addEventListener("click", (event) => event.preventDefault());
-    fireEvent.click(link);
-    useAppStore.getState().setCurrentRouteId("dochi-result");
-    expect(useAppStore.getState().csvData.raw).toBe(source.raw);
-    expect(useAppStore.getState().csvData.mapping).toBe(source.mapping);
+    expect(container.querySelector('.library-nav-item[href="/dochi-result"]')).toBeNull();
+    expect(container.querySelector('.library-nav-item[href="/dashboard"]')).toBeNull();
+    expect(container.querySelector('.library-nav-item[href="/start"]')).toBeTruthy();
+    expect(useAppStore.getState().dochiAnalysisSession.sourceData).toBe(source);
   });
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
@@ -62,7 +63,7 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelectorAll(".library-nav-item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
     // 홈 사이드바가 워크스페이스 네 줄만 그려서 정작 홈에서 "무슨 분석이
     // 가능한지"를 볼 길이 없었다. 전체 목록으로 가는 줄이 반드시 있어야 한다.
-    expect(document.querySelector(".inner-workspace-label__all")).toBeTruthy();
+    expect(document.querySelector('a[href="/start?view=methods"]')).toBeTruthy();
     expect(document.querySelector('.library-nav-item[href="/start"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("start").desc);
     expect(document.querySelector('.library-nav-item[href="/diagnose"]')?.getAttribute("aria-label")).toContain(workspaceNavItem("diagnose").desc);
     expect(document.body.textContent).toContain(workspaceNavItem("start").name);
@@ -86,28 +87,25 @@ describe("Sidebar render smoke", () => {
     seedWithData();
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector("aside.sidebar")).toBeTruthy();
-    expect(document.querySelector('.nav-item[data-route="5-2"][aria-current="page"]')).toBeTruthy();
-    const search = document.querySelector(".sidebar-search");
-    expect(search?.getAttribute("aria-controls")).toBe("cmdk");
-    expect(search?.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector('.nav-item[data-route="5-2"]')).toBeNull();
+    expect(document.querySelector(".sidebar-search")).toBeNull();
     expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(WORKSPACE_NAV.filter(item => !item.secondary).length);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("data-information-section")).toBe(true);
   });
   // 분석 섹션은 TOOL_JOURNEY 스테이지를 그리므로 IA 그룹 기준 항목 번호를 붙이면
   // 헤더(01~05)와 앞자리가 어긋나고 가이드 번호와도 겹친다. 도구 칩엔 번호 없음,
   // 가이드 문서(01~04)는 번호 유지 — 둘 다 회귀로 잠근다.
-  it("numbers guide documents but not analysis tools", () => {
+  it("moves the full tool tree into the dedicated analysis browser", () => {
     pathname = "/dashboard";
     seedWithData();
     const { container } = render(<Sidebar />);
 
     const toolChips = [...container.querySelectorAll(".sidebar-workflow-stage .nav-item .ix")];
     expect(toolChips).toHaveLength(0);
-    expect(container.querySelector(".sidebar-workflow-prep")?.textContent).toBe("데이터 준비");
-
-    const guideGroup = container.querySelector('.nav-group[data-group="01"]');
-    expect(guideGroup?.querySelector(".nav-group-index")?.textContent).toBe("1");
-    expect(guideGroup?.querySelector('.nav-item[data-route="1-1"] .ix')?.textContent).toBe("1-1");
+    expect(container.querySelector(".sidebar-workflow-prep")).toBeNull();
+    expect(container.querySelector('.nav-group[data-group="01"]')).toBeNull();
+    expect(container.querySelector('a[href="/guide"]')).toBeTruthy();
+    expect(container.querySelector('a[href="/start?view=methods"]')).toBeTruthy();
   });
 
   it("keeps resource and external-link parity in English", () => {
@@ -137,7 +135,7 @@ describe("Sidebar render smoke", () => {
   it.each(["ko", "en"])("keeps content, CSV, results and recurring work outside disclosures (%s)", (locale) => {
     pathname = locale === "en" ? "/en" : "/";
     const { container } = render(<Sidebar locale={locale} />);
-    for (const id of ["blog", "guide", "start", "results", "review", "subscription", "storage", "diagnose"]) {
+    for (const id of ["blog", "guide", "start", "methods", "review", "subscription", "storage", "diagnose"]) {
       const item = workspaceNavItem(id, locale);
       const link = container.querySelector(`.library-nav a[href="${locale === "en" ? "/en" : ""}${item.href}"]`);
       expect(link, id).toBeTruthy();
@@ -147,19 +145,19 @@ describe("Sidebar render smoke", () => {
 
 });
 
-describe("응답 패널 다섯 분석 노출", () => {
-  it("사이드바에 다섯 분석이 각각 항목으로 나온다", () => {
+describe("Analysis browser navigation", () => {
+  it("selects methods independently from the data entry on the same route", () => {
     // 예전에는 5-18 한 줄뿐이라 들어가야만 안에 분석이 다섯이란 걸 알 수 있었다.
     // 홈은 사이드바가 다른 변형(워크스페이스 4줄)을 그리므로 도구 경로에서 본다.
-    pathname = "/dashboard";
+    pathname = "/start";
+    search = "view=methods";
     const { container } = render(<Sidebar />);
-    const hrefs = [...container.querySelectorAll(".nav-item")].map((link) => link.getAttribute("href"));
-    for (const slug of ["/tools/marketing-trend", "/tools/paid-organic-trend", "/tools/cannibalization-diagnosis", "/tools/mmm-contribution", "/tools/marketing-forecast"]) {
-      expect(hrefs, slug).toContain(slug);
-    }
+    expect(container.querySelector('a[href="/start?view=methods"]').getAttribute("aria-current")).toBe("page");
+    expect(container.querySelector('a[href="/start"]').getAttribute("aria-current")).toBeNull();
     // 하위 화면 전용 서브내비는 필요 없어졌다 — 항목이 곧 분석이다.
     expect(container.querySelector(".nav-subnav")).toBeNull();
     pathname = "/";
+    search = "";
   });
 });
 
