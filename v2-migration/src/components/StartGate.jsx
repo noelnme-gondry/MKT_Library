@@ -163,6 +163,7 @@ function StartGateContent({ locale = "ko" }) {
         {hasSubmitted && <div ref={workspaceRef}>
           <DecisionDataUpdateGuide continuity={continuity} locale={locale} onContinue={continueWithNewAnalysis} />
           <AssistantWorkspace csvData={csvData} locale={locale} getTitle={getTitle} onOpenTool={openRecommended} onEligibilityChange={rememberEligibility} autoStart />
+          {eligibleIds?.includes("5-2") && <Link className="btn" href={locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"}>{locale === "en" ? "Build weekly review" : "주간 리뷰 만들기"}</Link>}
         </div>}
       </>}
 

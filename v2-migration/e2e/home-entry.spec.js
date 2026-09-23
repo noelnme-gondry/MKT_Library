@@ -34,16 +34,11 @@ async function checkHome(page, locale) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.locator(".dc-action-route--primary").focus();
   await page.keyboard.press("Enter");
-  await expect(page.locator("#dochi-upload")).toBeVisible();
-  await expect(page.locator("#dochi-upload")).toBeFocused();
-  expect(await page.locator("#dochi-upload").evaluate(node => getComputedStyle(node).position)).toBe("relative");
-  await expect(page).toHaveURL(/#dochi-upload$/);
+  await expect(page).toHaveURL(/\/start$/);
+  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
   await page.reload();
-  await expect(page.locator("#dochi-upload")).toBeVisible();
-  await page.getByRole("button", { name: en ? "Close CSV upload" : "CSV 업로드 닫기", exact: true }).click();
-  await expect(page.locator("#dochi-upload")).not.toBeVisible();
-  await expect(page.locator(".dc-action-route--primary")).toBeFocused();
-  await expect(page).not.toHaveURL(/#dochi-upload$/);
+  await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
+  await expect(page.locator(".dochi-workspace")).toHaveCount(0);
   expect(hydrationErrors).toEqual([]);
 }
 

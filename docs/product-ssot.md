@@ -236,11 +236,17 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 제품이 제공하는 선택지는 많아도 **한 화면에서 사용자가 내려야 하는 결정은 하나**다. 첫 방문자에게 선명해야 하는 것은 'CSV를 올린다' 또는 '문제를 진단한다' 중 하나이며, 라이브러리·테마·설정·전체 도구 인덱스는 그 행동과 경쟁하지 않는다.
 
+### 5.1.0 결과 읽기와 보조 안내 (2026-09-23)
+
+- 결과는 결론 → 주요 지표 → 선택한 지표의 기간 비교 → 다음 행동 순서다. 지출 증감은 중립, CPA·CPI 상승은 악화로 표시하며 원본 통화를 환산하지 않는다. 노출·클릭 등은 전체 수치에서 확인한다. / Read conclusion, key metrics, selected-period comparison, then next action; spend changes are neutral and increasing CPA/CPI indicates deterioration. Preserve source currency.
+- 유입 설문은 첫 결과를 본 뒤 모서리에 표시한다. 답변·다시 묻지 않기는 영구 저장하고, 나중에·닫기는 세션 동안 다시 표시하지 않는다. / Show the source survey after a result, at the screen corner; persist answers/opt-out and suppress dismissals for the session.
+- 블로그 보조 안내는 **첫 번째 글부터 두 번 아래로 스크롤한 뒤** 표시한다. 연속 스크롤 이벤트는 한 동작으로 묶는다. 각 글에서 중앙 안내로 해당 글에 맞는 분석을 우선 연결하며 예제·준비 양식도 제공한다. 닫기는 해당 글에만 적용하고, 오늘 다시 보지 않기는 기기 현지 자정까지 모든 글을 숨긴다. / Each article shows a centered helper linking primarily to its relevant analysis, with practice and preparation links. Dismiss per article, or hide all helpers until local midnight.
+
 ### 5.1.1 홈 진입과 도구 탐색
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 소개는 유지하고, 주 행동은 **내 데이터로 분석 시작 / Start with my data**다. 도치 업로드는 이 행동 또는 `#dochi-upload` 직접 진입 때 펼친다. 접어도 진행 중인 작업은 유지한다. 보조 행동은 **데모로 먼저 보기 / Try a demo**이며, 저장된 결정이 있으면 상단에서 **주간 리뷰 이어가기 / Continue weekly review**로 연결한다.
+홈 소개는 유지하고, 주 행동은 **내 데이터로 분석 시작 / Start with my data**다. `/start`에서 파일·시트를 불러오고 매핑을 확인한 후 명시적으로 분석을 시작한다. 결과가 나오면 입력은 한 줄 요약으로 접히며 수정할 수 있다. / Import and map data at `/start`, then explicitly run analysis; summarize input after results are available. 보조 행동은 **데모로 먼저 보기 / Try a demo**이며, 저장된 결정이 있으면 상단에서 **주간 리뷰 이어가기 / Continue weekly review**로 연결한다.
 
 **직접 도구 찾기 / Find a tool**는 목적 세 개만 먼저 보여주고 선택한 목적의 도구 이름과 질문 한 줄을 펼친다. **전체 도구 보기 / View all tools**로 모든 발행 도구에 도달할 수 있다. 도구 목록은 `toolIndex`에서 파생한다.
 

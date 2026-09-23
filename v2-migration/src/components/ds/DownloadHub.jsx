@@ -119,6 +119,8 @@ export default function DownloadHub({
         <DropdownMenu.Content
           align={align === "right" ? "end" : "start"}
           sideOffset={6}
+          collisionPadding={12}
+          updatePositionStrategy="always"
           onCloseAutoFocus={event => { if (preview) event.preventDefault(); }}
           style={{
             minWidth: "220px",

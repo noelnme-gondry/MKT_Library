@@ -15,8 +15,8 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
 | `blog_cta_viewed` | 글·용어의 행동 패널이 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|blog_bridge`, `locale` |
-| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_answer\|article_mid\|article_post\|blog_bridge`, `locale` |
-| `blog_bridge_dismissed` | 블로그 도치 브리지를 닫음 | `content_slug`, `content_type`, `interaction_source`, `placement=blog_bridge`, `state=session\|permanent`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_answer\|article_mid\|article_post\|blog_bridge\|blog_bridge_practice`, `locale` |
+| `blog_bridge_dismissed` | 블로그 보조 안내를 닫음 | `content_slug`, `content_type`, `interaction_source`, `placement=blog_bridge`, `state=session\|today`, `locale` |
 | `tool_view` | 분석 도구 URL 진입 | `tool_id`, `interaction_source=route`, `locale` |
 | `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |

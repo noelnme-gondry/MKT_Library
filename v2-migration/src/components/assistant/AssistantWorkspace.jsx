@@ -1,5 +1,6 @@
 "use client";
 import { workspaceReviewProposal } from "@/lib/assistant/workspaceReviewProposal";
+import { metricChangeTone, formatComparisonMetric } from "@/lib/assistant/metricPresentation";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import ToolIndex from "@/components/ds/ToolIndex";
@@ -295,27 +296,48 @@ function ResultBars({ visualization, locale }) {
   return <>{bars}<section data-information-section="" className="dochi-workspace__exact-table"><header data-information-heading="">{(COPY[locale] || COPY.ko).exactTable}</header><ResultTable visualization={visualization} locale={locale} /></section></>;
 }
 
-function ResultPeriodComparison({ visualization, locale }) {
+function ResultPeriodComparison({ visualization, locale, currency }) {
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [showTable, setShowTable] = useState(false);
   const rows = (visualization.data || visualization.table?.rows || [])
-    .filter((row) => Number.isFinite(Number(row?.prior)) || Number.isFinite(Number(row?.recent)))
-    .slice(0, 8);
+    .filter((row) => Number.isFinite(chartNumber(row?.prior)) || Number.isFinite(chartNumber(row?.recent)));
   if (!rows.length) return <ResultTable visualization={visualization} locale={locale} />;
+  const hasActions = rows.some(row => row.metric === "act");
+  const primaryKeys = ["cost", hasActions ? "act" : "inst", hasActions ? "cpa" : "cpi", "roas"];
+  const primary = rows.filter(row => primaryKeys.includes(row.metric));
+  const selected = primary.find(row => row.metric === selectedMetric) || primary.find(row => row.metric === "cpa") || primary[0] || rows[0];
   return <>
+    <div className="analysis-metric-picker" aria-label={locale === "en" ? "Choose a metric to compare" : "비교할 지표 선택"}>
+      {primary.map(row => {
+        const change = chartNumber(row.change);
+        const tone = metricChangeTone(row.metric, change);
+        const label = locale === "en" ? { improved: "Improved", worsened: "Worsened", neutral: "Change" }[tone] : { improved: "개선", worsened: "악화", neutral: "변화" }[tone];
+        return <button type="button" key={row.metric} aria-pressed={selected.metric === row.metric} onClick={() => setSelectedMetric(row.metric)}>
+          <span>{row.label || row.metric}</span><strong>{formatComparisonMetric(row.metric, row.recent, locale, currency)}</strong>
+          <small>{locale === "en" ? "Prior" : "비교 기간"} {formatComparisonMetric(row.metric, row.prior, locale, currency)}</small>
+          <b data-tone={tone}>{label} {Number.isFinite(change) ? `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%` : "—"}</b>
+        </button>;
+      })}
+    </div>
     <figure className="dochi-workspace__period-comparison" role="img" aria-label={visualization.question}>
       <figcaption><i className="is-prior">{locale === "en" ? "Prior" : "직전"}</i><i className="is-recent">{locale === "en" ? "Recent" : "최근"}</i></figcaption>
-      <ul>{rows.map((row, index) => {
+      <ul>{[selected].map((row, index) => {
         const prior = chartNumber(row.prior);
         const recent = chartNumber(row.recent);
         const max = Math.max(Math.abs(prior) || 0, Math.abs(recent) || 0, 1);
         const change = chartNumber(row.change);
         return <li key={`${visualization.id}-${row.metric || index}`}>
-          <div><strong>{row.label || row.metric}</strong><em className={change < 0 ? "is-negative" : change > 0 ? "is-positive" : ""}>{Number.isFinite(change) ? `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%` : "—"}</em></div>
-          <span className="is-prior" style={{ "--dochi-period-size": `${Math.max(2, Math.abs(prior) / max * 100)}%` }}><b>{formatResultValue(row.prior, locale)}</b></span>
-          <span className="is-recent" style={{ "--dochi-period-size": `${Math.max(2, Math.abs(recent) / max * 100)}%` }}><b>{formatResultValue(row.recent, locale)}</b></span>
+          <div><strong>{row.label || row.metric}</strong><em data-tone={metricChangeTone(row.metric, change)}>{Number.isFinite(change) ? `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%` : "—"}</em></div>
+          <span className="is-prior" style={{ "--dochi-period-size": `${(Number.isFinite(prior) ? Math.abs(prior) / max * 100 : 0)}%` }}><b>{formatComparisonMetric(row.metric, row.prior, locale, currency)}</b></span>
+          <span className="is-recent" style={{ "--dochi-period-size": `${(Number.isFinite(recent) ? Math.abs(recent) / max * 100 : 0)}%` }}><b>{formatComparisonMetric(row.metric, row.recent, locale, currency)}</b></span>
         </li>;
       })}</ul>
     </figure>
-    <section data-information-section="" className="dochi-workspace__exact-table"><header data-information-heading="">{(COPY[locale] || COPY.ko).exactTable}</header><ResultTable visualization={visualization} locale={locale} /></section>
+    <button type="button" className="btn" aria-expanded={showTable} onClick={() => setShowTable(!showTable)}>{locale === "en" ? "All metrics and exact values" : "전체 지표·정확한 수치 보기"}</button>
+    {showTable && <section className="dochi-workspace__exact-table"><div className="dochi-workspace__result-table-wrap"><table className="dochi-workspace__result-table">
+      <thead><tr>{(locale === "en" ? ["Metric", "Prior period", "Recent period", "Change"] : ["지표", "비교 기간", "분석 기간", "증감률"]).map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+      <tbody>{rows.map(row => <tr key={row.metric}><th scope="row">{row.label || row.metric}</th><td>{formatComparisonMetric(row.metric, row.prior, locale, currency)}</td><td>{formatComparisonMetric(row.metric, row.recent, locale, currency)}</td><td data-tone={metricChangeTone(row.metric, chartNumber(row.change))}>{Number.isFinite(chartNumber(row.change)) ? `${row.change > 0 ? "+" : ""}${(row.change * 100).toFixed(1)}%` : "—"}</td></tr>)}</tbody>
+    </table></div></section>}
   </>;
 }
 
@@ -398,8 +420,8 @@ function ResultScatterChart({ visualization, locale }) {
   </svg><figcaption><span>{xKey} ←</span><span>{yKey} ↑</span></figcaption></figure>;
 }
 
-function ResultVisualization({ visualization, locale }) {
-  if (visualization.kind === "bar" && visualization.options?.variant === "period-comparison") return <ResultPeriodComparison visualization={visualization} locale={locale} />;
+function ResultVisualization({ visualization, locale, currency }) {
+  if (visualization.kind === "bar" && visualization.options?.variant === "period-comparison") return <ResultPeriodComparison visualization={visualization} locale={locale} currency={currency} />;
   if (visualization.kind === "bar") return <ResultBars visualization={visualization} locale={locale} />;
   if (visualization.kind === "line") return <ResultLineChart visualization={visualization} locale={locale} />;
   if (visualization.kind === "scatter") return <ResultScatterChart visualization={visualization} locale={locale} />;
@@ -459,7 +481,7 @@ function resultExportValue({ result, toolTitle, locale, csvData, C }) {
 function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", isDecisionFocus = false }) {
   const C = COPY[locale] || COPY.ko;
   const visualizations = result.visualizations || [];
-  const evidenceStats = result.verdict.stats?.slice(0, 5) || [];
+  const evidenceStats = visualizations.some(item => item.options?.variant === "period-comparison") ? [] : result.verdict.stats?.slice(0, 5) || [];
   const hasDetails = result.verdict.caveats?.length > 0;
   const resultRef = useRef(null);
   const eventKey = productEventKey("dochi_workspace", result.toolId, result.inputSignature, result.mappingSignature, locale);
@@ -490,7 +512,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
     {(evidenceStats.length > 0 || visualizations.length > 0) && <section className="dochi-workspace__result-evidence" aria-label={C.availableEvidence}>
       <header><h4>{C.availableEvidence}</h4>{evidenceStats.length > 0 && <span>{C.evidenceFigures}</span>}</header>
       {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale)}</dd></div>)}</dl>}
-      {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} /></section>)}
+      {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
     {reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}

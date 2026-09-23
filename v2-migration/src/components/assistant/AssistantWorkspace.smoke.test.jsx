@@ -221,7 +221,14 @@ describe("Dochi analysis workspace", () => {
     expect(focus.getByText("현재 근거")).toBeTruthy();
     expect(focus.getByText("해석 한계 보기")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("img", { name: "직전 기간과 최근 기간 사이에 무엇이 변했는가?" })).toBeTruthy());
-    fireEvent.click(focus.getByText("정확한 수치 표 보기"));
+    const metrics = document.querySelector(".analysis-metric-picker");
+    expect(metrics.textContent).not.toMatch(/노출|클릭/);
+    const metricButtons = within(metrics).getAllByRole("button");
+    expect(metricButtons.some(button => button.getAttribute("aria-pressed") === "true")).toBe(true);
+    expect(document.querySelectorAll(".dochi-workspace__period-comparison li")).toHaveLength(1);
+    fireEvent.click(metricButtons[0]);
+    expect(metricButtons[0].getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(focus.getByText("전체 지표·정확한 수치 보기"));
     expect(focus.getAllByRole("table").length).toBeGreaterThan(0);
   });
 

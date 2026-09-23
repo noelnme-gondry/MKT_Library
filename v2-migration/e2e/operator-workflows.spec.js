@@ -152,24 +152,22 @@ test("@light-en Movement map withholds actions after a tracking change", async (
 
 test("@light-en English start upload stays accessible in light mode", async ({ page }) => {
   await page.goto("/en/start");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Upload data. Get the right first analysis.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Start with my data");
   await expect(page.locator("body")).toHaveClass(/light-mode/);
   await expectPageHierarchy(page, { primaryRegion: ".start-upload-panel" });
   await expectKeyboardFocusVisible(page);
 
   await uploadCsv(page, "efficiency.csv");
-  const mapping = page.locator('.csv-mapping-block[aria-describedby="dochi-mapping-coach-title"]');
+  const mapping = page.locator('.csv-mapping-block');
   await expect(mapping).toBeVisible();
   // Check the visible coach, then wait for dismissal before auditing the next state.
   await expectNoSeriousAccessibilityViolations(page);
-  await page.locator(".dochi-mapping-coach").getByRole("button", { name: "Got it" }).click();
-  await expect(page.locator(".dochi-mapping-coach")).toBeHidden();
+  await page.locator(".csv-analysis-action").click();
 
-  const workspace = page.getByRole("region", { name: "The analysis map Dochi found" });
+  const workspace = page.getByRole("region", { name: "Analyses for your data" });
   await expect(workspace).toBeVisible();
-  await expect(workspace.getByRole("region", { name: "Summary calculated on this screen" }).first()).toBeVisible();
-  await expect(workspace.locator('[data-queue-settled="true"]')).toBeAttached();
-  await workspace.getByText("Summaries this screen can calculate", { exact: true }).click();
+  await expect(workspace).toHaveAttribute("data-queue-settled", "true");
+  await workspace.locator(".workspace-next-action button").click();
   const quality = workspace.getByRole("region", { name: "Detailed input quality" }).first();
   await quality.getByRole("button", { name: "Check detailed input quality" }).click();
   await expect(quality.getByText(/Input checks passed|Review input cautions/)).toBeVisible();
@@ -182,21 +180,20 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
 
 test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간다", async ({ page }) => {
   await page.goto("/start");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("데이터를 올리면 첫 분석을 골라드립니다");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("내 데이터로 시작");
   await expectPageHierarchy(page, { primaryRegion: ".start-upload-panel" });
   await expectKeyboardFocusVisible(page);
 
   await uploadCsv(page, "efficiency.csv");
-  const mapping = page.locator('.csv-mapping-block[aria-describedby="dochi-mapping-coach-title"]');
+  const mapping = page.locator('.csv-mapping-block');
   await expect(mapping).toBeVisible();
   await expect(mapping).not.toHaveAttribute("open");
-  await page.locator(".dochi-mapping-coach").getByRole("button", { name: "확인" }).click();
+  await page.locator(".csv-analysis-action").click();
 
-  const workspace = page.getByRole("region", { name: "도치가 찾은 분석 지도" });
+  const workspace = page.getByRole("region", { name: "데이터로 가능한 분석" });
   await expect(workspace).toBeVisible();
-  await expect(workspace.locator('[data-queue-settled="true"]')).toBeAttached();
-  await expect(workspace.locator(".dochi-workspace__decision-focus").getByRole("region", { name: "이 화면에서 계산한 요약" })).toBeVisible();
-  await workspace.getByText("이 화면에서 계산 가능한 요약", { exact: true }).click();
+  await expect(workspace).toHaveAttribute("data-queue-settled", "true");
+  await workspace.locator(".workspace-next-action button").click();
   const dashboardCard = workspace.locator(".dochi-workspace__card").filter({
     has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
   });

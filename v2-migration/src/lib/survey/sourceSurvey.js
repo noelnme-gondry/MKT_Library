@@ -19,11 +19,7 @@ export const SOURCE_SURVEY_SESSION_KEY = "mkt-library-source-survey-seen";
 // 화면이 받은 답변을 서버가 거절한다.
 export const SOURCE_SURVEY_MAX_LENGTH = 300;
 
-// 기다리지 않는다 — 도치 인사를 닫으면 바로 묻는다.
-//
-// 0인데도 타이머를 남기는 이유가 있다: `setTimeout(…, 0)`은 마운트 이펙트가 전부 돈
-// **뒤에** 실행된다. 이게 없으면 첫 렌더에서 아직 아무도 "인사가 떠 있다"를 선언하기
-// 전이라 판정이 잠깐 통과해, 서베이가 한 프레임 번쩍였다가 인사에 가려진다.
+// 결과 확인 이벤트 다음 틱에 연다. 첫 방문 자체로는 표시하지 않는다.
 export const SOURCE_SURVEY_OPEN_DELAY_MS = 0;
 
 export const SOURCE_SURVEY_LOCALES = ["ko", "en"];
@@ -79,6 +75,7 @@ export function readSourceSurveyAnswered() {
 }
 
 export function writeSourceSurveyAnswered() {
+  storageSnapshot = false;
   writeStorage("localStorage", SOURCE_SURVEY_ANSWERED_KEY, "1");
 }
 
@@ -87,17 +84,17 @@ export function readSourceSurveySessionSeen() {
 }
 
 export function markSourceSurveySessionSeen() {
+  storageSnapshot = false;
   writeStorage("sessionStorage", SOURCE_SURVEY_SESSION_KEY, "1");
 }
 
-// useSyncExternalStore 스냅샷. 팝업이 열리면서 세션 표식을 남기는데 저장소를
-// 매번 다시 읽으면 그 직후 false로 뒤집혀 떠 있던 팝업이 스스로 닫힌다
-// (dochiWelcome.js가 같은 이유로 같은 방식을 쓴다).
+// 현재 카드의 열림은 컴포넌트가 보존하고, 후속 마운트는 갱신된 값을 읽는다.
+// storage 접근이 막혀도 같은 페이지 세션의 재노출은 메모리에서 막는다.
 let storageSnapshot = null;
 
 export function readSourceSurveyStorageSnapshot() {
   if (typeof window === "undefined") return false;
-  if (storageSnapshot === null) {
+  if (storageSnapshot !== false) {
     storageSnapshot = !readSourceSurveyAnswered() && !readSourceSurveySessionSeen();
   }
   return storageSnapshot;

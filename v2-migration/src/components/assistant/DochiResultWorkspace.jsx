@@ -79,7 +79,6 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   const timersRef = useRef([]);
   const hasPreparedData = Boolean(csvData?.raw?.length && csvData?.headers?.length);
   const cadence = inferMappedDateCadence(csvData);
-  const mappedCount = new Set(Object.values(csvData?.mapping || {}).filter((value) => value && value !== "__ignore__")).size;
   const mappedFields = new Set(Object.values(csvData?.mapping || {}));
   const canReviewWeekly = mappedFields.has("campaign_name") && TOOL_REQUIRED_FIELDS["5-2"].every(field => typeof field === "string" ? mappedFields.has(field) : field.oneOf.some(key => mappedFields.has(key)));
 
@@ -137,13 +136,11 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     </>}
     {phase === "results" && <>
       <header className="dochi-result-workspace__header is-results">
-        <div className="dochi-result-workspace__intro"><span>{C.eyebrow}</span><h1 id="dochi-result-title">{C.resultsTitle}</h1><p>{C.resultsDeck}</p></div>
-        {sample && <div className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"} · {sample.channel}</strong><p>{sample.period.previousStart} – {sample.period.previousEnd} → {sample.period.currentStart} – {sample.period.currentEnd}</p><span>{locale === "en" ? "Starts with CPA · key actions · KRW. This is the channel shown on the home preview." : "시작 기준: CPA · 핵심행동 수 · KRW. 홈 미리보기와 같은 채널입니다."}</span><Link href={locale === "en" ? "/en#dochi-upload" : "/#dochi-upload"}>{locale === "en" ? "Analyze your own CSV →" : "내 CSV로 분석하기 →"}</Link></div>}
-        <section data-information-section="" className="dochi-result-workspace__source"><header data-information-heading="">{locale === "en" ? "Source and analysis scope" : "원본·분석 범위 확인"}</header><p>{C.scope}</p><dl className="dochi-result-workspace__context">
+        <div className="dochi-result-workspace__intro"><h1 id="dochi-result-title">{C.resultsTitle}</h1></div>
+        {sample && <div className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"} · {sample.channel}</strong><p>{locale === "en" ? "Comparison" : "비교 기간"} {sample.period.previousStart} – {sample.period.previousEnd}<br />{locale === "en" ? "Analysis" : "분석 기간"} {sample.period.currentStart} – {sample.period.currentEnd}</p><Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link></div>}
+        <section className="dochi-result-workspace__source" aria-label={locale === "en" ? "Data summary" : "입력 요약"}><dl className="dochi-result-workspace__context">
           <div><dt>{locale === "en" ? "Data" : "데이터"}</dt><dd title={csvData.fileName}>{csvData.fileName}</dd></div>
           <div><dt>{locale === "en" ? "Rows" : "행"}</dt><dd>{csvData.raw.length.toLocaleString()}</dd></div>
-          <div><dt>{locale === "en" ? "Columns" : "컬럼"}</dt><dd>{csvData.headers.length.toLocaleString()}</dd></div>
-          <div><dt>{locale === "en" ? "Mapped" : "표준 역할"}</dt><dd>{mappedCount}/{csvData.headers.length}</dd></div>
           <div><dt>{C.cadence}</dt><dd>{C.cadenceLabels[cadence.cadence]}</dd></div>
         </dl></section>
         <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>

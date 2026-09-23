@@ -4,7 +4,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import BlogDochiBridge, { shouldOpenBridge, templatePathFor } from "./BlogDochiBridge";
+import BlogDochiBridge, { shouldOpenBridge, templatePathFor, blogLocalDateKey } from "./BlogDochiBridge";
 import { recordSessionSlug } from "./BlogReadTracker";
 
 // 주의: 여기서 innerHTML을 다시 쓰면 컴포넌트가 붙잡고 있던 노드가 떨어져 나가
@@ -27,13 +27,12 @@ function seedSession(count) {
 }
 
 describe("shouldOpenBridge", () => {
-  const ready = { articleCount: 2, depthPercent: 60, dwellMs: 30_000, dismissed: false, disabled: false };
+  const ready = { downwardScrolls: 2, dismissed: false, disabled: false };
 
-  it("opens only when article count, depth, and dwell are all met", () => {
+  it("opens after two downward scroll gestures", () => {
     expect(shouldOpenBridge(ready)).toBe(true);
-    expect(shouldOpenBridge({ ...ready, articleCount: 1 })).toBe(false);
-    expect(shouldOpenBridge({ ...ready, depthPercent: 59 })).toBe(false);
-    expect(shouldOpenBridge({ ...ready, dwellMs: 29_999 })).toBe(false);
+    expect(shouldOpenBridge({ ...ready, downwardScrolls: 1 })).toBe(false);
+    expect(shouldOpenBridge({ ...ready, downwardScrolls: 0 })).toBe(false);
   });
 
   it("stays shut once dismissed or switched off", () => {
@@ -71,20 +70,22 @@ describe("BlogDochiBridge", () => {
   });
 
   const scrollPastThreshold = () => {
-    scrollArticleTo(2000); // (2000+1000)/4000 = 75%
+    scrollArticleTo(window.scrollY + 100);
+    act(() => { fireEvent.scroll(window); vi.advanceTimersByTime(200); });
+    scrollArticleTo(window.scrollY + 100);
     act(() => { fireEvent.scroll(window); });
   };
 
   // 서버 스냅샷은 항상 닫힘이어야 프리렌더 HTML에 브리지가 없다(크롤러가 가려진 화면을 보지 않는다).
-  it("renders nothing on the first article of a session", () => {
+  it("opens on the first article after two separate downward scrolls", () => {
     seedSession(1);
     const { container } = render(<BlogDochiBridge slug="read-0" toolId="5-3" />);
     act(() => { vi.advanceTimersByTime(60_000); });
     scrollPastThreshold();
-    expect(container.innerHTML).toBe("");
+    expect(container.querySelector(".blog-dochi-bridge")).toBeTruthy();
   });
 
-  it("opens on the second article after depth and dwell are met", () => {
+  it("also opens on subsequent articles after two gestures", () => {
     seedSession(2);
     render(<BlogDochiBridge slug="read-1" toolId="5-3" />);
     expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
@@ -97,12 +98,32 @@ describe("BlogDochiBridge", () => {
     expect(document.querySelector(".blog-dochi-bridge__cta").getAttribute("href")).toBe("/tools/budget-allocation");
   });
 
-  it("does not open on depth alone before the dwell time", () => {
+  it("does not open after one scroll", () => {
     seedSession(2);
     render(<BlogDochiBridge slug="read-1" toolId="5-3" />);
     act(() => { vi.advanceTimersByTime(10_000); });
-    scrollPastThreshold();
+    scrollArticleTo(100);
+    act(() => { fireEvent.scroll(window); });
     expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
+  });
+
+  it("counts a continuous scroll burst once and links a published article to its own practice", () => {
+    render(<BlogDochiBridge slug="budget-marginal-efficiency" toolId="5-3" />);
+    for (const y of [100, 160, 220]) {
+      scrollArticleTo(y);
+      act(() => { fireEvent.scroll(window); vi.advanceTimersByTime(40); });
+    }
+    expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
+    act(() => { vi.advanceTimersByTime(200); });
+    scrollArticleTo(320);
+    act(() => { fireEvent.scroll(window); });
+    expect(screen.getByRole("link", { name: /이 글의 예제로 분석 체험/ }).getAttribute("href")).toBe("#blog-practice");
+  });
+
+  it("uses the article-specific tool even if a caller supplies a generic fallback", () => {
+    render(<BlogDochiBridge slug="ab-testing" toolId="5-3" />);
+    scrollPastThreshold();
+    expect(document.querySelector(".blog-dochi-bridge__cta").getAttribute("href")).toBe("/tools/experiment-analysis");
   });
 
   it("reports the impression with the existing event, not a new name", () => {
@@ -116,7 +137,7 @@ describe("BlogDochiBridge", () => {
     expect(viewed[0][2]).toMatchObject({ placement: "blog_bridge", tool_id: "5-22", rank: 2 });
   });
 
-  it("closing hides it for the session; stopping writes the persistent flag", () => {
+  it("closing hides only that article, not the next article", () => {
     seedSession(2);
     const { unmount } = render(<BlogDochiBridge slug="dismiss-bridge" toolId="5-3" />);
     act(() => { vi.advanceTimersByTime(30_000); });
@@ -124,26 +145,37 @@ describe("BlogDochiBridge", () => {
 
     act(() => { fireEvent.click(document.querySelector(".blog-dochi-bridge__close")); });
     expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
-    expect(window.sessionStorage.getItem("gop:blog:bridge-dismissed")).toBe("1");
+    expect(window.sessionStorage.getItem("gop:blog:bridge-dismissed:dismiss-bridge")).toBe("1");
     expect(window.localStorage.getItem("gop:blog:bridge-off")).toBeNull();
 
     unmount();
     render(<BlogDochiBridge slug="dismiss-bridge-2" toolId="5-3" />);
     act(() => { vi.advanceTimersByTime(30_000); });
     scrollPastThreshold();
-    expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
+    expect(document.querySelector(".blog-dochi-bridge")).toBeTruthy();
   });
 
-  it("stop button opts out permanently", () => {
+  it("today hides other articles and expires after local midnight", () => {
     seedSession(2);
-    render(<BlogDochiBridge slug="stop-bridge" toolId="5-3" />);
+    const view = render(<BlogDochiBridge slug="stop-bridge" toolId="5-3" />);
     act(() => { vi.advanceTimersByTime(30_000); });
     scrollPastThreshold();
 
     act(() => { fireEvent.click(document.querySelector(".blog-dochi-bridge__stop")); });
-    expect(window.localStorage.getItem("gop:blog:bridge-off")).toBe("1");
+    expect(window.localStorage.getItem("gop:blog:bridge-off-date")).toBe(blogLocalDateKey());
     const dismissed = window.gtag.mock.calls.filter((call) => call[1] === "blog_bridge_dismissed");
-    expect(dismissed[0][2]).toMatchObject({ state: "permanent", placement: "blog_bridge" });
+    expect(dismissed[0][2]).toMatchObject({ state: "today", placement: "blog_bridge" });
+    view.unmount();
+    const second = render(<BlogDochiBridge slug="next-article" toolId="5-3" />);
+    scrollPastThreshold();
+    expect(document.querySelector(".blog-dochi-bridge")).toBeNull();
+    second.unmount();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    vi.setSystemTime(tomorrow);
+    render(<BlogDochiBridge slug="next-article" toolId="5-3" />);
+    scrollPastThreshold();
+    expect(document.querySelector(".blog-dochi-bridge")).toBeTruthy();
   });
 
   // 홈 도치(`DochiAssistant`)를 그대로 옮기면 마운트 즉시 startMyData()가 돌아 데모가
@@ -183,11 +215,14 @@ describe("BlogDochiBridge in English", () => {
     act(() => { vi.advanceTimersByTime(30_000); });
     scrollArticleTo(2000);
     act(() => { fireEvent.scroll(window); });
+    act(() => { vi.advanceTimersByTime(200); });
+    scrollArticleTo(2100);
+    act(() => { fireEvent.scroll(window); });
 
     const panel = document.querySelector(".blog-dochi-bridge");
     expect(panel).toBeTruthy();
     expect(panel.getAttribute("aria-label")).toBe("Related analysis");
-    expect(panel.textContent).toContain("That’s article 2 in this session.");
+    expect(panel.textContent).toContain("Apply what you read to your data.");
     expect(document.querySelector(".blog-dochi-bridge__cta").getAttribute("href")).toBe("/en/tools/budget-allocation");
     expect(document.querySelector(".blog-dochi-bridge__secondary").getAttribute("href")).toBe("/en/templates/budget-allocation");
   });

@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./e2e/support/sourceSurvey.js";
 
 const isCi = Boolean(process.env.CI);
+const today = new Date();
+const blogHelperDate = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,7 +20,11 @@ export default defineConfig({
       cookies: [],
       origins: [{
         origin: "http://127.0.0.1:3100",
-        localStorage: [{ name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" }],
+        localStorage: [
+          { name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" },
+          // Overlay behavior is covered without this seed in blog-helper.spec.js.
+          { name: "gop:blog:bridge-off-date", value: blogHelperDate },
+        ],
       }],
     },
     browserName: "chromium",

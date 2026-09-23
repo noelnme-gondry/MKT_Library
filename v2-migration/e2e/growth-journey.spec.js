@@ -15,10 +15,11 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
     await page.locator(".dc-action-route--sample").click();
     await expect(page.locator(".dochi-result-workspace")).toHaveAttribute("data-phase", "results");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    const focus = page.locator(".dochi-workspace__decision-focus");
-    await expect(focus.locator(".dochi-workspace__decision-tape")).toContainText(preview);
+    await expect(page.locator(".workspace-next-action")).toContainText(preview);
+    await page.locator(".workspace-next-action button").click();
+    const focus = page.locator(".tool-index__panel");
     await expect(focus.locator(".dochi-workspace__decision-tape")).toContainText("CPA");
-    const stats = focus.locator(".dochi-workspace__result-evidence > dl");
+    const stats = focus.locator(".analysis-metric-picker");
     expect(await stats.evaluate(node => getComputedStyle(node).display)).toBe("grid");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기" }).click();
