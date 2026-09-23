@@ -23,7 +23,7 @@ for (const locale of ["ko", "en"]) {
   });
   test(`library question entry and persistent navigation (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
+    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
     await expect(page.getByRole("dialog")).toBeHidden();
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
@@ -52,7 +52,7 @@ for (const locale of ["ko", "en"]) {
       await expect(toggle).toBeFocused();
       await toggle.click();
     }
-    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start", "/dochi-result"]) {
+    for (const path of ["/blog", "/guide", "/weekly-review", "/subscription", "/start", "/start?view=methods"]) {
       await expect(page.locator(`.library-nav-item[href="${prefix}${path}"]`)).toBeVisible();
     }
     await page.locator(`.library-nav-item[href="${prefix}/blog"]`).click();
@@ -63,14 +63,13 @@ for (const locale of ["ko", "en"]) {
 
   test(`home sample opens computed results and retains weekly handoff (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
+    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
     await page.locator(".home-result-preview button").click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
     await expect(page.locator(".sample-journey-scope")).toContainText(en ? "Sample data" : "샘플 데이터");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    await expect(page.locator(".dochi-workspace__decision-focus")).toBeVisible();
-    await expect(page.locator(".dochi-workspace__queue")).not.toContainText(en ? "Running" : "실행 중");
+    await expect(page.locator(".workspace-next-action")).toBeVisible();
     await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#weekly-performance$`));
     await expect(page.locator("main h1")).toBeVisible();
@@ -80,16 +79,17 @@ for (const locale of ["ko", "en"]) {
 
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
+    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
     await page.locator(".dc-action-route--primary").click();
-    await page.locator('#dochi-upload input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
-    await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
+    await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
+    await page.locator('.csv-uploader input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
     await expect(page.locator(".header-data-context")).toContainText("efficiency.csv");
     // A real CSV must declare its currency; the sample already owns one.
     await page.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();
-    await page.getByRole("button", { name: en ? "Confirm and open results" : "확인하고 결과 가져오기", exact: true }).click();
-    await expect(page.locator(".dochi-workspace__findings-summary")).toBeVisible();
-    await expect(page.locator(".dochi-result-workspace__context")).toContainText("efficiency.csv");
-    await expect(page.locator(".dochi-result-workspace__context")).not.toContainText("demo_");
+    await expect(page.locator(".dochi-workspace")).toHaveCount(0);
+    await page.locator(".csv-analysis-action").click();
+    await expect(page.locator(".workspace-next-action")).toBeVisible();
+    await expect(page.locator(".workspace-input-summary")).toContainText("efficiency.csv");
+    await expect(page.locator(".workspace-input-summary")).not.toContainText("demo_");
   });
 }

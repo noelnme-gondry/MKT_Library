@@ -13,7 +13,6 @@ import SubscriptionPage from "@/components/SubscriptionPage";
 import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import MyAccountPage from "@/components/MyAccountPage";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
-import DochiAnalysisDock from "@/components/assistant/DochiAnalysisDock";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import UiSemantics from "@/components/ds/UiSemantics";
@@ -132,7 +131,6 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
         </div>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
-      {routeId !== "dochi-result" && !["storage", "projects", "subscription"].includes(routeId) && <DochiAnalysisDock locale="en" />}
       <GlobalModals locale="en" />
       <UiSemantics />
     </>

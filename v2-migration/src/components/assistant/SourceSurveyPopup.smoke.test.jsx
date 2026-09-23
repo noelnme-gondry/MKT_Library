@@ -20,7 +20,10 @@ const KO = SOURCE_SURVEY_COPY.ko;
 const EN = SOURCE_SURVEY_COPY.en;
 
 // 지연은 0이지만 타이머 한 틱은 여전히 지나야 한다(마운트 이펙트 이후에 판정된다).
-const settle = () => act(() => { vi.advanceTimersByTime(SOURCE_SURVEY_OPEN_DELAY_MS + 1); });
+const settle = () => {
+  act(() => { window.dispatchEvent(new Event("gop:analysis-result-ready")); });
+  act(() => { vi.advanceTimersByTime(SOURCE_SURVEY_OPEN_DELAY_MS + 1); });
+};
 const answerBox = () => screen.getByPlaceholderText(KO.placeholder);
 
 beforeEach(() => {
@@ -41,6 +44,22 @@ afterEach(() => {
 });
 
 describe("노출 타이밍", () => {
+  it("does not interrupt entry before the first result is viewed", () => {
+    render(<SourceSurveyPopup />);
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.queryByText(KO.heading)).toBeNull();
+  });
+  it.each([false, true])("does not reopen after navigation when dismissed (opt out: %s)", optOut => {
+    const view = render(<SourceSurveyPopup />);
+    settle();
+    if (optOut) fireEvent.click(screen.getByLabelText(KO.dontAsk));
+    fireEvent.click(screen.getByRole("button", { name: KO.skip }));
+    view.unmount();
+    render(<SourceSurveyPopup />);
+    settle();
+    expect(screen.queryByText(KO.heading)).toBeNull();
+    if (optOut) expect(localStorage.getItem(SOURCE_SURVEY_ANSWERED_KEY)).toBe("1");
+  });
   it("기다리지 않는다 — 타이머 한 틱 만에 뜬다", () => {
     render(<SourceSurveyPopup />);
     // 첫 렌더에는 아직 없다(인사가 자기 존재를 선언할 틈을 준다).
@@ -202,12 +221,12 @@ describe("화면에 실제로 보인다", () => {
     return rule[1];
   };
 
-  it("카드가 화면에 고정되고 가운데 정렬된다", () => {
+  it("카드가 본문을 가리지 않도록 화면 모서리에 고정된다", () => {
     const rule = cardRule();
     expect(rule).toMatch(/position:\s*fixed/);
-    expect(rule).toMatch(/left:\s*50%/);
-    expect(rule).toMatch(/top:\s*50%/);
-    expect(rule).toMatch(/transform:\s*translate\(-50%,\s*-50%\)/);
+    expect(rule).toMatch(/right:\s*24px/);
+    expect(rule).toMatch(/bottom:\s*24px/);
+    expect(rule).not.toMatch(/translate\(-50%/);
   });
 
   it("뒤를 덮는 백드롭이 없다", () => {
@@ -216,13 +235,7 @@ describe("화면에 실제로 보인다", () => {
     expect(cardRule()).not.toMatch(/inset:\s*0/);
   });
 
-  it("등장 모션이 중앙 정렬을 덮지 않는다", () => {
-    // `translateY`만 쓰면 중앙 정렬 transform이 통째로 덮여 카드가 튄다.
-    const css = readFileSync("src/app/globals.css", "utf8");
-    const frames = /@keyframes source-survey-rise\s*\{([^@]*?)\}\s*$/m.exec(css)
-      || /@keyframes source-survey-rise\s*\{(.*)\}/.exec(css);
-    expect(frames).not.toBeNull();
-    expect(frames[1]).toMatch(/translate\(-50%/);
-    expect(frames[1]).not.toMatch(/transform:\s*translateY/);
+  it("설문이 움직이며 분석을 방해하지 않는다", () => {
+    expect(cardRule()).toMatch(/animation:\s*none/);
   });
 });

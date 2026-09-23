@@ -93,7 +93,7 @@ describe("ToolIndex", () => {
     // 개수를 화면이 직접 말한다 — 세어 보게 하지 않는다.
     expect(groups[0].querySelector(".tool-index__count").textContent).toBe("2");
     expect(groups[0].textContent).toContain("지금 이 파일로 되는 분석");
-    expect(groups[1].textContent).toContain("컬럼을 더 주면 되는 분석");
+    expect(groups[1].textContent).toContain("추가 데이터·설정이 필요한 분석");
     // 어느 쪽도 빠뜨리지 않는다.
     expect(container.querySelectorAll(".tool-index__chip")).toHaveLength(PUBLISHED_TOOL_IDS.length);
   });
@@ -118,8 +118,8 @@ describe("ToolIndex", () => {
     );
     // ① 빠진 컬럼은 누르지 않아도 버튼에서 읽힌다.
     const cell = [...container.querySelectorAll(".tool-index__cell")]
-      .find((item) => item.querySelector(".tool-index__missing"));
-    expect(cell.textContent).toContain("소재 ID");
+      .find((item) => item.querySelector(".tool-index__q").textContent === allToolIndexEntries().find(tool => tool.id === blocked).name);
+    expect(cell.textContent).not.toContain("소재 ID");
     fireEvent.click(cell.querySelector(".tool-index__chip"));
     const panel = container.querySelector(".tool-index__stage--blocked .tool-index__panel");
     // ② 판정이 준 구체적인 이유가 일반 문구를 이긴다.

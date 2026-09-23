@@ -78,7 +78,7 @@ export function localizedHref(href, locale = "ko") {
     const slug = href.slice("/glossary/".length).split(/[?#]/)[0];
     return EN_GLOSSARY_SLUGS.has(slug) ? `/en${href}` : href;
   }
-  const routeId = resolvePathToId(href);
+  const routeId = resolvePathToId(href.split(/[?#]/)[0]);
   return routeId && hasEnVersion(routeId) ? `/en${href}` : href;
 }
 

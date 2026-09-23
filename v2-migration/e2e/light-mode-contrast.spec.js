@@ -30,18 +30,6 @@ for (const [path, label] of ROUTES) {
     await expect(page.locator("body")).toHaveClass(/light-mode/);
     if (path === "/") {
       await expect(page.getByRole("dialog")).toBeHidden();
-      await page.locator(".dc-action-route--primary").click();
-      await page.getByRole("button", { name: "처음이라면, 도치 안내 보기", exact: true }).click();
-      await expect(page.getByRole("dialog", { name: "도치의 첫 방문 안내" })).toBeVisible();
-      await page.evaluate(() => {
-        for (const animation of document.getAnimations()) {
-          try { animation.finish(); } catch { /* 무한 반복 */ }
-        }
-      });
-      const welcome = await new AxeBuilder({ page }).include(".dochi-welcome")
-        .withTags(["wcag2aa", "wcag21aa"]).analyze();
-      expect(welcome.violations.filter((violation) => violation.id === "color-contrast")).toEqual([]);
-      await page.getByRole("button", { name: "안내 닫기", exact: true }).click();
       await expect(page.locator(".dochi-welcome-overlay")).toHaveCount(0);
     }
     // 진입 애니메이션이 도는 중에 재면 중간 opacity가 배경과 섞여 **없는 색**이 나온다.

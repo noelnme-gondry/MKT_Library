@@ -27,7 +27,7 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
  * 방금 본 도구가 어디 있었는지 매번 다시 찾아야 했다. 갈래가 2~3개짜리로
  * 고르게 나뉜 뒤로는 전부 펴 두는 게 더 짧고, 위치가 고정된다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null }) {
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null, renderDetail = null, renderSummary = null, activeToolId, onActiveToolChange }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
@@ -35,9 +35,9 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
     ? {
       tool: "Tool", outputs: "You get", needs: "Needs", open: "Open this analysis",
       readyGroup: "Ready with this file",
-      readyDesc: "Your file has every column these need. Open one and run it.",
-      blockedGroup: "Add columns to unlock these",
-      blockedDesc: "Your file is missing something each of these needs. Open one to see what.",
+      readyDesc: "Select an analysis to inspect its result or required setup.",
+      blockedGroup: "Needs more data or setup",
+      blockedDesc: "Select an analysis to see the data and additional setup it needs.",
       blockedHint: "Add the missing columns above to your file, then upload it again.",
       missing: "Missing:",
       template: "⬇ Download a template with these columns",
@@ -47,9 +47,9 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
     : {
       tool: "도구", outputs: "결과", needs: "필요 데이터", open: "이 분석 열기",
       readyGroup: "지금 이 파일로 되는 분석",
-      readyDesc: "필요한 컬럼이 모두 있습니다. 눌러서 상세를 보고 바로 실행하세요.",
-      blockedGroup: "컬럼을 더 주면 되는 분석",
-      blockedDesc: "지금 파일에는 없는 컬럼이 있습니다. 눌러서 무엇이 필요한지 확인하세요.",
+      readyDesc: "분석을 선택해 결과와 필요한 설정을 확인하세요.",
+      blockedGroup: "추가 데이터·설정이 필요한 분석",
+      blockedDesc: "분석을 선택하면 필요한 데이터와 추가 설정을 안내합니다.",
       blockedHint: "위 ‘필요 데이터’의 빠진 컬럼을 채워 다시 올리면 됩니다.",
       missing: "빠진 컬럼",
       template: "⬇ 이 컬럼이 들어간 템플릿 받기",
@@ -58,7 +58,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
     };
 
   if (density === "grid") {
-    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick }} />;
+    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, activeToolId, onActiveToolChange }} />;
   }
 
   return (
@@ -120,16 +120,6 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
 }
 
 /**
- * 버튼에 적는 빠진 컬럼 요약. 전부 적으면 7개까지 늘어나 버튼이 목록이 된다 —
- * 여기서 필요한 건 "무엇을 채워야 하나"의 감이고, 정확한 전체는 상세에 있다.
- */
-const MAX_MISSING_SHOWN = 3;
-function summarize(fields, labels) {
-  if (fields.length <= MAX_MISSING_SHOWN) return fields.join(" · ");
-  return `${fields.slice(0, MAX_MISSING_SHOWN).join(" · ")} ${labels.more(fields.length - MAX_MISSING_SHOWN)}`;
-}
-
-/**
  * 버튼 격자 + 고른 하나의 상세.
  *
  * **파일을 올렸으면 자격이 정렬 축이다.** "할 수 있는 분석"은 우리가 제공하는
@@ -146,8 +136,10 @@ function summarize(fields, labels) {
  * 상세는 그 묶음의 격자 **바로 다음**에 둔다. 버튼 사이에 끼우면 누를 때마다
  * 뒤 버튼이 밀려 방금 본 것을 다시 찾게 된다(§12.31).
  */
-function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick }) {
-  const [openId, setOpenId] = useState(null);
+function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, activeToolId, onActiveToolChange }) {
+  const [localOpenId, setLocalOpenId] = useState(null);
+  const openId = activeToolId === undefined ? localOpenId : activeToolId;
+  const setOpenId = onActiveToolChange || setLocalOpenId;
   const base = useId();
   // 지금 보고 있는 도구는 "이어서 볼 것"이 아니다. 목록에서 통째로 뺀다 —
   // 자격에서만 빼면 "안 되는 분석"으로 내려가 거짓말이 된다.
@@ -190,12 +182,11 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
                       aria-controls={isOpen ? `${base}-${tool.id}-panel` : undefined}
                       onClick={() => setOpenId(isOpen ? null : tool.id)}
                     >
-                      <span className="tool-index__q">{tool.question}</span>
+                      <span className="tool-index__q">{tool.name}</span>
+                      {renderSummary?.(tool.id)}
                       {/* 빠진 컬럼은 버튼에서 바로 읽힌다 — 눌러야만 보이면 15개를
                           하나씩 열어 봐야 "무엇을 채우면 몇 개가 열리는지" 알 수 있다. */}
-                      {blockedInfo?.[tool.id]?.fields?.length > 0
-                        ? <span className="tool-index__missing">{labels.missing} {summarize(blockedInfo[tool.id].fields, labels)}</span>
-                        : tool.stage && <span className="tool-index__stage-tag">{tool.stage}</span>}
+                      {tool.stage && <span className="tool-index__stage-tag">{tool.stage}</span>}
                     </button>
                   </li>
                   {/* 상세는 누른 버튼 **다음 줄 전체**를 차지한다. 격자 밖(맨 아래)에
@@ -221,16 +212,19 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
     const group = eligibleIds ? (eligibleIds.includes(open.id) ? { ready: true, id: "ready" } : { ready: false, id: "blocked" }) : { ready: null, id: "stage" };
     return (
               <div className="tool-index__panel" id={`${base}-${open.id}-panel`} role="region" aria-label={open.question}>
-                {open.answer && <p className="tool-index__answer">{open.answer}</p>}
+                {renderDetail ? renderDetail(open.id) : <>
+                <h4>{open.question}</h4>
+                <p className="tool-index__answer">{open.description || open.answer}</p>
+                {open.guidance && <div className="tool-index__guidance"><strong>{open.guidance[0]}</strong><p>{open.guidance[1]}</p></div>}
                 <p className="tool-index__meta">
                   <span className="tool-index__meta-label">{labels.tool}</span>
                   <span className="tool-index__name">{open.name}</span>
                 </p>
                 {open.outputs.length > 0 && (
-                  <p className="tool-index__outputs">
-                    <span className="tool-index__meta-label">{labels.outputs}</span>
-                    <span>{open.outputs.join(" · ")}</span>
-                  </p>
+                  <div className="tool-index__output-preview" aria-label={locale === "en" ? "Report contents preview" : "결과 보고서 구성 미리보기"}>
+                    <strong>{locale === "en" ? "What the result contains" : "분석하면 이런 결과를 받습니다"}</strong>
+                    <ol>{open.outputs.map((output, index) => <li key={output}><span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><b>{output}</b></li>)}</ol>
+                  </div>
                 )}
                 {open.needs.length > 0 && (
                   <p className="tool-index__needs">
@@ -263,6 +257,7 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
                 >
                   {group.ready === false ? labels.openAnyway : labels.open}
                 </Link>
+                </>}
               </div>
     );
   }

@@ -62,7 +62,7 @@ describe("상한은 서버 스키마와 같은 값이다", () => {
   // 한쪽만 바꾸면 화면이 받은 답변을 서버 CHECK 제약이 거절한다.
   // 스키마는 저장소 루트에 있고 손으로 적용하므로 값 정합을 여기서 고정한다.
   it("scripts/source-survey-schema.sql 의 CHECK 와 일치한다", () => {
-    const sql = readFileSync("../scripts/source-survey-schema.sql", "utf8");
+    const sql = readFileSync("scripts/source-survey-schema.sql", "utf8");
     const match = /char_length\(answer\)\s+BETWEEN\s+1\s+AND\s+(\d+)/.exec(sql);
     expect(match).not.toBeNull();
     expect(Number(match[1])).toBe(SOURCE_SURVEY_MAX_LENGTH);

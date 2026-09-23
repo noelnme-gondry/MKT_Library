@@ -15,22 +15,11 @@ import {
   normalizeSourceSurveyAnswer,
   readSourceSurveyStorageSnapshot,
   shouldShowSourceSurvey,
-  sourceSurveyServerSnapshot,
+  readSourceSurveyAnswered,
   writeSourceSurveyAnswered,
 } from "@/lib/survey/sourceSurvey";
 
-// 스냅샷은 모듈에 한 번 굳는다(lib/survey/sourceSurvey.js 주석 참조).
-const subscribeStorage = () => () => {};
-
-// 유입 경로 서베이 — "어디서 오셨어요?"를 주관식 한 칸으로 묻는다.
-//
-// 화면 가운데 뜨지만 **배경을 덮는 오버레이는 없다**. 반투명 백드롭을 깔면 뒤가
-// 통째로 잠겨 모바일 전면 광고(구글 인터스티셜) 판정에 걸리고, 읽던 사람이 질문에
-// 답해야만 계속 읽을 수 있게 된다. 지금은 카드 바깥이 그대로 살아 있어 무시하고
-// 스크롤할 수 있다 — 자리만 가운데다.
-//
-// 도치 첫 방문 인사와 절대 겹치지 않는다 — 인사가 닫히면 바로 뜬다
-// (lib/assistant/overlayPresence.js).
+// 분석 결과 확인 후 모서리에서 묻는다. 닫힘 상태는 다음 마운트에도 이어진다.
 export const SOURCE_SURVEY_COPY = {
   ko: {
     label: "유입 경로 한 가지 질문",
@@ -42,7 +31,7 @@ export const SOURCE_SURVEY_COPY = {
     skip: "나중에",
     dontAsk: "다시 묻지 않기",
     close: "질문 닫기",
-    privacy: "적어 주신 이 답변만 저장됩니다. 업로드한 데이터와 분석 결과는 브라우저에만 남고 서버로 보내지 않습니다.",
+    privacy: "이 답변만 저장합니다. 분석 원본은 서버로 보내지 않습니다.",
     thanks: "고맙습니다. 덕분에 어디에 힘을 쏟을지 정할 수 있어요.",
     failed: "보내지 못했습니다. 네트워크를 확인하고 다시 눌러 주세요.",
     remaining: (count) => `${count}자 남음`,
@@ -57,7 +46,7 @@ export const SOURCE_SURVEY_COPY = {
     skip: "Later",
     dontAsk: "Don’t ask again",
     close: "Close this question",
-    privacy: "Only this answer is stored. Your uploaded data and analysis results stay in your browser and are never sent to a server.",
+    privacy: "Only this answer is stored. Source analysis data is never sent to a server.",
     thanks: "Thank you — this tells us where to put our effort.",
     failed: "That didn’t go through. Check your connection and try again.",
     remaining: (count) => `${count} characters left`,
@@ -70,15 +59,22 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   const [status, setStatus] = useState("editing");
   const [closed, setClosed] = useState(false);
   const [delayElapsed, setDelayElapsed] = useState(false);
+  const [hasSeenResult, setHasSeenResult] = useState(false);
   const [dontAsk, setDontAsk] = useState(false);
   const closeTimerRef = useRef(null);
   const submissionRef = useRef(null);
 
-  const storageAllows = useSyncExternalStore(
-    subscribeStorage,
-    readSourceSurveyStorageSnapshot,
-    sourceSurveyServerSnapshot,
-  );
+  const [storageAllows] = useState(readSourceSurveyStorageSnapshot);
+  useEffect(() => {
+    const ready = () => setHasSeenResult(true);
+    window.addEventListener("gop:analysis-result-ready", ready);
+    return () => window.removeEventListener("gop:analysis-result-ready", ready);
+  }, []);
+  useEffect(() => {
+    const sync = () => { if (readSourceSurveyAnswered()) setClosed(true); };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
   const welcomeOpen = useSyncExternalStore(
     subscribeWelcomePresence,
     readWelcomeOpen,
@@ -88,10 +84,10 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   // 마운트 이펙트 다음 틱으로 한 번만 미룬다(위 상수 주석 참조).
   // 저장소가 이미 막은 사람에게는 타이머를 걸지도 않는다.
   useEffect(() => {
-    if (!storageAllows || delayElapsed) return undefined;
+    if (!storageAllows || !hasSeenResult || delayElapsed) return undefined;
     const timer = window.setTimeout(() => setDelayElapsed(true), SOURCE_SURVEY_OPEN_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [storageAllows, delayElapsed]);
+  }, [storageAllows, hasSeenResult, delayElapsed]);
 
   useEffect(() => () => {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);

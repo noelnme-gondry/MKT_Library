@@ -32,6 +32,8 @@ const MAX_NEEDS = 4;
  */
 export function fieldLabels(keys = [], locale = "ko") {
   const label = (key) => {
+    const roleLabels = { response_time: ["날짜·주차", "Date or week"], response_outcome: ["분석할 성과 수·매출", "Outcome count or revenue"], response_channel: ["채널별 지출", "Spend by channel"] };
+    if (roleLabels[key]) return roleLabels[key][locale === "en" ? 1 : 0];
     const field = STANDARD_FIELDS[key];
     if (!field) return null;
     // EN 라벨이 없으면 한글을 그대로 내보내지 않는다 — 반쪽 번역보다 생략이 낫다(§2.11).
@@ -44,6 +46,7 @@ export function fieldLabels(keys = [], locale = "ko") {
 }
 
 function requiredLabels(toolId, locale = "ko") {
+  if (toolId.startsWith("5-18-")) return fieldLabels(["response_time", "response_outcome", "response_channel"], locale);
   const fields = TOOL_REQUIRED_FIELDS[toolId] || [];
   const label = (key) => {
     const field = STANDARD_FIELDS[key];
@@ -76,6 +79,8 @@ export function toolIndexEntry(toolId, locale = "ko") {
     name: (locale === "en" ? trItemTitle(toolId, locale, meta?.titleEn || meta?.title) : meta?.title) || toolId,
     searchText: [content.title, content.lead, ...(content.sections || []).flat(), locale === "en" ? meta?.seoTitleEn : meta?.seoTitle].filter(Boolean).join(" "),
     question: content.question || "",
+    description: content.lead || "",
+    guidance: (content.sections || []).slice(-1)[0] || null,
     answer: content.answer || "",
     // 이 도구를 열면 실제로 화면에 나오는 것 3가지. 짧은 이름이 못 말하는 부분을 메운다.
     outputs: Array.isArray(content.outputs) ? content.outputs : [],

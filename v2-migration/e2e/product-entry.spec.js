@@ -5,12 +5,12 @@ for (const locale of ["ko", "en"]) {
     await page.setViewportSize({ width: 320, height: 800 });
     const prefix = locale === "en" ? "/en" : "";
     await page.goto(prefix || "/");
-    await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeAttached();
+    await expect(page.locator('.dc-action-route--primary')).toBeVisible();
     const mobile = page.locator(".mobile-quick-start").first();
     const sample = page.locator(".dc-hero__actions .dc-action-route--sample");
     await expect(sample).toBeVisible();
     await expect(page.locator(".dc-hero .mobile-quick-start")).toHaveCount(0);
-    await expect(page.locator(".home-result-preview header img")).toBeVisible();
+    await expect(page.locator(".home-result-preview > header")).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
     await expect(page.locator(".home-result-preview__kpis dd")).toHaveCount(3);
@@ -25,6 +25,6 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
     await expect(page.locator(".sample-journey-scope")).toContainText(locale === "en" ? "Sample data" : "샘플 데이터");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    await expect(page.locator(".dochi-workspace__decision-focus")).toBeVisible();
+    await expect(page.locator(".workspace-next-action")).toBeVisible();
   });
 }

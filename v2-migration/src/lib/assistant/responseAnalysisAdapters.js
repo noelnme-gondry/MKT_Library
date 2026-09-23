@@ -97,6 +97,9 @@ export function buildResponseAdapterColMap(csvData = {}) {
   const headers = headersFor(csvData);
   const colMap = autoGuessColMap(headers, csvData.raw || [], true);
   for (const header of headers) {
+    const explicitlyIgnored = csvData.mapping?.[header] === "__ignore__"
+      && csvData.mappingBindingsV2?.some(binding => binding.sourceColumn === header && binding.source === "user");
+    if (explicitlyIgnored) { colMap[header] = { role: "ignore" }; continue; }
     const role = mappedMmmRole(csvData.mapping?.[header]);
     if (!role) continue;
     const previous = colMap[header] || {};

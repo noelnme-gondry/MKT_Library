@@ -24,16 +24,21 @@ export const WORKSPACE_NAV = [
     group: "work",
     href: "/start",
     icon: "⇧",
-    ko: { name: "CSV로 시작", desc: "파일 올리고 가능한 분석 찾기" },
-    en: { name: "Analyze my CSV", desc: "Upload and see what's possible" },
+    ko: { name: "내 데이터로 시작", desc: "파일·시트로 가능한 분석 찾기" },
+    en: { name: "Start with my data", desc: "Upload and see what's possible" },
   },
   {
-    id: "results", group: "work", href: "/dochi-result", icon: "▦",
+    id: "methods", group: "work", href: "/start?view=methods", icon: "▦",
+    ko: { name: "분석 방법 둘러보기", desc: "목적별 분석과 필요한 데이터 확인" },
+    en: { name: "Browse analyses", desc: "Explore analyses and data requirements" },
+  },
+  {
+    id: "results", secondary: true, group: "work", href: "/dochi-result", icon: "▦",
     ko: { name: "내 분석 결과", desc: "같은 CSV에서 확인한 통합 결과" },
     en: { name: "My analysis results", desc: "Connected results from the same CSV" },
   },
   {
-    id: "overview", group: "work", href: "/dashboard", icon: "▥",
+    id: "overview", secondary: true, group: "work", href: "/dashboard", icon: "▥",
     ko: { name: "성과 오버뷰", desc: "기간과 채널별 운영 성과 확인" },
     en: { name: "Performance overview", desc: "Review performance by period and channel" },
   },
@@ -49,18 +54,18 @@ export const WORKSPACE_NAV = [
   },
   {
     id: "storage", group: "manage", href: "/storage", icon: "▣",
-    ko: { name: "저장된 데이터", desc: "이 기기의 CSV 복원과 저장 관리" },
-    en: { name: "Saved data", desc: "Restore and manage CSVs on this device" },
+    ko: { name: "이 기기 데이터", desc: "이 기기의 CSV 복원과 저장 관리" },
+    en: { name: "Data on this device", desc: "Restore and manage CSVs on this device" },
   },
   {
     id: "review",
-    group: "work",
+    group: "manage",
     href: "/weekly-review",
     icon: "◷",
     // 이 주소가 프로젝트 제품이다. "프로젝트 리뷰"·"새 리뷰"가 서로 겹쳐 읽혀
     // 이름을 하나로 줄였다 — 리뷰는 프로젝트 안에서 하는 일이지 별개 목적지가 아니다.
-    ko: { name: "프로젝트", desc: "목표·결정·결과를 프로젝트별로" },
-    en: { name: "Projects", desc: "Goals, decisions and outcomes by project" },
+    ko: { name: "내 프로젝트", desc: "목표·결정·결과를 프로젝트별로" },
+    en: { name: "My projects", desc: "Goals, decisions and outcomes by project" },
   },
   {
     id: "projects",
@@ -84,8 +89,8 @@ export const WORKSPACE_NAV = [
     group: "manage",
     href: "/subscription",
     icon: "▤",
-    ko: { name: "구독 · 요금제", desc: "무료 분석과 Pro 보고서 이용 안내" },
-    en: { name: "Plans & subscription", desc: "Free analysis and Pro reporting" },
+    ko: { name: "구독 및 서비스", desc: "무료 분석과 Pro 보고서 이용 안내" },
+    en: { name: "Plans & service", desc: "Free analysis and Pro reporting" },
   },
   {
     id: "diagnose",
@@ -108,7 +113,8 @@ export function workspaceNavItem(id, locale = "ko") {
 }
 
 export function workspaceNavItems(locale = "ko") {
-  return WORKSPACE_NAV.map((entry) => workspaceNavItem(entry.id, locale));
+  const order = ["home", "blog", "guide", "diagnose", "start", "methods", "account", "review", "storage", "subscription"];
+  return [...WORKSPACE_NAV].sort((a, b) => (order.indexOf(a.id) < 0 ? 99 : order.indexOf(a.id)) - (order.indexOf(b.id) < 0 ? 99 : order.indexOf(b.id))).map((entry) => workspaceNavItem(entry.id, locale));
 }
 
 export const WORKSPACE_NAV_GROUPS = [

@@ -24,7 +24,11 @@ describe("workspaceNav", () => {
   });
 
   it("경로가 실제 라우트 형태다", () => {
-    for (const item of WORKSPACE_NAV) expect(item.href).toMatch(/^\/[a-z-]*$/);
+    for (const item of WORKSPACE_NAV) {
+      const url = new URL(item.href, "https://growthoptplaybook.com");
+      expect(url.pathname).toMatch(/^\/[a-z-]*$/);
+      expect(url.origin).toBe("https://growthoptplaybook.com");
+    }
   });
 
   it("없는 id는 null — 빈 라벨을 만들지 않는다", () => {

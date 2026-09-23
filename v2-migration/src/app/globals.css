@@ -5015,7 +5015,7 @@ body:not(.light-mode) .moon-icon {
    전면 오버레이는 쓰지 않는다(모바일 검색 인터스티셜 페널티). 시트는 화면을 덮지 않고
    본문이 위로 비쳐 보이는 높이로만 올라온다. 색은 전부 semantic 토큰 — 라이트 모드에서
    raw hex를 쓰면 대비가 무너진다(§7). */
-.blog-dochi-bridge { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 16px; margin: 2.6rem 0 0; padding: 18px 18px 16px; border: 1px solid var(--border-stronger); background: var(--surface-container-low); }
+.blog-dochi-bridge { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: 0; padding: 18px; border: 1px solid var(--border-stronger); border-radius: var(--radius-lg); background: var(--surface-container-lowest); box-shadow: 0 12px 32px rgb(0 0 0 / .16); word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty; }
 .blog-dochi-bridge__sprite { width: 78px; height: 78px; }
 .blog-dochi-bridge__body { min-width: 0; }
 .blog-dochi-bridge__lead { margin: 0; color: var(--text-muted); font-size: var(--fs-xs); letter-spacing: -.01em; }
@@ -5035,14 +5035,14 @@ body:not(.light-mode) .moon-icon {
 .blog-dochi-bridge__close { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--border-subtle); background: none; color: var(--text-secondary); font-size: var(--fs-md); line-height: 1; cursor: pointer; }
 .blog-dochi-bridge__close:hover { border-color: var(--border-stronger); color: var(--text-primary); }
 @media (max-width: 720px) {
-  .blog-dochi-bridge { position: fixed; inset: auto 0 0; z-index: 60; margin: 0; padding: 14px 14px 16px; border: 0; border-top: 1px solid var(--border-stronger); background: var(--surface-container-lowest); box-shadow: 0 -10px 28px rgb(0 0 0 / .28); gap: 12px; }
+  .blog-dochi-bridge { padding: 16px; gap: 8px; }
   .blog-dochi-bridge__sprite { width: 52px; height: 52px; }
   .blog-dochi-bridge h2 { font-size: var(--fs-md); }
   .blog-dochi-bridge__desc { display: none; }
   .blog-dochi-bridge__note-desktop { display: inline; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .blog-dochi-bridge { animation: blogBridgeIn .28s ease-out both; }
+  .blog-dochi-bridge { animation: none; }
 }
 @keyframes blogBridgeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
@@ -11439,10 +11439,9 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
    화면 가운데 뜨지만 **배경을 덮는 오버레이가 없다**. 백드롭을 깔면 뒤가 통째로
    잠겨 모바일 전면 광고 판정(§12.29b)에 걸리고, 답해야만 계속 읽을 수 있게 된다.
    카드 바깥은 그대로 살아 있어 무시하고 스크롤할 수 있다. */
-.source-survey { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 110; width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 18px 20px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-xl); background: var(--surface-container-lowest); box-shadow: 0 26px 60px color-mix(in srgb, var(--bg-1) 52%, transparent); animation: source-survey-rise .26s cubic-bezier(.2, 1.2, .4, 1) both; }
+.source-survey { position: fixed; right: 24px; bottom: 24px; z-index: 110; width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 18px 20px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-xl); background: var(--surface-container-lowest); box-shadow: 0 26px 60px color-mix(in srgb, var(--bg-1) 52%, transparent); animation: none; }
 /* 중앙 정렬이 transform이라 등장 모션도 같은 transform 안에서 움직여야 한다 —
    `translateY`만 쓰면 중앙 정렬이 통째로 덮여 카드가 우하단으로 튄다. */
-@keyframes source-survey-rise { from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
 @media (prefers-reduced-motion: reduce) { .source-survey { animation: none; } }
 .source-survey__close { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--text-muted); font-size: var(--fs-lg); line-height: 1; cursor: pointer; }
 .source-survey__close:hover { color: var(--text-primary); background: var(--surface-container-low); }

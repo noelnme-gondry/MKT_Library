@@ -152,20 +152,19 @@ async function dochiToWeekly(page, locale) {
   }, locale);
   await page.goto(en ? "/en" : "/");
   await expect(page.locator(".header-decision-inbox__label")).toBeVisible();
-  expect(await page.locator("#dochi-upload").evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById("questions")) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
 
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });
   await expect(page.locator(".dc-loop a")).toHaveAttribute("href", `${en ? "/en" : ""}/weekly-review`);
-  await hero.getByRole("link", { name: en ? /Upload your CSV/ : /내 CSV로 분석하기/ }).click();
-  const intake = page.locator('.dochi-home-assistant .csv-uploader[data-hydrated="true"]');
+  await hero.locator(".dc-action-route--primary").click();
+  const intake = page.locator('.csv-uploader[data-hydrated="true"]');
   await expect(intake).toBeVisible();
   await intake.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: "weekly-dochi.csv", mimeType: "text/csv", buffer: campaignCsv(24, 14) });
-  await expect(page).toHaveURL(/\/dochi-result$/);
+  await expect(page).toHaveURL(/\/start$/);
   await page.locator('[data-currency-scope="declare"]').first().getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
-  const confirm = page.getByRole("button", { name: en ? "Confirm and open results" : "확인하고 결과 가져오기", exact: true });
+  const confirm = page.locator(".csv-analysis-action");
   await confirm.click();
-  if (await confirm.isVisible()) await confirm.click();
+  await page.locator(".workspace-next-action button").click();
   const decision = page.locator(".dochi-workspace__result.is-success .decision-review").first();
   await expect(decision).toBeVisible();
   await decision.locator(".decision-review-launch").click();
@@ -173,14 +172,14 @@ async function dochiToWeekly(page, locale) {
   await confirmReviewDialog(page, en);
   await expect(page.getByRole("dialog")).toContainText(en ? "Decision saved" : "결정 저장됨");
   const events = await page.evaluate(() => window.__journeyEvents);
-  expect(events.find(event => event[1] === "data_import_success")?.[2]).toMatchObject({ placement: "dochi_home", journey_entry: "home" });
+  expect(events.find(event => event[1] === "data_import_success")?.[2]).toMatchObject({ journey_entry: "home" });
   for (const name of ["analysis_started", "analysis_completed", "analysis_result_viewed", "decision_record_added"]) {
     expect(events.find(event => event[1] === name && event[2].placement === "dochi_workspace")?.[2]).toMatchObject({ journey_entry: "home", locale });
   }
   expect(JSON.stringify(events)).not.toContain("Review Campaign");
   expect(JSON.stringify(events)).not.toContain("weekly-dochi.csv");
   await page.getByRole("dialog").getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
-  const weekly = page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true });
+  const weekly = page.getByRole("link", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true });
   await expect(weekly).toBeEnabled();
   await weekly.click();
   await expect(page).toHaveURL(/\/weekly-review#weekly-performance$/);

@@ -2,6 +2,7 @@ import { ANALYSIS_CATALOG } from "@/lib/assistant/analysisCatalog";
 import { evaluateAnalysisEligibility, rankRecommendedAnalyses } from "@/lib/assistant/evaluateAnalysisEligibility";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
+import { buildResponseAdapterColMap } from "@/lib/assistant/responseAnalysisAdapters";
 
 /**
  * "이 CSV로 지금 어떤 분석이 되는가" — 한 곳에서만 판정한다.
@@ -71,16 +72,18 @@ export function mergedToolMapping(mappingContract, globalMapping = {}) {
 
 
 /** 카탈로그 전체 자격 판정. 추천 순으로 정렬된 결과 배열. */
-export function computeCsvEligibility({ raw = [], headers = [], mapping = {}, fileName = "", locale = "ko" } = {}) {
+export function computeCsvEligibility({ raw = [], headers = [], mapping = {}, mappingBindingsV2 = [], fileName = "", locale = "ko", mappingContracts = null } = {}) {
   if (!raw.length || !headers.length) return [];
+  const responseColMap = buildResponseAdapterColMap({ raw, headers, mapping, mappingBindingsV2 });
   return rankRecommendedAnalyses(ANALYSIS_CATALOG.map((entry) => {
-    const mappingContract = buildMappingContract({ toolId: entry.toolId, headers, rows: raw, source: fileName || "dataset" });
+    const mappingContract = mappingContracts?.[entry.toolId] || buildMappingContract({ toolId: entry.toolId, headers, rows: raw, source: fileName || "dataset" });
     const toolMapping = mergedToolMapping(mappingContract, mapping);
     return evaluateAnalysisEligibility({
       toolId: entry.toolId,
       locale,
       mapping: toolMapping,
       mappingContract,
+      responseColMap,
       profile: profileFor(entry, { raw, headers, mapping: toolMapping }),
     });
   }));

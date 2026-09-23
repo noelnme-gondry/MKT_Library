@@ -136,6 +136,7 @@ export function sanitizeProductEventParams(params = {}, name) {
 }
 
 export function trackProductEvent(name, params = {}) {
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && name === "analysis_result_viewed") window.dispatchEvent(new Event("gop:analysis-result-ready"));
   if (typeof window === "undefined") return false;
   // 운영 호스트에서 GA 스크립트보다 먼저 마운트된 화면의 이벤트도 표준 큐에 넣는다.
   // 로컬·미리보기는 여전히 no-op. 광고 차단기를 우회하는 별도 전송은 하지 않는다.

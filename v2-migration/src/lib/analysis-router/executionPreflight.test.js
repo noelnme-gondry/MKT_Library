@@ -3,6 +3,9 @@ import { executionPreflight } from "./executionPreflight";
 import { evaluateEligibility } from "./evaluateEligibility";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { useAppStore } from "@/store/useDataStore";
+import { computeCsvEligibility } from "@/lib/assistant/csvEligibility";
+import { runResponseAnalysis } from "@/lib/assistant/responseAnalysisAdapters";
+import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
 
 const mapping = { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" };
 function dataset(variable = false) {
@@ -10,6 +13,21 @@ function dataset(variable = false) {
   return { raw, headers: Object.keys(mapping), mapping, canonicalData: buildCanonicalDataset({ raw, headers: Object.keys(mapping), mapping }) };
 }
 describe("execution preflight shared with direct uploader", () => {
+  it.each(["ko", "en"])("uses arbitrary channel spend columns through recommendation and execution (%s)", locale => {
+    const raw = Array.from({ length: 16 }, (_, i) => ({ Date: new Date(Date.UTC(2026, 0, 5 + i * 7)).toISOString().slice(0, 10), Signups: String(900 + i * 23 + i % 3 * 7), "Podcast Spend": String(500 + i * 11) }));
+    const data = { raw, headers: Object.keys(raw[0]), mapping: { Date: "date", Signups: "mmm_reg", "Podcast Spend": "__ignore__" } };
+    expect(computeCsvEligibility({ ...data, locale }).find(item => item.toolId === "5-18-trend").status).toBe("ready");
+    expect(executionPreflight(data, "5-18-trend", locale).status).toBe("ready");
+    const result = runResponseAnalysis({ toolId: "5-18-trend", csvData: data, inputSignature: "input", mappingSignature: "mapping", locale });
+    expect(result.status).toBe("success");
+    const ignored = { ...data, mappingBindingsV2: [{ sourceColumn: "Podcast Spend", source: "user" }] };
+    expect(computeCsvEligibility({ ...ignored, locale }).find(item => item.toolId === "5-18-trend").status).toBe("blocked");
+    expect(executionPreflight(ignored, "5-18-trend", locale).status).toBe("blocked");
+    const handoff = prepareAnalysisHandoff({ ...ignored, currency: "USD" }, "5-18-trend");
+    expect(handoff.currency).toBe("USD");
+    expect(handoff.mappingBindingsV2).toContainEqual({ sourceColumn: "Podcast Spend", source: "user" });
+    expect(executionPreflight(handoff, "5-18-trend", locale).status).toBe("blocked");
+  });
   it.each(["ko", "en"])("blocks constant-spend VIF at handoff (%s)", (locale) => {
     const data = dataset();
     const result = executionPreflight(data, "5-25", locale);
