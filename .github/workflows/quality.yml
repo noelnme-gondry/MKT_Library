@@ -51,9 +51,15 @@ jobs:
           cache-dependency-path: v2-migration/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # 브라우저 테스트는 빌드본으로 돈다(dev 서버의 요청마다 컴파일을 없앤다).
+      - run: npm run build
       - name: Verify account mapping before the full browser suite
         run: npx playwright test e2e/account-mappings.spec.js --project=desktop-1440
+        env:
+          E2E_SERVER: production
       - run: npm run test:e2e
+        env:
+          E2E_SERVER: production
       - name: Preserve browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
