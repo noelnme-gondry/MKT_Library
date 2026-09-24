@@ -747,7 +747,8 @@
        같은 칸에 두 요소가 얹혔다(버튼이 마지막 질문 카드·바로가기 링크 위에 겹침, 2026-09-24). */
     .dc-questions { grid-template-columns: minmax(0, 1fr); }
     .app .dc-questions > *, .app .dc-questions .home-tool-finder > *, .app .dc-questions .home-tool-finder[data-searching="true"] #home-tool-results { grid-area: auto; }
-    .dc-questions .home-tool-finder > button { justify-self: start; }
+    /* 버튼은 맨 뒤 — 검색 결과가 검색창 바로 아래 붙도록. */
+    .app .dc-questions .home-tool-finder > button { justify-self: start; order: 1; }
     .dc-library.has-reading .dc-library-card { display: block; padding: 22px; }
     .dc-library.has-reading .dc-library-card p { margin-top: 10px; }
     .dc-loop, .library-reading > header, .library-plan-link { align-items: flex-start; flex-direction: column; gap: 12px; }

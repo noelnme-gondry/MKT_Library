@@ -99,7 +99,7 @@ export async function measureDesignRules(page) {
 
     // 4) 박스 안 박스(테두리+배경+모서리). 버튼·입력 같은 컨트롤은 박스가 아니다.
     // 컨트롤(버튼·입력·토글 묶음·툴팁)과 글줄 안 배지는 상자가 아니다.
-    const control = (el) => el.matches("button, a, input, select, textarea, label, summary, [role='button'], [role='tab'], [role='radio'], [role='switch'], [role='radiogroup'], [role='tablist'], [role='tooltip'], [role='group'], .btn, code, kbd, pre, mark")
+    const control = (el) => el.matches("button, a, input, select, textarea, label, summary, [role='button'], [role='tab'], [role='radio'], [role='switch'], [role='radiogroup'], [role='tablist'], [role='tooltip'], [role='group'], .btn, code, kbd, pre, mark, [class*='badge'], [class*='chip'], .pill")
       || getComputedStyle(el).display.startsWith("inline");
     // 상자 = 모서리가 둥글고, (테두리 세 변 이상 + 바탕) 이거나 바탕색이 바로 뒤 바탕과 다른 면.
     // 테두리 없이 바탕색만 다른 안쪽 면도 눈에는 상자 안 상자다.

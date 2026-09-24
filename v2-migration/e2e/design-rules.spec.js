@@ -25,9 +25,12 @@ async function openExampleResult(page) {
   if (await example.count()) await example.first().click();
   const later = page.getByRole("button", { name: /^(나중에|Not now)$/ });
   if (await later.count()) await later.first().click();
-  const analyze = page.getByRole("button", { name: /^(▶ )?(데이터 )?분석하기$|^Analyze data$/ });
-  if (await analyze.count()) await analyze.first().click();
-  await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+  // 예시가 곧바로 결과까지 가는 도구도, 분석 버튼을 거치는 도구도 있다 — 둘 중 먼저 뜨는 쪽을 기다린다.
+  const analyze = page.getByRole("button", { name: /^(▶ )?(데이터 )?분석하기$|^Analyze data$/ }).first();
+  const card = page.locator(".result-action-card").first();
+  await expect(card.or(analyze)).toBeVisible({ timeout: 30_000 });
+  if (!(await card.isVisible())) await analyze.click();
+  await expect(card).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(500);
 }
 

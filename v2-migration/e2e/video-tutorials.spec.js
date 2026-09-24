@@ -64,6 +64,8 @@ for (const locale of ["ko", "en"]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
   test(`header guide opens preparation and restores focus (${locale})`, async ({ page }) => {
+    // 폰·태블릿 헤더에서는 버튼을 숨기고 ••• 메뉴의 영상 안내로 연다(아래 contextual 테스트가 그 경로를 본다).
+    test.skip(page.viewportSize().width <= 768, "phone header uses the utility menu entry");
     await page.goto(`${prefix}/`);
     await page.evaluate(async () => { await document.fonts.ready; });
     const launcher = page.getByRole("banner").locator(".tutorial-launcher");
