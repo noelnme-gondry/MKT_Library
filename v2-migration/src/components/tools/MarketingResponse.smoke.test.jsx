@@ -1776,7 +1776,7 @@ describe("MarketingResponse render smoke", () => {
     expect(container.querySelector('.decision-review[data-decision-review-tool="5-18-trend"]')).toBeNull();
     for (const [label, value] of [["기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "consistent"], ["같은 기간에 시즌·프로모션 변화가 있었나요?", "reviewed"], ["광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "continuous"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
     expect(container.querySelector('.decision-review[data-decision-review-tool="5-18-trend"]')).toBeTruthy();
-    expect(container.textContent).toContain("다음 검토 약속 만들기");
+    expect(container.textContent).toContain("다음 마케팅 프로젝트로 만들기");
     clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
   });

@@ -65,7 +65,7 @@ for (const locale of ["ko", "en"]) {
     await expect(actual).toHaveValue("5300");
     await expect(card).toContainText("+100 to +500 people");
     await page.keyboard.press("Escape");
-    await page.locator(".project-review-portfolio").getByRole("button", { name: en ? "Share / download project review" : "프로젝트 리뷰 공유·다운로드" }).click();
+    await page.locator(".project-review-portfolio").getByRole("button", { name: en ? "Share / download project" : "프로젝트 공유·다운로드" }).click();
     await page.getByRole("menuitem", { name: en ? /Preview my report/ : /내 보고서 미리보기/ }).click();
     const preview = page.getByRole("dialog", { name: en ? "Your report preview" : "내 보고서 미리보기" });
     await expect(preview).toContainText("Control regions"); await expect(preview).toContainText("10%"); await expect(preview).toContainText("5,300"); await expect(preview).toContainText("+100 to +500 people"); await expect(preview).toContainText("60%");

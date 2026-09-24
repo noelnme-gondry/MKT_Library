@@ -18,8 +18,8 @@ for (const locale of ["ko", "en"]) {
     const actual = page.getByRole("textbox", { name: en ? "Actual outcome — Budget review" : "실제 결과 — Budget review", includeHidden: true });
     await actual.fill("2500");
     await page.getByRole("button", { name: en ? "Save review changes" : "검토 내용 저장", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: en ? "Save review" : "리뷰 저장", exact: true });
-    const save = dialog.getByRole("button", { name: en ? "Save review" : "리뷰 저장", exact: true });
+    const dialog = page.getByRole("dialog", { name: en ? /^(Save to My projects|Make it my next marketing project)$/ : /^(내 프로젝트에 저장|다음 마케팅 프로젝트로 만들기)$/ });
+    const save = dialog.getByRole("button", { name: en ? "Save to My projects" : "내 프로젝트에 저장", exact: true });
     await expect(save).toBeEnabled();
     await page.evaluate(() => {
       window.__rejectReviewWrite = true;

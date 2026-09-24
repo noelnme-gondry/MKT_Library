@@ -19,9 +19,7 @@ for (const locale of ["ko", "en"]) {
     // A demo intentionally opens analyzed results immediately; do not invent an extra Analyze step.
     const result = page.locator(".dashboard-briefing .result-action-card");
     await expect(result).toBeVisible();
-    const demoNotice = page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" });
-    await demoNotice.getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
-    await expect(demoNotice).toBeHidden();
+    await expect(page.getByRole("dialog")).toHaveCount(0); // 데모 안내 창은 없앴다 — 예시는 곧장 결과다
     await expectPageHierarchy(page, { primaryRegion: ".dashboard-briefing" });
     await result.getByRole("button", { name: en ? "Download" : "결과 받기", exact: true }).click();
     const downloaded = page.waitForEvent("download");

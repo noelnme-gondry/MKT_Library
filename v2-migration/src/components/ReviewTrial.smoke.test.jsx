@@ -55,7 +55,7 @@ it("keeps an expired user's draft and never invokes an update callback", async (
   const onConfirm = vi.fn();
   render(<ReviewSaveDialog onConfirm={onConfirm} onClose={vi.fn()} />);
   await screen.findByText(/체험이 종료되었습니다/);
-  expect(screen.getByRole("button", { name: "리뷰 저장" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "내 프로젝트에 저장" }).disabled).toBe(true);
   expect(screen.queryByRole("button", { name: "결정 메모 계정에 저장" })).toBeNull();
   expect(onConfirm).not.toHaveBeenCalled();
   expect(accountRequest).not.toHaveBeenCalled();

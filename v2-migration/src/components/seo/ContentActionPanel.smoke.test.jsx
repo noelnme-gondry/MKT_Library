@@ -39,7 +39,7 @@ describe("all published article journeys", () => {
       expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ tool_id: normalizeProductToolId(practice.toolId), content_slug: slug, placement: "article_case_practice" }));
       expect(JSON.parse(window.sessionStorage.getItem("gop:editorial-journey")).tool_id).toBe(practice.toolId);
     }
-    const review = screen.queryByRole("link", { name: en ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →" });
+    const review = screen.queryByRole("link", { name: en ? "Open My projects →" : "내 프로젝트 열기 →" });
     const canReview = Boolean(practice && TOOL_GROUP[practice.toolId] === "efficiency" && TOOL_GROUP[toolId] === "efficiency");
     expect(Boolean(review)).toBe(canReview);
     if (canReview) {

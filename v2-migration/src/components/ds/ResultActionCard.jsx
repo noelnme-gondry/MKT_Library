@@ -387,7 +387,7 @@ export default function ResultActionCard({
           )}
           {canOpenDecisionReview && (
             <Link className="btn ghost" onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "analysis_result", placement: "result_action_card", locale })} href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>
-              {locale === "en" ? "Open weekly review" : "주간 리뷰 열기"}
+              {locale === "en" ? "Open My projects" : "내 프로젝트 열기"}
             </Link>
           )}
         </div>

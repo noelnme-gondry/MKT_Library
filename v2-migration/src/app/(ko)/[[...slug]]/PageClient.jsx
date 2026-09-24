@@ -17,7 +17,6 @@ import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
-import DemoNoticeModal from "@/components/DemoNoticeModal";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
@@ -160,8 +159,6 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
           </main>
         </div>
       </div>
-      {/* 데모 데이터 안내 모달(세션 1회, 도구 진입 시) */}
-      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal />}
       <GlobalModals />
       <UiSemantics />
     </>

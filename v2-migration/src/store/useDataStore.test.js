@@ -1,5 +1,5 @@
 import { activePro } from "@/test/proEntitlement";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP, groupForRoute } from "./useDataStore.js";
 import { buildGroupMap } from "@/lib/toolGroups";
 
@@ -52,7 +52,7 @@ describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 C
     const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
     // eventMarkers는 사용자가 직접 입력한 날짜 + 짧은 라벨이라 원본 CSV가 아니다(§2.2 비대상).
     // 저장하지 않으면 새로고침마다 사라져 "왜 이랬는지" 기록 장치가 매번 증발했다.
-    expect(Object.keys(persisted).sort()).toEqual(["activeProjectId", "analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "decisionPersistencePreferenceSet", "eventMarkers", "viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["activeProjectId", "analystMode", "customCharts", "customMetrics", "decisionPersistenceEnabled", "decisionPersistencePreferenceSet", "eventMarkers", "preferredSourceCurrency", "viewConfig"]);
     expect(persisted.eventMarkers).toEqual([{ id: "m1", date: "2026-01-05", label: "브랜드 캠페인 시작", type: "other" }]);
     expect(persisted.analystMode).toBe(false);
     expect(persisted.decisionPersistenceEnabled).toBe(false);
@@ -258,10 +258,12 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     useAppStore.getState().setCurrentRouteId("start-gate");
     useAppStore.getState().setCsvData(uploaded);
 
-    expect(useAppStore.getState().csvGroups.efficiency).toEqual(uploaded);
+    // 효율 업로드는 통화 선언을 묻지 않고 기본값(한국어 화면 → 원)으로 채운다.
+    const stored = { ...uploaded, currency: "KRW" };
+    expect(useAppStore.getState().csvGroups.efficiency).toEqual(stored);
     useAppStore.getState().setCurrentRouteId("weekly-review");
     useAppStore.getState().setCurrentRouteId("start-gate");
-    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: uploaded });
+    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: stored });
   });
 
   it("도치 결과 업로드도 읽기·쓰기 모두 효율 슬라이스를 사용", () => {
@@ -271,10 +273,48 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     useAppStore.getState().setCsvData(uploaded);
 
     expect(groupForRoute("dochi-result")).toBe("efficiency");
-    expect(useAppStore.getState().csvGroups.efficiency).toEqual(uploaded);
+    const stored = { ...uploaded, currency: "KRW" };
+    expect(useAppStore.getState().csvGroups.efficiency).toEqual(stored);
     useAppStore.getState().setCurrentRouteId("weekly-review");
     useAppStore.getState().setCurrentRouteId("dochi-result");
-    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: uploaded });
+    expect(useAppStore.getState()).toMatchObject({ activeDataGroup: "efficiency", csvData: stored });
+  });
+});
+
+describe("useDataStore · 원본 데이터 통화 기본값", () => {
+  const upload = (extra = {}) => ({ raw: [{ cost: "100" }], headers: ["cost"], mapping: { cost: "cost" }, fileName: "mine.csv", ...extra });
+  // 스토어는 <html lang>에서 로케일을 읽는다. 이 스위트는 node 환경이라 문서를 흉내 낸다.
+  const setLang = (lang) => { globalThis.document = { documentElement: { lang } }; };
+  afterEach(() => { delete globalThis.document; useAppStore.setState({ preferredSourceCurrency: null }); });
+
+  it("처음 쓰는 사람은 한국어 화면이면 원, 영어 화면이면 달러", () => {
+    useAppStore.getState().setCurrentRouteId("5-2");
+    useAppStore.getState().setCsvData(upload());
+    expect(useAppStore.getState().csvData.currency).toBe("KRW");
+    setLang("en");
+    useAppStore.getState().setCsvData(upload());
+    expect(useAppStore.getState().csvData).toMatchObject({ currency: "USD" });
+    expect(useAppStore.getState().displayCurrency).toBe("USD");
+  });
+
+  it("마지막으로 고른 통화가 언어 기본값보다 우선하고, 이미 선언된 값·다른 그룹·데모는 건드리지 않는다", () => {
+    useAppStore.getState().setPreferredSourceCurrency("USD");
+    useAppStore.getState().setCurrentRouteId("5-3");
+    useAppStore.getState().setCsvData(upload());
+    expect(useAppStore.getState().csvData.currency).toBe("USD");
+    useAppStore.getState().setCsvData(upload({ currency: "KRW" }));
+    expect(useAppStore.getState().csvData.currency).toBe("KRW");
+    useAppStore.getState().setCurrentRouteId("5-20");
+    useAppStore.getState().setCsvData(upload());
+    expect(useAppStore.getState().csvData.currency).toBeUndefined();
+    useAppStore.getState().setCurrentRouteId("5-2");
+    useAppStore.getState().setCsvData(upload({ importSource: "demo", fileName: "demo_efficiency.csv" }));
+    expect(useAppStore.getState().csvData.currency).toBeUndefined();
+  });
+
+  it("모르는 값은 기억하지 않는다", () => {
+    useAppStore.getState().setPreferredSourceCurrency("EUR");
+    expect(useAppStore.getState().preferredSourceCurrency).toBeNull();
   });
 });
 

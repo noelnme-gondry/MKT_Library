@@ -698,7 +698,9 @@ export function buildIncrSuppressionDemo() {
     }
   }
   const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
-  return { raw, headers, mapping, fileName: "demo_incr_suppression.csv" };
+  // 예시는 실험 계획서를 대신한다 — 차단 기간을 데이터와 함께 선언해 예시를 누르면 바로 결과가 열린다.
+  // 내 데이터는 여전히 계획서의 기간을 직접 지정해야 한다(결과를 보고 고르면 과대평가된다).
+  return { raw, headers, mapping, fileName: "demo_incr_suppression.csv", designWindow: { start: dates[winStart], end: dates[winEnd] } };
 }
 
 // 전후비교(pre/post): date·group(treatment/control)·conversions. cutoff = 중앙.
@@ -728,7 +730,7 @@ export function buildIncrPrepostDemo(direction = "on") {
     });
   }
   const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
-  return { raw, headers, mapping, fileName: `demo_incr_prepost_${direction}.csv` };
+  return { raw, headers, mapping, fileName: `demo_incr_prepost_${direction}.csv`, designCutoff: dates[cutoff] };
 }
 
 // ── content_aha (9-2 킬러 콘텐츠·충성 독자 발굴) ──────────────────────────────

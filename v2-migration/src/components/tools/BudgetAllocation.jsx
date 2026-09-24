@@ -964,7 +964,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const applyBudgetDefault = () => {
     if (budgetAutoDefaulted || (allocParseNum(budget) || 0) > 0) return;
     if (observedDailyBudget > 0) {
-      setBudget(formatBudgetInput(budgetPeriod === "monthly" ? observedDailyBudget * 30 : observedDailyBudget, currency));
+      // 최근 일예산 합이 관측 지출 상한을 넘으면 기본값만으로 "실행안 없음"이 된다(예시 데이터에서
+      // 실제로 그랬다). 기본값은 상한 안으로 둔다 — 사용자가 직접 넘기면 그때 안내한다.
+      const cap = evidenceLimits.maxBudget > 0 ? evidenceLimits.maxBudget : Infinity;
+      // 표시 자릿수로 반올림하면 상한을 살짝 넘을 수 있어 내림한다(원 1원 · 달러 1센트).
+      const unit = currency === "USD" ? 100 : 1;
+      const seed = Math.floor(Math.min(observedDailyBudget, cap) * unit) / unit;
+      setBudget(formatBudgetInput(budgetPeriod === "monthly" ? seed * 30 : seed, currency));
       setBudgetAutoDefaulted(true);
     }
   };
@@ -977,7 +983,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (hasData && step === 3) applyBudgetDefault();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasData, step, observedDailyBudget]);
+  }, [hasData, step, observedDailyBudget, evidenceLimits.maxBudget]);
 
   // 배분 결과 (mode C / B). target 모드는 미리 만든 안전 frontier의 선택 결과를
   // 재사용하므로 slider 이동 때 모델을 다시 25회 계산하지 않는다.

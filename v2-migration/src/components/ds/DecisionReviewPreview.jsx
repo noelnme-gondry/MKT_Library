@@ -12,7 +12,7 @@ export default function DecisionReviewPreview({ toolId, locale = "ko" }) {
   const track = (action) => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "analysis_result", placement: `demo_preview_${action}`, locale });
   return (
     <section className="decision-review-preview" aria-labelledby={`decision-preview-${toolId}`}>
-      <h3 id={`decision-preview-${toolId}`}>{en ? "Next: set a review date (preview)" : "다음 검토 약속 만들기 (미리보기)"}</h3>
+      <h3 id={`decision-preview-${toolId}`}>{en ? "Make it my next marketing project (preview)" : "다음 마케팅 프로젝트로 만들기 (미리보기)"}</h3>
       <p>{en
         ? "This is sample data, so nothing is saved. With your own data you can save this conclusion as a review date and check the same metric against the next period."
         : "예시 데이터라 저장하지 않습니다. 내 데이터로 분석하면 이 결론을 검토 약속으로 저장하고, 다음 기간 데이터로 같은 지표를 다시 확인합니다."}</p>

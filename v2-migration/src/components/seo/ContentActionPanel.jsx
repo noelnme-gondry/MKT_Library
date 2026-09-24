@@ -180,7 +180,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     <div>
       <h2>{calculator?.title || copy.title}</h2>
       <p>{calculator?.summary || copy.desc}</p>
-      {!isInline && <p className="content-action-panel__journey">{useCase?.description || (lang === "en" ? "Analyze your data, save a decision, then return to Weekly Review to check what changed." : "내 데이터로 분석하고 결정을 저장하세요. 다음 결과는 주간 리뷰에서 다시 확인합니다.")}</p>}
+      {!isInline && <p className="content-action-panel__journey">{useCase?.description || (lang === "en" ? "Analyze your data, make it your next marketing project, then check what changed in My projects." : "내 데이터로 분석하고 다음 마케팅 프로젝트로 만드세요. 다음 결과는 내 프로젝트에서 다시 확인합니다.")}</p>}
     </div>
     <div className="content-action-panel__links">
       {calculator
@@ -190,7 +190,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
       {!isInline && useCase && <>
         {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(useCase.practiceToolId, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
         {template && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/templates/${template.slug}`} onClick={() => trackClick(resolvedTool, "article_case_template")}>{lang === "en" ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →"}</Link>}
-        {useCase.canReview && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackClick("weekly-review", "article_case_review")}>{lang === "en" ? "Continue in Weekly Review →" : "주간 리뷰로 이어가기 →"}</Link>}
+        {useCase.canReview && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackClick("weekly-review", "article_case_review")}>{lang === "en" ? "Open My projects →" : "내 프로젝트 열기 →"}</Link>}
       </>}
       {!isInline && !useCase && related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
     </div>

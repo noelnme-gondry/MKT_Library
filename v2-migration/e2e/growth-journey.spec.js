@@ -22,7 +22,7 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
     const stats = focus.locator(".analysis-metric-picker");
     expect(await stats.evaluate(node => getComputedStyle(node).display)).toBe("grid");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기" }).click();
+    await page.getByRole("button", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기" }).click();
     await expect(page.locator(".wr-verdict__big")).toContainText(preview);
     const copy = page.getByRole("button", { name: en ? "Copy summary" : "요약 복사", exact: true });
     await expect(copy).toBeVisible();

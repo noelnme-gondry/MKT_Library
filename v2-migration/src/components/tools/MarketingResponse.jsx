@@ -366,7 +366,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const saved = responseMappingSession?.raw === csvData.raw ? responseMappingSession : null;
       const guess = saved?.colMap || autoGuessColMap(csvData.headers, csvData.raw);
       const weekStart = saved?.weekStart || mmmWeekStart;
-      const isDemoAutoAnalyze = demoPending.current;
+      // 예시 데이터는 어디서 왔든(도구 예시 버튼·홈 샘플 인계) 곧장 결과다(2026-09-24).
+      const isDemoAutoAnalyze = demoPending.current || isDemo;
       const shouldAutoAnalyze = Boolean(saved || isDemoAutoAnalyze);
       setMmmColMap(guess);
       setMmmWeekStart(weekStart);
@@ -397,7 +398,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       prevCsvSig.current = null;
       prevCsvRaw.current = null;
     }
-  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart, responseMappingSession, setResponseMappingSession]);
+  }, [hasData, csvSig, csvData.headers, csvData.raw, isDemo, mmmWeekStart, responseMappingSession, setResponseMappingSession]);
   useEffect(() => {
     if (forecastRegimeInputChanged(prevForecastRegimeInputSig.current, forecastRegimeInputSig)) {
       setFcRegimeTrainingWeeks(null);

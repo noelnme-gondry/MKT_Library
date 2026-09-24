@@ -20,7 +20,7 @@ afterEach(cleanup);
 it("프로젝트가 못 돌리는 분석에는 왜 여기서 넘어가는지 적는다", () => {
   // 못 하는 것을 말하지 않으면 사용자는 없는 경로를 찾아 헤맨다(§8).
   render(<ProjectHandoffNote toolId="5-18-cannibal" locale="ko" />);
-  expect(screen.getByRole("heading", { name: "이 결과를 프로젝트로 이어가기" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "이 결과를 다음 마케팅 프로젝트로" })).toBeTruthy();
   expect(screen.getByText(/데이터의 단위가 달라서/)).toBeTruthy();
 });
 
@@ -34,7 +34,7 @@ it("Pro가 아니면 관문을 먼저 열고, 통과하면 프로젝트로 보�
   accountRequest.mockResolvedValue({ trialStarted: true, entitlement: activePro({ trial: true }) });
   refreshAccount.mockResolvedValue({ enabled: true, account: { id: "a", email: "t@example.com" }, entitlement: null });
   render(<ProjectHandoffNote toolId="5-18-cannibal" locale="ko" />);
-  fireEvent.click(screen.getByRole("button", { name: "프로젝트로 넘기기" }));
+  fireEvent.click(screen.getByRole("button", { name: "다음 마케팅 프로젝트로 만들기" }));
   await waitFor(() => expect(push).toHaveBeenCalledWith("/weekly-review"));
 });
 
@@ -62,5 +62,5 @@ it("노출 조건을 중복으로 갖지 않는다 — 게이트는 래퍼의 �
   useAppStore.setState(useAppStore.getInitialState(), true);
   expect(useAppStore.getState().isGroupAnalyzed("5-18-cannibal")).toBe(false);
   render(<ProjectHandoffNote toolId="5-18-cannibal" locale="ko" />);
-  expect(screen.getByRole("heading", { name: "이 결과를 프로젝트로 이어가기" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "이 결과를 다음 마케팅 프로젝트로" })).toBeTruthy();
 });

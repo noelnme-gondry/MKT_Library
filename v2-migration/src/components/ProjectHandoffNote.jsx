@@ -21,17 +21,17 @@ import { trackProductEvent } from "@/lib/analytics";
  */
 const COPY = {
   ko: {
-    title: "이 결과를 프로젝트로 이어가기",
-    body: "이 분석은 프로젝트 화면에서 직접 돌리지 않습니다. 데이터의 단위가 달라서예요. 여기서 결과를 확인하고 결정을 기록한 뒤, 프로젝트로 넘기면 다음 검토까지 이어집니다.",
-    bodyPro: "여기서 결과를 확인하고 결정을 기록한 뒤 프로젝트로 넘기면 다음 검토까지 이어집니다.",
-    cta: "프로젝트로 넘기기",
+    title: "이 결과를 다음 마케팅 프로젝트로",
+    body: "이 분석은 프로젝트 화면에서 직접 돌리지 않습니다. 데이터의 단위가 달라서예요. 여기서 결과를 확인한 뒤 다음 마케팅 프로젝트로 만들면 내 프로젝트에서 다음 결과까지 이어 봅니다.",
+    bodyPro: "여기서 결과를 확인한 뒤 다음 마케팅 프로젝트로 만들면 내 프로젝트에서 다음 결과까지 이어 봅니다.",
+    cta: "다음 마케팅 프로젝트로 만들기",
     open: "내 프로젝트 열기",
   },
   en: {
-    title: "Continue this result in a project",
-    body: "This analysis does not run inside the project screen because its data grain is different. Read the result here, record a decision, then carry it into a project to follow through at the next review.",
-    bodyPro: "Read the result here, record a decision, then carry it into a project to follow through at the next review.",
-    cta: "Carry into a project",
+    title: "Turn this result into your next marketing project",
+    body: "This analysis does not run inside the project screen because its data grain is different. Read the result here, then make it your next marketing project to follow the next results in My projects.",
+    bodyPro: "Read the result here, then make it your next marketing project to follow the next results in My projects.",
+    cta: "Make it my next marketing project",
     open: "Open my projects",
   },
 };

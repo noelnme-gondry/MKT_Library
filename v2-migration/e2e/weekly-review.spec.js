@@ -93,7 +93,7 @@ async function runJourney(page, locale) {
   await page.getByRole("button", { name: en ? "Save this decision" : "이 결정 저장", exact: true }).click();
   await confirmReviewDialog(page, en);
   await expect(page.locator(".wr-report")).toContainText(en ? "This week's decision" : "이번 주 결정");
-  await expect(page.getByRole("dialog", { name: en ? "The decision log now lives here." : "결정 검토함이 여기로 들어왔어요." })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: en ? "Past decisions now live in My projects." : "지난 결정은 이제 내 프로젝트에 있어요." })).toHaveCount(0);
   const reportBeforeEdit = await page.locator(".wr-report").innerText();
   await guardrail.fill("999");
   await expect.poll(() => page.locator(".wr-report").innerText()).toBe(reportBeforeEdit);
@@ -168,7 +168,7 @@ async function dochiToWeekly(page, locale) {
   const decision = page.locator(".dochi-workspace__result.is-success .decision-review").first();
   await expect(decision).toBeVisible();
   await decision.locator(".decision-review-launch").click();
-  await page.getByRole("dialog").getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: en ? "Create it" : "이대로 만들기", exact: true }).click();
   await confirmReviewDialog(page, en);
   await expect(page.getByRole("dialog")).toContainText(en ? "Decision saved" : "결정 저장됨");
   const events = await page.evaluate(() => window.__journeyEvents);
@@ -179,7 +179,7 @@ async function dochiToWeekly(page, locale) {
   expect(JSON.stringify(events)).not.toContain("Review Campaign");
   expect(JSON.stringify(events)).not.toContain("weekly-dochi.csv");
   await page.getByRole("dialog").getByRole("button", { name: en ? "Close" : "닫기", exact: true }).click();
-  const weekly = page.getByRole("link", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true });
+  const weekly = page.getByRole("link", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true });
   await expect(weekly).toBeEnabled();
   await weekly.click();
   await expect(page).toHaveURL(/\/weekly-review#weekly-performance$/);

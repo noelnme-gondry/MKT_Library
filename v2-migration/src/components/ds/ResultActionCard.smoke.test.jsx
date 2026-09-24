@@ -80,7 +80,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(utilities).toBeTruthy();
     // 보조 동선은 머리 안에 있으면 안 된다.
     expect(head.querySelector(".result-action-card__utilities")).toBeNull();
-    for (const label of ["결론 공유", "보고서에 추가", "주간 리뷰 열기"]) {
+    for (const label of ["결론 공유", "보고서에 추가", "내 프로젝트 열기"]) {
       const node = screen.getByText(label);
       expect(utilities.contains(node)).toBe(true);
       expect(head.contains(node)).toBe(false);
@@ -212,11 +212,11 @@ describe("ResultActionCard decision-first hierarchy", () => {
   it("keeps a real result connected to weekly decision review even without a prefilled action", () => {
     useAppStore.setState({ csvData: { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: {}, fileName: "uploaded.csv" } });
     const { rerender } = render(<ResultActionCard toolId="5-3" headline="Result" analysisBasis={false} decisionReview={false} />);
-    expect(screen.getByRole("link", { name: "주간 리뷰 열기" }).getAttribute("href")).toBe("/weekly-review#wr-history");
+    expect(screen.getByRole("link", { name: "내 프로젝트 열기" }).getAttribute("href")).toBe("/weekly-review#wr-history");
 
     useAppStore.setState({ csvData: { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: {}, fileName: "demo_efficiency.csv" } });
     rerender(<ResultActionCard toolId="5-3" headline="Result" analysisBasis={false} decisionReview={false} />);
-    expect(screen.queryByRole("link", { name: "주간 리뷰 열기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "내 프로젝트 열기" })).toBeNull();
   });
 
   it("moves the folded data basis into the result header", () => {

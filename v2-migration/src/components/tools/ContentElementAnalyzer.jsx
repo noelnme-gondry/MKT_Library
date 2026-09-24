@@ -353,7 +353,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     const f = numericCols.filter((h) => h !== o && !looksLikeId(h));
     setOutcome(o);
     setFeatures(f);
-    setAnalyzedSig(demoPending && hasData ? analyzeSig(o, f, fileName) : null);
+    // 예시 데이터는 어디서 왔든(도구 예시 버튼·홈 샘플 인계) 곧장 결과다(2026-09-24).
+    setAnalyzedSig((demoPending || isDemo) && hasData ? analyzeSig(o, f, fileName) : null);
     if (demoPending) setDemoPending(false);
   }
 

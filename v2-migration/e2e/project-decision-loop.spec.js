@@ -37,7 +37,7 @@ for (const locale of ["ko", "en"]) {
     expect(child.parentDecisionId).toBe("parent");
     expect(child.baseline).toBe("");
     expect(decisions.find(record => record.id === "parent").actual).toBe("CPA 120");
-    await agenda.getByRole("button", { name: en ? "Share / download project review" : "프로젝트 리뷰 공유·다운로드" }).click();
+    await agenda.getByRole("button", { name: en ? "Share / download project" : "프로젝트 공유·다운로드" }).click();
     await page.getByRole("menuitem", { name: en ? /Preview my report/ : /내 보고서 미리보기/ }).click();
     const preview = page.getByRole("dialog", { name: en ? "Your report preview" : "내 보고서 미리보기" });
     await expect(preview).toContainText("Test new creative next week");

@@ -48,7 +48,7 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
     await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
-    await page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" }).getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0); // 데모 안내 창은 없앴다 — 예시는 곧장 결과다
     const card = page.locator(".dashboard-briefing .result-action-card");
     const headline = await card.locator(".result-action-card__headline").textContent();
     const trigger = card.getByRole("button", { name: en ? "Download" : "결과 받기", exact: true });

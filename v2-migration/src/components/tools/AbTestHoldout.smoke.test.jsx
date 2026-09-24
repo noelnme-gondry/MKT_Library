@@ -91,8 +91,9 @@ describe("AbTestHoldout render smoke", () => {
 
   it("mounts without throwing with a valid seeded CSV (design + charts)", () => {
     seedWithData();
-    // Default tab is "design" — exercises plan compute, threshold matrix, power curve chart.
+    // 결과 파일을 들고 들어오면 판독 탭이 먼저다 — 설계 탭은 직접 눌러 연다.
     expect(() => render(<AbTestHoldout />)).not.toThrow();
+    fireEvent.click(screen.getByRole("tab", { name: /실험 설계|설계/ }));
     expect(document.body.textContent.length).toBeGreaterThan(0);
     expect(screen.getByText("중간 판독 계획 · O’Brien–Fleming")).toBeTruthy();
     expect(screen.getByText(/계획 밖의 수시 확인에는 이 표를 적용하지 않습니다/)).toBeTruthy();
@@ -127,7 +128,7 @@ describe("AbTestHoldout render smoke", () => {
     render(<AbTestHoldout />);
     fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
     confirmDesign();
-    fireEvent.click(screen.getByText(/다음 검토 약속 만들기/));
+    fireEvent.click(screen.getByText(/다음 마케팅 프로젝트로 만들기/));
 
     expect(screen.getByText("Test 전환율이 Control보다 유의하게 높았습니다")).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toContain("제한적으로 롤아웃");
@@ -136,7 +137,7 @@ describe("AbTestHoldout render smoke", () => {
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("5.00% (Control 전환율)");
     expect(screen.getByLabelText("검토일에 답할 질문").value).toContain("Control 기준 5.00%");
 
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0]).toMatchObject({
       toolId: "5-4",
@@ -165,7 +166,7 @@ describe("AbTestHoldout render smoke", () => {
     render(<AbTestHoldout />);
     fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
     confirmDesign();
-    fireEvent.click(screen.getByText(/다음 검토 약속 만들기/));
+    fireEvent.click(screen.getByText(/다음 마케팅 프로젝트로 만들기/));
 
     expect(screen.getByText(conclusion)).toBeTruthy();
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe(action);
@@ -177,7 +178,7 @@ describe("AbTestHoldout render smoke", () => {
     render(<AbTestHoldout locale="en" />);
     fireEvent.click(screen.getByText("② A/B readout · Which side won?"));
     confirmDesign("en");
-    fireEvent.click(screen.getByText(/Schedule the next review/));
+    fireEvent.click(screen.getByText(/Make it my next marketing project/));
 
     expect(screen.getByText("The current sample cannot distinguish the Test and Control conversion rates")).toBeTruthy();
     expect(screen.getByLabelText("What will change?").value).toContain("pre-planned sample size");
@@ -192,16 +193,16 @@ describe("AbTestHoldout render smoke", () => {
 
     expect(screen.getByText("대량 검정 (arm_id별)")).toBeTruthy();
     expect(screen.getByText(/2개 variant를 합친 참고값/)).toBeTruthy();
-    expect(screen.queryByText(/다음 검토 약속 만들기/)).toBeNull();
+    expect(screen.queryByText(/다음 마케팅 프로젝트로 만들기/)).toBeNull();
   });
 
   it.each(["ko", "en"])("withholds the action when observed allocation contradicts the plan (%s)", (locale) => {
     seedWithData({ variantBNumerator: 590, includeVariantC: false });
     render(<AbTestHoldout locale={locale} />);
     fireEvent.click(screen.getByRole("tab", { name: locale === "en" ? /A\/B readout/ : /A\/B 판독/ }));
-    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
+    expect(screen.queryByText(locale === "en" ? /Make it my next marketing project/ : /다음 마케팅 프로젝트로 만들기/)).toBeNull();
     confirmDesign(locale, "80");
     expect(screen.getAllByText(locale === "en" ? /Allocation mismatch/ : /배정 비율 이상/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
+    expect(screen.queryByText(locale === "en" ? /Make it my next marketing project/ : /다음 마케팅 프로젝트로 만들기/)).toBeNull();
   });
 });

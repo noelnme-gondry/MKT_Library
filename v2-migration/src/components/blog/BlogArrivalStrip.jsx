@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
-import { scheduleDataPrepFocus } from "@/components/DemoNoticeModal";
+import { scheduleDataPrepFocus } from "@/lib/dataPrepFocus";
 import { trackProductEvent } from "@/lib/analytics";
 
 // 시안 E — 블로그 예시 결과에서 도구로 넘어온 방문의 첫 줄.

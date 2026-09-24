@@ -192,7 +192,7 @@ describe("WeeklyReviewScreen", () => {
     useAppStore.setState({ decisionRecords: [] });
     render(<WeeklyReviewScreen />);
     expect(screen.queryByText(/지난 결정 전체 보기/)).toBeNull();
-    expect(screen.getByRole("heading", { name: "지난 결정" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "저장한 마케팅 프로젝트" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "계정에 저장한 결정" })).toBeNull();
     expect(document.querySelectorAll("h1")).toHaveLength(1);
   });
@@ -279,7 +279,7 @@ describe("WeeklyReviewScreen", () => {
   it("EN도 같은 구조로 렌더된다", () => {
     setData(rowsFor());
     render(<WeeklyReviewScreen locale="en" />);
-    expect(screen.getByRole("heading", { name: "Projects" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "My projects" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Why" })).toBeTruthy();
     expect(screen.getByText(/“Result share” is the share of conversions/)).toBeTruthy();
   });
@@ -303,7 +303,7 @@ describe("도치 인수인계 안내", () => {
     useAppStore.setState({ decisionRecords: [{ id: "a" }, { id: "b" }] });
     render(<WeeklyReviewScreen />);
     const dialog = screen.getByRole("dialog");
-    expect(dialog.textContent).toMatch(/결정 검토함이 여기로 들어왔어요/);
+    expect(dialog.textContent).toMatch(/지난 결정은 이제 내 프로젝트에 있어요/);
     expect(dialog.textContent).toMatch(/결정 2건은 그대로 있습니다/);
   });
 

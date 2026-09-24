@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import PillGroup from "@/components/ds/PillGroup";
 import Link from "next/link";
 import Chart from "@/utils/chartGlobals";
-import { useAppStore } from "@/store/useDataStore";
+import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
 import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
@@ -21,6 +21,8 @@ import { CHART_THEME } from "@/utils/chartUtils";
 import { obfSequentialPlan } from "@/utils/sequentialTest";
 import { sampleRatioMismatch, practicalEquivalence } from "@/utils/experimentQuality";
 import ExperimentDesignCheck from "@/components/ds/ExperimentDesignCheck";
+import { buildToolDemo } from "@/lib/toolDemo";
+import { trackProductEvent } from "@/lib/analytics";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -77,7 +79,8 @@ function verdictColor(p, liftPositive) {
 
 export default function AbTestHoldout({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
-  const [activeTab, setActiveTab] = useState("design");
+  // 결과 파일(예시 포함)을 들고 들어오면 계산기가 아니라 판독부터 보여 준다.
+  const [activeTab, setActiveTab] = useState(() => (useAppStore.getState().csvGroups?.[TOOL_GROUP["5-4"]]?.raw?.length ? "readout" : "design"));
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useSavedToolInput("5-4", "testType", "binary");
   const onPrimaryTabKeyDown = useCallback((event, tabId) => {
@@ -409,6 +412,13 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <small>{readoutData?.sig ? tr(`Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`, `Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`) : tr("Control · Test 매핑", "Map Control · Test")}</small>
           </button>
         </div>
+        {/* 첫 탭은 계산기라 예시 결과로 가는 길이 없었다 — 예시는 판독 결과로 바로 연다(2026-09-24). */}
+        {!readoutData && <button type="button" className="csv-guide-example-btn" onClick={() => {
+          trackProductEvent("example_run_started", { tool_id: "5-4", source: "tool", placement: "journey", locale });
+          useAppStore.getState().setCsvData(buildToolDemo("5-4", locale));
+          useAppStore.getState().setGroupAnalyzed("5-4");
+          setActiveTab("readout");
+        }}>{tr("예시 데이터로 결과 바로 보기", "Run the example and see results")}<span aria-hidden>→</span></button>}
       </section>
       <div className="ab-tabs" role="tablist" aria-label={tr("실험 분석 보기", "Experiment analysis views")} style={{ marginBottom: "8px" }}>
         <button type="button" id="ab-primary-tab-design" role="tab" aria-selected={activeTab === "design"} aria-controls="ab-primary-panel" tabIndex={activeTab === "design" ? 0 : -1} className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")} onKeyDown={(event) => onPrimaryTabKeyDown(event, "design")}>

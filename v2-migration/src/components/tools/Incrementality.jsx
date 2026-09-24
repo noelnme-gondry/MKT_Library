@@ -329,8 +329,10 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
   const [winStart, setWinStart] = useState("");
   const [winEnd, setWinEnd] = useState("");
-  const start = winStart;
-  const end = winEnd;
+  // 예시 데이터는 계획된 차단 기간을 함께 싣는다(demoData). 사용자가 고르면 그 값이 이긴다.
+  const demoWindow = isDemoData(csvData) ? csvData.designWindow : null;
+  const start = winStart || demoWindow?.start || "";
+  const end = winEnd || (winStart ? "" : demoWindow?.end || "");
   const hasExplicitWindow = !!start && !!end;
   const isWindowOrderValid = hasExplicitWindow && start <= end;
   const design = useCausalDesign(`${computeAnalyzeSig(csvData)}|${start}|${end}`, true);
@@ -731,7 +733,8 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     return aggregateDailyMetric(treatmentRows, dateCol, metricCol).map((point) => point.date);
   }, [csvData.raw, groupCol, selectedTreatment, dateCol, metricCol]);
   const [cutoff, setCutoff] = useSavedToolInput("5-23", "cutoff", "");
-  const effCutoff = cutoff;
+  // 예시 데이터는 켠/끈 시점을 함께 싣는다(demoData). 사용자가 고르면 그 값이 이긴다.
+  const effCutoff = cutoff || (isDemoData(csvData) ? csvData.designCutoff || "" : "");
   const design = useCausalDesign(`${computeAnalyzeSig(csvData)}|${direction}|${effCutoff}|${metricCol}|${groupCol}|${selectedControl}|${selectedTreatment}|${useDiD}`);
   const chartInst = useRef(null);
 

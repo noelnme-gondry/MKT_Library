@@ -41,7 +41,7 @@ export default function ProjectReviewWorkspace({ locale = "ko", initialView = "r
       <div className="project-review-workspace__title">
         {view === "review" && <button className="btn ghost" onClick={() => show("manage")}>{en ? "My projects" : "내 프로젝트"}</button>}
         <h1>{view === "manage" ? (en ? "My projects" : "내 프로젝트") : active ? (active.name || (en ? "Existing project" : "기존 프로젝트")) : (en ? "New project" : "새 프로젝트")}</h1>
-        <p>{view === "manage" ? (en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 지난 결정과 이번 주 리뷰를 이어갈 수 있습니다.") : active ? (en ? "Choose a decision, record what happened, then plan the next action." : "검토할 결정을 선택하고, 관측 결과를 기록한 뒤 다음 행동을 정하세요.") : (en ? "Start an analysis and save a decision to begin your project." : "분석을 시작하고 결정을 저장하면 프로젝트 리뷰를 이어갈 수 있습니다.")}</p>
+        <p>{view === "manage" ? (en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 저장한 결정과 이번 주 결과를 이어 볼 수 있습니다.") : active ? (en ? "Choose a decision, record what happened, then plan the next action." : "검토할 결정을 선택하고, 관측 결과를 기록한 뒤 다음 행동을 정하세요.") : (en ? "Start an analysis and save a decision to begin your project." : "분석을 시작하고 결정을 저장하면 프로젝트 리뷰를 이어갈 수 있습니다.")}</p>
       </div>
       {view === "review" && <div className="project-review-workspace__tools">
       {projects.length > 0 &&

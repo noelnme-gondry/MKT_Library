@@ -130,7 +130,7 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/무작위 홀드아웃.*재검증/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toMatch(/×$/);
 
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
@@ -146,6 +146,8 @@ describe("Incrementality render smoke", () => {
   it("shows a demo result without offering to save a review promise", () => {
     seed(buildIncrSuppressionDemo());
     const view = render(<Incrementality />);
+    // 예시는 계획된 차단 기간을 함께 싣는다 — 기간을 고르기 전에 이미 결론이다.
+    expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     const selects = view.container.querySelectorAll("select.map-select");
     fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
     fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
@@ -160,9 +162,8 @@ describe("Incrementality render smoke", () => {
     seed(buildIncrPrepostDemo("on"));
     const on = render(<Incrementality />);
     fireEvent.click(on.getByText(/신규 켜기 \(전후\)/));
-    expect(on.queryByText(/결론 — 신규/)).toBeNull();
-    expect(on.getByText("전환 시점을 먼저 지정하세요")).toBeTruthy();
-    fireEvent.change(on.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
+    // 예시 데이터는 켠 시점을 함께 싣는다 — 누르자마자 결론이다(2026-09-24).
+    expect(on.queryByText("전환 시점을 먼저 지정하세요")).toBeNull();
     expect(on.getByText(/결론 — 신규/)).toBeTruthy();
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
@@ -173,7 +174,8 @@ describe("Incrementality render smoke", () => {
   });
 
   it("clears the explicit cutoff when switching launch → shutdown framing", () => {
-    seed(buildIncrPrepostDemo("on"));
+    // 내 데이터는 전환 시점을 직접 지정해야 한다(예시만 시점을 함께 싣는다).
+    seed(asRealResult(buildIncrPrepostDemo("on"), "prepost-real.csv"));
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-16" } });
@@ -193,7 +195,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("What will change?").value).toMatch(/limited follow-up window/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create it" }));
     confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
@@ -216,7 +218,7 @@ describe("Incrementality render smoke", () => {
     declareDesign();
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/대조군.*DiD.*재검증/);
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
@@ -248,7 +250,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/확대하지 않고.*재설계/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords.at(-1);
     expect(saved.toolId).toBe("5-23");
@@ -263,7 +265,7 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(view.container.querySelectorAll("select.map-select")[0], { target: { value: "2024-05-01" } });
     fireEvent.change(view.container.querySelectorAll("select.map-select")[1], { target: { value: "2024-05-02" } });
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
-    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+    expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
   });
 
   it("replaces an incompatible demo dataset when the method changes", () => {
@@ -271,7 +273,7 @@ describe("Incrementality render smoke", () => {
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
     expect(useAppStore.getState().csvData.fileName).toBe("demo_incr_prepost_on.csv");
-    expect(view.getByText("전환 시점을 먼저 지정하세요")).toBeTruthy();
+    expect(view.getByText(/결론 — 신규/)).toBeTruthy();
   });
 
   it("blocks DiD when treatment and control have no common pre-period date", () => {

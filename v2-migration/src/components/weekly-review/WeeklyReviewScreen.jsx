@@ -55,7 +55,7 @@ import WeeklyHistoryEvidence, { baselineExplanation } from "./WeeklyHistoryEvide
 const COPY = {
   ko: {
     eyebrow: "PROJECT",
-    title: "프로젝트",
+    title: "내 프로젝트",
     verdictHead: "이번 주 결론",
     whyHead: "왜 그랬나",
     lastHead: "지난 결정 이후의 관측",
@@ -91,7 +91,7 @@ const COPY = {
   },
   en: {
     eyebrow: "PROJECT",
-    title: "Projects",
+    title: "My projects",
     verdictHead: "This week",
     whyHead: "Why",
     lastHead: "Observations after the last decision",
