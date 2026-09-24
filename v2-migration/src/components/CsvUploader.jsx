@@ -286,7 +286,7 @@ export default function CsvUploader({
   onPrepared = null,
   onImportFailed = null,
   // 분석이 끝나면 매핑을 한 줄 요약으로 접는다(결과가 먼저 보이게). 이미 편집 창 안에서
-  // 여는 곳(5-2 대시보드)은 false로 펼친 채 쓴다.
+  // 여는 곳(5-2 대시보드)과 업로드 자체가 할 일인 곳(주간 리뷰의 다음 기간 업로드)은 false.
   collapseWhenAnalyzed = true,
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;

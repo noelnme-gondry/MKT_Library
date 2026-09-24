@@ -11590,7 +11590,7 @@ b, strong { font-weight: 700; }
 .calculator-related > h2 { margin: 0 0 12px; font-size: var(--fs-lg); font-weight: 700; }
 /* 20) 남은 왼쪽 색 막대 + 바탕 안내 상자 → 네 변 같은 얇은 선. */
 :is(.calculator-result__formula, .compare-page__answer), .calculator-page aside { border: 1px solid var(--border-subtle); }
-/* 21) 폰 하한(14px)으로 글자가 커지면 한 줄 flex 목록이 옆으로 넘친다 — 줄바꿈을 허용한다. */
+/* 21) 폰 하한(14px)으로 글자가 커지면 한 줄 flex 줄(안내 목록·파일 상태)이 옆으로 넘친다 — 줄바꿈을 허용한다. */
 .csv-guide-outcomes { flex-wrap: wrap; }
 /* 22) 구독 화면: 머리는 형제 구획과 같은 폭(글줄만 760px), 접힌 안내 제목도 16px. */
 .subscription-page > .subscription-hero { max-width: none; }
@@ -11598,6 +11598,8 @@ b, strong { font-weight: 700; }
 /* 23) 폰 하한으로 입력칸 기본 폭(글자 수 × 14px)이 커져 주간 보고서 도구줄이 320px에서 넘쳤다. */
 .weekly-report-page .weekly-review-page__toolbar label { flex: 1 1 200px; min-width: 0; }
 .weekly-report-page .weekly-review-page__toolbar label :is(input, select) { width: 100%; min-width: 0; box-sizing: border-box; }
+.file-state { flex-wrap: wrap; gap: 8px 12px; }
+.file-state .meta-text { flex-wrap: wrap; min-width: 0; }
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */
