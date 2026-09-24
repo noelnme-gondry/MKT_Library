@@ -7,7 +7,7 @@ export default function SubscriptionReportPreview({ locale = "ko" }) {
     <div className="report-preview-grid">
       <article className="report-preview-item">
         <div className="report-file-label"><span aria-hidden="true">W</span><div><h3>Word</h3><p>{en ? "For your next meeting" : "다음 회의에 가져갈 문서"}</p></div><span className="report-file-extension">.docx</span></div>
-        <div className="report-paper" aria-label={en ? "Word file structure example" : "Word 파일 구성 예시"}>
+        <div className="report-paper" data-design-exempt="accent: 실제 Word 보고서의 강조 칸을 줄여 그린 그림" aria-label={en ? "Word file structure example" : "Word 파일 구성 예시"}>
           <div className="report-paper-top">Growth Opt Playbook <span>{en ? "Analysis report" : "분석 보고서"}</span></div>
           <h4>{en ? "Conclusion and next actions" : "결론과 다음 행동"}</h4>
           <div className="report-paper-callout">{en ? "What changed, what to check, and what to do next" : "무엇이 달라졌고, 무엇을 확인하고, 다음에 무엇을 할지"}</div>

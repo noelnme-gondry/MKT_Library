@@ -147,7 +147,7 @@ v2-migration/
 - **응답 패널 다섯 분석**: `5-18-trend`·`-paid-organic`·`-cannibal`·`-mmm`·`-forecast`가 각각 도구(모두 `MarketingResponse`를 `isolated`로 렌더). CSV·매핑은 `response` 그룹 하나를 공유하고, 목록에 없는 `5-18`(publication="subtool")이 업로드·매핑 허브다. 필드 계약은 `csvConstants`의 `RESPONSE_PANEL_TOOL_IDS`가 5-18에서 파생.
 - **워크스페이스 목적지 SSOT**: `lib/workspaceNav.js`(홈·내 CSV 분석·원인 찾기·지난 결정의 이름/설명/아이콘) → `Sidebar` 두 변형 + `Header` 브레드크럼·검토함 + `Footer` + `GlobalModals` ⌘K.
 - **하단 마감**: 분석 아래는 `ToolPageOutro` 한 덩어리(`.tool-outro` 박스 + `.tool-outro__section` 구분선). 자식(`ToolConnections`·`ToolLongform`·`ToolEvidenceLinks`)은 자기 테두리·경계선을 그리지 않는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 강제(§12.30).
-- 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
+- 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 예시 데이터면 저장 단계 대신 `ds/DecisionReviewPreview`(저장 안 함·조건만). 분석 후 매핑 수정은 `ds/MappingEditorDialog`(+`AnalyzedDataLine` 한 줄) — `CsvUploader`(`collapseWhenAnalyzed`)·5-20·5-24·5-29가 공유. `store.lastToolRouteId`(휘발)는 빈 프로젝트 화면의 '방금 본 분석 다시 열기'. 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
 
 ## 5.1 콘텐츠 SEO·전환 경로
 - **사이트 전체 여정**: `ds/JourneyProgress`(준비→근거→결정→리뷰)를 홈·StartGate·도치 결과·ToolPageShell·주간 리뷰에서 공유. 홈은 `LandingPage` children 슬롯으로 실제 DochiAssistant를 도구 목록 앞에 렌더한다. `lib/siteJourney`는 범주형 최초 유입면을 탭 세션에 보관해 `analytics` 이벤트에 연결한다. 도치의 실제 실행·결과 노출은 `AssistantWorkspace`, 수동 결정은 공용 `DecisionReview`(자동 대조 범위 없음)에서 처리한다.

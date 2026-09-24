@@ -1,5 +1,6 @@
 "use client";
 
+import MappingEditorDialog, { AnalyzedDataLine } from "@/components/ds/MappingEditorDialog";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -277,15 +278,17 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     reviewQuestion: tx(locale, "새 데이터와 비교군을 포함하면 브랜드 캠페인의 순증분을 더 신뢰성 있게 구분할 수 있는가?", "With new data and a comparison group, can the campaign's net increment be separated more reliably?"),
   } : null;
 
-  const setupCollapsed = Boolean(result?.ok) && !setupOpen;
+  // 결과가 있으면 설명·데이터 선택은 숨기고 열 지정은 한 줄 + 편집 창. 창이 열린 동안은 유지한다.
+  const setupCollapsed = setupOpen || Boolean(result?.ok);
   return <div className="tab-pane active" id="tab-brand-incrementality">
-    {setupCollapsed ? <section className="block csv-uploader csv-uploader--collapsed" id="brand-its-setup">
-      <p className="csv-collapsed-summary">
-        <strong>{isDemo ? tx(locale, "예시 데이터", "Sample data") : csvData.fileName}</strong>
-        <span className="tnum">{tx(locale, `${csvData.raw.length.toLocaleString()}행 · 날짜 ${resolvedDateColumn} · 성과 ${resolvedOutcomeColumn} · 집행 여부 ${resolvedCampaignColumn}`, `${csvData.raw.length.toLocaleString()} rows · date ${resolvedDateColumn} · outcome ${resolvedOutcomeColumn} · status ${resolvedCampaignColumn}`)}</span>
-      </p>
-      <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setSetupOpen(true)}>{tx(locale, "데이터·매핑 바꾸기", "Change data or mapping")}</button>
-    </section> : <>
+    {setupCollapsed && <AnalyzedDataLine
+      id="brand-its-summary"
+      locale={locale}
+      name={isDemo ? tx(locale, "예시 데이터", "Sample data") : csvData.fileName}
+      detail={tx(locale, `${csvData.raw.length.toLocaleString()}행 · 날짜 ${resolvedDateColumn} · 성과 ${resolvedOutcomeColumn} · 집행 여부 ${resolvedCampaignColumn}`, `${csvData.raw.length.toLocaleString()} rows · date ${resolvedDateColumn} · outcome ${resolvedOutcomeColumn} · status ${resolvedCampaignColumn}`)}
+      onEdit={() => setSetupOpen(true)}
+    />}
+    {!setupCollapsed && <>
     <section className="block" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--bg-2)), var(--bg-2))", border: "1px solid var(--border)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
       <h2 className="section-title" style={{ marginTop: "6px" }}>{tx(locale, "브랜드 캠페인이 실제로 추가 만든 성과를 추정하세요", "Estimate the outcomes your brand campaign actually added")}</h2>
       <p className="muted" style={{ maxWidth: "760px", lineHeight: 1.65 }}>{tx(locale, "데이터 준비 수준부터 고르면 가장 강한 설계로 연결합니다. ITS는 집행 전 추세를 기준선으로 삼는 관찰 연구이므로, 대조군이 없으면 ‘인과 확정’이 아니라 추정 증가분으로만 표시합니다.", "Choose from the data you have and we route you to the strongest available design. ITS is observational: without a control, results are labeled as estimated lift, not confirmed causality.")}</p>
@@ -302,6 +305,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       </div>
     </section>
 
+    </>}
+    <MappingEditorDialog asDialog={setupCollapsed} open={setupOpen} onClose={() => setSetupOpen(false)} locale={locale}>
     {dataPath === "its" && <section className="block" id="brand-its-setup">
       <h2 className="section-title">{tx(locale, "ITS 데이터 준비", "Prepare ITS data")}</h2>
       {/* 업로드 안내는 공용 CsvGuide 계약(§12.21 ④)을 쓴다. 예전에는 이 자리에
@@ -319,11 +324,11 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         </div>
         {resolvedCampaignColumn && (csvData.raw || []).some((row) => parseCampaignFlag(row?.[resolvedCampaignColumn]) == null) && <p className="callout warn">{tx(locale, "집행 여부 열은 on/off, 1/0, 집행/중단처럼 해석 가능한 값만 사용합니다.", "Campaign status must use recognizable values such as on/off, 1/0, or active/inactive.")}</p>}
         {nonNumericOutcome && <p className="callout warn">{tx(locale, "선택한 성과 열에서 숫자를 읽지 못했습니다.", "The selected outcome column does not contain readable numbers.")}</p>}
-        <button type="button" className="btn primary" onClick={analyze}>{tx(locale, "증분 추정하기", "Estimate incrementality")} <span aria-hidden>→</span></button>
+        <button type="button" className="btn primary" onClick={() => { analyze(); setSetupOpen(false); }}>{tx(locale, "증분 추정하기", "Estimate incrementality")} <span aria-hidden>→</span></button>
       </>}
       {error && <p className="csv-upload-error" role="alert">{error}</p>}
     </section>}
-    </>}
+    </MappingEditorDialog>
 
     {result && !result.ok && <section className="block" id="brand-its-result"><div className="callout warn"><div className="body"><strong>{tx(locale, "아직 정직한 ITS 추정을 만들 수 없습니다", "ITS is not yet identifiable")}</strong><p>{result.reason === "multiple_campaign_windows" ? tx(locale, "ON/OFF 구간이 여러 번입니다. 이번 버전은 한 번의 연속 캠페인 구간만 분석합니다. 구간 하나만 남기거나 통제군 설계를 사용하세요.", "There are multiple ON/OFF windows. This version analyzes one continuous campaign window; isolate one window or use a control-group design.") : result.reason === "insufficient_pre_periods" ? tx(locale, `집행 전 기간이 ${result.prePeriods}개입니다. 현재 cadence에는 최소 ${result.minPrePeriods}개 기간이 필요합니다.`, `There are ${result.prePeriods} pre periods; this cadence requires at least ${result.minPrePeriods}.`) : result.reason === "insufficient_post_periods" ? tx(locale, `집행 후 기간이 ${result.postPeriods}개입니다. 현재 cadence에는 최소 ${result.minPostPeriods}개 기간이 필요합니다.`, `There are ${result.postPeriods} post periods; this cadence requires at least ${result.minPostPeriods}.`) : result.reason === "zero_pretrend_variance" ? tx(locale, "집행 전 성과가 완벽한 직선이라 불확실성을 추정할 수 없습니다. 노이즈가 없는 샘플 데이터 또는 지나친 집계 여부를 확인하세요.", "The pre-period is a perfect line, so uncertainty cannot be estimated. Check for noiseless sample data or over-aggregation.") : result.reason === "ar1_variance_not_estimable" ? tx(locale, "사전 기간의 AR(1) 불확실성을 추정할 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "AR(1) uncertainty cannot be estimated from the pre-period. Add history or use a control-group design.") : tx(locale, "날짜·성과·집행 여부를 다시 확인하세요.", "Check date, outcome, and campaign-status columns.")}</p></div></div></section>}
 

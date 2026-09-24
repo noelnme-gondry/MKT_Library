@@ -117,10 +117,9 @@ describe("SegmentCompositionChange render smoke", () => {
     const { container } = mount();
     // 자동으로 읽었으면 결과가 먼저 보이게 편집기는 닫혀 있다.
     expect(container.querySelector(".segment-mapping-edit")).toBeNull();
-    const toggle = screen.getByRole("button", { name: "다르게 읽혔다면 고치기" });
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(toggle);
-    const editor = container.querySelector(".segment-mapping-edit");
+    // 고치는 곳은 접기가 아니라 이름 있는 편집 창(제품 SSOT §4).
+    fireEvent.click(screen.getByRole("button", { name: "다르게 읽혔다면 고치기" }));
+    const editor = screen.getByRole("dialog", { name: "데이터·매핑 편집" }).querySelector(".segment-mapping-edit");
     expect(editor.tagName).toBe("SECTION");
     // 열면 역할 선택기가 그대로 있다.
     expect(within(editor).getByLabelText("날짜나 주차는 어느 열인가요?")).toBeTruthy();
@@ -129,7 +128,7 @@ describe("SegmentCompositionChange render smoke", () => {
   it("사용자가 매핑을 손대면 자동 선언이 멈춘다", () => {
     const { container } = mount();
     fireEvent.click(screen.getByRole("button", { name: "다르게 읽혔다면 고치기" }));
-    fireEvent.change(within(container.querySelector(".segment-mapping-edit")).getByLabelText("전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)"), { target: { value: "signups" } });
+    fireEvent.change(within(document.querySelector(".segment-mapping-edit")).getByLabelText("전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)"), { target: { value: "signups" } });
     expect(container.querySelector("[aria-labelledby='segment-composition-mapping']").textContent)
       .toContain("직접 지정한 매핑을 씁니다");
   });

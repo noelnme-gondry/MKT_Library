@@ -1,4 +1,5 @@
 "use client";
+import { trendHeadline } from "@/lib/assistant/responseAnalysisAdapters";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData, canTrackDecisionReview } from "@/lib/dataOrigin";
@@ -3611,10 +3612,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const stlValue = Number.isFinite(trend?.stl_pct) ? `${trend.stl_pct >= 0 ? "+" : ""}${trend.stl_pct.toFixed(1)}%` : "—";
       return {
         tone: trend ? "neutral" : "bad",
-        headline: trend?.verdict || tx("자연 추세를 판정할 수 없습니다", "Natural trend cannot be determined"),
+        headline: trend?.verdict ? trendHeadline(locale, trend.verdict, mmm?.panel?.granularity) : tx("자연 추세를 판정할 수 없습니다", "Natural trend cannot be determined"),
         stats: [
-          { label: "STL", value: stlValue },
-          { label: "Mann-Kendall", value: Number.isFinite(trend?.mk_deseason?.[1]) ? `p=${trend.mk_deseason[1].toFixed(3)}` : "—" },
+          { label: tx("기간 전체 추세 변화", "Trend change over the period"), value: stlValue },
+          { label: tx("계절성 뺀 추세 검정 p", "Trend test p (seasonality removed)"), value: Number.isFinite(trend?.mk_deseason?.[1]) ? `p=${trend.mk_deseason[1].toFixed(3)}` : "—" },
           { label: tx("분석 주", "Weeks"), value: weeks },
         ],
         point: tx("추세를 확인했으면 채널 간 잠식 신호를 점검하세요.", "After checking trend, inspect cross-channel cannibalization signals."),
@@ -3622,7 +3623,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         nextLabel: tx("잠식 진단으로", "Next: cannibalization"),
         evidenceStatus: trend ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.INSUFFICIENT_DATA,
         decisionPrefill: trend ? {
-          conclusion: trend.verdict || tx("자연 추세를 확인했습니다", "Natural trend was reviewed"),
+          conclusion: trend.verdict ? trendHeadline(locale, trend.verdict, mmm?.panel?.granularity) : tx("자연 추세를 확인했습니다", "Natural trend was reviewed"),
           action: tx("잠식 진단에서 채널 간 신호를 교차 확인한다", "Cross-check channel signals in cannibalization diagnosis"),
           hypothesis: tx("자연 추세를 먼저 분리하면 광고 효과로 오인할 변화를 줄일 수 있습니다", "Separating natural trend first reduces changes misread as media effects"),
           metric: "STL",
@@ -4386,7 +4387,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
                   <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
                   <div className="stat-card"><div className="lbl">Mann-Kendall</div><div className="val">p={fmtOne(trend.mk_deseason?.[1])}</div></div>
-                  <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "var(--fs-sm)" }}>{trend.verdict}</div></div>
+                  <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "var(--fs-sm)" }}>{trendHeadline(locale, trend.verdict, mmm?.panel?.granularity)}</div></div>
                 </div>
                 <div className="chart-container" style={{ height: "310px" }}><canvas ref={trendRef}></canvas></div>
                 {trendLedger && (
@@ -4628,7 +4629,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <div className="ico">{isNo ? "✓" : "!"}</div>
                           <div className="body">
                             <strong>{plain}</strong>
-                            <p style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "4px" }} title={trend.verdict}>{tx(`전 구간 추세 변화 ${trend.stl_pct}% · 판정 근거: ${trend.verdict}`, `Full-period trend change ${trend.stl_pct}% · basis: ${trend.verdict}`)}</p>
+                            <p style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "4px" }} title={trend.verdict}>{tx(`전 구간 추세 변화 ${trend.stl_pct}% · 판정: ${trendHeadline(locale, trend.verdict, mmm?.panel?.granularity)}`, `Full-period trend change ${trend.stl_pct}% · verdict: ${trendHeadline(locale, trend.verdict, mmm?.panel?.granularity)}`)}</p>
                           </div>
                         </div>
                       );

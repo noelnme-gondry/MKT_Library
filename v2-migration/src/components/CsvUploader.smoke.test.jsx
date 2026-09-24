@@ -5,7 +5,7 @@
 // TOOL_REQUIRED/OPTIONAL_FIELDS to render the dropzone (no data) or the mapping
 // grid + required-columns table (data present). Both branches must mount.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
@@ -89,7 +89,7 @@ describe("CsvUploader render smoke", () => {
 
   // 분석이 끝났으면 결과가 먼저 보여야 한다 — 매핑표·미리보기는 한 줄 요약 뒤로 접힌다.
   // 진입 경로(사이드바·/start 목록·하단 추천)와 무관하게 분석 게이트 하나로 판단한다.
-  it("분석이 끝나면 매핑을 한 줄로 접고, 버튼으로 다시 편다", () => {
+  it("분석이 끝나면 매핑을 한 줄로 접고, 편집 창에서 고친다", () => {
     seedWithData();
     act(() => { useAppStore.getState().setGroupAnalyzed("5-2"); });
     expect(useAppStore.getState().isGroupAnalyzed("5-2")).toBe(true);
@@ -99,9 +99,12 @@ describe("CsvUploader render smoke", () => {
     expect(document.querySelector(".mapping-grid")).toBeNull();
     expect(document.querySelector(".csv-preview-table")).toBeNull();
     expect(collapsed.textContent).toContain("x.csv");
+    // 고치는 곳은 접기가 아니라 이름 있는 편집 창(제품 SSOT §4).
     fireEvent.click(screen.getByRole("button", { name: "데이터·매핑 바꾸기" }));
-    expect(document.querySelector(".mapping-grid")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "매핑 접기" }));
+    const dialog = screen.getByRole("dialog", { name: "데이터·매핑 편집" });
+    expect(dialog.querySelector(".mapping-grid")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.querySelector(".csv-uploader--collapsed")).toBeTruthy();
   });
 

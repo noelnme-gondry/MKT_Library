@@ -1,4 +1,5 @@
 "use client";
+import MappingEditorDialog from "@/components/ds/MappingEditorDialog";
 import { accountRequest } from "@/lib/account/accountClient";
 import { applyAccountMappings } from "@/lib/account/mappingContract";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -112,7 +113,6 @@ const CSV_COPY = {
     collapsedSummary: (rows, cols, used) => `${rows.toLocaleString()}행 · ${cols}개 열 중 ${used}개 사용`,
     collapsedDemo: "예시 데이터",
     editMappingBtn: "데이터·매핑 바꾸기",
-    collapseMappingBtn: "매핑 접기",
     mappingFilterAttention: (count) => `확인 필요만 보기 (${count})`,
     mappingFilterAll: "전체 컬럼 보기",
     mappingFilterEmpty: "확인이 필요한 컬럼이 없습니다.",
@@ -201,7 +201,6 @@ const CSV_COPY = {
     collapsedSummary: (rows, cols, used) => `${rows.toLocaleString()} rows · using ${used} of ${cols} columns`,
     collapsedDemo: "Sample data",
     editMappingBtn: "Change data or mapping",
-    collapseMappingBtn: "Hide mapping",
     mappingFilterAttention: (count) => `Show only what needs review (${count})`,
     mappingFilterAll: "Show every column",
     mappingFilterEmpty: "No column needs review.",
@@ -1006,17 +1005,32 @@ export default function CsvUploader({
   };
 
   // 분석이 끝났고 고칠 것이 없으면 업로더·매핑표·미리보기를 한 줄로 접는다. 들어온 경로
-  // (사이드바·/start 목록·하단 추천)와 무관하게 게이트 하나로 판단한다.
-  const isCollapsed = collapseWhenAnalyzed && isAnalyzed && !isRouterMode && !mappingNeedsAttention && !mappingExpanded && !isStartingAnalysis;
+  // (사이드바·/start 목록·하단 추천)와 무관하게 게이트 하나로 판단한다. 고치는 곳은 접기가
+  // 아니라 이름 있는 편집 창이다(제품 SSOT §4). 편집 창이 열려 있는 동안은 매핑을 바꿔 게이트가
+  // 닫혀도 창을 유지한다 — 안 그러면 고치는 도중 창이 사라진다.
+  const isCollapsed = collapseWhenAnalyzed && !isRouterMode && (mappingExpanded || (isAnalyzed && !mappingNeedsAttention && !isStartingAnalysis));
   if (isCollapsed) {
     return (
-      <div className="csv-uploader csv-uploader--collapsed" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
-        <p className="csv-collapsed-summary">
-          <strong>{isDemo ? T.collapsedDemo : csvData.fileName}</strong>
-          <span className="tnum">{T.collapsedSummary(csvData.raw.length, csvData.headers.length, mappedCount)}</span>
-        </p>
-        <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setMappingExpanded(true)}>{T.editMappingBtn}</button>
-      </div>
+      <>
+        <div className="csv-uploader csv-uploader--collapsed" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
+          <p className="csv-collapsed-summary">
+            <strong>{isDemo ? T.collapsedDemo : csvData.fileName}</strong>
+            <span className="tnum">{T.collapsedSummary(csvData.raw.length, csvData.headers.length, mappedCount)}</span>
+          </p>
+          <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setMappingExpanded(true)}>{T.editMappingBtn}</button>
+        </div>
+        <MappingEditorDialog asDialog open={mappingExpanded} onClose={() => setMappingExpanded(false)} locale={locale}>
+          <CsvUploader
+            toolId={toolId}
+            refreshRef={refreshRef}
+            analyticsToolId={analyticsToolId}
+            showToolGuide={false}
+            locale={locale}
+            collapseWhenAnalyzed={false}
+            onAnalyzed={(...args) => { onAnalyzed?.(...args); setMappingExpanded(false); }}
+          />
+        </MappingEditorDialog>
+      </>
     );
   }
 
@@ -1328,7 +1342,6 @@ export default function CsvUploader({
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
             <span className="csv-analysis-hint">{T.analyzedHint}</span>
             <button data-mobile-task=".csv-analysis-action" className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
-            {collapseWhenAnalyzed && mappingExpanded && <button type="button" className="ab-pill" onClick={() => setMappingExpanded(false)}>{T.collapseMappingBtn}</button>}
           </div>
         ) : (
           <div className="csv-analysis-cta-row is-ready">

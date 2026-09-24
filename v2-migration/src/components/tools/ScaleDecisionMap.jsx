@@ -302,13 +302,14 @@ export default function ScaleDecisionMap({
           <p className="scale-decision-map__limit">{isEn
             ? "This map prioritizes review from observed cost and efficiency. Confirm marginal efficiency in the saturation analysis below before changing budget."
             : "이 지도는 관측 비용·효율로 검토 순서를 정합니다. 실제 예산 변경 전에는 아래 포화도 분석의 한계효율을 함께 확인하세요."}</p>
-          <table className="sr-only">
+          {/* 표는 width를 무시해 .sr-only의 1px이 안 먹는다 — 폰에서 409px로 가로 넘침(2026-09-24). 감싼 div가 자른다. */}
+          <div className="sr-only"><table>
             <caption>{isEn ? "Scale decision map data" : "증액·감액 우선순위 데이터"}</caption>
             <thead><tr><th>{grainLabel}</th><th>Cost</th><th>{metricLabel}</th><th>{isEn ? "Action" : "행동"}</th></tr></thead>
             <tbody>{matrix.points.map((point) => (
               <tr key={point.name}><th>{point.name}</th><td>{point.cost}</td><td>{point.efficiency}</td><td>{actions[point.action].label}</td></tr>
             ))}</tbody>
-          </table>
+          </table></div>
         </>
       )}
 

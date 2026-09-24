@@ -1,4 +1,5 @@
 "use client";
+import MappingEditorDialog, { AnalyzedDataLine } from "@/components/ds/MappingEditorDialog";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
@@ -1030,6 +1031,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   if (!targetCol) missing.push(C.missingTarget);
   if (!actionCount) missing.push(C.missingFeature);
   const showResults = missing.length === 0 && analyzed && cache.results.length > 0;
+  // 결과가 있으면 매핑은 한 줄 + 편집 창. 창이 열려 있는 동안에는 매핑을 바꿔 게이트가 닫혀도 창을 유지한다.
+  const mappingCollapsed = mappingOpen || (analyzed && !missing.length && !cache.invalidReason);
   const ahaAnalysisKey = `${analyzedSig}|${activeSeg?.col || ""}|${activeSeg?.value || ""}`;
   useEffect(() => {
     if (!analyzed || !analysisData || showResults) return;
@@ -1114,15 +1117,14 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         </section>
       )}
-      {analyzed && !missing.length && !cache.invalidReason && !mappingOpen ? (
-        <section className="block csv-uploader csv-uploader--collapsed" id="s-aha-map">
-          <p className="csv-collapsed-summary">
-            <strong>{isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "data.csv")}</strong>
-            <span className="tnum">{tr(`${csvData.raw.length.toLocaleString()}행 · 행동 후보 ${actionCount}개`, `${csvData.raw.length.toLocaleString()} rows · ${actionCount} candidate actions`)}</span>
-          </p>
-          <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setMappingOpen(true)}>{tr("데이터·매핑 바꾸기", "Change data or mapping")}</button>
-        </section>
-      ) : <>
+      {mappingCollapsed && <AnalyzedDataLine
+        id="s-aha-map-summary"
+        locale={locale}
+        name={isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "data.csv")}
+        detail={tr(`${csvData.raw.length.toLocaleString()}행 · 행동 후보 ${actionCount}개`, `${csvData.raw.length.toLocaleString()} rows · ${actionCount} candidate actions`)}
+        onEdit={() => setMappingOpen(true)}
+      />}
+      <MappingEditorDialog asDialog={mappingCollapsed} open={mappingOpen} onClose={() => setMappingOpen(false)} locale={locale}><>
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
@@ -1201,17 +1203,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
-            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runAhaAnalysis}>↻ {tr("다시 분석", "Re-analyze")}</button>
-            <button type="button" className="ab-pill" onClick={() => setMappingOpen(false)}>{tr("매핑 접기", "Hide mapping")}</button>
+            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>↻ {tr("다시 분석", "Re-analyze")}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
-            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
+            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
       </section>
-      </>}
+      </></MappingEditorDialog>
 
       <section className="block analysis-design-check">
         <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
@@ -1248,7 +1249,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 { label: C.statAll, value: cache.n.toLocaleString() },
                 { label: C.statTarget, value: totalTargets.toLocaleString(), detail: `${C.statRate} ${(cache.baseRate * 100).toFixed(1)}%` },
                 { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
-                { label: tr("Top Lift", "Top lift"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? `F1 ${topAction.holdout.F1.toFixed(2)}` : "" },
+                { label: tr("정착률 배수 (1위 행동)", "Retention multiple (top action)"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? tr(`검증 데이터 정확도(F1) ${topAction.holdout.F1.toFixed(2)}`, `Holdout accuracy (F1) ${topAction.holdout.F1.toFixed(2)}`) : "" },
               ]}
               workbookExport={() => ({
                 calculationMode: "hybrid_engine_output",
@@ -1284,7 +1285,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   limitations: [tr(`전환 평가 시작일: ${activeOutcomeStartDay || "미선언"}. 시간창 제외: ${temporalScope.excluded.length}개. 원본 이벤트 시점은 검증하지 않았습니다.`, `Outcome evaluation starts on day ${activeOutcomeStartDay || "undeclared"}. Excluded windows: ${temporalScope.excluded.length}. Source event timestamps have not been verified.`), tr("가장 좋은 윈도우·횟수 선택은 워크북에서 다시 탐색되지 않으며, Lift는 관측 연관이지 인과효과가 아닙니다.", "The best window and frequency are not searched again in the workbook; lift is an observed association, not a causal effect.")],
                 },
               })}
-              points={topAction ? [] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
+              points={topAction ? [
+                // 결론 카드의 3층(다음 행동 1개, 제품 SSOT §5.5). 예전에는 비어 있어 결과를 보고 무엇을 할지가 버튼 이름에만 있었다.
+                { label: tr("다음 행동", "Next action"), text: tr(
+                  `가입 후 ${topAction.bestWindow === Infinity ? "초기" : `${topAction.bestWindow}일 안`}에 ${topAction.action}을(를) ${topAction.bestK}번 하도록 돕는 변화를 A/B 실험으로 확인하세요.`,
+                  `Test with an A/B experiment whether helping users do ${topAction.action} ${topAction.bestK} time(s) ${topAction.bestWindow === Infinity ? "early on" : `within ${topAction.bestWindow} days`} raises retention.`,
+                ), detail: tr("함께 나타나는 행동일 뿐 원인이라는 증거는 아닙니다.", "This behavior co-occurs with retention; it is not proof that it causes it.") },
+              ] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
               controls={topAction ? (
                 <button
                   type="button"

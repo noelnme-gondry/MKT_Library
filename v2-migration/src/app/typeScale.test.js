@@ -4,7 +4,11 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { stripSourceComments } from "@/test-utils/stripSourceComments";
 
-const CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
+const RAW_CSS = stripSourceComments(readFileSync(new URL("./globals.css", import.meta.url), "utf8"));
+// 폰 하한 블록 — 폰에서 작은 두 단(xs·sm)을 본문 크기로 올리는 단 하나의 예외. 스케일 정의(한 번씩만)
+// 검사에서는 빼고, 모양은 아래 테스트가 따로 고정한다.
+const PHONE_FLOOR = /@media \(max-width: 768px\)\s*\{\s*:root\s*\{([^{}]*)\}\s*\}/;
+const CSS = RAW_CSS.replace(PHONE_FLOOR, "");
 const SRC_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 // 크기를 안 정하면 앱은 제일 작은 쪽으로 수렴한다(§7). 2026-09-04에 그 진단을
@@ -79,6 +83,15 @@ describe("타입 스케일은 한 곳에서만 정해진다", () => {
     );
     expect(sizes).toEqual([...sizes].sort((a, b) => a - b));
     expect(new Set(sizes).size).toBe(sizes.length);
+  });
+
+  it("폰 하한은 작은 두 단만 본문 크기로 올린다(다른 단은 건드리지 않는다)", () => {
+    const block = RAW_CSS.match(PHONE_FLOOR);
+    expect(block, "폰 하한 블록이 사라지면 폰 글자가 다시 12px로 돌아간다").toBeTruthy();
+    const scale = collectScaleDefinitions(CSS);
+    const floor = collectScaleDefinitions(block[1]);
+    expect([...floor.keys()].sort()).toEqual(["--fs-sm", "--fs-xs"]);
+    for (const values of floor.values()) expect(values).toEqual([scale.get("--fs-base")[0]]);
   });
 
   it("globals.css에 스케일 밖 px 폰트가 없다", () => {

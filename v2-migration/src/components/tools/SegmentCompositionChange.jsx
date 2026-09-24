@@ -1,5 +1,6 @@
 "use client";
 
+import MappingEditorDialog from "@/components/ds/MappingEditorDialog";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
@@ -533,10 +534,11 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       {auto.review.length && !manualMapping ? <p className="muted">{tx(locale,
         `확인이 필요해 자동으로 넣지 않은 컬럼: ${auto.review.map((item) => item.header).join(", ")}`,
         `Left out pending your check: ${auto.review.map((item) => item.header).join(", ")}`)}</p> : null}
-      {(manualMapping || auto.ok) && <button type="button" className="btn ghost segment-mapping-toggle" aria-expanded={mappingEditOpen} aria-controls="segment-mapping-edit" onClick={() => setMappingEditOpen((open) => !open)}>
-        {mappingEditOpen ? tx(locale, "고치기 닫기", "Close editor") : tx(locale, "다르게 읽혔다면 고치기", "Read it wrong? Fix it")}
+      {(manualMapping || auto.ok) && <button type="button" className="btn ghost segment-mapping-toggle" onClick={() => setMappingEditOpen(true)}>
+        {tx(locale, "다르게 읽혔다면 고치기", "Read it wrong? Fix it")}
       </button>}
-      {(mappingEditOpen || !(manualMapping || auto.ok)) && <section id="segment-mapping-edit" className="segment-mapping-edit">
+      <MappingEditorDialog asDialog={Boolean(manualMapping || auto.ok)} open={mappingEditOpen} onClose={() => setMappingEditOpen(false)} locale={locale}>
+      <section id="segment-mapping-edit" className="segment-mapping-edit">
         <SegmentRoleMapper
           headers={headers}
           rows={rows}
@@ -545,7 +547,8 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           quality={panel?.quality || null}
           locale={locale}
         />
-      </section>}
+      </section>
+      </MappingEditorDialog>
     </section>}
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">

@@ -19,7 +19,6 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       </nav>
 
       <header className="calculator-hero">
-        <span>{calculator.eyebrow}</span>
         <h1>{calculator.title}</h1>
         <p>{calculator.description}</p>
         <div>
@@ -62,11 +61,10 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       </section>
 
       <section className="calculator-related">
-        <span>{isEn ? "MORE MARKETING METRIC CALCULATORS" : "다른 마케팅 지표 계산기"}</span>
+        <h2>{isEn ? "More calculators" : "다른 계산기"}</h2>
         <div>
           {siblings.map((item) => (
             <Link key={item.slug} href={`${base}/calculator/${item.slug}`}>
-              <small>{item.eyebrow}</small>
               <strong>{item.name}</strong>
               <b aria-hidden>→</b>
             </Link>

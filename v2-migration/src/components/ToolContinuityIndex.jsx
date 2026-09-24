@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
+import { publishedToolIds } from "@/lib/routeMap";
 import ToolIndex from "@/components/ds/ToolIndex";
 import { useAppStore } from "@/store/useDataStore";
 import { computeCsvEligibility, eligibleToolIds } from "@/lib/assistant/csvEligibility";
@@ -23,13 +25,17 @@ const COPY = {
     title: "이 데이터로 이어서 볼 수 있는 분석",
     desc: "지금 올린 파일 그대로 바로 실행됩니다. 다시 올릴 필요 없습니다.",
     none: "이 파일로 지금 바로 되는 다른 분석은 없습니다.",
+    all: "전체 분석 보기",
   },
   en: {
     title: "Continue with this data",
     desc: "These run on the file you already uploaded. No need to upload it again.",
     none: "No other analysis runs on this file as-is.",
+    all: "See all analyses",
   },
 };
+
+export const CONTINUITY_LIMIT = 3;
 
 export default function ToolContinuityIndex({ toolId, locale = "ko", onSelect = null }) {
   const lang = locale === "en" ? "en" : "ko";
@@ -56,19 +62,25 @@ export default function ToolContinuityIndex({ toolId, locale = "ko", onSelect = 
   // 전체 카탈로그를 여기 펴면 "이 데이터로 된다"는 약속이 거짓이 된다(§8).
   if (!raw?.length || !headers?.length) return null;
 
+  // 결과 아래에 도구 20개를 전부 펴면 폰에서 2,000px가 넘었다(2026-09-24 실측). 지금 바로 되는 것
+  // 3개만 두고 나머지는 전체 목록으로 보낸다 — 안 되는 분석의 사유는 /start 전체 목록이 말한다.
+  const shown = eligibleIds.slice(0, CONTINUITY_LIMIT);
+  const hidden = publishedToolIds().filter((id) => !shown.includes(id));
+
   return (
     <section className="tool-continuity" aria-labelledby={`tool-continuity-${toolId}`}>
       <h2 className="section-title" id={`tool-continuity-${toolId}`}>{T.title}</h2>
       <p className="muted">{eligibleIds.length > 0 ? T.desc : T.none}</p>
-      <ToolIndex
+      {shown.length > 0 && <ToolIndex
         locale={lang}
         density="grid"
-        eligibleIds={eligibleIds}
+        eligibleIds={shown}
         blockedInfo={blockedInfo}
-        excludeIds={[toolId]}
+        excludeIds={[toolId, ...hidden]}
         headingLevel={3}
         onSelect={onSelect}
-      />
+      />}
+      <Link className="tool-continuity__all" href={lang === "en" ? "/en/start" : "/start"}>{T.all}</Link>
     </section>
   );
 }

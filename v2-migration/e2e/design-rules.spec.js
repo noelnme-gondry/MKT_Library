@@ -8,6 +8,9 @@ const STATIC_PAGES = [
   "/", "/start", "/blog", "/blog/ad-performance-diagnosis", "/blog/ios-att-skan-guide",
   "/guide/kpi-analysis", "/glossary", "/templates", "/compare",
   "/en", "/en/blog/ad-performance-diagnosis", "/en/start",
+  // 2026-09-24 점검에서 눈금 막대·상자 안 상자·작은 라벨이 남아 있던 화면.
+  "/calculator", "/calculator/target-cpa", "/diagnose", "/subscription", "/contact", "/privacy", "/terms", "/projects", "/weekly-review",
+  "/compare/incrementality-methods", "/templates/dashboard", "/tools/mmm-contribution", "/tools/cannibalization-diagnosis",
   // 결론 카드가 수동 입력 뒤에야 그려지는 도구는 입력 화면을 본다.
   "/tools/budget-allocation", "/tools/experiment-analysis", "/tools/incrementality",
 ];
@@ -49,6 +52,8 @@ function expectClean(result) {
   expect(result.eyebrows, "small label stuck above a heading").toEqual([]);
   expect(result.misaligned, "stacked sibling boxes with different edges").toEqual([]);
   expect(result.accents, "left color bar on a filled box").toEqual([]);
+  expect(result.smallHeadings, "heading smaller than body text").toEqual([]);
+  expect(result.horizontalOverflow, "page scrolls sideways").toBeLessThanOrEqual(1);
 }
 
 test("the scanner flags what it claims to flag", async ({ page }) => {
@@ -57,6 +62,7 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
       <div style="background:#ddd;border:1px solid #999;border-radius:8px;height:60px">inner box</div>
     </div>
     <p style="font-size:12px;margin:0">EYEBROW</p><h2 style="font-size:24px;margin:0">Heading</h2>
+    <h3 style="font-size:12px">tiny heading</h3>
     <p style="font-weight:800">heavy</p>
     <div style="border-left:4px solid blue;background:#eef;height:40px">accent</div>
     <section style="border-top:1px solid #999;height:60px;margin:0 20px 0 0">a</section><section style="border-top:1px solid #999;height:60px">b</section>
@@ -70,6 +76,7 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
   expect(result.accents.length).toBeGreaterThan(0);
   expect(result.misaligned.length).toBeGreaterThan(0);
   expect(result.overlaps.length).toBeGreaterThan(0);
+  expect(result.smallHeadings.length).toBeGreaterThan(0);
 });
 
 for (const path of STATIC_PAGES) {

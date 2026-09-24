@@ -99,6 +99,13 @@
         --font-mono: var(--font-jetbrains-mono), var(--font-wanted-sans), ui-monospace, Menlo, Consolas, monospace;
       }
 
+      /* 폰 하한: 폰에서 도구 화면 글자의 80%가 12~13px였다(2026-09-24 실측). 폰에서는 두 작은 단을
+         본문(14px)으로 올려 네 단(26·20·16·14)만 남긴다. 스케일 정의는 위 한 곳이고, 이 블록은
+         폰에서 작은 두 단을 올리는 단 하나의 예외다 — app/typeScale.test.js가 모양을 고정한다. */
+      @media (max-width: 768px) {
+        :root { --fs-xs: 14px; --fs-sm: 14px; }
+      }
+
       /* 한글 어절 단위 줄바꿈 — keep-all 없으면 브라우저가 글자 단위로 끊어
          "...하세요. 원하는 쪽을... / 다." 처럼 조사·어미가 다음 줄에 혼자 남음.
          전역 적용 후 표(tnum)·코드(pre/code)만 예외(숫자·심볼은 어절 규칙 무의미). */
@@ -11556,6 +11563,39 @@ b, strong { font-weight: 700; }
 .dochi-result-workspace__summary a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
 .app .content .dochi-result-workspace__global-controls { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .app .content .dochi-result-workspace__global-controls > strong, .app .content .dochi-result-workspace__global-controls .analysis-control-group__label { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
+/* 17) 제목은 본문보다 작을 수 없다 — 하단 마감 영역의 12~13px 소제목이 14px 본문 위에 있었다.
+   글자 네 단: h1 26 · h2 20 · h3/h4 16 · 본문 14~16. e2e/design-rules가 16px 미만 제목을 찾는다. */
+.app .content .tool-outro :is(.tool-connections__head, .tool-evidence__header) h2 { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.app .content :is(.tool-longform__body, .tool-longform__faq) h3,
+.app .content :is(.project-handoff, .template-checklist-card) h3,
+.app .content .tool-index__stage-title, .app .content .event-log__subtitle,
+.app .content :is(.sop-content, .guide-body, .with-toc) h3 { font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.app .content .mmm-budget-decision h4 { font-size: var(--fs-md); font-weight: 600; }
+.template-checklist-card h3, .dashboard-recommendations__heading h2, .dashboard-next-actions .dashboard-recommendations__heading h2, .creative-model-router__explanation h3, .trend-change-ledgers__grid h3 { font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; }
+/* 대시보드 '이어서 확인할 분석'은 그라데이션+파란 테두리 상자였다 — 위 가는 선 하나로. */
+.app .content .dashboard-recommendations { padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+.dashboard-recommendations__heading p { font-size: var(--fs-base); }
+.mapping-editor-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.mapping-editor-dialog__head h2 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+/* 18) 예시 결과의 저장 단계 미리보기 — 상자가 아니라 위 가는 선 + 16/700 소제목. */
+.decision-review-preview { margin: 24px 0 0 47px; padding-top: 16px; border-top: 1px solid var(--border); }
+@media (max-width: 768px) { .decision-review-preview { margin-left: 0; } }
+.decision-review-preview h3 { margin: 0 0 8px; font-size: var(--fs-md); font-weight: 700; }
+.decision-review-preview p, .decision-review-preview li { margin: 0 0 8px; font-size: var(--fs-base); line-height: 1.6; color: var(--text-secondary); }
+.decision-review-preview ul { margin: 0 0 16px; padding-left: 20px; }
+.decision-review-preview__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 19) 계산기: 파란 대문자 간격 라벨(12px) → 14px 보통 글자. 숫자 이름표도 14px. */
+.calculator-workbench__heading span, .calculator-result__eyebrow, .calculator-result__formula span { color: var(--text-secondary); font-size: var(--fs-base); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.calculator-result__primary small, .calculator-result__secondary small { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
+.calculator-related > h2 { margin: 0 0 12px; font-size: var(--fs-lg); font-weight: 700; }
+/* 20) 남은 왼쪽 색 막대 + 바탕 안내 상자 → 네 변 같은 얇은 선. */
+:is(.calculator-result__formula, .compare-page__answer), .calculator-page aside { border: 1px solid var(--border-subtle); }
+/* 21) 폰 하한(14px)으로 글자가 커지면 한 줄 flex 목록이 옆으로 넘친다 — 줄바꿈을 허용한다. */
+.csv-guide-outcomes { flex-wrap: wrap; }
+/* 22) 구독 화면: 머리는 형제 구획과 같은 폭(글줄만 760px), 접힌 안내 제목도 16px. */
+.subscription-page > .subscription-hero { max-width: none; }
+.subscription-page > .subscription-hero > * { max-width: 760px; }
+.checkout-purchase-info h3 { font-size: var(--fs-md); }
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */

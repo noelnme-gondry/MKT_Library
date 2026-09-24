@@ -37,13 +37,12 @@ export default function DiagnosePage() {
     <article className="diagnose-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
-        <span>증상 기반 분석 라우터</span>
         <h1>무슨 분석을 해야 할지 모르겠다면</h1>
         <p>지금 겪는 증상부터 하나씩 고르세요. 세 번째 답 뒤에 가장 먼저 확인할 분석 하나를 안내합니다.</p>
       </header>
       <DiagnoseRouter />
       <section className="calculator-faq" aria-label="자주 묻는 질문">
-        <span>FAQ</span><h2>진단을 시작하기 전</h2>
+        <h2>진단을 시작하기 전</h2>
         {FAQ.map(([question, answer]) => <section data-information-section="" key={question}><header data-information-heading="">{question}</header><p>{answer}</p></section>)}
       </section>
     </article>

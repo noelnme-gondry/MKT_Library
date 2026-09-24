@@ -882,3 +882,14 @@
   .app .analysis-metric-picker strong { font-size: 20px; }
 }
 @media (max-width: 600px) { .workspace-input-summary { align-items: flex-start; flex-direction: column; } }
+@layer app {
+  /* 사이트 디자인 계약(2026-09-24): 정책·비교·템플릿 화면은 바깥 카드 안에 구획 카드가 또 있었다
+     (상자 안 상자). 바깥을 벗기고 안쪽 구획은 위 가는 선으로 나눈다. e2e/design-rules가 다시 잰다. */
+  :is(.template-detail, .compare-page, .policy-page) { padding-inline: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .app .policy-page__body > section, .policy-page__body > section { padding: 20px 0 0; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: none; }
+  /* 구독 화면: 구획마다 카드, 그 안에 예시 카드, 그 안에 종이 그림(3겹). 종이·워크북 그림만 상자로 남긴다. */
+  .app .subscription-page > section { padding-inline: 0; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: none; box-shadow: none; }
+  .app .report-preview-item { padding: 0; border: 0; border-radius: 0; background: none; }
+  /* 정책 본문의 section 왼쪽 선 규칙이 안쪽 안내 상자(section)에도 걸려 막대 상자가 됐다. */
+  .policy-page__body .pass-recovery-help { border: 1px solid var(--library-border); }
+}
