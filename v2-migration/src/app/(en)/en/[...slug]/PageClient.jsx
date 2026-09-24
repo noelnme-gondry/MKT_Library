@@ -14,7 +14,6 @@ import WorkspaceStoragePage from "@/components/WorkspaceStoragePage";
 import MyAccountPage from "@/components/MyAccountPage";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import MobileToolNudge from "@/components/MobileToolNudge";
-import DemoNoticeModal from "@/components/DemoNoticeModal";
 import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import GuideAnswer from "@/components/GuideAnswer";
@@ -133,7 +132,6 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
           </main>
         </div>
       </div>
-      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
       <GlobalModals locale="en" />
       <UiSemantics />
     </>

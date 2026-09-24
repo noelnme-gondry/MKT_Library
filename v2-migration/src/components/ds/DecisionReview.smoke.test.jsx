@@ -30,10 +30,10 @@ describe("DecisionReview", () => {
     fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "My edited action" } });
     view.rerender(<DecisionReview toolId="5-3" analysisEvidence={{ headline: "CPA 200", stats: [{ label: "CPA", value: "200" }] }} decisionPrefill={{ action: "Investigate", conclusion: "CPA 200" }} />);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("My edited action");
-    expect(screen.getByRole("button", { name: "다음 검토로 저장" }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "이대로 만들기" }).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "현재 결과로 초안 다시 만들기" }));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Investigate");
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords[0];
     expect(saved.conclusion).toBe("CPA 200");
@@ -43,7 +43,7 @@ describe("DecisionReview", () => {
   it("records a concrete action and lets the user enter its outcome", () => {
     const { container } = render(<DecisionReview toolId="5-3" />);
     expect(container.textContent).toContain("7일 뒤 검토");
-    expect(container.querySelector(".decision-review__tape-cta").textContent).toContain("다음 검토 약속 만들기");
+    expect(container.querySelector(".decision-review__tape-cta").textContent).toContain("다음 마케팅 프로젝트로 만들기");
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
     const summary = container.querySelector(".decision-review-launch");
     expect(summary.tabIndex).toBe(0);
@@ -56,7 +56,7 @@ describe("DecisionReview", () => {
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("cpa");
     // 방향은 그 선언이 정하므로 방향 선택기는 뜨지 않는다(같은 값을 두 컨트롤이 들면 어긋난다).
     expect(screen.queryByLabelText("무엇이 개선인가요?")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
 
     expect(screen.getByText("Meta 예산 20% 감액")).toBeTruthy();
@@ -98,7 +98,7 @@ describe("DecisionReview", () => {
     // 가드레일은 기준값을 적은 것만 판정에 들어간다.
     fireEvent.change(screen.getByLabelText("전환수 유지 ≥"), { target: { value: "5000" } });
     fireEvent.change(screen.getByLabelText("CPA 유지 ≤"), { target: { value: "8000" } });
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords[0];
@@ -129,7 +129,7 @@ describe("DecisionReview", () => {
     // 레지스트리 일반명으로 덮으면 "Control 대비 Test 전환율" 같은 정보가 사라진다.
     const { container } = render(<DecisionReview toolId="5-18-cannibal" decisionPrefill={{ action: "교차 검증", metric: "강한 잠식 후보" }} />);
     openDecisionReview(container);
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords[0];
     expect(saved.metric).toBe("강한 잠식 후보");
@@ -142,7 +142,7 @@ describe("DecisionReview", () => {
     openDecisionReview(container);
     const threshold = screen.getAllByPlaceholderText(locale === "en" ? "Threshold" : "기준값")[0];
     fireEvent.change(threshold, { target: { value: "abc" } });
-    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Save for next review" : "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Create it" : "이대로 만들기" }));
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByText(locale === "en" ? "Enter a number for each threshold, or clear it to leave it unused." : "기준값은 숫자로 입력하거나, 사용하지 않을 항목은 비워 주세요.")).toBeTruthy();
     expect(threshold.value).toBe("abc");
@@ -154,7 +154,7 @@ describe("DecisionReview", () => {
     const { container } = render(<DecisionReview toolId="5-3" />);
     openDecisionReview(container);
     fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "예산 재배분" } });
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     const saved = useAppStore.getState().decisionRecords[0];
     expect(saved.guardrailMetric).toBe("");
@@ -164,7 +164,7 @@ describe("DecisionReview", () => {
   it("asks for storage consent after save and persists only after acceptance", () => {
     const { container } = render(<DecisionReview toolId="5-3" decisionPrefill={{ action: "예산 검토", reviewDate: "2026-08-11" }} />);
     openDecisionReview(container);
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionPersistenceEnabled).toBe(false);
 
@@ -176,10 +176,10 @@ describe("DecisionReview", () => {
   it("renders a fully English decision loop", () => {
     const { container } = render(<DecisionReview toolId="5-2" locale="en" />);
     expect(container.textContent).toContain("Review in 7 days");
-    expect(container.querySelector(".decision-review__tape-cta").textContent).toContain("Schedule the next review");
+    expect(container.querySelector(".decision-review__tape-cta").textContent).toContain("Make it my next marketing project");
     openDecisionReview(container);
     expect(document.body.textContent).not.toMatch(/[가-힣]/);
-    expect(screen.getByRole("button", { name: "Save for next review" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create it" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Store source files and decision records on this device" }).checked).toBe(false);
   });
 
@@ -195,7 +195,7 @@ describe("DecisionReview", () => {
     }} />);
     openDecisionReview(view.container);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("검색 예산을 10% 시험 증액");
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].raw).toBeUndefined();
     expect(useAppStore.getState().decisionRecords[0].sourcePath).toBe("/tools/budget-allocation");
@@ -224,7 +224,7 @@ describe("DecisionReview", () => {
     openDecisionReview(container);
     expect(screen.getByText("다음 CSV와 자동 대조")).toBeTruthy();
     expect(document.body.textContent).toContain("2026-08-03 · 가입 1,240명/주");
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
 
     const record = useAppStore.getState().decisionRecords[0];
@@ -237,7 +237,7 @@ describe("DecisionReview", () => {
     openDecisionReview(container);
     const retentionSwitch = screen.getByRole("switch", { name: "원본 파일과 결정 기록을 이 기기에 저장" });
     fireEvent.click(retentionSwitch);
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
 
     const storedOn = window.localStorage.getItem("mkt_view_config");

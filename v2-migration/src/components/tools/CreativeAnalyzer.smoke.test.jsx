@@ -206,9 +206,9 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(sectionHelp.getAttribute("aria-expanded")).toBe("true");
     // The combination section remains present even when the seed produces an honest empty state.
     expect(screen.getAllByText(/어떤 요소 조합이 좋았나/).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByText(/다음 검토 약속/));
+    fireEvent.click(screen.getByText(/다음 마케팅 프로젝트로 만들기/));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/cr_/);
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-6");
   });

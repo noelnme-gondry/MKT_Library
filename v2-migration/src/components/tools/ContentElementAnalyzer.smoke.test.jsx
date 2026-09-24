@@ -241,7 +241,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/A\/B 테스트 초안.*나머지 요소.*고정/);
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
@@ -270,7 +270,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("What will change?").value).toMatch(/Draft an A\/B test.*holding every other element.*fixed/);
     expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create it" }));
     confirmReviewSave();
 
     const saved = useAppStore.getState().decisionRecords.at(-1);
@@ -290,7 +290,7 @@ describe("ContentElementAnalyzer render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
 
     expect(screen.getByText("유의한 요소를 확정할 증거가 아직 부족합니다.")).toBeTruthy();
-    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+    expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
     const rfHelp = screen.getByText("왜 Random Forest 분석이 안 되나요?").closest("[data-information-section]");
     expect(rfHelp).toBeTruthy();
     expect(rfHelp.tagName).toBe("SECTION");
@@ -306,7 +306,7 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(screen.getByText("추정 불가")).toBeTruthy();
     expect(screen.getByText(/희소 요소\(rare_hook\)/)).toBeTruthy();
-    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+    expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
   });
 
   it("automatically runs WebR logistic regression for a sufficiently supported binary outcome", async () => {

@@ -150,8 +150,8 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
     setSession(await refreshAccount());
     setTrialGateOpen(false);
   }} />;
-  return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={en ? "Save review" : "리뷰 저장"} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
-    <h2>{saved ? (en ? "Review saved" : "리뷰를 저장했습니다") : (en ? "Save review" : "리뷰 저장")}</h2>
+  return <ModalDialog open onClose={() => { if (!busy) onClose(); }} ariaLabel={onConfirm ? (en ? "Save to My projects" : "내 프로젝트에 저장") : (en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기")} overlayClassName="review-save-overlay" panelClassName="review-save-dialog" closeOnEscape={!busy} closeOnBackdrop={!busy}>
+    <h2>{saved ? (en ? "Saved to My projects" : "내 프로젝트에 저장했습니다") : onConfirm ? (en ? "Save to My projects" : "내 프로젝트에 저장") : (en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기")}</h2>
     {saved ? <>
       <p role="status">{en ? `Saved on this device in ${saved.project.name || "your existing project"}.` : `이 기기의 ‘${saved.project.name || "기존 프로젝트"}’에 저장했습니다.`}</p>
       {saved.postSaveFailed && <p role="alert">{en ? "The review was saved. A follow-up step failed, so reopen the project to check the record and keep the original source file." : "리뷰는 저장했습니다. 후속 처리가 끝나지 않았으니 프로젝트를 다시 열어 기록을 확인하고 원본 파일을 보관해 주세요."}</p>}
@@ -185,7 +185,7 @@ export default function ReviewSaveDialog({ locale = "ko", record, report, onSave
         {target && target !== activeId && <p>{en ? "Only this record is saved to the selected project. Its CSV and analysis setup are not moved." : "선택한 프로젝트에는 이 기록만 저장합니다. CSV·분석 설정은 옮기지 않습니다."}</p>}
       </>}
       {!persistence && <label><input type="checkbox" checked={false} onChange={() => useAppStore.getState().setDecisionPersistenceEnabled(true)} />{en ? "Enable device storage to keep this review (90 days since last use)." : "이 기기에 리뷰 보관하기 (마지막 사용 후 90일)"}</label>}
-      <button className="btn primary" disabled={busy || !session?.account || !hasPaidAccess(entitlement || session?.entitlement) || !persistence || (!onConfirm && needsName && !name.trim())} onClick={save}>{busy ? (en ? "Saving…" : "저장 중…") : !target && !onConfirm ? (en ? "Create project and save" : "프로젝트 만들고 저장") : (en ? "Save review" : "리뷰 저장")}</button>
+      <button className="btn primary" disabled={busy || !session?.account || !hasPaidAccess(entitlement || session?.entitlement) || !persistence || (!onConfirm && needsName && !name.trim())} onClick={save}>{busy ? (en ? "Saving…" : "저장 중…") : !target && !onConfirm ? (en ? "Create project and save" : "프로젝트 만들고 저장") : (en ? "Save to My projects" : "내 프로젝트에 저장")}</button>
       {message && <p role="alert">{message} <Link href={en ? "/en/subscription" : "/subscription"}>{en ? "Plans" : "요금제"}</Link></p>}
     </>}
     <button className="btn" disabled={busy} onClick={onClose}>{saved ? (en ? "Done" : "닫기") : (en ? "Cancel" : "취소")}</button>

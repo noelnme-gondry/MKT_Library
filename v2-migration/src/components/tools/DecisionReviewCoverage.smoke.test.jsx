@@ -75,7 +75,7 @@ describe("decision review coverage for diagnostic tools", () => {
     seedConfirmedUserData(routeId, group);
     const { container } = render(renderTool());
     expect(container.querySelector(`[data-decision-review-tool="${routeId}"]`)).toBeTruthy();
-    expect(container.textContent).toContain("다음 검토 약속 만들기");
+    expect(container.textContent).toContain("다음 마케팅 프로젝트로 만들기");
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
       tool_id: routeId,
       analysis_type: routeId === "5-25" ? "multicollinearity" : "asa_keyword",

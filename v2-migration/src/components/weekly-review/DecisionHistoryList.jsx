@@ -29,7 +29,7 @@ const DecisionReviewEditor = lazy(() => import("@/components/WeeklyReview"));
  */
 const COPY = {
   ko: {
-    title: "지난 결정",
+    title: "저장한 마케팅 프로젝트",
     empty: "아직 저장한 결정이 없습니다.",
     loading: "결정을 불러오는 중…",
     signIn: "이 기기에 저장한 결정입니다. 로그인하면 계정에 보관한 결정도 함께 보입니다.",
@@ -54,7 +54,7 @@ const COPY = {
     bucket: { overdue: "기한 지남", today: "오늘 검토", upcoming: "검토 예정", unscheduled: "검토일 없음", reviewed: "검토 완료" },
   },
   en: {
-    title: "Past decisions",
+    title: "Saved marketing projects",
     empty: "No saved decisions yet.",
     loading: "Loading decisions…",
     signIn: "These are the decisions on this device. Sign in to see the ones kept in your account too.",

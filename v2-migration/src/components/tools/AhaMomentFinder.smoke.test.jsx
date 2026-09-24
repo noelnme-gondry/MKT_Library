@@ -151,7 +151,7 @@ describe("AhaMomentFinder render smoke", () => {
     render(<AhaMomentFinder />);
     fireEvent.change(screen.getByLabelText("전환 평가를 시작하는 가입 후 일수"), { target: { value: "14" } });
     fireEvent.click(screen.getByRole("button", { name: /분석하기/ }));
-    const reviewSummary = await screen.findByText(/다음 검토 약속 만들기/);
+    const reviewSummary = await screen.findByText(/다음 마케팅 프로젝트로 만들기/);
     fireEvent.click(reviewSummary);
 
     expect(screen.getByText(/관측 연관이 있지만 인과효과는 확정되지 않았습니다/)).toBeTruthy();
@@ -160,7 +160,7 @@ describe("AhaMomentFinder render smoke", () => {
     expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("50.0% (관측 base rate)");
     expect(screen.getByLabelText("검토일에 답할 질문").value).toContain("Control보다 높고 관측 base rate 50.0%");
 
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0]).toMatchObject({
       toolId: "5-20",
@@ -177,7 +177,7 @@ describe("AhaMomentFinder render smoke", () => {
     render(<AhaMomentFinder locale="en" />);
     fireEvent.change(screen.getByLabelText("Day after signup when outcome evaluation begins"), { target: { value: "14" } });
     fireEvent.click(screen.getByRole("button", { name: "▶ Analyze" }));
-    const reviewSummary = await screen.findByText(/Schedule the next review/);
+    const reviewSummary = await screen.findByText(/Make it my next marketing project/);
     fireEvent.click(reviewSummary);
 
     expect(screen.getByText(/observed association.*causation is not established/)).toBeTruthy();
@@ -194,7 +194,7 @@ describe("AhaMomentFinder render smoke", () => {
     expect(screen.getByRole("status").textContent).toMatch(locale === "en" ? /3 features excluded/ : /제외 3개/);
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "▶ Analyze" : /분석하기/ }));
     await waitFor(() => expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({ tool_id: "5-20", result_state: "insufficient", locale })));
-    expect(screen.queryByText(locale === "en" ? /Schedule the next review/ : /다음 검토 약속 만들기/)).toBeNull();
+    expect(screen.queryByText(locale === "en" ? /Make it my next marketing project/ : /다음 마케팅 프로젝트로 만들기/)).toBeNull();
     delete window.gtag;
   });
 
@@ -205,6 +205,6 @@ describe("AhaMomentFinder render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: /분석하기/ }));
     await screen.findByText(/선행 행동 결론/);
 
-    expect(screen.queryByText(/다음 검토 약속 만들기/)).toBeNull();
+    expect(screen.queryByText(/다음 마케팅 프로젝트로 만들기/)).toBeNull();
   });
 });

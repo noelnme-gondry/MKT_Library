@@ -84,7 +84,7 @@ it("이 기기에만 있는 결정은 계정 보관을 제안한다", async () =
 
 it("EN도 같은 구조로 렌더된다", async () => {
   render(<DecisionHistoryList locale="en" />);
-  await waitFor(() => expect(screen.getByRole("heading", { name: "Past decisions" })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole("heading", { name: "Saved marketing projects" })).toBeTruthy());
 });
 
 it.each(["ko", "en"])("keeps the device review editor reachable from the actual history surface (%s)", async locale => {
@@ -149,11 +149,11 @@ it.each(["ko", "en"])("keeps local review history when importing a conflicting a
   render(<DecisionHistoryList locale={locale} />);
   fireEvent.click(await screen.findByRole("button", { name: /Meta 예산 30% 감액/ }));
   fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Keep account copy as a separate record" : "계정 내용을 별도 기록으로 보관" }));
-  const dialog = await screen.findByRole("dialog", { name: locale === "en" ? "Save review" : "리뷰 저장" });
-  const save = within(dialog).getByRole("button", { name: locale === "en" ? "Save review" : "리뷰 저장", exact: true });
+  const dialog = await screen.findByRole("dialog", { name: locale === "en" ? /^(Save to My projects|Make it my next marketing project)$/ : /^(내 프로젝트에 저장|다음 마케팅 프로젝트로 만들기)$/ });
+  const save = within(dialog).getByRole("button", { name: locale === "en" ? "Save to My projects" : "내 프로젝트에 저장", exact: true });
   await waitFor(() => expect(save.disabled).toBe(false));
   fireEvent.click(save);
-  await waitFor(() => expect(within(dialog).getByRole("heading", { name: locale === "en" ? "Review saved" : "리뷰를 저장했습니다" })).toBeTruthy());
+  await waitFor(() => expect(within(dialog).getByRole("heading", { name: locale === "en" ? "Saved to My projects" : "내 프로젝트에 저장했습니다" })).toBeTruthy());
   const saved = await readProject("default");
   expect(saved.decisions).toHaveLength(2);
   expect(saved.decisions.find(record => record.id === LOCAL.id)).toMatchObject({ actual: "100", sourcePeriod: "Private device comparison history" });

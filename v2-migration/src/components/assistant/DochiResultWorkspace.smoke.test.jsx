@@ -47,7 +47,7 @@ describe("DochiResultWorkspace", () => {
     const data = { ...DATA, raw: DATA.raw.map(row => ({ ...row, Campaign: "Test" })), headers: [...DATA.headers, "Campaign"], mapping: { ...DATA.mapping, Campaign: "campaign_name" }, currency: "KRW" };
     useAppStore.setState({ currentRouteId: "dochi-result", csvData: data, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: data }, dochiAnalysisSession: { sourceData: data, analyses: [] } });
     render(<DochiResultWorkspace locale={locale} />);
-    const button = screen.getByRole("button", { name: locale === "en" ? "Build weekly review" : "주간 리뷰 만들기" });
+    const button = screen.getByRole("button", { name: locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기" });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     expect(push).toHaveBeenCalledWith(locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance");

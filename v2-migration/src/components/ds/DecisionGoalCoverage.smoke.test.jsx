@@ -17,7 +17,7 @@ it.each(ids)("%s creates first and follow-up decisions with registered goals thr
   fireEvent.click(view.container.querySelector(".decision-review-launch"));
   expect([...screen.getByLabelText("목표 (성공의 정의)").options].map(option => option.value)).toEqual([...goals.map(goal => goal.key), ""]);
   fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "Test the next hypothesis" } });
-  fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" })); confirmReviewSave();
+  fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" })); confirmReviewSave();
   const first = useAppStore.getState().decisionRecords[0];
   expect(first.goalMetric).toBe(goals[0].key);
   expect(first.goalDirection).toBe(goals[0].direction);

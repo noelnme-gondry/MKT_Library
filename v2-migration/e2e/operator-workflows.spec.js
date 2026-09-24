@@ -292,7 +292,7 @@ test("분석 결과에서 결정을 저장하고 주간 검토에서 다시 본�
   await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
 
   await page.locator(".decision-review-launch").click();
-  await page.getByRole("button", { name: "다음 검토로 저장" }).click();
+  await page.getByRole("button", { name: "이대로 만들기" }).click();
   await confirmReviewDialog(page);
   await page.locator(".decision-review__weekly-link").click();
 

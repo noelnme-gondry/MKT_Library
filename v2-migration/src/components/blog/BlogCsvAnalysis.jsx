@@ -15,6 +15,8 @@ import BlogInsightChart from "./BlogInsightChart";
 import BlogExampleChart from "./BlogExampleChart";
 import { tutorialDuration } from "@/lib/videoTutorials";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
+import { defaultSourceCurrency } from "@/lib/sourceCurrencyPreference";
+import { rememberSourceCurrency } from "@/lib/account/accountClient";
 
 export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null, example = null, postTitle = "" }) {
   const en = locale === "en", id = useId(), router = useRouter();
@@ -58,7 +60,7 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
         if (matchesBlogPracticeDemo(parsed, demo)) sample = demo;
       }
       if (request !== task.current) return;
-      setCsv({ raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: file.name, projectId, importSource: sample ? "demo" : "upload", ...(sample?.currency ? { currency: sample.currency } : {}) });
+      setCsv({ raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: file.name, projectId, importSource: sample ? "demo" : "upload", currency: sample?.currency || defaultSourceCurrency({ remembered: useAppStore.getState().preferredSourceCurrency, locale }) });
       setSelection({ category: "", value: "", denominator: "" });
     } catch { if (request === task.current) setError(en ? "Use a CSV up to 5 MB / 20,000 rows with unique headers, or open the full analysis." : "중복 없는 헤더의 CSV(5MB·2만 행 이하)를 선택하거나 상세 분석을 이용하세요."); }
     finally { if (request === task.current) setBusy(false); }
@@ -161,7 +163,7 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     {csv && <>
       {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <section data-information-section="" ><header data-information-heading="">{en ? "Check columns" : "열 확인"}</header>
         {custom ? ["category", "value", "denominator"].map((key, index) => <label key={key}>{(en ? ["Group / date", "Value column (counts or amounts)", "Denominator (optional)"] : ["그룹 / 날짜", "값 열 (건수·금액)", "분모 열 (선택)"])[index]}<select disabled={busy} value={selection[key]} onChange={event => { setSelection(value => ({ ...value, [key]: event.target.value })); setResult(null); }}><option value="">—</option>{csv.headers.map(header => <option key={header}>{header}</option>)}</select></label>) : csv.headers.map(header => <label key={header}>{header}<select disabled={busy} value={csv.mapping[header] || "__ignore__"} onChange={event => { setCsv(value => ({ ...value, mapping: { ...value.mapping, [header]: event.target.value } })); setResult(null); }}><option value="__ignore__">{en ? "Ignore" : "사용 안 함"}</option>{Object.entries(STANDARD_FIELDS).filter(([key]) => allowedFields.has(key)).map(([key, field]) => <option key={key} value={key}>{en ? key : field.label}</option>)}</select></label>)}
-        {hasMoney && config.type === "adapter" && <label data-currency-scope="declare">{en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)"}<select disabled={busy} value={csv.currency || ""} onChange={event => { setCsv(value => ({ ...value, currency: event.target.value })); setResult(null); }}><option value="">—</option><option value="KRW">KRW</option><option value="USD">USD</option></select></label>}
+        {hasMoney && config.type === "adapter" && <label data-currency-scope="declare">{en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)"}<select disabled={busy} value={csv.currency || ""} onChange={event => { const currency = event.target.value; setCsv(value => ({ ...value, currency })); if (currency) rememberSourceCurrency(currency); setResult(null); }}><option value="">—</option><option value="KRW">KRW</option><option value="USD">USD</option></select></label>}
       </section>}
       {practice?.mode !== "detail" && <button className="btn primary" disabled={busy} onClick={analyze}>{busy ? (en ? "Calculating…" : "계산 중…") : (en ? "Show result" : "결과 보기")}</button>}
     </>}

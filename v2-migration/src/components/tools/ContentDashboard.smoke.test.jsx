@@ -95,8 +95,8 @@ describe("ContentDashboard render smoke", () => {
   it("stores a content-dashboard decision under the content tool id", () => {
     seedWithData();
     render(<ContentDashboard />);
-    fireEvent.click(screen.getByText(/다음 검토 약속/));
-    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    fireEvent.click(screen.getByText(/다음 마케팅 프로젝트로 만들기/));
+    fireEvent.click(screen.getByRole("button", { name: "이대로 만들기" }));
     confirmReviewSave();
     expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-7");
   });

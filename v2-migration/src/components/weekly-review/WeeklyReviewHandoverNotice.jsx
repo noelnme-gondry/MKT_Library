@@ -24,18 +24,18 @@ import {
 
 const COPY = {
   ko: {
-    title: "결정 검토함이 여기로 들어왔어요.",
+    title: "지난 결정은 이제 내 프로젝트에 있어요.",
     body: "이제 매주 데이터를 올리면 지난 결정의 결과까지 한 번에 확인할 수 있어요.",
     keep: (n) => `지금까지 저장한 결정 ${n}건은 그대로 있습니다.`,
-    go: "지난 결정 보기",
+    go: "내 프로젝트 보기",
     ok: "알겠어요",
     close: "닫기",
   },
   en: {
-    title: "The decision log now lives here.",
+    title: "Past decisions now live in My projects.",
     body: "Upload your data each week and you'll see how last week's decision turned out, in the same place.",
     keep: (n) => `Your ${n} saved decisions are still here.`,
-    go: "See past decisions",
+    go: "See My projects",
     ok: "Got it",
     close: "Close",
   },

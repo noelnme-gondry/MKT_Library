@@ -35,7 +35,7 @@ export const VIDEO_TUTORIALS = [
     step("verdict", "달라졌다고 원인은 아님", "관측 변화와 인과효과를 구분하세요.", "Change is not cause", "Separate observed changes from causal effects."),
     step("causal", "보류도 다음 행동", "배정·동시 변경 등 부족한 근거를 확인하세요.", "Withhold, then investigate", "Check assignment, concurrent changes and missing evidence."),
   ] },
-  { id: "review", ko: "주간 리뷰 만들기", en: "Create a weekly review", guide: "/weekly-review", steps: [
+  { id: "review", ko: "다음 마케팅 프로젝트로 만들기", en: "Make it my next marketing project", guide: "/weekly-review", steps: [
     step("review-empty", "이번 주, 무엇이 달라졌나", "프로젝트의 주간 성과 비교에 CSV를 올리세요.", "What changed this week?", "Upload a CSV in the project’s weekly comparison."),
     step("periods", "겹치지 않는 두 기간", "날짜·통화·전환 기준을 맞추세요.", "Two comparable periods", "Align dates, currency and outcome definitions."),
     step("verdict", "숫자에서 근거로", "캠페인별 변화를 읽고 원인 가설을 구분하세요.", "From numbers to evidence", "Inspect campaign changes; keep hypotheses separate."),

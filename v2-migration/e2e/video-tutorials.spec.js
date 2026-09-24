@@ -39,7 +39,7 @@ for (const locale of ["ko", "en"]) {
     // to a page control beneath it.
     await menu.locator(".header-utility-menu__trigger").click();
     await page.locator(".utility-popover-panel").getByRole("button", { name: en ? "Video guide" : "영상 사용 안내", exact: true }).click();
-    await expect(dialog.getByRole("heading", { name: en ? "Create a weekly review" : "주간 리뷰 만들기", exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(menu.locator(".header-utility-menu__trigger")).toBeFocused();
     await page.getByRole("button", { name: en ? "My projects" : "내 프로젝트", exact: true }).click();

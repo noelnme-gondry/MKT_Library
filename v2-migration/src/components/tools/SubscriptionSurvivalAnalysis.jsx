@@ -323,8 +323,14 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
   // Keep a previous applied configuration only while the external CSV analysis
   // gate is valid. A mapping/data change closes the gate and hides it without
   // synchronously mutating component state from an effect.
-  const active = gateOpen ? applied : null;
-  const isStale = Boolean(active && JSON.stringify(active) !== JSON.stringify({ ...draft, horizon: draftHorizon }));
+  // 예시 데이터는 이탈 열의 뜻을 우리가 알고 있으므로 분석하기를 누르지 않아도 바로 결과를 연다
+  // (2026-09-24 — 예시는 곧장 결과로). 내 데이터는 여전히 이벤트 정의를 적고 실행한다.
+  const demoEventDefinition = tx(locale, "예시 데이터: 핵심 액션을 멈춘 시점(Dropout Observed = 1)", "Sample data: the point the core action stopped (Dropout Observed = 1)");
+  const demoApplied = isDemoData(csvData) && draft.inputMode !== "dates"
+    ? { ...draft, eventDefinition: draft.eventDefinition.trim() || demoEventDefinition, horizon: draftHorizon }
+    : null;
+  const active = gateOpen ? (applied || demoApplied) : null;
+  const isStale = Boolean(gateOpen && applied && JSON.stringify(applied) !== JSON.stringify({ ...draft, horizon: draftHorizon }));
   const run = () => {
     if (draft.inputMode === "dates" && !draft.observationEndDate) {
       setValidationMessage(tx(locale, "날짜 입력 모드에서는 데이터 추출 기준인 관측 종료일을 입력하세요.", "In date mode, enter the observation end date used to extract the data."));
@@ -332,9 +338,7 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
     }
     // 예시 데이터는 이탈 열의 뜻을 우리가 알고 있으므로 정의를 대신 채운다 — 예시를 보려는 사람에게
     // 필수 입력 칸을 먼저 요구하지 않는다(2026-09-24). 내 데이터는 여전히 직접 적어야 한다.
-    const eventDefinition = draft.eventDefinition.trim() || (isDemoData(csvData)
-      ? tx(locale, "예시 데이터: 핵심 액션을 멈춘 시점(Dropout Observed = 1)", "Sample data: the point the core action stopped (Dropout Observed = 1)")
-      : "");
+    const eventDefinition = draft.eventDefinition.trim() || (isDemoData(csvData) ? demoEventDefinition : "");
     if (!eventDefinition) {
       setValidationMessage(tx(locale, "생존 종료 또는 이탈로 간주한 이벤트를 명시하세요.", "State what event counts as exit or dropout."));
       return;

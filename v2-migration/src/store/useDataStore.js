@@ -2,6 +2,7 @@ import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { serializeProject } from "@/lib/project/serializeProject";
 import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
 import { decisionDataOrigin, isDemoData } from "@/lib/dataOrigin";
+import { defaultSourceCurrency, documentLocale, normalizeSourceCurrency } from "@/lib/sourceCurrencyPreference";
 import { readStoredTable } from "@/lib/workspace-storage/readTable";
 import { projectStoreActions } from "@/lib/project/storeActions";
 import { initializeProjects as initializeProjectRecords, updateProject, readProject } from "@/lib/project/repository";
@@ -553,6 +554,14 @@ export function displayItemNumberShort(itemId) {
 // 기록하는 유일한 장치가 매번 증발한다(기능은 이미 완성돼 있는데 배선만 빠져 있었다).
 export { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
 
+// 효율 CSV는 금액 단위를 숫자만으로 알 수 없어 예전에는 업로드 뒤 통화 선언을 강제했다.
+// 이제는 기억한 선택(계정 → 이 브라우저) 또는 화면 언어로 채우고, 틀리면 업로드 화면에서
+// 바꾼다. 데모는 자기 통화를 갖고 오고, 이미 선언된 값은 건드리지 않는다.
+export function withDefaultSourceCurrency(data, group, remembered) {
+  if (group !== "efficiency" || !data?.raw?.length || isDemoData(data) || normalizeSourceCurrency(data.currency)) return data;
+  return { ...data, currency: defaultSourceCurrency({ remembered, locale: documentLocale() }) };
+}
+
 export const persistPartialize = (state) => {
   const persisted = {
     activeProjectId: state.activeProjectId,
@@ -561,6 +570,8 @@ export const persistPartialize = (state) => {
     customCharts: state.customCharts,
     // 분석가 모드는 표시 설정만 저장한다. 원본 CSV·매핑·필터는 포함하지 않는다.
     analystMode: state.analystMode === true,
+    // 원본 데이터 통화 선택(KRW|USD)만 저장한다. 금액·파일 정보는 없다.
+    preferredSourceCurrency: normalizeSourceCurrency(state.preferredSourceCurrency),
     decisionPersistenceEnabled: state.decisionPersistenceEnabled === true,
     // v4부터 이 값은 마이그레이션 판별에 쓰인다. 이전에는 세션 값이라 명시적
     // 거절과 "한 번도 묻지 않음"을 구별할 수 없어 기본값 전환 때 선택을 덮었다.
@@ -633,10 +644,6 @@ export function persistMigrate(persistedState, version) {
 }
 
 export const useAppStore = create(persist((set, get) => ({
-  // 데모 안내 모달 — 세션당 1회만(휘발, persist 대상 아님). 첫 도구 진입 시 데모
-  // 데이터임을 알리고 우상단 CSV 변경 버튼을 안내.
-  demoNoticeSeen: false,
-  setDemoNoticeSeen: () => set({ demoNoticeSeen: true }),
 
   // 블로그 예시 결과에서 도구로 넘어온 방문 — 도착 화면(시안 E)이 "어디서 왔고 무엇을 보고
   // 있는지"를 한 줄로 말한다. 휘발(persist 대상 아님). 공개 글 식별자·제목만 담고 CSV 값은 싣지 않는다.
@@ -987,7 +994,8 @@ export const useAppStore = create(persist((set, get) => ({
         const csvGroups = { ...state.csvGroups };
         restored.filter(Boolean).forEach(([group, slice]) => {
           // 현재 세션에서 사용자가 이미 올린 파일을 늦은 복원이 덮지 않는다.
-          if (!(csvGroups[group]?.raw || []).length) csvGroups[group] = slice;
+          // 통화 선언 없이 저장된 옛 파일도 업로드와 같은 기본값으로 연다(다시 묻지 않는다).
+          if (!(csvGroups[group]?.raw || []).length) csvGroups[group] = withDefaultSourceCurrency(slice, group, state.preferredSourceCurrency);
         });
         return {
           csvGroups,
@@ -1058,13 +1066,15 @@ export const useAppStore = create(persist((set, get) => ({
   // reference, so consumer selectors (s => s.csvData) fire on identity change.
   // A changed signature keeps the last confirmed signature so the UI can say
   // "stale" rather than silently falling back to the pre-analysis state.
-  setCsvData: (data, expectedProjectId = get().activeProjectId) => {
+  setCsvData: (incoming, expectedProjectId = get().activeProjectId) => {
     if (expectedProjectId !== get().activeProjectId || get().projectSwitching) return;
     const projectId = expectedProjectId;
     let group = "efficiency";
     set((state) => {
     const g = groupForRoute(state.currentRouteId);
     group = g;
+    const data = withDefaultSourceCurrency(incoming, g, state.preferredSourceCurrency);
+    const currencyFilled = data !== incoming;
     // Any non-empty write (real upload or explicit demo load) clears the
     // manual-clear flag below — it only needs to suppress auto-demo-reload
     // while the group is genuinely empty.
@@ -1088,6 +1098,8 @@ export const useAppStore = create(persist((set, get) => ({
       findingsByGroup: { ...state.findingsByGroup, [g]: [] },
       analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
       dochiAnalysisSession: null,
+      // 선언과 표시 단위를 같이 맞춘다(업로드 화면의 통화 버튼과 같은 동작).
+      ...(currencyFilled ? { displayCurrency: data.currency } : {}),
     };
     });
     get().persistWorkspaceGroup(group, projectId);
@@ -1133,8 +1145,9 @@ export const useAppStore = create(persist((set, get) => ({
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
-  handoffCsvToRoute: (routeId, data, { markAnalyzed = true } = {}) => set((state) => {
+  handoffCsvToRoute: (routeId, incoming, { markAnalyzed = true } = {}) => set((state) => {
     const g = groupForRoute(routeId);
+    const data = withDefaultSourceCurrency(incoming, g, state.preferredSourceCurrency);
     const sig = computeAnalyzeSig(data);
     const canAnalyze = markAnalyzed && executionPreflight(data, routeId).status !== "blocked";
     return {
@@ -1264,6 +1277,10 @@ export const useAppStore = create(persist((set, get) => ({
   // 실제 환산을 구현한 5-18만 별도의 화면 표시 통화로 사용한다.
   displayCurrency: "KRW", // "KRW" | "USD"
   setDisplayCurrency: (cur) => set({ displayCurrency: cur }),
+  // 사용자가 마지막으로 고른 원본 데이터 통화. 로그인 계정에 저장된 값이 있으면
+  // 세션 조회 때 이 값을 덮는다(accountClient). null이면 화면 언어 기본값.
+  preferredSourceCurrency: null,
+  setPreferredSourceCurrency: (cur) => set({ preferredSourceCurrency: normalizeSourceCurrency(cur) }),
 
   // 코호트 성숙(closure) 필터(#7) — 아직 관측 윈도우가 안 닫힌 미성숙 코호트를
   // 리텐션/LTV 곡선에서 제외할지. index.html 코호트 closure 필터 이식.

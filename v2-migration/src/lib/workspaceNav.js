@@ -73,8 +73,8 @@ export const WORKSPACE_NAV = [
     group: "manage",
     href: "/projects",
     icon: "▣",
-    ko: { name: "내 프로젝트 관리", desc: "프로젝트 리뷰의 저장·백업 관리" },
-    en: { name: "Manage my projects", desc: "Storage and backups within project review" },
+    ko: { name: "내 프로젝트 관리", desc: "내 프로젝트의 저장·백업 관리" },
+    en: { name: "Manage my projects", desc: "Storage and backups for My projects" },
   },
   {
     id: "account",

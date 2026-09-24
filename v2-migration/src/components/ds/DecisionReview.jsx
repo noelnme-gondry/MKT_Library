@@ -95,7 +95,7 @@ function formatReviewDate(value, locale) {
 
 const COPY = {
   ko: {
-    summary: "다음 검토 약속 만들기",
+    summary: "다음 마케팅 프로젝트로 만들기",
     closeEditor: "편집 접기",
     suggestedAction: "추천 행동",
     emptyAction: "결과에서 실행할 행동을 정하세요",
@@ -155,7 +155,7 @@ const COPY = {
     reviewQuestion: "검토일에 답할 질문",
     reviewQuestionPlaceholder: "예: CPA가 목표 이하로 회복됐는가?",
     reviewDate: "검토 예정일",
-    add: "다음 검토로 저장",
+    add: "이대로 만들기",
     export: "CSV 내보내기",
     import: "CSV 불러오기",
     pending: "검토 대기",
@@ -170,7 +170,7 @@ const COPY = {
     learningPlaceholder: "예: 절감 예산은 검색 캠페인으로 이동",
     saveReview: "검토 반영",
     remove: "삭제",
-    empty: "이 도구에서 남긴 결정이 없습니다. 위 추천을 필요한 만큼만 고쳐 다음 검토로 저장하세요.",
+    empty: "이 도구에서 남긴 결정이 없습니다. 위 추천을 필요한 만큼만 고쳐 다음 마케팅 프로젝트로 만드세요.",
     importError: "읽을 수 있는 결정 기록 행이 없습니다. 내보낸 CSV 형식인지 확인해 주세요.",
     imported: (count) => `${count}개의 결정 기록을 불러왔습니다.`,
     error: "실행할 변경 내용을 먼저 적어 주세요.",
@@ -184,10 +184,10 @@ const COPY = {
     lowerHint: "낮을수록 좋은 지표",
     higherHint: "높을수록 좋은 지표",
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
-    openWeeklyReview: "주간 리뷰 열기 →",
+    openWeeklyReview: "내 프로젝트 열기 →",
   },
   en: {
-    summary: "Schedule the next review",
+    summary: "Make it my next marketing project",
     closeEditor: "Close editor",
     suggestedAction: "Suggested action",
     emptyAction: "Choose the action to take from this result",
@@ -247,7 +247,7 @@ const COPY = {
     reviewQuestion: "Question to answer on review day",
     reviewQuestionPlaceholder: "e.g. Did CPA return below target?",
     reviewDate: "Review date",
-    add: "Save for next review",
+    add: "Create it",
     export: "Export CSV",
     import: "Import CSV",
     pending: "Review pending",
@@ -262,7 +262,7 @@ const COPY = {
     learningPlaceholder: "e.g. Move saved budget to search",
     saveReview: "Save review",
     remove: "Remove",
-    empty: "No decision from this tool yet. Edit the suggestion as needed, then save it for the next review.",
+    empty: "No decision from this tool yet. Edit the suggestion as needed, then make it your next marketing project.",
     importError: "No usable decision rows found. Check that this is an exported decision-review CSV.",
     imported: (count) => `Imported ${count} decision ${count === 1 ? "record" : "records"}.`,
     error: "Add the action you plan to take first.",
@@ -276,7 +276,7 @@ const COPY = {
     lowerHint: "Lower is better for this metric",
     higherHint: "Higher is better for this metric",
     unscoredHint: "Shows the change without calling it better or worse",
-    openWeeklyReview: "Open weekly review →",
+    openWeeklyReview: "Open My projects →",
   },
 };
 
@@ -557,7 +557,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       <header className="decision-editor-header"><h2>{t.summary}</h2><button type="button" className="btn" onClick={() => setIsOpen(false)}>{locale === "en" ? "Close" : "닫기"}</button></header>
       <div className="decision-review__body">
         <p className="decision-review__helper">{t.helper}</p>
-        {!allowAutomaticComparison && <p className="decision-review__helper">{locale === "en" ? "This summary is saved for manual review. Bring the next results to Weekly Review and record what changed; no automatic outcome match is promised." : "이 요약은 직접 검토할 결정으로 저장됩니다. 다음 결과를 주간 리뷰에서 확인하고 변화를 기록하세요. 자동 실제값 대조는 제공하지 않습니다."}</p>}
+        {!allowAutomaticComparison && <p className="decision-review__helper">{locale === "en" ? "This summary is saved for manual review. Bring the next results to My projects and record what changed; no automatic outcome match is promised." : "이 요약은 직접 검토할 결정으로 저장됩니다. 다음 결과를 내 프로젝트에서 확인하고 변화를 기록하세요. 자동 실제값 대조는 제공하지 않습니다."}</p>}
         <DecisionStorageConsentNotice locale={locale} source="decision_review_reconsent" />
         <div className={`decision-review__persistence ${isPersistenceEnabled ? "is-enabled" : ""}`}>
           <label>

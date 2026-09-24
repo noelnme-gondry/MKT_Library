@@ -9,7 +9,7 @@ import React, { useState, useRef, useMemo, useEffect, useImperativeHandle } from
 import Papa from "papaparse";
 import { computeAnalyzeSig, useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
-import { buildDemoCsv } from "@/utils/demoData";
+import { buildToolDemo } from "@/lib/toolDemo";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { getToolGuide } from "@/utils/toolGuide";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
@@ -46,6 +46,7 @@ import DochiMappingCoach from "@/components/assistant/DochiMappingCoach";
 import HelpTip from "@/components/ds/HelpTip";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 import { sourceCurrencyOf } from "@/utils/format";
+import { rememberSourceCurrency } from "@/lib/account/accountClient";
 import { trackLoginCompleted } from "@/lib/account/loginTelemetry";
 
 const STANDARD_FIELD_EN_LABELS = {
@@ -136,7 +137,7 @@ const CSV_COPY = {
     checkMappingHint: '매핑이 올바른지 확인 후 "분석하기"를 클릭하여 분석을 시작하세요.',
     analyzeBtn: "데이터 분석하기",
     sourceCurrencyLabel: "원본 데이터 통화",
-    sourceCurrencyHint: "금액 숫자의 단위입니다. 환산하지 않으며, 선택을 바꾸면 분석을 다시 확인해야 합니다.",
+    sourceCurrencyHint: "최근 선택한 통화로 읽었습니다. 환산하지 않으며, 다르면 바꿔 주세요.",
     sourceCurrencyMissing: "금액은 숫자만으로 통화를 알 수 없습니다. 분석 전에 원본 단위를 선택하세요.",
     recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
     recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
@@ -224,7 +225,7 @@ const CSV_COPY = {
     checkMappingHint: 'Confirm the mapping is correct, then click "Analyze" to start.',
     analyzeBtn: "Analyze data",
     sourceCurrencyLabel: "Source data currency",
-    sourceCurrencyHint: "This declares the unit of monetary values. No conversion is applied, and changing it requires re-analysis.",
+    sourceCurrencyHint: "Read in your most recent currency. No conversion is applied; change it if it is wrong.",
     sourceCurrencyMissing: "Currency cannot be inferred from bare numbers. Select the source unit before analysis.",
     recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
     recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
@@ -687,9 +688,8 @@ export default function CsvUploader({
   const handleLoadDemo = () => {
     if (toolId === "start-gate") { launchSample(); return; }
     setErrorMsg("");
-    const group = TOOL_GROUP[toolId] || "efficiency";
-    const demo = buildDemoCsv(group, locale);
-    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: buildLegacyRows({ raw: demo.raw, legacyMapping: demo.mapping, toolId }) });
+    const demo = buildToolDemo(toolId, locale);
+    setCsvData(demo);
     if (demo.currency) setDisplayCurrency(demo.currency);
     setGroupAnalyzed(toolId);
     onAnalyzed?.();
@@ -708,6 +708,8 @@ export default function CsvUploader({
   const currencyMissing = !isDemo && requiresSourceCurrency && !sourceCurrency;
   const chooseSourceCurrency = (currency) => {
     setCsvData({ ...csvData, currency });
+    // 이 선택이 다음 업로드의 기본값이 된다(로그인했으면 계정에도 기억).
+    rememberSourceCurrency(currency);
     // 효율 도구 전반은 원본 금액을 환산하지 않는다. 전역 포맷 fallback도 같은
     // 단위로 맞춰, 다른 화면에서 마지막 표시 통화가 새어 들어오지 않게 한다.
     setDisplayCurrency(currency);

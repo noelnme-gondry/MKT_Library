@@ -41,7 +41,7 @@ const COPY = {
     expand: "펼치기",
     changeSelection: "분석 다시 고르기",
     empty: "지금 올린 데이터로 돌릴 수 있는 분석이 없습니다. 매핑을 먼저 확인해 주세요.",
-    otherGrain: "데이터 단위가 다른 분석(주간 패널·증분·소재 등)은 여기서 돌지 않습니다. 그 도구 화면에서 결과를 본 뒤 ‘프로젝트로 넘기기’로 이어 오세요.",
+    otherGrain: "데이터 단위가 다른 분석(주간 패널·증분·소재 등)은 여기서 돌지 않습니다. 그 도구 화면에서 결과를 본 뒤 ‘다음 마케팅 프로젝트로 만들기’로 이어 오세요.",
   },
   en: {
     title: "Analyses available for this data",
@@ -54,7 +54,7 @@ const COPY = {
     expand: "Expand",
     changeSelection: "Change selection",
     empty: "No analysis can run on this data yet. Check the mapping first.",
-    otherGrain: "Analyses on a different data grain (weekly panel, incrementality, creatives) do not run here. Read the result on that tool's page, then use ‘Carry into a project’ to bring it back.",
+    otherGrain: "Analyses on a different data grain (weekly panel, incrementality, creatives) do not run here. Read the result on that tool's page, then use ‘Make it my next marketing project’ to bring it back.",
   },
 };
 

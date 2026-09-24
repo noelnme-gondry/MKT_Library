@@ -73,20 +73,20 @@ for (const locale of ["ko", "en"]) {
     expect((await storedProjects(page)).flatMap((project) => project.decisions || [])).toEqual([]);
     await page.getByRole("button", { name: en ? "Record decision for: Google / PrivateCampaign" : "결정 기록: Google / PrivateCampaign", exact: true }).click();
     await page.getByRole("button", { name: en ? "Save this decision" : "이 결정 저장", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: en ? "Save review" : "리뷰 저장", exact: true });
+    const dialog = page.getByRole("dialog", { name: en ? /^(Save to My projects|Make it my next marketing project)$/ : /^(내 프로젝트에 저장|다음 마케팅 프로젝트로 만들기)$/ });
     // 관문에서 체험을 켜며 이 기기에 프로젝트 자리가 생겼다. 분석 집계(스냅샷)도
     // 그 프로젝트에 붙으므로, 여기서 또 새 프로젝트를 만들면 집계가 따라오지 않는다.
     // 실제 흐름대로 방금 만든 그 프로젝트에 이름을 붙여 저장한다.
     await dialog.getByRole("textbox", { name: en ? "Project name" : "프로젝트 이름", exact: true }).fill("Trial project");
-    // 이미 있는 프로젝트에 저장하면 "리뷰 저장", 새로 만들면 "프로젝트 만들고 저장"이다.
-    const localSave = dialog.getByRole("button", { name: en ? /^(Create project and save|Save review)$/ : /^(프로젝트 만들고 저장|리뷰 저장)$/ });
+    // 이미 있는 프로젝트에 저장하면 "내 프로젝트에 저장", 새로 만들면 "프로젝트 만들고 저장"이다.
+    const localSave = dialog.getByRole("button", { name: en ? /^(Create project and save|Save to My projects)$/ : /^(프로젝트 만들고 저장|내 프로젝트에 저장)$/ });
     // 체험은 관문에서 이미 켜졌으므로 이 기기 저장은 열려 있다.
     await expect(localSave).toBeEnabled();
     expect(sentMemos).toEqual([]);
     await expectNoSeriousAccessibilityViolations(page);
     expect(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await localSave.click();
-    await expect(dialog.getByRole("heading", { name: en ? "Review saved" : "리뷰를 저장했습니다" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: en ? "Saved to My projects" : "내 프로젝트에 저장했습니다" })).toBeVisible();
 
     // 계정 보관은 저장 이후에 별개 동의로 제안된다 — 이 기기 저장과 다른 결정이다.
     await dialog.getByText(en ? "Keep a memo in my account (optional)" : "계정에 메모 보관 (선택)", { exact: true }).click();

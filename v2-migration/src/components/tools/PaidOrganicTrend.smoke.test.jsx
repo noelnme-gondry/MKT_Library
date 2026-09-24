@@ -86,7 +86,7 @@ describe("PaidOrganicTrend render smoke", () => {
 
   it("loads deterministic example data from the empty state", () => {
     render(<PaidOrganicTrend />);
-    fireEvent.click(screen.getByRole("button", { name: "예시로 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "예시 데이터로 결과 바로 보기" }));
     expect(useAppStore.getState().csvData.fileName).toBe("demo_paid_organic_trend.csv");
   });
 });

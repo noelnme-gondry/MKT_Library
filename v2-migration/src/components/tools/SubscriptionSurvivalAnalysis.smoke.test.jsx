@@ -81,7 +81,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     fireEvent.change(screen.getByLabelText("기간당 반복 가치 (선택)"), { target: { value: "100" } });
     fireEvent.change(screen.getByLabelText("매출총이익률 % (선택)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
-    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+    expect(screen.queryByText("다음 마케팅 프로젝트로 만들기")).toBeNull();
   });
 
   it("marks a changed horizon as stale until the user re-runs it", () => {
@@ -130,7 +130,7 @@ describe("SubscriptionSurvivalAnalysis render smoke", () => {
     fireEvent.change(screen.getByLabelText("매출총이익률 % (선택)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "분석하기" }));
     expect(screen.getByText("관측기간 내 비용 회수는 2기간에 도달했습니다.")).toBeTruthy();
-    expect(screen.getByText("다음 검토 약속 만들기")).toBeTruthy();
+    expect(screen.getByText("다음 마케팅 프로젝트로 만들기")).toBeTruthy();
   });
 
   it("requires date-mode metadata, derives dated episodes, and exposes the definition in the result", () => {

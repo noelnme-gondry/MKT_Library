@@ -69,12 +69,12 @@ describe("Dochi analysis workspace", () => {
     await waitFor(() => expect(view.container.querySelectorAll(".dochi-workspace__result.is-success .decision-review").length).toBeGreaterThan(0));
     const editor = view.container.querySelector(".dochi-workspace__result.is-success .decision-review");
     fireEvent.click(editor.querySelector("[data-information-heading], .decision-review-launch"));
-    fireEvent.click(screen.getByRole("button", { name: en ? "Save for next review" : "다음 검토로 저장", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: en ? "Create it" : "이대로 만들기", exact: true }));
     confirmReviewSave();
     const record = useAppStore.getState().decisionRecords[0];
     expect(record.action.length).toBeGreaterThan(0);
     expect(record.comparisonScope).toBeFalsy();
-    expect(screen.getByRole("link", { name: en ? "Open weekly review →" : "주간 리뷰 열기 →" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review#wr-history`);
+    expect(screen.getByRole("link", { name: en ? "Open My projects →" : "내 프로젝트 열기 →" }).getAttribute("href")).toBe(`${en ? "/en" : ""}/weekly-review#wr-history`);
     for (const name of ["analysis_started", "analysis_completed", "decision_record_added"]) expect(window.gtag).toHaveBeenCalledWith("event", name, expect.objectContaining({ placement: "dochi_workspace", locale }));
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("campaign.csv");
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("Meta");

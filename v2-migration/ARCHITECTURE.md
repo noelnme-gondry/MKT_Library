@@ -112,6 +112,7 @@ v2-migration/
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath`·`funnelMath`·`segmentMath`·`anomalyMath`·`pacingMath`·`cohortMath`·`seasonalityMath`·`responseMath` | 탭별 순수 math 추출 완료(골든 커버) |
 | 결론 카드 (전 도구) | `dashboardVerdict.js`·`analysis-results/*QuickSummary.js` | 판정은 **도구별 렌더 유틸**, 공용은 카드 셸뿐(§12.27) |
 | (공통) | `chartUtils.js`·`format.js`·`download.js`·`toolGuide.js`·`demoData.js`(seededNoise)·`testFixtures` | 차트·표시포맷·CSV출력·업로드 설명·픽스처 SSOT |
+| (공통) | `lib/toolDemo.js`(예시 슬라이스 조립 — 도구 예시·홈 샘플 공용) · `lib/sourceCurrencyPreference.js`(원본 통화 기본값: 계정 → 브라우저 → 화면 언어, 스토어 `withDefaultSourceCurrency`가 효율 업로드에 채움) | 예시 곧장 결과 · 통화 선언 생략 |
 | (공통 그룹 비교) | `groupComparisonMath.js` | Welch·대응 t·순위 검정·Welch ANOVA/Games–Howell·Kruskal–Wallis/Dunn-Holm·χ²/Fisher. 방법은 결과 척도와 사용자가 선언한 설계/추정대상으로만 선택 |
 | (지표/커스텀) | `utils/metrics/`: `metricRegistry.js`(파생지표 SSOT)·`customMetric.js`(N항 조립, eval 없음)·`chartBuilder.js`·`metricView.js`(hidden/order/sizes) | UI=`ds/CustomMetricBuilder`·`CustomChartBuilder`·`InlineCardEditor`·`MetricConfigPanel`. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 | (모델 진단) | `modelDiagnostics.js` + `lib/analystCapabilities.js` | 기존 적합 불변, 잔차·영향점·VIF·HC3 민감도. capability 선언 화면만 `ds/ModelDiagnosticsPanel` 렌더(현재 9-1) |

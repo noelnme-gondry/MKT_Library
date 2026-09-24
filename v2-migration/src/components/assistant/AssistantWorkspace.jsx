@@ -6,6 +6,7 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
 import ToolIndex from "@/components/ds/ToolIndex";
 
 import { isDemoData } from "@/lib/dataOrigin";
+import { buildToolDemo } from "@/lib/toolDemo";
 import { blockersText } from "@/lib/assistant/blockerText";
 import { mappedKeys, mergedToolMapping, computeCsvEligibility } from "@/lib/assistant/csvEligibility";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -67,6 +68,7 @@ const COPY = {
     details: "추가 차트·상세 분석 열기",
     openAnalysis: "분석 열기",
     openAnyway: "그래도 열어 보기",
+    sampleOwnExample: "이 분석에 맞춘 예시 데이터로 바로 결과를 엽니다.",
     preparingDetails: "상세 분석 화면을 준비하고 있습니다.",
     adapterPending: "상세 분석에서 실행",
     adapterPendingDetail: "이 분석은 이 화면에서 실행하거나 결과를 만들지 않았습니다. 상세 분석에서 차트와 분석 조건을 확인해 주세요.",
@@ -148,6 +150,7 @@ const COPY = {
     details: "Open extra charts and details",
     openAnalysis: "Open analysis",
     openAnyway: "Open anyway",
+    sampleOwnExample: "Opens straight to a result with example data made for this analysis.",
     preparingDetails: "Preparing the detailed analysis.",
     adapterPending: "Run in detailed analysis",
     adapterPendingDetail: "This screen did not run the analysis or create a result. Review its charts and analysis conditions in the detailed analysis.",
@@ -598,7 +601,9 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
   );
 }
 
-export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true }) {
+// sampleMode: 홈 샘플 체험. 샘플 CSV 하나로는 모든 도구를 돌릴 수 없으므로(도구마다 행의 뜻이 다르다)
+// 샘플이 못 채우는 도구는 그 도구의 예시 데이터로 연다 — 체험에서 막힌 도구가 없게 한다(2026-09-24).
+export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true, sampleMode = false }) {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const C = COPY[locale] || COPY.ko;
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -699,7 +704,8 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const openTool = (toolId) => {
     if (!onOpenTool) return;
     trackProductEvent("analysis_recommended", { tool_id: toolId, source: "dochi", placement: "dochi_workspace", locale });
-    deferHandoff(() => onOpenTool(toolId, prepareHandoffForTool(toolId)));
+    const needsOwnExample = sampleMode && eligibility.find((result) => result.toolId === toolId)?.status === "blocked";
+    deferHandoff(() => onOpenTool(toolId, needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId)));
   };
   const openNaturalExperiment = (handoff) => {
     if (!onOpenTool) return;
@@ -878,7 +884,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       </section>}
       <ToolIndex locale={locale} density="grid"
         activeToolId={selectedAnalysis} onActiveToolChange={setSelectedAnalysis}
-        eligibleIds={eligibility.filter(result => result.status === "ready" && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
+        eligibleIds={eligibility.filter(result => (sampleMode || result.status === "ready") && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
         renderSummary={toolId => {
           const item = currentResults.find(({ result }) => result.toolId === toolId);
           if (!item) return null;
@@ -886,7 +892,8 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           return <span className="workspace-card-evidence"><span>{output.verdict.headline}</span>{output.verdict.stats?.slice(0, 2).map(stat => <span key={stat.id}><b>{formatResultStat(stat, locale)}</b> {stat.label}</span>)}</span>;
         }}
         renderDetail={toolId => {
-          const result = eligibility.find(item => item.toolId === toolId);
+          const found = eligibility.find(item => item.toolId === toolId);
+          const result = sampleMode && found?.status === "blocked" ? { ...found, status: "ready", recommendationReason: C.sampleOwnExample } : found;
           return result ? <><AnalysisCard result={result} locale={locale} getTitle={getTitle} csvData={csvData} qualityMapping={mappingsByTool[toolId]} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />
             {toolId === "5-23" && naturalCandidates.map(candidate => <NaturalExperimentCandidate key={candidate.id || `${candidate.unit}:${candidate.startDate}`} candidate={candidate} locale={locale} outcomeOptions={naturalOutcomeOptions} onHandoff={openNaturalExperiment} />)}
           </> : null;

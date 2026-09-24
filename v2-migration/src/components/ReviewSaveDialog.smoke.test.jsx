@@ -66,8 +66,8 @@ it("saves a standalone decision to the chosen project without switching source d
   render(<ReviewSaveDialog record={{ ...record, action: "B follow-up" }} onSaved={vi.fn()} onClose={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
   fireEvent.change(screen.getByRole("combobox", { name: "저장할 프로젝트" }), { target: { value: "b" } });
-  fireEvent.click(screen.getByRole("button", { name: "리뷰 저장" }));
-  await screen.findByRole("heading", { name: "리뷰를 저장했습니다" });
+  fireEvent.click(screen.getByRole("button", { name: "내 프로젝트에 저장" }));
+  await screen.findByRole("heading", { name: "내 프로젝트에 저장했습니다" });
   expect((await readProject("b")).decisions[0].action).toBe("B follow-up");
   expect((await readProject("default")).decisions).toHaveLength(1);
   expect(useAppStore.getState().activeProjectId).toBe("default");
@@ -76,11 +76,11 @@ it("saves a standalone decision to the chosen project without switching source d
 it("also gates updates and completion, including a changed project during sign-in", async () => {
   const onConfirm = vi.fn();
   const view = render(<ReviewSaveDialog onConfirm={onConfirm} onClose={vi.fn()} />);
-  expect(screen.getByRole("button", { name: "리뷰 저장" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "내 프로젝트에 저장" }).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
   useAppStore.setState({ activeProjectId: "different" });
   view.rerender(<ReviewSaveDialog onConfirm={onConfirm} onClose={vi.fn()} />);
-  fireEvent.click(screen.getByRole("button", { name: "리뷰 저장" }));
+  fireEvent.click(screen.getByRole("button", { name: "내 프로젝트에 저장" }));
   await screen.findByRole("alert");
   expect(onConfirm).not.toHaveBeenCalled();
 });
@@ -92,8 +92,8 @@ it("counts the save itself, separating a new project from an existing one", asyn
   useAppStore.setState({ projects: await listProjects(), entitlement: activePro() });
   render(<ReviewSaveDialog record={{ ...record, action: "Follow-up" }} onSaved={vi.fn()} onClose={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
-  fireEvent.click(screen.getByRole("button", { name: "리뷰 저장" }));
-  await screen.findByRole("heading", { name: "리뷰를 저장했습니다" });
+  fireEvent.click(screen.getByRole("button", { name: "내 프로젝트에 저장" }));
+  await screen.findByRole("heading", { name: "내 프로젝트에 저장했습니다" });
   expect(trackProductEvent).toHaveBeenCalledWith("project_review_saved", { tool_id: "5-3", state: "existing_project", result_state: "review", locale: "ko" });
 });
 
@@ -102,7 +102,7 @@ it("records a new project save and reports the failure reason as a category code
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
   fireEvent.change(screen.getByRole("textbox", { name: "프로젝트 이름" }), { target: { value: "Client A" } });
   fireEvent.click(screen.getByRole("button", { name: "프로젝트 만들고 저장" }));
-  await screen.findByRole("heading", { name: "리뷰를 저장했습니다" });
+  await screen.findByRole("heading", { name: "내 프로젝트에 저장했습니다" });
   expect(trackProductEvent).toHaveBeenCalledWith("project_review_saved", { tool_id: "5-3", state: "new_project", result_state: "review", locale: "ko" });
 
   cleanup();
@@ -110,7 +110,7 @@ it("records a new project save and reports the failure reason as a category code
   render(<ReviewSaveDialog record={record} onSaved={vi.fn()} onClose={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
   refreshAccount.mockResolvedValue({ account: null });
-  fireEvent.click(screen.getByRole("button", { name: "리뷰 저장" }));
+  fireEvent.click(screen.getByRole("button", { name: "내 프로젝트에 저장" }));
   await screen.findByRole("alert");
   expect(trackProductEvent).toHaveBeenCalledWith("project_review_save_failed", { tool_id: "5-3", state: "login_required", locale: "ko" });
   expect(trackProductEvent).not.toHaveBeenCalledWith("project_review_saved", expect.anything());
@@ -129,7 +129,7 @@ it.each(["refresh", "callback"])("keeps a committed save successful when post-sa
   fireEvent.click(screen.getByRole("button", { name: "Complete sign-in" }));
   fireEvent.change(screen.getByRole("textbox", { name: "프로젝트 이름" }), { target: { value: "Client A" } });
   fireEvent.click(screen.getByRole("button", { name: "프로젝트 만들고 저장" }));
-  await screen.findByRole("heading", { name: "리뷰를 저장했습니다" });
+  await screen.findByRole("heading", { name: "내 프로젝트에 저장했습니다" });
   expect((await readProject("default")).decisions).toHaveLength(1);
   expect(trackProductEvent.mock.calls.filter(([name]) => name === "project_review_saved")).toHaveLength(1);
   expect(trackProductEvent).not.toHaveBeenCalledWith("project_review_save_failed", expect.anything());

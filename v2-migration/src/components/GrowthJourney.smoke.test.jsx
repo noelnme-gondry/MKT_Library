@@ -56,7 +56,7 @@ describe("home → result → weekly review", () => {
     expect(focus.textContent).toContain(preview);
     expect(focus.textContent).toContain("CPA");
     expect(result.container.querySelector(".dochi-workspace__judgment")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기" }));
+    fireEvent.click(screen.getByRole("button", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기" }));
     result.unmount();
     act(() => useAppStore.getState().setCurrentRouteId("weekly-review"));
     expect(useAppStore.getState().csvData).toBe(data);

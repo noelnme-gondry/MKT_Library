@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+import { toolIndexEntry } from "../src/lib/toolIndex";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
@@ -70,11 +71,25 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".sample-journey-scope")).toContainText(en ? "Sample data" : "샘플 데이터");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.locator(".workspace-next-action")).toBeVisible();
-    await page.getByRole("button", { name: en ? "Build weekly review" : "주간 리뷰 만들기", exact: true }).click();
+    await page.getByRole("button", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/weekly-review#weekly-performance$`));
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("#wr-verdict")).toBeVisible();
     await expect(page.locator(".header-data-context")).toContainText("demo_efficiency.csv");
+  });
+
+  // 샘플 하나로 모든 도구를 돌릴 수는 없다 — 샘플이 못 채우는 도구는 그 도구의 예시 데이터로
+  // 연다. 체험에서 "추가 데이터 필요"로 막힌 도구가 없고, 연 도구는 곧장 결과다(2026-09-24).
+  test(`home sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }) => {
+    await page.goto(prefix || "/");
+    await page.locator(".home-result-preview button").click();
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+    await expect(page.getByText(en ? "Needs more data or setup" : "추가 데이터·설정이 필요한 분석", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: new RegExp(toolIndexEntry("5-20", locale).name) }).first().click();
+    await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}/tools/aha-moment$`));
+    await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
@@ -84,8 +99,8 @@ for (const locale of ["ko", "en"]) {
     await expect(page).toHaveURL(new RegExp(`${prefix}/start$`));
     await page.locator('.csv-uploader input[type="file"]').first().setInputFiles(path.resolve("e2e/fixtures/efficiency.csv"));
     await expect(page.locator(".header-data-context")).toContainText("efficiency.csv");
-    // A real CSV must declare its currency; the sample already owns one.
-    await page.getByRole("button", { name: en ? "KRW ₩" : "원 ₩", exact: true }).click();
+    // 원본 통화는 묻지 않고 기본값(최근 선택 → 화면 언어)으로 채운다. 바꾸는 버튼만 남는다.
+    await expect(page.getByRole("button", { name: en ? "USD $" : "원 ₩", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".dochi-workspace")).toHaveCount(0);
     await page.locator(".csv-analysis-action").click();
     await expect(page.locator(".workspace-next-action")).toBeVisible();
