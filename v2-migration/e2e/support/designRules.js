@@ -49,7 +49,8 @@ export async function measureDesignRules(page) {
       if (!lines.length) continue;
       const rect = lines[0];
       const style = getComputedStyle(el);
-      texts.push({ el, text: text.slice(0, 30), rect, lines, size: parseFloat(style.fontSize), weight: Number(style.fontWeight) });
+      texts.push({ el, text: text.slice(0, 30), rect, lines, size: parseFloat(style.fontSize), weight: Number(style.fontWeight),
+        top: Math.min(...lines.map((r) => r.top)), bottom: Math.max(...lines.map((r) => r.bottom)) });
     }
 
     // 고정·스티키 요소 안의 글자는 스크롤한 본문 위를 지나가는 게 정상이다 — 2)에서 따로 본다.
@@ -60,12 +61,15 @@ export async function measureDesignRules(page) {
       }
       return false;
     };
-    // 1) 글자끼리 겹침.
+    // 1) 글자끼리 겹침. 글자가 수천 개인 표(콘텐츠 신선도 등)에서 n² 비교가 테스트 시간을 넘겼다 —
+    // 세로 위치로 정렬해 겹칠 수 있는 이웃만 비교하고, 조상을 거슬러 오르는 판정은 미리 한 번만 한다.
+    for (const t of texts) { t.dialog = inDialog(t.el); t.floating = floating(t.el); }
+    const byTop = [...texts].sort((x, y) => x.top - y.top);
     const overlaps = [];
-    for (let i = 0; i < texts.length; i += 1) for (let j = i + 1; j < texts.length; j += 1) {
-      const a = texts[i], b = texts[j];
+    for (let i = 0; i < byTop.length; i += 1) for (let j = i + 1; j < byTop.length && byTop[j].top < byTop[i].bottom - 3; j += 1) {
+      const a = byTop[i], b = byTop[j];
+      if (a.floating || b.floating || a.dialog !== b.dialog) continue;
       if (a.el === b.el || a.el.contains(b.el) || b.el.contains(a.el)) continue;
-      if (inDialog(a.el) !== inDialog(b.el) || floating(a.el) || floating(b.el)) continue;
       const hit = a.lines.some((ra) => b.lines.some((rb) => {
         const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
         const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
@@ -135,8 +139,8 @@ export async function measureDesignRules(page) {
     // 5) 제목 바로 위에 붙은 작은 라벨(13px 이하 → 12px 안에 20px 이상).
     const eyebrows = [];
     for (const small of texts) {
-      if (small.size > 13 || inDialog(small.el) || floating(small.el) || exempt(small.el, "eyebrow")) continue;
-      const head = texts.find((h) => h.size >= 20 && !floating(h.el) && h.rect.top - small.rect.bottom >= -2 && h.rect.top - small.rect.bottom <= 12 && Math.abs(h.rect.left - small.rect.left) < 40);
+      if (small.size > 13 || small.dialog || small.floating || exempt(small.el, "eyebrow")) continue;
+      const head = texts.find((h) => h.size >= 20 && !h.floating && h.rect.top - small.rect.bottom >= -2 && h.rect.top - small.rect.bottom <= 12 && Math.abs(h.rect.left - small.rect.left) < 40);
       if (head) eyebrows.push(`"${small.text}"(${small.size}px) → "${head.text}"`);
     }
 
