@@ -61,11 +61,15 @@ const COPY = {
 
 export default function DochiResultWorkspace({ locale = "ko" }) {
   const C = COPY[locale] || COPY.ko;
-  const csvData = useAppStore((state) => state.csvData);
+  const storeCsvData = useAppStore((state) => state.csvData);
   const setGroupAnalyzed = useAppStore((state) => state.setGroupAnalyzed);
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const setDochiAnalysisSession = useAppStore((state) => state.setDochiAnalysisSession);
   const dochiAnalysisSession = useAppStore((state) => state.dochiAnalysisSession);
+  // 도구를 열 때 그 도구용으로 다시 매핑한 사본을 넘긴다. 뒤로 돌아오면 슬라이스가 그 사본이라
+  // 결과 화면이 원본을 못 알아보고 컬럼 확인부터 다시 물었다(2026-09-24). 이 화면이 넘긴 사본이면
+  // 원본으로 되돌려 읽는다 — 새 업로드는 세션을 비우므로 여기에 걸리지 않는다.
+  const csvData = dochiAnalysisSession?.handoffs?.includes(storeCsvData) ? dochiAnalysisSession.sourceData : storeCsvData;
   const isAnalyzed = useAppStore((state) => state.isGroupAnalyzed("dochi-result"));
   const sample = getSampleJourney(csvData);
   const router = useRouter();
@@ -92,15 +96,18 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     timersRef.current.push(timer);
   };
   const openTool = useCallback((toolId, prepared = csvData) => {
+    const session = useAppStore.getState().dochiAnalysisSession;
+    setDochiAnalysisSession({ ...(session || {}), sourceData: session?.sourceData || csvData, handoffs: [...(session?.handoffs || []), prepared] });
     handoffCsvToRoute(toolId, prepared);
     const path = idToPath(toolId);
     router.push(locale === "en" ? `/en${path}` : path);
-  }, [csvData, handoffCsvToRoute, locale, router]);
+  }, [csvData, handoffCsvToRoute, locale, router, setDochiAnalysisSession]);
   const rememberAvailableAnalyses = useCallback((eligibility) => {
     const analyses = eligibility
       .filter((result) => result.status !== "blocked")
       .map(({ toolId, status, recommendationReason }) => ({ toolId, status, recommendationReason }));
-    setDochiAnalysisSession({ sourceData: csvData, analyses });
+    const session = useAppStore.getState().dochiAnalysisSession;
+    setDochiAnalysisSession({ sourceData: csvData, analyses, handoffs: session?.sourceData === csvData ? session.handoffs || [] : [] });
   }, [csvData, setDochiAnalysisSession]);
 
   if (!hasPreparedData) {

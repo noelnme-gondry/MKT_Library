@@ -59,7 +59,10 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelector(".home-result-preview button")?.textContent).toContain("샘플로 체험하기");
+    // 첫 화면의 행동은 샘플 하나 + 내 데이터 하나다 — 같은 곳으로 가는 버튼을 두 번 두지 않는다.
+    expect(document.querySelector(".home-result-preview button")).toBeNull();
+    expect(document.querySelector(".dc-action-route--sample")?.textContent).toContain("샘플로 체험하기");
+    expect(document.querySelectorAll('.dc-hero a[href="/diagnose"]')).toHaveLength(0);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
     expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
@@ -116,7 +119,7 @@ describe("LandingPage render smoke", () => {
   it("starts the clearly labeled hero example without requiring a CSV", () => {
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".home-result-preview button"));
+    fireEvent.click(container.querySelector(".dc-action-route--sample"));
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
     // Navigation mounts the result route, which selects the shared CSV slice.
     useAppStore.getState().setCurrentRouteId("dochi-result");
@@ -185,9 +188,9 @@ describe("LandingPage render smoke", () => {
       const primary = hero.querySelectorAll(".dc-action-route--sample");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
       expect(routes.length, `${locale}: 샘플과 CSV의 진입점`).toBe(2);
-      // 질문은 주요 버튼과 분리된 보조 링크로 유지한다.
-      expect(container.querySelectorAll(".dc-hero__utility-actions .dc-text-link").length).toBeGreaterThan(0);
-      expect(container.querySelectorAll(".dc-hero__utility-actions .dc-action-route").length).toBe(0);
+      // 질문(진단)은 첫 화면이 아니라 아래 질문 목록에서 한 번만 연다(F2 — 같은 곳으로 가는 링크 중복 제거).
+      expect(container.querySelectorAll(".dc-hero__utility-actions")).toHaveLength(0);
+      expect(container.querySelectorAll(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`)).toHaveLength(1);
       unmount();
     }
   });
@@ -244,8 +247,8 @@ describe("LandingPage render smoke", () => {
     seedWithData();
     const source = useAppStore.getState().csvData;
     const { container } = render(<LandingPage locale={locale} />);
-    const questionLink = container.querySelector(".dc-action-route--question");
-    expect(questionLink.closest(".dc-hero__utility-actions")).toBeTruthy();
+    const questionLink = container.querySelector(`.dc-tool-shortcuts a[href="${locale === "en" ? "/en" : ""}/diagnose"]`);
+    expect(questionLink).toBeTruthy();
     clickWithoutNavigation(questionLink);
     expect(questionLink.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/diagnose`);
     expect(useAppStore.getState().csvData).toBe(source);

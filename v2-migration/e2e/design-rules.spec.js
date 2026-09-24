@@ -59,6 +59,12 @@ function expectClean(result) {
   expect(result.emoji, "pictographic emoji (status marks like ✓ ⚠ are fine)").toEqual([]);
   expect(result.caps, "all-caps labels").toEqual([]);
   expect(result.monoNumbers, "numbers in a monospace font").toEqual([]);
+  // A1~A4(2026-09-24): 그림자는 떠 있는 것에만, 그라데이션 바탕 없음, 알약은 누를 수 있는 것에만,
+  // 글자색은 토큰에서만(하드코딩 색은 화면마다 새 색을 만든다).
+  expect(result.shadows, "drop shadow on a static surface").toEqual([]);
+  expect(result.gradients, "gradient background").toEqual([]);
+  expect(result.pills, "pill shape on something you cannot press").toEqual([]);
+  expect(result.offPalette, "text color outside the design tokens").toEqual([]);
 }
 
 test("the scanner flags what it claims to flag", async ({ page }) => {
@@ -73,6 +79,10 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
     <div style="border-left:4px solid blue;background:#eef;height:40px">accent</div>
     <section style="border-top:1px solid #999;height:60px;margin:0 20px 0 0">a</section><section style="border-top:1px solid #999;height:60px">b</section>
     <p style="position:relative;margin:0">overlap one</p><p style="position:relative;top:-18px;margin:0">overlap two</p>
+    <div style="box-shadow:0 8px 24px rgba(0,0,0,.2);height:50px">shadow card</div>
+    <div style="background:linear-gradient(90deg,#eef,#fff);height:50px">gradient box</div>
+    <span style="display:inline-block;background:#dfe;border-radius:999px;padding:2px 10px">status pill</span>
+    <p style="color:#f87171">hard-coded red</p>
     ${"<p>filler text</p>".repeat(20)}
   </main>`);
   const result = await measureDesignRules(page);
@@ -86,6 +96,10 @@ test("the scanner flags what it claims to flag", async ({ page }) => {
   expect(result.emoji.length).toBeGreaterThan(0);
   expect(result.caps.length).toBeGreaterThan(0);
   expect(result.monoNumbers.length).toBeGreaterThan(0);
+  expect(result.shadows.length).toBeGreaterThan(0);
+  expect(result.gradients.length).toBeGreaterThan(0);
+  expect(result.pills.length).toBeGreaterThan(0);
+  expect(result.offPalette.length).toBeGreaterThan(0);
 });
 
 for (const path of STATIC_PAGES) {

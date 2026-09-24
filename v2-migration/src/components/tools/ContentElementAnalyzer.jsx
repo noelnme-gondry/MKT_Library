@@ -810,7 +810,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
-          <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{T.readyMsg} <strong>{T.readyStrong}</strong></div>
             <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
           </div>

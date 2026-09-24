@@ -166,6 +166,20 @@ describe("CreativeAnalyzer render smoke", () => {
     derive.mockRestore();
   });
 
+  // 결과가 18,000px로 늘어진 원인은 모든 상세 구획이 한꺼번에 펼쳐져 있던 것이다. 상세는 고른 질문의
+  // 탭에서만 보인다(A6, 2026-09-24) — 기본은 교체 탭이라 피로 구획이 보이고 속성 조합은 숨는다.
+  it("shows only the detail sections that belong to the chosen question", () => {
+    seedWithData();
+    useAppStore.getState().setGroupAnalyzed("5-6");
+    render(<CreativeAnalyzer />);
+    expect(document.querySelector("#s-fatigue").hidden).toBe(false);
+    expect(document.querySelector("#s-matrix").hidden).toBe(true);
+    expect(document.querySelector("#s-validation").hidden).toBe(false);
+    fireEvent.click(screen.getByRole("tab", { name: /성과가 바뀐 이유/ }));
+    expect(document.querySelector("#s-matrix").hidden).toBe(false);
+    expect(document.querySelector("#s-fatigue").hidden).toBe(true);
+  });
+
   it("mounts without throwing in the no-data state (upload screen)", () => {
     // 데모 자동로드를 없앴으므로 no-data는 업로드/데이터 준비 화면이 정상이다.
     expect(() => render(<CreativeAnalyzer />)).not.toThrow();
@@ -233,6 +247,8 @@ describe("CreativeAnalyzer render smoke", () => {
   it("uses native buttons to filter the performance table from the concept matrix", () => {
     seedWithData();
     render(<CreativeAnalyzer />);
+    // 조합 매트릭스와 성과 표는 "성과가 바뀐 이유" 탭에 있다(A6).
+    fireEvent.click(screen.getByRole("tab", { name: /성과가 바뀐 이유/ }));
 
     const cell = screen.getByRole("button", { name: "question × video 조합 필터" });
     expect(cell.tagName).toBe("BUTTON");

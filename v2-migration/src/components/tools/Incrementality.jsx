@@ -174,7 +174,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-incr" data-hydrated={isHydrated ? "true" : "false"}>
       {/* 방법 선택을 첫 행동으로 올리고, 비교 설명은 필요할 때만 펼친다. */}
-      <section className="block" id="s-incr-method" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
+      <section className="block" id="s-incr-method" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
         <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
         <p style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
           {tr(<>비교군이나 사전 추세를 기준으로 <strong>추정 차이</strong>를 계산합니다. 광고의 인과효과로 해석할 수 있는지는 설계 조건에 달려 있습니다.</>,

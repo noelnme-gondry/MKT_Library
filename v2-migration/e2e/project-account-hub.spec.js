@@ -12,8 +12,11 @@ for (const locale of ["ko", "en"]) {
     const history = page.locator(".wr-history-list");
     // 이용권이 없어도 기록은 읽을 수 있다 — 사이트가 "만료 후 열람 유지"를 약속했다.
     // 막히는 것은 계정 보관과 새 저장뿐이고, 화면이 그 사실을 말한다.
-    await expect(history.getByText(en ? /keep reading and exporting your records/ : /기록은 계속 읽고 내보낼 수 있습니다/)).toBeVisible();
+    // 기록이 하나도 없으면 "계속 읽을 수 있다"는 말할 대상이 없다 — 한 문장과 버튼 하나다(F4).
+    await expect(history.getByRole("link", { name: en ? "Start an analysis" : "분석 시작" })).toBeVisible();
     memos = [{ id: "memo-1", action: "Review the campaign budget", conclusion: "Check the next period before increasing spend.", reviewDate: "2026-10-01" }];
+    await page.reload();
+    await expect(history.getByText(en ? /keep reading and exporting your records/ : /기록은 계속 읽고 내보낼 수 있습니다/)).toBeVisible();
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: true, account: { id: "library", email: "reader@example.com", serviceReminders: false }, entitlement: { plan: "paid", account: true, trial: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
     await page.reload();
     await expect(history.getByRole("button", { name: new RegExp(memos[0].action) })).toBeVisible();
@@ -49,6 +52,10 @@ for (const locale of ["ko", "en"]) {
     await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, mailEnabled: false, account: null, entitlement: null } }));
     await page.goto(`${prefix}/weekly-review`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(en ? "New project" : "새 프로젝트");
+    // 목록이 비었으면 빈 구획 대신 한 문장과 버튼 하나다(F4). 작업 탭은 남긴다 — 주간 성과 비교는
+    // 저장한 결정이 없어도 쓰는 입구다(블로그 글에서 바로 들어온다).
+    await expect(page.getByRole("heading", { name: en ? "No marketing projects yet" : "아직 만든 마케팅 프로젝트가 없어요" })).toBeVisible();
+    await expect(page.locator(".wr-history-list--first").getByRole("link", { name: en ? "Start an analysis" : "분석 시작" })).toHaveAttribute("href", `${prefix}/start`);
     await expect(page.locator(".csv-uploader")).toHaveCount(0);
     await expect(page.getByRole("button", { name: en ? "Decision review" : "결정 검토", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(".wr-screen .journey-progress a")).toHaveCount(0);

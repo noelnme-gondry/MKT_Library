@@ -848,20 +848,23 @@ export function pDots(p) {
   return "○○○";
 }
 export const POS = "#f87171";
+// 화면 글자용(표 셀·문구). 위 두 값은 차트 캔버스용 — canvas는 var()를 못 읽는다(§7).
+export const POS_TEXT = "var(--danger)";
+export const NEG_TEXT = "var(--success)";
 export const NEG = "#22c55e";
 export const MUTED = "var(--text-muted)";
 
 export const VERDICT_META = {
   ko: {
-    incremental: { txt: "증분 ✓", color: NEG },
-    suppress: { txt: "잠식 의심 ⚠", color: POS },
+    incremental: { txt: "증분 ✓", color: NEG_TEXT },
+    suppress: { txt: "잠식 의심 ⚠", color: POS_TEXT },
     noise: { txt: "불확실", color: MUTED },
     uncertain: { txt: "불확실", color: MUTED },
     sparse: { txt: "데이터 부족 ⊘", color: MUTED },
   },
   en: {
-    incremental: { txt: "Incremental ✓", color: NEG },
-    suppress: { txt: "Cannibalization? ⚠", color: POS },
+    incremental: { txt: "Incremental ✓", color: NEG_TEXT },
+    suppress: { txt: "Cannibalization? ⚠", color: POS_TEXT },
     noise: { txt: "Uncertain", color: MUTED },
     uncertain: { txt: "Uncertain", color: MUTED },
     sparse: { txt: "Insufficient data ⊘", color: MUTED },
@@ -879,7 +882,8 @@ export function Badge({ tone = "neutral", color, children }) {
   const c = BADGE_TONE[tone] || BADGE_TONE.neutral;
   const finalColor = color || c.color;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 10px", borderRadius: "999px", background: color ? `${color}1f` : c.bg, border: `1px solid ${color || c.border}`, color: finalColor, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
+    // 상태는 글자 + 색 하나다 — 누를 수 없는 표식을 알약 모양으로 두지 않는다(A4).
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", color: finalColor, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>
       {children}
     </span>
   );
@@ -887,7 +891,7 @@ export function Badge({ tone = "neutral", color, children }) {
 // Card — border/shadow/rounded 래퍼(레거시 톤 복구, §6).
 export function Card({ children, style }) {
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 1px 2px rgba(0,0,0,0.04)", padding: "14px 16px", background: "var(--bg-2)", ...style }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: "12px", padding: "14px 16px", background: "var(--bg-2)", ...style }}>
       {children}
     </div>
   );
@@ -1027,7 +1031,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: "var(--primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
         <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>

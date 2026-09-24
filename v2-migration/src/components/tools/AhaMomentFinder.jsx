@@ -1206,7 +1206,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>↻ {tr("다시 분석", "Re-analyze")}</button>
           </div>
         ) : (
-          <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ marginTop: "12px", background: "transparent", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
             <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
@@ -1224,7 +1224,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       {showResults && (
         <>
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
-          <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
+          <section className="block" id="s-aha-hero" style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "-4px", marginBottom: "14px" }}>
               {C.heroSub}
@@ -1441,7 +1441,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               return (
                 <>
                   <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "12px 14px", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "999px", background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
                     <div style={{ flex: 1, minWidth: "240px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)", lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{

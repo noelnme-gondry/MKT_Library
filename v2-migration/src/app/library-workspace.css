@@ -9,7 +9,11 @@
 
   :root {
     --font-heading: var(--font-pretendard), var(--font-wanted-sans), system-ui, sans-serif;
-    --library-shadow: 0 4px 18px rgb(0 0 0 / 12%);
+    --library-shadow: none;
+    /* 채운 행동 버튼(샘플·요금제) — 두 테마 모두 진한 파랑 바탕에 흰 글자. 하드코딩을 토큰으로 모았다(A1). */
+    --library-action: #315be8;
+    --library-action-hover: #2449c4;
+    --library-on-action: #fff;
     --library-accent: #8caaff;
     --library-accent-surface: #202f4d;
     --library-surface: #192231;
@@ -39,7 +43,7 @@
     background: var(--library-background);
   }
   body.light-mode {
-    --library-shadow: 0 4px 18px rgb(25 42 70 / 5%);
+    --library-shadow: none;
     --library-accent: #315be8;
     --library-accent-surface: #edf2ff;
     --library-surface: #ffffff;
@@ -193,9 +197,9 @@
   .dc-hero .dc-action-route > span { display: none; }
   .dc-hero .dc-action-route--primary::before { content: '↑'; font-size: 19px; line-height: 1; }
   .dc-hero .dc-action-route--primary { background: var(--library-surface); border-color: var(--library-border); color: var(--library-accent); }
-  .dc-hero .dc-action-route--primary > span { color: #fff; }
-  .dc-hero .dc-action-route--sample { background: #315be8; border-color: #315be8; color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgb(49 91 232 / 16%); }
-  .dc-hero .dc-action-route--sample:hover { background: #2449c4; }
+  .dc-hero .dc-action-route--primary > span { color: var(--library-on-action); }
+  .dc-hero .dc-action-route--sample { background: var(--library-action); border-color: var(--library-action); color: var(--library-on-action); cursor: pointer; }
+  .dc-hero .dc-action-route--sample:hover { background: var(--library-action-hover); }
   .dc-hero .dc-action-route:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 4px; }
   .dc-hero .dc-action-route:hover { transform: none; outline: 1px solid var(--library-accent); }
   .home-result-preview { min-width: 0; padding: clamp(22px, 3vw, 36px); border: 1px solid var(--library-border); border-radius: 14px; background: var(--library-surface); }
@@ -244,7 +248,7 @@
     .home-result-preview__channel { gap: 10px; }
     .home-result-preview__kpis { gap: 8px; }
   }
-  .home-result-preview--compact { align-self: center; padding: 0; overflow: hidden; border-radius: 18px; border-color: var(--library-border); box-shadow: 0 20px 50px -24px rgb(25 34 49 / 40%), 0 2px 4px rgb(25 34 49 / 5%); }
+  .home-result-preview--compact { align-self: center; padding: 0; overflow: hidden; border-radius: 18px; border-color: var(--library-border); }
   .home-result-preview--compact > header { padding: 18px 24px; background: #192231; color: #edf2fa; }
   .home-result-preview--compact > header span { color: #bac8dc; font-size: 12px; }
   .home-result-preview--compact > header h2 { color: #edf2fa; font-size: 20px; margin-top: 6px; }
@@ -529,7 +533,7 @@
   .app.is-home .main > .content { padding: 0; }
   .app :is(.page-deck, .content-index__hero > p, .projects-page > header > p) { max-width: 72ch; color: var(--library-muted); line-height: 1.8; }
   .app :is(.content-index__hero, .projects-page > header, .wr-screen__head) { padding-bottom: 24px; border-bottom: 1px solid var(--library-border); margin-bottom: 8px; }
-  .app :is(.phase-card, .content-card, .dashboard-card, .wr-card, .dochi-workspace__card, .project-card, .project-start-panel, .project-empty) { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 12px; box-shadow: var(--library-shadow); }
+  .app :is(.phase-card, .content-card, .dashboard-card, .wr-card, .dochi-workspace__card, .project-card, .project-start-panel, .project-empty) { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 12px; }
   .app :is(.phase-card, .content-card, .project-card) { padding: 24px; }
   .app :is(.phase-card-title, .content-card .card-title) { font-size: 20px; line-height: 1.45; }
   .app :is(.phase-card-desc, .content-card .card-desc) { font-size: 14px; line-height: 1.8; color: var(--library-muted); }
@@ -539,7 +543,7 @@
   .app .tool-index { gap: 28px; }
   .app .tool-index__stage-head { padding-bottom: 12px; margin-bottom: 0; }
   .app .tool-index__stage-title { font-size: 17px; font-weight: 700; letter-spacing: -.02em; text-transform: none; color: var(--library-text); }
-  .app .tool-index__list { gap: 0; overflow: hidden; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); box-shadow: var(--library-shadow); }
+  .app .tool-index__list { gap: 0; overflow: hidden; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); }
   .app .tool-index__item { min-width: 0; border-top: 1px solid var(--library-border); }
   .app .tool-index__item:first-child { border-top: 0; }
   .app .tool-index__link { height: 100%; padding: 20px; gap: 8px; border-radius: 0; }
@@ -567,7 +571,7 @@
     .app .dochi-workspace__period-comparison li > div { grid-row: auto; display: flex; justify-content: space-between; gap: 12px; }
   }
   .app .dashboard-section-head { padding-bottom: 14px; border-bottom: 1px solid var(--library-border); margin-bottom: 18px; }
-  .app .kpi-grid--overview { box-shadow: var(--library-shadow); }
+  .app .kpi-grid--overview { }
   .app .project-list { display: grid; gap: 20px; }
   .app .project-actions { padding-top: 16px; border-top: 1px solid var(--library-border); }
   /* 글 전체를 감싸던 카드는 뺐다 — 안의 표·저자·FAQ가 전부 상자 안 상자가 됐다(2026-09-24). */
@@ -612,10 +616,10 @@
     .app .tool-index__link { padding: 16px; }
     .app .content-article { padding: 20px 16px; }
   }
-  .app .library-plan-link { padding: 26px 28px; border: 1px solid var(--library-border); border-left: 4px solid var(--library-accent); border-radius: 12px; background: var(--library-surface); gap: 20px; box-shadow: var(--library-shadow); }
+  .app .library-plan-link { padding: 26px 28px; border: 1px solid var(--library-border); border-left: 4px solid var(--library-accent); border-radius: 12px; background: var(--library-surface); gap: 20px; }
   .app .library-plan-link h3 { margin: 0 0 8px; font-size: 20px; }
   .app .library-plan-link p { font-size: 14px; }
-  .app.is-home .library-plan-link a { min-height: 46px; padding: 12px 20px; background: #315be8; border-color: #315be8; color: #fff; text-align: center; }
+  .app.is-home .library-plan-link a { min-height: 46px; padding: 12px 20px; background: var(--library-action); border-color: var(--library-action); color: var(--library-on-action); text-align: center; }
   .app :is(.workspace-storage-page__toggle, .workspace-storage-page__list, .workspace-storage-page__privacy, .start-direct-actions, .policy-page__body > section, .blog-faq) { padding: 24px; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); }
   .app .workspace-storage-page__header { padding-bottom: 24px; border-bottom: 1px solid var(--library-border); }
   .app .workspace-storage-page__privacy .btn { margin: 12px 8px 0 0; }
@@ -640,7 +644,7 @@
   /* Subscription surfaces and shared navigation disclosures. */
   .app .subscription-page { gap: 32px; }
   .app .subscription-page > section { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 14px; }
-  .app .subscription-page .plan-card { background: var(--library-surface); border: 1px solid var(--library-border); box-shadow: 0 8px 24px rgb(15 30 55 / 5%); }
+  .app .subscription-page .plan-card { background: var(--library-surface); border: 1px solid var(--library-border); }
   .app .subscription-page .plan-card--pro { border: 2px solid var(--library-accent); }
   /* 두 카드가 같은 구조로 읽히려면 헤더가 양쪽 다 면이어야 한다. 카드와 같은 색을 주면
      무료 쪽만 헤더 블록이 사라져 좌우가 다른 카드처럼 보인다. */
@@ -649,7 +653,7 @@
   .app .subscription-page .plan-card-status { border-bottom: 1px solid var(--library-border); }
   .app .subscription-page .report-preview { background: var(--library-surface); }
   .app .report-preview-item { padding: 24px; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-background); }
-  .app :is(.report-paper, .report-workbook) { background: var(--library-surface); box-shadow: 0 6px 16px rgb(15 30 55 / 7%); }
+  .app :is(.report-paper, .report-workbook) { background: var(--library-surface); }
   .app .subscription-page .subscription-purchase { grid-template-columns: minmax(240px, .75fr) minmax(0, 1.25fr); align-items: stretch; background: var(--library-surface); }
   /* 요약 칼럼이 열 구분선과 accent 배경을 소유하므로 행 전체 높이를 채워야 한다.
      내용에 맞춰 줄이면(align-self: start) 선과 배경이 행 중간에서 끊긴다.

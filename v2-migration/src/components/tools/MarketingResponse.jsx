@@ -74,8 +74,10 @@ import {
   MmmEvidenceLedger,
   MmmManualDownload,
   NEG,
+  NEG_TEXT,
   NetEffectEvidence,
   POS,
+  POS_TEXT,
   StatHead,
   TrendChangeBars,
   _today,
@@ -3416,7 +3418,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               onKeyDown={(event) => onStageKeyDown(event, d.id)}
               style={{
                 flex: 1, minWidth: "170px", textAlign: "left", color: "var(--text-1)",
-                background: on ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)",
+                background: on ? "color-mix(in srgb, var(--primary) 10%, var(--bg-2))" : "var(--bg-2)",
                 border: `1px solid ${on ? "rgba(122,162,247,0.55)" : "var(--border)"}`,
                 borderRadius: "12px", padding: "11px 14px", cursor: "pointer", transition: "all .15s",
               }}
@@ -3582,7 +3584,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           />
         )}
         {mappingReady && (
-          <div data-mmm-analysis-gate style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: canAnalyze ? "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))" : "linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03))", border: `1px solid ${canAnalyze ? "rgba(122,162,247,0.3)" : "rgba(245,158,11,0.4)"}`, borderRadius: "10px", padding: "14px 16px" }}>
+          <div data-mmm-analysis-gate style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: canAnalyze ? "color-mix(in srgb, var(--primary) 10%, var(--bg-2))" : "color-mix(in srgb, var(--warning) 10%, var(--bg-2))", border: `1px solid ${canAnalyze ? "rgba(122,162,247,0.3)" : "rgba(245,158,11,0.4)"}`, borderRadius: "10px", padding: "14px 16px" }}>
             <span style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>
               {canAnalyze
                 ? <>{tx("필수 역할 매핑 완료.", "Required roles mapped.")} <strong>{tx("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Check that the mapping is correct, then run the analysis.")}</strong> <span style={{ color: "var(--text-muted)" }}>{tx("(매핑만으로 자동 분석하지 않습니다.)", "(Mapping alone doesn't auto-run the analysis.)")}</span></>
@@ -4674,7 +4676,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <thead><tr><th>{tx("매크로 사실", "Macro fact")}</th><th>{tx("값", "Value")}</th></tr></thead>
                       <tbody>
                         {Object.entries(diag.macro).map(([k, v]) => (
-                          <tr key={k}><td>{k}</td><td className="tnum" style={{ color: v < 0 ? POS : NEG }}>{v > 0 ? "+" : ""}{v}%</td></tr>
+                          <tr key={k}><td>{k}</td><td className="tnum" style={{ color: v < 0 ? POS_TEXT : NEG_TEXT }}>{v > 0 ? "+" : ""}{v}%</td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -4747,7 +4749,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <tr key={r.target}>
                               <td>{r.target}</td>
                               <td className="tnum">{f(r.R2_no_brand, 4)}</td>
-                              <td className="tnum" style={{ color: NEG }}>{f(r.R2_with_brand, 4)}</td>
+                              <td className="tnum" style={{ color: NEG_TEXT }}>{f(r.R2_with_brand, 4)}</td>
                               <td className="tnum">{f(r.brand_p, 4)}</td>
                             </tr>
                           ))}
@@ -4766,7 +4768,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               <td>{r.target}</td>
                               <td className="tnum">{f(r.ln_G_coef)}</td>
                               <td className="tnum">{f(r.hac_p, 4)}</td>
-                              <td className="tnum" style={{ color: POS }}>{f(r.trend_coef)}</td>
+                              <td className="tnum" style={{ color: POS_TEXT }}>{f(r.trend_coef)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -5265,7 +5267,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {decisionCandidates.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: !isRankingAmbiguous && i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
+                        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "var(--primary)" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
                         <span style={{ flex: 1, fontSize: "var(--fs-base)", fontWeight: !isRankingAmbiguous && i === 0 ? 700 : 400 }}>{s.label}</span>
                         <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--success)" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
                         <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{spendReferenceLabel} {spendLabel(s.recentMean || 0)}/주</span>
@@ -5408,7 +5410,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     "Performance and Branding RR is fixed in Decomp first, then allocated to channels by weekly adstocked spend share. Channel values are operational allocations, not causally identified effects; each group’s channel RR sum exactly matches Decomp.",
                   )}</p>
                   {spendTimelineKinds.length > 0 && (
-                    <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "linear-gradient(90deg, rgba(127,119,221,.07), transparent 44%)" }}>
+                    <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "var(--surface-container-lowest)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
                         <div>
                           <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
@@ -5511,7 +5513,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "9px 12px", marginBottom: "8px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", borderRadius: "8px" }}>
                           <span style={{ fontSize: "var(--fs-md)" }}>⚠️</span>
                           <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)", lineHeight: 1.5 }}>
-                            {tx("주", "In week")} <b>{String(negAlert.lbl)}</b>{tx(`에 `, ", ")}<b style={{ color: bucketMeta[negAlert.bucket]?.tone }}>{negAlert.bLabel}</b>{tx("가 성과를 크게 끌어내렸어요 (약 ", " pulled performance down significantly (about ")}{targetValueLabel(negAlert.val)}{tx(").", ").")}
+                            {tx("주", "In week")} <b>{String(negAlert.lbl)}</b>{tx(`에 `, ", ")}<b style={{ color: "var(--text-primary)" }}>{negAlert.bLabel}</b>{tx("가 성과를 크게 끌어내렸어요 (약 ", " pulled performance down significantly (about ")}{targetValueLabel(negAlert.val)}{tx(").", ").")}
                             {negAlert.domG && negAlert.domV < 0 ? <> {tx("주 원인은", "The main cause was")} <b>{plainDrv(negAlert.domG)}</b> ({targetValueLabel(negAlert.domV)}){tx("예요.", ".")}</> : null}
                             {negAlert.bucket === "media" ? tx(" 광고가 오히려 마이너스로 잡히면 노이즈·공선일 수 있으니 아래 상세를 확인하세요.", " If ads register as negative, it could be noise or collinearity — check the detail below.") : ""}
                           </span>
@@ -5567,7 +5569,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                   const noteKey = `${mmm.target}|${s.week}`;
                                   const noteNum = dateScopedDecomp.spikes.filter((n) => (spikeNotes[`${mmm.target}|${n.week}`] || "").trim()).findIndex((n) => n.week === s.week) + 1;
                                   const clsLabel = s.cls === "channel"
-                                    ? { txt: tx("채널 스파크", "Channel spike"), color: "var(--chart-primary)" }
+                                    ? { txt: tx("채널 스파크", "Channel spike"), color: "var(--primary)" }
                                     : s.cls === "baseline"
                                       ? { txt: tx("기준선·계절 변동", "Baseline/seasonal swing"), color: "var(--success)" }
                                       : { txt: tx("모델 밖(원인 입력 권장)", "Outside the model (please record a cause)"), color: "var(--warning)" };
@@ -5583,7 +5585,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                         </span>
                                         {lbl != null && <span style={{ fontSize: "var(--fs-xs)", color: MUTED, display: "block" }}>{tx(`주차 ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`, `Week ${mmm.panel.week?.[s.i] ?? (s.i != null ? s.i + 1 : s.week)}`)}</span>}
                                       </td>
-                                      <td className="tnum" style={{ color: s.dev >= 0 ? POS : NEG }}>{targetValueLabel(s.dev, { sign: true })}</td>
+                                      <td className="tnum" style={{ color: s.dev >= 0 ? POS_TEXT : NEG_TEXT }}>{targetValueLabel(s.dev, { sign: true })}</td>
                                       <td>
                                         <span style={{ color: clsLabel.color, fontWeight: 600 }}>{clsLabel.txt}</span>
                                         <span style={{ fontSize: "var(--fs-xs)", color: MUTED }}><br />{tx("주 원인:", "Main cause:")} {driverTxt}</span>
@@ -5642,7 +5644,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         return (
                         <tr key={s.key}><td>{s.label}</td><td className="tnum">{s.params.alpha.toFixed(1)}{ciCell(lap?.alpha, (v) => v.toFixed(1))}</td><td className="tnum">{spendLabel(s.params.ec)}{ciCell(lap?.ec, (v) => spendLabel(v))}</td><td className="tnum">{s.params.slope.toFixed(1)}{ciCell(lap?.slope, (v) => v.toFixed(1))}</td><td>{s.transformUncertainty?.priorLockedTransform
                           ? tx("외부 근거가 타깃 대표 변환 단위로 정렬되어 고정", "Fixed because external evidence is aligned to the target representative-transform units")
-                          : tx(`${s.transformUncertainty?.candidateCount || 1}개 후보 평가`, `${s.transformUncertainty?.candidateCount || 1} candidates evaluated`)}</td><td className="tnum" style={{ color: s.posteriorPositive >= 0.8 ? NEG : MUTED }}>{(s.posteriorPositive * 100).toFixed(0)}%</td></tr>
+                          : tx(`${s.transformUncertainty?.candidateCount || 1}개 후보 평가`, `${s.transformUncertainty?.candidateCount || 1} candidates evaluated`)}</td><td className="tnum" style={{ color: s.posteriorPositive >= 0.8 ? NEG_TEXT : MUTED }}>{(s.posteriorPositive * 100).toFixed(0)}%</td></tr>
                         );
                       })}</tbody>
                     </table>
@@ -5665,10 +5667,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <td title={s.transformUncertainty ? (s.transformUncertainty.priorLockedTransform
                             ? tx("실험 prior는 타깃 대표 변환으로 처리강도를 계산하고, 국가 prior는 참고국을 같은 변환으로 재적합했습니다. 따라서 이 채널의 adstock·포화 변환을 타깃 대표값에 고정하며 후보 검색 실패가 아닙니다.", "Experiment intensity is computed on the target representative transform, and reference markets are refitted on that same transform. This channel is therefore fixed to the target representative adstock/saturation values; it is not a failed candidate search.")
                             : tx(`평가 후보 ${s.transformUncertainty.candidateCount}/${s.transformUncertainty.totalCandidateCount || s.transformUncertainty.candidateCount}개${s.transformUncertainty.candidateSearchCapped ? "(브라우저 상한 적용)" : ""} · 가중 유효 후보 ${s.transformUncertainty.effectiveCandidateCount.toFixed(1)}개`, `${s.transformUncertainty.candidateCount}/${s.transformUncertainty.totalCandidateCount || s.transformUncertainty.candidateCount} candidates evaluated${s.transformUncertainty.candidateSearchCapped ? " (browser cap applied)" : ""} · ${s.transformUncertainty.effectiveCandidateCount.toFixed(1)} effective candidates`)) : undefined}><strong>{s.label}</strong>{s.transformUncertainty?.priorLockedTransform && <small style={{ display: "block", color: MUTED, fontWeight: 400 }}>{tx("타깃 변환 고정", "target transform fixed")}</small>}</td>
-                          <td className="tnum" style={{ color: useBudget ? NEG : MUTED }}>{fmtOne(s.posteriorPositive * 100)}%</td>
+                          <td className="tnum" style={{ color: useBudget ? NEG_TEXT : MUTED }}>{fmtOne(s.posteriorPositive * 100)}%</td>
                           <td className="tnum">{targetValueLabel(s.ln_coef, { decimals: 1 })}<small style={{ display: "block", color: MUTED }}>{tx("/변환 노출 1단위", "/ transformed-exposure unit")}</small></td>
                           <td className="tnum">[{targetValueLabel(s.ci?.[0], { decimals: 1 })}, {targetValueLabel(s.ci?.[1], { decimals: 1 })}]</td>
-                          <td style={{ color: useBudget ? NEG : MUTED, fontWeight: 600 }}>{useBudget ? tx("포함", "Included") : tx("보류", "Hold")}{!useBudget && <small style={{ display: "block", fontWeight: 400 }}>{budgetGateLabel([...(s.budgetGateReasons || []), ...(!inObservedRange ? ["outside-observed-spend-range"] : []), ...(marginal.ci?.[0] <= 0 ? [tx("한계효과 구간 0 포함", "marginal interval crosses 0")] : [])])}</small>}</td>
+                          <td style={{ color: useBudget ? NEG_TEXT : MUTED, fontWeight: 600 }}>{useBudget ? tx("포함", "Included") : tx("보류", "Hold")}{!useBudget && <small style={{ display: "block", fontWeight: 400 }}>{budgetGateLabel([...(s.budgetGateReasons || []), ...(!inObservedRange ? ["outside-observed-spend-range"] : []), ...(marginal.ci?.[0] <= 0 ? [tx("한계효과 구간 0 포함", "marginal interval crosses 0")] : [])])}</small>}</td>
                         </tr>;
                       })}</tbody>
                     </table>
@@ -6401,7 +6403,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <>
                           <div className="stat-card"><div className="lbl">{tx("예측 평균/주", "Forecast avg/wk")}</div><div className="val">{targetValueLabel(futAvg, { perWeek: true })}</div></div>
                           <div className="stat-card"><div className="lbl">{tx(`최근 ${recentN}주 평균`, `Recent ${recentN}wk avg`)}</div><div className="val">{targetValueLabel(histAvg, { perWeek: true })}</div></div>
-                          <div className="stat-card"><div className="lbl">{tx("변화", "Change")}</div><div className="val" style={{ color: chg >= 0 ? NEG : POS }}>{chg >= 0 ? "+" : ""}{chg.toFixed(1)}%</div></div>
+                          <div className="stat-card"><div className="lbl">{tx("변화", "Change")}</div><div className="val" style={{ color: chg >= 0 ? NEG_TEXT : POS_TEXT }}>{chg >= 0 ? "+" : ""}{chg.toFixed(1)}%</div></div>
                           <div className="stat-card"><div className="lbl">{forecast.isAdditiveTotal ? tx("과거 합산 적합 R² (OOS 아님)", "Historical additive-fit R² (not OOS)") : tx("과거 적합 R² (OOS 아님)", "Historical fit R² (not OOS)")}</div><div className="val">{forecast.r2 ?? "—"}</div></div>
                           {forecast.isPaidOrganicSplit && [
                             [tx("Organic 기저/주", "Organic baseline/wk"), forecast.organicBaseFut],

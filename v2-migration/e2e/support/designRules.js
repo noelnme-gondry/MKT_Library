@@ -8,8 +8,14 @@
 
 export const ALLOWED_WEIGHTS = [400, 600, 700];
 
+// 글자에 쓸 수 있는 색 — 본문·보조 회색·파랑(선택·링크)·빨강/초록/노랑(나빠짐/좋아짐/주의)과
+// 채운 버튼 위 글자. 이 밖의 색(하드코딩 #f87171·#22c55e 등)은 화면마다 새 색을 만든다(A1).
+export const TEXT_TOKENS = ["--text-primary", "--text-1", "--text-secondary", "--text-muted", "--text-2", "--primary", "--danger", "--success", "--warning", "--on-primary", "--code-text",
+  // 홈·보관함 스킨(library-workspace.css)은 자기 토큰 계열을 쓴다 — 토큰이면 허용, 하드코딩만 막는다.
+  "--library-text", "--library-muted", "--library-accent", "--dc-text", "--dc-text-soft", "--dc-text-dim", "--dc-signal", "--dc-mint", "--dc-coral", "--dc-amber", "--dc-action-on-primary", "--library-on-action"];
+
 export async function measureDesignRules(page) {
-  return page.evaluate((allowedWeights) => {
+  return page.evaluate(([allowedWeights, TEXT_TOKENS]) => {
     const exempt = (el, rule) => {
       for (let node = el; node && node !== document.body; node = node.parentElement) {
         const mark = node.getAttribute?.("data-design-exempt");
@@ -202,10 +208,53 @@ export async function measureDesignRules(page) {
       if (/\d/.test(t.text) && /mono/i.test(st.fontFamily.split(",")[0])) monoNumbers.push(`"${t.text}"`);
     }
 
+    // 11) 생성형 UI 티(2026-09-24, A1~A5): 그림자는 떠 있는 것(대화상자·팝오버·메뉴)에만, 그라데이션
+    // 바탕 없음, 알약 모양은 누를 수 있는 것에만, 한 화면의 글자색·바탕색 종류는 적게.
+    const layered = (el) => {
+      for (let a = el; a && a !== document.body; a = a.parentElement) {
+        if (a.matches('[role="dialog"], dialog, [role="menu"], [role="listbox"], [role="tooltip"], [popover]')) return true;
+        const pos = getComputedStyle(a).position;
+        if (pos === "fixed" || pos === "absolute" || pos === "sticky") return true;
+      }
+      return false;
+    };
+    const pressable = (el) => Boolean(el.closest("button, a, label, summary, select, input, [role='button'], [role='tab'], [role='radio'], [role='switch'], [role='option'], [tabindex='0']"));
+    const scope = [...main.querySelectorAll("*")].filter((el) => visible(el) && !el.closest("footer, .sidebar, header.topbar, canvas, svg, [aria-hidden='true']"));
+    const shadows = [], gradients = [], pills = [], offPalette = [];
+    // 글자색은 토큰에서만(A1). 값을 적지 않고 지금 테마에서 토큰을 풀어 비교한다 — 라이트/다크 모두 성립.
+    const probe = document.createElement("span"); main.appendChild(probe);
+    const palette = new Set(TEXT_TOKENS.map((name) => { probe.style.color = ""; probe.style.color = `var(${name})`; return getComputedStyle(probe).color; }));
+    probe.remove();
+    const textColors = new Set(), surfaceColors = new Set();
+    for (const el of scope) {
+      const st = getComputedStyle(el);
+      if (st.boxShadow !== "none" && !layered(el) && !exempt(el, "shadow") && !/inset/.test(st.boxShadow)) shadows.push(label(el));
+      if (/gradient\(/.test(st.backgroundImage) && !layered(el) && !exempt(el, "gradient")) gradients.push(label(el));
+      const r = el.getBoundingClientRect();
+      const radius = parseFloat(st.borderTopLeftRadius);
+      const filled = (st.backgroundColor !== "rgba(0, 0, 0, 0)" && st.backgroundColor !== "transparent") || parseFloat(st.borderTopWidth) > 0;
+      // 글자 없는 막대(진행률·트랙)는 알약이 아니다 — 글자를 담은 둥근 칩만 센다.
+      // 버튼을 담은 분할 선택기(segmented control) 틀은 누를 수 있는 것의 일부다.
+      if (filled && el.textContent.trim() && !el.querySelector("button, a, input, select") && r.height > 0 && r.height <= 40 && radius >= r.height / 2 - 1 && r.width > r.height * 1.6 && !pressable(el) && !exempt(el, "pill")) pills.push(`${label(el)} "${el.textContent.trim().slice(0, 16)}"`);
+      if (!layered(el) && !inDialog(el)) {
+        if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) {
+          textColors.add(st.color);
+          if (!palette.has(st.color) && !exempt(el, "color")) offPalette.push(`${label(el)} ${st.color}`);
+        }
+        if (filled && st.backgroundColor !== "rgba(0, 0, 0, 0)" && st.backgroundColor !== "transparent" && r.width > 40 && r.height > 20) surfaceColors.add(st.backgroundColor);
+      }
+    }
+
     // 9) 페이지 가로 넘침 — 폰에서 좌우로 밀리는 화면(5-22의 화면낭독용 표가 409px로 넘쳤다).
     const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
 
     return {
+      shadows: [...new Set(shadows)].slice(0, 30),
+      gradients: [...new Set(gradients)].slice(0, 30),
+      pills: [...new Set(pills)].slice(0, 30),
+      textColors: [...textColors],
+      offPalette: [...new Set(offPalette)].slice(0, 30),
+      surfaceColors: [...surfaceColors],
       emoji: [...new Set(emoji)].slice(0, 20),
       caps: [...new Set(caps)].slice(0, 20),
       monoNumbers: [...new Set(monoNumbers)].slice(0, 10),
@@ -221,5 +270,5 @@ export async function measureDesignRules(page) {
       eyebrows: [...new Set(eyebrows)],
       misaligned: [...new Set(misaligned)],
     };
-  }, ALLOWED_WEIGHTS);
+  }, [ALLOWED_WEIGHTS, TEXT_TOKENS]);
 }
