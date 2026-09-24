@@ -18,6 +18,7 @@ import MyAccountPage from "@/components/MyAccountPage";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
+import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import ToolIntro from "@/components/ToolIntro";
 import ToolPageOutro from "@/components/ToolPageOutro";
@@ -87,6 +88,8 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
           <Header />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
+            {/* 블로그 예시에서 넘어온 방문의 첫 줄(시안 E) — 모달 대신 출처와 두 갈래만. */}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <BlogArrivalStrip routeId={routeId} locale="ko" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="ko" slot="context" />}
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}

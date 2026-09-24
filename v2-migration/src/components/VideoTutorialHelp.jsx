@@ -21,12 +21,25 @@ export function VideoHelpButton({ topic, locale = "ko", className = "tutorial-in
   }}><span aria-hidden="true">▷</span> {children || (locale === "en" ? "Video guide" : "영상으로 보기")}</button>;
 }
 
+// 튜토리얼 진입은 헤더에 둔다. 예전에는 화면 오른쪽 아래에 떠 있는 버튼이었는데,
+// 스크롤 위치에 따라 결과 카드·업로드 버튼·마감 영역을 번갈아 덮었다(2026-09-24 실측:
+// 홈·/start·대시보드·도구 전부). 떠 있는 버튼은 어디에 두든 무언가를 덮는다.
+export function TutorialHeaderButton({ locale = "ko" }) {
+  const pathname = usePathname();
+  const ready = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
+  if (!tutorialIdsForPath(pathname).length) return null;
+  const en = locale === "en";
+  return <button type="button" disabled={!ready} className="btn ghost tutorial-launcher no-print" aria-label={en ? "Tutorial" : "튜토리얼"} aria-haspopup="dialog" onClick={event => {
+    pendingOpen = { trigger: event.currentTarget, pathname: window.location.pathname };
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: pendingOpen }));
+  }}><span className="tutorial-launcher__icon" aria-hidden="true">?</span><span className="tutorial-launcher__label">{en ? "Tutorial" : "튜토리얼"}</span></button>;
+}
+
 function TutorialLauncher({ pathname, locale }) {
   const [topic, setTopic] = useState(null);
   const [failed, setFailed] = useState(false);
   const [chapter, setChapter] = useState(0);
   const videoRef = useRef(null);
-  const launcherRef = useRef(null);
   const triggerRef = useRef(null);
   const closeRef = useRef(null);
   const en = locale === "en";
@@ -56,12 +69,6 @@ function TutorialLauncher({ pathname, locale }) {
   const close = () => { videoRef.current?.pause(); setTopic(null); };
   const event = name => trackProductEvent(name, { source: "video_tutorial", content_slug: topic, locale });
   return <>
-    <button ref={launcherRef} type="button" className="tutorial-launcher no-print" aria-label={en ? "Tutorial" : "튜토리얼"} aria-haspopup="dialog" onClick={event => {
-      triggerRef.current = event.currentTarget;
-      const projectManagement = !!document.querySelector("#project-management");
-      const contextual = tutorialIdsForPath(pathname, { projectManagement });
-      select(contextual[0] || ids[0]);
-    }}><span aria-hidden="true">?</span><span>{en ? "Tutorial" : "튜토리얼"}</span></button>
     <ModalDialog open={!!tutorial} onClose={close} ariaLabel={en ? "Video guide" : "영상 사용 안내"} initialFocusRef={closeRef} returnFocusRef={triggerRef} overlayClassName="tutorial-overlay" panelClassName="tutorial-panel">
       {tutorial && <>
         <header className="tutorial-header"><div><p>{en ? "FOLLOW ALONG" : "화면을 보며 따라 하기"}</p><h2>{tutorial[locale]}</h2></div><button type="button" className="tutorial-close" ref={closeRef} onClick={close} aria-label={en ? "Close video guide" : "영상 안내 닫기"}>×</button></header>

@@ -252,7 +252,6 @@ export default function ScaleDecisionMap({
     <section className="block scale-decision-map" id="s-scale-map" aria-labelledby="scale-decision-map-title">
       <header className="scale-decision-map__head">
         <div>
-          <span>{isEn ? "COST × EFFICIENCY" : "COST × 효율"}</span>
           <h2 className="section-title" id="scale-decision-map-title">
             {isEn ? `Where to act by ${grainLabel}` : `${grainLabel}별 증액·감액 우선순위`}
           </h2>

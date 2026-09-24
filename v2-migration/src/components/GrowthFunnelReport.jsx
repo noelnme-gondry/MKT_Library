@@ -133,7 +133,7 @@ export default function GrowthFunnelReport({ locale = "ko" }) {
   const downloadTemplate = () => downloadCsv("\uFEFFevent_name,event_count,date,source,result_state,tool_id,elapsed_bucket\r\nanalysis_completed,1,20260801,csv,ready,5-2,1_3m\r\n", "ga4_growth_funnel_template");
 
   return <article className="page-inner growth-funnel-page">
-    <header className="growth-funnel-page__head"><span>{t.eyebrow}</span><h1>{t.title}</h1><p>{t.deck}</p><small>{t.privacy}</small></header>
+    <header className="growth-funnel-page__head"><h1>{t.title}</h1><p>{t.deck}</p><small>{t.privacy}</small></header>
     {!report.ok ? <section className="growth-funnel-upload">
       <div><strong>{t.required}</strong><p>{t.exportHint}</p></div>
       <div className="growth-funnel-upload__actions">

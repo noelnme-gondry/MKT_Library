@@ -989,7 +989,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
         <section data-information-section="" style={{ marginTop: "9px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
           <header data-information-heading="">{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</header>
-          <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
+          <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
             {C.heroCausationBody}
           </div>
         </section>
@@ -1084,7 +1084,6 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       <section className="creative-control-room" aria-label={tr("소재 운영 실행 패널", "Creative operations action panel")}>
         <div className="creative-control-room__head">
           <div>
-            <span className="creative-control-room__eyebrow">{tr("THIS WEEK'S CONTROL ROOM", "THIS WEEK'S CONTROL ROOM")}</span>
             <h2>{tr("지금 해결할 문제", "Choose the problem to solve")}</h2>
           </div>
           <p>{tr("한 가지 문제를 고르면 필요한 실행 정보만 먼저 보여줍니다.", "Choose one problem to see only the action information you need first.")}</p>
@@ -1313,7 +1312,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <>
             <section data-information-section="" style={{ marginBottom: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)", cursor: "pointer" }}>
               <header data-information-heading="">{tr("어떻게 계산하나요?", "How is this calculated?")}</header>
-              <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
+              <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
                 {tr(
                   <>{decMeta.weightLabel}로 가중한 선형회귀(weighted least squares)로 {decMeta.desc}를 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 가중치를 {decMeta.weightLabel}로 두는 이유는 분모가 큰(=추정이 정밀한) {C.entity}에 더 큰 비중을 주기 위함입니다. 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
                   {" "}⚠ 실제 운영 데이터를 관찰해서 분석한 결과라 {C.decomposeBiasSource}의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.</>,
@@ -1718,7 +1717,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     {buckets.map((b) => (
                       <div key={b.week} style={{ display: "flex", alignItems: "stretch", gap: "8px" }}>
                         <div style={{ width: "54px", flexShrink: 0, fontSize: "var(--fs-xs)", color: "var(--text-muted)", paddingTop: "4px" }}>W+{b.week}</div>
-                        <div style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
+                        <div data-design-exempt="nested: 간트 차트의 주차 레인 — 상자가 아니라 차트 트랙" style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
                           {b.items.length === 0 ? (
                             <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>—</span>
                           ) : (

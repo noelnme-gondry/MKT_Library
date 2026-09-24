@@ -41,7 +41,6 @@ export default function MarginalEfficiencyGapChart({
     <section className="block marginal-gap" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
       <header className="marginal-gap__head">
         <div>
-          <span>{isEn ? "AVERAGE ↔ MARGINAL" : "평균 ↔ 한계"}</span>
           <h2 className="section-title" id="marginal-gap-title">{isEn
             ? "Average efficiency vs. marginal efficiency on the next budget increase"
             : "평균 효율 vs 다음 예산 투입 시 한계효율"}</h2>

@@ -10,10 +10,13 @@ import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
-import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
+import BlogReadingBar from "@/components/blog/BlogReadingBar";
+import BlogSelfCheck from "@/components/blog/BlogSelfCheck";
+import BlogSituationCheck from "@/components/blog/BlogSituationCheck";
+import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import BLOG_EXAMPLES from "@/lib/blogExamples/data.json";
 import BlogCsvAnalysis from "@/components/blog/BlogCsvAnalysis";
 import { splitBlogInsight } from "@/lib/blogInsightRegistry";
-import BlogPracticePrep from "@/components/blog/BlogPracticePrep";
 import { blogPracticeFor } from "@/lib/blogPractice";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
@@ -134,6 +137,8 @@ export default async function BlogPostPage({ params }) {
   const inline = splitBlogInsight(post.html, post.slug);
   const article = inline || splitArticleForAction(post.html);
   const practice = inline ? blogPracticeFor(post.slug, "ko") : null;
+  const example = inline ? BLOG_EXAMPLES[post.slug] || null : null;
+  const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "ko");
 
   return (
     <div className="content-article">
@@ -156,7 +161,6 @@ export default async function BlogPostPage({ params }) {
             <span className="content-answer__label">핵심 요약</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>적용 조건</strong>{post.conditions}</p>}
-            {!practice && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_answer" />}
           </aside>
         )}
         <div className="content-article__meta">
@@ -175,21 +179,20 @@ export default async function BlogPostPage({ params }) {
         </div>
       </header>
 
-      <BlogPracticePrep practice={practice} />
-
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
-        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} /> : article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
+        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} /></div> : article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 
+      <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} />
+
       <EditorialTrust compact locale="ko" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
-      <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} />
+      <BlogReadingBar slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "이 글의 분석, 예시 결과로 보기" : "30초 점검으로 내 상황 확인"} detail={example ? example.ko.headline : selfCheck?.title} />
 
       {/* 근거는 본문 직후 접어서 확인하고, 다음 행동과 글쓴이는 별도로 둔다. */}
       <div className="blog-post-outro">
-        <ContentActionPanel toolId={post.primaryTool} post={post} />
         <NewsletterSignup placement="post" />
       </div>
 

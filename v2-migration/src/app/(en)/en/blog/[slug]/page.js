@@ -10,10 +10,13 @@ import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
-import BlogDochiBridge from "@/components/blog/BlogDochiBridge";
+import BlogReadingBar from "@/components/blog/BlogReadingBar";
+import BlogSelfCheck from "@/components/blog/BlogSelfCheck";
+import BlogSituationCheck from "@/components/blog/BlogSituationCheck";
+import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import BLOG_EXAMPLES from "@/lib/blogExamples/data.json";
 import BlogCsvAnalysis from "@/components/blog/BlogCsvAnalysis";
 import { splitBlogInsight } from "@/lib/blogInsightRegistry";
-import BlogPracticePrep from "@/components/blog/BlogPracticePrep";
 import { blogPracticeFor } from "@/lib/blogPractice";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
@@ -131,6 +134,8 @@ export default async function EnBlogPostPage({ params }) {
   const inline = splitBlogInsight(post.html, post.slug);
   const article = inline || splitArticleForAction(post.html);
   const practice = inline ? blogPracticeFor(post.slug, "en") : null;
+  const example = inline ? BLOG_EXAMPLES[post.slug] || null : null;
+  const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "en");
 
   return (
     <div className="content-article">
@@ -153,7 +158,6 @@ export default async function EnBlogPostPage({ params }) {
             <span className="content-answer__label">Key takeaway</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>Applies when</strong>{post.conditions}</p>}
-            {!practice && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_answer" />}
           </aside>
         )}
         <div className="content-article__meta">
@@ -168,21 +172,20 @@ export default async function EnBlogPostPage({ params }) {
         </div>
       </header>
 
-      <BlogPracticePrep practice={practice} />
-
       <article className="blog-prose">
         <div dangerouslySetInnerHTML={{ __html: article.before }} />
-        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} locale="en" /> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
+        {inline ? <BlogCsvAnalysis config={inline.config} slug={post.slug} practice={practice} example={example} postTitle={post.title} locale="en" /> : selfCheck ? <div id="blog-self-check" tabIndex={-1}><BlogSelfCheck slug={post.slug} locale="en" /></div> : article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
         <div dangerouslySetInnerHTML={{ __html: article.after }} />
       </article>
 
+      <BlogSituationCheck slug={post.slug} toolId={post.primaryTool} locale="en" />
+
       <EditorialTrust compact locale="en" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
-      <BlogDochiBridge slug={post.slug} toolId={post.primaryTool} locale="en" />
+      <BlogReadingBar slug={post.slug} locale="en" targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "See this article's analysis on example data" : "Check your situation in 30 seconds"} detail={example ? example.en.headline : selfCheck?.title} />
 
       {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이(KO와 동일 구조, §2.11). */}
       <div className="blog-post-outro">
-        <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
         <NewsletterSignup locale="en" placement="post" />
       </div>
 

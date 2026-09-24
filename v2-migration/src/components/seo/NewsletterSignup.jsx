@@ -44,7 +44,6 @@ export default function NewsletterSignup({ locale = "ko", placement = "post", so
   return (
     <section className="newsletter-signup" aria-label={isEnglish ? "Newsletter subscription" : "이메일 구독"}>
       <div className="newsletter-signup__copy">
-        <span className="newsletter-signup__eyebrow">{copy.eyebrow}</span>
         <h2>{copy.title}</h2>
         <p>{copy.description}</p>
       </div>

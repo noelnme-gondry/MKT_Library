@@ -70,7 +70,7 @@ export default function CalculatorWorkbench({ slug, locale = "ko" }) {
       </div>
 
       <div className={`calculator-result${result ? "" : " is-invalid"}`} aria-live="polite">
-        <span className="calculator-result__eyebrow">{isEn ? "CALCULATED ANSWER" : "계산 결과"}</span>
+        
         {result ? (
           <>
             <div className="calculator-result__primary">

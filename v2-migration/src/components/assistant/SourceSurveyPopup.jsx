@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { trackProductEvent } from "@/lib/analytics";
+import { useAppStore } from "@/store/useDataStore";
 import {
   readWelcomeOpen,
   subscribeWelcomePresence,
@@ -94,7 +95,9 @@ export default function SourceSurveyPopup({ locale = "ko" }) {
   }, []);
 
   // 열림은 렌더 파생이다(effect에서 setState로 열지 않는다, §5).
-  const open = shouldShowSourceSurvey({ storageAllows, welcomeOpen, delayElapsed, closed });
+  // 블로그 예시에서 막 넘어온 방문(시안 E)에는 묻지 않는다 — 결과를 읽을 틈 없이 설문이 덮는다.
+  const fromBlog = useAppStore((state) => Boolean(state.blogArrival && state.blogArrival.toolId === state.currentRouteId));
+  const open = !fromBlog && shouldShowSourceSurvey({ storageAllows, welcomeOpen, delayElapsed, closed });
 
   useEffect(() => {
     if (!open) return;

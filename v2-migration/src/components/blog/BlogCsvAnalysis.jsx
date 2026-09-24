@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { TEMPLATE_PAGES } from "@/lib/templateCatalog";
 import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import { groupForRoute } from "@/lib/toolGroups";
@@ -10,10 +12,11 @@ import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/u
 import { FUNNEL_MATH } from "@/utils/funnelMath";
 import { trackProductEvent } from "@/lib/analytics";
 import BlogInsightChart from "./BlogInsightChart";
+import BlogExampleChart from "./BlogExampleChart";
 import { tutorialDuration } from "@/lib/videoTutorials";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
 
-export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null }) {
+export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null, example = null, postTitle = "" }) {
   const en = locale === "en", id = useId(), router = useRouter();
   const [csv, setCsv] = useState(null), [result, setResult] = useState(null), [error, setError] = useState("");
   const [busy, setBusy] = useState(false), [selection, setSelection] = useState({ category: "", value: "", denominator: "" });
@@ -107,6 +110,8 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
       if (config.type === "funnel") state.setDashboardTab("funnel");
     }
+    // 도착 화면(시안 E)이 출처를 한 줄로 말하도록 공개 글 식별자·제목·파일명만 남긴다.
+    state.setBlogArrival({ slug, title: postTitle, toolId: config.toolId, fileName: candidate?.fileName || null, source: candidate ? (candidate.importSource === "demo" ? "demo" : "csv") : "none" });
     trackProductEvent("blog_tool_cta_clicked", { content_slug: slug, content_type: "blog", tool_id: config.toolId, locale, placement: "article_inline" });
     router.push(`${en ? "/en" : ""}${idToSlug[config.toolId]}`);
   };
@@ -126,21 +131,32 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     } catch { if (request === task.current) setError(en ? "The demo could not be loaded. Try again or choose a CSV." : "데모를 불러오지 못했습니다. 다시 시도하거나 CSV를 선택해 주세요."); }
     finally { if (request === task.current) setBusy(false); }
   };
-  return <aside className={`blog-inline-insight${practice ? " blog-practice" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
-    {practice && <span className="blog-practice__eyebrow">{practice.eyebrow}</span>}
-    <h2 id={id}>{practice ? practice.title : custom ? (en ? "Inspect the data behind this section" : "이 문단의 데이터 먼저 살펴보기") : (en ? "Check this with your CSV" : "이 내용을 내 CSV로 확인")}</h2>
-    <p>{practice ? practice.introduction : en ? "One chart and the result. CSV processing stays in this browser." : "차트 하나와 결과만 확인하세요. CSV는 이 브라우저에서 처리합니다."}</p>
-    {practice && <section data-information-section="" className="blog-practice__instructions">
-      <header data-information-heading="">{practice.instructions}</header>
+  const ex = example?.[en ? "en" : "ko"];
+  const template = TEMPLATE_PAGES.find(page => page.toolId === config.toolId);
+  // 글이 자기 예제 파일을 가진 경우만 단계 안내를 접어 둔다 — 공용 데모 글의 단계 문구는 도구 사용법 반복이었다.
+  const customSteps = Boolean(practice && !practice.demoGroup && practice.steps?.length);
+  return <aside className={`blog-inline-insight${practice ? " blog-practice" : ""}${ex ? " blog-example" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
+    {ex ? <>
+      <h2 id={id} className="blog-example__headline">{ex.headline}</h2>
+      <BlogExampleChart example={example} locale={locale} />
+      <p className="blog-example__caption">{ex.caption}</p>
+    </> : <>
+      <h2 id={id}>{practice ? practice.title : custom ? (en ? "Inspect the data behind this section" : "이 문단의 데이터 먼저 살펴보기") : (en ? "Check this with your CSV" : "이 내용을 내 CSV로 확인")}</h2>
+      <p>{practice ? practice.introduction : en ? "One chart and the result. CSV processing stays in this browser." : "차트 하나와 결과만 확인하세요. CSV는 이 브라우저에서 처리합니다."}</p>
+    </>}
+    {slug === "weekly-marketing-report-template" && <VideoHelpButton topic="decisions" locale={locale}>{en ? `Save and revisit · ${tutorialDuration("decisions")}-second guide` : `저장·재검토 ${tutorialDuration("decisions")}초 가이드`}</VideoHelpButton>}
+    {custom && practice?.mode !== "detail" && !ex && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
+    <div className="blog-practice__actions">
+      <label className="btn primary blog-example__upload">{ex ? (en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기") : (en ? "Choose CSV" : "CSV 선택")}<input type="file" accept=".csv,text/csv" disabled={inputDisabled} onChange={upload} /></label>
+      {practice && <button type="button" className="blog-example__demo" disabled={inputDisabled} onClick={openDemo}>{en ? "Open the full example result" : "예시 결과 전체 보기"}</button>}
+      {ex && template && <Link className="blog-example__demo" href={`${en ? "/en" : ""}/templates/${template.slug}`}>{en ? "See the CSV columns" : "필요한 CSV 열 보기"}</Link>}
+    </div>
+    {customSteps && <details className="blog-practice__instructions">
+      <summary>{en ? "Follow this example step by step" : "이 예제 따라 하기"}</summary>
       <ol>{practice.steps.map(step => <li key={step}>{step}</li>)}</ol>
       <p className="blog-practice__limit">{practice.limit}</p>
-    </section>}
-    {slug === "weekly-marketing-report-template" && <VideoHelpButton topic="decisions" locale={locale}>{en ? `Save and revisit · ${tutorialDuration("decisions")}-second guide` : `저장·재검토 ${tutorialDuration("decisions")}초 가이드`}</VideoHelpButton>}
-    {custom && practice?.mode !== "detail" && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
-    <div className="blog-practice__actions">
-      {practice && <button className="btn primary" disabled={inputDisabled} onClick={openDemo}>{en ? "Open analysis with demo" : "데모로 분석 열기"}</button>}
-      <label className="btn">{en ? "Choose CSV" : "CSV 선택"}<input type="file" accept=".csv,text/csv" aria-label={en ? "Choose CSV" : "CSV 선택"} disabled={inputDisabled} onChange={upload} /></label>
-    </div>
+      <a className="blog-practice__download" href={practice.href} download={practice.file}>{practice.download}</a>
+    </details>}
     {projectPreparing && <p role="status">{en ? "Checking device storage…" : "기기 저장 상태를 확인하고 있습니다…"}</p>}
     {csv && <>
       {practice?.demoGroup ? <p className="blog-practice__file" role="status">{csv.fileName} · {csv.raw.length.toLocaleString(locale)}{en ? " rows" : "행"}</p> : <section data-information-section="" ><header data-information-heading="">{en ? "Check columns" : "열 확인"}</header>
@@ -152,7 +168,7 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     {error && <p role="alert">{error}</p>}
     {result && <div className="blog-inline-insight__result"><p className="blog-inline-insight__finding">{result.verdict.headline}</p>{result.status === "success" && <BlogInsightChart visual={result.visualizations[0]} locale={locale} />}{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</div>}
     {needsReplace && <label><input type="checkbox" checked={replacementTarget === existing.raw} onChange={event => setReplacementTarget(event.target.checked ? existing.raw : null)} />{en ? "Replace the current dataset in the detailed tool with this CSV." : "상세 도구의 기존 데이터를 이 CSV로 교체합니다."}</label>}
-    {practice?.detailNote && <p>{practice.detailNote}</p>}
-    <button className="btn" disabled={inputDisabled} onClick={() => openDetail()}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>
+    {csv && practice?.detailNote && <p>{practice.detailNote}</p>}
+    {(csv || !practice) && <button className="btn" disabled={inputDisabled} onClick={() => openDetail()}>{en ? "Open detailed analysis" : "더 자세한 분석 보기"}</button>}
   </aside>;
 }

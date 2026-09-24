@@ -37,19 +37,22 @@ describe("DashboardFilterBar segment disclosure", () => {
       },
     });
     const { container } = render(<DashboardFilterBar />);
-    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("SECTION");
+    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("DETAILS");
+    expect(container.querySelector(".dashboard-filter-more").open).toBe(true);
   });
 
   it("keeps the segment controls collapsed when no segment filter is active", () => {
     const { container } = render(<DashboardFilterBar locale="en" />);
-    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("SECTION");
+    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("DETAILS");
+    expect(container.querySelector(".dashboard-filter-more").open).toBe(false);
     expect(container.querySelector(".dashboard-filter-bar__scope")?.getAttribute("aria-label")).toBe("Date and segment filters");
     expect(container.querySelector(".dashboard-filter-bar__display")?.getAttribute("aria-label")).toBe("Display settings");
   });
 
   it("opens after a segment filter becomes active post-mount", () => {
     const { container } = render(<DashboardFilterBar />);
-    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("SECTION");
+    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("DETAILS");
+    expect(container.querySelector(".dashboard-filter-more").open).toBe(false);
 
     act(() => {
       useAppStore.setState({
@@ -60,6 +63,7 @@ describe("DashboardFilterBar segment disclosure", () => {
       });
     });
 
-    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("SECTION");
+    expect(container.querySelector(".dashboard-filter-more").tagName).toBe("DETAILS");
+    expect(container.querySelector(".dashboard-filter-more").open).toBe(true);
   });
 });

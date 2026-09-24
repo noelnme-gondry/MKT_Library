@@ -87,7 +87,8 @@ describe("Dashboard render smoke", () => {
     });
     useAppStore.getState().setGroupAnalyzed("5-2");
     const { unmount } = render(<Dashboard />);
-    expect(screen.getByText("SAMPLE DATA")).toBeTruthy();
+    // 제목 위 작은 영문 라벨은 두지 않는다(2026-09-24).
+    expect(screen.queryByText("SAMPLE DATA")).toBeNull();
     expect(screen.getByText("지금 보는 수치는 예시입니다")).toBeTruthy();
     expect(screen.getByText("내 CSV로 바꾸기")).toBeTruthy();
     unmount();

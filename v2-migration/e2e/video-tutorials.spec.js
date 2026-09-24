@@ -63,10 +63,13 @@ for (const locale of ["ko", "en"]) {
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
-  test(`floating home guide opens preparation and restores focus (${locale})`, async ({ page }) => {
+  test(`header guide opens preparation and restores focus (${locale})`, async ({ page }) => {
+    // 폰·태블릿 헤더에서는 버튼을 숨기고 ••• 메뉴의 영상 안내로 연다(아래 contextual 테스트가 그 경로를 본다).
+    test.skip(page.viewportSize().width <= 768, "phone header uses the utility menu entry");
     await page.goto(`${prefix}/`);
     await page.evaluate(async () => { await document.fonts.ready; });
-    const launcher = page.locator(".tutorial-launcher");
+    const launcher = page.getByRole("banner").locator(".tutorial-launcher");
+    await expect(launcher).toBeEnabled();
     await expect(launcher).toBeVisible();
     await launcher.click();
     const dialog = page.getByRole("dialog", { name: en ? "Video guide" : "영상 사용 안내", exact: true });
@@ -108,7 +111,7 @@ for (const locale of ["ko", "en"]) {
     await expect(dialog.getByRole("heading", { name: en ? "Save and revisit decisions" : "결정 저장과 다음 주 재검토", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
-    await practice.getByRole("button", { name: en ? "Open analysis with demo" : "데모로 분석 열기", exact: true }).click();
+    await practice.getByRole("button", { name: en ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/tools/campaign-variance`));
     await expect(page.getByRole("banner")).toContainText("weekly-report-three-weeks.csv");
     await expect(page.locator(".analysis-setup__context")).toContainText(en ? "42 source rows" : "42 원본 행");
@@ -120,7 +123,7 @@ for (const locale of ["ko", "en"]) {
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
-  test(`upload guide opens and home launcher yields to survey (${locale})`, async ({ page }) => {
+  test(`upload guide opens and restores focus (${locale})`, async ({ page }) => {
     await page.goto(`${en ? "/en" : ""}/dashboard`);
     const help = page.getByRole("button", { name: en ? "How to upload" : "업로드 방법 보기" });
     await expect(help).toBeVisible();
@@ -129,40 +132,20 @@ for (const locale of ["ko", "en"]) {
     await expect(dialog).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(help).toBeFocused();
-    // The uploader can occupy every candidate floating footprint on a tablet.
-    // Its inline entry stays usable; test survey precedence on the clear home
-    // viewport instead of requiring the launcher to cover upload controls.
-    await page.goto(en ? "/en" : "/");
-    const launcher = page.locator(".tutorial-launcher");
-    await expect(launcher).toBeVisible();
-    await page.evaluate(() => {
-      const survey = document.createElement("section");
-      survey.className = "source-survey";
-      survey.textContent = "Survey";
-      document.body.append(survey);
-    });
-    await expect(launcher).toBeHidden();
-    await page.evaluate(() => document.querySelector(".source-survey").remove());
-    await expect(launcher).toBeVisible();
   });
 }
 
+// 떠 있는 버튼은 스크롤 위치에 따라 결과·업로드 버튼을 덮었다 — 헤더 안에 있어 본문과 겹칠 수 없다.
 for (const en of [false, true]) {
-  test(`tutorial launcher remains fixed and visible throughout scrolling (${en ? "en" : "ko"})`, async ({ page }) => {
+  test(`tutorial entry sits in the header and never covers content (${en ? "en" : "ko"})`, async ({ page }) => {
     await page.goto(en ? "/en/" : "/");
     const launcher = page.locator(".tutorial-launcher");
-    await expect(launcher).toBeVisible();
-    const samples = await launcher.evaluate(async node => {
-      const results = [];
-      for (const top of [0, 200, 500, 1000, 2000, 100, 0]) {
-        window.scrollTo(0, top);
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        const box = node.getBoundingClientRect(), style = getComputedStyle(node);
-        results.push({ top: box.top, display: style.display, visibility: style.visibility, opacity: style.opacity });
-      }
-      return results;
-    });
-    expect(samples.every(sample => sample.display !== "none" && sample.visibility === "visible" && Number(sample.opacity) > 0)).toBe(true);
-    expect(Math.max(...samples.map(sample => sample.top)) - Math.min(...samples.map(sample => sample.top))).toBeLessThan(1);
+    await expect(launcher).toHaveCount(1);
+    expect(await launcher.evaluate(node => Boolean(node.closest("header[role=banner], .topbar")))).toBe(true);
+    // 폰 헤더는 이미 두 줄이라 버튼을 숨기고 ••• 메뉴의 영상 안내로 연다.
+    test.skip(page.viewportSize().width <= 768, "phone header uses the utility menu entry");
+    const main = await page.locator("#main-content").boundingBox();
+    const box = await launcher.boundingBox();
+    expect(box.y + box.height).toBeLessThanOrEqual(main.y + 1);
   });
 }

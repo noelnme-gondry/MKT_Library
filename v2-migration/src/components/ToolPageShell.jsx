@@ -16,8 +16,8 @@ import { toolIndexEntry } from "@/lib/toolIndex";
  * 순수 프레젠테이션 컴포넌트: store 구독·비즈니스 로직 없음.
  */
 const COPY = {
-  ko: { summaryLabel: "핵심 요약", toc: "목차", workspace: "의사결정 작업대" },
-  en: { summaryLabel: "Summary", toc: "Contents", workspace: "DECISION WORKSPACE" },
+  ko: { summaryLabel: "핵심 요약", toc: "목차" },
+  en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
 export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleLevel = 1 }) {
@@ -43,7 +43,6 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           <div className="page-sticky-row1">
             {hasTitle && (
               <div className="tool-instrument-header__heading">
-                <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
                 <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{resolvedTitle}</TitleTag>
               </div>
             )}

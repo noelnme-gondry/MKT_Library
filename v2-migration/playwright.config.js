@@ -2,8 +2,6 @@ import { defineConfig } from "@playwright/test";
 import { SOURCE_SURVEY_ANSWERED_KEY } from "./e2e/support/sourceSurvey.js";
 
 const isCi = Boolean(process.env.CI);
-const today = new Date();
-const blogHelperDate = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
 // CI는 빌드 결과물(next start)로 돈다 — dev 서버는 페이지를 처음 열 때마다 컴파일해서
 // 브라우저 테스트가 40분 가까이 걸렸다(2026-09-24). 로컬 기본은 여전히 dev(수정이 바로 반영).
 // 빌드본으로 돌리려면 먼저 `npm run build` 후 E2E_SERVER=production.
@@ -27,8 +25,6 @@ export default defineConfig({
         origin: "http://127.0.0.1:3100",
         localStorage: [
           { name: SOURCE_SURVEY_ANSWERED_KEY, value: "1" },
-          // Overlay behavior is covered without this seed in blog-helper.spec.js.
-          { name: "gop:blog:bridge-off-date", value: blogHelperDate },
         ],
       }],
     },

@@ -2441,7 +2441,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <section className="block prism-driver" id="s-controls" aria-labelledby="prism-driver-title">
         <div className="prism-driver__head">
           <div>
-            <span className="prism-driver__eyebrow">PRISM CONTROL</span>
             <h2 className="section-title" id="prism-driver-title">{tr("무엇을 정할까요?", "What do you want to set?")}</h2>
             <p>{tr("예산이나 효율 목표 하나만 정하면, PRISM이 채널별 금액을 자동으로 계산합니다. 채널 행은 결과표이며 직접 조정하지 않습니다.", "Set one portfolio constraint — budget or efficiency target — and PRISM calculates the channel allocation. Channel rows are read-only results, not manual controls.")}</p>
           </div>

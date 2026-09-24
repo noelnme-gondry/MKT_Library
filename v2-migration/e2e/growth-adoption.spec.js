@@ -28,7 +28,8 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/blog/budget-scaling-limit`);
     await expect(page.locator(".content-answer__action")).toHaveCount(0);
     await expect(page.locator(".content-answer__label")).toHaveText(en ? "Key takeaway" : "핵심 요약");
-    await expect(page.locator(".blog-practice-prep")).toBeVisible();
+    await expect(page.locator(".blog-example")).toBeVisible();
+    await expect(page.locator(".blog-check--situation")).toBeVisible();
     for (const light of [false, true]) {
       await page.evaluate(value => localStorage.setItem("mkt-library-theme", value ? "light" : "dark"), light);
       await page.reload();

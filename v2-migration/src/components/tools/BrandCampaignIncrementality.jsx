@@ -277,7 +277,6 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
 
   return <div className="tab-pane active" id="tab-brand-incrementality">
     <section className="block" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 12%, var(--bg-2)), var(--bg-2))", border: "1px solid var(--border)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
-      <span className="eyebrow">BRAND LIFT · NO MMM</span>
       <h2 className="section-title" style={{ marginTop: "6px" }}>{tx(locale, "브랜드 캠페인이 실제로 추가 만든 성과를 추정하세요", "Estimate the outcomes your brand campaign actually added")}</h2>
       <p className="muted" style={{ maxWidth: "760px", lineHeight: 1.65 }}>{tx(locale, "데이터 준비 수준부터 고르면 가장 강한 설계로 연결합니다. ITS는 집행 전 추세를 기준선으로 삼는 관찰 연구이므로, 대조군이 없으면 ‘인과 확정’이 아니라 추정 증가분으로만 표시합니다.", "Choose from the data you have and we route you to the strongest available design. ITS is observational: without a control, results are labeled as estimated lift, not confirmed causality.")}</p>
     </section>

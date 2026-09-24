@@ -15,6 +15,7 @@ import MyAccountPage from "@/components/MyAccountPage";
 import DochiResultWorkspace from "@/components/assistant/DochiResultWorkspace";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
+import BlogArrivalStrip from "@/components/blog/BlogArrivalStrip";
 import UiSemantics from "@/components/ds/UiSemantics";
 import GuideAnswer from "@/components/GuideAnswer";
 import ToolIntro from "@/components/ToolIntro";
@@ -80,6 +81,8 @@ export default function PageClient({ params, initialSopData = null, evidenceLink
           <Header locale="en" />
           <main id="main-content" tabIndex="-1">
             <article className="content" id="content">
+            {/* 블로그 예시에서 넘어온 방문의 첫 줄(시안 E) — 모달 대신 출처와 두 갈래만. */}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <BlogArrivalStrip routeId={routeId} locale="en" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <AnalysisSetupBar toolId={routeId} locale="en" slot="context" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}

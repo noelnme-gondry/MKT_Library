@@ -38,8 +38,8 @@ v2-migration/
 │     ├─ SubscriptionPage·SubscriptionPlanComparison·SubscriptionReportPreview·SubscriptionTrialOffer  # Free/체험/Pro 구분·첫 결정 저장·결제 진입 (KO/EN 공용)
 │     ├─ SubscriptionCheckout       # 위젯 준비→클릭 시 주문·계측 / 입금 대기→상태 조회→계정·쿠키 이용권 복원
 │     ├─ AccountArchive             # lib/account/accountServer·accountClient: 계정·허용목록·HTML 콜백 실패 안내
-│     ├─ blog/                      # 블로그 읽기 계측(BlogReadTracker) + 본문 끝 도치 브리지(BlogDochiBridge)
-│     │                             # BlogPracticePrep → lib/blogPractice.js 예제·KO/EN 안내 → BlogCsvAnalysis 선택 실습 (blogInsightRegistry 절 위치)
+│     ├─ blog/                      # 블로그 읽기 계측(BlogReadTracker) + 넛지 A~E: BlogCsvAnalysis+BlogExampleChart(A 예시 결과, lib/blogExamples/data.json)
+│     │                             # BlogReadingBar(C) · BlogSelfCheck(D, lib/blogSelfCheck) · BlogSituationCheck(B, lib/blogSituationCheck) · BlogArrivalStrip(E, 도구 첫 줄)
 │     │                             # lib/blogPracticeData.js → demoData + download.csvBody 브라우저 합성 CSV·원본 일치 확인; growthUseCases → 발행 글 하단 후속 경로
 │     ├─ ToolPageOutro.jsx      # ★ 하단 마감 박스 = 경계선 + 다음단계·참고자료·관련글 (§12.30)
 │     ├─ GuideAnswer.jsx        # 가이드 질문·한 문장 답 (본문 위, 접기 바깥)
@@ -158,8 +158,9 @@ v2-migration/
 - **브랜드 사실 SSOT**: `lib/brandFacts.js`(가격·데이터 처리·결정론 등 `BRAND_FACTS` + 한계 `BRAND_LIMITS`). `llms.txt`가 여기서 파생한다. 도구 이름·설명은 여기 적지 않고 `routeSeo`에서 조회한다.
 - **방법 비교**: `lib/compareContent.js`(KO/EN `question`·`answer`·비교표·`guidance`·FAQ) → `components/ComparePage.jsx` + `/compare[/slug]` KO/EN. sitemap·llms.txt는 `COMPARE_SLUGS`에서 파생. 인바운드는 `getComparesForTool()` 역인덱스 → `buildEvidenceLinks` → `ToolEvidenceLinks`(도구 9개) + 푸터 + ⌘K 개별 항목 + 사이드바 LIBRARY.
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25, ASO 글·용어는 5-27로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
-- **블로그 본문 내 전환 경로**: `lib/blogArticleSplit.js`가 본문을 중간 패널 앞뒤로 가른다 — `<!-- CONTENT_ACTION -->` 마커가 있으면 마커, 없으면 최상위 블록 경계에서 파생(KO·EN 페이지 공용). 상단 짧은 답 밑 한 줄 링크는 `ContentActionPanel placement="article_answer"`. 도구별 카피는 `actionCopyFor()` 한 곳에서 조회하고, 매핑된 도구에 카피가 없으면 `contentActionPanel.test.js`가 잡는다(없으면 조용히 5-2로 폴백한다).
-- **블로그 계측·중간 개입**: `components/blog/BlogReadTracker.jsx`(읽기 25/50/75/100%·세션 글 수 — 이벤트만, 렌더 없음) → `components/blog/BlogDochiBridge.jsx`(세션 2편째 + 60% + 30초에 본문 끝 카드, ≤700px 하단 시트). 브리지는 `DochiSprite`만 쓰고 스토어·업로더를 건드리지 않는다(`startMyData` 부작용·번들 유출 방지). 이벤트 정의는 `docs/ga4-product-events.md`.
+- **블로그 본문 내 전환 경로**: `lib/blogArticleSplit.js`가 본문을 중간 앞뒤로 가른다 — `<!-- CONTENT_ACTION -->` 마커가 있으면 마커, 없으면 최상위 블록 경계에서 파생(KO·EN 페이지 공용). 중간 자리는 CSV로 확인할 수 있는 글(`BLOG_INSIGHT_PLACEMENTS`)이면 **A 예시 결과 카드**(`BlogCsvAnalysis` + `lib/blogExamples/data.json` — 실제 엔진을 데모/예제 파일에 돌린 사본, `blogExamples.test.js`가 엔진과의 일치를 강제·갱신은 `UPDATE_BLOG_EXAMPLES=1`), 아니면 **D 30초 점검**(`lib/blogSelfCheck.js`, 본문 문장만 사용). 글 끝은 모든 글에 **B 상황 확인**(`lib/blogSituationCheck.js`, 도구별 세트 + 비-CSV 글 전용 세트). 커버리지는 `lib/blogChecks.test.js`가 발행 글에서 파생해 강제한다.
+- **블로그 계측·중간 개입**: `BlogReadTracker.jsx`(읽기 25/50/75/100%·세션 글 수 — 이벤트만) → `BlogReadingBar.jsx`(C: 35% 이후 하단 한 줄, 대상이 보이거나 글 끝이면 숨김, 닫으면 세션 동안 끔). 예시에서 도구로 넘어가면 `store.blogArrival`(휘발)이 남고 `BlogArrivalStrip`(E)이 데모 모달·유입 설문 대신 출처 한 줄을 그린다. 이벤트 정의는 `docs/ga4-product-events.md`.
+- **사이트 디자인 계약**: `globals.css` `@layer app` 끝의 "사이트 디자인 계약" 블록(상자 한 겹·스티키 바 가장자리·굵기 3단·왼쪽 색 막대 금지·목차 폭 예약). 렌더 결과는 `e2e/design-rules.spec.js`(+`e2e/support/designRules.js`)가, 굵기 선언은 `app/fontWeightScale.test.js`가 지킨다.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 
 ## 6. 테스트 & 린트 (배포 게이트)

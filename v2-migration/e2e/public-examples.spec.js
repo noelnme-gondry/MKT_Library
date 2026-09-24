@@ -24,8 +24,10 @@ for (const locale of ["ko", "en"]) {
       await page.addInitScript(theme => localStorage.setItem("mkt-library-theme", theme), en ? "light" : "dark");
       await enablePaidReports(page);
       await page.goto(`${prefix}/blog/${example.blog}`);
+      // 예제 파일 받기는 예시 결과 카드의 "이 예제 따라 하기" 안에 있다.
+      await page.locator("#blog-practice .blog-practice__instructions summary").click();
       const inputDownload = page.waitForEvent("download");
-      await page.locator(`main a[href="/examples/${example.file}"]`).click();
+      await page.locator(`#blog-practice a[href="/examples/${example.file}"]`).click();
       const source = await inputDownload;
       expect(source.suggestedFilename()).toBe(example.file);
       const input = await bytesOf(source);
@@ -33,7 +35,8 @@ for (const locale of ["ko", "en"]) {
       expect(originalRows.errors).toEqual([]);
       expect(originalRows.data.length).toBe(example.kind === "aso" ? 8 : example.kind === "asa" ? 4 : 24);
 
-      await page.locator(`main a[href="${prefix}${example.tool}"]`).first().click();
+      // 글 끝 도구 패널은 상황 확인(B)으로 바뀌었다 — 받은 파일을 들고 도구로 간다.
+      await page.goto(`${prefix}${example.tool}`);
       await expect(page).toHaveURL(new RegExp(`${prefix}${example.tool}$`));
       await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await page.locator('.csv-uploader input[type="file"]').first().setInputFiles({ name: example.file, mimeType: "text/csv", buffer: input });
