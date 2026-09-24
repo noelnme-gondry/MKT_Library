@@ -20,15 +20,20 @@ const RESULT_PAGES = [
 
 // 도구마다 예시가 자동으로 실리기도 하고 버튼으로 실리기도 한다 — 상태를 보고 필요한 단계만 밟는다.
 async function openExampleResult(page) {
-  await page.waitForLoadState("networkidle");
-  const example = page.getByRole("button", { name: /예시 데이터로 결과 바로 보기|Run the example/ });
-  if (await example.count()) await example.first().click();
-  const later = page.getByRole("button", { name: /^(나중에|Not now)$/ });
-  if (await later.count()) await later.first().click();
-  // 예시가 곧바로 결과까지 가는 도구도, 분석 버튼을 거치는 도구도 있다 — 둘 중 먼저 뜨는 쪽을 기다린다.
+  // 도구 본문은 동적으로 늦게 붙는다 — 버튼이 "있는지" 바로 세면 아직 없어서 건너뛴다.
+  // 예시 버튼·분석 버튼·결과 카드 중 하나가 뜰 때까지 기다린 뒤 필요한 단계만 밟는다.
+  const example = page.getByRole("button", { name: /예시 데이터로 결과 바로 보기|Run the example/ }).first();
   const analyze = page.getByRole("button", { name: /^(▶ )?(데이터 )?분석하기$|^Analyze data$/ }).first();
   const card = page.locator(".result-action-card").first();
-  await expect(card.or(analyze)).toBeVisible({ timeout: 30_000 });
+  await expect(example.or(analyze).or(card)).toBeVisible({ timeout: 30_000 });
+  // 빌드본은 버튼이 서버 렌더로 먼저 보이고 하이드레이션은 뒤에 붙는다 — 그 사이의 클릭은
+  // 사라지므로, 결과나 분석 버튼이 나타날 때까지 클릭을 다시 건다.
+  await expect(async () => {
+    if (await example.isVisible()) await example.click();
+    await expect(card.or(analyze)).toBeVisible({ timeout: 4_000 });
+  }).toPass({ timeout: 60_000 });
+  const later = page.getByRole("button", { name: /^(나중에|Not now)$/ });
+  if (await later.count()) await later.first().click();
   if (!(await card.isVisible())) await analyze.click();
   await expect(card).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(500);
