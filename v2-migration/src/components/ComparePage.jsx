@@ -26,7 +26,6 @@ export default function ComparePage({ slug, locale = "ko" }) {
 
   return (
     <article className="compare-page">
-      <span className="compare-page__eyebrow">{page.eyebrow}</span>
       <h1>{page.title}</h1>
 
       {/* 질문과 한 문장 답을 본문 맨 앞에. 아래 표·해설은 근거다. */}

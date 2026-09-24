@@ -1233,7 +1233,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 : tr("분석 가능한 행동 후보가 없습니다", "No analyzable behavior candidate")}
               stats={[
                 { label: C.statAll, value: cache.n.toLocaleString() },
-                { label: C.statTarget, value: totalTargets.toLocaleString(), detail: `${(cache.baseRate * 100).toFixed(1)}%` },
+                { label: C.statTarget, value: totalTargets.toLocaleString(), detail: `${C.statRate} ${(cache.baseRate * 100).toFixed(1)}%` },
                 { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
                 { label: tr("Top Lift", "Top lift"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? `F1 ${topAction.holdout.F1.toFixed(2)}` : "" },
               ]}
@@ -1304,22 +1304,9 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             >
             <section data-information-section="" className="result-action-card__details">
               <header data-information-heading="">{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</header>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
-              {[
-                [C.statAll, cache.n.toLocaleString(), null],
-                [C.statTarget, totalTargets.toLocaleString(), null],
-                [C.statRate, (cache.baseRate * 100).toFixed(1) + "%", tr("아무 조건 없을 때 기준 (base rate)", "baseline with no conditions (base rate)")],
-              ].map(([label, val, sub]) => (
-                <div key={label} style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "10px 12px" }}>
-                  <div style={{ fontSize: "var(--fs-xs)", color: MUTED }}>{label}</div>
-                  <div className="tnum" style={{ fontSize: "var(--fs-lg)", fontWeight: 700 }}>{val}</div>
-                  {sub ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
-                </div>
-              ))}
-            </div>
+            {/* 전체·정착 유저와 기준 정착률은 결론 카드 수치 줄이 이미 말한다 — 같은 숫자를 상자로 다시 그리지 않는다. */}
             {topAction ? (
-              <div style={{ background: "var(--surface-container-low)", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "10px", padding: "12px 14px", marginBottom: "12px" }}>
-                <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginBottom: "4px" }}>🏆 {tr("가장 강한 신호", "Strongest signal")}</div>
+              <div style={{ marginBottom: "12px" }}>
                 <div
                   style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
                   dangerouslySetInnerHTML={{

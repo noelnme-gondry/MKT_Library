@@ -405,7 +405,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           )}</p>
           <section data-information-section="" style={{ marginTop: "6px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
             <header data-information-heading="">{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</header>
-            <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
+            <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
               {tr(
                 `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁘다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
                 `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means marginal efficiency on the next budget increase is worse than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`

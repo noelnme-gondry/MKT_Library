@@ -179,7 +179,6 @@ export default function LandingPage({ locale = "ko", reading }) {
       </section>}
       <section className="dc-hero" aria-labelledby="dc-hero-title">
         <div className="dc-hero__copy">
-          <div className="dc-eyebrow">{T.eyebrow}</div>
           <h1 id="dc-hero-title">
             <span>{T.title}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>

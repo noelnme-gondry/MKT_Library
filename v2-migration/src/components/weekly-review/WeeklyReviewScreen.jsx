@@ -404,7 +404,6 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
         <WeeklyReviewHandoverNotice locale={locale} decisionCount={existingDecisionCount} />
       {!embedded && <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>}
         {!embedded && <header className="wr-screen__head">
-          <div className="wr-screen__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
         </header>}
         <JourneyProgress stage="prepare" locale={locale} placement="weekly_review" />
@@ -484,7 +483,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {!embedded && <nav className="project-actions" aria-label={locale === "en" ? "Project navigation" : "프로젝트 탐색"}><Link className="btn" href={locale === "en" ? "/en/projects" : "/projects"}>{locale === "en" ? "Projects · backups" : "프로젝트 · 백업"}</Link><Link className="btn ghost" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link></nav>}
 
       <header className={`wr-screen__head${embedded ? " wr-screen__head--embedded" : ""}`}>
-        {!embedded && <><div className="wr-screen__eyebrow">{t.eyebrow}</div><h1>{t.title}</h1></>}
+        {!embedded && <><h1>{t.title}</h1></>}
         <div className="wr-screen__period">
           <span>{periods.current.start} ~ {periods.current.end}</span>
           <span className="wr-screen__vs">vs</span>

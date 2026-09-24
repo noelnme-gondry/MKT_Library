@@ -300,7 +300,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 {isDemo && (
                   <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
                     <div>
-                      <span>SAMPLE DATA</span>
                       <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
                       <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
                     </div>

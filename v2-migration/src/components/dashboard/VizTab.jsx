@@ -979,7 +979,6 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       <section className="block dashboard-explorer dashboard-viz-workbench__chart" id="s-charts">
         <div className="dashboard-explorer__head">
           <div>
-            <span className="dashboard-explorer__eyebrow">{locale === "en" ? "Selected KPI" : "선택됨"}</span>
             <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
           </div>
           <span className="dashboard-explorer__status">{activeTrend.status}</span>

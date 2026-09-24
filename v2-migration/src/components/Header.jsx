@@ -18,7 +18,7 @@ import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 import { trackProductEvent } from "@/lib/analytics";
 import { setMobileNavigationOpen, useMobileNavigation } from "@/lib/mobileNavigation";
 import MyAccountMenu from "./MyAccountMenu";
-import { VideoHelpButton } from "./VideoTutorialHelp";
+import { TutorialHeaderButton, VideoHelpButton } from "./VideoTutorialHelp";
 
 const HEADER_COPY = {
   ko: {
@@ -223,6 +223,7 @@ export default function Header({ locale = "ko" }) {
             <span className="header-decision-inbox__label">{workspaceNavItem("review", locale).name}</span>
             {dueDecisionCount > 0 && <em>{dueDecisionCount}</em>}
           </Link>
+          <TutorialHeaderButton locale={locale} />
           <button
             className="btn ghost header-cmdk"
             type="button"

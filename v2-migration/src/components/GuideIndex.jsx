@@ -36,7 +36,6 @@ export default function GuideIndex({ locale = "ko" }) {
 
   return (
     <>
-      <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
 

@@ -896,7 +896,7 @@ export function Card({ children, style }) {
 // 통계 상세(아코디언 B) 소제목 — 좌측 액센트 바 + 볼드 + 평어 한 줄로 섹션 구분.
 export function StatHead({ title, hint }) {
   return (
-    <div style={{ margin: "18px 0 8px", borderLeft: "3px solid var(--primary, #adc6ff)", paddingLeft: "10px" }}>
+    <div style={{ margin: "18px 0 8px" }}>
       <div style={{ fontSize: "var(--fs-base)", fontWeight: 700, color: "var(--text-1)" }}>{title}</div>
       {hint ? <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "3px", lineHeight: 1.55 }}>{hint}</div> : null}
     </div>
@@ -1027,7 +1027,7 @@ export function ChannelSpendTimeline({ labels, channels, locale }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
         <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
-        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 720, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: "var(--chart-primary)" }}>{overlapWeeks}{tx("주", " wk")}</span>
         <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
@@ -1081,8 +1081,8 @@ export function NetEffectEvidence({ net, locale }) {
   const tone = isPositive ? NEG : isNegative ? POS : "#f59e0b";
   return <Card style={{ padding: "14px 16px" }}>
     <div style={{ display: "flex", gap: "18px", alignItems: "baseline", flexWrap: "wrap" }}>
-      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 750, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
-      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 650 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
+      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
+      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "var(--fs-md)", fontWeight: 700 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
     </div>
     <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
       <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "var(--fs-xs)", color: MUTED }}>0</span></div>
@@ -1244,7 +1244,6 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
     <section className="mmm-evidence-ledger" aria-label={tx("근거 보정", "Evidence calibration")}>
       <div className="mmm-evidence-ledger__topline">
         <div>
-          <span className="mmm-evidence-ledger__eyebrow">{tx("MODEL EVIDENCE", "MODEL EVIDENCE")}</span>
           <h2>{tx("결론의 근거를 분리해서 봅니다", "Keep the evidence behind the conclusion visible")}</h2>
           <p>{tx("근거가 없으면 지금의 기본 MMM만 사용합니다. 실험·국가 데이터는 선택적으로 추가하고, 적용 전후를 같은 화면에서 비교합니다.", "Without added evidence, this remains the current base MMM. Experiment and market data are optional and are compared beside the base model.")}</p>
         </div>

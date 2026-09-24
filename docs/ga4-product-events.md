@@ -14,9 +14,11 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 |---|---|---|
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
-| `blog_cta_viewed` | 글·용어의 행동 패널이 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|blog_bridge`, `locale` |
-| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_answer\|article_mid\|article_post\|blog_bridge\|blog_bridge_practice`, `locale` |
-| `blog_bridge_dismissed` | 블로그 보조 안내를 닫음 | `content_slug`, `content_type`, `interaction_source`, `placement=blog_bridge`, `state=session\|today`, `locale` |
+| `blog_cta_viewed` | 글·용어의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|reading_bar\|self_check\|situation_check`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_inline\|article_mid\|article_post\|reading_bar\|situation_check`, `locale` |
+| `blog_check_answered` | 글 안 점검에 답을 끝냄(30초 점검은 두 문항 모두, 상황 확인은 선택 1회) | `content_slug`, `content_type`, `placement=self_check\|situation_check`, `state=yy\|yn\|ny\|nn\|option_1..3`, `locale` |
+| `blog_arrival_action` | 블로그 예시에서 도구로 넘어온 첫 줄(도착 줄)에서 선택 | `tool_id`, `content_slug`, `content_type`, `placement=blog_arrival`, `state=use_my_csv\|back_to_article`, `locale` |
+| `blog_bridge_dismissed` | 블로그 읽기 바를 닫음(그 방문 동안 다시 뜨지 않음) | `content_slug`, `content_type`, `interaction_source`, `placement=reading_bar`, `state=session`, `locale` |
 | `tool_view` | 분석 도구 URL 진입 | `tool_id`, `interaction_source=route`, `locale` |
 | `landing_data_start_clicked` | 랜딩에서 도치 접수처(`#dochi-upload`) 선택 | `interaction_source=landing`, `placement=hero|weekly_loop`, `locale` |
 | `landing_review_opened` | 랜딩에서 주간 리뷰 또는 결정 이력 선택 | `interaction_source=landing`, `placement=hero|weekly_loop|continue_panel`, `locale` |
@@ -108,7 +110,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 - 블로그→분석: `page_view`(블로그) → `blog_read_depth(depth_75)` → `blog_cta_viewed` → `blog_tool_cta_clicked` → `tool_view` → `data_import_success` → `analysis_completed(result_state=ready)`
   - `blog_cta_viewed` 없이 `page_view`만 쌓이면 패널이 안 보인 것이고, `blog_cta_viewed`는 있는데 클릭이 없으면 카피·목적지 문제다. 두 원인을 가르는 게 이 이벤트의 존재 이유다.
-  - 도치 브리지는 새 이벤트 이름을 만들지 않는다 — 노출은 `blog_cta_viewed(placement=blog_bridge)`, 클릭은 `blog_tool_cta_clicked(placement=blog_bridge)`로 같은 퍼널에 들어간다. `placement`로만 가른다.
+  - 읽기 바·30초 점검·상황 확인은 새 노출/클릭 이벤트 이름을 만들지 않는다 — `blog_cta_viewed`·`blog_tool_cta_clicked`의 `placement`(`reading_bar`·`self_check`·`situation_check`)로만 가른다. 점검 응답만 `blog_check_answered`로 따로 센다(답 원문이 아니라 열거형 `state`). 2026-09-24에 도치 브리지(`blog_bridge*`)와 요약 옆 CTA(`article_answer`)는 제거됐다 — 과거 데이터에만 남는다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
 - 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`

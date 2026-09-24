@@ -259,7 +259,10 @@ export default function ResultActionCard({
       <div className="result-action-card__head">
         <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
         <div className="result-action-card__copy">
-          <div className="result-action-card__label">
+          {/* 결론 문장이 있으면 그 위에 작은 라벨("변동 원인 결론")을 눈에 보이게 붙이지 않는다 —
+              폰에서 안 읽히고 제목과 경쟁한다(2026-09-24). 화면낭독기에는 어떤 결론인지 맥락으로 남긴다.
+              문장이 없을 때만 이름이 보이는 제목 역할을 한다. */}
+          <div className={headline ? "sr-only" : "result-action-card__label"}>
             {resolvedTitle}
           </div>
           {headline && (

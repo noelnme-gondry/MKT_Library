@@ -44,6 +44,10 @@ tools:
 
 **레이아웃 스케일**(`app/layoutScale.test.js`): 브레이크포인트는 480·560·640·720·768·860·1000·1100 여덟 개뿐이고 그 밖의 경계를 새로 만들지 않는다(`max-width:760px`은 태블릿 세로 768px에 안 걸린다). 짝이 되는 `min-width`는 경계+1. 반경은 `--radius-sm(6)·md(8)·lg(10)·xl(16)·pill/full(999)` 5단뿐이고 **px 리터럴 금지**(`designTokenSingleSource.test.js`). 직교 차트는 x·y 축 제목 필수(`chartAxisTitle.test.js`).
 
+**사이트 디자인 계약**(2026-09-24): 상자는 한 겹(상자 안 상자 금지)·세로로 쌓인 형제 상자는 좌우 가장자리 일치·제목 위 12px 라벨 금지·굵기는 400/600/700만·왼쪽 색 막대+바탕 안내 상자 금지·떠 있는 버튼 금지(튜토리얼은 헤더). `e2e/design-rules.spec.js`가 렌더 결과로, `app/fontWeightScale.test.js`가 선언으로 막는다. 예외는 `data-design-exempt="규칙: 사유"`.
+
+**블로그 넛지 A~E**: 중간=A 예시 결과(`lib/blogExamples/data.json`, 엔진 결과 사본) 또는 D 30초 점검 · 끝=B 상황 확인(전 글) · C 하단 읽기 바 · E 도구 도착 줄(`store.blogArrival`). 커버리지는 `lib/blogChecks.test.js`.
+
 **CSS 레이어·색 리터럴**: `globals.css`는 `@layer reset, tokens, app;` 3단 — 외부 리셋은 `layer(reset)`으로 넣고, 레이어 밖에 규칙을 두지 말 것(`tokens`엔 `!important` 금지). raw hex를 토큰으로 바꾸는 건 **정확히 같은 값의 토큰이 있는 순수 텍스트 색만**. 브랜드색·영구 다크 표면(`.sidebar`엔 light-mode 재정의가 일부러 없다)·Chart.js 데이터셋·미토큰 색과 짝지은 값은 그대로 둔다.
 
 # 토큰 효율 (AGENTS.md §17)

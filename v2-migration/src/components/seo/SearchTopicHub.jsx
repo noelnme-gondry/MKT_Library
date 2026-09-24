@@ -24,14 +24,11 @@ export default function SearchTopicHub({ locale = "ko", compact = false }) {
   const topics = compact ? TOPICS[isEn ? "en" : "ko"].slice(0, 3) : TOPICS[isEn ? "en" : "ko"];
   return <section className={`search-topic-hub${compact ? " is-compact" : ""}`} aria-label={isEn ? "Marketing analysis tools by task" : "업무별 마케팅 분석 도구"}>
     <div className="search-topic-hub__intro">
-      <span className="search-topic-hub__eyebrow">{isEn ? "FROM READING TO DECISION" : "읽은 뒤 바로 실행"}</span>
       <h2>{isEn ? "Turn this question into a decision" : "지금 읽는 문제를 내 데이터로 확인하세요"}</h2>
       <p>{isEn ? "Every guide and definition leads to a matching free analysis tool. No sign-up; raw data stays in your browser." : "글과 용어의 다음 단계는 도구 실행입니다. 회원가입 없이, 원본 데이터는 브라우저 안에서만 처리합니다."}</p>
     </div>
     <div className="search-topic-hub__grid">
       {topics.map((topic, index) => <Link key={topic.href} href={topic.href} className="search-topic-hub__card">
-        <span className="search-topic-hub__index">0{index + 1}</span>
-        <span className="search-topic-hub__kicker">{topic.kicker}</span>
         <strong>{topic.title}</strong>
         <span className="search-topic-hub__desc">{topic.desc}</span>
         <span className="search-topic-hub__cta">{topic.cta} <b aria-hidden>→</b></span>

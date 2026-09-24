@@ -488,7 +488,6 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
         </header>
       ) : (
         <header className="weekly-review-page__head">
-          <div className="weekly-review-page__eyebrow">{t.eyebrow}</div>
           <h1>{t.title}</h1>
           <p>{t.deck}</p>
         </header>

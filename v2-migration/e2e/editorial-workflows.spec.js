@@ -42,7 +42,7 @@ for (const locale of ["ko", "en"]) {
       await page.route("**/*", localOnly);
       await page.goto(`${prefix}/blog/${slug}`);
       const panel = page.locator("#blog-practice");
-      await panel.getByRole("button", { name: locale === "en" ? "Open analysis with demo" : "데모로 분석 열기", exact: true }).click();
+      await panel.getByRole("button", { name: locale === "en" ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
       await expect(page).toHaveURL(`${prefix}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       const followup = slug === "weekly-marketing-report-template";
@@ -70,11 +70,11 @@ for (const locale of ["ko", "en"]) {
   test(`payback article reaches the separate LTV demo (${locale})`, async ({ page }) => {
     await page.route("**/*", localOnly);
     await page.goto(`${prefix}/blog/cac-payback-period`);
-    await page.locator("#blog-practice").getByRole("button", { name: locale === "en" ? "Open analysis with demo" : "데모로 분석 열기", exact: true }).click();
+    await page.locator("#blog-practice").getByRole("button", { name: locale === "en" ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
     await expect(page).toHaveURL(`${prefix}/dashboard`);
-    const notice = page.getByRole("dialog", { name: locale === "en" ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다", exact: true });
-    await expect(notice).toBeVisible();
-    await notice.getByRole("button", { name: locale === "en" ? "Not now" : "나중에", exact: true }).click();
+    // 블로그에서 온 방문은 데모 모달 대신 출처 한 줄(시안 E)을 본다.
+    await expect(page.locator(".blog-arrival")).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByRole("button", { name: locale === "en" ? "Analyze data" : "데이터 분석하기", exact: true }).click();
     await page.getByRole("tab", { name: "LTV & ROAS", exact: true }).click();
     await expect(page.getByRole("tab", { name: "LTV & ROAS", exact: true })).toHaveAttribute("aria-selected", "true");

@@ -4015,7 +4015,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     return (
       <div className="tab-pane active" id="tab-response" role="tabpanel" aria-labelledby={!isolated && stage !== "hub" ? `marketing-response-tab-${stage}` : undefined}>
         <section className="block">
-          <span className="eyebrow">{tx("공유 매핑 준비 완료", "Shared mapping ready")}</span>
           <h2 className="section-title" style={{ marginTop: "6px" }}>{tx("무엇을 확인할까요?", "What do you need to check?")}</h2>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 14px" }}>{tx("아래 분석은 같은 CSV·매핑을 이어받지만, 다른 분석 결과나 모델을 함께 실행하지 않습니다.", "Each analysis reuses this CSV and mapping, but does not render or run the other analyses.")}</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: "10px" }}>
@@ -4392,7 +4391,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <div className="chart-container" style={{ height: "310px" }}><canvas ref={trendRef}></canvas></div>
                 {trendLedger && (
                   <div className="trend-chart-explainer" role="note">
-                    <div className="trend-chart-explainer__eyebrow">{tx("이 차트 읽는 법", "How to read this chart")}</div>
                     <p>
                       {tx(
                         `실제 RR은 ${fmtSignedInt(trendLedger.rawChange)}명 변했습니다. Performance 절대 기여는 ${fmtInt(trendLedger.performanceStart)}명 → ${fmtInt(trendLedger.performanceEnd)}명이고, 두 시점의 변화량은 ${fmtSignedInt(trendLedger.performanceChange)}명입니다. Performance 제외 입력은 ${fmtSignedInt(trendLedger.baselineInputChange)}명 변했습니다. 그 입력의 순수 베이스라인 추세는 ${fmtSignedInt(trendLedger.stlTrendChange)}명, 나머지 ${fmtSignedInt(trendLedger.stlNonTrendChange)}명은 계절성·잔차입니다.`,
@@ -6097,7 +6095,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <Card className="forecast-validation-card" style={{ marginBottom: "12px", padding: "13px 16px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
                             <div>
-                              <span className="forecast-validation-card__eyebrow">FORECAST VALIDATION</span>
                               <strong>{forecast.annualQualified ? tx("예측 검증 통과", "Forecast validation passed") : tx("예측 검증 미통과", "Forecast validation did not pass")}</strong>
                               <p>{tx(`봉인 ${fcHorizon}주 ${forecastPct(selected.latestWmape, 1)} · 바깥 rolling OOS ${forecastPct(selected.wmape, 1)} · 기준 10% 미만`, `Sealed ${fcHorizon} weeks ${forecastPct(selected.latestWmape, 1)} · outer rolling OOS ${forecastPct(selected.wmape, 1)} · threshold below 10%`)}</p>
                             </div>

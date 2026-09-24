@@ -286,7 +286,6 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
 
   return (
     <div className="paid-organic-tool" data-hydrated={isHydrated ? "true" : "false"}>
-      <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
 

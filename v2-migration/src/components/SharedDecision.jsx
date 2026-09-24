@@ -40,7 +40,6 @@ function SharedDecisionBody({ locale }) {
 
   if (!payload) {
     return <section className="shared-decision">
-      <span className="shared-decision__eyebrow">{T.eyebrow}</span>
       <h1>{T.empty}</h1>
       <p className="shared-decision__lead">{T.emptyDesc}</p>
       <Link className="btn primary" href={startHref}>{T.ctaStart}</Link>
@@ -48,8 +47,8 @@ function SharedDecisionBody({ locale }) {
   }
 
   return <section className="shared-decision">
-    <span className="shared-decision__eyebrow">{payload.n || T.eyebrow}</span>
     <h1>{payload.h}</h1>
+    {payload.n && <p className="shared-decision__source">{payload.n}</p>}
 
     {payload.s.length > 0 && <div className="shared-decision__stats" aria-label={T.stats}>
       {payload.s.map((stat) => <div key={`${stat.l}-${stat.v}`}>

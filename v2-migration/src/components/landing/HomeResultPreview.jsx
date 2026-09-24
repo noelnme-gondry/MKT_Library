@@ -13,7 +13,7 @@ export default function HomeResultPreview({ locale, onTrySample }) {
   if (!lead || !Number.isFinite(lead.prior.cpa) || !Number.isFinite(lead.recent.cpa) || lead.cpaChange <= 0) return null;
   const chartMax = Math.ceil(Math.max(lead.prior.cpa, lead.recent.cpa) / 5000) * 5000;
   return <aside className="home-result-preview home-result-preview--compact" aria-label={en ? "Sample analysis preview" : "샘플 분석 미리보기"}>
-    <header><div><span>{en ? "Sample result preview" : "샘플 결과 미리보기"}</span><h2>{en ? "What changed this week?" : "이번 주, 무엇이 달라졌을까?"}</h2></div></header>
+    <header><div><h2>{en ? "What changed this week, on sample data" : "샘플 데이터로 본 이번 주 변화"}</h2></div></header>
     <div className="home-result-preview__surface">
     <p className="home-result-preview__channel-label"><strong>{lead.channel}</strong><span>{en ? "Weekly comparison" : "주간 성과 비교"}</span></p>
     <dl className="home-result-preview__kpis">

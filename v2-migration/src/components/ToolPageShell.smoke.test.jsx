@@ -25,7 +25,8 @@ describe("ToolPageShell instrument header contract", () => {
     expect(screen.getByRole("heading", { level: 1, name: toolIndexEntry("5-3").name })).toBeTruthy();
     expect(container.textContent).not.toContain("넘겨도 무시되는 제목");
     expect(container.querySelector("header.page-sticky-bar.tool-instrument-header--sticky")).toBeTruthy();
-    expect(container.textContent).toContain("의사결정 작업대");
+    // 제목 위에 붙은 작은 라벨은 폰에서 읽히지 않고 제목과 경쟁한다(2026-09-24) — 두지 않는다.
+    expect(container.textContent).not.toContain("의사결정 작업대");
     expect(container.querySelector(".tool-instrument-header__status")?.textContent).toContain("분석 가능");
     expect(container.querySelector(".tool-instrument-header__controls")?.textContent).toContain("최근 30일");
     expect(screen.getByRole("complementary", { name: "목차" })).toBeTruthy();
@@ -39,7 +40,7 @@ describe("ToolPageShell instrument header contract", () => {
     );
 
     expect(screen.getByRole("heading", { level: 1, name: "Budget allocation" })).toBeTruthy();
-    expect(container.textContent).toContain("DECISION WORKSPACE");
+    expect(container.textContent).not.toContain("DECISION WORKSPACE");
     expect(container.textContent).toContain("Summary");
     expect(container.textContent?.match(/[가-힣]/)).toBeNull();
   });

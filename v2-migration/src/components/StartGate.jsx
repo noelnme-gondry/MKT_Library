@@ -150,7 +150,6 @@ function StartGateContent({ locale = "ko" }) {
 
   return (
     <>
-      <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
       <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
       {!browseMethods && <JourneyProgress stage={hasSubmitted ? "analyze" : "prepare"} locale={locale} placement="start" />}
