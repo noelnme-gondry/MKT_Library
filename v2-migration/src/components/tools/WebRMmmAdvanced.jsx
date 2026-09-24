@@ -558,7 +558,7 @@ export default function WebRMmmAdvanced({
 
   return (
     <section className="block" id="s-mmm-webr-challenger">
-      <h2 className="section-title"><span className="ix">AUTO</span>{T.title}</h2>
+      <h2 className="section-title">{T.title}</h2>
       <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 12px", lineHeight: 1.55 }}>{T.desc}</p>
       <div className="mmm-model-switcher" role="radiogroup" aria-label={T.modelChoice}>
         <button type="button" role="radio" aria-checked={selectedModel === "bayesian"} className={`mmm-model-choice ${selectedModel === "bayesian" ? "is-selected" : ""}`} onClick={() => select("bayesian")} onKeyDown={onModelKeyDown}>

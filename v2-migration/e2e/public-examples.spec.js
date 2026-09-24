@@ -64,16 +64,16 @@ for (const locale of ["ko", "en"]) {
         await expect(result).toContainText("0/24");
         await expect(page.locator('[data-decision-review-tool="5-22"]')).toHaveCount(0);
       }
-      await result.getByRole("button", { name: /결과 받기|Download results|Get results|실행 정보|Run details/ }).click();
-      const outputDownload = page.waitForEvent("download");
-      const menuName = example.kind === "aso" ? /소스별 분해 \(CSV\)|Per-source decomposition \(CSV\)/
-        : example.kind === "asa" ? /권장 조치 \(CSV\)|Recommended actions \(CSV\)/
-          : /실행 정보\(JSON\)|Run details \(JSON\)/;
-      await page.getByRole("menuitem", { name: menuName }).click();
-      const output = (await bytesOf(await outputDownload)).toString("utf8");
       if (example.kind === "saturation") {
-        expect(JSON.parse(output.replace(/^\uFEFF/, "")).status).toBe("ABSTAIN");
+        // 판단 보류 결과는 받을 산출물이 없다 — 엔진 버전·필터 JSON은 결과 옆에서 뺐다.
+        await expect(result.getByRole("button", { name: /실행 정보|Run details/ })).toHaveCount(0);
       } else {
+        await result.getByRole("button", { name: /결과 받기|Download results|Get results/ }).click();
+        const outputDownload = page.waitForEvent("download");
+        const menuName = example.kind === "aso" ? /소스별 분해 \(CSV\)|Per-source decomposition \(CSV\)/
+          : /권장 조치 \(CSV\)|Recommended actions \(CSV\)/;
+        await page.getByRole("menuitem", { name: menuName }).click();
+        const output = (await bytesOf(await outputDownload)).toString("utf8");
         const parsed = Papa.parse(output, { header: true, skipEmptyLines: true });
         expect(parsed.errors).toEqual([]);
         if (example.kind === "aso") {

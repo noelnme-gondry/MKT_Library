@@ -18,7 +18,6 @@ export default function PrivacyPage() {
   return (
     <PolicyPage
       updated="2026-09-21"
-      eyebrow="PRIVACY"
       alternateHref="/en/privacy"
       title="개인정보처리방침"
       intro="분석 원본은 서버로 보내지 않습니다. 사이트 운영에 필요한 정보와 브라우저 저장 범위를 투명하게 안내합니다."

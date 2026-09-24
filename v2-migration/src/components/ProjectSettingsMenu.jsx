@@ -92,7 +92,7 @@ export default function ProjectSettingsMenu({ locale = "ko" }) {
     <div className="project-settings no-print">
       <button type="button" className="btn ghost" aria-label={t.menu} aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <span className="project-settings__label">{t.menu}</span>
-        <span className="project-settings__mobile-icon" aria-hidden="true">⚙</span>
+        <span className="project-settings__mobile-icon" aria-hidden="true">⋯</span>
       </button>
       <ModalDialog open={open} onClose={() => setOpen(false)} ariaLabel={t.menu} overlayClassName="tutorial-overlay" panelClassName="checkout-recovery-panel"><header><h2>{t.menu}</h2><button className="btn" onClick={() => setOpen(false)}>{t.close}</button></header>
         <p>{t.privacy}</p>

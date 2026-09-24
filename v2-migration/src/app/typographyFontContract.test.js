@@ -31,9 +31,14 @@ describe("Korean typography contract", () => {
     expect(css).not.toMatch(/var\(--font-display\)/);
   });
 
-  it("keeps mono limited to the numeric and code override", () => {
+  // 숫자까지 고정폭이면 결과 화면이 터미널처럼 보인다(2026-09-24). 고정폭은 코드에만, 숫자는
+  // 본문 글꼴 + tabular-nums로 자릿수를 맞춘다.
+  it("keeps mono limited to code; numbers use tabular figures in the body font", () => {
     expect(css.match(/var\(--font-mono\)/g)).toHaveLength(1);
-    expect(css).toMatch(/:where\(pre, code, kbd, samp, \.mono, \.tnum, \.kpi-card \.value\)/);
+    expect(css).toMatch(/:where\(pre, code, kbd, samp, \.mono\) \{\s*font-family: var\(--font-mono\);/);
+    expect(css).toMatch(/:where\(\.tnum, \.kpi-card \.value\) \{\s*font-variant-numeric: tabular-nums;/);
+    // 고정폭 글꼴은 --font-mono 정의 한 곳에서만 불린다.
+    expect(css.match(/var\(--font-jetbrains-mono\)/g)).toHaveLength(1);
   });
 
   // 이 검사는 오래 리터럴 px를 그대로 적고 있었다(`--type-body: 14px` ·

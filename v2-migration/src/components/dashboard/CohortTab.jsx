@@ -287,7 +287,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const renderSegmentChart = (sk, label) => {
     return (
       <div key={sk} style={{ marginBottom: "20px" }}>
-        <div style={{ fontSize: "var(--fs-xs)", fontWeight: "700", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: ".05em" }}>
+        <div style={{ fontSize: "var(--fs-xs)", fontWeight: "700", color: "var(--text-muted)", marginBottom: "8px" }}>
           {label}
         </div>
         <div className="chart-container" style={{ height: "200px" }}>
@@ -394,7 +394,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", margin: "14px 0 -6px" }}>
-          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
+          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
         </div>
         <DataTable
           ariaLabel={tr("코호트 구간별 리텐션", "Retention by cohort period")}
@@ -413,7 +413,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           rowKey={(row) => row.day}
         />
         {orderedCohortCols.length === 0 && (
-          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in Edit columns.")}</p>
         )}
         <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "8px" }}>
           {tr(

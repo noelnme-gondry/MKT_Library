@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { STATISTICAL_STATUS, statisticalStatusLabel } from "@/lib/analysis-router/statisticalStatus";
-import HelpTip from "@/components/ds/HelpTip";
+import IssueMark from "@/components/ds/IssueMark";
 
 const DETAIL = {
   ko: {
@@ -32,24 +31,12 @@ const TONE = {
   [STATISTICAL_STATUS.ENGINE_ERROR]: "error",
 };
 
-export default function EvidenceStatusBadge({ status, locale = "ko", detail = "", glossarySlug = "" }) {
-  if (!status) return null;
+// 판단 상태 배지. 예전에는 '●주의해서 해석 ⓘ'·'●운영 참고 가능' 같은 신뢰도 라벨을 늘 붙였는데,
+// 사용자가 쓸 곳이 없는 표시였다(2026-09-24 사용자 결정). 이제 문제가 없으면(READY) 아무것도
+// 그리지 않고, 확인할 점이 있으면 빨간 "!" 하나 — 누르면 무엇을 확인할지 문장으로 말한다.
+export default function EvidenceStatusBadge({ status, locale = "ko", detail = "" }) {
+  if (!status || status === STATISTICAL_STATUS.READY) return null;
   const lang = locale === "en" ? "en" : "ko";
   const explanation = detail || DETAIL[lang][status] || statisticalStatusLabel(status, lang);
-  const content = (
-    <>
-      <span aria-hidden>●</span>
-      <strong>{statisticalStatusLabel(status, lang)}</strong>
-    </>
-  );
-  const className = `evidence-status-badge is-${TONE[status] || "caution"}`;
-  const label = `${statisticalStatusLabel(status, lang)}. ${explanation}`;
-  return (
-    <span className={className} role="status" aria-label={label}>
-      {glossarySlug ? (
-        <Link href={`${lang === "en" ? "/en" : ""}/glossary/${glossarySlug}`} aria-label={label}>{content}</Link>
-      ) : <span aria-label={label}>{content}</span>}
-      <HelpTip compact label={label}>{explanation}</HelpTip>
-    </span>
-  );
+  return <IssueMark issues={[`${statisticalStatusLabel(status, lang)} — ${explanation}`]} locale={lang} className={`evidence-status-badge is-${TONE[status] || "caution"}`} />;
 }

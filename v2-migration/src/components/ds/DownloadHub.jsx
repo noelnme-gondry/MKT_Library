@@ -71,22 +71,15 @@ export default function DownloadHub({
       }
     },
   } : null;
-  const manifestItem = manifest ? {
-    label: locale === "en" ? "Run details (JSON)" : "실행 정보(JSON)",
-    desc: locale === "en"
-      ? `Filter · units · engine version · warnings · source: ${manifest.source || "unknown"}`
-      : `필터·단위·엔진 버전·경고 · 원본: ${manifest.source || "알 수 없음"}`,
-    icon: "ⓘ",
-    analyticsType: "manifest",
-    onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
-  } : null;
+  // 실행 정보(JSON: 필터·엔진 버전·경고) 항목은 뺐다(2026-09-24) — 사용자가 쓸 곳이 없는 파일이었다.
+  // 같은 재현 정보는 상세 워크북(XLSX)의 00_README에 남는다.
   const previewItem = analysisExport?.buildPayload ? {
     label: locale === "en" ? "Preview my report · free" : "내 보고서 미리보기 · 무료",
     desc: locale === "en" ? "Check the current conclusion and limitations before buying" : "구매 전 현재 분석의 결론·한계 확인",
     analyticsType: "preview", free: true,
     onSelect: () => { setPreview(analysisExport.buildPayload(manifest)); setExportError(""); trackProductEvent("report_preview_opened", { tool_id: toolId || analysisExport.toolId, locale, source: "analysis_export" }); },
   } : null;
-  const usable = [previewItem, documentItem, workbookItem, ...items, manifestItem].filter((item) => item?.onSelect);
+  const usable = [previewItem, documentItem, workbookItem, ...items].filter((item) => item?.onSelect);
 
   if (usable.length === 0) return null;
 

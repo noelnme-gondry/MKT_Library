@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pvmGenerateDiagnosis } from "./pvmExport";
 
-// EN 페이지(5-21)에서 💡 툴팁이 한글로 떴다. data-tip은 속성이라 textContent를
+// EN 페이지(5-21)에서 툴팁이 한글로 떴다. data-tip은 속성이라 textContent를
 // 읽는 EN 로케일 스모크(EnglishToolLocale.smoke)의 사각지대였다 → 직접 고정한다.
 const HANGUL = /[가-힣]/;
 const money = (v) => `$${Math.round(v)}`;

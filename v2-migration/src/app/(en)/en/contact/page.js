@@ -22,7 +22,6 @@ export default function EnglishContactPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(profileJsonLd).replace(/</g, "\\u003c") }} />
       <PolicyPage
         locale="en"
-        eyebrow="CONTACT"
         alternateHref="/contact"
         title="Contact"
         intro="Business inquiries, collaborations, and product feedback are all welcome. Use whichever channel works best."

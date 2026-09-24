@@ -1,133 +1,22 @@
 "use client";
 import React from "react";
-import EvidenceHint from "@/components/ds/EvidenceHint";
+import IssueMark from "@/components/ds/IssueMark";
 
-// 결과 숫자 옆에 기술 메타데이터를 항상 펼쳐 두지 않기 위한 공통 상세 패널.
-// 결론·상태는 결과 카드에 남기고, 단위·표본수·불확실성·provenance는 details 안에 둔다.
-// 이 컴포넌트는 표시층만 담당하며 어떤 분석 엔진도 재실행하거나 저장하지 않는다.
-
+// 결과의 신뢰도·방법 표시. 예전에는 지표·해석 범위·표본·실행 정보(방법·엔진 버전·필터 JSON)를
+// 결과 아래에 늘 펼쳐 두었는데, 사용자가 쓸 수 없는 정보였다(2026-09-24 사용자 결정으로 제거).
+// 이제 경고가 있을 때만 빨간 "!" 하나를 그리고, 누르면 무엇을 확인할지 목록으로 보인다.
+// 방법·버전 같은 재현 정보는 상세 워크북(XLSX)이 소유한다. 이 컴포넌트는 표시층만 담당한다.
 function hasValue(value) {
   return value != null && String(value).trim() !== "";
-}
-
-function displayValue(value) {
-  if (value == null) return "—";
-  if (typeof value === "number") return value.toLocaleString();
-  return String(value);
-}
-
-function MetaItem({ label, value, detail }) {
-  if (!hasValue(value)) return null;
-  return (
-    <div className="analysis-details__item">
-      <span>{label}</span>
-      <strong>{displayValue(value)}</strong>
-      {hasValue(detail) && <small>{detail}</small>}
-    </div>
-  );
 }
 
 export default function AnalysisDetails({
   locale = "ko",
   statusLabel = "",
   statusTone = "neutral",
-  metric = "",
-  unit = "",
-  meaning = "",
-  sampleSize = null,
-  interval = null,
-  scope = "",
-  method = "",
-  version = "",
-  seed = "",
-  cachePolicy = "",
-  inputSignature = "",
-  filterSummary = "",
-  metricDefinition = "",
   warnings = [],
-  compact = false,
 }) {
-  const isEn = locale === "en";
-  const tr = (ko, en) => (isEn ? en : ko);
-  const sample = typeof sampleSize === "object" && sampleSize !== null
-    ? sampleSize
-    : { value: sampleSize };
-  const intervalValue = interval && typeof interval === "object"
-    ? (hasValue(interval.value) ? interval.value : `${displayValue(interval.low)}–${displayValue(interval.high)}`)
-    : interval;
-  const cleanWarnings = (warnings || []).filter(hasValue);
-  const hasProvenance = [method, version, seed, cachePolicy, inputSignature, filterSummary, metricDefinition].some(hasValue);
-
-  if (compact) {
-    const tooltip = [
-      statusLabel,
-      metric,
-      scope,
-      hasValue(sample.value) ? `${sample.label || tr("사용 행", "Rows used")}: ${displayValue(sample.value)}` : "",
-      cleanWarnings[0],
-    ].filter(hasValue).join(" · ");
-    return <EvidenceHint label={tr("신뢰도와 방법", "Reliability and method")} detail={tooltip} />;
-  }
-
-  return (
-    <section data-information-section="" className={`analysis-details analysis-details--${statusTone}`}>
-      <header data-information-heading="">
-        <span className="analysis-details__summary-label">{tr("신뢰도·방법", "Reliability & method")}</span>
-        {hasValue(statusLabel) && <span className="analysis-details__status">{statusLabel}</span>}
-      </header>
-      <div className="analysis-details__body">
-        <div className="analysis-details__grid">
-          <MetaItem
-            label={tr("지표", "Metric")}
-            value={metric}
-            detail={unit ? `${tr("단위", "Unit")}: ${unit}` : ""}
-          />
-          <MetaItem
-            label={tr("해석 범위", "Meaning")}
-            value={meaning}
-          />
-          <MetaItem
-            label={sample.label || tr("표본·분모", "Sample / denominator")}
-            value={sample.value}
-            detail={sample.detail}
-          />
-          <MetaItem
-            label={interval?.label || tr("불확실성", "Uncertainty")}
-            value={intervalValue}
-            detail={interval?.confidence ? `${interval.confidence} ${tr("구간", "interval")}` : ""}
-          />
-          <MetaItem label={tr("분석 범위", "Analysis window")} value={scope} />
-        </div>
-
-        {cleanWarnings.length > 0 && (
-          <ul className="analysis-details__warnings">
-            {cleanWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
-          </ul>
-        )}
-
-        {hasProvenance && (
-          <section data-information-section="" className="analysis-details__technical">
-            <header data-information-heading="">{tr("실행 정보 보기", "View run details")}</header>
-            <div className="analysis-details__technical-grid">
-              <MetaItem label={tr("방법", "Method")} value={method} />
-              <MetaItem label={tr("엔진 버전", "Engine version")} value={version} />
-              <MetaItem label={tr("시드", "Seed")} value={seed} />
-              <MetaItem label={tr("캐시 정책", "Cache policy")} value={cachePolicy} />
-              <MetaItem label={tr("입력 식별자", "Input signature")} value={inputSignature} />
-              <MetaItem label={tr("필터", "Filter")} value={filterSummary} />
-              <MetaItem label={tr("지표 정의", "Metric definition")} value={metricDefinition} />
-            </div>
-            {(hasValue(seed) || hasValue(cachePolicy)) && (
-              <p className="analysis-details__technical-note">
-                {tr(
-                  "고정 시드는 같은 입력의 재현성을 보장하지만 결과를 저장하지 않습니다. 현재 캐시는 이 브라우저 메모리에서만 유지됩니다.",
-                  "A fixed seed makes the same input reproducible; it does not save the result. The current cache stays in this browser's memory only."
-                )}
-              </p>
-            )}
-          </section>
-        )}
-      </div>
-    </section>
-  );
+  const lines = (warnings || []).filter(hasValue);
+  if ((statusTone === "bad" || statusTone === "warning") && hasValue(statusLabel) && !lines.length) lines.push(statusLabel);
+  return <IssueMark issues={lines} locale={locale} />;
 }

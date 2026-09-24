@@ -9,7 +9,6 @@ export default function DashboardRecommendedViews({ recommendations = [], additi
     <section className="dashboard-recommendations" aria-labelledby="dashboard-recommendations-title">
       <div className="dashboard-recommendations__heading">
         <div>
-          <span>START HERE</span>
           <h2 id="dashboard-recommendations-title">{tr("이어서 확인할 분석", "Recommended next analyses")}</h2>
         </div>
         <p>{label}</p>

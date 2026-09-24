@@ -5,7 +5,7 @@ import { EVENT_TYPES } from "@/utils/storeEvents";
 
 const COPY = {
   ko: {
-    title: "📌 주요 이벤트 마커",
+    title: "주요 이벤트 마커",
     hint: "(캠페인 런칭·프로모션·매체 이슈 등 — 이 기기에 저장)",
     labelPlaceholder: "라벨 (예: 신규 프로모션 시작)",
     addBtn: "+ 마커 추가",
@@ -13,7 +13,7 @@ const COPY = {
     empty: "등록된 마커가 없습니다. 날짜와 라벨을 입력해 추가하세요.",
   },
   en: {
-    title: "📌 Key event markers",
+    title: "Key event markers",
     hint: "(campaign launches, promos, media issues, etc. — saved on this device)",
     labelPlaceholder: "Label (e.g. New promo starts)",
     addBtn: "+ Add marker",
@@ -140,7 +140,7 @@ export default function MonEventMarkerUI({ locale = "ko" }) {
             >
               <span
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontVariantNumeric: "tabular-nums",
                   color: "var(--text-muted)",
                 }}
               >

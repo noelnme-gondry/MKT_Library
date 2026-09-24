@@ -169,7 +169,7 @@ export default function InlineCardEditor({
                     ? (isEn ? "Hidden — click to show" : "숨김 — 누르면 표시")
                     : (isEn ? "Shown — click to hide" : "표시 — 누르면 숨김")}
                   style={{ ...ctlBtn, position: "absolute", top: "4px", right: "4px", zIndex: 3, opacity: isHidden ? 0.4 : 1 }}
-                >👁</button>
+                >{isHidden ? (isEn ? "Show" : "표시") : (isEn ? "Hide" : "숨김")}</button>
               </>
             )}
             {/* 편집 중엔 카드 자체 클릭(차트 선택 등) 차단 */}

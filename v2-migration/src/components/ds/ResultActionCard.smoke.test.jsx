@@ -16,14 +16,21 @@ describe("ResultActionCard decision-first hierarchy", () => {
     });
   });
 
-  it.each(["ko", "en"])("shows the actual denominator and unmeasured aggregate missingness (%s)", (locale) => {
-    render(<ResultActionCard headline="Scope result" locale={locale} analysisBasis={false} decisionReview={false}
-      scopeEvidence={{ denominatorKey: "installs", currency: "KRW", observationUnit: "cells", filters: { channels: ["Selected A"] }, periods: [{ id: "after", start: "2026-08-08", end: "2026-08-14", observations: 7, denominator: 140 }] }} />);
-    const summary = screen.getByText(locale === "en" ? "Actual analysis scope and denominator" : "실제 분석 범위·분모 확인");
-    fireEvent.click(summary);
-    expect(summary.closest("[data-information-section]").textContent).toContain("140");
-    expect(summary.closest("[data-information-section]").textContent).toContain("Selected A");
-    expect(summary.closest("[data-information-section]").textContent).toContain(locale === "en" ? "missing/invalid input cells: Unmeasured" : "입력 결측·비정상 셀: 미집계");
+  // 결과 아래에 늘 펼쳐 두던 '실제 분석 범위·분모 확인' 블록은 없앴다(2026-09-24 사용자 결정).
+  // 문제가 없으면 아무것도 그리지 않고, 결측·비정상 칸이 있으면 결론 옆 "!" 하나가 어느 기간의 몇 칸인지 말한다.
+  it.each(["ko", "en"])("shows scope only as a red mark when a period has missing input (%s)", (locale) => {
+    const periods = [{ id: "after", start: "2026-08-08", end: "2026-08-14", observations: 7, denominator: 140 }];
+    const { container, rerender } = render(<ResultActionCard headline="Scope result" locale={locale} analysisBasis={false} decisionReview={false}
+      scopeEvidence={{ denominatorKey: "installs", currency: "KRW", observationUnit: "cells", periods }} />);
+    expect(container.querySelector(".analysis-scope-evidence")).toBeNull();
+    expect(container.querySelector(".issue-mark")).toBeNull();
+    rerender(<ResultActionCard headline="Scope result" locale={locale} analysisBasis={false} decisionReview={false}
+      scopeEvidence={{ denominatorKey: "installs", periods: [{ ...periods[0], quality: { missing: 3, checked: 84, ratio: 3 / 84 } }] }} />);
+    const mark = container.querySelector(".result-action-card__evidence .issue-mark");
+    expect(mark).toBeTruthy();
+    fireEvent.click(mark);
+    expect(document.body.textContent).toContain("2026-08-08 ~ 2026-08-14");
+    expect(document.body.textContent).toContain(locale === "en" ? "3 of 84 input cells" : "84칸 중 3칸");
   });
 
   it("publishes the actual result period instead of the broader upload filter", () => {
@@ -234,7 +241,10 @@ describe("ResultActionCard decision-first hierarchy", () => {
     );
     expect(container.querySelector(".decision-review")).toBeTruthy();
     expect(container.querySelector(".analysis-basis-bar")).toBeFalsy();
-    expect(container.querySelector(".result-action-card__evidence .data-confidence-hint")).toBeTruthy();
+    // 문제가 없는 데이터면 머리에 아무 표시도 없다(예전의 빈 ⓘ 제거).
+    expect(container.querySelector(".result-action-card__evidence .data-confidence-hint")).toBeNull();
+    // 표시가 있다면 그것은 확인할 점("!")뿐이다.
+    expect(container.querySelector(".result-action-card__evidence .info-popover-trigger:not(.issue-mark)")).toBeNull();
   });
 
   it("refreshes an untouched seed but never discards an in-progress draft", () => {

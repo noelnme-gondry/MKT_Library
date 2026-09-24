@@ -60,7 +60,7 @@ for (const locale of ["ko", "en"]) {
         await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) })).toContainText(/1,500.*1,200/);
         await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "B", exact: true }) })).toContainText(/1,000.*1,000/);
       } else {
-        const preview = page.getByRole("table", { name: locale === "en" ? "🔎 Data preview" : "🔎 데이터 미리보기", exact: true });
+        const preview = page.getByRole("table", { name: locale === "en" ? "Data preview" : "데이터 미리보기", exact: true });
         await expect(preview).toContainText("2026-08-31");
         await expect(preview).toContainText("50000");
         await expect(page.getByRole("button", { name: locale === "en" ? "Analyze data" : "데이터 분석하기", exact: true })).toBeEnabled();

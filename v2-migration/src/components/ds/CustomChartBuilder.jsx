@@ -29,13 +29,13 @@ export default function CustomChartBuilder({
     intro: "Choose a chart shape, row dimension, and metric. Custom metrics can be used as values too.",
     shape: "1. Chart shape", row: "2. Row (dimension)", value: "2. Value (metric)", value3: "3. Value (metric)",
     name: "3. Chart name", name4: "4. Chart name", placeholder: "e.g. ROAS by channel", newChart: "New chart",
-    create: "+ Create chart", mine: "My charts", delete: "Delete", cancel: "Cancel", saved: "🔒 Saved in this browser only",
+    create: "+ Create chart", mine: "My charts", delete: "Delete", cancel: "Cancel", saved: "Saved in this browser only",
   } : {
     title: "커스텀 차트 만들기", close: "닫기", noMetrics: "차트를 만들려면 계산 가능한 지표가 데이터에 있어야 합니다. CSV를 업로드·매핑하세요.",
     intro: "모양을 고르고, 행(차원)과 값(지표)을 선택하면 차트가 생성됩니다. 값에는 커스텀 지표도 쓸 수 있어요.",
     shape: "1. 차트 모양", row: "2. 행 (차원)", value: "2. 값 (지표)", value3: "3. 값 (지표)",
     name: "3. 차트 이름", name4: "4. 차트 이름", placeholder: "예: 채널별 ROAS", newChart: "새 차트",
-    create: "+ 차트 생성", mine: "내가 만든 차트", delete: "삭제", cancel: "닫기", saved: "🔒 이 브라우저에만 저장",
+    create: "+ 차트 생성", mine: "내가 만든 차트", delete: "삭제", cancel: "닫기", saved: "이 브라우저에만 저장",
   };
   const chartTypeLabel = (chartType) => {
     if (!isEn) return CHART_TYPES.find((t) => t.id === chartType)?.label;
@@ -147,7 +147,7 @@ export default function CustomChartBuilder({
                     <strong>{c.name}</strong>
                     <span className="muted" style={{ marginLeft: "6px", fontSize: "var(--fs-xs)" }}>{chartTypeLabel(c.type)} · {c.type === "scorecard" ? metricLabel(c.metric) : `${dimLabel(c.dim)} · ${metricLabel(c.metric)}`}</span>
                   </span>
-                  <button type="button" className="ab-pill" onClick={() => onDelete?.(c.id)} title={T.delete} aria-label={`${T.delete}: ${c.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
+                  <button type="button" className="ab-pill" onClick={() => onDelete?.(c.id)} title={T.delete} aria-label={`${T.delete}: ${c.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>{T.delete}</button>
                 </div>
               ))}
             </div>

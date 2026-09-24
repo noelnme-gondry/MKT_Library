@@ -24,7 +24,6 @@ import { prepareAnalysisHandoff } from "@/lib/assistant/prepareAnalysisHandoff";
 import { executionPreflight } from "@/lib/analysis-router/executionPreflight";
 import { createAnalysisResult } from "@/lib/assistant/analysisResultContract";
 import { inferMappedDateCadence } from "@/lib/data-import/inferDateCadence";
-import InputQualityReview from "@/components/assistant/InputQualityReview";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
 import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
@@ -66,6 +65,8 @@ const COPY = {
     design: "설계 확인 필요",
     blocked: "추가 데이터 필요",
     details: "추가 차트·상세 분석 열기",
+    openAnalysis: "분석 열기",
+    openAnyway: "그래도 열어 보기",
     preparingDetails: "상세 분석 화면을 준비하고 있습니다.",
     adapterPending: "상세 분석에서 실행",
     adapterPendingDetail: "이 분석은 이 화면에서 실행하거나 결과를 만들지 않았습니다. 상세 분석에서 차트와 분석 조건을 확인해 주세요.",
@@ -145,6 +146,8 @@ const COPY = {
     design: "Design confirmation needed",
     blocked: "More data needed",
     details: "Open extra charts and details",
+    openAnalysis: "Open analysis",
+    openAnyway: "Open anyway",
     preparingDetails: "Preparing the detailed analysis.",
     adapterPending: "Run in detailed analysis",
     adapterPendingDetail: "This screen did not run the analysis or create a result. Review its charts and analysis conditions in the detailed analysis.",
@@ -548,7 +551,7 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   };
 
   return <article className="dochi-workspace__card is-confirm_design">
-    <div className="dochi-workspace__card-top"><span>OBSERVED CANDIDATE</span><em>{C.status.confirm_design}</em></div>
+    <div className="dochi-workspace__card-top"><em>{C.status.confirm_design}</em></div>
     <h3>{candidate.unit}</h3>
     <p>{C.naturalCandidateDeck}</p>
     <label><input type="checkbox" checked={isActualInterruption} onChange={(event) => setIsActualInterruption(event.target.checked)} /> {C.naturalActual}</label>
@@ -559,7 +562,7 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   </article>;
 }
 
-function AnalysisCard({ result, locale, getTitle, csvData = null, qualityMapping, onOpenTool, onConfirm, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false }) {
+function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false }) {
   const C = COPY[locale] || COPY.ko;
   const isEmbedded = presentation === "embedded";
   const method = toolIndexEntry(result.toolId, locale);
@@ -570,32 +573,26 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, qualityMapping
     && workspaceResult?.inputSignature === currentInputSignature
     && workspaceResult?.mappingSignature === currentMappingSignature;
   const hasStaleResult = Boolean(workspaceResult) && !hasCurrentResult;
-  const needsApproval = ["confirm_model", "confirm_design", "manual"].includes(result.status);
-  const isApprovedHandoff = queueState === "handoff";
-  const qualityData = useMemo(() => ({ ...csvData, mapping: qualityMapping || csvData?.mapping }), [csvData, qualityMapping]);
+  // 분석할 수 있으면 품질 검사·승인 단계를 두지 않고 바로 도구로 보낸다(2026-09-24 사용자 결정).
+  // 확인할 점은 도구의 결과 카드가 빨간 "!"로 말한다.
   return (
     <article className={`dochi-workspace__card is-${result.status}${isDecisionFocus ? " is-focused" : ""}${hasCurrentResult ? " has-current-result" : ""}`}>
-      {!isEmbedded && <div className="dochi-workspace__card-top">
-        <em>{queueStateLabel(queueState, C, C.status[result.status])}</em>
-      </div>}
       <h3>{titleFor(result.toolId, getTitle)}</h3>
       {!hasCurrentResult && !isEmbedded && method && <p>{method.description || method.answer}</p>}
       {!isEmbedded && <>
         <p>{isBlocked ? blockersText(result, locale) : result.recommendationReason}</p>
         {isBlocked && method && <p><strong>{locale === "en" ? "Data needed: " : "필요한 데이터: "}</strong>{method.needs.join(" · ")}</p>}
         {isBlocked && hasToolTemplate(result.toolId) && <button type="button" className="btn" onClick={() => downloadTemplateCsv(result.toolId)}>{locale === "en" ? "Download data template" : "데이터 템플릿 받기"}</button>}
-        {!isBlocked && result.requiresConfirmation?.length > 0 && <small>{C.requires}: {result.requiresConfirmation.map(key => ({ mapping: locale === "en" ? "Column mapping" : "컬럼 매핑", outcome: locale === "en" ? "Outcome metric" : "성과 지표", model_limit: locale === "en" ? "Model assumptions" : "모형 가정", forecast_horizon: locale === "en" ? "Forecast period" : "예측 기간" }[key] || (locale === "en" ? "Study design" : "분석 설계"))).join(" · ")}</small>}
       </>}
-      {!isEmbedded && csvData && <InputQualityReview key={`${currentInputSignature}:${currentMappingSignature}:${locale}`} csvData={qualityData} toolId={result.toolId} locale={locale} />}
       {hasCurrentResult && !isDecisionFocus && (isEmbedded
         ? <section data-information-section="" className="dochi-workspace__embedded-result" ><header data-information-heading="">{C.resultToggle}</header><AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} /></section>
         : <AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} />)}
       {!isEmbedded && <>
         {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
         {queueState === "failed" && <div className="dochi-workspace__adapter-note"><strong>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPending : C.resultError}</strong><span>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPendingDetail : C.adapterError}</span></div>}
-        {isApprovedHandoff && <div className="dochi-workspace__adapter-note"><strong>{C.handoff}</strong><span>{C.approvedHandoff}</span></div>}
-        {needsApproval && !isApprovedHandoff && <button type="button" className="ab-button" onClick={() => onConfirm?.(result)}>{C.approve}<span aria-hidden="true"> →</span></button>}
-        <button type="button" className="ab-pill" onClick={() => onOpenTool(result.toolId)}>{C.details}<span aria-hidden="true"> →</span></button>
+        {isBlocked
+          ? <button type="button" className="ab-pill" onClick={() => onOpenTool(result.toolId)}>{C.openAnyway}<span aria-hidden="true"> →</span></button>
+          : <button type="button" className="ab-button" onClick={() => onOpenTool(result.toolId)}>{C.openAnalysis}<span aria-hidden="true"> →</span></button>}
       </>}
     </article>
   );

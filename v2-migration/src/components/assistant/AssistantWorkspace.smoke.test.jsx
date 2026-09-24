@@ -81,17 +81,17 @@ describe("Dochi analysis workspace", () => {
     delete window.gtag;
   });
 
-  it.each(["ko", "en"])("checks detailed recommendation quality on demand and resets it after input changes (%s)", async (locale) => {
+  it.each(["ko", "en"])("opens an analyzable tool without a quality or approval step and reports cautions in the result (%s)", async (locale) => {
     const en = locale === "en";
     const records = completeRaw.map((row) => ({ ...row, cost: "100" }));
     const data = slice(undefined, records);
     const view = render(<AssistantWorkspace csvData={data} locale={locale} getTitle={(id) => id} onOpenTool={() => {}} />);
     openAnalysis("5-22", locale);
     const card = () => within(screen.getByRole("heading", { name: "5-22" }).closest("article"));
-    expect(card().getByText(en ? "Detailed quality not checked yet" : "상세 품질 아직 미검사")).toBeTruthy();
-    fireEvent.click(card().getByRole("button", { name: en ? "Check detailed input quality" : "상세 입력 품질 확인" }));
-    await waitFor(() => expect(card().getByText(en ? "Review input cautions" : "입력 주의사항 확인")).toBeTruthy());
-    expect(card().getByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeTruthy();
+    // 분석할 수 있으면 품질 검사·승인 단계 없이 바로 연다(2026-09-24). 주의사항은 결과에서 말한다.
+    expect(card().queryByText(en ? "Detailed quality not checked yet" : "상세 품질 아직 미검사")).toBeNull();
+    expect(card().queryByRole("button", { name: en ? "Check detailed input quality" : "상세 입력 품질 확인" })).toBeNull();
+    expect(card().getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: en ? "Analyze data" : "분석하기" }));
     await waitForAnalyses();
     const resultDetails = [...view.container.querySelectorAll(".dochi-workspace__result-details")];
@@ -99,7 +99,6 @@ describe("Dochi analysis workspace", () => {
     resultDetails.forEach((details) => { details.open = true; fireEvent(details, new Event("toggle")); });
     expect(screen.getAllByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/).length).toBeGreaterThan(0);
     view.rerender(<AssistantWorkspace csvData={{ ...data, raw: records.map((row, index) => ({ ...row, cost: String(100 + index * 10) })) }} locale={locale} getTitle={(id) => id} onOpenTool={() => {}} />);
-    expect(card().getByText(en ? "Detailed quality not checked yet" : "상세 품질 아직 미검사")).toBeTruthy();
     expect(card().queryByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeNull();
   });
 
@@ -137,7 +136,7 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace csvData={slice()} getTitle={(toolId) => `도구 ${toolId}`} onOpenTool={onOpenTool} />);
     expect(document.querySelector(".dochi-workspace__card")).toBeNull();
     openAnalysis("5-2");
-    fireEvent.click(screen.getAllByRole("button", { name: /추가 차트·상세 분석 열기/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /분석 열기|그래도 열어 보기/ })[0]);
     expect(screen.getByText("상세 분석 화면을 준비하고 있습니다.")).toBeTruthy();
     await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ raw })));
   });
@@ -151,7 +150,7 @@ describe("Dochi analysis workspace", () => {
     try {
       const view = render(<AssistantWorkspace csvData={slice()} onOpenTool={onOpenTool} />);
       openAnalysis("5-2");
-      fireEvent.click(screen.getByRole("button", { name: /추가 차트·상세 분석 열기/ }));
+      fireEvent.click(screen.getByRole("button", { name: /분석 열기|그래도 열어 보기/ }));
       expect(frames.size).toBeGreaterThan(0);
       view.unmount();
       for (const callback of frames.values()) callback();
@@ -297,7 +296,7 @@ describe("Dochi analysis workspace", () => {
     const { container } = render(<AssistantWorkspace autoStart presentation="embedded" csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} />);
     const workspace = container.querySelector(".dochi-workspace--embedded");
     await waitFor(() => expect(workspace.querySelector(".dochi-workspace__embedded-result").tagName).toBe("SECTION"));
-    expect(screen.queryByRole("button", { name: /추가 차트·상세 분석 열기/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /분석 열기|그래도 열어 보기/ })).toBeNull();
     expect(screen.queryByText("현재 판단 상태")).toBeNull();
   });
 
@@ -317,18 +316,20 @@ describe("Dochi analysis workspace", () => {
     await waitFor(() => expect(screen.getAllByText(/\$/).length).toBeGreaterThan(0));
   });
 
-  it("does not queue or run a design-confirmation analysis until the user approves its detailed-tool handoff", async () => {
+  it("sends a design-confirmation analysis straight to its detailed tool without running it here", async () => {
+    const onOpenTool = vi.fn();
     const data = {
       raw: experimentRaw,
       headers: ["numerator", "denominator", "is_control"],
       mapping: { numerator: "numerator", denominator: "denominator", is_control: "is_control" },
       fileName: "experiment.csv",
     };
-    render(<AssistantWorkspace csvData={data} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
+    render(<AssistantWorkspace csvData={data} getTitle={(toolId) => toolId} onOpenTool={onOpenTool} />);
     openAnalysis("5-4");
-    expect(screen.queryByText(/승인됨 — 이 작업대에서는/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /승인하고 상세 도구에서 계속/ }));
-    await waitFor(() => expect(screen.getByText(/승인됨 — 이 작업대에서는/)).toBeTruthy());
+    // 승인 단계 없이 상세 도구로 바로 보낸다 — 설계 확인은 도구 안에서 결과와 함께 한다.
+    expect(screen.queryByRole("button", { name: /승인하고 상세 도구에서 계속/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /분석 열기/ }));
+    await waitFor(() => expect(onOpenTool).toHaveBeenCalledWith("5-4", expect.anything()));
     expect(screen.queryByText("분석 결과")).toBeNull();
   });
 

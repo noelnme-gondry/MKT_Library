@@ -35,10 +35,10 @@ const CREATIVE_COPY_EN = {
     heroSub:
       "For each creative (video, image, etc.), see what's working, why it's working, and when it's time to replace it — all in one place.",
     heroJourney: [
-      ["🏆", "Which creatives are winning", "Win-rate · swap velocity · lifespan"],
-      ["🔍", "Which attributes drive performance", "Effect by hook type, format, etc."],
-      ["🔋", "Is any creative fatigued right now", "Fatigue diagnosis · swap timing recommendation"],
-      ["🧪", "What should we test next", "Candidate recommendations based on combination performance"],
+      ["1", "Which creatives are winning", "Win-rate · swap velocity · lifespan"],
+      ["2", "Which attributes drive performance", "Effect by hook type, format, etc."],
+      ["3", "Is any creative fatigued right now", "Fatigue diagnosis · swap timing recommendation"],
+      ["4", "What should we test next", "Candidate recommendations based on combination performance"],
     ],
     heroCausationBody:
       "Effects of creative attributes (hook, format, etc.) are estimated using impression-weighted least squares (WLS) and multiple-testing correction (BH). This decomposition includes selection bias from the platform's delivery algorithm, so it should be read as correlation, not causal effect — final confirmation is recommended via the experiment tool (5-4).",
@@ -101,10 +101,10 @@ const CREATIVE_COPY_EN = {
     heroSub:
       "For each piece of content (article, video, post, etc.), see what's working, why it's working, and when it's time to publish something new — all in one place.",
     heroJourney: [
-      ["🏆", "Which content is resonating", "Win-rate · publishing pace · lifespan"],
-      ["🔍", "Which attributes drive performance", "Effect by hook type, format, etc."],
-      ["🔋", "Is any content losing freshness right now", "Freshness decline diagnosis · republish timing recommendation"],
-      ["🧪", "What should we test next", "Candidate recommendations based on combination performance"],
+      ["1", "Which content is resonating", "Win-rate · publishing pace · lifespan"],
+      ["2", "Which attributes drive performance", "Effect by hook type, format, etc."],
+      ["3", "Is any content losing freshness right now", "Freshness decline diagnosis · republish timing recommendation"],
+      ["4", "What should we test next", "Candidate recommendations based on combination performance"],
     ],
     heroCausationBody:
       "Effects of content attributes (hook type, format, etc.) are estimated using impression-weighted least squares (WLS) and multiple-testing correction (BH). This decomposition includes selection bias from the delivery/recommendation algorithm, so it should be read as correlation, not causal effect — final confirmation is recommended via the experiment tool (5-4).",
@@ -191,7 +191,7 @@ const MATRIX_STATUS_LABEL = {
 };
 
 // Next-Test 유형 아이콘·라벨 (index.html renderCreativeNextTest 이식)
-const NEXT_TEST_ICON = { explore: "🔍", exploit: "🎯", kill: "❌" };
+const NEXT_TEST_ICON = { explore: "○", exploit: "●", kill: "✕" };
 const NEXT_TEST_LABEL = {
   ko: { explore: "탐색", exploit: "최적화", kill: "제거" },
   en: { explore: "Explore", exploit: "Exploit", kill: "Kill" },
@@ -967,23 +967,6 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
             <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
-            <DownloadHub
-              toolId={domain === "content" ? "9-6" : "5-6"}
-              label={tr("실행 정보", "Run details")}
-              manifest={buildResultManifest({
-                toolId: domain === "content" ? "9-6" : "5-6",
-                mode: domain,
-                source: isDemoData(csvData) ? "demo" : "csv",
-                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
-                mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
-                filter: { metric, selectedCell: selectedCell ? `${selectedCell.row}|${selectedCell.col}` : "all" },
-                grain: "creative",
-                metricDefinitions: ["CTR", "CVR", "CPA", "fatigue", "attribute-effect"].map((key) => ({ key, aggregation: "custom" })),
-                engineVersion: CREATIVE_CONFIG.version,
-                status: metrics.length ? "COMPLETE" : "ABSTAIN",
-                warnings: ["Observed association is not causal", ...(metrics.length < 30 ? ["Sparse creative sample"] : [])],
-              })}
-            />
           </div>
         </div>
 
@@ -1152,7 +1135,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section data-information-section="" className="block" id="s-prep" style={{ padding: "13px 16px" }}>
-        <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</header>
+        <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("데이터 매핑 설정 (펼쳐서 변경)", "Data mapping settings (expand to change)")}</header>
         <div style={{ marginTop: "10px" }}>
           <ToolTemplateAction
             toolId={C.uploaderToolId}
@@ -1864,8 +1847,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)", marginTop: "6px", lineHeight: 1.5 }}>
               {tr(
-                `지금까지의 분석을 바탕으로 다음에 무엇을 테스트하면 좋을지 제안합니다. 아직 집행한 적 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 더 필요한 조합(🎯 최적화), 통계적으로 효과가 뚜렷하게 나빠서 배제를 권장하는 속성(❌ 제거)을 자동으로 골라줍니다. (한 번에 최대 ${CREATIVE_CONFIG.test.batchSize}개)`,
-                `Based on the analysis so far, we suggest what to test next: combinations never run before (🔍 explore), promising combinations that need more confirmation (🎯 exploit), and attributes with a clearly negative statistical effect that should be excluded (❌ kill). (up to ${CREATIVE_CONFIG.test.batchSize} at a time)`,
+                `지금까지의 분석을 바탕으로 다음에 무엇을 테스트하면 좋을지 제안합니다. 아직 집행한 적 없는 조합(탐색), 가능성이 보이지만 확증이 더 필요한 조합(최적화), 통계적으로 효과가 뚜렷하게 나빠서 배제를 권장하는 속성(❌ 제거)을 자동으로 골라줍니다. (한 번에 최대 ${CREATIVE_CONFIG.test.batchSize}개)`,
+                `Based on the analysis so far, we suggest what to test next: combinations never run before (explore), promising combinations that need more confirmation (exploit), and attributes with a clearly negative statistical effect that should be excluded (❌ kill). (up to ${CREATIVE_CONFIG.test.batchSize} at a time)`,
               )}
             </p>
             <div className="table-wrap">

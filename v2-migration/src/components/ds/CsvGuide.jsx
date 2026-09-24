@@ -16,7 +16,7 @@ const GUIDE_COPY = {
     need: "필요: ",
     effort: (count) => count ? `필수 컬럼 ${count}개` : "파일 확인 후 필요한 컬럼 안내",
     tryExample: "예시 데이터로 결과 바로 보기",
-    openBtn: "📖 어떤 데이터가 왜 필요한가요?",
+    openBtn: "어떤 데이터가 왜 필요한가요?",
     modalTitle: "이 도구에 올릴 데이터 안내",
     close: "닫기",
     whenHeading: "언제 쓰나요?",
@@ -38,7 +38,7 @@ const GUIDE_COPY = {
     need: "Needs: ",
     effort: (count) => count ? `${count} required columns` : "Required columns shown after checking your file",
     tryExample: "Run the example and see results",
-    openBtn: "📖 What data is needed and why?",
+    openBtn: "What data is needed and why?",
     modalTitle: "Data guide for this tool",
     close: "Close",
     whenHeading: "When do you use this?",
@@ -82,7 +82,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
     { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
     { key: "label", label: T.colWhat },
     { key: "why", label: T.colWhy, cellClassName: "csv-guide-reason" },
-    { key: "required", label: T.colRequired, align: "center", fmt: (value) => value ? "✅" : "—" },
+    { key: "required", label: T.colRequired, align: "center", fmt: (value) => value ? "✓" : "—" },
   ];
 
   return (
@@ -124,7 +124,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           <section className="csv-guide-section csv-guide-section--purpose">
             <h4>{T.whenHeading}</h4>
             <p>{guide.when}</p>
-            {guide.grain && <p className="csv-guide-grain">📄 {guide.grain}</p>}
+            {guide.grain && <p className="csv-guide-grain">{guide.grain}</p>}
           </section>
 
           <section className="csv-guide-section csv-guide-section--columns">

@@ -262,8 +262,8 @@ export function mmmCannibAction(r, locale = "ko") {
       : "데이터 부족·추세 혼재 — 잠식 판정 보류. 연속 집행 또는 holdout 필요";
   if (r.flighted)
     return en
-      ? "⚡ Flighted delivery — lag and precedence evidence is weaker; confirm with a matched on/off comparison or holdout"
-      : "⚡ 산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
+      ? "Flighted delivery — lag and precedence evidence is weaker; confirm with a matched on/off comparison or holdout"
+      : "산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
   if (r.badge === "강") return en ? "High-priority holdout" : "holdout 우선순위 높음";
   if (r.badge === "중") return en ? "Holdout candidate (medium priority)" : "holdout 후보 (우선순위 중)";
   if (r.gated) return en
@@ -279,10 +279,10 @@ export function mmmCannibAction(r, locale = "ko") {
 export function mmmCannibActionShort(r, locale = "ko") {
   const en = locale === "en";
   if (!r.eligible) return en ? "Insufficient · withheld" : "데이터 부족·보류";
-  if (r.flighted) return en ? "⚡ Confirm by holdout" : "⚡ holdout 확인";
+  if (r.flighted) return en ? "Confirm by holdout" : "holdout 확인";
   if (r.badge === "강") return en ? "Holdout priority 1" : "holdout 1순위";
   if (r.badge === "중") return en ? "Holdout candidate" : "holdout 후보";
-  if (r.gated) return en ? "🔗 Confirm by holdout" : "🔗 holdout 확인";
+  if (r.gated) return en ? "Confirm by holdout" : "holdout 확인";
   if (r.leanNeg) return en ? "Monitor / holdout" : "모니터/holdout";
   return en ? "Can deprioritize" : "deprioritize 가능";
 }

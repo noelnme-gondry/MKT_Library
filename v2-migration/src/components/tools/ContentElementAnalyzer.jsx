@@ -48,9 +48,9 @@ const EA_COPY = {
     dataPrep: "데이터 준비",
     dropTitle: "CSV 파일 드래그 & 드롭",
     dropSub: "또는 클릭하여 파일 선택",
-    demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
+    demoBannerTitle: "지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
-    demoBannerBtn: "📁 내 CSV 업로드하기",
+    demoBannerBtn: "내 CSV 업로드하기",
     mappingTitle: "컬럼 지정",
     previewingDemo: "샘플 데이터로 미리보기 중",
     rowsStats: (rows, cols) => `${rows.toLocaleString()}행 · 숫자 컬럼 ${cols}개`,
@@ -77,7 +77,7 @@ const EA_COPY = {
     excludedRows: (valid, total) => `유효 행 ${valid.toLocaleString()} / 입력 ${total.toLocaleString()}행`,
     heroQ: C.heroQ,
     heroSub: C.heroSub,
-    topSigLabel: "🏆 가장 강한 요소",
+    topSigLabel: "가장 강한 요소",
     noSigHtml: null, // KR은 기존 인라인 JSX 유지(byte-동일)
     causationTitle: "연관이지 인과 아님",
     causationBody: C.causationBody,
@@ -88,7 +88,7 @@ const EA_COPY = {
     tipSig: " (유의)",
     tipNs: " (무유의)",
     tipCoef: "계수",
-    expertSummary: "📊 전문가 뷰 — 계수·표준오차·p값 전체 표, 모델 적합도",
+    expertSummary: "전문가 뷰 — 계수·표준오차·p값 전체 표, 모델 적합도",
     intercept: "절편",
     droppedPrefix: "무분산 제외: ",
     thElement: "요소",
@@ -122,9 +122,9 @@ const EA_COPY = {
     dataPrep: "Prepare your data",
     dropTitle: "Drag & drop a CSV file",
     dropSub: "or click to choose a file",
-    demoBannerTitle: "🧪 You're viewing sample data",
+    demoBannerTitle: "You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
-    demoBannerBtn: "📁 Upload my CSV",
+    demoBannerBtn: "Upload my CSV",
     mappingTitle: "Assign columns",
     previewingDemo: "Previewing sample data",
     rowsStats: (rows, cols) => `${rows.toLocaleString()} rows · ${cols} numeric columns`,
@@ -151,7 +151,7 @@ const EA_COPY = {
     excludedRows: (valid, total) => `${valid.toLocaleString()} valid / ${total.toLocaleString()} input rows`,
     heroQ: "Which production elements drive performance?",
     heroSub: "Puts your content pieces' production attributes and outcomes (CTR, views) side by side, and uses multivariate regression to isolate the elements significantly associated with performance.",
-    topSigLabel: "🏆 Strongest element",
+    topSigLabel: "Strongest element",
     noSigHtml: "No element reaches <strong>statistical significance</strong> in this data. Add more samples or try different elements (not significant ≠ no effect — it means <em>insufficient evidence</em>).",
     causationTitle: "Association, not causation",
     causationBody: "These results are <strong>associations</strong>, not <strong>causation</strong>. Skilled creators tend to use several good elements together (confounding), so changing one element in isolation may behave differently. Confirm with an <strong>A/B test</strong> that changes exactly one element.",
@@ -162,7 +162,7 @@ const EA_COPY = {
     tipSig: " (significant)",
     tipNs: " (not significant)",
     tipCoef: "coef",
-    expertSummary: "📊 Expert view — full coefficient/SE/p table, model fit",
+    expertSummary: "Expert view — full coefficient/SE/p table, model fit",
     intercept: "intercept",
     droppedPrefix: "No-variance excluded: ",
     thElement: "Element",
@@ -810,7 +810,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>✅ {T.readyMsg} <strong>{T.readyStrong}</strong></div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{T.readyMsg} <strong>{T.readyStrong}</strong></div>
             <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
           </div>
         )}

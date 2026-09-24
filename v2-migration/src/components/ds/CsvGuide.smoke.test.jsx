@@ -15,7 +15,7 @@ describe("CsvGuide", () => {
 
   it("opens an accessible portalled guide and preserves the explicit close action", async () => {
     render(<CsvGuide toolId="5-2" />);
-    const trigger = screen.getByRole("button", { name: "📖 어떤 데이터가 왜 필요한가요?" });
+    const trigger = screen.getByRole("button", { name: "어떤 데이터가 왜 필요한가요?" });
     trigger.focus();
     fireEvent.click(trigger);
 
@@ -32,7 +32,7 @@ describe("CsvGuide", () => {
 
   it("keeps the English guide copy and table labels", () => {
     render(<CsvGuide toolId="5-2" locale="en" />);
-    fireEvent.click(screen.getByRole("button", { name: "📖 What data is needed and why?" }));
+    fireEvent.click(screen.getByRole("button", { name: "What data is needed and why?" }));
 
     expect(screen.getByRole("dialog", { name: "Data guide for this tool" })).toBeTruthy();
     expect(screen.getByRole("table", { name: "Which columns are needed and why?" })).toBeTruthy();

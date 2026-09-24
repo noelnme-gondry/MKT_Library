@@ -1177,7 +1177,7 @@ export function MmmManualDownload({ locale = "ko", placement = "footer" }) {
            이벤트가 붙어 분석 다운로드 지표를 오염시킨다. */
         onClick={() => trackProductEvent("result_downloaded", { tool_id: "5-18", source: "manual", download_type: "pdf", locale, placement })}
       >
-        {isEnglish ? "📘 View the MMM manual · PDF" : "📘 MMM 설명서 확인 · PDF"}
+        {isEnglish ? "View the MMM manual · PDF" : "MMM 설명서 확인 · PDF"}
       </a>
       <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 0" }}>
         {isEnglish ? "Inputs, calculations, priors, validation, interpretation, and limitations" : "입력 준비부터 계산·prior·검증·해석·한계까지 한 번에 확인"}
@@ -1254,10 +1254,10 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
 
       <div className="mmm-evidence-ledger__views" aria-label={tx("적용할 근거", "Evidence to apply")}>
         {hasExperiment && <button type="button" aria-pressed={selectedEvidence.experiment} className={`mmm-evidence-ledger__view ${selectedEvidence.experiment ? "is-active" : ""}`} onClick={() => onToggleEvidence("experiment")}>
-          <span aria-hidden>{selectedEvidence.experiment ? "☑" : "☐"}</span> {tx("실험 근거 사용", "Use experiment evidence")}
+          <span aria-hidden>{selectedEvidence.experiment ? "●" : "○"}</span> {tx("실험 근거 사용", "Use experiment evidence")}
         </button>}
         {hasCountry && <button type="button" aria-pressed={selectedEvidence.country} className={`mmm-evidence-ledger__view ${selectedEvidence.country ? "is-active" : ""}`} onClick={() => onToggleEvidence("country")}>
-          <span aria-hidden>{selectedEvidence.country ? "☑" : "☐"}</span> {tx("추천 국가 세트 사용", "Use recommended markets")}
+          <span aria-hidden>{selectedEvidence.country ? "●" : "○"}</span> {tx("추천 국가 세트 사용", "Use recommended markets")}
         </button>}
         {!hasExperiment && !hasCountry && <span className="mmm-evidence-ledger__base-note">{tx("현재: 기본 MMM", "Current: base MMM")}</span>}
       </div>
@@ -3467,16 +3467,16 @@ export function mmmStageDefs(locale) {
   if (locale === "en") {
     return [
       { id: "trend", group: "diagnose", no: "Time series", title: "STL trend check", icon: "〰", desc: "Separate natural trend, seasonality, and irregular weeks before judging ad effects." },
-      { id: "diagnose", group: "diagnose", no: "Cannibalization", title: "Cannibalization diagnosis", icon: "🔬", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
-      { id: "mmm", group: "contribute", no: "Contribution", title: "MMM contribution breakdown", icon: "🧩", desc: "What actually moved performance? Where should the next budget go?" },
-      { id: "lab", group: "forecast", no: "Forecast", title: "Regression · Forecast", icon: "📈", desc: "If things stay the same, or if you change the budget, how will the next weeks look?" },
+      { id: "diagnose", group: "diagnose", no: "Cannibalization", title: "Cannibalization diagnosis", icon: "", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
+      { id: "mmm", group: "contribute", no: "Contribution", title: "MMM contribution breakdown", icon: "", desc: "What actually moved performance? Where should the next budget go?" },
+      { id: "lab", group: "forecast", no: "Forecast", title: "Regression · Forecast", icon: "", desc: "If things stay the same, or if you change the budget, how will the next weeks look?" },
     ];
   }
   return [
     { id: "trend", group: "diagnose", no: "시계열 점검", title: "STL 추세 분석", icon: "〰", desc: "광고 판단 전에 자연 추세·계절성·이상 주차를 분리합니다." },
-    { id: "diagnose", group: "diagnose", no: "잠식 진단", title: "카니발 진단", icon: "🔬", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
-    { id: "mmm", group: "contribute", no: "기여 분해", title: "MMM 기여 분해", icon: "🧩", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
-    { id: "lab", group: "forecast", no: "미래 예측", title: "회귀 · 미래 예측", icon: "📈", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
+    { id: "diagnose", group: "diagnose", no: "잠식 진단", title: "카니발 진단", icon: "", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
+    { id: "mmm", group: "contribute", no: "기여 분해", title: "MMM 기여 분해", icon: "", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
+    { id: "lab", group: "forecast", no: "미래 예측", title: "회귀 · 미래 예측", icon: "", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
   ];
 }
 

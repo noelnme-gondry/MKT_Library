@@ -244,7 +244,7 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
                   <span className="wr-history-list__action">{row.action}</span>
                   <span className="wr-history-list__badges">
                     <span className="wr-history-list__badge">{decisionClosureLabel(row.closureReason, locale) || t.bucket[row.bucket] || row.bucket}</span>
-                    {row.onAccount && <span className="wr-history-list__badge">☁ {row.onDevice ? t.onAccount : t.accountOnly}</span>}
+                    {row.onAccount && <span className="wr-history-list__badge">{row.onDevice ? t.onAccount : t.accountOnly}</span>}
                   </span>
                 </button>
                 {open && (

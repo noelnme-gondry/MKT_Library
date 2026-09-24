@@ -58,7 +58,7 @@ const COPY = {
     naver: "네이버 블로그",
   },
   en: {
-    eyebrow: "PERFORMANCE MARKETING DECISIONS",
+    eyebrow: "Performance marketing decisions",
     title: "Why did it change?",
     titleAccent: "What should you do next?",
     deck: ["Build your baseline with practical guides and check your data.", "Connect performance analysis to next week’s decisions in one place."],

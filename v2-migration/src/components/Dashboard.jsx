@@ -259,7 +259,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         ) : !analyzed ? (
           <div className="block dashboard-data-setup dashboard-data-setup--pending" id="dashboard-data-setup">
             <div className="dashboard-data-setup__privacy">
-              {tr("🔒 CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장이 켜져 있으면 마지막 사용 후 90일까지 보관됩니다. 저장소에서 끄거나 삭제할 수 있습니다.", "🔒 CSV data is processed in your browser and is not sent to a server. When device storage is enabled, files are kept for up to 90 days after last use. Turn storage off or delete files in Storage.")} <a href={locale === "en" ? "/en/storage" : "/storage"}>{tr("기기 저장 관리", "Manage device storage")}</a>
+              {tr("CSV는 브라우저에서 처리되며 서버로 전송되지 않습니다. 기기 저장이 켜져 있으면 마지막 사용 후 90일까지 보관됩니다. 저장소에서 끄거나 삭제할 수 있습니다.", "CSV data is processed in your browser and is not sent to a server. When device storage is enabled, files are kept for up to 90 days after last use. Turn storage off or delete files in Storage.")} <a href={locale === "en" ? "/en/storage" : "/storage"}>{tr("기기 저장 관리", "Manage device storage")}</a>
             </div>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
@@ -274,7 +274,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             (게이트는 CsvUploader가 setGroupAnalyzed로 확정). */}
         {hasData && !analyzed && (
           <div className="card" style={{ marginTop: "1rem", textAlign: "center", padding: "2.5rem 1rem" }}>
-            <div style={{ fontSize: "var(--fs-xl)", marginBottom: "0.75rem" }}>🗂</div>
             <h3 style={{ margin: "0 0 0.5rem", fontSize: "var(--fs-md)", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "var(--fs-sm)", margin: 0, lineHeight: 1.6 }}>
               {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤 ", "After confirming the column mapping above, ")}
@@ -386,15 +385,15 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                       warnings: ["Observed summary; not causal attribution"],
                     })}
                     items={[
-                      { icon: "📄", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
-                      { icon: "📝", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary", "md", locale) },
+                      { icon: "⬇", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      { icon: "⬇", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary", "md", locale) },
                     ]}
                   />
                 }
                 />
                 <section data-information-section="" className="dashboard-next-actions">
                   <header data-information-heading="">
-                    <span><small>NEXT STEP</small><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
+                    <span><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
                     <b aria-hidden="true">⌄</b>
                   </header>
                   <div className="dashboard-next-actions__body">

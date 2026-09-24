@@ -1128,10 +1128,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
-            <strong>🧪 {tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're viewing sample (demo) data")}</strong>
+            <strong>{tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're viewing sample (demo) data")}</strong>
             <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.")}</p>
           </div>
-          <button className="ab-button" onClick={resetCsv}>📁 {tr("내 CSV 업로드하기", "Upload my CSV")}</button>
+          <button className="ab-button" onClick={resetCsv}>{tr("내 CSV 업로드하기", "Upload my CSV")}</button>
         </div>
       )}
       <section className="block" id="s-aha-map">
@@ -1207,7 +1207,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)" }}>{tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
             <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
@@ -1301,26 +1301,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   {tr("실험 설계", "Design experiment")} →
                 </button>
               ) : null}
-              download={(
-                <DownloadHub
-                  toolId={domain === "content" ? "9-2" : "5-20"}
-                  locale={locale}
-                  label={tr("실행 정보", "Run details")}
-                  manifest={buildResultManifest({
-                    toolId: domain === "content" ? "9-2" : "5-20",
-                    mode: holdoutOn ? "association-holdout" : "association",
-                    source: isDemoData(csvData) ? "demo" : "csv",
-                    inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
-                    mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
-                    filter: { segment: validSeg ? `${validSeg.col}=${validSeg.value}` : "all", holdout: holdoutOn, minSupport },
-                    grain: "user-action-window",
-                    metricDefinitions: ["support", "precision", "recall", "F1", "lift"].map((key) => ({ key, unit: key === "lift" ? "ratio" : "score", aggregation: "custom" })),
-                    engineVersion: "aha-v1",
-                    status: topAction ? "COMPLETE" : "ABSTAIN",
-                    warnings: ["Association is not causation", ...(holdoutOn ? [] : ["Holdout validation disabled"])],
-                  })}
-                />
-              )}
             >
             <section data-information-section="" className="result-action-card__details">
               <header data-information-heading="">{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</header>
@@ -1575,7 +1555,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
           <section data-information-section="" className="block" >
             <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
-              📊 {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정", "Expert view — precision/recall scatter, full metrics table, sort & sample settings")}
+              {tr("전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정", "Expert view — precision/recall scatter, full metrics table, sort & sample settings")}
             </header>
             <div style={{ marginTop: "12px" }}>
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
@@ -1706,7 +1686,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                             {isExpanded && (
                               <tr>
                                 <td colSpan="12" style={{ padding: "0", background: "var(--surface-container-low)" }}>
-                                  <div style={{ padding: "10px 12px 12px 40px", borderLeft: `3px solid ${color}` }}>
+                                  <div style={{ padding: "10px 12px 12px 40px", borderLeft: "1px solid var(--border-subtle)" }}>
                                     <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginBottom: "6px" }}>
                                       {tr(
                                         <><strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — 기준({r.bestWindow === Infinity ? "전체 기간" : `d${r.bestWindow}`})을 느슨하게(달성률↑)~빡빡하게(달성률↓) 바꿨을 때 구간별 데이터. <span style={{ color: "var(--warning)" }}>★</span> = 자동으로 고른 최적 지점.</>,
@@ -1764,7 +1744,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 tr(`${C.docFileStem}_설명_${_today()}.md`, `${C.docFileStem}_explainer_${_today()}.md`),
                 buildAhaGuideDoc(cache, sortedResults, minSupport, C, locale),
               )}>
-              📄 {tr("이 분석에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "Want a detailed explanation of this analysis? — Get the detailed doc")}
+              {tr("이 분석에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기", "Want a detailed explanation of this analysis? — Get the detailed doc")}
             </button>
           </div>
         </>

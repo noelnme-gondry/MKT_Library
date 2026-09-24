@@ -17,7 +17,6 @@ export default function EnglishTermsPage() {
   return (
     <PolicyPage
       locale="en"
-      eyebrow="LEGAL"
       alternateHref="/terms"
       title="Terms of Use"
       intro="These terms set out the basic conditions for using Growth Opt Playbook tools and content."

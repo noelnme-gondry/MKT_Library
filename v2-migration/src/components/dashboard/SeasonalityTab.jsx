@@ -208,7 +208,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     return [{
       label: locale === "en" ? "Complete workbook (XLSX)" : "전체 데이터 한 번에 받기 (XLSX)",
       desc: locale === "en" ? "Raw + ISO, Total/Paid/Organic and channel chart data" : "원본 + ISO, 전체/Paid/Organic 및 채널별 그래프 데이터",
-      icon: "📊",
+      icon: "⬇",
       onSelect: () => downloadXlsx(createWorkbook(), "calendar_seasonality_export"),
     }];
   };

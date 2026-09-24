@@ -77,7 +77,6 @@ export default function DemoNoticeModal({ locale = "ko" }) {
       overlayStyle={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)", padding: "20px" }}
       panelStyle={{ boxSizing: "border-box", maxWidth: "420px", width: "100%", background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,0.4)", padding: "22px 24px" }}
     >
-      <div style={{ fontSize: "var(--fs-xl)", marginBottom: "10px" }}>🧪</div>
       <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
         {tr("지금은 데모 데이터를 이용 중입니다", "You're currently viewing demo data")}
       </div>

@@ -26,7 +26,7 @@ export default function AuthorCard({ locale = "ko" }) {
   return (
     <aside className="author-card" aria-label={isEnglish ? "About the author" : "글쓴이 소개"}>
       <div className="author-card__head">
-        <span className="author-card__label">{isEnglish ? "WRITTEN BY" : "글쓴이"}</span>
+        <span className="author-card__label">{isEnglish ? "Written by" : "글쓴이"}</span>
         <strong className="author-card__name">{AUTHOR.name}</strong>
         <span className="author-card__role">{AUTHOR[lang].role}</span>
       </div>

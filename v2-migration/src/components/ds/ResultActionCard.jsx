@@ -287,8 +287,12 @@ export default function ResultActionCard({
             ))}
           </div>
         )}
-        {(analysisMeta || (analysisBasis && toolId)) && (
-          <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Data and method information" : "데이터 기준과 신뢰도"}>
+        {/* 확인할 점은 결론 옆 빨간 "!" 하나로 모은다(데이터 기준·입력 결측·경고). 문제가 없으면 아무것도
+            그리지 않는다. 예전의 '실제 분석 범위·분모 확인'·'신뢰도·방법' 블록은 2026-09-24 제거. */}
+        {(analysisMeta || analysisDetails || scopeEvidence || (analysisBasis && toolId)) && (
+          <aside className="result-action-card__evidence" aria-label={locale === "en" ? "Things to check" : "확인할 점"}>
+            {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
+            {analysisDetails}
             {analysisBasis && toolId && (
               <AnalysisBasisBar
                 canonicalData={csvData?.canonicalData}
@@ -389,10 +393,6 @@ export default function ResultActionCard({
         </div>
       )}
 
-      {/* 근거(분석 범위·분모)는 결론·수치·행동 뒤(제품 SSOT §5.2의 7번). 예전에는 머리 바로 아래
-          343px를 차지해 폰에서 결론 다음 줄이 숫자가 아니라 분모 설명이었다. */}
-      {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
-      {analysisDetails}
       {children}
     </section>
     </AnalysisExportProvider>

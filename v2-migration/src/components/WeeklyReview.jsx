@@ -551,7 +551,6 @@ export default function WeeklyReview({ locale = "ko", embedded = false, toolFilt
 
       {sortedRecords.length === 0 && <section className="weekly-review-page__empty" aria-labelledby="weekly-review-empty-title">
         <div>
-          <span>START HERE</span>
           <h2 id="weekly-review-empty-title">{t.emptyTitle}</h2>
           <p>{t.empty}</p>
         </div>

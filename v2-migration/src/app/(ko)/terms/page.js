@@ -16,7 +16,6 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <PolicyPage
-      eyebrow="LEGAL"
       alternateHref="/en/terms"
       title="이용약관"
       intro="Growth Opt Playbook의 분석 도구와 콘텐츠를 이용할 때 적용되는 기본 조건입니다."

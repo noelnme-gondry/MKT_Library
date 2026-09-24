@@ -69,7 +69,7 @@ export default function DochiAnalysisDock({ locale = "ko" }) {
   return <aside className={`dochi-analysis-dock${isOpen ? " is-open" : ""}`} aria-label={C.title}>
     {isOpen && <section className="dochi-analysis-dock__panel" aria-label={C.title}>
       <header>
-        <div><span>DOCHI</span><strong>{C.title}</strong></div>
+        <div><strong>{C.title}</strong></div>
         <small>{session.sourceData.fileName}</small>
       </header>
       <p>{C.deck}</p>

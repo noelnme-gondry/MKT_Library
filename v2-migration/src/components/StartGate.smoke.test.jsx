@@ -223,7 +223,7 @@ describe("StartGate render smoke", () => {
     // 상세는 한 번에 하나만 열린다 — 연 뒤의 유일한 실행 링크가 그 도구의 것이다.
     const pickTool = (toolId) => {
       openTool(toolId);
-      const links = [...document.querySelectorAll(".tool-index__panel button")].filter(button => button.textContent.includes("추가 차트·상세 분석 열기"));
+      const links = [...document.querySelectorAll(".tool-index__panel button")].filter(button => /분석 열기|그래도 열어 보기/.test(button.textContent));
       expect(links).toHaveLength(1);
       return links[0];
     };
@@ -280,7 +280,7 @@ describe("StartGate render smoke", () => {
     // 상세는 한 번에 하나만 열린다 — 연 뒤의 유일한 실행 링크가 그 도구의 것이다.
     const pickTool = (toolId) => {
       openTool(toolId);
-      const links = [...document.querySelectorAll(".tool-index__panel button")].filter(button => button.textContent.includes("추가 차트·상세 분석 열기"));
+      const links = [...document.querySelectorAll(".tool-index__panel button")].filter(button => /분석 열기|그래도 열어 보기/.test(button.textContent));
       expect(links).toHaveLength(1);
       return links[0];
     };
