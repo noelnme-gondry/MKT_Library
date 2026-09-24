@@ -59,8 +59,13 @@ function runAdapter(toolId, csvData) {
 const stat = (res, id) => res.verdict?.stats?.find((s) => s.id === id)?.value;
 
 // 카드 한 장의 모양: 결론 한 문장 + 막대(최대 5개, 강조 1개) + 캡션.
+// 막대 폭·선 모양에만 쓰는 값은 10자리로 자른다 — 부동소수 마지막 자리가 CPU·Node 빌드마다
+// 달라(CI에서 1e-14 차이) 신선도 테스트가 엔진 변화가 아닌 기계 차이에 깨졌다.
+const stable = (v) => (typeof v === "number" && Number.isFinite(v) ? Number(v.toPrecision(10)) : v);
 function card({ ko, en, bars = [], spark = null, note }) {
-  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars, spark, note: note || null };
+  const steadyBars = bars.map((b) => ({ ...b, value: stable(b.value) }));
+  const steadySpark = spark ? JSON.parse(JSON.stringify(spark, (k, v) => stable(v))) : spark;
+  return { ko: { headline: ko.headline, caption: ko.caption }, en: { headline: en.headline, caption: en.caption }, bars: steadyBars, spark: steadySpark, note: note || null };
 }
 
 const BUILDERS = {
