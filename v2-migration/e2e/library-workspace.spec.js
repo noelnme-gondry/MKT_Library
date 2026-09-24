@@ -95,7 +95,7 @@ for (const locale of ["ko", "en"]) {
       await page.goto(prefix || "/");
       await page.locator(".home-result-preview button").click();
       await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-      await page.getByRole("button", { name: new RegExp(toolIndexEntry(toolId, locale).name.replace(/[()]/g, "\\$&")) }).first().click();
+      await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
       await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
       const reached = await page.locator(".result-action-card").first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
