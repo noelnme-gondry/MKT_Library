@@ -11544,6 +11544,8 @@ b, strong { font-weight: 700; }
   .with-toc { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .with-toc > .toc { display: none; }
 }
+/* 14) 업로더 카드(바깥 상자) 안의 파일 상태·필수 안내·미리보기 표·분석 줄은 바탕을 벗는다. */
+.app .content .csv-uploader :is(.required-banner, .file-state, .table-wrap, .csv-analysis-cta-row) { background: transparent; }
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */

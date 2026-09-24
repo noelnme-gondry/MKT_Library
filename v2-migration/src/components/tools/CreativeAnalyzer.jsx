@@ -1717,7 +1717,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     {buckets.map((b) => (
                       <div key={b.week} style={{ display: "flex", alignItems: "stretch", gap: "8px" }}>
                         <div style={{ width: "54px", flexShrink: 0, fontSize: "var(--fs-xs)", color: "var(--text-muted)", paddingTop: "4px" }}>W+{b.week}</div>
-                        <div style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
+                        <div data-design-exempt="nested: 간트 차트의 주차 레인 — 상자가 아니라 차트 트랙" style={{ flex: 1, display: "flex", gap: "3px", flexWrap: "wrap", minHeight: "26px", alignItems: "center", background: "var(--bg-2)", borderRadius: "6px", padding: "4px 6px" }}>
                           {b.items.length === 0 ? (
                             <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>—</span>
                           ) : (
