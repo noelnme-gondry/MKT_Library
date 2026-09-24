@@ -168,12 +168,11 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   await expect(workspace).toBeVisible();
   await expect(workspace).toHaveAttribute("data-queue-settled", "true");
   await workspace.locator(".workspace-next-action button").click();
-  const quality = workspace.getByRole("region", { name: "Detailed input quality" }).first();
-  await quality.getByRole("button", { name: "Check detailed input quality" }).click();
-  await expect(quality.getByText(/Input checks passed|Review input cautions/)).toBeVisible();
+  // 품질 확인·승인 단계 없이 바로 분석을 연다.
+  await expect(workspace.getByRole("region", { name: "Detailed input quality" })).toHaveCount(0);
   await expectNoSeriousAccessibilityViolations(page);
   const dashboardCard = workspace.locator(".dochi-workspace__card").filter({ has: page.getByRole("heading", { name: "Weekly check", exact: true }) });
-  await dashboardCard.getByRole("button", { name: "Open extra charts and details" }).click();
+  await dashboardCard.getByRole("button", { name: /Open analysis|Open anyway/ }).click();
   await expect(page).toHaveURL(/\/en\/dashboard$/);
   await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
 });
@@ -197,10 +196,8 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
   const dashboardCard = workspace.locator(".dochi-workspace__card").filter({
     has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
   });
-  const quality = dashboardCard.getByRole("region", { name: "상세 입력 품질" });
-  await quality.getByRole("button", { name: "상세 입력 품질 확인" }).click();
-  await expect(quality.getByText(/입력 검사 통과|입력 주의사항 확인/)).toBeVisible();
-  await dashboardCard.getByRole("button", { name: /추가 차트·상세 분석 열기/ }).click();
+  await expect(dashboardCard.getByRole("region", { name: "상세 입력 품질" })).toHaveCount(0);
+  await dashboardCard.getByRole("button", { name: /분석 열기|그래도 열어 보기/ }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
   // /start에서 자격 통과한 추천을 열면 도치 작업대와 같은 분석 완료 상태를

@@ -5293,7 +5293,7 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name { font-
 .btn:hover { transform: translateY(-1px); border-color: var(--border-stronger); color: var(--text-primary); }
 .btn.primary { color: var(--on-primary); border-color: var(--primary); background: var(--primary); box-shadow: 0 7px 22px color-mix(in srgb, var(--primary) 16%, transparent); }
 body.light-mode .btn.primary { color: #fff; }
-.btn.primary:hover { background: color-mix(in srgb, var(--primary) 88%, white); }
+.btn.primary:hover { background: color-mix(in srgb, var(--primary) 88%, var(--text-primary)); }
 .btn.ghost { background: transparent; }
 .chip { padding: 4px 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-container-low); color: var(--text-muted); font: 600 var(--fs-xs) var(--font-sans); }
 .chip .dot { width: 5px; height: 5px; background: var(--text-muted); }
