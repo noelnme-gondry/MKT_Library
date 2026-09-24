@@ -30,7 +30,7 @@ function focusDataPrepAfterRender() {
   }
 }
 
-function scheduleDataPrepFocus() {
+export function scheduleDataPrepFocus() {
   if (typeof window === "undefined") return;
   if (typeof window.requestAnimationFrame === "function") {
     window.requestAnimationFrame(() => window.requestAnimationFrame(focusDataPrepAfterRender));
@@ -49,15 +49,17 @@ export default function DemoNoticeModal({ locale = "ko" }) {
   const primaryActionRef = useRef(null);
 
   const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo"));
+  // 블로그 예시에서 넘어온 방문은 도착 줄(BlogArrivalStrip)이 같은 사실을 말한다 — 모달을 겹치지 않는다.
+  const fromBlog = useAppStore((s) => Boolean(s.blogArrival && s.blogArrival.toolId === s.currentRouteId));
 
   useEffect(() => {
     // 조건부 1회 발화(데모 & 미노출) — 무한루프 없음(setSeen이 재발화 차단).
-    if (isDemo && !seen) {
+    if (isDemo && !seen && !fromBlog) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOpen(true);
       setSeen(); // 세션 1회 — 이후 다른 탭 진입해도 안 뜸
     }
-  }, [isDemo, seen, setSeen]);
+  }, [isDemo, seen, setSeen, fromBlog]);
 
   const close = () => setOpen(false);
   const useMyCsv = async () => {

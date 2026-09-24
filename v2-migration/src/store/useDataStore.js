@@ -638,6 +638,11 @@ export const useAppStore = create(persist((set, get) => ({
   demoNoticeSeen: false,
   setDemoNoticeSeen: () => set({ demoNoticeSeen: true }),
 
+  // 블로그 예시 결과에서 도구로 넘어온 방문 — 도착 화면(시안 E)이 "어디서 왔고 무엇을 보고
+  // 있는지"를 한 줄로 말한다. 휘발(persist 대상 아님). 공개 글 식별자·제목만 담고 CSV 값은 싣지 않는다.
+  blogArrival: null,
+  setBlogArrival: (arrival) => set({ blogArrival: arrival }),
+
   // "내 데이터로 분석 시작"(게이트) 선택 시 true → 전 도구 데모 자동로드 억제(빈
   // 업로드 화면 유지). 휘발(세션 한정) — 새로고침 시 리셋(첫인상 데모 복원). "데모
   // 보기"류 명시 로드는 false로 되돌림.

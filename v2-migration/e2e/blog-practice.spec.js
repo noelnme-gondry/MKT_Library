@@ -5,6 +5,7 @@ import { BLOG_PRACTICES, blogPracticeFor } from "../src/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
 import { PUBLISHED_BLOG_TOOL_MAP } from "../src/lib/contentToolRegistry";
 import { idToSlug } from "../src/lib/routeMap";
+import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
 
 // One real browser handoff per distinct generated dataset family; coverage of
 // every published article (including exclusions) is checked separately below.
@@ -31,10 +32,13 @@ for (const locale of ["ko", "en"]) {
         }
       }
       dom.window.close();
+      // 모든 글: CSV로 확인할 수 있으면 예시 결과(A), 없으면 30초 점검(D) — 그리고 글 끝 상황 확인(B).
       const eligible = Boolean(BLOG_INSIGHT_PLACEMENTS[slug]);
-      expect(html.includes('class="blog-practice-prep"'), slug).toBe(eligible);
       expect(html.includes('id="blog-practice"'), slug).toBe(eligible);
-      expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}/templates/`);
+      expect(html.includes("blog-example__headline"), slug).toBe(eligible);
+      expect(html.includes('id="blog-self-check"'), slug).toBe(!eligible);
+      expect(html.includes("blog-check--situation"), slug).toBe(true);
+      if (eligible) expect(html, slug).toContain(`${locale === "en" ? "/en" : ""}/templates/`);
     }
     expect(checkedCitations).toBeGreaterThan(0);
   });
@@ -49,16 +53,15 @@ for (const locale of ["ko", "en"]) {
       await expect(trust).toBeVisible();
       await expect(trust.locator("a").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      const demo = page.getByRole("button", { name: en ? "Open analysis with demo" : "데모로 분석 열기", exact: true });
+      const demo = page.getByRole("button", { name: en ? "Open the full example result" : "예시 결과 전체 보기", exact: true });
       await expect(demo).toBeEnabled();
       expect((await demo.boundingBox()).height).toBeGreaterThanOrEqual(44);
       await demo.click();
       await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
-      if (slug === "incrementality-measurement") {
-        const notice = page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" });
-        await expect(notice).toBeVisible();
-        await notice.getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
-      }
+      const arrival = page.locator(".blog-arrival");
+      await expect(arrival).toBeVisible();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(arrival.getByRole("link", { name: en ? "Back to the article" : "글로 돌아가기" })).toHaveAttribute("href", `${en ? "/en" : ""}/blog/${slug}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
       expect(errors).toEqual([]);
@@ -71,19 +74,18 @@ for (const locale of ["ko", "en"]) {
       page.on("pageerror", error => errors.push(error.message));
       await page.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
       await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
-      const downloadEvent = page.waitForEvent("download");
-      await page.getByRole("button", { name: practice.download, exact: true }).click();
-      const download = await downloadEvent;
-      expect(download.suggestedFilename()).toBe(practice.file);
-      expect(await download.failure()).toBeNull();
-      await page.getByRole("link", { name: practice.jump, exact: true }).click();
       const panel = page.locator("#blog-practice");
-      await expect(panel).toBeFocused();
-      await panel.getByLabel(en ? "Choose CSV" : "CSV 선택", { exact: true }).setInputFiles(await download.path());
-      await expect(panel.getByRole("status")).toBeVisible();
+      await expect(panel.locator(".blog-example__headline")).toBeVisible();
+      // 상세 버튼은 CSV를 고른 뒤에만 나온다 — 그 전엔 예시 결과와 '내 CSV로' 하나만.
+      await expect(panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true })).toHaveCount(0);
+      await panel.getByLabel(en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기", { exact: true }).setInputFiles({ name: practice.file, mimeType: "text/csv", buffer: Buffer.from(buildBlogPracticeDownload(practice).text) });
+      await expect(panel.getByRole("status").filter({ hasText: practice.file })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true }).click();
       await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
+      // 시안 E: 모달 대신 출처 한 줄. 데모 안내 모달이 겹치지 않는다.
+      await expect(page.locator(".blog-arrival")).toBeVisible();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       expect(errors).toEqual([]);
     });
@@ -99,23 +101,17 @@ for (const locale of ["ko", "en"]) {
       page.on("pageerror", error => errors.push(error.message));
       await page.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
       await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
-      const prep = page.getByRole("complementary", { name: practice.before });
-      await expect(prep).toBeVisible();
-      expect(await prep.evaluate(node => node.closest("article"))).toBeNull();
+      const panel = page.locator("#blog-practice");
+      await expect(panel.locator(".blog-example__headline")).toBeVisible();
+      const instructions = panel.locator(".blog-practice__instructions");
+      await instructions.locator("summary").click();
+      await expect(instructions).toContainText(practice.limit);
       const downloadEvent = page.waitForEvent("download");
-      await prep.getByRole("link", { name: practice.download }).click();
+      await instructions.getByRole("link", { name: practice.download }).click();
       const download = await downloadEvent;
       expect(download.suggestedFilename()).toBe(practice.file);
       expect(await download.failure()).toBeNull();
-      const jump = prep.getByRole("link", { name: practice.jump });
-      await jump.focus();
-      await page.keyboard.press("Enter");
-      const panel = page.getByRole("complementary", { name: practice.title });
-      await expect(panel).toBeFocused();
-      const instructions = panel.locator(".blog-practice__instructions");
-      await expect(instructions).toBeVisible();
-      await expect(instructions).toContainText(practice.limit);
-      await panel.getByLabel(en ? "Choose CSV" : "CSV 선택", { exact: true }).setInputFiles(path.join(process.cwd(), "public", practice.href));
+      await panel.getByLabel(en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기", { exact: true }).setInputFiles(path.join(process.cwd(), "public", practice.href));
       await expect(panel.getByText(en ? "Check columns" : "열 확인", { exact: true })).toBeVisible();
       if (slug !== "aso-basics-guide") await panel.getByLabel(en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)").selectOption("KRW");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -1,0 +1,2006 @@
+{
+ "ab-testing": {
+  "toolId": "5-4",
+  "source": "demo",
+  "ko": {
+   "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
+   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+  },
+  "en": {
+   "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
+   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Control (대조군)",
+     "en": "Control (control)"
+    },
+    "value": 0.043972764826770185,
+    "display": "4.4%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant A",
+     "en": "Variant A"
+    },
+    "value": 0.06199214865218529,
+    "display": "6.2%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Variant B",
+     "en": "Variant B"
+    },
+    "value": 0.05302150577913186,
+    "display": "5.3%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant C",
+     "en": "Variant C"
+    },
+    "value": 0.05013038546379972,
+    "display": "5.01%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "ad-creative-testing": {
+  "toolId": "9-6",
+  "source": "demo",
+  "ko": {
+   "headline": "판정할 수 있는 소재 63개 중 30개에서 클릭률이 떨어지는 피로 신호가 보입니다.",
+   "caption": "예시 데이터로 계산했습니다. 운영 기간이 짧은 소재는 판정에서 뺐습니다."
+  },
+  "en": {
+   "headline": "30 of the 63 creatives that can be judged show a falling-CTR fatigue signal.",
+   "caption": "Calculated on example data. Creatives with too few days are excluded."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "현재 알림",
+     "en": "Alert now"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "피로 감지·알림 없음",
+     "en": "Fatigue signal"
+    },
+    "value": 30,
+    "display": "30",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "판정 가능·비피로",
+     "en": "No fatigue"
+    },
+    "value": 33,
+    "display": "33",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "ad-machine-learning": {
+  "toolId": "5-21",
+  "source": "demo",
+  "ko": {
+   "headline": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,475원 → 1,682원."
+  },
+  "en": {
+   "headline": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,475 → ₩1,682."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 196.8155278435386,
+    "display": {
+     "ko": "+197원",
+     "en": "+₩197"
+    },
+    "highlight": true,
+    "suffix": "95%"
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 10.567467359127004,
+    "display": {
+     "ko": "+11원",
+     "en": "+₩11"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 3.2722993985920947,
+    "display": {
+     "ko": "+3원",
+     "en": "+₩3"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Organic Search",
+     "en": "Organic Search"
+    },
+    "value": 0.6873141595821185,
+    "display": {
+     "ko": "+1원",
+     "en": "+₩1"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": -3.7665720372165357,
+    "display": {
+     "ko": "−4원",
+     "en": "+₩-4"
+    },
+    "highlight": false,
+    "suffix": null
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "ad-performance-diagnosis": {
+  "toolId": "5-21",
+  "source": "demo",
+  "ko": {
+   "headline": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,475원 → 1,682원."
+  },
+  "en": {
+   "headline": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,475 → ₩1,682."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 196.8155278435386,
+    "display": {
+     "ko": "+197원",
+     "en": "+₩197"
+    },
+    "highlight": true,
+    "suffix": "95%"
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 10.567467359127004,
+    "display": {
+     "ko": "+11원",
+     "en": "+₩11"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 3.2722993985920947,
+    "display": {
+     "ko": "+3원",
+     "en": "+₩3"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Organic Search",
+     "en": "Organic Search"
+    },
+    "value": 0.6873141595821185,
+    "display": {
+     "ko": "+1원",
+     "en": "+₩1"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": -3.7665720372165357,
+    "display": {
+     "ko": "−4원",
+     "en": "+₩-4"
+    },
+    "highlight": false,
+    "suffix": null
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "aha-event-ad-optimization": {
+  "toolId": "5-20",
+  "source": "demo",
+  "ko": {
+   "headline": "첫 7일 메시지 18회 이상인 사용자의 전환율은 95.8%로, 전체 평균(52.8%)의 1.8배입니다.",
+   "caption": "예시 데이터로 계산했습니다. 행동 4개와 여러 기준을 훑어 가장 강한 조합을 골랐으니, 새 기간에서 다시 확인하세요."
+  },
+  "en": {
+   "headline": "Users with 18+ messages in first 7 days convert at 95.8%, 1.8× the average (52.8%).",
+   "caption": "Calculated on example data. The strongest of 4 actions and many thresholds was picked, so confirm it on a new period."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "첫 7일 메시지 18회+",
+     "en": "Messages in first 7 days 18+"
+    },
+    "value": 0.9584352078239609,
+    "display": "95.8%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "첫 7일 매칭 6회+",
+     "en": "Matches in first 7 days 6+"
+    },
+    "value": 0.8605697151424287,
+    "display": "86.1%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "프로필 완성 항목 2회+",
+     "en": "Profile fields completed 2+"
+    },
+    "value": 0.854419410745234,
+    "display": "85.4%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "부스트 사용 1회+",
+     "en": "Boosts used 1+"
+    },
+    "value": 0.7479892761394102,
+    "display": "74.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "aha-moment-retention": {
+  "toolId": "5-20",
+  "source": "demo",
+  "ko": {
+   "headline": "첫 7일 메시지 18회 이상인 사용자의 전환율은 95.8%로, 전체 평균(52.8%)의 1.8배입니다.",
+   "caption": "예시 데이터로 계산했습니다. 행동 4개와 여러 기준을 훑어 가장 강한 조합을 골랐으니, 새 기간에서 다시 확인하세요."
+  },
+  "en": {
+   "headline": "Users with 18+ messages in first 7 days convert at 95.8%, 1.8× the average (52.8%).",
+   "caption": "Calculated on example data. The strongest of 4 actions and many thresholds was picked, so confirm it on a new period."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "첫 7일 메시지 18회+",
+     "en": "Messages in first 7 days 18+"
+    },
+    "value": 0.9584352078239609,
+    "display": "95.8%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "첫 7일 매칭 6회+",
+     "en": "Matches in first 7 days 6+"
+    },
+    "value": 0.8605697151424287,
+    "display": "86.1%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "프로필 완성 항목 2회+",
+     "en": "Profile fields completed 2+"
+    },
+    "value": 0.854419410745234,
+    "display": "85.4%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "부스트 사용 1회+",
+     "en": "Boosts used 1+"
+    },
+    "value": 0.7479892761394102,
+    "display": "74.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "apple-search-ads-guide": {
+  "toolId": "5-26",
+  "source": "asa-mature-candidate.csv",
+  "ko": {
+   "headline": "검색어 보고서에서 바로 검토할 후보가 2건 나옵니다. Exact 승격 1건, CPT 조정 1건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 목표 CPA와 탭·설치 수로 고른 운영 후보입니다."
+  },
+  "en": {
+   "headline": "The search term report yields 2 candidates to review: 1 Exact promotions and 1 CPT adjustments.",
+   "caption": "Calculated on example data. Operating candidates chosen from target CPA, taps and installs."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Exact 승격",
+     "en": "Exact promotion"
+    },
+    "value": 1,
+    "display": "1",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "CPT 증액",
+     "en": "Raise CPT"
+    },
+    "value": 1,
+    "display": "1",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "CPT 감액",
+     "en": "Lower CPT"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "제외 검토",
+     "en": "Negative review"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "asa-keyword-expansion": {
+  "toolId": "5-26",
+  "source": "demo",
+  "ko": {
+   "headline": "검색어 보고서에서 바로 검토할 후보가 10건 나옵니다. Exact 승격 2건, CPT 조정 4건입니다.",
+   "caption": "예시 데이터로 계산했습니다. 목표 CPA와 탭·설치 수로 고른 운영 후보입니다."
+  },
+  "en": {
+   "headline": "The search term report yields 10 candidates to review: 2 Exact promotions and 4 CPT adjustments.",
+   "caption": "Calculated on example data. Operating candidates chosen from target CPA, taps and installs."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Exact 승격",
+     "en": "Exact promotion"
+    },
+    "value": 2,
+    "display": "2",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "CPT 증액",
+     "en": "Raise CPT"
+    },
+    "value": 2,
+    "display": "2",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "CPT 감액",
+     "en": "Lower CPT"
+    },
+    "value": 2,
+    "display": "2",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "제외 검토",
+     "en": "Negative review"
+    },
+    "value": 4,
+    "display": "4",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "aso-basics-guide": {
+  "toolId": "5-27",
+  "source": "aso-mix-only.csv",
+  "ko": {
+   "headline": "조회→설치 전환율이 34%에서 16%로 떨어졌고, 그 하락의 100%는 페이지가 아니라 유입 구성 변화 때문입니다.",
+   "caption": "예시 데이터로 계산했습니다. 유입 구성과 소스별 전환율로 하락을 나눴습니다."
+  },
+  "en": {
+   "headline": "View-to-install conversion fell from 34% to 16%, and 100% of the drop came from traffic mix, not the page.",
+   "caption": "Calculated on example data. The drop is split into traffic mix and per-source conversion."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "유입 구성 변화",
+     "en": "Traffic mix"
+    },
+    "value": 1,
+    "display": "100%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "페이지 전환율 변화",
+     "en": "Page conversion"
+    },
+    "value": 0,
+    "display": "0%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "audience-broad-vs-narrow": {
+  "toolId": "5-4",
+  "source": "demo",
+  "ko": {
+   "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
+   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+  },
+  "en": {
+   "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
+   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Control (대조군)",
+     "en": "Control (control)"
+    },
+    "value": 0.043972764826770185,
+    "display": "4.4%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant A",
+     "en": "Variant A"
+    },
+    "value": 0.06199214865218529,
+    "display": "6.2%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Variant B",
+     "en": "Variant B"
+    },
+    "value": 0.05302150577913186,
+    "display": "5.3%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant C",
+     "en": "Variant C"
+    },
+    "value": 0.05013038546379972,
+    "display": "5.01%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "brand-campaign-lift": {
+  "toolId": "5-24",
+  "source": "demo",
+  "ko": {
+   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
+   "caption": "예시 데이터로 계산했습니다. 캠페인 전 35일 추세로 예상치를 만들었습니다."
+  },
+  "en": {
+   "headline": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it.",
+   "caption": "Calculated on example data. The expectation comes from the 35-day pre-campaign trend."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "실제",
+     "en": "Actual"
+    },
+    "value": 4096,
+    "display": "4,096",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "캠페인 없었을 때 예상",
+     "en": "Expected without campaign"
+    },
+    "value": 3537.835174721204,
+    "display": "3,538",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "budget-marginal-efficiency": {
+  "toolId": "5-22",
+  "source": "demo",
+  "ko": {
+   "headline": "채널 4개 중 4개는 광고비를 더 쓰면 설치당 비용이 평균보다 비싸집니다. 가장 높은 곳은 평균의 1.72배입니다.",
+   "caption": "예시 데이터로 계산했습니다. 한계 비용 ÷ 평균 비용, 1보다 크면 포화 신호."
+  },
+  "en": {
+   "headline": "4 of 4 channels get more expensive per install with extra spend. Apple Search Ads is 1.72× its average.",
+   "caption": "Calculated on example data. Marginal ÷ average cost; above 1 signals saturation."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 1.7196170098093448,
+    "display": "1.72×",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 1.5001494996712628,
+    "display": "1.5×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 1.4945377792785466,
+    "display": "1.49×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 1.3687662741664184,
+    "display": "1.37×",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "budget-scaling-limit": {
+  "toolId": "5-22",
+  "source": "saturation-sparse.csv",
+  "withheld": true,
+  "ko": {
+   "headline": "이 예제로는 판단을 보류합니다. 같은 채널을 여러 날짜·여러 지출 수준에서 관측해야 추정할 수 있습니다.",
+   "caption": "예시 데이터로 계산했습니다. 행이 많아도 채널마다 관측이 한 번뿐이면 판단할 수 없습니다."
+  },
+  "en": {
+   "headline": "This example withholds a judgment. The same channel must be observed across dates and spend levels.",
+   "caption": "Calculated on example data. Many rows do not help when each channel is observed only once."
+  },
+  "bars": [],
+  "spark": null,
+  "note": null
+ },
+ "cac-payback-period": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "campaign-anomaly-detection": {
+  "toolId": "5-21",
+  "source": "demo",
+  "ko": {
+   "headline": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,475원 → 1,682원."
+  },
+  "en": {
+   "headline": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,475 → ₩1,682."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 196.8155278435386,
+    "display": {
+     "ko": "+197원",
+     "en": "+₩197"
+    },
+    "highlight": true,
+    "suffix": "95%"
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 10.567467359127004,
+    "display": {
+     "ko": "+11원",
+     "en": "+₩11"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 3.2722993985920947,
+    "display": {
+     "ko": "+3원",
+     "en": "+₩3"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Organic Search",
+     "en": "Organic Search"
+    },
+    "value": 0.6873141595821185,
+    "display": {
+     "ko": "+1원",
+     "en": "+₩1"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": -3.7665720372165357,
+    "display": {
+     "ko": "−4원",
+     "en": "+₩-4"
+    },
+    "highlight": false,
+    "suffix": null
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "cannibalization-organic-paid": {
+  "toolId": "5-18-paid-organic",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 4주 오가닉은 +10%, 유료는 −0.6% 움직였고, 둘이 반대로 움직인 주는 0주입니다. 잠식이라고 볼 신호는 아직 없습니다.",
+   "caption": "예시 데이터로 계산했습니다. 주별 변화 방향만 비교합니다."
+  },
+  "en": {
+   "headline": "In the last 4 weeks organic moved +10% and paid −0.6%, with 0 weeks moving in opposite directions. No sign of cannibalization yet.",
+   "caption": "Calculated on example data. Compares weekly direction only."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "오가닉",
+     "en": "Organic"
+    },
+    "value": 0.10017055144968733,
+    "display": "+10%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "유료",
+     "en": "Paid"
+    },
+    "value": -0.006244424620874219,
+    "display": "−0.6%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "cohort-analysis-guide": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "content-element-analysis": {
+  "toolId": "9-1",
+  "source": "demo",
+  "ko": {
+   "headline": "‘제목에 숫자’ 요소가 있는 콘텐츠의 평균 클릭률이 1.47%p 높습니다. 요소가 겹치는 영향을 빼면 달라질 수 있습니다.",
+   "caption": "예시 데이터로 계산했습니다. 콘텐츠 260개의 단순 평균 차이이며, 도구는 회귀로 요소를 서로 떼어 봅니다."
+  },
+  "en": {
+   "headline": "Content with a number in title has 1.47 pp higher average CTR. This can change once overlapping elements are separated.",
+   "caption": "Calculated on example data. A simple mean difference across 260 pieces; the tool separates elements with regression."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "제목에 숫자",
+     "en": "Number in title"
+    },
+    "value": 1.469013458303292,
+    "display": {
+     "ko": "+1.47%p",
+     "en": "+1.47 pp"
+    },
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "밝은 썸네일",
+     "en": "Bright thumbnail"
+    },
+    "value": 0.8113116698292235,
+    "display": {
+     "ko": "+0.81%p",
+     "en": "+0.81 pp"
+    },
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "목록형 글",
+     "en": "Listicle"
+    },
+    "value": 0.7956056093323398,
+    "display": {
+     "ko": "+0.8%p",
+     "en": "+0.8 pp"
+    },
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "이모지",
+     "en": "Emoji"
+    },
+    "value": -0.06863595997868588,
+    "display": {
+     "ko": "−0.07%p",
+     "en": "−0.07 pp"
+    },
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "correlation-vs-causation": {
+  "toolId": "5-23",
+  "source": "demo",
+  "ko": {
+   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+  },
+  "en": {
+   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data. Compared with a randomized holdout."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "광고 노출",
+     "en": "Exposed"
+    },
+    "value": 0.05992687966936894,
+    "display": "5.99%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "홀드아웃",
+     "en": "Holdout"
+    },
+    "value": 0.050998141535634485,
+    "display": "5.1%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "cpi-cpa-cpm-difference": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "creative-attribute-regression": {
+  "toolId": "9-1",
+  "source": "demo",
+  "ko": {
+   "headline": "‘제목에 숫자’ 요소가 있는 콘텐츠의 평균 클릭률이 1.47%p 높습니다. 요소가 겹치는 영향을 빼면 달라질 수 있습니다.",
+   "caption": "예시 데이터로 계산했습니다. 콘텐츠 260개의 단순 평균 차이이며, 도구는 회귀로 요소를 서로 떼어 봅니다."
+  },
+  "en": {
+   "headline": "Content with a number in title has 1.47 pp higher average CTR. This can change once overlapping elements are separated.",
+   "caption": "Calculated on example data. A simple mean difference across 260 pieces; the tool separates elements with regression."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "제목에 숫자",
+     "en": "Number in title"
+    },
+    "value": 1.469013458303292,
+    "display": {
+     "ko": "+1.47%p",
+     "en": "+1.47 pp"
+    },
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "밝은 썸네일",
+     "en": "Bright thumbnail"
+    },
+    "value": 0.8113116698292235,
+    "display": {
+     "ko": "+0.81%p",
+     "en": "+0.81 pp"
+    },
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "목록형 글",
+     "en": "Listicle"
+    },
+    "value": 0.7956056093323398,
+    "display": {
+     "ko": "+0.8%p",
+     "en": "+0.8 pp"
+    },
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "이모지",
+     "en": "Emoji"
+    },
+    "value": -0.06863595997868588,
+    "display": {
+     "ko": "−0.07%p",
+     "en": "−0.07 pp"
+    },
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "funnel-dropoff-analysis": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "google-uac-optimization": {
+  "toolId": "9-6",
+  "source": "demo",
+  "ko": {
+   "headline": "판정할 수 있는 소재 63개 중 30개에서 클릭률이 떨어지는 피로 신호가 보입니다.",
+   "caption": "예시 데이터로 계산했습니다. 운영 기간이 짧은 소재는 판정에서 뺐습니다."
+  },
+  "en": {
+   "headline": "30 of the 63 creatives that can be judged show a falling-CTR fatigue signal.",
+   "caption": "Calculated on example data. Creatives with too few days are excluded."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "현재 알림",
+     "en": "Alert now"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "피로 감지·알림 없음",
+     "en": "Fatigue signal"
+    },
+    "value": 30,
+    "display": "30",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "판정 가능·비피로",
+     "en": "No fatigue"
+    },
+    "value": 33,
+    "display": "33",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "hook-3-seconds-framework": {
+  "toolId": "9-6",
+  "source": "demo",
+  "ko": {
+   "headline": "판정할 수 있는 소재 63개 중 30개에서 클릭률이 떨어지는 피로 신호가 보입니다.",
+   "caption": "예시 데이터로 계산했습니다. 운영 기간이 짧은 소재는 판정에서 뺐습니다."
+  },
+  "en": {
+   "headline": "30 of the 63 creatives that can be judged show a falling-CTR fatigue signal.",
+   "caption": "Calculated on example data. Creatives with too few days are excluded."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "현재 알림",
+     "en": "Alert now"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "피로 감지·알림 없음",
+     "en": "Fatigue signal"
+    },
+    "value": 30,
+    "display": "30",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "판정 가능·비피로",
+     "en": "No fatigue"
+    },
+    "value": 33,
+    "display": "33",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "incrementality-measurement": {
+  "toolId": "5-23",
+  "source": "demo",
+  "ko": {
+   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+  },
+  "en": {
+   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data. Compared with a randomized holdout."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "광고 노출",
+     "en": "Exposed"
+    },
+    "value": 0.05992687966936894,
+    "display": "5.99%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "홀드아웃",
+     "en": "Holdout"
+    },
+    "value": 0.050998141535634485,
+    "display": "5.1%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "ltv-cac-ratio": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "marketing-mix-modeling": {
+  "toolId": "5-25",
+  "source": "demo",
+  "ko": {
+   "headline": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
+   "caption": "예시 데이터로 계산했습니다. VIF가 10을 넘으면 기여도 분리가 불안정합니다."
+  },
+  "en": {
+   "headline": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated.",
+   "caption": "Calculated on example data. A VIF above 10 makes contribution estimates unstable."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta",
+     "en": "Meta"
+    },
+    "value": 3.589004328941539,
+    "display": "3,882",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 3.5889996156716313,
+    "display": "3,882",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 0.0020027503861082836,
+    "display": "1",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 0.0019228059128187135,
+    "display": "1",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": "log-scale"
+ },
+ "marketing-report-sheets-bigquery": {
+  "toolId": "5-2",
+  "source": "weekly-report-campaigns.csv",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 20% 올랐습니다. 지출은 20% 늘었는데 설치는 그대로였습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 20% in the last 7 days. Spend grew 20%, while installs stayed flat.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.2,
+    "display": "+20%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0,
+    "display": "+0%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0,
+    "display": "+0%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0,
+    "display": "+0%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "meta-advantage-plus-guide": {
+  "toolId": "9-6",
+  "source": "demo",
+  "ko": {
+   "headline": "판정할 수 있는 소재 63개 중 30개에서 클릭률이 떨어지는 피로 신호가 보입니다.",
+   "caption": "예시 데이터로 계산했습니다. 운영 기간이 짧은 소재는 판정에서 뺐습니다."
+  },
+  "en": {
+   "headline": "30 of the 63 creatives that can be judged show a falling-CTR fatigue signal.",
+   "caption": "Calculated on example data. Creatives with too few days are excluded."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "현재 알림",
+     "en": "Alert now"
+    },
+    "value": 0,
+    "display": "0",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "피로 감지·알림 없음",
+     "en": "Fatigue signal"
+    },
+    "value": 30,
+    "display": "30",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "판정 가능·비피로",
+     "en": "No fatigue"
+    },
+    "value": 33,
+    "display": "33",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "multicollinearity-mmm-guide": {
+  "toolId": "5-25",
+  "source": "demo",
+  "ko": {
+   "headline": "Meta·TikTok 두 채널의 지출이 거의 같이 움직여서(VIF 3,882) 기여를 따로 나눌 수 없습니다.",
+   "caption": "예시 데이터로 계산했습니다. VIF가 10을 넘으면 기여도 분리가 불안정합니다."
+  },
+  "en": {
+   "headline": "Meta and TikTok spend move almost together (VIF 3,882), so their contributions cannot be separated.",
+   "caption": "Calculated on example data. A VIF above 10 makes contribution estimates unstable."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta",
+     "en": "Meta"
+    },
+    "value": 3.589004328941539,
+    "display": "3,882",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 3.5889996156716313,
+    "display": "3,882",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 0.0020027503861082836,
+    "display": "1",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 0.0019228059128187135,
+    "display": "1",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": "log-scale"
+ },
+ "offline-ad-online-impact": {
+  "toolId": "5-24",
+  "source": "demo",
+  "ko": {
+   "headline": "캠페인 기간 브랜드 검색은 4,096건으로, 캠페인이 없었다면 예상되는 3,538건보다 558건(+15.8%) 많았습니다.",
+   "caption": "예시 데이터로 계산했습니다. 캠페인 전 35일 추세로 예상치를 만들었습니다."
+  },
+  "en": {
+   "headline": "Brand searches during the campaign were 4,096, 558 (+15.8%) above the 3,538 expected without it.",
+   "caption": "Calculated on example data. The expectation comes from the 35-day pre-campaign trend."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "실제",
+     "en": "Actual"
+    },
+    "value": 4096,
+    "display": "4,096",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "캠페인 없었을 때 예상",
+     "en": "Expected without campaign"
+    },
+    "value": 3537.835174721204,
+    "display": "3,538",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "performance-marketer-skills": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "performance-marketing-analysis-order": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "performance-marketing-metrics": {
+  "toolId": "5-2",
+  "source": "demo",
+  "ko": {
+   "headline": "최근 7일 설치당 비용이 14.1% 올랐습니다. 지출은 17.3% 늘었는데 설치는 2.8% 늘었습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교."
+  },
+  "en": {
+   "headline": "Cost per install rose 14.1% in the last 7 days. Spend grew 17.3%, while installs grew 2.8%.",
+   "caption": "Calculated on example data. Last 7 days vs the 7 days before."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "지출",
+     "en": "Spend"
+    },
+    "value": 0.17316459337516465,
+    "display": "+17.3%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "노출",
+     "en": "Impressions"
+    },
+    "value": 0.0486319064175326,
+    "display": "+4.9%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "클릭",
+     "en": "Clicks"
+    },
+    "value": 0.026276450500662813,
+    "display": "+2.6%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "설치",
+     "en": "Installs"
+    },
+    "value": 0.02841033858571471,
+    "display": "+2.8%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "retargeting-reengagement-guide": {
+  "toolId": "5-22",
+  "source": "demo",
+  "ko": {
+   "headline": "채널 4개 중 4개는 광고비를 더 쓰면 설치당 비용이 평균보다 비싸집니다. 가장 높은 곳은 평균의 1.72배입니다.",
+   "caption": "예시 데이터로 계산했습니다. 한계 비용 ÷ 평균 비용, 1보다 크면 포화 신호."
+  },
+  "en": {
+   "headline": "4 of 4 channels get more expensive per install with extra spend. Apple Search Ads is 1.72× its average.",
+   "caption": "Calculated on example data. Marginal ÷ average cost; above 1 signals saturation."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 1.7196170098093448,
+    "display": "1.72×",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 1.5001494996712628,
+    "display": "1.5×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 1.4945377792785466,
+    "display": "1.49×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 1.3687662741664184,
+    "display": "1.37×",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "roas-improvement": {
+  "toolId": "5-22",
+  "source": "demo",
+  "ko": {
+   "headline": "채널 4개 중 4개는 광고비를 더 쓰면 설치당 비용이 평균보다 비싸집니다. 가장 높은 곳은 평균의 1.72배입니다.",
+   "caption": "예시 데이터로 계산했습니다. 한계 비용 ÷ 평균 비용, 1보다 크면 포화 신호."
+  },
+  "en": {
+   "headline": "4 of 4 channels get more expensive per install with extra spend. Apple Search Ads is 1.72× its average.",
+   "caption": "Calculated on example data. Marginal ÷ average cost; above 1 signals saturation."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 1.7196170098093448,
+    "display": "1.72×",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 1.5001494996712628,
+    "display": "1.5×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 1.4945377792785466,
+    "display": "1.49×",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": 1.3687662741664184,
+    "display": "1.37×",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "store-conversion-drop-diagnosis": {
+  "toolId": "5-27",
+  "source": "demo",
+  "ko": {
+   "headline": "조회→설치 전환율이 27.8%에서 24.4%로 떨어졌고, 그 하락의 71%는 페이지가 아니라 유입 구성 변화 때문입니다.",
+   "caption": "예시 데이터로 계산했습니다. 유입 구성과 소스별 전환율로 하락을 나눴습니다."
+  },
+  "en": {
+   "headline": "View-to-install conversion fell from 27.8% to 24.4%, and 71% of the drop came from traffic mix, not the page.",
+   "caption": "Calculated on example data. The drop is split into traffic mix and per-source conversion."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "유입 구성 변화",
+     "en": "Traffic mix"
+    },
+    "value": 0.7128560465765631,
+    "display": "71%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "페이지 전환율 변화",
+     "en": "Page conversion"
+    },
+    "value": 0.2871439534234369,
+    "display": "29%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "store-listing-experiment": {
+  "toolId": "5-4",
+  "source": "demo",
+  "ko": {
+   "headline": "Variant A의 전환율이 6.2%로 대조군(4.4%)보다 41% 높습니다. 차이는 우연으로 보기 어렵습니다(p < 0.001).",
+   "caption": "예시 데이터로 계산했습니다. 여러 안을 함께 비교해 p값을 보정했습니다."
+  },
+  "en": {
+   "headline": "Variant A converts at 6.2%, 41% above control (4.4%). The difference is unlikely to be chance (p < 0.001).",
+   "caption": "Calculated on example data. P-values are adjusted for comparing several variants."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Control (대조군)",
+     "en": "Control (control)"
+    },
+    "value": 0.043972764826770185,
+    "display": "4.4%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant A",
+     "en": "Variant A"
+    },
+    "value": 0.06199214865218529,
+    "display": "6.2%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "Variant B",
+     "en": "Variant B"
+    },
+    "value": 0.05302150577913186,
+    "display": "5.3%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "Variant C",
+     "en": "Variant C"
+    },
+    "value": 0.05013038546379972,
+    "display": "5.01%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "uplift-holdout-guide": {
+  "toolId": "5-23",
+  "source": "demo",
+  "ko": {
+   "headline": "광고를 본 그룹의 전환율은 5.99%, 광고를 막은 그룹은 5.1%입니다. 광고가 만든 순증분은 +17.5%이고, 우연으로 보기 어려운 차이입니다.",
+   "caption": "예시 데이터로 계산했습니다. 무작위로 나눈 홀드아웃과 비교했습니다."
+  },
+  "en": {
+   "headline": "The exposed group converts at 5.99% and the holdout at 5.1%. The incremental lift is +17.5%. The difference is unlikely to be chance.",
+   "caption": "Calculated on example data. Compared with a randomized holdout."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "광고 노출",
+     "en": "Exposed"
+    },
+    "value": 0.05992687966936894,
+    "display": "5.99%",
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "홀드아웃",
+     "en": "Holdout"
+    },
+    "value": 0.050998141535634485,
+    "display": "5.1%",
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "weekly-marketing-report-template": {
+  "toolId": "5-21",
+  "source": "demo",
+  "ko": {
+   "headline": "설치당 비용이 208원 올랐고, 그중 197원이 Meta AAP에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 최근 7일과 직전 7일 비교, 1,475원 → 1,682원."
+  },
+  "en": {
+   "headline": "Cost per install rose by ₩208, and ₩197 of it came from Meta AAP.",
+   "caption": "Calculated on example data. Last 7 days vs the prior 7, ₩1,475 → ₩1,682."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "Meta AAP",
+     "en": "Meta AAP"
+    },
+    "value": 196.8155278435386,
+    "display": {
+     "ko": "+197원",
+     "en": "+₩197"
+    },
+    "highlight": true,
+    "suffix": "95%"
+   },
+   {
+    "label": {
+     "ko": "Apple Search Ads",
+     "en": "Apple Search Ads"
+    },
+    "value": 10.567467359127004,
+    "display": {
+     "ko": "+11원",
+     "en": "+₩11"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Google UAC",
+     "en": "Google UAC"
+    },
+    "value": 3.2722993985920947,
+    "display": {
+     "ko": "+3원",
+     "en": "+₩3"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "Organic Search",
+     "en": "Organic Search"
+    },
+    "value": 0.6873141595821185,
+    "display": {
+     "ko": "+1원",
+     "en": "+₩1"
+    },
+    "highlight": false,
+    "suffix": null
+   },
+   {
+    "label": {
+     "ko": "TikTok",
+     "en": "TikTok"
+    },
+    "value": -3.7665720372165357,
+    "display": {
+     "ko": "−4원",
+     "en": "+₩-4"
+    },
+    "highlight": false,
+    "suffix": null
+   }
+  ],
+  "spark": null,
+  "note": null
+ }
+}
