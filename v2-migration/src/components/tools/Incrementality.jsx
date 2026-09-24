@@ -227,10 +227,10 @@ export default function Incrementality({ locale = "ko" } = {}) {
           {isDemo && (
             <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
               <div>
-                <strong>{tr("🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다", "🧪 You're currently viewing sample (example) data")}</strong>
+                <strong>{tr("지금 보고 있는 화면은 샘플(예시) 데이터입니다", "You're currently viewing sample (example) data")}</strong>
                 <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to any server. Upload your own CSV to replace it instantly.")}</p>
               </div>
-              <button className="ab-button" onClick={resetCsv}>{tr("📁 내 CSV 업로드하기", "📁 Upload my CSV")}</button>
+              <button className="ab-button" onClick={resetCsv}>{tr("내 CSV 업로드하기", "Upload my CSV")}</button>
             </div>
           )}
           <div className="file-state" style={{ marginBottom: "12px" }}>
@@ -655,8 +655,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
                 warnings: [...(!design.ready ? ["User-declared design conditions are unconfirmed or unsuitable"] : []), ...(win.balanced === false ? ["Pre-holdout balance is questionable"] : [])],
               })}
               items={[
-                { icon: "📄", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전환율·Lift·증분·iROAS", "Rates, lift, incremental, iROAS"), onSelect: () => dlCsv(card.csv, "incrementality_suppression") },
-                { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression", "md", locale) },
+                { icon: "⬇", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전환율·Lift·증분·iROAS", "Rates, lift, incremental, iROAS"), onSelect: () => dlCsv(card.csv, "incrementality_suppression") },
+                { icon: "⬇", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression", "md", locale) },
               ]}
             />
           }
@@ -670,7 +670,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       )}
 
       {r && (
-        <div className="alloc-card" style={{ borderLeft: `3px solid ${positive ? "#22c55e" : "#ef4444"}` }}>
+        <div className="alloc-card">
           <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
             <Stat label={tr("홀드아웃 전환율", "Holdout conversion rate")} value={fmtPct(r.cRate)} hint={`${fmtNum(win.cN)}/${fmtNum(win.cD)}`} />
             <Stat label={tr("노출 전환율", "Exposed conversion rate")} value={fmtPct(r.tRate)} hint={`${fmtNum(win.tN)}/${fmtNum(win.tD)}`} />
@@ -684,14 +684,14 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {series && isWindowOrderValid && (
         <div style={{ marginTop: "14px" }}>
-          <h3 style={{ fontSize: "var(--fs-sm)", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
+          <h3 style={{ fontSize: "var(--fs-md)", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
           <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
       )}
 
       {r && (
-        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
+        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
           <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is what ads actually created.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
         </p></div></div>
       )}
@@ -1099,14 +1099,14 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
                   label={tr("결과 받기", "Download")}
                   align="right"
                   items={[
-                    { icon: "📄", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전후 평균·Δ·유의성", "Pre/post avg, Δ, significance"), onSelect: () => dlCsv(card.csv, lost ? "incrementality_shutdown" : "incrementality_launch") },
-                    { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, lost ? "incrementality_shutdown" : "incrementality_launch", "md", locale) },
+                    { icon: "⬇", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전후 평균·Δ·유의성", "Pre/post avg, Δ, significance"), onSelect: () => dlCsv(card.csv, lost ? "incrementality_shutdown" : "incrementality_launch") },
+                    { icon: "⬇", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, lost ? "incrementality_shutdown" : "incrementality_launch", "md", locale) },
                   ]}
                 />
               }
             />
           )}
-          <div className="alloc-card" style={{ borderLeft: `3px solid ${good ? "#22c55e" : "#fbbf24"}`, marginBottom: "12px" }}>
+          <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(displayPreMean, 1)} />
               <Stat label={tr("전환 후 평균(일)", "Post-cutoff daily average")} value={fmtNum(displayPostMean, 1)} />
@@ -1116,7 +1116,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
             </div>
           </div>
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
-          <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
+          <div className="callout" style={{ marginTop: "10px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
             <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(
               <>전환 시점 {lost ? "끈" : "켠"} 뒤 처리군 하루 평균이 {fmtNum(displayPreMean, 1)} → {fmtNum(displayPostMean, 1)}로 바뀌었습니다. {isDiD ? `같은 날짜의 대조군 변화를 뺀 순효과는 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}입니다.` : `${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} ${effVal >= 0 ? "올랐" : "떨어졌"}습니다.`}</>,
               <>After the day it was turned {lost ? "off" : "on"}, the treatment daily average changed from {fmtNum(displayPreMean, 1)} to {fmtNum(displayPostMean, 1)}. {isDiD ? `The net effect after subtracting the control on matching dates is ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.` : `It ${effVal >= 0 ? "increased" : "decreased"} by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.`}</>

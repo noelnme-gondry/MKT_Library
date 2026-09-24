@@ -29,9 +29,9 @@ const SCORE_COPY = {
     reset: "초기화",
     resetTitle: "전체 표시·기본 순서·기본 크기",
     editDone: "완료",
-    edit: "✏️ 편집",
+    edit: "편집",
     editTitle: "카드를 그 자리에서 드래그·표시/숨김·크기 편집",
-    editHint: "⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.",
+    editHint: "⠿ 드래그로 이동 · 표시/숨김. 변경은 자동 저장됩니다.",
     noPrevData: "직전 데이터 없음",
     wow: (arrow, pct) => `${arrow} ${pct}% WoW`,
     kpiTitle: (w) => `핵심 KPI (최근 ${w}일)`,
@@ -39,7 +39,7 @@ const SCORE_COPY = {
     profitMargin: "이익률",
     scFootnote: (w) => `WoW = 최근 ${w}일 vs 직전 ${w}일. 색은 지표 성격 반영(비용 상승 지표↓·성과 지표↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.`,
     dailyDetailTitle: (w, label, n) => `일별 상세 — ${label} (최근 ${n}일)`,
-    legendHint: (w) => `🟠 비교주(직전 ${w}일) / 🔵 목표주(최근 ${w}일) · 카드 재클릭 시 닫힘`,
+    legendHint: (w) => `비교주(직전 ${w}일) / 목표주(최근 ${w}일) · 카드 재클릭 시 닫힘`,
     insufficientData: (n) => `⚠ 데이터가 충분하지 않습니다 (${n}일). 있는 만큼 표시합니다.`,
     pngBtn: "⬇ PNG",
     noData: "데이터 없음",
@@ -52,9 +52,9 @@ const SCORE_COPY = {
     reset: "Reset",
     resetTitle: "Show all · default order · default size",
     editDone: "Done",
-    edit: "✏️ Edit",
+    edit: "Edit",
     editTitle: "Drag to reorder · show/hide · resize cards in place",
-    editHint: "⠿ Drag to move · 👁 show/hide. Changes save automatically.",
+    editHint: "⠿ Drag to move · show/hide. Changes save automatically.",
     noPrevData: "No prior data",
     wow: (arrow, pct) => `${arrow} ${pct}% WoW`,
     kpiTitle: (w) => `Key KPIs (last ${w} days)`,
@@ -62,7 +62,7 @@ const SCORE_COPY = {
     profitMargin: "Profit Margin",
     scFootnote: (w) => `WoW = last ${w}d vs prior ${w}d. Color reflects metric direction (cost-type ↓ / performance-type ↑ = green). Cost is neutral (scale). Click a card for daily detail.`,
     dailyDetailTitle: (w, label, n) => `Daily detail — ${label} (last ${n} days)`,
-    legendHint: (w) => `🟠 Comparison week (prior ${w}d) / 🔵 Target week (last ${w}d) · click card again to close`,
+    legendHint: (w) => `Comparison week (prior ${w}d) / Target week (last ${w}d) · click card again to close`,
     insufficientData: (n) => `⚠ Not enough data (${n} days). Showing what's available.`,
     pngBtn: "⬇ PNG",
     noData: "No data",
@@ -410,7 +410,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
 
       {selectedMetric && (
         <section className="block" id="s-score-daily" style={{ paddingTop: "8px" }}>
-          <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
+          <h3 style={{ fontSize: "var(--fs-md)", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
             {T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, Math.min(daily.length, 2 * windowDays))}
           </h3>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 8px" }}>

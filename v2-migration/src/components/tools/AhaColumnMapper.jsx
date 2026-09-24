@@ -288,11 +288,11 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange, local
           {tr("컬럼을 역할 영역으로 드래그하거나 각 칩의 역할 선택을 사용하세요. 헤더가 ", "Drag columns onto a role zone or use each chip’s role selector. If a header looks like ")}<code className="inline">{"{action}_d{N}"}</code>{tr(" 형태면 액션·윈도우가 자동 파싱됩니다.", ", the action and window are parsed automatically.")}
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>{tr("🪄 전부 자동 추정", "🪄 Auto-map all")}</button>
+          <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>{tr("전부 자동 추정", "Auto-map all")}</button>
           <button type="button" className="ab-pill" onClick={mapAllAsFeature} title={tr("타겟·id 제외 모든 컬럼을 선행 행동(feature)으로 일괄 배치", "Place every column except target/id as a preceding action (feature)")}>{tr("나머지 열을 모두 초기 행동으로", "Use all other columns as early actions")}</button>
           <button type="button" className="ab-pill" onClick={() => mapWindowEvents(1)} disabled={!d1Count} title={tr("헤더가 D1로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)", "Auto-map only columns whose header parses to D1 (leave others as-is)")}>{tr("D1 이벤트 매핑", "Map D1 events")}{d1Count ? ` (${d1Count})` : ""}</button>
           <button type="button" className="ab-pill" onClick={() => mapWindowEvents(7)} disabled={!d7Count} title={tr("헤더가 D7로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)", "Auto-map only columns whose header parses to D7 (leave others as-is)")}>{tr("D7 이벤트 매핑", "Map D7 events")}{d7Count ? ` (${d7Count})` : ""}</button>
-          <button type="button" className="ab-pill" onClick={clearAll} title={tr("전체 매핑을 초기화하고 처음부터 다시", "Reset all mappings and start over")}>{tr("🗑 전체 해제", "🗑 Clear all")}</button>
+          <button type="button" className="ab-pill" onClick={clearAll} title={tr("전체 매핑을 초기화하고 처음부터 다시", "Reset all mappings and start over")}>{tr("전체 해제", "Clear all")}</button>
         </div>
       </div>
       <div

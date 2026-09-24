@@ -14,7 +14,7 @@ export default function NotFound() {
         padding: "3rem 1rem",
       }}
     >
-      <div style={{ fontSize: "42px" }}>🧭</div>
+      
       <h1 style={{ margin: 0, fontSize: "1.4rem" }}>페이지를 찾을 수 없습니다</h1>
       <p style={{ margin: 0, color: "var(--text-secondary, #888)" }}>
         요청하신 주소가 없거나 이동되었습니다.

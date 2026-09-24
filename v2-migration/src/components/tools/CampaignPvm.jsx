@@ -65,8 +65,8 @@ const PVM_COPY_EN = {
     explainerRate: (ml) => `The change from the channel's own ${ml} changing.`,
     shareHeader: "Result Share (P1→P2)",
     shareHeaderTitle: "The share of total results (conversions) this item accounts for — not a cost share.",
-    lockCampaign: "🔒 Map the campaign_id column to see the campaign level",
-    lockCreative: "🔒 Map the creative_id column to see the creative level",
+    lockCampaign: "Map the campaign_id column to see the campaign level",
+    lockCreative: "Map the creative_id column to see the creative level",
     newBadgeTitle: "New creative (0 in prior period → 1+ in current period)",
     showNewLabel: "🆕 Show new creatives only (0 in prior period → 1+ in current period)",
     creativeLinkTitle: "Open creative link",
@@ -100,8 +100,8 @@ const PVM_COPY_EN = {
     explainerRate: (ml) => `The change from the traffic source's own ${ml} changing.`,
     shareHeader: "Traffic Share (P1→P2)",
     shareHeaderTitle: "The share of total traffic (visits/PV) this item accounts for — not a cost share.",
-    lockCampaign: "🔒 Map the campaign_id column to see the category level",
-    lockCreative: "🔒 Map the creative_id column to see the content level",
+    lockCampaign: "Map the campaign_id column to see the category level",
+    lockCreative: "Map the creative_id column to see the content level",
     newBadgeTitle: "New content (0 in prior period → 1+ in current period)",
     showNewLabel: "🆕 Show new content only (0 in prior period → 1+ in current period)",
     creativeLinkTitle: "Open content link",
@@ -1222,7 +1222,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
           <strong style={{ verticalAlign: "middle" }}>{e.crKey || unspec}</strong>
           {safeUrl && (
-            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "var(--fs-xs)", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
+            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "var(--fs-xs)", marginLeft: "4px", verticalAlign: "middle" }}>↗</a>
           )}
         </>
       );
@@ -1248,7 +1248,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <td className="tnum" style={{ whiteSpace: "nowrap", color: pvmColor(subMixVal) }}>{subMixNode}</td>
         <td className="tnum" style={{ whiteSpace: "nowrap", color: pvmColor(subRateVal) }}>{subRateNode}</td>
         <td style={{ textAlign: "center", whiteSpace: "nowrap", position: "relative" }}>
-          <span className="pvm-diag-icon" tabIndex={0} style={{ cursor: "help", fontSize: "var(--fs-base)", opacity: 0.7 }} data-tip={diagText}>💡</span>
+          <span className="pvm-diag-icon" tabIndex={0} style={{ cursor: "help", fontSize: "var(--fs-base)", opacity: 0.7 }} data-tip={diagText}>ⓘ</span>
         </td>
         <td className="tnum" style={{ whiteSpace: "nowrap" }}>
           <strong style={{ color: pvmColor(e.contribution) }}>{impactStr}</strong>
@@ -1389,7 +1389,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 return {
                   value: lb,
                   disabled: !!locked,
-                  label: <>{locked ? "🔒 " : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}</>,
+                  label: <>{locked ? "" : ""}{lb === 1 ? tr("직전주", "Prior week") : lb === 2 ? tr("2주전", "2 weeks ago") : tr("3주전", "3 weeks ago")}</>,
                 };
               })}
             />
@@ -1494,8 +1494,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 align="right"
                 manifest={pvmManifest}
                 items={[
-                  { icon: "📄", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: downloadPvmCsv },
-                  { icon: "🖼", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") },
+                  { icon: "⬇", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: downloadPvmCsv },
+                  { icon: "⬇", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") },
                 ]}
               />
             )}
@@ -1555,7 +1555,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               const b = bridge(cache.Cost1, cache.Cost2, false);
               return (
                 <div className="pvm-bridge">
-                  <span className="bl">COST</span>
+                  <span className="bl">{tr("비용", "Cost")}</span>
                   <div className="flow"><span className="p1">{pvmFmtMoney(cache.Cost1, cur)}</span><span className="arr">→</span><span>{pvmFmtMoney(cache.Cost2, cur)}</span></div>
                   <span className={`pvm-chip ${b.cls}`} style={{ marginLeft: "auto" }}>{b.arr} {b.sign}{pvmFmtMoney(b.d, cur)} ({b.sign}{Math.abs(b.pct) < 0.05 ? "0" : b.pct.toFixed(1)}%)</span>
                 </div>
@@ -1612,7 +1612,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <h2 className="section-title">{C.secChannels}</h2>
 
         <section data-information-section="" className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
-          <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요?`, `❓ What are Mix, Rate, and ${ml} impact?`)}</header>
+          <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`Mix · Rate · ${ml} 영향이 뭔가요?`, `What are Mix, Rate, and ${ml} impact?`)}</header>
           <div style={{ marginTop: "10px", fontSize: "var(--fs-xs)", lineHeight: 1.7, color: "var(--text-muted)" }}>
             {ready
               ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)

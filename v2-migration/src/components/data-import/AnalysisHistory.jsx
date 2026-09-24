@@ -78,7 +78,6 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
     <section ref={historyRef} className="analysis-history">
       <header>
         <div>
-          <span>DECISION LOG</span>
           <strong>{copy.title}</strong>
         </div>
         <small>{copy.count} · {copy.local}</small>

@@ -5,7 +5,7 @@ import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport
 import { ANALYSIS_CONTRACTS, analysisRequiresDate, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 import { buildRecentPeriodComparison } from "@/lib/analysis-results/periodComparison";
 import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
-import EvidenceHint from "@/components/ds/EvidenceHint";
+import IssueMark from "@/components/ds/IssueMark";
 
 const qualityCache = new WeakMap();
 const comparisonCache = new WeakMap();
@@ -115,20 +115,13 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
   const issueCount = report.issues.length;
 
   if (variant === "tooltip") {
-    const comparisonText = comparison.available && primaryMetric
-      ? `${T.compare} ${comparison.windowSize}${comparison.cadence === "days" ? T.days : T.periodsUnit}: ${METRIC_LABEL[primaryMetric.key]?.[locale === "en" ? 1 : 0] || primaryMetric.key} ${formatDelta(primaryMetric, locale)}`
-      : "";
-    const qualityText = issueCount ? `${T.details} ${issueCount}` : T.noIssues;
-    const tooltip = [
-      `${T.basis}: ${label}`,
-      [
-        `${number(report.rowCount, locale)} ${T.rows}`,
-        report.requiresDate ? `${number(report.periodCount, locale)} ${T.periods}` : "",
-      ].filter(Boolean).join(" · "),
-      comparisonText,
-      qualityText,
-    ].filter(Boolean).join(" · ");
-    return <EvidenceHint label={`${T.basis}: ${label}`} detail={tooltip} />;
+    // 결과 카드 머리: 문제가 없으면 아무것도 없고, 있으면 빨간 "!" 하나. 누르면 어느 지점인지
+    // (기간 공백 수·열 이름·행 수) 목록으로 보인다(2026-09-24 사용자 결정 — 늘 펼친 근거 블록 제거).
+    if (!issueCount && !isCaution && !isUnfit) return null;
+    const count = (issue) => (issue.count ? ` (${number(issue.count, locale)}${issue.code === "period_gaps" ? (locale === "en" ? " gaps" : "곳") : issue.fields ? "" : (locale === "en" ? " rows" : "행")})` : "");
+    const lines = report.issues.map((issue) => `${T[issue.code] || issue.code}${count(issue)}${issue.fields?.length ? ` — ${issue.fields.join(", ")}` : ""}`);
+    if (!lines.length) lines.push(`${T.basis}: ${label} · ${number(report.rowCount, locale)} ${T.rows}${report.requiresDate ? ` · ${number(report.periodCount, locale)} ${T.periods}` : ""}`);
+    return <IssueMark issues={lines} locale={locale} />;
   }
 
   return (

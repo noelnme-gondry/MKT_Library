@@ -1,21 +1,20 @@
-import { STANDARD_FIELDS } from "@/utils/csvConstants";
+import IssueMark from "@/components/ds/IssueMark";
 
+// 결론에 쓰인 기간·분모. 예전에는 '실제 분석 범위·분모 확인' 블록으로 늘 펼쳐 두었는데,
+// 문제가 없으면 읽을 이유가 없는 정보였다(2026-09-24 사용자 결정으로 제거). 이제 입력에
+// 결측·비정상 셀이 있는 기간만 빨간 "!"로 알린다 — 어느 기간의 몇 칸인지까지. 전체 범위는
+// 상세 워크북(XLSX)의 04_SCOPE에 그대로 남는다(`scopeEvidenceTable`).
 export default function AnalysisScopeEvidence({ scope, locale = "ko" }) {
   if (!scope?.periods?.length) return null;
   const en = locale === "en";
-  const denominatorLabel = STANDARD_FIELDS[scope.denominatorKey]?.[en ? "labelEn" : "label"] || scope.denominatorKey;
-  const format = (value) => Number.isFinite(value) ? value.toLocaleString(en ? "en-US" : "ko-KR", { maximumFractionDigits: 3 }) : (en ? "Unmeasured" : "미집계");
-  const filters = Object.entries(scope.filters || {}).filter(([, value]) => Array.isArray(value) ? value.length : value != null && value !== "");
-  return <section data-information-section="" className="analysis-scope-evidence">
-    <header data-information-heading="">{en ? "Actual analysis scope and denominator" : "실제 분석 범위·분모 확인"}</header>
-    <p>{en ? "Denominator" : "분모"}: {denominatorLabel || (en ? "Not declared" : "미선언")} · {en ? "Source currency" : "원본 통화"}: {scope.currency || (en ? "Not applicable / undeclared" : "해당 없음 / 미선언")}</p>
-    <ul>{scope.periods.map((period) => <li key={period.id}>
-      <strong>{period.id === "before" ? (en ? "Before" : "이전") : (en ? "After" : "이후")}: {period.start} ~ {period.end}</strong>
-      <span> · {format(period.observations)} {scope.observationUnit === "cells" ? (en ? "aggregate cells" : "집계 셀") : (en ? "input rows" : "입력 행")} · {en ? "denominator" : "분모"} {format(period.denominator)}</span>
-      {period.cost != null && <span> · {en ? "cost" : "비용"} {format(period.cost)}</span>}
-      <span> · {en ? "missing/invalid input cells" : "입력 결측·비정상 셀"}: {period.quality ? `${period.quality.missing}/${period.quality.checked} (${(period.quality.ratio * 100).toFixed(1)}%)` : (en ? "Unmeasured" : "미집계")}</span>
-    </li>)}</ul>
-    <p>{en ? "Non-date filters" : "날짜 외 필터"}: {filters.length ? filters.map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`).join(" · ") : (en ? "All" : "전체")}</p>
-    <p>{en ? "These are the inputs used by this conclusion after preprocessing. Denominators can differ across tools; matching dates alone does not make the totals comparable." : "전처리 후 이 결론에 사용한 입력 기준입니다. 도구마다 분모 정의가 다를 수 있으며 날짜만 같다고 합계가 비교 가능한 것은 아닙니다."}</p>
-  </section>;
+  const lines = scope.periods
+    .filter((period) => period.quality?.missing > 0)
+    .map((period) => {
+      const name = period.id === "before" ? (en ? "Before" : "이전") : (en ? "After" : "이후");
+      const ratio = (period.quality.ratio * 100).toFixed(1);
+      return en
+        ? `${name} ${period.start} ~ ${period.end}: ${period.quality.missing} of ${period.quality.checked} input cells are missing or invalid (${ratio}%)`
+        : `${name} ${period.start} ~ ${period.end}: 입력 ${period.quality.checked}칸 중 ${period.quality.missing}칸이 비었거나 읽을 수 없습니다 (${ratio}%)`;
+    });
+  return <IssueMark issues={lines} locale={locale} />;
 }

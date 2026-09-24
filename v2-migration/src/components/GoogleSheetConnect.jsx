@@ -21,7 +21,7 @@ import { forgetSheetSource, listSheetSources, rememberSheetSource } from "@/lib/
 // 무료(표준 사용량 과금 없음, 분당 300건 한도 — 개인 사용 범위에선 안 걸림).
 const COPY = {
   ko: {
-    openBtn: "📊 공개 Google Sheets에서 불러오기",
+    openBtn: "공개 Google Sheets에서 불러오기",
     urlLabel: "구글 시트 링크",
     urlHint: '이미 공개된 시트만 불러올 수 있습니다. 비공개·사내 자료는 공유 권한을 유지하고 CSV로 내려받아 업로드하세요.',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",
@@ -37,7 +37,7 @@ const COPY = {
     sourcePrivacy: "최근 연결 목록에는 시트 URL과 이름만 기억합니다. 가져온 데이터의 기기 저장 여부는 저장 설정을 따릅니다.",
   },
   en: {
-    openBtn: "📊 Import from a public Google Sheet",
+    openBtn: "Import from a public Google Sheet",
     urlLabel: "Google Sheets link",
     urlHint: 'Import sheets that are already public. For private or company data, keep sharing permissions unchanged and upload a downloaded CSV.',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",

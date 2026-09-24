@@ -13,7 +13,7 @@ const BUDGET_HEALTH_COPY = {
       </>
     ),
     hint: "캠페인별 상세 배분 계획·시나리오는 예산 배분에서 확인하세요.",
-    cta: "📊 예산 배분에서 보기 →",
+    cta: "예산 배분에서 보기 →",
   },
   en: {
     title: "Budget allocation anomaly detected",
@@ -23,7 +23,7 @@ const BUDGET_HEALTH_COPY = {
       </>
     ),
     hint: "See Budget Allocation for the campaign-level plan and scenarios.",
-    cta: "📊 View in Budget Allocation →",
+    cta: "View in Budget Allocation →",
   },
 };
 
@@ -146,7 +146,7 @@ export default function BudgetHealthCard({ locale = "ko" }) {
 
   return (
     <div className="callout warning" style={{ marginBottom: "1.25rem" }} id="budget-health-card">
-      <div className="ico">💰</div>
+      <div className="ico">₩</div>
       <div className="body">
         <strong>{T.title}</strong>
         <p>{T.body(health.recentDays, health.flagCount, potential)}</p>

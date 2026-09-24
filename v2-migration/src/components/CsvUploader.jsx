@@ -84,9 +84,9 @@ const CSV_COPY = {
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     entryDemoBtn: "예시 데이터로 먼저 보기",
     entryDemoHint: "내 파일 없이 결과 화면을 그대로 확인할 수 있어요.",
-    demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
+    demoBannerTitle: "지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
-    demoBannerBtn: "📁 내 CSV 업로드하기",
+    demoBannerBtn: "내 CSV 업로드하기",
     previewingDemo: "샘플 데이터로 미리보기 중",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()}행 · ${cols}컬럼${demo ? " · 실제 데이터 아님" : ""}`,
     changeCsvTitle: "이 도구의 CSV를 제거하고 다른 파일 업로드",
@@ -96,10 +96,10 @@ const CSV_COPY = {
     storingOnDevice: "이 기기에 저장하는 중…",
     storedOnDevice: "이 기기에 저장됨 · 마지막 사용 후 90일",
     storageUnavailable: "이 기기에 저장하지 못했습니다. 분석은 그대로 됩니다.",
-    refreshSheetBtn: "🔄 최신 데이터 불러오기",
+    refreshSheetBtn: "최신 데이터 불러오기",
     refreshingSheet: "불러오는 중…",
-    changeSheetBtn: "🔗 시트 변경",
-    switchToCsvBtn: "📁 CSV 업로드로 전환",
+    changeSheetBtn: "시트 변경",
+    switchToCsvBtn: "CSV 업로드로 전환",
     missingTitle: "⚠ 이 도구가 필요로 하는 필수 컬럼이 매핑되지 않았습니다",
     missingLabel: "필수: ",
     dataBlockedTitle: "⚠ 현재 데이터로는 이 분석을 시작할 수 없습니다",
@@ -123,7 +123,7 @@ const CSV_COPY = {
     outOfScopeSuffix: " (이 도구 미사용)",
     unmapped: "사용 안 함",
     mapped: "매핑됨",
-    previewTitle: "🔎 데이터 미리보기",
+    previewTitle: "데이터 미리보기",
     previewUsingMapped: "매핑된 컬럼",
     previewAll: "전체 컬럼",
     previewRows: (shown, total) => `상위 ${shown}행 / 총 ${total.toLocaleString()}행`,
@@ -172,9 +172,9 @@ const CSV_COPY = {
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     entryDemoBtn: "Preview with example data",
     entryDemoHint: "See the full result screen without your own file.",
-    demoBannerTitle: "🧪 You're viewing sample data",
+    demoBannerTitle: "You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
-    demoBannerBtn: "📁 Upload my CSV",
+    demoBannerBtn: "Upload my CSV",
     previewingDemo: "Previewing sample data",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()} rows · ${cols} cols${demo ? " · not real data" : ""}`,
     changeCsvTitle: "Remove this tool's CSV and upload another file",
@@ -184,10 +184,10 @@ const CSV_COPY = {
     storingOnDevice: "Saving on this device…",
     storedOnDevice: "Saved on this device · 90 days after last use",
     storageUnavailable: "This file could not be stored on this device. Analysis still works.",
-    refreshSheetBtn: "🔄 Fetch latest data",
+    refreshSheetBtn: "Fetch latest data",
     refreshingSheet: "Fetching…",
-    changeSheetBtn: "🔗 Change sheet",
-    switchToCsvBtn: "📁 Switch to CSV upload",
+    changeSheetBtn: "Change sheet",
+    switchToCsvBtn: "Switch to CSV upload",
     missingTitle: "⚠ Required columns for this tool aren't mapped yet",
     missingLabel: "Required: ",
     dataBlockedTitle: "⚠ This analysis cannot start with the current data",
@@ -211,7 +211,7 @@ const CSV_COPY = {
     outOfScopeSuffix: " (not used by this tool)",
     unmapped: "Unused",
     mapped: "Mapped",
-    previewTitle: "🔎 Data preview",
+    previewTitle: "Data preview",
     previewUsingMapped: "Mapped columns",
     previewAll: "All columns",
     previewRows: (shown, total) => `top ${shown} rows / ${total.toLocaleString()} total`,
@@ -604,7 +604,7 @@ export default function CsvUploader({
     else setErrorMsg(message);
   };
 
-  // "🔄 최신 데이터 불러오기" — 저장해둔 sheetUrl로 재조회, URL 재입력 없음. 매핑은
+  // "최신 데이터 불러오기" — 저장해둔 sheetUrl로 재조회, URL 재입력 없음. 매핑은
   // 새 헤더 기준으로 다시 자동매핑(시트에 컬럼이 추가/삭제됐을 수 있어 기존 매핑을
   // 그대로 끌고 가면 어긋날 수 있음 — 새 CSV 재업로드와 동일 취급이 제일 안전).
   const handleRefreshSheet = async () => {
@@ -1114,7 +1114,7 @@ export default function CsvUploader({
             />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{T.sheetConnectedLabel}</span>
               <button
                 type="button"
                 className="ab-pill"

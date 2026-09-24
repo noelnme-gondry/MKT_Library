@@ -395,7 +395,6 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     <div className="tab-pane active" id="tab-ab">
       <section className="experiment-journey experiment-journey--compact" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
         <div className="experiment-journey__head">
-          <span>EXPERIMENT DECISION FLOW</span>
           <h2>{tr("설계하거나, 바로 판독하세요", "Design a test or read results now")}</h2>
         </div>
         <div className="experiment-journey__steps">
@@ -622,8 +621,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         <div className="ab-stat"><div className="ab-stat-label">{tr("Arm B 예산", "Arm B budget")}</div><div className="ab-stat-value tnum">{fmtCurrency(budgetResult.costB, currency)}</div></div>
                         <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("총 필요 예산", "Total budget needed")}</div><div className="ab-stat-value tnum">{fmtCurrency(budgetResult.total, currency)}</div></div>
                       </div>
-                      <p style={{ marginTop: "0.5rem", fontSize: "var(--fs-xs)", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-                        CPR A = {fmtCurrency(budgetResult.cprA, currency)} · CPR B = {fmtCurrency(budgetResult.cprB, currency)} · n_per_arm = {planResult.n.toLocaleString()}
+                      <p style={{ marginTop: "0.5rem", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+                        CPR A = {fmtCurrency(budgetResult.cprA, currency)} · CPR B = {fmtCurrency(budgetResult.cprB, currency)} · {tr("그룹당 표본", "n per arm")} = {planResult.n.toLocaleString()}
                       </p>
                     </>
                   )}
@@ -889,22 +888,6 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               <section className="block" id="s-readout-sig">
                 <div className="section-head">
                   <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
-                  <DownloadHub
-                    toolId="5-4"
-                    locale={locale}
-                    label={tr("실행 정보", "Run details")}
-                    manifest={buildResultManifest({
-                      toolId: "5-4",
-                      mode: testType,
-                      source: isDemoData(csvData) ? "demo" : "csv",
-                      inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
-                      grain: "arm",
-                      metricDefinitions: [{ key: "conversion-rate-difference", unit: "percentage points" }, { key: "p-value" }, { key: "95% CI" }],
-                      engineVersion: "two-proportion-z-test",
-                      status: readoutData.sig && srm.status !== "mismatch" ? "COMPLETE" : "ABSTAIN",
-                      warnings: [`Design/SRM: ${srm.status}`, `Practical equivalence: ${equivalence.status}`, "Non-significance is inconclusive", ...(readoutData.mass ? ["Holm-adjusted mass-test p-values apply to variants"] : [])],
-                    })}
-                  />
                 </div>
                 {readoutData.sig ? (() => {
                   const s = readoutData.sig;

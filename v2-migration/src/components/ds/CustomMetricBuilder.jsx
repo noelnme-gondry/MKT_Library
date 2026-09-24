@@ -41,9 +41,9 @@ export default function CustomMetricBuilder({
     numberPlaceholder: "숫자 (예: 1000)", noFields: "조립할 수 있는 숫자 컬럼이 데이터에 없습니다. CSV를 먼저 업로드·매핑하세요.",
     intro: "컬럼·숫자를 골라 항을 이어 붙입니다(직접 입력 없음 → 오타 X). 왼쪽부터 순서대로 계산돼요(예: 비용 ÷ 노출수 × 1000 = eCPM).",
     name: "지표 이름", namePlaceholder: "예: 순이익, eCPM, 효율지수…", start: "시작",
-    noColumn: "컬럼 없음", addTerm: "＋ 항 추가", chartShape: "일별 상세 차트 모양", bar: "📊 막대", line: "📈 선",
+    noColumn: "컬럼 없음", addTerm: "＋ 항 추가", chartShape: "일별 상세 차트 모양", bar: "막대", line: "선",
     preview: "현재 데이터 미리보기", editing: "수정 중…", cancel: "취소", save: "수정 저장", add: "+ 지표 추가",
-    mine: "내가 만든 지표", edit: "수정", delete: "삭제", deleteTerm: "이 항 삭제", shown: "🔒 이 브라우저에만 저장 (데이터 서버 전송 없음)",
+    mine: "내가 만든 지표", edit: "수정", delete: "삭제", deleteTerm: "이 항 삭제", shown: "이 브라우저에만 저장 (데이터 서버 전송 없음)",
     newMetric: "새 지표", cannotCompute: "계산 불가 (분모 0 또는 데이터 없음)",
   };
   const firstFieldKey = fields[0] ? fields[0].key : "";
@@ -219,8 +219,8 @@ export default function CustomMetricBuilder({
                     <strong>{m.name}</strong>
                     <span className="muted" style={{ marginLeft: "6px", fontSize: "var(--fs-xs)" }}>{customMetricFormula(m, labelOf)}</span>
                   </span>
-                  <button type="button" className="ab-pill" onClick={() => startEdit(m)} title={T.edit} aria-label={`${T.edit}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✏️</button>
-                  <button type="button" className="ab-pill" onClick={() => onDelete?.(m.id)} title={T.delete} aria-label={`${T.delete}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
+                  <button type="button" className="ab-pill" onClick={() => startEdit(m)} title={T.edit} aria-label={`${T.edit}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>{T.edit}</button>
+                  <button type="button" className="ab-pill" onClick={() => onDelete?.(m.id)} title={T.delete} aria-label={`${T.delete}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>{T.delete}</button>
                 </div>
               ))}
             </div>

@@ -58,7 +58,6 @@ export default function EnGlossaryIndexPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildGlossaryJsonLd(terms)) }}
       />
       <header className="content-index__hero">
-        <span className="content-index__eyebrow">PERFORMANCE MARKETING GLOSSARY</span>
         <h1>Turn a searched term into an operating decision.</h1>
         <p>From CPA, ROAS, CTR, and LTV to attribution and incrementality — definitions, formulas, and the data to review next.</p>
         <span className="content-index__meta">{terms.length} TERMS · DEFINITION → PRACTICE</span>

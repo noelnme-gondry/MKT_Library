@@ -257,7 +257,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           onChange={setUnitField}
           options={unitPills.map(([k, l]) => {
             const av = k === "_all" || mappedKeys.has(k);
-            return { value: k, label: <>{l}{!av && " 🔒"}</>, disabled: !av };
+            return { value: k, label: <>{l}</>, disabled: !av };
           })}
         />
         <div className="ab-pillgroup" style={{ margin: 0 }}>
@@ -267,7 +267,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
               {tr("요일 보정", "Weekday adj.")} {adjOn ? "ON" : "OFF"}
             </button>
           ) : (
-            <button className="ab-pill disabled" disabled title={tr("평일·주말 각 3일 이상 필요", "Needs 3+ weekday and 3+ weekend days")}>{tr("요일 보정", "Weekday adj.")} 🔒</button>
+            <button className="ab-pill disabled" disabled title={tr("평일·주말 각 3일 이상 필요", "Needs 3+ weekday and 3+ weekend days")}>{tr("요일 보정", "Weekday adj.")}</button>
           )}
         </div>
         <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0 0" }}>
@@ -288,8 +288,8 @@ export default function FunnelTab({ locale = "ko" } = {}) {
               <div className="body">
                 <p style={{ margin: 0, fontSize: "var(--fs-xs)" }}>
                   {tr(
-                    `💡 요일(평일/주말) 보정됨 — 같은 요일끼리 비교한 결과입니다. 평일 평균 ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / 주말 평균 ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`,
-                    `💡 Weekday-adjusted (weekday/weekend) — compares same-type days. Weekday avg ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / weekend avg ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`
+                    `요일(평일/주말) 보정됨 — 같은 요일끼리 비교한 결과입니다. 평일 평균 ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / 주말 평균 ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`,
+                    `Weekday-adjusted (weekday/weekend) — compares same-type days. Weekday avg ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / weekend avg ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`
                   )}
                 </p>
               </div>
@@ -388,7 +388,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       <section className="block" id="s-funnel" style={{ marginTop: "24px" }}>
         <div className="section-head">
           <h2 className="section-title">{tr("전체 퍼널 단계 표", "Full funnel stage table")}</h2>
-          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>⚙ {tr("컬럼 편집", "Edit columns")}</button>
+          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
         </div>
         <DataTable
           ariaLabel={tr("전체 퍼널 단계", "Full funnel stages")}
@@ -407,7 +407,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           rowKey={(row, index) => `${row.unit}-${index}`}
         />
         {orderedFunnelCols.length === 0 && (
-          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns to display. Re-enable one via ⚙ Edit columns.")}</p>
+          <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. 컬럼 편집에서 다시 켜세요.", "No metric columns to display. Re-enable one via Edit columns.")}</p>
         )}
         <div className="callout" style={{ marginTop: "10px" }}>
           <div className="ico">i</div>

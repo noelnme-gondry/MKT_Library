@@ -1424,27 +1424,27 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "campaign_name", unlocks: "캠페인 단위 분석" },
                 { key: "creative_id", unlocks: "소재별 성과 변동·피로도 분석 연결" },
                 { key: "platform", unlocks: "OS 분포 시각화" },
-                { key: "country", unlocks: "🗺 세그먼트 탭 — 국가 차원 분석" },
+                { key: "country", unlocks: "세그먼트 탭 — 국가 차원 분석" },
                 {
                   key: "impressions",
-                  unlocks: "🪜 퍼널 탭 — CTR/CPM 계산 (clicks와 함께)",
+                  unlocks: "퍼널 탭 — CTR/CPM 계산 (clicks와 함께)",
                 },
                 {
                   key: "clicks",
-                  unlocks: "🪜 퍼널 탭 — CTR/CVR/CPC 계산 (impressions와 함께)",
+                  unlocks: "퍼널 탭 — CTR/CVR/CPC 계산 (impressions와 함께)",
                 },
                 { key: "actions", unlocks: "CPA·전환수 분석 (installs와 별도)" },
                 {
                   key: "revenue_d0",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D0 매출/ROAS",
+                  unlocks: "LTV:CAC 탭 · ROAS 성숙도 탭 — D0 매출/ROAS",
                 },
                 {
                   key: "revenue_d7",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D7 매출/ROAS",
+                  unlocks: "LTV:CAC 탭 · ROAS 성숙도 탭 — D7 매출/ROAS",
                 },
                 {
                   key: "revenue_d14",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D14 매출/ROAS",
+                  unlocks: "LTV:CAC 탭 · ROAS 성숙도 탭 — D14 매출/ROAS",
                 },
                 { key: "pu_d7", unlocks: "결제건수 D7 코호트" },
                 { key: "ret_d7", unlocks: "리텐션 D7 코호트" },

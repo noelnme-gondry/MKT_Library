@@ -348,7 +348,7 @@ function deriveOperationalStepIntervals(steps, orderedSeries) {
 // 부분 자동 매핑(index.html mmmAutoMapPartial 이식) — 타깃과 명시 매체 열을 강한 키워드로 배치.
 // `performance_*_impressions`처럼 헤더는 노출수여도 실제 값이 지출인 운영 CSV가 있으므로,
 // brand/performance 접두사가 있는 media delivery 열은 누락시키지 않는다.
-// partial=false(🪄 전부 자동 추정)면 guessRole 전체 휴리스틱(catch-all 포함) 사용.
+// partial=false(전부 자동 추정)면 guessRole 전체 휴리스틱(catch-all 포함) 사용.
 export function autoGuessColMap(headers, rows, partial = true) {
   const derivedRe = /^\s*(ln|log|sin|cos)\s*[\(_]|^\s*(ln|log|sin|cos)\b|description/i;
   const out = {};
@@ -1378,22 +1378,22 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
 
 // [role, koLabel, enLabel, withKind, withPlat] — 라벨은 렌더에서 tr(ko,en)로 선택.
 const ZONES = [
-  ["week", "🗓 주차(t) · 1개", "🗓 Week (t) · 1", false, false],
-  ["date", "📅 날짜 · 1개 (표시용)", "📅 Date · 1 (for display)", false, false],
-  ["reg", "🎯 가입 Regs", "🎯 Regs", false, true],
-  ["paid", "🎯 Paid 가입 Regs (선택)", "🎯 Paid regs (optional)", false, true],
-  ["react", "🎯 재활성 React", "🎯 Reactivation", false, true],
-  ["traffic", "🎯 총유입 Traffic", "🎯 Total traffic", false, true],
-  ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
-  ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
-  ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
-  ["geo", "🌍 GEO (선택 · 없으면 National-level)", "🌍 GEO (optional · National-level fallback)", false, false],
-  ["reach", "👥 Reach (선택 · RF)", "👥 Reach (optional · RF)", false, true],
-  ["frequency", "🔁 Frequency (선택 · RF)", "🔁 Frequency (optional · RF)", false, true],
-  ["external", "📊 연속형 컨트롤 (시장 수요·가격 지수 등 · 여러 개 · 플랫폼)", "📊 Continuous controls (market demand, price index, etc. · many · platform)", false, true],
-  ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
-  ["step", "📐 구조변화 step (상태열 또는 경계 pulse · 중단+재개 단일쌍은 기간 자동 생성)", "📐 Structural step (state or boundary pulse · one shutdown/reopen pair derives the interval)", false, true],
-  ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
+  ["week", "주차(t) · 1개", "Week (t) · 1", false, false],
+  ["date", "날짜 · 1개 (표시용)", "Date · 1 (for display)", false, false],
+  ["reg", "가입 Regs", "Regs", false, true],
+  ["paid", "Paid 가입 Regs (선택)", "Paid regs (optional)", false, true],
+  ["react", "재활성 React", "Reactivation", false, true],
+  ["traffic", "총유입 Traffic", "Total traffic", false, true],
+  ["purchasers", "구매자 Purchasers", "Purchasers", false, true],
+  ["revenue", "매출 Revenue", "Revenue", false, true],
+  ["channel", "채널 spend (여러 개 · perf/brand · 플랫폼)", "Channel spend (many · perf/brand · platform)", true, true],
+  ["geo", "GEO (선택 · 없으면 National-level)", "GEO (optional · National-level fallback)", false, false],
+  ["reach", "Reach (선택 · RF)", "Reach (optional · RF)", false, true],
+  ["frequency", "Frequency (선택 · RF)", "Frequency (optional · RF)", false, true],
+  ["external", "연속형 컨트롤 (시장 수요·가격 지수 등 · 여러 개 · 플랫폼)", "Continuous controls (market demand, price index, etc. · many · platform)", false, true],
+  ["dummy", "더미/이벤트 (0·1 · true/false · yes/no · on/off)", "Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
+  ["step", "구조변화 step (상태열 또는 경계 pulse · 중단+재개 단일쌍은 기간 자동 생성)", "Structural step (state or boundary pulse · one shutdown/reopen pair derives the interval)", false, true],
+  ["platform", "세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
 const MAPPER_CLEAR_BUTTON_STYLE = {
@@ -1599,7 +1599,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
           className="ab-pill"
           onClick={() => onChange(autoGuessColMap(headers, rows, false))}
         >
-          {tr("🪄 전부 자동 추정", "🪄 Auto-map all")}
+          {tr("전부 자동 추정", "Auto-map all")}
         </button>
       </div>
       <div style={{ display: "flex", gap: "6px", borderBottom: "1px solid var(--border)", marginBottom: "10px" }}>
@@ -1620,7 +1620,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), "ignore"); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
-        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("컬럼 (미지정 — 드래그해서 배치)", "Columns (unassigned — drag to place)")}</div>
         <div>
           {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>

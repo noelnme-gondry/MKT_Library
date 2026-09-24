@@ -31,11 +31,11 @@ export default function MetricConfigPanel({
   const T = isEn ? {
     title: "Edit display", close: "Close", hint: "Click a tag to show/hide · drag (⠿) or use arrow buttons to reorder · changes apply when you click Apply.",
     hidden: "Hidden items", restore: "click the tag to show again", shown: "Shown — click to hide", hiddenTag: "Hidden — click to show",
-    reset: "Show all · default order", saved: "🔒 Saved in this browser only", cancel: "Cancel", apply: "Apply", moveUp: "move up", moveDown: "move down",
+    reset: "Show all · default order", saved: "Saved in this browser only", cancel: "Cancel", apply: "Apply", moveUp: "move up", moveDown: "move down",
   } : {
     title: "편집", close: "닫기", hint: "태그를 눌러 표시/숨김 · 드래그(⠿) 또는 화살표 버튼으로 순서 변경 · 적용을 눌러야 반영됩니다.",
     hidden: "숨긴 항목", restore: "태그를 눌러 다시 표시", shown: "표시 중 — 누르면 숨김", hiddenTag: "숨김 — 누르면 표시",
-    reset: "전체 표시·기본 순서", saved: "🔒 이 브라우저에만 저장", cancel: "취소", apply: "적용", moveUp: "위로", moveDown: "아래로",
+    reset: "전체 표시·기본 순서", saved: "이 브라우저에만 저장", cancel: "취소", apply: "적용", moveUp: "위로", moveDown: "아래로",
   };
   const panelTitle = title || T.title;
   const [draft, setDraft] = useState({ hidden: [], order: [] });

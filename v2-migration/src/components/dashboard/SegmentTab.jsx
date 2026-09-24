@@ -143,7 +143,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
           onChange={setRowAxis}
           options={availFields.map((f) => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
-            return { value: f.k, label: <>{f.l}{!ok && " 🔒"}</>, disabled: !ok };
+            return { value: f.k, label: <>{f.l}</>, disabled: !ok };
           })}
         />
 
@@ -153,7 +153,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
           onChange={setColAxis}
           options={availFields.map((f) => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
-            return { value: f.k, label: <>{f.l}{!ok && " 🔒"}</>, disabled: !ok };
+            return { value: f.k, label: <>{f.l}</>, disabled: !ok };
           })}
         />
 
@@ -166,7 +166,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
 
         {renderMatrix(metric)}
 
-        <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
+        <h3 style={{ fontSize: "var(--fs-md)", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
         {renderMatrix("cost")}
 
       </section>

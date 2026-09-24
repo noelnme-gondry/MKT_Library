@@ -12,7 +12,7 @@ export const CHART_TYPES = [
   { id: "scorecard", label: "스코어카드", icon: "▣" },
   { id: "bar", label: "세로 막대", icon: "▮" },
   { id: "hbar", label: "가로 막대", icon: "▬" },
-  { id: "line", label: "선", icon: "📈" },
+  { id: "line", label: "선", icon: "∿" },
   { id: "pie", label: "파이", icon: "◔" },
   { id: "doughnut", label: "도넛", icon: "◍" },
 ];

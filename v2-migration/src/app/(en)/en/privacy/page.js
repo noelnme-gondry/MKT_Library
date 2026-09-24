@@ -19,7 +19,6 @@ export default function EnglishPrivacyPage() {
     <PolicyPage
       updated="2026-09-21"
       locale="en"
-      eyebrow="PRIVACY"
       alternateHref="/privacy"
       title="Privacy Policy"
       intro="Your source analysis data is not sent to our server. This page explains operational data collection and browser storage."

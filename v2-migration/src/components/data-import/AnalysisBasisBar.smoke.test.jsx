@@ -40,12 +40,22 @@ describe("AnalysisBasisBar", () => {
     expect(screen.getByText(/Some rows have no date/)).toBeTruthy();
   });
 
-  it("keeps compact data-basis detail in the DOM for keyboard and screen-reader access", () => {
+  // 결과 카드 머리 표시: 문제가 없으면 아무것도 없고, 있으면 빨간 "!" — 누르면(키보드·터치 포함)
+  // 어느 지점이 문제인지 목록으로 보인다(2026-09-24).
+  it("shows nothing in the result header when the data has no issue", () => {
     const { canonicalData, mappedRows } = dataWithDays();
-    render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
+    const { container } = render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
+    expect(container.innerHTML).toBe("");
+  });
 
-    fireEvent.click(screen.getByRole("button"));
-    expect(screen.getByRole("dialog").textContent).toMatch(/Data basis/);
+  it("shows a red mark that lists where the data needs checking", () => {
+    const { canonicalData, mappedRows } = dataWithDays();
+    canonicalData.records.push({ date: null, dimensions: { channel: "Meta" }, metrics: { cost: 100, installs: 10 } });
+    render(<AnalysisBasisBar canonicalData={canonicalData} mappedRows={mappedRows} mapping={{ Date: "date", Cost: "cost", Installs: "installs" }} toolId="5-2" locale="en" variant="tooltip" />);
+    const mark = screen.getByRole("button", { name: /to check/ });
+    expect(mark.textContent).toBe("!");
+    fireEvent.click(mark);
+    expect(screen.getByRole("dialog").textContent).toMatch(/Some rows have no date.*\(1 rows\)/);
   });
 
   it("shows an undated survival dataset as usable without a fabricated period count", () => {

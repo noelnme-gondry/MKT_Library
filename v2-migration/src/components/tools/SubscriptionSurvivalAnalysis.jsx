@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemoData } from "@/lib/dataOrigin";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "@/utils/chartGlobals";
@@ -329,16 +330,22 @@ export default function SubscriptionSurvivalAnalysis({ locale = "ko", rows: rows
       setValidationMessage(tx(locale, "날짜 입력 모드에서는 데이터 추출 기준인 관측 종료일을 입력하세요.", "In date mode, enter the observation end date used to extract the data."));
       return;
     }
-    if (!draft.eventDefinition.trim()) {
+    // 예시 데이터는 이탈 열의 뜻을 우리가 알고 있으므로 정의를 대신 채운다 — 예시를 보려는 사람에게
+    // 필수 입력 칸을 먼저 요구하지 않는다(2026-09-24). 내 데이터는 여전히 직접 적어야 한다.
+    const eventDefinition = draft.eventDefinition.trim() || (isDemoData(csvData)
+      ? tx(locale, "예시 데이터: 핵심 액션을 멈춘 시점(Dropout Observed = 1)", "Sample data: the point the core action stopped (Dropout Observed = 1)")
+      : "");
+    if (!eventDefinition) {
       setValidationMessage(tx(locale, "생존 종료 또는 이탈로 간주한 이벤트를 명시하세요.", "State what event counts as exit or dropout."));
       return;
     }
+    if (eventDefinition !== draft.eventDefinition) setDraft((value) => ({ ...value, eventDefinition }));
     if (draft.inputMode === "dates" && parseSubscriptionUtcDate(draft.observationEndDate) == null) {
       setValidationMessage(tx(locale, "관측 종료일이 유효한 날짜인지 확인하세요.", "Check that the observation end date is valid."));
       return;
     }
     setValidationMessage("");
-    setApplied({ ...draft, horizon: draftHorizon });
+    setApplied({ ...draft, eventDefinition, horizon: draftHorizon });
   };
   const result = useMemo(() => {
     if (!gateOpen || !active) return null;

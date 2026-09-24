@@ -1,12 +1,11 @@
 import Link from "next/link";
 
-export default function PolicyPage({ locale = "ko", alternateHref, eyebrow, title, intro, sections, updated = "2026-07-29" }) {
+export default function PolicyPage({ locale = "ko", alternateHref, title, intro, sections, updated = "2026-07-29" }) {
   const isEn = locale === "en";
   return (
     <main id="main-content" tabIndex="-1" className="policy-page">
       <header className="policy-page__header">
         <div className="policy-page__topline">
-          <span>{eyebrow}</span>
           <Link href={alternateHref}>
             {isEn ? "한국어" : "English"}
           </Link>

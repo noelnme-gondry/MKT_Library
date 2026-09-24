@@ -10,7 +10,7 @@ import { trGroupTitle, trGroupDesc, trItemTitle } from "@/lib/enNavCopy";
 // 개별 가이드는 이미 `/guide/*` 주소가 있어 여기선 그 링크만 모아 보여준다.
 const GUIDE_SECTION = SECTIONS.find((s) => s.id === "guide");
 const GUIDE_GROUP_IDS = new Set(GUIDE_SECTION ? GUIDE_SECTION.groups : []);
-const STEP_ICONS = ["🧭", "🚀", "🎨", "📈"];
+const STEP_ICONS = ["1", "2", "3", "4"];
 
 const COPY = {
   ko: {
@@ -46,7 +46,7 @@ export default function GuideIndex({ locale = "ko" }) {
           return (
             <div key={g.id} className="phase-card" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "var(--fs-lg)" }}>{STEP_ICONS[idx] || "📘"}</span>
+                <span style={{ fontSize: "var(--fs-lg)" }}>{STEP_ICONS[idx] || String(idx + 1)}</span>
                 <div className="phase-card-title" style={{ margin: 0 }}>{gTitle}</div>
               </div>
               {g.desc && <div className="phase-card-desc" style={{ margin: 0 }}>{trGroupDesc(g.id, locale, g.desc)}</div>}

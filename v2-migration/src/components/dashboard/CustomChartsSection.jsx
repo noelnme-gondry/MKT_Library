@@ -14,25 +14,25 @@ const CUSTOM_CHARTS_COPY = {
   ko: {
     addChart: "＋ 커스텀 차트",
     addChartTitle: "모양·행·값을 골라 나만의 차트 만들기",
-    editCharts: "⚙ 차트 편집",
+    editCharts: "차트 편집",
     editChartsTitle: "표시할 차트와 순서 편집",
     noData: "데이터를 업로드하면 커스텀 차트를 만들 수 있습니다.",
     empty: (
       <>아직 만든 차트가 없습니다. <strong>＋ 커스텀 차트</strong>로 모양·행·값을 골라 추가하세요. 커스텀 지표도 값으로 쓸 수 있어요.</>
     ),
-    allHidden: "표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.",
+    allHidden: "표시할 차트가 없습니다. 차트 편집에서 다시 켜세요.",
     configTitleSuffix: "— 차트 편집",
   },
   en: {
     addChart: "＋ Custom chart",
     addChartTitle: "Pick a shape, rows, and value to build your own chart",
-    editCharts: "⚙ Edit charts",
+    editCharts: "Edit charts",
     editChartsTitle: "Edit which charts show and their order",
     noData: "Upload data to build custom charts.",
     empty: (
       <>No charts yet. Click <strong>＋ Custom chart</strong> to pick a shape, rows, and value. Custom metrics can be used as values too.</>
     ),
-    allHidden: "No charts are visible. Turn them back on in ⚙ Edit charts.",
+    allHidden: "No charts are visible. Turn them back on in Edit charts.",
     configTitleSuffix: "— Edit charts",
   },
 };

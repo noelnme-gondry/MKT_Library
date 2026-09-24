@@ -727,7 +727,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           <ul className="segment-causal-checks">
             {causal.eligibility.checks.map((check) => (
               <li key={check.id} data-ok={check.ok ? "true" : "false"}>
-                {check.ok ? "✓" : "✗"} {checkLabel(check.id, locale)}
+                {check.ok ? "✓" : "✕"} {checkLabel(check.id, locale)}
                 {check.reason ? <span className="muted"> — {reasonLabel(check.reason, locale)}</span> : null}
               </li>
             ))}

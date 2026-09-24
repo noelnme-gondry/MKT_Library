@@ -186,10 +186,29 @@ export async function measureDesignRules(page) {
       return parseFloat(getComputedStyle(h).fontSize) < 16;
     }).map((h) => `${label(h)} ${getComputedStyle(h).fontSize} "${h.textContent.trim().slice(0, 20)}"`);
 
+    // 10) 그림 이모지·대문자 라벨·고정폭 숫자(2026-09-24) — 상태 기호(✓ ⚠ ↗ ✕ 등)는 허용, 그림 이모지는
+    // 장식일 뿐이라 금지. 대문자는 CSS로 바꾼 것(text-transform)과 간격을 벌린 대문자 라벨을 잰다.
+    const PICTO = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B50}]/u;
+    const ALLOWED_SYMBOLS = new Set([..."✓✔⚠❌★↗↘↻↺→←↑↓▲▼●◆◇○✕✦☰"]);
+    const emoji = [], caps = [], monoNumbers = [];
+    for (const t of texts) {
+      if (t.dialog || t.el.closest("code, pre, kbd, samp, .mono, header.topbar, .sidebar, footer") || exempt(t.el, "glyph")) continue;
+      const full = t.el.textContent;
+      for (const ch of full) if (PICTO.test(ch) && !ALLOWED_SYMBOLS.has(ch)) { emoji.push(`${ch} "${t.text}"`); break; }
+      const st = getComputedStyle(t.el);
+      if (st.textTransform === "uppercase" && /[a-z]/i.test(t.text)) caps.push(`uppercase "${t.text}"`);
+      // ROAS·CPA 같은 약어는 원래 대문자다 — 여러 단어로 된 대문자 라벨(START HERE 등)만 잡는다.
+      else if (/^[A-Z][A-Z0-9·&/-]*( [A-Z0-9·&/-]+)+$/.test(t.text) && parseFloat(st.letterSpacing) > 0.5) caps.push(`spaced caps "${t.text}"`);
+      if (/\d/.test(t.text) && /mono/i.test(st.fontFamily.split(",")[0])) monoNumbers.push(`"${t.text}"`);
+    }
+
     // 9) 페이지 가로 넘침 — 폰에서 좌우로 밀리는 화면(5-22의 화면낭독용 표가 409px로 넘쳤다).
     const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
 
     return {
+      emoji: [...new Set(emoji)].slice(0, 20),
+      caps: [...new Set(caps)].slice(0, 20),
+      monoNumbers: [...new Set(monoNumbers)].slice(0, 10),
       horizontalOverflow,
       smallHeadings: [...new Set(smallHeadings)],
       accents: [...new Set(accents)],

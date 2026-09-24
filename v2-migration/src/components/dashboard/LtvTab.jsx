@@ -29,11 +29,11 @@ const LTV_COPY = {
     installsOpt: "설치수 (installs)",
     actionsOpt: "액션수 (actions)",
     s2Title: (h) => `LTV:CAC · 회수기간 (LTV horizon = D${h})`,
-    editCols: "⚙ 컬럼 편집",
+    editCols: "컬럼 편집",
     editColsTitle: "표시할 지표 컬럼과 순서 편집",
     s2Desc: (healthy, warn) => `초록 = 매출 LTV:CAC ≥ ${healthy}× · 빨강 = < ${warn}×인 참고 구간입니다. payback = 누적 ARPU가 CAC에 도달하는 day (power 외삽). ⓘ = 미마감 구간 예측값.`,
     unitTh: "단위",
-    noVisibleCols: "표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.",
+    noVisibleCols: "표시할 지표 컬럼이 없습니다. 컬럼 편집에서 다시 켜세요.",
     s2CalloutPrefix: "LTV:CAC는 ",
     s2CalloutStrong: "선택한 분모의 매출 기반 참고 비율",
     s2CalloutSuffix: "입니다. 비용 범위·공헌이익·관찰 기간을 함께 확인하세요. 3× 이상이라는 이유만으로 증액을 결정할 수는 없습니다. 회수기간은 모형의 매출 회수 추정치이며 신규 결제 고객의 공헌이익 회수기간과 다를 수 있습니다. 허용 회수기간은 현금 여력에 맞춰 정하세요.",
@@ -53,7 +53,7 @@ const LTV_COPY = {
     matEmptyRow: "revenue_dN 컬럼을 매핑하면 ROAS 성숙 예측이 표시됩니다.",
     empiricalCalloutStrong: "경험적 비율",
     empiricalCalloutBody: (base) => `D${base} 실측 기반 완성비. D${base}와 목표 Dn을 모두 보유한 단위들의 비율(비용 가중 평균)을 미완성 단위에 적용합니다. 커브 fit과 일치할수록 예측 신뢰도 ↑.`,
-    suffTitle: "🎯 Anchor 충분성 진단",
+    suffTitle: "Anchor 충분성 진단",
     suffSub: (h) => `— D${h} 예측이 안정화되는 최소 anchor 집합 자동 탐지`,
     suffSetTh: "Anchor 집합",
     suffPredTh: (h) => `D${h} 커브 예측`,
@@ -91,11 +91,11 @@ const LTV_COPY = {
     installsOpt: "Installs (installs)",
     actionsOpt: "Actions (actions)",
     s2Title: (h) => `LTV:CAC · Payback period (LTV horizon = D${h})`,
-    editCols: "⚙ Edit columns",
+    editCols: "Edit columns",
     editColsTitle: "Edit which metric columns are shown and their order",
     s2Desc: (healthy, warn) => `Reference bands: green = revenue LTV:CAC ≥ ${healthy}×; red = < ${warn}×. Payback = day cumulative ARPU reaches CAC (power extrapolation). ⓘ = predicted value for an incomplete window.`,
     unitTh: "Unit",
-    noVisibleCols: "No metric columns to display. Re-enable them in ⚙ Edit columns.",
+    noVisibleCols: "No metric columns to display. Re-enable them in Edit columns.",
     s2CalloutPrefix: "LTV:CAC is a ",
     s2CalloutStrong: "revenue-based reference ratio for the selected denominator",
     s2CalloutSuffix: ". Check cost scope, contribution margin and observation windows. A ratio of 3× alone does not justify scaling. Payback models revenue recovery and may differ from contribution-based recovery for new paying customers. Set an acceptable recovery period based on available cash.",
@@ -115,7 +115,7 @@ const LTV_COPY = {
     matEmptyRow: "Map revenue_dN columns to display ROAS maturity prediction.",
     empiricalCalloutStrong: "Empirical ratio",
     empiricalCalloutBody: (base) => `Completion ratio based on observed D${base}. Applies the ratio (cost-weighted average) of units holding both D${base} and the target Dn to units that haven't completed yet. Higher agreement with the curve fit means higher prediction confidence.`,
-    suffTitle: "🎯 Anchor Sufficiency Diagnosis",
+    suffTitle: "Anchor Sufficiency Diagnosis",
     suffSub: (h) => `— Auto-detects the minimum anchor set where D${h} prediction stabilizes`,
     suffSetTh: "Anchor set",
     suffPredTh: (h) => `D${h} curve prediction`,
@@ -371,7 +371,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           onChange={setUnitField}
           options={availFields.map((f) => {
             const avail = mappedFields.has(f.k);
-            return { value: f.k, label: <>{f.l}{!avail && " 🔒"}</>, disabled: !avail };
+            return { value: f.k, label: <>{f.l}</>, disabled: !avail };
           })}
         />
         <PillGroup
@@ -387,7 +387,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           onChange={setDenomBasis}
           options={[["installs", T.installsOpt], ["actions", T.actionsOpt]].map(([k, l]) => {
             const avail = k === "installs" ? hasInstalls : hasActions;
-            return { value: k, label: <>{l}{!avail && " 🔒"}</>, disabled: !avail };
+            return { value: k, label: <>{l}</>, disabled: !avail };
           })}
         />
       </section>
@@ -458,7 +458,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
             onChange={setMatUnit}
             options={[["_all", T.unitFilterAll], ["channel", T.fChannel], ["campaign_name", T.fCampaign]].map(([k, l]) => {
               const av = k === "_all" || (maturation && maturation.mappedKeys.has(k));
-              return { value: k, label: <>{l}{!av && " 🔒"}</>, disabled: !av };
+              return { value: k, label: <>{l}</>, disabled: !av };
             })}
           />
           {/* 여러 기준일을 동시에 켤 수 있다 — radiogroup이 아니라 토글 묶음이다(D-05). */}

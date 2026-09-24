@@ -517,25 +517,6 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               limitations: [tr("곡선 적합은 워크북에서 재학습되지 않으며 인과효과가 아닙니다.", "The curve is not refit in the workbook and is not a causal effect.")],
             },
           })}
-          download={(
-            <DownloadHub
-              toolId="5-22"
-              locale={locale}
-              label={tr("실행 정보", "Run details")}
-              manifest={buildResultManifest({
-                toolId: "5-22",
-                mode: effectiveMetric,
-                source: isDemoData(csvData) ? "demo" : "csv",
-                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
-                filter: { grain: effectiveGrain, metric: effectiveMetric },
-                grain: effectiveGrain,
-                metricDefinitions: [{ key: effectiveMetric, aggregation: "custom" }],
-                engineVersion: "sat-v1",
-                status: okRows.length ? "COMPLETE" : "ABSTAIN",
-                warnings: ["Observed-range marginal efficiency is not causal incrementality"],
-              })}
-            />
-          )}
           points={[{ text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
           stats={[
             { label: tr("분석 가능", "Analyzable"), value: `${okRows.length}/${rows.length}` },

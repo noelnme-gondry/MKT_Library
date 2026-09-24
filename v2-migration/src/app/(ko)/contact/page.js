@@ -21,7 +21,6 @@ export default function ContactPage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(profileJsonLd).replace(/</g, "\\u003c") }} />
       <PolicyPage
-        eyebrow="CONTACT"
         alternateHref="/en/contact"
         title="문의하기"
         intro="비즈니스 제안, 협업, 제품 피드백 모두 환영합니다. 편한 채널로 연락해 주세요."

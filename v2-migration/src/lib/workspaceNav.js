@@ -48,7 +48,7 @@ export const WORKSPACE_NAV = [
     en: { name: "Blog", desc: "Practical answers to marketing questions" },
   },
   {
-    id: "guide", group: "learn", href: "/guide", icon: "☑",
+    id: "guide", group: "learn", href: "/guide", icon: "▧",
     ko: { name: "실무 가이드 · SOP", desc: "설정부터 분석까지 운영 기준" },
     en: { name: "Guides & SOPs", desc: "Operating standards from setup to analysis" },
   },

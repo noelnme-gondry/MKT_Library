@@ -334,7 +334,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         {anomalies.length ? (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
-              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
+              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
             </div>
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
@@ -402,7 +402,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
               </table>
             </div>
             {orderedAnomalyCols.length === 0 && (
-              <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
+              <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("표시할 지표 컬럼이 없습니다. 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in Edit columns.")}</p>
             )}
           </>
         ) : (
