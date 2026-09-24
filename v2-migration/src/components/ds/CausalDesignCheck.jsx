@@ -15,18 +15,18 @@ export default function CausalDesignCheck({ design, locale = "ko" }) {
   const id = useId();
   const en = locale === "en";
   const fields = [
-    ["unit", en ? "Assignment / observation unit" : "배정·관측 단위", [["person", "사람", "Person"], ["device", "기기", "Device"], ["region", "지역·오디언스 집단", "Region / audience cluster"], ["time", "시간 집계", "Time aggregate"]]],
-    ["assignment", en ? "Comparison design" : "비교 설계", [["randomized", "사전 무작위 배정", "Pre-randomized assignment"], ["comparison", "비무작위 비교군", "Non-random comparison"], ["observational", "관찰 전후 비교", "Observational pre/post"]]],
-    ["plannedWindow", en ? "Window and stopping rule" : "기간·중단 규칙", [["planned", "결과를 보기 전에 정한 기간", "Fixed before looking at results"], ["changed", "결과를 본 뒤 기간 변경·조기 중단", "Changed / stopped after seeing results"]]],
-    ["concurrentChanges", en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경", [["none", "검토했으며 알려진 교란 없음", "Reviewed; no known confounding change"], ["present", "동시 변경 있음", "Concurrent changes present"]]],
-    ...(design.requiresRandomization ? [["independentCounts", en ? "Independent counts across the full window" : "전체 기간의 독립 단위 집계", [["unique", "중복 없는 배정 단위 수 확인", "Unique assigned units confirmed"], ["repeated", "반복 집계·중복 가능", "Repeated counts / possible duplicates"]]]] : []),
+    ["unit", en ? "What did you compare?" : "비교한 대상은 무엇인가요?", [["person", "사람", "People"], ["device", "기기", "Devices"], ["region", "지역·오디언스 묶음", "Regions or audience groups"], ["time", "날짜별 합계", "Daily or weekly totals"]]],
+    ["assignment", en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?", [["randomized", "미리 무작위로 나눔", "Randomly, in advance"], ["comparison", "비슷한 그룹을 골라 비교", "Picked a similar group"], ["observational", "같은 대상의 전후 비교", "Before vs after, same audience"]]],
+    ["plannedWindow", en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?", [["planned", "네, 미리 정했습니다", "Yes, fixed in advance"], ["changed", "결과를 보고 바꾸거나 일찍 멈췄습니다", "Changed or stopped after seeing results"]]],
+    ["concurrentChanges", en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", [["none", "확인했고 없었습니다", "Checked; none"], ["present", "있었습니다", "Yes"]]],
+    ...(design.requiresRandomization ? [["independentCounts", en ? "Is each person counted once over the whole period?" : "기간 전체에서 한 대상을 한 번씩만 셌나요?", [["unique", "네, 중복 없이 셌습니다", "Yes, no duplicates"], ["repeated", "여러 번 셌을 수 있습니다", "They may repeat"]]]] : []),
   ];
   return <section className="analysis-design-check" aria-label={en ? "Design conditions" : "설계 조건"}>
-    <h3>{en ? "Check the design before acting" : "행동 판단 전 설계 확인"}</h3>
+    <h3>{en ? "Before you trust this result" : "이 결과를 믿기 전에"}</h3>
     <p>{en ? "These are your declarations, not checks inferred from CSV totals. Changing the data or selected window resets them. Cluster assignment and repeated counts need uncertainty methods beyond the aggregate binomial model." : "CSV 합계에서 자동 확인한 사실이 아닌 입력자의 선언입니다. 데이터나 선택 기간을 바꾸면 초기화됩니다. 집단 배정·반복 집계에는 집계 이항모형과 다른 불확실성 검증이 필요합니다."}</p>
     {fields.map(([key, label, options]) => <label key={key} htmlFor={`${id}-${key}`}>{label}
       <select id={`${id}-${key}`} value={design.values[key]} onChange={(event) => design.set(key, event.target.value)}>
-        <option value="">{en ? "Not confirmed" : "미확인"}</option>
+        <option value="">{en ? "Not sure yet" : "아직 모름"}</option>
         {options.map(([value, ko, english]) => <option key={value} value={value}>{en ? english : ko}</option>)}
       </select>
     </label>)}

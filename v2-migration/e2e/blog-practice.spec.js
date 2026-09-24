@@ -63,7 +63,7 @@ for (const locale of ["ko", "en"]) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(arrival.getByRole("link", { name: en ? "Back to the article" : "글로 돌아가기" })).toHaveAttribute("href", `${en ? "/en" : ""}/blog/${slug}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+      if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
       expect(errors).toEqual([]);
     });
   }
@@ -121,7 +121,7 @@ for (const locale of ["ko", "en"]) {
         await expect(page).toHaveURL(`${en ? "/en" : ""}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-26") {
-          await expect(page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+          await expect(page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
         }
       } else {
         await panel.getByRole("button", { name: en ? "Show result" : "결과 보기", exact: true }).click();

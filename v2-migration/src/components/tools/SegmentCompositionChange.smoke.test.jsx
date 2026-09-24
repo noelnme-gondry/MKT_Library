@@ -55,8 +55,8 @@ describe("SegmentCompositionChange render smoke", () => {
   it("무엇을 무엇으로 읽었는지 한 줄로 말한다", () => {
     const { container } = mount();
     const summary = container.querySelector("[aria-labelledby='segment-composition-mapping']");
-    expect(summary.textContent).toContain("기간은 date");
-    expect(summary.textContent).toContain("인원수는 signups");
+    expect(summary.textContent).toContain("날짜는 date 열");
+    expect(summary.textContent).toContain("인원은 signups 열");
     expect(summary.textContent).toContain("gender");
     expect(summary.textContent).toContain("age_band");
   });
@@ -115,16 +115,21 @@ describe("SegmentCompositionChange render smoke", () => {
 
   it("매핑을 고치는 경로는 접어 두되 사라지지 않는다", () => {
     const { container } = mount();
+    // 자동으로 읽었으면 결과가 먼저 보이게 편집기는 닫혀 있다.
+    expect(container.querySelector(".segment-mapping-edit")).toBeNull();
+    const toggle = screen.getByRole("button", { name: "다르게 읽혔다면 고치기" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle);
     const editor = container.querySelector(".segment-mapping-edit");
     expect(editor.tagName).toBe("SECTION");
-    expect(editor.textContent).toContain("고치기");
     // 열면 역할 선택기가 그대로 있다.
-    expect(within(editor).getByLabelText("기간 (날짜·주차)")).toBeTruthy();
+    expect(within(editor).getByLabelText("날짜나 주차는 어느 열인가요?")).toBeTruthy();
   });
 
   it("사용자가 매핑을 손대면 자동 선언이 멈춘다", () => {
     const { container } = mount();
-    fireEvent.change(within(container.querySelector(".segment-mapping-edit")).getByLabelText("전체 모수"), { target: { value: "signups" } });
+    fireEvent.click(screen.getByRole("button", { name: "다르게 읽혔다면 고치기" }));
+    fireEvent.change(within(container.querySelector(".segment-mapping-edit")).getByLabelText("전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)"), { target: { value: "signups" } });
     expect(container.querySelector("[aria-labelledby='segment-composition-mapping']").textContent)
       .toContain("직접 지정한 매핑을 씁니다");
   });

@@ -11534,7 +11534,7 @@ b, strong { font-weight: 700; }
 /* 12) 왼쪽 굵은 색 막대 + 바탕 상자는 쓰지 않는다(AI 안내 상자의 전형). 테두리가 있는 상자는
    네 변이 같은 얇은 선, 테두리가 없던 것은 상자를 벗고 글자로 둔다. 결론 카드의 좋음·나쁨은
    왼쪽 막대가 아니라 신호 아이콘과 문장이 말한다. e2e/design-rules가 막대를 다시 찾는다. */
-.app .content :is(.result-action-card, .library-plan-link, .workspace-next-action, .callout, .dashboard-demo-source, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
+.app .content :is(.result-action-card, .library-plan-link, .callout, .dashboard-demo-source, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
   border: 1px solid var(--border-subtle);
 }
 .app .content :is(.guide-answer, .prism-driver__status) { border-left: 0; padding-inline: 0; background: none; }
@@ -11546,6 +11546,16 @@ b, strong { font-weight: 700; }
 }
 /* 14) 업로더 카드(바깥 상자) 안의 파일 상태·필수 안내·미리보기 표·분석 줄은 바탕을 벗는다. */
 .app .content .csv-uploader :is(.required-banner, .file-state, .table-wrap, .csv-analysis-cta-row) { background: transparent; }
+/* 15) 분석이 끝난 업로더는 한 줄 — 결과가 먼저 보이게. 매핑은 버튼으로 다시 편다. */
+.app .content .csv-uploader.csv-uploader--collapsed, .csv-uploader--collapsed { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 0; border: 0; background: none; }
+.csv-collapsed-summary { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: var(--fs-base); color: var(--text-secondary); }
+.csv-collapsed-summary strong { color: var(--text-primary); font-weight: 600; }
+/* 16) /start 결과 머리의 입력 요약은 한 줄. 샘플 표식(.sample-journey-scope)의 막대·바탕 상자도 벗는다. */
+.app .content .dochi-result-workspace__summary, .dochi-result-workspace__summary { display: flex; flex-flow: row wrap; align-items: center; gap: 4px 16px; margin: 0; padding: 0; border: 0; background: none; color: var(--text-secondary); font-size: var(--fs-base); line-height: 1.6; }
+.dochi-result-workspace__summary strong { color: var(--text-primary); font-weight: 600; }
+.dochi-result-workspace__summary a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
+.app .content .dochi-result-workspace__global-controls { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.app .content .dochi-result-workspace__global-controls > strong, .app .content .dochi-result-workspace__global-controls .analysis-control-group__label { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */

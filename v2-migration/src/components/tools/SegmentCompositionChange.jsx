@@ -191,6 +191,8 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
    * 사용자가 매퍼를 한 번이라도 건드리면 그때부터 자동 선언은 멈춘다. */
   const auto = useMemo(() => autoDeclare({ headers, rows }), [headers, rows]);
   const [manualMapping, setManualMapping] = useState(null);
+  // 자동으로 읽었으면 고치는 화면은 접어 둔다 — 결과가 먼저 보여야 한다.
+  const [mappingEditOpen, setMappingEditOpen] = useState(false);
   // 참조를 고정하지 않으면 렌더마다 새 객체가 되어 아래 무거운 패널 빌드가 매번 다시 돈다.
   const mapping = useMemo(
     () => manualMapping || { roles: { ...EMPTY_MAPPING.roles, ...auto.roles }, dimensions: auto.dimensions },
@@ -521,8 +523,8 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         <p className="muted">{tx(locale, "직접 지정한 매핑을 씁니다.", "Using the mapping you set.")}</p>
       ) : auto.ok ? (
         <p>{tx(locale,
-          `기간은 ${auto.roles.time}, 인원수는 ${autoCountColumn}, 세그먼트 축은 ${auto.dimensions.map((dimension) => dimension.label).join(" · ")}으로 읽었습니다. 축은 전부 함께 분석해 많이 움직인 순서로 보여 줍니다.`,
-          `Period ${auto.roles.time}, head count ${autoCountColumn}, and segment axes ${auto.dimensions.map((dimension) => dimension.label).join(" · ")}. Every axis is analyzed together and ranked by how much it moved.`)}</p>
+          `날짜는 ${auto.roles.time} 열, 인원은 ${autoCountColumn} 열에서 읽고 ${auto.dimensions.map((dimension) => dimension.label).join(" · ")} 기준으로 나눠 봤습니다. 많이 움직인 기준부터 보여 줍니다.`,
+          `Dates come from ${auto.roles.time}, people from ${autoCountColumn}, split by ${auto.dimensions.map((dimension) => dimension.label).join(" · ")}. The split that moved most comes first.`)}</p>
       ) : (
         <p className="callout">{tx(locale,
           "이 파일에서는 자동으로 읽지 못했습니다. 아래에서 기간 컬럼과 세그먼트 축을 지정해 주세요.",
@@ -531,8 +533,10 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
       {auto.review.length && !manualMapping ? <p className="muted">{tx(locale,
         `확인이 필요해 자동으로 넣지 않은 컬럼: ${auto.review.map((item) => item.header).join(", ")}`,
         `Left out pending your check: ${auto.review.map((item) => item.header).join(", ")}`)}</p> : null}
-      <section data-information-section="" className="segment-mapping-edit">
-        <header data-information-heading="">{tx(locale, "다르게 읽혔다면 여기서 고치기", "Read it wrong? Fix it here")}</header>
+      {(manualMapping || auto.ok) && <button type="button" className="btn ghost segment-mapping-toggle" aria-expanded={mappingEditOpen} aria-controls="segment-mapping-edit" onClick={() => setMappingEditOpen((open) => !open)}>
+        {mappingEditOpen ? tx(locale, "고치기 닫기", "Close editor") : tx(locale, "다르게 읽혔다면 고치기", "Read it wrong? Fix it")}
+      </button>}
+      {(mappingEditOpen || !(manualMapping || auto.ok)) && <section id="segment-mapping-edit" className="segment-mapping-edit">
         <SegmentRoleMapper
           headers={headers}
           rows={rows}
@@ -541,7 +545,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           quality={panel?.quality || null}
           locale={locale}
         />
-      </section>
+      </section>}
     </section>}
 
     {hasRows && <section className="block" aria-labelledby="segment-composition-compare">

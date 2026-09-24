@@ -500,6 +500,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [activeSeg, setActiveSeg] = useState(null);
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
   const [analyzedSig, setAnalyzedSig] = useState(null);
+  // 분석이 끝나면 매핑은 한 줄로 접는다 — 결과가 먼저 보여야 한다(CsvUploader와 같은 규칙).
+  const [mappingOpen, setMappingOpen] = useState(false);
 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = isDemoData(csvData);
@@ -1112,6 +1114,15 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         </section>
       )}
+      {analyzed && !missing.length && !cache.invalidReason && !mappingOpen ? (
+        <section className="block csv-uploader csv-uploader--collapsed" id="s-aha-map">
+          <p className="csv-collapsed-summary">
+            <strong>{isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "data.csv")}</strong>
+            <span className="tnum">{tr(`${csvData.raw.length.toLocaleString()}행 · 행동 후보 ${actionCount}개`, `${csvData.raw.length.toLocaleString()} rows · ${actionCount} candidate actions`)}</span>
+          </p>
+          <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setMappingOpen(true)}>{tr("데이터·매핑 바꾸기", "Change data or mapping")}</button>
+        </section>
+      ) : <>
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
@@ -1122,7 +1133,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         </div>
       )}
       <section className="block" id="s-aha-map">
-        <h2 className="section-title">{tr("컬럼 역할 매핑", "Column role mapping")}</h2>
+        <h2 className="section-title">{tr("파일의 열 확인", "Check your columns")}</h2>
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
             <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
@@ -1137,7 +1148,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ {tr("CSV 변경", "Change CSV")}</button>}
         </div>
         <section data-information-section=""  style={{ marginTop: "10px" }}>
-          <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 {tr("컬럼 역할 매핑", "Column role mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 수정)", "(analysis done — expand to edit)") : tr("(자동 추정 — 틀리면 수정)", "(auto-detected — edit if wrong)")}</header>
+          <header data-information-heading="" style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-muted)" }}>{tr("열마다 역할을 자동으로 읽었습니다. 틀린 줄만 고치세요.", "Each column's role was read automatically. Fix only the wrong rows.")}</header>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "8px 0" }}>
             {locale === "en" ? (
               <>
@@ -1191,6 +1202,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <span style={{ color: "var(--success)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
             <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runAhaAnalysis}>↻ {tr("다시 분석", "Re-analyze")}</button>
+            <button type="button" className="ab-pill" onClick={() => setMappingOpen(false)}>{tr("매핑 접기", "Hide mapping")}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
@@ -1199,6 +1211,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           </div>
         )}
       </section>
+      </>}
 
       <section className="block analysis-design-check">
         <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}

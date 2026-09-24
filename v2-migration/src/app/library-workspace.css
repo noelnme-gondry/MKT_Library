@@ -847,8 +847,10 @@
 .workspace-results-heading { margin-block: 1.5rem; }
 .workspace-card-evidence { display: grid; gap: .5rem; color: var(--text-muted); font-weight: 400; }
 .workspace-card-evidence b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.workspace-next-action { padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); margin-bottom: 1.5rem; }
-.workspace-next-action > span { color: var(--text-muted); }
+/* 결론은 상자가 아니라 위 가는 선 하나 + 두 단 글자(20/700 → 16/400). 라벨 줄은 두지 않는다. */
+.workspace-next-action { padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; margin-bottom: 32px; }
+.workspace-next-action > h3 { margin: 0 0 8px; font-size: var(--fs-lg); font-weight: 700; line-height: 1.4; }
+.workspace-next-action > p { margin: 0 0 16px; font-size: var(--fs-md); font-weight: 400; line-height: 1.6; }
 .tool-index__guidance { padding: 1rem; background: var(--bg-2); border-radius: var(--radius-md); }
 .tool-index__output-preview { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); }
 .tool-index__output-preview ol { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }

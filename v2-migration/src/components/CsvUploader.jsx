@@ -106,16 +106,20 @@ const CSV_COPY = {
     oneOfSuffix: (joined) => `(${joined} 중 1)`,
     okTitle: "✓ 필수 컬럼 매핑 완료.",
     okDesc: "아래 도구를 사용할 수 있습니다.",
-    mappingHeader: "📋 CSV 컬럼 → 표준 필드 매핑",
-    mappingSummaryPrefix: (total) => `전체 ${total}컬럼 · 옵션 매핑 `,
-    mappingHint: "자동 + 수동. 드롭다운으로 변경 시 즉시 반영.",
+    mappingHeader: "파일의 열을 이렇게 읽었습니다",
+    mappingSummaryPrefix: (total) => `${total}개 열 중 선택 항목 `,
+    mappingHint: "틀린 줄만 바꾸세요. 바꾸면 바로 반영됩니다.",
+    collapsedSummary: (rows, cols, used) => `${rows.toLocaleString()}행 · ${cols}개 열 중 ${used}개 사용`,
+    collapsedDemo: "예시 데이터",
+    editMappingBtn: "데이터·매핑 바꾸기",
+    collapseMappingBtn: "매핑 접기",
     mappingFilterAttention: (count) => `확인 필요만 보기 (${count})`,
     mappingFilterAll: "전체 컬럼 보기",
     mappingFilterEmpty: "확인이 필요한 컬럼이 없습니다.",
-    colHeaderCsv: "CSV 컬럼",
-    colHeaderStd: "표준 필드",
+    colHeaderCsv: "파일의 열",
+    colHeaderStd: "이렇게 읽음",
     colHeaderStatus: "상태",
-    ignoreOption: "(사용 안 함)",
+    ignoreOption: "쓰지 않음",
     outOfScopeSuffix: " (이 도구 미사용)",
     unmapped: "사용 안 함",
     mapped: "매핑됨",
@@ -191,16 +195,20 @@ const CSV_COPY = {
     oneOfSuffix: (joined) => `(1 of ${joined})`,
     okTitle: "✓ All required columns mapped.",
     okDesc: "You can use the tool below.",
-    mappingHeader: "📋 CSV column → standard field mapping",
-    mappingSummaryPrefix: (total) => `${total} columns total · optional mapped `,
-    mappingHint: "Auto + manual. Changing a dropdown applies instantly.",
+    mappingHeader: "How we read your columns",
+    mappingSummaryPrefix: (total) => `${total} columns · optional fields `,
+    mappingHint: "Change only the rows that are wrong. Changes apply right away.",
+    collapsedSummary: (rows, cols, used) => `${rows.toLocaleString()} rows · using ${used} of ${cols} columns`,
+    collapsedDemo: "Sample data",
+    editMappingBtn: "Change data or mapping",
+    collapseMappingBtn: "Hide mapping",
     mappingFilterAttention: (count) => `Show only what needs review (${count})`,
     mappingFilterAll: "Show every column",
     mappingFilterEmpty: "No column needs review.",
-    colHeaderCsv: "CSV column",
-    colHeaderStd: "Standard field",
+    colHeaderCsv: "Your column",
+    colHeaderStd: "Read as",
     colHeaderStatus: "Status",
-    ignoreOption: "(unused)",
+    ignoreOption: "Not used",
     outOfScopeSuffix: " (not used by this tool)",
     unmapped: "Unused",
     mapped: "Mapped",
@@ -278,6 +286,9 @@ export default function CsvUploader({
   onImportStart = null,
   onPrepared = null,
   onImportFailed = null,
+  // 분석이 끝나면 매핑을 한 줄 요약으로 접는다(결과가 먼저 보이게). 이미 편집 창 안에서
+  // 여는 곳(5-2 대시보드)은 false로 펼친 채 쓴다.
+  collapseWhenAnalyzed = true,
 }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   const launchSample = useSampleAnalysis(locale);
@@ -318,6 +329,7 @@ export default function CsvUploader({
   const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
   const [confirmedHeaders, setConfirmedHeaders] = useState(() => new Set());
   const [mappingAttentionOnly, setMappingAttentionOnly] = useState(false);
+  const [mappingExpanded, setMappingExpanded] = useState(false);
   const [isMappingMemoryEnabled, setIsMappingMemoryEnabled] = useState(() => mappingMemoryEnabled());
   const [mappingMemoryRecords, setMappingMemoryRecords] = useState([]);
   // XLSX는 여러 시트가 흔하므로 임의로 합치지 않는다. 먼저 사용자가 하나를 선택하게
@@ -993,6 +1005,21 @@ export default function CsvUploader({
     }
   };
 
+  // 분석이 끝났고 고칠 것이 없으면 업로더·매핑표·미리보기를 한 줄로 접는다. 들어온 경로
+  // (사이드바·/start 목록·하단 추천)와 무관하게 게이트 하나로 판단한다.
+  const isCollapsed = collapseWhenAnalyzed && isAnalyzed && !isRouterMode && !mappingNeedsAttention && !mappingExpanded && !isStartingAnalysis;
+  if (isCollapsed) {
+    return (
+      <div className="csv-uploader csv-uploader--collapsed" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
+        <p className="csv-collapsed-summary">
+          <strong>{isDemo ? T.collapsedDemo : csvData.fileName}</strong>
+          <span className="tnum">{T.collapsedSummary(csvData.raw.length, csvData.headers.length, mappedCount)}</span>
+        </p>
+        <button type="button" className="btn ghost csv-collapsed-edit" onClick={() => setMappingExpanded(true)}>{T.editMappingBtn}</button>
+      </div>
+    );
+  }
+
   return (
     <div className="csv-uploader" data-analysis-status={analysisStatus} data-hydrated={isHydrated ? "true" : "false"}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : isStartingAnalysis ? (locale === "en" ? "Starting analysis…" : "분석을 시작하는 중…") : importAnnouncement}</div>
@@ -1301,6 +1328,7 @@ export default function CsvUploader({
             <span className="csv-analysis-status">{T.analyzedBadge}</span>
             <span className="csv-analysis-hint">{T.analyzedHint}</span>
             <button data-mobile-task=".csv-analysis-action" className="ab-pill csv-analysis-action" onClick={confirmAnalysis} disabled={isStartingAnalysis}>{T.reanalyzeBtn}</button>
+            {collapseWhenAnalyzed && mappingExpanded && <button type="button" className="ab-pill" onClick={() => setMappingExpanded(false)}>{T.collapseMappingBtn}</button>}
           </div>
         ) : (
           <div className="csv-analysis-cta-row is-ready">

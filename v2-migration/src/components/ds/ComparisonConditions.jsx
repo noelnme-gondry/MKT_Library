@@ -18,16 +18,16 @@ export default function ComparisonConditions({ conditions, locale = "ko" }) {
   const id = useId();
   const en = locale === "en";
   const fields = [
-    ["tracking", "추적·어트리뷰션 정책", "Tracking / attribution policy", [["consistent", "같은 집계·분류 기준 확인", "Consistent counting and classification confirmed"], ["changed", "정책·분류 변경 있음", "Policy or classification changed"]]],
-    ["seasonality", "계절성·프로모션 조건", "Seasonality / promotion conditions", [["reviewed", "검토했으며 알려진 동시 변경 없음", "Reviewed; no known concurrent change"], ["changed", "계절·프로모션 변화 있음", "Seasonal or promotional change present"]]],
-    ["delivery", "광고 집행 연속성", "Ad delivery continuity", [["continuous", "중단·큰 예산 전환 없음 확인", "No interruption or major budget switch confirmed"], ["interrupted", "중단·큰 예산 전환 있음", "Interruption or major budget switch present"]]],
+    ["tracking", "기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "Did tracking or attribution rules change in this period?", [["consistent", "아니요, 같은 기준입니다", "No, same rules"], ["changed", "네, 바뀌었습니다", "Yes, they changed"]]],
+    ["seasonality", "같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", [["reviewed", "확인했고 없었습니다", "Checked; none"], ["changed", "있었습니다", "Yes"]]],
+    ["delivery", "광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", [["continuous", "아니요, 계속 집행했습니다", "No, delivery was steady"], ["interrupted", "네, 있었습니다", "Yes"]]],
   ];
   return <section className="analysis-design-check" aria-label={en ? "Observational comparison conditions" : "관찰 비교 조건"}>
-    <h3>{en ? "Check what changed around the data" : "데이터와 함께 바뀐 조건 확인"}</h3>
+    <h3>{en ? "Before you trust this result" : "이 결과를 믿기 전에"}</h3>
     <p>{en ? "CSV totals cannot distinguish tracking changes from real demand or advertising changes. These declarations are not independently verified and reset when the input or analysis scope changes." : "CSV 합계만으로 추적 변경과 실제 수요·광고 변화를 구분할 수 없습니다. 아래는 독립 검증된 사실이 아닌 입력자의 선언이며 입력·분석 범위를 바꾸면 초기화됩니다."}</p>
     {fields.map(([key, ko, english, options]) => <label key={key} htmlFor={`${id}-${key}`}>{en ? english : ko}
       <select id={`${id}-${key}`} value={conditions.values[key]} onChange={(event) => conditions.set(key, event.target.value)}>
-        <option value="">{en ? "Not confirmed" : "미확인"}</option>
+        <option value="">{en ? "Not sure yet" : "아직 모름"}</option>
         {options.map(([value, koOption, enOption]) => <option key={value} value={value}>{en ? enOption : koOption}</option>)}
       </select>
     </label>)}

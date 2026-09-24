@@ -31,8 +31,8 @@ describe("SegmentRoleMapper", () => {
   it("빈 상태에서 무엇이 막혔는지 사유를 말한다", () => {
     const { container } = render(<Harness rows={LONG_TWO_AXIS_ROWS} />);
     const blocked = container.querySelector("[aria-labelledby='segment-blocked-title']");
-    expect(blocked.textContent).toContain("기간 컬럼");
-    expect(blocked.textContent).toContain("세그먼트 축");
+    expect(blocked.textContent).toContain("날짜나 주차 열");
+    expect(blocked.textContent).toContain("무엇으로 나눠 볼지");
   });
 
   it("축 후보를 제안하고 지표·날짜 컬럼은 후보로 올리지 않는다", () => {
@@ -54,7 +54,7 @@ describe("SegmentRoleMapper", () => {
     expect(latest.dimensions).toHaveLength(1);
     expect(latest.dimensions[0].categoryColumn).toBe("성별");
     // 인원수를 아직 모르므로 분석을 열지 않는다.
-    expect(container.querySelector("[aria-labelledby='segment-blocked-title']").textContent).toContain("인원수 컬럼");
+    expect(container.querySelector("[aria-labelledby='segment-blocked-title']").textContent).toContain("각 값의 인원이 든 열");
   });
 
   it("이미 역할을 맡은 컬럼은 축 후보에서 뺀다", () => {
@@ -71,7 +71,7 @@ describe("SegmentRoleMapper", () => {
   it("wide 멤버 컬럼 묶음을 제안하고 전체 컬럼은 분모로 넣는다", () => {
     let latest = null;
     const { getByText } = render(<Harness rows={WIDE_GENDER_ROWS} onState={(state) => { latest = state; }} />);
-    fireEvent.click(getByText("묶음으로 추가"));
+    fireEvent.click(getByText("이 열들을 한 기준으로 보기"));
     const dimension = latest.dimensions[0];
     expect(dimension.members.map((member) => member.sourceColumn)).toEqual(["여성가입", "남성가입"]);
     expect(dimension.denominatorColumn).toBe("전체가입");
@@ -83,7 +83,7 @@ describe("SegmentRoleMapper", () => {
     const { getByLabelText } = render(
       <Harness rows={WIDE_GENDER_ROWS} initial={initial} onState={(state) => { latest = state; }} />,
     );
-    fireEvent.click(getByLabelText("모든 사람이 어딘가에 속함 (포괄)"));
+    fireEvent.click(getByLabelText("빠진 사람 없이 모두 포함됩니다"));
     expect(latest.dimensions[0].isExhaustive).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describe("SegmentRoleMapper", () => {
       <Harness rows={LONG_TWO_AXIS_ROWS} initial={{ roles: BASE_ROLES, dimensions: [GENDER_LONG_DIMENSION] }} quality={panel.quality} />,
     );
     const report = container.querySelector("[aria-labelledby='segment-quality-title']");
-    expect(report.textContent).toContain("비용이 멤버 행마다 반복");
+    expect(report.textContent).toContain("비용이 값별 행마다 반복");
     expect(report.textContent).not.toContain(SEGMENT_ISSUE.MEASURE_REPEATED_ACROSS_MEMBERS);
   });
 
@@ -118,21 +118,34 @@ describe("SegmentRoleMapper", () => {
     const { container } = render(
       <Harness rows={LONG_TWO_AXIS_ROWS} quality={panel.quality} locale="en" />,
     );
-    expect(container.textContent).toContain("Confirm column roles");
-    expect(container.textContent).toContain("No period column selected yet.");
+    expect(container.textContent).toContain("Check your columns");
+    expect(container.textContent).toContain("No date or week column chosen yet.");
     expect(container.querySelectorAll(".segment-candidate-list li").length).toBeGreaterThan(0);
   });
 
   it("역할 선택기에 이름이 붙어 있다 — 이름 없는 select는 보조기술이 읽지 못한다", () => {
     const { getByLabelText } = render(<Harness rows={LONG_TWO_AXIS_ROWS} />);
-    expect(getByLabelText("기간 (날짜·주차)")).toBeTruthy();
-    expect(getByLabelText("전체 모수")).toBeTruthy();
+    expect(getByLabelText("날짜나 주차는 어느 열인가요?")).toBeTruthy();
+    expect(getByLabelText("전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)")).toBeTruthy();
+  });
+
+  it("선택 목록은 값으로 고른 추천 묶음과 나머지로 나뉜다", () => {
+    const { getByLabelText } = render(<Harness rows={LONG_TWO_AXIS_ROWS} />);
+    const groups = [...getByLabelText("날짜나 주차는 어느 열인가요?").querySelectorAll("optgroup")];
+    expect(groups.map((group) => group.label)).toEqual(["추천", "기타 (파일 순서)"]);
+    expect([...groups[0].querySelectorAll("option")].map((option) => option.value)).toEqual(["일자"]);
+  });
+
+  it("선언한 기준의 모양은 내부 코드가 아니라 문장으로 보인다", () => {
+    const { container } = render(<Harness rows={LONG_TWO_AXIS_ROWS} initial={{ roles: BASE_ROLES, dimensions: [GENDER_LONG_DIMENSION] }} />);
+    expect(container.textContent).not.toContain("long_count");
+    expect(container.textContent).toContain("행마다 값 하나");
   });
 
   it("분석 단위·경쟁 범위 체크박스 묶음에 legend가 있다", () => {
     const { container } = render(<Harness rows={LONG_TWO_AXIS_ROWS} />);
     const legends = [...container.querySelectorAll("fieldset legend")].map((legend) => legend.textContent);
-    expect(legends).toContain("분석 단위 (캠페인·채널)");
-    expect(legends).toContain("경쟁 범위 (OS·국가)");
+    expect(legends).toContain("캠페인·채널처럼 예산이 옮겨 다니는 단위가 있나요? (선택)");
+    expect(legends).toContain("OS·국가처럼 따로 나눠 비교할 범위가 있나요? (선택)");
   });
 });

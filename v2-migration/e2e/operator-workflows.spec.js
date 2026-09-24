@@ -105,8 +105,8 @@ async function verifyHoldoutDesign(page, locale) {
   await expect(action).toHaveCount(0);
   const declarationValues = ["person", "randomized", "planned", "none", "unique"];
   const declarationLabels = en
-    ? ["Assignment / observation unit", "Comparison design", "Window and stopping rule", "Tracking, promotion, seasonality or other concurrent changes", "Independent counts across the full window"]
-    : ["배정·관측 단위", "비교 설계", "기간·중단 규칙", "추적 정책·프로모션·계절성 등 동시 변경", "전체 기간의 독립 단위 집계"];
+    ? ["What did you compare?", "How were the two groups split?", "Did you fix the dates before seeing results?", "Did a promotion, season or tracking change happen in the same period?", "Is each person counted once over the whole period?"]
+    : ["비교한 대상은 무엇인가요?", "두 그룹은 어떻게 나눴나요?", "결과를 보기 전에 기간을 정했나요?", "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "기간 전체에서 한 대상을 한 번씩만 셌나요?"];
   for (const [index, label] of declarationLabels.entries()) {
     const select = page.getByLabel(label);
     await select.focus();
@@ -121,7 +121,7 @@ async function verifyHoldoutDesign(page, locale) {
   await openDetails(page.locator(".decision-review"));
   await expect(action).toBeVisible();
   await expectNoSeriousAccessibilityViolations(page);
-  await page.getByLabel(en ? "Window and stopping rule" : "기간·중단 규칙").selectOption("changed");
+  await page.getByLabel(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?").selectOption("changed");
   await expect(action).toHaveCount(0);
 }
 
@@ -140,9 +140,9 @@ async function verifyMovementConditions(page, locale) {
   await expect(panel).toBeVisible();
   const review = page.locator('[data-decision-review-tool="5-18-paid-organic"]');
   await expect(review).toHaveCount(0);
-  for (const [ko, english, value] of [["추적·어트리뷰션 정책", "Tracking / attribution policy", "consistent"], ["계절성·프로모션 조건", "Seasonality / promotion conditions", "reviewed"], ["광고 집행 연속성", "Ad delivery continuity", "continuous"]]) await panel.getByLabel(en ? english : ko).selectOption(value);
+  for (const [ko, english, value] of [["기간 중 추적·어트리뷰션 기준이 바뀌었나요?", "Did tracking or attribution rules change in this period?", "consistent"], ["같은 기간에 시즌·프로모션 변화가 있었나요?", "Was there a season or promotion change in this period?", "reviewed"], ["광고를 멈추거나 예산을 크게 옮긴 적이 있나요?", "Did ads pause or budget shift a lot?", "continuous"]]) await panel.getByLabel(en ? english : ko).selectOption(value);
   await expect(review).toBeVisible();
-  await panel.getByLabel(en ? "Tracking / attribution policy" : "추적·어트리뷰션 정책").selectOption("changed");
+  await panel.getByLabel(en ? "Did tracking or attribution rules change in this period?" : "기간 중 추적·어트리뷰션 기준이 바뀌었나요?").selectOption("changed");
   await expect(review).toHaveCount(0);
   await expectNoSeriousAccessibilityViolations(page);
 }
@@ -276,9 +276,9 @@ test("Apple Ads 검색어 CSV를 5-26 권장 조치까지 연결한다", async (
   await page.getByRole("button", { name: "데이터 분석하기" }).click();
 
   await expect(page.locator("#asa-summary .result-action-card")).toBeVisible();
-  await expect(page.getByLabel("업로드 기간의 전환 성숙도")).toHaveValue("unknown");
+  await expect(page.getByLabel("최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
   await expect(page.getByText("전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
-  await page.getByLabel("업로드 기간의 전환 성숙도").selectOption("mature");
+  await page.getByLabel("최근 며칠은 전환이 아직 더 들어올 수 있나요?").selectOption("mature");
   await expect(page.locator("#asa-actions").getByText("sample planner", { exact: true }).first()).toBeVisible();
   await expectPageHierarchy(page, { primaryRegion: "#asa-summary" });
   await expectNoSeriousAccessibilityViolations(page);
@@ -417,7 +417,7 @@ test("입력 매핑이 바뀌면 이전 주간 보고서 블록을 stale로 표�
   await page.getByRole("button", { name: "데이터·매핑 편집" }).click();
   const mappingBlock = page.locator(".csv-mapping-block:not(.semantic-mapping-block)");
   await openDetails(mappingBlock);
-  await page.getByRole("combobox", { name: "Installs: 표준 필드" }).selectOption("actions");
+  await page.getByRole("combobox", { name: "Installs: 이렇게 읽음" }).selectOption("actions");
   await expect(page.locator(".dashboard-briefing .result-action-card")).toHaveCount(0);
 
   await page.goForward();

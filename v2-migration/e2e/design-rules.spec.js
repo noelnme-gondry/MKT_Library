@@ -15,6 +15,7 @@ const RESULT_PAGES = [
   "/dashboard", "/tools/campaign-variance", "/tools/campaign-saturation",
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
+  "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality",
   "/en/tools/campaign-variance",
 ];
 
@@ -87,5 +88,13 @@ for (const path of RESULT_PAGES) {
     await page.goto(path);
     await openExampleResult(page);
     expectClean(await measureDesignRules(page));
+    // 결과가 나왔으면 매핑 선택상자는 결론 카드 위에 하나도 없어야 한다 — 매핑은 한 줄 요약으로 접힌다.
+    const mappingAbove = await page.evaluate(() => {
+      const card = [...document.querySelectorAll(".result-action-card")].find((el) => el.checkVisibility());
+      const top = card.getBoundingClientRect().top;
+      return [...document.querySelectorAll(".mapping-grid select, .segment-role-mapper select, #s-aha-map select, #brand-its-setup select")]
+        .filter((el) => el.checkVisibility() && el.getBoundingClientRect().top < top).length;
+    });
+    expect(mappingAbove).toBe(0);
   });
 }
