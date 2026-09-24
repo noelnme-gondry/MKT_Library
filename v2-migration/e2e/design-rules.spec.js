@@ -77,7 +77,8 @@ for (const path of STATIC_PAGES) {
 
 for (const path of RESULT_PAGES) {
   test(`design rules hold on the ${path} example result`, async ({ page }) => {
-    test.setTimeout(90_000);
+    // 9-6은 소재 480개를 분석해 그리는 데만 1분 가까이 걸린다(빌드본 기준).
+    test.setTimeout(150_000);
     await page.goto(path);
     await openExampleResult(page);
     expectClean(await measureDesignRules(page));
