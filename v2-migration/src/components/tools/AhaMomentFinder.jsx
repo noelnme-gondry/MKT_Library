@@ -532,8 +532,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     setSeededKey(seedKey);
     const cm = hasData ? ahaAutoMapColumns(headers, csvData.raw) : {};
     setColMap(cm);
-    // Demo load auto-confirms the gate so results show instantly (matches other tools).
-    setAnalyzedSig(demoPending && hasData ? ahaAnalyzeSig(cm, fileName) : null);
+    // 예시 데이터는 어디서 왔든(도구 예시 버튼·홈 샘플 인계) 곧장 결과다(2026-09-24).
+    setAnalyzedSig((demoPending || isDemo) && hasData ? ahaAnalyzeSig(cm, fileName) : null);
     if (demoPending) setDemoPending(false);
     setDrilldownAction(null);
     setActiveSeg(null);

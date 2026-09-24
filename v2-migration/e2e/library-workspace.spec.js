@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 import { toolIndexEntry } from "../src/lib/toolIndex";
+import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
 
 for (const locale of ["ko", "en"]) {
   const en = locale === "en";
@@ -80,16 +81,27 @@ for (const locale of ["ko", "en"]) {
 
   // 샘플 하나로 모든 도구를 돌릴 수는 없다 — 샘플이 못 채우는 도구는 그 도구의 예시 데이터로
   // 연다. 체험에서 "추가 데이터 필요"로 막힌 도구가 없고, 연 도구는 곧장 결과다(2026-09-24).
-  test(`home sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }) => {
+  test(`home sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }, testInfo) => {
+    // 도구 20개를 차례로 연다 — 폭마다 반복할 이유가 없어 데스크톱 한 번만 잰다.
+    test.skip(!/desktop/.test(testInfo.project.name), "one width is enough for the per-tool walk");
+    test.setTimeout(600_000);
     await page.goto(prefix || "/");
     await page.locator(".home-result-preview button").click();
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.getByText(en ? "Needs more data or setup" : "추가 데이터·설정이 필요한 분석", { exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: new RegExp(toolIndexEntry("5-20", locale).name) }).first().click();
-    await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
-    await expect(page).toHaveURL(new RegExp(`${prefix}/tools/aha-moment$`));
-    await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const stuck = [];
+    for (const toolId of publishedToolIds()) {
+      // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.
+      await page.goto(prefix || "/");
+      await page.locator(".home-result-preview button").click();
+      await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+      await page.getByRole("button", { name: new RegExp(toolIndexEntry(toolId, locale).name.replace(/[()]/g, "\\$&")) }).first().click();
+      await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
+      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
+      const reached = await page.locator(".result-action-card").first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
+      if (!reached || await page.getByRole("dialog").count()) stuck.push(toolId);
+    }
+    expect(stuck).toEqual([]);
   });
 
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {

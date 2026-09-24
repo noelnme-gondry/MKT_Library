@@ -7,6 +7,7 @@ import ToolIndex from "@/components/ds/ToolIndex";
 
 import { isDemoData } from "@/lib/dataOrigin";
 import { buildToolDemo } from "@/lib/toolDemo";
+import { TOOL_GROUP } from "@/lib/toolGroups";
 import { blockersText } from "@/lib/assistant/blockerText";
 import { mappedKeys, mergedToolMapping, computeCsvEligibility } from "@/lib/assistant/csvEligibility";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -704,7 +705,9 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   const openTool = (toolId) => {
     if (!onOpenTool) return;
     trackProductEvent("analysis_recommended", { tool_id: toolId, source: "dochi", placement: "dochi_workspace", locale });
-    const needsOwnExample = sampleMode && eligibility.find((result) => result.toolId === toolId)?.status === "blocked";
+    // 샘플은 효율 CSV다. 다른 데이터 단위의 도구는 샘플을 변환해 넘기면 그 도구의 열 확인에서 다시
+    // 멈추므로, 그 도구를 위해 만든 예시 데이터로 연다(효율 도구도 샘플이 못 채우면 같다).
+    const needsOwnExample = sampleMode && (TOOL_GROUP[toolId] !== "efficiency" || eligibility.find((result) => result.toolId === toolId)?.status === "blocked");
     deferHandoff(() => onOpenTool(toolId, needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId)));
   };
   const openNaturalExperiment = (handoff) => {

@@ -20,7 +20,7 @@ for (const locale of ["ko", "en"]) {
       await page.goto(`${prefix}/dashboard`);
       await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
       await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
-      await page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" }).getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0); // 데모 안내 창은 없앴다 — 예시는 곧장 결과다
       await page.locator(".dashboard-briefing .result-action-card").getByRole("button", { name: en ? "Download" : "결과 받기", exact: true }).click();
       if (state === "purchased") {
         await expect(page.getByRole("menuitem", { name: /Word/ })).toBeVisible();
@@ -80,8 +80,7 @@ for (const locale of ["ko", "en"]) {
     await page.goto(`${prefix}/dashboard`);
     await expect(page.locator('.csv-uploader[data-hydrated="true"]')).toBeVisible();
     await page.getByRole("button", { name: en ? "Run the example and see results" : "예시 데이터로 결과 바로 보기", exact: true }).click();
-    const demo = page.getByRole("dialog", { name: en ? "You're currently viewing demo data" : "지금은 데모 데이터를 이용 중입니다" });
-    await demo.getByRole("button", { name: en ? "Not now" : "나중에", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0); // 데모 안내 창은 없앴다 — 예시는 곧장 결과다
     const downloads = []; page.on("download", download => downloads.push(download));
     const trigger = page.locator(".dashboard-briefing .result-action-card").getByRole("button", { name: en ? "Download" : "결과 받기", exact: true });
     await trigger.focus(); await page.keyboard.press("Enter");
