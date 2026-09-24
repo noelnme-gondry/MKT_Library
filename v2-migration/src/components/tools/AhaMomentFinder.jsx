@@ -1387,7 +1387,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                       className="analysis-choice-card"
                       style={{ background: "var(--surface-container-low)", border: `1px solid ${r.action === drillTarget ? "var(--primary)" : "var(--border)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "6px", cursor: "pointer" }}>
                       <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
-                        <span>{r.action}</span><span style={{ fontSize: "var(--fs-xs)", color: MUTED }}>›</span>
+                        <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{r.action}</span><span style={{ flexShrink: 0, fontSize: "var(--fs-xs)", color: MUTED }}>›</span>
                       </div>
                       <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "2px" }}>{ahaActionPhrase(r, locale)}</div>
                     </button>
