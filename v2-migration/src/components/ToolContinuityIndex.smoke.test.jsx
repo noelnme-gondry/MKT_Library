@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import ToolContinuityIndex from "@/components/ToolContinuityIndex";
+import ToolContinuityIndex, { CONTINUITY_LIMIT } from "@/components/ToolContinuityIndex";
 import { useAppStore } from "@/store/useDataStore";
 import { toolIndexEntry } from "@/lib/toolIndex";
 
@@ -53,6 +53,17 @@ describe("ToolContinuityIndex", () => {
     const questions = [...container.querySelectorAll(".tool-index__q")].map((node) => node.textContent);
     expect(questions).not.toContain(toolIndexEntry("5-2", "ko").question);
     expect(questions.length).toBeGreaterThan(0);
+  });
+
+  it("바로 되는 분석은 3개까지만 펴고 나머지는 전체 목록으로 보낸다", () => {
+    // 20개를 전부 펴면 폰에서 결과 아래가 2,000px를 넘었다.
+    loadCsv();
+    const { container } = render(<ToolContinuityIndex toolId="5-2" />);
+    const chips = container.querySelectorAll(".tool-index__stage--ready .tool-index__chip");
+    expect(chips.length).toBeGreaterThan(0);
+    expect(chips.length).toBeLessThanOrEqual(CONTINUITY_LIMIT);
+    expect(container.querySelector(".tool-index__stage--blocked")).toBeNull();
+    expect(container.querySelector('.tool-continuity__all[href="/start"]')).toBeTruthy();
   });
 
   it("EN은 한글 없이 그린다", () => {

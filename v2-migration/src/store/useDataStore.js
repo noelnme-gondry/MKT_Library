@@ -651,6 +651,9 @@ export const useAppStore = create(persist((set, get) => ({
 
   // Navigation State
   currentRouteId: "home",
+  // 마지막으로 연 분석 도구(5-x·9-x). 프로젝트가 비어 있을 때 '방금 본 분석으로 돌아가기'에 쓴다.
+  // 저장하지 않는다(partialize 밖) — 세션 안의 이음매일 뿐 기록이 아니다.
+  lastToolRouteId: null,
   // On route change, swap the csvData mirror to the newly-active group's slice
   // so the rendered tool sees ITS group's data (efficiency family shares one
   // slice; aha/creative/experiment/response are isolated). The existing page.js
@@ -663,6 +666,7 @@ export const useAppStore = create(persist((set, get) => ({
     const activeDataGroup = routeGroup || state.activeDataGroup || "efficiency";
     return {
     currentRouteId: id,
+    lastToolRouteId: routeGroup && /^[59]-/.test(id) ? id : state.lastToolRouteId,
     activeDataGroup,
     // 슬라이스가 없는 그룹으로 이동해도 미러는 항상 객체여야 한다. undefined가 되면
     // csvData.headers 같은 직접 접근이 렌더 throw로 도구를 통째로 죽인다(5-24 사고).

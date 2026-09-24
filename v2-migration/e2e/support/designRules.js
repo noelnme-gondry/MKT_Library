@@ -180,7 +180,18 @@ export async function measureDesignRules(page) {
       return st.borderLeftStyle !== "none" && left >= 2 && left > top && hasBg && r.height > 30;
     }).map(label);
 
+    // 8) 제목(h1~h4)이 본문(16px)보다 작으면 위계가 뒤집힌다 — 12px 소제목이 14px 본문 위에 있었다.
+    const smallHeadings = [...main.querySelectorAll("h1, h2, h3, h4")].filter((h) => {
+      if (!visible(h) || inDialog(h) || h.closest(".sr-only, header.topbar, .sidebar, footer") || exempt(h, "heading")) return false;
+      return parseFloat(getComputedStyle(h).fontSize) < 16;
+    }).map((h) => `${label(h)} ${getComputedStyle(h).fontSize} "${h.textContent.trim().slice(0, 20)}"`);
+
+    // 9) 페이지 가로 넘침 — 폰에서 좌우로 밀리는 화면(5-22의 화면낭독용 표가 409px로 넘쳤다).
+    const horizontalOverflow = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
+
     return {
+      horizontalOverflow,
+      smallHeadings: [...new Set(smallHeadings)],
       accents: [...new Set(accents)],
       textCount: texts.length,
       overlaps: [...new Set(overlaps)],

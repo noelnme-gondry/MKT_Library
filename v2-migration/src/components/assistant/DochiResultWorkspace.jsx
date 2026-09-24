@@ -137,12 +137,15 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     {phase === "results" && <>
       <header className="dochi-result-workspace__header is-results">
         <div className="dochi-result-workspace__intro"><h1 id="dochi-result-title">{C.resultsTitle}</h1></div>
-        {sample && <div className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"} · {sample.channel}</strong><p>{locale === "en" ? "Comparison" : "비교 기간"} {sample.period.previousStart} – {sample.period.previousEnd}<br />{locale === "en" ? "Analysis" : "분석 기간"} {sample.period.currentStart} – {sample.period.currentEnd}</p><Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link></div>}
-        <section className="dochi-result-workspace__source" aria-label={locale === "en" ? "Data summary" : "입력 요약"}><dl className="dochi-result-workspace__context">
-          <div><dt>{locale === "en" ? "Data" : "데이터"}</dt><dd title={csvData.fileName}>{csvData.fileName}</dd></div>
-          <div><dt>{locale === "en" ? "Rows" : "행"}</dt><dd>{csvData.raw.length.toLocaleString()}</dd></div>
-          <div><dt>{C.cadence}</dt><dd>{C.cadenceLabels[cadence.cadence]}</dd></div>
-        </dl></section>
+        {/* 입력 요약은 한 줄 — 상자 세 개(샘플·데이터·공통 설정)가 결과보다 먼저 자리를 차지했다. */}
+        <p className={`dochi-result-workspace__summary${sample ? " sample-journey-scope" : ""}`} aria-label={locale === "en" ? "Data summary" : "입력 요약"}>
+          <strong title={csvData.fileName}>{sample ? `${locale === "en" ? "Sample data" : "샘플 데이터"} · ${sample.channel}` : csvData.fileName}</strong>
+          <span className="tnum">{csvData.raw.length.toLocaleString()}{locale === "en" ? " rows" : "행"}</span>
+          {sample ? <span className="tnum">{sample.period.currentStart} – {sample.period.currentEnd} {locale === "en" ? "vs" : "vs"} {sample.period.previousStart} – {sample.period.previousEnd}</span> : null}
+          <span>{C.cadenceLabels[cadence.cadence]}</span>
+          {sample ? <Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link> : null}
+        </p>
+        {/* 자동 기준 전환 같은 고지가 여기 뜨므로 접지 않는다 — 상자만 벗는다. */}
         <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>
       </header>
       <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} />

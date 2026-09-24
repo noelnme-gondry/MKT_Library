@@ -99,6 +99,13 @@
         --font-mono: var(--font-jetbrains-mono), var(--font-wanted-sans), ui-monospace, Menlo, Consolas, monospace;
       }
 
+      /* 폰 하한: 폰에서 도구 화면 글자의 80%가 12~13px였다(2026-09-24 실측). 폰에서는 두 작은 단을
+         본문(14px)으로 올려 네 단(26·20·16·14)만 남긴다. 스케일 정의는 위 한 곳이고, 이 블록은
+         폰에서 작은 두 단을 올리는 단 하나의 예외다 — app/typeScale.test.js가 모양을 고정한다. */
+      @media (max-width: 768px) {
+        :root { --fs-xs: 14px; --fs-sm: 14px; }
+      }
+
       /* 한글 어절 단위 줄바꿈 — keep-all 없으면 브라우저가 글자 단위로 끊어
          "...하세요. 원하는 쪽을... / 다." 처럼 조사·어미가 다음 줄에 혼자 남음.
          전역 적용 후 표(tnum)·코드(pre/code)만 예외(숫자·심볼은 어절 규칙 무의미). */
@@ -11534,7 +11541,7 @@ b, strong { font-weight: 700; }
 /* 12) 왼쪽 굵은 색 막대 + 바탕 상자는 쓰지 않는다(AI 안내 상자의 전형). 테두리가 있는 상자는
    네 변이 같은 얇은 선, 테두리가 없던 것은 상자를 벗고 글자로 둔다. 결론 카드의 좋음·나쁨은
    왼쪽 막대가 아니라 신호 아이콘과 문장이 말한다. e2e/design-rules가 막대를 다시 찾는다. */
-.app .content :is(.result-action-card, .library-plan-link, .workspace-next-action, .callout, .dashboard-demo-source, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
+.app .content :is(.result-action-card, .library-plan-link, .callout, .dashboard-demo-source, .required-banner, .tool-brief, .trend-chart-explainer, .decision-review, .csv-evidence-ledger, .csv-uploader > .analysis-basis-bar) {
   border: 1px solid var(--border-subtle);
 }
 .app .content :is(.guide-answer, .prism-driver__status) { border-left: 0; padding-inline: 0; background: none; }
@@ -11546,6 +11553,53 @@ b, strong { font-weight: 700; }
 }
 /* 14) 업로더 카드(바깥 상자) 안의 파일 상태·필수 안내·미리보기 표·분석 줄은 바탕을 벗는다. */
 .app .content .csv-uploader :is(.required-banner, .file-state, .table-wrap, .csv-analysis-cta-row) { background: transparent; }
+/* 15) 분석이 끝난 업로더는 한 줄 — 결과가 먼저 보이게. 매핑은 버튼으로 다시 편다. */
+.app .content .csv-uploader.csv-uploader--collapsed, .csv-uploader--collapsed { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 0; border: 0; background: none; }
+.csv-collapsed-summary { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; font-size: var(--fs-base); color: var(--text-secondary); }
+.csv-collapsed-summary strong { color: var(--text-primary); font-weight: 600; }
+/* 16) /start 결과 머리의 입력 요약은 한 줄. 샘플 표식(.sample-journey-scope)의 막대·바탕 상자도 벗는다. */
+.app .content .dochi-result-workspace__summary, .dochi-result-workspace__summary { display: flex; flex-flow: row wrap; align-items: center; gap: 4px 16px; margin: 0; padding: 0; border: 0; background: none; color: var(--text-secondary); font-size: var(--fs-base); line-height: 1.6; }
+.dochi-result-workspace__summary strong { color: var(--text-primary); font-weight: 600; }
+.dochi-result-workspace__summary a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 600; }
+.app .content .dochi-result-workspace__global-controls { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.app .content .dochi-result-workspace__global-controls > strong, .app .content .dochi-result-workspace__global-controls .analysis-control-group__label { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
+/* 17) 제목은 본문보다 작을 수 없다 — 하단 마감 영역의 12~13px 소제목이 14px 본문 위에 있었다.
+   글자 네 단: h1 26 · h2 20 · h3/h4 16 · 본문 14~16. e2e/design-rules가 16px 미만 제목을 찾는다. */
+.app .content .tool-outro :is(.tool-connections__head, .tool-evidence__header) h2 { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.app .content :is(.tool-longform__body, .tool-longform__faq) h3,
+.app .content :is(.project-handoff, .template-checklist-card) h3,
+.app .content .tool-index__stage-title, .app .content .event-log__subtitle,
+.app .content :is(.sop-content, .guide-body, .with-toc) h3 { font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.app .content .mmm-budget-decision h4 { font-size: var(--fs-md); font-weight: 600; }
+.template-checklist-card h3, .dashboard-recommendations__heading h2, .dashboard-next-actions .dashboard-recommendations__heading h2, .creative-model-router__explanation h3, .trend-change-ledgers__grid h3 { font-size: var(--fs-md); font-weight: 700; letter-spacing: 0; }
+/* 대시보드 '이어서 확인할 분석'은 그라데이션+파란 테두리 상자였다 — 위 가는 선 하나로. */
+.app .content .dashboard-recommendations { padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
+.dashboard-recommendations__heading p { font-size: var(--fs-base); }
+.mapping-editor-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.mapping-editor-dialog__head h2 { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+/* 18) 예시 결과의 저장 단계 미리보기 — 상자가 아니라 위 가는 선 + 16/700 소제목. */
+.decision-review-preview { margin: 24px 0 0 47px; padding-top: 16px; border-top: 1px solid var(--border); }
+@media (max-width: 768px) { .decision-review-preview { margin-left: 0; } }
+.decision-review-preview h3 { margin: 0 0 8px; font-size: var(--fs-md); font-weight: 700; }
+.decision-review-preview p, .decision-review-preview li { margin: 0 0 8px; font-size: var(--fs-base); line-height: 1.6; color: var(--text-secondary); }
+.decision-review-preview ul { margin: 0 0 16px; padding-left: 20px; }
+.decision-review-preview__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 19) 계산기: 파란 대문자 간격 라벨(12px) → 14px 보통 글자. 숫자 이름표도 14px. */
+.calculator-workbench__heading span, .calculator-result__eyebrow, .calculator-result__formula span { color: var(--text-secondary); font-size: var(--fs-base); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.calculator-result__primary small, .calculator-result__secondary small { font-size: var(--fs-base); font-weight: 400; color: var(--text-secondary); }
+.calculator-related > h2 { margin: 0 0 12px; font-size: var(--fs-lg); font-weight: 700; }
+/* 20) 남은 왼쪽 색 막대 + 바탕 안내 상자 → 네 변 같은 얇은 선. */
+:is(.calculator-result__formula, .compare-page__answer), .calculator-page aside { border: 1px solid var(--border-subtle); }
+/* 21) 폰 하한(14px)으로 글자가 커지면 한 줄 flex 줄(안내 목록·파일 상태)이 옆으로 넘친다 — 줄바꿈을 허용한다. */
+.csv-guide-outcomes { flex-wrap: wrap; }
+/* 22) 구독 화면: 머리는 형제 구획과 같은 폭(글줄만 760px), 접힌 안내 제목도 16px. */
+.subscription-page > .subscription-hero { max-width: none; }
+.subscription-page > .subscription-hero > * { max-width: 760px; }
+/* 23) 폰 하한으로 입력칸 기본 폭(글자 수 × 14px)이 커져 주간 보고서 도구줄이 320px에서 넘쳤다. */
+.weekly-report-page .weekly-review-page__toolbar label { flex: 1 1 200px; min-width: 0; }
+.weekly-report-page .weekly-review-page__toolbar label :is(input, select) { width: 100%; min-width: 0; box-sizing: border-box; }
+.file-state { flex-wrap: wrap; gap: 8px 12px; }
+.file-state .meta-text { flex-wrap: wrap; min-width: 0; }
 } /* @layer app 끝 */
 
 /* Contextual video help. Closed state loads no video or poster. */
@@ -11635,7 +11689,7 @@ b, strong { font-weight: 700; }
 .checkout-method-mark { margin-left: auto; color: var(--primary); font-weight: 700; }
 .checkout-methods p { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-muted); }
 .checkout-purchase-info { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 24px; }
-.checkout-purchase-info h3 { font-size: var(--fs-base); margin: 0 0 12px; }
+.checkout-purchase-info h3 { font-size: var(--fs-md); margin: 0 0 12px; }
 .checkout-purchase-info p { font-size: var(--fs-sm); color: var(--text-muted); line-height: 1.65; }
 .checkout-recovery-link { min-height: 44px; padding: 10px 0; border: 0; background: transparent; color: var(--primary); text-align: left; cursor: pointer; }
 .checkout-recovery-panel { width: min(640px, 94vw); max-height: 85dvh; overflow: auto; padding: 24px; background: var(--bg-1); color: var(--text-1); border: 1px solid var(--border); border-radius: var(--radius-lg); }

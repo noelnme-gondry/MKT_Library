@@ -250,7 +250,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {mappingEditorOpen ? (
           <ModalDialog open onClose={() => setMappingEditorOpen(false)} ariaLabel={tr("데이터·매핑 편집", "Edit data and mappings")} overlayClassName="tutorial-overlay" panelClassName="decision-editor-panel">
             <header><h2>{tr("데이터·매핑 편집", "Edit data and mappings")}</h2><button className="btn" onClick={() => setMappingEditorOpen(false)}>{tr("닫기", "Close")}</button></header>
-            <CsvUploader toolId={toolId} locale={locale} onAnalyzed={() => setMappingEditorOpen(false)} />
+            <CsvUploader toolId={toolId} locale={locale} collapseWhenAnalyzed={false} onAnalyzed={() => setMappingEditorOpen(false)} />
           </ModalDialog>
         ) : !hasData ? (
           <div className="block dashboard-data-setup dashboard-data-setup--empty" id="dashboard-data-setup">

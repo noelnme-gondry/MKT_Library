@@ -90,11 +90,11 @@ export default function AsaKeywordFinder({ locale = "ko" } = {}) {
 
       <CsvUploader toolId="5-26" locale={locale} />
       {hasData && <section className="block analysis-design-check">
-        <label>{tr("업로드 기간의 전환 성숙도", "Conversion maturity of the uploaded period")}
+        <label>{tr("최근 며칠은 전환이 아직 더 들어올 수 있나요?", "Can conversions still arrive for the most recent days?")}
           <select value={maturity} onChange={(e) => setMaturityDeclaration({ raw: csvData.raw, value: e.target.value })}>
-            <option value="unknown">{tr("미확인", "Unknown")}</option>
-            <option value="immature">{tr("아직 전환이 추가될 기간 포함", "Includes periods still accumulating conversions")}</option>
-            <option value="mature">{tr("계정 전환 지연을 확인해 성숙 기간만 포함", "Confirmed conversion lag; only mature periods included")}</option>
+            <option value="unknown">{tr("아직 모름", "Not sure yet")}</option>
+            <option value="immature">{tr("네, 아직 들어오는 중인 날이 있습니다", "Yes, some days are still filling in")}</option>
+            <option value="mature">{tr("아니요, 전환이 다 들어온 기간만 올렸습니다", "No, only fully settled days are included")}</option>
           </select>
         </label>
         <p>{tr("일별 합계만으로 전환 지연을 복원할 수 없습니다. 계정의 전환 창·보고 기준을 확인하세요. 성숙도 미확인 또는 탭 8건·설치 3건 미만은 조치를 보류합니다. 이 표본 기준은 서비스 운영 휴리스틱이며 통계적 유의성을 뜻하지 않습니다.", "Daily totals cannot reconstruct conversion delay. Check your account's conversion window and reporting basis. Unknown maturity, fewer than 8 taps, or fewer than 3 installs holds actions. These service heuristics do not establish statistical significance.")}</p>

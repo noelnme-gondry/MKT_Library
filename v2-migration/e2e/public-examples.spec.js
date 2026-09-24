@@ -54,7 +54,7 @@ for (const locale of ["ko", "en"]) {
         await expect(result).toContainText("16.00%");
         await expect(result).toContainText(en ? "Traffic mix drove it" : "트래픽 구성 변화가 주도");
       } else if (example.kind === "asa") {
-        const maturity = page.getByLabel(en ? "Conversion maturity of the uploaded period" : "업로드 기간의 전환 성숙도");
+        const maturity = page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?");
         await expect(maturity).toHaveValue("unknown");
         await expect(page.getByText(en ? "Conversion maturity unknown" : "전환 성숙도 미확인", { exact: true }).first()).toBeVisible();
         await maturity.selectOption("mature");

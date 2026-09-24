@@ -37,13 +37,12 @@ export default function EnglishDiagnosePage() {
     <article className="diagnose-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
-        <span>SYMPTOM-BASED ANALYSIS ROUTER</span>
         <h1>Not sure what to analyze first?</h1>
         <p>Choose the symptom that feels closest. After the third answer, you’ll get one analysis to check first.</p>
       </header>
       <DiagnoseRouter locale="en" />
       <section className="calculator-faq" aria-label="Frequently asked questions">
-        <span>FAQ</span><h2>Before you diagnose</h2>
+        <h2>Before you diagnose</h2>
         {FAQ.map(([question, answer]) => <section data-information-section="" key={question}><header data-information-heading="">{question}</header><p>{answer}</p></section>)}
       </section>
     </article>

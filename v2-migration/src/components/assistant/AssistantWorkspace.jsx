@@ -874,7 +874,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       {(!queue || queue.cancelled || queue.signature !== queueSignature) && !autoStart && <button type="button" className="btn primary" onClick={startNext}>{locale === "en" ? "Analyze data" : "분석하기"}</button>}
       {isPreparingHandoff && <p role="status">{C.preparingDetails}</p>}
       {decisionFocus?.queueItem.result.status === "success" && <section className="workspace-next-action" aria-label={C.primaryAction}>
-        <span>{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
+        <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
         <h3>{decisionFocus.queueItem.result.verdict.headline}</h3>
         <p>{decisionFocus.queueItem.result.verdict.action}</p>
         <button type="button" className="btn primary" onClick={() => setSelectedAnalysis(decisionFocus.result.toolId)}>{locale === "en" ? "Review evidence and action plan" : "근거와 실행 계획 보기"}</button>

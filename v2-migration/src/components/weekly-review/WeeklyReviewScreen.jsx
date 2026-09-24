@@ -422,7 +422,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
             ? <p className="wr-screen__cta"><button type="button" className="btn primary" onClick={() => setGateOpen(true)}>{t.newProject}</button></p>
             : workspaceReady
               ? <>
-                <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />
+                <CsvUploader toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview collapseWhenAnalyzed={false} />
                 {projectSetup(review.periods || null, 0, false)}
               </>
               : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
@@ -510,7 +510,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
       {!uploaderOpen && <p className="wr-screen__cta"><button type="button" className="btn" onClick={() => setShowUploader(true)}>{locale === "en" ? "Use different data" : "데이터 바꾸기"}</button></p>}
       {(uploaderOpen || csvData.sheetUrl) && <section id="wr-upload" className="wr-card" hidden={!uploaderOpen} aria-label={locale === "en" ? "Replace data" : "데이터 바꾸기"}>
           {workspaceReady
-            ? <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview />
+            ? <CsvUploader refreshRef={sheetRefreshRef} toolId="5-2" analyticsToolId="weekly-review" showToolGuide={false} locale={locale} showMappingReview collapseWhenAnalyzed={false} />
             : <p role="status">{locale === "en" ? "Loading this device's saved workspace…" : "이 기기의 저장된 작업을 확인하고 있습니다…"}</p>}
           <button type="button" className="btn ghost" onClick={() => setShowUploader(false)}>{locale === "en" ? "Close" : "닫기"}</button>
         </section>}

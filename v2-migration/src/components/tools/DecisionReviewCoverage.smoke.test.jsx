@@ -99,10 +99,10 @@ describe("decision review coverage for diagnostic tools", () => {
     fireEvent.click(screen.getByRole("button", { name: en ? "Estimate incrementality" : "증분 추정하기" }));
     expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
     for (const [label, value] of [
-      [en ? "Assignment / observation unit" : "배정·관측 단위", "time"],
-      [en ? "Comparison design" : "비교 설계", "observational"],
-      [en ? "Window and stopping rule" : "기간·중단 규칙", "planned"],
-      [en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경", "none"],
+      [en ? "What did you compare?" : "비교한 대상은 무엇인가요?", "time"],
+      [en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?", "observational"],
+      [en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?", "planned"],
+      [en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "none"],
     ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
     await waitFor(() => expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeTruthy());
     expect(window.gtag).toHaveBeenCalledWith("event", "analysis_completed", expect.objectContaining({
@@ -110,7 +110,7 @@ describe("decision review coverage for diagnostic tools", () => {
       analysis_type: "brand_incrementality",
       placement: "result_action_card",
     }));
-    fireEvent.change(screen.getByLabelText(en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경"), { target: { value: "present" } });
+    fireEvent.change(screen.getByLabelText(en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?"), { target: { value: "present" } });
     expect(container.querySelector('[data-decision-review-tool="5-24"]')).toBeNull();
   });
 

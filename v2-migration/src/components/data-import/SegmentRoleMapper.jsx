@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { profileSegmentCandidates, CANDIDATE_STATUS, CANDIDATE_REASON } from "@/lib/segment-composition/profileSegmentCandidates";
 import { SEGMENT_SHAPE, SEGMENT_ISSUE, PANEL_STATUS } from "@/lib/segment-composition/segmentPanel";
 
@@ -17,59 +17,71 @@ import { SEGMENT_SHAPE, SEGMENT_ISSUE, PANEL_STATUS } from "@/lib/segment-compos
 
 const copy = {
   ko: {
-    rolesTitle: "1. 컬럼 역할 확인",
-    rolesHint: "컬럼 이름이 무엇이든 상관없습니다. 이 파일에서 각 역할을 맡을 컬럼만 골라 주세요.",
-    time: "기간 (날짜·주차)",
-    entity: "분석 단위 (캠페인·채널)",
-    scope: "경쟁 범위 (OS·국가)",
-    population: "전체 모수",
-    spend: "비용",
-    none: "선택 안 함",
-    axesTitle: "2. 세그먼트 축 선언",
-    candidates: "축 후보",
-    review: "확인이 필요한 컬럼",
-    wideGroups: "멤버 컬럼 묶음 제안",
-    addAxis: "축으로 추가",
-    addGroup: "묶음으로 추가",
-    remove: "제거",
-    declared: "선언한 축",
-    exclusive: "한 사람이 하나의 값만 가짐 (배타)",
-    exhaustive: "모든 사람이 어딘가에 속함 (포괄)",
-    denominator: "분모 컬럼",
-    members: "멤버",
+    rolesTitle: "1. 파일의 열 확인",
+    rolesHint: "열 이름은 상관없습니다. 질문마다 맞는 열을 고르세요. 위쪽 '추천'은 값을 보고 고른 후보입니다.",
+    time: "날짜나 주차는 어느 열인가요?",
+    entity: "캠페인·채널처럼 예산이 옮겨 다니는 단위가 있나요? (선택)",
+    scope: "OS·국가처럼 따로 나눠 비교할 범위가 있나요? (선택)",
+    population: "전체 인원은 어느 열인가요? (없으면 각 행의 인원을 더합니다)",
+    spend: "비용은 어느 열인가요? (선택)",
+    none: "없음",
+    recommended: "추천",
+    others: "기타 (파일 순서)",
+    moreColumns: "다른 열도 보기",
+    axesTitle: "2. 무엇으로 나눠 볼까요?",
+    candidates: "나눠 볼 수 있는 열",
+    review: "나눠 볼 수는 있지만 확인이 필요한 열",
+    wideGroups: "여러 열이 한 기준의 값으로 보여요",
+    addAxis: "이 열로 나눠 보기",
+    addGroup: "이 열들을 한 기준으로 보기",
+    remove: "빼기",
+    declared: "지금 나눠 보는 기준",
+    exclusive: "한 사람은 값 하나에만 속합니다",
+    exhaustive: "빠진 사람 없이 모두 포함됩니다",
+    denominator: "이 기준의 전체 인원은 어느 열인가요?",
+    members: "각 값의 인원은 어느 열인가요?",
+    shape: { long_count: "행마다 값 하나", wide_count: "값마다 열 하나", rate: "값마다 비율 열" },
+    allAssigned: "나눠 볼 만한 열은 모두 위 기준에 넣었습니다.",
     blockedTitle: "아직 분석할 수 없습니다",
-    qualityTitle: "데이터 점검 결과",
+    qualityTitle: "데이터 점검",
+    notes: (count) => ` · 참고 ${count}건`,
     sampled: (rows) => `앞 ${rows.toLocaleString()}행만 훑어 후보를 제안했습니다. 전체 검사는 분석 실행 시 이뤄집니다.`,
-    noCandidates: "축으로 쓸 수 있는 컬럼을 찾지 못했습니다. 아래 목록에서 직접 지정해 주세요.",
+    noCandidates: "값을 보고 나눠 볼 만한 열을 찾지 못했습니다. 연령대·성별처럼 값 종류가 적은 열이 있는지 확인해 주세요.",
     ready: "점검 통과",
     caution: "주의할 점이 있습니다",
     blocked: "분석을 막는 문제가 있습니다",
   },
   en: {
-    rolesTitle: "1. Confirm column roles",
-    rolesHint: "Column names do not matter. Pick which column plays each role in this file.",
-    time: "Period (date or week)",
-    entity: "Analysis unit (campaign, channel)",
-    scope: "Competition scope (OS, country)",
-    population: "Total population",
-    spend: "Spend",
-    none: "Not selected",
-    axesTitle: "2. Declare segment axes",
-    candidates: "Axis candidates",
-    review: "Columns needing review",
-    wideGroups: "Suggested member column groups",
-    addAxis: "Add as axis",
-    addGroup: "Add as group",
+    rolesTitle: "1. Check your columns",
+    rolesHint: "Column names do not matter. Pick the column that answers each question. 'Suggested' comes from the values.",
+    time: "Which column holds the date or week?",
+    entity: "Is there a unit budget moves between, like campaign or channel? (optional)",
+    scope: "Is there a scope to compare separately, like OS or country? (optional)",
+    population: "Which column holds the total people? (If none, each row's people are added up)",
+    spend: "Which column holds spend? (optional)",
+    none: "None",
+    recommended: "Suggested",
+    others: "Other (file order)",
+    moreColumns: "Show other columns",
+    axesTitle: "2. What should we split by?",
+    candidates: "Columns you can split by",
+    review: "Columns you can split by after a check",
+    wideGroups: "Several columns look like values of one split",
+    addAxis: "Split by this column",
+    addGroup: "Treat these columns as one split",
     remove: "Remove",
-    declared: "Declared axes",
-    exclusive: "Each person has exactly one value (exclusive)",
-    exhaustive: "Everyone falls into some value (exhaustive)",
-    denominator: "Denominator column",
-    members: "Members",
+    declared: "Splits in use",
+    exclusive: "Each person belongs to one value",
+    exhaustive: "Everyone is included",
+    denominator: "Which column holds this split's total people?",
+    members: "Which column holds the people per value?",
+    shape: { long_count: "one value per row", wide_count: "one column per value", rate: "one rate column per value" },
+    allAssigned: "Every column worth splitting by is already in use above.",
     blockedTitle: "Not ready to analyze yet",
     qualityTitle: "Data check",
+    notes: (count) => ` · ${count} note${count === 1 ? "" : "s"}`,
     sampled: (rows) => `Suggestions come from the first ${rows.toLocaleString()} rows. The full check runs when you analyze.`,
-    noCandidates: "No column looks like a segment axis. Pick one manually below.",
+    noCandidates: "No column looks worth splitting by. Check for a column with few distinct values, like age band or gender.",
     ready: "Checks passed",
     caution: "Some cautions",
     blocked: "Blocking problems",
@@ -79,52 +91,52 @@ const copy = {
 // 진단 코드 → 사람이 읽는 문장. 계약(코드)은 엔진이 갖고 문구는 여기 한 곳에만 둔다.
 const ISSUE_COPY = {
   ko: {
-    [SEGMENT_ISSUE.MISSING_TIME_ROLE]: "기간 컬럼을 아직 고르지 않았습니다.",
-    [SEGMENT_ISSUE.MISSING_DIMENSION]: "분석할 세그먼트 축이 없습니다.",
-    [SEGMENT_ISSUE.MISSING_MEMBER_COLUMN]: "축을 만들 컬럼(또는 멤버 컬럼)이 지정되지 않았습니다.",
-    [SEGMENT_ISSUE.MISSING_COUNT_COLUMN]: "인원수 컬럼이 지정되지 않았습니다.",
-    [SEGMENT_ISSUE.RATE_WITHOUT_DENOMINATOR]: "비율만으로는 가중할 수 없습니다. 전체 모수 컬럼이 필요합니다.",
+    [SEGMENT_ISSUE.MISSING_TIME_ROLE]: "날짜나 주차 열을 아직 고르지 않았습니다.",
+    [SEGMENT_ISSUE.MISSING_DIMENSION]: "무엇으로 나눠 볼지 아직 고르지 않았습니다.",
+    [SEGMENT_ISSUE.MISSING_MEMBER_COLUMN]: "이 기준의 값이 든 열을 아직 고르지 않았습니다.",
+    [SEGMENT_ISSUE.MISSING_COUNT_COLUMN]: "각 값의 인원이 든 열을 아직 고르지 않았습니다.",
+    [SEGMENT_ISSUE.RATE_WITHOUT_DENOMINATOR]: "비율만으로는 인원을 알 수 없습니다. 전체 인원 열을 골라 주세요.",
     [SEGMENT_ISSUE.RATE_OUT_OF_RANGE]: "0~1 범위를 벗어난 비율이 있습니다. 퍼센트 표기인지 확인해 주세요.",
-    [SEGMENT_ISSUE.RATE_SUM_OFF]: "멤버 비율의 합이 100%에서 벗어납니다.",
+    [SEGMENT_ISSUE.RATE_SUM_OFF]: "값별 비율의 합이 100%에서 벗어납니다.",
     [SEGMENT_ISSUE.DUPLICATE_RATE_CELL]: "같은 기간·단위에 비율 행이 여러 개입니다. 비율은 더할 수 없습니다.",
     [SEGMENT_ISSUE.NON_NUMERIC_COUNT]: "숫자로 읽을 수 없는 인원수가 있습니다.",
     [SEGMENT_ISSUE.NEGATIVE_COUNT]: "음수 인원수가 있습니다.",
     [SEGMENT_ISSUE.MISSING_COUNT_VALUE]: "인원수가 빈 행이 있습니다.",
     [SEGMENT_ISSUE.MISSING_TIME_VALUE]: "기간을 읽을 수 없는 행이 있습니다.",
-    [SEGMENT_ISSUE.MISSING_CATEGORY_VALUE]: "세그먼트 값이 빈 행이 있습니다.",
+    [SEGMENT_ISSUE.MISSING_CATEGORY_VALUE]: "나눠 볼 기준의 값이 빈 행이 있습니다.",
     [SEGMENT_ISSUE.NON_POSITIVE_DENOMINATOR]: "0 이하인 분모가 있습니다.",
-    [SEGMENT_ISSUE.DENOMINATOR_CONFLICT]: "같은 기간·단위에 서로 다른 모수가 적혀 있습니다.",
-    [SEGMENT_ISSUE.DENOMINATOR_UNAVAILABLE]: "전체 모수를 알 수 없어 비중을 계산하지 못한 구간이 있습니다.",
-    [SEGMENT_ISSUE.COUNT_EXCEEDS_DENOMINATOR]: "멤버 인원수가 전체 모수보다 큽니다.",
-    [SEGMENT_ISSUE.MEMBER_SUM_MISMATCH]: "멤버 인원수의 합이 적어 둔 전체 모수와 다릅니다.",
+    [SEGMENT_ISSUE.DENOMINATOR_CONFLICT]: "같은 날짜·단위에 전체 인원이 서로 다르게 적혀 있습니다.",
+    [SEGMENT_ISSUE.DENOMINATOR_UNAVAILABLE]: "전체 인원을 알 수 없어 비중을 계산하지 못한 구간이 있습니다.",
+    [SEGMENT_ISSUE.COUNT_EXCEEDS_DENOMINATOR]: "한 값의 인원이 전체 인원보다 큽니다.",
+    [SEGMENT_ISSUE.MEMBER_SUM_MISMATCH]: "값별 인원의 합이 전체 인원과 다릅니다.",
     [SEGMENT_ISSUE.AGGREGATED_DUPLICATE_ROWS]: "여러 행이 한 칸으로 합쳐졌습니다. 매핑하지 않은 차원이 있습니다.",
-    [SEGMENT_ISSUE.MEASURE_REPEATED_ACROSS_MEMBERS]: "비용이 멤버 행마다 반복돼 있어 한 번만 셉니다.",
-    [SEGMENT_ISSUE.MEASURE_GRAIN_AMBIGUOUS]: "멤버마다 비용이 달라 합산 규칙을 알 수 없습니다. 이 지표는 잠깁니다.",
+    [SEGMENT_ISSUE.MEASURE_REPEATED_ACROSS_MEMBERS]: "비용이 값별 행마다 반복돼 있어 한 번만 셉니다.",
+    [SEGMENT_ISSUE.MEASURE_GRAIN_AMBIGUOUS]: "값마다 비용이 달라 더하는 방법을 알 수 없습니다. 비용 지표는 잠깁니다.",
     [SEGMENT_ISSUE.ESTIMATED_COUNT_FROM_RATE]: "비율에서 되만든 인원수라 정확한 정수가 아닙니다.",
     [SEGMENT_ISSUE.NO_USABLE_ROWS]: "쓸 수 있는 행이 없습니다.",
   },
   en: {
-    [SEGMENT_ISSUE.MISSING_TIME_ROLE]: "No period column selected yet.",
-    [SEGMENT_ISSUE.MISSING_DIMENSION]: "No segment axis to analyze.",
-    [SEGMENT_ISSUE.MISSING_MEMBER_COLUMN]: "No column (or member columns) declared for this axis.",
-    [SEGMENT_ISSUE.MISSING_COUNT_COLUMN]: "No head-count column declared.",
-    [SEGMENT_ISSUE.RATE_WITHOUT_DENOMINATOR]: "Rates cannot be weighted without a total population column.",
+    [SEGMENT_ISSUE.MISSING_TIME_ROLE]: "No date or week column chosen yet.",
+    [SEGMENT_ISSUE.MISSING_DIMENSION]: "Nothing chosen to split by yet.",
+    [SEGMENT_ISSUE.MISSING_MEMBER_COLUMN]: "No column holding this split's values yet.",
+    [SEGMENT_ISSUE.MISSING_COUNT_COLUMN]: "No column holding people per value yet.",
+    [SEGMENT_ISSUE.RATE_WITHOUT_DENOMINATOR]: "Rates alone cannot give people counts. Choose the total people column.",
     [SEGMENT_ISSUE.RATE_OUT_OF_RANGE]: "Some rates fall outside 0–1. Check whether they are percentages.",
-    [SEGMENT_ISSUE.RATE_SUM_OFF]: "Member rates do not add up to 100%.",
+    [SEGMENT_ISSUE.RATE_SUM_OFF]: "Rates per value do not add up to 100%.",
     [SEGMENT_ISSUE.DUPLICATE_RATE_CELL]: "Several rate rows share one period and unit. Rates cannot be summed.",
     [SEGMENT_ISSUE.NON_NUMERIC_COUNT]: "Some head counts are not numbers.",
     [SEGMENT_ISSUE.NEGATIVE_COUNT]: "Some head counts are negative.",
     [SEGMENT_ISSUE.MISSING_COUNT_VALUE]: "Some rows have an empty head count.",
     [SEGMENT_ISSUE.MISSING_TIME_VALUE]: "Some rows have an unreadable period.",
-    [SEGMENT_ISSUE.MISSING_CATEGORY_VALUE]: "Some rows have an empty segment value.",
+    [SEGMENT_ISSUE.MISSING_CATEGORY_VALUE]: "Some rows have an empty split value.",
     [SEGMENT_ISSUE.NON_POSITIVE_DENOMINATOR]: "Some denominators are zero or negative.",
-    [SEGMENT_ISSUE.DENOMINATOR_CONFLICT]: "One period and unit carries conflicting totals.",
-    [SEGMENT_ISSUE.DENOMINATOR_UNAVAILABLE]: "Shares could not be computed where the total population is unknown.",
-    [SEGMENT_ISSUE.COUNT_EXCEEDS_DENOMINATOR]: "A member count exceeds the total population.",
-    [SEGMENT_ISSUE.MEMBER_SUM_MISMATCH]: "Member counts do not add up to the declared total.",
+    [SEGMENT_ISSUE.DENOMINATOR_CONFLICT]: "One date and unit has conflicting totals.",
+    [SEGMENT_ISSUE.DENOMINATOR_UNAVAILABLE]: "Shares could not be computed where total people is unknown.",
+    [SEGMENT_ISSUE.COUNT_EXCEEDS_DENOMINATOR]: "One value has more people than the total.",
+    [SEGMENT_ISSUE.MEMBER_SUM_MISMATCH]: "People per value do not add up to the total.",
     [SEGMENT_ISSUE.AGGREGATED_DUPLICATE_ROWS]: "Several rows folded into one cell — some dimension is unmapped.",
-    [SEGMENT_ISSUE.MEASURE_REPEATED_ACROSS_MEMBERS]: "Spend repeats on every member row, so it is counted once.",
-    [SEGMENT_ISSUE.MEASURE_GRAIN_AMBIGUOUS]: "Spend differs per member, so the summing rule is unknown. This metric stays locked.",
+    [SEGMENT_ISSUE.MEASURE_REPEATED_ACROSS_MEMBERS]: "Spend repeats on every value row, so it is counted once.",
+    [SEGMENT_ISSUE.MEASURE_GRAIN_AMBIGUOUS]: "Spend differs per value, so we cannot add it up. Spend metrics stay locked.",
     [SEGMENT_ISSUE.ESTIMATED_COUNT_FROM_RATE]: "Counts were rebuilt from rounded rates, so they are not exact integers.",
     [SEGMENT_ISSUE.NO_USABLE_ROWS]: "No usable rows.",
   },
@@ -147,6 +159,25 @@ const CANDIDATE_COPY = {
   },
 };
 
+const DATE_LIKE = /^\d{4}[-/.]\d{1,2}([-/.]\d{1,2})?|^\d{4}-?W\d{1,2}$/i;
+const NUMBER_LIKE = /^-?[\d,]+(\.\d+)?%?$/;
+export function classifyColumns(headers, rows, sample = 200) {
+  const kinds = {};
+  const head = rows.slice(0, sample);
+  for (const header of headers) {
+    const values = head.map((row) => String(row?.[header] ?? "").trim()).filter(Boolean);
+    if (!values.length) { kinds[header] = "empty"; continue; }
+    const share = (test) => values.filter((value) => test.test(value)).length / values.length;
+    if (share(DATE_LIKE) >= 0.8) kinds[header] = "date";
+    else if (share(NUMBER_LIKE) >= 0.8) kinds[header] = "number";
+    else {
+      const distinct = new Set(values).size;
+      kinds[header] = distinct >= 2 && distinct <= 30 ? "category" : "text";
+    }
+  }
+  return kinds;
+}
+
 const emptyRoles = { time: "", entity: [], scope: [], population: "", measures: {} };
 
 export default function SegmentRoleMapper({
@@ -157,6 +188,9 @@ export default function SegmentRoleMapper({
   const candidateCopy = CANDIDATE_COPY[locale] || CANDIDATE_COPY.ko;
   const roles = { ...emptyRoles, ...(value?.roles || {}) };
   const dimensions = value?.dimensions || [];
+
+  // 열마다 앞부분 값을 보고 날짜·숫자·범주 중 무엇인지 가른다(추천 묶음용, 판정은 이름이 아니라 값).
+  const columnKinds = useMemo(() => classifyColumns(headers, rows), [headers, rows]);
 
   const profile = useMemo(
     () => profileSegmentCandidates({ headers, rows, options: { timeColumn: roles.time } }),
@@ -230,28 +264,41 @@ export default function SegmentRoleMapper({
     }
   });
 
-  const columnOptions = (selectedValue, onSelect, label) => (
-    <select value={selectedValue || ""} aria-label={label} onChange={(event) => onSelect(event.target.value)}>
-      <option value="">{t.none}</option>
-      {headers.map((header) => <option key={header} value={header}>{header}</option>)}
-    </select>
-  );
+  // 선택 목록은 "추천"(값으로 판단한 후보)과 "기타"(파일 순서) 두 묶음. 파일의 열 전부를
+  // 순서대로 늘어놓으면 날짜를 고를 때도 캠페인이, 인원을 고를 때도 날짜가 섞인다.
+  const columnOptions = (selectedValue, onSelect, label, kind) => {
+    const recommended = headers.filter((header) => columnKinds[header] === kind);
+    const others = headers.filter((header) => columnKinds[header] !== kind);
+    return (
+      <select value={selectedValue || ""} aria-label={label} onChange={(event) => onSelect(event.target.value)}>
+        <option value="">{t.none}</option>
+        {recommended.length ? <optgroup label={t.recommended}>{recommended.map((header) => <option key={header} value={header}>{header}</option>)}</optgroup> : null}
+        <optgroup label={recommended.length ? t.others : t.recommended}>{others.map((header) => <option key={header} value={header}>{header}</option>)}</optgroup>
+      </select>
+    );
+  };
 
-  const checkboxList = (key, label) => (
-    <fieldset className="segment-role-fieldset">
-      <legend>{label}</legend>
-      {headers.map((header) => (
-        <label key={header} className="segment-role-check">
-          <input
-            type="checkbox"
-            checked={(roles[key] || []).includes(header)}
-            onChange={() => toggleInList(key, header)}
-          />
-          <span>{header}</span>
-        </label>
-      ))}
-    </fieldset>
-  );
+  const [showAllChecks, setShowAllChecks] = useState({});
+  const checkboxList = (key, label) => {
+    const picked = roles[key] || [];
+    const shown = showAllChecks[key] ? headers : headers.filter((header) => columnKinds[header] === "category" || picked.includes(header));
+    return (
+      <fieldset className="segment-role-fieldset">
+        <legend>{label}</legend>
+        {shown.map((header) => (
+          <label key={header} className="segment-role-check">
+            <input
+              type="checkbox"
+              checked={picked.includes(header)}
+              onChange={() => toggleInList(key, header)}
+            />
+            <span>{header}</span>
+          </label>
+        ))}
+        {!showAllChecks[key] && shown.length < headers.length ? <button type="button" className="btn ghost" onClick={() => setShowAllChecks((value) => ({ ...value, [key]: true }))}>{t.moreColumns}</button> : null}
+      </fieldset>
+    );
+  };
 
   return (
     <div className="segment-role-mapper">
@@ -259,9 +306,9 @@ export default function SegmentRoleMapper({
         <h3 id="segment-roles-title" className="csv-mapping-title">{t.rolesTitle}</h3>
         <p className="muted">{t.rolesHint}</p>
         <div className="segment-role-grid">
-          <label className="segment-role-row"><span>{t.time}</span>{columnOptions(roles.time, (next) => setRole("time", next), t.time)}</label>
-          <label className="segment-role-row"><span>{t.population}</span>{columnOptions(roles.population, (next) => setRole("population", next), t.population)}</label>
-          <label className="segment-role-row"><span>{t.spend}</span>{columnOptions(roles.measures?.spend, (next) => setRole("measures", { ...roles.measures, spend: next }), t.spend)}</label>
+          <label className="segment-role-row"><span>{t.time}</span>{columnOptions(roles.time, (next) => setRole("time", next), t.time, "date")}</label>
+          <label className="segment-role-row"><span>{t.population}</span>{columnOptions(roles.population, (next) => setRole("population", next), t.population, "number")}</label>
+          <label className="segment-role-row"><span>{t.spend}</span>{columnOptions(roles.measures?.spend, (next) => setRole("measures", { ...roles.measures, spend: next }), t.spend, "number")}</label>
         </div>
         {checkboxList("entity", t.entity)}
         {checkboxList("scope", t.scope)}
@@ -282,7 +329,7 @@ export default function SegmentRoleMapper({
               </li>
             ))}
           </ul>
-        ) : <p className="muted">{t.noCandidates}</p>}
+        ) : <p className="muted">{dimensions.length ? t.allAssigned : t.noCandidates}</p>}
 
         {review.length ? (
           <>
@@ -319,18 +366,18 @@ export default function SegmentRoleMapper({
           {dimensions.map((dimension, index) => (
             <li key={dimension.id} className="segment-declared-item">
               <strong>{dimension.label}</strong>
-              <span className="muted"> · {dimension.sourceShape}</span>
+              <span className="muted"> — {t.shape[dimension.sourceShape] || dimension.sourceShape}</span>
               {dimension.sourceShape === SEGMENT_SHAPE.LONG_COUNT ? (
                 <label className="segment-role-row">
                   <span>{t.members}</span>
-                  {columnOptions(dimension.countColumn, (next) => patchDimension(index, { countColumn: next }), `${dimension.label} ${t.members}`)}
+                  {columnOptions(dimension.countColumn, (next) => patchDimension(index, { countColumn: next }), `${dimension.label} ${t.members}`, "number")}
                 </label>
               ) : (
                 <span className="muted"> · {(dimension.members || []).map((member) => member.sourceColumn).join(", ")}</span>
               )}
               <label className="segment-role-row">
                 <span>{t.denominator}</span>
-                {columnOptions(dimension.denominatorColumn, (next) => patchDimension(index, { denominatorColumn: next }), `${dimension.label} ${t.denominator}`)}
+                {columnOptions(dimension.denominatorColumn, (next) => patchDimension(index, { denominatorColumn: next }), `${dimension.label} ${t.denominator}`, "number")}
               </label>
               <label className="segment-role-check">
                 <input type="checkbox" checked={dimension.isExclusive !== false} onChange={(event) => patchDimension(index, { isExclusive: event.target.checked })} />
@@ -356,7 +403,7 @@ export default function SegmentRoleMapper({
       {quality ? (
         <section className="csv-mapping-block" aria-labelledby="segment-quality-title">
           <h3 id="segment-quality-title" className="csv-mapping-title">{t.qualityTitle}</h3>
-          <p>{quality.status === PANEL_STATUS.BLOCKED ? t.blocked : quality.status === PANEL_STATUS.CAUTION ? t.caution : t.ready}</p>
+          <p>{quality.status === PANEL_STATUS.BLOCKED ? t.blocked : quality.status === PANEL_STATUS.CAUTION ? t.caution : `${t.ready}${quality.issues?.length ? t.notes(quality.issues.length) : ""}`}</p>
           <ul>
             {(quality.issues || []).map((issue) => (
               <li key={`${issue.code}-${issue.dimensionId || ""}`} data-issue-level={issue.level}>

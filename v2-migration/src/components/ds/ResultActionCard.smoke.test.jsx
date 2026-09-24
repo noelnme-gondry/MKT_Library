@@ -193,6 +193,13 @@ describe("ResultActionCard decision-first hierarchy", () => {
     view.rerender(card());
     expect(view.container.querySelector(".decision-review")).toBeFalsy();
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+    // 예시 데이터에서도 저장 단계가 있다는 사실과 조건은 보인다(B안) — 저장은 하지 않는다.
+    const preview = view.container.querySelector(".decision-review-preview");
+    expect(preview).toBeTruthy();
+    expect(preview.textContent).toContain("저장하지 않습니다");
+    expect(preview.textContent).toContain("Pro(7일 체험 포함)");
+    expect(preview.querySelector('a[href="/start"]')).toBeTruthy();
+    expect(preview.querySelector("form, input, textarea")).toBeNull();
   });
 
   it("keeps a real result connected to weekly decision review even without a prefilled action", () => {

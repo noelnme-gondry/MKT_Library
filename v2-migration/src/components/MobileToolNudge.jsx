@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
-import MobileQuickStart from "@/components/MobileQuickStart";
 
 // 모바일 유입 대응 "가벼운 처방"(범위 밖 = 전면 반응형 재설계). 대시보드+전 분석
 // 도구(5-x·9-x)에 viewport 폭 기준으로 정보성 배너 노출. 기능 잠금 없음(논블로킹).
@@ -17,7 +16,7 @@ const COPY = {
     // 실제로 넓은 화면이 나은 것은 탭 안의 큰 표·차트뿐이다.
     text: (
       <>
-        📱 업로드부터 결론 확인까지 이 화면에서 그대로 됩니다. 탭 안의
+        업로드부터 결론 확인까지 이 화면에서 그대로 됩니다. 탭 안의
         <span style={{ color: "var(--text-primary)" }}> 큰 표·차트</span>만 넓은 화면이 편해요.
       </>
     ),
@@ -26,7 +25,7 @@ const COPY = {
   en: {
     text: (
       <>
-        📱 Uploading through reading the conclusion works right here. Only the large
+        Uploading through reading the conclusion works right here. Only the large
         <span style={{ color: "var(--text-primary)" }}> tables and charts</span> inside tabs prefer a wider screen.
       </>
     ),
@@ -40,6 +39,8 @@ export default function MobileToolNudge({ locale = "ko" }) {
   const [isMobile, setIsMobile] = useState(false);
   const dismissed = useAppStore((state) => state.mobileNudgeDismissed);
   const dismissMobileNudge = useAppStore((state) => state.dismissMobileNudge);
+  // 데이터가 들어오면(예시 포함) 안내는 할 일을 다 했다 — 결과 위에 끼지 않는다.
+  const hasData = useAppStore((state) => Boolean(state.csvData?.raw?.length));
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -60,11 +61,11 @@ export default function MobileToolNudge({ locale = "ko" }) {
     }
   }, []);
 
-  if (!isMobile || dismissed) return null;
+  if (!isMobile || dismissed || hasData) return null;
 
   return (
     <div role="note" data-mobile-nudge className="mobile-tool-nudge">
-      <div style={{ flex: 1 }}><MobileQuickStart locale={locale} /><span>{T.text}</span></div>
+      <p style={{ flex: 1, margin: 0 }}>{T.text}</p>
       <button
         type="button"
         onClick={dismissMobileNudge}

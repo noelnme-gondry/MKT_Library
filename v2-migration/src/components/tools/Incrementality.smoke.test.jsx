@@ -15,12 +15,12 @@ import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData
 function declareDesign(locale = "ko") {
   const en = locale === "en";
   for (const [label, value] of [
-    [en ? "Assignment / observation unit" : "배정·관측 단위", "person"],
-    [en ? "Comparison design" : "비교 설계", "randomized"],
-    [en ? "Window and stopping rule" : "기간·중단 규칙", "planned"],
-    [en ? "Tracking, promotion, seasonality or other concurrent changes" : "추적 정책·프로모션·계절성 등 동시 변경", "none"],
+    [en ? "What did you compare?" : "비교한 대상은 무엇인가요?", "person"],
+    [en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?", "randomized"],
+    [en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?", "planned"],
+    [en ? "Did a promotion, season or tracking change happen in the same period?" : "같은 기간에 프로모션·시즌·추적 방식이 바뀐 적이 있나요?", "none"],
   ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
-  const counts = screen.queryByLabelText(en ? "Independent counts across the full window" : "전체 기간의 독립 단위 집계");
+  const counts = screen.queryByLabelText(en ? "Is each person counted once over the whole period?" : "기간 전체에서 한 대상을 한 번씩만 셌나요?");
   if (counts) fireEvent.change(counts, { target: { value: "unique" } });
 }
 
@@ -105,11 +105,11 @@ describe("Incrementality render smoke", () => {
     declareDesign(locale);
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(en ? "Window and stopping rule" : "기간·중단 규칙"), { target: { value: "changed" } });
+    fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } });
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
     declareDesign(locale);
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-04" } });
-    expect(screen.getByLabelText(en ? "Comparison design" : "비교 설계").value).toBe("");
+    expect(screen.getByLabelText(en ? "How were the two groups split?" : "두 그룹은 어떻게 나눴나요?").value).toBe("");
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
   });
 

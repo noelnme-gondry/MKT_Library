@@ -6,6 +6,7 @@ import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackPr
 import { buildReviewEvidence } from "@/lib/reviewEvidence";
 import LinkAnalysisToDecision from "./LinkAnalysisToDecision";
 import DecisionReview from "@/components/ds/DecisionReview";
+import DecisionReviewPreview from "@/components/ds/DecisionReviewPreview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
 import AnalysisScopeEvidence from "@/components/ds/AnalysisScopeEvidence";
 import { scopeEvidenceTable, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
@@ -153,6 +154,8 @@ export default function ResultActionCard({
   // 두면 결과→재방문 이음매가 끊기므로, 실제 데이터 결과에는 항상 주간 검토
   // 진입점을 함께 둔다. 데모는 가짜 판단을 남기지 않도록 제외한다.
   const canOpenDecisionReview = Boolean(toolId && !isDemoData(csvData));
+  // 예시 데이터에서는 저장하지 않되 저장 단계가 있다는 사실과 조건은 보여 준다(B안).
+  const canPreviewDecision = Boolean(decisionReview && toolId && (hasDecisionPrefill || (decisionPrefill == null && resultState === "ready" && headline)) && isDemoData(csvData));
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -301,8 +304,6 @@ export default function ResultActionCard({
           </aside>
         )}
       </div>
-      {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
-
       {stats.length > 0 && (
         <div className="result-action-card__stats" aria-label={locale === "en" ? "Key figures" : "핵심 수치"}>
           {stats.map((s, i) => (
@@ -354,6 +355,8 @@ export default function ResultActionCard({
         />
       )}
 
+      {canPreviewDecision && <DecisionReviewPreview toolId={toolId} locale={locale} />}
+
       {/* 보조 동선은 결론·수치·행동보다 뒤에 둔다. 예전에는 이 넷이 카드 머리의
           다운로드와 나란히 서서, 결과를 읽는 자리에서 시각적으로 가장 강한 것이
           유틸리티 버튼 다섯이었다(§5.3 "동급으로 보이는 CTA 여럿" · §5.5 "다음 행동 1개"). */}
@@ -386,6 +389,9 @@ export default function ResultActionCard({
         </div>
       )}
 
+      {/* 근거(분석 범위·분모)는 결론·수치·행동 뒤(제품 SSOT §5.2의 7번). 예전에는 머리 바로 아래
+          343px를 차지해 폰에서 결론 다음 줄이 숫자가 아니라 분모 설명이었다. */}
+      {scopeEvidence && <AnalysisScopeEvidence scope={scopeEvidence} locale={locale} />}
       {analysisDetails}
       {children}
     </section>

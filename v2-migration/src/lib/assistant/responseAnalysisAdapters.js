@@ -150,7 +150,8 @@ function boundaryCaveats(prepared, locale) {
   )];
 }
 
-function trendHeadline(locale, verdict, cadence) {
+// 엔진 판정(영문 통계 용어 섞인 코드 문장)을 평어로. 도구 화면과 /start 결과가 같은 문장을 쓴다.
+export function trendHeadline(locale, verdict, cadence) {
   const { analysisCadence } = trendPeriodTerms(cadence, locale);
   if (String(verdict).startsWith("NO robust trend")) {
     return tr(locale, "관측 기간에서 견고한 자연 추세 신호를 확인하지 못했습니다.", "No robust natural-trend signal was confirmed in the observed period.");

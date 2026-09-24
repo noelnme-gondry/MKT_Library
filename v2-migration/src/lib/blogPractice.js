@@ -88,7 +88,7 @@ export const BLOG_PRACTICES = {
       detailNote: "이 예제는 전환 성숙도를 확인할 수 있는 상세 도구에서 이어집니다.",
       steps: [
         "데모 CSV를 선택하고 날짜·검색어·탭·설치·비용 매핑과 원본 통화를 확인하세요. ‘더 자세한 분석 보기’로 이동해 분석하면, 기본 상태에서는 전환 성숙도가 미확인이라 조정 제안이 보류됩니다.",
-        "이 합성 예제에 한해서 ‘계정 전환 지연을 확인해 성숙 기간만 포함’을 선택하고 결과를 다시 확인하세요.",
+        "이 합성 예제에 한해서 ‘아니요, 전환이 다 들어온 기간만 올렸습니다’를 선택하고 결과를 다시 확인하세요.",
         "40탭·12설치·비용 4,000의 CPA는 약 333.33입니다. 목표 CPA 500·예산 소진율 10% 조건에서 Exact 승격 1건과 CPT 100→115 조정 후보를 확인하세요.",
       ],
       limit: "실제 파일은 전환 지연을 확인한 뒤 성숙도를 선언하세요. 탭 기여 설치와 조회 기여 설치를 섞지 마세요. 이 예제는 운영 규칙의 후보이며 통계적 효과 검정이 아닙니다.",
@@ -98,7 +98,7 @@ export const BLOG_PRACTICES = {
       detailNote: "Continue this example in the full tool, where you can confirm conversion maturity.",
       steps: [
         "Choose the demo CSV and check date, search term, taps, installs, spend and source currency. Open detailed analysis and analyze. The default state withholds adjustment suggestions because conversion maturity is unconfirmed.",
-        "For this synthetic example only, choose ‘Confirmed conversion lag; only mature periods included’ and inspect the result again.",
+        "For this synthetic example only, choose ‘No, only fully settled days are included’ and inspect the result again.",
         "With 40 taps, 12 installs and 4,000 spend, CPA is about 333.33. At target CPA 500 and 10% budget pacing, inspect one Exact-promotion candidate and a CPT adjustment candidate from 100 to 115.",
       ],
       limit: "For real files, verify conversion lag before declaring maturity. Do not mix tap-attributed and view-through installs. These are operational rule candidates, not a statistical test of effect.",

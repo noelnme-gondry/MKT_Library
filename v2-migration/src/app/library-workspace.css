@@ -847,8 +847,10 @@
 .workspace-results-heading { margin-block: 1.5rem; }
 .workspace-card-evidence { display: grid; gap: .5rem; color: var(--text-muted); font-weight: 400; }
 .workspace-card-evidence b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.workspace-next-action { padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); margin-bottom: 1.5rem; }
-.workspace-next-action > span { color: var(--text-muted); }
+/* 결론은 상자가 아니라 위 가는 선 하나 + 두 단 글자(20/700 → 16/400). 라벨 줄은 두지 않는다. */
+.workspace-next-action { padding: 16px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; margin-bottom: 32px; }
+.workspace-next-action > h3 { margin: 0 0 8px; font-size: var(--fs-lg); font-weight: 700; line-height: 1.4; }
+.workspace-next-action > p { margin: 0 0 16px; font-size: var(--fs-md); font-weight: 400; line-height: 1.6; }
 .tool-index__guidance { padding: 1rem; background: var(--bg-2); border-radius: var(--radius-md); }
 .tool-index__output-preview { margin-block: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); }
 .tool-index__output-preview ol { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
@@ -880,3 +882,14 @@
   .app .analysis-metric-picker strong { font-size: 20px; }
 }
 @media (max-width: 600px) { .workspace-input-summary { align-items: flex-start; flex-direction: column; } }
+@layer app {
+  /* 사이트 디자인 계약(2026-09-24): 정책·비교·템플릿 화면은 바깥 카드 안에 구획 카드가 또 있었다
+     (상자 안 상자). 바깥을 벗기고 안쪽 구획은 위 가는 선으로 나눈다. e2e/design-rules가 다시 잰다. */
+  :is(.template-detail, .compare-page, .policy-page) { padding-inline: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .app .policy-page__body > section, .policy-page__body > section { padding: 20px 0 0; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: none; }
+  /* 구독 화면: 구획마다 카드, 그 안에 예시 카드, 그 안에 종이 그림(3겹). 종이·워크북 그림만 상자로 남긴다. */
+  .app .subscription-page > section { padding-inline: 0; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: none; box-shadow: none; }
+  .app .report-preview-item { padding: 0; border: 0; border-radius: 0; background: none; }
+  /* 정책 본문의 section 왼쪽 선 규칙이 안쪽 안내 상자(section)에도 걸려 막대 상자가 됐다. */
+  .policy-page__body .pass-recovery-help { border: 1px solid var(--library-border); }
+}
