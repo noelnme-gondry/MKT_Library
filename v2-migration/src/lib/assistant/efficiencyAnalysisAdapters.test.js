@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { SAT_CONFIG, SAT_MATH, satBuildPoints } from "@/utils/satMath";
+import { buildSampleJourney } from "@/lib/sampleJourney";
 import { validateAnalysisResult } from "./analysisResultContract";
 import { EFFICIENCY_TOOL_IDS, efficiencyAdapterFor, runEfficiencyAnalysis } from "./efficiencyAnalysisAdapters";
 
@@ -64,6 +65,19 @@ describe("Dochi efficiency analysis adapters", () => {
     expect(actual.manifest.budgetSource).toBe("observed_daily_total");
     expect(validateAnalysisResult(actual)).toEqual({ valid: true, errors: [] });
     expect(Object.keys(actual.manifest)).not.toEqual(expect.arrayContaining(["raw", "rows", "headers", "samples", "canonicalData"]));
+  });
+
+  it("never recommends a split that the same curves expect to do worse than the current one", () => {
+    // 그리디만 쓰던 때 샘플에서 하루 8,782 → 6,072건(전환), 24,271 → 16,191건(설치)으로 줄어드는 안이 나왔다.
+    for (const denomBasis of ["installs", "actions"]) {
+      const actual = runEfficiencyAnalysis({ toolId: "5-3", csvData: buildSampleJourney("ko"), inputSignature: "i", mappingSignature: "m", locale: "ko", options: { denomBasis } });
+      expect(actual.status, denomBasis).toBe("success");
+      const stat = (id) => actual.verdict.stats.find((entry) => entry.id === id)?.value;
+      expect(stat("current-results"), denomBasis).toBeGreaterThan(0);
+      expect(stat("expected-results"), denomBasis).toBeGreaterThanOrEqual(stat("current-results"));
+      expect(actual.verdict.headline, denomBasis).not.toContain("지금 배분이 더 낫습니다");
+      expect(actual.manifest.allocationSource, denomBasis).toBe("from_current");
+    }
   });
 
   it("does not turn missing PVM inputs into a success result", () => {

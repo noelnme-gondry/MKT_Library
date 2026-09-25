@@ -430,6 +430,128 @@ export function calculateAllocationModeB({
   return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
 
+/* ── 지금 배분에서 출발하는 이동 탐색 ──────────────────────────────────────
+   모드 B 그리디는 0원에서 한 칸씩 쌓아 올린다. 초반 단가가 비싸다가 지출이 늘면 싸지는
+   곡선(U형·하한 clamp 구간)에서는 첫 칸의 한계 성과가 작아 그 채널을 영영 못 고르고,
+   그래서 지금 배분보다 예상 성과가 **적은** 안을 낼 수 있다(샘플에서 하루 8,782 → 6,072건).
+   여기서는 지금 배분을 출발점으로 두고 "한 채널에서 빼서 다른 채널에 넣었을 때 합계 예상
+   성과가 늘어나는 이동"만 받아들인다. 받아들인 이동마다 합계가 늘므로 결과는 출발점보다
+   나빠질 수 없다. 칸은 예산의 5%에서 시작해 절반씩 줄인다(굵게 옮긴 뒤 다듬기). 결정론.
+   상한은 호출부가 넘긴 maxSpends(관측 최대·∩형 꼭짓점)를 그대로 쓴다 — 그 밖으로는 옮기지 않는다. */
+function resultsAt(channel, cost) {
+  if (!(cost > 0)) return 0;
+  const cpr = ALLOC_MATH.predictSafeCpr(channel, cost);
+  return cpr && cpr > 0 ? cost / cpr : 0;
+}
+
+function startFromCurrent(channels, totalBudget) {
+  const currentTotal = channels.reduce((sum, c) => sum + c.cost, 0);
+  if (currentTotal > 0 && Math.abs(currentTotal - totalBudget) > 1e-9) {
+    const scale = totalBudget / currentTotal;
+    for (const c of channels) c.cost *= scale;
+  } else if (!(currentTotal > 0)) {
+    for (const c of channels) c.cost = totalBudget / channels.length;
+  }
+  // 상한을 넘는 몫은 여유 있는 채널에 지출 비례로 나눈다(출발점도 관측 범위 안이어야 한다).
+  for (let guard = 0; guard < 20; guard += 1) {
+    let excess = 0;
+    for (const c of channels) {
+      if (c.cost > c.cap) {
+        excess += c.cost - c.cap;
+        c.cost = c.cap;
+      }
+    }
+    if (excess <= 1e-9) break;
+    const open = channels.filter((c) => c.cost < c.cap);
+    if (!open.length) break;
+    const weight = open.reduce((sum, c) => sum + (c.cost > 0 ? c.cost : 1), 0);
+    for (const c of open) c.cost += excess * ((c.cost > 0 ? c.cost : 1) / weight);
+  }
+}
+
+export function improveAllocationFromCurrent({
+  modelsMap,
+  currentSpends = {},
+  totalBudget,
+  maxSpends = {},
+  minSpends = {},
+  currency = "KRW",
+  startStepRatio = 0.05,
+  minStepRatio = 0.002,
+  maxMoves = 2000,
+}) {
+  if (!modelsMap || !(totalBudget > 0))
+    return { items: [], unallocated: totalBudget || 0, overspent: false, totalAllocated: 0, lockedTotal: 0, moves: 0, startResults: 0 };
+
+  const channels = [];
+  for (const [name, meta] of modelsMap) {
+    if (!meta || !meta.model) continue;
+    const min = Math.max(0, Number(minSpends[name]) || 0);
+    const rawCap = maxSpends[name] != null && maxSpends[name] >= 0 ? Number(maxSpends[name]) : meta.xMax;
+    const cap = Math.max(min, Number.isFinite(rawCap) ? rawCap : Infinity);
+    channels.push({
+      channel: name, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
+      poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
+      cost: Math.max(0, Number(currentSpends[name]) || 0), min, cap, results: 0,
+    });
+  }
+  if (!channels.length)
+    return { items: [], unallocated: totalBudget, overspent: false, totalAllocated: 0, lockedTotal: 0, moves: 0, startResults: 0 };
+
+  startFromCurrent(channels, totalBudget);
+  for (const c of channels) c.results = resultsAt(c, c.cost);
+  const startResults = channels.reduce((sum, c) => sum + c.results, 0);
+
+  const minStep = Math.max(currency === "USD" || currency === "usd" ? 0.01 : 10, totalBudget * minStepRatio);
+  let step = Math.max(minStep, totalBudget * startStepRatio);
+  let moves = 0;
+  while (moves < maxMoves) {
+    // 가장 많이 늘어나는 한 쌍(뺄 채널 → 넣을 채널)을 고른다. 동률이면 앞선 채널(Map 순서).
+    // 한 칸을 빼고/넣은 성과를 채널마다 한 번만 계산한다(쌍마다 곡선을 다시 부르면 캠페인
+    // 단위에서 채널 수² 번 예측이 돈다). 칸보다 여유가 작은 경우만 쌍 안에서 다시 계산한다.
+    const takeOf = channels.map((c) => Math.min(step, c.cost - c.min));
+    const fromAt = channels.map((c, i) => (takeOf[i] > 1e-9 ? resultsAt(c, c.cost - takeOf[i]) : null));
+    const toAt = channels.map((c) => (c.cap - c.cost >= step ? resultsAt(c, c.cost + step) : null));
+    let best = null;
+    for (let i = 0; i < channels.length; i += 1) {
+      const from = channels[i];
+      const take = takeOf[i];
+      if (!(take > 1e-9)) continue;
+      for (let j = 0; j < channels.length; j += 1) {
+        if (j === i) continue;
+        const to = channels[j];
+        const give = Math.min(take, to.cap - to.cost);
+        if (!(give > 1e-9)) continue;
+        const nextFrom = give === take ? fromAt[i] : resultsAt(from, from.cost - give);
+        const nextTo = give === step && toAt[j] != null ? toAt[j] : resultsAt(to, to.cost + give);
+        const gain = nextFrom + nextTo - from.results - to.results;
+        if (gain > 1e-9 && (!best || gain > best.gain)) best = { from, to, give, nextFrom, nextTo, gain };
+      }
+    }
+    if (!best) {
+      if (step <= minStep) break;
+      step = Math.max(minStep, step / 2);
+      continue;
+    }
+    best.from.cost -= best.give;
+    best.to.cost += best.give;
+    best.from.results = best.nextFrom;
+    best.to.results = best.nextTo;
+    moves += 1;
+  }
+
+  const totalAllocated = channels.reduce((sum, c) => sum + c.cost, 0);
+  const items = channels
+    .map((c) => ({
+      channel: c.channel, cost: c.cost, results: c.results,
+      cpr: c.results > 0 ? c.cost / c.results : null,
+      weight: totalAllocated > 0 ? c.cost / totalAllocated : 0,
+      locked: false, xMin: c.xMin, xMax: c.xMax, poly2Shape: c.poly2Shape,
+    }))
+    .sort((a, b) => b.cost - a.cost);
+  return { items, unallocated: Math.max(0, totalBudget - totalAllocated), overspent: false, totalAllocated, lockedTotal: 0, moves, startResults };
+}
+
 /* What-if 시나리오: 현재 예산의 0.5×~2× 구간을 동일 알고리즘으로 재배분해 예상 성과 비교.
    index.html renderAllocScenario의 runAt 로직 이식(순수). 모델 재적합 없이 modelsMap lookup. */
 export function computeAllocScenarios({
