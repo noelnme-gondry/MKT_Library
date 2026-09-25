@@ -7,6 +7,7 @@ import {
   calculateAllocationModeB,
   computeAllocSummary,
   getAllocationEvidenceLimits,
+  improveAllocationFromCurrent,
   getRowGroupKey,
 } from "@/utils/budgetAllocTool";
 import {
@@ -377,13 +378,25 @@ function allocationAdapter(input) {
       manifest: { engine: "ALLOC_MATH", status: "ABSTAIN", unit, requestedBudget: totalBudget, observedBudgetCap: limits.maxBudget },
     });
   }
-  const allocation = calculateAllocationModeB({
+  const greedyAllocation = calculateAllocationModeB({
     modelsMap,
     totalBudget,
     maxSpends: limits.maxSpends,
     extrapolateMode: "1.0",
     currency: options.currency || "KRW",
   });
+  // 그리디는 0원에서 쌓아 올려 지금보다 나쁜 안을 낼 수 있다. 지금 배분에서 출발해 합계가
+  // 늘어나는 이동만 받아들인 안도 같이 만들고, 예상 성과가 더 많은 쪽을 쓴다(둘 다 같은 곡선).
+  const fromCurrentAllocation = improveAllocationFromCurrent({
+    modelsMap,
+    currentSpends: Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0])),
+    totalBudget,
+    maxSpends: limits.maxSpends,
+    currency: options.currency || "KRW",
+  });
+  const totalOf = (plan) => plan.items.reduce((sum, item) => sum + (item.results || 0), 0);
+  const allocationSource = fromCurrentAllocation.items.length && totalOf(fromCurrentAllocation) >= totalOf(greedyAllocation) ? "from_current" : "greedy";
+  const allocation = allocationSource === "from_current" ? fromCurrentAllocation : greedyAllocation;
   if (!allocation.items.length) {
     return noResult({
       toolId: "5-3", inputSignature, mappingSignature, locale,
@@ -447,8 +460,9 @@ function allocationAdapter(input) {
       options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency" },
     }],
     manifest: {
-      engine: "ALLOC_MATH+calculateAllocationModeB",
+      engine: allocationSource === "from_current" ? "ALLOC_MATH+improveAllocationFromCurrent" : "ALLOC_MATH+calculateAllocationModeB",
       status: "COMPLETE",
+      allocationSource,
       unit,
       resultField: metric,
       budgetSource: inferredBudget ? "observed_daily_total" : "user_input",
