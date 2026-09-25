@@ -9,13 +9,15 @@ import { runReview } from "@/lib/weekly-review/reviewPipeline";
 describe("guided sample continuity", () => {
   it.each(["ko", "en"])("uses identical CPA values in the home preview, actual result adapter and weekly pipeline (%s)", locale => {
     const full = buildDemoCsv("efficiency", locale);
-    const expected = compareSamplePerformance(full.raw).channels[0];
+    // 홈 미리보기·결과·주간 리뷰가 모두 "유료 채널 전체" 같은 범위를 쓴다(2026-09-25).
+    const expected = compareSamplePerformance(full.raw);
     const csvData = buildSampleJourney(locale);
     const sample = getSampleJourney(csvData);
     expect(csvData.importSource).toBe("demo");
     expect(csvData.raw.length).toBeGreaterThan(0);
     expect(csvData.raw.length).toBeLessThan(full.raw.length);
-    expect(new Set(csvData.raw.map(row => row.channel))).toEqual(new Set([expected.channel]));
+    expect(new Set(csvData.raw.map(row => row.channel))).toEqual(new Set(expected.channels.map(channel => channel.channel)));
+    expect(csvData.raw.every(row => row.source === "paid")).toBe(true);
     const output = runEfficiencyAnalysis({ toolId: "5-2", csvData, inputSignature: "sample-source", mappingSignature: "sample-mapping", options: { denomBasis: "actions", displayCurrency: "KRW" }, locale });
     expect(output.status).toBe("success");
     const table = output.visualizations[0].table.rows;
