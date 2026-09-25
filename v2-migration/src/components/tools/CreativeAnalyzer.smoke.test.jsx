@@ -205,6 +205,12 @@ describe("CreativeAnalyzer render smoke", () => {
     }).not.toThrow();
     expect(screen.getByText(/어떤 소재가 성과를 만들었나/)).toBeTruthy();
     expect(screen.getByText(/운영 건강도/)).toBeTruthy();
+    // 결과 작업대와 같은 핵심 그림: 소재 상태 띠. 띠의 합이 "전체 소재 N개"와 같아야 한다(한 소재 = 한 상태).
+    const share = container.querySelector(".tool-core-figure .result-share");
+    expect(share).toBeTruthy();
+    const segments = share.querySelectorAll(".result-share__bar i");
+    expect(segments.length).toBeGreaterThan(0);
+    expect(share.textContent).toMatch(/전체 소재 \d+개/);
     expect(screen.getAllByText(/다음에 무엇을 만들까/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/다음 테스트에서 무엇을 확인할까/).length).toBeGreaterThan(0);
     expect(screen.getByText(/누적 집행 위험 구간/)).toBeTruthy();

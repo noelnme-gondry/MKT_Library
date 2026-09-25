@@ -65,6 +65,8 @@ describe("MulticollinearityChecker render smoke", () => {
     expect(container.querySelector("table")).toBeTruthy();
     expect(container.querySelector("table").textContent).not.toContain("∞");
     expect(resultCard.props.headline).toContain("계산 불가");
+    // 그릴 VIF 행이 없으면 핵심 그림은 비워 두지 않고 아예 그리지 않는다.
+    expect(container.querySelector(".tool-core-figure")).toBeNull();
   });
   it.each(["ko", "en"])("preserves uncomputed collinear rows in the %s workbook without inventing zero or infinity", (locale) => {
     const rows = constantChannelRows().map((row, index) => ({ ...row, cost: (Math.floor(index / 2) + 1) * (row.channel === "brand" ? 100 : 200) }));
@@ -72,6 +74,11 @@ describe("MulticollinearityChecker render smoke", () => {
     render(<MulticollinearityChecker locale={locale} />);
     expect(resultCard.props.headline).toContain(locale === "en" ? "Stop" : "중단");
     expect(resultCard.props.stats[0].value).toBe(locale === "en" ? "Not computable" : "계산 불가");
+    // 결과 작업대와 같은 핵심 그림도 같은 판정을 말한다: 계산 불가는 ∞(완전 공선)가 아니다.
+    const figure = document.querySelector(".tool-core-figure .result-vif");
+    expect(figure).toBeTruthy();
+    expect(figure.textContent).toContain(locale === "en" ? "Not computable" : "계산 불가");
+    expect(figure.textContent).not.toContain("∞");
     const table = resultCard.props.workbookExport().calculationTables[0];
     const vifRows = table.rows.filter((row) => row[0] === "VIF");
     expect(vifRows).toHaveLength(2);

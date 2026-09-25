@@ -1,6 +1,9 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { fmtCurrency, fmtNum } from "@/utils/format";
+import { downloadElementAsPNG } from "@/utils/figureImage";
+import { requirePaidExport } from "@/lib/subscription/paidExport";
 
 // 결과 작업대의 분석별 핵심 그림. 예전에는 PVM·포화도·예산·VIF·소재 피로도가 전부 같은
 // 가로 막대(ResultBars)로 그려져 "무엇을 보여 주는 분석인지"가 그림에서 사라졌다(2026-09-25).
@@ -147,10 +150,15 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
 /** 5-25 채널 중복: 채널별 VIF를 주의·심각 기준선과 함께(로그 눈금). */
 export function ResultVifThreshold({ visualization, locale, fallback = null }) {
   const [warn, severe] = visualization.options?.thresholds || [];
-  const rows = (visualization.data || []).map((row) => ({ entity: row.entity, vif: finite(row.vif) }));
+  // ∞(완전 공선)는 가장 심각한 상태지 "계산 불가"가 아니다 — 둘을 섞으면 심각을 판정 보류로 뒤집는다.
+  // 결과 작업대는 JSON 안전을 위해 ∞를 null + isInfinite로 싣고, 도구 화면은 Infinity를 그대로 넘긴다.
+  const rows = (visualization.data || []).map((row) => ({
+    entity: row.entity,
+    vif: row.vif === Infinity || row.isInfinite === true ? Infinity : finite(row.vif),
+  }));
   if (!rows.length || !Number.isFinite(warn) || !Number.isFinite(severe)) return fallback;
-  const top = Math.max(severe * 10, ...rows.map((row) => row.vif || 0));
-  const at = (value) => Math.max(0, Math.min(100, (Math.log10(Math.max(1, value)) / Math.log10(top)) * 100));
+  const top = Math.max(severe * 10, ...rows.map((row) => (Number.isFinite(row.vif) ? row.vif : 0)));
+  const at = (value) => (value === Infinity ? 100 : Math.max(0, Math.min(100, (Math.log10(Math.max(1, value)) / Math.log10(top)) * 100)));
   const toneOf = (value) => (value == null ? "muted" : value >= severe ? "worse" : value >= warn ? "caution" : "better");
   return <figure className="result-chart result-vif" aria-label={visualization.question}>
     <ul>
@@ -161,7 +169,7 @@ export function ResultVifThreshold({ visualization, locale, fallback = null }) {
           <i className="result-vif__line" style={{ "--vif-at": `${at(warn)}%` }} />
           <i className="result-vif__line is-severe" style={{ "--vif-at": `${at(severe)}%` }} />
         </div>
-        <b className="tnum" data-tone={toneOf(row.vif)}>{row.vif == null ? tr(locale, "계산 불가", "Not computable") : fmtNum(row.vif, row.vif < 10 ? 1 : 0)}</b>
+        <b className="tnum" data-tone={toneOf(row.vif)}>{row.vif == null ? tr(locale, "계산 불가", "Not computable") : row.vif === Infinity ? "∞" : fmtNum(row.vif, row.vif < 10 ? 1 : 0)}</b>
       </li>)}
     </ul>
     <figcaption>{tr(locale, `세로선: 주의 ${warn} · 심각 ${severe}. 로그 눈금이라 오른쪽으로 갈수록 급격히 커집니다.`, `Lines: caution ${warn} · severe ${severe}. Log scale — values grow quickly to the right.`)}</figcaption>
@@ -250,13 +258,26 @@ export const RESULT_CHART_VARIANTS = Object.freeze({
 });
 
 /** 도구 화면의 결론 카드 바로 아래에 두는 핵심 그림. 결과 작업대와 같은 사양(`lib/assistant/coreFigures`)과
- *  같은 그림을 써서, 결과 화면에서 도구로 들어가도 같은 분석이 같은 모양으로 보인다. 그릴 값이 없으면 아무것도 그리지 않는다. */
-export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW" }) {
+ *  같은 그림을 써서, 결과 화면에서 도구로 들어가도 같은 분석이 같은 모양으로 보인다. 그릴 값이 없으면 아무것도 그리지 않는다.
+ *  `downloadName`을 주면 제목 줄에 PNG 받기(Pro)가 붙는다 — 캔버스 차트를 걷어낸 자리의 다운로드를 잇는다. */
+export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downloadName = null }) {
+  const holderRef = useRef(null);
+  const [failed, setFailed] = useState(false);
   const Chart = figure && RESULT_CHART_VARIANTS[figure.options?.variant];
   if (!Chart || !figure.data?.length) return null;
   const headingId = `tool-core-figure-${figure.id}`;
+  const download = async () => {
+    if (!requirePaidExport({ format: "png" })) return;
+    const target = holderRef.current?.querySelector(".result-chart");
+    const ok = await downloadElementAsPNG(target, downloadName);
+    setFailed(!ok);
+  };
   return <section className="block tool-core-figure" id={headingId} aria-labelledby={`${headingId}-title`}>
-    <h2 className="section-title" id={`${headingId}-title`}>{figure.question}</h2>
-    <Chart visualization={figure} locale={locale} currency={currency} />
+    <div className="section-head">
+      <h2 className="section-title" id={`${headingId}-title`}>{figure.question}</h2>
+      {downloadName && <button type="button" className="btn secondary tool-core-figure__download" onClick={download}>{tr(locale, "PNG 받기", "Download PNG")}</button>}
+    </div>
+    <div ref={holderRef}><Chart visualization={figure} locale={locale} currency={currency} /></div>
+    {failed && <p className="muted" role="alert">{tr(locale, "이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead.")}</p>}
   </section>;
 }

@@ -188,6 +188,9 @@ describe("CampaignPvm render smoke", () => {
     const { container, unmount } = render(<CampaignPvm />);
     const figure = container.querySelector(".tool-core-figure .result-mix-rate");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();
+    expect(container.querySelector(".tool-core-figure__download")?.textContent).toBe("PNG 받기");
+    // 옛 캔버스 차트(워터폴·채널 Mix·Rate)는 이 그림으로 대체됐다 — 같은 내용을 두 번 그리지 않는다.
+    expect(container.querySelector("#pvm-waterfall, #pvm-channel-stack")).toBeNull();
     expect([...figure.querySelectorAll(".result-bridge li span")].map((span) => span.textContent)).toEqual([
       expect.stringMatching(/^직전 /), "비중 변화", "효율 변화", expect.stringMatching(/^최근 /),
     ]);
@@ -269,9 +272,9 @@ describe("CampaignPvm render smoke", () => {
     expect(screen.queryByText("계산 완료")).toBeNull();
     expect(screen.queryByText(/잔차 없이/)).toBeNull();
     expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
-    const pngButtons = screen.getAllByRole("button", { name: /PNG/ });
-    expect(pngButtons.length).toBeGreaterThan(0);
-    expect(pngButtons.every((button) => button.disabled)).toBe(true);
+    // 분해가 안 되면 그림 자체를 그리지 않으므로 그림 PNG 받기도 없다(비활성 버튼을 남기지 않는다).
+    expect(screen.queryAllByRole("button", { name: /PNG/ })).toHaveLength(0);
+    expect(document.querySelector(".tool-core-figure")).toBeNull();
   });
 
   it("keeps formatted numeric strings and blocks malformed numeric input", () => {
@@ -317,6 +320,6 @@ describe("CampaignPvm render smoke", () => {
     expect(screen.getAllByText(/숫자로 읽을 수 없는/).length).toBeGreaterThan(0);
     expect(screen.queryByText("계산 완료")).toBeNull();
     expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
-    expect(screen.getAllByRole("button", { name: /PNG/ }).every((button) => button.disabled)).toBe(true);
+    expect(screen.queryAllByRole("button", { name: /PNG/ })).toHaveLength(0);
   });
 });

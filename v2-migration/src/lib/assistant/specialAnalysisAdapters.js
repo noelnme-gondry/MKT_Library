@@ -10,6 +10,7 @@ import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
+import { creativeStatusFigure } from "./coreFigures";
 
 const SPECIAL_TOOL_IDS = Object.freeze(["5-27", "9-6"]);
 
@@ -197,14 +198,6 @@ function creativeAdapter(input) {
   const alerts = CREATIVE_FATIGUE.buildAlerts(validCreativeRows(csvData), CREATIVE_CONFIG.fatigueAlert);
   const alertNowCount = alerts.filter((item) => item.alert).length;
   const fatiguedCount = fatigue.filter((item) => item.fatigued).length;
-  const alertingIds = new Set(alerts.filter((item) => item.alert).map((item) => item.creative_id));
-  const fatiguedWithoutAlert = fatigue.filter((item) => item.fatigued && !alertingIds.has(item.creative_id)).length;
-  const statusRows = [
-    { status: tr(locale, "현재 알림", "Alerting now"), count: alertNowCount },
-    { status: tr(locale, "피로 감지·알림 없음", "Fatigue detected, no alert"), count: fatiguedWithoutAlert },
-    { status: tr(locale, "판정 가능·비피로", "Analyzable, not fatigued"), count: Math.max(0, analyzable.length - fatiguedCount) },
-    { status: tr(locale, "기간 부족", "History too short"), count: fatigue.length - analyzable.length },
-  ];
   const headline = alertNowCount
     ? tr(locale, `${alertNowCount}개 소재가 현재 교체 경보 기준에 도달했습니다.`, `${alertNowCount} creative(s) currently meet the replacement-alert threshold.`)
     : fatiguedCount
@@ -230,14 +223,7 @@ function creativeAdapter(input) {
         : tr(locale, "소재별 추이를 계속 관측하고 충분한 기간이 쌓이면 교체 기준을 다시 점검합니다.", "Keep observing per-creative trends and recheck replacement criteria after more history accumulates."),
       caveats: [tr(locale, "피로도는 관측된 CTR 추세 신호이며, 플랫폼 전달 변화나 소재 자체의 인과 효과를 분리하지 않습니다.", "Fatigue is an observed CTR-trend signal; it does not separate delivery changes from a creative's causal effect.")],
     },
-    visualizations: [{
-      id: "creative-fatigue-status",
-      kind: "bar",
-      question: tr(locale, "교체 검토가 필요한 소재는 몇 개인가?", "How many creatives need replacement review?"),
-      // 소재 상태는 하나의 전체를 나눈 비율이라 막대 네 개가 아니라 띠 하나로 본다.
-      data: statusRows.map((row, index) => ({ ...row, tone: ["danger", "warning", "success", "muted"][index] })),
-      options: { x: "status", y: "count", variant: "status-share" },
-    }],
+    visualizations: [creativeStatusFigure({ fatigue, alerts, isReviewable: (item) => item.reason == null, locale })],
     manifest: {
       engine: "creativeMath.fatigueDetect+buildAlerts",
       status: "COMPLETE",

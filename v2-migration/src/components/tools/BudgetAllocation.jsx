@@ -2860,6 +2860,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         })}
         locale={locale}
         currency={currency}
+        downloadName="budget_shift"
       />}
 
       {canStorePlan && <PeriodSensitivityPanel
