@@ -114,6 +114,21 @@ for (const locale of ["ko", "en"]) {
     expect(stuck).toEqual([]);
   });
 
+  // 분석마다 핵심 그림이 달라야 한다 — 예전에는 전부 같은 가로 막대였다(2026-09-25).
+  test(`each computed sample analysis shows its own chart (${locale})${tag}`, async ({ page }) => {
+    await page.goto(prefix || "/");
+    await page.locator(".dc-action-route--sample").click();
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+    const expected = { "5-2": ".dochi-workspace__period-comparison", "5-21": ".result-mix-rate", "5-22": ".result-gap", "5-3": ".result-shift" };
+    for (const [toolId, selector] of Object.entries(expected)) {
+      const chip = page.locator(".tool-index__stage--ready .tool-index__chip").filter({ hasText: toolIndexEntry(toolId, locale).name });
+      await chip.click();
+      await expect(page.locator(`.tool-index__panel ${selector}`)).toBeVisible();
+      await expect(page.locator(".tool-index__panel .dochi-workspace__result-bars")).toHaveCount(0);
+      await chip.click();
+    }
+  });
+
   // 도구를 열었다가 뒤로 오면 결과가 그대로여야 한다 — 예전에는 컬럼 확인부터 다시 물었다(2026-09-24).
   test(`back from a tool keeps the sample results (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");

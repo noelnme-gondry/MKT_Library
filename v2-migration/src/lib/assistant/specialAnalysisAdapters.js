@@ -234,8 +234,9 @@ function creativeAdapter(input) {
       id: "creative-fatigue-status",
       kind: "bar",
       question: tr(locale, "교체 검토가 필요한 소재는 몇 개인가?", "How many creatives need replacement review?"),
-      data: statusRows,
-      options: { x: "status", y: "count" },
+      // 소재 상태는 하나의 전체를 나눈 비율이라 막대 네 개가 아니라 띠 하나로 본다.
+      data: statusRows.map((row, index) => ({ ...row, tone: ["danger", "warning", "success", "muted"][index] })),
+      options: { x: "status", y: "count", variant: "status-share" },
     }],
     manifest: {
       engine: "creativeMath.fatigueDetect+buildAlerts",

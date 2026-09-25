@@ -6,11 +6,14 @@ import HomeResultPreview from "./HomeResultPreview";
 
 it.each(["ko", "en"])("shows actual sample evidence and launches the sample (%s)", locale => {
   const result = compareSamplePerformance(buildDemoCsv("efficiency").raw);
-  const lead = result.channels[0];
+  // 미리보기는 결과 화면과 같은 범위(유료 채널 전체 합계)를 보이고, 가장 많이 오른 채널은 따로 짚는다.
+  const lead = result;
+  const riser = result.channels[0];
   const launch = vi.fn();
   const view = render(<HomeResultPreview locale={locale} onTrySample={launch} />);
   expect(view.container.querySelectorAll(".preview-cost-row")).toHaveLength(2);
-  expect(view.container.textContent).toContain(lead.channel);
+  expect(view.container.textContent).toContain(riser.channel);
+  expect(view.container.textContent).toContain(locale === "en" ? `${result.channels.length} paid channels` : `유료 채널 ${result.channels.length}개 합계`);
   for (const [index, key] of ["costChange", "actionChange", "cpaChange"].entries()) {
     const value = lead[key];
     expect(view.container.querySelectorAll("dd")[index].textContent).toBe(`${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`);

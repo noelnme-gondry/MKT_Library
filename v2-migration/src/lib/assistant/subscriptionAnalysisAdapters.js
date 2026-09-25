@@ -110,14 +110,14 @@ function runSubscriptionSurvival({ csvData, inputSignature, mappingSignature, lo
         kind: "line",
         question: tr(locale, "핵심 액션 생존 확률은 관측기간 동안 어떻게 변했는가?", "How did action survival change over the observed horizon?"),
         data: table.map((point) => ({ period: point.time, survival: point.survival, ciLow: point.ciLow, ciHigh: point.ciHigh, atRisk: point.atRisk })),
-        options: { x: "period", y: "survival", unit: "rate" },
+        options: { x: "period", y: "survival", unit: "rate", variant: "survival-step" },
       },
       {
         id: "subscription-hazard",
         kind: "bar",
         question: tr(locale, "이탈·종료 위험이 높았던 시점은 언제인가?", "At which points was dropout or exit hazard highest?"),
         data: hazard.rows.map((point) => ({ period: point.time, hazard: point.hazard, atRisk: point.atRisk })),
-        options: { x: "period", y: "hazard", unit: "rate" },
+        options: { x: "period", y: "hazard", unit: "rate", variant: "hazard-columns" },
       },
     ],
     manifest: {

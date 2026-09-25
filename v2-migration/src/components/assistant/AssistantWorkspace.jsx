@@ -35,6 +35,7 @@ import { fmtCurrency, fmtNum, sourceCurrencyOf } from "@/utils/format";
 import { requestDecisionReviewOpen } from "@/lib/decisionReviewUi";
 import DecisionReview from "@/components/ds/DecisionReview";
 import { productEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
+import { RESULT_CHART_VARIANTS } from "@/components/assistant/ResultCharts";
 
 const COPY = {
   ko: {
@@ -406,9 +407,13 @@ function ResultLineChart({ visualization, locale }) {
   if (!domain || pointCount < 2) return <ResultTable visualization={visualization} locale={locale} />;
   const xAt = (point) => 28 + (point.index / Math.max(1, point.total - 1)) * 584;
   const yAt = (value) => 212 - ((value - domain.min) / domain.span) * 184;
+  const splitDate = visualization.options?.splitDate;
+  const splitPoint = splitDate ? series[0].points.find((point) => String(point.label) === String(splitDate)) : null;
   return <figure className="dochi-workspace__chart"><svg viewBox="0 0 640 240" role="img" aria-label={visualization.question} preserveAspectRatio="xMidYMid meet">
     <line className="dochi-workspace__chart-axis" x1="28" y1="212" x2="612" y2="212" />
     <line className="dochi-workspace__chart-grid" x1="28" y1="120" x2="612" y2="120" />
+    {/* 비교 기간의 시작(splitDate)을 세로선으로 — 앞은 직전, 뒤는 최근이다. */}
+    {splitPoint && <><line className="dochi-workspace__chart-split" x1={xAt(splitPoint)} y1="20" x2={xAt(splitPoint)} y2="212" /><text className="dochi-workspace__chart-split-label" x={xAt(splitPoint) + 4} y="30">{locale === "en" ? "Recent period" : "최근 기간"}</text></>}
     {series.map((item, seriesIndex) => <g className={`dochi-workspace__chart-series is-series-${seriesIndex % 5}`} key={item.id}>
       {contiguousLineSegments(item.points).map((segment, index) => <polyline key={`${item.id}-segment-${index}`} points={segment.map((point) => `${xAt(point)},${yAt(point.value)}`).join(" ")} />)}
       {item.points.filter((point) => Number.isFinite(point.value)).map((point) => <circle key={`${item.id}-${point.label}-${point.index}`} cx={xAt(point)} cy={yAt(point.value)} r="3"><title>{item.id}: {point.label} · {formatResultValue(point.value, locale)}</title></circle>)}
@@ -435,6 +440,10 @@ function ResultScatterChart({ visualization, locale }) {
 
 function ResultVisualization({ visualization, locale, currency }) {
   if (visualization.kind === "bar" && visualization.options?.variant === "period-comparison") return <ResultPeriodComparison visualization={visualization} locale={locale} currency={currency} />;
+  // 분석별 핵심 그림. 그림을 못 그릴 데이터면(값 없음) 원래 종류의 기본 그림·표로 물러난다.
+  const Specific = RESULT_CHART_VARIANTS[visualization.options?.variant];
+  const generic = visualization.kind === "line" ? <ResultLineChart visualization={visualization} locale={locale} /> : <ResultBars visualization={visualization} locale={locale} />;
+  if (Specific) return <Specific visualization={visualization} locale={locale} currency={currency} fallback={generic} />;
   if (visualization.kind === "bar") return <ResultBars visualization={visualization} locale={locale} />;
   if (visualization.kind === "line") return <ResultLineChart visualization={visualization} locale={locale} />;
   if (visualization.kind === "scatter") return <ResultScatterChart visualization={visualization} locale={locale} />;

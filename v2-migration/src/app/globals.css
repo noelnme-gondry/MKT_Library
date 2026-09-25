@@ -6660,6 +6660,82 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .dochi-workspace__chart :is(.is-series-1 polyline,.is-series-1) { stroke:var(--warning); }
 .dochi-workspace__chart :is(.is-series-2 polyline,.is-series-2) { stroke:var(--success); }
 .dochi-workspace__chart :is(.is-series-3 polyline,.is-series-3) { stroke:var(--text-secondary); }
+/* 분석별 핵심 그림(components/assistant/ResultCharts.jsx). 색은 판정 톤만 쓴다:
+   worse=나빠짐 · better=좋아짐 · caution=주의 · flat/muted=변화 없음·판정 불가. */
+.result-chart { display:grid;gap:14px;margin:0;min-width:0; }
+.result-chart figcaption { color:var(--text-muted);font-size: var(--fs-sm);line-height:1.55; }
+.result-chart ul { display:grid;gap:14px;margin:0;padding:0;list-style:none; }
+.result-chart [data-tone="worse"] { color:var(--danger); }
+.result-chart [data-tone="better"] { color:var(--success); }
+.result-chart [data-tone="caution"] { color:var(--warning); }
+.result-chart [data-tone="muted"],.result-chart [data-tone="flat"] { color:var(--text-muted); }
+/* 5-21: 다리 네 칸 + 채널별 두 성분 */
+.result-bridge { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:0;list-style:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border); }
+.result-bridge li { display:grid;gap:2px;padding:10px 12px;color:var(--text-primary); }
+.result-bridge li + li { border-left:1px solid var(--border); }
+.result-bridge span { color:var(--text-muted);font-size: var(--fs-sm); }
+.result-bridge b { font-size: var(--fs-md);font-weight:700; }
+.result-split__head,.result-gap__head,.result-shift__head { display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:6px; }
+.result-split__head strong,.result-gap__head strong,.result-shift__head strong { font-size: var(--fs-base);font-weight:600;min-width:0;overflow-wrap:anywhere; }
+.result-split__head span,.result-gap__head span,.result-shift__head span { font-size: var(--fs-sm);font-weight:600;white-space:nowrap; }
+.result-split__bar { display:grid;grid-template-columns:64px minmax(0,1fr) 96px;gap:8px;align-items:center;font-size: var(--fs-sm);color:var(--text-secondary); }
+.result-split__bar b { text-align:right;color:var(--text-primary);font-weight:600; }
+.result-diverging { position:relative;height:10px; }
+.result-diverging::before { content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--text-muted); }
+.result-diverging i { position:absolute;top:1px;bottom:1px;left:var(--bar-start);width:var(--bar-size);border-radius: var(--radius-sm); }
+.result-split__bar.is-mix .result-diverging i { background:var(--primary); }
+.result-split__bar.is-rate .result-diverging i { background:var(--warning); }
+/* 5-22: 평균 ○ ↔ 한계 ● */
+.result-gap__track { position:relative;height:14px; }
+.result-gap__track::before { content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border); }
+.result-gap__span { position:absolute;top:50%;height:3px;margin-top:-1px;left:calc(6px + var(--gap-start) * (100% - 12px));width:max(2px, calc((var(--gap-end) - var(--gap-start)) * (100% - 12px)));background:var(--text-muted); }
+.result-gap__dot { display:inline-block;width:12px;height:12px;border-radius: var(--radius-pill);border:2px solid var(--text-secondary);background:var(--bg-1);vertical-align:-1px; }
+.result-gap__track .result-gap__dot { position:absolute;top:1px;left:calc(var(--gap-at) * (100% - 12px)); }
+.result-gap__dot.is-marginal { border-color:currentColor;background:currentColor;color:var(--text-primary); }
+.result-gap__dot.is-marginal[data-tone="worse"] { color:var(--danger); }
+.result-gap__dot.is-marginal[data-tone="better"] { color:var(--success); }
+.result-gap p,.result-shift p { margin:6px 0 0;color:var(--text-muted);font-size: var(--fs-sm); }
+/* 5-3: 지금(테두리) · 바꾼 안(채움) */
+.result-shift__bars { display:grid;gap:3px; }
+.result-shift__bars i,.result-shift__key { display:block;height:8px;width:var(--shift-size);min-width:2px;border-radius: var(--radius-sm); }
+.result-shift__bars .is-current,.result-shift__key.is-current { border:1px solid var(--text-muted);background:transparent; }
+.result-shift__bars .is-next,.result-shift__key.is-next { background:var(--primary); }
+.result-shift__key { display:inline-block;width:18px;vertical-align:middle; }
+/* 5-25: 로그 눈금 + 주의·심각 선 */
+.result-vif li { display:grid;grid-template-columns:minmax(80px,1fr) minmax(0,2.2fr) 84px;gap:10px;align-items:center;font-size: var(--fs-sm); }
+.result-vif li strong { font-weight:600;overflow-wrap:anywhere; }
+.result-vif li b { text-align:right;font-weight:600; }
+.result-vif__track { position:relative;height:10px;background:var(--border-subtle, var(--border));border-radius: var(--radius-sm); }
+.result-vif__bar { position:absolute;left:0;top:0;bottom:0;width:var(--vif-size);border-radius: var(--radius-sm);background:currentColor; }
+.result-vif__line { position:absolute;top:-4px;bottom:-4px;left:var(--vif-at);width:1px;background:var(--warning); }
+.result-vif__line.is-severe { background:var(--danger); }
+/* 9-6: 상태 띠 하나 */
+.result-share__bar { display:flex;height:14px;border-radius: var(--radius-sm);overflow:hidden;background:var(--border); }
+.result-share__bar i { flex:0 0 var(--share-size);background:currentColor; }
+.result-share ul { grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 16px; }
+.result-share li { display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size: var(--fs-sm);color:var(--text-secondary); }
+.result-share li i { width:10px;height:10px;border-radius: var(--radius-sm);background:currentColor; }
+.result-share li b { color:var(--text-primary);font-weight:600; }
+/* 5-28: 계단 곡선 + 구간 띠, 위험도 세로 막대 */
+.result-survival svg { display:block;width:100%;height:clamp(170px,26vw,260px); }
+.result-survival__grid { stroke:var(--border);stroke-width:1; }
+.result-survival__tick { fill:var(--text-muted);font-size: var(--fs-xs); }
+.result-survival__band { fill:color-mix(in srgb,var(--primary) 16%,transparent);stroke:none; }
+.result-survival__line { fill:none;stroke:var(--primary);stroke-width:2.5; }
+.result-columns__plot { display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--border); }
+.result-columns__plot i { flex:1 1 0;height:var(--column-size);min-width:2px;border-radius: var(--radius-sm) var(--radius-sm) 0 0;background:var(--text-muted); }
+.result-columns__plot i[data-tone="worse"] { background:var(--danger); }
+.result-columns__axis { display:flex;justify-content:space-between;color:var(--text-muted);font-size: var(--fs-xs); }
+.dochi-workspace__chart-split { stroke:var(--text-muted);stroke-dasharray:4 4; }
+.dochi-workspace__chart-split-label { fill:var(--text-muted);font-size: var(--fs-xs); }
+@media (max-width: 640px) {
+  .result-bridge { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .result-bridge li:nth-child(3) { border-left:0; }
+  .result-bridge li:nth-child(n+3) { border-top:1px solid var(--border); }
+  .result-split__bar { grid-template-columns:52px minmax(0,1fr) 84px; }
+  .result-vif li { grid-template-columns:minmax(0,1fr) 72px; }
+  .result-vif__track { grid-column:1 / -1;grid-row:2; }
+}
 .dochi-workspace__chart :is(.is-series-4 polyline,.is-series-4) { stroke:var(--danger); }
 .dochi-workspace__chart-series.is-series-1 circle { stroke:var(--warning); }
 .dochi-workspace__chart-series.is-series-2 circle { stroke:var(--success); }

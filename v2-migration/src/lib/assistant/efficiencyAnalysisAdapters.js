@@ -225,9 +225,10 @@ function pvmAdapter(input) {
     visualizations: [{
       id: "pvm-channel-contributions",
       kind: "bar",
-      question: tr(locale, "어느 채널이 전체 단가 변화에 기여했는가?", "Which channels contributed to the total unit-cost change?"),
+      question: tr(locale, `${metric} 변화는 비중 변화와 효율 변화 중 어디서 왔는가?`, `Did the ${metric} change come from mix or from rate?`),
       data: byChannel,
-      options: { x: "entity", y: "contribution" },
+      // 성과 변동의 핵심 그림은 "직전 → 비중(mix) → 효율(rate) → 최근" 다리와 채널별 두 성분이다.
+      options: { x: "entity", y: "contribution", variant: "mix-rate", start: safeNumber(decomposition.CPA1), end: safeNumber(decomposition.CPA2), metric, unit: "currency" },
     }],
     manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive" },
   });
@@ -298,7 +299,8 @@ function saturationAdapter(input) {
       kind: "bar",
       question: tr(locale, "어디에 증액 위험 또는 여유 신호가 있는가?", "Where are the signals of scaling risk or headroom?"),
       data: table,
-      options: { x: "entity", y: "saturationIndex" },
+      // 포화의 핵심 그림은 평균 단가와 한계 단가(조금 더 쓸 때의 단가)의 거리다.
+      options: { x: "entity", y: "saturationIndex", variant: "unit-cost-gap", from: "averageUnitCost", to: "marginalUnitCost", metric: metricField === "actions" ? "CPA" : "CPI", unit: "currency" },
       table: { columns: Object.keys(table[0] || {}), rows: table },
     }],
     manifest: { engine: "SAT_MATH", status: "COMPLETE", grain, metric, resultField: metricField, candidateCount: entities.length, analyzableCount: usable.length, evidenceState: "descriptive" },
@@ -391,6 +393,20 @@ function allocationAdapter(input) {
   }
   const summary = computeAllocSummary({ items: allocation.items, metric, historyByCh });
   const inferredBudget = !(Number(options.totalBudget) > 0);
+  // "지금 배분"도 같은 곡선으로 예측한다(엔진과 같은 predictSafeCpr). 관측 성과와 곡선 예측을
+  // 섞어 비교하면 배분 효과가 아니라 모형 오차가 차이로 보인다(§7 표시·계산 경로 불일치).
+  const currentByEntity = Object.fromEntries(allocation.items.map((item) => {
+    const cost = Number(historyByCh[item.channel]?.totalCost) || 0;
+    const meta = modelsMap.get(item.channel);
+    const cpr = meta && cost > 0 ? ALLOC_MATH.predictSafeCpr(meta, cost) : null;
+    return [item.channel, { cost, results: cpr > 0 ? cost / cpr : null }];
+  }));
+  const currentResults = Object.values(currentByEntity).every((entry) => entry.cost === 0 || Number.isFinite(entry.results))
+    ? Object.values(currentByEntity).reduce((sum, entry) => sum + (entry.results || 0), 0)
+    : null;
+  const resultGain = currentResults != null ? summary.next.results - currentResults : null;
+  const resultLabel = metric === "actions" ? tr(locale, "전환", "conversions") : tr(locale, "설치", "installs");
+  const fmtCount = (value) => Math.round(value).toLocaleString(locale === "en" ? "en-US" : "ko-KR");
   return createAnalysisResult({
     toolId: "5-3",
     status: ANALYSIS_RESULT_STATUS.SUCCESS,
@@ -398,15 +414,26 @@ function allocationAdapter(input) {
     mappingSignature,
     verdict: {
       evidenceState: "estimated",
-      headline: inferredBudget
+      // 결론은 "같은 예산으로 배분만 바꾸면 무엇이 달라지나"다. 두 값은 같은 곡선에서 나온 예측이라
+      // 차이가 배분 효과로 읽힌다. 차이가 1% 미만이면 옮길 이유가 약하다고 말한다(억지 처방 금지).
+      headline: resultGain == null
         ? tr(locale, "현재 관측 일예산을 기준으로 한 배분 시나리오입니다.", "This is an allocation scenario using the current observed daily budget.")
-        : tr(locale, "입력한 일예산을 기준으로 한 배분 시나리오입니다.", "This is an allocation scenario using the entered daily budget."),
+        : Math.abs(resultGain) < Math.max(1, currentResults * 0.01)
+          ? tr(locale, `배분을 바꿔도 예상 ${resultLabel} 수는 하루 ${fmtCount(currentResults)}건으로 거의 같습니다.`, `Reallocating keeps expected ${resultLabel} at about ${fmtCount(currentResults)} a day.`)
+          : resultGain > 0
+            ? tr(locale, `같은 하루 예산으로 배분만 바꾸면 예상 ${resultLabel} 수가 하루 ${fmtCount(currentResults)}건에서 ${fmtCount(summary.next.results)}건으로 늘어납니다.`, `Reallocating the same daily budget raises expected ${resultLabel} from ${fmtCount(currentResults)} to ${fmtCount(summary.next.results)} a day.`)
+            // 탐욕 배분은 0에서 쌓아 올려 U자 곡선 구간을 못 쓰므로 지금보다 나쁜 안이 나올 수 있다.
+            // 그때 "줄어듭니다"를 권고처럼 쓰지 않고, 옮기지 말라고 말한다(엔진은 건드리지 않는다).
+            : tr(locale, `지금 배분이 더 낫습니다. 계산된 배분은 예상 ${resultLabel} 수가 하루 ${fmtCount(currentResults)}건에서 ${fmtCount(summary.next.results)}건으로 줄어듭니다.`, `The current split is better: the computed allocation lowers expected ${resultLabel} from ${fmtCount(currentResults)} to ${fmtCount(summary.next.results)} a day.`),
       stats: [
-        { id: "budget", label: tr(locale, "시나리오 예산", "Scenario budget"), value: allocation.totalAllocated, unit: "currency" },
-        { id: "expected-results", label: tr(locale, "예상 성과", "Expected outcomes"), value: summary.next.results, unit: "count" },
+        { id: "budget", label: tr(locale, "하루 예산", "Daily budget"), value: allocation.totalAllocated, unit: "currency" },
+        ...(currentResults != null ? [{ id: "current-results", label: tr(locale, `지금 배분 예상 ${resultLabel}`, `Expected ${resultLabel} now`), value: currentResults, unit: "count" }] : []),
+        { id: "expected-results", label: tr(locale, `바꾼 배분 예상 ${resultLabel}`, `Expected ${resultLabel} after`), value: summary.next.results, unit: "count" },
         { id: "expected-unit-cost", label: metric === "actions" ? "예상 CPA" : "예상 CPI", value: summary.nextAvgCPR, unit: "currency" },
       ],
-      action: inferredBudget
+      action: resultGain != null && resultGain < -Math.max(1, currentResults * 0.01)
+        ? tr(locale, "예산을 옮기지 말고 지금 배분을 유지하세요. 채널별 상한을 정해 다시 계산하면 다른 안이 나올 수 있습니다.", "Keep the current split. Setting per-channel caps and recalculating may produce a different plan.")
+        : inferredBudget
         ? tr(locale, "실행 전 목표 총예산과 제약 조건을 확인합니다.", "Confirm the target total budget and constraints before execution.")
         : tr(locale, "실행 전 채널별 상한과 운영 제약을 확인합니다.", "Confirm channel caps and operating constraints before execution."),
       reviewCondition: tr(locale, "실제 집행 후 관측 단가와 성과가 시나리오 범위와 일치하는지 검토", "Review whether observed unit cost and outcomes match the scenario after execution"),
@@ -415,9 +442,9 @@ function allocationAdapter(input) {
     visualizations: [{
       id: "budget-allocation-baseline",
       kind: "bar",
-      question: tr(locale, "기준 시나리오에서 예산은 어디에 배분되는가?", "Where does the baseline scenario allocate budget?"),
-      data: allocation.items.map((item) => ({ entity: item.channel, budget: safeNumber(item.cost), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
-      options: { x: "entity", y: "budget" },
+      question: tr(locale, "채널별 하루 예산을 지금에서 얼마나 옮기나?", "How much daily budget moves per channel?"),
+      data: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
+      options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency" },
     }],
     manifest: {
       engine: "ALLOC_MATH+calculateAllocationModeB",
