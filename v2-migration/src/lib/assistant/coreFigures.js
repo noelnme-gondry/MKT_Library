@@ -75,7 +75,7 @@ export function creativeStatusFigure({ fatigue, alerts, isReviewable, insufficie
     kind: "bar",
     question: tr(locale, "교체 검토가 필요한 소재는 몇 개인가?", "How many creatives need replacement review?"),
     // 소재 상태는 하나의 전체를 나눈 비율이라 막대 네 개가 아니라 띠 하나로 본다.
-    data: labels.map((status, index) => ({ status, count: counts[index], tone: ["danger", "warning", "success", "muted"][index] })),
+    data: labels.map((status, index) => ({ status, count: counts[index], tone: ["worse", "caution", "better", "muted"][index] })),
     options: { x: "status", y: "count", variant: "status-share" },
   };
 }

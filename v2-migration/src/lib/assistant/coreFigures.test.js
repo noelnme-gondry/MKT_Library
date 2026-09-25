@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { creativeStatusFigure } from "./coreFigures";
 
@@ -24,5 +26,20 @@ describe("소재 상태 띠는 소재 하나를 한 상태에만 센다", () => 
   it("판정 가능 기준과 불가 라벨은 화면이 정한다", () => {
     const figure = creativeStatusFigure({ fatigue, alerts: [], isReviewable: () => false, insufficientLabel: "기간·노출 부족", locale: "ko" });
     expect(figure.data.at(-1)).toMatchObject({ status: "기간·노출 부족", count: 6 });
+  });
+});
+
+describe("그림의 색 이름은 스타일시트가 아는 이름이어야 한다", () => {
+  // danger·warning·success를 넘겼더니 CSS가 모르는 이름이라 네 상태가 전부 회색으로 나갔다(2026-09-25).
+  const css = readFileSync(path.resolve(__dirname, "../../app/globals.css"), "utf8");
+  const known = new Set([...css.matchAll(/\.result-chart \[data-tone="([a-z]+)"\]/g)].map((match) => match[1]));
+
+  it("스타일시트에서 색 이름을 실제로 찾는다", () => {
+    expect([...known]).toEqual(expect.arrayContaining(["worse", "better", "caution", "muted"]));
+  });
+
+  it("소재 상태 띠의 색 이름이 전부 스타일시트에 있다", () => {
+    const figure = creativeStatusFigure({ fatigue: [{ creative_id: "a", fatigued: false, reason: null }], alerts: [], isReviewable: () => true, locale: "ko" });
+    for (const row of figure.data) expect(known.has(row.tone), row.tone).toBe(true);
   });
 });
