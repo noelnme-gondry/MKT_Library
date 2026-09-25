@@ -4,7 +4,6 @@ import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Papa from "papaparse";
-import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
@@ -18,6 +17,7 @@ import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { mixRateFigure } from "@/lib/assistant/coreFigures";
+import { downloadElementAsPNG } from "@/utils/figureImage";
 import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -553,8 +553,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
   const hasData = csvData?.raw?.length > 0;
 
-  const chartPvmWaterfall = useRef(null);
-  const chartPvmTrend = useRef(null);
 
   // 실제 엔진 출력 계산 (캐시) — metric/weekBasis/lookback/denomBasis 변경 시 재계산
   const cache = useMemo(() => {
@@ -574,221 +572,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     ? `${csvData?.raw?.length || 0}|${metric}|${weekBasis}|${lookback}|${denomBasis}|${cache.p1Range.join(":")}|${cache.p2Range.join(":")}`
     : null;
 
-  // §2 차트용 채널 배열 (top7 + 기타 축약) — index.html renderPvmCharts 이식
-  const byChannelChart = useMemo(() => {
-    if (!ready) return [];
-    let arr = [...cache.layer1].sort(
-      (a, b) => Math.abs(b.contribution) - Math.abs(a.contribution),
-    );
-    if (arr.length > 8) {
-      const top = arr.slice(0, 7);
-      const merged = { key: tr("기타", "Other"), mix: 0, rate: 0, contribution: 0 };
-      arr.slice(7).forEach((e) => {
-        merged.mix += e.mix;
-        merged.rate += e.rate;
-        merged.contribution += e.contribution;
-      });
-      arr = [...top, merged];
-    }
-    return arr;
-  }, [ready, cache, tr]);
-
-  useEffect(() => {
-    if (!ready || !byChannelChart.length) return;
-
-    const cur = currency;
-    const ml = pvmMetricLabel(cache, C);
-    const c = { CPA1: cache.CPA1, CPA2: cache.CPA2 };
-    const byChannel = byChannelChart;
-
-    const CHART_THEME = { text: "#334155", muted: "#64748b", grid: "#e2e8f0" };
-    const chartCommonOpts = () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 400 },
-      scales: {
-        x: {
-          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 11 } },
-          grid: { display: false },
-        },
-        y: {
-          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 11 } },
-          grid: { color: CHART_THEME.grid, drawBorder: false },
-        },
-      },
-      plugins: {
-        tooltip: {
-          backgroundColor: "rgba(15,23,42,0.9)",
-          titleFont: { size: 12 },
-          bodyFont: { size: 12, family: "JetBrains Mono" },
-          padding: 10,
-          cornerRadius: 6,
-        },
-      },
-    });
-
-    let waterfallChart = null;
-    let trendChart = null;
-    const base = chartCommonOpts();
-    // Mix·Rate 막대는 0을 양쪽에 두므로, 기본 그리드보다 강한 기준선을 별도로
-    // 그린다. 기준 라벨은 축의 0원 눈금과 중복되므로 선만 표시한다.
-    const zeroBaselinePlugin = {
-      id: "pvmMixRateZeroBaseline",
-      afterDraw(chart) {
-        const scale = chart.scales.x;
-        const area = chart.chartArea;
-        if (!scale || !area) return;
-        const zeroX = scale.getPixelForValue(0);
-        if (!Number.isFinite(zeroX) || zeroX < area.left || zeroX > area.right) return;
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.strokeStyle = "#475569";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 3]);
-        ctx.beginPath();
-        ctx.moveTo(zeroX, area.top);
-        ctx.lineTo(zeroX, area.bottom);
-        ctx.stroke();
-        ctx.restore();
-      },
-    };
-
-    // 1. Waterfall Chart — 지난주 전체 CPA / 채널 기여(±) / 이번주 전체 CPA
-    if (chartPvmWaterfall.current) {
-      const NEUTRAL = "#64748b", RED = "#ff8a8a", GREEN = "#5ad19a";
-      const labels = [tr("지난주 전체", "Prior week total"), ...byChannel.map((e) => e.key), tr("이번주 전체", "This week total")];
-      const values = [c.CPA1, ...byChannel.map((e) => e.contribution), c.CPA2];
-      const isCpaIdx = (i) => i === 0 || i === values.length - 1;
-      const colors = values.map((v, i) => (isCpaIdx(i) ? NEUTRAL : v >= 0 ? RED : GREEN));
-
-      const lo = Math.min(0, ...values);
-      const hi = Math.max(0, ...values);
-      const niceStep = (raw) =>
-        [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 25000, 50000].find(
-          (s) => s >= raw,
-        ) || raw;
-      const step = niceStep((hi - lo) / 7) || 1;
-      const yMin = Math.floor(lo / step) * step;
-      const yMax = Math.ceil(hi / step) * step;
-
-      const labelPlugin = {
-        id: "pvmWfLabels",
-        afterDatasetsDraw(chart) {
-          const ctx = chart.ctx;
-          const meta = chart.getDatasetMeta(0);
-          ctx.save();
-          ctx.font = "10px JetBrains Mono";
-          ctx.textAlign = "center";
-          meta.data.forEach((bar, i) => {
-            const v = values[i];
-            const txt = isCpaIdx(i) ? pvmFmtMoney(v, cur, cur === "usd" ? 1 : undefined) : (v >= 0 ? "+" : "") + pvmFmtMoney(v, cur);
-            ctx.fillStyle = isCpaIdx(i) ? CHART_THEME.text : v >= 0 ? RED : GREEN;
-            ctx.fillText(txt, bar.x, v >= 0 ? bar.y - 4 : bar.y + 13);
-          });
-          ctx.restore();
-        },
-      };
-
-      waterfallChart = new Chart(chartPvmWaterfall.current.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [
-            { data: values, backgroundColor: colors, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.82 },
-          ],
-        },
-        options: {
-          ...base,
-          scales: {
-            x: { ...base.scales.x, grid: { display: false }, ticks: { ...base.scales.x.ticks, maxRotation: 0, autoSkip: false } },
-            y: { ...base.scales.y, beginAtZero: false, min: yMin, max: yMax, ticks: { ...base.scales.y.ticks, stepSize: step, callback: (v) => pvmFmtMoney(v, cur) } },
-          },
-          plugins: {
-            ...base.plugins,
-            legend: { display: false },
-            tooltip: {
-              ...base.plugins.tooltip,
-              callbacks: {
-                label: (ctx) => {
-                  const i = ctx.dataIndex;
-                  const v = values[i];
-                  return isCpaIdx(i) ? `${ml} ${pvmFmtMoney(v, cur)}` : `${ctx.label}: ${v >= 0 ? "+" : ""}${pvmFmtMoney(v, cur)} (${v >= 0 ? tr("악화", "worse") : tr("개선", "better")})`;
-                },
-              },
-            },
-          },
-        },
-        plugins: [labelPlugin],
-      });
-    }
-
-    // 2. Channel Mix·Rate Stack Chart
-    if (chartPvmTrend.current) {
-      const arr = [...byChannel].sort((a, b) => Math.abs(a.contribution) - Math.abs(b.contribution));
-      const labels = arr.map((e) => e.key);
-      const MIX_POS = "#4d8eff", MIX_NEG = "#adc6ff", RATE_POS = "#d97706", RATE_NEG = "#ffd98a";
-      const legendTextColor = CHART_THEME.text;
-
-      trendChart = new Chart(chartPvmTrend.current.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [
-            { label: tr("Mix(비중)", "Mix (share)"), data: arr.map((e) => e.mix), backgroundColor: arr.map((e) => (e.mix >= 0 ? MIX_POS : MIX_NEG)), borderRadius: 3, barThickness: 15 },
-            { label: tr("Rate(효율)", "Rate (efficiency)"), data: arr.map((e) => e.rate), backgroundColor: arr.map((e) => (e.rate >= 0 ? RATE_POS : RATE_NEG)), borderRadius: 3, barThickness: 15 },
-          ],
-        },
-        options: {
-          ...base,
-          indexAxis: "y",
-          scales: {
-            x: {
-              ...base.scales.x,
-              stacked: true,
-              ticks: {
-                ...base.scales.x.ticks,
-                callback: (v) => pvmFmtMoney(v, cur),
-                font: (context) => ({
-                  family: "JetBrains Mono",
-                  size: 11,
-                  weight: Number(context.tick?.value) === 0 ? "700" : "400",
-                }),
-              },
-              title: { display: true, text: tr(`${ml} 영향(${cur === "usd" ? "$" : "원"})`, `${ml} impact (${cur === "usd" ? "$" : "KRW"})`), color: CHART_THEME.muted, font: { size: 10 } },
-            },
-            y: { ...base.scales.y, stacked: true, beginAtZero: true, grid: { display: false } },
-          },
-          plugins: {
-            ...base.plugins,
-            legend: {
-              onClick: () => {},
-              labels: {
-                color: legendTextColor,
-                generateLabels: () => [
-                  { text: tr("Mix +(악화)", "Mix + (worse)"), fillStyle: MIX_POS, strokeStyle: MIX_POS, fontColor: legendTextColor, pointStyle: "circle" },
-                  { text: tr("Mix −(개선)", "Mix − (better)"), fillStyle: MIX_NEG, strokeStyle: MIX_NEG, fontColor: legendTextColor, pointStyle: "circle" },
-                  { text: tr("Rate +(악화)", "Rate + (worse)"), fillStyle: RATE_POS, strokeStyle: RATE_POS, fontColor: legendTextColor, pointStyle: "circle" },
-                  { text: tr("Rate −(개선)", "Rate − (better)"), fillStyle: RATE_NEG, strokeStyle: RATE_NEG, fontColor: legendTextColor, pointStyle: "circle" },
-                ],
-              },
-            },
-            tooltip: {
-              ...base.plugins.tooltip,
-              callbacks: {
-                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x >= 0 ? "+" : ""}${pvmFmtMoney(ctx.parsed.x, cur)}`,
-              },
-            },
-          },
-        },
-        plugins: [zeroBaselinePlugin],
-      });
-    }
-
-    return () => {
-      if (waterfallChart) waterfallChart.destroy();
-      if (trendChart) trendChart.destroy();
-    };
-  }, [ready, cache, byChannelChart, currency, C, locale, tr, pvmFmtMoney]);
 
   // 진단(💡) 플로팅 툴팁 — index.html #pvm-float-tip 이식(document 위임, 스크롤 시 숨김)
   useEffect(() => {
@@ -844,34 +627,14 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     };
   }, []);
 
-  // 차트 PNG 다운로드 — 다크 배경 합성 후 export(§7). ref 기반(v2엔 전역 핸들러 없음)
-  const downloadChartPng = (canvasRef, nameSuffix) => {
+  // 핵심 그림 PNG — 결론 카드 아래 공용 그림(ToolCoreFigure)을 이미지로 내려받는다.
+  const downloadFigurePng = async () => {
     if (!ready) {
       setDownloadError(tr("항등식이 확인된 분석 결과가 없습니다. 분석 결과를 먼저 확인하세요.", "No identity-verified result is available. Review the analysis result first."));
       return;
     }
-    const canvas = canvasRef?.current;
-    if (!canvas) return;
-    const tmp = document.createElement("canvas");
-    tmp.width = canvas.width;
-    tmp.height = canvas.height;
-    const ctx = tmp.getContext("2d");
-    const rootStyle = getComputedStyle(document.documentElement);
-    const bg =
-      rootStyle.getPropertyValue("--bg-1").trim() ||
-      rootStyle.getPropertyValue("--surface-base").trim() ||
-      "#0f0f1e";
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, tmp.width, tmp.height);
-    ctx.drawImage(canvas, 0, 0);
-    const ts = new Date().toISOString().slice(0, 10);
-    const a = document.createElement("a");
-    a.href = tmp.toDataURL("image/png");
-    a.download = `${nameSuffix}_${ts}.png`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => document.body.removeChild(a), 0);
-    setDownloadError("");
+    const ok = await downloadElementAsPNG(document.querySelector("#tool-core-figure-pvm-channel-contributions .result-chart"), "pvm_mix_rate");
+    setDownloadError(ok ? "" : tr("이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead."));
   };
 
   // 결과 CSV 다운로드 — 살아있는 스프레드시트 수식(§7 CRLF+BOM). buildPvmResultCsv 재사용
@@ -1498,7 +1261,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 manifest={pvmManifest}
                 items={[
                   { icon: "⬇", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: downloadPvmCsv },
-                  { icon: "⬇", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") },
+                  { icon: "⬇", label: tr("비중·효율 그림 PNG", "Mix · rate figure PNG"), desc: tr("직전 → 비중 → 효율 → 최근과 채널별 두 성분", "Prior → mix → rate → recent, with each channel's two parts"), onSelect: downloadFigurePng },
                 ]}
               />
             )}
@@ -1560,6 +1323,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         })}
         locale={locale}
         currency={cur === "usd" ? "USD" : "KRW"}
+        downloadName="pvm_mix_rate"
       />}
 
       {/* §1 스코어카드 */}
@@ -1640,23 +1404,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             </ul>
           </div>
         </section>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginBottom: "14px" }}>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${ml} 브릿지 — 지난주 전체 → ${C.levelChannel} 기여(±) → 이번주 전체`, `${ml} bridge — prior week total → ${C.levelChannel} contribution (±) → this week total`)}</span>
-              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
-            </div>
-            <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-waterfall" ref={chartPvmWaterfall}></canvas></div>
-          </div>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${C.levelChannel}별 Mix·Rate 분해`, `Mix·Rate breakdown by ${C.levelChannel}`)}</span>
-              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => requirePaidExport() && downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
-            </div>
-            <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-channel-stack" ref={chartPvmTrend}></canvas></div>
-          </div>
-        </div>
 
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "var(--fs-xs)" }}>

@@ -73,6 +73,16 @@ describe("분석별 핵심 그림", () => {
     expect(container.querySelector('.result-vif__bar[data-tone="worse"]')).toBeTruthy();
   });
 
+  it("VIF ∞(완전 공선)는 계산 불가가 아니라 가장 심각한 상태로 그린다", () => {
+    const { container } = render(<ResultVifThreshold locale="ko" visualization={{
+      question: "q",
+      data: [{ entity: "도구", vif: Infinity }, { entity: "작업대", vif: null, isInfinite: true }, { entity: "빈칸", vif: null }],
+      options: { thresholds: [5, 10] },
+    }} />);
+    const values = [...container.querySelectorAll(".result-vif li b")].map((b) => [b.textContent, b.dataset.tone]);
+    expect(values).toEqual([["∞", "worse"], ["∞", "worse"], ["계산 불가", "muted"]]);
+  });
+
   it("소재 상태는 띠 하나로 나누고 전체 개수를 말한다", () => {
     const { container } = render(<ResultStatusShare locale="ko" visualization={{
       question: "q",

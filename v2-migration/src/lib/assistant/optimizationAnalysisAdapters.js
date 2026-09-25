@@ -4,6 +4,7 @@ import { buildAsaKeywordRecommendations } from "@/utils/asaKeywordMath";
 import { computeVif, correlationMatrix, DIAG_THRESHOLDS } from "@/utils/modelDiagnostics";
 
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
+import { vifFigure } from "./coreFigures";
 
 const OPTIMIZATION_TOOL_IDS = Object.freeze(["5-25", "5-26"]);
 
@@ -81,6 +82,7 @@ function vifAdapter(input) {
     entity: panel.entities[index],
     vif: safeNumber(vif.vif[vifIndex]),
     isComputable: Number.isFinite(vif.vif[vifIndex]),
+    isInfinite: vif.vif[vifIndex] === Infinity,
   }));
   const headline = vif.verdict === "ok"
     ? tr(locale, "심한 채널 지출 중복 신호는 관측되지 않았습니다.", "No severe channel-spend overlap signal was observed.")
@@ -106,7 +108,7 @@ function vifAdapter(input) {
       caveats: [tr(locale, "VIF와 상관은 관측 진단이며 인과 효과를 식별하지 않습니다.", "VIF and correlation are observational diagnostics, not causal identification.")],
     },
     visualizations: [
-      { id: "vif-by-entity", kind: "bar", question: tr(locale, "채널별 지출 중복은 어느 수준인가?", "How much does spend overlap by channel?"), data: vifRows, options: { x: "entity", y: "vif", variant: "vif-threshold", thresholds: [DIAG_THRESHOLDS.vifWarn, DIAG_THRESHOLDS.vifSevere] }, table: { columns: ["entity", "vif", "isComputable"], rows: vifRows } },
+      { ...vifFigure({ rows: vifRows, thresholds: [DIAG_THRESHOLDS.vifWarn, DIAG_THRESHOLDS.vifSevere], locale }), table: { columns: ["entity", "vif", "isComputable"], rows: vifRows } },
       {
         id: "vif-correlation-pairs",
         kind: "table",
