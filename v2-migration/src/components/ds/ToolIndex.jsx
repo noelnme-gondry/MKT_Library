@@ -27,7 +27,7 @@ import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplat
  * 방금 본 도구가 어디 있었는지 매번 다시 찾아야 했다. 갈래가 2~3개짜리로
  * 고르게 나뉜 뒤로는 전부 펴 두는 게 더 짧고, 위치가 고정된다.
  */
-export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null, renderDetail = null, renderSummary = null, activeToolId, onActiveToolChange }) {
+export default function ToolIndex({ locale = "ko", density = "full", eligibleIds = null, blockedInfo = null, excludeIds = null, headingLevel = 3, onSelect = null, onItemClick = null, renderDetail = null, renderSummary = null, blockedCta = null, activeToolId, onActiveToolChange }) {
   const stages = toolIndexByStage(locale);
   const Heading = headingLevel === 2 ? "h2" : headingLevel === 4 ? "h4" : "h3";
   const isCompact = density === "compact";
@@ -43,6 +43,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       template: "⬇ Download a template with these columns",
       more: (n) => `+${n} more`,
       openAnyway: "Open anyway",
+      needPrefix: "Needs:",
     }
     : {
       tool: "도구", outputs: "결과", needs: "필요 데이터", open: "이 분석 열기",
@@ -55,10 +56,11 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
       template: "⬇ 이 컬럼이 들어간 템플릿 받기",
       more: (n) => `외 ${n}개`,
       openAnyway: "그래도 열어 보기",
+      needPrefix: "필요:",
     };
 
   if (density === "grid") {
-    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, activeToolId, onActiveToolChange }} />;
+    return <ToolIndexGrid {...{ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, blockedCta, activeToolId, onActiveToolChange }} />;
   }
 
   return (
@@ -136,7 +138,7 @@ export default function ToolIndex({ locale = "ko", density = "full", eligibleIds
  * 상세는 그 묶음의 격자 **바로 다음**에 둔다. 버튼 사이에 끼우면 누를 때마다
  * 뒤 버튼이 밀려 방금 본 것을 다시 찾게 된다(§12.31).
  */
-function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, activeToolId, onActiveToolChange }) {
+function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, labels, Heading, onSelect, onItemClick, renderDetail, renderSummary, blockedCta, activeToolId, onActiveToolChange }) {
   const [localOpenId, setLocalOpenId] = useState(null);
   const openId = activeToolId === undefined ? localOpenId : activeToolId;
   const setOpenId = onActiveToolChange || setLocalOpenId;
@@ -183,7 +185,14 @@ function ToolIndexGrid({ stages, locale, eligibleIds, blockedInfo, excludeIds, l
                       onClick={() => setOpenId(isOpen ? null : tool.id)}
                     >
                       <span className="tool-index__q">{tool.name}</span>
-                      {renderSummary?.(tool.id)}
+                      {group.ready !== false && renderSummary?.(tool.id)}
+                      {/* 안 되는 분석은 컬럼 이름이 아니라 "어떤 값이 있어야 하는지" 한 문장으로 말한다.
+                          예시 결과는 여기 두지 않는다 — 이 파일의 결과로 오해된다. */}
+                      {group.ready === false && (blockedInfo?.[tool.id]?.reason
+                        // 이 파일로 돌렸지만 판정을 못 낸 분석은 "필요한 데이터"가 틀린 말이다 — 엔진이 말한 사유를 쓴다.
+                        ? <span className="tool-index__need">{blockedInfo[tool.id].reason}</span>
+                        : tool.dataNeed && <span className="tool-index__need"><span>{labels.needPrefix}</span> {tool.dataNeed}</span>)}
+                      {group.ready === false && blockedCta && <span className="tool-index__cta" aria-hidden="true">{blockedCta}</span>}
                       {/* 빠진 컬럼은 버튼에서 바로 읽힌다 — 눌러야만 보이면 15개를
                           하나씩 열어 봐야 "무엇을 채우면 몇 개가 열리는지" 알 수 있다. */}
                       {tool.stage && <span className="tool-index__stage-tag">{tool.stage}</span>}

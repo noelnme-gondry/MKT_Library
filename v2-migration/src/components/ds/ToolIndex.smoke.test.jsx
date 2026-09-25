@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 import ToolIndex from "@/components/ds/ToolIndex";
-import { allToolIndexEntries, PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
+import { allToolIndexEntries, PUBLISHED_TOOL_IDS, toolIndexEntry } from "@/lib/toolIndex";
 import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
 describe("ToolIndex", () => {
@@ -96,6 +96,23 @@ describe("ToolIndex", () => {
     expect(groups[1].textContent).toContain("추가 데이터·설정이 필요한 분석");
     // 어느 쪽도 빠뜨리지 않는다.
     expect(container.querySelectorAll(".tool-index__chip")).toHaveLength(PUBLISHED_TOOL_IDS.length);
+  });
+
+  it("안 되는 분석 줄은 필요한 값 한 문장(또는 판정 못 한 사유)만 말하고 결과 요약은 싣지 않는다", () => {
+    const { container } = render(<ToolIndex density="grid" eligibleIds={["5-2"]}
+      blockedInfo={{ "5-22": { reason: "관측 수가 부족해 판정하지 않았습니다." } }}
+      blockedCta="예시로 열기"
+      renderSummary={(id) => <span className="probe-summary">{`요약:${id}`}</span>} />);
+    const blocked = [...container.querySelectorAll(".tool-index__stage--blocked .tool-index__chip")];
+    expect(blocked.length).toBe(PUBLISHED_TOOL_IDS.length - 1);
+    // 요약(결과 문장)은 되는 분석에만 — 안 되는 줄에 섞이면 이 파일의 결과로 읽힌다.
+    expect(container.querySelectorAll(".tool-index__stage--blocked .probe-summary")).toHaveLength(0);
+    expect(container.querySelectorAll(".tool-index__stage--ready .probe-summary")).toHaveLength(1);
+    const saturation = blocked.find((chip) => chip.textContent.includes(toolIndexEntry("5-22").name));
+    expect(saturation.querySelector(".tool-index__need").textContent).toBe("관측 수가 부족해 판정하지 않았습니다.");
+    const abTest = blocked.find((chip) => chip.textContent.includes(toolIndexEntry("5-4").name));
+    expect(abTest.querySelector(".tool-index__need").textContent).toBe(`필요: ${toolIndexEntry("5-4").dataNeed}`);
+    expect(abTest.querySelector(".tool-index__cta").textContent).toBe("예시로 열기");
   });
 
   it("파일이 없으면 자격을 모르므로 갈래가 다시 정렬 축이 된다", () => {

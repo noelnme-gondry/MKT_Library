@@ -79,7 +79,10 @@ describe("DochiResultWorkspace", () => {
     await act(async () => { await Promise.resolve(); });
 
     expect(screen.getByRole("heading", { name: "분석 결과" })).toBeTruthy();
-    expect(document.querySelector(".dochi-result-workspace__header.is-results")).toBeTruthy();
+    // 결과 요약은 흰 면 하나 — 제목과 공통 설정이 같은 면 안에 있다.
+    const sheet = document.querySelector(".result-sheet");
+    expect(sheet?.querySelector("h1")?.textContent).toBe("분석 결과");
+    expect(sheet?.querySelector(".dochi-result-workspace__global-controls")).toBeTruthy();
     expect(screen.getByText("모든 효율 분석에 같이 적용")).toBeTruthy();
     expect(screen.getByText("판정할 날짜 부족")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "도치가 찾은 분석 지도" })).toBeNull();

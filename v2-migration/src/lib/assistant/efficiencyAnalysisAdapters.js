@@ -211,9 +211,9 @@ function pvmAdapter(input) {
         ? tr(locale, `${driver.entity}이(가) ${metric} 변화에 가장 크게 기여했습니다.`, `${driver.entity} contributed the most to the ${metric} change.`)
         : tr(locale, "성과 변동을 분해했습니다.", "Performance variation was decomposed."),
       stats: [
-        { id: "prior-unit-cost", label: tr(locale, `직전 ${metric}`, `Prior ${metric}`), value: decomposition.CPA1 },
-        { id: "recent-unit-cost", label: tr(locale, `최근 ${metric}`, `Recent ${metric}`), value: decomposition.CPA2 },
-        { id: "unit-cost-change", label: tr(locale, `${metric} 변화`, `${metric} change`), value: decomposition.deltaCpa },
+        { id: "prior-unit-cost", label: tr(locale, `직전 ${metric}`, `Prior ${metric}`), value: decomposition.CPA1, unit: "currency" },
+        { id: "recent-unit-cost", label: tr(locale, `최근 ${metric}`, `Recent ${metric}`), value: decomposition.CPA2, unit: "currency" },
+        { id: "unit-cost-change", label: tr(locale, `${metric} 변화`, `${metric} change`), value: decomposition.deltaCpa, unit: "currency" },
       ],
       action: driver
         ? Math.abs(driver.mix || 0) > Math.abs(driver.rate || 0)
@@ -402,9 +402,9 @@ function allocationAdapter(input) {
         ? tr(locale, "현재 관측 일예산을 기준으로 한 배분 시나리오입니다.", "This is an allocation scenario using the current observed daily budget.")
         : tr(locale, "입력한 일예산을 기준으로 한 배분 시나리오입니다.", "This is an allocation scenario using the entered daily budget."),
       stats: [
-        { id: "budget", label: tr(locale, "시나리오 예산", "Scenario budget"), value: allocation.totalAllocated },
-        { id: "expected-results", label: tr(locale, "예상 성과", "Expected outcomes"), value: summary.next.results },
-        { id: "expected-unit-cost", label: metric === "actions" ? "예상 CPA" : "예상 CPI", value: summary.nextAvgCPR },
+        { id: "budget", label: tr(locale, "시나리오 예산", "Scenario budget"), value: allocation.totalAllocated, unit: "currency" },
+        { id: "expected-results", label: tr(locale, "예상 성과", "Expected outcomes"), value: summary.next.results, unit: "count" },
+        { id: "expected-unit-cost", label: metric === "actions" ? "예상 CPA" : "예상 CPI", value: summary.nextAvgCPR, unit: "currency" },
       ],
       action: inferredBudget
         ? tr(locale, "실행 전 목표 총예산과 제약 조건을 확인합니다.", "Confirm the target total budget and constraints before execution.")

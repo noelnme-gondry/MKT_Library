@@ -92,14 +92,29 @@ export function scoreMappingCandidates({ headers = [], rows = [], allowedKeys, f
     byHeader[header] = candidates;
   });
 
-  const selections = Object.fromEntries(headers.map((header) => {
+  const selections = resolveExactNameConflicts(Object.fromEntries(headers.map((header) => {
     const top = byHeader[header][0];
     return [header, top && top.confidence >= REVIEW_THRESHOLD ? top.field : "__ignore__"];
-  }));
+  })), byHeader);
   const conflicts = findMappingConflicts(selections);
   const assessments = assessMappingConfidence({ selections, candidates: byHeader });
 
   return { profiles, candidates: byHeader, selections, conflicts, assessments };
+}
+
+// 자동 선택끼리 같은 필드를 잡았을 때, 표준 필드명과 정확히 같은 헤더가 딱 하나면
+// 그 헤더가 필드를 갖고 별칭으로만 잡힌 헤더는 비운다. 예: `channel`과 `source`가 함께
+// 있는 파일에서 source를 쓰지 않는 도구(5-21·5-22·5-3·5-25)는 `source`를 channel 별칭으로
+// 잡아 충돌이 났고, 그 충돌이 확인 대기로 바뀌어 결과 화면에서 자동 계산이 통째로 빠졌다.
+// 정확일치가 둘 이상이거나 없으면 지금처럼 충돌로 남겨 사람이 고른다(어느 쪽이 맞는지 모른다).
+function resolveExactNameConflicts(selections, candidatesByHeader) {
+  const resolved = { ...selections };
+  findMappingConflicts(selections).forEach(({ field, headers }) => {
+    const exact = headers.filter((header) => candidatesByHeader[header]?.find((candidate) => candidate.field === field)?.isExactFieldName);
+    if (exact.length !== 1) return;
+    headers.filter((header) => header !== exact[0]).forEach((header) => { resolved[header] = "__ignore__"; });
+  });
+  return resolved;
 }
 
 export function findMappingConflicts(selections = {}) {

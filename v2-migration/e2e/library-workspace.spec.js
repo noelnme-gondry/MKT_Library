@@ -80,7 +80,9 @@ for (const locale of ["ko", "en"]) {
   });
 
   // 샘플 하나로 모든 도구를 돌릴 수는 없다 — 샘플이 못 채우는 도구는 그 도구의 예시 데이터로
-  // 연다. 체험에서 "추가 데이터 필요"로 막힌 도구가 없고, 연 도구는 곧장 결과다(2026-09-24).
+  // 연다. 연 도구는 곧장 결과다(2026-09-24). 단 목록은 정직해야 한다: "이 파일로 되는 분석"에는
+  // 이 파일로 실제 계산된 것만 있고, 나머지는 필요한 값 한 줄(또는 판정 못 한 사유)과 함께
+  // 아래 묶음에 있다. 그 줄에 예시 결과를 섞지 않는다 — 이 파일의 결과로 오해된다(2026-09-25).
   test(`home sample opens every analysis straight to a result (${locale})${tag}`, async ({ page }, testInfo) => {
     // 도구 20개를 차례로 연다 — 폭마다 반복할 이유가 없어 데스크톱 한 번만 잰다.
     test.skip(!/desktop/.test(testInfo.project.name), "one width is enough for the per-tool walk");
@@ -88,7 +90,15 @@ for (const locale of ["ko", "en"]) {
     await page.goto(prefix || "/");
     await page.locator(".dc-action-route--sample").click();
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    await expect(page.getByText(en ? "Needs more data or setup" : "추가 데이터·설정이 필요한 분석", { exact: true })).toHaveCount(0);
+    const readyNames = await page.locator(".tool-index__stage--ready .tool-index__q").allInnerTexts();
+    expect(readyNames).toEqual(expect.arrayContaining(["5-2", "5-21", "5-3"].map((id) => toolIndexEntry(id, locale).name)));
+    const blockedRows = page.locator(".tool-index__stage--blocked .tool-index__chip");
+    expect(await blockedRows.count()).toBe(publishedToolIds().length - readyNames.length);
+    for (const text of await blockedRows.allInnerTexts()) {
+      expect(text).toMatch(/\S/);
+      expect(text).not.toMatch(en ? /Example result/ : /예시 결과/);
+    }
+    await expect(page.locator(".tool-index__stage--blocked .tool-index__need")).toHaveCount(await blockedRows.count());
     const stuck = [];
     for (const toolId of publishedToolIds()) {
       // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.

@@ -31,7 +31,7 @@ import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportCont
 import { buildAnalysisExportPayload } from "@/lib/analysis-export/exportContract";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis } from "@/utils/dashboardAggregator";
-import { sourceCurrencyOf } from "@/utils/format";
+import { fmtCurrency, fmtNum, sourceCurrencyOf } from "@/utils/format";
 import { requestDecisionReviewOpen } from "@/lib/decisionReviewUi";
 import DecisionReview from "@/components/ds/DecisionReview";
 import { productEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -70,6 +70,7 @@ const COPY = {
     openAnalysis: "분석 열기",
     openAnyway: "그래도 열어 보기",
     sampleOwnExample: "이 분석에 맞춘 예시 데이터로 바로 결과를 엽니다.",
+    notComputableFallback: "이 파일로 돌려 봤지만 판정할 만큼 자료가 충분하지 않습니다.",
     preparingDetails: "상세 분석 화면을 준비하고 있습니다.",
     adapterPending: "상세 분석에서 실행",
     adapterPendingDetail: "이 분석은 이 화면에서 실행하거나 결과를 만들지 않았습니다. 상세 분석에서 차트와 분석 조건을 확인해 주세요.",
@@ -152,6 +153,7 @@ const COPY = {
     openAnalysis: "Open analysis",
     openAnyway: "Open anyway",
     sampleOwnExample: "Opens straight to a result with example data made for this analysis.",
+    notComputableFallback: "Ran on this file, but there was not enough data to reach a verdict.",
     preparingDetails: "Preparing the detailed analysis.",
     adapterPending: "Run in detailed analysis",
     adapterPendingDetail: "This screen did not run the analysis or create a result. Review its charts and analysis conditions in the detailed analysis.",
@@ -250,8 +252,12 @@ function formatResultValue(value, locale) {
   return String(value);
 }
 
-function formatResultStat(stat, locale) {
+// 금액은 원본 통화 기호와 자릿수(₩ 0자리 · $ 2자리)로, 건수는 정수로 읽힌다.
+// 단위 없는 소수(6,663.32)는 화면에서 무엇인지 알 수 없는 숫자였다.
+function formatResultStat(stat, locale, currency = "KRW") {
   if (stat.unit === "rate" && Number.isFinite(stat.value)) return `${formatResultValue(stat.value * 100, locale)}%`;
+  if (stat.unit === "currency" && Number.isFinite(stat.value)) return fmtCurrency(stat.value, { currency, precise: true });
+  if (stat.unit === "count" && Number.isFinite(stat.value)) return fmtNum(stat.value);
   return `${formatResultValue(stat.value, locale)}${stat.unit ? ` ${stat.unit}` : ""}`;
 }
 
@@ -518,7 +524,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
     </section>
     {(evidenceStats.length > 0 || visualizations.length > 0) && <section className="dochi-workspace__result-evidence" aria-label={C.availableEvidence}>
       <header><h4>{C.availableEvidence}</h4>{evidenceStats.length > 0 && <span>{C.evidenceFigures}</span>}</header>
-      {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale)}</dd></div>)}</dl>}
+      {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</dd></div>)}</dl>}
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
@@ -604,7 +610,7 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
 
 // sampleMode: 홈 샘플 체험. 샘플 CSV 하나로는 모든 도구를 돌릴 수 없으므로(도구마다 행의 뜻이 다르다)
 // 샘플이 못 채우는 도구는 그 도구의 예시 데이터로 연다 — 체험에서 막힌 도구가 없게 한다(2026-09-24).
-export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true, sampleMode = false }) {
+export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true, sampleMode = false, summaryHead = null, summaryFoot = null }) {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const C = COPY[locale] || COPY.ko;
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -871,7 +877,25 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     </section>;
   }
 
-  return (
+  // 결론 한 덩어리. 결과 요약 면(summaryHead/summaryFoot가 있을 때)에서는 그 면 안에,
+  // 없으면 예전처럼 목록 위에 단독으로 선다. 수치는 엔진이 낸 verdict.stats만 쓴다(날조 금지).
+  const focusResult = decisionFocus?.queueItem.result.status === "success" ? decisionFocus.queueItem.result : null;
+  const focusStats = focusResult?.verdict.stats?.slice(0, 3) || [];
+  const conclusion = focusResult && <section className="workspace-next-action" aria-label={C.primaryAction}>
+    <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
+    <h3>{focusResult.verdict.headline}</h3>
+    <p>{focusResult.verdict.action}</p>
+    {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
+    <button type="button" className="btn primary" onClick={() => setSelectedAnalysis(decisionFocus.result.toolId)}>{locale === "en" ? "Review evidence and action plan" : "근거와 실행 계획 보기"}</button>
+  </section>;
+  const hasSheet = Boolean(summaryHead || summaryFoot);
+
+  return (<>
+    {hasSheet && <section className="result-sheet" aria-labelledby="dochi-result-title">
+      {summaryHead}
+      {conclusion || (activeQueueItem ? <p className="result-sheet__running" role="status">{locale === "en" ? "Analyzing" : "분석 중"} · {titleFor(activeQueueItem.toolId, getTitle)}</p> : null)}
+      {summaryFoot}
+    </section>}
     <section className="dochi-workspace" data-queue-settled={Boolean(queue?.signature === queueSignature && !queue.items.some(item => ["queued", "running"].includes(item.state)))} aria-label={locale === "en" ? "Analyses for your data" : "데이터로 가능한 분석"}>
       <header className="workspace-results-heading"><h2>{locale === "en" ? "Analyses for your data" : "데이터로 가능한 분석"}</h2>
         {activeQueueItem && <p role="status">{locale === "en" ? "Analyzing" : "분석 중"} · {titleFor(activeQueueItem.toolId, getTitle)}</p>}
@@ -879,20 +903,19 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <p className="sr-only" role="status">{announcement}</p>
       {(!queue || queue.cancelled || queue.signature !== queueSignature) && !autoStart && <button type="button" className="btn primary" onClick={startNext}>{locale === "en" ? "Analyze data" : "분석하기"}</button>}
       {isPreparingHandoff && <p role="status">{C.preparingDetails}</p>}
-      {decisionFocus?.queueItem.result.status === "success" && <section className="workspace-next-action" aria-label={C.primaryAction}>
-        <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
-        <h3>{decisionFocus.queueItem.result.verdict.headline}</h3>
-        <p>{decisionFocus.queueItem.result.verdict.action}</p>
-        <button type="button" className="btn primary" onClick={() => setSelectedAnalysis(decisionFocus.result.toolId)}>{locale === "en" ? "Review evidence and action plan" : "근거와 실행 계획 보기"}</button>
-      </section>}
+      {!hasSheet && conclusion}
       <ToolIndex locale={locale} density="grid"
+        blockedCta={sampleMode ? (locale === "en" ? "Open with example data" : "예시로 열기") : null}
+        blockedInfo={Object.fromEntries(eligibility
+          .filter(result => ["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status))
+          .map(result => [result.toolId, { reason: queueItemFor(result.toolId).result.verdict?.headline || C.notComputableFallback }]))}
         activeToolId={selectedAnalysis} onActiveToolChange={setSelectedAnalysis}
-        eligibleIds={eligibility.filter(result => (sampleMode || result.status === "ready") && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
+        eligibleIds={eligibility.filter(result => result.status === "ready" && !["not_computable", "not_identified", "error"].includes(queueItemFor(result.toolId)?.result?.status)).map(result => result.toolId)}
         renderSummary={toolId => {
           const item = currentResults.find(({ result }) => result.toolId === toolId);
           if (!item) return null;
           const output = item.queueItem.result;
-          return <span className="workspace-card-evidence"><span>{output.verdict.headline}</span>{output.verdict.stats?.slice(0, 2).map(stat => <span key={stat.id}><b>{formatResultStat(stat, locale)}</b> {stat.label}</span>)}</span>;
+          return <span className="workspace-card-evidence"><span>{output.verdict.headline}</span>{output.verdict.stats?.slice(0, 2).map(stat => <span key={stat.id}><b>{formatResultStat(stat, locale, dataCurrency)}</b> {stat.label}</span>)}</span>;
         }}
         renderDetail={toolId => {
           const found = eligibility.find(item => item.toolId === toolId);
@@ -903,5 +926,5 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         }}
       />
     </section>
-  );
+  </>);
 }

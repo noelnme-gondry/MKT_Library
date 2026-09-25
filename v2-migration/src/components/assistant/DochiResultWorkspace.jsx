@@ -120,7 +120,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
   }
 
   return <section className="dochi-result-workspace" data-phase={phase} aria-labelledby="dochi-result-title">
-    <JourneyProgress stage={phase === "mapping" ? "prepare" : "analyze"} locale={locale} placement="dochi_result" />
+    <JourneyProgress stage={phase === "mapping" ? "prepare" : "analyze"} completed={phase === "mapping" ? [] : ["prepare"]} locale={locale} placement="dochi_result" />
     {phase === "running" && <p role="status">{C.running}</p>}
     {phase === "mapping" && <>
       <header className="dochi-result-workspace__header">
@@ -142,24 +142,27 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
       />
     </>}
     {phase === "results" && <>
-      <header className="dochi-result-workspace__header is-results">
-        <div className="dochi-result-workspace__intro"><h1 id="dochi-result-title">{C.resultsTitle}</h1></div>
-        {/* 입력 요약은 한 줄 — 상자 세 개(샘플·데이터·공통 설정)가 결과보다 먼저 자리를 차지했다. */}
-        <p className={`dochi-result-workspace__summary${sample ? " sample-journey-scope" : ""}`} aria-label={locale === "en" ? "Data summary" : "입력 요약"}>
-          <strong title={csvData.fileName}>{sample ? `${locale === "en" ? "Sample data" : "샘플 데이터"} · ${sample.channel}` : csvData.fileName}</strong>
-          <span className="tnum">{csvData.raw.length.toLocaleString()}{locale === "en" ? " rows" : "행"}</span>
-          {sample ? <span className="tnum">{sample.period.currentStart} – {sample.period.currentEnd} {locale === "en" ? "vs" : "vs"} {sample.period.previousStart} – {sample.period.previousEnd}</span> : null}
-          <span>{C.cadenceLabels[cadence.cadence]}</span>
-          {sample ? <Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link> : null}
-        </p>
-        {/* 자동 기준 전환 같은 고지가 여기 뜨므로 접지 않는다 — 상자만 벗는다. */}
-        <div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>
-      </header>
-      <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} sampleMode={Boolean(sample)} />
+      {/* 결과 요약은 흰 면 하나다(제목·입력 한 줄 → 결론·수치·버튼 → 공통 설정 한 줄).
+          예전에는 상자를 벗긴 줄들이 배경에 흩어져 있고 결론만 상자 없이 떠서, 더 약한
+          하단 안내 상자가 결론보다 먼저 눈에 들어왔다. 면은 한 겹이고 안쪽은 선으로만 나눈다. */}
+      <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} sampleMode={Boolean(sample)}
+        summaryHead={<header className="result-sheet__head">
+          <h1 id="dochi-result-title">{C.resultsTitle}</h1>
+          {/* 입력 요약은 한 줄 — 상자 세 개(샘플·데이터·공통 설정)가 결과보다 먼저 자리를 차지했다. */}
+          <p className={`dochi-result-workspace__summary${sample ? " sample-journey-scope" : ""}`} aria-label={locale === "en" ? "Data summary" : "입력 요약"}>
+            <strong title={csvData.fileName}>{sample ? `${locale === "en" ? "Sample data" : "샘플 데이터"} · ${sample.channel}` : csvData.fileName}</strong>
+            <span className="tnum">{csvData.raw.length.toLocaleString()}{locale === "en" ? " rows" : "행"}</span>
+            {sample ? <span className="tnum">{sample.period.currentStart} – {sample.period.currentEnd} {locale === "en" ? "vs" : "vs"} {sample.period.previousStart} – {sample.period.previousEnd}</span> : null}
+            <span>{C.cadenceLabels[cadence.cadence]}</span>
+            {sample ? <Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link> : null}
+          </p>
+        </header>}
+        summaryFoot={<div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>}
+      />
       <section className="dochi-weekly-bridge" aria-labelledby="dochi-weekly-title">
         <div><h2 id="dochi-weekly-title">{locale === "en" ? "Turn this data into your next marketing project" : "이 데이터를 다음 마케팅 프로젝트로"}</h2><p>{locale === "en" ? "Compare periods against your KPI target, inspect campaigns and prepare a report with your next decision. Your uploaded file comes with you." : "목표 대비 성과와 캠페인별 변화를 검토하고, 다음 결정이 담긴 보고서를 만드세요. 지금 올린 파일을 그대로 이어갑니다."}</p>
           {!canReviewWeekly && <p>{locale === "en" ? "Map date, campaign, spend and conversions or installs to make it a project." : "날짜·캠페인·비용과 전환 또는 설치 열을 연결하면 프로젝트로 만들 수 있습니다."}</p>}
-        </div><button type="button" className="btn primary" disabled={!canReviewWeekly} onClick={() => { trackProductEvent("review_entry_clicked", { tool_id: "weekly-review", source: "dochi", placement: "dochi_result", data_continuity: "same_data", locale }); handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"); }}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</button>
+        </div><button type="button" className="btn" disabled={!canReviewWeekly} onClick={() => { trackProductEvent("review_entry_clicked", { tool_id: "weekly-review", source: "dochi", placement: "dochi_result", data_continuity: "same_data", locale }); handoffCsvToRoute("5-2", csvData); router.push(locale === "en" ? "/en/weekly-review#weekly-performance" : "/weekly-review#weekly-performance"); }}>{locale === "en" ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기"}</button>
       </section>
     </>}
   </section>;
