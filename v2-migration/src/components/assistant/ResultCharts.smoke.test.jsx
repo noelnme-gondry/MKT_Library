@@ -25,6 +25,18 @@ describe("분석별 핵심 그림", () => {
     expect(Number.parseFloat(mixBar.style.getPropertyValue("--bar-start"))).toBeLessThan(50);
   });
 
+  it("한 성분이 없는 채널도 그림을 깨뜨리지 않는다(빈 성분은 막대를 그리지 않는다)", () => {
+    // divergingStyle이 범위 밖 이름(fallback)을 돌려주던 때는 여기서 ReferenceError로 화면 전체가 죽었다.
+    const { container } = render(<ResultMixRate locale="ko" currency="KRW" visualization={{
+      question: "q",
+      data: [{ entity: "A", mix: null, rate: 120, contribution: 120 }, { entity: "B", mix: -40, rate: null, contribution: -40 }],
+      options: { start: 1000, end: 1080, metric: "CPA" },
+    }} />);
+    const bars = [...container.querySelectorAll(".result-diverging i")];
+    expect(bars).toHaveLength(4);
+    expect(bars.filter((bar) => bar.style.getPropertyValue("--bar-start") === "")).toHaveLength(2);
+  });
+
   it("포화도는 평균과 한계 단가를 한 줄에 두 점으로 놓고 판정을 글자로 말한다", () => {
     const { container } = render(<ResultUnitCostGap locale="ko" currency="KRW" visualization={{
       question: "q",

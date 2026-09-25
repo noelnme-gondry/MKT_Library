@@ -16,6 +16,8 @@ import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggreg
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
+import { mixRateFigure } from "@/lib/assistant/coreFigures";
 import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -1546,6 +1548,19 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           </div>
         )}
       </section>
+
+      {/* 결과 작업대와 같은 핵심 그림 — 직전 → 비중 → 효율 → 최근 다리와 채널별 두 성분 */}
+      {ready && <ToolCoreFigure
+        figure={mixRateFigure({
+          rows: (cache.layer1 || []).map((e) => ({ entity: e.key || unspec, mix: e.mix, rate: e.rate, contribution: e.contribution })),
+          start: cache.CPA1,
+          end: cache.CPA2,
+          metric: ml,
+          locale,
+        })}
+        locale={locale}
+        currency={cur === "usd" ? "USD" : "KRW"}
+      />}
 
       {/* §1 스코어카드 */}
       <section className="block" id="s-pvm-scorecard">

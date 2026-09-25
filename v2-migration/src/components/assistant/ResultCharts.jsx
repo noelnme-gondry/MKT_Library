@@ -29,7 +29,7 @@ function costTone(value) {
 
 // 가운데 0을 기준으로 좌우로 뻗는 막대의 위치. 값이 없으면 그리지 않는다.
 function divergingStyle(value, max) {
-  if (!Number.isFinite(value) || !(max > 0)) return fallback;
+  if (!Number.isFinite(value) || !(max > 0)) return null;
   const size = Math.max(0.5, (Math.abs(value) / max) * 50);
   return { "--bar-start": `${value >= 0 ? 50 : 50 - size}%`, "--bar-size": `${size}%` };
 }
@@ -248,3 +248,15 @@ export const RESULT_CHART_VARIANTS = Object.freeze({
   "survival-step": ResultSurvival,
   "hazard-columns": ResultHazardColumns,
 });
+
+/** 도구 화면의 결론 카드 바로 아래에 두는 핵심 그림. 결과 작업대와 같은 사양(`lib/assistant/coreFigures`)과
+ *  같은 그림을 써서, 결과 화면에서 도구로 들어가도 같은 분석이 같은 모양으로 보인다. 그릴 값이 없으면 아무것도 그리지 않는다. */
+export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW" }) {
+  const Chart = figure && RESULT_CHART_VARIANTS[figure.options?.variant];
+  if (!Chart || !figure.data?.length) return null;
+  const headingId = `tool-core-figure-${figure.id}`;
+  return <section className="block tool-core-figure" id={headingId} aria-labelledby={`${headingId}-title`}>
+    <h2 className="section-title" id={`${headingId}-title`}>{figure.question}</h2>
+    <Chart visualization={figure} locale={locale} currency={currency} />
+  </section>;
+}

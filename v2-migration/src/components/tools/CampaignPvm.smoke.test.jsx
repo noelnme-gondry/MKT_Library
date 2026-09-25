@@ -182,6 +182,26 @@ describe("CampaignPvm render smoke", () => {
 
   // 쓸 수 없는 기능은 조건이 갖춰졌을 때만 보여야 한다(§12.17) — 노출이 없으면
   // 빈 칸이나 0이 아니라 아예 나오지 않는다.
+  // 결과 작업대와 같은 핵심 그림: 직전 → 비중 → 효율 → 최근 다리. 두 성분의 합이 최근 − 직전과 맞아야 한다.
+  it("shows the same mix-rate core figure as the result workspace, only when the decomposition is identified", () => {
+    seedWithData();
+    const { container, unmount } = render(<CampaignPvm />);
+    const figure = container.querySelector(".tool-core-figure .result-mix-rate");
+    expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();
+    expect([...figure.querySelectorAll(".result-bridge li span")].map((span) => span.textContent)).toEqual([
+      expect.stringMatching(/^직전 /), "비중 변화", "효율 변화", expect.stringMatching(/^최근 /),
+    ]);
+    // 결론 카드 뒤, 스코어카드 앞에 놓인다(결론 → 그림 → 근거).
+    const card = container.querySelector(".result-action-card");
+    const scorecard = container.querySelector("#s-pvm-scorecard");
+    expect(card.compareDocumentPosition(figure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(figure.compareDocumentPosition(scorecard) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    unmount();
+    seedZeroResultData();
+    const blocked = render(<CampaignPvm />);
+    expect(blocked.container.querySelector(".tool-core-figure")).toBeNull();
+  });
+
   it("hides the split entirely when impressions are not mapped", () => {
     seedWithData();
     const { container } = render(<CampaignPvm />);

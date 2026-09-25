@@ -2,12 +2,12 @@ import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { ALLOC_MATH } from "@/utils/allocationMath";
+import { budgetShiftFigure, mixRateFigure, unitCostGapFigure } from "./coreFigures";
 import {
   calcChannelHistorySummary,
   calculateAllocationModeB,
   computeAllocSummary,
   getAllocationEvidenceLimits,
-  improveAllocationFromCurrent,
   getRowGroupKey,
 } from "@/utils/budgetAllocTool";
 import {
@@ -223,14 +223,8 @@ function pvmAdapter(input) {
         : tr(locale, "대상별 단가 변화를 확인한 뒤 점검할 채널을 선택하세요.", "Review unit-cost changes by entity before selecting a channel to investigate."),
       caveats: [tr(locale, "분해는 관측된 단가 변화를 설명하며 인과 효과를 식별하지 않습니다.", "The decomposition describes observed unit-cost change; it does not identify causal effects.")],
     },
-    visualizations: [{
-      id: "pvm-channel-contributions",
-      kind: "bar",
-      question: tr(locale, `${metric} 변화는 비중 변화와 효율 변화 중 어디서 왔는가?`, `Did the ${metric} change come from mix or from rate?`),
-      data: byChannel,
-      // 성과 변동의 핵심 그림은 "직전 → 비중(mix) → 효율(rate) → 최근" 다리와 채널별 두 성분이다.
-      options: { x: "entity", y: "contribution", variant: "mix-rate", start: safeNumber(decomposition.CPA1), end: safeNumber(decomposition.CPA2), metric, unit: "currency" },
-    }],
+    // 성과 변동의 핵심 그림은 "직전 → 비중(mix) → 효율(rate) → 최근" 다리와 채널별 두 성분이다.
+    visualizations: [mixRateFigure({ rows: byChannel, start: decomposition.CPA1, end: decomposition.CPA2, metric, locale })],
     manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive" },
   });
 }
@@ -295,13 +289,9 @@ function saturationAdapter(input) {
       action: tr(locale, "관측 범위를 넘기지 않는 소규모 증액 또는 이동 시험을 설계합니다.", "Design a small monitored increase or shift that stays within the observed range."),
       caveats: [tr(locale, "한계 효율은 관측 범위의 곡선 참고값이며 인과 효과가 아닙니다.", "Marginal efficiency is an observed-range curve reference, not a causal effect.")],
     },
+    // 포화의 핵심 그림은 평균 단가와 한계 단가(조금 더 쓸 때의 단가)의 거리다.
     visualizations: [{
-      id: "saturation-ranking",
-      kind: "bar",
-      question: tr(locale, "어디에 증액 위험 또는 여유 신호가 있는가?", "Where are the signals of scaling risk or headroom?"),
-      data: table,
-      // 포화의 핵심 그림은 평균 단가와 한계 단가(조금 더 쓸 때의 단가)의 거리다.
-      options: { x: "entity", y: "saturationIndex", variant: "unit-cost-gap", from: "averageUnitCost", to: "marginalUnitCost", metric: metricField === "actions" ? "CPA" : "CPI", unit: "currency" },
+      ...unitCostGapFigure({ rows: table, metric: metricField === "actions" ? "CPA" : "CPI", locale }),
       table: { columns: Object.keys(table[0] || {}), rows: table },
     }],
     manifest: { engine: "SAT_MATH", status: "COMPLETE", grain, metric, resultField: metricField, candidateCount: entities.length, analyzableCount: usable.length, evidenceState: "descriptive" },
@@ -378,25 +368,17 @@ function allocationAdapter(input) {
       manifest: { engine: "ALLOC_MATH", status: "ABSTAIN", unit, requestedBudget: totalBudget, observedBudgetCap: limits.maxBudget },
     });
   }
-  const greedyAllocation = calculateAllocationModeB({
+  // 그리디는 0원에서 쌓아 올려 지금보다 나쁜 안을 낼 수 있다. 지금 배분을 넘기면 엔진이
+  // "지금에서 출발해 합계가 늘어나는 이동만 받은 안"과 비교해 많은 쪽을 돌려준다(도구 화면과 같은 경로).
+  const allocation = calculateAllocationModeB({
     modelsMap,
     totalBudget,
     maxSpends: limits.maxSpends,
     extrapolateMode: "1.0",
     currency: options.currency || "KRW",
-  });
-  // 그리디는 0원에서 쌓아 올려 지금보다 나쁜 안을 낼 수 있다. 지금 배분에서 출발해 합계가
-  // 늘어나는 이동만 받아들인 안도 같이 만들고, 예상 성과가 더 많은 쪽을 쓴다(둘 다 같은 곡선).
-  const fromCurrentAllocation = improveAllocationFromCurrent({
-    modelsMap,
     currentSpends: Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0])),
-    totalBudget,
-    maxSpends: limits.maxSpends,
-    currency: options.currency || "KRW",
   });
-  const totalOf = (plan) => plan.items.reduce((sum, item) => sum + (item.results || 0), 0);
-  const allocationSource = fromCurrentAllocation.items.length && totalOf(fromCurrentAllocation) >= totalOf(greedyAllocation) ? "from_current" : "greedy";
-  const allocation = allocationSource === "from_current" ? fromCurrentAllocation : greedyAllocation;
+  const allocationSource = allocation.source || "greedy";
   if (!allocation.items.length) {
     return noResult({
       toolId: "5-3", inputSignature, mappingSignature, locale,
@@ -452,13 +434,10 @@ function allocationAdapter(input) {
       reviewCondition: tr(locale, "실제 집행 후 관측 단가와 성과가 시나리오 범위와 일치하는지 검토", "Review whether observed unit cost and outcomes match the scenario after execution"),
       caveats: [tr(locale, "곡선은 관측 지출 범위 안에서만 사용하며, 배분은 인과적 증분 효과를 보장하지 않습니다.", "Curves are used only within observed spend ranges; allocation does not guarantee causal incrementality.")],
     },
-    visualizations: [{
-      id: "budget-allocation-baseline",
-      kind: "bar",
-      question: tr(locale, "채널별 하루 예산을 지금에서 얼마나 옮기나?", "How much daily budget moves per channel?"),
-      data: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
-      options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency" },
-    }],
+    visualizations: [budgetShiftFigure({
+      rows: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
+      locale,
+    })],
     manifest: {
       engine: allocationSource === "from_current" ? "ALLOC_MATH+improveAllocationFromCurrent" : "ALLOC_MATH+calculateAllocationModeB",
       status: "COMPLETE",

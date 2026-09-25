@@ -228,8 +228,47 @@ export function calculateAllocationModeC({
   return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
 
-/* ── 모드 B · 한계효용 그리디 (overrides/min/max/lock 반영) — index.html 이식 ── */
-export function calculateAllocationModeB({
+/* ── 모드 B · 한계효용 그리디 (overrides/min/max/lock 반영) — index.html 이식 ──
+   currentSpends(채널별 지금 하루 지출)를 넘기면 그리디 안과 "지금 배분에서 출발해 합계가
+   늘어나는 이동만 받은 안"(improveAllocationFromCurrent)을 둘 다 만들고 예상 성과가 많은
+   쪽을 돌려준다(source: "greedy" | "from_current"). 넘기지 않으면 예전 그리디 그대로다. */
+export function calculateAllocationModeB({ currentSpends = null, ...args }) {
+  const greedy = greedyAllocationModeB(args);
+  if (!currentSpends || !Object.values(currentSpends).some((value) => Number(value) > 0)) return greedy;
+  const { modelsMap, totalBudget, selectedChannels, overrides = {}, minSpends = {}, maxSpends = {}, extrapolateMode = "1.3", currency = "KRW" } = args;
+  if (!modelsMap || !(totalBudget > 0) || greedy.overspent) return { ...greedy, source: "greedy" };
+  const lockedItems = greedy.items.filter((item) => item.locked);
+  const lockedTotal = lockedItems.reduce((sum, item) => sum + item.cost, 0);
+  const free = new Map();
+  const caps = {};
+  for (const [name, meta] of modelsMap) {
+    if (!meta || !meta.model) continue;
+    if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(name)) continue;
+    if (overrides[name] != null && overrides[name] >= 0) continue;
+    // 그리디와 같은 상한: 명시 상한이 없으면 외삽 배수, ∩형은 꼭짓점을 넘지 않는다
+    // (꼭짓점 뒤는 predictSafeCpr가 단가를 고정해 성과가 선형으로 늘어나는 것처럼 보인다).
+    let cap = maxSpends[name] != null && maxSpends[name] >= 0 ? Number(maxSpends[name])
+      : extrapolateMode === "1.0" ? meta.xMax : extrapolateMode === "1.3" ? meta.xMax * 1.3 : extrapolateMode === "1.5" ? meta.xMax * 1.5 : Infinity;
+    const shape = ALLOC_MATH.detectPoly2Shape(meta.model);
+    if (shape?.shape === "bell" && Number.isFinite(shape.vertex) && shape.vertex > 0) cap = Math.min(cap, shape.vertex);
+    free.set(name, meta);
+    caps[name] = cap;
+  }
+  const freeBudget = totalBudget - lockedTotal;
+  if (!free.size || !(freeBudget > 0)) return { ...greedy, source: "greedy" };
+  const improved = improveAllocationFromCurrent({ modelsMap: free, currentSpends, totalBudget: freeBudget, maxSpends: caps, minSpends, currency });
+  const totalOf = (items) => items.reduce((sum, item) => sum + (item.results || 0), 0);
+  const greedyFree = greedy.items.filter((item) => !item.locked);
+  if (!improved.items.length || totalOf(improved.items) < totalOf(greedyFree)) return { ...greedy, source: "greedy" };
+  const all = [...lockedItems, ...improved.items];
+  const totalAllocated = all.reduce((sum, item) => sum + item.cost, 0);
+  const items = all
+    .map((item) => ({ ...item, weight: totalAllocated > 0 ? item.cost / totalAllocated : 0 }))
+    .sort((a, b) => b.cost - a.cost);
+  return { items, unallocated: Math.max(0, totalBudget - totalAllocated), overspent: false, totalAllocated, lockedTotal, source: "from_current" };
+}
+
+function greedyAllocationModeB({
   modelsMap,
   totalBudget,
   selectedChannels,
@@ -565,6 +604,7 @@ export function computeAllocScenarios({
   extrapolateMode = "1.3",
   currency = "KRW",
   historyByCh = {},
+  currentSpends = null,
 }) {
   if (!modelsMap || dailyBudget <= 0) return [];
   const mults = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -588,6 +628,7 @@ export function computeAllocScenarios({
             maxSpends,
             extrapolateMode,
             currency,
+            currentSpends,
           });
     const totResults = r.items.reduce((s, it) => s + (it.results || 0), 0);
     const totCost = r.totalAllocated || r.items.reduce((s, it) => s + (it.cost || 0), 0);
@@ -702,6 +743,7 @@ function runAllocationAtBudget({
   extrapolateMode = "1.3",
   currency = "KRW",
   historyByCh = {},
+  currentSpends = null,
 }) {
   const allocation =
     mode === "b"
@@ -711,6 +753,7 @@ function runAllocationAtBudget({
           maxSpends,
           extrapolateMode,
           currency,
+          currentSpends,
         })
       : calculateAllocationModeC({
           modelsMap,
@@ -743,6 +786,7 @@ export function buildAllocationFrontier({
   currency = "KRW",
   historyByCh = {},
   steps = 24,
+  currentSpends = null,
 }) {
   const low = Number(minBudget);
   const high = Number(maxBudget);
@@ -773,6 +817,7 @@ export function buildAllocationFrontier({
         extrapolateMode,
         currency,
         historyByCh,
+        currentSpends,
       }),
     );
   }

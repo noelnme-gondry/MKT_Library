@@ -16,6 +16,8 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
+import { budgetShiftFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -309,7 +311,8 @@ export function allocationPeriodSensitivity(rows, { unitField, effectiveMetric, 
     const historyByCh = Object.fromEntries([...byChannel.keys()].map((name) => [name, calcChannelHistorySummary(period.rows, unitField, name, effectiveMetric, { recentDays })]));
     const limits = getAllocationEvidenceLimits({ modelsMap });
     const common = { modelsMap, totalBudget: plannedDailyBudget, maxSpends: limits.maxSpends, overrides: holdLowConfidence ? selectLowConfidenceHolds(modelsMap, historyByCh) : {}, currency };
-    const allocation = allocMode === "b" ? calculateAllocationModeB({ ...common, extrapolateMode: "1.0" }) : calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh });
+    const currentSpends = Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0]));
+    const allocation = allocMode === "b" ? calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currentSpends }) : calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh });
     const funded = !limits.unavailableChannels.length && plannedDailyBudget <= limits.maxBudget && isAllocationFullyFunded({ allocation, budget: plannedDailyBudget, currency });
     return new Map([...modelsMap].map(([name, model]) => {
       const cost = allocation.items.find((item) => item.channel === name)?.cost;
@@ -714,6 +717,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     }
     return out;
   }, [byChannel, rows, unitField, effectiveMetric, recentDays]);
+  // 한계효용 그리디(B)는 0원부터 쌓아 지금보다 나쁜 안을 낼 수 있다. 지금 하루 지출을 넘기면
+  // 엔진이 지금에서 출발한 안과 비교해 많은 쪽을 쓴다(결과 화면과 같은 경로).
+  const currentSpends = useMemo(
+    () => Object.fromEntries(Object.entries(historyByCh).map(([name, history]) => [name, Number(history?.totalCost) || 0])),
+    [historyByCh],
+  );
 
   // 저신뢰 채널을 현재 지출에 고정한다. 엔진의 잠금 경로(overrides)를 그대로 쓰므로
   // 배분 수학은 건드리지 않는다. 현재 지출을 모르면(0·미상) 고정할 값이 없으므로 제외한다.
@@ -860,6 +869,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       extrapolateMode: "1.0",
       currency,
       historyByCh,
+      currentSpends,
       steps: 49,
     });
   }, [
@@ -874,6 +884,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     allocMode,
     currency,
     historyByCh,
+    currentSpends,
   ]);
   const targetRange = useMemo(() => {
     const values = targetFrontier.map((point) => point.value).filter((value) => Number.isFinite(value) && value > 0);
@@ -1002,7 +1013,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       overrides: lowConfidenceHolds,
     };
     if (allocMode === "b")
-      return calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currency });
+      return calculateAllocationModeB({ ...common, extrapolateMode: "1.0", currency, currentSpends });
     return calculateAllocationModeC({ ...common, metric: effectiveMetric, historyByCh, currency });
   }, [
     planningBasis,
@@ -1016,6 +1027,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     historyByCh,
     evidenceLimits.maxSpends,
     lowConfidenceHolds,
+    currentSpends,
   ]);
   const isAllocationFullyFundedPlan = isAllocationFullyFunded({
     allocation,
@@ -1198,6 +1210,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       extrapolateMode: "1.0",
       currency,
       historyByCh,
+      currentSpends,
     });
   }, [
     modelsMap,
@@ -1207,6 +1220,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     evidenceLimits.maxSpends,
     currency,
     historyByCh,
+    currentSpends,
   ]);
 
   // Step 2 검증 단위 목록 정렬(데이터 수 desc) + 유효하지 않으면 첫 항목으로 폴백(render-derived, setState 없음).
@@ -2636,6 +2650,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   "한계효용 그리디는 마지막 1원이 만드는 결과(한계효율)가 큰 채널부터 채웁니다. 평균 효율 순서와 달라도 정상입니다 — 포화된 채널은 평균이 좋아도 뒤로 밀립니다.",
                   "Marginal-utility greedy fills the channel whose next unit of spend produces the most results. It can disagree with average-efficiency ranking — a saturated channel drops back even when its average looks good.",
                 )}
+              {/* 0원부터 쌓으면 규모가 커져야 싸지는 채널을 못 고른다. 엔진이 지금 배분에서
+                  출발한 안을 골랐다면 그 사실을 말한다 — 이름과 다른 방식의 결과를 조용히 내지 않는다. */}
+              {allocMode === "b" && allocation.source === "from_current" ? " " + tr(
+                "이번에는 지금 배분에서 출발해 예상 성과가 늘어나는 쪽으로만 옮긴 안이 0원부터 채운 안보다 많아서 그 안을 보여 줍니다.",
+                "This time, moving budget from the current split only where expected results rise beat filling from zero, so that plan is shown.",
+              ) : null}
             </p>
             {/* 자동 판정은 조용하면 안 된다 — 무엇을 왜 고정했는지 말하고 뒤집을 수
                 있어야 사용자가 판단을 되찾는다(§8.8 · product-ssot D-14). */}
@@ -2831,6 +2851,16 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           )}
         />
       )}
+
+      {/* 결과 작업대와 같은 핵심 그림 — 채널별 지금 하루 예산 ↔ 바꾼 안 */}
+      {canStorePlan && <ToolCoreFigure
+        figure={budgetShiftFigure({
+          rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost })),
+          locale,
+        })}
+        locale={locale}
+        currency={currency}
+      />}
 
       {canStorePlan && <PeriodSensitivityPanel
         key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}

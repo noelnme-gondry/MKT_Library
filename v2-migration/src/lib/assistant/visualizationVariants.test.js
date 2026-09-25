@@ -8,7 +8,8 @@ import { RESULT_CHART_VARIANTS } from "@/components/assistant/ResultCharts";
 // 어댑터 소스에서 파생해, 막대 그림은 반드시 존재하는 variant를 선언하게 한다.
 const dir = path.resolve(__dirname);
 const stripComments = (source) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
-const adapterFiles = readdirSync(dir).filter((file) => /AnalysisAdapters\.js$/.test(file));
+// 도구 화면과 공유하는 그림 사양(coreFigures.js)도 같은 규칙을 받는다.
+const adapterFiles = readdirSync(dir).filter((file) => /AnalysisAdapters\.js$|^coreFigures\.js$/.test(file));
 
 function barSpecs(source) {
   const specs = [];
@@ -28,7 +29,8 @@ describe("결과 막대 그림은 분석별 variant를 선언한다", () => {
   const specs = adapterFiles.flatMap((file) => barSpecs(stripComments(readFileSync(path.join(dir, file), "utf8"))).map((spec) => ({ file, spec })));
 
   it("스캐너가 막대 그림을 실제로 찾는다", () => {
-    expect(adapterFiles.length).toBeGreaterThanOrEqual(5);
+    expect(adapterFiles.length).toBeGreaterThanOrEqual(6);
+    expect(adapterFiles).toContain("coreFigures.js");
     expect(specs.length).toBeGreaterThanOrEqual(6);
   });
 
