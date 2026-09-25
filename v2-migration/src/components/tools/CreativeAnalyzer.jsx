@@ -825,7 +825,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       if (currentCharts["fatigue"]) currentCharts["fatigue"].destroy();
       if (currentCharts["concept"]) currentCharts["concept"].destroy();
     };
-  }, [analysis, hasData, curMetricKey, curDecompose, locale, decMetaAll, tr]);
+  }, [analysis, hasData, curMetricKey, curDecompose, locale, decMetaAll, tr, activeProblem]);
 
   if (!hasData) {
     return (
@@ -950,7 +950,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         className="block"
         id="s-creative-hero"
         style={{
-          background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))",
+          background: "transparent",
           border: "1px solid rgba(122,162,247,0.25)",
           borderRadius: "14px",
           padding: "18px 20px",
@@ -1180,7 +1180,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       {health && (
-        <section className="block" id="s-velocity">
+        <section className="block" id="s-velocity" hidden={activeProblem !== "operations"}>
           <h2 className="section-title">{C.healthTitle}</h2>
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
             {C.healthDescPre}<strong>{C.healthDescS1}</strong>{tr(", 얼마나 빠르게 ", ", how fast we're ")}<strong>{C.healthDescS2}</strong>{tr(", 하나가 얼마나 ", ", and how long one lasts before it ")}<strong>{C.healthDescS3}</strong>.
@@ -1224,7 +1224,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </section>
       )}
 
-      <section className="block" id="s-metrics">
+      <section className="block" id="s-metrics" hidden={activeProblem !== "drivers"}>
         <h2 className="section-title">{tr("어떤 소재가 성과를 만들었나?", "Which creatives produced results?")} {selectedCell ? tr("(필터됨)", "(filtered)") : tr("(상위 50, 노출수 순)", "(top 50, by impressions)")}</h2>
         <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>{C.metricsDesc}</p>
         {selectedCell && (
@@ -1282,7 +1282,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </div>
       </section>
 
-      <section className="block" id="s-decompose">
+      <section className="block" id="s-decompose" hidden={activeProblem !== "drivers"}>
         <h2 className="section-title">
           {tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}
           {hasDecompose && (
@@ -1410,7 +1410,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         source={csvData?.importSource || "csv"}
       />
 
-      <section className="block" id="s-fatigue">
+      <section className="block" id="s-fatigue" hidden={activeProblem !== "swaps"}>
         <h2 className="section-title">{tr("어떤 소재가 지치기 시작했나?", "Which creatives are starting to fatigue?")}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
           {C.fatigueDesc((fatigue || []).length, fatiguedCount)}
@@ -1468,7 +1468,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </div>
       </section>
 
-      <section className="block" id="s-fatigue-alert">
+      <section className="block" id="s-fatigue-alert" hidden={activeProblem !== "swaps"}>
         <h2 className="section-title">{C.fatigueAlertTitle}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>
           {C.fatigueAlertDesc((fatigueAlerts || []).length, alertNowN)}
@@ -1494,10 +1494,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                     a.score == null
                       ? "var(--text-muted)"
                       : a.alert
-                        ? "#f87171"
+                        ? "var(--danger)"
                         : a.score >= 0.3
-                          ? "#fbbf24"
-                          : "#22c55e";
+                          ? "var(--warning)"
+                          : "var(--success)";
                   return (
                     <tr key={i}>
                       <td>{a.alert ? <span className="chip" style={{ fontSize: "var(--fs-xs)", padding: "2px 8px", color: "var(--danger)" }}><span className="dot" style={{ background: "var(--danger)" }}></span>{tr("경고", "Alert")}</span> : <span style={{ color: "var(--text-muted)", fontSize: "var(--fs-xs)" }}>—</span>}</td>
@@ -1527,7 +1527,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </div>
       </section>
 
-      <section className="block" id="s-fatigue-risk">
+      <section className="block" id="s-fatigue-risk" hidden={activeProblem !== "swaps"}>
         <h2 className="section-title">
           {tr("누적 집행 위험 구간 · 과거 신호 적중률", "Cumulative delivery risk zone · historical signal hit rate")}
         </h2>
@@ -1650,7 +1650,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </p>
       </section>
 
-      <section className="block" id="s-auto-planner">
+      <section className="block" id="s-auto-planner" hidden={activeProblem !== "production"}>
         <h2 className="section-title">{tr("다음에 무엇을 만들까?", "What should we produce next?")}</h2>
         {autoPlan && autoPlan.plan.length ? (
           (() => {
@@ -1733,7 +1733,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         )}
       </section>
 
-      <section className="block" id="s-matrix">
+      <section className="block" id="s-matrix" hidden={activeProblem !== "drivers"}>
         <h2 className="section-title">{tr("어떤 요소 조합이 좋았나?", "Which element combinations worked?")}{matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
         {matrix && matrix.grid.length ? (
           <>
@@ -1841,7 +1841,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         )}
       </section>
 
-      <section className="block" id="s-next">
+      <section className="block" id="s-next" hidden={activeProblem !== "production"}>
         <h2 className="section-title">{tr("다음 테스트에서 무엇을 확인할까?", "What should the next test check?")}</h2>
         {nextTest && nextTest.length ? (
           <>

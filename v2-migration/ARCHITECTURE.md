@@ -161,7 +161,7 @@ v2-migration/
 - **전환 SSOT**: `lib/contentToolRegistry.js`(발행 글/용어 → 정확한 도구). ASA 키워드 글은 5-26, 다중공선성 용어는 5-25, ASO 글·용어는 5-27로 연결한다. `contentRegistry.test.js`가 누락·죽은 route·잘못된 EN 연결을 막는다. 글 발행·필라 통합 절차는 AGENTS.md §12.24.
 - **블로그 본문 내 전환 경로**: `lib/blogArticleSplit.js`가 본문을 중간 앞뒤로 가른다 — `<!-- CONTENT_ACTION -->` 마커가 있으면 마커, 없으면 최상위 블록 경계에서 파생(KO·EN 페이지 공용). 중간 자리는 CSV로 확인할 수 있는 글(`BLOG_INSIGHT_PLACEMENTS`)이면 **A 예시 결과 카드**(`BlogCsvAnalysis` + `lib/blogExamples/data.json` — 실제 엔진을 데모/예제 파일에 돌린 사본, `blogExamples.test.js`가 엔진과의 일치를 강제·갱신은 `UPDATE_BLOG_EXAMPLES=1`), 아니면 **D 30초 점검**(`lib/blogSelfCheck.js`, 본문 문장만 사용). 글 끝은 모든 글에 **B 상황 확인**(`lib/blogSituationCheck.js`, 도구별 세트 + 비-CSV 글 전용 세트). 커버리지는 `lib/blogChecks.test.js`가 발행 글에서 파생해 강제한다.
 - **블로그 계측·중간 개입**: `BlogReadTracker.jsx`(읽기 25/50/75/100%·세션 글 수 — 이벤트만) → `BlogReadingBar.jsx`(C: 35% 이후 하단 한 줄, 대상이 보이거나 글 끝이면 숨김, 닫으면 세션 동안 끔). 예시에서 도구로 넘어가면 `store.blogArrival`(휘발)이 남고 `BlogArrivalStrip`(E)이 데모 모달·유입 설문 대신 출처 한 줄을 그린다. 이벤트 정의는 `docs/ga4-product-events.md`.
-- **사이트 디자인 계약**: `globals.css` `@layer app` 끝의 "사이트 디자인 계약" 블록(상자 한 겹·스티키 바 가장자리·굵기 3단·왼쪽 색 막대 금지·목차 폭 예약). 렌더 결과는 `e2e/design-rules.spec.js`(+`e2e/support/designRules.js`)가, 굵기 선언은 `app/fontWeightScale.test.js`가 지킨다.
+- **사이트 디자인 계약**: `globals.css` `@layer app` 끝의 "사이트 디자인 계약" 블록(상자 한 겹·스티키 바 가장자리·굵기 3단·왼쪽 색 막대 금지·목차 폭 예약). 렌더 결과는 `e2e/design-rules.spec.js`(+`e2e/support/designRules.js`)가, 굵기 선언은 `app/fontWeightScale.test.js`가 지킨다. 그림자·그라디언트·알약·글자 팔레트도 같은 스캐너가, hover 들림은 `app/hoverLift.test.js`가 막는다.
 - **흐름**: 검색 랜딩 → 용어/증거 → `seo/ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → 결론 카드 → 다음 분석. Footer/Cmd-K/`/templates`가 공통 탈출구.
 
 ## 6. 테스트 & 린트 (배포 게이트)

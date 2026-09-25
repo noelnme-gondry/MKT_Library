@@ -34,7 +34,7 @@ for (const locale of ["ko", "en"]) {
     const primary = await page.locator(".dc-action-route--sample").boundingBox();
     expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
     expect(primary.height).toBeLessThanOrEqual(56);
-    await page.locator(".dc-action-route--question").click();
+    await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
@@ -66,7 +66,7 @@ for (const locale of ["ko", "en"]) {
   test(`home sample opens computed results and retains weekly handoff (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
     await expect(page.locator('.dc-action-route--primary')).toBeVisible();
-    await page.locator(".home-result-preview button").click();
+    await page.locator(".dc-action-route--sample").click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
     await expect(page.locator(".sample-journey-scope")).toContainText(en ? "Sample data" : "샘플 데이터");
@@ -86,14 +86,14 @@ for (const locale of ["ko", "en"]) {
     test.skip(!/desktop/.test(testInfo.project.name), "one width is enough for the per-tool walk");
     test.setTimeout(600_000);
     await page.goto(prefix || "/");
-    await page.locator(".home-result-preview button").click();
+    await page.locator(".dc-action-route--sample").click();
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.getByText(en ? "Needs more data or setup" : "추가 데이터·설정이 필요한 분석", { exact: true })).toHaveCount(0);
     const stuck = [];
     for (const toolId of publishedToolIds()) {
       // 샘플은 메모리에만 있다 — 도구마다 홈에서 샘플을 새로 연다.
       await page.goto(prefix || "/");
-      await page.locator(".home-result-preview button").click();
+      await page.locator(".dc-action-route--sample").click();
       await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
       await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
       await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
@@ -102,6 +102,23 @@ for (const locale of ["ko", "en"]) {
       if (!reached || await page.getByRole("dialog").count()) stuck.push(toolId);
     }
     expect(stuck).toEqual([]);
+  });
+
+  // 도구를 열었다가 뒤로 오면 결과가 그대로여야 한다 — 예전에는 컬럼 확인부터 다시 물었다(2026-09-24).
+  test(`back from a tool keeps the sample results (${locale})${tag}`, async ({ page }) => {
+    await page.goto(prefix || "/");
+    await page.locator(".dc-action-route--sample").click();
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
+    for (const toolId of ["5-2", "5-20"]) {
+      await page.getByRole("button", { name: toolIndexEntry(toolId, locale).name }).first().click();
+      await page.getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ }).first().click();
+      await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug[toolId]}$`), { timeout: 30_000 });
+      await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
+      await page.goBack();
+      await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
+      await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
+      await expect(page.locator(".sample-journey-scope")).toBeVisible();
+    }
   });
 
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {

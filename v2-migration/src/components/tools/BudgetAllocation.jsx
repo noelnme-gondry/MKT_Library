@@ -3144,7 +3144,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                               {conf && (
                                 <span
                                   title={tr(`적합 신뢰도 ${conf.ko} · R²=${(conf.r2 || 0).toFixed(2)} · 점 ${conf.n}개 (적합 품질·데이터 기반, 확률 아님)`, `Fit confidence ${conf.en} · R²=${(conf.r2 || 0).toFixed(2)} · ${conf.n} pts (fit quality/data, not probability)`)}
-                                  style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, padding: "0 6px", borderRadius: "10px", whiteSpace: "nowrap", background: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--bg-1)", color: conf.level === "med" ? "var(--text-muted)" : "#fff", border: conf.level === "med" ? "1px solid var(--border)" : "none" }}
+                                  style={{ fontSize: "var(--fs-xs)", lineHeight: 1.5, whiteSpace: "nowrap", color: conf.level === "high" ? "var(--success)" : conf.level === "low" ? "var(--danger)" : "var(--text-muted)" }}
                                 >{tr(conf.ko, conf.en)}</span>
                               )}
                             </div>

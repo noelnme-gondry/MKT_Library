@@ -96,6 +96,7 @@ export default function MarginalEfficiencyGapChart({
                 </div>
                 <div
                   className="marginal-gap__track"
+                  data-design-exempt="gradient: 가운데 기준선(한계=평균)을 그리는 1px 선이다 — 장식이 아니다"
                   style={{ "--gap-start": `${start}%`, "--gap-width": `${width}%`, "--avg-position": `${averagePos}%`, "--marginal-position": `${marginalPos}%` }}
                   aria-label={`${point.name}: ${isEn ? "average" : "평균"} ${formatMetric(point.average, metric, currency)}, ${isEn ? "marginal" : "한계"} ${formatMetric(point.marginal, metric, currency)}`}
                 >

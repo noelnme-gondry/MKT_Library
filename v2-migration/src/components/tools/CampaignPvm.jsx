@@ -162,7 +162,8 @@ function pvmIsEntitySignificant(contribution, deltaMetricTotal, metric2) {
 }
 
 function pvmColor(v) {
-  return v >= 0 ? "#f87171" : "#22c55e";
+  // 화면 글자라 토큰 색을 쓴다(차트 캔버스가 아니다). 하드코딩 색은 화면마다 새 색을 만든다(A1).
+  return v >= 0 ? "var(--danger)" : "var(--success)";
 }
 
 // index.html buildPvmCache 이식 — 순수 계산(사이드이펙트 없음), PVM_MATH 엔진 재사용
@@ -1351,7 +1352,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <section
         className="block"
         id="s-pvm-result"
-        style={{ background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}
+        style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}
       >
         <div className="section-head">
           <h2 className="section-title">{tr("한눈에 보기", "Overview")}</h2>

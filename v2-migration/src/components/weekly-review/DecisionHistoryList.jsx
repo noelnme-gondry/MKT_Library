@@ -31,6 +31,9 @@ const COPY = {
   ko: {
     title: "저장한 마케팅 프로젝트",
     empty: "아직 저장한 결정이 없습니다.",
+    firstTitle: "아직 만든 마케팅 프로젝트가 없어요",
+    firstDeck: "분석한 뒤 결과 카드에서 ‘다음 마케팅 프로젝트로 만들기’를 누르면 여기에 모입니다.",
+    firstAction: "분석 시작",
     loading: "결정을 불러오는 중…",
     signIn: "이 기기에 저장한 결정입니다. 로그인하면 계정에 보관한 결정도 함께 보입니다.",
     proNote: "이용권이 없어도 기록은 계속 읽고 내보낼 수 있습니다. 계정 보관과 새 저장에는 Pro가 필요합니다.",
@@ -56,6 +59,9 @@ const COPY = {
   en: {
     title: "Saved marketing projects",
     empty: "No saved decisions yet.",
+    firstTitle: "No marketing projects yet",
+    firstDeck: "Analyze your data, then choose ‘Make it my next marketing project’ on the result card to collect it here.",
+    firstAction: "Start an analysis",
     loading: "Loading decisions…",
     signIn: "These are the decisions on this device. Sign in to see the ones kept in your account too.",
     proNote: "You can keep reading and exporting your records without a pass. Keeping them in your account and new saves require Pro.",
@@ -219,6 +225,20 @@ export default function DecisionHistoryList({ locale = "ko", anchorId = "wr-hist
 
   const visibleRows = rows.filter(row => (!toolFilter || row.toolId === toolFilter) && (statusFilter === "all" || statusFilter === "due" && ["overdue", "today", "unscheduled"].includes(row.bucket) || row.bucket === statusFilter));
   const isPro = hasPaidAccess(entitlement || session?.entitlement);
+
+  // 아무것도 없을 때 빈 구획(목록·필터·기기 기록 버튼·설명 두 줄)을 늘어놓지 않는다 — 한 문장과
+  // 버튼 하나로 무엇을 하면 여기 모이는지만 말한다(F4, 2026-09-24). 계정 기록을 불러오는 중이거나
+  // 불러오지 못했으면 빈 상태로 단정하지 않는다.
+  const isFirstVisit = !isSample && !loading && !loadFailed && rows.length === 0;
+  if (isFirstVisit) {
+    return (
+      <section id={anchorId} className="wr-history-list wr-history-list--first" aria-labelledby={`${anchorId}-title`}>
+        <h2 id={`${anchorId}-title`}>{t.firstTitle}</h2>
+        <p>{t.firstDeck}</p>
+        <Link className="btn primary" href={en ? "/en/start" : "/start"}>{t.firstAction}</Link>
+      </section>
+    );
+  }
 
   return (
     <section id={anchorId} className="wr-history-list" aria-labelledby={`${anchorId}-title`}>

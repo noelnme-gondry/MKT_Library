@@ -197,12 +197,9 @@ export default function LandingPage({ locale = "ko", reading }) {
             </Link>
 
           </nav>
-          <div className="dc-hero__utility-actions">
-            <Link className="dc-text-link dc-action-route--question" href={lang === "en" ? "/en/diagnose" : "/diagnose"} onClick={() => trackLandingNav("diagnose_entry_clicked", "hero")}>{lang === "en" ? "Not sure where to start?" : "어디서 시작할지 모르겠다면"}<span aria-hidden="true"> ↗</span></Link>
-          </div>
           <p className="dc-hero__assurance">{T.assurance.map((condition, index) => <span key={condition}>{index > 0 && " · "}{condition}</span>)}</p>
         </div>
-        <HomeResultPreview locale={lang} onTrySample={() => openSample("5-2", "hero_example")} />
+        <HomeResultPreview locale={lang} />
       </section>
       <MobileQuickStart locale={lang} />
 

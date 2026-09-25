@@ -374,8 +374,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     : tr("판단 보류 — 분석 가능한 항목 없음", "Abstain — no analyzable items");
   if (sat.length || scale.length) {
     const parts = [];
-    if (sat.length) parts.push(`<span style="color:#f87171;">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);
-    if (scale.length) parts.push(`<span style="color:#22c55e;">${tr(`여유 ${scale.length}개`, `${scale.length} with headroom`)}</span> (${tr("증액 기회", "opportunity to increase")})`);
+    if (sat.length) parts.push(`<span style="color:var(--danger);">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);
+    if (scale.length) parts.push(`<span style="color:var(--success);">${tr(`여유 ${scale.length}개`, `${scale.length} with headroom`)}</span> (${tr("증액 기회", "opportunity to increase")})`);
     head = parts.join(" · ");
   }
 

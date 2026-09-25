@@ -47,11 +47,14 @@ it("접기가 아니라 버튼이고, 누르면 상세가 열린다", async () =
   expect(screen.getByText(/conversions ≥ 5000 · cpa ≤ 8000/)).toBeTruthy();
 });
 
-it("결정이 없으면 그냥 없다고 말한다", async () => {
+it("결정이 없으면 빈 구획 대신 한 문장과 버튼 하나만 둔다", async () => {
   useAppStore.setState({ decisionRecords: [] });
   accountRequest.mockResolvedValue({ memos: [] });
   render(<DecisionHistoryList locale="ko" />);
-  await waitFor(() => expect(screen.getByText("아직 저장한 결정이 없습니다.")).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole("heading", { name: "아직 만든 마케팅 프로젝트가 없어요" })).toBeTruthy());
+  expect(screen.getByRole("link", { name: "분석 시작" }).getAttribute("href")).toBe("/start");
+  expect(screen.queryByRole("button", { name: /기기 기록 검토/ })).toBeNull();
+  expect(screen.queryByRole("combobox")).toBeNull();
 });
 
 it("로그인하지 않아도 이 기기의 결정은 보이고, 계정 쪽은 사유를 말한다", async () => {
