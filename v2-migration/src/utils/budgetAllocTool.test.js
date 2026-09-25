@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALLOC_MATH } from "./allocationMath";
 import {
   calculateAllocationModeB,
   buildAllocationFrontier,
@@ -188,5 +189,50 @@ describe("allocation that starts from the current split", () => {
     expect(plan.startResults).toBeCloseTo(1000 / 10 + 500 / 12, 9);
     expect(plan.totalAllocated).toBeCloseTo(1500, 9);
     expect(total(plan)).toBeGreaterThanOrEqual(plan.startResults);
+  });
+});
+
+describe("mode B with the current split", () => {
+  const scale = { type: "Linear", predict: (cost) => 20 - 0.01 * cost };
+  const flat = { type: "Linear", predict: () => 12 };
+  const fixed = { type: "Linear", predict: () => 8 };
+  const modelsMap = new Map([
+    ["Scale", { model: scale, xMin: 100, xMax: 1000 }],
+    ["Flat", { model: flat, xMin: 50, xMax: 1000 }],
+    ["Fixed", { model: fixed, xMin: 50, xMax: 500 }],
+  ]);
+  const maxSpends = { Scale: 1000, Flat: 1000, Fixed: 500 };
+  const total = (plan) => plan.items.reduce((sum, item) => sum + item.results, 0);
+
+  it("keeps the old greedy output byte-for-byte when no current split is passed", () => {
+    const args = { modelsMap, totalBudget: 1200, maxSpends, extrapolateMode: "1.0" };
+    const plain = calculateAllocationModeB(args);
+    expect(plain.source).toBeUndefined();
+    expect(calculateAllocationModeB({ ...args, currentSpends: null })).toEqual(plain);
+    expect(calculateAllocationModeB({ ...args, currentSpends: { Scale: 0 } })).toEqual(plain);
+  });
+
+  it("uses the from-current plan when it beats greedy, keeps locked channels fixed, and conserves budget", () => {
+    const args = { modelsMap, totalBudget: 1200, maxSpends, extrapolateMode: "1.0", overrides: { Fixed: 200 } };
+    const greedy = calculateAllocationModeB(args);
+    const plan = calculateAllocationModeB({ ...args, currentSpends: { Scale: 900, Flat: 100, Fixed: 200 } });
+    expect(plan.source).toBe("from_current");
+    expect(total(plan)).toBeGreaterThan(total(greedy));
+    const byName = Object.fromEntries(plan.items.map((item) => [item.channel, item]));
+    expect(byName.Fixed).toMatchObject({ cost: 200, locked: true });
+    expect(plan.lockedTotal).toBe(200);
+    expect(plan.totalAllocated).toBeCloseTo(1200, 9);
+    expect(plan.items.reduce((sum, item) => sum + item.weight, 0)).toBeCloseTo(1, 12);
+  });
+
+  it("does not push spend past a bell-shaped vertex even without explicit caps", () => {
+    // ∩형(a<0) 곡선은 엔진이 꼭짓점을 상한으로 쓴다. 꼭짓점 뒤는 predictSafeCpr가 단가를 고정하므로,
+    // 상한을 안 걸면 성과가 선형으로 늘어나는 것처럼 보여 돈을 몰아넣는다.
+    const bell = { type: "Poly2", predict: (x) => -0.0001 * (x - 300) ** 2 + 20, params: { a: -0.0001, b: 0.06, c: 11 } };
+    const map = new Map([["Bell", { model: bell, xMin: 100, xMax: 800 }], ["Flat", { model: { type: "Linear", predict: () => 30 }, xMin: 50, xMax: 2000 }]]);
+    expect(ALLOC_MATH.detectPoly2Shape(bell)).toMatchObject({ shape: "bell", vertex: 300 });
+    const plan = calculateAllocationModeB({ modelsMap: map, totalBudget: 1000, extrapolateMode: "1.5", currentSpends: { Bell: 200, Flat: 800 } });
+    expect(plan.source).toBe("from_current");
+    expect(plan.items.find((item) => item.channel === "Bell").cost).toBeLessThanOrEqual(300 + 1e-9);
   });
 });

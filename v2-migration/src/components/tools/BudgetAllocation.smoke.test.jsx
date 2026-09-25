@@ -10,6 +10,7 @@ import { render, act } from "@testing-library/react";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
+import { buildSampleJourney } from "@/lib/sampleJourney";
 
 // Empty CSV slice = the "no data yet, show uploader" state.
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -99,5 +100,27 @@ describe("BudgetAllocation render smoke", () => {
     expect(resultCard).toBeTruthy();
     expect(scatter).toBeTruthy();
     expect(resultCard.compareDocumentPosition(scatter) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
+  it("greedy mode says when it shows the plan that starts from the current split", () => {
+    // 샘플은 0원부터 채우는 그리디가 지금보다 나쁜 안을 내는 데이터다(결과 화면 5-3과 같은 샘플).
+    const csv = buildSampleJourney("ko");
+    useAppStore.setState({
+      currentRouteId: "5-3",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: csv },
+      csvData: csv,
+    });
+    useAppStore.getState().setGroupAnalyzed("5-3");
+    render(<BudgetAllocation />);
+    const greedy = [...document.querySelectorAll(".alloc-mode-toggle button")].find((button) => button.textContent === "한계효용 그리디");
+    expect(greedy).toBeTruthy();
+    act(() => greedy.click());
+    expect(greedy.getAttribute("aria-pressed")).toBe("true");
+    expect(document.body.textContent).toContain("지금 배분에서 출발해 예상 성과가 늘어나는 쪽으로만 옮긴 안");
+    // 결과 작업대와 같은 핵심 그림(지금 하루 예산 ↔ 바꾼 안)이 결론 카드 바로 뒤에 온다.
+    const figure = document.querySelector(".tool-core-figure .result-shift");
+    expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();
+    expect(figure.querySelectorAll("li").length).toBeGreaterThan(1);
+    expect(document.querySelector(".result-action-card").compareDocumentPosition(figure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 });
