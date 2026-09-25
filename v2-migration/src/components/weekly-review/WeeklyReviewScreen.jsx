@@ -497,7 +497,7 @@ function ProjectWeeklyReview({ locale, projectId, embedded, sample }) {
           )}
         </div>
       </header>
-      <JourneyProgress stage={isSavedDecisionCurrent ? "review" : "analyze"} locale={locale} placement="weekly_review" />
+      <JourneyProgress stage={isSavedDecisionCurrent ? "review" : "analyze"} completed={isSavedDecisionCurrent ? ["prepare", "analyze", "decide"] : ["prepare"]} locale={locale} placement="weekly_review" />
       <ReviewHistoryEntry count={decisionRecords.length} locale={locale} />
       {isSampleData && <p className="sample-journey-scope"><strong>{locale === "en" ? "Sample data" : "샘플 데이터"}{sample ? ` · ${sample.channel}` : ""}</strong><span>{locale === "en" ? "Saved project history and targets are excluded. Sample settings are not saved to your project." : "실제 프로젝트의 저장 이력과 목표는 포함하지 않습니다. 체험 설정은 프로젝트에 저장하지 않습니다."}</span></p>}
       {projectSetup(periods, review.historyWeeks, true)}

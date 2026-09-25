@@ -11090,13 +11090,19 @@ body :is(table.data thead th, .kpi-card .label, .pill, .ab-pill, .chip, .toc-tit
 .wr-history-entry strong { font-size: var(--fs-md); color: var(--text-primary); }
 .wr-history-entry span { font-size: var(--fs-sm); }
 
-/* 사이트 공통 여정: 현재 위치와 다음 목적지만, 완료하지 않은 단계에 체크 없음. */
-.journey-progress { margin: 16px 0 22px; color: var(--text-secondary); }
-.journey-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
-.journey-progress li { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border-bottom: 2px solid var(--border); font-size: var(--fs-sm); }
-.journey-progress li > span { color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.journey-progress li[aria-current="step"] { color: var(--text-primary); border-color: var(--primary); background: var(--work-surface); }
-.journey-progress a { color: var(--primary); font-weight: 700; text-underline-offset: 3px; }
+/* 사이트 공통 여정: 가는 진행 막대 네 칸. 완료는 호출부가 사실로 아는 단계만(✓),
+   현재는 굵게, 남은 단계는 흐리게. 상자·밑줄 링크를 두지 않는다 — 탭으로 읽힌다. */
+.journey-progress { margin: 16px 0 22px; color: var(--text-muted); }
+.journey-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; list-style: none; margin: 0; padding: 0; }
+.journey-progress li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; padding-top: 10px; border-top: 4px solid var(--border); font-size: var(--fs-sm); }
+.journey-progress li.is-done, .journey-progress li[aria-current="step"] { border-top-color: var(--primary); }
+.journey-progress__num { font-variant-numeric: tabular-nums; }
+.journey-progress li.is-done .journey-progress__num { color: var(--success); font-weight: 700; }
+.journey-progress li[aria-current="step"] { color: var(--text-primary); font-weight: 700; }
+.journey-progress a { color: inherit; text-decoration: none; }
+.journey-progress a:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.journey-progress__compact { display: none; margin: 8px 0 0; font-size: var(--fs-sm); }
+.journey-progress__compact b { color: var(--text-primary); font-weight: 700; }
 .decision-review__saved { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 16px 0; padding: 16px; border: 1px solid var(--operator-line-strong); border-radius: var(--radius-lg); background: var(--work-surface); }
 /* 접수처는 본문 흐름에 둔다. 고정 패널용 동의 배너 숨김도 적용하지 않는다. */
 body .decision-console-landing .dc-intake > .dochi-home-assistant { display: grid; position: relative; inset: auto; width: min(100%, 780px); margin: 20px auto 36px; }
@@ -11107,7 +11113,11 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   .header-decision-inbox__label { display: inline; white-space: nowrap; font-size: var(--fs-xs); }
   .header-decision-inbox__icon { display: none; }
   .topbar-context .breadcrumb .current:last-child { max-width: 20vw; }
-  .journey-progress ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 폰: 막대 네 칸 + 한 줄("2 / 4 분석 근거 · 다음: 결정 저장"). 단계 이름은 화면낭독기에만 남긴다. */
+  .journey-progress li { padding-top: 0; }
+  .journey-progress li > * { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .journey-progress li > a { display: none; }
+  .journey-progress__compact { display: block; }
 }
 .wr-screen :is(button, input, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .wr-report { overflow-wrap: anywhere; }

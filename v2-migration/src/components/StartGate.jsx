@@ -152,7 +152,7 @@ function StartGateContent({ locale = "ko" }) {
     <>
       <h1 className="page-title">{browseMethods ? (locale === "en" ? "Browse analyses" : "분석 방법 둘러보기") : (locale === "en" ? "Start with my data" : "내 데이터로 시작")}</h1>
       <p className="page-deck">{browseMethods ? C.indexDeck : C.deck}</p>
-      {!browseMethods && <JourneyProgress stage={hasSubmitted ? "analyze" : "prepare"} locale={locale} placement="start" />}
+      {!browseMethods && <JourneyProgress stage={hasSubmitted ? "analyze" : "prepare"} completed={hasSubmitted ? ["prepare"] : []} locale={locale} placement="start" />}
 
       {!browseMethods && <>
         {hasSubmitted && <section className="block workspace-input-summary"><div><strong>{csvData.fileName}</strong><span>{csvData.raw.length.toLocaleString()} {locale === "en" ? "rows · mapping confirmed" : "행 · 매핑 확인 완료"}</span></div><button type="button" className="btn" onClick={() => setSubmittedInput(null)}>{locale === "en" ? "Edit input" : "입력·매핑 수정"}</button></section>}

@@ -4,6 +4,7 @@ import { getToolSearchContent } from "@/lib/toolSearchContent";
 import { TOOL_REQUIRED_FIELDS, STANDARD_FIELDS } from "@/utils/csvConstants";
 import { findMeta } from "@/store/useDataStore";
 import { trItemTitle } from "@/lib/enNavCopy";
+import { toolDataNeed } from "@/lib/toolDataNeeds";
 
 /* ============================================================
  * toolIndex — "무엇을 할 수 있나" 목록의 단일 출처.
@@ -85,6 +86,8 @@ export function toolIndexEntry(toolId, locale = "ko") {
     // 이 도구를 열면 실제로 화면에 나오는 것 3가지. 짧은 이름이 못 말하는 부분을 메운다.
     outputs: Array.isArray(content.outputs) ? content.outputs : [],
     needs: requiredLabels(toolId, locale),
+    // 결과 화면의 "다른 데이터가 필요한 분석"이 읽는 한 문장 — 컬럼 이름이 아니라 들어 있어야 할 값.
+    dataNeed: toolDataNeed(toolId, locale),
   };
 }
 
