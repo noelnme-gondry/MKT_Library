@@ -17,10 +17,40 @@ function resolveTarget(target) {
   return target;
 }
 
+// 캔버스는 화면에 그려진 픽셀 그대로 저장되므로 폰(CSS 폭 266px·배율 1)에서는 이미지 폭도 266px였다.
+// 받는 순간에만 배율을 올려 다시 그리고 되돌린다 — 이미지 폭이 이 값 이상이 되게(배율 2~4).
+export const EXPORT_MIN_WIDTH = 1200;
+
+export function exportPixelRatio(cssWidth, currentRatio = 1) {
+  if (!(cssWidth > 0)) return currentRatio;
+  const wanted = Math.min(4, Math.max(2, Math.ceil(EXPORT_MIN_WIDTH / cssWidth)));
+  return Math.max(wanted, currentRatio);
+}
+
+async function withExportResolution(canvas, run) {
+  const { Chart } = await import("chart.js");
+  const chart = Chart.getChart(canvas);
+  const cssWidth = canvas.clientWidth;
+  const current = chart?.currentDevicePixelRatio || 1;
+  const ratio = exportPixelRatio(cssWidth, current);
+  if (!chart || ratio <= current) return run();
+  const previous = chart.options.devicePixelRatio;
+  // 애니메이션 중이면 resize가 다음 프레임으로 미뤄진다 — 멈추고 바로 다시 그린다.
+  const redraw = () => { chart.stop(); chart.resize(); chart.draw(); };
+  try {
+    chart.options.devicePixelRatio = ratio;
+    redraw();
+    return run();
+  } finally {
+    chart.options.devicePixelRatio = previous;
+    redraw();
+  }
+}
+
 /** 캔버스면 차트 PNG로, 그 밖의 요소면 HTML 그림 PNG로 받는다. 받을 대상이 없거나 실패하면 false. */
 export async function downloadFigureTarget(element, fileName) {
   if (!element) return false;
-  if (element.tagName === "CANVAS") return downloadChartAsPNG(element, fileName);
+  if (element.tagName === "CANVAS") return withExportResolution(element, () => downloadChartAsPNG(element, fileName));
   return downloadElementAsPNG(element, fileName);
 }
 

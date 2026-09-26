@@ -42,10 +42,14 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
     expect(download.suggestedFilename()).toMatch(file);
     if (process.env.FIGURE_SAVE_DIR) await download.saveAs(`${process.env.FIGURE_SAVE_DIR}/${download.suggestedFilename()}`);
     const size = pngSize(readFileSync(await download.path()));
-    // HTML 그림은 2배 해상도로 그린다. 캔버스는 화면에 그려진 픽셀 그대로라 320px 폰에서는 폭이 그만큼이다.
-    // 어느 쪽이든 빈 캔버스가 아니라 실제 크기가 있어야 한다.
-    expect(size.width).toBeGreaterThan(canvas ? 240 : 400);
+    // HTML 그림은 2배, 캔버스는 받는 순간 배율을 올려(2~4배) 다시 그린다 — 320px 폰에서도 1000px 넘게.
+    expect(size.width).toBeGreaterThan(canvas ? 1000 : 400);
     expect(size.height).toBeGreaterThan(200);
     await expect(figure.getByRole("alert")).toHaveCount(0);
+    // 받은 뒤 화면의 캔버스는 원래 배율로 돌아와 있어야 한다(저장용 배율이 화면에 남지 않게).
+    if (canvas) {
+      const ratio = await figure.locator("canvas").first().evaluate((node) => node.width / node.clientWidth);
+      expect(ratio).toBeLessThan(await page.evaluate(() => window.devicePixelRatio) + 0.5);
+    }
   });
 }

@@ -174,7 +174,9 @@ export function refreshMountedChartThemes(ChartCtor) {
    index.html downloadChartAsPNG 이식(§7 dark 배경 명시 합성). */
 export function downloadChartAsPNG(canvas, fileName) {
   if (typeof document === "undefined" || !canvas) return false;
-  const footerHeight = 24;
+  // 캔버스 픽셀이 CSS 픽셀의 몇 배인지(배율) — 출처 줄도 같은 배율로 키워야 고해상도 저장에서 글자가 작아지지 않는다.
+  const scale = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
+  const footerHeight = Math.round(24 * scale);
   const tmp = document.createElement("canvas");
   tmp.width = canvas.width;
   tmp.height = canvas.height + footerHeight;
@@ -184,10 +186,10 @@ export function downloadChartAsPNG(canvas, fileName) {
   ctx.fillRect(0, 0, tmp.width, tmp.height);
   ctx.drawImage(canvas, 0, 0);
   ctx.fillStyle = CHART_THEME.muted;
-  ctx.font = `10px ${CHART_FONT_STACK}`;
+  ctx.font = `${Math.round(10 * scale)}px ${CHART_FONT_STACK}`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", tmp.width - 10, canvas.height + footerHeight / 2);
+  ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", tmp.width - Math.round(10 * scale), canvas.height + footerHeight / 2);
 
   const url = tmp.toDataURL("image/png");
   const a = document.createElement("a");
