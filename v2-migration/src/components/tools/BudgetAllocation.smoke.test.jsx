@@ -116,7 +116,7 @@ describe("BudgetAllocation render smoke", () => {
     expect(greedy).toBeTruthy();
     act(() => greedy.click());
     expect(greedy.getAttribute("aria-pressed")).toBe("true");
-    expect(document.body.textContent).toContain("지금 배분에서 출발해 예상 성과가 늘어나는 쪽으로만 옮긴 안");
+    expect(document.body.textContent).toContain("현재 배분을 기준으로 조정한 안입니다");
     // 결과 작업대와 같은 핵심 그림(지금 하루 예산 ↔ 바꾼 안)이 결론 카드 바로 뒤에 온다.
     const figure = document.querySelector(".tool-core-figure .result-shift");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();

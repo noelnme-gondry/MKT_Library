@@ -226,8 +226,8 @@ describe("CampaignPvm render smoke", () => {
     });
     render(<CampaignPvm />);
 
-    expect(screen.getAllByText(/기준 2026-01-05~2026-01-11.*현재 2026-01-19~2026-01-25/).length).toBeGreaterThan(0);
-    expect(screen.getByText("날짜 필터의 비교 기간 적용 중")).toBeTruthy();
+    expect([...document.querySelectorAll(".result-periods time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+    expect(screen.getByText("선택한 비교 기간")).toBeTruthy();
   });
 
   it("rolls campaign and creative rows up from one finest-grain decomposition", () => {

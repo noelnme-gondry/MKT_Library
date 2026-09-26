@@ -34,6 +34,7 @@ export function prepareAnalysisHandoff(csvData, toolId) {
     ...prepared,
     mapping,
     currency: csvData.currency,
+    importSource: csvData.importSource,
     mappingBindingsV2: [
       ...(prepared.mappingBindingsV2 || []).filter(binding => !explicitHeaders.has(binding.sourceColumn)),
       ...explicitBindings,

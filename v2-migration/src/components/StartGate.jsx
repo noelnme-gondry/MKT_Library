@@ -137,13 +137,13 @@ function StartGateContent({ locale = "ko" }) {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
     return meta ? trItemTitle(id, locale, meta.title) : id;
   };
-  const openRecommended = (id, preparedOverride = null) => {
+  const openRecommended = (id, preparedOverride = null, { comparison = null } = {}) => {
     trackProductEvent("analysis_recommended", { tool_id: id, source: "start" });
     const prepared = preparedOverride || prepareDatasetForTool({ raw: csvData.raw, headers: csvData.headers, toolId: id, source: csvData.fileName || "dataset" });
     // 추천·자격 통과 도구는 도치 독과 같은 분석 완료 상태로 연다. 반대로 목록에
     // 흐리게 보이는 도구까지 완료 처리하면 부족한 컬럼인데도 기본 결과·결정 기록이
     // 열릴 수 있으므로, 그 경우에는 상세 화면의 정직한 업로드 게이트를 유지한다.
-    handoffCsvToRoute(id, prepared, { markAnalyzed: Boolean(isEligibilityCurrent && eligibleIds.includes(id)) });
+    handoffCsvToRoute(id, prepared, { markAnalyzed: Boolean(isEligibilityCurrent && eligibleIds.includes(id)), comparison });
     goTool(id);
   };
   const continueWithNewAnalysis = () => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

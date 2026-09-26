@@ -1,4 +1,5 @@
 "use client";
+import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -95,10 +96,10 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     const timer = window.setTimeout(() => setPhase("results"), 0);
     timersRef.current.push(timer);
   };
-  const openTool = useCallback((toolId, prepared = csvData) => {
+  const openTool = useCallback((toolId, prepared = csvData, { comparison = null } = {}) => {
     const session = useAppStore.getState().dochiAnalysisSession;
     setDochiAnalysisSession({ ...(session || {}), sourceData: session?.sourceData || csvData, handoffs: [...(session?.handoffs || []), prepared] });
-    handoffCsvToRoute(toolId, prepared);
+    handoffCsvToRoute(toolId, prepared, { comparison });
     const path = idToPath(toolId);
     router.push(locale === "en" ? `/en${path}` : path);
   }, [csvData, handoffCsvToRoute, locale, router, setDochiAnalysisSession]);
@@ -152,10 +153,12 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
           <p className={`dochi-result-workspace__summary${sample ? " sample-journey-scope" : ""}`} aria-label={locale === "en" ? "Data summary" : "입력 요약"}>
             <strong title={csvData.fileName}>{sample ? `${locale === "en" ? "Sample data" : "샘플 데이터"} · ${sample.channel}` : csvData.fileName}</strong>
             <span className="tnum">{csvData.raw.length.toLocaleString()}{locale === "en" ? " rows" : "행"}</span>
-            {sample ? <span className="tnum">{sample.period.currentStart} – {sample.period.currentEnd} {locale === "en" ? "vs" : "vs"} {sample.period.previousStart} – {sample.period.previousEnd}</span> : null}
             <span>{C.cadenceLabels[cadence.cadence]}</span>
             {sample ? <Link href={locale === "en" ? "/en/start" : "/start"}>{locale === "en" ? "Use my data" : "내 데이터로 바꾸기"}</Link> : null}
           </p>
+          {sample && <ComparisonPeriods locale={locale}
+            periodA={{ start: sample.period.previousStart, end: sample.period.previousEnd }}
+            periodB={{ start: sample.period.currentStart, end: sample.period.currentEnd }} />}
         </header>}
         summaryFoot={<div className="dochi-result-workspace__global-controls"><strong>{C.sharedControls}</strong><BasisCurrencyToggleBar locale={locale} /></div>}
       />

@@ -259,7 +259,11 @@ export function calculateAllocationModeB({ currentSpends = null, ...args }) {
   const improved = improveAllocationFromCurrent({ modelsMap: free, currentSpends, totalBudget: freeBudget, maxSpends: caps, minSpends, currency });
   const totalOf = (items) => items.reduce((sum, item) => sum + (item.results || 0), 0);
   const greedyFree = greedy.items.filter((item) => !item.locked);
-  if (!improved.items.length || totalOf(improved.items) < totalOf(greedyFree)) return { ...greedy, source: "greedy" };
+  const validImproved = improved.items.length === free.size && improved.totalAllocated <= freeBudget + 1e-8
+    && improved.items.every(item => Number.isFinite(item.cost)
+      && item.cost >= Math.max(0, Number(minSpends[item.channel]) || 0) - 1e-8
+      && item.cost <= caps[item.channel] + 1e-8);
+  if (!validImproved || totalOf(improved.items) < totalOf(greedyFree)) return { ...greedy, source: "greedy" };
   const all = [...lockedItems, ...improved.items];
   const totalAllocated = all.reduce((sum, item) => sum + item.cost, 0);
   const items = all
@@ -491,20 +495,23 @@ function startFromCurrent(channels, totalBudget) {
   } else if (!(currentTotal > 0)) {
     for (const c of channels) c.cost = totalBudget / channels.length;
   }
-  // 상한을 넘는 몫은 여유 있는 채널에 지출 비례로 나눈다(출발점도 관측 범위 안이어야 한다).
-  for (let guard = 0; guard < 20; guard += 1) {
-    let excess = 0;
-    for (const c of channels) {
-      if (c.cost > c.cap) {
-        excess += c.cost - c.cap;
-        c.cost = c.cap;
-      }
+  // Start inside the feasible region before accepting only improving moves.
+  for (const c of channels) c.cost = Math.max(c.min, Math.min(c.cap, c.cost));
+  let total = channels.reduce((sum, c) => sum + c.cost, 0);
+  if (total > totalBudget) {
+    const removable = channels.reduce((sum, c) => sum + c.cost - c.min, 0);
+    const excess = total - totalBudget;
+    for (const c of channels) c.cost -= excess * ((c.cost - c.min) / removable);
+  } else {
+    // Each pass fills a cap or all of the remainder, so channel count bounds the loop.
+    for (let guard = 0; guard <= channels.length && totalBudget - total > 1e-9; guard += 1) {
+      const open = channels.filter((c) => c.cost < c.cap);
+      if (!open.length) break;
+      const remainder = totalBudget - total;
+      const weight = open.reduce((sum, c) => sum + (c.cost > 0 ? c.cost : 1), 0);
+      for (const c of open) c.cost = Math.min(c.cap, c.cost + remainder * ((c.cost > 0 ? c.cost : 1) / weight));
+      total = channels.reduce((sum, c) => sum + c.cost, 0);
     }
-    if (excess <= 1e-9) break;
-    const open = channels.filter((c) => c.cost < c.cap);
-    if (!open.length) break;
-    const weight = open.reduce((sum, c) => sum + (c.cost > 0 ? c.cost : 1), 0);
-    for (const c of open) c.cost += excess * ((c.cost > 0 ? c.cost : 1) / weight);
   }
 }
 
@@ -527,7 +534,7 @@ export function improveAllocationFromCurrent({
     if (!meta || !meta.model) continue;
     const min = Math.max(0, Number(minSpends[name]) || 0);
     const rawCap = maxSpends[name] != null && maxSpends[name] >= 0 ? Number(maxSpends[name]) : meta.xMax;
-    const cap = Math.max(min, Number.isFinite(rawCap) ? rawCap : Infinity);
+    const cap = Number.isFinite(rawCap) ? Math.max(0, rawCap) : Infinity;
     channels.push({
       channel: name, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
       poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
@@ -537,6 +544,9 @@ export function improveAllocationFromCurrent({
   if (!channels.length)
     return { items: [], unallocated: totalBudget, overspent: false, totalAllocated: 0, lockedTotal: 0, moves: 0, startResults: 0 };
 
+  if (channels.some(c => c.min > c.cap) || channels.reduce((sum, c) => sum + c.min, 0) > totalBudget) {
+    return { items: [], unallocated: totalBudget, overspent: false, totalAllocated: 0, lockedTotal: 0, moves: 0, startResults: 0, constraintViolation: true };
+  }
   startFromCurrent(channels, totalBudget);
   for (const c of channels) c.results = resultsAt(c, c.cost);
   const startResults = channels.reduce((sum, c) => sum + c.results, 0);

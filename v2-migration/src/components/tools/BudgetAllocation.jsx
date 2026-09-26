@@ -2642,6 +2642,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 (관측 최대 지출 · ∩형 꼭짓점)으로 반영하지만, 상한 안에서 나누는
                 비율은 최근 평균 CPR의 역수다 — 한계효율이 떨어지는 구간에서도
                 평균이 좋으면 계속 배분된다. */}
+            <details className="allocation-method-details">
+              <summary>{tr("배분 방식 설명", "About the allocation method")}</summary>
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 10px" }}>
               {allocMode === "c"
                 ? tr(
@@ -2652,13 +2654,14 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                   "한계효용 그리디는 마지막 1원이 만드는 결과(한계효율)가 큰 채널부터 채웁니다. 평균 효율 순서와 달라도 정상입니다 — 포화된 채널은 평균이 좋아도 뒤로 밀립니다.",
                   "Marginal-utility greedy fills the channel whose next unit of spend produces the most results. It can disagree with average-efficiency ranking — a saturated channel drops back even when its average looks good.",
                 )}
+            </p>
+            </details>
               {/* 0원부터 쌓으면 규모가 커져야 싸지는 채널을 못 고른다. 엔진이 지금 배분에서
                   출발한 안을 골랐다면 그 사실을 말한다 — 이름과 다른 방식의 결과를 조용히 내지 않는다. */}
-              {allocMode === "b" && allocation.source === "from_current" ? " " + tr(
-                "이번에는 지금 배분에서 출발해 예상 성과가 늘어나는 쪽으로만 옮긴 안이 0원부터 채운 안보다 많아서 그 안을 보여 줍니다.",
-                "This time, moving budget from the current split only where expected results rise beat filling from zero, so that plan is shown.",
-              ) : null}
-            </p>
+              {allocMode === "b" && allocation.source === "from_current" ? <p className="allocation-method-note">{tr(
+                "현재 배분을 기준으로 조정한 안입니다. 비교한 안 중 예상 성과가 더 많습니다.",
+                "This plan adjusts the current allocation. It has more expected outcomes than the alternative evaluated.",
+              )}</p> : null}
             {/* 자동 판정은 조용하면 안 된다 — 무엇을 왜 고정했는지 말하고 뒤집을 수
                 있어야 사용자가 판단을 되찾는다(§8.8 · product-ssot D-14). */}
             <div className="alloc-hold-low">
@@ -2736,6 +2739,15 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       {/* 결론·액션 카드 */}
       {verdict && canStorePlan && (
         <ResultActionCard
+          coreFigure={canStorePlan && <ToolCoreFigure embedded
+            figure={budgetShiftFigure({
+              rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost })),
+              locale,
+            })}
+            locale={locale}
+            currency={currency}
+            downloadName="budget_shift"
+          />}
           toolId="5-3"
           locale={locale}
           tone={verdict.tone}
@@ -2853,17 +2865,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           )}
         />
       )}
-
-      {/* 결과 작업대와 같은 핵심 그림 — 채널별 지금 하루 예산 ↔ 바꾼 안 */}
-      {canStorePlan && <ToolCoreFigure
-        figure={budgetShiftFigure({
-          rows: allocation.items.map((item) => ({ entity: item.channel, current: Number(historyByCh[item.channel]?.totalCost) || 0, budget: item.cost })),
-          locale,
-        })}
-        locale={locale}
-        currency={currency}
-        downloadName="budget_shift"
-      />}
 
       {canStorePlan && <PeriodSensitivityPanel
         key={JSON.stringify([computeAnalyzeSig(csvData), unitField, effectiveMetric, adv, groupModels, recentDays, holdLowConfidence, plannedDailyBudget, allocMode, currency, [...(selectedCountries || [])], [...(selectedChannelsFilter || [])], platformFilter])}

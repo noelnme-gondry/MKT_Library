@@ -982,6 +982,17 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <ResultActionCard
+        coreFigure={domain !== "content" && <ToolCoreFigure embedded
+          figure={creativeStatusFigure({
+            fatigue,
+            alerts: fatigueAlerts,
+            isReviewable: (item) => item.qualityStatus === "reviewable",
+            insufficientLabel: tr("기간·노출 부족", "Too little history or exposure"),
+            locale,
+          })}
+          locale={locale}
+          downloadName="creative_status"
+        />}
         toolId="9-6"
         analysisType="creative"
         resultState={hasFatigueEvidence ? "ready" : "insufficient"}
@@ -1066,20 +1077,6 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           />
         )}
       />
-
-      {/* 결과 작업대와 같은 핵심 그림 — 소재 상태를 띠 하나로. 판정 가능 기준은 이 화면의 기준(기간 + 노출 하한)을 쓴다.
-          질문 문장이 "소재"를 말하므로 콘텐츠 도메인에는 붙이지 않는다. */}
-      {domain !== "content" && <ToolCoreFigure
-        figure={creativeStatusFigure({
-          fatigue,
-          alerts: fatigueAlerts,
-          isReviewable: (item) => item.qualityStatus === "reviewable",
-          insufficientLabel: tr("기간·노출 부족", "Too little history or exposure"),
-          locale,
-        })}
-        locale={locale}
-        downloadName="creative_status"
-      />}
 
       <section className="creative-control-room" aria-label={tr("소재 운영 실행 패널", "Creative operations action panel")}>
         <div className="creative-control-room__head">

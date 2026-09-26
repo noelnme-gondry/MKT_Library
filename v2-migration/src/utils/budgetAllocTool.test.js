@@ -236,3 +236,17 @@ describe("mode B with the current split", () => {
     expect(plan.items.find((item) => item.channel === "Bell").cost).toBeLessThanOrEqual(300 + 1e-9);
   });
 });
+
+it("keeps feasible minimum allocations when the current split starts below them", () => {
+  const modelsMap = new Map([
+    ["A", { model: { type: "Linear", predict: () => 1 }, xMin: 1, xMax: 1000 }],
+    ["B", { model: { type: "Linear", predict: () => 100 }, xMin: 1, xMax: 1000 }],
+  ]);
+  const args = { modelsMap, totalBudget: 1000, minSpends: { B: 400 }, maxSpends: { A: 1000, B: 1000 }, currency: "USD" };
+  for (const currentSpends of [{ A: 1000, B: 0 }, { A: 300, B: 0 }, { A: 0, B: 0 }]) {
+    const plan = calculateAllocationModeB({ ...args, currentSpends });
+    expect(plan.items.find(item => item.channel === "B").cost).toBeGreaterThanOrEqual(400 - 1e-8);
+    expect(plan.totalAllocated).toBeCloseTo(1000);
+    expect(plan.overspent).toBe(false);
+  }
+});

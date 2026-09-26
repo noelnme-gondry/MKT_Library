@@ -1145,12 +1145,17 @@ export const useAppStore = create(persist((set, get) => ({
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
-  handoffCsvToRoute: (routeId, incoming, { markAnalyzed = true } = {}) => set((state) => {
+  handoffCsvToRoute: (routeId, incoming, { markAnalyzed = true, comparison = null } = {}) => set((state) => {
     const g = groupForRoute(routeId);
     const data = withDefaultSourceCurrency(incoming, g, state.preferredSourceCurrency);
     const sig = computeAnalyzeSig(data);
     const canAnalyze = markAnalyzed && executionPreflight(data, routeId).status !== "blocked";
     return {
+      ...(comparison ? {
+        analysisHandoff: { ...comparison, source: "dochi", targetToolId: routeId, dataGroup: g, sourceRows: data.raw },
+        dashboardFilterGroups: { ...state.dashboardFilterGroups, [g]: { ...EMPTY_DASHBOARD_FILTER(), ...comparison.filterState } },
+        ...(state.activeDataGroup === g ? { dashboardFilter: { ...EMPTY_DASHBOARD_FILTER(), ...comparison.filterState } } : {}),
+      } : { analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff }),
       csvGroups: { ...state.csvGroups, [g]: data },
       analyzedByGroup: { ...state.analyzedByGroup, [g]: canAnalyze ? sig : null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: false },

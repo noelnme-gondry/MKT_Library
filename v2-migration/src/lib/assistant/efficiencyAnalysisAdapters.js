@@ -140,7 +140,10 @@ function pvmPeriods(csvData, filterState = {}) {
     .filter((row) => Number.isFinite(row._time));
   if (!rows.length) return null;
   const lastTime = rows.reduce((max, row) => Math.max(max, row._time), -Infinity);
+  const dateAt = (offset) => new Date(lastTime - offset * DAY_MS).toISOString().slice(0, 10);
   return {
+    periodA: { start: dateAt(13), end: dateAt(7) },
+    periodB: { start: dateAt(6), end: dateAt(0) },
     prior: rows.filter((row) => row._time >= lastTime - 13 * DAY_MS && row._time < lastTime - 6 * DAY_MS),
     recent: rows.filter((row) => row._time >= lastTime - 6 * DAY_MS && row._time <= lastTime),
   };
@@ -209,7 +212,7 @@ function pvmAdapter(input) {
     verdict: {
       evidenceState: "descriptive",
       headline: driver
-        ? tr(locale, `${driver.entity}이(가) ${metric} 변화에 가장 크게 기여했습니다.`, `${driver.entity} contributed the most to the ${metric} change.`)
+        ? tr(locale, `${driver.entity}의 ${metric} 변화 기여가 가장 큽니다.`, `${driver.entity} contributed the most to the ${metric} change.`)
         : tr(locale, "성과 변동을 분해했습니다.", "Performance variation was decomposed."),
       stats: [
         { id: "prior-unit-cost", label: tr(locale, `직전 ${metric}`, `Prior ${metric}`), value: decomposition.CPA1, unit: "currency" },
@@ -218,14 +221,16 @@ function pvmAdapter(input) {
       ],
       action: driver
         ? Math.abs(driver.mix || 0) > Math.abs(driver.rate || 0)
-          ? tr(locale, `${driver.entity}의 예산 비중 변경 이력을 확인하세요. 믹스 기여가 큰 만큼, 예산 재배분 시나리오에서 전체 ${metric}와 성과 건수를 함께 비교한 뒤 집행 여부를 정하세요.`, `Review budget-share changes for ${driver.entity}. Mix is the larger component; compare overall ${metric} and outcome volume in an allocation scenario before changing spend.`)
-          : tr(locale, `${driver.entity}의 소재·타겟·입찰 변경 이력을 점검하세요. 단가 변화가 큰 만큼, 변경 전후를 분리해 확인하고 다음 7일의 전체 ${metric}와 성과 건수를 다시 비교하세요.`, `Review creative, audience, and bid changes for ${driver.entity}. Unit-cost change is the larger component; compare before and after those changes, then review overall ${metric} and outcome volume over the next 7 days.`)
+          ? tr(locale, `${driver.entity}의 예산 비중 변경 이력을 확인하세요.`, `Review budget-share changes for ${driver.entity}.`)
+          : tr(locale, `${driver.entity}의 소재·타겟·입찰 변경 이력을 점검하세요.`, `Review creative, audience, and bid changes for ${driver.entity}.`)
         : tr(locale, "대상별 단가 변화를 확인한 뒤 점검할 채널을 선택하세요.", "Review unit-cost changes by entity before selecting a channel to investigate."),
       caveats: [tr(locale, "분해는 관측된 단가 변화를 설명하며 인과 효과를 식별하지 않습니다.", "The decomposition describes observed unit-cost change; it does not identify causal effects.")],
     },
     // 성과 변동의 핵심 그림은 "직전 → 비중(mix) → 효율(rate) → 최근" 다리와 채널별 두 성분이다.
     visualizations: [mixRateFigure({ rows: byChannel, start: decomposition.CPA1, end: decomposition.CPA2, metric, locale })],
-    manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive" },
+    manifest: { engine: "PVM_MATH", status: "COMPLETE", resultField, periodDays: 7, entityCount: byChannel.length, evidenceState: "descriptive",
+      comparison: { metric: metric.toLowerCase(), periodA: periods.periodA, periodB: periods.periodB, filterState: options.filterState || {} },
+    },
   });
 }
 

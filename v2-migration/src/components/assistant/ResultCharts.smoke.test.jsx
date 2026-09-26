@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { RESULT_CHART_VARIANTS, ResultBudgetShift, ResultHazardColumns, ResultMixRate, ResultStatusShare, ResultSurvival, ResultUnitCostGap, ResultVifThreshold } from "./ResultCharts";
 
 const fallback = <p className="probe-fallback">fallback</p>;
@@ -119,4 +119,19 @@ describe("분석별 핵심 그림", () => {
       unmount();
     }
   });
+});
+
+it.each(["ko", "en"])("ranks severe VIF first and exposes every omitted channel (%s)", locale => {
+  const data = Array.from({ length: 9 }, (_, i) => ({ entity: `Channel ${i}`, vif: i === 8 ? null : i + 1, isInfinite: i === 8 }));
+  const { container } = render(<ResultVifThreshold locale={locale} visualization={{ question: "VIF", data, options: { thresholds: [5, 10] } }} />);
+  expect(container.querySelector("li strong").textContent).toBe("Channel 8");
+  expect(container.querySelectorAll("li")).toHaveLength(8);
+  expect(container.textContent).toContain(locale === "en" ? "Showing 8 of 9" : "전체 9개 중 8개 표시");
+  const button = container.querySelector("button");
+  expect(document.getElementById(button.getAttribute("aria-controls"))).toBe(container.querySelector("ul"));
+  fireEvent.click(button);
+  expect(button.getAttribute("aria-expanded")).toBe("true");
+  expect(container.querySelectorAll("li")).toHaveLength(9);
+  expect(container.textContent).toContain(locale === "en" ? "Showing 9 of 9" : "전체 9개 중 9개 표시");
+  expect(container.textContent).toContain("∞");
 });

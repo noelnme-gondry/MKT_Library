@@ -93,7 +93,7 @@ const COPY = {
     keyConclusion: "핵심 결론",
     availableEvidence: "현재 근거",
     evidenceFigures: "확인 가능한 수치",
-    primaryAction: "주 행동",
+    primaryAction: "다음 행동",
     noAction: "이 결과만으로 실행을 권하지 않습니다. 상세 조건을 먼저 확인하세요.",
     evidence: "근거 상태",
     evidenceState: { descriptive: "관측 요약", estimated: "추정 시나리오", not_identified: "식별 불가", not_computable: "계산 불가" },
@@ -176,7 +176,7 @@ const COPY = {
     keyConclusion: "Key conclusion",
     availableEvidence: "Current evidence",
     evidenceFigures: "Available figures",
-    primaryAction: "Primary action",
+    primaryAction: "Next action",
     noAction: "Do not act on this result alone. Review the detailed conditions first.",
     evidence: "Evidence state",
     evidenceState: { descriptive: "Observed summary", estimated: "Estimated scenario", not_identified: "Not identified", not_computable: "Not computable" },
@@ -504,7 +504,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
   const C = COPY[locale] || COPY.ko;
   // 결론 밑에 이미 그린 그림은 같은 분석 카드에서 다시 그리지 않는다(같은 그림 두 번 금지).
   const visualizations = (result.visualizations || []).filter((item) => item.id !== omitVisualizationId);
-  const evidenceStats = visualizations.some(item => item.options?.variant === "period-comparison") ? [] : result.verdict.stats?.slice(0, 5) || [];
+  const evidenceStats = (result.visualizations || []).some(item => ["period-comparison", "mix-rate"].includes(item.options?.variant)) ? [] : result.verdict.stats?.slice(0, 5) || [];
   const hasDetails = result.verdict.caveats?.length > 0;
   const resultRef = useRef(null);
   const eventKey = productEventKey("dochi_workspace", result.toolId, result.inputSignature, result.mappingSignature, locale);
@@ -522,25 +522,22 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
   }, [eventKey, locale, result.status, result.toolId, source]);
   return <section ref={resultRef} className={`dochi-workspace__result is-${result.status}${isDecisionFocus ? " is-decision-focus" : ""}`} aria-label={C.result}>
     <header className="dochi-workspace__result-status">
-      <strong>{resultLabel(result, C)}</strong>
-      <span>{C.evidence}: {C.evidenceState[result.verdict.evidenceState] || result.verdict.evidenceState}</span>
+      {result.status !== "success" && <strong>{resultLabel(result, C)}</strong>}
       <AnalysisExportProvider value={resultExportValue({ result, toolTitle, locale, csvData, C })}>
         <DownloadHub toolId={result.toolId} locale={locale} label={C.downloadLabel} align="right" />
       </AnalysisExportProvider>
     </header>
     <section className="dochi-workspace__decision-tape" aria-label={C.decisionTape}>
-      <span>{C.keyConclusion}</span>
       <h3>{result.verdict.headline}</h3>
     </section>
     {(evidenceStats.length > 0 || visualizations.length > 0) && <section className="dochi-workspace__result-evidence" aria-label={C.availableEvidence}>
-      <header><h4>{C.availableEvidence}</h4>{evidenceStats.length > 0 && <span>{C.evidenceFigures}</span>}</header>
       {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</dd></div>)}</dl>}
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
     <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
-    {reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}
+    {source !== "demo" && reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}
     {reviewProposal && source !== "demo" && <><button type="button" className="btn primary" onClick={() => requestDecisionReviewOpen(result.toolId, "analysis_next_step")}>{locale === "en" ? "Track this action in a project" : "이 행동을 프로젝트로 추적하기"}</button><DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={reviewProposal} decisionPrefillKey={eventKey} /></>}
-    {hasDetails && <section data-information-section="" className="dochi-workspace__result-details"  ><header data-information-heading="">{C.detailsView}</header>{<section><div className="dochi-workspace__result-caveats"><h4>{C.caveats}</h4><p>{result.verdict.caveats.join(" ")}</p></div></section>}</section>}
+    {hasDetails && <aside className="dochi-workspace__result-caveats" aria-label={C.caveats}>{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</aside>}
   </section>;
 }
 
@@ -600,7 +597,7 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
       <h3>{titleFor(result.toolId, getTitle)}</h3>
       {!hasCurrentResult && !isEmbedded && method && <p>{method.description || method.answer}</p>}
       {!isEmbedded && <>
-        <p>{isBlocked ? blockersText(result, locale) : result.recommendationReason}</p>
+        {!hasCurrentResult && <p>{isBlocked ? blockersText(result, locale) : result.recommendationReason}</p>}
         {isBlocked && method && <p><strong>{locale === "en" ? "Data needed: " : "필요한 데이터: "}</strong>{method.needs.join(" · ")}</p>}
         {isBlocked && hasToolTemplate(result.toolId) && <button type="button" className="btn" onClick={() => downloadTemplateCsv(result.toolId)}>{locale === "en" ? "Download data template" : "데이터 템플릿 받기"}</button>}
       </>}
@@ -724,7 +721,15 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     // 샘플은 효율 CSV다. 다른 데이터 단위의 도구는 샘플을 변환해 넘기면 그 도구의 열 확인에서 다시
     // 멈추므로, 그 도구를 위해 만든 예시 데이터로 연다(효율 도구도 샘플이 못 채우면 같다).
     const needsOwnExample = sampleMode && (TOOL_GROUP[toolId] !== "efficiency" || eligibility.find((result) => result.toolId === toolId)?.status === "blocked");
-    deferHandoff(() => onOpenTool(toolId, needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId)));
+    const result = queueItemFor(toolId)?.result;
+    const comparison = !needsOwnExample && result?.status === "success"
+      && result.inputSignature === currentInputSignature && result.mappingSignature === currentMappingSignature
+      ? result.manifest?.comparison : null;
+    deferHandoff(() => {
+      const prepared = needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId);
+      if (comparison) onOpenTool(toolId, prepared, { comparison });
+      else onOpenTool(toolId, prepared);
+    });
   };
   const openNaturalExperiment = (handoff) => {
     if (!onOpenTool) return;
@@ -894,16 +899,16 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   // 펼쳤는데, 누르면 그림 하나가 열리는 게 전부였다(2026-09-26 사용자 지적). 기간 비교 그림은 수치를 그대로
   // 담으므로 그 위의 수치 줄은 뺀다(같은 숫자 두 번 금지 — 결과 카드와 같은 규칙).
   const focusFigure = focusResult?.visualizations?.[0] || null;
-  const focusStats = focusFigure?.options?.variant === "period-comparison" ? [] : focusResult?.verdict.stats?.slice(0, 3) || [];
+  const focusStats = ["period-comparison", "mix-rate"].includes(focusFigure?.options?.variant) ? [] : focusResult?.verdict.stats?.slice(0, 3) || [];
   const conclusion = focusResult && <section className="workspace-next-action" aria-label={C.primaryAction}>
     <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
     <h3>{focusResult.verdict.headline}</h3>
-    <p>{focusResult.verdict.action}</p>
     {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
     {focusFigure && <section className="workspace-next-action__figure" aria-label={focusFigure.question}>
       <p>{focusFigure.question}</p>
       <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
     </section>}
+    <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>
     <button type="button" className="workspace-next-action__open" onClick={() => openTool(focusResult.toolId)}>{locale === "en" ? "See details in the tool" : "도구에서 자세히 보기"}<span aria-hidden="true"> →</span></button>
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);

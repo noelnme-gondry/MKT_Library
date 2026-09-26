@@ -56,7 +56,7 @@ describe("buildDashboardVerdict", () => {
 
   it("locale en → 영문 헤드라인", () => {
     const v = buildDashboardVerdict({ csvData: makeCsv({ recentInstalls: 20, prevInstalls: 10 }), locale: "en" });
-    expect(v.headline).toMatch(/efficiency is improving/i);
+    expect(v.headline).toMatch(/fell 50.0% over the last 7 days/i);
   });
 
   it("파생지표 포함 — CPI 행 존재, CSV에 WoW% 헤더", () => {

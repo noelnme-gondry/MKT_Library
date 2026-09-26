@@ -94,9 +94,8 @@ describe("Dochi analysis workspace", () => {
     expect(card().getByRole("button", { name: en ? /Open analysis/ : /분석 열기/ })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: en ? "Analyze data" : "분석하기" }));
     await waitForAnalyses();
-    const resultDetails = [...view.container.querySelectorAll(".dochi-workspace__result-details")];
+    const resultDetails = [...view.container.querySelectorAll(".dochi-workspace__result-caveats")];
     expect(resultDetails.length).toBeGreaterThan(0);
-    resultDetails.forEach((details) => { details.open = true; fireEvent(details, new Event("toggle")); });
     expect(screen.getAllByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/).length).toBeGreaterThan(0);
     view.rerender(<AssistantWorkspace csvData={{ ...data, raw: records.map((row, index) => ({ ...row, cost: String(100 + index * 10) })) }} locale={locale} getTitle={(id) => id} onOpenTool={() => {}} />);
     expect(card().queryByText(en ? /too little spend variation/ : /지출 변동이 너무 작은/)).toBeNull();
@@ -217,8 +216,8 @@ describe("Dochi analysis workspace", () => {
     expect(document.querySelector(".dochi-workspace__result")).toBeNull();
     openAnalysis("5-2");
     const focus = within(document.querySelector(".dochi-workspace__result"));
-    expect(focus.getByText("현재 근거")).toBeTruthy();
-    expect(focus.getByText("해석 한계 보기")).toBeTruthy();
+    expect(focus.queryByText("현재 근거")).toBeNull();
+    expect(focus.getByText("관측된 기간 비교이며 인과 효과 추정이 아닙니다.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("img", { name: "직전 기간과 최근 기간 사이에 무엇이 변했는가?" })).toBeTruthy());
     const metrics = document.querySelector(".analysis-metric-picker");
     expect(metrics.textContent).not.toMatch(/노출|클릭/);
@@ -254,9 +253,10 @@ describe("Dochi analysis workspace", () => {
     const decision = container.querySelector(".dochi-workspace__result");
     expect(decision.querySelector(".dochi-workspace__decision-tape")).toBeTruthy();
     expect(decision.querySelector(".dochi-workspace__result-action")).toBeTruthy();
-    const details = decision.querySelector("[data-information-section]");
-    expect(details).toBeTruthy();
-    expect(details.tagName).toBe("SECTION");
+    const caveats = decision.querySelector(".dochi-workspace__result-caveats");
+    expect(caveats).toBeTruthy();
+    expect(caveats.tagName).toBe("ASIDE");
+    expect(caveats.textContent).toContain("인과 효과 추정이 아닙니다");
   });
 
   it("automatically advances every baseline item after the first result commits", async () => {
@@ -297,7 +297,7 @@ describe("Dochi analysis workspace", () => {
     render(<AssistantWorkspace autoStart csvData={slice(undefined, completeRaw)} getTitle={(toolId) => toolId} onOpenTool={() => {}} />);
     await waitForAnalyses();
     openAnalysis("5-2");
-    expect(screen.getAllByText("분석 결과").length).toBeGreaterThan(0);
+    expect(document.querySelector(".dochi-workspace__result.is-success")).toBeTruthy();
   });
 
   it("shows only actual completed results in the embedded home view, with dashboard open first", async () => {

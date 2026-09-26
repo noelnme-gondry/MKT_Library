@@ -866,11 +866,11 @@
 .app .dochi-result-workspace__context > div { display: flex; gap: 8px; padding: 0; border: 0; }
 .app .dochi-result-workspace__context dd { font-weight: 600; }
 .app .dochi-result-workspace__source { min-width: 0; }
-.app .analysis-metric-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.app .analysis-metric-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .app .analysis-metric-picker button { display: grid; text-align: left; gap: 6px; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-1); color: var(--text-primary); cursor: pointer; }
 .app .analysis-metric-picker button[aria-pressed="true"] { border-color: var(--primary); box-shadow: inset 0 3px var(--primary); }
 .app .analysis-metric-picker button small { color: var(--text-secondary); }
-.app .analysis-metric-picker strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+.app .analysis-metric-picker strong { font-size: var(--fs-xl); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .app .dochi-workspace__result [data-tone="improved"] { color: var(--success); }
 .app .dochi-workspace__result [data-tone="worsened"] { color: var(--danger); }
 .app .dochi-workspace__result [data-tone="neutral"] { color: var(--text-secondary); }
@@ -879,11 +879,14 @@
 .source-survey__skip { border-color: transparent; }
 .source-survey__privacy { text-wrap: pretty; font-size: 12px; line-height: 1.65; }
 .app :is(.page-deck, .tool-index__answer, .decision-review p, .subscription-checkout p) { word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty; }
+@media (max-width: 1100px) {
+  .app .analysis-metric-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 600px) {
   .app .dochi-result-workspace .sample-journey-scope { grid-template-columns: 1fr; gap: 8px; }
   .source-survey { right: 16px; bottom: 16px; }
-  .app .analysis-metric-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app .analysis-metric-picker strong { font-size: 20px; }
+  .app .analysis-metric-picker { grid-template-columns: minmax(0, 1fr); }
+  .app .analysis-metric-picker strong { font-size: var(--fs-lg); }
 }
 @media (max-width: 600px) { .workspace-input-summary { align-items: flex-start; flex-direction: column; } }
 @layer app {
@@ -945,4 +948,22 @@
   .app .content .result-sheet__stats > div + div { padding-left: 10px; }
   .app .content .result-sheet__stats dd { font-size: var(--fs-md); }
   .app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { padding: 14px 16px; }
+}
+
+.app :is(.workspace-next-action__figure, .dochi-workspace__result-primary) { container-type: inline-size; }
+@container (max-width: 768px) {
+  .app .analysis-metric-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 480px) {
+  .app .analysis-metric-picker { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 640px) {
+  .app .analysis-metric-picker button { padding: 12px; }
+  .app .analysis-metric-picker strong { font-size: var(--fs-lg); }
+}
+
+@container (max-width: 480px) {
+  .app .analysis-metric-picker button { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; }
+  .app .analysis-metric-picker button > strong { grid-column: 2; grid-row: 1; }
+  .app .analysis-metric-picker button > small, .app .analysis-metric-picker button > b { grid-column: 1 / -1; }
 }

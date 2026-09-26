@@ -143,23 +143,14 @@ export function buildDashboardVerdict({
   else if (effWorsened || (roasWorsened && !effImproved)) tone = "bad";
 
   const period = tr(`최근 ${w}일`, `last ${w} days`);
-  let headline;
-  if (tone === "good") {
-    headline = tr(
-      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 효율 개선 중입니다.`,
-      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is improving.`
-    );
-  } else if (tone === "bad") {
-    headline = tr(
-      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 효율 악화 중입니다.`,
-      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is worsening.`
-    );
-  } else {
-    headline = tr(
-      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 큰 변화 없습니다.`,
-      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is roughly flat.`
-    );
-  }
+  // Describe the measured change once; colour/tone is a separate operational signal.
+  const change = dEff == null ? null : (Math.abs(dEff) * 100).toFixed(1);
+  const headline = dEff == null
+    ? tr(`${period} ${effLabel}의 변화율을 계산할 수 없습니다.`, `The ${effLabel} change cannot be calculated for the ${period}.`)
+    : Math.abs(dEff) < 0.0005
+      ? tr(`${period} ${effLabel}은 직전 기간과 거의 같습니다.`, `${effLabel} is almost unchanged over the ${period}.`)
+      : tr(`${period} ${effLabel}이 ${change}% ${dEff > 0 ? "올랐습니다" : "내렸습니다"}.`,
+        `${effLabel} ${dEff > 0 ? "rose" : "fell"} ${change}% over the ${period}.`);
 
   const points = [];
   const keyPoints = [];

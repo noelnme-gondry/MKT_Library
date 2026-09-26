@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef, useState } from "react";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 import { fmtCurrency, fmtNum } from "@/utils/format";
 
@@ -36,6 +36,21 @@ function divergingStyle(value, max) {
   return { "--bar-start": `${value >= 0 ? 50 : 50 - size}%`, "--bar-size": `${size}%` };
 }
 
+function FigureRows({ rows, limit = 8, className, locale, children }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  const visibleRows = expanded ? rows : rows.slice(0, limit);
+  return <>
+    {rows.length > limit && <p className="result-chart__coverage">{tr(locale,
+      `전체 ${rows.length}개 중 ${visibleRows.length}개 표시`,
+      `Showing ${visibleRows.length} of ${rows.length}`)}</p>}
+    <ul id={id} className={className}>{visibleRows.map(children)}</ul>
+    {rows.length > limit && <button type="button" className="btn ghost result-chart__expand" data-figure-skip="" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(!expanded)}>
+      {expanded ? tr(locale, "주요 항목만 보기", "Show fewer") : tr(locale, `전체 ${rows.length}개 보기`, `Show all ${rows.length}`)}
+    </button>}
+  </>;
+}
+
 /** 5-21 성과 변동: 직전 → 비중 변화 → 효율 변화 → 최근 다리 + 채널별 두 성분. */
 export function ResultMixRate({ visualization, locale, currency, fallback = null }) {
   const options = visualization.options || {};
@@ -61,17 +76,17 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
       <li data-tone={costTone(rateTotal)}><span>{parts[1].label}</span><b>{signedMoney(rateTotal, currency)}</b></li>
       <li><span>{tr(locale, `최근 ${metric}`, `Recent ${metric}`)}</span><b>{end != null ? money(end, currency) : "—"}</b></li>
     </ol>
-    <ul className="result-split">
-      {rows.slice(0, 6).map((row) => <li key={row.entity}>
+    <FigureRows rows={rows} limit={6} locale={locale} className="result-split">
+      {(row) => <li key={row.entity}>
         <div className="result-split__head"><strong>{row.entity}</strong><span className="tnum" data-tone={costTone(row.contribution)}>{signedMoney(row.contribution, currency)}</span></div>
         {parts.map((part) => <div className={`result-split__bar is-${part.key}`} key={part.key}>
           <span>{part.label}</span>
           <div className="result-diverging" aria-hidden="true"><i style={divergingStyle(row[part.key], max) || undefined} /></div>
           <b className="tnum">{signedMoney(row[part.key], currency)}</b>
         </div>)}
-      </li>)}
-    </ul>
-    <figcaption>{tr(locale, `가운데 선 오른쪽은 ${metric}를 올린 쪽, 왼쪽은 낮춘 쪽입니다. `, `Right of the centre line raised ${metric}; left lowered it. `)}{parts.map((part) => `${part.label}: ${part.hint}`).join(" · ")}</figcaption>
+      </li>}
+    </FigureRows>
+    <figcaption><p>{tr(locale, `오른쪽은 ${metric} 상승, 왼쪽은 하락에 기여한 값입니다.`, `Values on the right raised ${metric}; values on the left lowered it.`)}</p>{parts.map(part => <p key={part.key}><strong>{part.label}</strong>: {part.hint}</p>)}</figcaption>
   </figure>;
 }
 
@@ -95,8 +110,8 @@ export function ResultUnitCostGap({ visualization, locale, currency, fallback = 
   // 0~1 비율로 넘기고 CSS가 점 크기만큼 안쪽으로 줄여 놓는다 — 끝의 점이 잘리지 않게.
   const at = (value) => Math.max(0, Math.min(1, value / max));
   return <figure className="result-chart result-gap" aria-label={visualization.question}>
-    <ul>
-      {rows.slice(0, 8).map((row) => {
+    <FigureRows rows={rows} limit={8} locale={locale}>
+      {(row) => {
         const [ko, en, tone] = SATURATION_LABEL[row.verdict] || ["적정", "Steady", "flat"];
         const low = Math.min(row.average, row.marginal);
         const high = Math.max(row.average, row.marginal);
@@ -109,8 +124,8 @@ export function ResultUnitCostGap({ visualization, locale, currency, fallback = 
           </div>
           <p className="tnum">{tr(locale, "평균", "Average")} {money(row.average, currency)} → {tr(locale, "한계", "Marginal")} {money(row.marginal, currency)}</p>
         </li>;
-      })}
-    </ul>
+      }}
+    </FigureRows>
     <figcaption><i className="result-gap__dot is-average" /> {tr(locale, `평균 ${metric}`, `Average ${metric}`)} <i className="result-gap__dot is-marginal" /> {tr(locale, `한계 ${metric} — 지금보다 조금 더 쓸 때 한 건의 단가`, `Marginal ${metric} — the unit cost of spending a little more`)}</figcaption>
   </figure>;
 }
@@ -129,8 +144,8 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
   if (!(max > 0)) return fallback;
   const size = (value) => `${Math.max(0, ((value || 0) / max) * 100)}%`;
   return <figure className="result-chart result-shift" aria-label={visualization.question}>
-    <ul>
-      {rows.slice(0, 8).map((row) => {
+    <FigureRows rows={rows} limit={8} locale={locale}>
+      {(row) => {
         const delta = row.current != null && row.next != null ? row.next - row.current : null;
         return <li key={row.entity}>
           <div className="result-shift__head"><strong>{row.entity}</strong><span className="tnum">{signedMoney(delta, currency)}</span></div>
@@ -140,8 +155,8 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
           </div>
           <p className="tnum">{tr(locale, "지금", "Now")} {row.current != null ? money(row.current, currency) : "—"} → {tr(locale, "바꾼 안", "Plan")} {row.next != null ? money(row.next, currency) : "—"}</p>
         </li>;
-      })}
-    </ul>
+      }}
+    </FigureRows>
     <figcaption><i className="result-shift__key is-current" /> {tr(locale, "지금 하루 예산", "Daily budget now")} <i className="result-shift__key is-next" /> {tr(locale, "바꾼 안의 하루 예산", "Daily budget in the plan")}</figcaption>
   </figure>;
 }
@@ -154,14 +169,14 @@ export function ResultVifThreshold({ visualization, locale, fallback = null }) {
   const rows = (visualization.data || []).map((row) => ({
     entity: row.entity,
     vif: row.vif === Infinity || row.isInfinite === true ? Infinity : finite(row.vif),
-  }));
+  })).sort((a, b) => (b.vif ?? -Infinity) > (a.vif ?? -Infinity) ? 1 : (b.vif ?? -Infinity) < (a.vif ?? -Infinity) ? -1 : 0);
   if (!rows.length || !Number.isFinite(warn) || !Number.isFinite(severe)) return fallback;
   const top = Math.max(severe * 10, ...rows.map((row) => (Number.isFinite(row.vif) ? row.vif : 0)));
   const at = (value) => (value === Infinity ? 100 : Math.max(0, Math.min(100, (Math.log10(Math.max(1, value)) / Math.log10(top)) * 100)));
   const toneOf = (value) => (value == null ? "muted" : value >= severe ? "worse" : value >= warn ? "caution" : "better");
   return <figure className="result-chart result-vif" aria-label={visualization.question}>
-    <ul>
-      {rows.slice(0, 8).map((row) => <li key={row.entity}>
+    <FigureRows rows={rows} limit={8} locale={locale}>
+      {(row) => <li key={row.entity}>
         <strong>{row.entity}</strong>
         <div className="result-vif__track" aria-hidden="true">
           <i className="result-vif__bar" data-tone={toneOf(row.vif)} style={{ "--vif-size": `${row.vif == null ? 0 : Math.max(1, at(row.vif))}%` }} />
@@ -169,8 +184,8 @@ export function ResultVifThreshold({ visualization, locale, fallback = null }) {
           <i className="result-vif__line is-severe" style={{ "--vif-at": `${at(severe)}%` }} />
         </div>
         <b className="tnum" data-tone={toneOf(row.vif)}>{row.vif == null ? tr(locale, "계산 불가", "Not computable") : row.vif === Infinity ? "∞" : fmtNum(row.vif, row.vif < 10 ? 1 : 0)}</b>
-      </li>)}
-    </ul>
+      </li>}
+    </FigureRows>
     <figcaption>{tr(locale, `세로선: 주의 ${warn} · 심각 ${severe}. 로그 눈금이라 오른쪽으로 갈수록 급격히 커집니다.`, `Lines: caution ${warn} · severe ${severe}. Log scale — values grow quickly to the right.`)}</figcaption>
   </figure>;
 }
@@ -259,14 +274,15 @@ export const RESULT_CHART_VARIANTS = Object.freeze({
 /** 도구 화면의 결론 카드 바로 아래에 두는 핵심 그림. 결과 작업대와 같은 사양(`lib/assistant/coreFigures`)과
  *  같은 그림을 써서, 결과 화면에서 도구로 들어가도 같은 분석이 같은 모양으로 보인다. 그릴 값이 없으면 아무것도 그리지 않는다.
  *  `downloadName`을 주면 제목 줄에 PNG 받기(Pro)가 붙는다 — 캔버스 차트를 걷어낸 자리의 다운로드를 잇는다. */
-export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downloadName = null }) {
+export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downloadName = null, embedded = false }) {
   const holderRef = useRef(null);
   const Chart = figure && RESULT_CHART_VARIANTS[figure.options?.variant];
   if (!Chart || !figure.data?.length) return null;
   const headingId = `tool-core-figure-${figure.id}`;
-  return <section className="block tool-core-figure" id={headingId} aria-labelledby={`${headingId}-title`}>
+  const Heading = embedded ? "h3" : "h2";
+  return <section className={`tool-core-figure${embedded ? " tool-core-figure--embedded" : " block"}`} id={headingId} aria-labelledby={`${headingId}-title`}>
     <div className="section-head">
-      <h2 className="section-title" id={`${headingId}-title`}>{figure.question}</h2>
+      <Heading className="section-title" id={`${headingId}-title`}>{figure.question}</Heading>
       {downloadName && <FigurePngButton target={() => holderRef.current?.querySelector(".result-chart")} fileName={downloadName} locale={locale} />}
     </div>
     <div ref={holderRef}><Chart visualization={figure} locale={locale} currency={currency} /></div>

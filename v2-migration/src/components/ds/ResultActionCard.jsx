@@ -63,6 +63,7 @@ export default function ResultActionCard({
   stats = [],
   download = null,
   controls = null,
+  coreFigure = null,
   analysisDetails = null,
   analysisMeta = null,
   children,
@@ -319,6 +320,8 @@ export default function ResultActionCard({
           ))}
         </div>
       )}
+
+      {coreFigure}
 
       {visiblePoints.length > 0 && (
         <ul className="result-action-card__points">
