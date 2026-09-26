@@ -11798,7 +11798,10 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .result-periods dt { color: var(--text-secondary); min-width: 5em; }
 .result-periods dd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; font-variant-numeric: tabular-nums; }
 .result-periods time { white-space: nowrap; }
-.result-action-card .tool-core-figure--embedded { min-width: 0; margin: 20px 0; padding: 16px 0; border: 0; border-block: 1px solid var(--border); border-radius: 0; background: transparent; }
+.result-action-card .tool-core-figure--embedded { min-width: 0; margin: 20px 0 20px 47px; padding: 16px 0; border: 0; border-block: 1px solid var(--border); border-radius: 0; background: transparent; }
+@media (max-width: 768px) {
+  .result-action-card .tool-core-figure--embedded { margin-left: 0; }
+}
 .result-action-card .tool-core-figure--embedded .section-title { margin: 0; font-size: var(--fs-md); line-height: 1.5; }
 .result-chart__coverage { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); }
 .result-chart__expand { justify-self: start; min-height: 44px; }
