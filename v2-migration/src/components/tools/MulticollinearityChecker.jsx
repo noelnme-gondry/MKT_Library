@@ -105,6 +105,11 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
     <CsvUploader toolId="5-25" locale={locale} />
     {analyzed && <>
       <div id="vif-result"><ResultActionCard
+        coreFigure={<ToolCoreFigure embedded
+          figure={vifFigure({ rows: vifRows.map((row) => ({ entity: row.channel, vif: row.vif })), thresholds: [DIAG_THRESHOLDS.vifWarn, DIAG_THRESHOLDS.vifSevere], locale })}
+          locale={locale}
+          downloadName="vif_by_channel"
+        />}
         tone={verdict === "ok" ? "good" : verdict === "warn" ? "neutral" : "bad"}
         title={tr("판정", "Verdict")}
         headline={resultHeadline}
@@ -145,12 +150,6 @@ export default function MulticollinearityChecker({ locale = "ko" } = {}) {
           { icon: "⬇", analyticsType: "csv", label: tr("채널쌍 상관 (CSV)", "Channel-pair correlation (CSV)"), desc: tr("채널쌍별 상관과 판정 근거 숫자", "Correlation and the numbers behind each verdict"), onSelect: downloadCorrelationCsv },
         ]} />}
       /></div>
-      {/* 결과 작업대와 같은 핵심 그림 — 채널별 VIF를 엔진 기준선(주의·심각)과 함께, 로그 눈금 */}
-      <ToolCoreFigure
-        figure={vifFigure({ rows: vifRows.map((row) => ({ entity: row.channel, vif: row.vif })), thresholds: [DIAG_THRESHOLDS.vifWarn, DIAG_THRESHOLDS.vifSevere], locale })}
-        locale={locale}
-        downloadName="vif_by_channel"
-      />
       <section className="block"><h2 className="section-title">{tr("채널별 VIF", "VIF by channel")}</h2><DataTable columns={[{ key: "channel", label: tr("채널", "Channel") }, { key: "vif", label: "VIF", align: "right", fmt: (value) => Number.isFinite(value) ? value.toFixed(2) : value === Infinity ? "∞" : tr("계산 불가", "Not computable") }]} rows={vifRows} rowKey={(row) => row.channel} emptyText={tr("계산 가능한 VIF가 없습니다.", "No computable VIF values.")} /></section>
       <section className="block">
         <h2 className="section-title">{tr("가장 함께 움직인 채널쌍", "Most correlated channel pairs")}</h2>

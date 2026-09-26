@@ -11790,3 +11790,31 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 /* 생성형 UI 티 계약(A4, 2026-09-24): 알약 모양은 누를 수 있는 것에만. 누를 수 없는 상태 표식은
    글자 + 색 하나로 둔다 — e2e/design-rules의 pills 규칙이 렌더된 화면에서 잰다. */
 :is(span, div, li, strong, em, small).ab-pill:not(label *, button *, a *, [role="button"] *, [role="radio"] *) { background: none; border-color: transparent; padding-inline: 0; }
+
+@layer app {
+/* Results read as one report: conclusion, figure, action, then save/share. */
+.result-periods { display: grid; gap: 4px; margin: 8px 0 0; font-size: var(--fs-sm); }
+.result-periods > div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.result-periods dt { color: var(--text-secondary); min-width: 5em; }
+.result-periods dd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; font-variant-numeric: tabular-nums; }
+.result-periods time { white-space: nowrap; }
+.result-action-card .tool-core-figure--embedded { min-width: 0; margin: 20px 0 20px 47px; padding: 16px 0; border: 0; border-block: 1px solid var(--border); border-radius: 0; background: transparent; }
+@media (max-width: 768px) {
+  .result-action-card .tool-core-figure--embedded { margin-left: 0; }
+}
+.result-action-card .tool-core-figure--embedded .section-title { margin: 0; font-size: var(--fs-md); line-height: 1.5; }
+.result-chart__coverage { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); }
+.result-chart__expand { justify-self: start; min-height: 44px; }
+.result-chart figcaption p { margin: 0; }
+.result-chart figcaption p + p { margin-top: 4px; }
+.app :is(.workspace-next-action, .dochi-workspace__result, .result-action-card, .dochi-weekly-bridge, .result-chart) :is(p, h2, h3, h4, li) { word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty; }
+.app :is(.workspace-next-action, .result-action-card) :is(h2, h3) { text-wrap: balance; }
+.app .dochi-workspace__result-caveats { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); font-size: var(--fs-sm); color: var(--text-secondary); }
+.app .dochi-workspace__result-caveats p { margin: 0; }
+.app .dochi-workspace__result-caveats p + p { margin-top: 8px; }
+.app .decision-review-preview { padding-block: 16px; }
+.app .decision-review-preview p { margin: 6px 0; }
+.app .decision-review-preview__terms { font-size: var(--fs-sm); color: var(--text-secondary); }
+.app .analysis-metric-picker button { min-width: 0; }
+
+}

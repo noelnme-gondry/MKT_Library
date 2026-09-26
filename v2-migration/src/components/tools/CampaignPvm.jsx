@@ -15,6 +15,7 @@ import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggreg
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { mixRateFigure } from "@/lib/assistant/coreFigures";
 import { downloadElementAsPNG } from "@/utils/figureImage";
@@ -527,6 +528,19 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const [weekBasis, setWeekBasis] = useSavedToolInput("5-21", "weekBasis", "calendar");
   const [lookback, setLookback] = useSavedToolInput("5-21", "lookback", 1);
   const [periodOverride, setPeriodOverride] = useState(null);
+  const incomingComparison = analysisHandoff?.source === "dochi" && analysisHandoff.targetToolId === "5-21"
+    && analysisHandoff.sourceRows === csvData.raw ? analysisHandoff : null;
+  const [appliedComparison, setAppliedComparison] = useState(null);
+  // Same-data drill-down uses the result's exact periods and metric, including when a saved setup exists.
+  if (incomingComparison !== appliedComparison) {
+    setAppliedComparison(incomingComparison);
+    setPeriodOverride(incomingComparison ? { periodA: incomingComparison.periodA, periodB: incomingComparison.periodB } : null);
+    if (incomingComparison) {
+      setMetricOverride(incomingComparison.metric);
+      setWeekBasis("rolling7");
+      setLookback(1);
+    }
+  }
   const dashboardPeriodOverride = useMemo(() => {
     if (!dashboardFilter.dateStart || !dashboardFilter.dateEnd) return null;
     const comparison = dashboardFilter.compareEnabled && dashboardFilter.comparisonStart && dashboardFilter.comparisonEnd
@@ -835,6 +849,17 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     ? tr("믹스 이동", "mix shift")
     : tr("단가 변화", "rate change");
   const isDecisionCauseAdverse = (decisionCause?.contribution || 0) > 0;
+  const decisionAction = decisionCause
+    ? isDecisionCauseAdverse
+      ? tr(
+        `${decisionCause.key || unspec}의 ${decisionCauseKind} 구성요소를 점검하고 한 가지 교정만 시험한다`,
+        `Inspect the ${decisionCauseKind} component for ${decisionCause.key || unspec} and test one corrective change`,
+      )
+      : tr(
+        `${decisionCause.key || unspec}의 유리한 관측 기여와 함께 있었던 운영 조건을 기록하고 다음 기간에 재현되는지 확인한다`,
+        `Record the operating conditions observed alongside ${decisionCause.key || unspec}'s favorable contribution and check whether it repeats next period`,
+      )
+    : tr("다음 비교기간에도 같은 기준으로 변동을 다시 분해한다", "Run the same decomposition again for the next comparison window");
   const pvmDeltaPct = ready && cache.CPA1
     ? (cache.deltaCpa / cache.CPA1) * 100
     : null;
@@ -1085,7 +1110,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         toc={buildPvmToc(C, locale)}
         stickyFilter={<DashboardFilterBar locale={locale} />}
       >
-      {analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
+      {analysisHandoff?.source !== "dochi" && analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
         <div className="callout info" style={{ marginBottom: "12px" }}>
           <div className="body">
             <strong>{tr("이상탐지에서 비교 맥락을 가져왔습니다.", "Comparison context received from Anomaly Detection.")}</strong>
@@ -1117,7 +1142,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <section
         className="block"
         id="s-pvm-result"
-        style={{ background: "transparent", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}
+        style={{ background: "transparent", border: 0, padding: 0 }}
       >
         <div className="section-head">
           <h2 className="section-title">{tr("한눈에 보기", "Overview")}</h2>
@@ -1135,7 +1160,12 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             />
           )}
           {effectivePeriodOverride ? (
-            <span className="analysis-control-group__label">{tr("날짜 필터의 비교 기간 적용 중", "Using the date filter comparison")}</span>
+            <>
+              <span className="analysis-control-group__label">{periodOverride && incomingComparison
+                ? tr("요약과 같은 기간", "Same periods as the summary")
+                : tr("선택한 비교 기간", "Selected comparison periods")}</span>
+              {periodOverride && <button type="button" className="btn ghost" onClick={() => setPeriodOverride(null)}>{tr("기간 다시 선택", "Change periods")}</button>}
+            </>
           ) : <>
             <PillGroup
               label={tr("기준 주", "Week basis")}
@@ -1168,11 +1198,23 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         </div>
 
         {periodCaption && (
-          <p style={{ margin: "8px 0 0", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{periodCaption}</p>
+          <ComparisonPeriods locale={locale} periodA={{ start: cache.p1Range[0], end: cache.p1Range[1] }} periodB={{ start: cache.p2Range[0], end: cache.p2Range[1] }} />
         )}
 
         {ready ? <>
           <ResultActionCard
+            coreFigure={ready && <ToolCoreFigure embedded
+              figure={mixRateFigure({
+                rows: (cache.layer1 || []).map((e) => ({ entity: e.key || unspec, mix: e.mix, rate: e.rate, contribution: e.contribution })),
+                start: cache.CPA1,
+                end: cache.CPA2,
+                metric: ml,
+                locale,
+              })}
+              locale={locale}
+              currency={cur === "usd" ? "USD" : "KRW"}
+              downloadName="pvm_mix_rate"
+            />}
             toolId={pvmManifest.toolId}
             analysisKey={analysisKey}
             analysisType="pvm"
@@ -1190,17 +1232,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · 최대 관측 기여 ${decisionCause.key || unspec}` : ""}`,
                 `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · largest observed contribution: ${decisionCause.key || unspec}` : ""}`,
               ),
-              action: decisionCause
-                ? isDecisionCauseAdverse
-                  ? tr(
-                    `${decisionCause.key || unspec}의 ${decisionCauseKind} 구성요소를 점검하고 한 가지 교정만 시험한다`,
-                    `Inspect the ${decisionCauseKind} component for ${decisionCause.key || unspec} and test one corrective change`,
-                  )
-                  : tr(
-                    `${decisionCause.key || unspec}의 유리한 관측 기여와 함께 있었던 운영 조건을 기록하고 다음 기간에 재현되는지 확인한다`,
-                    `Record the operating conditions observed alongside ${decisionCause.key || unspec}'s favorable contribution and check whether it repeats next period`,
-                  )
-                : tr("다음 비교기간에도 같은 기준으로 변동을 다시 분해한다", "Run the same decomposition again for the next comparison window"),
+              action: decisionAction,
               metric: ml,
               baseline: pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined),
               sourcePeriod: periodCaption,
@@ -1221,7 +1253,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             }}
             stats={[
               { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
-              { label: tr("가장 큰 원인", "Top cause"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
+              { label: tr("가장 큰 기여", "Largest contribution"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
               { label: tr("분석 채널", "Channels"), value: channelRows.length },
             ]}
             workbookExport={() => ({
@@ -1245,13 +1277,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 limitations: [tr("관측 연관 분해이며 인과 효과가 아닙니다.", "Observed association decomposition; not a causal effect.")],
               },
             })}
-            points={pvmTopCauses.map((cause, index) => ({
-              text: tr(
-                `${index + 1}위 ${cause.key || unspec} · ${ml} ${cause.contribution >= 0 ? "+" : ""}${pvmFmtMoney(cause.contribution, cur)}`,
-                `#${index + 1} ${cause.key || unspec} · ${ml} ${cause.contribution >= 0 ? "+" : ""}${pvmFmtMoney(cause.contribution, cur)}`,
-              ),
-              cls: cause.contribution > 0 ? "bad" : cause.contribution < 0 ? "good" : "muted",
-            }))}
+            points={[{ label: tr("다음 행동", "Next action"), text: decisionAction }]}
             download={(
               <DownloadHub
                 toolId={pvmManifest.toolId}
@@ -1283,8 +1309,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               />
             )}
           >
-            <section data-information-section="" className="result-action-card__details">
-              <header data-information-heading="">{tr("추가 변동 근거 보기", "View additional variance evidence")}</header>
+            <details className="result-action-card__details">
+              <summary>{tr("추가 변동 근거", "Additional variance evidence")}</summary>
               {(upMover || downMover) && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
                   {upMover && moverCard(upMover, "up")}
@@ -1296,7 +1322,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 <div className="ico">!</div>
                 <div className="body" style={{ fontSize: "var(--fs-xs)" }}>{C.causationCallout}</div>
               </div>
-            </section>
+            </details>
           </ResultActionCard>
           {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
         </> : (
@@ -1311,20 +1337,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           </div>
         )}
       </section>
-
-      {/* 결과 작업대와 같은 핵심 그림 — 직전 → 비중 → 효율 → 최근 다리와 채널별 두 성분 */}
-      {ready && <ToolCoreFigure
-        figure={mixRateFigure({
-          rows: (cache.layer1 || []).map((e) => ({ entity: e.key || unspec, mix: e.mix, rate: e.rate, contribution: e.contribution })),
-          start: cache.CPA1,
-          end: cache.CPA2,
-          metric: ml,
-          locale,
-        })}
-        locale={locale}
-        currency={cur === "usd" ? "USD" : "KRW"}
-        downloadName="pvm_mix_rate"
-      />}
 
       {/* §1 스코어카드 */}
       <section className="block" id="s-pvm-scorecard">
@@ -1380,7 +1392,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 </div>
               );
             })()}
-            <p style={{ marginTop: "8px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>{periodCaption}</p>
           </>
         ) : (
           <p className="muted" style={{ fontSize: "var(--fs-xs)" }}>{tr("분석 가능한 데이터가 없습니다.", "No analyzable data.")}</p>

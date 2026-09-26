@@ -20,7 +20,7 @@ function copyStyle(computed, target, { textOnly = false } = {}) {
     if (textOnly && TEXT_BOX_PROPS.has(name)) continue;
     css += `${name}:${computed.getPropertyValue(name)};`;
   }
-  if (textOnly) css += "white-space:nowrap;";
+  // Keep the measured wrapping policy: forcing captions onto one line clips narrow exports.
   target.setAttribute("style", css);
 }
 

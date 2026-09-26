@@ -33,3 +33,13 @@ describe("HTML 핵심 그림 → SVG", () => {
     expect(section.querySelector("button")).not.toBeNull();
   });
 });
+
+
+it("preserves wrapping for prose while retaining explicit no-wrap for numeric atoms", () => {
+  const figure = document.createElement("figure");
+  figure.innerHTML = '<p style="white-space:normal">A long caption that must wrap in the exported figure.</p><b style="white-space:nowrap">₩123,456</b>';
+  document.body.appendChild(figure);
+  const markup = buildFigureSvgMarkup(figure, { width: 240, height: 160, background: "#ffffff" });
+  expect(markup).toMatch(/<p style="[^"]*white-space:\s*normal/);
+  expect(markup).toMatch(/<b style="[^"]*white-space:\s*nowrap/);
+});

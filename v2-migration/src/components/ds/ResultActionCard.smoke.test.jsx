@@ -203,7 +203,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
     // 예시 데이터에서도 저장 단계가 있다는 사실과 조건은 보인다(B안) — 저장은 하지 않는다.
     const preview = view.container.querySelector(".decision-review-preview");
     expect(preview).toBeTruthy();
-    expect(preview.textContent).toContain("저장하지 않습니다");
+    expect(preview.textContent).toContain("예시 결과는 저장되지 않습니다");
     expect(preview.textContent).toContain("Pro(7일 체험 포함)");
     expect(preview.querySelector('a[href="/start"]')).toBeTruthy();
     expect(preview.querySelector("form, input, textarea")).toBeNull();
@@ -349,4 +349,16 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("never-send-this");
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("another-private-value");
   });
+});
+
+it("places the core figure before actions and the sample save invitation", () => {
+  useAppStore.setState({ csvData: { raw: [{}], headers: [], mapping: {}, importSource: "demo" } });
+  const { container } = render(<ResultActionCard toolId="5-21" headline="Conclusion" analysisBasis={false}
+    points={[{ text: "Review the change" }]} coreFigure={<figure aria-label="Core evidence">Measured values</figure>} />);
+  const figure = container.querySelector("figure");
+  const points = container.querySelector(".result-action-card__points");
+  const preview = container.querySelector(".decision-review-preview");
+  expect(preview).toBeTruthy();
+  expect(figure.compareDocumentPosition(points) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(points.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
