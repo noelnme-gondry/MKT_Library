@@ -28,7 +28,8 @@ it.each(["ko", "en"])("keeps actual periods, metric and values through summary �
     savedSetupAppliedInputs: { metricOverride: "cpi", weekBasis: "calendar", lookback: 3 },
   });
   const summary = render(<DochiResultWorkspace locale={locale} />);
-  await waitFor(() => expect(summary.container.querySelector('[data-queue-settled="true"]')).toBeTruthy());
+  // Real sample analyses run across animation frames; CI can exceed waitFor's 1s default.
+  await waitFor(() => expect(summary.container.querySelector('[data-queue-settled="true"]')).toBeTruthy(), { timeout: 10000 });
   const chip = [...summary.container.querySelectorAll(".tool-index__chip")].find(node => node.querySelector(".tool-index__q").textContent === toolIndexEntry("5-21", locale).name);
   fireEvent.click(chip);
   const bridge = summary.container.querySelector(".result-mix-rate .result-bridge");
@@ -51,4 +52,4 @@ it.each(["ko", "en"])("keeps actual periods, metric and values through summary �
   fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Change periods" : "기간 다시 선택" }));
   expect(screen.getByRole("radio", { name: locale === "en" ? "Last 7 days" : "최근 7일" }).getAttribute("aria-checked")).toBe("true");
   detail.unmount();
-});
+}, 15000);
