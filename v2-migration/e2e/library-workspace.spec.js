@@ -119,7 +119,9 @@ for (const locale of ["ko", "en"]) {
     await page.goto(prefix || "/");
     await page.locator(".dc-action-route--sample").click();
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
-    const expected = { "5-2": ".dochi-workspace__period-comparison", "5-21": ".result-mix-rate", "5-22": ".result-gap", "5-3": ".result-shift" };
+    // 먼저 볼 분석(5-2)의 그림은 결론 밑에 바로 있다 — 누르지 않아도 보이고, 펼친 카드에서는 다시 그리지 않는다.
+    await expect(page.locator(".workspace-next-action .dochi-workspace__period-comparison")).toBeVisible();
+    const expected = { "5-21": ".result-mix-rate", "5-22": ".result-gap", "5-3": ".result-shift" };
     for (const [toolId, selector] of Object.entries(expected)) {
       const chip = page.locator(".tool-index__stage--ready .tool-index__chip").filter({ hasText: toolIndexEntry(toolId, locale).name });
       await chip.click();

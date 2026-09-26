@@ -11,6 +11,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { downloadXlsx } from "@/utils/download";
 import * as XLSX from "xlsx";
 import { sourceCurrencyOf } from "@/utils/format";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const METRICS = [
   { key: "installs", ko: "설치", en: "Installs", kind: "count" },
@@ -268,8 +269,8 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
               <span>{locale === "en" ? `coverage: ${result.years.map((year) => `${year} ${result.coverage?.[year] || 0}`).join(" · ")}` : `관측 구간: ${result.years.map((year) => `${year} ${result.coverage?.[year] || 0}${activeGrain === "week" ? "주" : "개월"}`).join(" · ")}`}</span>
             </div>
             <div className="seasonality-grid">
-              <article className="chart-container seasonality-chart"><h3>{detrend ? (locale === "en" ? "Trend-adjusted pattern by year" : "추세 제외 후 연도별 패턴") : (locale === "en" ? "Actual values by year" : "연도별 실제값")}</h3><canvas ref={overlayRef} /></article>
-              <article className="chart-container seasonality-chart"><h3>{locale === "en" ? "Average seasonal index" : "평균 시즈널리티 인덱스"}</h3><canvas ref={indexRef} /></article>
+              <article className="chart-container seasonality-chart"><div className="seasonality-chart__head"><h3>{detrend ? (locale === "en" ? "Trend-adjusted pattern by year" : "추세 제외 후 연도별 패턴") : (locale === "en" ? "Actual values by year" : "연도별 실제값")}</h3><FigurePngButton target={overlayRef} fileName="seasonality_by_year" locale={locale} /></div><canvas ref={overlayRef} /></article>
+              <article className="chart-container seasonality-chart"><div className="seasonality-chart__head"><h3>{locale === "en" ? "Average seasonal index" : "평균 시즈널리티 인덱스"}</h3><FigurePngButton target={indexRef} fileName="seasonality_index" locale={locale} /></div><canvas ref={indexRef} /></article>
             </div>
             <div className="seasonality-heatmap" aria-label={locale === "en" ? "Seasonality heatmap by year" : "연도별 시즈널리티 히트맵"}>
               <div className="seasonality-heatmap__title">{locale === "en" ? "Year × calendar period" : "연도 × 달력 구간"}</div>
@@ -284,7 +285,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
               </div>
             </div>
             <article className="chart-container seasonality-verify">
-              <h3>{locale === "en" ? "How the trend was removed (verification)" : "추세 제외 검증 — 어떻게 걷어냈나"}</h3>
+              <div className="seasonality-chart__head"><h3>{locale === "en" ? "How the trend was removed (verification)" : "추세 제외 검증 — 어떻게 걷어냈나"}</h3><FigurePngButton target={trendRef} fileName="seasonality_trend_check" locale={locale} /></div>
               <p className="seasonality-verify__note">{locale === "en"
                 ? "The dashed grey line is the centred moving-average trend (13 weeks / 5 months). The detrend index = actual ÷ trend × 100. Compare the two lines to see exactly what scale growth/decline was divided out."
                 : "회색 점선이 중앙 이동평균 추세선(주 13개 / 월 5개 구간)입니다. 추세 제외 인덱스 = 실제값 ÷ 추세선 × 100. 두 선을 비교하면 규모 성장·하락을 어떻게 걷어냈는지 그대로 확인할 수 있습니다."}</p>

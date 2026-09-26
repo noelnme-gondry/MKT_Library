@@ -227,8 +227,11 @@ describe("Dochi analysis workspace", () => {
     expect(document.querySelectorAll(".dochi-workspace__period-comparison li")).toHaveLength(1);
     fireEvent.click(metricButtons[0]);
     expect(metricButtons[0].getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(focus.getByText("전체 지표·정확한 수치 보기"));
-    expect(focus.getAllByRole("table").length).toBeGreaterThan(0);
+    // 핵심 그림은 결론 밑에 한 번만 있다 — 열어 본 분석 카드에서 다시 그리지 않는다.
+    expect(focus.queryByRole("img", { name: "직전 기간과 최근 기간 사이에 무엇이 변했는가?" })).toBeNull();
+    const conclusion = within(document.querySelector(".workspace-next-action"));
+    fireEvent.click(conclusion.getByText("전체 지표·정확한 수치 보기"));
+    expect(conclusion.getAllByRole("table").length).toBeGreaterThan(0);
   });
 
   it("keeps the decision reading order visible and detailed evidence collapsed", async () => {
@@ -242,6 +245,11 @@ describe("Dochi analysis workspace", () => {
     const decisionIndex = directChildren.findIndex((child) => child.classList.contains("workspace-next-action"));
     expect(judgmentIndex).toBe(-1); // A completed result replaces the preparation pitch.
     expect(contextIndex).toBeLessThan(decisionIndex);
+    // 결론 밑 핵심 그림은 누르지 않아도 보이고, 펼치기 버튼 대신 도구로 가는 링크 하나만 있다.
+    const next = directChildren[decisionIndex];
+    expect(next.querySelector(".workspace-next-action__figure")).toBeTruthy();
+    expect([...next.querySelectorAll("button")].map((button) => button.textContent)).toContain("도구에서 자세히 보기 →");
+    expect(next.textContent).not.toContain("근거와 실행 계획 보기");
     openAnalysis("5-2");
     const decision = container.querySelector(".dochi-workspace__result");
     expect(decision.querySelector(".dochi-workspace__decision-tape")).toBeTruthy();

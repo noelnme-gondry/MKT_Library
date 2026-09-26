@@ -5,7 +5,7 @@
 // the golden ANOMALY_MATH detector and renders a flagged time-series chart.
 // Mounts cover render + the chart effect; mocks live in vitest.smoke.setup.js.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AnomalyTab from "@/components/dashboard/AnomalyTab";
 
@@ -76,11 +76,11 @@ describe("AnomalyTab render smoke", () => {
     expect(document.getElementById("anomaly-chart")).toBeTruthy();
   });
 
-  it("exports the mounted chart from the visible PNG action", () => {
+  it("exports the mounted chart from the visible PNG action", async () => {
     seedWithData();
     render(<AnomalyTab />);
     useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
-    fireEvent.click(screen.getByRole("button", { name: "이상탐지 차트 PNG 다운로드" }));
-    expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly");
+    fireEvent.click(screen.getByRole("button", { name: "PNG 받기" }));
+    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly"));
   });
 });

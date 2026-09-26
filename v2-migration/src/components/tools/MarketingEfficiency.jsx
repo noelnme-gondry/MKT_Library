@@ -1,7 +1,6 @@
 "use client";
 
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
@@ -10,9 +9,8 @@ import PeriodSensitivityPanel from "@/components/ds/PeriodSensitivityPanel";
 import { saturationPeriodSensitivity } from "@/lib/analysis-results/periodSensitivity";
 import Chart from "@/utils/chartGlobals";
 import { ALLOC_MATH } from "@/utils/allocationMath";
-import { CHART_THEME, getCssVar, downloadChartAsPNG } from "@/utils/chartUtils";
+import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
-import { showToast } from "@/utils/toast";
 import {
   satActiveVerdict,
   satActiveIndex,
@@ -35,6 +33,7 @@ import { stripHtmlTags } from "@/lib/htmlText";
 import { sourceCurrencyOf } from "@/utils/format";
 import ScaleDecisionMap from "@/components/tools/ScaleDecisionMap";
 import MarginalEfficiencyGapChart from "@/components/tools/MarginalEfficiencyGapChart";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 // 우측 TOC — 실제 렌더되는 결과 섹션 순서와 동일.
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
@@ -382,15 +381,6 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   const activeStyle = { background: "var(--bg-2)", borderColor: "var(--text-1)", color: "var(--text-1)" };
 
   const selName = satState.selected || okRows[0]?.name || "curve";
-  const handlePngDownload = () => {
-    if (!requirePaidExport()) return;
-    if (!chartRef.current) {
-      showToast({ variant: "warn", title: tr("차트를 찾을 수 없음", "Chart not found"), body: "sat-curve-chart" });
-      return;
-    }
-    const safeName = String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
-    downloadChartAsPNG(chartRef.current, `sat_curve_${safeName}_${effectiveMetric}`);
-  };
 
   return (
     <ToolPageShell
@@ -725,13 +715,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
             </h2>
-            <button
-              className="ab-pill"
-              onClick={handlePngDownload}
-              title={tr("이 차트를 PNG로 다운로드 (테마 배경 합성)", "Download this chart as PNG (composited with theme background)")}
-            >
-              {tr("⬇ PNG", "⬇ PNG")}
-            </button>
+            <FigurePngButton target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
           </div>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
             {tr(

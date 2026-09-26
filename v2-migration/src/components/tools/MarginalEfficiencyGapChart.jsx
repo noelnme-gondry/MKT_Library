@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { buildMarginalEfficiencyGap } from "@/utils/marginalEfficiencyGap";
@@ -36,9 +38,10 @@ export default function MarginalEfficiencyGapChart({
   const view = useMemo(() => buildMarginalEfficiencyGap(rows, metric), [rows, metric]);
   const grainLabel = grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널");
   const midpoint = view.domainMax / 2;
+  const sectionRef = useRef(null);
 
   return (
-    <section className="block marginal-gap" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
+    <section ref={sectionRef} className="block marginal-gap" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
       <header className="marginal-gap__head">
         <div>
           <h2 className="section-title" id="marginal-gap-title">{isEn
@@ -52,6 +55,9 @@ export default function MarginalEfficiencyGapChart({
           <span><i className="is-average" aria-hidden="true" />{isEn ? "Average" : "평균"}</span>
           <span><i className="is-marginal" aria-hidden="true" />{isEn ? "Marginal" : "한계"}</span>
         </div>
+        {view.points.length > 0 && <div className="marginal-gap__download" data-figure-skip="">
+          <FigurePngButton target={sectionRef} fileName={`marginal_gap_${grain}_${metric}`} locale={locale} />
+        </div>}
       </header>
 
       {view.points.length === 0 ? (
@@ -105,7 +111,7 @@ export default function MarginalEfficiencyGapChart({
                   <span className={`marginal-gap__dot is-marginal${point.isUnbounded ? " is-unbounded" : ""}`} aria-hidden="true">
                     {point.isUnbounded ? "∞" : ""}
                   </span>
-                  <span className="marginal-gap__tip" data-side={marginalPos > 55 ? "left" : "right"} aria-hidden="true">
+                  <span className="marginal-gap__tip" data-side={marginalPos > 55 ? "left" : "right"} aria-hidden="true" data-figure-skip="">
                     {isEn ? "Average" : "평균"} {formatMetric(point.average, metric, currency)}
                     {" → "}
                     {isEn ? "marginal" : "한계"} {formatMetric(point.marginal, metric, currency)}

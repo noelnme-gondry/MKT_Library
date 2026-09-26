@@ -1,5 +1,4 @@
 "use client";
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import InfoPopover from "@/components/ds/InfoPopover";
 import PillGroup from "@/components/ds/PillGroup";
@@ -9,12 +8,13 @@ import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
-import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
 import { fmtCurrency, sourceCurrencyOf } from "@/utils/format";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import { buildAttributionCache } from "@/utils/anomalyAttribution";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 // 지표 뷰 설정 scope — 이상탐지 표의 지표 컬럼 표시/순서.
 const ANOMALY_TABLE_SCOPE = "5-2:anomaly-table";
@@ -317,14 +317,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         <div className="alloc-card" style={{ margin: "10px 0" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{tr("시계열 + 이상 표기", "Time series + anomaly markers")}</div>
-            <button
-              className="ab-pill"
-              type="button"
-              aria-label={tr("이상탐지 차트 PNG 다운로드", "Download anomaly chart as PNG")}
-              onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "anomaly")}
-            >
-              ⬇ PNG
-            </button>
+            <FigurePngButton target={chartRef} fileName="anomaly" locale={locale} />
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="anomaly-chart" ref={chartRef}></canvas>

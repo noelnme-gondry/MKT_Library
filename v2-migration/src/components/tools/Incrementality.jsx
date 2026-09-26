@@ -26,6 +26,7 @@ import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticPa
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import { showToast } from "@/utils/toast";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const num = (v) => {
   if (v == null || String(v).trim() === "") return NaN;
@@ -686,7 +687,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {series && isWindowOrderValid && (
         <div style={{ marginTop: "14px" }}>
-          <h3 style={{ fontSize: "var(--fs-md)", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
+          <FigureHead level={3} title={tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")} target={() => document.getElementById("incr-suppression-chart")} fileName="incrementality_holdout_daily" locale={locale} />
           <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
@@ -1118,6 +1119,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               <Stat label={tr("유의성", "Significance")} value={!hasSignificance ? tr("추정 불가", "Not estimable") : sig ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)} />
             </div>
           </div>
+          <FigureHead target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
           <div className="callout" style={{ marginTop: "10px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
             <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(

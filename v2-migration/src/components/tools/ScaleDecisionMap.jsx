@@ -1,6 +1,5 @@
 "use client";
 
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { useEffect, useMemo, useRef } from "react";
 
 import Chart from "@/utils/chartGlobals";
@@ -8,11 +7,11 @@ import {
   CHART_FONT_STACK,
   CHART_THEME,
   chartCommonOpts,
-  downloadChartAsPNG,
   getCssVar,
 } from "@/utils/chartUtils";
 import { fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { buildScaleDecisionMatrix } from "@/utils/scaleDecisionMatrix";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const ACTION_ORDER = ["scale", "maintain", "watch", "stop", "reduce"];
 
@@ -260,9 +259,7 @@ export default function ScaleDecisionMap({
             : `총비용과 전체 가중 ${metricLabel}을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
         </div>
         {matrix.points.length >= 2 && (
-          <button type="button" className="ab-pill" onClick={() => requirePaidExport() && downloadChartAsPNG(canvasRef.current, `scale_decision_${grain}_${metric}`)}>
-            {isEn ? "↓ PNG" : "↓ PNG"}
-          </button>
+          <FigurePngButton target={canvasRef} fileName={`scale_decision_${grain}_${metric}`} locale={locale} />
         )}
       </header>
 

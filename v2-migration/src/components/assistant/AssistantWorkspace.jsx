@@ -500,9 +500,10 @@ function resultExportValue({ result, toolTitle, locale, csvData, C }) {
   };
 }
 
-function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", isDecisionFocus = false }) {
+function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", isDecisionFocus = false, omitVisualizationId = null }) {
   const C = COPY[locale] || COPY.ko;
-  const visualizations = result.visualizations || [];
+  // 결론 밑에 이미 그린 그림은 같은 분석 카드에서 다시 그리지 않는다(같은 그림 두 번 금지).
+  const visualizations = (result.visualizations || []).filter((item) => item.id !== omitVisualizationId);
   const evidenceStats = visualizations.some(item => item.options?.variant === "period-comparison") ? [] : result.verdict.stats?.slice(0, 5) || [];
   const hasDetails = result.verdict.caveats?.length > 0;
   const resultRef = useRef(null);
@@ -581,7 +582,7 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   </article>;
 }
 
-function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false }) {
+function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false, omitVisualizationId = null }) {
   const C = COPY[locale] || COPY.ko;
   const isEmbedded = presentation === "embedded";
   const method = toolIndexEntry(result.toolId, locale);
@@ -605,7 +606,7 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
       </>}
       {hasCurrentResult && !isDecisionFocus && (isEmbedded
         ? <section data-information-section="" className="dochi-workspace__embedded-result" ><header data-information-heading="">{C.resultToggle}</header><AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} /></section>
-        : <AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} />)}
+        : <AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} omitVisualizationId={omitVisualizationId} />)}
       {!isEmbedded && <>
         {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
         {queueState === "failed" && <div className="dochi-workspace__adapter-note"><strong>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPending : C.resultError}</strong><span>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPendingDetail : C.adapterError}</span></div>}
@@ -889,13 +890,21 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   // 결론 한 덩어리. 결과 요약 면(summaryHead/summaryFoot가 있을 때)에서는 그 면 안에,
   // 없으면 예전처럼 목록 위에 단독으로 선다. 수치는 엔진이 낸 verdict.stats만 쓴다(날조 금지).
   const focusResult = decisionFocus?.queueItem.result.status === "success" ? decisionFocus.queueItem.result : null;
-  const focusStats = focusResult?.verdict.stats?.slice(0, 3) || [];
+  // 결론 밑에 그 분석의 핵심 그림을 바로 둔다. 예전엔 "근거와 실행 계획 보기" 버튼이 아래 목록의 같은 카드를
+  // 펼쳤는데, 누르면 그림 하나가 열리는 게 전부였다(2026-09-26 사용자 지적). 기간 비교 그림은 수치를 그대로
+  // 담으므로 그 위의 수치 줄은 뺀다(같은 숫자 두 번 금지 — 결과 카드와 같은 규칙).
+  const focusFigure = focusResult?.visualizations?.[0] || null;
+  const focusStats = focusFigure?.options?.variant === "period-comparison" ? [] : focusResult?.verdict.stats?.slice(0, 3) || [];
   const conclusion = focusResult && <section className="workspace-next-action" aria-label={C.primaryAction}>
     <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
     <h3>{focusResult.verdict.headline}</h3>
     <p>{focusResult.verdict.action}</p>
     {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
-    <button type="button" className="btn primary" onClick={() => setSelectedAnalysis(decisionFocus.result.toolId)}>{locale === "en" ? "Review evidence and action plan" : "근거와 실행 계획 보기"}</button>
+    {focusFigure && <section className="workspace-next-action__figure" aria-label={focusFigure.question}>
+      <p>{focusFigure.question}</p>
+      <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
+    </section>}
+    <button type="button" className="workspace-next-action__open" onClick={() => openTool(focusResult.toolId)}>{locale === "en" ? "See details in the tool" : "도구에서 자세히 보기"}<span aria-hidden="true"> →</span></button>
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);
 
@@ -929,7 +938,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
         renderDetail={toolId => {
           const found = eligibility.find(item => item.toolId === toolId);
           const result = sampleMode && found?.status === "blocked" ? { ...found, status: "ready", recommendationReason: C.sampleOwnExample } : found;
-          return result ? <><AnalysisCard result={result} locale={locale} getTitle={getTitle} csvData={csvData} qualityMapping={mappingsByTool[toolId]} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(toolId)} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />
+          return result ? <><AnalysisCard result={result} locale={locale} getTitle={getTitle} csvData={csvData} qualityMapping={mappingsByTool[toolId]} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(toolId)} omitVisualizationId={toolId === focusResult?.toolId ? focusFigure?.id : null} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />
             {toolId === "5-23" && naturalCandidates.map(candidate => <NaturalExperimentCandidate key={candidate.id || `${candidate.unit}:${candidate.startDate}`} candidate={candidate} locale={locale} outcomeOptions={naturalOutcomeOptions} onHandoff={openNaturalExperiment} />)}
           </> : null;
         }}

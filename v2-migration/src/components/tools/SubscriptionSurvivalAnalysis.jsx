@@ -8,6 +8,7 @@ import CsvUploader from "@/components/CsvUploader";
 import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DataTable from "@/components/ds/DataTable";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisFilterField from "@/components/ds/AnalysisFilterField";
 import { useAppStore } from "@/store/useDataStore";
@@ -247,11 +248,11 @@ function ChartCanvas({ table, hazard, locale, isDarkMode }) {
   }, [hazard, isDarkMode, locale]);
   return <>
     <section className="block" id="subscription-survival-curve">
-      <h2 className="section-title">{tx(locale, "개체는 각 관측 구간까지 얼마나 유지되나요?", "How long do entities remain through each observed interval?")}</h2>
+      <FigureHead title={tx(locale, "개체는 각 관측 구간까지 얼마나 유지되나요?", "How long do entities remain through each observed interval?")} target={survivalRef} fileName="survival_curve" locale={locale} />
       <div className="chart-container"><canvas ref={survivalRef} role="img" aria-label={tx(locale, "핵심 액션 생존율과 95% 신뢰구간", "Action survival with 95% confidence interval")} /></div>
     </section>
     <section className="block" id="subscription-hazard">
-      <h2 className="section-title">{tx(locale, "이탈·종료 위험이 가장 높은 구간은 언제인가요?", "When is dropout or exit risk highest?")}</h2>
+      <FigureHead title={tx(locale, "이탈·종료 위험이 가장 높은 구간은 언제인가요?", "When is dropout or exit risk highest?")} target={hazardRef} fileName="survival_hazard" locale={locale} />
       <div className="chart-container"><canvas ref={hazardRef} role="img" aria-label={tx(locale, "구간별 조건부 이탈·종료 위험", "Interval conditional dropout or exit risk")} /></div>
       {hazard.hasSmallRiskSet && <p className="callout">{tx(locale, "최대 위험 구간의 위험집합이 작습니다. 방향만 참고하고 다음 코호트에서 재확인하세요.", "The highest-risk interval has a small risk set. Treat it as directional and recheck with the next cohort.")}</p>}
     </section>
@@ -300,7 +301,7 @@ function SegmentSurvivalChart({ curves, locale, isDarkMode }) {
     return () => { cancelResize(); chart.destroy(); if (chartRef.current === chart) chartRef.current = null; };
   }, [chartData, isDarkMode, locale]);
   return <section className="block" id="subscription-segment-curves">
-    <h3 className="section-title">{tx(locale, "세그먼트별 생존곡선", "Segment survival curves")}</h3>
+    <FigureHead level={3} title={tx(locale, "세그먼트별 생존곡선", "Segment survival curves")} target={canvasRef} fileName="survival_by_segment" locale={locale} />
     <p id="subscription-segment-curves-note" className="muted">{tx(locale, "각 선은 해당 세그먼트의 마지막 실제 관측 시점에서 멈춥니다. 관측 범위 밖으로 연장하지 않습니다.", "Each line stops at that segment's last observed time. It is not extended beyond observed support.")}</p>
     <div className="chart-container"><canvas ref={canvasRef} role="img" aria-label={tx(locale, "세그먼트별 핵심 액션 생존곡선", "Action survival curves by segment")} aria-describedby="subscription-segment-curves-note" /></div>
   </section>;

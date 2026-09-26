@@ -1,5 +1,6 @@
 "use client";
 
+import { FigureHead } from "@/components/ds/FigurePngButton";
 import MappingEditorDialog from "@/components/ds/MappingEditorDialog";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -168,9 +169,12 @@ function CompositionChart({ distribution, locale, isDarkMode }) {
     return () => { cancelAnimationFrame(raf); chart.destroy(); if (chartRef.current === chart) chartRef.current = null; };
   }, [data, isDarkMode, locale]);
 
-  return <div className="chart-container" style={{ height: 220 }}>
-    <canvas ref={canvasRef} role="img" aria-label={tx(locale, "기간별 구성 비중", "Composition share by period")} />
-  </div>;
+  return <>
+    <FigureHead target={canvasRef} fileName="composition_share" locale={locale} />
+    <div className="chart-container" style={{ height: 220 }}>
+      <canvas ref={canvasRef} role="img" aria-label={tx(locale, "기간별 구성 비중", "Composition share by period")} />
+    </div>
+  </>;
 }
 
 export default function SegmentCompositionChange({ locale = "ko", rows: rowsOverride, headers: headersOverride, analyzed: analyzedOverride } = {}) {

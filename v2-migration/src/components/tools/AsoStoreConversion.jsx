@@ -17,6 +17,7 @@ import { comparePeriodLengths, describePeriod, formatCountDelta, formatPeriod, f
 import { eventMarkersPlugin } from "@/utils/chartEventMarkers";
 import StoreEventLog from "@/components/tools/StoreEventLog";
 import { fmtPct } from "@/utils/format";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const TOOL_ID = "5-27";
 
@@ -363,7 +364,7 @@ export default function AsoStoreConversion({ locale = "ko" } = {}) {
         </section>
 
         {series && series.dates.length > 1 && <section className="block" id="aso-trend">
-          <h2 className="section-title">{tr("전환율 추이", "Conversion trend")}</h2>
+          <FigureHead title={tr("전환율 추이", "Conversion trend")} target={chartRef} fileName="aso_conversion_trend" locale={locale} />
           <p className="muted">{tr(
             "굵은 선은 전체 비율, 점선은 소스별 비율입니다. 관측 비율의 변화가 페이지 요소 때문인지는 이 차트만으로 알 수 없습니다.",
             "The solid line is the aggregate ratio and dashed lines are per-source ratios. This chart alone cannot attribute their changes to page elements.",

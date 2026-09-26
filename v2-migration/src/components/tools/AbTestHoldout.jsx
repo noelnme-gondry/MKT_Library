@@ -23,6 +23,7 @@ import { sampleRatioMismatch, practicalEquivalence } from "@/utils/experimentQua
 import ExperimentDesignCheck from "@/components/ds/ExperimentDesignCheck";
 import { buildToolDemo } from "@/lib/toolDemo";
 import { trackProductEvent } from "@/lib/analytics";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -840,6 +841,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 </select>
               </div>
             </div>
+            <FigureHead target={() => document.getElementById("ab-power-chart")} fileName="ab_power_curve" locale={locale} />
             <div className="chart-container" style={{ height: "340px" }}>
               <canvas id="ab-power-chart"></canvas>
             </div>
@@ -1081,8 +1083,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               )}
 
               <section className="block" id="s-readout-chart">
-                <h2 className="section-title">{tr("판독 결과 차트", "Readout result chart")}</h2>
-                <div className="chart-container" style={{ height: "300px", marginTop: "20px" }}>
+                <FigureHead title={tr("판독 결과 차트", "Readout result chart")} target={() => document.getElementById("ab-bar")} fileName="ab_readout" locale={locale} />
+                <div className="chart-container" style={{ height: "300px" }}>
                   <canvas id="ab-bar"></canvas>
                 </div>
               </section>

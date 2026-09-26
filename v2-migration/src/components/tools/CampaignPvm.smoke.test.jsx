@@ -188,7 +188,7 @@ describe("CampaignPvm render smoke", () => {
     const { container, unmount } = render(<CampaignPvm />);
     const figure = container.querySelector(".tool-core-figure .result-mix-rate");
     expect(figure, "도구 화면에 핵심 그림이 없다").toBeTruthy();
-    expect(container.querySelector(".tool-core-figure__download")?.textContent).toBe("PNG 받기");
+    expect(container.querySelector(".figure-png-button")?.textContent).toBe("PNG 받기");
     // 옛 캔버스 차트(워터폴·채널 Mix·Rate)는 이 그림으로 대체됐다 — 같은 내용을 두 번 그리지 않는다.
     expect(container.querySelector("#pvm-waterfall, #pvm-channel-stack")).toBeNull();
     expect([...figure.querySelectorAll(".result-bridge li span")].map((span) => span.textContent)).toEqual([

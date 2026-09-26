@@ -12,6 +12,7 @@ import { buildMaturationRows, MATURATION_MATH } from "@/utils/cohortMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import { sourceCurrencyOf } from "@/utils/format";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 // 지표 뷰 설정 scope — LTV:CAC 표(§2)의 지표 컬럼 표시/순서.
 const LTV_TABLE_SCOPE = "5-2:ltv-table";
@@ -442,7 +443,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       </section>
 
       <section className="block" id="s-ltv-curve">
-        <h2 className="section-title">{T.s3Title}</h2>
+        <FigureHead title={T.s3Title} target={chartRef} fileName="ltv_cac_curve" locale={locale} />
         <p className="muted">{T.s3Desc}</p>
         <div className="chart-container" style={{ height: "260px" }}>
           <canvas id="ltvcac-curve" ref={chartRef}></canvas>
