@@ -18,6 +18,7 @@ import {
 
 import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
 import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const COPY = {
   ko: {
@@ -344,7 +345,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
               </section>
 
               <section className="paid-organic-chart-card">
-                <header><div><span>02 · MOVEMENT MAP</span><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p></header>
+                <header><div><span>02 · MOVEMENT MAP</span><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
                 <div className="paid-organic-chart"><canvas ref={canvasRef}></canvas></div>
                 {(result.invalidRows > 0 || result.invalidWeeks > 0) && <small className="paid-organic-quality">{C.invalid(result.invalidRows, result.invalidWeeks)}</small>}
               </section>

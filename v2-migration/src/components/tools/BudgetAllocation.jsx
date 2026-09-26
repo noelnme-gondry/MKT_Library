@@ -1,4 +1,5 @@
 "use client";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -2152,7 +2153,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
               {advancedPanel}
 
-              <div className="chart-canvas-wrap" style={{ height: "350px", marginTop: "0.5rem" }}>
+              <FigureHead target={verifyChartRef} fileName="budget_efficiency_verify" locale={locale} />
+              <div className="chart-canvas-wrap" style={{ height: "350px" }}>
                 <canvas id="chart-alloc-scatter-verify" ref={verifyChartRef}></canvas>
               </div>
 
@@ -2908,6 +2910,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               </div>
             </div>
           )}
+          <FigureHead target={chartRef} fileName="budget_cost_curve" locale={locale} />
           <div className="chart-canvas-wrap" style={{ height: "400px" }}>
             <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
           </div>
@@ -3236,10 +3239,12 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "12px" }}>
               {tr("전역 예산 또는 효율 목표를 정하면 채널별 권장 비중이 표시됩니다.", "Set a global budget or efficiency target to see the recommended channel allocation share.")}
             </p>
-          ) : (
-            <div className="chart-container" style={{ height: "120px", marginTop: "12px" }}>
+          ) : (<>
+            <FigureHead target={barChartRef} fileName="budget_share" locale={locale} />
+            <div className="chart-container" style={{ height: "120px" }}>
               <canvas id="alloc-bar" ref={barChartRef}></canvas>
             </div>
+          </>
           )}
         </section>
 
@@ -3252,6 +3257,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           ) : (
             <div className="alloc-card">
+              <FigureHead target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
               <div className="chart-container" style={{ height: "280px" }}>
                 <canvas id="alloc-scenario-chart" ref={scenarioChartRef}></canvas>
               </div>
@@ -3326,6 +3332,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 </button>
               ))}
             </div>
+            <FigureHead target={curveChartRef} fileName="budget_response_curve" locale={locale} />
             <div className="chart-container" style={{ height: "300px" }}>
               <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
             </div>

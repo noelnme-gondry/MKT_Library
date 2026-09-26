@@ -37,6 +37,7 @@ import { prepareCountInput, runWebRCountRegression } from "@/lib/analysis/webr/c
 import { ANALYSIS_DESIGN, ANALYSIS_INTENT, ANALYSIS_METHOD_IDS, routeAnalysisMethods } from "@/lib/analysis-router/analysisMethodRouter";
 import { prepareMixedInput, runWebRMixedModel } from "@/lib/analysis/webr/mixedModel";
 import WebRRandomForestPanel from "@/components/tools/WebRRandomForestPanel";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const MUTED = "var(--text-muted)";
 const MIN_BINARY_SUPPORT = 5;
@@ -1122,7 +1123,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
           {/* ── §1 요소별 기여도 forest plot ── */}
           <section className="block">
-            <h2 className="section-title">{T.forestTitle}</h2>
+            <FigureHead title={T.forestTitle} target={chartRef} fileName="content_element_forest" locale={locale} />
             <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "2px 0 8px" }}>
               {locale === "en" ? (
                 <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "var(--success)" }}>Green</span> / <span style={{ color: "var(--danger)" }}>red</span> = BH p&lt;.05 · <span style={{ color: "var(--text-secondary)" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>

@@ -1,4 +1,5 @@
 "use client";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 import { trendHeadline } from "@/lib/assistant/responseAnalysisAdapters";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
@@ -4392,6 +4393,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <div className="stat-card"><div className="lbl">Mann-Kendall</div><div className="val">p={fmtOne(trend.mk_deseason?.[1])}</div></div>
                   <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "var(--fs-sm)" }}>{trendHeadline(locale, trend.verdict, mmm?.panel?.granularity)}</div></div>
                 </div>
+                <FigureHead target={trendRef} fileName="mmm_trend" locale={locale} />
                 <div className="chart-container" style={{ height: "310px" }}><canvas ref={trendRef}></canvas></div>
                 {trendLedger && (
                   <div className="trend-chart-explainer" role="note">
@@ -4588,7 +4590,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
                       <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : cannibQuestion === "detrend" ? tx(`굵은 0축을 기준으로 오른쪽 아래(지출↑·성과↓)와 왼쪽 위(지출↓·성과↑)를 모두 역행으로 셉니다. 점 위의 관계선으로 전체 방향을 확인하세요. 현재 유효 ${d.directional?.informative_n ?? 0}주 중 ${d.directional?.opposite_n ?? 0}주가 반대로 움직였습니다.`, `Using the bold zero axes, both lower-right (spend↑/outcome↓) and upper-left (spend↓/outcome↑) count as opposite movement. Use the fitted lines to read the overall direction. Currently ${d.directional?.opposite_n ?? 0} of ${d.directional?.informative_n ?? 0} informative weeks move opposite.`) : cannibQuestion === "precedence" ? tx(`이 차트는 상관관계 차트가 아닙니다. 주황 점은 지출이 하위 25% 기준(${spendValueLabel(p.p25)}) 이하였던 주의 성과만 표시합니다. 비용과 성과의 직접 관계는 ②에서 확인하세요.`, `This is not a correlation chart. Orange points mark outcome only in weeks where spend was at or below the bottom-quartile threshold (${spendValueLabel(p.p25)}). Use ② for the direct spend–outcome relationship.`) : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
-                      {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <div className="chart-container" style={{ height: cannibQuestion === "detrend" ? "360px" : "280px" }}><canvas ref={irfRef}></canvas></div>}
+                      {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <><FigureHead target={irfRef} fileName={`cannibalization_${cannibQuestion}`} locale={locale} /><div className="chart-container" style={{ height: cannibQuestion === "detrend" ? "360px" : "280px" }}><canvas ref={irfRef}></canvas></div></>}
                     </div>
                   </section>
                 );
@@ -4637,6 +4639,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         </div>
                       );
                     })()}
+                    <FigureHead target={trendRef} fileName="mmm_trend" locale={locale} />
                     <div className="chart-container" style={{ height: "240px", marginTop: "12px" }}>
                       <canvas ref={trendRef}></canvas>
                     </div>
@@ -5025,6 +5028,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <div className="mmm-metric-card"><small>{tx("RMSE", "RMSE")}</small><strong>{targetValueLabel(dateScopedDecomp.rmse)}</strong></div>
                       <div className="mmm-metric-card"><small>{tx("모델 경고", "Model warnings")}</small><strong>{health?.flags?.length || 0}</strong><em>{budgetEligible ? tx("예산 판단 가능", "Budget decision allowed") : tx("예산 판단 보류", "Budget decision held")}</em></div>
                     </div>
+                    <FigureHead target={fitRef} fileName="mmm_fit" locale={locale} />
                     <div className="chart-container mmm-result-chart"><canvas ref={fitRef}></canvas></div>
                     {isFitInverted(health?.wmape, health?.oos?.wmape) && (
                       <div className="callout warn" role="note"><div className="ico">!</div><div className="body">
@@ -5676,6 +5680,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </table>
                   </div>
                   <StatHead title={tx("③ RMS 기여 크기 비중", "③ RMS contribution-magnitude share")} hint={tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눕니다. 인과 확정·설명된 R² 배분·Shapley 값이 아닙니다.", "Divides each driver's mean squared weekly contribution by the total. It is not causal attribution, allocated explained R², or a Shapley value.")} />
+                  <FigureHead target={shapleyRef} fileName="mmm_contribution_share" locale={locale} />
                   <div className="chart-container" style={{ height: "200px", marginBottom: "8px" }}><canvas ref={shapleyRef}></canvas></div>
                   </div>
                 </section>
@@ -5692,6 +5697,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     ))}
                   </div>
                   <div>
+                    <FigureHead target={satRef} fileName="mmm_response_curve" locale={locale} />
                     <div className="chart-container" style={{ height: "340px", minHeight: "340px", marginBottom: "12px" }}><canvas ref={satRef}></canvas></div>
                     <div>
                       <div className="table-wrap">
@@ -5724,6 +5730,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         </table>
                       </div>
                       <StatHead title={mmm.target === "Revenue" ? tx("⑤ ROAS 곡선", "⑤ ROAS curve") : tx("⑤ CPA 곡선", "⑤ CPA curve")} hint={mmm.target === "Revenue" ? tx("지출이 늘수록 같은 광고비가 만드는 매출 비율(ROAS)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how revenue return per spend changes as spend grows. Interpret positive-effect channels only.") : tx("지출이 늘수록 결과 1건을 만드는 비용(CPA)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how cost per result changes as spend grows. Interpret positive-effect channels only.")} />
+                      <FigureHead target={efficiencyRef} fileName="mmm_efficiency_curve" locale={locale} />
                       <div className="chart-container" style={{ height: "280px", minHeight: "280px", marginBottom: "12px" }}><canvas ref={efficiencyRef}></canvas></div>
                       <p className="mmm-result-note">{tx(`표와 곡선은 추가 ${marginalStepLabel}에서 예상되는 ${tgtKo} 변화와 90% 모델 범위입니다. 관측한 지출 범위 안에서만 해석하세요.`, `The table and curves show the expected ${tgtKo} change per additional ${marginalStepLabel} with a 90% model range. Interpret only within observed spend.`)}</p>
                     </div>
@@ -6417,6 +6424,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       );
                     })()}
                   </div>
+                  <FigureHead target={forecastRef} fileName="mmm_forecast" locale={locale} />
                   <div className="chart-container" style={{ height: "300px", marginBottom: "12px" }}><canvas ref={forecastRef}></canvas></div>
                   <p style={{ fontSize: "var(--fs-xs)", color: MUTED, marginBottom: "10px" }}>
                     {forecastIntervalNote(forecast, locale)}

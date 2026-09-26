@@ -9,6 +9,7 @@ import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { sourceCurrencyOf } from "@/utils/format";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const CUSTOM_CHARTS_COPY = {
   ko: {
@@ -165,7 +166,7 @@ export default function CustomChartsSection({
                   <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
                 </div>
               ) : (
-                <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+                <><FigureHead target={() => canvasRefs.current[c.k]} fileName={`custom_chart_${c.k}`} locale={locale} /><div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div></>
               )}
             </div>
           ))}

@@ -57,6 +57,8 @@ export function inlineComputedStyles(source, clone, view = source.ownerDocument.
 export function buildFigureSvgMarkup(element, { width, height, background, padding = 16 } = {}) {
   const clone = element.cloneNode(true);
   inlineComputedStyles(element, clone);
+  // 그림 안에 놓인 조작 버튼(PNG 받기 등)은 이미지에 담지 않는다 — 스타일을 옮긴 뒤에 빼야 원본과 사본의 짝이 맞는다.
+  clone.querySelectorAll("[data-figure-skip]").forEach((node) => node.remove());
   clone.style.margin = "0";
   const box = element.ownerDocument.createElementNS(XHTML, "div");
   box.setAttribute("style", `box-sizing:border-box;width:${width}px;height:${height}px;padding:${padding}px;background:${background};`);

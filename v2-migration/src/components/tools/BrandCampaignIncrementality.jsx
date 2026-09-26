@@ -23,6 +23,7 @@ import { prepareSemanticParallelData } from "@/lib/data-import/prepareSemanticPa
 import { buildDemoCsv } from "@/utils/demoData";
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const tx = (locale, ko, en) => locale === "en" ? en : ko;
 const isNumericColumn = (rows, header) => rows.slice(0, 100).filter((row) => Number.isFinite(parseNum(row?.[header]))).length >= Math.min(3, rows.length);
@@ -370,7 +371,8 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
           : hasProfileLiftSignal
             ? tx(locale, "AR(1) 계수 불확실성까지 반영해도 관찰상 증가 신호가 남습니다. 그래도 통제군 없는 인과 증명은 아닙니다.", "An observational lift signal remains after accounting for AR(1) parameter uncertainty. This is still not causal proof without a control.")
             : tx(locale, "AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.", "After accounting for AR(1) parameter uncertainty, lift cannot be distinguished from no change.")}</strong><p>{tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`)}</p></div></div>
-      <div className="chart-container" style={{ height: "320px", marginTop: "16px" }}><canvas ref={chartRef} /></div>
+      <FigureHead title={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} target={chartRef} fileName="brand_its_counterfactual" locale={locale} />
+      <div className="chart-container" style={{ height: "320px" }}><canvas ref={chartRef} role="img" aria-label={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} /></div>
       <section data-information-section="" style={{ marginTop: "14px" }}>
         <header data-information-heading="">{tx(locale, "근거·한계 확인", "Review evidence and limitations")}</header>
         <ul>

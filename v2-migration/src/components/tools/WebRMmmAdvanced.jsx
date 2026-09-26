@@ -14,6 +14,7 @@ import Chart from "@/utils/chartGlobals";
 import { chartCommonOpts, CHART_THEME } from "@/utils/chartUtils";
 import { CommaNumberInput } from "@/components/tools/marketingResponseModel";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 const COPY = {
   ko: {
@@ -636,6 +637,7 @@ export default function WebRMmmAdvanced({
                       <div className="mmm-metric-card is-primary"><small>{T.oosWmape}</small><strong>{formatMetric(result.wmape)}%</strong><em>{T.oosFoldRange} {foldWmapeRange}</em></div>
                       <div className="mmm-metric-card"><small>{T.rmse}</small><strong>{formatOutcome(fit.rmse)}</strong></div>
                     </div>
+                    <FigureHead target={fitChartRef} fileName="mmm_advanced_fit" locale={locale} />
                     <div className="chart-container mmm-result-chart"><canvas ref={fitChartRef} /></div>
                     <p className="mmm-result-note">{T.fitCaveat}</p>
                   </> : <div className="required-banner"><p style={{ margin: 0 }}>{T.unavailable}</p></div>}
@@ -644,7 +646,7 @@ export default function WebRMmmAdvanced({
 
                 <section className="mmm-result-step" aria-labelledby="mmm-webr-driver-title">
                   <div className="mmm-result-step__head"><span>02</span><div><h3 id="mmm-webr-driver-title">{T.driverStep}</h3><p>{T.driverStepDesc}</p></div></div>
-                  {driverSeries.length ? <div className="chart-container mmm-result-chart"><canvas ref={driverChartRef} /></div> : null}
+                  {driverSeries.length ? <><FigureHead target={driverChartRef} fileName="mmm_advanced_drivers" locale={locale} /><div className="chart-container mmm-result-chart"><canvas ref={driverChartRef} /></div></> : null}
                   <div className="table-wrap"><table className="data mmm-webr-table">
                     <thead><tr><th>{T.driver}</th><th>{T.driverType}</th><th className="tnum">{T.weeklyMean}</th><th className="tnum">{T.rmsShare}</th></tr></thead>
                     <tbody>{driverRows.map((driver) => <tr key={`${driver.kind}:${driver.name}`}>
@@ -686,6 +688,7 @@ export default function WebRMmmAdvanced({
                     ))}
                   </div>
                   {responseCurve && effectiveChannel ? <>
+                    <FigureHead target={responseChartRef} fileName="mmm_advanced_response" locale={locale} />
                     <div className="chart-container mmm-result-chart"><canvas ref={responseChartRef} /></div>
                     <div className="mmm-metric-grid">
                       <div className="mmm-metric-card"><small>{T.current}</small><strong>{formatSpend(effectiveChannel.recentSpend)}</strong></div>

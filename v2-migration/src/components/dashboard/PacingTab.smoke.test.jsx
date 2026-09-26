@@ -5,7 +5,7 @@
 // renders a cumulative MTD chart. Mounts cover render + the chart effect; mocks
 // live in vitest.smoke.setup.js.
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import PacingTab from "@/components/dashboard/PacingTab";
 
@@ -73,11 +73,11 @@ describe("PacingTab render smoke", () => {
     expect(document.getElementById("pacing-chart")).toBeTruthy();
   });
 
-  it("exports the mounted chart from the visible PNG action", () => {
+  it("exports the mounted chart from the visible PNG action", async () => {
     seedWithData();
     render(<PacingTab />);
     useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
-    fireEvent.click(screen.getByRole("button", { name: "페이싱 차트 PNG 다운로드" }));
-    expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("pacing-chart"), "pacing");
+    fireEvent.click(screen.getByRole("button", { name: "PNG 받기" }));
+    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("pacing-chart"), "pacing"));
   });
 });

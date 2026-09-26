@@ -13,7 +13,7 @@ import { qualifyCreativeFatigue } from "@/utils/creativeFatigueQuality";
 import { twoWayAnova } from "@/utils/factorialAnovaMath";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
-import { CHART_THEME, downloadChartAsPNG } from "@/utils/chartUtils";
+import { CHART_THEME } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
@@ -25,6 +25,7 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { localizedTool } from "@/lib/toolConnections";
 import Chart from "@/utils/chartGlobals";
 import CreativePredictiveModelPanel from "@/components/tools/CreativePredictiveModelPanel";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-6/9-6 공용)는 절대 불변 — 여기서 로컬 병합만 수행 (CampaignPvm.jsx PVM_COPY_EN 패턴 동일).
@@ -1353,13 +1354,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 <div className="alloc-card" style={{ margin: "12px 0" }}>
                   <div className="cann-card-header">
                     <div className="alloc-card-title">{tr("속성별 영향력 그림 (Forest plot — β + 95% 신뢰구간)", "Attribute effect chart (forest plot — β + 95% CI)")}</div>
-                    <button
-                      className="ab-pill"
-                      title={tr("PNG 다운로드", "Download PNG")}
-                      onClick={() => requirePaidExport() && downloadChartAsPNG(conceptChartRef.current, `creative_forest_${curMetricKey}`)}
-                    >
-                      ⬇ PNG
-                    </button>
+                    <FigurePngButton target={conceptChartRef} fileName={`creative_forest_${curMetricKey}`} locale={locale} />
                   </div>
                   <p className="muted">{tr(<>막대 길이 = 영향력 크기(β), 양옆 점선 = 신뢰구간(95% CI). 막대가 0선에 안 걸치고 보정된 유의확률(BH-adj p){"<"}0.05면 통계적으로 의미있는 효과입니다.</>, <>Bar length = effect size (β), dashed ends = 95% confidence interval. If the bar doesn&apos;t cross 0 and the adjusted p-value (BH-adj p){"<"}0.05, the effect is statistically significant.</>)}</p>
                   <div style={{ position: "relative", height: `${Math.max(280, Math.min(800, effRows.length * 26 + 80))}px` }}>
@@ -1436,13 +1431,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="cann-card-header">
               <div className="alloc-card-title">{tr(`클릭률 하락 추이 — 하락률 상위 ${Math.min(5, fatiguedRows.length)}개 (Decay 라인)`, `CTR decline trend — top ${Math.min(5, fatiguedRows.length)} by drop rate (decay line)`)}</div>
-              <button
-                className="ab-pill"
-                title={tr("PNG 다운로드", "Download PNG")}
-                onClick={() => requirePaidExport() && downloadChartAsPNG(fatigueChartRef.current, "creative_fatigue_decay")}
-              >
-                ⬇ PNG
-              </button>
+              <FigurePngButton target={fatigueChartRef} fileName="creative_fatigue_decay" locale={locale} />
             </div>
             <p className="muted">{tr("최근 7일 평균 클릭률(rolling CTR). 가장 좋았던 시점(peak) 대비 하락 추세를 봅니다.", "7-day rolling average CTR. Shows the decline trend versus the best (peak) point.")}</p>
             <div style={{ position: "relative", height: "300px" }}>

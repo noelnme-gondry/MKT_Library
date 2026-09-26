@@ -167,7 +167,7 @@ test("@light-en English start upload stays accessible in light mode", async ({ p
   const workspace = page.getByRole("region", { name: "Analyses for your data" });
   await expect(workspace).toBeVisible();
   await expect(workspace).toHaveAttribute("data-queue-settled", "true");
-  await workspace.locator(".workspace-next-action button").click();
+  await workspace.locator(".tool-index__chip", { hasText: "Weekly check" }).click();
   // 품질 확인·승인 단계 없이 바로 분석을 연다.
   await expect(workspace.getByRole("region", { name: "Detailed input quality" })).toHaveCount(0);
   await expectNoSeriousAccessibilityViolations(page);
@@ -192,7 +192,7 @@ test("/start에서 실제 CSV를 올리고 운영 대시보드 결과까지 간�
   const workspace = page.getByRole("region", { name: "데이터로 가능한 분석" });
   await expect(workspace).toBeVisible();
   await expect(workspace).toHaveAttribute("data-queue-settled", "true");
-  await workspace.locator(".workspace-next-action button").click();
+  await workspace.locator(".tool-index__chip", { hasText: "주간 성과 점검" }).click();
   const dashboardCard = workspace.locator(".dochi-workspace__card").filter({
     has: page.getByRole("heading", { name: "주간 성과 점검", exact: true }),
   });

@@ -11,7 +11,8 @@ import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
-import { downloadChartAsPNG, CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
+import FigurePngButton, { FigureHead } from "@/components/ds/FigurePngButton";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -755,16 +756,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       else next.add(a);
       return next;
     });
-
-  // 버블 차트 PNG 다운로드 (index.html data-pngdownload="aha-scatter" 이식)
-  const handleScatterPng = () => {
-    if (!chartRef.current) {
-      showToast({ variant: "warn", title: tr("차트를 찾을 수 없음", "Chart not found"), body: "aha-scatter" });
-      return;
-    }
-    if (!requirePaidExport()) return;
-    downloadChartAsPNG(chartRef.current, "aha_scatter");
-  };
 
   const actionCount = Object.keys(cache.groups || {}).length;
   const totalTargets = cache.results.length
@@ -1541,6 +1532,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     <>Blue solid line = accuracy (F1) when using that count as the threshold · green dashed line = % of all users who actually did it that many times or more. <span style={{ color: "var(--warning)" }}>●</span> Gold dot = the auto-selected optimal count (≥{drillResult.bestK}). Raising the bar (e.g. to 300) can move F1 up or down, but the users who qualify (green line) shrink accordingly.</>,
                   )}
                 </p>
+                <FigureHead target={sweepChartRef} fileName="aha_k_sweep" locale={locale} />
                 <div className="chart-container" style={{ height: "220px" }}>
                   <canvas
                     ref={sweepChartRef}
@@ -1586,7 +1578,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
-                <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
+                <FigurePngButton target={chartRef} fileName="aha_scatter" locale={locale} />
               </div>
               <p className="muted aha-scatter-intro">{tr(
                 <>색상 칩을 눌러 이벤트를 비교하세요. <span style={{ color: "var(--warning)" }}>●</span> 금색 테두리는 자동으로 고른 기준입니다.</>,

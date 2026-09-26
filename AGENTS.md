@@ -361,7 +361,8 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 `*Math.js` 모듈에 순수 함수 추가 → 합성 데이터 골든 1개+ → `npm run test:all` 통과 후 commit.
 
 ### 12.3 차트 추가
-`import Chart from "@/utils/chartGlobals"`(전역 셋업 경유, `chart.js/auto` 직접 import 금지) → `<div class="chart-container"><canvas/></div>` → `chartCommonOpts()`+`CHART_THEME` → 생성 직후 rAF `resize()` → 재렌더 전 destroy. PNG는 `downloadChartAsPNG`. **하드코딩 색·CSS `var()` 리터럴 금지**(§7).
+`import Chart from "@/utils/chartGlobals"`(전역 셋업 경유, `chart.js/auto` 직접 import 금지) → `<div class="chart-container"><canvas/></div>` → `chartCommonOpts()`+`CHART_THEME` → 생성 직후 rAF `resize()` → 재렌더 전 destroy. PNG는 **`ds/FigurePngButton`/`FigureHead` 하나**(캔버스·HTML 그림 공용, 제목 줄 오른쪽 "PNG 받기") — `ds/figurePngCoverage.test.js`가 캔버스 수에서 파생해 강제하고 `downloadChartAsPNG` 직접 호출을 막는다. 그림 안 조작 요소는 `data-figure-skip`. **하드코딩 색·CSS `var()` 리터럴 금지**(§7).
+- **결과 화면 결론 밑에는 그 분석의 핵심 그림을 바로 둔다**(2026-09-26 사용자 지적): "근거와 실행 계획 보기" 버튼은 아래 목록의 같은 카드를 펼칠 뿐이라 그림 하나를 보려고 한 번 더 눌러야 했다. 지금은 그림 + "도구에서 자세히 보기 →" 링크이고, 펼친 카드는 같은 그림을 다시 그리지 않는다(`omitVisualizationId`).
 - **직교 좌표 차트는 x·y에 `title:{display:true,text:tr(ko,en)}` 필수**(`app/chartAxisTitle.test.js`가 `scales:` 선언 파일에서 파생해 강제). 예외는 `CHART_AXIS_TITLE_EXEMPT` 표식 + 사유.
 - **전역 룩·인터랙션은 옵션이 아니라 defaults+플러그인으로**(`utils/chartGlobals.js`): 도구 50여 곳이 `chartCommonOpts()`의 `scales`·`plugins`를 자기 옵션으로 덮어써서, 공용 옵션 함수만 고치면 룩이 갈린다. 기준선(crosshair)·외부 HTML 툴팁·폰트·hover 반경은 `Chart.defaults`+`register`로 붙여 덮어쓰기와 무관하게 상속시킨다. 적용 여부는 **생성자 단위 WeakSet**으로(모듈 전역 플래그로 잠그면 테스트 더블에 적용 불가).
 - **`pointRadius`는 전역 default로 건드리지 말 것**: 도구마다 의미가 달라(이상치 마커·산점도) 0으로 내리면 마커가 조용히 사라진다. 인터랙션만 키우려면 `hitRadius`/`hoverRadius`로.

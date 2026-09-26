@@ -1,14 +1,14 @@
 "use client";
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
-import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { PACING_MATH } from "@/utils/pacingMath";
 import { sourceCurrencyOf } from "@/utils/format";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const PACING_COPY = {
   ko: {
@@ -382,14 +382,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
         <div className="alloc-card" style={{ marginTop: "12px" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{T.dailyTrendTitle(metricLabel)}</div>
-            <button
-              className="ab-pill"
-              type="button"
-              aria-label={locale === "en" ? "Download pacing chart as PNG" : "페이싱 차트 PNG 다운로드"}
-              onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "pacing")}
-            >
-              {T.pngBtn}
-            </button>
+            <FigurePngButton target={chartRef} fileName="pacing" locale={locale} />
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="pacing-chart" ref={chartRef}></canvas>

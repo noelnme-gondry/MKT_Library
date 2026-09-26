@@ -10,6 +10,7 @@ import { buildFunnelData, FUNNEL_FIELD_LABEL } from "@/utils/funnelMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import DataTable from "@/components/ds/DataTable";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 // 지표 뷰 설정 scope — §5 전체 퍼널 단계 표의 지표 컬럼 표시/순서.
 const FUNNEL_TABLE_SCOPE = "5-2:funnel-table";
@@ -295,6 +296,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
               </div>
             </div>
           )}
+          <FigureHead target={chartRef} fileName="funnel_trend" locale={locale} />
           <div className="chart-container" style={{ height: "240px" }}>
             <canvas id="funnel-trend-chart" ref={chartRef}></canvas>
           </div>

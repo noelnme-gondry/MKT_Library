@@ -164,7 +164,7 @@ async function dochiToWeekly(page, locale) {
   await page.locator('[data-currency-scope="declare"]').first().getByRole("button", { name: /^(원 ₩|KRW ₩)$/ }).click();
   const confirm = page.locator(".csv-analysis-action");
   await confirm.click();
-  await page.locator(".workspace-next-action button").click();
+  await page.locator(".tool-index__stage--ready .tool-index__chip").first().click();
   const decision = page.locator(".dochi-workspace__result.is-success .decision-review").first();
   await expect(decision).toBeVisible();
   await decision.locator(".decision-review-launch").click();

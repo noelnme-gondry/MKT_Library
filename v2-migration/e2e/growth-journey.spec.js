@@ -16,10 +16,13 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
     await expect(page.locator(".dochi-result-workspace")).toHaveAttribute("data-phase", "results");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.locator(".workspace-next-action")).toContainText(preview);
-    await page.locator(".workspace-next-action button").click();
+    // 결론 밑에 핵심 그림이 바로 있다 — 누르지 않아도 보인다.
+    await expect(page.locator(".workspace-next-action .workspace-next-action__figure")).toBeVisible();
+    await page.locator(".tool-index__chip", { hasText: en ? "Weekly check" : "주간 성과 점검" }).click();
     const focus = page.locator(".tool-index__panel");
     await expect(focus.locator(".dochi-workspace__decision-tape")).toContainText("CPA");
-    const stats = focus.locator(".analysis-metric-picker");
+    // 기간 비교 그림(지표 고르기 포함)은 결론 밑에 한 번만 있다 — 펼친 카드에서 다시 그리지 않는다.
+    const stats = page.locator(".workspace-next-action .analysis-metric-picker");
     expect(await stats.evaluate(node => getComputedStyle(node).display)).toBe("grid");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.getByRole("button", { name: en ? "Make it my next marketing project" : "다음 마케팅 프로젝트로 만들기" }).click();

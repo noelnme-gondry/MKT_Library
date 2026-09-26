@@ -1,18 +1,18 @@
 "use client";
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
-import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import PillGroup from "@/components/ds/PillGroup";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import BudgetHealthCard from "./BudgetHealthCard";
+import { FigureHead } from "@/components/ds/FigurePngButton";
 
 // 지표 뷰 설정 scope(도구:표면) — store viewConfig 키. persist 대상.
 const SCORECARD_SCOPE = "5-2:scorecard";
@@ -421,18 +421,12 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
               {T.insufficientData(daily.slice(-2 * windowDays).length)}
             </p>
           )}
-          {daily.slice(-2 * windowDays).length >= 2 && (
+          {daily.slice(-2 * windowDays).length >= 2 && (<>
+            <FigureHead target={chartRef} fileName="scorecard_daily" locale={locale} />
             <div className="chart-container" style={{ height: "220px" }}>
               <canvas id="scorecard-daily-chart" ref={chartRef}></canvas>
             </div>
-          )}
-          <button
-            className="ab-pill"
-            style={{ marginTop: "8px" }}
-            onClick={() => requirePaidExport() && downloadChartAsPNG(chartRef.current, "scorecard_daily")}
-          >
-            {T.pngBtn}
-          </button>
+          </>)}
         </section>
       )}
     </div>

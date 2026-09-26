@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 import { fmtCurrency, fmtNum } from "@/utils/format";
-import { downloadElementAsPNG } from "@/utils/figureImage";
-import { requirePaidExport } from "@/lib/subscription/paidExport";
 
 // 결과 작업대의 분석별 핵심 그림. 예전에는 PVM·포화도·예산·VIF·소재 피로도가 전부 같은
 // 가로 막대(ResultBars)로 그려져 "무엇을 보여 주는 분석인지"가 그림에서 사라졌다(2026-09-25).
@@ -262,22 +261,14 @@ export const RESULT_CHART_VARIANTS = Object.freeze({
  *  `downloadName`을 주면 제목 줄에 PNG 받기(Pro)가 붙는다 — 캔버스 차트를 걷어낸 자리의 다운로드를 잇는다. */
 export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downloadName = null }) {
   const holderRef = useRef(null);
-  const [failed, setFailed] = useState(false);
   const Chart = figure && RESULT_CHART_VARIANTS[figure.options?.variant];
   if (!Chart || !figure.data?.length) return null;
   const headingId = `tool-core-figure-${figure.id}`;
-  const download = async () => {
-    if (!requirePaidExport({ format: "png" })) return;
-    const target = holderRef.current?.querySelector(".result-chart");
-    const ok = await downloadElementAsPNG(target, downloadName);
-    setFailed(!ok);
-  };
   return <section className="block tool-core-figure" id={headingId} aria-labelledby={`${headingId}-title`}>
     <div className="section-head">
       <h2 className="section-title" id={`${headingId}-title`}>{figure.question}</h2>
-      {downloadName && <button type="button" className="btn secondary tool-core-figure__download" onClick={download}>{tr(locale, "PNG 받기", "Download PNG")}</button>}
+      {downloadName && <FigurePngButton target={() => holderRef.current?.querySelector(".result-chart")} fileName={downloadName} locale={locale} />}
     </div>
     <div ref={holderRef}><Chart visualization={figure} locale={locale} currency={currency} /></div>
-    {failed && <p className="muted" role="alert">{tr(locale, "이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead.")}</p>}
   </section>;
 }
