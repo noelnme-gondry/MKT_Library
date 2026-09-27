@@ -983,11 +983,13 @@
 .dc-hero__deck > p { margin: 0; }
 .dc-hero__deck > p + p { margin-top: 8px; }
 /* Long explanations stay readable without constraining data tables or controls. */
-:is(.account-page, .workspace-storage-page, .projects-page, .subscription-page, .policy-page) p { max-width: 68ch; }
+:is(.account-page, .workspace-storage-page, .projects-page, .policy-page) > header p,
+.workspace-storage-page__privacy p,
+.subscription-page #refund-policy > p { max-width: 68ch; }
 .tool-brief__a { margin-top: 0; }
 
 /* Settings use labelled rows; projects retain a surface only for each saved project. */
-.app :is(.workspace-storage-page__toggle, .workspace-storage-page__list, .workspace-storage-page__privacy, .account-page__card, .projects-page > section) {
+.app :is(.workspace-storage-page__toggle, .workspace-storage-page__list, .workspace-storage-page__privacy, .account-page__card, .projects-page:not(.subscription-page) > section) {
   padding: 20px 0;
   border: 0;
   border-top: 1px solid var(--library-border);
