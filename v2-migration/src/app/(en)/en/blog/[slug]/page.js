@@ -184,7 +184,7 @@ export default async function EnBlogPostPage({ params }) {
 
       <EditorialTrust compact locale="en" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
-      <BlogReadingBar sample={Boolean(inline)} slug={post.slug} locale="en" targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "See this article's analysis on example data" : "Check your situation in 30 seconds"} detail={example ? example.en.headline : selfCheck?.title} />
+      <BlogReadingBar sample={Boolean(inline)} slug={post.slug} locale="en" targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} />
 
       {/* 마감 영역 — 연결 툴과 구독을 한 줄에 나란히, 그 밑에 글쓴이(KO와 동일 구조, §2.11). */}
       <div className="blog-post-outro">

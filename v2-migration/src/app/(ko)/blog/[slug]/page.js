@@ -191,7 +191,7 @@ export default async function BlogPostPage({ params }) {
 
       <EditorialTrust compact locale="ko" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
-      <BlogReadingBar sample={Boolean(inline)} slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "이 글의 분석, 예시 결과로 보기" : "30초 점검으로 내 상황 확인"} detail={example ? example.ko.headline : selfCheck?.title} />
+      <BlogReadingBar sample={Boolean(inline)} slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} />
 
       {/* 근거는 본문 직후 접어서 확인하고, 다음 행동과 글쓴이는 별도로 둔다. */}
       <div className="blog-post-outro">
