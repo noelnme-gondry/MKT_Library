@@ -1057,7 +1057,7 @@
 .home-tool-directory li a { flex: 1; min-width: 0; padding-block: 10px; font-size: var(--fs-base); line-height: 1.7; color: var(--library-accent); text-decoration: underline; text-underline-offset: 4px; }
 .home-approved .home-tool-directory li button { flex: 0 0 44px; min-height: 44px; width: 44px; padding: 0; align-items: center; justify-content: center; border: 0; background: none; color: var(--library-muted); }
 .home-approved .home-tool-directory li button[aria-pressed="true"] { color: var(--library-accent); }
-.home-approved .dc-loop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; padding: 32px; margin-block: 40px; border-radius: var(--radius-md); }
+.home-approved .dc-loop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; padding: 32px 0; margin-block: 40px; border: 0; border-top: 1px solid var(--library-border); border-radius: 0; background: none; }
 .home-approved .dc-loop::before { content: none; }
 .home-approved .dc-loop .home-pro-condition { font-size: var(--fs-xs); margin-top: 16px; }
 .home-approved .dc-loop .dc-text-link { display: inline-flex; min-height: 44px; align-items: center; margin-top: 12px; font-size: var(--fs-base); }
@@ -1096,7 +1096,7 @@
   .home-approved .dc-action-route { width: 100%; }
   .home-approved .dc-hero__assurance { display: grid; gap: 4px; }
   .home-approved .dc-loop, .home-reading-list__layout, .home-service-terms { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .home-approved .dc-loop { padding: 24px 20px; }
+  .home-approved .dc-loop { padding: 24px 0; }
   .home-guide-shelf { border-left: 0; border-top: 1px solid var(--library-border); padding: 22px 0 0; }
   .home-sample-table th span { font-size: var(--fs-xs); }
 }
@@ -1104,8 +1104,6 @@
   .home-approved .home-tool-directory { grid-template-columns: minmax(0, 1fr); }
   .home-result-preview--comparison { padding: 20px 16px; }
   .home-sample-table td { font-size: var(--fs-lg); }
-}
-@media (max-width: 360px) {
   .home-approved { padding-inline: 16px; }
   .home-approved .dc-hero h1 { font-size: var(--fs-xl); }
   .home-review-example { padding: 16px; }

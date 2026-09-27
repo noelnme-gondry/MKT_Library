@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
+import { toolIndexByStage } from "../src/lib/toolIndex";
 
 async function checkHome(page, locale) {
   const hydrationErrors = [];
@@ -11,16 +12,11 @@ async function checkHome(page, locale) {
   }, locale);
   await page.goto(en ? "/en" : "/");
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
-  const purposes = page.locator(".home-tool-finder__purposes button");
-  await expect(purposes).toHaveCount(7);
-  await purposes.first().focus();
-  await page.keyboard.press("Enter");
-  await expect(purposes.first()).toHaveAttribute("aria-expanded", "true");
+  const stages = toolIndexByStage(locale);
+  await expect(page.locator(".home-tool-directory > section")).toHaveCount(stages.length);
+  await expect(page.locator(".home-tool-directory li a")).toHaveCount(stages.flatMap(stage => stage.tools).length);
+  await expect(page.locator(".home-tool-directory li a").first()).toBeVisible();
   const links = page.locator(".home-tool-finder__results a");
-  await expect(links.first()).toBeVisible();
-  const subset = await links.count();
-  await page.getByRole("button", { name: en ? "View all tools" : "전체 도구 보기", exact: true }).click();
-  expect(await links.count()).toBeGreaterThan(subset);
   const search = page.getByRole("searchbox", { name: en ? "Find an analysis" : "필요한 분석 찾기" });
   await search.fill("ROAS");
   await expect(links.first()).toBeVisible();
@@ -42,5 +38,5 @@ async function checkHome(page, locale) {
   expect(hydrationErrors).toEqual([]);
 }
 
-test("home purpose selection and keyboard intake", async ({ page }) => checkHome(page, "ko"));
-test("@light-en home purpose selection and keyboard intake", async ({ page }) => checkHome(page, "en"));
+test("home directory, saved search and keyboard intake", async ({ page }) => checkHome(page, "ko"));
+test("@light-en home directory, saved search and keyboard intake", async ({ page }) => checkHome(page, "en"));

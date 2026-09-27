@@ -13,10 +13,12 @@ for (const locale of ["ko", "en"]) {
     await expect(page.locator(".home-result-preview > header")).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
-    await expect(page.locator(".home-result-preview__kpis dd")).toHaveCount(3);
+    await expect(page.locator(".home-sample-table tbody tr")).toHaveCount(2);
+    await expect(page.locator(".home-sample-change dd")).toHaveCount(1);
+    await expect(page.locator(".home-sample-table time")).toHaveCount(4);
     for (const light of [true, false]) {
       await page.evaluate(value => document.body.classList.toggle("light-mode", value), light);
-      await expect(page.locator(".home-result-preview__insight p")).toHaveCSS("font-size", "14px");
+      await expect(page.locator(".home-result-preview h2")).toHaveCSS("font-size", "20px");
       await expect(sample.locator("strong")).toHaveCSS("font-size", "14px");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     }
