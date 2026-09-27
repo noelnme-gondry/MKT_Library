@@ -119,6 +119,21 @@ describe("privacy-safe product analytics", () => {
     expect(sampleEvents()).toHaveLength(1);
     clock.mockRestore();
   });
+  it("counts the same sample viewed from two articles once per article without inflating generic result views", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key),
+    } };
+    const params = { tool_id: "5-3", locale: "ko", source: "demo", result_state: "ready" };
+    for (const content_slug of ["roas-improvement", "budget-marginal-efficiency"]) {
+      trackProductEvent("blog_tool_cta_clicked", { ...params, content_slug, content_type: "blog" });
+      expect(trackProductEventOnce("analysis_result_viewed", "shared-blog-fixture", params)).toBe(true);
+      expect(trackProductEventOnce("analysis_result_viewed", "shared-blog-fixture", params)).toBe(false);
+    }
+    const calls = window.gtag.mock.calls;
+    expect(calls.filter(call => call[1] === "analysis_result_viewed")).toHaveLength(1);
+    expect(calls.filter(call => call[1] === "blog_sample_result_viewed").map(call => call[2].content_slug)).toEqual(["roas-improvement", "budget-marginal-efficiency"]);
+  });
   it("keeps only the aggregate allowlist", () => {
     expect(sanitizeProductEventParams({
       tool_id: "5-3",

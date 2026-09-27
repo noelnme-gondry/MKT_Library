@@ -116,7 +116,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - 블로그→분석: `page_view`(블로그) → `blog_read_depth(depth_75)` → `blog_cta_viewed` → `blog_tool_cta_clicked` → `tool_view` → `data_import_success` → `analysis_completed(result_state=ready)`
   - `blog_cta_viewed` 없이 `page_view`만 쌓이면 패널이 안 보인 것이고, `blog_cta_viewed`는 있는데 클릭이 없으면 카피·목적지 문제다. 두 원인을 가르는 게 이 이벤트의 존재 이유다.
   - 노출 위치는 `placement`로 구분한다. 읽기 바의 샘플 실행은 `blog_example_started` → `blog_tool_cta_clicked`, 본문 점검으로의 스크롤은 `blog_section_opened`다. 두 동작을 클릭 전환으로 합산하지 않는다. 2026-09-27 이전 `reading_bar` 클릭은 본문 이동이므로 전후 비교 시 제외한다.
-  - 샘플 체험: `blog_cta_viewed` → `blog_example_started` → `blog_tool_cta_clicked(interaction_source=demo)` → `blog_sample_result_viewed`. 마지막 이벤트는 같은 도구·언어·30분 귀속 범위의 `analysis_result_viewed`에서만 파생한다. `result_state=ready`와 보류 상태를 구분하고 실제 CSV 활성화와 합산하지 않는다.
+  - 샘플 체험: `blog_cta_viewed` → `blog_example_started` → `blog_tool_cta_clicked(interaction_source=demo)` → `blog_sample_result_viewed`. 마지막 이벤트는 같은 도구·언어·30분 귀속 범위의 실제 결과 표시에서만 파생하고, 글·도구·언어·결과 상태별로 중복 제거한다. 같은 샘플을 다른 글에서 다시 연 경우에도 해당 글의 조회는 남기되 일반 `analysis_result_viewed` 집계는 늘리지 않는다. `result_state=ready`와 보류 상태를 구분하고 실제 CSV 활성화와 합산하지 않는다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
 - 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`

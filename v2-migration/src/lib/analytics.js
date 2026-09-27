@@ -180,10 +180,7 @@ export function trackProductEvent(name, params = {}) {
   }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
   window.gtag("event", name, safeParams);
-  if (name === "analysis_result_viewed" && params.source === "demo") {
-    const sample = withEditorialJourney("blog_sample_result_viewed", params);
-    if (sample.content_type === "blog" && sample.content_slug) trackProductEvent("blog_sample_result_viewed", sample);
-  }
+  if (name === "analysis_result_viewed") trackBlogSampleResult(params);
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;
   return true;
 }
@@ -202,9 +199,18 @@ export function analysisResultEventKey(toolId, analysisType, inputSignature = ""
   return productEventKey(normalizeProductToolId(toolId), analysisType, inputSignature, analysisKey, locale);
 }
 
+function trackBlogSampleResult(params) {
+  if (params.source !== "demo") return false;
+  const sample = withEditorialJourney("blog_sample_result_viewed", params);
+  if (sample.content_type !== "blog" || !sample.content_slug) return false;
+  return trackProductEventOnce("blog_sample_result_viewed", productEventKey(sample.content_slug, sample.tool_id, sample.locale, sample.result_state), sample);
+}
+
 export function trackProductEventOnce(name, dedupeKey, params = {}) {
   const key = `${name}:${String(dedupeKey || "default")}`;
-  if (SENT_ONCE_KEYS.has(key)) return false;
+  // A second article may open the same fixture. Keep the generic result deduped,
+  // but count the new article's visible sample once in its own funnel.
+  if (SENT_ONCE_KEYS.has(key)) return name === "analysis_result_viewed" ? trackBlogSampleResult(params) : false;
   const sent = trackProductEvent(name, params);
   if (sent) SENT_ONCE_KEYS.add(key);
   return sent;
