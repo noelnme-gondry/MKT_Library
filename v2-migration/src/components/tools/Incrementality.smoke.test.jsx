@@ -123,6 +123,10 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
     expect(screen.getByText(/결론 — 홀드아웃 대비 추정 차이/)).toBeTruthy();
     expect(screen.getAllByText(/결과 받기/).length).toBeGreaterThan(0);
+    // 핵심 그림: 전환율 차이(%p)와 95% 구간 — 결론 카드의 CI와 같은 값이다.
+    const effect = container.querySelector(".tool-core-figure .result-effect");
+    expect(effect).toBeTruthy();
+    expect(effect.textContent).toMatch(/%p · 95% 구간 [+−][\d.]+%p ~ [+−][\d.]+%p/);
     expect(container.querySelector("#s-incr-method")).toBeTruthy();
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
     declareDesign();
@@ -165,6 +169,7 @@ describe("Incrementality render smoke", () => {
     // 예시 데이터는 켠 시점을 함께 싣는다 — 누르자마자 결론이다(2026-09-24).
     expect(on.queryByText("전환 시점을 먼저 지정하세요")).toBeNull();
     expect(on.getByText(/결론 — 신규/)).toBeTruthy();
+    expect(on.container.querySelector(".tool-core-figure .result-effect")).toBeTruthy();
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);

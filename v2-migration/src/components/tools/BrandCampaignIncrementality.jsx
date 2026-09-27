@@ -24,6 +24,8 @@ import { buildDemoCsv } from "@/utils/demoData";
 import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
+import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
 
 const tx = (locale, ko, en) => locale === "en" ? en : ko;
 const isNumericColumn = (rows, header) => rows.slice(0, 100).filter((row) => Number.isFinite(parseNum(row?.[header]))).length >= Math.min(3, rows.length);
@@ -362,6 +364,20 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         locale={locale}
         decisionPrefill={brandDecisionPrefill}
       />
+      {/* 핵심 그림: 캠페인 기간 누적 증분의 점추정과 AR(1) 프로파일 95% 구간. 방향 판정을 보류하는
+          설계(짧은 사전 기간·경계 rho)면 색을 칠하지 않는다 — 결론 문장과 같은 판정을 따른다. */}
+      {profileReady && <ToolCoreFigure
+        figure={effectIntervalFigure({
+          id: "brand-its-lift",
+          question: tx(locale, "캠페인 기간에 사전 추세보다 얼마나 더 나왔는가?", "How much more than the pre-trend did the campaign period deliver?"),
+          rows: [{ entity: tx(locale, `캠페인 기간 누적 차이 (${resolvedOutcomeColumn})`, `Cumulative difference over the campaign (${resolvedOutcomeColumn})`), estimate: profileEstimate, low: result.profileInterval[0], high: result.profileInterval[1] }],
+          unit: "count",
+          goodDirection: "up",
+          withheld: directionalVerdictWithheld,
+        })}
+        locale={locale}
+        downloadName="brand_its_lift"
+      />}
       <div className="callout"><div className="body"><strong>{!profileReady
         ? tx(locale, "AR(1) 계수 불확실성까지 포함한 구간을 만들 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "We cannot construct an interval that includes AR(1) parameter uncertainty. Add history or use a control-group design.")
         : directionalVerdictWithheld

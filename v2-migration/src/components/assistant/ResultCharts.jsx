@@ -51,42 +51,140 @@ function FigureRows({ rows, limit = 8, className, locale, children }) {
   </>;
 }
 
-/** 5-21 성과 변동: 직전 → 비중 변화 → 효율 변화 → 최근 다리 + 채널별 두 성분. */
+// 값의 단위별 표기. rate는 0~1 비율(표시는 %, 차이는 %p).
+function unitFormatter(unit, currency) {
+  if (unit === "rate") {
+    return {
+      level: (value) => (Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : "—"),
+      signed: (value) => {
+        if (!Number.isFinite(value)) return "—";
+        // 표시 자리수에서 0이면 부호를 붙이지 않는다("−0.0%p"는 줄어든 것처럼 읽힌다).
+        if (Math.abs(value) < 0.0005) return "0.0%p";
+        const sign = value > 0 ? "+" : "−";
+        return `${sign}${(Math.abs(value) * 100).toFixed(1)}%p`;
+      },
+      epsilon: 0.0005,
+    };
+  }
+  if (unit === "count") {
+    return {
+      level: (value) => (Number.isFinite(value) ? fmtNum(value) : "—"),
+      signed: (value) => {
+        if (!Number.isFinite(value)) return "—";
+        const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+        return `${sign}${fmtNum(Math.abs(value))}`;
+      },
+    };
+  }
+  return { level: (value) => (Number.isFinite(value) ? money(value, currency) : "—"), signed: (value) => signedMoney(value, currency) };
+}
+
+// 오르면 좋은 지표(전환율)와 오르면 나쁜 지표(CPA)의 색을 가른다.
+function directionTone(value, lowerIsBetter, epsilon = 0) {
+  if (Number.isFinite(value) && Math.abs(value) < epsilon) return "flat";
+  const tone = costTone(value);
+  if (lowerIsBetter || tone === "flat") return tone;
+  return tone === "worse" ? "better" : "worse";
+}
+
+/** 성과 변동 분해: 직전 → 비중 변화 → 효율 변화(→ 상호작용) → 최근 다리 + 대상별 성분.
+ *  5-21은 비용 지표(오르면 나쁨·통화), 5-29는 비율 지표(오르면 좋음·%p)라 단위·방향·이름을 옵션으로 받는다. */
 export function ResultMixRate({ visualization, locale, currency, fallback = null }) {
   const options = visualization.options || {};
   const metric = options.metric || "CPA";
+  const unit = options.unit || "currency";
+  const lowerIsBetter = options.lowerIsBetter ?? unit === "currency";
+  const format = unitFormatter(unit, currency);
   const rows = (visualization.data || [])
-    .map((row) => ({ entity: row.entity, mix: finite(row.mix), rate: finite(row.rate), contribution: finite(row.contribution) }))
+    .map((row) => ({ entity: row.entity, mix: finite(row.mix), rate: finite(row.rate), interaction: finite(row.interaction), contribution: finite(row.contribution) }))
     .filter((row) => row.mix != null || row.rate != null)
     .sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0));
   if (!rows.length) return fallback;
-  const mixTotal = sum(rows.map((row) => row.mix));
-  const rateTotal = sum(rows.map((row) => row.rate));
-  const max = Math.max(...rows.flatMap((row) => [Math.abs(row.mix || 0), Math.abs(row.rate || 0)]), 0);
+  const labels = options.labels || {};
+  const parts = [
+    { key: "mix", label: labels.mix || tr(locale, "비중 변화", "Mix"), short: labels.mixShort, hint: labels.mixHint || tr(locale, "싼·비싼 채널의 성과 비중이 바뀐 몫", "Share moved between cheaper and costlier channels") },
+    { key: "rate", label: labels.rate || tr(locale, "효율 변화", "Rate"), short: labels.rateShort, hint: labels.rateHint || tr(locale, "채널 자체 단가가 바뀐 몫", "Each channel's own unit cost changed") },
+    ...(rows.some((row) => row.interaction != null && row.interaction !== 0)
+      ? [{ key: "interaction", label: labels.interaction || tr(locale, "함께 바뀐 몫", "Interaction"), short: labels.interactionShort || tr(locale, "함께", "Both"), hint: labels.interactionHint || tr(locale, "비중과 내부 값이 동시에 바뀌어 어느 한쪽에 나눌 수 없는 몫", "The part that moved because both changed at once") }]
+      : []),
+  ];
+  const max = Math.max(...rows.flatMap((row) => parts.map((part) => Math.abs(row[part.key] || 0))), 0);
   const start = finite(options.start);
   const end = finite(options.end);
-  const parts = [
-    { key: "mix", label: tr(locale, "비중 변화", "Mix"), hint: tr(locale, "싼·비싼 채널의 성과 비중이 바뀐 몫", "Share moved between cheaper and costlier channels") },
-    { key: "rate", label: tr(locale, "효율 변화", "Rate"), hint: tr(locale, "채널 자체 단가가 바뀐 몫", "Each channel's own unit cost changed") },
-  ];
+  const up = lowerIsBetter ? tr(locale, `오른쪽은 ${metric} 상승, 왼쪽은 하락에 기여한 값입니다.`, `Values on the right raised ${metric}; values on the left lowered it.`)
+    : tr(locale, `오른쪽은 ${metric}을 올린 값, 왼쪽은 내린 값입니다.`, `Values on the right raised ${metric}; values on the left lowered it.`);
   return <figure className="result-chart result-mix-rate" aria-label={visualization.question}>
     <ol className="result-bridge tnum">
-      <li><span>{tr(locale, `직전 ${metric}`, `Prior ${metric}`)}</span><b>{start != null ? money(start, currency) : "—"}</b></li>
-      <li data-tone={costTone(mixTotal)}><span>{parts[0].label}</span><b>{signedMoney(mixTotal, currency)}</b></li>
-      <li data-tone={costTone(rateTotal)}><span>{parts[1].label}</span><b>{signedMoney(rateTotal, currency)}</b></li>
-      <li><span>{tr(locale, `최근 ${metric}`, `Recent ${metric}`)}</span><b>{end != null ? money(end, currency) : "—"}</b></li>
+      <li><span>{tr(locale, `직전 ${metric}`, `Prior ${metric}`)}</span><b>{start != null ? format.level(start) : "—"}</b></li>
+      {parts.map((part) => {
+        const total = sum(rows.map((row) => row[part.key]));
+        return <li data-tone={directionTone(total, lowerIsBetter, format.epsilon)} key={part.key}><span>{part.label}</span><b>{format.signed(total)}</b></li>;
+      })}
+      <li><span>{tr(locale, `최근 ${metric}`, `Recent ${metric}`)}</span><b>{end != null ? format.level(end) : "—"}</b></li>
     </ol>
     <FigureRows rows={rows} limit={6} locale={locale} className="result-split">
       {(row) => <li key={row.entity}>
-        <div className="result-split__head"><strong>{row.entity}</strong><span className="tnum" data-tone={costTone(row.contribution)}>{signedMoney(row.contribution, currency)}</span></div>
+        <div className="result-split__head"><strong>{row.entity}</strong><span className="tnum" data-tone={directionTone(row.contribution, lowerIsBetter, format.epsilon)}>{format.signed(row.contribution)}</span></div>
+        {/* 막대 줄의 이름 칸은 좁다(줄마다 같은 폭이어야 막대가 맞는다) — 긴 이름은 짧은 이름으로. 전체 이름은 다리·설명에 있다. */}
         {parts.map((part) => <div className={`result-split__bar is-${part.key}`} key={part.key}>
-          <span>{part.label}</span>
+          <span>{part.short || part.label}</span>
           <div className="result-diverging" aria-hidden="true"><i style={divergingStyle(row[part.key], max) || undefined} /></div>
-          <b className="tnum">{signedMoney(row[part.key], currency)}</b>
+          <b className="tnum">{format.signed(row[part.key])}</b>
         </div>)}
       </li>}
     </FigureRows>
-    <figcaption><p>{tr(locale, `오른쪽은 ${metric} 상승, 왼쪽은 하락에 기여한 값입니다.`, `Values on the right raised ${metric}; values on the left lowered it.`)}</p>{parts.map(part => <p key={part.key}><strong>{part.label}</strong>: {part.hint}</p>)}</figcaption>
+    <figcaption><p>{up}</p>{parts.map(part => <p key={part.key}><strong>{part.label}</strong>: {part.hint}</p>)}</figcaption>
+  </figure>;
+}
+
+/** 증분 추정: 점추정과 95% 구간을 0(변화 없음) 기준선 위에 그린다(5-23 · 5-24).
+ *  구간이 0을 걸치면 방향을 칠하지 않는다 — 무유의는 "효과 없음"이 아니라 "판단 보류"다(§8.6).
+ *  rows: [{entity, estimate, low, high}], options: {unit, goodDirection: "up"|"down", withheld} */
+export function ResultEffectInterval({ visualization, locale, currency, fallback = null }) {
+  const options = visualization.options || {};
+  const format = unitFormatter(options.unit || "count", currency);
+  const rows = (visualization.data || [])
+    .map((row) => ({ entity: row.entity, estimate: finite(row.estimate), low: finite(row.low), high: finite(row.high) }))
+    .filter((row) => row.estimate != null);
+  if (!rows.length) return fallback;
+  const values = rows.flatMap((row) => [row.estimate, row.low, row.high, 0]).filter((value) => value != null);
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const pad = (hi - lo) * 0.08 || Math.abs(hi) * 0.1 || 1;
+  const min = lo - pad;
+  const span = hi + pad - min;
+  const at = (value) => `${((value - min) / span) * 100}%`;
+  const toneOf = (row) => {
+    if (options.withheld || row.low == null || row.high == null) return "flat";
+    const clear = (row.low > 0 && row.high > 0) || (row.low < 0 && row.high < 0);
+    if (!clear) return "flat";
+    const up = row.estimate > 0;
+    if (!options.goodDirection) return "caution";
+    return (options.goodDirection === "up") === up ? "better" : "worse";
+  };
+  return <figure className="result-chart result-effect" aria-label={visualization.question}>
+    <ul>
+      {rows.map((row) => {
+        const hasRange = row.low != null && row.high != null;
+        return <li key={row.entity} data-tone={toneOf(row)}>
+          <div className="result-effect__head">
+            <strong>{row.entity}</strong>
+            <span className="tnum"><b>{format.signed(row.estimate)}</b>{hasRange && <> · {tr(locale, "95% 구간", "95% interval")} {format.signed(row.low)} ~ {format.signed(row.high)}</>}</span>
+          </div>
+          <div className="result-effect__track" aria-hidden="true">
+            <span className="result-effect__zero" style={{ left: at(0) }} />
+            {hasRange && <span className="result-effect__range" style={{ left: at(row.low), width: `${((row.high - row.low) / span) * 100}%` }} />}
+            <span className="result-effect__dot" style={{ left: at(row.estimate) }} />
+          </div>
+        </li>;
+      })}
+    </ul>
+    <figcaption>
+      <p>{tr(locale, "점은 추정값, 굵은 선은 95% 구간, 세로선은 0(변화 없음)입니다.", "The dot is the estimate, the bar the 95% interval, and the vertical line zero (no change).")}</p>
+      <p>{options.withheld
+        ? tr(locale, "이 설계로는 방향을 판정하지 않습니다 — 구간은 참고용입니다.", "This design does not support a directional verdict — the interval is for reference only.")
+        : tr(locale, "구간이 0을 걸치면 효과가 없다는 뜻이 아니라 아직 판단할 수 없다는 뜻입니다.", "An interval that crosses zero means not yet decidable, not no effect.")}</p>
+    </figcaption>
   </figure>;
 }
 
@@ -267,6 +365,7 @@ export const RESULT_CHART_VARIANTS = Object.freeze({
   "budget-shift": ResultBudgetShift,
   "vif-threshold": ResultVifThreshold,
   "status-share": ResultStatusShare,
+  "effect-interval": ResultEffectInterval,
   "survival-step": ResultSurvival,
   "hazard-columns": ResultHazardColumns,
 });

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { creativeStatusFigure } from "./coreFigures";
+import { compositionShiftFigure, effectIntervalFigure } from "./coreFigures";
 
 describe("소재 상태 띠는 소재 하나를 한 상태에만 센다", () => {
   const fatigue = [
@@ -41,5 +42,16 @@ describe("그림의 색 이름은 스타일시트가 아는 이름이어야 한�
   it("소재 상태 띠의 색 이름이 전부 스타일시트에 있다", () => {
     const figure = creativeStatusFigure({ fatigue: [{ creative_id: "a", fatigued: false, reason: null }], alerts: [], isReviewable: () => true, locale: "ko" });
     for (const row of figure.data) expect(known.has(row.tone), row.tone).toBe(true);
+  });
+});
+
+describe("5-23 · 5-24 · 5-29 핵심 그림 사양", () => {
+  it("구성 변화는 비율 단위·오르면 좋음으로 mix-rate 그림을 쓴다", () => {
+    const figure = compositionShiftFigure({ rows: [], start: 0.3, end: 0.32, metric: "iOS 비율", locale: "ko" });
+    expect(figure.options).toMatchObject({ variant: "mix-rate", unit: "rate", lowerIsBetter: false, start: 0.3, end: 0.32 });
+  });
+  it("증분 구간은 판정 보류를 불리언으로 싣는다", () => {
+    const figure = effectIntervalFigure({ id: "x", question: "q", rows: [{ entity: "A", estimate: 1, low: 0, high: 2 }], withheld: undefined });
+    expect(figure.options).toEqual({ x: "entity", y: "estimate", variant: "effect-interval", unit: "count", goodDirection: "up", withheld: false });
   });
 });

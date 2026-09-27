@@ -6676,7 +6676,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .result-chart [data-tone="caution"] { color:var(--warning); }
 .result-chart [data-tone="muted"],.result-chart [data-tone="flat"] { color:var(--text-muted); }
 /* 5-21: 다리 네 칸 + 채널별 두 성분 */
-.result-bridge { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:0;list-style:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border); }
+.result-bridge { display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);margin:0;padding:0;list-style:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border); }
 .result-bridge li { display:grid;gap:2px;padding:10px 12px;color:var(--text-primary); }
 .result-bridge li + li { border-left:1px solid var(--border); }
 .result-bridge span { color:var(--text-muted);font-size: var(--fs-sm); }
@@ -6691,6 +6691,17 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .result-diverging i { position:absolute;top:1px;bottom:1px;left:var(--bar-start);width:var(--bar-size);border-radius: var(--radius-sm); }
 .result-split__bar.is-mix .result-diverging i { background:var(--primary); }
 .result-split__bar.is-rate .result-diverging i { background:var(--warning); }
+.result-split__bar.is-interaction .result-diverging i { background:var(--text-muted); }
+/* 증분 추정(5-23·5-24): 0 기준선 위의 점추정과 95% 구간. 색은 li의 data-tone(currentColor)을 따른다. */
+.result-effect ul { display:grid;gap:14px;margin:0;padding:0;list-style:none; }
+/* 이름과 값은 두 줄로 — 한 줄에 두면 폭이 모자랄 때 값이 접혀 막대 위로 올라온다(PNG에서 실측). */
+.result-effect__head { display:grid;gap:2px; }
+.result-effect__head strong { color:var(--text-primary); }
+.result-effect__head span { font-size: var(--fs-sm); }
+.result-effect__track { position:relative;height:24px;margin-top:6px; }
+.result-effect__zero { position:absolute;top:0;bottom:0;width:1px;background:var(--border-stronger); }
+.result-effect__range { position:absolute;top:50%;height:6px;transform:translateY(-50%);border-radius: var(--radius-pill);background:color-mix(in srgb, currentColor 35%, transparent); }
+.result-effect__dot { position:absolute;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);border-radius: var(--radius-pill);background:currentColor; }
 /* 5-22: 평균 ○ ↔ 한계 ● */
 .result-gap__track { position:relative;height:14px; }
 .result-gap__track::before { content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border); }
@@ -6735,8 +6746,8 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .dochi-workspace__chart-split { stroke:var(--text-muted);stroke-dasharray:4 4; }
 .dochi-workspace__chart-split-label { fill:var(--text-muted);font-size: var(--fs-xs); }
 @media (max-width: 640px) {
-  .result-bridge { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .result-bridge li:nth-child(3) { border-left:0; }
+  .result-bridge { grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .result-bridge li:nth-child(2n+1) { border-left:0; }
   .result-bridge li:nth-child(n+3) { border-top:1px solid var(--border); }
   .result-split__bar { grid-template-columns:52px minmax(0,1fr) 84px; }
   .result-vif li { grid-template-columns:minmax(0,1fr) 72px; }

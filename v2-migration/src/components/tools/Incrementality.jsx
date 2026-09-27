@@ -15,6 +15,8 @@ import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
+import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
@@ -665,6 +667,19 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           }
         />
       )}
+      {/* 핵심 그림: 전환율 차이(노출 − 홀드아웃)의 점추정과 95% 구간 — 결론 카드의 판정(r.conclusive)과 같은 구간이다. */}
+      {card && Number.isFinite(r?.liftAbs) && <ToolCoreFigure
+        figure={effectIntervalFigure({
+          id: "holdout-lift",
+          question: tr("노출군 전환율이 홀드아웃보다 얼마나 높은가?", "How much higher is the exposed conversion rate than the holdout?"),
+          rows: [{ entity: tr("전환율 차이 (노출 − 홀드아웃)", "Conversion-rate difference (exposed − holdout)"), estimate: r.liftAbs, low: r.ciLow95, high: r.ciHigh95 }],
+          unit: "rate",
+          goodDirection: "up",
+          withheld: win.balanced === false,
+        })}
+        locale={locale}
+        downloadName="incrementality_holdout_lift"
+      />}
 
       {series && win?.hasPre && (
         <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
@@ -1110,6 +1125,24 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               }
             />
           )}
+          {/* 핵심 그림: 하루 평균 변화(대조군이 있으면 DiD 순효과)의 점추정과 95% 구간. 끄기(off)는 줄어든 쪽이
+              "광고가 만들던 몫"이라 결론 카드와 같은 방향(down)을 좋은 쪽으로 칠한다. */}
+          {card && Number.isFinite(effVal) && <ToolCoreFigure
+            figure={effectIntervalFigure({
+              id: "prepost-effect",
+              question: lost ? tr("끈 뒤 하루 평균이 얼마나 줄었는가?", "How much did the daily average drop after turning it off?") : tr("켠 뒤 하루 평균이 얼마나 늘었는가?", "How much did the daily average rise after turning it on?"),
+              rows: [{
+                entity: isDiD ? tr("순효과 Δ (대조군 변화 제거, 하루)", "Net effect Δ (control change removed, daily)") : tr("변화 Δ (하루 평균)", "Change Δ (daily average)"),
+                estimate: effVal,
+                low: (isDiD ? r.did.sig : r.sig)?.ciLow95 ?? null,
+                high: (isDiD ? r.did.sig : r.sig)?.ciHigh95 ?? null,
+              }],
+              unit: "count",
+              goodDirection: lost ? "down" : "up",
+            })}
+            locale={locale}
+            downloadName="incrementality_prepost_effect"
+          />}
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(displayPreMean, 1)} />

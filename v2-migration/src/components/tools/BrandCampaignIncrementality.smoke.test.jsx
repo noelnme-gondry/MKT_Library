@@ -45,5 +45,10 @@ describe("BrandCampaignIncrementality render smoke", () => {
     expect(container.querySelector("#brand-its-result")).toBeTruthy();
     expect(container.textContent).toContain("증분 방향을 판정하지 않습니다");
     expect(container.textContent).not.toContain("관찰상 증가 신호가 남습니다");
+    // 핵심 그림: 누적 차이의 점추정·구간. 방향 판정을 보류한 예시라 색을 칠하지 않는다(결론 문장과 같은 판정).
+    const figure = container.querySelector(".tool-core-figure .result-effect");
+    expect(figure).toBeTruthy();
+    expect(figure.querySelector("li").getAttribute("data-tone")).toBe("flat");
+    expect(figure.textContent).toContain("방향을 판정하지 않습니다");
   });
 });
