@@ -12,10 +12,11 @@ import { blogPracticeFor } from "@/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
 import { buildBlogPracticeDownload } from "@/lib/blogPracticeData";
 import { trackProductEvent } from "@/lib/analytics";
+import Incrementality from "@/components/tools/Incrementality";
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("./BlogInsightChart", () => ({ default: ({ visual }) => <figure>{JSON.stringify(visual.data)}</figure> }));
-vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn(), trackProductEventOnce: vi.fn(), productEventKey: (...a) => a.join(":") }));
+vi.mock("@/lib/analytics", async importOriginal => ({ ...await importOriginal(), trackProductEvent: vi.fn(), trackProductEventOnce: vi.fn(), productEventKey: (...a) => a.join(":") }));
 async function upload(locale = "ko", text = "impressions,clicks,installs\n1000,100,10\n2000,200,20", label = locale === "en" ? "Choose CSV" : "CSV 선택") {
   const file = new File([text], "report.csv", { type: "text/csv" });
   file.text = async () => text;
@@ -28,6 +29,19 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it.each(["ko", "en"])("preserves fixture dates and renders the actual %s incrementality result without declaring a causal design", async locale => {
+    const slug = "incrementality-measurement", practice = blogPracticeFor(slug, locale);
+    const demo = buildBlogPracticeDownload(practice).demo;
+    const blog = render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug, locale).action }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(useAppStore.getState().csvData.designWindow).toEqual(demo.designWindow);
+    blog.unmount();
+    const { container } = render(<Incrementality locale={locale} />);
+    expect(container.querySelector(".result-action-card")).toBeTruthy();
+    expect(screen.getByText(locale === "en" ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start);
+  });
   it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
     const config = BLOG_INSIGHT_PLACEMENTS[slug];
     const practice = blogPracticeFor(slug, locale);

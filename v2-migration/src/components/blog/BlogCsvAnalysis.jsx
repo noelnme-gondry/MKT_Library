@@ -151,7 +151,9 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       if (request !== task.current) return;
       const parsed = parseCsv(sample.text);
       const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
-      const candidate = { raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: sample.file, projectId, importSource: "demo", ...(sample.demo.currency ? { currency: sample.demo.currency } : {}) };
+      // Preserve the registered fixture's planned window/cutoff and units.
+      // These describe the sample; they do not confirm the user's causal design.
+      const candidate = { ...sample.demo, raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: sample.file, projectId, importSource: "demo" };
       pendingSample.current = candidate;
       setCsv(candidate);
       // Loading a sample never grants permission to replace existing project data.

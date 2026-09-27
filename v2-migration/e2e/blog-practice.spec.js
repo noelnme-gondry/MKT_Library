@@ -6,6 +6,7 @@ import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
 import { PUBLISHED_BLOG_TOOL_MAP } from "../src/lib/contentToolRegistry";
 import { idToSlug } from "../src/lib/routeMap";
 import { blogConversionFor } from "../src/lib/blogConversion";
+import { getPostBySlug } from "../src/lib/blog";
 import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
 
 // One real browser handoff per distinct generated dataset family; coverage of
@@ -52,7 +53,9 @@ for (const locale of ["ko", "en"]) {
       await page.goto(`${en ? "/en" : ""}/blog/${slug}`);
       const trust = page.locator(".editorial-trust--compact");
       await expect(trust).toBeVisible();
-      await expect(trust.locator("a").first()).toBeVisible();
+      const sourceCount = getPostBySlug(slug, locale).sources.length;
+      await expect(trust.locator("a")).toHaveCount(sourceCount);
+      if (sourceCount) await expect(trust.locator("a").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const demo = page.locator(".blog-conversion-entry").getByRole("button", { name: blogConversionFor(slug, locale).action, exact: true });
       await expect(demo).toBeEnabled();
