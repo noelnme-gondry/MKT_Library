@@ -314,7 +314,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
         <>
           <section className="paid-organic-mapping" aria-labelledby="paid-organic-mapping-title">
             <header>
-              <div><span>01 · INPUT</span><h2 id="paid-organic-mapping-title">{C.mapping}</h2></div>
+              <div><h2 id="paid-organic-mapping-title">{C.mapping}</h2></div>
               <p>{C.mappingDesc}</p>
             </header>
             <div className="paid-organic-mapping__grid">
@@ -345,13 +345,13 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
               </section>
 
               <section className="paid-organic-chart-card">
-                <header><div><span>02 · MOVEMENT MAP</span><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
+                <header><div><h2>{C.chartTitle}</h2></div><p>{C.chartDesc}</p><FigurePngButton title={locale === "en" ? "Paid and organic traffic changes" : "유료·오가닉 유입 변화"} target={canvasRef} fileName="paid_organic_movement" locale={locale} /></header>
                 <div className="paid-organic-chart"><canvas ref={canvasRef}></canvas></div>
                 {(result.invalidRows > 0 || result.invalidWeeks > 0) && <small className="paid-organic-quality">{C.invalid(result.invalidRows, result.invalidWeeks)}</small>}
               </section>
 
               <section className={`paid-organic-verdict is-${verdictCopy[2]}`}>
-                <div><span>03 · NEXT CHECK</span><h2>{verdictCopy[0]}</h2><p>{verdictCopy[1]}</p></div>
+                <div><h2>{verdictCopy[0]}</h2><p>{verdictCopy[1]}</p></div>
                 <div className="paid-organic-verdict__action">
                   <Link href={locale === "en" ? "/en/tools/cannibalization-diagnosis" : "/tools/cannibalization-diagnosis"}>{C.cta} <b aria-hidden="true">→</b></Link>
                   <small>{C.ctaHint}</small>

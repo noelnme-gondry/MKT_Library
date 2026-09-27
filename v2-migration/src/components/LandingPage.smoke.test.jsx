@@ -52,7 +52,7 @@ describe("LandingPage render smoke", () => {
     expect(actions[1].getAttribute("href")).toBe("/start");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("마케팅 데이터를 비교하고");
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
     expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리");
@@ -202,7 +202,7 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
-    expect(container.textContent).toContain("This week’s analysis. Next week’s decisions.");
+    expect(container.textContent).toContain("Record a decision. Compare the next result.");
     // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
     fireEvent.click(container.querySelector(".home-tool-finder > button"));
     const enLinks = [...container.querySelectorAll(".home-tool-finder__results a")];

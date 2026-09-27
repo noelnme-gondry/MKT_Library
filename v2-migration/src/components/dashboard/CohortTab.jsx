@@ -291,7 +291,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
         <div style={{ fontSize: "var(--fs-xs)", fontWeight: "700", color: "var(--text-muted)", marginBottom: "8px" }}>
           {label}
         </div>
-        <FigureHead target={() => segmentChartRefs.current[sk]} fileName={`retention_segment_${String(sk).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}`} locale={locale} />
+        <FigureHead exportTitle={`${label} · ${locale === "en" ? "Retention" : "리텐션"}`} target={() => segmentChartRefs.current[sk]} fileName={`retention_segment_${String(sk).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}`} locale={locale} />
         <div className="chart-container" style={{ height: "200px" }}>
           <canvas id={`wide-ret-seg-${sk}`} ref={el => segmentChartRefs.current[sk] = el}></canvas>
         </div>
@@ -391,7 +391,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           ]}
         />
 
-        <FigureHead target={chartRef} fileName="retention_curve" locale={locale} />
+        <FigureHead exportTitle={locale === "en" ? "Retention curve" : "리텐션 곡선"} target={chartRef} fileName="retention_curve" locale={locale} />
         <div className="chart-container" style={{ height: "220px" }}>
           <canvas id="wide-ret-curve" ref={chartRef}></canvas>
         </div>

@@ -382,7 +382,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
         <div className="alloc-card" style={{ marginTop: "12px" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{T.dailyTrendTitle(metricLabel)}</div>
-            <FigurePngButton target={chartRef} fileName="pacing" locale={locale} />
+            <FigurePngButton title={T.dailyTrendTitle(metricLabel)} target={chartRef} fileName="pacing" locale={locale} />
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="pacing-chart" ref={chartRef}></canvas>

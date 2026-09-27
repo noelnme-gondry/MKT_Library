@@ -52,7 +52,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
         </header>}
 
         {toolId && titleLevel === 1 && <JourneyProgress stage="analyze" locale={locale} placement="tool_header" />}
-        {toolId && <ToolBrief toolId={toolId} locale={locale} />}
+        {toolId && titleLevel !== 0 && <ToolBrief toolId={toolId} locale={locale} />}
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && (

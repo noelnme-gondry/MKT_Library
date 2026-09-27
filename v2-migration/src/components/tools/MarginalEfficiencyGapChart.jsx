@@ -56,7 +56,7 @@ export default function MarginalEfficiencyGapChart({
           <span><i className="is-marginal" aria-hidden="true" />{isEn ? "Marginal" : "한계"}</span>
         </div>
         {view.points.length > 0 && <div className="marginal-gap__download" data-figure-skip="">
-          <FigurePngButton target={sectionRef} fileName={`marginal_gap_${grain}_${metric}`} locale={locale} />
+          <FigurePngButton title={locale === "en" ? "Average and marginal efficiency" : "평균 효율과 한계 효율"} target={sectionRef} fileName={`marginal_gap_${grain}_${metric}`} locale={locale} />
         </div>}
       </header>
 

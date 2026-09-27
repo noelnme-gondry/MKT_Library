@@ -113,7 +113,6 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
 
   if (!hasPreparedData) {
     return <section className="dochi-result-empty" aria-labelledby="dochi-result-empty-title">
-      <span>{C.eyebrow}</span>
       <h1 id="dochi-result-empty-title">{C.noDataTitle}</h1>
       <p>{C.noDataDeck}</p>
       <Link className="ab-button" href={locale === "en" ? "/en/start" : "/start"}>{C.backHome}</Link>
@@ -125,7 +124,6 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     {phase === "running" && <p role="status">{C.running}</p>}
     {phase === "mapping" && <>
       <header className="dochi-result-workspace__header">
-        <span>{C.eyebrow}</span>
         <h1 id="dochi-result-title">{C.mappingTitle}</h1>
         <p>{C.mappingDeck}</p>
       </header>
@@ -148,7 +146,7 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
           하단 안내 상자가 결론보다 먼저 눈에 들어왔다. 면은 한 겹이고 안쪽은 선으로만 나눈다. */}
       <AssistantWorkspace csvData={csvData} locale={locale} getTitle={(id) => toolIndexEntry(id, locale)?.name} onOpenTool={openTool} onEligibilityChange={rememberAvailableAnalyses} autoStart showContextHeader={false} sampleMode={Boolean(sample)}
         summaryHead={<header className="result-sheet__head">
-          <h1 id="dochi-result-title">{C.resultsTitle}</h1>
+        <h1 id="dochi-result-title">{C.resultsTitle}</h1>
           {/* 입력 요약은 한 줄 — 상자 세 개(샘플·데이터·공통 설정)가 결과보다 먼저 자리를 차지했다. */}
           <p className={`dochi-result-workspace__summary${sample ? " sample-journey-scope" : ""}`} aria-label={locale === "en" ? "Data summary" : "입력 요약"}>
             <strong title={csvData.fileName}>{sample ? `${locale === "en" ? "Sample data" : "샘플 데이터"} · ${sample.channel}` : csvData.fileName}</strong>

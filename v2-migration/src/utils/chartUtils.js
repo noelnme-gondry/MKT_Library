@@ -1,3 +1,4 @@
+import { figureHeaderLayout, drawFigureHeader } from "./figureExportContext";
 /* text/textPrimary/muted/grid/border는 index.html CHART_THEME(약 9219행) 그대로 getter 이식 —
    document.body.classList.contains("light-mode") 여부로 라이트/다크 값 분기(§7 다크모드 함정). */
 export const CHART_THEME = {
@@ -172,24 +173,32 @@ export function refreshMountedChartThemes(ChartCtor) {
 
 /* Chart.js 캔버스를 PNG로 다운로드. Chart.js는 기본 transparent → 테마 배경 합성 후 export.
    index.html downloadChartAsPNG 이식(§7 dark 배경 명시 합성). */
-export function downloadChartAsPNG(canvas, fileName) {
+export function downloadChartAsPNG(canvas, fileName, { context = null } = {}) {
   if (typeof document === "undefined" || !canvas) return false;
   // 캔버스 픽셀이 CSS 픽셀의 몇 배인지(배율) — 출처 줄도 같은 배율로 키워야 고해상도 저장에서 글자가 작아지지 않는다.
   const scale = Math.max(1, canvas.width / (canvas.clientWidth || canvas.width));
   const footerHeight = Math.round(24 * scale);
   const tmp = document.createElement("canvas");
   tmp.width = canvas.width;
-  tmp.height = canvas.height + footerHeight;
   const ctx = tmp.getContext("2d");
+  const header = figureHeaderLayout(ctx, context, canvas.width / scale, CHART_FONT_STACK);
+  const headerHeight = Math.round(header.height * scale);
+  tmp.height = canvas.height + footerHeight + headerHeight;
   const bg = getCssVar("--bg-1") || "#121212";
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, tmp.width, tmp.height);
-  ctx.drawImage(canvas, 0, 0);
+  if (header.height) {
+    ctx.save();
+    ctx.scale(scale, scale);
+    drawFigureHeader(ctx, header, CHART_THEME.text);
+    ctx.restore();
+  }
+  ctx.drawImage(canvas, 0, headerHeight);
   ctx.fillStyle = CHART_THEME.muted;
   ctx.font = `${Math.round(10 * scale)}px ${CHART_FONT_STACK}`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", tmp.width - Math.round(10 * scale), canvas.height + footerHeight / 2);
+  ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", tmp.width - Math.round(10 * scale), canvas.height + headerHeight + footerHeight / 2);
 
   const url = tmp.toDataURL("image/png");
   const a = document.createElement("a");

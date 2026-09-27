@@ -715,7 +715,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
             </h2>
-            <FigurePngButton target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
+            <FigurePngButton title={locale === "en" ? "Channel response curve" : "채널별 응답곡선"} target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
           </div>
           <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
             {tr(

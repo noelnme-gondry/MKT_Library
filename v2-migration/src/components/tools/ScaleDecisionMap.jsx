@@ -259,7 +259,7 @@ export default function ScaleDecisionMap({
             : `총비용과 전체 가중 ${metricLabel}을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
         </div>
         {matrix.points.length >= 2 && (
-          <FigurePngButton target={canvasRef} fileName={`scale_decision_${grain}_${metric}`} locale={locale} />
+          <FigurePngButton title={locale === "en" ? "Efficiency and scale comparison" : "효율과 규모 비교"} target={canvasRef} fileName={`scale_decision_${grain}_${metric}`} locale={locale} />
         )}
       </header>
 

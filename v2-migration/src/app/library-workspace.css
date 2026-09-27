@@ -968,3 +968,44 @@
   .app .analysis-metric-picker button > strong { grid-column: 2; grid-row: 1; }
   .app .analysis-metric-picker button > small, .app .analysis-metric-picker button > b { grid-column: 1 / -1; }
 }
+
+/* One reading contract for analysis, articles, settings, and policy pages.
+   Keep Korean words intact; long URLs and user-provided names can still wrap.
+   Sentence boundaries belong in the markup, not in viewport-specific <br>s. */
+.app .content :is(p, h1, h2, h3, h4, li, dt, dd),
+.policy-page :is(p, h1, h2, h3, h4, li, dt, dd),
+[role="dialog"] :is(p, h1, h2, h3, h4, li, dt, dd) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.app .content :is(h1, h2), .policy-page :is(h1, h2) { text-wrap: balance; }
+.dc-hero__deck > p { margin: 0; }
+.dc-hero__deck > p + p { margin-top: 8px; }
+/* Long explanations stay readable without constraining data tables or controls. */
+:is(.account-page, .workspace-storage-page, .projects-page, .policy-page) > header p,
+.workspace-storage-page__privacy p,
+.subscription-page #refund-policy > p { max-width: 68ch; }
+.tool-brief__a { margin-top: 0; }
+
+/* Settings use labelled rows; projects retain a surface only for each saved project. */
+.app :is(.workspace-storage-page__toggle, .workspace-storage-page__list, .workspace-storage-page__privacy, .account-page__card, .projects-page:not(.subscription-page) > section) {
+  padding: 20px 0;
+  border: 0;
+  border-top: 1px solid var(--library-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app .workspace-storage-page__toggle { margin-top: 0; border-top: 0; align-items: flex-start; }
+.app .workspace-storage-page__header p + p { margin-top: 12px; }
+.app .workspace-storage-page__empty { padding: 8px 0; text-align: left; }
+.app .workspace-storage-page__dataset { padding-inline: 0; }
+.app .workspace-storage-page__dataset small { white-space: normal; line-height: 1.6; }
+.app .workspace-storage-page__privacy { max-width: none; }
+.app :is(.workspace-storage-page__toggle p, .workspace-storage-page__privacy, .account-page__facts dt) { font-size: var(--fs-sm); }
+.site-footer :is(p, li, dt, dd) { word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty; }
+
+.app .workspace-storage-page__privacy p { margin: 0; }
+.workspace-storage-page__privacy nav { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 8px; }
+.workspace-storage-page__privacy nav a { display: inline-flex; align-items: center; min-height: 44px; }

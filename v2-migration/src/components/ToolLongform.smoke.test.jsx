@@ -13,7 +13,8 @@ describe("ToolLongform", () => {
     const disclosure = container.querySelector(".tool-longform__disclosure");
     expect(disclosure).toBeTruthy();
     expect(disclosure.tagName).toBe("SECTION");
-    expect(disclosure.querySelector(":scope > [data-information-heading]")?.textContent).toContain("필요할 때만 펼쳐보세요");
+    expect(disclosure.querySelector(":scope > [data-information-heading]")?.textContent).toContain("판단 기준과 FAQ");
+    expect(container.textContent).not.toContain("필요할 때만 펼쳐보세요");
     expect(container.textContent).toContain("판단 기준과 FAQ");
     expect(container.textContent).toContain("진단 기준과 다음 조치 보기");
     expect(container.textContent).not.toContain("도구 사용 가이드");
@@ -23,7 +24,8 @@ describe("ToolLongform", () => {
     const { container } = render(<ToolLongform toolId="5-3" locale="en" />);
     expect(container.querySelector(".tool-longform a")).toBeNull();
     expect(container.querySelector(".tool-longform__boundary")).toBeNull();
-    expect(container.querySelector(".tool-longform__summary")?.textContent).toContain("Open only when you need the methodology");
+    expect(container.querySelector(".tool-longform__summary")?.textContent).toBe("Method and FAQ");
+    expect(container.textContent).not.toContain("Open only when you need the methodology");
     expect(container.textContent).toContain("Method and FAQ");
     expect(container.textContent).toContain("See calculation logic and safeguards");
   });

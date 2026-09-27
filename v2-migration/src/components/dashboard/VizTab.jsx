@@ -983,7 +983,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
           </div>
           <span className="dashboard-explorer__status">{activeTrend.status}</span>
-          {!isCustomActive && <FigurePngButton target={detailCanvasRef} fileName="dashboard_trend" locale={locale} />}
+          {!isCustomActive && <FigurePngButton title={`${activeMetricLabel} ${locale === "en" ? "trend" : "추이"}`} target={detailCanvasRef} fileName="dashboard_trend" locale={locale} />}
         </div>
         {isCustomActive ? (
           <div className="dashboard-explorer__empty">{locale === "en" ? "Custom KPIs currently support aggregate values only. A date-level adapter will be added after the same formula is validated for trend calculations." : "커스텀 KPI는 현재 합계값 계산만 지원합니다. 날짜별 같은 식을 재계산하는 어댑터를 검증한 뒤 추이 차트에 추가할 수 있습니다."}</div>
@@ -1037,7 +1037,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
                     <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
                   </div>
                 ) : (
-                  <><FigureHead target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} /><div className="chart-canvas-wrap dashboard-supporting-chart__canvas"><canvas ref={setCanvasRef(c.k)} role="img" aria-label={c.title}></canvas></div></>
+                  <><FigureHead exportTitle={c.title} target={() => canvasRefs.current[c.k]} fileName={`dashboard_${c.k}`} locale={locale} /><div className="chart-canvas-wrap dashboard-supporting-chart__canvas"><canvas ref={setCanvasRef(c.k)} role="img" aria-label={c.title}></canvas></div></>
                 )}
               </div>
             ))}

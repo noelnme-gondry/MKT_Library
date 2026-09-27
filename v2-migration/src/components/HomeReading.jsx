@@ -17,8 +17,8 @@ export default function HomeReading({ locale = "ko" }) {
   const sop = getRouteSeo("4-1", locale);
   if (!featured) return null;
   return <section className="library-reading" aria-labelledby="library-reading-title">
-    <header><div><h2 id="library-reading-title">{en ? "Understand the question before opening a file." : "분석 전에 읽으면 좋은 이야기."}</h2>
-      <p>{en ? "Read the context, check your operating standards, then apply them." : "배경을 이해하고, 운영 기준을 확인하고, 내 데이터에 적용하세요."}</p></div>
+    <header><div><h2 id="library-reading-title">{en ? "Guides and analysis articles" : "실무 가이드와 분석 글"}</h2>
+      <p>{en ? "Methods, examples and operating standards for marketing analysis." : "분석 방법과 사례, 운영 기준을 찾아볼 수 있습니다."}</p></div>
       <Link href={localizedHref("/blog", locale)}>{en ? "All articles" : "블로그 전체 보기"}</Link></header>
     <div className="library-reading__grid">
       <Link className="library-featured-post" href={localizedHref(`/blog/${featured.slug}`, locale)}>

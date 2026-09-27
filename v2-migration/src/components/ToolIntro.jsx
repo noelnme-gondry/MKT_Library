@@ -18,12 +18,12 @@ const INTRO = {
     en: ["Aha-moment finder", "Find which early action, repeated how often and within how many days, predicts lasting value."],
   },
   "5-23": {
-    ko: ["증분 분석", "광고가 없었어도 생겼을 성과를 빼고, 실제로 추가 만든 효과를 추정합니다."],
-    en: ["Incrementality analysis", "Subtract what would have happened anyway to estimate the outcomes advertising truly added."],
+    ko: ["증분 분석", "노출군과 비교군 또는 광고 전후의 차이로 효과를 추정합니다."],
+    en: ["Incrementality analysis", "Estimate effects by comparing exposed and control groups, or periods before and after advertising."],
   },
   "5-24": {
-    ko: ["브랜드 캠페인 증분 분석", "브랜드 검색·직접 유입·가입의 변화에서 캠페인이 실제로 추가한 성과를 추정합니다."],
-    en: ["Brand campaign incrementality", "Estimate the outcomes a brand campaign added in brand search, direct traffic, and signups."],
+    ko: ["브랜드 캠페인 증분 분석", "브랜드 검색·직접 유입·가입의 변화를 캠페인 이전 추세와 비교합니다."],
+    en: ["Brand campaign incrementality", "Compare brand search, direct traffic, and signups against the pre-campaign trend."],
   },
   "5-25": {
     ko: ["VIF 다중공선성 점검", "MMM 전에 채널별 지출이 너무 같이 움직여 기여도를 나눌 수 없는지 확인합니다."],

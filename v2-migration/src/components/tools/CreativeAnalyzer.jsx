@@ -1351,7 +1351,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 <div className="alloc-card" style={{ margin: "12px 0" }}>
                   <div className="cann-card-header">
                     <div className="alloc-card-title">{tr("속성별 영향력 그림 (Forest plot — β + 95% 신뢰구간)", "Attribute effect chart (forest plot — β + 95% CI)")}</div>
-                    <FigurePngButton target={conceptChartRef} fileName={`creative_forest_${curMetricKey}`} locale={locale} />
+                    <FigurePngButton title={locale === "en" ? "Attribute effects and 95% confidence intervals" : "속성별 영향력과 95% 신뢰구간"} target={conceptChartRef} fileName={`creative_forest_${curMetricKey}`} locale={locale} />
                   </div>
                   <p className="muted">{tr(<>막대 길이 = 영향력 크기(β), 양옆 점선 = 신뢰구간(95% CI). 막대가 0선에 안 걸치고 보정된 유의확률(BH-adj p){"<"}0.05면 통계적으로 의미있는 효과입니다.</>, <>Bar length = effect size (β), dashed ends = 95% confidence interval. If the bar doesn&apos;t cross 0 and the adjusted p-value (BH-adj p){"<"}0.05, the effect is statistically significant.</>)}</p>
                   <div style={{ position: "relative", height: `${Math.max(280, Math.min(800, effRows.length * 26 + 80))}px` }}>
@@ -1428,7 +1428,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="cann-card-header">
               <div className="alloc-card-title">{tr(`클릭률 하락 추이 — 하락률 상위 ${Math.min(5, fatiguedRows.length)}개 (Decay 라인)`, `CTR decline trend — top ${Math.min(5, fatiguedRows.length)} by drop rate (decay line)`)}</div>
-              <FigurePngButton target={fatigueChartRef} fileName="creative_fatigue_decay" locale={locale} />
+              <FigurePngButton title={locale === "en" ? "CTR decline by creative" : "소재별 클릭률 하락 추이"} target={fatigueChartRef} fileName="creative_fatigue_decay" locale={locale} />
             </div>
             <p className="muted">{tr("최근 7일 평균 클릭률(rolling CTR). 가장 좋았던 시점(peak) 대비 하락 추세를 봅니다.", "7-day rolling average CTR. Shows the decline trend versus the best (peak) point.")}</p>
             <div style={{ position: "relative", height: "300px" }}>

@@ -19,7 +19,6 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
     <section data-information-section="" className="tool-longform__disclosure">
       <header data-information-heading="" className="tool-longform__summary">
         <span id={`tool-longform-${toolId}`} className="tool-longform__title" role="heading" aria-level="2">{sectionTitle}</span>
-        <span className="tool-longform__hint">{localeKey === "en" ? "Open only when you need the methodology" : "필요할 때만 펼쳐보세요"}</span>
       </header>
       <div className="tool-longform__content">
         <section data-information-section="" className="tool-longform__details">

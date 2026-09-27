@@ -1532,7 +1532,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                     <>Blue solid line = accuracy (F1) when using that count as the threshold · green dashed line = % of all users who actually did it that many times or more. <span style={{ color: "var(--warning)" }}>●</span> Gold dot = the auto-selected optimal count (≥{drillResult.bestK}). Raising the bar (e.g. to 300) can move F1 up or down, but the users who qualify (green line) shrink accordingly.</>,
                   )}
                 </p>
-                <FigureHead target={sweepChartRef} fileName="aha_k_sweep" locale={locale} />
+                <FigureHead exportTitle={locale === "en" ? "Outcomes by action count" : "행동 횟수별 결과 비교"} target={sweepChartRef} fileName="aha_k_sweep" locale={locale} />
                 <div className="chart-container" style={{ height: "220px" }}>
                   <canvas
                     ref={sweepChartRef}
@@ -1578,7 +1578,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
-                <FigurePngButton target={chartRef} fileName="aha_scatter" locale={locale} />
+                <FigurePngButton title={locale === "en" ? "Relationship between actions and long-term value" : "행동과 장기 가치의 관계"} target={chartRef} fileName="aha_scatter" locale={locale} />
               </div>
               <p className="muted aha-scatter-intro">{tr(
                 <>색상 칩을 눌러 이벤트를 비교하세요. <span style={{ color: "var(--warning)" }}>●</span> 금색 테두리는 자동으로 고른 기준입니다.</>,

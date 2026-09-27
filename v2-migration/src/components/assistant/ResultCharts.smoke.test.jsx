@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
+import { compositionShiftFigure } from "@/lib/assistant/coreFigures";
 import { RESULT_CHART_VARIANTS, ResultBudgetShift, ResultEffectInterval, ResultHazardColumns, ResultMixRate, ResultStatusShare, ResultSurvival, ResultUnitCostGap, ResultVifThreshold } from "./ResultCharts";
 
 const fallback = <p className="probe-fallback">fallback</p>;
@@ -142,10 +143,10 @@ describe("5-23 · 5-24 · 5-29 핵심 그림", () => {
     const { container } = render(<ResultMixRate locale="ko" currency="KRW" visualization={{
       question: "q",
       data: [{ entity: "A", mix: 0.02, rate: -0.01, interaction: 0.001, contribution: 0.011 }],
-      options: { start: 0.3, end: 0.311, metric: "iOS 비율", unit: "rate", lowerIsBetter: false, labels: { mix: "단위 간 이동", rate: "단위 내부 변화" } },
+      options: { start: 0.3, end: 0.311, metric: "전환율", unit: "rate", lowerIsBetter: false, labels: { mix: "단위 간 이동", rate: "단위 내부 변화" } },
     }} />);
     const bridge = [...container.querySelectorAll(".result-bridge li")];
-    expect(bridge.map((li) => li.textContent)).toEqual(["직전 iOS 비율30.0%", "단위 간 이동+2.0%p", "단위 내부 변화−1.0%p", "함께 바뀐 몫+0.1%p", "최근 iOS 비율31.1%"]);
+    expect(bridge.map((li) => li.textContent)).toEqual(["직전 전환율30.0%", "단위 간 이동+2.0%p", "단위 내부 변화−1.0%p", "함께 바뀐 몫+0.1%p", "최근 전환율31.1%"]);
     // 오르면 좋은 지표: 올린 성분은 better, 내린 성분은 worse(비용 지표와 반대).
     expect(bridge[1].getAttribute("data-tone")).toBe("better");
     expect(bridge[2].getAttribute("data-tone")).toBe("worse");
@@ -175,4 +176,12 @@ describe("5-23 · 5-24 · 5-29 핵심 그림", () => {
     const low = Number.parseFloat(container.querySelector(".result-effect__range").style.left);
     expect(zero).toBeLessThan(low);
   });
+});
+
+it("구성비는 증가와 감소 모두 중립으로 표시한다", () => {
+  const visualization = compositionShiftFigure({ rows: [{ entity: "iOS", mix: 0.02, rate: -0.01, interaction: 0.001, contribution: 0.011 }], start: .3, end: .311, metric: "iOS 비율", locale: "ko" });
+  const { container } = render(<ResultMixRate visualization={visualization} locale="ko" />);
+  expect(container.textContent).toContain("+2.0%p");
+  expect(container.textContent).toContain("−1.0%p");
+  expect(container.querySelector('[data-tone="better"], [data-tone="worse"]')).toBeNull();
 });

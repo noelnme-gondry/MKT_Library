@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import ToolPageShell from "@/components/ToolPageShell";
 import ToolIntro from "@/components/ToolIntro";
 
 const TOOLS = path.join(process.cwd(), "src/components/tools");
@@ -45,4 +46,10 @@ describe("도구 화면의 제목은 하나다", () => {
     });
     expect(offenders, "인트로와 작업대 헤더가 각각 h1을 그리면 한 화면에 제목이 둘이 된다").toEqual([]);
   });
+});
+
+it("a route-owned intro is not repeated by the tool shell", () => {
+  const { container } = render(<><ToolIntro toolId="5-29" /><ToolPageShell toolId="5-29" titleLevel={0}><p>Input</p></ToolPageShell></>);
+  expect(container.querySelectorAll("h1")).toHaveLength(1);
+  expect(container.querySelector(".tool-brief")).toBeNull();
 });
