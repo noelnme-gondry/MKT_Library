@@ -381,15 +381,12 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         decisionPrefill={brandDecisionPrefill}
       />
 
-      <div className="callout"><div className="body"><strong>{!profileReady
+      {(!profileReady || directionalVerdictWithheld) && <div className="callout"><div className="body"><p>{!profileReady
         ? tx(locale, "AR(1) 계수 불확실성까지 포함한 구간을 만들 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "We cannot construct an interval that includes AR(1) parameter uncertainty. Add history or use a control-group design.")
-        : directionalVerdictWithheld
-          ? profile.hitsBoundary
-            ? tx(locale, "자기상관의 가능한 범위가 넓어 증분 방향을 판정하지 않습니다. 추정치와 구간은 참고용입니다.", "The plausible autocorrelation range is too wide to determine direction. Treat the estimate and interval as reference only.")
-            : tx(locale, `사전 ${result.prePeriods}기간은 짧아 증분 방향을 판정하지 않습니다. 추정치와 구간은 탐색용이며 증분 확정 근거가 아닙니다.`, `With only ${result.prePeriods} pre-periods, we do not determine incrementality direction. The estimate and interval are exploratory, not confirmation.`)
-          : hasProfileLiftSignal
-            ? tx(locale, "AR(1) 계수 불확실성까지 반영해도 관찰상 증가 신호가 남습니다. 그래도 통제군 없는 인과 증명은 아닙니다.", "An observational lift signal remains after accounting for AR(1) parameter uncertainty. This is still not causal proof without a control.")
-            : tx(locale, "AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.", "After accounting for AR(1) parameter uncertainty, lift cannot be distinguished from no change.")}</strong><p>{tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`)}</p></div></div>
+        : profile.hitsBoundary
+          ? tx(locale, "자기상관의 가능한 범위가 넓어 증분 방향을 판정하지 않습니다. 추정치와 구간은 참고용입니다.", "The plausible autocorrelation range is too wide to determine direction. Treat the estimate and interval as reference only.")
+          : tx(locale, `사전 ${result.prePeriods}기간은 짧아 증분 방향을 판정하지 않습니다. 추정치와 구간은 탐색용이며 증분 확정 근거가 아닙니다.`, `With only ${result.prePeriods} pre-periods, we do not determine incrementality direction. The estimate and interval are exploratory, not confirmation.`)}</p></div></div>}
+
       <FigureHead title={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} target={chartRef} fileName="brand_its_counterfactual" locale={locale} />
       <div className="chart-container" style={{ height: "320px" }}><canvas ref={chartRef} role="img" aria-label={tx(locale, "실제 성과와 사전 추세 기반 반사실", "Actual outcome vs pre-trend counterfactual")} /></div>
       <section data-information-section="" style={{ marginTop: "14px" }}>

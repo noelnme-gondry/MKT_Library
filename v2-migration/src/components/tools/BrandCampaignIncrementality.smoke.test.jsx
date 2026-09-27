@@ -78,5 +78,6 @@ it.each([
   expect(container.querySelector(".result-action-card").classList.contains(tone)).toBe(true);
   expect(container.querySelector(".result-effect li").dataset.tone).toBe(figureTone);
   expect(screen.getByText(headline)).toBeTruthy();
+  expect(container.textContent).not.toContain("AR(1) 계수 불확실성까지 반영하면 증가를 변화 없음과 구분하기 어렵습니다.");
   vi.restoreAllMocks();
 });
