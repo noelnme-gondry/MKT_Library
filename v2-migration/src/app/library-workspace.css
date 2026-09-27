@@ -1170,6 +1170,10 @@
   .home-approved .home-tool-directory { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .home-tool-directory > section:last-child:nth-child(2n + 1) ul { display: block; }
   .home-tool-directory > section { padding: 18px 18px 4px; }
+  /* 폰에서는 20개 도구를 모두 펼치므로 질문 줄을 숨겨 길이를 줄인다(2026-09-27 사용자 결정).
+     질문은 검색 결과와 도구 화면에 그대로 있다. */
+  .home-tool-directory li a span { display: none; }
+  .home-tool-directory li a { padding-block: 10px; }
   .home-approved .dc-loop { margin-top: 64px; }
   .home-approved .home-reading-list { margin-top: 64px; }
   .home-service-terms { margin-top: 56px; padding-top: 32px; }
