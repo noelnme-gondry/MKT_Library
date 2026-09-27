@@ -21,20 +21,18 @@ describe("tool discovery and reuse", () => {
     fireEvent.click(screen.getByRole("button", { name: `${locale === "en" ? "Save" : "저장"}: ${tool.name}` }));
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
-  it("shows an empty search and lets a question reset it", () => {
+  it("restores the full directory after clearing an empty search", () => {
     const { container } = render(<HomeToolFinder />);
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "no-such-tool-xyz" } });
     expect(screen.getByText(/검색 결과가 없습니다/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "검색 지우기" }));
-    fireEvent.click(container.querySelector(".home-tool-finder__purposes button"));
     expect(screen.getByRole("searchbox").value).toBe("");
-    expect(screen.getAllByRole("link").length).toBeGreaterThan(0);
-    const icons = [...container.querySelectorAll(".home-tool-finder__purposes svg")].map(icon => icon.innerHTML);
-    expect(new Set(icons).size).toBe(icons.length);
+    expect(container.querySelector(".home-tool-directory").hidden).toBe(false);
+    expect(screen.getAllByRole("link")).toHaveLength(allToolIndexEntries().length);
+    expect(new Set(screen.getAllByRole("link").map(link => link.getAttribute("href"))).size).toBe(allToolIndexEntries().length);
   });
   it("reports storage failures without claiming success", () => {
-    const { container } = render(<HomeToolFinder />);
-    fireEvent.click(container.querySelector(".home-tool-finder__purposes button"));
+    render(<HomeToolFinder />);
     const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
     fireEvent.click(screen.getAllByRole("button", { name: /^저장:/ })[0]);
     expect(screen.getByRole("alert").textContent).toContain("저장하지 못했습니다");

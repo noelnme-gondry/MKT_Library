@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
-import { toolIndexEntry } from "../src/lib/toolIndex";
+import { toolIndexEntry, toolIndexByStage } from "../src/lib/toolIndex";
 import { idToSlug, publishedToolIds } from "../src/lib/routeMap";
 
 for (const locale of ["ko", "en"]) {
@@ -30,17 +30,18 @@ for (const locale of ["ko", "en"]) {
     // Legacy centered-hero rules must not distort the approved card layout.
     await expect(page.locator(".dc-hero__copy")).toHaveCSS("text-align", "left");
     const hero = await page.locator(".dc-hero").boundingBox();
-    // Sample is the primary entry; the question path remains available below.
-    const primary = await page.locator(".dc-action-route--sample").boundingBox();
+    // CSV is the primary entry; sample exploration remains beside it.
+    const primary = await page.locator(".dc-action-route--primary").boundingBox();
     expect(Math.abs(primary.x - hero.x)).toBeLessThan(1);
     expect(primary.height).toBeLessThanOrEqual(56);
     await page.locator(`.dc-tool-shortcuts a[href="${prefix}/diagnose"]`).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/diagnose$`));
     await expect(page.locator("main h1")).toBeVisible();
     await page.goto(prefix || "/");
-    await expect(page.locator(".home-tool-finder__purposes button")).toHaveCount(7);
+    await expect(page.locator(".home-tool-directory > section")).toHaveCount(toolIndexByStage(locale).length);
     await expect(page.locator("#dochi-upload")).toBeHidden();
-    await expect(page.locator(".library-reading__grid a")).toHaveCount(4);
+    await expect(page.locator(".home-reading-list__articles a")).toHaveCount(3);
+    await expect(page.locator(`.home-guide-shelf a[href="${prefix}/guide"]`)).toBeVisible();
     await expectNoSeriousAccessibilityViolations(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 

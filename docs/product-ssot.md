@@ -253,15 +253,11 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 홈·분석 화면의 우하단은 **튜토리얼 / Tutorial** 물음표 버튼으로 안내한다. 업로드 전에도 **업로드 방법 보기 / How to upload** 진입점을 제공한다. 설문·동의·모달이 열린 동안 플로팅 버튼은 숨기며, 일반 버튼에 포커스가 있다는 이유만으로 숨기지 않는다. 실제 입력 조작과 겹치면 물러나고 업로드 영역의 안내는 유지한다.
 
-홈 소개는 유지하고, 주 행동은 **내 데이터로 분석 시작 / Start with my data**다. `/start`에서 파일·시트를 불러오고 매핑을 확인한 후 명시적으로 분석을 시작한다. 결과가 나오면 입력은 한 줄 요약으로 접히며 수정할 수 있다. / Import and map data at `/start`, then explicitly run analysis; summarize input after results are available. 보조 행동은 **데모로 먼저 보기 / Try a demo**이며, 저장된 결정이 있으면 상단에서 **주간 리뷰 이어가기 / Continue weekly review**로 연결한다.
+홈 소개는 §1.1a의 승인 제목과 설명을 사용한다. 주 행동은 **CSV로 가능한 분석 한 번에 / Find analyses for my CSV**, 보조 행동은 **샘플로 체험하기 / Explore a sample**다(2026-09-27 수정 시안 승인). `/start`에서 파일·시트를 불러오고 매핑을 확인한 후 명시적으로 분석을 시작한다. 결과가 나오면 입력은 한 줄 요약으로 접히며 수정할 수 있다. / Import and map data at `/start`, then explicitly run analysis; summarize input after results are available. 저장된 결정이 있으면 상단에서 **주간 리뷰 이어가기 / Continue weekly review**로 연결한다.
 
-**직접 도구 찾기 / Find a tool**는 목적 세 개만 먼저 보여주고 선택한 목적의 도구 이름과 질문 한 줄을 펼친다. **전체 도구 보기 / View all tools**로 모든 발행 도구에 도달할 수 있다. 도구 목록은 `toolIndex`에서 파생한다.
+**목적별 분석 도구 / Analyses by purpose**는 `toolIndexByStage()`가 파생하는 `TOOL_JOURNEY` 분류와 공개 도구를 처음부터 모두 보여준다. 별도 홈 전용 분류를 만들지 않는다. 검색·즐겨찾기는 유지하며 검색/저장 목록은 기본 목록을 대체한다. / Show every published tool under its existing journey stage; retain search and saved tools without duplicating the directory.
 
-| 목적 | EN | 설명 KO / EN |
-|---|---|---|
-| 성과 변화 확인 | Understand performance changes | 비용·전환·유입의 변화 살펴보기 / Inspect changes in cost, conversions, and traffic |
-| 예산·효과 판단 | Plan budgets and evaluate effects | 예산 배분·실험·채널 기여도 검토하기 / Review allocation, experiments, and channel contribution |
-| 소재·스토어 개선 | Improve creative and app discovery | 소재·콘텐츠·앱 유입의 개선점 찾기 / Explore creative, content, and app discovery |
+히어로에는 같은 운영 샘플의 기간별 CPA 비교 하나와 변화율, 가상 데이터·기간·범위·도치를 표시한다. 도구 다음에는 기록·재검토, 실제 발행 글·가이드, 이용 조건 순으로 배치한다. 기록 저장은 Pro 체험 포함, 보고서 다운로드는 구매 이용권 전용임을 구분한다. / Follow tool discovery with review, published reading and service terms; trial storage and purchased-pass downloads remain distinct.
 
 신규 방문자에게 주간 리뷰는 **분석한 결정을 저장하고, 다음 주 결과를 검토하세요 / Save your decision and review next week’s results**라는 짧은 다음 단계 안내로 제공한다.
 

@@ -127,28 +127,28 @@ function SidebarContents({ locale = "ko", onNavigate, isMethods = false }) {
           className="sidebar-library-link"
           aria-current={isCalculator ? "page" : undefined}
         >
-          <span><strong>{T.calculators}</strong></span><b>↗</b>
+          <span><strong>{T.calculators}</strong></span>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/templates") ? "page" : undefined}
         >
-          <span><strong>{T.templates}</strong></span><b>↗</b>
+          <span><strong>{T.templates}</strong></span>
         </Link>
         <Link
           href={locale === "en" ? "/en/glossary" : "/glossary"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
         >
-          <span><strong>{T.glossary}</strong></span><b>↗</b>
+          <span><strong>{T.glossary}</strong></span>
         </Link>
         <Link
           href={locale === "en" ? "/en/compare" : "/compare"}
           className="sidebar-library-link"
           aria-current={(pathname || "").includes("/compare") ? "page" : undefined}
         >
-          <span><strong>{T.compare}</strong></span><b>↗</b>
+          <span><strong>{T.compare}</strong></span>
         </Link>
         </section>
       </section>

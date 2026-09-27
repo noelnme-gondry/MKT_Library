@@ -1,9 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { getAllPosts } from "@/lib/blog";
 import { localizedHref } from "@/lib/localizedHref";
-import { getRouteSeo } from "@/lib/routeSeo";
-import { idToPath } from "@/lib/routeMap";
 
 // Editorial selection only; titles, summaries and publication state come from
 // the existing server-side content pipeline in each language.
@@ -13,24 +10,21 @@ export default function HomeReading({ locale = "ko" }) {
   const en = locale === "en";
   const posts = getAllPosts(locale);
   const selected = FEATURED_SLUGS.map((slug) => posts.find((post) => post.slug === slug)).filter(Boolean);
-  const [featured, ...rest] = selected;
-  const sop = getRouteSeo("4-1", locale);
-  if (!featured) return null;
-  return <section className="library-reading" aria-labelledby="library-reading-title">
-    <header><div><h2 id="library-reading-title">{en ? "Guides and analysis articles" : "실무 가이드와 분석 글"}</h2>
-      <p>{en ? "Methods, examples and operating standards for marketing analysis." : "분석 방법과 사례, 운영 기준을 찾아볼 수 있습니다."}</p></div>
+  if (!selected.length) return null;
+  return <section className="library-reading home-reading-list" aria-labelledby="library-reading-title">
+    <header><div><h2 id="library-reading-title">{en ? "Reading for better decisions" : "판단을 돕는 읽을거리"}</h2>
+      <p>{en ? "Use the related analysis to explore what you read." : "글에서 이해한 내용을 관련 분석으로 확인하세요."}</p></div>
       <Link href={localizedHref("/blog", locale)}>{en ? "All articles" : "블로그 전체 보기"}</Link></header>
-    <div className="library-reading__grid">
-      <Link className="library-featured-post" href={localizedHref(`/blog/${featured.slug}`, locale)}>
-        <div className="library-featured-post__art" aria-hidden="true">
-          <Image src="/images/editorial/analysis-perspective.webp" alt="" fill sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 600px" />
-        </div>
-        <div><span className="library-reading__type">{en ? "Blog" : "블로그"}</span><h3>{featured.title}</h3><p>{featured.description}</p></div>
-      </Link>
-      <div className="library-reading__list">
-        {rest.map((post) => <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}><span className="library-reading__type">{en ? "Blog" : "블로그"}</span><h3>{post.title}</h3><p>{post.description}</p></Link>)}
-        {sop && <Link href={localizedHref(idToPath("4-1"), locale)}><span className="library-reading__type">{en ? "Practical guide · SOP" : "실무 가이드 · SOP"}</span><h3>{sop.title}</h3><p>{sop.description}</p></Link>}
+    <div className="home-reading-list__layout">
+      <div className="home-reading-list__articles">
+        {selected.map((post) => <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}><h3>{post.title}</h3></Link>)}
       </div>
+      <aside className="home-guide-shelf">
+        <h3>{en ? "Practical guides" : "실무 가이드"}</h3>
+        <p>{en ? "From tracking setup to campaign operations." : "트래킹 셋업부터 캠페인 운영까지."}</p>
+        <p>{en ? "Operating standards your team can refer to." : "팀이 함께 확인하는 운영 기준입니다."}</p>
+        <Link href={localizedHref("/guide", locale)}>{en ? "View the playbook" : "운영 플레이북 보기"}</Link>
+      </aside>
     </div>
   </section>;
 }

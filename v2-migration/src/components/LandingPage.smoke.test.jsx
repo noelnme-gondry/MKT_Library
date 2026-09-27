@@ -8,6 +8,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import LandingPage from "@/components/LandingPage";
 import { PUBLISHED_TOOL_IDS } from "@/lib/toolIndex";
+import { TOOL_JOURNEY } from "@/lib/toolConnections";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -47,15 +48,17 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-mini-chart")).toBeNull();
     const actions = [...document.querySelectorAll(".dc-action-route")];
     expect(actions).toHaveLength(2);
-    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["샘플로 체험하기", "내 데이터로 시작"]);
-    expect(actions[0].tagName).toBe("BUTTON");
-    expect(actions[1].getAttribute("href")).toBe("/start");
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["CSV로 가능한 분석 한 번에", "샘플로 체험하기"]);
+    expect(actions[0].getAttribute("href")).toBe("/start");
+    expect(actions[1].tagName).toBe("BUTTON");
     expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
     expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과는 왜 바뀌었고,다음엔 뭘 해야 할까?");
-    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("마케팅 데이터를 비교하고");
+    expect(document.querySelector(".dc-hero__deck")?.textContent).toContain("실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.");
+    expect(document.querySelectorAll(".dc-hero__deck p")).toHaveLength(2);
     // 구 trustBadges + privacy 두 줄이 같은 내용을 반복하던 것을 한 줄로 통합.
     expect(document.querySelectorAll(".dc-hero__trust")).toHaveLength(0);
-    expect(document.querySelector(".dc-hero__assurance")?.textContent).toBe("분석 무료 · 보고서 다운로드는 이용권 구매 후 · 원본은 브라우저에서만 처리");
+    expect(document.querySelector(".dc-hero__assurance")?.textContent).toContain("가입 없이 무료 분석");
+    expect(document.querySelector(".home-service-terms")?.textContent).toContain("7일 체험에는 포함되지 않습니다.");
     expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-text-link[href="/diagnose"]')).toBeTruthy();
@@ -64,10 +67,9 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-action-route--sample")?.textContent).toContain("샘플로 체험하기");
     expect(document.querySelectorAll('.dc-hero a[href="/diagnose"]')).toHaveLength(0);
     expect(document.querySelector('.dc-loop a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
+    expect(document.querySelectorAll(".home-tool-directory > section")).toHaveLength(TOOL_JOURNEY.length);
+    expect(document.querySelectorAll(".home-tool-directory a")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
-    fireEvent.click(document.querySelector(".home-tool-finder > button"));
-    expect(document.querySelectorAll(".home-tool-finder__results a")).toHaveLength(PUBLISHED_TOOL_IDS.length);
     // 연결 워크플로 섹션은 인덱스와 같은 갈래·같은 도구를 카드로 또 그려서 제거했다.
     expect(document.querySelector(".connected-tool-card")).toBeNull();
     // 소셜 채널을 사이드바에서 뺀 뒤로 랜딩의 자료·채널 줄이 유일한 도달 경로다
@@ -137,8 +139,7 @@ describe("LandingPage render smoke", () => {
     seedWithData();
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".home-tool-finder > button"));
-    for (const link of container.querySelectorAll(".home-tool-finder__results a")) clickWithoutNavigation(link);
+    for (const link of container.querySelectorAll(".home-tool-directory a")) clickWithoutNavigation(link);
     expect(useAppStore.getState().csvGroups.efficiency.fileName).toBe("x.csv");
     expect(window.gtag).toHaveBeenCalledWith("event", "landing_tool_pick", {
       tool_id: "5-2",
@@ -185,8 +186,9 @@ describe("LandingPage render smoke", () => {
       expect(container.querySelector(`a[href="${prefix}/guide"]`)).toBeTruthy();
       expect(hero, `${locale}: 히어로 행동 영역이 없다`).toBeTruthy();
       const routes = hero.querySelectorAll(".dc-action-route");
-      const primary = hero.querySelectorAll(".dc-action-route--sample");
+      const primary = hero.querySelectorAll(".dc-action-route--primary");
       expect(primary.length, `${locale}: primary는 정확히 하나여야 한다`).toBe(1);
+      expect(primary[0].getAttribute("href")).toBe(`${prefix}/start`);
       expect(routes.length, `${locale}: 샘플과 CSV의 진입점`).toBe(2);
       // 질문(진단)은 첫 화면이 아니라 아래 질문 목록에서 한 번만 연다(F2 — 같은 곳으로 가는 링크 중복 제거).
       expect(container.querySelectorAll(".dc-hero__utility-actions")).toHaveLength(0);
@@ -196,16 +198,16 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same index and hero in English", () => {
     const { container } = render(<LandingPage locale="en" />);
-    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Explore a sample", "Start with my data"]);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Find analyses for my CSV", "Explore a sample"]);
     expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Why did it change?What should you do next?");
     expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/calculator"]')).toBeTruthy();
     expect(container.querySelector('a.dc-text-link[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('.dc-loop a[href="/en/weekly-review"]')).toBeTruthy();
-    expect(container.textContent).toContain("Record a decision. Compare the next result.");
+    expect(container.textContent).toContain("Decisions and follow-up reviews");
+    expect(container.querySelector(".home-service-terms").textContent).toContain("They are not included in the 7-day trial.");
     // EN도 같은 인덱스를 쓴다 — 링크가 전부 /en 접두를 갖는지만 본다.
-    fireEvent.click(container.querySelector(".home-tool-finder > button"));
-    const enLinks = [...container.querySelectorAll(".home-tool-finder__results a")];
+    const enLinks = [...container.querySelectorAll(".home-tool-directory a")];
     expect(enLinks).toHaveLength(PUBLISHED_TOOL_IDS.length);
     expect(enLinks.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
     expect(container.textContent).toContain("Explore a sample");
@@ -216,7 +218,8 @@ describe("LandingPage render smoke", () => {
     const questions = document.querySelector(".dc-questions");
     const loop = document.querySelector(".dc-loop");
     // 히어로 바로 다음 블록이어야 하고, 루프 설명보다 앞이어야 한다.
-    expect(questions.querySelectorAll(".home-tool-finder__purposes button")).toHaveLength(7);
+    expect(questions.querySelectorAll(".home-tool-directory > section")).toHaveLength(TOOL_JOURNEY.length);
+    expect(document.querySelector(".dc-hero").nextElementSibling).toBe(questions);
     expect(questions.compareDocumentPosition(loop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 별도 카탈로그 섹션은 흡수됐다 — 같은 목록을 두 번 그리지 않는다.
     expect(document.querySelector(".dc-catalog")).toBeNull();
@@ -228,10 +231,8 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelector(".dc-intake")).toBeNull();
     expect(container.querySelector('.dc-action-route--primary').getAttribute("href")).toBe(locale === "en" ? "/en/start" : "/start");
     const found = new Set();
-    for (const button of container.querySelectorAll(".home-tool-finder__purposes button")) {
-      fireEvent.click(button);
-      expect(button.getAttribute("aria-expanded")).toBe("true");
-      const links = container.querySelectorAll(".home-tool-finder__results a");
+    for (const section of container.querySelectorAll(".home-tool-directory > section")) {
+      const links = section.querySelectorAll("a");
       expect(links.length).toBeGreaterThan(0);
       for (const link of links) {
         expect(found.has(link.getAttribute("href"))).toBe(false);
@@ -239,8 +240,8 @@ describe("LandingPage render smoke", () => {
       }
     }
     expect(found.size).toBe(PUBLISHED_TOOL_IDS.length);
-    fireEvent.click(container.querySelector(".home-tool-finder > button"));
-    expect(new Set([...container.querySelectorAll(".home-tool-finder__results a")].map(a => a.getAttribute("href")))).toEqual(found);
+    expect(container.querySelector(".home-tool-directory").hidden).toBe(false);
+    expect(container.querySelectorAll(".home-tool-finder__results a")).toHaveLength(0);
   });
 
   it.each(["ko", "en"])("keeps question entry reachable without replacing uploaded data (%s)", (locale) => {

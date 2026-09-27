@@ -15,13 +15,11 @@ import { useAppStore } from "@/store/useDataStore";
 
 const COPY = {
   ko: {
-    eyebrow: "퍼포먼스 마케팅 의사결정",
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: ["마케팅 데이터를 비교하고, 다음에 할 일을 정리합니다.", "분석 방법이 필요할 때는 가이드와 예시를 참고하세요."],
+    deck: ["실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.", "성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다."],
     actionAria: "바로 시작할 작업",
     dataCta: "CSV로 가능한 분석 한 번에",
-    dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
     reviewCta: "내 프로젝트 열기",
     reviewHint: "기간 비교 → 결정 기록 → 다음 결과 검토",
     calculatorCta: "빠른 계산",
@@ -30,7 +28,7 @@ const COPY = {
     dataGuideCta: "CSV 컬럼 준비 방법",
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
-    assurance: ["분석 무료", "보고서 다운로드는 이용권 구매 후", "원본은 브라우저에서만 처리"],
+    assurance: ["가입 없이 무료 분석", "CSV는 브라우저에서 처리"],
     continueTitle: "검토할 결정",
     continueDeck: "이 브라우저에 남아 있는 결정 요약과 직접 올린 파일을 이어서 보여줍니다. 저장 화면에서 언제든 지울 수 있습니다.",
     dueNow: "지금 검토",
@@ -40,10 +38,12 @@ const COPY = {
     reviewed: "검토 완료",
     openInbox: "내 프로젝트 열기",
     reopenTool: "원본 도구 다시 열기",
-    loopTitle: "결정을 기록하고, 다음 결과와 비교하세요",
-    loopDeck: "분석에서 내린 결정과 검토일을 프로젝트에 저장해 두세요.",
-    questionTitle: "지금 어떤 고민이 있나요?",
-    questionDeck: "확인할 문제를 고르면 필요한 도구와 데이터를 안내합니다.",
+    loopTitle: "판단의 기록과 다음 검토",
+    loopDeck: "무엇을 바꿨는지, 어떤 근거로 판단했는지 남기세요.",
+    loopFollowup: "검토일에 새 데이터를 보고 결과와 배운 점을 이어 기록합니다.",
+    loopCondition: "기록 저장은 로그인과 유효한 Pro가 필요합니다. 7일 체험에도 포함됩니다.",
+    questionTitle: "목적별 분석 도구",
+    questionDeck: "확인하려는 문제에서 시작하세요.",
     libraryTitle: "실무 가이드와 분석 글",
     libraryDeck: "실무의 질문을 풀어내는 블로그와 바로 꺼내 쓰는 운영 가이드.",
     blogLabel: "마케팅 블로그",
@@ -58,20 +58,18 @@ const COPY = {
     naver: "네이버 블로그",
   },
   en: {
-    eyebrow: "Performance marketing decisions",
     title: "Why did it change?",
     titleAccent: "What should you do next?",
-    deck: ["Compare marketing data and decide what to do next.", "Use the guides and examples when you need a method."],
+    deck: ["Build your baseline with practical guides and check your data.", "Connect performance analysis to next week’s decisions in one place."],
     actionAria: "Start a task",
     dataCta: "Find analyses for my CSV",
-    dataActionHint: "Upload → check columns → supported analyses",
     reviewCta: "Open My projects",
     reviewHint: "Compare periods → record a decision → review results",
     calculatorCta: "Quick calculations",
     diagnoseCta: "Find the cause",
     demoCta: "Explore a sample",
     dataGuideCta: "Prepare CSV columns",
-    assurance: ["Free analysis", "paid report downloads", "source data stays in your browser"],
+    assurance: ["Free analysis, no sign-up", "CSV processed in your browser"],
     continueTitle: "Decisions to review",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
     dueNow: "Due now",
@@ -81,10 +79,12 @@ const COPY = {
     reviewed: "Reviewed",
     openInbox: "Open My projects",
     reopenTool: "Reopen source tool",
-    loopTitle: "Record a decision. Compare the next result.",
-    loopDeck: "Save your decision and review date in a project.",
-    questionTitle: "What are you working through?",
-    questionDeck: "Choose a question to find the tool and data you need.",
+    loopTitle: "Decisions and follow-up reviews",
+    loopDeck: "Record what changed and the evidence behind your decision.",
+    loopFollowup: "Return with new data to review the outcome and record what you learned.",
+    loopCondition: "Saving requires sign-in and active Pro, including the 7-day trial.",
+    questionTitle: "Analyses by purpose",
+    questionDeck: "Start with the question you need to answer.",
     libraryTitle: "Guides and analysis articles",
     libraryDeck: "Practical articles to understand the question, and SOPs to put it into practice.",
     blogLabel: "Marketing blog",
@@ -144,7 +144,7 @@ export default function LandingPage({ locale = "ko", reading }) {
   };
 
   return (
-    <div className="decision-console-landing" ref={rootRef}>
+    <div className="decision-console-landing home-approved" ref={rootRef}>
       {decisionRecords.length > 0 && <section className="dc-return" aria-labelledby="dc-return-title">
         <header className="dc-return__head">
           <div><h2 id="dc-return-title">{T.continueTitle}</h2></div>
@@ -185,23 +185,20 @@ export default function LandingPage({ locale = "ko", reading }) {
           </h1>
           <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
-            <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
             <Link
               className="dc-action-route dc-action-route--primary"
               data-mobile-task=".dc-action-route--primary"
               href={lang === "en" ? "/en/start" : "/start"}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
-              <strong>{lang === "en" ? "Start with my data" : "내 데이터로 시작"}</strong>
-              <span>{T.dataActionHint}</span>
+              <strong>{T.dataCta}</strong>
             </Link>
-
+            <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
           </nav>
-          <p className="dc-hero__assurance">{T.assurance.map((condition, index) => <span key={condition}>{index > 0 && " · "}{condition}</span>)}</p>
+          <p className="dc-hero__assurance">{T.assurance.map((condition) => <span key={condition}>{condition}</span>)}</p>
         </div>
         <HomeResultPreview locale={lang} />
       </section>
-      <MobileQuickStart locale={lang} />
 
       <section className="dc-questions" id="questions" tabIndex={-1} aria-labelledby="dc-question-title">
         <header className="dc-section-head">
@@ -243,44 +240,70 @@ export default function LandingPage({ locale = "ko", reading }) {
             <h2 id="dc-loop-title">{T.loopTitle}</h2>
           </div>
           <p>{T.loopDeck}</p>
+          <p>{T.loopFollowup}</p>
+          <p className="home-pro-condition">{T.loopCondition}</p>
+          <Link className="dc-text-link" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackLandingNav("landing_review_opened", "weekly_loop")}>{T.openInbox}</Link>
         </header>
-        <Link className="dc-text-link" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackLandingNav("landing_review_opened", "weekly_loop")}>{T.openInbox}</Link>
+        <article className="home-review-example">
+          <h3>{lang === "en" ? "Compare channels using consistent definitions" : "채널별 집계 기준을 맞춰 다시 비교"}</h3>
+          <p>{lang === "en" ? "Illustrative record" : "예시 기록"}</p>
+          <dl>
+            <div><dt>{lang === "en" ? "Observation" : "확인한 내용"}</dt><dd>{lang === "en" ? "Channel ROAS varies within the overall average" : "같은 평균 안에서도 채널별 ROAS가 다름"}</dd></div>
+            <div><dt>{lang === "en" ? "Next action" : "다음 행동"}</dt><dd>{lang === "en" ? "Align periods and attribution before reanalyzing" : "기간과 전환 귀속 기준을 맞춘 뒤 재분석"}</dd></div>
+            <div><dt>{lang === "en" ? "Review date" : "검토 시점"}</dt><dd>{lang === "en" ? "After next week’s conversions are counted" : "다음 주 전환 집계가 끝난 뒤"}</dd></div>
+          </dl>
+        </article>
       </section>
 
 
       {reading}
-      <section className={`dc-library${reading ? " has-reading" : ""}`} id="library" aria-label={reading ? T.guideLabel : undefined} aria-labelledby={reading ? undefined : "dc-library-title"}>
+      <section className={`dc-library${reading ? " has-reading" : ""}`} id="library" aria-label={reading ? T.resources : undefined} aria-labelledby={reading ? undefined : "dc-library-title"}>
         {!reading && <header className="dc-section-head">
           <div>
             <h2 id="dc-library-title">{T.libraryTitle}</h2>
           </div>
           <p>{T.libraryDeck}</p>
         </header>}
-        <div className="dc-library__grid">
-          {!reading && <Link className="dc-library-card" href={lang === "en" ? "/en/blog" : "/blog"}>
-            <span>{T.blogLabel}</span>
+        {!reading && <div className="dc-library__grid">
+          <Link className="dc-library-card" href={lang === "en" ? "/en/blog" : "/blog"}>
             <h3>{T.blogTitle}</h3>
             <p>{T.blogDesc}</p>
-          </Link>}
+          </Link>
           <Link className="dc-library-card" href={lang === "en" ? "/en/guide" : "/guide"}>
-            <span>{T.guideLabel}</span>
             <h3>{T.guideTitle}</h3>
             <p>{T.guideDesc}</p>
           </Link>
-        </div>
-        <div className="library-plan-link"><div><h3>{lang === "en" ? "From analysis to your next report" : "분석부터 다음 보고서까지"}</h3><p>{lang === "en" ? "Analysis is free. Save projects, reviews and decisions with Pro, and download reports with a purchased pass." : "분석은 무료입니다. 프로젝트·리뷰와 결정 기록은 Pro로 저장하고, 구매 이용권으로 보고서를 내려받으세요."}</p></div><Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare plans" : "구독 · 요금제 보기"}</Link></div>
+        </div>}
         <div className="dc-resource-strip">
           <span>{T.resources}</span>
           <div>
-            <Link href={lang === "en" ? "/en/templates" : "/templates"}>{T.templates} ↗</Link>
-            <Link href={lang === "en" ? "/en/glossary" : "/glossary"}>{T.glossary} ↗</Link>
-            <a href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer">YouTube ↗</a>
-            <a href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
-            <a href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer">Facebook ↗</a>
-            <a href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer">{T.naver} ↗</a>
+            <Link href={lang === "en" ? "/en/templates" : "/templates"}>{T.templates}</Link>
+            <Link href={lang === "en" ? "/en/glossary" : "/glossary"}>{T.glossary}</Link>
+            <a href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" aria-label={`YouTube (${lang === "en" ? "new tab" : "새 탭"})`}>YouTube ↗</a>
+            <a href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" aria-label={`Instagram (${lang === "en" ? "new tab" : "새 탭"})`}>Instagram ↗</a>
+            <a href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer" aria-label={`Facebook (${lang === "en" ? "new tab" : "새 탭"})`}>Facebook ↗</a>
+            <a href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer" aria-label={`${T.naver} (${lang === "en" ? "new tab" : "새 탭"})`}>{T.naver} ↗</a>
           </div>
         </div>
       </section>
+      <section className="home-service-terms" aria-labelledby="home-terms-title">
+        <h2 id="home-terms-title">{lang === "en" ? "Before you start" : "이용 안내"}</h2>
+        <div>
+          <section><h3>{lang === "en" ? "What is free?" : "어디까지 무료인가요?"}</h3>
+            <p>{lang === "en" ? "Analysis and on-screen results are free, with no sign-up required." : "분석 실행과 화면 결과 확인은 무료이며, 가입 없이 시작합니다."}</p>
+            <p>{T.loopCondition}</p>
+            <p>{lang === "en" ? "Report downloads require an active purchased pass. They are not included in the 7-day trial." : "보고서 다운로드는 구매한 유효 이용권이 필요합니다. 7일 체험에는 포함되지 않습니다."}</p>
+            <Link href={lang === "en" ? "/en/subscription" : "/subscription"}>{lang === "en" ? "Compare free and Pro" : "무료·Pro 범위 보기"}</Link>
+          </section>
+          <section><h3>{lang === "en" ? "Where is my file processed?" : "파일은 어디서 처리하나요?"}</h3>
+            <p>{lang === "en" ? "CSV parsing and calculations run in your browser. Raw rows are not sent to or stored on the server." : "CSV 파싱과 계산은 브라우저에서 실행됩니다. 원본 행을 서버로 전송하거나 저장하지 않습니다."}</p>
+          </section>
+          <section><h3>{lang === "en" ? "How should I interpret a result?" : "결과는 어떻게 해석하나요?"}</h3>
+            <p>{lang === "en" ? "Requirements vary by tool. Read estimates with their uncertainty; observed associations alone do not establish causation." : "도구마다 필요한 조건이 다릅니다. 추정 결과는 불확실성과 함께 읽어야 하며, 관측된 연관만으로 원인을 확정하지 않습니다."}</p>
+          </section>
+        </div>
+      </section>
+      <MobileQuickStart locale={lang} />
     </div>
   );
 }

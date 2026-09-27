@@ -11,7 +11,7 @@ for (const [locale, tag] of [["ko", ""], ["en", ""], ["en", " @light-en"]]) {
       return ["localhost", "127.0.0.1"].includes(hostname) ? route.continue() : route.abort();
     });
     await page.goto(en ? "/en" : "/");
-    const preview = await page.locator(".home-result-preview__kpis div:last-child dd").innerText();
+    const preview = await page.locator(".home-sample-change dd").innerText();
     await page.locator(".dc-action-route--sample").click();
     await expect(page.locator(".dochi-result-workspace")).toHaveAttribute("data-phase", "results");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
