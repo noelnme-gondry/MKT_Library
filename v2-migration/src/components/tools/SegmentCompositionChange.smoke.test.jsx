@@ -50,6 +50,10 @@ describe("SegmentCompositionChange render smoke", () => {
     expect(container.querySelector("#segment-composition-result")).toBeTruthy();
     expect(container.querySelector("#segment-composition-ranking")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "분석하기" })).toBeNull();
+    // 핵심 그림: 5-21과 같은 다리 그림을 비율(%)·%p로.
+    const bridge = [...container.querySelectorAll(".tool-core-figure .result-bridge li")].map((li) => li.textContent);
+    expect(bridge[0]).toMatch(/^직전 .*비율\d+\.\d%$/);
+    expect(bridge.slice(1, -1).every((text) => /%p$/.test(text))).toBe(true);
   });
 
   it("무엇을 무엇으로 읽었는지 한 줄로 말한다", () => {

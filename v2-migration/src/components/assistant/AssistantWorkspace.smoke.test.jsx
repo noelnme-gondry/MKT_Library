@@ -247,6 +247,8 @@ describe("Dochi analysis workspace", () => {
     // 결론 밑 핵심 그림은 누르지 않아도 보이고, 펼치기 버튼 대신 도구로 가는 링크 하나만 있다.
     const next = directChildren[decisionIndex];
     expect(next.querySelector(".workspace-next-action__figure")).toBeTruthy();
+    // 결론 밑 그림도 도구 화면 그림과 같은 PNG 받기를 둔다.
+    expect(next.querySelector(".workspace-next-action__figure-head .figure-png-button")?.textContent).toBe("PNG 받기");
     expect([...next.querySelectorAll("button")].map((button) => button.textContent)).toContain("도구에서 자세히 보기 →");
     expect(next.textContent).not.toContain("근거와 실행 계획 보기");
     openAnalysis("5-2");

@@ -79,3 +79,36 @@ export function creativeStatusFigure({ fatigue, alerts, isReviewable, insufficie
     options: { x: "status", y: "count", variant: "status-share" },
   };
 }
+
+/** 5-29 구성 변화: 비율 지표의 변화를 단위 간 이동·단위 내부 변화·함께 바뀐 몫으로. rows: [{entity, mix, rate, interaction, contribution}] */
+export function compositionShiftFigure({ rows, start, end, metric, locale }) {
+  return {
+    id: "composition-mix-rate",
+    kind: "bar",
+    question: tr(locale, `${metric} 변화는 구성이 바뀐 탓인가, 각 집단 안에서 바뀐 탓인가?`, `Did ${metric} move because the mix changed or because each group changed?`),
+    data: rows,
+    options: {
+      x: "entity", y: "contribution", variant: "mix-rate", unit: "rate", lowerIsBetter: false,
+      start: safe(start), end: safe(end), metric,
+      labels: {
+        mix: tr(locale, "단위 간 이동", "Mix"),
+        mixShort: tr(locale, "이동", "Mix"),
+        mixHint: tr(locale, "비율이 다른 집단 사이로 비중이 옮겨 간 몫", "Weight moved between groups with different rates"),
+        rate: tr(locale, "단위 내부 변화", "Within-group"),
+        rateShort: tr(locale, "내부", "Within"),
+        rateHint: tr(locale, "각 집단 안의 비율 자체가 바뀐 몫", "Each group's own rate changed"),
+      },
+    },
+  };
+}
+
+/** 5-23 · 5-24 증분 추정: 점추정 + 95% 구간. rows: [{entity, estimate, low, high}] */
+export function effectIntervalFigure({ id, question, rows, unit = "count", goodDirection = "up", withheld = false }) {
+  return {
+    id,
+    kind: "bar",
+    question,
+    data: rows,
+    options: { x: "entity", y: "estimate", variant: "effect-interval", unit, goodDirection, withheld: Boolean(withheld) },
+  };
+}

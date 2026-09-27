@@ -4,6 +4,7 @@ import { metricChangeTone, formatComparisonMetric } from "@/lib/assistant/metric
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { downloadTemplateCsv, hasToolTemplate } from "@/components/ds/csvTemplate";
 import ToolIndex from "@/components/ds/ToolIndex";
+import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { isDemoData } from "@/lib/dataOrigin";
 import { buildToolDemo } from "@/lib/toolDemo";
@@ -619,6 +620,7 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
 // 샘플이 못 채우는 도구는 그 도구의 예시 데이터로 연다 — 체험에서 막힌 도구가 없게 한다(2026-09-24).
 export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, onOpenTool, onEligibilityChange, autoStart = false, presentation = "full", showContextHeader = true, sampleMode = false, summaryHead = null, summaryFoot = null }) {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+  const focusFigureRef = useRef(null);
   const C = COPY[locale] || COPY.ko;
   const denomBasis = useAppStore((state) => state.denomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -904,8 +906,12 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
     <h3>{focusResult.verdict.headline}</h3>
     {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
-    {focusFigure && <section className="workspace-next-action__figure" aria-label={focusFigure.question}>
-      <p>{focusFigure.question}</p>
+    {focusFigure && <section ref={focusFigureRef} className="workspace-next-action__figure" aria-label={focusFigure.question}>
+      <div className="workspace-next-action__figure-head">
+        <p>{focusFigure.question}</p>
+        {/* 결론 밑 그림도 도구 화면 그림과 같은 PNG 받기(Pro). 지표 고르기 버튼은 그림 밖이라 이미지에 안 들어간다. */}
+        <FigurePngButton target={() => focusFigureRef.current?.querySelector("figure")} fileName={`${focusResult.toolId}_core_figure`} locale={locale} />
+      </div>
       <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
     </section>}
     <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>

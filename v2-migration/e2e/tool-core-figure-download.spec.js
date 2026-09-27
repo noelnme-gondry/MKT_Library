@@ -11,6 +11,9 @@ const CASES = [
   { path: "/content/freshness", file: /^creative_status_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/campaign-saturation", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/subscription-survival", scope: "#subscription-survival-curve", canvas: true, file: /^survival_curve_\d{4}-\d{2}-\d{2}\.png$/ },
+  { path: "/tools/incrementality", file: /^incrementality_holdout_lift_\d{4}-\d{2}-\d{2}\.png$/ },
+  { path: "/tools/brand-campaign-incrementality", file: /^brand_its_lift_\d{4}-\d{2}-\d{2}\.png$/ },
+  { path: "/tools/segment-composition-change", file: /^composition_mix_rate_\d{4}-\d{2}-\d{2}\.png$/ },
 ];
 
 function pngSize(buffer) {
@@ -53,3 +56,26 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
     }
   });
 }
+
+// 결과 화면(홈 샘플)의 결론 밑 핵심 그림도 같은 PNG 받기를 쓴다.
+test("result-screen conclusion figure downloads as a real PNG", async ({ page }) => {
+  test.setTimeout(150_000);
+  await page.route("**/api/account/session", route => route.fulfill({ json: { enabled: true, account: { id: "figure-owner", email: "figure@example.com" }, entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
+  await page.route("**/api/payments/access", route => route.fulfill({ json: { entitlement: { plan: "paid", account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 } } }));
+  await page.goto("/");
+  await page.locator(".dc-action-route--sample").click();
+  const figure = page.locator(".workspace-next-action__figure");
+  await expect(figure).toBeVisible({ timeout: 60_000 });
+  const button = figure.getByRole("button", { name: "PNG 받기" });
+  let download;
+  await expect(async () => {
+    const waiting = page.waitForEvent("download", { timeout: 5_000 });
+    await button.click();
+    download = await waiting;
+  }).toPass({ timeout: 60_000 });
+  expect(download.suggestedFilename()).toMatch(/^5-2_core_figure_\d{4}-\d{2}-\d{2}\.png$/);
+  if (process.env.FIGURE_SAVE_DIR) await download.saveAs(`${process.env.FIGURE_SAVE_DIR}/${download.suggestedFilename()}`);
+  const size = pngSize(readFileSync(await download.path()));
+  expect(size.width).toBeGreaterThan(400);
+  expect(size.height).toBeGreaterThan(150);
+});

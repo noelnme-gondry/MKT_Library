@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
-import { RESULT_CHART_VARIANTS, ResultBudgetShift, ResultHazardColumns, ResultMixRate, ResultStatusShare, ResultSurvival, ResultUnitCostGap, ResultVifThreshold } from "./ResultCharts";
+import { RESULT_CHART_VARIANTS, ResultBudgetShift, ResultEffectInterval, ResultHazardColumns, ResultMixRate, ResultStatusShare, ResultSurvival, ResultUnitCostGap, ResultVifThreshold } from "./ResultCharts";
 
 const fallback = <p className="probe-fallback">fallback</p>;
 
@@ -134,4 +134,45 @@ it.each(["ko", "en"])("ranks severe VIF first and exposes every omitted channel 
   expect(container.querySelectorAll("li")).toHaveLength(9);
   expect(container.textContent).toContain(locale === "en" ? "Showing 9 of 9" : "전체 9개 중 9개 표시");
   expect(container.textContent).toContain("∞");
+
+});
+
+describe("5-23 · 5-24 · 5-29 핵심 그림", () => {
+  it("비율 지표 분해는 %p로 쓰고, 오르면 좋은 방향으로 칠하며, 함께 바뀐 몫을 세 번째 성분으로 둔다(5-29)", () => {
+    const { container } = render(<ResultMixRate locale="ko" currency="KRW" visualization={{
+      question: "q",
+      data: [{ entity: "A", mix: 0.02, rate: -0.01, interaction: 0.001, contribution: 0.011 }],
+      options: { start: 0.3, end: 0.311, metric: "iOS 비율", unit: "rate", lowerIsBetter: false, labels: { mix: "단위 간 이동", rate: "단위 내부 변화" } },
+    }} />);
+    const bridge = [...container.querySelectorAll(".result-bridge li")];
+    expect(bridge.map((li) => li.textContent)).toEqual(["직전 iOS 비율30.0%", "단위 간 이동+2.0%p", "단위 내부 변화−1.0%p", "함께 바뀐 몫+0.1%p", "최근 iOS 비율31.1%"]);
+    // 오르면 좋은 지표: 올린 성분은 better, 내린 성분은 worse(비용 지표와 반대).
+    expect(bridge[1].getAttribute("data-tone")).toBe("better");
+    expect(bridge[2].getAttribute("data-tone")).toBe("worse");
+    expect(container.querySelectorAll(".result-split > li .result-split__bar")).toHaveLength(3);
+    // 표시 자리수에서 0인 값은 부호도 색도 없다("−0.0%p" 빨강 금지).
+    const tiny = render(<ResultMixRate locale="ko" currency="KRW" visualization={{ question: "q", data: [{ entity: "B", mix: -0.0002, rate: 0.01, contribution: 0.0098 }], options: { unit: "rate", lowerIsBetter: false } }} />).container;
+    const mixLi = [...tiny.querySelectorAll(".result-bridge li")][1];
+    expect(mixLi.textContent).toMatch(/0\.0%p$/);
+    expect(mixLi.textContent).not.toContain("−");
+    expect(mixLi.getAttribute("data-tone")).toBe("flat");
+  });
+
+  it("증분 구간: 0을 걸치면 칠하지 않고, 걸치지 않으면 좋은 방향으로 칠하며, 판정 보류면 칠하지 않는다", () => {
+    const draw = (row, options = {}) => render(<ResultEffectInterval locale="ko" currency="KRW" visualization={{ question: "q", data: [row], options: { unit: "count", goodDirection: "up", ...options } }} />).container;
+    const tone = (container) => container.querySelector(".result-effect li").getAttribute("data-tone");
+    expect(tone(draw({ entity: "A", estimate: 120, low: 40, high: 200 }))).toBe("better");
+    expect(tone(draw({ entity: "A", estimate: -120, low: -200, high: -40 }))).toBe("worse");
+    expect(tone(draw({ entity: "A", estimate: 30, low: -20, high: 80 }))).toBe("flat");
+    expect(tone(draw({ entity: "A", estimate: 120, low: 40, high: 200 }, { withheld: true }))).toBe("flat");
+    // 끄기(off)처럼 줄어든 쪽이 좋은 방향이면 뒤집힌다.
+    expect(tone(draw({ entity: "A", estimate: -120, low: -200, high: -40 }, { goodDirection: "down" }))).toBe("better");
+    const container = draw({ entity: "A", estimate: 120, low: 40, high: 200 });
+    expect(container.querySelector(".result-effect__head").textContent).toContain("+120");
+    expect(container.querySelector(".result-effect__head").textContent).toContain("95% 구간 +40 ~ +200");
+    // 0 기준선이 구간 왼쪽에 있어야 한다(전부 양수).
+    const zero = Number.parseFloat(container.querySelector(".result-effect__zero").style.left);
+    const low = Number.parseFloat(container.querySelector(".result-effect__range").style.left);
+    expect(zero).toBeLessThan(low);
+  });
 });
