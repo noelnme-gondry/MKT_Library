@@ -10,6 +10,7 @@ import EditorialTrust from "@/components/seo/EditorialTrust";
 import { AUTHOR, authorNode, publisherNode } from "@/lib/authorProfile";
 import { splitArticleForAction } from "@/lib/blogArticleSplit";
 import BlogReadTracker from "@/components/blog/BlogReadTracker";
+import BlogConversionEntry, { BlogJourneyProvider } from "@/components/blog/BlogConversionEntry";
 import BlogReadingBar from "@/components/blog/BlogReadingBar";
 import BlogSelfCheck from "@/components/blog/BlogSelfCheck";
 import BlogSituationCheck from "@/components/blog/BlogSituationCheck";
@@ -135,13 +136,13 @@ export default async function BlogPostPage({ params }) {
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
   const inline = splitBlogInsight(post.html, post.slug);
-  const article = inline || splitArticleForAction(post.html);
+  const article = inline || splitArticleForAction(post.html, { early: true });
   const practice = inline ? blogPracticeFor(post.slug, "ko") : null;
   const example = inline ? BLOG_EXAMPLES[post.slug] || null : null;
   const selfCheck = inline ? null : blogSelfCheckFor(post.slug, "ko");
 
   return (
-    <div className="content-article">
+    <BlogJourneyProvider><div className="content-article">
       <BlogReadTracker slug={post.slug} />
       <script
         type="application/ld+json"
@@ -155,6 +156,7 @@ export default async function BlogPostPage({ params }) {
         <h1>
           {post.h1}
         </h1>
+        <BlogConversionEntry slug={post.slug} sample={Boolean(inline)} toolId={inline?.config.toolId} />
         {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
         {post.seoAnswer && (
           <aside className="content-answer" aria-label="이 글의 핵심 요약">
@@ -189,7 +191,7 @@ export default async function BlogPostPage({ params }) {
 
       <EditorialTrust compact locale="ko" reviewer={post.reviewer} reviewedAt={post.reviewedAt} sources={post.sources} />
 
-      <BlogReadingBar slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "이 글의 분석, 예시 결과로 보기" : "30초 점검으로 내 상황 확인"} detail={example ? example.ko.headline : selfCheck?.title} />
+      <BlogReadingBar sample={Boolean(inline)} slug={post.slug} targetId={example ? "blog-practice" : selfCheck ? "blog-self-check" : null} title={example ? "이 글의 분석, 예시 결과로 보기" : "30초 점검으로 내 상황 확인"} detail={example ? example.ko.headline : selfCheck?.title} />
 
       {/* 근거는 본문 직후 접어서 확인하고, 다음 행동과 글쓴이는 별도로 둔다. */}
       <div className="blog-post-outro">
@@ -209,6 +211,6 @@ export default async function BlogPostPage({ params }) {
           ))}
         </section>
       )}
-    </div>
+    </div></BlogJourneyProvider>
   );
 }

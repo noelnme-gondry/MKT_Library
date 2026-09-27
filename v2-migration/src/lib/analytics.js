@@ -52,7 +52,7 @@ function withEditorialJourney(name, params) {
           locale: params.locale, tool_id: params.tool_id, createdAt: Date.now(),
         }));
       }
-    } else if (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo") {
+    } else if (name === "blog_sample_result_viewed" || (EDITORIAL_FUNNEL_EVENTS.has(name) && params.source !== "demo")) {
       const stored = storage.getItem(EDITORIAL_JOURNEY_KEY);
       if (!stored) return params;
       const journey = JSON.parse(stored);
@@ -180,6 +180,10 @@ export function trackProductEvent(name, params = {}) {
   }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
   window.gtag("event", name, safeParams);
+  if (name === "analysis_result_viewed" && params.source === "demo") {
+    const sample = withEditorialJourney("blog_sample_result_viewed", params);
+    if (sample.content_type === "blog" && sample.content_slug) trackProductEvent("blog_sample_result_viewed", sample);
+  }
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;
   return true;
 }

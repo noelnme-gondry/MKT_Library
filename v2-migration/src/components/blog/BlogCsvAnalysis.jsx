@@ -12,6 +12,8 @@ import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/u
 import { FUNNEL_MATH } from "@/utils/funnelMath";
 import { trackProductEvent } from "@/lib/analytics";
 import BlogInsightChart from "./BlogInsightChart";
+import { BlogSampleButton, useBlogCtaView, useBlogJourneyBusy } from "./BlogConversionEntry";
+import { blogConversionFor, blogExampleFormId } from "@/lib/blogConversion";
 import BlogExampleChart from "./BlogExampleChart";
 import { tutorialDuration } from "@/lib/videoTutorials";
 import { VideoHelpButton } from "@/components/VideoTutorialHelp";
@@ -21,9 +23,19 @@ import { rememberSourceCurrency } from "@/lib/account/accountClient";
 export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice = null, example = null, postTitle = "" }) {
   const en = locale === "en", id = useId(), router = useRouter();
   const [csv, setCsv] = useState(null), [result, setResult] = useState(null), [error, setError] = useState("");
-  const [busy, setBusy] = useState(false), [selection, setSelection] = useState({ category: "", value: "", denominator: "" });
+  const [busy, setBusy] = useBlogJourneyBusy();
+  const [selection, setSelection] = useState({ category: "", value: "", denominator: "" });
+  const ref = useBlogCtaView(slug, locale, "article_inline", config.toolId);
+  const conversion = blogConversionFor(slug, locale);
+  const eventParams = { content_slug: slug, content_type: "blog", tool_id: config.toolId, locale };
+  const showError = message => {
+    setError(message);
+    ref.current?.scrollIntoView?.({ block: "center", behavior: "auto" });
+    ref.current?.focus?.({ preventScroll: true });
+  };
   const [replacementTarget, setReplacementTarget] = useState(null);
   const task = useRef(0);
+  const pendingSample = useRef(null);
   useEffect(() => () => { task.current += 1; }, []);
   const projectId = useAppStore(state => state.activeProjectId);
   // Initial device restoration can change the destination while a demo is loading.
@@ -46,6 +58,8 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
   const upload = async event => {
     const file = event.target.files?.[0];
     if (!file) return;
+    pendingSample.current = null;
+    trackProductEvent("blog_upload_started", eventParams);
     const request = ++task.current;
     setCsv(null); setResult(null); setError(""); setBusy(true); setReplacementTarget(null);
     try {
@@ -62,7 +76,8 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       if (request !== task.current) return;
       setCsv({ raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: file.name, projectId, importSource: sample ? "demo" : "upload", currency: sample?.currency || defaultSourceCurrency({ remembered: useAppStore.getState().preferredSourceCurrency, locale }) });
       setSelection({ category: "", value: "", denominator: "" });
-    } catch { if (request === task.current) setError(en ? "Use a CSV up to 5 MB / 20,000 rows with unique headers, or open the full analysis." : "중복 없는 헤더의 CSV(5MB·2만 행 이하)를 선택하거나 상세 분석을 이용하세요."); }
+      trackProductEvent("blog_upload_completed", eventParams);
+    } catch { trackProductEvent("blog_upload_failed", eventParams); if (request === task.current) setError(en ? "Use a CSV up to 5 MB / 20,000 rows with unique headers, or open the full analysis." : "중복 없는 헤더의 CSV(5MB·2만 행 이하)를 선택하거나 상세 분석을 이용하세요."); }
     finally { if (request === task.current) setBusy(false); }
     event.target.value = "";
   };
@@ -99,25 +114,35 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     } catch { if (request === task.current) setError(message); }
     finally { if (request === task.current) setBusy(false); }
   };
-  const openDetail = (candidate = csv, confirmedTarget = replacementTarget) => {
+  const openDetail = (candidate = csv, confirmedTarget = replacementTarget, placement = "article_inline") => {
     const state = useAppStore.getState();
     if (candidate) {
-      if (state.activeProjectId !== candidate.projectId || state.projectSwitching) { setError(en ? "The active project changed. Select the CSV again in this project." : "활성 프로젝트가 바뀌었습니다. 이 프로젝트에서 CSV를 다시 선택해 주세요."); return; }
+      if (state.activeProjectId !== candidate.projectId || state.projectSwitching) { showError(en ? "The active project changed. Select the CSV again in this project." : "활성 프로젝트가 바뀌었습니다. 이 프로젝트에서 CSV를 다시 선택해 주세요."); return; }
       const currentRows = state.csvGroups[groupForRoute(config.toolId)]?.raw;
-      if (currentRows?.length && confirmedTarget !== currentRows) { setError(en ? "Confirm replacing this tool's current dataset below." : "아래에서 상세 도구의 기존 데이터 교체를 확인해 주세요."); return; }
+      if (currentRows?.length && confirmedTarget !== currentRows) { showError(en ? "Confirm replacing this tool's current dataset below." : "아래에서 상세 도구의 기존 데이터 교체를 확인해 주세요."); return; }
       state.setCurrentRouteId(config.toolId);
-      // Mapping is built against the full destination contract. Calculations remain gated.
       state.setCsvData(candidate, candidate.projectId);
+      if (candidate === pendingSample.current) {
+        // Match the tool's explicit sample action. Its own validation still decides
+        // whether to show an estimate or withhold it; real uploads retain their gate.
+        state.setGroupAnalyzed(config.toolId);
+        if (candidate.currency) state.setDisplayCurrency(candidate.currency);
+      }
       // The preview used every uploaded row; stale detail filters must not hide them.
       state.setDashboardFilter(useAppStore.getInitialState().dashboardFilter);
       if (config.type === "funnel") state.setDashboardTab("funnel");
     }
     // 도착 화면(시안 E)이 출처를 한 줄로 말하도록 공개 글 식별자·제목·파일명만 남긴다.
     state.setBlogArrival({ slug, title: postTitle, toolId: config.toolId, fileName: candidate?.fileName || null, source: candidate ? (candidate.importSource === "demo" ? "demo" : "csv") : "none" });
-    trackProductEvent("blog_tool_cta_clicked", { content_slug: slug, content_type: "blog", tool_id: config.toolId, locale, placement: "article_inline" });
+    trackProductEvent("blog_tool_cta_clicked", { ...eventParams, placement, source: candidate?.importSource === "demo" ? "demo" : "csv", state: candidate ? (candidate.importSource === "demo" ? "sample" : "file") : "empty" });
+    setBusy(true);
     router.push(`${en ? "/en" : ""}${idToSlug[config.toolId]}`);
+    return true;
   };
-  const openDemo = async () => {
+  const openDemo = async (placement = "article_inline") => {
+    if (inputDisabled) return;
+    trackProductEvent("blog_example_started", { ...eventParams, placement, source: "demo" });
+    let navigating = false;
     const request = ++task.current;
     setBusy(true); setCsv(null); setResult(null); setError(""); setReplacementTarget(null);
     try {
@@ -127,19 +152,22 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
       const parsed = parseCsv(sample.text);
       const contract = blogMapping(parsed.data, parsed.meta.fields, config.toolId);
       const candidate = { raw: parsed.data, headers: parsed.meta.fields, mapping: contract.mapping, fileName: sample.file, projectId, importSource: "demo", ...(sample.demo.currency ? { currency: sample.demo.currency } : {}) };
+      pendingSample.current = candidate;
       setCsv(candidate);
       // Loading a sample never grants permission to replace existing project data.
-      openDetail(candidate, null);
-    } catch { if (request === task.current) setError(en ? "The demo could not be loaded. Try again or choose a CSV." : "데모를 불러오지 못했습니다. 다시 시도하거나 CSV를 선택해 주세요."); }
-    finally { if (request === task.current) setBusy(false); }
+      navigating = openDetail(candidate, null, placement);
+    } catch { if (request === task.current) { showError(en ? "The demo could not be loaded. Try again or choose a CSV." : "데모를 불러오지 못했습니다. 다시 시도하거나 CSV를 선택해 주세요."); trackProductEvent("blog_example_failed", { ...eventParams, placement, state: "load" }); } }
+    finally { if (request === task.current && !navigating) setBusy(false); }
   };
   const ex = example?.[en ? "en" : "ko"];
   const template = TEMPLATE_PAGES.find(page => page.toolId === config.toolId);
   // 글이 자기 예제 파일을 가진 경우만 단계 안내를 접어 둔다 — 공용 데모 글의 단계 문구는 도구 사용법 반복이었다.
   const customSteps = Boolean(practice && !practice.demoGroup && practice.steps?.length);
-  return <aside className={`blog-inline-insight${practice ? " blog-practice" : ""}${ex ? " blog-example" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
+  return <aside ref={ref} className={`blog-inline-insight${practice ? " blog-practice" : ""}${ex ? " blog-example" : ""}`} id={practice ? "blog-practice" : undefined} tabIndex={practice ? -1 : undefined} aria-labelledby={id}>
     {ex ? <>
-      <h2 id={id} className="blog-example__headline">{ex.headline}</h2>
+      <h2 id={id} className="blog-example__headline">{conversion?.action || ex.headline}</h2>
+      {conversion?.note && <p>{conversion.note}</p>}
+      <p className="blog-example__finding">{ex.headline}</p>
       <BlogExampleChart example={example} locale={locale} />
       <p className="blog-example__caption">{ex.caption}</p>
     </> : <>
@@ -149,8 +177,10 @@ export default function BlogCsvAnalysis({ config, slug, locale = "ko", practice 
     {slug === "weekly-marketing-report-template" && <VideoHelpButton topic="decisions" locale={locale}>{en ? `Save and revisit · ${tutorialDuration("decisions")}-second guide` : `저장·재검토 ${tutorialDuration("decisions")}초 가이드`}</VideoHelpButton>}
     {custom && practice?.mode !== "detail" && !ex && <p>{en ? "This quick view shows totals or a ratio of sums. Choose additive counts or amounts with matching units and periods, not pre-calculated averages, CPA, LTV or retention rates. The full tool handles the model and its assumptions." : "이 빠른 뷰는 합계 또는 합계의 비율을 보여 줍니다. 같은 단위·기간의 합산 가능한 건수·금액을 선택하세요. 이미 계산된 평균·CPA·LTV·리텐션율은 합산하지 마세요. 모형과 적용 조건은 상세 도구에서 확인합니다."}</p>}
     <div className="blog-practice__actions">
-      <label className="btn primary blog-example__upload">{ex ? (en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기") : (en ? "Choose CSV" : "CSV 선택")}<input type="file" accept=".csv,text/csv" disabled={inputDisabled} onChange={upload} /></label>
-      {practice && <button type="button" className="blog-example__demo" disabled={inputDisabled} onClick={openDemo}>{en ? "Open the full example result" : "예시 결과 전체 보기"}</button>}
+      {practice && <form id={blogExampleFormId(slug)} className="blog-sample-form" onSubmit={event => { event.preventDefault(); openDemo(event.nativeEvent.submitter?.dataset.placement || "article_inline"); }}>
+        <BlogSampleButton slug={slug} locale={locale} placement="article_inline" disabled={inputDisabled} />
+      </form>}
+      <label className="btn blog-example__upload">{ex ? (en ? "Use my CSV" : "내 CSV로 분석하기") : (en ? "Choose CSV" : "CSV 선택")}<input type="file" accept=".csv,text/csv" disabled={inputDisabled} onChange={upload} /></label>
       {ex && template && <Link className="blog-example__demo" href={`${en ? "/en" : ""}/templates/${template.slug}`}>{en ? "See the CSV columns" : "필요한 CSV 열 보기"}</Link>}
     </div>
     {customSteps && <details className="blog-practice__instructions">

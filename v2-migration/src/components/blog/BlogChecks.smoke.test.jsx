@@ -7,6 +7,7 @@ import { shouldShowReadingBar, READING_BAR_MIN_DEPTH } from "./BlogReadingBar";
 import BlogArrivalStrip, { blogArrivalState } from "./BlogArrivalStrip";
 import { useAppStore } from "@/store/useDataStore";
 import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { blogSituationCheckFor } from "@/lib/blogSituationCheck";
 import { idToSlug } from "@/lib/routeMap";
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }) => <a href={href} {...rest}>{children}</a> }));
@@ -23,8 +24,10 @@ describe("plan D — 30-second self-check", () => {
     const yes = screen.getAllByRole("button", { name: en ? "Yes" : "예" });
     fireEvent.click(yes[0]);
     expect(screen.queryByText(check.results.yy[0])).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
     fireEvent.click(yes[1]);
     expect(screen.getByText(check.results.yy[0])).toBeTruthy();
+    expect(screen.getByRole("link").getAttribute("href")).toBe(blogSelfCheckNext(slug, locale).href);
     expect(yes[0].getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getAllByRole("button", { name: en ? "No" : "아니요" })[1]);
     expect(screen.getByText(check.results.yn[0])).toBeTruthy();

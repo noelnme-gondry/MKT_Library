@@ -5,6 +5,7 @@ import { BLOG_PRACTICES, blogPracticeFor } from "../src/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
 import { PUBLISHED_BLOG_TOOL_MAP } from "../src/lib/contentToolRegistry";
 import { idToSlug } from "../src/lib/routeMap";
+import { blogConversionFor } from "../src/lib/blogConversion";
 import { buildBlogPracticeDownload } from "../src/lib/blogPracticeData";
 
 // One real browser handoff per distinct generated dataset family; coverage of
@@ -42,7 +43,7 @@ for (const locale of ["ko", "en"]) {
     }
     expect(checkedCitations).toBeGreaterThan(0);
   });
-  for (const slug of ["incrementality-measurement", "apple-search-ads-guide"]) {
+  for (const slug of ["incrementality-measurement", "apple-search-ads-guide", "roas-improvement", "ad-creative-testing"]) {
     test(`direct demo and keyboard sources (${locale}/${slug})`, async ({ page }) => {
       const en = locale === "en";
       const errors = [];
@@ -53,7 +54,7 @@ for (const locale of ["ko", "en"]) {
       await expect(trust).toBeVisible();
       await expect(trust.locator("a").first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      const demo = page.getByRole("button", { name: en ? "Open the full example result" : "예시 결과 전체 보기", exact: true });
+      const demo = page.locator(".blog-conversion-entry").getByRole("button", { name: blogConversionFor(slug, locale).action, exact: true });
       await expect(demo).toBeEnabled();
       expect((await demo.boundingBox()).height).toBeGreaterThanOrEqual(44);
       await demo.click();
@@ -63,6 +64,8 @@ for (const locale of ["ko", "en"]) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(arrival.getByRole("link", { name: en ? "Back to the article" : "글로 돌아가기" })).toHaveAttribute("href", `${en ? "/en" : ""}/blog/${slug}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      // Reaching a route is not conversion: the sample's actual result must render.
+      await expect(page.locator(".result-action-card").first()).toBeVisible({ timeout: 30_000 });
       if (slug === "apple-search-ads-guide") await expect(page.getByLabel(en ? "Can conversions still arrive for the most recent days?" : "최근 며칠은 전환이 아직 더 들어올 수 있나요?")).toHaveValue("unknown");
       expect(errors).toEqual([]);
     });
@@ -78,7 +81,7 @@ for (const locale of ["ko", "en"]) {
       await expect(panel.locator(".blog-example__headline")).toBeVisible();
       // 상세 버튼은 CSV를 고른 뒤에만 나온다 — 그 전엔 예시 결과와 '내 CSV로' 하나만.
       await expect(panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true })).toHaveCount(0);
-      await panel.getByLabel(en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기", { exact: true }).setInputFiles({ name: practice.file, mimeType: "text/csv", buffer: Buffer.from(buildBlogPracticeDownload(practice).text) });
+      await panel.getByLabel(en ? "Use my CSV" : "내 CSV로 분석하기", { exact: true }).setInputFiles({ name: practice.file, mimeType: "text/csv", buffer: Buffer.from(buildBlogPracticeDownload(practice).text) });
       await expect(panel.getByRole("status").filter({ hasText: practice.file })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await panel.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기", exact: true }).click();
@@ -111,7 +114,7 @@ for (const locale of ["ko", "en"]) {
       const download = await downloadEvent;
       expect(download.suggestedFilename()).toBe(practice.file);
       expect(await download.failure()).toBeNull();
-      await panel.getByLabel(en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기", { exact: true }).setInputFiles(path.join(process.cwd(), "public", practice.href));
+      await panel.getByLabel(en ? "Use my CSV" : "내 CSV로 분석하기", { exact: true }).setInputFiles(path.join(process.cwd(), "public", practice.href));
       await expect(panel.getByText(en ? "Check columns" : "열 확인", { exact: true })).toBeVisible();
       if (slug !== "aso-basics-guide") await panel.getByLabel(en ? "Source currency (no conversion)" : "원본 통화 (환산 없음)").selectOption("KRW");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
