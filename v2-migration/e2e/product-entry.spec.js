@@ -10,7 +10,7 @@ for (const locale of ["ko", "en"]) {
     const sample = page.locator(".dc-hero__actions .dc-action-route--sample");
     await expect(sample).toBeVisible();
     await expect(page.locator(".dc-hero .mobile-quick-start")).toHaveCount(0);
-    await expect(page.locator(".home-result-preview > header")).toBeVisible();
+    await expect(page.locator(".home-result-preview > h2")).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/calculator"]`)).toBeVisible();
     await expect(mobile.locator(`a[href="${prefix}/templates"]`)).toBeVisible();
     await expect(page.locator(".home-sample-table tbody tr")).toHaveCount(2);

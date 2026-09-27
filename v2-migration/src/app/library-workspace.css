@@ -1037,7 +1037,7 @@
 .home-sample-table td { text-align: right; font-size: var(--fs-xl); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .home-sample-change { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 10px; }
 .home-sample-change dl { margin: 0; }
-.home-sample-change dt { font-size: var(--fs-xs); color: var(--library-muted); }
+.home-sample-change dt { font-size: var(--fs-base); color: var(--library-muted); }
 .home-sample-change dd { margin: 4px 0 0; font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
 .home-sample-change img { width: 86px; height: 86px; object-fit: contain; }
 .home-approved .dc-questions { display: block; }
