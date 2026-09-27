@@ -910,7 +910,11 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <div className="workspace-next-action__figure-head">
         <p>{focusFigure.question}</p>
         {/* 결론 밑 그림도 도구 화면 그림과 같은 PNG 받기(Pro). 지표 고르기 버튼은 그림 밖이라 이미지에 안 들어간다. */}
-        <FigurePngButton target={() => focusFigureRef.current?.querySelector("figure")} fileName={`${focusResult.toolId}_core_figure`} locale={locale} />
+        <FigurePngButton target={() => focusFigureRef.current?.querySelector("figure")} fileName={`${focusResult.toolId}_core_figure`} locale={locale} title={focusFigure.question} context={{
+          scope: { dateStart: focusResult.manifest?.comparison?.periodB?.start, dateEnd: focusResult.manifest?.comparison?.periodB?.end, comparisonStart: focusResult.manifest?.comparison?.periodA?.start, comparisonEnd: focusResult.manifest?.comparison?.periodA?.end },
+          source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource },
+          resultState: focusResult.status === "success" ? "ready" : "inconclusive",
+        }} />
       </div>
       <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
     </section>}

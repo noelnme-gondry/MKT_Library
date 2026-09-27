@@ -5,6 +5,8 @@
 // 장식(가운데 기준선 등)은 실제 span으로 바꿔 넣는다.
 import { CHART_FONT_STACK, CHART_THEME, getCssVar } from "@/utils/chartUtils";
 
+import { figureHeaderLayout, drawFigureHeader } from "./figureExportContext";
+
 const XHTML = "http://www.w3.org/1999/xhtml";
 const SVG = "http://www.w3.org/2000/svg";
 
@@ -79,7 +81,7 @@ function loadImage(src) {
 }
 
 /** 그림 요소를 테마 배경 위에 그려 PNG로 내려받는다. 성공하면 true. */
-export async function downloadElementAsPNG(element, fileName, { scale = 2 } = {}) {
+export async function downloadElementAsPNG(element, fileName, { scale = 2, context = null } = {}) {
   if (typeof document === "undefined" || !element) return false;
   const rect = element.getBoundingClientRect();
   const padding = 16;
@@ -92,17 +94,19 @@ export async function downloadElementAsPNG(element, fileName, { scale = 2 } = {}
     const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`);
     const canvas = document.createElement("canvas");
     canvas.width = width * scale;
-    canvas.height = (height + footerHeight) * scale;
     const ctx = canvas.getContext("2d");
+    const header = figureHeaderLayout(ctx, context, width, CHART_FONT_STACK);
+    canvas.height = (height + header.height + footerHeight) * scale;
     ctx.scale(scale, scale);
     ctx.fillStyle = background;
-    ctx.fillRect(0, 0, width, height + footerHeight);
-    ctx.drawImage(image, 0, 0, width, height);
+    ctx.fillRect(0, 0, width, height + header.height + footerHeight);
+    drawFigureHeader(ctx, header, CHART_THEME.text);
+    ctx.drawImage(image, 0, header.height, width, height);
     ctx.fillStyle = CHART_THEME.muted;
     ctx.font = `10px ${CHART_FONT_STACK}`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", width - 10, height + footerHeight / 2);
+    ctx.fillText("Growth Opt Playbook · growthoptplaybook.com", width - 10, height + header.height + footerHeight / 2);
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
     a.download = `${fileName}_${new Date().toISOString().slice(0, 10)}.png`;

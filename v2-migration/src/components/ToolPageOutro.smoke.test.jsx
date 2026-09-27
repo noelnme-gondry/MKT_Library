@@ -17,7 +17,7 @@ describe("ToolPageOutro", () => {
     const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
     const outro = container.querySelector(".tool-outro");
     expect(outro).toBeTruthy();
-    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("분석 결과는 여기까지");
+    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("다음 단계와 참고 자료");
 
     // 프로젝트 이어가기 · 다음 단계 · 참고 자료 · 관련 글이 모두 하나의 마감 박스 안에.
     const sections = outro.querySelectorAll(":scope > .tool-outro__section");
@@ -33,10 +33,10 @@ describe("ToolPageOutro", () => {
     // 경계선은 마감 박스가 단독으로 소유한다(자식이 중복으로 그리지 않음).
     expect(outro.querySelectorAll(".tool-outro__boundary")).toHaveLength(1);
     // 보조기술이 통째로 건너뛸 수 있게 이름 붙은 landmark여야 한다.
-    expect(screen.getByRole("region", { name: "분석 결과는 여기까지" })).toBe(outro);
+    expect(screen.getByRole("region", { name: "다음 단계와 참고 자료" })).toBe(outro);
   });
 
-  it("keeps reference material collapsed so the result stays the last thing read", () => {
+  it("keeps reference material in named sections after the result", () => {
     const { container } = render(<ToolPageOutro toolId="5-2" evidenceLinks={LINKS} withConnections />);
     expect(container.querySelector(".tool-longform__disclosure").tagName).toBe("SECTION");
     expect(container.querySelector(".tool-connections__more").tagName).toBe("SECTION");
@@ -45,7 +45,7 @@ describe("ToolPageOutro", () => {
   it("mirrors the same structure and copy in English", () => {
     const { container } = render(<ToolPageOutro toolId="5-2" locale="en" evidenceLinks={LINKS.map((item) => ({ ...item, title: "Item" }))} withConnections />);
     const outro = container.querySelector(".tool-outro");
-    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("End of analysis");
+    expect(outro.querySelector(".tool-outro__boundary")?.textContent).toContain("Next steps and references");
     expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(4);
 
     expect(outro.querySelector(".tool-outro__boundary").textContent).not.toMatch(/[가-힣]/);
@@ -53,7 +53,7 @@ describe("ToolPageOutro", () => {
 
   it("calls the boundary a reference section when the page above is not an analysis", () => {
     const { container } = render(<ToolPageOutro toolId="1-1" evidenceLinks={LINKS} />);
-    expect(container.querySelector(".tool-outro__boundary")?.textContent).toContain("여기부터는 참고 영역");
+    expect(container.querySelector(".tool-outro__boundary")?.textContent).toContain("관련 자료");
     expect(container.querySelector(".tool-connections")).toBeNull();
   });
 

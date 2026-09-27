@@ -956,7 +956,7 @@ export function ContributionGroupPanel({ label, values, labels, color, locale, f
       chart.destroy();
     };
   }, [label, values, labels, color, locale, formatValue]);
-  return <><FigureHead target={ref} fileName={`mmm_contribution_${String(label || "group").replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}`} locale={locale} /><div className="chart-container" style={{ height: "190px", minHeight: "190px" }}><canvas ref={ref}></canvas></div></>;
+  return <><FigureHead exportTitle={locale === "en" ? "Estimated driver contributions" : "드라이버별 기여 추정"} target={ref} fileName={`mmm_contribution_${String(label || "group").replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}`} locale={locale} /><div className="chart-container" style={{ height: "190px", minHeight: "190px" }}><canvas ref={ref}></canvas></div></>;
 }
 
 // 공선성 경고에서 선택한 두 채널의 실제 입력 시계열을 비교한다. 채널 역할이 비용이면
@@ -1010,7 +1010,7 @@ export function CollinearPairInputChart({ labels, pair, locale }) {
       chart.destroy();
     };
   }, [labels, pair, locale]);
-  return <><FigureHead target={ref} fileName="mmm_collinear_pair" locale={locale} /><div className="chart-container" style={{ height: "250px", minHeight: "250px" }}><canvas ref={ref}></canvas></div></>;
+  return <><FigureHead exportTitle={locale === "en" ? "Co-moving channel spend" : "동행하는 채널 지출"} target={ref} fileName="mmm_collinear_pair" locale={locale} /><div className="chart-container" style={{ height: "250px", minHeight: "250px" }}><canvas ref={ref}></canvas></div></>;
 }
 
 // 각 채널의 절대 단위(소진액·노출수)가 달라도 flight 시점은 비교할 수 있게,
@@ -1160,7 +1160,7 @@ export function MmmBacktestChart({ labels, actual, variants, locale, validationS
       chart.destroy();
     };
   }, [labels, actual, variants, locale, validationStartIndex, formatValue]);
-  return <><FigureHead target={ref} fileName="mmm_backtest" locale={locale} /><div className="chart-container" style={{ height: "270px", minHeight: "270px" }}><canvas ref={ref}></canvas></div></>;
+  return <><FigureHead exportTitle={locale === "en" ? "Historical forecast validation" : "과거 구간 예측 검증"} target={ref} fileName="mmm_backtest" locale={locale} /><div className="chart-container" style={{ height: "270px", minHeight: "270px" }}><canvas ref={ref}></canvas></div></>;
 }
 
 export function MmmManualDownload({ locale = "ko", placement = "footer" }) {

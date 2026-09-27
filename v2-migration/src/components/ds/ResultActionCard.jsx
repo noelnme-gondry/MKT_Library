@@ -210,6 +210,7 @@ export default function ResultActionCard({
   const analysisExport = useMemo(() => ({
     toolId,
     locale,
+    figureContext: { toolTitle: shareToolTitle, scope: resultScope, resultState, source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource } },
     buildPayload: (manifest = null) => buildAnalysisExportPayload({
       toolId,
       toolTitle: shareToolTitle,

@@ -78,6 +78,6 @@ describe("PacingTab render smoke", () => {
     render(<PacingTab />);
     useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
     fireEvent.click(screen.getByRole("button", { name: "PNG 받기" }));
-    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("pacing-chart"), "pacing"));
+    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("pacing-chart"), "pacing", { context: { title: "당월 일별 비용 추이", details: [] } }));
   });
 });

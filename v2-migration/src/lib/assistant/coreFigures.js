@@ -10,7 +10,7 @@ export function mixRateFigure({ rows, start, end, metric, locale }) {
   return {
     id: "pvm-channel-contributions",
     kind: "bar",
-    question: tr(locale, `${metric} 변화는 비중 변화와 효율 변화 중 어디서 왔는가?`, `Did the ${metric} change come from mix or from rate?`),
+    question: tr(locale, `${metric} 변화의 구성`, `Components of the ${metric} change`),
     data: rows,
     options: { x: "entity", y: "contribution", variant: "mix-rate", start: safe(start), end: safe(end), metric, unit: "currency" },
   };
@@ -21,7 +21,7 @@ export function budgetShiftFigure({ rows, locale }) {
   return {
     id: "budget-allocation-baseline",
     kind: "bar",
-    question: tr(locale, "채널별 하루 예산을 지금에서 얼마나 옮기나?", "How much daily budget moves per channel?"),
+    question: tr(locale, "채널별 하루 예산 조정안", "Proposed daily budget by channel"),
     data: rows,
     options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency" },
   };
@@ -32,7 +32,7 @@ export function unitCostGapFigure({ rows, metric, locale }) {
   return {
     id: "saturation-ranking",
     kind: "bar",
-    question: tr(locale, "어디에 증액 위험 또는 여유 신호가 있는가?", "Where are the signals of scaling risk or headroom?"),
+    question: tr(locale, "채널별 증액 여유와 위험", "Scaling headroom and risk by channel"),
     data: rows,
     options: { x: "entity", y: "saturationIndex", variant: "unit-cost-gap", from: "averageUnitCost", to: "marginalUnitCost", metric, unit: "currency" },
   };
@@ -43,7 +43,7 @@ export function vifFigure({ rows, thresholds, locale }) {
   return {
     id: "vif-by-entity",
     kind: "bar",
-    question: tr(locale, "채널별 지출 중복은 어느 수준인가?", "How much does spend overlap by channel?"),
+    question: tr(locale, "채널별 지출 중복", "Spend overlap by channel"),
     data: rows,
     options: { x: "entity", y: "vif", variant: "vif-threshold", thresholds },
   };
@@ -85,10 +85,10 @@ export function compositionShiftFigure({ rows, start, end, metric, locale }) {
   return {
     id: "composition-mix-rate",
     kind: "bar",
-    question: tr(locale, `${metric} 변화는 구성이 바뀐 탓인가, 각 집단 안에서 바뀐 탓인가?`, `Did ${metric} move because the mix changed or because each group changed?`),
+    question: tr(locale, `${metric} 변화의 구성`, `Components of the ${metric} change`),
     data: rows,
     options: {
-      x: "entity", y: "contribution", variant: "mix-rate", unit: "rate", lowerIsBetter: false,
+      x: "entity", y: "contribution", variant: "mix-rate", unit: "rate", lowerIsBetter: null,
       start: safe(start), end: safe(end), metric,
       labels: {
         mix: tr(locale, "단위 간 이동", "Mix"),

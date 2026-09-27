@@ -172,7 +172,7 @@ function CompositionChart({ distribution, locale, isDarkMode }) {
   }, [data, isDarkMode, locale]);
 
   return <>
-    <FigureHead target={canvasRef} fileName="composition_share" locale={locale} />
+    <FigureHead exportTitle={locale === "en" ? "Selected segment composition" : "선택 세그먼트의 구성 비율"} target={canvasRef} fileName="composition_share" locale={locale} />
     <div className="chart-container" style={{ height: 220 }}>
       <canvas ref={canvasRef} role="img" aria-label={tx(locale, "기간별 구성 비중", "Composition share by period")} />
     </div>
@@ -582,6 +582,17 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
     {analysis && selected ? <>
       <section className="block" id="segment-composition-result">
         <ResultActionCard
+          coreFigure={analysis.decomposition?.available && <ToolCoreFigure embedded
+            figure={compositionShiftFigure({
+              rows: analysis.decomposition.entities.map((entity) => ({ entity: entity.entityKey, mix: entity.mix, rate: entity.rate, interaction: entity.interaction, contribution: entity.total })),
+              start: analysis.decomposition.totals.preRate,
+              end: analysis.decomposition.totals.postRate,
+              metric: tx(locale, `${selected.members.find((member) => member.memberId === analysis.memberId)?.label ?? ""} 비율`, `${selected.members.find((member) => member.memberId === analysis.memberId)?.label ?? ""} rate`).trim(),
+              locale,
+            })}
+            locale={locale}
+            downloadName="composition_mix_rate"
+          />}
           locale={locale}
           toolId={TOOL_ID}
           analysisKey={JSON.stringify({ ...active, dimensionId: selected.dimensionId })}
@@ -640,18 +651,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           ariaLabel={tx(locale, "값별 구성 변화", "Composition change by value")}
         />
         {analysis.decomposition?.available ? <>
-          {/* 결론 바로 밑의 핵심 그림 — 5-21과 같은 다리 그림을 비율 지표(%p·오르면 좋음)로 쓴다. 값은 엔진 분해 그대로. */}
-          <ToolCoreFigure
-            figure={compositionShiftFigure({
-              rows: analysis.decomposition.entities.map((entity) => ({ entity: entity.entityKey, mix: entity.mix, rate: entity.rate, interaction: entity.interaction, contribution: entity.total })),
-              start: analysis.decomposition.totals.preRate,
-              end: analysis.decomposition.totals.postRate,
-              metric: tx(locale, `${selected.members.find((member) => member.memberId === analysis.memberId)?.label ?? ""} 비율`, `${selected.members.find((member) => member.memberId === analysis.memberId)?.label ?? ""} rate`).trim(),
-              locale,
-            })}
-            locale={locale}
-            downloadName="composition_mix_rate"
-          />
+
           <h3 className="section-title">{tx(locale, "이동인가, 내부 변화인가", "Movement or internal change")}</h3>
           <DataTable
             columns={mixColumns}

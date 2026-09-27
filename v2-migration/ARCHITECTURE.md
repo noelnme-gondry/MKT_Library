@@ -89,6 +89,10 @@ v2-migration/
 
 **Content Analytics(9-x)**: 퍼포먼스 엔진의 도메인 리라벨 — 수학 불변, 라벨팩 SSOT=`utils/contentDomain.js`, CSV 격리 그룹 `content_*`. PageClient 폴백 가드 `!startsWith("9-")`(SopContent 누수 차단). SECTIONS는 `analysis`로 흡수(사이드바 자동), slug `/content/*`는 SEO·북마크 보존.
 
+### 결과와 이미지의 해석 맥락 (2026-09-27)
+
+`ResultActionCard`의 `scopeEvidence`가 화면 기간과 내보내기 기간을 함께 공급한다. 가벼운 `figureContext`를 `AnalysisExportProvider`로 넘기며, PNG를 위해 전체 워크북을 계산하지 않는다. `FigurePngButton` → `figureExportContext`가 제목·확인된 기간·예시 여부·판단 보류를 정리하고, `chartUtils`와 `figureImage`가 같은 줄바꿈·머리말 그리기를 사용한다. 미확인 기간을 다운로드 날짜로 대체하지 않는다. 구성비는 방향성 없는 `lowerIsBetter: null`, 증분 그림은 카드와 같은 설계 확인 조건을 사용한다.
+
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (`utils/`) | 비고 |
 |---|---|---|

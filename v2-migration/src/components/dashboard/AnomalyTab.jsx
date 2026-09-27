@@ -317,7 +317,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         <div className="alloc-card" style={{ margin: "10px 0" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{tr("시계열 + 이상 표기", "Time series + anomaly markers")}</div>
-            <FigurePngButton target={chartRef} fileName="anomaly" locale={locale} />
+            <FigurePngButton title={locale === "en" ? "Time series and anomaly markers" : "시계열과 이상 표기"} target={chartRef} fileName="anomaly" locale={locale} />
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="anomaly-chart" ref={chartRef}></canvas>

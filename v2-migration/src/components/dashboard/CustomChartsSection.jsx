@@ -166,7 +166,7 @@ export default function CustomChartsSection({
                   <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
                 </div>
               ) : (
-                <><FigureHead target={() => canvasRefs.current[c.k]} fileName={`custom_chart_${c.k}`} locale={locale} /><div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div></>
+                <><FigureHead exportTitle={c.title} target={() => canvasRefs.current[c.k]} fileName={`custom_chart_${c.k}`} locale={locale} /><div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div></>
               )}
             </div>
           ))}

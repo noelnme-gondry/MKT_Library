@@ -841,7 +841,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 </select>
               </div>
             </div>
-            <FigureHead target={() => document.getElementById("ab-power-chart")} fileName="ab_power_curve" locale={locale} />
+            <FigureHead exportTitle={locale === "en" ? "Experiment power curve" : "실험 검정력 곡선"} target={() => document.getElementById("ab-power-chart")} fileName="ab_power_curve" locale={locale} />
             <div className="chart-container" style={{ height: "340px" }}>
               <canvas id="ab-power-chart"></canvas>
             </div>

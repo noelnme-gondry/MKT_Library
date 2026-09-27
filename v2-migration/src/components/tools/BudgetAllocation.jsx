@@ -2153,7 +2153,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
               {advancedPanel}
 
-              <FigureHead target={verifyChartRef} fileName="budget_efficiency_verify" locale={locale} />
+              <FigureHead exportTitle={locale === "en" ? "Allocation efficiency check" : "예산 배분 효율 검증"} target={verifyChartRef} fileName="budget_efficiency_verify" locale={locale} />
               <div className="chart-canvas-wrap" style={{ height: "350px" }}>
                 <canvas id="chart-alloc-scatter-verify" ref={verifyChartRef}></canvas>
               </div>
@@ -2911,7 +2911,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               </div>
             </div>
           )}
-          <FigureHead target={chartRef} fileName="budget_cost_curve" locale={locale} />
+          <FigureHead exportTitle={locale === "en" ? "Budget and cost curves" : "예산과 비용 곡선"} target={chartRef} fileName="budget_cost_curve" locale={locale} />
           <div className="chart-canvas-wrap" style={{ height: "400px" }}>
             <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
           </div>
@@ -3241,7 +3241,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               {tr("전역 예산 또는 효율 목표를 정하면 채널별 권장 비중이 표시됩니다.", "Set a global budget or efficiency target to see the recommended channel allocation share.")}
             </p>
           ) : (<>
-            <FigureHead target={barChartRef} fileName="budget_share" locale={locale} />
+            <FigureHead exportTitle={locale === "en" ? "Budget share by channel" : "채널별 예산 비중"} target={barChartRef} fileName="budget_share" locale={locale} />
             <div className="chart-container" style={{ height: "120px" }}>
               <canvas id="alloc-bar" ref={barChartRef}></canvas>
             </div>
@@ -3258,7 +3258,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           ) : (
             <div className="alloc-card">
-              <FigureHead target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
+              <FigureHead exportTitle={locale === "en" ? "Budget scenario comparison" : "예산 시나리오 비교"} target={scenarioChartRef} fileName="budget_scenarios" locale={locale} />
               <div className="chart-container" style={{ height: "280px" }}>
                 <canvas id="alloc-scenario-chart" ref={scenarioChartRef}></canvas>
               </div>
@@ -3333,7 +3333,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 </button>
               ))}
             </div>
-            <FigureHead target={curveChartRef} fileName="budget_response_curve" locale={locale} />
+            <FigureHead exportTitle={locale === "en" ? "Response by budget" : "예산별 응답곡선"} target={curveChartRef} fileName="budget_response_curve" locale={locale} />
             <div className="chart-container" style={{ height: "300px" }}>
               <canvas id="alloc-response-curve" ref={curveChartRef}></canvas>
             </div>

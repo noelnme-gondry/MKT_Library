@@ -81,6 +81,6 @@ describe("AnomalyTab render smoke", () => {
     render(<AnomalyTab />);
     useAppStore.setState({ entitlement: { plan: "paid", payment: true, expiresAt: Date.now() + 3600000, offlineUntil: Date.now() + 3600000 } });
     fireEvent.click(screen.getByRole("button", { name: "PNG 받기" }));
-    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly"));
+    await waitFor(() => expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly", { context: { title: "시계열과 이상 표기", details: [] } }));
   });
 });

@@ -29,8 +29,8 @@ function nextReview(project) {
 function ProjectBrandingForm({ en, initial, disabled, onLogo, onSave }) {
   const [branding, setBranding] = useState(initial || { company: "", footer: "", logo: "" });
   return <section className="project-branding" aria-labelledby="project-branding-title">
-    <h3 id="project-branding-title">{en ? "Make the report yours" : "내 회사의 보고서로 완성하기"}</h3>
-    <p>{en ? "Add your company name, logo and a closing note to this project’s report. Keep a consistent identity when sharing saved reviews with clients or your team." : "이 프로젝트의 보고서에 회사명·로고·하단 문구를 넣습니다. 고객사나 팀에 전달할 때 매번 표지를 고치지 않고 같은 형식으로 공유할 수 있습니다."}</p>
+    <h3 id="project-branding-title">{en ? "Report branding" : "보고서 브랜딩"}</h3>
+    <p>{en ? "Add your company name, logo and a closing note to this project’s report." : "이 프로젝트의 보고서에 회사명·로고·하단 문구를 넣습니다."}</p>
     <div className="project-branding-layout"><div className="project-branding-fields">
     <label className="wr-field">{en ? "Company" : "회사명"}<input maxLength={120} value={branding.company} onChange={event => setBranding(value => ({ ...value, company: event.target.value }))} /></label>
     <label className="wr-field">{en ? "Closing note / contact" : "보고서 하단 문구·연락처"}<input maxLength={300} value={branding.footer} onChange={event => setBranding(value => ({ ...value, footer: event.target.value }))} /></label>
@@ -141,7 +141,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
     {createGateOpen && <ProjectCreateGate locale={locale} open onClose={() => setCreateGateOpen(false)} onReady={() => { setCreateGateOpen(false); create(); }} />}
     {pendingRestore && <ReviewSaveDialog locale={locale} onConfirm={pendingRestore} onClose={() => setPendingRestore(null)} />}
     {!embedded && <header><h1>{en ? "My projects" : "내 프로젝트"}</h1><p>{en ? "Open a project to continue its reviews and decisions." : "프로젝트를 열면 저장한 결정과 이번 주 결과를 이어 볼 수 있습니다."}</p></header>}
-    {!projects.length && <section className="project-empty"><h2>{en ? "Start with a review" : "리뷰부터 시작하세요"}</h2><p>{en ? "Analyzing needs no project. Create one here to keep reviews together, or just name it when you save your first decision." : "분석만 할 거면 프로젝트가 없어도 됩니다. 리뷰를 모아 두려면 아래에서 만들고, 아니면 첫 결정을 저장할 때 이름을 정해도 됩니다."}</p><Link className="btn primary" href={en ? "/en/start" : "/start"}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</Link>{lastTool && <Link className="btn ghost" href={`${en ? "/en" : ""}${lastTool.href}`}>{en ? `Reopen the last analysis · ${lastTool.name}` : `방금 본 분석 다시 열기 · ${lastTool.name}`}</Link>}</section>}
+    {!projects.length && <section className="project-empty"><h2>{en ? "Start with a review" : "리뷰부터 시작하세요"}</h2><p>{en ? "Analyze first, then create a project when you save a decision." : "먼저 분석을 시작하고, 결정을 저장할 때 프로젝트를 만들 수 있습니다."}</p><Link className="btn primary" href={en ? "/en/start" : "/start"}>{en ? "Start your first review" : "첫 리뷰 시작하기"}</Link>{lastTool && <Link className="btn ghost" href={`${en ? "/en" : ""}${lastTool.href}`}>{en ? `Reopen the last analysis · ${lastTool.name}` : `방금 본 분석 다시 열기 · ${lastTool.name}`}</Link>}</section>}
     {/* 프로젝트를 만드는 것은 이 화면의 주된 행동이다. 주된 행동을 토글 뒤에 두지 않는다. */}
     <section className="project-start-panel" id="project-backup" aria-labelledby="project-start-title">
       <h2 id="project-start-title">{en ? "Create a project or restore a backup" : "새 프로젝트 만들기·백업 복원"}</h2>
@@ -181,7 +181,7 @@ export default function ProjectsPage({ locale = "ko", embedded = false, onReview
         </article>;
       })}
     </div>
-    <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(true) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Bring the latest saved reviews from several projects into one meeting or client handoff. Each includes its analysis period and save date. Save a review in each project before opening batch reports." : "여러 프로젝트의 최신 저장 리뷰를 한 번에 모아 회의·고객사 공유 자료로 만듭니다. 리뷰별 분석 기간과 저장일을 함께 확인할 수 있습니다. 먼저 각 프로젝트에서 리뷰를 저장한 뒤 일괄 보고서를 여세요."}</p>
+    <section><h2>{en ? "Reports and branding" : "보고서·브랜딩"}</h2><button className="btn" onClick={() => hasPaidAccess(entitlement) ? setBatch(true) : upgrade("batch_report")}>{en ? "Batch reports" : "일괄 보고서"}</button><p>{en ? "Combine the latest saved review from each project, including its analysis period and save date." : "각 프로젝트의 최신 저장 리뷰를 분석 기간·저장일과 함께 모읍니다."}</p>
       {/* 접기를 걷어내면서 현재 프로젝트 값 채우기를 onToggle이 아니라 마운트에 건다. */}
       <ProjectBrandingForm key={`${activeId}:${Boolean(active)}`} en={en} initial={active?.branding} disabled={!active || busy || switching || !ready} onLogo={loadLogo} onSave={branding => run(async () => { if (!hasPaidAccess(entitlement)) return upgrade("branding"); await updateProject(activeId, { branding }, () => hasPaidAccess(useAppStore.getState().entitlement), useAppStore.getState().entitlement); await useAppStore.getState().refreshProjects(); setMessage(en ? "Branding saved on this device." : "이 기기에 브랜딩을 저장했습니다."); })} />
     </section>

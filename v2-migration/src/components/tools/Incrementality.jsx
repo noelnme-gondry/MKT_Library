@@ -547,6 +547,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           state={blockedState}
           signature={`suppression|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}|${csvData?.raw?.length || 0}`}
           rowCount={csvData?.raw?.length || 0}
+          scopeEvidence={{ periods: [{ id: "after", start, end }] }}
           analysisType="incrementality"
           locale={locale}
         />
@@ -581,6 +582,18 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {card && (
         <ResultActionCard
+          coreFigure={Number.isFinite(r?.liftAbs) && <ToolCoreFigure embedded
+            figure={effectIntervalFigure({
+              id: "holdout-lift",
+              question: tr("홀드아웃 대비 전환율 차이", "Conversion-rate difference vs. holdout"),
+              rows: [{ entity: tr("전환율 차이 (노출 − 홀드아웃)", "Conversion-rate difference (exposed − holdout)"), estimate: r.liftAbs, low: r.ciLow95, high: r.ciHigh95 }],
+              unit: "rate",
+              goodDirection: "up",
+              withheld: !design.ready || !r.conclusive || win.balanced !== true,
+            })}
+            locale={locale}
+            downloadName="incrementality_holdout_lift"
+          />}
           toolId="5-23"
           locale={locale}
           analysisKey={`${Object.values(design.values).join(":")}|suppression|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${series?.labels.indexOf(start) ?? -1}|${series?.labels.indexOf(end) ?? -1}`}
@@ -667,19 +680,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           }
         />
       )}
-      {/* 핵심 그림: 전환율 차이(노출 − 홀드아웃)의 점추정과 95% 구간 — 결론 카드의 판정(r.conclusive)과 같은 구간이다. */}
-      {card && Number.isFinite(r?.liftAbs) && <ToolCoreFigure
-        figure={effectIntervalFigure({
-          id: "holdout-lift",
-          question: tr("노출군 전환율이 홀드아웃보다 얼마나 높은가?", "How much higher is the exposed conversion rate than the holdout?"),
-          rows: [{ entity: tr("전환율 차이 (노출 − 홀드아웃)", "Conversion-rate difference (exposed − holdout)"), estimate: r.liftAbs, low: r.ciLow95, high: r.ciHigh95 }],
-          unit: "rate",
-          goodDirection: "up",
-          withheld: win.balanced === false,
-        })}
-        locale={locale}
-        downloadName="incrementality_holdout_lift"
-      />}
+
 
       {series && win?.hasPre && (
         <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
@@ -710,7 +711,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {r && (
         <div className="callout" style={{ marginTop: "14px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is what ads actually created.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
+          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고 효과의 추정치입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is the estimated effect. A causal interpretation requires valid design conditions.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
         </p></div></div>
       )}
       <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
@@ -824,7 +825,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
         datasets: [
           { label: metricCol, data: vals, borderColor: getCssVar("--primary"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
           { label: tr("cutoff 이전 평균", "Pre-cutoff average"), data: labels.map((_, i) => (i < cutoffIdx ? preMean : null)), borderColor: getCssVar("--text-muted"), borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
-          { label: tr("cutoff 이후 평균", "Post-cutoff average"), data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: direction === "off" ? "#ef4444" : "#22c55e", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: tr("cutoff 이후 평균", "Post-cutoff average"), data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: CHART_THEME.primary, borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
         ],
       },
       options: {
@@ -1046,10 +1047,31 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           <h2 className="section-title">{lost ? tr(confirmedLoss ? "종료 임팩트 (손실 후보)" : "종료 후 변화", confirmedLoss ? "Shutdown impact (loss candidate)" : "Post-shutdown change") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
           {card && (
             <ResultActionCard
+              coreFigure={Number.isFinite(effVal) && <ToolCoreFigure embedded
+                figure={effectIntervalFigure({
+                  id: "prepost-effect",
+                  question: lost ? tr("광고 종료 전후의 변화", "Change after stopping advertising") : tr("광고 시작 전후의 변화", "Change after starting advertising"),
+                  rows: [{
+                    entity: isDiD ? tr("순효과 Δ (대조군 변화 제거, 하루)", "Net effect Δ (control change removed, daily)") : tr("변화 Δ (하루 평균)", "Change Δ (daily average)"),
+                    estimate: effVal,
+                    low: (isDiD ? r.did.sig : r.sig)?.ciLow95 ?? null,
+                    high: (isDiD ? r.did.sig : r.sig)?.ciHigh95 ?? null,
+                  }],
+                  unit: "count",
+                  goodDirection: lost ? "down" : "up",
+                  withheld: !design.ready,
+                })}
+                locale={locale}
+                downloadName="incrementality_prepost_effect"
+              />}
               toolId="5-23"
               locale={locale}
               analysisKey={`${Object.values(design.values).join(":")}|prepost|${direction}|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${groupCols.indexOf(groupCol)}|${groupVals.indexOf(selectedControl)}|${groupVals.indexOf(selectedTreatment)}|${useDiD ? 1 : 0}`}
               analysisType="incrementality"
+              scopeEvidence={{ periods: [
+                { id: "before", start: decisionDates.find(date => date < effCutoff), end: decisionDates.filter(date => date < effCutoff).at(-1) },
+                { id: "after", start: decisionDates.find(date => date >= effCutoff), end: decisionDates.at(-1) },
+              ] }}
               resultState={design.ready && sig ? "ready" : "inconclusive"}
               trackAnalysisStart
               tone={design.ready ? card.tone : "neutral"}
@@ -1125,24 +1147,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               }
             />
           )}
-          {/* 핵심 그림: 하루 평균 변화(대조군이 있으면 DiD 순효과)의 점추정과 95% 구간. 끄기(off)는 줄어든 쪽이
-              "광고가 만들던 몫"이라 결론 카드와 같은 방향(down)을 좋은 쪽으로 칠한다. */}
-          {card && Number.isFinite(effVal) && <ToolCoreFigure
-            figure={effectIntervalFigure({
-              id: "prepost-effect",
-              question: lost ? tr("끈 뒤 하루 평균이 얼마나 줄었는가?", "How much did the daily average drop after turning it off?") : tr("켠 뒤 하루 평균이 얼마나 늘었는가?", "How much did the daily average rise after turning it on?"),
-              rows: [{
-                entity: isDiD ? tr("순효과 Δ (대조군 변화 제거, 하루)", "Net effect Δ (control change removed, daily)") : tr("변화 Δ (하루 평균)", "Change Δ (daily average)"),
-                estimate: effVal,
-                low: (isDiD ? r.did.sig : r.sig)?.ciLow95 ?? null,
-                high: (isDiD ? r.did.sig : r.sig)?.ciHigh95 ?? null,
-              }],
-              unit: "count",
-              goodDirection: lost ? "down" : "up",
-            })}
-            locale={locale}
-            downloadName="incrementality_prepost_effect"
-          />}
+
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(displayPreMean, 1)} />
@@ -1152,7 +1157,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               <Stat label={tr("유의성", "Significance")} value={!hasSignificance ? tr("추정 불가", "Not estimable") : sig ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)} />
             </div>
           </div>
-          <FigureHead target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
+          <FigureHead exportTitle={locale === "en" ? "Metric trend before and after advertising" : "광고 전후의 지표 추이"} target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
           <div className="callout" style={{ marginTop: "10px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
             <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(

@@ -18,7 +18,7 @@ const COPY = {
     eyebrow: "퍼포먼스 마케팅 의사결정",
     title: "성과는 왜 바뀌었고,",
     titleAccent: "다음엔 뭘 해야 할까?",
-    deck: ["실무 가이드로 기준을 잡고, 내 데이터로 확인하세요.", "성과 분석부터 다음 주의 판단까지 한곳에서 이어갑니다."],
+    deck: ["마케팅 데이터를 비교하고, 다음에 할 일을 정리합니다.", "분석 방법이 필요할 때는 가이드와 예시를 참고하세요."],
     actionAria: "바로 시작할 작업",
     dataCta: "CSV로 가능한 분석 한 번에",
     dataActionHint: "파일 올리기 → 컬럼 확인 → 가능한 분석",
@@ -31,7 +31,7 @@ const COPY = {
     // 구 trustBadges(무료·가입 없음·브라우저에서만 처리)와 privacy 줄이 거의 같은
     // 문장을 두 번 반복했다. 한 줄로 통합.
     assurance: ["분석 무료", "보고서 다운로드는 이용권 구매 후", "원본은 브라우저에서만 처리"],
-    continueTitle: "지난 판단을 이어서 검토하세요",
+    continueTitle: "검토할 결정",
     continueDeck: "이 브라우저에 남아 있는 결정 요약과 직접 올린 파일을 이어서 보여줍니다. 저장 화면에서 언제든 지울 수 있습니다.",
     dueNow: "지금 검토",
     nextReview: "다음 마케팅 프로젝트",
@@ -40,14 +40,14 @@ const COPY = {
     reviewed: "검토 완료",
     openInbox: "내 프로젝트 열기",
     reopenTool: "원본 도구 다시 열기",
-    loopTitle: "이번 주의 분석을, 다음 주의 판단으로.",
-    loopDeck: "이번 판단을 다음 마케팅 프로젝트로 만들고, 다음 결과는 내 프로젝트에서 이어 보세요.",
+    loopTitle: "결정을 기록하고, 다음 결과와 비교하세요",
+    loopDeck: "분석에서 내린 결정과 검토일을 프로젝트에 저장해 두세요.",
     questionTitle: "지금 어떤 고민이 있나요?",
-    questionDeck: "분석 용어를 몰라도 괜찮습니다. 익숙한 질문을 골라보세요.",
-    libraryTitle: "데이터를 올리기 전에, 읽어도 좋습니다.",
+    questionDeck: "확인할 문제를 고르면 필요한 도구와 데이터를 안내합니다.",
+    libraryTitle: "실무 가이드와 분석 글",
     libraryDeck: "실무의 질문을 풀어내는 블로그와 바로 꺼내 쓰는 운영 가이드.",
     blogLabel: "마케팅 블로그",
-    blogTitle: "성과를 해석하는 실무 인사이트",
+    blogTitle: "성과 분석 사례와 방법",
     blogDesc: "예산·소재·측정 문제를 원인부터 좁히고 실제 분석으로 이어가는 실무 글입니다.",
     guideLabel: "운영 플레이북",
     guideTitle: "팀이 함께 쓰는 운영 표준",
@@ -61,7 +61,7 @@ const COPY = {
     eyebrow: "Performance marketing decisions",
     title: "Why did it change?",
     titleAccent: "What should you do next?",
-    deck: ["Build your baseline with practical guides and check your data.", "Connect performance analysis to next week’s decisions in one place."],
+    deck: ["Compare marketing data and decide what to do next.", "Use the guides and examples when you need a method."],
     actionAria: "Start a task",
     dataCta: "Find analyses for my CSV",
     dataActionHint: "Upload → check columns → supported analyses",
@@ -72,7 +72,7 @@ const COPY = {
     demoCta: "Explore a sample",
     dataGuideCta: "Prepare CSV columns",
     assurance: ["Free analysis", "paid report downloads", "source data stays in your browser"],
-    continueTitle: "Continue your last decision",
+    continueTitle: "Decisions to review",
     continueDeck: "Continue with decision summaries and files uploaded directly in this browser. You can remove them at any time in Storage.",
     dueNow: "Due now",
     nextReview: "Next marketing project",
@@ -81,14 +81,14 @@ const COPY = {
     reviewed: "Reviewed",
     openInbox: "Open My projects",
     reopenTool: "Reopen source tool",
-    loopTitle: "This week’s analysis. Next week’s decisions.",
-    loopDeck: "Make this decision your next marketing project, then follow the next results in My projects.",
+    loopTitle: "Record a decision. Compare the next result.",
+    loopDeck: "Save your decision and review date in a project.",
     questionTitle: "What are you working through?",
-    questionDeck: "Start with a familiar question. No analysis terminology needed.",
-    libraryTitle: "Start with a good read.",
+    questionDeck: "Choose a question to find the tool and data you need.",
+    libraryTitle: "Guides and analysis articles",
     libraryDeck: "Practical articles to understand the question, and SOPs to put it into practice.",
     blogLabel: "Marketing blog",
-    blogTitle: "Practical insight for reading performance",
+    blogTitle: "Performance analysis methods and examples",
     blogDesc: "Practical guides that narrow budget, creative, and measurement problems from cause to analysis.",
     guideLabel: "Operating playbook",
     guideTitle: "Operating standards your team can share",
@@ -183,7 +183,7 @@ export default function LandingPage({ locale = "ko", reading }) {
             <span>{T.title}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
-          <p className="dc-hero__deck">{T.deck.map((sentence, index) => <span key={sentence}>{index > 0 && " "}{sentence}</span>)}</p>
+          <div className="dc-hero__deck">{T.deck.map((sentence) => <p key={sentence}>{sentence}</p>)}</div>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <button type="button" className="dc-action-route dc-action-route--sample" onClick={() => openSample("5-2", "hero_example")}><strong>{T.demoCta}</strong></button>
             <Link

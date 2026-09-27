@@ -102,7 +102,11 @@ describe("Incrementality render smoke", () => {
     fireEvent.change(screen.getByLabelText(en ? "Holdout end date" : "홀드아웃 종료일"), { target: { value: "2024-06-05" } });
     expect(screen.getByText(en ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
     expect(screen.queryByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeNull();
+    const figure = document.querySelector(".result-action-card .tool-core-figure .result-effect");
+    expect(figure).toBeTruthy();
+    expect(figure.querySelector("li").dataset.tone).toBe("flat");
     declareDesign(locale);
+    expect(figure.querySelector("li").dataset.tone).toBe("better");
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText(en ? "What will change?" : "무엇을 바꿀까요?")).toBeTruthy();
     fireEvent.change(screen.getByLabelText(en ? "Did you fix the dates before seeing results?" : "결과를 보기 전에 기간을 정했나요?"), { target: { value: "changed" } });

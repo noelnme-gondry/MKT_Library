@@ -46,9 +46,9 @@ describe("그림의 색 이름은 스타일시트가 아는 이름이어야 한�
 });
 
 describe("5-23 · 5-24 · 5-29 핵심 그림 사양", () => {
-  it("구성 변화는 비율 단위·오르면 좋음으로 mix-rate 그림을 쓴다", () => {
+  it("구성 변화는 비율 단위로 표시하되 좋고 나쁨을 가정하지 않는다", () => {
     const figure = compositionShiftFigure({ rows: [], start: 0.3, end: 0.32, metric: "iOS 비율", locale: "ko" });
-    expect(figure.options).toMatchObject({ variant: "mix-rate", unit: "rate", lowerIsBetter: false, start: 0.3, end: 0.32 });
+    expect(figure.options).toMatchObject({ variant: "mix-rate", unit: "rate", lowerIsBetter: null, start: 0.3, end: 0.32 });
   });
   it("증분 구간은 판정 보류를 불리언으로 싣는다", () => {
     const figure = effectIntervalFigure({ id: "x", question: "q", rows: [{ entity: "A", estimate: 1, low: 0, high: 2 }], withheld: undefined });

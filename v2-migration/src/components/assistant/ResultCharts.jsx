@@ -81,6 +81,7 @@ function unitFormatter(unit, currency) {
 
 // 오르면 좋은 지표(전환율)와 오르면 나쁜 지표(CPA)의 색을 가른다.
 function directionTone(value, lowerIsBetter, epsilon = 0) {
+  if (lowerIsBetter == null) return "flat";
   if (Number.isFinite(value) && Math.abs(value) < epsilon) return "flat";
   const tone = costTone(value);
   if (lowerIsBetter || tone === "flat") return tone;
@@ -93,7 +94,7 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
   const options = visualization.options || {};
   const metric = options.metric || "CPA";
   const unit = options.unit || "currency";
-  const lowerIsBetter = options.lowerIsBetter ?? unit === "currency";
+  const lowerIsBetter = options.lowerIsBetter === undefined ? unit === "currency" : options.lowerIsBetter;
   const format = unitFormatter(unit, currency);
   const rows = (visualization.data || [])
     .map((row) => ({ entity: row.entity, mix: finite(row.mix), rate: finite(row.rate), interaction: finite(row.interaction), contribution: finite(row.contribution) }))
@@ -180,10 +181,14 @@ export function ResultEffectInterval({ visualization, locale, currency, fallback
       })}
     </ul>
     <figcaption>
-      <p>{tr(locale, "점은 추정값, 굵은 선은 95% 구간, 세로선은 0(변화 없음)입니다.", "The dot is the estimate, the bar the 95% interval, and the vertical line zero (no change).")}</p>
+      <p>{tr(locale, "점: 추정값. 선: 95% 구간. 기준선: 변화 없음(0).", "Dot: estimate. Bar: 95% interval. Reference line: no change (0).")}</p>
       <p>{options.withheld
-        ? tr(locale, "이 설계로는 방향을 판정하지 않습니다 — 구간은 참고용입니다.", "This design does not support a directional verdict — the interval is for reference only.")
-        : tr(locale, "구간이 0을 걸치면 효과가 없다는 뜻이 아니라 아직 판단할 수 없다는 뜻입니다.", "An interval that crosses zero means not yet decidable, not no effect.")}</p>
+        ? tr(locale, "비교 조건이 충분하지 않아 방향을 판정하지 않습니다.", "The comparison conditions do not support a directional verdict.")
+        : rows.some(row => row.low == null || row.high == null)
+          ? tr(locale, "일부 추정값의 구간을 계산할 수 없어 방향 판단을 보류합니다.", "Some intervals cannot be estimated; direction remains undecided.")
+          : rows.some(row => row.low <= 0 && row.high >= 0)
+            ? tr(locale, "구간이 0을 포함해 효과의 방향을 판단하기 어렵습니다.", "The interval includes zero, so the direction remains uncertain.")
+            : tr(locale, "관측된 차이입니다. 인과효과 여부는 비교 설계에 따라 다릅니다.", "This is an observed difference. Causal interpretation depends on the comparison design.")}</p>
     </figcaption>
   </figure>;
 }
@@ -382,7 +387,7 @@ export function ToolCoreFigure({ figure, locale = "ko", currency = "KRW", downlo
   return <section className={`tool-core-figure${embedded ? " tool-core-figure--embedded" : " block"}`} id={headingId} aria-labelledby={`${headingId}-title`}>
     <div className="section-head">
       <Heading className="section-title" id={`${headingId}-title`}>{figure.question}</Heading>
-      {downloadName && <FigurePngButton target={() => holderRef.current?.querySelector(".result-chart")} fileName={downloadName} locale={locale} />}
+      {downloadName && <FigurePngButton target={() => holderRef.current?.querySelector(".result-chart")} fileName={downloadName} locale={locale} title={figure.question} />}
     </div>
     <div ref={holderRef}><Chart visualization={figure} locale={locale} currency={currency} /></div>
   </section>;

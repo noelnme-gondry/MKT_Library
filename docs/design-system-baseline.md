@@ -56,11 +56,12 @@
 - `chartCommonOpts()` 미적용 도구 정리. 하드코딩 hex/rgba 금지 → `getCssVar`/`CHART_THEME`.
 - 테마 전환은 `refreshMountedChartThemes()`로 마운트된 Chart.js 인스턴스까지 즉시 동기화한다.
 
-### 1.8 Operator Desk 시각 언어
-- 다크: graphite 작업대 + chartreuse/cobalt 신호. 라이트: warm paper + cobalt 신호.
-- body=`DM Sans`, display=`Space Grotesk`, 데이터=`JetBrains Mono`(`next/font` 변수).
-- 랜딩 목업은 동일 카드 재배치가 아니라 실제 제품의 4개 상태(주간 브리핑·PVM·소재 피로·MMM)를 순환한다.
-- 저대비 opacity로 상태를 표시하지 않는다. 모바일에서도 Cmd-K/Footer/templates로 전체 IA에 접근할 수 있어야 한다.
+### 1.8 과업 중심의 시각 언어
+
+- 전 구역의 의미·색·글자·정보 순서는 `product-ssot.md` §7을 따른다. 옛 Operator Desk 팔레트·폰트 설명을 별도 기준으로 사용하지 않는다.
+- 읽기 화면은 본문과 목차, 비교 화면은 정렬된 표·그림, 작업 화면은 입력·결과·다음 행동에 공간을 배정한다.
+- 같은 내용을 장식 카드·요약·그림 설명으로 반복하지 않는다. 의미가 다른 문장은 별도 문단에 둔다.
+- 저대비 opacity로 상태를 표시하지 않는다. 모바일에서도 핵심 결과와 조작은 유지한다.
 
 ---
 

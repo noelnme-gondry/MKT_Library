@@ -422,7 +422,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
             </p>
           )}
           {daily.slice(-2 * windowDays).length >= 2 && (<>
-            <FigureHead target={chartRef} fileName="scorecard_daily" locale={locale} />
+            <FigureHead exportTitle={locale === "en" ? "Daily performance trends" : "일별 성과 추이"} target={chartRef} fileName="scorecard_daily" locale={locale} />
             <div className="chart-container" style={{ height: "220px" }}>
               <canvas id="scorecard-daily-chart" ref={chartRef}></canvas>
             </div>

@@ -12,13 +12,12 @@ import DecisionStorageConsentNotice from "@/components/DecisionStorageConsentNot
 
 const COPY = {
   ko: {
-    eyebrow: "DEVICE STORAGE",
     title: "이 기기에 저장된 것",
-    intro: "이 목록은 이 브라우저 안에만 있어요. 서버로 보내지 않아서 만든 사람도 볼 수 없어요.",
+    intro: "업로드한 파일과 분석 기록은 이 브라우저에 저장되며, 서버로 전송하지 않습니다.",
     enabled: "이 기기에 저장하기",
     enabledHint: "올린 파일과 결정 기록을 마지막 사용 후 90일까지 이 기기에 보관합니다. 끄면 저장된 파일과 기록을 즉시 지웁니다.",
-    disabledHint: "저장이 꺼져 있어요. 현재 세션의 분석은 계속 쓸 수 있지만, 새로고침 뒤에는 남지 않습니다.",
-    empty: "저장된 업로드 파일이 없어요.",
+    disabledHint: "저장이 꺼져 있습니다. 현재 세션의 분석은 계속 쓸 수 있지만, 새로고침 뒤에는 남지 않습니다.",
+    empty: "저장된 업로드 파일이 없습니다.",
     remove: "지우기",
     removeAll: "전부 지우기",
     resume: "이어 분석하기",
@@ -28,17 +27,16 @@ const COPY = {
     rows: (count) => `${count.toLocaleString()}행`,
     lastUsed: "마지막 사용",
     remaining: (days) => `남은 기간 ${days}일`,
-    expired: (count) => `90일 넘게 안 쓴 데이터 ${count}건을 지웠어요.`,
-    remapped: (count) => `저장된 데이터 ${count}건은 저장 당시와 컬럼 인식 규칙이 달라져, 파일은 그대로 두고 매핑만 지금 규칙으로 다시 잡았어요. 분석 전에 매핑을 확인해 주세요.`,
-    unreadable: (count) => `저장된 데이터 ${count}건을 열지 못했어요. 파일이 손상됐거나 이 버전이 읽을 수 없는 형식입니다. 해당 항목을 지우고 다시 올려주세요.`,
-    unavailable: "이 브라우저에서는 저장이 안 돼요. 분석은 그대로 됩니다.",
-    quota: "기기 공간이 부족해 저장하지 못했어요. 지난 데이터를 지우면 됩니다.",
-    privacy: "저장 방식과 삭제 범위는 개인정보 처리방침에서 확인할 수 있어요.",
+    expired: (count) => `90일 넘게 안 쓴 데이터 ${count}건을 삭제했습니다.`,
+    remapped: (count) => `저장된 데이터 ${count}건은 저장 당시와 컬럼 인식 규칙이 달라져, 파일은 그대로 두고 매핑만 현재 규칙으로 다시 설정했습니다. 분석 전에 매핑을 확인해 주세요.`,
+    unreadable: (count) => `저장된 데이터 ${count}건을 열지 못했습니다. 파일이 손상됐거나 이 버전이 읽을 수 없는 형식입니다. 해당 항목을 지우고 다시 올려주세요.`,
+    unavailable: "이 브라우저에서는 저장할 수 없습니다. 현재 분석은 계속 사용할 수 있습니다.",
+    quota: "기기 공간이 부족해 저장하지 못했습니다. 불필요한 데이터를 지운 뒤 다시 시도하세요.",
+    privacy: "저장 방식과 삭제 범위는 개인정보 처리방침에서 확인할 수 있습니다.",
   },
   en: {
-    eyebrow: "DEVICE STORAGE",
     title: "Stored on this device",
-    intro: "This list stays in this browser only. It is not sent to a server, so not even we can see it.",
+    intro: "Uploaded files and analysis records stay in this browser and are not sent to a server.",
     enabled: "Store on this device",
     enabledHint: "Keep uploaded files and decision records on this device until 90 days after their last use. Turning it off removes stored files and records immediately.",
     disabledHint: "Storage is off. You can keep working in this session, but it will not remain after a refresh.",
@@ -121,10 +119,10 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
 
   return <div className="workspace-storage-page">
     <header className="workspace-storage-page__header">
-      <span>{T.eyebrow}</span>
       <h1>{T.title}</h1>
       <p>{T.intro}</p>
-      <p>{locale === "en" ? "New file and record saves require active Pro. Turning storage on does not start a trial or purchase. Existing records remain readable and exportable after Pro expires." : "새 파일과 기록 저장에는 유효한 Pro가 필요합니다. 저장을 켜도 체험이나 결제가 시작되지는 않습니다. 만료 후 기존 기록은 계속 읽고 내보낼 수 있습니다."}</p>
+      <p>{locale === "en" ? "New saves require active Pro; existing records remain readable and exportable after it expires." : "새 파일과 기록 저장에는 유효한 Pro가 필요하며, 만료 후에도 기존 기록은 읽고 내보낼 수 있습니다."}</p>
+      <p>{locale === "en" ? "Turning storage on does not start a trial or purchase." : "저장을 켜도 체험이나 결제가 시작되지는 않습니다."}</p>
     </header>
     {expiredCount > 0 && <p className="workspace-storage-page__notice" role="status">{T.expired(expiredCount)}</p>}
     {unreadableGroups.length > 0 && <p className="workspace-storage-page__notice" role="status">{T.unreadable(unreadableGroups.length)}</p>}
@@ -134,7 +132,7 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
     <section className="workspace-storage-page__toggle" aria-label={T.enabled}>
       <div><strong>{T.enabled}</strong><p>{enabled ? T.enabledHint : T.disabledHint}</p></div>
       <label>
-        <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+        <input type="checkbox" aria-label={T.enabled} checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
         <span aria-hidden="true" />
       </label>
     </section>
@@ -152,6 +150,12 @@ export default function WorkspaceStoragePage({ locale = "ko" }) {
       </article>)}
     </section>
     {datasets.length > 0 && <button type="button" className="btn ghost workspace-storage-page__clear" onClick={removeAll}>{T.removeAll}</button>}
-    <p className="workspace-storage-page__privacy">{T.privacy} <Link className="btn" href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Storage limits and subscription guide" : "저장 한도·구독 안내"}</Link> <Link href={locale === "en" ? "/en/privacy" : "/privacy"}>{locale === "en" ? "Privacy Policy" : "개인정보 처리방침"}</Link></p>
+    <div className="workspace-storage-page__privacy">
+      <p>{T.privacy}</p>
+      <nav aria-label={locale === "en" ? "Storage policies" : "저장 관련 안내"}>
+        <Link href={locale === "en" ? "/en/subscription" : "/subscription"}>{locale === "en" ? "Storage limits and subscription guide" : "저장 한도·구독 안내"}</Link>
+        <Link href={locale === "en" ? "/en/privacy" : "/privacy"}>{locale === "en" ? "Privacy Policy" : "개인정보 처리방침"}</Link>
+      </nav>
+    </div>
   </div>;
 }

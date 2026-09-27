@@ -83,6 +83,7 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
   const profileRate = profileCounterfactual ? profileEstimate / Math.abs(profileCounterfactual) : null;
   const directionalVerdictWithheld = !profileReady || profile.hitsBoundary || result.diagnostics.ar1EvidenceTier === "exploratory";
   const hasProfileLiftSignal = !directionalVerdictWithheld && result.profileInterval[0] > 0;
+  const hasProfileDropSignal = !directionalVerdictWithheld && result.profileInterval[1] < 0;
   const brandWorkbookExport = useMemo(() => {
     if (!result?.ok) return null;
     const hasProfileTrend = Number.isFinite(result.profileTrend?.intercept) && Number.isFinite(result.profileTrend?.slope);
@@ -222,7 +223,9 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       ? tx(locale, "방향 판정 보류 · 추정치는 탐색용입니다", "Direction withheld · estimate is exploratory")
       : hasProfileLiftSignal
         ? tx(locale, "관찰상 증가 신호가 남지만 인과 증명은 아닙니다", "An observational lift signal remains, but it is not causal proof")
-        : tx(locale, "증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change");
+        : hasProfileDropSignal
+          ? tx(locale, "관찰상 감소 신호가 남지만 인과 증명은 아닙니다", "An observational decline signal remains, but it is not causal proof")
+          : tx(locale, "증가를 변화 없음과 구분하기 어렵습니다", "Lift cannot be separated from no change");
   // 결과 내보내기. 이 도구는 오래도록 **입력 템플릿만** 받을 수 있고 추정 증가분·
   // 반사실·AR(1) 구간을 화면 밖으로 꺼낼 방법이 없었다(§12.27 "계산한 인사이트만"에
   // 정면으로 어긋남 — 원자료가 아니라 계산 결과가 없어서 못 받던 경우).
@@ -270,7 +273,9 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       ? tx(locale, "AR(1) 불확실성을 포함한 증분 구간을 만들 수 없어 추가 기간 또는 통제군이 필요합니다.", "An incrementality interval including AR(1) uncertainty could not be formed; add history or a control.")
       : hasProfileLiftSignal
         ? tx(locale, `관찰상 추정 증가분 ${formatValue(profileEstimate, locale)} 신호가 남지만 통제군 없는 인과 증명은 아닙니다.`, `An observed estimated lift of ${formatValue(profileEstimate, locale)} remains, but this is not causal proof without a control.`)
-        : tx(locale, "현재 데이터에서는 증가를 변화 없음과 분리하기 어렵습니다.", "Current data cannot separate lift from no change."),
+        : hasProfileDropSignal
+          ? tx(locale, "관찰상 감소 신호가 남지만 통제군 없는 인과 증명은 아닙니다.", "An observed decline signal remains, but this is not causal proof without a control.")
+          : tx(locale, "현재 데이터에서는 증가를 변화 없음과 분리하기 어렵습니다.", "Current data cannot separate lift from no change."),
     action: hasProfileLiftSignal
       ? tx(locale, "다음 브랜드 캠페인에는 비집행 비교군을 남겨 증분 효과를 다시 검증한다", "Keep an unexposed comparison group for the next brand campaign and revalidate incrementality")
       : tx(locale, "추가 사전 기간 또는 통제군을 확보한 뒤 브랜드 증분을 다시 추정한다", "Add pre-period history or a control, then re-estimate brand incrementality"),
@@ -292,11 +297,6 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
       onEdit={() => setSetupOpen(true)}
     />}
     {!setupCollapsed && <>
-    <section className="block" style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
-      <h2 className="section-title" style={{ marginTop: "6px" }}>{tx(locale, "브랜드 캠페인이 실제로 추가 만든 성과를 추정하세요", "Estimate the outcomes your brand campaign actually added")}</h2>
-      <p className="muted" style={{ maxWidth: "760px", lineHeight: 1.65 }}>{tx(locale, "데이터 준비 수준부터 고르면 가장 강한 설계로 연결합니다. ITS는 집행 전 추세를 기준선으로 삼는 관찰 연구이므로, 대조군이 없으면 ‘인과 확정’이 아니라 추정 증가분으로만 표시합니다.", "Choose from the data you have and we route you to the strongest available design. ITS is observational: without a control, results are labeled as estimated lift, not confirmed causality.")}</p>
-    </section>
-
     <section className="block" aria-labelledby="brand-readiness-title">
       <h2 id="brand-readiness-title" className="section-title">{tx(locale, "어떤 데이터를 준비했나요?", "What data do you have?")}</h2>
       <div className="phase-grid">
@@ -338,7 +338,19 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
     {hasData && !result?.ok && <CausalDesignCheck design={design} locale={locale} />}
     {result?.ok && <section className="block" id="brand-its-result">
       <ResultActionCard
-        tone={!design.ready ? "neutral" : hasProfileLiftSignal ? "good" : directionalVerdictWithheld ? "neutral" : "bad"}
+        coreFigure={profileReady && <ToolCoreFigure embedded
+          figure={effectIntervalFigure({
+            id: "brand-its-lift",
+            question: tx(locale, "캠페인 기간의 추정 차이", "Estimated difference during the campaign"),
+            rows: [{ entity: tx(locale, `캠페인 기간 누적 차이 (${resolvedOutcomeColumn})`, `Cumulative difference over the campaign (${resolvedOutcomeColumn})`), estimate: profileEstimate, low: result.profileInterval[0], high: result.profileInterval[1] }],
+            unit: "count",
+            goodDirection: "up",
+            withheld: !design.ready || directionalVerdictWithheld,
+          })}
+          locale={locale}
+          downloadName="brand_its_lift"
+        />}
+        tone={!design.ready ? "neutral" : hasProfileLiftSignal ? "good" : hasProfileDropSignal ? "bad" : "neutral"}
         title={tx(locale, "브랜드 캠페인 증분 추정", "Estimated brand-campaign lift")}
         headline={brandHeadline}
         points={[{ text: tx(locale, `캠페인 시작일 ${result.campaignStartDate} 이후 실제 성과와 사전 추세 기반 반사실을 비교했습니다. 대조군이 없으므로 계절성·PR·프로모션 영향은 분리되지 않습니다.`, `We compare actual outcomes after ${result.campaignStartDate} with a pre-trend counterfactual. Without a control, seasonality, PR, and promotions are not separated.`) }]}
@@ -360,24 +372,15 @@ export default function BrandCampaignIncrementality({ locale = "ko" }) {
         toolId="5-24"
         analysisType="brand_incrementality"
         analysisKey={`${currentSignature}|${Object.values(design.values).join(":")}`}
-        resultState={design.ready && profileReady && !directionalVerdictWithheld ? "ready" : "inconclusive"}
+        scopeEvidence={{ periods: [
+          { id: "before", start: result.points[0]?.date, end: result.points.filter(point => point.date < result.campaignStartDate).at(-1)?.date },
+          { id: "after", start: result.campaignStartDate, end: result.points.at(-1)?.date },
+        ] }}
+        resultState={design.ready && (hasProfileLiftSignal || hasProfileDropSignal) ? "ready" : "inconclusive"}
         locale={locale}
         decisionPrefill={brandDecisionPrefill}
       />
-      {/* 핵심 그림: 캠페인 기간 누적 증분의 점추정과 AR(1) 프로파일 95% 구간. 방향 판정을 보류하는
-          설계(짧은 사전 기간·경계 rho)면 색을 칠하지 않는다 — 결론 문장과 같은 판정을 따른다. */}
-      {profileReady && <ToolCoreFigure
-        figure={effectIntervalFigure({
-          id: "brand-its-lift",
-          question: tx(locale, "캠페인 기간에 사전 추세보다 얼마나 더 나왔는가?", "How much more than the pre-trend did the campaign period deliver?"),
-          rows: [{ entity: tx(locale, `캠페인 기간 누적 차이 (${resolvedOutcomeColumn})`, `Cumulative difference over the campaign (${resolvedOutcomeColumn})`), estimate: profileEstimate, low: result.profileInterval[0], high: result.profileInterval[1] }],
-          unit: "count",
-          goodDirection: "up",
-          withheld: directionalVerdictWithheld,
-        })}
-        locale={locale}
-        downloadName="brand_its_lift"
-      />}
+
       <div className="callout"><div className="body"><strong>{!profileReady
         ? tx(locale, "AR(1) 계수 불확실성까지 포함한 구간을 만들 수 없습니다. 기간을 늘리거나 통제군 설계를 사용하세요.", "We cannot construct an interval that includes AR(1) parameter uncertainty. Add history or use a control-group design.")
         : directionalVerdictWithheld

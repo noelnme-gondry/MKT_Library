@@ -296,7 +296,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
               </div>
             </div>
           )}
-          <FigureHead target={chartRef} fileName="funnel_trend" locale={locale} />
+          <FigureHead exportTitle={locale === "en" ? "Funnel metric trends" : "퍼널 지표 추이"} target={chartRef} fileName="funnel_trend" locale={locale} />
           <div className="chart-container" style={{ height: "240px" }}>
             <canvas id="funnel-trend-chart" ref={chartRef}></canvas>
           </div>
