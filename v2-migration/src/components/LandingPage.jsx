@@ -42,6 +42,9 @@ const COPY = {
     loopDeck: "무엇을 바꿨는지, 어떤 근거로 판단했는지 남기세요.",
     loopFollowup: "검토일에 새 데이터를 보고 결과와 배운 점을 이어 기록합니다.",
     loopCondition: "기록 저장은 로그인과 유효한 Pro가 필요합니다. 7일 체험에도 포함됩니다.",
+    // 이용 안내가 같은 조건을 문장으로 설명한다 — 기록 섹션은 이름표 한 줄만 둔다.
+    loopTag: "Pro 기능 · 로그인 필요 · 7일 체험 포함",
+    shortcutLead: "도구를 고르기 어렵다면",
     questionTitle: "목적별 분석 도구",
     questionDeck: "확인하려는 문제에서 시작하세요.",
     libraryTitle: "실무 가이드와 분석 글",
@@ -83,6 +86,8 @@ const COPY = {
     loopDeck: "Record what changed and the evidence behind your decision.",
     loopFollowup: "Return with new data to review the outcome and record what you learned.",
     loopCondition: "Saving requires sign-in and active Pro, including the 7-day trial.",
+    loopTag: "Pro feature · Sign-in required · Included in the 7-day trial",
+    shortcutLead: "Not sure where to start?",
     questionTitle: "Analyses by purpose",
     questionDeck: "Start with the question you need to answer.",
     libraryTitle: "Guides and analysis articles",
@@ -208,6 +213,7 @@ export default function LandingPage({ locale = "ko", reading }) {
           <p>{T.questionDeck}</p>
         </header>
         <div className="dc-tool-shortcuts">
+            <span>{T.shortcutLead}</span>
             <Link
               className="dc-text-link"
               href={lang === "en" ? "/en/calculator" : "/calculator"}
@@ -241,7 +247,7 @@ export default function LandingPage({ locale = "ko", reading }) {
           </div>
           <p>{T.loopDeck}</p>
           <p>{T.loopFollowup}</p>
-          <p className="home-pro-condition">{T.loopCondition}</p>
+          <p className="home-pro-condition">{T.loopTag}</p>
           <Link className="dc-text-link" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackLandingNav("landing_review_opened", "weekly_loop")}>{T.openInbox}</Link>
         </header>
         <article className="home-review-example">

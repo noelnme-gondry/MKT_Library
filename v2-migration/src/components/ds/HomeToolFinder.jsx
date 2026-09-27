@@ -35,10 +35,16 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
     </div>
     <div hidden={isOpen} className="home-tool-finder__purposes home-tool-directory">
       {stages.map(purpose => <section key={purpose.id} aria-labelledby={`home-purpose-${purpose.id}`}>
-        <h3 id={`home-purpose-${purpose.id}`}>{purpose.title}</h3>
-        <p>{purpose.homeQuestion}</p>
+        <header>
+          <h3 id={`home-purpose-${purpose.id}`}>{purpose.title}</h3>
+          <p>{purpose.homeQuestion}</p>
+        </header>
+        {/* 짧은 도구 이름만으로는 무엇을 하는지 안 읽힌다 — 목록과 같은 질문 한 줄을 붙인다(§12.31). */}
         <ul>{purpose.tools.map(tool => <li key={tool.id}>
-          <Link href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)}>{tool.name}</Link>
+          <Link href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)}>
+            <strong>{tool.name}</strong>
+            {tool.question && <span>{tool.question}</span>}
+          </Link>
           <button type="button" aria-label={`${en ? "Save" : "저장"}: ${tool.name}`} aria-pressed={savedIds.includes(tool.id)} onClick={() => setSaveError(!toggleSavedTool(tool.id))}>
             <Bookmark size={16} fill={savedIds.includes(tool.id) ? "currentColor" : "none"} aria-hidden="true" />
           </button>

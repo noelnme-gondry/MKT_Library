@@ -17,12 +17,11 @@ export default function HomeReading({ locale = "ko" }) {
       <Link href={localizedHref("/blog", locale)}>{en ? "All articles" : "블로그 전체 보기"}</Link></header>
     <div className="home-reading-list__layout">
       <div className="home-reading-list__articles">
-        {selected.map((post) => <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}><h3>{post.title}</h3></Link>)}
+        {selected.map((post) => <Link key={post.slug} href={localizedHref(`/blog/${post.slug}`, locale)}><h3>{post.title}</h3>{post.description && <p>{post.description}</p>}</Link>)}
       </div>
       <aside className="home-guide-shelf">
         <h3>{en ? "Practical guides" : "실무 가이드"}</h3>
-        <p>{en ? "From tracking setup to campaign operations." : "트래킹 셋업부터 캠페인 운영까지."}</p>
-        <p>{en ? "Operating standards your team can refer to." : "팀이 함께 확인하는 운영 기준입니다."}</p>
+        <p>{en ? "Operating standards your team can share, from tracking setup to campaign operations." : "트래킹 셋업부터 캠페인 운영까지, 팀이 함께 확인하는 운영 기준입니다."}</p>
         <Link href={localizedHref("/guide", locale)}>{en ? "View the playbook" : "운영 플레이북 보기"}</Link>
       </aside>
     </div>

@@ -13,21 +13,27 @@ export default function HomeResultPreview({ locale, onTrySample }) {
   // 결과 화면과 같은 범위(유료 채널 전체)를 보여 준다 — 샘플을 누르면 이 숫자 그대로 이어진다.
   const lead = result && { ...result, channel: en ? `${result.channels.length} paid channels` : `유료 채널 ${result.channels.length}개 합계` };
   if (!lead || !Number.isFinite(lead.prior.cpa) || !Number.isFinite(lead.recent.cpa) || !(lead.cpaChange > 0)) return null;
+  const barMax = Math.max(lead.prior.cpa, lead.recent.cpa);
   return <aside className="home-result-preview home-result-preview--comparison" aria-label={en ? "Sample analysis preview" : "샘플 분석 미리보기"}>
     <h2>{en ? "Cost per conversion rose" : "전환당 비용이 올랐습니다"}</h2>
     <p className="home-sample-context">{en ? "Fictional data" : "가상 데이터"} · {lead.channel}</p>
     <table className="home-sample-table">
       <caption className="sr-only">{en ? "Cost per conversion by period, KRW" : "기간별 전환당 비용, 원"}</caption>
-      <tbody>{["prior", "recent"].map((period, index) => <tr key={period}>
+      <tbody>{["prior", "recent"].map((period, index) => <tr key={period} className={`is-${period}`}>
         <th scope="row">{index === 0 ? (en ? "Previous 7 days" : "이전 7일") : (en ? "Latest 7 days" : "최근 7일")}
           <span><time dateTime={result.dates[index * 7]}>{result.dates[index * 7]}</time> – <time dateTime={result.dates[index * 7 + 6]}>{result.dates[index * 7 + 6].slice(5)}</time></span>
         </th>
         <td>{money(lead[period].cpa)}</td>
+        {/* 0에서 시작하는 축 — 두 값의 실제 비율 그대로다(장식 막대가 아니다). 숫자는 바로 옆 칸이 말한다. */}
+        <td className="home-sample-bar" aria-hidden="true"><i style={{ width: `${(lead[period].cpa / barMax) * 100}%` }} /></td>
       </tr>)}</tbody>
     </table>
     <div className="home-sample-change">
-      <dl><dt>{en ? "CPA change" : "CPA 변화"}</dt><dd>{percent(lead.cpaChange)}</dd></dl>
-      <Image src="/assets/dochi/dochi-present-results.png" width={86} height={86} alt={en ? "Dochi presenting the comparison" : "비교 결과를 안내하는 도치"} />
+      <div>
+        <dl><dt>{en ? "CPA change" : "CPA 변화"}</dt><dd>{percent(lead.cpaChange)}</dd></dl>
+        <p>{en ? `${money(Math.round(lead.recent.cpa) - Math.round(lead.prior.cpa))} more per conversion` : `전환 1건에 ${money(Math.round(lead.recent.cpa) - Math.round(lead.prior.cpa))} 더 들었습니다`}</p>
+      </div>
+      <Image src="/assets/dochi/dochi-present-results.png" width={72} height={72} alt="" />
     </div>
     <p className="home-sample-context">{en ? "CPA = ad spend ÷ key actions" : "CPA = 광고비 ÷ 핵심행동 수"}</p>
     {/* 홈에서는 바로 옆 히어로 버튼이 같은 샘플을 연다 — 같은 버튼을 두 번 두지 않는다(2026-09-24). */}
