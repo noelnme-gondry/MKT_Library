@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { idToSlug } from "../src/lib/routeMap";
+import { blogConversionFor } from "../src/lib/blogConversion";
 import { BLOG_INSIGHT_PLACEMENTS } from "../src/lib/blogInsightRegistry";
 
 const articles = ["weekly-marketing-report-template", "cac-payback-period", "marketing-report-sheets-bigquery", "ga4-data-traps", "ltv-cac-ratio", "cpi-cpa-cpm-difference", "cannibalization-organic-paid"];
@@ -42,7 +43,7 @@ for (const locale of ["ko", "en"]) {
       await page.route("**/*", localOnly);
       await page.goto(`${prefix}/blog/${slug}`);
       const panel = page.locator("#blog-practice");
-      await panel.getByRole("button", { name: locale === "en" ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
+      await panel.getByRole("button", { name: blogConversionFor(slug, locale).action, exact: true }).click();
       await expect(page).toHaveURL(`${prefix}${idToSlug[BLOG_INSIGHT_PLACEMENTS[slug].toolId]}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       const followup = slug === "weekly-marketing-report-template";
@@ -60,22 +61,19 @@ for (const locale of ["ko", "en"]) {
         await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "A", exact: true }) })).toContainText(/1,500.*1,200/);
         await expect(campaigns.getByRole("row").filter({ has: page.getByRole("cell", { name: "B", exact: true }) })).toContainText(/1,000.*1,000/);
       } else {
-        const preview = page.getByRole("table", { name: locale === "en" ? "Data preview" : "데이터 미리보기", exact: true });
-        await expect(preview).toContainText("2026-08-31");
-        await expect(preview).toContainText("50000");
-        await expect(page.getByRole("button", { name: locale === "en" ? "Analyze data" : "데이터 분석하기", exact: true })).toBeEnabled();
+        await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
       }
     });
   }
   test(`payback article reaches the separate LTV demo (${locale})`, async ({ page }) => {
     await page.route("**/*", localOnly);
     await page.goto(`${prefix}/blog/cac-payback-period`);
-    await page.locator("#blog-practice").getByRole("button", { name: locale === "en" ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
+    await page.locator("#blog-practice").getByRole("button", { name: blogConversionFor("cac-payback-period", locale).action, exact: true }).click();
     await expect(page).toHaveURL(`${prefix}/dashboard`);
     // 블로그에서 온 방문은 데모 모달 대신 출처 한 줄(시안 E)을 본다.
     await expect(page.locator(".blog-arrival")).toBeVisible();
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page.getByRole("button", { name: locale === "en" ? "Analyze data" : "데이터 분석하기", exact: true }).click();
+    await expect(page.locator(".dashboard-briefing .result-action-card")).toBeVisible();
     await page.getByRole("tab", { name: "LTV & ROAS", exact: true }).click();
     await expect(page.getByRole("tab", { name: "LTV & ROAS", exact: true })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel")).toContainText(/LTV/);

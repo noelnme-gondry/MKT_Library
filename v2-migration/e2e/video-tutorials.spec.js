@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { blogConversionFor } from "../src/lib/blogConversion";
 import { expectNoSeriousAccessibilityViolations } from "./support/quality";
 
 for (const locale of ["ko", "en"]) {
@@ -111,7 +112,7 @@ for (const locale of ["ko", "en"]) {
     await expect(dialog.getByRole("heading", { name: en ? "Save and revisit decisions" : "결정 저장과 다음 주 재검토", exact: true })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
-    await practice.getByRole("button", { name: en ? "Open the full example result" : "예시 결과 전체 보기", exact: true }).click();
+    await practice.getByRole("button", { name: blogConversionFor("weekly-marketing-report-template", locale).action, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/tools/campaign-variance`));
     await expect(page.getByRole("banner")).toContainText("weekly-report-three-weeks.csv");
     await expect(page.locator(".analysis-setup__context")).toContainText(en ? "42 source rows" : "42 원본 행");

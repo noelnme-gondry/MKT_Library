@@ -93,6 +93,47 @@ describe("privacy-safe product analytics", () => {
     expect(productElapsedBucket(300_000)).toBe("3_10m");
     expect(productElapsedBucket(900_000)).toBe("10m_plus");
   });
+  it("counts a rendered blog sample separately from real activation and mere navigation", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key),
+    } };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+    const params = { tool_id: "5-18-mmm", locale: "ko", source: "demo", result_state: "ready" };
+    const sampleEvents = () => window.gtag.mock.calls.filter(call => call[1] === "blog_sample_result_viewed");
+    trackProductEvent("blog_section_opened", { ...params, content_slug: "marketing-mix-modeling", content_type: "blog" });
+    trackProductEvent("analysis_result_viewed", params);
+    expect(sampleEvents()).toHaveLength(0);
+    trackProductEvent("blog_tool_cta_clicked", { ...params, content_slug: "marketing-mix-modeling", content_type: "blog" });
+    trackProductEvent("analysis_completed", params);
+    expect(sampleEvents()).toHaveLength(0);
+    expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    trackProductEvent("analysis_result_viewed", { ...params, tool_id: "5-18-trend" });
+    trackProductEvent("analysis_result_viewed", { ...params, locale: "en" });
+    expect(sampleEvents()).toHaveLength(0);
+    trackProductEvent("analysis_result_viewed", params);
+    expect(sampleEvents()).toHaveLength(1);
+    expect(sampleEvents()[0][2]).toMatchObject({ content_slug: "marketing-mix-modeling", interaction_source: "demo", result_state: "ready" });
+    clock.mockReturnValue(1_802_000);
+    trackProductEvent("analysis_result_viewed", params);
+    expect(sampleEvents()).toHaveLength(1);
+    clock.mockRestore();
+  });
+  it("counts the same sample viewed from two articles once per article without inflating generic result views", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key),
+    } };
+    const params = { tool_id: "5-3", locale: "ko", source: "demo", result_state: "ready" };
+    for (const content_slug of ["roas-improvement", "budget-marginal-efficiency"]) {
+      trackProductEvent("blog_tool_cta_clicked", { ...params, content_slug, content_type: "blog" });
+      expect(trackProductEventOnce("analysis_result_viewed", "shared-blog-fixture", params)).toBe(true);
+      expect(trackProductEventOnce("analysis_result_viewed", "shared-blog-fixture", params)).toBe(false);
+    }
+    const calls = window.gtag.mock.calls;
+    expect(calls.filter(call => call[1] === "analysis_result_viewed")).toHaveLength(1);
+    expect(calls.filter(call => call[1] === "blog_sample_result_viewed").map(call => call[2].content_slug)).toEqual(["roas-improvement", "budget-marginal-efficiency"]);
+  });
   it("keeps only the aggregate allowlist", () => {
     expect(sanitizeProductEventParams({
       tool_id: "5-3",

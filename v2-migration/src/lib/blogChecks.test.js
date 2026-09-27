@@ -8,6 +8,8 @@ import { BLOG_SELF_CHECKS, blogSelfCheckFor } from "@/lib/blogSelfCheck";
 import { blogSituationCheckFor } from "@/lib/blogSituationCheck";
 import { hasEnVersion, idToSlug, slugToId } from "@/lib/routeMap";
 import { EN_BLOG_SLUGS } from "@/lib/localizedHref";
+import { BLOG_CONVERSION, blogConversionFor } from "./blogConversion";
+import { blogSelfCheckNext } from "./blogSelfCheckNext";
 
 const root = (p) => fileURLToPath(new URL(`../../${p}`, import.meta.url));
 const published = getAllPosts("ko").map((post) => post.slug);
@@ -17,6 +19,20 @@ const published = getAllPosts("ko").map((post) => post.slug);
 describe("blog nudges cover every published post", () => {
   it("found a realistic number of published posts", () => {
     expect(published.length).toBeGreaterThan(40);
+  });
+  it("every analysis entry promises a specific action and every self-check has a localized next step", () => {
+    expect(Object.keys(BLOG_CONVERSION).sort()).toEqual(Object.keys(BLOG_INSIGHT_PLACEMENTS).sort());
+    for (const slug of published) for (const locale of ["ko", "en"]) {
+      if (BLOG_INSIGHT_PLACEMENTS[slug]) {
+        expect(blogConversionFor(slug, locale).action.length).toBeGreaterThan(8);
+      } else {
+        const next = blogSelfCheckNext(slug, locale);
+        expect(next.label).toBeTruthy();
+        const id = slugToId[next.href.replace(/^\/en/, "").replace(/^\//, "")];
+        expect(id).toBeTruthy();
+        expect(hasEnVersion(id)).toBe(true);
+      }
+    }
   });
 
   it("every published post gets either the example card (A) or the self-check (D)", () => {

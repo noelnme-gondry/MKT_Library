@@ -14,8 +14,13 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 |---|---|---|
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
-| `blog_cta_viewed` | 글·용어의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_mid\|article_post\|reading_bar\|self_check\|situation_check`, `locale` |
-| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_inline\|article_mid\|article_post\|reading_bar\|situation_check`, `locale` |
+| `blog_cta_viewed` | 글·용어의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check`, `locale` |
+| `blog_section_opened` | 상단·읽기 바에서 글 안 점검으로 이동 (도구 전환 아님) | `content_slug`, `content_type`, `placement`, `locale` |
+| `blog_example_started` / `blog_example_failed` | 샘플 실행 시도 / 로딩 실패 | `tool_id`, `content_slug`, `content_type`, `placement`, `state`, `locale` |
+| `blog_sample_result_viewed` | 블로그에서 연 샘플의 실제 결과 카드 표시 | `tool_id`, `content_slug`, `content_type`, `interaction_source=demo`, `result_state`, `locale` |
+| `blog_upload_started` / `blog_upload_completed` / `blog_upload_failed` | 블로그 내 파일 선택 / 파싱·매핑 완료 / 실패 (분석 완료 아님) | `tool_id`, `content_slug`, `content_type`, `locale` |
+| `blog_check_next_clicked` | 두 질문 점검 결과에서 다음 가이드 선택 | `content_slug`, `content_type`, `placement=self_check`, `state`, `locale` |
 | `blog_check_answered` | 글 안 점검에 답을 끝냄(30초 점검은 두 문항 모두, 상황 확인은 선택 1회) | `content_slug`, `content_type`, `placement=self_check\|situation_check`, `state=yy\|yn\|ny\|nn\|option_1..3`, `locale` |
 | `blog_arrival_action` | 블로그 예시에서 도구로 넘어온 첫 줄(도착 줄)에서 선택 | `tool_id`, `content_slug`, `content_type`, `placement=blog_arrival`, `state=use_my_csv\|back_to_article`, `locale` |
 | `blog_bridge_dismissed` | 블로그 읽기 바를 닫음(그 방문 동안 다시 뜨지 않음) | `content_slug`, `content_type`, `interaction_source`, `placement=reading_bar`, `state=session`, `locale` |
@@ -110,7 +115,8 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 - 블로그→분석: `page_view`(블로그) → `blog_read_depth(depth_75)` → `blog_cta_viewed` → `blog_tool_cta_clicked` → `tool_view` → `data_import_success` → `analysis_completed(result_state=ready)`
   - `blog_cta_viewed` 없이 `page_view`만 쌓이면 패널이 안 보인 것이고, `blog_cta_viewed`는 있는데 클릭이 없으면 카피·목적지 문제다. 두 원인을 가르는 게 이 이벤트의 존재 이유다.
-  - 읽기 바·30초 점검·상황 확인은 새 노출/클릭 이벤트 이름을 만들지 않는다 — `blog_cta_viewed`·`blog_tool_cta_clicked`의 `placement`(`reading_bar`·`self_check`·`situation_check`)로만 가른다. 점검 응답만 `blog_check_answered`로 따로 센다(답 원문이 아니라 열거형 `state`). 2026-09-24에 도치 브리지(`blog_bridge*`)와 요약 옆 CTA(`article_answer`)는 제거됐다 — 과거 데이터에만 남는다.
+  - 노출 위치는 `placement`로 구분한다. 읽기 바의 샘플 실행은 `blog_example_started` → `blog_tool_cta_clicked`, 본문 점검으로의 스크롤은 `blog_section_opened`다. 두 동작을 클릭 전환으로 합산하지 않는다. 2026-09-27 이전 `reading_bar` 클릭은 본문 이동이므로 전후 비교 시 제외한다.
+  - 샘플 체험: `blog_cta_viewed` → `blog_example_started` → `blog_tool_cta_clicked(interaction_source=demo)` → `blog_sample_result_viewed`. 마지막 이벤트는 같은 도구·언어·30분 귀속 범위의 실제 결과 표시에서만 파생하고, 글·도구·언어·결과 상태별로 중복 제거한다. 같은 샘플을 다른 글에서 다시 연 경우에도 해당 글의 조회는 남기되 일반 `analysis_result_viewed` 집계는 늘리지 않는다. `result_state=ready`와 보류 상태를 구분하고 실제 CSV 활성화와 합산하지 않는다.
   - `blog_session_articles(rank≥2)`는 글을 이어 읽는 세션의 크기 — 중간 개입(도치 브리지) 트리거의 분모다.
 - 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_started` → `analysis_completed(result_state=ready)` → `analysis_result_viewed`

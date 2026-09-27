@@ -72,8 +72,13 @@ function autoBoundary(html) {
 
 // { before, after, source } — source는 "marker" | "auto" | "none".
 // after가 빈 문자열이면 호출부는 중간 패널을 렌더하지 않는다(기존 계약 유지).
-export function splitArticleForAction(html) {
+export function splitArticleForAction(html, { early = false } = {}) {
   const source = String(html || "");
+  if (early) {
+    const headings = [...source.matchAll(/<h2\b[^>]*>/g)];
+    const at = headings[1]?.index ?? topLevelBoundaries(source)[0] ?? source.length;
+    return { before: source.slice(0, at).replaceAll(MARKER, ""), after: source.slice(at).replaceAll(MARKER, ""), source: "early" };
+  }
   const markerAt = source.indexOf(MARKER);
   if (markerAt >= 0) {
     return { before: source.slice(0, markerAt), after: source.slice(markerAt + MARKER.length), source: "marker" };

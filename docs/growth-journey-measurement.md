@@ -4,6 +4,7 @@
 
 | 판단할 것 | 기존 이벤트와 조건 | 해석 |
 |---|---|---|
+| 콘텐츠에서 샘플 결과까지 체험하는가 | `blog_cta_viewed` → `blog_example_started` → `blog_sample_result_viewed` | 같은 글·도구·언어·30분 범위. 결과 상태별로 보고 실제 CSV 활성화와 분리한다. |
 | 콘텐츠에서 실제 분석으로 연결되는가 | `blog_cta_viewed` → `blog_tool_cta_clicked` → `analysis_completed`, `source=csv`, `result_state=ready` | 같은 세션·콘텐츠 귀속 범위 내 사용자 기준. CTA 클릭 수를 활성 사용자 수로 쓰지 않는다. |
 | 첫 결과까지 도달하는가 | `data_import_start` → `mapping_confirmed` 또는 `dochi_mapping_confirmed` → `analysis_result_viewed`, `source=csv` | 계산 성공과 화면을 실제로 본 행동을 구분한다. 업로드 차단·매핑 이탈도 함께 본다. |
 | 샘플이 실파일 사용으로 이어지는가 | `example_run_started` 이후 별도 `source=csv` 결과 조회 | 샘플 결과 `source=demo`는 활성화 분자에서 제외한다. 샘플만 본 방문과 구분한다. |

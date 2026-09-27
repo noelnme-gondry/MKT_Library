@@ -7,6 +7,14 @@ const para = (n) => `<p>본문 ${n}. ${"가".repeat(60)}</p>\n`;
 const longArticle = (count = 14) => Array.from({ length: count }, (_, i) => para(i + 1)).join("");
 
 describe("splitArticleForAction", () => {
+  it.each(["ko", "en"])("places the early action after one explanatory section without losing %s content", locale => {
+    for (const post of getAllPosts(locale)) {
+      const { before, after } = splitArticleForAction(post.html, { early: true });
+      expect(before.match(/<h2\b/g), post.slug).toHaveLength(1);
+      expect(after, post.slug).toMatch(/^<h2\b/);
+      expect(before + after).toBe(post.html.replaceAll("<!-- CONTENT_ACTION -->", ""));
+    }
+  });
   it("marker wins over the derived position", () => {
     const html = `${para(1)}<!-- CONTENT_ACTION -->${para(2)}`;
     const result = splitArticleForAction(html);

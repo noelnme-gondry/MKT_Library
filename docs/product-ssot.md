@@ -236,6 +236,13 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 
 제품이 제공하는 선택지는 많아도 **한 화면에서 사용자가 내려야 하는 결정은 하나**다. 첫 방문자에게 선명해야 하는 것은 'CSV를 올린다' 또는 '문제를 진단한다' 중 하나이며, 라이브러리·테마·설정·전체 도구 인덱스는 그 행동과 경쟁하지 않는다.
 
+### 블로그 첫 체험 계약 (2026-09-27)
+
+- 글의 첫 행동은 파일 준비 없이 해볼 수 있는 해당 주제의 예시 분석 또는 두 질문 점검이다. 상단과 본문 초반에서 제공하며, 샘플 실행은 결과까지 이어진다. / Offer a relevant sample analysis or two-question check at entry and early in the article, without requiring a file. Sample execution leads to results.
+- 검증된 공개 샘플을 명시적으로 선택한 경우에만 도구의 기존 예시 실행과 동일하게 입력 게이트를 통과시킨다. 계산·판정은 도구의 검증을 따르며, 조건 부족은 보류 결과로 표시한다. 실제 업로드와 설계·성숙도 선언은 자동 승인하지 않는다. 기존 데이터 교체도 사용자 확인을 유지한다. / Only explicit selection of a verified public fixture uses the tool’s existing sample execution contract. Tool validation still determines whether a result can be estimated or must be withheld. Never auto-confirm uploaded data, design/maturity declarations, or replacement of existing data.
+- 버튼은 다음 화면에서 볼 내용을 말한다. 글과 샘플의 지표가 다르거나 사전 점검 그림을 쓰면 그 범위를 같은 자리에서 밝힌다. / Button copy describes the destination. Disclose different metrics or prerequisite previews beside the example.
+- 본문 이동·샘플 시도·샘플 결과 조회·실파일 선택·실제 분석은 별도 계측한다. 샘플은 실제 분석 활성화와 합산하지 않는다. / Measure section jumps, sample attempts, sample result views, file selection and real analysis separately. Sample use is not real-data activation.
+
 ### 5.1.0 결과 읽기와 보조 안내 (2026-09-23)
 
 - 결과는 결론 → 주요 지표 → 선택한 지표의 기간 비교 → 다음 행동 순서다. 지출 증감은 중립, CPA·CPI 상승은 악화로 표시하며 원본 통화를 환산하지 않는다. 노출·클릭 등은 전체 수치에서 확인한다. / Read conclusion, key metrics, selected-period comparison, then next action; spend changes are neutral and increasing CPA/CPI indicates deterioration. Preserve source currency.

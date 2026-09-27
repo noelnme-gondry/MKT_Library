@@ -10,17 +10,13 @@ import { TOOL_GROUP } from "./toolGroups";
 
 describe("optional blog practice", () => {
   it.each(["ko", "en"])("keeps %s narrative intact and places practice after the relevant concept", locale => {
-    const concepts = locale === "ko"
-      ? { "budget-scaling-limit": "판정 보류", "aso-basics-guide": "2. 전환", "apple-search-ads-guide": "CPT를 올리세요", "weekly-marketing-report-template": "CSV에서", "marketing-report-sheets-bigquery": "Sheets의 갱신" }
-      : { "budget-scaling-limit": "withheld", "aso-basics-guide": "2. Conversion", "apple-search-ads-guide": "Raise CPT", "weekly-marketing-report-template": "Inspect the campaign", "marketing-report-sheets-bigquery": "Separate Sheets" };
     for (const slug of Object.keys(BLOG_PRACTICES)) {
       const post = getPostBySlug(slug, locale);
       const practice = blogPracticeFor(slug, locale);
       const split = splitBlogInsight(post.html, slug);
       expect(split.before + split.after).toBe(post.html.replaceAll("<!-- CONTENT_ACTION -->", ""));
       const headings = [...split.before.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)];
-      expect(headings.length).toBeGreaterThanOrEqual(3);
-      expect(headings.at(-1)[1]).toContain(concepts[slug]);
+      expect(headings.length).toBe(1);
       expect(post.html).not.toMatch(/같은 결과를 재현해 보세요|Reproduce the result/);
       expect(split.after).toMatch(/^<h2/);
       expect(practice.steps).toHaveLength(slug === "weekly-marketing-report-template" ? 4 : 3);

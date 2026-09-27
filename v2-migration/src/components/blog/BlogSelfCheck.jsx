@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { blogSelfCheckFor } from "@/lib/blogSelfCheck";
+import Link from "next/link";
+import { blogSelfCheckNext } from "@/lib/blogSelfCheckNext";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 
 // 시안 D — CSV로 계산할 수 없는 글의 30초 점검. 두 질문에 예/아니요를 누르면 글 본문이
@@ -26,6 +28,7 @@ export default function BlogSelfCheck({ slug, locale = "ko" }) {
   if (!check) return null;
   const key = answers.every((a) => a !== null) ? answers.map((a) => (a ? "y" : "n")).join("") : null;
   const result = key ? check.results[key] : null;
+  const next = blogSelfCheckNext(slug, locale);
   const choose = (index, value) => {
     const next = answers.map((a, i) => (i === index ? value : a));
     setAnswers(next);
@@ -42,7 +45,11 @@ export default function BlogSelfCheck({ slug, locale = "ko" }) {
       </div>
     </fieldset>)}
     <div className="blog-check__result" aria-live="polite">
-      {result && <p><strong>{result[0]}</strong> {result[1]}</p>}
+      {result && <>
+        <p><strong>{result[0]}</strong></p>
+        <p>{result[1]}</p>
+        {next && <Link className="btn" href={next.href} onClick={() => trackProductEvent("blog_check_next_clicked", { content_slug: slug, content_type: "blog", placement: "self_check", state: key, locale })}>{next.label}</Link>}
+      </>}
     </div>
   </section>;
 }

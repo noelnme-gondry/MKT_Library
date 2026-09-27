@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BlogSampleButton } from "./BlogConversionEntry";
 import { X } from "lucide-react";
 import { readDepthPercent } from "@/components/blog/BlogReadTracker";
 import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -21,7 +22,7 @@ function readDismissed() {
   try { return window.sessionStorage.getItem(DISMISS_KEY) === "1"; } catch { return false; }
 }
 
-export default function BlogReadingBar({ slug, locale = "ko", targetId, title, detail, articleSelector = ".blog-prose" }) {
+export default function BlogReadingBar({ slug, locale = "ko", targetId, sample = false, articleSelector = ".blog-prose" }) {
   const en = locale === "en";
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -55,7 +56,7 @@ export default function BlogReadingBar({ slug, locale = "ko", targetId, title, d
 
   if (!visible || dismissed) return null;
   const go = () => {
-    trackProductEvent("blog_tool_cta_clicked", { tool_id: "blog-section", source: "blog", content_slug: slug, content_type: "blog", placement: "reading_bar", locale });
+    trackProductEvent("blog_section_opened", { source: "blog", content_slug: slug, content_type: "blog", placement: "reading_bar", locale });
     const target = document.getElementById(targetId);
     target?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
     target?.focus?.({ preventScroll: true });
@@ -65,12 +66,8 @@ export default function BlogReadingBar({ slug, locale = "ko", targetId, title, d
     trackProductEvent("blog_bridge_dismissed", { source: "blog", content_slug: slug, content_type: "blog", placement: "reading_bar", state: "session", locale });
     setDismissed(true);
   };
-  return <div className="blog-reading-bar" role="region" aria-label={en ? "Jump to this article's example" : "이 글의 예시로 이동"}>
-    <div className="blog-reading-bar__text">
-      <strong>{title}</strong>
-      {detail && <span>{detail}</span>}
-    </div>
-    <button type="button" className="btn primary" onClick={go}>{en ? "View" : "보기"}</button>
+  return <div className="blog-reading-bar" role="region" aria-label={en ? "Try this article's example or check" : "이 글의 예시·점검"}>
+    {sample ? <BlogSampleButton slug={slug} locale={locale} placement="reading_bar" /> : <button type="button" className="btn primary" onClick={go}>{en ? "Check with two questions" : "두 질문으로 점검하기"}</button>}
     <button type="button" className="blog-reading-bar__close" aria-label={en ? "Close" : "닫기"} onClick={dismiss}><X size={18} aria-hidden="true" /></button>
   </div>;
 }

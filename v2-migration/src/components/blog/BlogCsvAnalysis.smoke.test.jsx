@@ -1,17 +1,22 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import BlogCsvAnalysis from "./BlogCsvAnalysis";
 import { useAppStore } from "@/store/useDataStore";
 import { idToSlug } from "@/lib/routeMap";
 import BLOG_EXAMPLES from "@/lib/blogExamples/data.json";
+import { blogConversionFor } from "@/lib/blogConversion";
+import BlogConversionEntry, { BlogJourneyProvider } from "./BlogConversionEntry";
 import { blogPracticeFor } from "@/lib/blogPractice";
 import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
 import { buildBlogPracticeDownload } from "@/lib/blogPracticeData";
+import { trackProductEvent } from "@/lib/analytics";
+import Incrementality from "@/components/tools/Incrementality";
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("./BlogInsightChart", () => ({ default: ({ visual }) => <figure>{JSON.stringify(visual.data)}</figure> }));
-vi.mock("@/lib/analytics", () => ({ trackProductEvent: vi.fn() }));
+vi.mock("@/lib/analytics", async importOriginal => ({ ...await importOriginal(), trackProductEvent: vi.fn(), trackProductEventOnce: vi.fn(), productEventKey: (...a) => a.join(":") }));
 async function upload(locale = "ko", text = "impressions,clicks,installs\n1000,100,10\n2000,200,20", label = locale === "en" ? "Choose CSV" : "CSV 선택") {
   const file = new File([text], "report.csv", { type: "text/csv" });
   file.text = async () => text;
@@ -24,11 +29,41 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ ...useAppStore.getInitialState(), activeProjectId: "default", projectSwitching: false, decisionPersistenceEnabled: false });
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  it.each(["ko", "en"])("preserves fixture dates and renders the actual %s incrementality result without declaring a causal design", async locale => {
+    const slug = "incrementality-measurement", practice = blogPracticeFor(slug, locale);
+    const demo = buildBlogPracticeDownload(practice).demo;
+    const blog = render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug, locale).action }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(useAppStore.getState().csvData.designWindow).toEqual(demo.designWindow);
+    blog.unmount();
+    const { container } = render(<Incrementality locale={locale} />);
+    expect(container.querySelector(".result-action-card")).toBeTruthy();
+    expect(screen.getByText(locale === "en" ? "Design conditions unconfirmed — estimated differences are exploratory; action is withheld" : "설계 조건 미확인 — 추정 차이는 탐색용이며 행동 판단을 보류합니다")).toBeTruthy();
+    expect(screen.getByLabelText(locale === "en" ? "Holdout start date" : "홀드아웃 시작일").value).toBe(demo.designWindow.start);
+  });
+  it.each(Object.keys(BLOG_INSIGHT_PLACEMENTS).flatMap(slug => ["ko", "en"].map(locale => [slug, locale])))("opens the header sample without a second analyze click: %s/%s", async (slug, locale) => {
+    const config = BLOG_INSIGHT_PLACEMENTS[slug];
+    const practice = blogPracticeFor(slug, locale);
+    if (!practice.demoGroup) vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, text: async () => readFileSync(`public${practice.href}`, "utf8") })));
+    const { container } = render(<BlogJourneyProvider>
+      <BlogConversionEntry slug={slug} locale={locale} sample toolId={config.toolId} />
+      <BlogCsvAnalysis config={config} slug={slug} locale={locale} practice={practice} />
+    </BlogJourneyProvider>);
+    fireEvent.click(container.querySelector(".blog-conversion-entry button"));
+    expect([...container.querySelectorAll('button[type="submit"]')].every(button => button.disabled)).toBe(true);
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug[config.toolId]}`));
+    const state = useAppStore.getState();
+    expect(state.csvData.raw.length).toBeGreaterThan(0);
+    expect(state.csvData.importSource).toBe("demo");
+    expect(state.isGroupAnalyzed(config.toolId)).toBe(true);
+    expect(trackProductEvent).toHaveBeenCalledWith("blog_tool_cta_clicked", expect.objectContaining({ content_slug: slug, placement: "article_entry", source: "demo" }));
+  });
   it.each(["ko", "en"])("waits for initial device restoration before accepting a %s demo or upload", async locale => {
     useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false });
     const slug = "cac-payback-period", en = locale === "en";
     render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={blogPracticeFor(slug, locale)} />);
-    const demo = screen.getByRole("button", { name: en ? "Open the full example result" : "예시 결과 전체 보기" });
+    const demo = screen.getByRole("button", { name: blogConversionFor(slug, locale).action });
     expect(demo.disabled).toBe(true);
     expect(screen.getByLabelText(en ? "Choose CSV" : "CSV 선택").disabled).toBe(true);
     // 파일을 고르기 전에는 넘길 데이터가 없으므로 상세 분석 버튼을 그리지 않는다.
@@ -47,26 +82,26 @@ describe("blog CSV to full analysis", () => {
     useAppStore.setState({ decisionPersistenceEnabled: true, projectsReady: false, projectError: "storage_unavailable" });
     const slug = "cac-payback-period";
     render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
-    const demo = screen.getByRole("button", { name: "예시 결과 전체 보기" });
+    const demo = screen.getByRole("button", { name: blogConversionFor(slug).action });
     expect(demo.disabled).toBe(false);
     act(() => useAppStore.setState({ projectSwitching: true }));
     expect(demo.disabled).toBe(true);
   });
-  it.each(["ko", "en"])("opens the %s generated demo in one click with analysis still gated", async locale => {
+  it.each(["ko", "en"])("opens the %s generated demo in one click with its input gate satisfied", async locale => {
     const slug = "aha-moment-retention", practice = blogPracticeFor(slug, locale);
     render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} />);
-    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open the full example result" : "예시 결과 전체 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug, locale).action }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`${locale === "en" ? "/en" : ""}${idToSlug["5-20"]}`));
     expect(useAppStore.getState().csvGroups.aha.raw.length).toBeGreaterThan(0);
     expect(useAppStore.getState().csvGroups.aha.importSource).toBe("demo");
-    expect(useAppStore.getState().isGroupAnalyzed("5-20")).toBe(false);
+    expect(useAppStore.getState().isGroupAnalyzed("5-20")).toBe(true);
   });
   it.each([false, true])("requires confirmation of the current dataset (changed after confirmation: %s)", async changed => {
     const original = [{ existing: "keep" }];
     useAppStore.setState(state => ({ csvGroups: { ...state.csvGroups, aha: { ...state.csvGroups.aha, raw: original } } }));
     const slug = "aha-moment-retention";
     render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
-    fireEvent.click(screen.getByRole("button", { name: "예시 결과 전체 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug).action }));
     await screen.findByRole("alert");
     expect(push).not.toHaveBeenCalled();
     expect(useAppStore.getState().csvGroups.aha.raw).toBe(original);
@@ -91,7 +126,7 @@ describe("blog CSV to full analysis", () => {
     vi.stubGlobal("fetch", fetchMock);
     const slug = "apple-search-ads-guide";
     const { unmount } = render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} practice={blogPracticeFor(slug)} />);
-    fireEvent.click(screen.getByRole("button", { name: "예시 결과 전체 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: blogConversionFor(slug).action }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/examples/asa-mature-candidate.csv"));
     if (scenario === "project-change") act(() => useAppStore.setState({ activeProjectId: "another" }));
     if (scenario === "unmount") unmount();
@@ -100,7 +135,7 @@ describe("blog CSV to full analysis", () => {
       expect(push).toHaveBeenCalledWith(idToSlug["5-26"]);
       expect(useAppStore.getState().csvData.currency).toBe("KRW");
       expect(useAppStore.getState().csvData.importSource).toBe("demo");
-      expect(useAppStore.getState().isGroupAnalyzed("5-26")).toBe(false);
+      expect(useAppStore.getState().isGroupAnalyzed("5-26")).toBe(true);
     } else {
       expect(push).not.toHaveBeenCalled();
       expect(useAppStore.getState().csvGroups.asa_keyword.raw).toHaveLength(0);
@@ -129,8 +164,9 @@ describe("blog CSV to full analysis", () => {
     const practice = blogPracticeFor(slug, locale);
     const example = BLOG_EXAMPLES[slug];
     const { container } = render(<BlogCsvAnalysis config={BLOG_INSIGHT_PLACEMENTS[slug]} slug={slug} locale={locale} practice={practice} example={example} />);
-    // 결론이 먼저: 카드의 제목이 곧 예시 결과 문장이다.
-    expect(screen.getByRole("heading", { name: example[locale].headline })).toBeTruthy();
+    // 확인할 내용과 실제 계산된 수치를 함께 보여 준다.
+    expect(screen.getByRole("heading", { name: blogConversionFor(slug, locale).action })).toBeTruthy();
+    expect(screen.getByText(example[locale].headline)).toBeTruthy();
     expect(screen.getByText(example[locale].caption)).toBeTruthy();
     const bars = container.querySelectorAll(".blog-example__bars li");
     expect(bars.length).toBe(example.bars.length);
@@ -139,8 +175,8 @@ describe("blog CSV to full analysis", () => {
     const steps = container.querySelector("details.blog-practice__instructions");
     expect(steps).toBeTruthy();
     expect(steps.open).toBe(false);
-    expect(screen.getByLabelText(en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기")).toBeTruthy();
-    await upload(locale, "Date,Search Term,Taps,Installs,Spend\n2026-08-01,example,10,3,1000", en ? "Run this on my CSV" : "내 CSV로 같은 분석 보기");
+    expect(screen.getByLabelText(en ? "Use my CSV" : "내 CSV로 분석하기")).toBeTruthy();
+    await upload(locale, "Date,Search Term,Taps,Installs,Spend\n2026-08-01,example,10,3,1000", en ? "Use my CSV" : "내 CSV로 분석하기");
     expect(screen.queryByRole("button", { name: en ? "Show result" : "결과 보기" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: en ? "Open detailed analysis" : "더 자세한 분석 보기" }));
     expect(push).toHaveBeenCalledWith(`${en ? "/en" : ""}${idToSlug["5-26"]}`);
