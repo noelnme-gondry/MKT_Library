@@ -55,7 +55,7 @@ v2-migration/
 
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
-| `/` | home | LandingPage → 접이식 도치 접수 + ds/HomeToolFinder (toolIndex·TOOL_JOURNEY 파생, 검색·savedTools 브라우저 저장) |
+| `/` | home | LandingPage → CSV·샘플 진입 + landing/HomeResultPreview(동일 픽스처 CPA 비교) + ds/HomeToolFinder(전체 toolIndex·TOOL_JOURNEY, 검색·savedTools) + HomeReading(서버 발행 글) |
 | `/dashboard` | 5-2 | Dashboard → dashboard/* (9탭) |
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |

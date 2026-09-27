@@ -2,21 +2,11 @@
 
 import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ChartNoAxesCombined, TrendingUp, Wallet, Palette, Store, FlaskConical, Network, Bookmark } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { toolIndexByStage } from "@/lib/toolIndex";
 import { localizedHref } from "@/lib/localizedHref";
 
 import { readSavedTools, parseSavedTools, subscribeSavedTools, toggleSavedTool, savedToolsServerSnapshot } from "@/lib/savedTools";
-
-const QUESTION_ICONS = {
-  monitor: ChartNoAxesCombined,
-  baseline: TrendingUp,
-  budget: Wallet,
-  creative: Palette,
-  store: Store,
-  prove: FlaskConical,
-  contribution: Network,
-};
 
 export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   const searchInput = useRef(null);
@@ -31,7 +21,7 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
   const tools = terms.length ? allTools.filter(tool => {
     const text = [tool.name, tool.question, tool.answer, tool.searchText, ...tool.outputs, ...tool.needs].join(" ").toLocaleLowerCase();
     return terms.every(term => text.includes(term));
-  }) : selected === "saved" ? allTools.filter(tool => savedIds.includes(tool.id)) : stages.filter(stage => selected === "all" || stage.id === selected).flatMap(stage => stage.tools);
+  }) : selected === "saved" ? allTools.filter(tool => savedIds.includes(tool.id)) : [];
   const isOpen = Boolean(selected || terms.length);
   const savedCount = allTools.filter(tool => savedIds.includes(tool.id)).length;
   return <div className="home-tool-finder" data-searching={terms.length > 0}>
@@ -43,23 +33,23 @@ export default function HomeToolFinder({ locale = "ko", onItemClick }) {
         <Bookmark size={18} aria-hidden="true" /> {en ? "Saved tools" : "저장한 도구"} ({savedCount})
       </button>
     </div>
-    <div hidden={terms.length > 0} className="home-tool-finder__purposes" role="group" aria-label={en ? "Choose a purpose" : "목적 선택"}>
-      {stages.map(purpose => {
-        const Icon = QUESTION_ICONS[purpose.id];
-        return <button type="button" key={purpose.id} aria-expanded={selected === purpose.id && !terms.length} aria-controls="home-tool-results" onClick={() => { setQuery(""); setSelected(selected === purpose.id ? null : purpose.id); }}>
-          <Icon className="home-tool-finder__icon" size={24} strokeWidth={1.75} aria-hidden="true" />
-          <strong>{purpose.homeQuestion}</strong><span>{purpose.tools.map(tool => tool.name).join(" · ")}</span>
-        </button>;
-      })}
+    <div hidden={isOpen} className="home-tool-finder__purposes home-tool-directory">
+      {stages.map(purpose => <section key={purpose.id} aria-labelledby={`home-purpose-${purpose.id}`}>
+        <h3 id={`home-purpose-${purpose.id}`}>{purpose.title}</h3>
+        <p>{purpose.homeQuestion}</p>
+        <ul>{purpose.tools.map(tool => <li key={tool.id}>
+          <Link href={localizedHref(tool.href, locale)} onClick={() => onItemClick?.(tool.id)}>{tool.name}</Link>
+          <button type="button" aria-label={`${en ? "Save" : "저장"}: ${tool.name}`} aria-pressed={savedIds.includes(tool.id)} onClick={() => setSaveError(!toggleSavedTool(tool.id))}>
+            <Bookmark size={16} fill={savedIds.includes(tool.id) ? "currentColor" : "none"} aria-hidden="true" />
+          </button>
+        </li>)}</ul>
+      </section>)}
     </div>
-    <button hidden={terms.length > 0} className="dc-text-link dc-text-link--button" type="button" aria-expanded={selected === "all"} aria-controls="home-tool-results" onClick={() => { setQuery(""); setSelected(selected === "all" ? null : "all"); }}>
-      {selected === "all" ? (en ? "Close all tools" : "전체 도구 접기") : (en ? "View all tools" : "전체 도구 보기")}
-    </button>
+    {saveError && <p role="alert">{en ? "Could not save. Allow browser storage and try again." : "저장하지 못했습니다. 브라우저 저장 설정을 확인하고 다시 시도하세요."}</p>}
     <div id="home-tool-results" hidden={!isOpen}>
       {isOpen && <div className="home-tool-finder__result-header"><h3>{terms.length ? (en ? "Search results" : "검색 결과") : selected === "saved" ? (en ? "Saved tools" : "저장한 도구") : (en ? "Available analyses" : "선택할 수 있는 분석")}</h3><p role="status">{en ? `${tools.length} tools` : `${tools.length}개 도구`}</p></div>}
       {selected === "saved" && !terms.length && <p>{en ? "Saved in this browser only. Save tools you want to use again." : "이 브라우저에만 저장됩니다. 다시 쓸 도구를 저장해 두세요."}</p>}
-      {saveError && <p role="alert">{en ? "Could not save. Allow browser storage and try again." : "저장하지 못했습니다. 브라우저 저장 설정을 확인하고 다시 시도하세요."}</p>}
-      {!tools.length && <p>{terms.length ? (en ? "No matching tools. Try another metric or choose a question above." : "검색 결과가 없습니다. 다른 지표를 입력하거나 위의 질문을 골라보세요.") : (en ? "No saved tools yet. Open all tools and select Save." : "아직 저장한 도구가 없습니다. 전체 도구에서 저장 버튼을 눌러보세요.")}</p>}
+      {!tools.length && <p>{terms.length ? (en ? "No matching tools. Try another metric or clear the search." : "검색 결과가 없습니다. 다른 지표를 입력하거나 검색을 지워보세요.") : (en ? "No saved tools yet. Turn off Saved tools to browse the directory." : "아직 저장한 도구가 없습니다. 저장한 도구 버튼을 다시 누르면 전체 목록으로 돌아갑니다.")}</p>}
       <ul className="home-tool-finder__results">
         {tools.map(tool => <li key={tool.id} className="home-tool-finder__tool">
           <div className="home-tool-finder__tool-heading">

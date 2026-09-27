@@ -41,7 +41,7 @@ describe("home → result → weekly review", () => {
   it.each(["ko", "en"])("opens a real computed sample in one click and preserves its scope to the copied review (%s)", async locale => {
     const en = locale === "en";
     const home = render(<LandingPage locale={locale} />);
-    const preview = home.container.querySelector(".home-result-preview__kpis div:last-child dd").textContent;
+    const preview = home.container.querySelector(".home-sample-change dd").textContent;
     fireEvent.click(home.container.querySelector(".dc-action-route--sample"));
     expect(push).toHaveBeenCalledWith(en ? "/en/dochi-result" : "/dochi-result");
     home.unmount();
