@@ -25,8 +25,10 @@ function metricProfile(records, key) {
   const q1 = numeric.length >= 4 ? percentile(numeric, 0.25) : null;
   const q3 = numeric.length >= 4 ? percentile(numeric, 0.75) : null;
   const iqr = q1 != null && q3 != null ? q3 - q1 : null;
-  const outlierCount = iqr != null && iqr > 0
-    ? numeric.filter((value) => value < q1 - 1.5 * iqr || value > q3 + 1.5 * iqr).length
+  const lowFence = iqr != null && iqr > 0 ? q1 - 1.5 * iqr : null;
+  const highFence = iqr != null && iqr > 0 ? q3 + 1.5 * iqr : null;
+  const outlierCount = lowFence != null
+    ? numeric.filter((value) => value < lowFence || value > highFence).length
     : 0;
   return {
     key,
@@ -36,6 +38,9 @@ function metricProfile(records, key) {
     nonZeroCount: nonZero.length,
     coefficientOfVariation: mean && variance != null ? Math.sqrt(variance) / Math.abs(mean) : null,
     outlierCount,
+    // 경고가 "어느 값이 무엇보다 벗어났는지" 말할 수 있게 경계를 함께 돌려준다(IQR 1.5배).
+    lowFence,
+    highFence,
   };
 }
 
@@ -110,7 +115,28 @@ export function buildDataQualityReport(canonicalData, { metricKeys, requiresDate
   const allZeroFields = selectedMetricKeys.filter((key) => metricStats[key]?.validCount > 0 && metricStats[key].zeroRate === 1);
   if (allZeroFields.length) issues.push({ code: "all_zero_metric", count: allZeroFields.length, fields: allZeroFields });
   const outlierFields = selectedMetricKeys.filter((key) => metricStats[key]?.outlierCount > 0);
-  if (outlierFields.length) issues.push({ code: "outliers", count: outlierFields.length, fields: outlierFields });
+  if (outlierFields.length) {
+    // "범위를 벗어난 값이 있다"만으로는 무엇을 확인할지 알 수 없다 — 지표별 건수·평소 범위와
+    // 가장 크게 벗어난 한 건(날짜·대상·값)을 함께 싣는다. 브라우저 안에서만 쓰는 사실이다.
+    const details = outlierFields.map((key) => {
+      const { outlierCount, lowFence, highFence } = metricStats[key];
+      const worst = records.reduce((best, record) => {
+        const value = record.metrics?.[key];
+        if (!Number.isFinite(value) || (value >= lowFence && value <= highFence)) return best;
+        const distance = value > highFence ? value - highFence : lowFence - value;
+        return !best || distance > best.distance ? { distance, record, value } : best;
+      }, null);
+      const dimensions = worst?.record.dimensions || {};
+      return {
+        field: key,
+        count: outlierCount,
+        lowFence,
+        highFence,
+        example: worst ? { date: worst.record.date || null, entity: dimensions.channel || dimensions.campaign_name || null, value: worst.value } : null,
+      };
+    });
+    issues.push({ code: "outliers", count: outlierFields.length, fields: outlierFields, details });
+  }
 
   const grade = records.length === 0 || (requiresDate && missingDateCount === records.length) ? "unfit" : issues.length ? "caution" : "ready";
   return {

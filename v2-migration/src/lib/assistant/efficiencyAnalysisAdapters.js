@@ -106,6 +106,10 @@ function dashboardAdapter(input) {
       evidenceState: "descriptive",
       headline: verdict.headline,
       stats: (verdict.stats || []).map((stat) => ({ id: stat.label, label: stat.label, value: stat.value })),
+      // 대표값은 판정이 이미 강조한 효율 지표(CPA/CPI)다 — 지출·전환보다 이 분석의 결론에 가깝다.
+      primaryStatId: (verdict.stats || []).find((stat) => stat.emphasis === "primary")?.label || null,
+      // 나쁠 때의 행동("채널별로 나눠 확인")은 같은 파일로 계산되는 성과 변동 원인(5-21)이 답한다.
+      nextToolId: verdict.tone === "bad" ? "5-21" : null,
       action: verdict.tone === "bad"
         // 날짜별 급변을 탐지한 결과가 아니다(주간 판정이 나쁠 때의 정형 문구) — 없는 탐지를 말하지 않고,
         // 같은 파일로 바로 계산되는 채널별 분해로 보낸다(2026-09-28).
@@ -220,7 +224,11 @@ function pvmAdapter(input) {
         { id: "prior-unit-cost", label: tr(locale, `직전 ${metric}`, `Prior ${metric}`), value: decomposition.CPA1, unit: "currency" },
         { id: "recent-unit-cost", label: tr(locale, `최근 ${metric}`, `Recent ${metric}`), value: decomposition.CPA2, unit: "currency" },
         { id: "unit-cost-change", label: tr(locale, `${metric} 변화`, `${metric} change`), value: decomposition.deltaCpa, unit: "currency" },
+        // 제목이 "이 채널의 기여가 가장 크다"라고 말하면 그 기여 금액이 대표값이어야 한다 —
+        // 전체 CPA를 대신 보여 주면 제목과 숫자가 다른 이야기를 한다.
+        ...(driver && Number.isFinite(driver.contribution) ? [{ id: "driver-contribution", label: tr(locale, `${driver.entity} 기여`, `${driver.entity} contribution`), value: driver.contribution, unit: "currency-change" }] : []),
       ],
+      primaryStatId: driver && Number.isFinite(driver.contribution) ? "driver-contribution" : "unit-cost-change",
       action: driver
         ? Math.abs(driver.mix || 0) > Math.abs(driver.rate || 0)
           ? tr(locale, `${driver.entity}의 예산 비중 변경 이력을 확인하세요.`, `Review budget-share changes for ${driver.entity}.`)
@@ -293,6 +301,7 @@ function saturationAdapter(input) {
         { id: "saturated", label: tr(locale, "포화", "Saturated"), value: saturated.length },
         { id: "headroom", label: tr(locale, "여유", "Headroom"), value: headroom.length },
       ],
+      primaryStatId: saturated.length ? "saturated" : headroom.length ? "headroom" : "analyzable",
       action: tr(locale, "관측 범위를 넘기지 않는 소규모 증액 또는 이동 시험을 설계합니다.", "Design a small monitored increase or shift that stays within the observed range."),
       caveats: [tr(locale, "한계 효율은 관측 범위의 곡선 참고값이며 인과 효과가 아닙니다.", "Marginal efficiency is an observed-range curve reference, not a causal effect.")],
     },
@@ -432,7 +441,10 @@ function allocationAdapter(input) {
         ...(currentResults != null ? [{ id: "current-results", label: tr(locale, `지금 배분 예상 ${resultLabel}`, `Expected ${resultLabel} now`), value: currentResults, unit: "count" }] : []),
         { id: "expected-results", label: tr(locale, `바꾼 배분 예상 ${resultLabel}`, `Expected ${resultLabel} after`), value: summary.next.results, unit: "count" },
         { id: "expected-unit-cost", label: metric === "actions" ? "예상 CPA" : "예상 CPI", value: summary.nextAvgCPR, unit: "currency" },
+        // 같은 곡선에서 나온 두 예측의 차이 — 배분만 바꿨을 때의 예상 증감이다(보장이 아니다).
+        ...(resultGain != null ? [{ id: "results-gain", label: tr(locale, `예상 ${resultLabel} 증감 (하루)`, `Expected ${resultLabel} change per day`), value: resultGain, unit: "count-change" }] : []),
       ],
+      primaryStatId: resultGain != null ? "results-gain" : "expected-results",
       action: resultGain != null && resultGain < -Math.max(1, currentResults * 0.01)
         ? tr(locale, "예산을 옮기지 말고 지금 배분을 유지하세요. 채널별 상한을 정해 다시 계산하면 다른 안이 나올 수 있습니다.", "Keep the current split. Setting per-channel caps and recalculating may produce a different plan.")
         : inferredBudget

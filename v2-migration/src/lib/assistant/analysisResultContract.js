@@ -42,6 +42,12 @@ export function createAnalysisResult({
       action: verdict.action == null ? null : String(verdict.action),
       reviewCondition: verdict.reviewCondition == null ? null : String(verdict.reviewCondition),
       caveats: (verdict.caveats || []).map(String),
+      // 목록에서 이 분석을 대표하는 수치 하나(stats 중 id). 없으면 화면이 첫 수치를 쓴다.
+      // 전체 지표를 앞에서부터 잘라 보여 주면 분석마다 같은 지출·CPA가 반복돼 그 분석이 무엇을 찾았는지 사라진다.
+      primaryStatId: verdict.primaryStatId == null ? null : String(verdict.primaryStatId),
+      // 행동 문구가 같은 작업대 안의 다른 분석을 가리킬 때만 그 분석 id. 앱 밖 운영 과제에는 두지 않는다
+      // (누를 수 없는 일을 버튼으로 꾸미지 않는다).
+      nextToolId: verdict.nextToolId == null ? null : String(verdict.nextToolId),
     },
     visualizations: visualizations.map((visualization) => ({
       id: String(visualization.id || ""),
@@ -66,6 +72,8 @@ export function validateAnalysisResult(result = {}) {
   if (!result.mappingSignature) errors.push("mappingSignature");
   if (!EVIDENCE_STATES.has(result.verdict?.evidenceState)) errors.push("verdict.evidenceState");
   if (!result.verdict?.headline) errors.push("verdict.headline");
+  if (result.verdict?.primaryStatId && !(result.verdict.stats || []).some((stat) => stat.id === result.verdict.primaryStatId)) errors.push("verdict.primaryStatId");
+  if (result.verdict?.nextToolId && result.verdict.nextToolId === result.toolId) errors.push("verdict.nextToolId");
   if (!Array.isArray(result.visualizations)) errors.push("visualizations");
   for (const visualization of result.visualizations || []) {
     if (!visualization.id || !VISUALIZATION_KINDS.has(visualization.kind) || !visualization.question || !serializable(visualization)) {

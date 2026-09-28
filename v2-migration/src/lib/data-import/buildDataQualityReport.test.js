@@ -28,6 +28,12 @@ describe("buildDataQualityReport", () => {
     expect(report.metricStats.cost.missingRate).toBeCloseTo(2 / 7);
     expect(report.metricStats.installs.zeroRate).toBe(1);
     expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["period_gaps", "high_missing_rate", "all_zero_metric", "outliers"]));
+    // 경고는 대상을 가리킨다: 어느 지표에서 몇 건, 평소 범위, 가장 크게 벗어난 날짜와 값.
+    const outliers = report.issues.find((issue) => issue.code === "outliers");
+    expect(outliers.details).toHaveLength(1);
+    expect(outliers.details[0]).toMatchObject({ field: "cost", count: 1, example: { date: "2026-07-13", value: 1000 } });
+    expect(outliers.details[0].highFence).toBeLessThan(1000);
+    expect(outliers.details[0].lowFence).toBeLessThanOrEqual(10);
   });
 
   it("does not invent missing dates or duplicates for an undated episode dataset", () => {
