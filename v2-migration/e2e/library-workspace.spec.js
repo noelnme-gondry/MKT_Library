@@ -149,6 +149,26 @@ for (const locale of ["ko", "en"]) {
     }
   });
 
+  // 성과 변동이 지목한 채널은 그 채널만 걸러 주간 점검에서 연다 — 도구가 결과와 같은 범위로 열려야 한다(2026-09-28).
+  test(`sample decomposition drills down to the named channel (${locale})${tag}`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto(prefix || "/");
+    await page.locator(".dc-action-route--sample").click();
+    await expect(page.locator('[data-queue-settled="true"]')).toBeAttached({ timeout: 60_000 });
+    await page.locator(".tool-index__chip").filter({ hasText: toolIndexEntry("5-21", locale).name }).first().click();
+    const drill = page.getByRole("button", { name: en ? /^View .+ daily trend/ : /일별 추이 보기/ }).first();
+    await expect(drill).toBeVisible();
+    const label = (await drill.innerText()).replace(/\s*→\s*$/, "");
+    const channel = en ? label.replace(/^View /, "").replace(/ daily trend$/, "") : label.replace(/ 일별 추이 보기$/, "");
+    await drill.click();
+    await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug["5-2"]}$`), { timeout: 30_000 });
+    // 걸린 필터는 채널 하나이고, 세그먼트 영역이 펼쳐져 사용자가 걸러진 화면임을 본다.
+    const bar = page.locator(".dashboard-filter-bar");
+    await expect(bar).toHaveAttribute("data-active-filter-count", "1");
+    await expect(bar.locator("details.dashboard-filter-more")).toHaveAttribute("open", "");
+    await expect(bar.locator(".dashboard-filter-more__body")).toContainText(channel);
+  });
+
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {
     await page.goto(prefix || "/");
     await expect(page.locator('.dc-action-route--primary')).toBeVisible();

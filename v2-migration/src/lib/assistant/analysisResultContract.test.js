@@ -35,6 +35,15 @@ describe("Dochi result contract", () => {
     expect(() => createAnalysisResult({ ...base, verdict: { ...base.verdict, nextToolId: "5-2" } })).toThrow(/nextToolId/);
   });
 
+  it("drills down only on a filterable field with a named target", () => {
+    const drillDown = { toolId: "5-2", field: "channel", value: "Meta AAP" };
+    expect(createAnalysisResult({ ...base, verdict: { ...base.verdict, drillDown } }).verdict.drillDown).toEqual(drillDown);
+    expect(createAnalysisResult(base).verdict.drillDown).toBeNull();
+    // 대상 도구가 거를 수 없는 축이나 빈 대상으로 걸면 도구가 0행으로 열린다.
+    expect(() => createAnalysisResult({ ...base, verdict: { ...base.verdict, drillDown: { ...drillDown, field: "campaign" } } })).toThrow(/drillDown/);
+    expect(() => createAnalysisResult({ ...base, verdict: { ...base.verdict, drillDown: { ...drillDown, value: "  " } } })).toThrow(/drillDown/);
+  });
+
   it("does not permit an unknown result state to look complete", () => {
     expect(() => createAnalysisResult({ ...base, status: "ready" })).toThrow(/status/);
   });

@@ -210,6 +210,10 @@ function pvmAdapter(input) {
   ).map((row) => ({ entity: row.key, mix: safeNumber(row.mix), rate: safeNumber(row.rate), contribution: safeNumber(row.contribution) }));
   const driver = [...byChannel].sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0))[0] || null;
   const metric = resultField === "actions" ? "CPA" : "CPI";
+  // 지목한 채널만 걸러 주간 점검(일별 추이)으로 여는 길. 필터는 행의 채널 값과 정확히 같을 때만
+  // 건다 — 채널이 비어 "미지정"으로 묶인 행은 필터로 다시 고를 수 없다.
+  const driverChannel = String(driver?.entity ?? "").trim();
+  const drillable = driverChannel && [...periods.prior, ...periods.recent].some((row) => String(row.channel ?? "").trim() === driverChannel);
   return createAnalysisResult({
     toolId: "5-21",
     status: ANALYSIS_RESULT_STATUS.SUCCESS,
@@ -229,6 +233,7 @@ function pvmAdapter(input) {
         ...(driver && Number.isFinite(driver.contribution) ? [{ id: "driver-contribution", label: tr(locale, `${driver.entity} 기여`, `${driver.entity} contribution`), value: driver.contribution, unit: "currency-change" }] : []),
       ],
       primaryStatId: driver && Number.isFinite(driver.contribution) ? "driver-contribution" : "unit-cost-change",
+      drillDown: drillable ? { toolId: "5-2", field: "channel", value: driverChannel } : null,
       action: driver
         ? Math.abs(driver.mix || 0) > Math.abs(driver.rate || 0)
           ? tr(locale, `${driver.entity}의 예산 비중 변경 이력을 확인하세요.`, `Review budget-share changes for ${driver.entity}.`)

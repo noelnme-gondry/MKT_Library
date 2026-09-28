@@ -1,5 +1,7 @@
 const RESULT_STATUSES = new Set(["success", "not_computable", "not_identified", "error"]);
 const EVIDENCE_STATES = new Set(["descriptive", "estimated", "not_identified", "not_computable"]);
+// 대상 도구의 필터가 실제로 거를 수 있는 축만(dashboardFilter의 Set 필드).
+const DRILL_DOWN_FIELDS = new Set(["channel"]);
 const VISUALIZATION_KINDS = new Set(["line", "bar", "scatter", "table", "metric", "distribution"]);
 
 function serializable(value) {
@@ -48,6 +50,13 @@ export function createAnalysisResult({
       // 행동 문구가 같은 작업대 안의 다른 분석을 가리킬 때만 그 분석 id. 앱 밖 운영 과제에는 두지 않는다
       // (누를 수 없는 일을 버튼으로 꾸미지 않는다).
       nextToolId: verdict.nextToolId == null ? null : String(verdict.nextToolId),
+      // 결론이 특정 대상(채널)을 지목하면 그 대상만 걸러 다른 도구에서 여는 길. 필터 값은 결과가
+      // 실제로 계산한 대상 이름 그대로여야 한다(없는 대상으로 걸면 도구가 0행으로 열린다).
+      drillDown: verdict.drillDown == null ? null : {
+        toolId: String(verdict.drillDown.toolId || ""),
+        field: String(verdict.drillDown.field || ""),
+        value: String(verdict.drillDown.value || ""),
+      },
     },
     visualizations: visualizations.map((visualization) => ({
       id: String(visualization.id || ""),
@@ -74,6 +83,7 @@ export function validateAnalysisResult(result = {}) {
   if (!result.verdict?.headline) errors.push("verdict.headline");
   if (result.verdict?.primaryStatId && !(result.verdict.stats || []).some((stat) => stat.id === result.verdict.primaryStatId)) errors.push("verdict.primaryStatId");
   if (result.verdict?.nextToolId && result.verdict.nextToolId === result.toolId) errors.push("verdict.nextToolId");
+  if (result.verdict?.drillDown && (!result.verdict.drillDown.toolId || !DRILL_DOWN_FIELDS.has(result.verdict.drillDown.field) || !result.verdict.drillDown.value.trim())) errors.push("verdict.drillDown");
   if (!Array.isArray(result.visualizations)) errors.push("visualizations");
   for (const visualization of result.visualizations || []) {
     if (!visualization.id || !VISUALIZATION_KINDS.has(visualization.kind) || !visualization.question || !serializable(visualization)) {

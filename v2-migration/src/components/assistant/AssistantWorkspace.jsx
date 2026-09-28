@@ -7,6 +7,7 @@ import ToolIndex from "@/components/ds/ToolIndex";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
 import { isDemoData } from "@/lib/dataOrigin";
+import { resultScope } from "@/lib/assistant/resultScope";
 import { buildToolDemo } from "@/lib/toolDemo";
 import { TOOL_GROUP } from "@/lib/toolGroups";
 import { blockersText } from "@/lib/assistant/blockerText";
@@ -252,6 +253,13 @@ function formatResultValue(value, locale) {
     return new Intl.NumberFormat(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 }).format(value);
   }
   return String(value);
+}
+
+// 주간 점검(5-2)은 필터된 대상의 일별 추이를 그린다 — 그 밖의 도구는 이름으로만 말한다.
+function drillDownLabel(drillDown, locale, getTitle) {
+  if (drillDown.toolId === "5-2") return locale === "en" ? `View ${drillDown.value} daily trend` : `${drillDown.value} 일별 추이 보기`;
+  const title = titleFor(drillDown.toolId, getTitle);
+  return locale === "en" ? `View ${drillDown.value} in ${title}` : `${drillDown.value}만 ${title}에서 보기`;
 }
 
 // 금액은 원본 통화 기호와 자릿수(₩ 0자리 · $ 2자리)로, 건수는 정수로 읽힌다.
@@ -699,15 +707,22 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       && queueItem.result?.mappingSignature === currentMappingSignature);
   // 행동 문장이 같은 작업대의 다른 분석을 가리키면(nextToolId) 그 분석을 여는 버튼을 붙인다.
   // 그 분석이 이 파일로 실제 계산된 경우에만 — 계산 못 한 분석으로 보내는 버튼은 막다른 길이다.
+  // 결론이 대상(채널)을 지목하면(drillDown) 그 대상만 걸러 도구를 여는 버튼도 붙인다. 결과가 지금 입력으로
+  // 계산된 것일 때만 — 낡은 결과에서 누르면 필터 없이 열려 버튼 이름과 다른 화면이 뜬다.
   const renderNextStep = (source) => {
     const nextId = source?.verdict?.nextToolId;
     const target = nextId && currentResults.find(({ result: item, queueItem }) => item.toolId === nextId && queueItem?.result?.status === "success");
-    if (!target) return null;
+    const drillDown = source?.verdict?.drillDown;
+    const canDrill = Boolean(onOpenTool && drillDown && currentResults.some(({ result: item, queueItem }) => item.toolId === source.toolId && queueItem?.result?.status === "success"));
+    if (!target && !canDrill) return null;
     const open = () => {
       setSelectedAnalysis(nextId);
-      requestAnimationFrame(() => document.querySelector(`[aria-controls$="-${CSS.escape(nextId)}-panel"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
+      requestAnimationFrame(() => document.querySelector(`[aria-controls$="-${String(nextId).replace(/["\\]/g, "\\$&")}-panel"]`)?.scrollIntoView?.({ block: "start", behavior: "smooth" }));
     };
-    return <button type="button" className="dochi-workspace__next-step" onClick={open}>{locale === "en" ? `View ${titleFor(nextId, getTitle)}` : `${titleFor(nextId, getTitle)} 보기`}<span aria-hidden="true"> →</span></button>;
+    return <>
+      {target && <button type="button" className="dochi-workspace__next-step" onClick={open}>{locale === "en" ? `View ${titleFor(nextId, getTitle)}` : `${titleFor(nextId, getTitle)} 보기`}<span aria-hidden="true"> →</span></button>}
+      {canDrill && <button type="button" className="dochi-workspace__next-step" onClick={() => openDrillDown(source)}>{drillDownLabel(drillDown, locale, getTitle)}<span aria-hidden="true"> →</span></button>}
+    </>;
   };
   const successfulFindings = currentResults.filter(({ queueItem }) => queueItem.result.status === "success");
   // Keep the recommended conclusion stable while later queue items finish.
@@ -737,22 +752,26 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       if (innerFrame != null) window.cancelAnimationFrame(innerFrame);
     };
   }, []);
-  const openTool = (toolId) => {
+  // fromToolId: 이 결과에서 출발했다(drill-down이면 도착 도구와 다르다). 도착 도구는 결과가 실제로
+  // 계산한 범위(필터·비교 창)로 연다 — 예전 필터가 남아 있으면 결과와 다른 숫자가 뜬다.
+  const openTool = (toolId, { fromToolId = toolId, drillDown = null } = {}) => {
     if (!onOpenTool) return;
-    trackProductEvent("analysis_recommended", { tool_id: toolId, source: "dochi", placement: "dochi_workspace", locale });
+    trackProductEvent("analysis_recommended", { tool_id: toolId, source: "dochi", placement: drillDown ? "dochi_workspace_drilldown" : "dochi_workspace", locale });
     // 샘플은 효율 CSV다. 다른 데이터 단위의 도구는 샘플을 변환해 넘기면 그 도구의 열 확인에서 다시
     // 멈추므로, 그 도구를 위해 만든 예시 데이터로 연다(효율 도구도 샘플이 못 채우면 같다).
     const needsOwnExample = sampleMode && (TOOL_GROUP[toolId] !== "efficiency" || eligibility.find((result) => result.toolId === toolId)?.status === "blocked");
-    const result = queueItemFor(toolId)?.result;
-    const comparison = !needsOwnExample && result?.status === "success"
-      && result.inputSignature === currentInputSignature && result.mappingSignature === currentMappingSignature
-      ? result.manifest?.comparison : null;
+    const result = queueItemFor(fromToolId)?.result;
+    const isCurrentSuccess = !needsOwnExample && result?.status === "success"
+      && result.inputSignature === currentInputSignature && result.mappingSignature === currentMappingSignature;
+    const comparison = isCurrentSuccess && fromToolId === toolId ? result.manifest?.comparison || null : null;
+    const scope = isCurrentSuccess ? resultScope(result, toolId, drillDown) : null;
     deferHandoff(() => {
       const prepared = needsOwnExample ? buildToolDemo(toolId, locale) : prepareHandoffForTool(toolId);
-      if (comparison) onOpenTool(toolId, prepared, { comparison });
+      if (comparison || scope) onOpenTool(toolId, prepared, { comparison, scope });
       else onOpenTool(toolId, prepared);
     });
   };
+  const openDrillDown = (result) => openTool(result.verdict.drillDown.toolId, { fromToolId: result.toolId, drillDown: result.verdict.drillDown });
   const openNaturalExperiment = (handoff) => {
     if (!onOpenTool) return;
     deferHandoff(() => onOpenTool(
