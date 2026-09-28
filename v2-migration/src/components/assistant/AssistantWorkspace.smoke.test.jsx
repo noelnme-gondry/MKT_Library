@@ -283,8 +283,16 @@ describe("Dochi analysis workspace", () => {
     openAnalysis("5-2");
 
     const hubs = screen.getAllByRole("button", { name: "결과 받기" });
-    expect(hubs.length).toBe(document.querySelectorAll(".dochi-workspace__result-status").length);
+    const results = [...document.querySelectorAll(".dochi-workspace__result")];
+    expect(hubs.length).toBe(results.length);
     expect(hubs.length).toBeGreaterThan(0);
+    // 받기는 결론·근거를 읽은 뒤에 둔다 — 결론보다 앞에 있으면 읽기 전에 받는 버튼이 가장 먼저 보인다.
+    for (const section of results) {
+      const hub = section.querySelector(".dochi-workspace__result-utilities button");
+      const headline = section.querySelector(".dochi-workspace__decision-tape");
+      expect(hub).toBeTruthy();
+      expect(headline.compareDocumentPosition(hub) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
   it("keeps the workbook escape in English too", async () => {

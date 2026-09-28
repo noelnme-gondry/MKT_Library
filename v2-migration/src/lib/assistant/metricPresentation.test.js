@@ -17,3 +17,11 @@ it("uses engine metric keys and preserves currency, rates, and missing values", 
   expect(formatComparisonMetric("roas", .6, "en")).toBe("60%");
   expect(formatComparisonMetric("cpa", null)).toBe("—");
 });
+
+it("shows click and conversion rates with enough digits to see a change", () => {
+  // 샘플의 두 기간 CTR(2.641% → 2.586%)이 한 자리로는 둘 다 2.6%로 보였다.
+  expect(formatComparisonMetric("ctr", 1507840 / 57084114)).toBe("2.64%");
+  expect(formatComparisonMetric("ctr", 1547828 / 59864560)).toBe("2.59%");
+  expect(formatComparisonMetric("cvr", .04)).toBe("4.00%");
+  expect(formatComparisonMetric("roas", 1.6385)).toBe("163.9%");
+});

@@ -130,6 +130,23 @@ for (const path of RESULT_PAGES) {
   });
 }
 
+// 홈 샘플이 도착하는 결과 작업대(/dochi-result). 도구 화면과 부품이 달라(AnalysisResultOutput)
+// 위 목록으로는 한 번도 재지 않았고, 금지된 왼쪽 색 막대 "다음 행동" 상자가 이 화면에만 남아 있었다(2026-09-28).
+// 요약 화면과, 분석 하나를 펼친 상세를 함께 잰다.
+test("design rules hold on the sample result workspace", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/");
+  await page.locator(".dc-action-route--sample").click();
+  await expect(page).toHaveURL(/\/dochi-result$/);
+  await expect(page.locator('[data-queue-settled="true"]')).toBeAttached({ timeout: 60_000 });
+  await page.evaluate(async () => { await document.fonts.ready; });
+  expectClean(await measureDesignRules(page));
+  const chip = page.locator(".tool-index__stage--ready .tool-index__chip").first();
+  await chip.click();
+  await expect(page.locator(".tool-index__panel .dochi-workspace__result").first()).toBeVisible();
+  expectClean(await measureDesignRules(page));
+});
+
 // 예시 버튼만으로는 결론 카드까지 가지 않는 도구(5-3 예산 · 5-4 판독 · 5-23 홀드아웃)는 실제 입력을 밟아
 // 결과 화면을 연다. 입력 화면만 재면 결과에서만 생기는 상자·글자 문제를 영영 못 본다(2026-09-24).
 const MANUAL_RESULTS = {
