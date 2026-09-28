@@ -481,6 +481,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
 - **결과 작업대(`/dochi-result`)의 목록 요약은 `verdict.primaryStatId` 하나만 보여 준다**(2026-09-28): stats를 앞에서부터 잘라 보이면 분석마다 같은 지출·CPA가 반복돼 그 분석이 찾은 것이 사라진다(5-21 제목은 "Meta 기여가 가장 큼"인데 숫자는 전체 CPA였다). 대표값은 **제목과 같은 이야기**를 해야 하고 계약이 없는 id를 막는다. 행동이 같은 작업대의 다른 분석을 가리키면 `verdict.nextToolId`로 버튼을 붙이되 그 분석이 **실제로 계산된 경우만** — 앱 밖 운영 과제에는 두지 않는다.
+- **결과에서 도구로 갈 때는 범위를 같이 넘긴다**(2026-09-28): 도구 필터는 그룹에 남아 있어, 전에 TikTok만 걸어 둔 대시보드가 전체로 계산한 결과 옆에서 다른 숫자를 냈다. `resultScope`가 결과의 범위(작업대는 필터 없음 + 비교 창)를 만들고 `handoffCsvToRoute({ scope })`가 덮는다. 채널을 지목한 결론은 `verdict.drillDown`으로 그 채널만 건다 — 필터 값은 **행에 실제로 있는 값**일 때만(“미지정” 묶음은 다시 고를 수 없다).
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)

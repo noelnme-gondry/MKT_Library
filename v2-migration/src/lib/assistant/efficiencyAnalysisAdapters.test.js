@@ -114,6 +114,23 @@ describe("Dochi efficiency analysis adapters", () => {
     expect(primary(budget).value).toBeCloseTo(stat("expected-results") - stat("current-results"), 6);
   });
 
+  // 성과 변동이 지목한 채널은 그 채널만 걸러 주간 점검으로 열 수 있어야 한다 — 필터 값이 행의 채널 값과 같아야 0행이 아니다.
+  it("drills the channel decomposition down to the named channel", () => {
+    const csv = buildSampleJourney("ko");
+    const pvm = runEfficiencyAnalysis({ toolId: "5-21", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });
+    const driver = pvm.verdict.headline.split("의 ")[0];
+    expect(pvm.verdict.drillDown).toEqual({ toolId: "5-2", field: "channel", value: driver });
+    const channelColumn = Object.keys(csv.mapping).find((column) => csv.mapping[column] === "channel");
+    expect(csv.raw.some((row) => String(row[channelColumn]).trim() === driver)).toBe(true);
+    // 채널 값이 비면 "미지정" 묶음이라 필터로 다시 고를 수 없다 — 버튼을 만들지 않는다.
+    const { canonicalData: _canonical, mappedRows: _mapped, ...rest } = csv;
+    const blank = { ...rest, raw: csv.raw.map((row) => ({ ...row, [channelColumn]: "" })) };
+    const unscoped = runEfficiencyAnalysis({ toolId: "5-21", csvData: blank, inputSignature: "i", mappingSignature: "m2", locale: "ko" });
+    expect(unscoped.status).toBe("success");
+    expect(unscoped.verdict.headline.startsWith("미지정의 ")).toBe(true);
+    expect(unscoped.verdict.drillDown).toBeNull();
+  });
+
   it("points a bad weekly verdict at the channel decomposition, and nothing else", () => {
     const csv = buildSampleJourney("ko");
     const dashboard = runEfficiencyAnalysis({ toolId: "5-2", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });

@@ -5623,6 +5623,10 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .dashboard-filter-more__body { position: absolute; z-index: 31; top: calc(100% + 6px); right: 0; display: grid; min-width: 250px; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-container-lowest); box-shadow: 0 14px 38px rgba(0,0,0,.18); }
 .dashboard-filter-more__body .mon-filter-item { display: grid; grid-template-columns: 64px minmax(0,1fr); }
 .dashboard-filter-more__body .mon-multisel-btn { width: 100%; justify-content: space-between; }
+/* 하나만 걸리면 버튼이 그 값(사용자 CSV의 채널명)을 보인다 — 긴 이름이 줄을 밀지 않게 말줄임. */
+.mon-multisel-btn { max-width: 16rem; }
+.dashboard-filter-more__body .mon-multisel-btn { max-width: 100%; }
+.mon-multisel-btn__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .analysis-local-controls { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
 .analysis-local-controls__inner { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .analysis-local-controls__label { margin-right: 3px; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .06em; }

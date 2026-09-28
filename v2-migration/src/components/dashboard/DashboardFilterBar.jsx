@@ -48,7 +48,9 @@ function MultiSelect({ label, options, selected, onChange, T }) {
   }, [open]);
 
   const isAll = selected == null || selected.size === 0;
-  const btnLabel = isAll ? T.all(options.length) : T.selectedCount(selected.size);
+  // 하나만 걸렸으면 그 이름을 쓴다 — 결과 화면에서 "Meta AAP 일별 추이"로 왔는데 "1개 선택됨"만 보이면
+  // 무엇으로 걸러졌는지 펼쳐 봐야 안다(2026-09-28).
+  const btnLabel = isAll ? T.all(options.length) : selected.size === 1 ? String([...selected][0]) : T.selectedCount(selected.size);
 
   const toggle = (val) => {
     // selected===null은 "전체 선택" 의미 — 여기서 빈 Set으로 시작하면 클릭한 항목
@@ -73,7 +75,7 @@ function MultiSelect({ label, options, selected, onChange, T }) {
           aria-controls={listId}
           aria-haspopup="listbox"
         >
-          {btnLabel} <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
+          <span className="mon-multisel-btn__value">{btnLabel}</span> <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
         </button>
         {open && (
           <div className="mon-multisel-list" id={listId} role="listbox" aria-label={label} aria-multiselectable="true">

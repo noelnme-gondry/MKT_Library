@@ -9,6 +9,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import { toolIndexEntry } from "@/lib/toolIndex";
 import { buildSampleJourney } from "@/lib/sampleJourney";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
+import { runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 
 function openAnalysis(id, locale = "ko") {
   const name = toolIndexEntry(id, locale).name;
@@ -412,5 +413,26 @@ describe("Dochi analysis workspace", () => {
     expect(chipFor("5-21").getAttribute("aria-expanded")).not.toBe("true");
     fireEvent.click(next);
     await waitFor(() => expect(chipFor("5-21").getAttribute("aria-expanded")).toBe("true"));
+  });
+
+  // 성과 변동이 지목한 채널은 그 채널만 걸러 주간 점검에서 연다 — 도구가 결과와 같은 범위로 열려야 한다(2026-09-28).
+  it("opens the weekly check filtered to the channel the decomposition named", { timeout: 60_000 }, async () => {
+    const data = buildSampleJourney("ko");
+    useAppStore.setState({ csvData: data, decisionRecords: [], decisionPersistenceEnabled: false });
+    const onOpenTool = vi.fn();
+    render(<AssistantWorkspace csvData={data} locale="ko" getTitle={id => toolIndexEntry(id, "ko").name} onOpenTool={onOpenTool} sampleMode />);
+    const start = screen.queryByRole("button", { name: "분석하기" });
+    if (start) fireEvent.click(start);
+    await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy(), { timeout: 30_000 });
+    const chip = [...document.querySelectorAll(".tool-index__chip")].find(node => node.querySelector(".tool-index__q").textContent === toolIndexEntry("5-21", "ko").name);
+    fireEvent.click(chip);
+    const driver = runEfficiencyAnalysis({ toolId: "5-21", csvData: data, inputSignature: "i", mappingSignature: "m", locale: "ko" }).verdict.drillDown.value;
+    fireEvent.click((await screen.findAllByRole("button", { name: `${driver} 일별 추이 보기` }))[0]);
+    await waitFor(() => expect(onOpenTool).toHaveBeenCalled());
+    const [toolId, , handoff] = onOpenTool.mock.calls.at(-1);
+    expect(toolId).toBe("5-2");
+    expect(handoff.scope).toEqual({ filterState: { channels: [driver] }, windowDays: 7, dashboardTab: "viz" });
+    // 5-21의 기간 비교(periodA/B)는 5-21 화면 전용이다 — 주간 점검으로는 싣지 않는다.
+    expect(handoff.comparison).toBeNull();
   });
 });

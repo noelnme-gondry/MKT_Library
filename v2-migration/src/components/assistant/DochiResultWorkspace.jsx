@@ -96,10 +96,10 @@ export default function DochiResultWorkspace({ locale = "ko" }) {
     const timer = window.setTimeout(() => setPhase("results"), 0);
     timersRef.current.push(timer);
   };
-  const openTool = useCallback((toolId, prepared = csvData, { comparison = null } = {}) => {
+  const openTool = useCallback((toolId, prepared = csvData, { comparison = null, scope = null } = {}) => {
     const session = useAppStore.getState().dochiAnalysisSession;
     setDochiAnalysisSession({ ...(session || {}), sourceData: session?.sourceData || csvData, handoffs: [...(session?.handoffs || []), prepared] });
-    handoffCsvToRoute(toolId, prepared, { comparison });
+    handoffCsvToRoute(toolId, prepared, { comparison, scope });
     const path = idToPath(toolId);
     router.push(locale === "en" ? `/en${path}` : path);
   }, [csvData, handoffCsvToRoute, locale, router, setDochiAnalysisSession]);

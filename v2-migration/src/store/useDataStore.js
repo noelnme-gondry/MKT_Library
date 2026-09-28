@@ -40,6 +40,22 @@ export { TOOL_GROUP, groupForRoute };
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
 const APP_PERSIST_VERSION = 5;
 let decisionFallbackSequence = 0;
+const DASH_WINDOW_DAYS = [7, 14, 28];
+const DASHBOARD_FILTER_SET_KEYS = ["platforms", "countries", "channels", "sources"];
+// 결과 명세는 직렬화돼야 해서 필터 값을 배열로 싣는다(Set은 JSON에서 {}가 된다). 스토어 필터는 Set이다.
+function handoffFilterState(filterState) {
+  if (!filterState || typeof filterState !== "object") return {};
+  const out = {};
+  for (const [key, value] of Object.entries(filterState)) {
+    if (DASHBOARD_FILTER_SET_KEYS.includes(key)) {
+      if (value instanceof Set || Array.isArray(value)) out[key] = new Set([...value].map((item) => String(item).trim()).filter(Boolean));
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
   dateEnd: null,
@@ -1145,17 +1161,26 @@ export const useAppStore = create(persist((set, get) => ({
   },
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
-  handoffCsvToRoute: (routeId, incoming, { markAnalyzed = true, comparison = null } = {}) => set((state) => {
+  // scope는 결과가 실제로 계산한 범위(필터·비교 창)다. 넘기면 도구의 필터를 그 범위로 맞춘다 —
+  // 예전 필터가 남아 있으면 도구가 결과 화면과 다른 행으로 다른 숫자를 냈다(2026-09-28).
+  handoffCsvToRoute: (routeId, incoming, { markAnalyzed = true, comparison = null, scope = null } = {}) => set((state) => {
     const g = groupForRoute(routeId);
     const data = withDefaultSourceCurrency(incoming, g, state.preferredSourceCurrency);
     const sig = computeAnalyzeSig(data);
     const canAnalyze = markAnalyzed && executionPreflight(data, routeId).status !== "blocked";
+    const scopedFilter = comparison || scope
+      ? { ...EMPTY_DASHBOARD_FILTER(), ...handoffFilterState(scope?.filterState), ...handoffFilterState(comparison?.filterState) }
+      : null;
     return {
-      ...(comparison ? {
-        analysisHandoff: { ...comparison, source: "dochi", targetToolId: routeId, dataGroup: g, sourceRows: data.raw },
-        dashboardFilterGroups: { ...state.dashboardFilterGroups, [g]: { ...EMPTY_DASHBOARD_FILTER(), ...comparison.filterState } },
-        ...(state.activeDataGroup === g ? { dashboardFilter: { ...EMPTY_DASHBOARD_FILTER(), ...comparison.filterState } } : {}),
-      } : { analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff }),
+      ...(comparison
+        ? { analysisHandoff: { ...comparison, source: "dochi", targetToolId: routeId, dataGroup: g, sourceRows: data.raw } }
+        : { analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff }),
+      ...(scopedFilter ? {
+        dashboardFilterGroups: { ...state.dashboardFilterGroups, [g]: scopedFilter },
+        ...(state.activeDataGroup === g ? { dashboardFilter: scopedFilter } : {}),
+      } : {}),
+      ...(DASH_WINDOW_DAYS.includes(scope?.windowDays) ? { dashWindowDays: scope.windowDays } : {}),
+      ...(scope?.dashboardTab === "viz" ? { dashboardTab: "viz" } : {}),
       csvGroups: { ...state.csvGroups, [g]: data },
       analyzedByGroup: { ...state.analyzedByGroup, [g]: canAnalyze ? sig : null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: false },
