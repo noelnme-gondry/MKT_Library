@@ -4,6 +4,7 @@ import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { SAT_CONFIG, SAT_MATH, satBuildPoints } from "@/utils/satMath";
 import { buildSampleJourney } from "@/lib/sampleJourney";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { validateAnalysisResult } from "./analysisResultContract";
 import { EFFICIENCY_TOOL_IDS, efficiencyAdapterFor, runEfficiencyAnalysis } from "./efficiencyAnalysisAdapters";
 
@@ -136,8 +137,50 @@ describe("Dochi efficiency analysis adapters", () => {
     const dashboard = runEfficiencyAnalysis({ toolId: "5-2", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });
     const verdict = buildDashboardVerdict({ csvData: csv, windowDays: 7 });
     expect(dashboard.verdict.nextToolId).toBe(verdict.tone === "bad" ? "5-21" : null);
-    for (const toolId of ["5-21", "5-22", "5-3"]) {
-      expect(runEfficiencyAnalysis({ toolId, csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" }).verdict.nextToolId, toolId).toBeNull();
+    // 성과 변동의 행동(변경 이력 점검)은 앱 밖 운영 과제다 — 버튼을 붙이지 않는다.
+    expect(runEfficiencyAnalysis({ toolId: "5-21", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" }).verdict.nextToolId).toBeNull();
+  });
+
+  // 포화와 여유가 함께 있을 때만 재배분으로, 배분안이 성과를 늘릴 때만 증액 여력으로 잇는다(2026-09-28).
+  it.each(["ko", "en"])("links saturation and reallocation only when the verdict calls for it (%s)", (locale) => {
+    const csv = buildSampleJourney(locale);
+    const run = (toolId) => runEfficiencyAnalysis({ toolId, csvData: csv, inputSignature: "i", mappingSignature: "m", locale });
+    const stat = (result, id) => result.verdict.stats.find((entry) => entry.id === id)?.value;
+
+    const saturation = run("5-22");
+    const canShift = stat(saturation, "saturated") > 0 && stat(saturation, "headroom") > 0;
+    expect(saturation.verdict.nextToolId).toBe(canShift ? "5-3" : null);
+    // 샘플은 포화 2 · 여유 0이다 — 옮길 곳이 없으니 재배분으로 보내지 않는다.
+    expect(canShift).toBe(false);
+
+    const budget = run("5-3");
+    const gain = stat(budget, "results-gain");
+    const raises = gain >= Math.max(1, stat(budget, "current-results") * 0.01);
+    expect(raises).toBe(true);
+    expect(budget.verdict.nextToolId).toBe("5-22");
+    // 제목(늘어납니다)과 행동(증액 여력 확인)이 같은 판정을 쓴다.
+    expect(budget.verdict.headline).toMatch(locale === "en" ? /raises/ : /늘어납니다/);
+    expect(budget.verdict.action).toMatch(locale === "en" ? /headroom/ : /증액 여력/);
+  });
+
+  // 합성 데이터: 수확체감(√) 채널 · 선형 채널 · 수확체증(1.4제곱) 채널 — 포화와 여유가 함께 있다.
+  it("sends a saturated-plus-headroom verdict to the reallocation", () => {
+    const mapping = { Date: "date", Channel: "channel", Cost: "cost", Installs: "installs" };
+    const raw = [];
+    for (let d = 0; d < 56; d++) {
+      const date = new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10);
+      const cost = 1000 + ((d * 37) % 23) * 200;
+      raw.push({ Date: date, Channel: "Sat", Cost: String(cost), Installs: String(Math.round(40 * Math.sqrt(cost))) });
+      raw.push({ Date: date, Channel: "Room", Cost: String(cost), Installs: String(Math.round(0.002 * cost ** 1.4)) });
+      raw.push({ Date: date, Channel: "Flat", Cost: String(cost), Installs: String(Math.round(cost / 10)) });
     }
+    const csv = { raw, headers: Object.keys(mapping), mapping, canonicalData: buildCanonicalDataset({ raw, headers: Object.keys(mapping), mapping }) };
+    const saturation = runEfficiencyAnalysis({ toolId: "5-22", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });
+    const stat = (id) => saturation.verdict.stats.find((entry) => entry.id === id).value;
+    expect([stat("saturated"), stat("headroom")]).toEqual([1, 1]);
+    expect(saturation.verdict.nextToolId).toBe("5-3");
+    expect(saturation.verdict.action).toMatch(/옮기는 안/);
+    // 캠페인 단위 진단은 5-3의 채널 배분과 단위가 달라 잇지 않는다 — 캠페인 열이 없으면 채널 단위로 돈다.
+    expect(saturation.manifest.grain).toBe("channel");
   });
 });

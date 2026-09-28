@@ -413,6 +413,11 @@ describe("Dochi analysis workspace", () => {
     expect(chipFor("5-21").getAttribute("aria-expanded")).not.toBe("true");
     fireEvent.click(next);
     await waitFor(() => expect(chipFor("5-21").getAttribute("aria-expanded")).toBe("true"));
+    // 예산 재배분이 성과를 늘리면 실행 전 증액 여력 진단으로 잇는다.
+    fireEvent.click(chipFor("5-3"));
+    const headroom = (await screen.findAllByRole("button", { name: `${toolIndexEntry("5-22", "ko").name} 보기` }))[0];
+    fireEvent.click(headroom);
+    await waitFor(() => expect(chipFor("5-22").getAttribute("aria-expanded")).toBe("true"));
   });
 
   // 성과 변동이 지목한 채널은 그 채널만 걸러 주간 점검에서 연다 — 도구가 결과와 같은 범위로 열려야 한다(2026-09-28).

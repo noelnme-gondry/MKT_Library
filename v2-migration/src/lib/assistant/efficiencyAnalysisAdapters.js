@@ -289,6 +289,7 @@ function saturationAdapter(input) {
     saturationIndex: metric === "roas" ? safeNumber(entity.roas?.satIndexRoas) : safeNumber(entity.satIndex),
     verdict: satActiveVerdict(entity, metric),
   }));
+  const canShift = grain === "channel" && saturated.length > 0 && headroom.length > 0;
   return createAnalysisResult({
     toolId: "5-22",
     status: ANALYSIS_RESULT_STATUS.SUCCESS,
@@ -307,7 +308,12 @@ function saturationAdapter(input) {
         { id: "headroom", label: tr(locale, "여유", "Headroom"), value: headroom.length },
       ],
       primaryStatId: saturated.length ? "saturated" : headroom.length ? "headroom" : "analyzable",
-      action: tr(locale, "관측 범위를 넘기지 않는 소규모 증액 또는 이동 시험을 설계합니다.", "Design a small monitored increase or shift that stays within the observed range."),
+      // 포화와 여유가 함께 있으면 "옮기면 어떻게 되나"가 다음 질문이고, 같은 곡선으로 채널 간 배분을 계산하는
+      // 예산 재배분(5-3, 채널 단위)이 그 답이다. 캠페인 단위 진단은 5-3의 채널 배분과 단위가 달라 잇지 않는다.
+      nextToolId: canShift ? "5-3" : null,
+      action: canShift
+        ? tr(locale, "포화 신호가 있는 채널의 예산 일부를 여유 신호가 있는 채널로 옮기는 안을 같은 곡선으로 비교합니다.", "Compare a plan that moves part of the budget from saturated channels to channels with headroom, using the same curves.")
+        : tr(locale, "관측 범위를 넘기지 않는 소규모 증액 또는 이동 시험을 설계합니다.", "Design a small monitored increase or shift that stays within the observed range."),
       caveats: [tr(locale, "한계 효율은 관측 범위의 곡선 참고값이며 인과 효과가 아닙니다.", "Marginal efficiency is an observed-range curve reference, not a causal effect.")],
     },
     // 포화의 핵심 그림은 평균 단가와 한계 단가(조금 더 쓸 때의 단가)의 거리다.
@@ -421,6 +427,8 @@ function allocationAdapter(input) {
     ? Object.values(currentByEntity).reduce((sum, entry) => sum + (entry.results || 0), 0)
     : null;
   const resultGain = currentResults != null ? summary.next.results - currentResults : null;
+  // 제목의 "늘어납니다" 분기와 같은 기준(1% 이상)이다 — 제목과 행동이 다른 판정을 쓰지 않게.
+  const raisesResults = resultGain != null && resultGain >= Math.max(1, currentResults * 0.01) && unit === "channel";
   const resultLabel = metric === "actions" ? tr(locale, "전환", "conversions") : tr(locale, "설치", "installs");
   const fmtCount = (value) => Math.round(value).toLocaleString(locale === "en" ? "en-US" : "ko-KR");
   return createAnalysisResult({
@@ -450,8 +458,13 @@ function allocationAdapter(input) {
         ...(resultGain != null ? [{ id: "results-gain", label: tr(locale, `예상 ${resultLabel} 증감 (하루)`, `Expected ${resultLabel} change per day`), value: resultGain, unit: "count-change" }] : []),
       ],
       primaryStatId: resultGain != null ? "results-gain" : "expected-results",
+      // 배분안이 성과를 늘리면 실행 전 질문은 "늘리는 채널이 더 받아도 되나"다 — 같은 파일로 계산한 증액 여력
+      // 진단(5-22)이 채널별 한계 단가로 답한다. 옮기지 말라는 결론이나 거의 같은 결론에는 잇지 않는다.
+      nextToolId: raisesResults ? "5-22" : null,
       action: resultGain != null && resultGain < -Math.max(1, currentResults * 0.01)
         ? tr(locale, "예산을 옮기지 말고 지금 배분을 유지하세요. 채널별 상한을 정해 다시 계산하면 다른 안이 나올 수 있습니다.", "Keep the current split. Setting per-channel caps and recalculating may produce a different plan.")
+        : raisesResults
+        ? tr(locale, "실행 전 예산을 늘리는 채널에 증액 여력이 있는지 확인합니다.", "Before execution, check that the channels receiving more budget still have headroom.")
         : inferredBudget
         ? tr(locale, "실행 전 목표 총예산과 제약 조건을 확인합니다.", "Confirm the target total budget and constraints before execution.")
         : tr(locale, "실행 전 채널별 상한과 운영 제약을 확인합니다.", "Confirm channel caps and operating constraints before execution."),
