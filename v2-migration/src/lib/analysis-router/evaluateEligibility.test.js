@@ -347,4 +347,26 @@ describe("analysis contract coverage", () => {
     const results = foreign.map((toolId) => evaluateEligibility({ toolId, mapping: {}, canonicalData, locale: "ko" }));
     expect(rankRecommendedAnalyses(results)).toEqual([]);
   });
+
+  // "범위를 벗어난 값이 있다"만으로는 무엇을 확인할지 모른다 — 지표·건수·평소 범위·예시를 말한다(2026-09-28).
+  it.each(["ko", "en"])("names the metric, count, usual range and an example for out-of-range values (%s)", (locale) => {
+    const withSpike = {
+      records: canonicalData.records.map((record, index) => index === 20
+        ? { ...record, metrics: { ...record.metrics, cost: 9000 } }
+        : record),
+    };
+    const result = evaluateEligibility({ mapping: { date: "date", channel: "channel", cost: "cost", installs: "installs" }, canonicalData: withSpike, toolId: "5-2", locale });
+    const text = result.reasonDetails.join(" ");
+    const date = canonicalData.records[20].date;
+    if (locale === "en") {
+      expect(text).toContain("far outside the usual range");
+      expect(text).toMatch(/1 value\(s\) outside the usual \d/);
+      expect(text).toContain(`e.g. ${date} Google 9,000`);
+      expect(text).not.toMatch(/[가-힣]/);
+    } else {
+      expect(text).toContain("일반적인 범위를 크게 벗어난 값이 있습니다.");
+      expect(text).toMatch(/1건이 평소 범위 \d/);
+      expect(text).toContain(`예: ${date} Google 9,000`);
+    }
+  });
 });

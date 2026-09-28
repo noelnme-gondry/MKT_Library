@@ -90,4 +90,37 @@ describe("Dochi efficiency analysis adapters", () => {
     expect(actual.status).toBe("not_computable");
     expect(actual.verdict.evidenceState).toBe("not_computable");
   });
+
+  // 목록 요약은 분석마다 대표값 하나를 보여 준다 — 그 값이 제목과 같은 이야기를 해야 한다(2026-09-28).
+  it("names a representative stat that matches each headline on the sample", () => {
+    const csv = buildSampleJourney("ko");
+    const run = (toolId) => runEfficiencyAnalysis({ toolId, csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });
+    const primary = (result) => result.verdict.stats.find((stat) => stat.id === result.verdict.primaryStatId);
+
+    const pvm = run("5-21");
+    // 대표값은 그림이 그리는 채널별 기여 중 절댓값이 가장 큰 것 — 제목이 가리키는 채널과 같아야 한다.
+    const rows = pvm.visualizations.find((item) => item.id === "pvm-channel-contributions").data;
+    const largest = rows.reduce((best, row) => (Math.abs(row.contribution) > Math.abs(best.contribution) ? row : best));
+    expect(pvm.verdict.primaryStatId).toBe("driver-contribution");
+    expect(pvm.verdict.headline.startsWith(`${largest.entity}의 `)).toBe(true);
+    expect(primary(pvm)).toMatchObject({ label: `${largest.entity} 기여`, value: largest.contribution, unit: "currency-change" });
+
+    const dashboard = run("5-2");
+    expect(primary(dashboard)?.label).toMatch(/CPA|CPI/);
+
+    const budget = run("5-3");
+    expect(budget.verdict.primaryStatId).toBe("results-gain");
+    const stat = (id) => budget.verdict.stats.find((entry) => entry.id === id).value;
+    expect(primary(budget).value).toBeCloseTo(stat("expected-results") - stat("current-results"), 6);
+  });
+
+  it("points a bad weekly verdict at the channel decomposition, and nothing else", () => {
+    const csv = buildSampleJourney("ko");
+    const dashboard = runEfficiencyAnalysis({ toolId: "5-2", csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" });
+    const verdict = buildDashboardVerdict({ csvData: csv, windowDays: 7 });
+    expect(dashboard.verdict.nextToolId).toBe(verdict.tone === "bad" ? "5-21" : null);
+    for (const toolId of ["5-21", "5-22", "5-3"]) {
+      expect(runEfficiencyAnalysis({ toolId, csvData: csv, inputSignature: "i", mappingSignature: "m", locale: "ko" }).verdict.nextToolId, toolId).toBeNull();
+    }
+  });
 });

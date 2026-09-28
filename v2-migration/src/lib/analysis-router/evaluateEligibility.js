@@ -1,4 +1,4 @@
-import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
+import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 import { getToolGuide } from "@/utils/toolGuide";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
 import { buildVifSpendPanel } from "./vifReadiness";
@@ -191,7 +191,26 @@ function qualityDetails(quality, locale) {
     all_zero_metric: "핵심 지표가 전 기간 0입니다.",
     outliers: "일반적인 범위를 크게 벗어난 값이 있습니다.",
   };
-  return quality.issues.map((issue) => messages[issue.code]).filter(Boolean);
+  return quality.issues.map((issue) => issue.code === "outliers" && issue.details?.length
+    ? `${messages.outliers} ${outlierTargets(issue.details, locale)}`
+    : messages[issue.code]).filter(Boolean);
+}
+
+// 경고가 가리키는 대상 — 지표·건수·평소 범위·가장 크게 벗어난 한 건. 원래 문장은 무엇을 확인할지
+// 말하지 않아 사용자가 값을 믿어야 할지 판단할 수 없었다(2026-09-28). 앞의 두 지표까지만 적는다.
+function outlierTargets(details, locale) {
+  const en = locale === "en";
+  const num = (value) => Math.round(value).toLocaleString(en ? "en-US" : "ko-KR");
+  const label = (key) => (en ? STANDARD_FIELDS[key]?.labelEn : STANDARD_FIELDS[key]?.label) || key;
+  const parts = details.slice(0, 2).map(({ field, count, lowFence, highFence, example }) => {
+    const range = `${num(Math.max(0, lowFence))}~${num(highFence)}`;
+    const sample = example ? [example.date, example.entity, num(example.value)].filter(Boolean).join(" ") : "";
+    return en
+      ? `${label(field)}: ${count} value(s) outside the usual ${range}${sample ? ` (e.g. ${sample})` : ""}`
+      : `${label(field)} ${count}건이 평소 범위 ${range} 밖${sample ? `(예: ${sample})` : ""}`;
+  });
+  const more = details.length > 2 ? (en ? ` and ${details.length - 2} more metric(s)` : ` 외 ${details.length - 2}개 지표`) : "";
+  return `${parts.join(en ? "; " : ", ")}${more}.`;
 }
 
 function defaultRecommendationReason({ toolId, periodCount, entityCoverage, locale }) {

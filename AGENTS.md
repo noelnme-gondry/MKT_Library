@@ -480,6 +480,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`ds/ResultActionCard`**: props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출("결론 먼저"). **카드 머리에는 산출물(다운로드)과 도구별 `controls`만 둔다** — 공유·상세문서·보고서·검토는 결론·수치·행동 뒤의 `__utilities` 줄이다. 예전에는 넷이 다운로드와 나란히 서서 결과를 읽는 자리에서 가장 강한 것이 유틸리티 버튼 다섯이었다(§5.3·§5.5). **채택 현황은 이 줄에 적지 말 것** — 세 번 연속 낡은 채였다. 최신 실측은 §16, 부채는 `docs/product-ssot.md` D-07.
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(바깥클릭/ESC 닫힘). 실제 다운로드는 `utils/download.js`(BOM+CRLF §7).
 - **판정 로직은 도구별 렌더 유틸**(공용 아님): 5-2=WoW 최근 vs 직전(`dashboardVerdict.js`), MMM=기여/최적예산, Aha=최적 윈도우, PVM=top-mover. 공용은 카드 셸·허브·download.js뿐.
+- **결과 작업대(`/dochi-result`)의 목록 요약은 `verdict.primaryStatId` 하나만 보여 준다**(2026-09-28): stats를 앞에서부터 잘라 보이면 분석마다 같은 지출·CPA가 반복돼 그 분석이 찾은 것이 사라진다(5-21 제목은 "Meta 기여가 가장 큼"인데 숫자는 전체 CPA였다). 대표값은 **제목과 같은 이야기**를 해야 하고 계약이 없는 id를 막는다. 행동이 같은 작업대의 다른 분석을 가리키면 `verdict.nextToolId`로 버튼을 붙이되 그 분석이 **실제로 계산된 경우만** — 앱 밖 운영 과제에는 두지 않는다.
 - **다운로드는 "계산한 인사이트"만 — 원천 데이터 되돌려주기 금지**(UX 무가치). 미매핑 지표는 표에서 제외(정직). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`.
 
 ### 12.28 랜딩 + 홈 구조 (`components/LandingPage.jsx` 단일 파일)

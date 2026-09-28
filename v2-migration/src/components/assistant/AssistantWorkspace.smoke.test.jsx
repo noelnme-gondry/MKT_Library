@@ -7,6 +7,8 @@ import AssistantWorkspace, { analysisInputSignature } from "@/components/assista
 import { useAppStore } from "@/store/useDataStore";
 import { buildDemoCsv } from "@/utils/demoData";
 import { toolIndexEntry } from "@/lib/toolIndex";
+import { buildSampleJourney } from "@/lib/sampleJourney";
+import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 
 function openAnalysis(id, locale = "ko") {
   const name = toolIndexEntry(id, locale).name;
@@ -385,5 +387,30 @@ describe("Dochi analysis workspace", () => {
     const chart = screen.getByRole("img", { name: /전환율은 날짜와 유입 소스별로/ });
     expect(chart.getAttribute("viewBox")).toBe("0 0 640 240");
     expect(chart.getAttribute("preserveAspectRatio")).toBe("xMidYMid meet");
+  });
+
+  // 목록은 분석마다 대표값 하나, 행동이 다른 분석을 가리키면 그 분석으로 바로 간다(2026-09-28).
+  it("shows one representative value per analysis and links the weekly action to the channel decomposition", { timeout: 60_000 }, async () => {
+    const data = buildSampleJourney("ko");
+    useAppStore.setState({ csvData: data, decisionRecords: [], decisionPersistenceEnabled: false });
+    render(<AssistantWorkspace csvData={data} locale="ko" getTitle={id => toolIndexEntry(id, "ko").name} onOpenTool={() => {}} />);
+    const start = screen.queryByRole("button", { name: "분석하기" });
+    if (start) fireEvent.click(start);
+    // 샘플은 효율 분석 넷(예산 곡선 적합 포함)을 차례로 돈다 — 기본 1초로는 모자란다.
+    await waitFor(() => expect(document.querySelector('[data-queue-settled="true"]')).toBeTruthy(), { timeout: 30_000 });
+    const chipFor = (id) => [...document.querySelectorAll(".tool-index__chip")].find(node => node.querySelector(".tool-index__q").textContent === toolIndexEntry(id, "ko").name);
+    // 성과 변동 원인의 대표값은 제목이 가리키는 채널의 기여다 — 전체 CPA가 아니다.
+    const pvmSummary = chipFor("5-21").querySelector(".workspace-card-evidence__primary");
+    expect(pvmSummary.textContent).toMatch(/기여/);
+    expect(pvmSummary.textContent).toMatch(/^[+−]/);
+    for (const chip of document.querySelectorAll(".tool-index__stage--ready .tool-index__chip")) {
+      expect(chip.querySelectorAll(".workspace-card-evidence__primary").length).toBeLessThanOrEqual(1);
+    }
+    // 샘플의 주간 판정은 나쁨(CPA 상승)이다 — 그 행동은 같은 작업대의 채널별 분해로 이어진다.
+    expect(buildDashboardVerdict({ csvData: data, windowDays: 7 }).tone).toBe("bad");
+    const next = screen.getAllByRole("button", { name: `${toolIndexEntry("5-21", "ko").name} 보기` })[0];
+    expect(chipFor("5-21").getAttribute("aria-expanded")).not.toBe("true");
+    fireEvent.click(next);
+    await waitFor(() => expect(chipFor("5-21").getAttribute("aria-expanded")).toBe("true"));
   });
 });

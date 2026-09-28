@@ -257,6 +257,12 @@ function formatResultValue(value, locale) {
 // 금액은 원본 통화 기호와 자릿수(₩ 0자리 · $ 2자리)로, 건수는 정수로 읽힌다.
 // 단위 없는 소수(6,663.32)는 화면에서 무엇인지 알 수 없는 숫자였다.
 function formatResultStat(stat, locale, currency = "KRW") {
+  // 증감 단위는 부호를 붙인다. 표시 자리수에서 0이면 부호를 붙이지 않는다("−₩0" 금지).
+  if (["currency-change", "count-change"].includes(stat.unit) && Number.isFinite(stat.value)) {
+    const base = formatResultStat({ ...stat, value: Math.abs(stat.value), unit: stat.unit === "currency-change" ? "currency" : "count" }, locale, currency);
+    const rounded = Math.round(stat.value);
+    return rounded === 0 ? base : `${rounded > 0 ? "+" : "−"}${base}`;
+  }
   if (stat.unit === "rate" && Number.isFinite(stat.value)) return `${formatResultValue(stat.value * 100, locale)}%`;
   if (stat.unit === "currency" && Number.isFinite(stat.value)) return fmtCurrency(stat.value, { currency, precise: true });
   if (stat.unit === "count" && Number.isFinite(stat.value)) return fmtNum(stat.value);
@@ -481,9 +487,10 @@ function resultExportValue({ result, toolTitle, locale, csvData, C }) {
         { label: C.primaryAction, text: result.verdict.action || C.noAction },
         ...(result.verdict.caveats || []).map((text) => ({ label: C.caveats, text })),
       ],
+      // 화면과 같은 표시 함수를 쓴다 — 예전에는 "4083.83 currency"처럼 단위 코드가 그대로 파일에 찍혔다.
       stats: (result.verdict.stats || []).map((stat) => ({
         label: stat.label,
-        value: `${formatResultValue(stat.value, locale)}${stat.unit ? ` ${stat.unit}` : ""}`,
+        value: formatResultStat(stat, locale, sourceCurrencyOf(csvData)),
       })),
       resultState: result.status,
       analysisType: "dochi_workspace",
@@ -501,7 +508,7 @@ function resultExportValue({ result, toolTitle, locale, csvData, C }) {
   };
 }
 
-function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", isDecisionFocus = false, omitVisualizationId = null }) {
+function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", isDecisionFocus = false, omitVisualizationId = null, renderNextStep = null }) {
   const C = COPY[locale] || COPY.ko;
   // 결론 밑에 이미 그린 그림은 같은 분석 카드에서 다시 그리지 않는다(같은 그림 두 번 금지).
   const visualizations = (result.visualizations || []).filter((item) => item.id !== omitVisualizationId);
@@ -530,7 +537,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
       {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</dd></div>)}</dl>}
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
-    <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><p>{result.verdict.action || C.noAction}</p></section>
+    <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><p>{result.verdict.action || C.noAction}</p>{renderNextStep?.(result)}</section>
     {source !== "demo" && reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}
     {reviewProposal && source !== "demo" && <><button type="button" className="btn primary" onClick={() => requestDecisionReviewOpen(result.toolId, "analysis_next_step")}>{locale === "en" ? "Track this action in a project" : "이 행동을 프로젝트로 추적하기"}</button><DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={reviewProposal} decisionPrefillKey={eventKey} /></>}
     {hasDetails && <aside className="dochi-workspace__result-caveats" aria-label={C.caveats}>{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</aside>}
@@ -581,7 +588,7 @@ function NaturalExperimentCandidate({ candidate, locale, outcomeOptions, onHando
   </article>;
 }
 
-function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false, omitVisualizationId = null }) {
+function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, queueItem = null, inputSignature: currentInputSignature, mappingSignature: currentMappingSignature, isDecisionFocus = false, presentation = "full", defaultOpen = false, omitVisualizationId = null, renderNextStep = null }) {
   const C = COPY[locale] || COPY.ko;
   const isEmbedded = presentation === "embedded";
   const method = toolIndexEntry(result.toolId, locale);
@@ -604,8 +611,8 @@ function AnalysisCard({ result, locale, getTitle, csvData = null, onOpenTool, qu
         {isBlocked && hasToolTemplate(result.toolId) && <button type="button" className="btn" onClick={() => downloadTemplateCsv(result.toolId)}>{locale === "en" ? "Download data template" : "데이터 템플릿 받기"}</button>}
       </>}
       {hasCurrentResult && !isDecisionFocus && (isEmbedded
-        ? <section data-information-section="" className="dochi-workspace__embedded-result" ><header data-information-heading="">{C.resultToggle}</header><AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} /></section>
-        : <AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} omitVisualizationId={omitVisualizationId} />)}
+        ? <section data-information-section="" className="dochi-workspace__embedded-result" ><header data-information-heading="">{C.resultToggle}</header><AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} renderNextStep={renderNextStep} /></section>
+        : <AnalysisResultOutput result={workspaceResult} locale={locale} csvData={csvData} toolTitle={titleFor(result.toolId, getTitle)} omitVisualizationId={omitVisualizationId} renderNextStep={renderNextStep} />)}
       {!isEmbedded && <>
         {hasStaleResult && <div className="dochi-workspace__adapter-note"><strong>{C.staleState}</strong><span>{C.staleResult}</span></div>}
         {queueState === "failed" && <div className="dochi-workspace__adapter-note"><strong>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPending : C.resultError}</strong><span>{queueItem?.error === "workspace_adapter_pending" ? C.adapterPendingDetail : C.adapterError}</span></div>}
@@ -690,6 +697,18 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
     .filter(({ queueItem }) => queueItem?.state === "complete"
       && queueItem.result?.inputSignature === currentInputSignature
       && queueItem.result?.mappingSignature === currentMappingSignature);
+  // 행동 문장이 같은 작업대의 다른 분석을 가리키면(nextToolId) 그 분석을 여는 버튼을 붙인다.
+  // 그 분석이 이 파일로 실제 계산된 경우에만 — 계산 못 한 분석으로 보내는 버튼은 막다른 길이다.
+  const renderNextStep = (source) => {
+    const nextId = source?.verdict?.nextToolId;
+    const target = nextId && currentResults.find(({ result: item, queueItem }) => item.toolId === nextId && queueItem?.result?.status === "success");
+    if (!target) return null;
+    const open = () => {
+      setSelectedAnalysis(nextId);
+      requestAnimationFrame(() => document.querySelector(`[aria-controls$="-${CSS.escape(nextId)}-panel"]`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
+    };
+    return <button type="button" className="dochi-workspace__next-step" onClick={open}>{locale === "en" ? `View ${titleFor(nextId, getTitle)}` : `${titleFor(nextId, getTitle)} 보기`}<span aria-hidden="true"> →</span></button>;
+  };
   const successfulFindings = currentResults.filter(({ queueItem }) => queueItem.result.status === "success");
   // Keep the recommended conclusion stable while later queue items finish.
   // Completion order must not replace the headline with an unrelated scenario.
@@ -890,7 +909,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   if (presentation === "embedded") {
     return <section className="dochi-workspace dochi-workspace--embedded" aria-live="polite">
       {currentResults.length ? <div className="dochi-workspace__grid">
-        {currentResults.map(({ result, queueItem }, index) => <AnalysisCard csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} queueItem={queueItem} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} presentation="embedded" defaultOpen={index === 0} />)}
+        {currentResults.map(({ result, queueItem }, index) => <AnalysisCard renderNextStep={renderNextStep} csvData={csvData} qualityMapping={mappingsByTool[result.toolId]} key={result.toolId} result={result} locale={locale} getTitle={getTitle} queueItem={queueItem} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} presentation="embedded" defaultOpen={index === 0} />)}
       </div> : <p className="dochi-workspace__embedded-loading">{baseline.length ? C.embeddedRunning : C.noBaseline}</p>}
     </section>;
   }
@@ -920,6 +939,7 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
     </section>}
     <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>
+    {renderNextStep(focusResult)}
     <button type="button" className="workspace-next-action__open" onClick={() => openTool(focusResult.toolId)}>{locale === "en" ? "See details in the tool" : "도구에서 자세히 보기"}<span aria-hidden="true"> →</span></button>
   </section>;
   const hasSheet = Boolean(summaryHead || summaryFoot);
@@ -949,12 +969,16 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
           const item = currentResults.find(({ result }) => result.toolId === toolId);
           if (!item) return null;
           const output = item.queueItem.result;
-          return <span className="workspace-card-evidence"><span>{output.verdict.headline}</span>{output.verdict.stats?.slice(0, 2).map(stat => <span key={stat.id}><b>{formatResultStat(stat, locale, dataCurrency)}</b> {stat.label}</span>)}</span>;
+          // 목록은 분석마다 대표값 하나만 — 앞에서부터 두 개를 자르면 분석마다 같은 지출·CPA가 반복돼
+          // 그 분석이 찾은 것이 안 보였다(5-21 제목은 "Meta 기여가 가장 큼"인데 숫자는 전체 CPA였다).
+          const stats = output.verdict.stats || [];
+          const primary = stats.find(stat => stat.id === output.verdict.primaryStatId) || stats[0];
+          return <span className="workspace-card-evidence">{primary && <span className="workspace-card-evidence__primary"><b>{formatResultStat(primary, locale, dataCurrency)}</b> {primary.label}</span>}<span>{output.verdict.headline}</span></span>;
         }}
         renderDetail={toolId => {
           const found = eligibility.find(item => item.toolId === toolId);
           const result = sampleMode && found?.status === "blocked" ? { ...found, status: "ready", recommendationReason: C.sampleOwnExample } : found;
-          return result ? <><AnalysisCard result={result} locale={locale} getTitle={getTitle} csvData={csvData} qualityMapping={mappingsByTool[toolId]} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(toolId)} omitVisualizationId={toolId === focusResult?.toolId ? focusFigure?.id : null} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />
+          return result ? <><AnalysisCard renderNextStep={renderNextStep} result={result} locale={locale} getTitle={getTitle} csvData={csvData} qualityMapping={mappingsByTool[toolId]} onOpenTool={openTool} onConfirm={approveAnalysis} queueItem={queueItemFor(toolId)} omitVisualizationId={toolId === focusResult?.toolId ? focusFigure?.id : null} inputSignature={currentInputSignature} mappingSignature={currentMappingSignature} />
             {toolId === "5-23" && naturalCandidates.map(candidate => <NaturalExperimentCandidate key={candidate.id || `${candidate.unit}:${candidate.startDate}`} candidate={candidate} locale={locale} outcomeOptions={naturalOutcomeOptions} onHandoff={openNaturalExperiment} />)}
           </> : null;
         }}

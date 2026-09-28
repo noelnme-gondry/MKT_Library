@@ -23,6 +23,18 @@ describe("Dochi result contract", () => {
     expect(validation.errors).toContain("manifest.private_data");
   });
 
+  it("names a representative stat only when that stat exists", () => {
+    expect(createAnalysisResult({ ...base, verdict: { ...base.verdict, primaryStatId: "cpa" } }).verdict.primaryStatId).toBe("cpa");
+    expect(createAnalysisResult(base).verdict.primaryStatId).toBeNull();
+    // 없는 수치를 대표값으로 가리키면 목록이 빈 칸을 그린다 — 계약에서 막는다.
+    expect(() => createAnalysisResult({ ...base, verdict: { ...base.verdict, primaryStatId: "roas" } })).toThrow(/primaryStatId/);
+  });
+
+  it("points a next step only at another analysis", () => {
+    expect(createAnalysisResult({ ...base, verdict: { ...base.verdict, nextToolId: "5-21" } }).verdict.nextToolId).toBe("5-21");
+    expect(() => createAnalysisResult({ ...base, verdict: { ...base.verdict, nextToolId: "5-2" } })).toThrow(/nextToolId/);
+  });
+
   it("does not permit an unknown result state to look complete", () => {
     expect(() => createAnalysisResult({ ...base, status: "ready" })).toThrow(/status/);
   });
