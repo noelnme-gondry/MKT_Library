@@ -1187,3 +1187,9 @@
   .home-sample-table td { font-size: var(--fs-lg); }
   .home-review-example dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
 }
+
+/* 결과 작업대 상세(2026-09-28): 도구 목록의 펼친 패널 안에서 분석 카드가 또 상자를 두르고, 그 안의 결론이
+   다시 상자를 둘러 상자가 세 겹이었다(design-rules "box inside a box"). 바깥 패널 한 겹만 남긴다 —
+   카드는 여백·구분선으로, 결론은 제목 크기로 위계를 말한다. */
+.app .content .tool-index__panel .dochi-workspace__card { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.dochi-workspace__decision-tape { padding: 0; border: 0; border-radius: 0; background: transparent; }

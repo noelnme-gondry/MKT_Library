@@ -522,12 +522,7 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
     return () => observer.disconnect();
   }, [eventKey, locale, result.status, result.toolId, source]);
   return <section ref={resultRef} className={`dochi-workspace__result is-${result.status}${isDecisionFocus ? " is-decision-focus" : ""}`} aria-label={C.result}>
-    <header className="dochi-workspace__result-status">
-      {result.status !== "success" && <strong>{resultLabel(result, C)}</strong>}
-      <AnalysisExportProvider value={resultExportValue({ result, toolTitle, locale, csvData, C })}>
-        <DownloadHub toolId={result.toolId} locale={locale} label={C.downloadLabel} align="right" />
-      </AnalysisExportProvider>
-    </header>
+    {result.status !== "success" && <header className="dochi-workspace__result-status"><strong>{resultLabel(result, C)}</strong></header>}
     <section className="dochi-workspace__decision-tape" aria-label={C.decisionTape}>
       <h3>{result.verdict.headline}</h3>
     </section>
@@ -535,10 +530,16 @@ function AnalysisResultOutput({ result, locale, csvData = null, toolTitle = "", 
       {evidenceStats.length > 0 && <dl>{evidenceStats.map((stat) => <div key={stat.id}><dt>{stat.label}</dt><dd>{formatResultStat(stat, locale, sourceCurrencyOf(csvData))}</dd></div>)}</dl>}
       {visualizations.map((visualization) => <section className="dochi-workspace__result-primary" key={visualization.id}><p>{visualization.question}</p><ResultVisualization visualization={visualization} locale={locale} currency={sourceCurrencyOf(csvData)} /></section>)}
     </section>}
-    <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><h4>{C.primaryAction}</h4><p>{result.verdict.action || C.noAction}</p></section>
+    <section className="dochi-workspace__result-action" aria-label={C.primaryAction}><p>{result.verdict.action || C.noAction}</p></section>
     {source !== "demo" && reviewProposal?.reviewPlan && <p className="muted">{locale === "en" ? "The project draft includes an editable operating benchmark from the observed periods. It does not determine statistical significance or causal effects." : "프로젝트 초안에는 관측 기간에서 가져온 운영 목표가 제안됩니다. 수정할 수 있으며, 통계적 유의성이나 인과효과의 판정 기준은 아닙니다."}</p>}
     {reviewProposal && source !== "demo" && <><button type="button" className="btn primary" onClick={() => requestDecisionReviewOpen(result.toolId, "analysis_next_step")}>{locale === "en" ? "Track this action in a project" : "이 행동을 프로젝트로 추적하기"}</button><DecisionReview toolId={result.toolId} locale={locale} analyticsPlacement="dochi_workspace" allowAutomaticComparison={false} decisionPrefill={reviewProposal} decisionPrefillKey={eventKey} /></>}
     {hasDetails && <aside className="dochi-workspace__result-caveats" aria-label={C.caveats}>{result.verdict.caveats.map((note, index) => <p key={index}>{note}</p>)}</aside>}
+    {/* 산출물은 결론·근거·한계를 읽은 뒤에 둔다 — 결론 앞에 있으면 읽기 전에 받는 버튼이 가장 먼저 보인다. */}
+    <footer className="dochi-workspace__result-utilities">
+      <AnalysisExportProvider value={resultExportValue({ result, toolTitle, locale, csvData, C })}>
+        <DownloadHub toolId={result.toolId} locale={locale} label={C.downloadLabel} align="left" />
+      </AnalysisExportProvider>
+    </footer>
   </section>;
 }
 

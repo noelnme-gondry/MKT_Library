@@ -107,7 +107,9 @@ function dashboardAdapter(input) {
       headline: verdict.headline,
       stats: (verdict.stats || []).map((stat) => ({ id: stat.label, label: stat.label, value: stat.value })),
       action: verdict.tone === "bad"
-        ? tr(locale, "급변한 날짜와 채널을 먼저 확인합니다.", "Check the spike date and channel first.")
+        // 날짜별 급변을 탐지한 결과가 아니다(주간 판정이 나쁠 때의 정형 문구) — 없는 탐지를 말하지 않고,
+        // 같은 파일로 바로 계산되는 채널별 분해로 보낸다(2026-09-28).
+        ? tr(locale, "채널별로 나눠 어느 채널에서 변화가 났는지 확인합니다.", "Break the change down by channel to see where it came from.")
         : tr(locale, "같은 기준으로 다음 비교 기간을 다시 확인합니다.", "Recheck the next comparison period using the same definition."),
       caveats: [tr(locale, "관측된 기간 비교이며 인과 효과 추정이 아닙니다.", "This is an observed-period comparison, not a causal estimate.")],
     },
