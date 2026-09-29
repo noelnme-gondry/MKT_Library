@@ -11517,10 +11517,11 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .subscription-checkout > .btn { justify-self: start; }
 #purchase, #refund-policy { scroll-margin-top: 100px; }
 @media (max-width: 480px) {
-  .topbar, .app:not(.is-home) .topbar { flex-wrap: wrap; height: auto; gap: 4px; }
-  .topbar-context { flex-basis: 100%; }
-  .topbar-actions, .app:not(.is-home) .topbar-actions { width: 100%; min-width: 0; }
-  .topbar-actions__primary { width: 100%; justify-content: space-between; gap: 2px; }
+  /* 폰 헤더는 한 줄(메뉴 · 가격 · 검색 · ••• · 마이페이지). 경로 줄과 "내 프로젝트" 아이콘을 빼서
+     두 줄로 접던 것을 없앴다 — 배치는 library-workspace.css의 같은 폭 규칙(2026-09-30). */
+  .topbar, .app:not(.is-home) .topbar { flex-wrap: nowrap; height: auto; gap: 4px; }
+  .topbar-actions, .app:not(.is-home) .topbar-actions { min-width: 0; }
+  .topbar-actions__primary { gap: 2px; }
   .topbar-actions .my-account-menu__trigger { font-size: var(--fs-xs); padding-inline: 5px; }
   .header-cmdk__label--mobile { display: none; }
   /* 버튼은 글자보다 좁게 눌리지 않는다 — 눌리면 EN "About Pro"가 옆 버튼 위로 넘쳤다.
