@@ -202,9 +202,7 @@ export default function Header({ locale = "ko" }) {
         {hasCsv && (
           <div className="header-data-context header-csv" aria-label={`${T.dataContext}: ${csvData.fileName || "data.csv"}`}>
             <span className="header-data-context__label">{T.dataContext}</span>
-            <span className="chip header-data-context__file" title={csvData.fileName || "data.csv"}>
-              <span className="dot" aria-hidden="true"></span>{csvData.fileName || "data.csv"}
-            </span>
+            <span className="header-data-context__file" title={csvData.fileName || "data.csv"}>{csvData.fileName || "data.csv"}</span>
           </div>
         )}
       </div>

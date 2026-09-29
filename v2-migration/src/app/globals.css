@@ -9200,21 +9200,42 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .brand-crumb__label { font-weight: 700; }
 .breadcrumb .current--section { color: var(--text-secondary); text-decoration: none; }
 .breadcrumb .current--page { color: var(--text-primary); }
+/* 현재 데이터는 한 줄 글자다 — 라벨 위·파일 아래로 쌓으면 좁은 폭에서 라벨이 한 글자씩 세로로
+   꺾였고, 파일 이름 알약은 누를 수 없는 버튼처럼 보였다. */
 .header-data-context {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 3px 7px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: min(28vw, 320px);
+  max-width: min(32vw, 340px);
   padding-left: 14px;
   border-left: 1px solid var(--operator-line);
 }
-.header-data-context__label { grid-column: 1 / -1; color: var(--text-muted); font: 600 var(--fs-xs) var(--font-sans); letter-spacing: .08em; }
-.header-data-context__file { display: flex; align-items: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-data-context__label { flex: none; white-space: nowrap; color: var(--text-muted); font: 400 var(--fs-xs) var(--font-sans); }
+.header-data-context__file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font: 600 var(--fs-sm) var(--font-sans); }
+/* 버튼 묶음은 줄어들지 않는다(EN 631px). 헤더 자체의 폭으로 접어야 사이드바를 열고 닫을 때도
+   맞는다 — 뷰포트로 재면 980px에서 사이드바가 232px을 가져가 왼쪽 경로·데이터가 0폭이 됐다.
+   글자는 화면에서만 빼고(아이콘은 남김) 접근 가능한 이름은 그대로 둔다. */
+.topbar { container: topbar / inline-size; }
+@media (min-width: 769px) {
+  @container topbar (max-width: 1100px) {
+    .topbar-actions :is(.header-decision-inbox__label, .tutorial-launcher__label, .header-cmdk__label--desktop, .my-account-menu__trigger > span),
+    .header-data-context__label {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    .topbar-actions .header-cmdk .kbd { display: none; }
+  }
+  @container topbar (max-width: 720px) {
+    .header-data-context { display: none; }
+  }
+}
 .app:not(.is-home) .breadcrumb { min-width: 0; }
 .app:not(.is-home) .breadcrumb .current,
 .app:not(.is-home) .breadcrumb .brand-crumb__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 폭이 모자라면 사이드바에 이미 있는 제품명·상위 묶음부터 줄이고 지금 페이지 이름은 끝까지 남긴다. */
+.app:not(.is-home) .breadcrumb :is(.brand-crumb, .current--section) { min-width: 0; flex-shrink: 4; }
+.app:not(.is-home) .breadcrumb .current--page { min-width: 0; flex-shrink: 1; }
 .app:not(.is-home) .topbar-actions { gap: 5px; }
 .topbar-actions,
 .topbar-actions__primary { display: flex; align-items: center; gap: 5px; }
@@ -11494,6 +11515,11 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   .topbar-actions__primary { width: 100%; justify-content: space-between; gap: 2px; }
   .topbar-actions .my-account-menu__trigger { font-size: var(--fs-xs); padding-inline: 5px; }
   .header-cmdk__label--mobile { display: none; }
+  /* 버튼은 글자보다 좁게 눌리지 않는다 — 눌리면 EN "About Pro"가 옆 버튼 위로 넘쳤다.
+     자리가 모자란 만큼 내 프로젝트·마이페이지는 아이콘만 남긴다(이름은 화면낭독기용 글자로 남는다). */
+  .topbar-actions__primary > * { flex-shrink: 0; }
+  .header-decision-inbox__icon { display: inline; }
+  .header-decision-inbox__label, .topbar-actions .my-account-menu__trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 /* ===== 유입 경로 서베이(주관식) =====
