@@ -923,6 +923,15 @@
 .workspace-next-action__figure-head > p { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
 .workspace-next-action__open { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
 .workspace-next-action__open:hover { text-decoration: underline; }
+/* 결론 제목 밑 "어디서 · 다음" 두 줄 — 상자 없이 라벨 열 + 문장 열(AssistantWorkspace conclusion). */
+.workspace-next-action__trace { display: grid; gap: 8px; margin: 0; }
+.workspace-next-action__trace > div { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 4px 12px; align-items: baseline; }
+.workspace-next-action__trace dt { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; }
+.workspace-next-action__trace dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0; font-size: var(--fs-md); line-height: 1.6; }
+.workspace-next-action__trace dd b { font-weight: 700; }
+@media (max-width: 480px) {
+  .workspace-next-action__trace > div { grid-template-columns: minmax(0, 1fr); }
+}
 .app .content .result-sheet__stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 4px 0; border-top: 1px solid var(--library-border, var(--border)); border-bottom: 1px solid var(--library-border, var(--border)); }
 .app .content .result-sheet__stats > div { display: grid; gap: 2px; padding: 12px 0; }
 .app .content .result-sheet__stats > div + div { padding-left: 16px; border-left: 1px solid var(--library-border, var(--border)); }
@@ -1058,6 +1067,11 @@
 .home-sample-change dl { display: flex; align-items: baseline; gap: 10px; margin: 0; }
 .home-sample-change dt { font-size: var(--fs-sm); color: var(--library-muted); }
 .home-sample-change dd { margin: 0; font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 샘플 카드의 "어디서" 한 줄 — 결과 화면 성과 변동 원인과 같은 계산(pvmChannelDriver). */
+.home-sample-trace { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 14px 0 0; font-size: var(--fs-sm); line-height: 1.6; }
+.home-sample-trace > span { color: var(--library-muted); }
+.home-sample-trace > strong { font-weight: 600; }
+.home-sample-trace > b { font-weight: 700; font-variant-numeric: tabular-nums; }
 .home-sample-change p { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--library-muted); }
 .home-sample-change img { flex: none; width: 72px; height: 72px; object-fit: contain; }
 

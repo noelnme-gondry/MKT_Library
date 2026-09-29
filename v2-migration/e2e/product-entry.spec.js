@@ -22,11 +22,19 @@ for (const locale of ["ko", "en"]) {
       await expect(sample.locator("strong")).toHaveCSS("font-size", "14px");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     }
+    // 홈 카드가 지목한 채널이 결과 화면의 "어디서" 줄에 그대로 다시 나와야 한다(같은 계산 — pvmChannelDriver).
+    const homeDriver = (await page.locator(".home-sample-trace strong").textContent())?.trim();
+    expect(homeDriver).toBeTruthy();
     await sample.click();
     await expect(page).toHaveURL(new RegExp(`${prefix}/dochi-result$`));
     await expect(page.locator('.dochi-result-workspace[data-phase="results"]')).toBeVisible();
     await expect(page.locator(".sample-journey-scope")).toContainText(locale === "en" ? "Sample data" : "샘플 데이터");
     await expect(page.locator('[data-queue-settled="true"]')).toBeAttached();
     await expect(page.locator(".workspace-next-action")).toBeVisible();
+    // 결론 제목 바로 밑에 "어디서 · 다음" — 버튼 뒤에 숨기지 않는다.
+    const trace = page.locator(".workspace-next-action__trace");
+    await expect(trace.locator("dt")).toHaveText(locale === "en" ? ["Where", "Next"] : ["어디서", "다음"]);
+    await expect(trace.locator("dd").first()).toContainText(homeDriver);
+    await expect(page.locator(".workspace-next-action__instruction")).toHaveCount(0);
   });
 }

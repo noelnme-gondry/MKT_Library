@@ -3,6 +3,8 @@ import { fireEvent, render } from "@testing-library/react";
 import { buildDemoCsv } from "@/utils/demoData";
 import { compareSamplePerformance } from "@/utils/sampleSpendPreview";
 import HomeResultPreview from "./HomeResultPreview";
+import { buildSampleJourney } from "@/lib/sampleJourney";
+import { runEfficiencyAnalysis } from "@/lib/assistant/efficiencyAnalysisAdapters";
 
 it.each(["ko", "en"])("shows actual sample evidence and launches the sample (%s)", locale => {
   const result = compareSamplePerformance(buildDemoCsv("efficiency").raw);
@@ -30,5 +32,24 @@ it.each(["ko", "en"])("shows actual sample evidence and launches the sample (%s)
   expect(view.container.textContent).toContain(locale === "en" ? "Fictional data" : "가상 데이터");
   fireEvent.click(view.getByRole("button"));
   expect(launch).toHaveBeenCalledOnce();
+  view.unmount();
+});
+
+// 홈 카드의 "변화 기여가 가장 큰 채널"은 샘플을 누르면 결과 화면의 성과 변동 원인(5-21)으로 다시 나온다.
+// 두 곳이 같은 채널·같은 금액을 말해야 한다 — 어댑터를 그대로 돌려 대조한다(같은 함수라도 입력 규칙이
+// 갈리면 다른 답이 나오므로 결과로 확인한다).
+it.each(["ko", "en"])("names the same driver channel and amount as the 5-21 result (%s)", locale => {
+  const adapterResult = runEfficiencyAnalysis({ toolId: "5-21", csvData: buildSampleJourney(locale), inputSignature: "home", mappingSignature: "home", locale, options: { denomBasis: "actions" } });
+  expect(adapterResult.status).toBe("success");
+  const stat = adapterResult.verdict.stats.find(item => item.id === adapterResult.verdict.primaryStatId);
+  expect(stat.id).toBe("driver-contribution");
+  const view = render(<HomeResultPreview locale={locale} />);
+  const line = view.container.querySelector(".home-sample-trace");
+  expect(line).not.toBeNull();
+  const entity = line.querySelector("strong").textContent;
+  expect(adapterResult.verdict.headline).toContain(entity);
+  const shown = Number(line.querySelector("b").textContent.replace(/[^0-9]/g, ""));
+  expect(shown).toBe(Math.round(Math.abs(stat.value)));
+  expect(line.querySelector("b").textContent.startsWith(stat.value >= 0 ? "+" : "−")).toBe(true);
   view.unmount();
 });
