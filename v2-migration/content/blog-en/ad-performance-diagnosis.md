@@ -10,7 +10,6 @@ draft: false
 primaryTool: "5-21"
 relatedGlossary: ["cpa", "ctr", "cvr", "cpm"]
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Data freshness"
     url: "https://support.google.com/google-ads/answer/2544985?hl=en"

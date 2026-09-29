@@ -10,7 +10,6 @@ draft: false
 primaryTool: "5-3"
 relatedGlossary: ["marginal-cpa", "response-curve", "roas"]
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Meridian: ROI, mROI, and response curves"
     url: "https://developers.google.com/meridian/docs/post-modeling/roi-mroi-response-curves"

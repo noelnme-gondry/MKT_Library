@@ -13,7 +13,6 @@ faq:
     a: "First separate a data problem from a performance problem. Broken tracking or delayed reporting is no reason to touch the campaign. Then split the change into volume, efficiency, and mix to locate it."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: is this a real anomaly, or just that day's noise?

@@ -13,7 +13,6 @@ faq:
     a: "현재 광고 세트의 클릭·조회 귀속 설정과 보고 기준을 확인하세요. 비교용 창을 맞춰도 중복 귀속과 측정 방식 차이가 남으므로 완전히 공정한 비교가 되는 것은 아닙니다."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Meta Advantage+ App(AAP)도 [Google UAC](/blog/google-uac-optimization)처럼 자동화가 많이 들어간 캠페인이에요. 광고 그룹 단위 세밀 조정은 거의 못 하고, 캠페인 단위로 목표를 주면 나머지는 알고리즘이 해요. 그래도 결과를 좌우하는 레버는 분명히 있어요.

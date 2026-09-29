@@ -20,7 +20,6 @@ faq:
     a: "동일 광고비·동일 제품 페이지 조회수라는 조건에서 전환율 30%→40%는 설치 약 33.3% 증가, CPI 25% 감소입니다. 소스 구성이나 유입 단가가 바뀌면 이 계산을 그대로 적용할 수 없습니다."
 updated: "2026-09-14"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Apple Product Page Optimization"
     url: "https://developer.apple.com/help/app-store-connect-analytics/acquisition/product-page-optimization"

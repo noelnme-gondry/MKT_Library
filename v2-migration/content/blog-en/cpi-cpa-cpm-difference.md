@@ -19,7 +19,6 @@ faq:
   - q: "Over what window should I compare CPM, CPC, CPI, and CPA?"
     a: "Day-level comparisons mislead because weekday variation is large. Compare equal-length windows such as the last 7 days against the previous 7, and exclude recent days that have not matured for metrics whose conversions land late."
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 CPI, CPA, CPM and CPC divide advertising spend by different denominators. When a cost metric rises, inspect exposure costs and click, install or action rates first. CPM and CTR can describe a CPC change, but identifying auction, creative or targeting causes requires change history and further evidence.
 

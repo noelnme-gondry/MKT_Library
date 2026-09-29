@@ -17,7 +17,6 @@ faq:
     a: "Diagnose tracking, goals, budget, and assets first. A new campaign needs a learning period, but that does not prove all system learning is reset to zero. Define the structural reason and comparison criteria before rebuilding."
 updated: "2026-09-09"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns Maximize conversions"
     url: "https://support.google.com/google-ads/answer/16550675?hl=en"

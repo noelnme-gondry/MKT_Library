@@ -17,7 +17,6 @@ faq:
   - q: "Does the ad platform learn from the conversion value?"
     a: "Yes, which is why a design mistake becomes an optimization problem. Feed it a bad signal and the algorithm works hard to bring you the wrong users."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 SKAN 4 may return up to three window postbacks, with fine values available only in the first. The encoded signal is the [conversion value](/glossary/conversion-value). Deciding what goes into that narrow slot is the part of iOS measurement that takes the most actual work.
 

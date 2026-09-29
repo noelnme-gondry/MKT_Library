@@ -20,7 +20,6 @@ faq:
     a: "With identical spend and product page views, conversion moving from 30% to 40% means about 33.3% more installs and 25% lower CPI. This calculation does not hold unchanged if traffic mix or acquisition costs change."
 updated: "2026-09-14"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Apple Product Page Optimization"
     url: "https://developer.apple.com/help/app-store-connect-analytics/acquisition/product-page-optimization"

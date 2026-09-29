@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Google Analytics: Data freshness", "url": "https://support.google.com/analytics/answer/11198161?hl=en"}]
 faq: [{"q": "Is the worksheet free?", "a": "The synthetic CSV and blank report worksheet attached to this article are public resources. Product project storage and analysis-report downloads follow the separate pass entitlement."}, {"q": "Should I cut spend when CPI rises week over week?", "a": "Check conversion maturity, measurement definitions and campaign composition first. An observed CPI rise alone establishes neither the cause nor the optimal budget."}]
 reviewedAt: "2026-09-20"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 A weekly marketing report should leave the reader with a decision to make or a question to resolve. Copying spend and installs into a slide is only the beginning. Record the evidence, the hypothesis, the owner and the next review date.
 

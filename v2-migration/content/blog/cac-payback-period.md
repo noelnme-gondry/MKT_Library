@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Stripe: CAC payback period", "url": "https://stripe.com/resources/more/what-is-the-cac-payback-period"}]
 faq: [{"q": "관측 기간 안에 CAC를 회수하지 못했으면 어떻게 쓰나요?", "a": "관측 3개월까지 미회수처럼 관찰 범위를 함께 씁니다. 0개월이나 회수 불가능으로 바꾸지 않습니다."}, {"q": "4.67개월과 5개월 중 어떤 값을 보고하나요?", "a": "월말 데이터에서 처음 회수가 확인된 때는 5개월 말입니다. 4.67개월은 월중 공헌이익이 고르게 발생한다는 가정의 보간값으로 별도 표시합니다."}]
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 LTV:CAC가 3배라는 보고를 받았는데 광고비를 더 쓸 현금이 없다면, 회수 시점을 따로 봐야 합니다. CAC 회수기간은 신규 고객을 획득하는 데 쓴 비용을 그 고객 집단의 누적 공헌이익으로 언제 회수했는지를 나타냅니다. 이 글에서는 매출 회수와 혼동하지 않도록 공헌이익 기준을 사용합니다.
 

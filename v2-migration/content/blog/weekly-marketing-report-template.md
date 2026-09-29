@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Google Analytics: Data freshness", "url": "https://support.google.com/analytics/answer/11198161?hl=en"}]
 faq: [{"q": "이 양식은 무료인가요?", "a": "글에 첨부한 합성 CSV와 빈 보고서 양식은 공개 자료입니다. 제품의 프로젝트·리뷰 저장과 분석 결과 다운로드는 별도 이용권 범위를 따릅니다."}, {"q": "전주보다 설치당 비용이 오르면 예산을 줄이나요?", "a": "먼저 전환 성숙도·집계 기준·캠페인 구성을 확인합니다. 관측된 단가 상승만으로 원인이나 최적 예산을 확정하지 않습니다."}]
 reviewedAt: "2026-09-20"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 월요일 보고서에 비용과 설치 수를 옮겨 적었는데, 회의가 끝나도 다음 행동이 정해지지 않는다면 보고서의 마지막 칸이 비어 있는 겁니다. 주간 광고 성과 보고서에는 변화한 숫자뿐 아니라 확인할 가설, 담당자, 다음 검토일이 필요합니다.
 

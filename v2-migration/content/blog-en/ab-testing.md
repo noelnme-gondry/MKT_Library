@@ -13,7 +13,6 @@ faq:
     a: "With sparse conversions, normal-approximation error rates can be unreliable. For 50 per group and 0 versus 5 conversions, the two-sided pooled z p-value is about 0.0218 and Fisher exact p-value about 0.0563, giving different decisions at 5%. Use a preplanned test and check exact-test assumptions for sparse samples."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Have you ever looked at landing page variant A against variant B and decided "hmm… B looks a bit better?" Run it for a few days, pick whichever has the higher conversion rate. But that could just be chance.

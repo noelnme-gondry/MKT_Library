@@ -13,7 +13,6 @@ faq:
     a: "Fix one per decision type: internal database or payment data for business performance, network numbers for in-network optimization, MMP for cross-channel comparison. Deciding in advance stops every meeting turning into a numbers argument."
 
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-14"
 ---
 You pulled last week's conversions Monday, check again Wednesday, and the number went up. Sessions are lower than what you remember from UA. The channel report has a pile of "unassigned." If you've ever wondered whether you can trust GA4's numbers, you're not alone. Counting rules can explain differences, but actual tracking errors still need investigation. Use the seven checks below to distinguish definitions from collection errors.

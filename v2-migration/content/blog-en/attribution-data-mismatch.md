@@ -13,7 +13,6 @@ faq:
     a: "There is no fixed threshold. A gap that widens suddenly is more likely an integration problem than normal variance. Record your usual gap and investigate when it leaves that range."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP says 85. Open the order DB and it's 100. What goes in Monday's report? The short answer: "which one is right" is the wrong question. Different rules can explain the gap, but they do not establish that all four numbers are correct. Check duplicates, missing events, and integration errors. Here are the four reasons they diverge, and which number to anchor on for which purpose.

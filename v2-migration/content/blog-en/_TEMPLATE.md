@@ -20,7 +20,7 @@ relatedGlossary: ["roas"]
 answer: "Give the direct answer to the search question in no more than two sentences."
 conditions: "State when the answer applies and its important exceptions."
 reviewedAt: "2026-08-01"
-reviewer: "Growth Opt Playbook editorial review"
+# No reviewer field: when reviewedAt is set, the author (authorProfile AUTHOR) is shown as reviewer.
 # sources:
 #   - title: "Primary or authoritative source title"
 #     url: "https://example.com/source"

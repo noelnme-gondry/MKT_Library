@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Stripe: CAC payback period", "url": "https://stripe.com/resources/more/what-is-the-cac-payback-period"}]
 faq: [{"q": "How should an unrecovered cohort be reported?", "a": "State the observed window, such as unrecovered through month three. Do not replace it with zero months or a claim that recovery is impossible."}, {"q": "Should I report 4.67 or five months?", "a": "Month-end data first confirm recovery at month five. Report 4.67 separately as an interpolation assuming contribution accrues uniformly within the month."}]
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 A strong LTV:CAC ratio does not tell you when acquisition cash comes back. The CAC payback period measures when a new-customer cohort has generated enough cumulative contribution to recover its acquisition cost. This article uses a contribution basis explicitly, rather than treating revenue recovery as profit recovery.
 

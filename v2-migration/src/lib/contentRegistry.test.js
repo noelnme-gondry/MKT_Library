@@ -11,6 +11,7 @@ import { EN_BLOG_SLUGS, EN_GLOSSARY_SLUGS, localizedHref } from "./localizedHref
 import { isRoutePublished } from "./routeMap";
 import { publishedBlogSeoSlugs } from "./blogSeo";
 import { getBlogEditorial, publishedEditorialSlugs } from "./blogEditorial";
+import { AUTHOR } from "./authorProfile";
 
 const sorted = (values) => [...values].sort();
 const HIGH_INTENT_ARTICLE_AUDIT = {
@@ -250,5 +251,14 @@ describe("블로그 FAQ 커버리지", () => {
         expect(new Set(post.faq.map((item) => item.q)).size, `${locale}/${post.slug}`).toBe(post.faq.length);
       }
     }
+  });
+
+  // 검토는 글쓴이가 한다(2026-09-29 사용자 확인). AI 감사 문구나 원고별 제각각 이름이
+  // 화면·구조화 데이터에 다시 나오지 않도록, 검토자는 바이라인과 같은 이름 하나다.
+  it.each(["ko", "en"])("shows the author as reviewer of every reviewed %s post", (locale) => {
+    const reviewed = getAllPosts(locale).filter((post) => post.reviewedAt);
+    expect(reviewed.length).toBeGreaterThan(0);
+    for (const post of reviewed) expect(post.reviewer, post.slug).toBe(AUTHOR.name);
+    expect(getBlogEditorial(locale, "any", { reviewer: "Codex (AI-assisted editorial audit)" }).reviewer).toBe("");
   });
 });

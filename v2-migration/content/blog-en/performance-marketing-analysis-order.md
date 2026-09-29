@@ -12,7 +12,6 @@ relatedGlossary: ["cpa", "incrementality", "multicollinearity", "response-curve"
 answer: "Performance marketing analysis starts with the decision and the grain of the data, not the name of a method. Use daily performance for monitoring and variance decomposition, spend variation for saturation and allocation, a control for incrementality, and a 52+ week channel panel with a VIF check before MMM."
 conditions: "The time windows below are practical eligibility checks used by this service. More rows do not fix poor measurement or weak variation, and observational data alone cannot establish causal lift."
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 faq:
   - q: "Which analysis should I run first when ad performance drops?"
     a: "Start with daily spend and conversions to validate the period and scope. Then use variance decomposition to separate channel mix from within-channel efficiency."

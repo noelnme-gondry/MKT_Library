@@ -22,7 +22,6 @@ faq:
   - q: "How do I calculate a cannibalization rate?"
     a: "Under comparable groups, aligned measurement and a suitable design, divide organic gains by paid losses. A 100-conversion paid loss and 70-conversion organic gain give an arithmetic 70%, but a simple before/after difference does not identify cannibalization or net lift."
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 If organic traffic rises after brand-search ads are paused, investigate whether paid ads were replacing visits that would have arrived organically. That substitution is internal cannibalization. Before/after totals alone cannot establish it.
 

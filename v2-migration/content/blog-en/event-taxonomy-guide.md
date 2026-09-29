@@ -23,7 +23,6 @@ faq:
   - q: "Is hashed PII safe to send as an event parameter?"
     a: "Check the relevant platform, contract, and legal policies first. The default should be to avoid direct identifiers in events and use an internal ID without direct identifiers plus categorical attributes instead."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 An event name describes the **user action**. Parameters describe its **context and value**. Keep that split: do not turn one event into a bag of screen, product, and payment details. It is how GA4, your MMP, ad platforms, and internal reports can read the same action with the same meaning.

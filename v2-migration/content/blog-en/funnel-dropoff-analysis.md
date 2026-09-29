@@ -15,7 +15,6 @@ faq:
   - q: "Can funnel analysis prove the cause of a conversion problem?"
     a: "No. It prioritizes where to investigate. Validate a suspected cause with an A/B test that has sufficient sample size."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 If you want to lift conversion rate but don't know where to start, draw the funnel first. One biggest-leaking stage usually creates most of the loss. Plugging that one first is the order. This combines our former CVR guide and funnel analysis into one diagnose-to-test workflow.
 

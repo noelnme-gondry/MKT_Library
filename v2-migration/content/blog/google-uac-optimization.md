@@ -17,7 +17,6 @@ faq:
     a: "먼저 전환 추적·목표·예산·에셋을 진단하세요. 새 캠페인에는 학습 기간이 필요하지만 시스템의 모든 학습이 0이 된다고 단정할 수는 없습니다. 구조 변경 목적과 비교 기준을 정한 뒤 재생성을 판단하세요."
 updated: "2026-09-09"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns Maximize conversions"
     url: "https://support.google.com/google-ads/answer/16550675?hl=en"

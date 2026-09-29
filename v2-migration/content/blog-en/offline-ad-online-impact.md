@@ -12,7 +12,6 @@ faq:
   - q: "Can I separate TV from digital contribution?"
     a: "If both moved in the same window, the data alone usually cannot separate them. Separation needs periods where the two budgets moved differently. Without that, report a combined effect rather than inventing a split."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Offline advertising has no clicks. So measurement usually ends either in vague impressions, or in the opposite error: crediting the entire lift during the flight to TV.

@@ -11,7 +11,6 @@ ogImage: "/blog-assets/ad-creative-testing/ad-creative-lifecycle-en.png"
 primaryTool: "9-6"
 relatedGlossary: ["cpa", "roas", "ctr", "cvr"]
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google Ads: Test with confidence with the Experiments page"
     url: "https://support.google.com/google-ads/answer/7281575"

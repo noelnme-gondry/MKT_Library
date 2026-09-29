@@ -17,7 +17,6 @@ faq:
   - q: "Can a winning variant still turn out to have no effect?"
     a: "Yes. An interval crossing zero means not yet distinguishable, even with a winner badge showing. Apple PPO treatments may also appear in search results. Its conversion result does not establish effects on search rank, long-term retention or revenue."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Screenshots changed, and two weeks later conversion is up. Was it the screenshots? If ad spend also grew and the season turned in those same two weeks, the honest answer is that you do not know.
 

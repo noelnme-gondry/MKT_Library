@@ -14,7 +14,6 @@ faq:
 
 updated: "2026-09-08"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Google App campaigns asset specifications"
     url: "https://support.google.com/google-ads/answer/17091671?hl=en"

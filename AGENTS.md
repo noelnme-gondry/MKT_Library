@@ -508,7 +508,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **공유 링크는 재조립**(`lib/decisionShare.js`): 입력 객체를 펼치지 말고 허용 필드만 새로 조립 + 상한 + noindex. 디코드도 같은 재조립을 거친다(변조 방어). 텍스트 다운로드 출처는 `withAttribution`(CSV엔 금지 — 파싱 깨짐).
 - **콘텐츠 페이지에 앱 번들 흘리지 말 것**: 셸(Header 등)에서 조건 없이 무거운 모듈을 동적 import하면 canvas 없는 문서 페이지도 차트 번들을 받는다. 실제 필요 여부(예: `document.querySelector("canvas")`)를 먼저 확인.
 - **리다이렉트·앵커 텍스트**: `redirects.test.js`가 301 목적지 실재·sitemap 잔존·체인·permanent를 검증. 관련 글/용어 링크의 앵커는 slug 원문이 아니라 **표시명**을 쓴다.
-- **검토 메타(reviewer/reviewedAt)는 에이전트가 채우지 않는다** — 실제 검토가 있어야 하는 편집 정보다(§8). 인프라만 유지하고 값은 비워 둔다.
+- **검토자는 글쓴이 하나다**(2026-09-29 사용자 확인): 블로그 `reviewer`는 원고에 적지 않고 `reviewedAt`이 있을 때 `getBlogEditorial`이 `AUTHOR.name`으로 파생한다(원고의 "Codex (AI-assisted…)" 100편을 걷어냈다). 에이전트는 검토일·검토자를 **지어내지 않는다**(§8). 출처 목록은 인용한 외부 링크가 있을 때만, 없으면 제목도 "검토"만.
 
 ### 12.29b 첫 방문자 온보딩 오버레이 (도치 인사)
 홈 첫 진입에서 도치가 2단계로 말을 걸고 마지막 단계에서 CSV·공개 시트를 받는다(`assistant/DochiWelcomeOverlay` — 단계 수는 `DOCHI_WELCOME_STEPS`가 소유하니 세지 말고 거기서 읽을 것). 상시 접수처(`DochiAssistant`)는 그대로 남아 닫은 사람도 뒤에 올릴 수 있다.

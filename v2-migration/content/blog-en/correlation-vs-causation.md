@@ -13,7 +13,6 @@ faq:
     a: "Use quasi-experimental designs such as pre/post, control regions, or interrupted time series, and label the result as an estimated lift. State that seasonality and promotions were not separated."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 On days when ice cream sales are high, drowning accidents also go up. Does ice cream cause drowning? Of course not. There's a separate cause — both are driven by 'summer.'

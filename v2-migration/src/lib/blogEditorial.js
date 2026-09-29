@@ -1,3 +1,4 @@
+import { AUTHOR } from "@/lib/authorProfile";
 // 블로그의 "짧은 답"·적용 범위·검토 정보를 원고와 분리한 편집 레지스트리.
 // 검색 메타와 CTA를 섞지 않고, SSR 본문과 JSON-LD가 동일한 답변을 쓰게 한다.
 const KO_ANSWERS = {
@@ -162,8 +163,9 @@ export function getBlogEditorial(locale, slug, source = {}) {
   return {
     answer,
     conditions,
-    // 실제 검토 정보가 원고에 있을 때만 노출한다. 발행일을 검토일로 바꾸지 않는다.
-    reviewer: source.reviewer || "",
+    // 검토는 글쓴이가 한다(2026-09-29 사용자 확인). 검토일이 원고에 있을 때만 노출하고,
+    // 발행일을 검토일로 바꾸지 않는다. 검토자 이름은 바이라인과 같은 출처(AUTHOR)에서 온다.
+    reviewer: source.reviewedAt ? AUTHOR.name : "",
     reviewedAt: source.reviewedAt || "",
     sources: Array.isArray(source.sources) ? source.sources.filter((item) => item?.title && item?.url) : [],
   };

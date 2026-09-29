@@ -18,7 +18,6 @@ faq:
   - q: "How much data do I need to start MMM?"
     a: "A practical starting point is at least 52 weeks of weekly channel spend, outcome, and external-factor data so the model can observe a full seasonal cycle."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Ever raised budget on brand search because its ROAS looked outstanding — and watched total revenue stay flat? Last-click praises only the channel that stood **last** in the journey; the credit earned by channels that created demand upstream all flows to the final click. When one person sees dozens of ads across channels in a single day, judging performance with last-touch attribution alone stops making sense. Multi-touch attribution does not always deliver a clear answer either.

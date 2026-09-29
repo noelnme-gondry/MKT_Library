@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Google Cloud: Connected Sheets", "url": "https://cloud.google.com/blog/products/data-analytics/using-connected-sheets-to-analyze-bigquery-data/"}, {"title": "Google Cloud: Scheduled queries", "url": "https://docs.cloud.google.com/bigquery/docs/scheduling-queries"}]
 faq: [{"q": "BigQuery를 연결하면 사이트 분석도 자동으로 갱신되나요?", "a": "아닙니다. BigQuery·Sheets의 예약 갱신과 사이트의 데이터 불러오기는 별개입니다. 사이트에서 CSV를 다시 올리거나 공개 시트를 다시 불러온 뒤 분석해야 합니다."}, {"q": "비공개 시트를 전체 공개로 바꿔야 하나요?", "a": "사내 자료를 공개로 바꿀 필요가 없습니다. 권한이 있는 환경에서 필요한 집계 CSV만 내려받아 브라우저 분석에 사용하세요."}]
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 광고 리포트 자동화는 매주 같은 파일을 합치는 일을 줄이는 데서 시작합니다. BigQuery에서 집계를 준비하고 Google Sheets로 검토할 수 있지만, 어떤 열을 합쳐도 되는지와 어디까지 자동으로 갱신되는지부터 정해야 합니다.
 

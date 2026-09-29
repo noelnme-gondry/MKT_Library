@@ -14,7 +14,6 @@ faq:
   - q: "Why use an Aha Event instead of purchase optimization?"
     a: "Purchase is closer to the business goal, but it can be too sparse for early-stage campaigns to learn from. An Aha Event can be an earlier, higher-volume quality signal."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 An install CPA can fall while the business still feels unchanged. Installs and sign-ups rise, but very few people return a few days later.
