@@ -31,7 +31,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
 | `source_survey_dismissed` | 답하지 않고 닫음 | `placement=source_survey`, `state=skipped\|closed`, `locale` |
 | `journey_page_viewed` | 최초 및 SPA 경로 변경 | `scope=home|blog|glossary|guide|calculator|tool|start|dochi|review|other`(`calculator`는 2026-09-29 추가, 이전엔 `other`), `journey_entry`, `locale` |
-| `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택 | `interaction_source`, `placement`, `locale` |
+| `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택(폰 헤더 ••• 메뉴는 `placement=header_menu`) | `interaction_source`, `placement`, `locale` |
 | `dochi_mapping_confirmed` | 도치 컬럼 확인을 마치고 계산 작업대로 진행 | `tool_id=start-gate`, `placement=dochi_mapping`, `locale` |
 | `weekly_review_viewed` | 리뷰 화면 진입(기기 복원 후), 재진입도 기록 | `tool_id=weekly-review`, `visit_type=with_history|without_history`, `locale` |
 | `weekly_review_completed` | 기간 비교 결과 계산 완료 | `interaction_source`, `result_state`, `data_continuity=saved_snapshot|uploaded_periods`, `elapsed_bucket`, `locale` |

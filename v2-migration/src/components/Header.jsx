@@ -246,6 +246,10 @@ export default function Header({ locale = "ko" }) {
               <span className="header-utility-menu__label">{T.utilities}</span>
             </Popover.Trigger>
             <Popover.Portal><Popover.Content className="utility-popover-panel" sideOffset={10} align="end" collisionPadding={12}>
+              {/* 폰(≤480px)은 헤더를 한 줄로 두려고 위 아이콘 버튼을 숨기고 여기서 연다(CSS가 폭에 따라 둘 중 하나만 보인다). */}
+              <Link href={locale === "en" ? "/en/weekly-review" : "/weekly-review"} className="btn ghost header-utility-review" onClick={() => { trackProductEvent("review_entry_clicked", { source: "navigation", placement: "header_menu", locale, result_state: dueDecisionCount ? "due" : "available" }); closeUtilityMenu(); }}>
+                {workspaceNavItem("review", locale).name}{dueDecisionCount > 0 && <em className="header-utility-review__count">{dueDecisionCount}</em>}
+              </Link>
               <VideoHelpButton locale={locale} className="btn ghost" onOpen={() => { closeUtilityMenu(); return utilityMenuRef.current; }}>{locale === "en" ? "Video guide" : "영상 사용 안내"}</VideoHelpButton>
               <Link href={locale === "en" ? "/en/subscription" : "/subscription"} className="btn ghost" onClick={closeUtilityMenu}>{locale === "en" ? "Subscription guide" : "구독 안내"}</Link>
               <ProjectSettingsMenu locale={locale} />

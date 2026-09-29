@@ -832,14 +832,21 @@
     .pass-recovery-help .btn, .saved-setup-review .btn { min-height: 44px; white-space: normal; margin-top: 8px; }
   }
   @media (max-width: 480px) {
-    :root { --topbar-h: 104px; }
-    /* Keep both the menu and the upfront price reachable on narrow screens. */
-    .app.is-home .topbar, .app:not(.is-home) .topbar { display: grid; grid-template-columns: minmax(0, 1fr); min-height: var(--topbar-h); gap: 0; padding-block: 4px; }
-    .app .topbar-context { min-height: 44px; }
+    /* 폰은 헤더 한 줄(60px). 메뉴(사이드바)와 가격 링크는 계속 바로 보이게 두고, 두 줄을 만들던 것을 덜어낸다:
+       경로는 페이지 제목이 이미 말하고, "내 프로젝트" 아이콘은 ••• 메뉴 안으로 옮긴다(2026-09-30).
+       예전엔 두 줄 104px에 글자 없는 아이콘 넷이 늘어서 있었다. */
+    :root { --topbar-h: 60px; }
+    .app.is-home .topbar, .app:not(.is-home) .topbar { display: flex; align-items: center; justify-content: space-between; min-height: var(--topbar-h); gap: 4px; padding-block: 0; }
+    .app .topbar-context { flex: 0 0 auto; min-height: 44px; }
+    .app .topbar-context :is(.breadcrumb, .header-data-context) { display: none; }
     .app .header-sidebar-toggle { flex-shrink: 0; }
-    .app .topbar-actions, .app .topbar-actions__primary { justify-content: space-between; }
-    .app .topbar-actions__primary { flex: 1; }
+    .app .topbar-actions, .app .topbar-actions__primary { gap: 2px; }
+    .app .topbar-actions .header-decision-inbox { display: none; }
   }
+  /* ••• 안의 "내 프로젝트"는 헤더 아이콘이 숨는 폰에서만 보인다(둘 중 하나만). */
+  .utility-popover-panel .btn.header-utility-review { display: none; }
+  @media (max-width: 480px) { .utility-popover-panel .btn.header-utility-review { display: inline-flex; align-items: center; gap: 6px; } }
+  .header-utility-review__count { min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-pill); background: var(--danger); color: #fff; font: 700 var(--fs-xs)/16px var(--font-sans); font-style: normal; text-align: center; }
   @media print {
     .library-sidebar, .library-nav-overlay, .library-journey { display: none !important; }
     .app.is-home, .app:not(.is-home) { display: block; }
