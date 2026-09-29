@@ -11,7 +11,7 @@ const STATIC_PAGES = [
   // 2026-09-24 점검에서 눈금 막대·상자 안 상자·작은 라벨이 남아 있던 화면.
   "/storage", "/account", "/en/storage", "/en/account",
   "/calculator", "/calculator/target-cpa", "/diagnose", "/subscription", "/contact", "/privacy", "/terms", "/projects", "/weekly-review",
-  "/compare/incrementality-methods", "/templates/dashboard", "/tools/mmm-contribution", "/tools/cannibalization-diagnosis",
+  "/compare/incrementality-methods", "/templates/dashboard", "/templates/aso-store-conversion", "/en/templates/aso-store-conversion", "/tools/mmm-contribution", "/tools/cannibalization-diagnosis",
   // 결론 카드가 수동 입력 뒤에야 그려지는 도구는 입력 화면을 본다.
   "/tools/budget-allocation", "/tools/experiment-analysis", "/tools/incrementality",
 ];

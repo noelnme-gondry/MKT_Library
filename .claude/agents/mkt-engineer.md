@@ -58,7 +58,7 @@ tools:
 
 # 에이전트 전용 참고사항
 
-- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 링크로도 연다: 도구 URL `?example=1`(`lib/exampleLink` + `ds/useExampleLink`, 예시 버튼과 같은 핸들러를 라우트·기기 저장 부팅 뒤 한 번 — `e2e/example-link.spec.js`). 도구 제목은 목록 이름, 검색어형 이름은 제목 밑 한 줄(`toolDisplayTitle`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
+- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 링크로도 연다: 도구 URL `?example=1`(`lib/exampleLink` + `ds/useExampleLink`, 예시 버튼과 같은 핸들러를 라우트·기기 저장 부팅 뒤 한 번 — `e2e/example-link.spec.js`). 도구 제목은 목록 이름, 검색어형 이름은 제목 밑 한 줄(`toolDisplayTitle`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 플랫폼 내보내기 파일(Meta·App Store Connect·Google Play) 목록은 `lib/platformExports.js`, 업로드 판정 셋(기존 계약·V2·자격)을 `platformExports.test.js`가 돌린다. 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
 - 도구 추가: `IA` → `routeMap` → `PageClient` 디스패치 → `TOOL_REQUIRED/OPTIONAL_FIELDS` → `toolGroups` → `TOOL_GUIDE` → `demoData` → 컴포넌트 → `sitemap` → 골든+스모크. 상세: §12.1.
 - 계산 게이트: `analyzedByGroup`/`isGroupAnalyzed` 뒤에서만 무거운 compute. 토글은 lookup만(§4.4).
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).

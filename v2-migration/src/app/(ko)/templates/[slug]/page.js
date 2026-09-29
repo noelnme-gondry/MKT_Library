@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+import PlatformExportGuide, { platformExportNames } from "@/components/PlatformExportGuide";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -20,7 +21,8 @@ export async function generateMetadata({ params }) {
   const seo = getRouteSeo(page.toolId, "ko");
   const toolName = seo?.title || page.toolId;
   const title = `${toolName} CSV 템플릿 다운로드`;
-  const description = `${toolName}에 바로 올릴 수 있는 CSV 템플릿입니다. 필요한 컬럼 ${page.fields.length}개(필수 ${page.requiredCount}개)와 각 컬럼의 의미를 확인하고 빈 양식을 받으세요.`;
+  const platforms = platformExportNames(page.toolId, "ko");
+  const description = `${toolName}에 바로 올릴 수 있는 CSV 템플릿입니다. 필요한 컬럼 ${page.fields.length}개(필수 ${page.requiredCount}개)와 각 컬럼의 의미를 확인하고 빈 양식을 받으세요.${platforms.length ? ` ${platforms.join("·")} 내보내기 파일도 그대로 올릴 수 있습니다.` : ""}`;
   const canonical = `${SITE_URL}/templates/${slug}`;
   return {
     title,
@@ -83,10 +85,12 @@ export default async function Page({ params }) {
         </table>
       </div>
 
+      <PlatformExportGuide toolId={page.toolId} locale="ko" />
+
       <h2>작성할 때 주의할 점</h2>
       <ul className="template-detail__rules">
         <li>날짜는 <code>YYYY-MM-DD</code> 형식으로 통일하세요. 형식이 섞이면 기간 비교가 어긋납니다.</li>
-        <li>금액·수치 컬럼에는 천단위 콤마가 있어도 되지만, 통화 기호나 문자는 넣지 마세요.</li>
+        <li>금액·수치 컬럼에는 천단위 콤마와 <code>₩</code>·<code>$</code>·<code>KRW</code>·<code>USD</code>·<code>원</code> 같은 통화 표기가 있어도 됩니다. 그 밖의 글자가 섞이면 읽지 않으므로 숫자만 두는 편이 가장 안전합니다.</li>
         <li>필수 컬럼이 비어 있는 행은 분석에서 제외됩니다. 0과 빈칸은 다른 의미로 처리됩니다.</li>
         <li>컬럼을 더 넣어도 됩니다. 이 도구가 쓰지 않는 컬럼은 무시됩니다.</li>
       </ul>

@@ -11,11 +11,14 @@ export function scoreNameFeatures(profile, canonicalKey) {
   const legacy = canonicalFieldForLegacyKey(compact(normalized));
   if (legacy?.canonicalKey === canonicalKey) return { score: 0.9, evidence: ["EXACT_LEGACY_KEY"] };
   const exactAlias = LEGACY_ALIAS_SIGNALS.some((signal) => signal.canonicalKey === canonicalKey && signal.normalizedAlias === normalizeAliasSignal(normalized));
-  if (exactAlias) return { score: 0.82, evidence: ["EXACT_LEGACY_ALIAS"] };
   const signal = (SIGNALS[canonicalKey] || []).find((item) => {
     const candidate = compact(item); const header = compact(normalized);
     return candidate.length >= 3 && (header === candidate || header.includes(candidate));
   });
+  // 같은 별칭을 두 옛 필드가 함께 가진 경우가 있다("traffic source" = 광고/오가닉 구분 · 스토어
+  // 유입 소스). 점수가 같으면 키 이름순으로 갈려 Google Play 내보내기가 5-27에서 막혔다.
+  // 점수는 그대로 두고, 이 필드 고유 이름 신호도 같은 헤더를 가리킬 때만 동점 판정에 쓴다.
+  if (exactAlias) return { score: 0.82, evidence: ["EXACT_LEGACY_ALIAS"], corroborated: Boolean(signal) };
   // tool-owned 성과·식별자는 이름 신호만으로 SUGGEST할 뿐 자동 확정하지 않는다.
   // ID처럼 숫자가 섞인 값도 이름 신호가 임계값을 넘도록 하되, requiresConfirmation
   // 메타데이터가 후속 선택·실행 경로에서 반드시 확인을 요구한다.

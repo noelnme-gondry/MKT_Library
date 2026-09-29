@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
+import PlatformExportGuide, { platformExportNames } from "@/components/PlatformExportGuide";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 import { SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
@@ -20,7 +21,8 @@ export async function generateMetadata({ params }) {
   const seo = getRouteSeo(page.toolId, "en");
   const toolName = seo?.title || page.toolId;
   const title = `${toolName} CSV template download`;
-  const description = `A ready-to-upload CSV template for ${toolName}. Review the ${page.fields.length} columns it reads (${page.requiredCount} required) and download the blank file.`;
+  const platforms = platformExportNames(page.toolId, "en");
+  const description = `A ready-to-upload CSV template for ${toolName}. Review the ${page.fields.length} columns it reads (${page.requiredCount} required) and download the blank file.${platforms.length ? ` ${platforms.join(" and ")} exports can also be uploaded as is.` : ""}`;
   const canonical = `${SITE_URL}/en/templates/${slug}`;
   return {
     title,
@@ -82,6 +84,8 @@ export default async function Page({ params }) {
           </tbody>
         </table>
       </div>
+
+      <PlatformExportGuide toolId={page.toolId} locale="en" />
 
       <h2>Filling it in</h2>
       <ul className="template-detail__rules">
