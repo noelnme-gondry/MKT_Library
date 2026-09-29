@@ -19,6 +19,7 @@ import {
 import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
 import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
 import FigurePngButton from "@/components/ds/FigurePngButton";
+import { toolDisplayTitle } from "@/lib/toolIndex";
 
 const COPY = {
   ko: {
@@ -118,6 +119,7 @@ function fmtNumber(value) {
 export default function PaidOrganicTrend({ locale = "ko" }) {
   const isHydrated = useClientReady();
   const C = COPY[locale] || COPY.ko;
+  const pageTitle = toolDisplayTitle("5-18-paid-organic", locale, C.title);
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
@@ -287,7 +289,8 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
 
   return (
     <div className="paid-organic-tool" data-hydrated={isHydrated ? "true" : "false"}>
-      <h1 className="page-title">{C.title}</h1>
+      <h1 className="page-title">{pageTitle.name}</h1>
+      {pageTitle.alias && <p className="tool-instrument-header__alias">{pageTitle.alias}</p>}
       <p className="page-deck">{C.deck}</p>
 
       {!hasData ? (

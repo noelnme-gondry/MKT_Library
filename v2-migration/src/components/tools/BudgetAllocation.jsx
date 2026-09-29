@@ -1689,7 +1689,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={2}
+          titleLevel={0}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
         >
           <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
@@ -1729,7 +1729,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={2}
+          titleLevel={0}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">
@@ -2013,7 +2013,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
           locale={locale}
-          titleLevel={2}
+          titleLevel={0}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">

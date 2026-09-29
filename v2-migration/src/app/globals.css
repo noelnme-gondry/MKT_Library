@@ -9312,6 +9312,14 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .tool-instrument-header__copy,
 .tool-instrument-header__heading { min-width: 0; }
 .tool-instrument-header__title { overflow-wrap: anywhere; white-space: normal; }
+/* 제목 밑 한 줄: 검색어형 도구 이름(toolDisplayTitle). 제목 위 라벨로 올리지 않는다. */
+.tool-instrument-header__alias {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  line-height: 1.5;
+}
 .tool-instrument-header__description {
   max-width: 900px;
   margin: 7px 0 0;

@@ -32,6 +32,7 @@ import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { runDashboardVerdict, shouldUseDashboardVerdictWorker } from "@/lib/analysis/dashboardVerdictWorkerClient";
 import { sourceCurrencyOf } from "@/utils/format";
+import { toolDisplayTitle } from "@/lib/toolIndex";
 
 // 콘텐츠 대시보드(9-7)는 3탭만 노출 — 결제·예산·매출 전제 탭(pacing·ltv·cohort·
 // funnel·segment)은 콘텐츠 데이터로 의미가 없어 제외(§정직성).
@@ -61,6 +62,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const enC = EN_DASH_COPY[domain] || EN_DASH_COPY.performance;
   // 콘텐츠판은 9-7 CSV 슬라이스·게이트를, 기본판은 5-2를 사용.
   const toolId = isContent ? "9-7" : "5-2";
+  // 제목은 목록과 같은 이름, "운영 대시보드"는 제목 밑 한 줄(toolDisplayTitle).
+  const pageTitle = toolDisplayTitle(toolId, locale, locale === "en" ? enC.pageTitle : C.pageTitle);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardTab = useAppStore((state) => state.dashboardTab);
   const setDashboardTab = useAppStore((state) => state.setDashboardTab);
@@ -224,7 +227,10 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             아래 top:48px)에 고정. */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1 dashboard-sticky-context">
-            <h1 className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</h1>
+            <div className="tool-instrument-header__heading">
+              <h1 className="page-sticky-title">{pageTitle.name}</h1>
+              {pageTitle.alias && <p className="tool-instrument-header__alias">{pageTitle.alias}</p>}
+            </div>
             {/* 누를 수 없는 알약 두 개 대신 본문 한 줄(§7.1). 도구 공통 "현재 입력" 줄도 이 줄이 대신한다(2026-09-29). */}
             {hasData && (
               <p className="dashboard-sticky-context__meta" aria-label={tr("현재 데이터", "Current data")}>

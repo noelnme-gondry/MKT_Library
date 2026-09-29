@@ -311,6 +311,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       <div className="tab-pane active" id="tab-sat">
         <ToolPageShell
           locale={locale}
+          titleToolId="5-22"
           title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
         >
           <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
@@ -385,6 +386,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   return (
     <ToolPageShell
       locale={locale}
+      titleToolId="5-22"
       title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
       chips={<span className="chip"><span className="dot"></span>{csvData?.fileName || ""}</span>}
       summary={

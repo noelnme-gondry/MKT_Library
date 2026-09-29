@@ -91,6 +91,20 @@ export function toolIndexEntry(toolId, locale = "ko") {
   };
 }
 
+/**
+ * 도구 화면 제목. 이름은 목록·경로와 같은 레지스트리 이름 하나이고, 컴포넌트가
+ * 들고 있던 검색어형 이름(예: "마케팅 효율 진단 (Saturation)")은 제목 밑 한 줄로
+ * 내린다(2026-09-29 사용자 결정 A). 홈에서 "증액 여력 진단"을 눌렀는데 다른
+ * 이름의 화면이 열리던 문제 — 발행 도구 20개 전부가 그랬다.
+ * 발행 도구가 아니면(숨은 콘텐츠 도구 등) 넘겨받은 이름을 그대로 쓴다.
+ */
+export function toolDisplayTitle(toolId, locale = "ko", searchName = "") {
+  const name = toolIndexEntry(toolId, locale)?.name;
+  if (!name) return { name: searchName || "", alias: null };
+  const alias = searchName && searchName.replace(/\s+/g, "") !== name.replace(/\s+/g, "") ? searchName : null;
+  return { name, alias };
+}
+
 /** 질문 축(TOOL_JOURNEY 스테이지)별로 묶은 전체 인덱스. */
 export function toolIndexByStage(locale = "ko") {
   return TOOL_JOURNEY.map((stage) => ({

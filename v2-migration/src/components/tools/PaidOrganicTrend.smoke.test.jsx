@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import PaidOrganicTrend from "@/components/tools/PaidOrganicTrend";
 import { buildPaidOrganicTrendDemo } from "@/utils/paidOrganicTrend";
 import { buildDemoCsv } from "@/utils/demoData";
+import { toolIndexEntry } from "@/lib/toolIndex";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -28,7 +29,8 @@ describe("PaidOrganicTrend render smoke", () => {
 
   it("shows a low-friction upload state without loading a deep model", () => {
     const { container } = render(<PaidOrganicTrend />);
-    expect(screen.getByRole("heading", { name: "Paid·Organic 변화맵" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: toolIndexEntry("5-18-paid-organic").name })).toBeTruthy();
+    expect(screen.getByText("Paid·Organic 변화맵")).toBeTruthy();
     expect(screen.getByText(/날짜·Paid 성과/)).toBeTruthy();
     expect(container.querySelector("canvas")).toBeNull();
   });
@@ -79,7 +81,7 @@ describe("PaidOrganicTrend render smoke", () => {
   it("keeps KR and EN routes functionally equivalent", () => {
     seed(buildPaidOrganicTrendDemo("en"));
     render(<PaidOrganicTrend locale="en" />);
-    expect(screen.getByRole("heading", { name: "Paid · Organic Movement Map" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: toolIndexEntry("5-18-paid-organic", "en").name })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Open detailed cannibalization diagnosis/ }).getAttribute("href"))
       .toBe("/en/tools/cannibalization-diagnosis");
   });
