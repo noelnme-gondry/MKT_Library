@@ -101,12 +101,17 @@ for (const locale of ["ko", "en"]) {
     const freePlan = page.locator('.plan-card[aria-labelledby="plan-free-title"]');
     await expect(freePlan).not.toContainText(en ? "free after the trial" : "체험 종료 후에도 무료");
     await expect(freePlan).toContainText(en ? "Analysis without signup" : "가입 없이 분석·결과 확인");
-    // 비교표는 두 플랜이 같은 행을 가져야 성립한다. 한쪽 행 수를 그대로 박아 두면
-    // 무료 칼럼이 비어 카드 높이가 어긋난 상태를 가드가 지키게 된다.
-    const proRows = await page.locator('.plan-card[aria-labelledby="plan-pro-title"] .plan-features > div').count();
-    expect(proRows).toBeGreaterThan(2);
-    await expect(freePlan.locator(".plan-features > div")).toHaveCount(proRows);
-    await expect(freePlan.locator(".plan-features dd[data-absent]").first()).toHaveText(en ? "Not included" : "미포함");
+    // 공통은 한 문장, 차이는 "Pro에서 더해지는 것" 표 한 장이다(2026-09-29). 카드에는 행을 두지 않아
+    // 높이가 저절로 같다 — 예전 카드는 무료 칸 8개가 "미포함"이고 위 2행은 두 칼럼이 같았다.
+    await expect(page.locator(".plan-card dl, .plan-card li")).toHaveCount(0);
+    await expect(page.locator(".plan-shared")).toContainText(en ? "Both plans include every analysis tool" : "두 플랜 모두 모든 분석 도구");
+    const table = page.locator(".plan-pro-table");
+    await expect(table.locator("caption")).toContainText(en ? "not included in Free" : "무료에는 포함되지 않음");
+    expect(await table.locator("tbody tr").count()).toBeGreaterThan(2);
+    await expect(table).not.toContainText(en ? "Not included" : "미포함");
+    const [freeAction, proAction] = await page.locator(".plan-card-action").evaluateAll(nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)));
+    // 넓은 화면(두 칼럼)에서는 두 카드의 버튼이 같은 줄에 선다.
+    if ((page.viewportSize()?.width || 0) > 1000) expect(Math.abs(freeAction - proAction)).toBeLessThanOrEqual(1);
     await expect(page.locator(".plan-footnote").first()).toContainText(en ? "requires active Pro" : "Pro 기능입니다");
     await expect(page.locator(".seller-information").first()).toContainText("856-07-03210");
     await expect(page.locator("#refund-policy")).toContainText(en ? "7 days" : "7일");

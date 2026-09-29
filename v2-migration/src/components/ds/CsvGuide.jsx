@@ -100,8 +100,10 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           {requiredNeeds.length > 0 && <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>}
         </div>
         <div className="csv-guide-actions">
-          {helpAction}
+          {/* 파일 없이 온 사람의 첫 행동이라 줄의 맨 앞·버튼 크기로 둔다(체험과 데모를 나란히 두는 분석 SaaS
+              랜딩과 같은 위계, 2026-09-29). 읽는 순서와 보이는 순서를 맞추려고 CSS order가 아니라 DOM 순서로. */}
           {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
+          {helpAction}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}
           </button>

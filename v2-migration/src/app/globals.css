@@ -4267,13 +4267,13 @@ body:not(.light-mode) .moon-icon {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  min-height: 34px;
-  padding: 7px 12px;
+  min-height: 44px;
+  padding: 8px 14px;
   border: 1px solid color-mix(in srgb, var(--success) 54%, var(--border));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--success) 8%, transparent);
   color: var(--success);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: 700;
   cursor: pointer;
 }
@@ -11439,16 +11439,16 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 .plan-price strong { font-size: clamp(var(--fs-2xl), 4vw, var(--fs-3xl)); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .plan-price span { font-size: var(--fs-md); }
 .plan-card-header .plan-billing { margin-top: 12px; font-size: var(--fs-base); }
-.plan-features { margin: 0; padding-inline: 28px; flex: 1; }
-/* 두 카드가 같은 행을 가지므로 행 높이를 고정해 비교 줄을 맞춘다. 고정값은 두 줄짜리
-   값이 들어가는 행(다운로드)이 기준이고, 좁은 화면에서는 아래 미디어쿼리가 푼다. */
-.plan-features > div { border-bottom: 1px solid var(--border); padding-block: 16px; min-height: 76px; }
-.plan-features > div:last-child { border-bottom: 0; }
-.plan-features dt { color: var(--text-muted); font-size: var(--fs-base); }
-.plan-features dd { margin: 5px 0 0; color: var(--text-primary); font-size: var(--fs-md); font-weight: 600; }
-.plan-features dd[data-absent] { color: var(--text-muted); font-weight: 400; }
-.plan-card-note { margin: 0; padding: 16px 28px 0; font-size: var(--fs-sm); line-height: 1.7; color: var(--text-muted); }
-.plan-card-action { padding: 24px 28px 28px; }
+/* 카드는 머리(가격)와 버튼만 — 버튼을 카드 바닥에 붙여 두 카드의 버튼 줄을 맞춘다. */
+.plan-card-action { margin-top: auto; padding: 12px 28px 28px; }
+/* 두 플랜 공통은 한 문장, 차이는 표 한 장(SubscriptionPlanComparison). */
+.plan-shared { margin: 24px 0 0; color: var(--text-primary); font-size: var(--fs-md); }
+.plan-pro-table { width: 100%; margin: 20px 0 0; border-collapse: collapse; }
+.plan-pro-table caption { caption-side: top; padding: 0 0 8px; text-align: left; color: var(--text-primary); font-size: var(--fs-md); font-weight: 600; }
+.plan-pro-table th, .plan-pro-table td { padding: 12px 0; border-top: 1px solid var(--border); text-align: left; vertical-align: top; }
+.plan-pro-table th { width: 40%; padding-right: 16px; color: var(--text-muted); font-size: var(--fs-base); font-weight: 400; }
+.plan-pro-table td { color: var(--text-primary); font-size: var(--fs-md); font-weight: 600; }
+.plan-card-note { margin: 12px 0 0; font-size: var(--fs-sm); line-height: 1.7; color: var(--text-muted); }
 .plan-card-action .btn { display: flex; width: 100%; justify-content: center; align-items: center; min-height: 52px; }
 .plan-footnote { font-size: var(--fs-base); max-width: 85ch; }
 .subscription-assurances { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding-block: 12px; }
@@ -11505,11 +11505,11 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   .plan-comparison-grid, .report-preview-grid, .subscription-page .subscription-purchase { grid-template-columns: minmax(0,1fr); }
   .subscription-assurances { grid-template-columns: minmax(0,1fr); gap: 20px; }
   .purchase-summary { border-right: 0; border-bottom: 1px solid var(--border); }
-  .plan-features > div { min-height: 0; }
 }
 @media (max-width: 480px) {
   .plan-card-header { padding: 18px; }
-  .plan-features, .plan-card-action { padding-inline: 20px; }
+  .plan-card-action { padding-inline: 20px; }
+  .plan-pro-table th { width: 45%; }
   .report-paper { padding: 16px; }
   .report-file-extension { display: none; }
 }
@@ -11844,6 +11844,8 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .csv-uploader[data-analysis-status] .csv-upload-quick-actions .ab-pill { padding-inline: 0; }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions > button { min-height: 44px; padding: 8px 12px; font-size: var(--fs-sm); }
+/* 빈 도구 화면의 예시 버튼은 업로드 칸 바로 위 줄의 주 행동이다 — 옆 글자 링크보다 한 단 크게. */
+.csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions > .csv-guide-example-btn { min-height: 48px; padding: 10px 18px; font-size: var(--fs-md); }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-dropzone { min-height: 160px; padding: 24px 16px; }
 .tool-upload-entry { margin-top: 16px; }
 
