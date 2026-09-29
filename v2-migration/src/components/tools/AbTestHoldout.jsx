@@ -24,6 +24,7 @@ import ExperimentDesignCheck from "@/components/ds/ExperimentDesignCheck";
 import { buildToolDemo } from "@/lib/toolDemo";
 import { trackProductEvent } from "@/lib/analytics";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+import useExampleLink from "@/components/ds/useExampleLink";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -395,6 +396,15 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     };
   }, [activeTab, mode, pcBaseline, pcAlpha, pcPower, locale, tr]);
 
+  // 버튼과 예시 링크(?example=1)가 같은 준비를 탄다(useExampleLink).
+  const runExample = (source = "tool") => {
+    trackProductEvent("example_run_started", { tool_id: "5-4", source, placement: "journey", locale });
+    useAppStore.getState().setCsvData(buildToolDemo("5-4", locale));
+    useAppStore.getState().setGroupAnalyzed("5-4");
+    setActiveTab("readout");
+  };
+  useExampleLink(!readoutData ? runExample : null);
+
   return (
     <div className="tab-pane active" id="tab-ab">
       <section className="experiment-journey experiment-journey--compact" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
@@ -414,12 +424,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </button>
         </div>
         {/* 첫 탭은 계산기라 예시 결과로 가는 길이 없었다 — 예시는 판독 결과로 바로 연다(2026-09-24). */}
-        {!readoutData && <button type="button" className="csv-guide-example-btn" onClick={() => {
-          trackProductEvent("example_run_started", { tool_id: "5-4", source: "tool", placement: "journey", locale });
-          useAppStore.getState().setCsvData(buildToolDemo("5-4", locale));
-          useAppStore.getState().setGroupAnalyzed("5-4");
-          setActiveTab("readout");
-        }}>{tr("예시 데이터로 결과 바로 보기", "Run the example and see results")}<span aria-hidden>→</span></button>}
+        {!readoutData && <button type="button" className="csv-guide-example-btn" onClick={() => runExample()}>{tr("예시 데이터로 결과 바로 보기", "Run the example and see results")}<span aria-hidden>→</span></button>}
       </section>
       <div className="ab-tabs" role="tablist" aria-label={tr("실험 분석 보기", "Experiment analysis views")} style={{ marginBottom: "8px" }}>
         <button type="button" id="ab-primary-tab-design" role="tab" aria-selected={activeTab === "design"} aria-controls="ab-primary-panel" tabIndex={activeTab === "design" ? 0 : -1} className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")} onKeyDown={(event) => onPrimaryTabKeyDown(event, "design")}>

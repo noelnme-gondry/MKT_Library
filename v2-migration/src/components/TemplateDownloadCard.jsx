@@ -1,16 +1,19 @@
 "use client";
 import Link from "next/link";
 import { downloadTemplateCsv } from "@/components/ds/csvTemplate";
+import { exampleHref } from "@/lib/exampleLink";
 
 // /templates 페이지 전용 카드 — 서버 컴포넌트(SEO 텍스트)에서 이 클라이언트
 // 조각만 분리(다운로드는 document/Blob 필요, §12.19 buildToolTemplateCsv 재사용).
 const COPY = {
-  ko: { tool: "⬇ CSV / Google Sheets 템플릿", unified: "⬇ 통합 템플릿", unifiedTitle: "효율·예산 도구(5-2/5-3/5-21/5-22) 공통 통합 템플릿", open: "도구 열기 →", detail: "컬럼 설명 보기 →" },
-  en: { tool: "⬇ CSV / Google Sheets template", unified: "⬇ Unified template", unifiedTitle: "Unified template shared by efficiency and budget tools (5-2/5-3/5-21/5-22)", open: "Open tool →", detail: "See column guide →" },
+  ko: { tool: "⬇ CSV / Google Sheets 템플릿", unified: "⬇ 통합 템플릿", unifiedTitle: "효율·예산 도구(5-2/5-3/5-21/5-22) 공통 통합 템플릿", open: "도구 열기 →", example: "예시 결과 보기 →", detail: "컬럼 설명 보기 →" },
+  en: { tool: "⬇ CSV / Google Sheets template", unified: "⬇ Unified template", unifiedTitle: "Unified template shared by efficiency and budget tools (5-2/5-3/5-21/5-22)", open: "Open tool →", example: "See an example result →", detail: "See column guide →" },
 };
 
 export default function TemplateDownloadCard({ toolId, title, desc, href, unified, locale = "ko", detailHref = null }) {
   const T = COPY[locale] || COPY.ko;
+  // 템플릿을 채우면 어떤 결과가 나오는지 — 빈 도구가 아니라 예시 결과로 바로 연다(?example=1, lib/exampleLink).
+  const example = exampleHref(toolId, locale);
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
       <div>
@@ -34,6 +37,11 @@ export default function TemplateDownloadCard({ toolId, title, desc, href, unifie
         <Link href={href} className="ab-pill" style={{ textDecoration: "none" }}>
           {T.open}
         </Link>
+        {example && (
+          <Link href={example} className="ab-pill" style={{ textDecoration: "none" }}>
+            {T.example}
+          </Link>
+        )}
         {detailHref && (
           <Link href={detailHref} className="ab-pill" style={{ textDecoration: "none" }}>
             {T.detail}

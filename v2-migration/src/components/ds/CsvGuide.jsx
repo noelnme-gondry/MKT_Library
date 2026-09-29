@@ -6,6 +6,7 @@ import DataTable from "@/components/ds/DataTable";
 import ModalDialog from "@/components/ds/ModalDialog";
 import { trackProductEvent } from "@/lib/analytics";
 import SourceExportGuide from "./SourceExportGuide";
+import useExampleLink from "@/components/ds/useExampleLink";
 
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
@@ -62,6 +63,17 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
   const [open, setOpen] = useState(false);
   const T = GUIDE_COPY[locale] || GUIDE_COPY.ko;
   const guide = getToolGuide(toolId, locale);
+  // 버튼과 링크(?example=1)가 같은 경로를 탄다 — 계측의 interaction_source만 다르다.
+  const runExample = (source = "csv_guide") => {
+    trackProductEvent("example_run_started", {
+      tool_id: String(toolId).split(":")[0],
+      source,
+      placement: "before_upload",
+      locale,
+    });
+    onTryExample?.();
+  };
+  useExampleLink(guide && onTryExample ? runExample : null);
   if (!guide) return helpAction ? <div className="csv-guide-actions">{helpAction}</div> : null;
 
   const requiredNeeds = guide.needs.filter((n) => n.required);
@@ -69,15 +81,6 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
   // 소요 시간 표기는 뺐다 — 데이터 크기·매핑 상태에 따라 실제와 달라지는데
   // 화면은 확정된 숫자처럼 보여줬다. 확인할 수 없는 숫자는 적지 않는다(§8).
   const close = () => setOpen(false);
-  const runExample = () => {
-    trackProductEvent("example_run_started", {
-      tool_id: String(toolId).split(":")[0],
-      source: "csv_guide",
-      placement: "before_upload",
-      locale,
-    });
-    onTryExample?.();
-  };
   const needColumns = [
     { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
     { key: "label", label: T.colWhat },
@@ -102,7 +105,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
         <div className="csv-guide-actions">
           {/* 파일 없이 온 사람의 첫 행동이라 줄의 맨 앞·버튼 크기로 둔다(체험과 데모를 나란히 두는 분석 SaaS
               랜딩과 같은 위계, 2026-09-29). 읽는 순서와 보이는 순서를 맞추려고 CSS order가 아니라 DOM 순서로. */}
-          {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
+          {onTryExample && <button type="button" data-mobile-task=".csv-guide-example-btn" className="csv-guide-example-btn" onClick={() => runExample()}>{T.tryExample}<span aria-hidden>→</span></button>}
           {helpAction}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}
