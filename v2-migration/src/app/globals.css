@@ -5476,9 +5476,11 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .template-detail__table { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
 .template-detail__table th, .template-detail__table td { padding: 9px 12px; border-bottom: 1px solid var(--border-subtle); text-align: left; }
 .template-detail__table th { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 700; }
-.template-detail__table code { font-family: var(--font-sans); font-size: var(--fs-sm); }
+.template-detail__table code, .template-detail__rules code { font-family: var(--font-sans); font-size: var(--fs-sm); }
 .template-detail__rules { display: grid; gap: 7px; margin: 0; padding-left: 18px; color: var(--text-secondary); font-size: var(--fs-base); line-height: 1.6; }
 .template-detail__back { margin-top: 32px; font-size: var(--fs-base); }
+.template-detail h3 { margin: 22px 0 4px; color: var(--text-primary); font: 700 var(--fs-md) var(--font-sans); }
+.template-detail__note { margin: 6px 0 10px; color: var(--text-muted); font-size: var(--fs-sm); line-height: 1.6; }
 
 /* 방법 비교 페이지(/compare) — 답을 맨 앞에 두는 구조. `__answer` 블록이 h1 바로
    아래에 오는 것이 이 페이지의 목적이라 시각적으로도 가장 먼저 읽히게 한다. */

@@ -2,6 +2,7 @@ import { getAllPosts } from "@/lib/blog";
 import { getBrandFacts, getBrandLimits } from "@/lib/brandFacts";
 import { COMPARE_SLUGS, getComparePage } from "@/lib/compareContent";
 import { getAllCalculators } from "@/lib/calculators";
+import { exampleHref } from "@/lib/exampleLink";
 import { getAllTerms } from "@/lib/glossary";
 import { stripHtmlTags } from "@/lib/htmlText";
 import { ROUTES, SITE_URL, hasEnVersion, idToPath, isRouteIndexable } from "@/lib/routeMap";
@@ -24,8 +25,11 @@ const markdownText = (value) => String(value || "")
   .replace(/([\\[\]])/g, "\\$1")
   .trim();
 
-const markdownEntry = ({ title, url, description }) =>
-  `- [${markdownText(title)}](${url})${description ? `: ${markdownText(description)}` : ""}`;
+// 예시 결과 주소는 canonical이 아니라(같은 페이지의 다른 상태) 마크다운 링크가 아니라 본문 URL로 싣는다 —
+// 링크 목록은 sitemap과 1:1로 대조된다(route.test.js).
+const EXAMPLE_LABEL = { ko: "예시 데이터로 본 결과", en: "Example result with sample data" };
+const markdownEntry = ({ title, url, description, example, locale }) =>
+  `- [${markdownText(title)}](${url})${description ? `: ${markdownText(description)}` : ""}${example ? ` ${EXAMPLE_LABEL[locale] || EXAMPLE_LABEL.en}: ${SITE_URL}${example}` : ""}`;
 
 function analysisEntries(locale) {
   return ROUTES
@@ -38,6 +42,8 @@ function analysisEntries(locale) {
         title: seo.title,
         description: seo.description,
         url: absoluteUrl(route.slug, locale),
+        example: exampleHref(route.id, locale),
+        locale,
       } : null;
     })
     .filter(Boolean)

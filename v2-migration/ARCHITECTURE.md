@@ -82,7 +82,7 @@ v2-migration/
 | `/weekly-report` · `/diagnose` · `/calculator[/slug]` | — | WeeklyReport · DiagnoseRouter · calculators/* |
 | `/growth-funnel` | — | GrowthFunnelReport (noindex — sitemap 제외) |
 | `/blog[/slug]` · `/blog/tag` · `/glossary[/slug]` | — | fs MD 파이프라인 (routeMap 밖) |
-| `/templates` · `/templates/[slug]` | — | TemplateDownloadCard · 템플릿 상세(`lib/templateCatalog.js`) |
+| `/templates` · `/templates/[slug]` | — | TemplateDownloadCard · 템플릿 상세(`lib/templateCatalog.js`) · 플랫폼 파일 그대로 올리기(`PlatformExportGuide` ← `lib/platformExports.js`) |
 | `/compare` · `/compare/[slug]` | — | ComparePage.jsx · 방법 비교 SSOT(`lib/compareContent.js`) |
 | `/manuals` · `/share` | — | 방법론 PDF 공개 · 결론 공유 수신(`SharedDecision`, noindex) |
 | `/privacy` · `/terms` · `/contact` | — | PolicyPage |

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
+import { PLATFORM_EXPORTS, platformExportHeaders } from "@/lib/platformExports";
+
+// 헤더 목록은 템플릿 페이지가 보여 주는 SSOT(`lib/platformExports.js`)에서 가져온다 — 두 곳에 적으면 갈린다.
+const exportHeaders = (id) => platformExportHeaders(PLATFORM_EXPORTS.find((entry) => entry.id === id));
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
@@ -19,12 +23,12 @@ import { evaluateV2Eligibility } from "@/lib/data-import/schema/toolDataRequirem
  */
 const CASES = {
   "Meta 광고 관리자 (한글)": {
-    headers: ["일", "캠페인 이름", "광고 세트 이름", "지출 금액 (KRW)", "노출", "링크 클릭", "앱 설치", "구매 전환값"],
+    headers: exportHeaders("meta-ads-ko"),
     row: (date, i) => ({ "일": date, "캠페인 이름": `KR_Install_${i}`, "광고 세트 이름": "set", "지출 금액 (KRW)": "412,300", "노출": "68000", "링크 클릭": "850", "앱 설치": "140", "구매 전환값": "448000" }),
     expect: { "일": "date", "캠페인 이름": "campaign_name", "지출 금액 (KRW)": "cost", "노출": "impressions", "링크 클릭": "clicks", "앱 설치": "installs" },
   },
   "Meta Ads Manager (English)": {
-    headers: ["Day", "Campaign name", "Ad set name", "Amount spent (USD)", "Impressions", "Link clicks", "App installs", "Purchases conversion value"],
+    headers: exportHeaders("meta-ads-en"),
     row: (date, i) => ({ "Day": date, "Campaign name": `US_Install_${i}`, "Ad set name": "set", "Amount spent (USD)": "312.40", "Impressions": "41000", "Link clicks": "620", "App installs": "95", "Purchases conversion value": "380.00" }),
     expect: { "Day": "date", "Campaign name": "campaign_name", "Amount spent (USD)": "cost", "Impressions": "impressions", "Link clicks": "clicks", "App installs": "installs" },
   },

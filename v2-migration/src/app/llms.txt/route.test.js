@@ -9,6 +9,7 @@ import { ROUTES, SITE_URL, hasEnVersion, isRouteIndexable } from "@/lib/routeMap
 import { getRouteSeo } from "@/lib/routeSeo";
 import { readSopData } from "@/lib/sopData";
 import { findMeta } from "@/store/useDataStore";
+import { exampleHref } from "@/lib/exampleLink";
 import { GET, buildLlmsText, dynamic } from "./route";
 
 const markdownLinks = (text) => [...text.matchAll(/\[[^\]]+\]\((https:\/\/[^)]+)\)/g)].map((match) => match[1]);
@@ -54,6 +55,20 @@ describe("llms.txt", () => {
     expect(text).not.toContain("�");
     expect(text.endsWith("\n")).toBe(true);
     expect(text).toBe(buildLlmsText());
+  });
+
+  it("lists the example-result URL next to every published analysis tool", () => {
+    // AI 답변이 "예시로 먼저 보기"를 인용할 수 있게 도구마다 예시 주소를 싣는다(2026-09-30).
+    const text = buildLlmsText();
+    let count = 0;
+    for (const locale of ["ko", "en"]) for (const route of indexableAnalysisRoutes(locale)) {
+      const href = exampleHref(route.id, locale);
+      if (!href) continue;
+      count += 1;
+      const line = text.split("\n").find((item) => item.includes(`](${SITE_URL}${locale === "en" ? "/en" : ""}${route.slug})`));
+      expect(line, route.id).toContain(`${SITE_URL}${href}`);
+    }
+    expect(count).toBeGreaterThanOrEqual(30);
   });
 
   it("uses unique same-origin absolute links that resolve to canonical public pages", () => {

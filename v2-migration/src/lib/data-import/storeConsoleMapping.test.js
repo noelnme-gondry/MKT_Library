@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
+import { PLATFORM_EXPORTS, platformExportHeaders } from "@/lib/platformExports";
+
+// 헤더 목록은 템플릿 페이지가 보여 주는 SSOT(`lib/platformExports.js`)에서 가져온다 — 두 곳에 적으면 갈린다.
+const exportHeaders = (id) => platformExportHeaders(PLATFORM_EXPORTS.find((entry) => entry.id === id));
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { storeFunnel } from "@/utils/asoStoreMath";
@@ -17,7 +21,7 @@ import { evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 
 const CASES = {
   "App Store Connect (소스 유형 리포트)": {
-    headers: ["Date", "Source Type", "Impressions", "Product Page Views", "Total Downloads"],
+    headers: exportHeaders("app-store-connect"),
     rows: [
       { "Date": "2026-03-01", "Source Type": "App Store Search", "Impressions": "12900", "Product Page Views": "4300", "Total Downloads": "1935" },
       { "Date": "2026-03-01", "Source Type": "App Store Browse", "Impressions": "26400", "Product Page Views": "2400", "Total Downloads": "216" },
@@ -27,7 +31,7 @@ const CASES = {
     expect: { "Date": "date", "Source Type": "store_source", "Impressions": "impressions", "Product Page Views": "product_page_views", "Total Downloads": "installs" },
   },
   "Google Play Console (스토어 실적)": {
-    headers: ["Date", "Traffic source", "Store listing visitors", "Store listing acquisitions"],
+    headers: exportHeaders("google-play-console"),
     rows: [
       { "Date": "2026-03-01", "Traffic source": "Google Play search", "Store listing visitors": "5200", "Store listing acquisitions": "1560" },
       { "Date": "2026-03-01", "Traffic source": "Google Play explore", "Store listing visitors": "3100", "Store listing acquisitions": "279" },
