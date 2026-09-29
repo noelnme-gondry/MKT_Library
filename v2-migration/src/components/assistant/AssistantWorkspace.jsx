@@ -941,9 +941,28 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
   // 담으므로 그 위의 수치 줄은 뺀다(같은 숫자 두 번 금지 — 결과 카드와 같은 규칙).
   const focusFigure = focusResult?.visualizations?.[0] || null;
   const focusStats = ["period-comparison", "mix-rate"].includes(focusFigure?.options?.variant) ? [] : focusResult?.verdict.stats?.slice(0, 3) || [];
+  // 결론 제목(무엇이 바뀌었나) 바로 밑에 "어디서 · 다음"을 둔다. 결론의 행동이 가리키는 분석(nextToolId)이
+  // 같은 파일로 이미 계산돼 있으면, 버튼 뒤에 숨기지 않고 그 판정과 그 판정의 행동을 그대로 올린다
+  // (2026-09-29: 홈 제목은 "왜 바뀌었고 다음엔 뭘"인데 첫 화면은 "무엇"만 말했다). 라벨은 "왜"가 아니라
+  // "어디서"다 — 분해는 관측된 변화가 어디서 났는지 말할 뿐 원인을 식별하지 않는다(5-21 caveat, §8).
+  const traceItem = focusResult?.verdict?.nextToolId
+    ? currentResults.find(({ result: item, queueItem }) => item.toolId === focusResult.verdict.nextToolId && queueItem?.result?.status === "success")
+    : null;
+  const trace = traceItem?.queueItem.result || null;
+  const traceStat = trace && ((trace.verdict.stats || []).find(stat => stat.id === trace.verdict.primaryStatId) || null);
   const conclusion = focusResult && <section className="workspace-next-action" aria-label={C.primaryAction}>
     <span className="sr-only">{locale === "en" ? "Start here" : "먼저 확인할 행동"}</span>
     <h3>{focusResult.verdict.headline}</h3>
+    {trace && <dl className="workspace-next-action__trace">
+      <div>
+        <dt>{locale === "en" ? "Where" : "어디서"}</dt>
+        <dd>{trace.verdict.headline}{traceStat && <> <b className="tnum">{formatResultStat(traceStat, locale, dataCurrency)}</b></>}</dd>
+      </div>
+      {trace.verdict.action && <div>
+        <dt>{locale === "en" ? "Next" : "다음"}</dt>
+        <dd>{trace.verdict.action}</dd>
+      </div>}
+    </dl>}
     {summaryHead && focusStats.length > 0 && <dl className="result-sheet__stats">{focusStats.map(stat => <div key={stat.id}><dt>{stat.label}</dt><dd className="tnum">{formatResultStat(stat, locale, dataCurrency)}</dd></div>)}</dl>}
     {focusFigure && <section ref={focusFigureRef} className="workspace-next-action__figure" aria-label={focusFigure.question}>
       <div className="workspace-next-action__figure-head">
@@ -957,7 +976,9 @@ export default function AssistantWorkspace({ csvData, locale = "ko", getTitle, o
       </div>
       <ResultVisualization visualization={focusFigure} locale={locale} currency={dataCurrency} />
     </section>}
-    <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>
+    {/* "어디서 · 다음"이 위에서 이 행동에 이미 답했으면 같은 안내를 다시 적지 않는다. 근거 카드를 여는
+        버튼(renderNextStep)은 그대로 둔다 — 조건부로 부르면 react-hooks/refs가 오탐한다. */}
+    {!trace && <p className="workspace-next-action__instruction">{focusResult.verdict.action}</p>}
     {renderNextStep(focusResult)}
     <button type="button" className="workspace-next-action__open" onClick={() => openTool(focusResult.toolId)}>{locale === "en" ? "See details in the tool" : "도구에서 자세히 보기"}<span aria-hidden="true"> →</span></button>
   </section>;

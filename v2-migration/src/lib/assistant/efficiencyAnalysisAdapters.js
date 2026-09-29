@@ -1,6 +1,7 @@
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
-import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { getMappedRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { PVM_MATH } from "@/utils/pvmMath";
+import { pvmChannelBreakdown, pvmKeys, pvmPeriods } from "./pvmChannelDriver";
 import { ALLOC_MATH } from "@/utils/allocationMath";
 import { budgetShiftFigure, mixRateFigure, unitCostGapFigure } from "./coreFigures";
 import {
@@ -22,7 +23,6 @@ import {
 import { ANALYSIS_RESULT_STATUS, createAnalysisResult } from "./analysisResultContract";
 
 const EFFICIENCY_TOOL_IDS = Object.freeze(["5-2", "5-21", "5-22", "5-3"]);
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function tr(locale, ko, en) {
   return locale === "en" ? en : ko;
@@ -135,26 +135,6 @@ function dashboardAdapter(input) {
   });
 }
 
-function pvmPeriods(csvData, filterState = {}) {
-  const rows = getMonFilteredRows(csvData, filterState)
-    .map((row) => ({
-      ...row,
-      spend: row.spend ?? row.cost ?? 0,
-      campaign_id: row.campaign_id ?? row.campaign_name,
-      _time: Date.parse(`${row.date}T00:00:00Z`),
-    }))
-    .filter((row) => Number.isFinite(row._time));
-  if (!rows.length) return null;
-  const lastTime = rows.reduce((max, row) => Math.max(max, row._time), -Infinity);
-  const dateAt = (offset) => new Date(lastTime - offset * DAY_MS).toISOString().slice(0, 10);
-  return {
-    periodA: { start: dateAt(13), end: dateAt(7) },
-    periodB: { start: dateAt(6), end: dateAt(0) },
-    prior: rows.filter((row) => row._time >= lastTime - 13 * DAY_MS && row._time < lastTime - 6 * DAY_MS),
-    recent: rows.filter((row) => row._time >= lastTime - 6 * DAY_MS && row._time <= lastTime),
-  };
-}
-
 function pvmAdapter(input) {
   const { csvData, inputSignature, mappingSignature, locale, options } = resultInput(input);
   requireSignatures({ inputSignature, mappingSignature });
@@ -178,12 +158,7 @@ function pvmAdapter(input) {
       manifest: { engine: "PVM_MATH", resultField, status: "ABSTAIN" },
     });
   }
-  const keys = {
-    ch: "channel",
-    cmp: fields.has("campaign_id") || fields.has("campaign_name") ? "campaign_id" : null,
-    cr: fields.has("creative_id") ? "creative_id" : null,
-    resultField,
-  };
+  const keys = pvmKeys(fields, resultField);
   const contract = PVM_MATH.inspectFinestInputs(periods.prior, periods.recent, keys);
   if (!contract.ok) {
     return noResult({
@@ -194,21 +169,15 @@ function pvmAdapter(input) {
       manifest: { engine: "PVM_MATH", resultField, status: "NOT_IDENTIFIED", reasonCode: contract.code, invalidCellCount: contract.invalidCells?.length || 0 },
     });
   }
-  const decomposition = PVM_MATH.decomposeFinest(periods.prior, periods.recent, keys);
-  if (!decomposition) {
+  const breakdown = pvmChannelBreakdown({ prior: periods.prior, recent: periods.recent, keys, unspecifiedLabel: tr(locale, "미지정", "Unspecified") });
+  if (!breakdown) {
     return noResult({
       toolId: "5-21", inputSignature, mappingSignature, locale,
       headline: tr(locale, "비교 기간의 성과가 0이어서 단가 변동을 분해할 수 없습니다.", "Outcomes are zero in a comparison period, so unit-cost variation cannot be decomposed."),
       manifest: { engine: "PVM_MATH", resultField, status: "ABSTAIN" },
     });
   }
-  const byChannel = PVM_MATH.rollup(
-    decomposition.finest,
-    (row) => row.chKey || tr(locale, "미지정", "Unspecified"),
-    decomposition.Result1,
-    decomposition.Result2,
-  ).map((row) => ({ entity: row.key, mix: safeNumber(row.mix), rate: safeNumber(row.rate), contribution: safeNumber(row.contribution) }));
-  const driver = [...byChannel].sort((a, b) => Math.abs(b.contribution || 0) - Math.abs(a.contribution || 0))[0] || null;
+  const { decomposition, byChannel, driver } = breakdown;
   const metric = resultField === "actions" ? "CPA" : "CPI";
   // 지목한 채널만 걸러 주간 점검(일별 추이)으로 여는 길. 필터는 행의 채널 값과 정확히 같을 때만
   // 건다 — 채널이 비어 "미지정"으로 묶인 행은 필터로 다시 고를 수 없다.

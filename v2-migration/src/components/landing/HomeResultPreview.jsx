@@ -2,12 +2,19 @@ import { useMemo } from "react";
 import Image from "next/image";
 import { compareSamplePerformance } from "@/utils/sampleSpendPreview";
 import { buildDemoCsv } from "@/utils/demoData";
+import { buildSampleJourney } from "@/lib/sampleJourney";
+import { pvmTopDriver } from "@/lib/assistant/pvmChannelDriver";
 
 // The preview and its launch button use the same deterministic sample source.
 
 export default function HomeResultPreview({ locale, onTrySample }) {
   const result = useMemo(() => compareSamplePerformance(buildDemoCsv("efficiency").raw), []);
   const en = locale === "en";
+  // "어디서 바뀌었나" 한 줄 — 샘플을 누르면 결과 화면의 성과 변동 원인(5-21)이 같은 입력·같은 함수로
+  // 같은 채널을 지목한다(pvmChannelDriver). 계산할 수 없으면 줄을 그리지 않는다.
+  const driver = useMemo(() => {
+    try { return pvmTopDriver(buildSampleJourney(en ? "en" : "ko"), { resultField: "actions", unspecifiedLabel: en ? "Unspecified" : "미지정" }); } catch { return null; }
+  }, [en]);
   const money = value => `${Math.round(value).toLocaleString(en ? "en-US" : "ko-KR")} ${en ? "KRW" : "원"}`;
   const percent = value => value == null ? (en ? "Unavailable" : "추정 불가") : `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
   // 결과 화면과 같은 범위(유료 채널 전체)를 보여 준다 — 샘플을 누르면 이 숫자 그대로 이어진다.
@@ -35,6 +42,11 @@ export default function HomeResultPreview({ locale, onTrySample }) {
       </div>
       <Image src="/assets/dochi/dochi-present-results.png" width={72} height={72} alt="" />
     </div>
+    {driver && <p className="home-sample-trace">
+      <span>{en ? "Largest contribution to the change" : "변화 기여가 가장 큰 채널"}</span>
+      <strong>{driver.entity}</strong>
+      <b className="tnum">{`${driver.contribution >= 0 ? "+" : "−"}${money(Math.abs(driver.contribution))}`}</b>
+    </p>}
     <p className="home-sample-context">{en ? "CPA = ad spend ÷ key actions" : "CPA = 광고비 ÷ 핵심행동 수"}</p>
     {/* 홈에서는 바로 옆 히어로 버튼이 같은 샘플을 연다 — 같은 버튼을 두 번 두지 않는다(2026-09-24). */}
     {onTrySample && <button type="button" className="ab-button" onClick={onTrySample}>{en ? "Explore a sample" : "샘플로 체험하기"} →</button>}

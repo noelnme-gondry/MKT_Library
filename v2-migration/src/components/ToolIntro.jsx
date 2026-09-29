@@ -1,4 +1,5 @@
 import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
+import { toolDisplayTitle } from "@/lib/toolIndex";
 
 const INTRO = {
   "5-4": {
@@ -63,9 +64,12 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
   const copy = INTRO[toolId]?.[localeKey] || (searchContent ? [searchContent.h1, searchContent.intro] : null);
   const T = HEADER_COPY[localeKey];
   if (!copy) return null;
+  // 제목은 레지스트리 이름, INTRO의 검색어형 이름은 제목 밑 한 줄(toolDisplayTitle).
+  const { name, alias } = toolDisplayTitle(toolId, localeKey, copy[0]);
   return <header className="tool-context-header tool-instrument-header" aria-label={T.aria} data-tool-id={toolId}>
     <div className="tool-instrument-header__copy">
-      <h1 className="tool-context-header__title tool-instrument-header__title">{copy[0]}</h1>
+      <h1 className="tool-context-header__title tool-instrument-header__title">{name}</h1>
+      {alias && <p className="tool-instrument-header__alias">{alias}</p>}
       <p className="tool-instrument-header__description">{copy[1]}</p>
     </div>
   </header>;

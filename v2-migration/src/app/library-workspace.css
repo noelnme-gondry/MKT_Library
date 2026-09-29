@@ -923,6 +923,15 @@
 .workspace-next-action__figure-head > p { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); font-weight: 600; }
 .workspace-next-action__open { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
 .workspace-next-action__open:hover { text-decoration: underline; }
+/* 결론 제목 밑 "어디서 · 다음" 두 줄 — 상자 없이 라벨 열 + 문장 열(AssistantWorkspace conclusion). */
+.workspace-next-action__trace { display: grid; gap: 8px; margin: 0; }
+.workspace-next-action__trace > div { display: grid; grid-template-columns: 4.5em minmax(0, 1fr); gap: 4px 12px; align-items: baseline; }
+.workspace-next-action__trace dt { color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; }
+.workspace-next-action__trace dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0; font-size: var(--fs-md); line-height: 1.6; }
+.workspace-next-action__trace dd b { font-weight: 700; }
+@media (max-width: 480px) {
+  .workspace-next-action__trace > div { grid-template-columns: minmax(0, 1fr); }
+}
 .app .content .result-sheet__stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 4px 0; border-top: 1px solid var(--library-border, var(--border)); border-bottom: 1px solid var(--library-border, var(--border)); }
 .app .content .result-sheet__stats > div { display: grid; gap: 2px; padding: 12px 0; }
 .app .content .result-sheet__stats > div + div { padding-left: 16px; border-left: 1px solid var(--library-border, var(--border)); }
@@ -931,15 +940,17 @@
 .app .content .result-sheet__running { margin: 0; padding-top: 18px; border-top: 1px solid var(--library-border, var(--border)); color: var(--text-secondary); }
 .app .content .result-sheet .dochi-result-workspace__global-controls { padding: 16px 0 0; border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; }
 
-/* "다른 데이터가 필요한 분석"은 흰 면 하나 안의 목록. 줄마다 이름 · 필요한 값 한 문장 · (샘플이면) 예시로 열기. */
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__grid { grid-template-columns: 1fr; gap: 0; border: 1px solid var(--library-border, var(--border)); border-radius: var(--radius-lg); background: var(--library-surface, var(--bg-1)); overflow: hidden; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__cell + .tool-index__cell,
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__panel-row + .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; min-height: 0; padding: 14px 20px; border: 0; border-radius: 0; background: transparent; }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip > * { grid-column: 1; }
+/* "다른 데이터가 필요한 분석"은 열린 격자 — 바깥 상자 없이 칸마다 윗선 하나. 칸마다 이름 · 필요한 값 한 문장 ·
+   (샘플이면) 예시로 열기. 한 줄씩 세로로 쌓던 목록은 16개가 약 1,850px를 차지해 그 아래 다음 단계가
+   화면 밖으로 밀렸다(2026-09-29). 상세는 누른 칸 다음 줄 전체(.tool-index__panel-row, §12.31). */
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__cell { border-top: 1px solid var(--library-border, var(--border)); }
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { grid-template-columns: minmax(0, 1fr); gap: 4px; min-height: 0; padding: 14px 0; border: 0; border-radius: 0; background: transparent; }
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip > * { grid-column: 1; grid-row: auto; }
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__cta { justify-self: start; }
 .app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip .tool-index__stage-tag { display: none; }
 .app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip:hover .tool-index__q { color: var(--primary); }
-.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 20px; }
+.app .content .dochi-workspace .tool-index__stage--blocked .tool-index__panel { border: 0; border-top: 1px solid var(--library-border, var(--border)); border-radius: 0; background: transparent; padding: 16px 0; }
 .tool-index__need { font-size: var(--fs-sm); color: var(--text-secondary); }
 .tool-index__need > span { color: var(--text-muted); }
 .app .content .tool-index__chip .tool-index__cta { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--primary); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
@@ -952,7 +963,6 @@
   .app .content .result-sheet .workspace-next-action > .btn { justify-self: stretch; justify-content: center; }
   .app .content .result-sheet__stats > div + div { padding-left: 10px; }
   .app .content .result-sheet__stats dd { font-size: var(--fs-md); }
-  .app .content .dochi-workspace .tool-index__stage--blocked .tool-index__chip { padding: 14px 16px; }
 }
 
 .app :is(.workspace-next-action__figure, .dochi-workspace__result-primary) { container-type: inline-size; }
@@ -1058,6 +1068,11 @@
 .home-sample-change dl { display: flex; align-items: baseline; gap: 10px; margin: 0; }
 .home-sample-change dt { font-size: var(--fs-sm); color: var(--library-muted); }
 .home-sample-change dd { margin: 0; font-size: var(--fs-xl); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* 샘플 카드의 "어디서" 한 줄 — 결과 화면 성과 변동 원인과 같은 계산(pvmChannelDriver). */
+.home-sample-trace { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 14px 0 0; font-size: var(--fs-sm); line-height: 1.6; }
+.home-sample-trace > span { color: var(--library-muted); }
+.home-sample-trace > strong { font-weight: 600; }
+.home-sample-trace > b { font-weight: 700; font-variant-numeric: tabular-nums; }
 .home-sample-change p { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--library-muted); }
 .home-sample-change img { flex: none; width: 72px; height: 72px; object-fit: contain; }
 

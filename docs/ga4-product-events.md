@@ -57,7 +57,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `result_download_attempted` | 다운로드 버튼을 누른 순간(게이트 판정 **전**) | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
 | `result_downloaded` | 파일 생성·다운로드 요청 성공 | `tool_id`, `download_type`, `source`, `state=free\|paid`, `locale` |
 | `result_download_failed` | 파일 생성이 예외로 실패 | `tool_id`, `download_type`, `source`, `state=실패 사유`, `locale` |
-| `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 | `tool_id`, `interaction_source=landing|csv_guide|start`, `placement`, `locale` |
+| `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 또는 예시 링크(`?example=1`) 진입 | `tool_id`, `interaction_source=landing|csv_guide|start|tool|example_link`, `placement`, `locale` |
 | `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `interaction_source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
 | `real_result_viewed` | **활성화.** 위 이벤트 중 `interaction_source≠demo` 이고 `result_state=ready` 인 경우만 파생. 같은 도구·언어는 페이지 세션당 1회(도치 작업대와 도구 카드가 같은 계산을 보여도 1회). 실패·보류·샘플은 포함하지 않는다. GA 주요 이벤트 후보 | `tool_id`, `interaction_source`, `analysis_type`, `result_state=ready`, `placement`, `locale`, (`content_slug`·`content_type` — 30분 귀속 안) |
 | `sample_report_downloaded` / `sample_report_download_failed` | 구독 페이지에서 무료 샘플 Word·Excel 생성 성공/실패. 실제 분석 다운로드(`result_downloaded`)와 합산하지 않는다 | `download_type=docx\|xlsx`, `interaction_source=sample_report`, `placement=report_preview`, `state=build_failed`(실패), `locale` |

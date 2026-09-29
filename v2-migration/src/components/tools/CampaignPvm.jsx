@@ -684,6 +684,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       <div className="tab-pane active" id="tab-pvm">
         <ToolPageShell
           locale={locale}
+          titleToolId={C.uploaderToolId}
           title={C.title}
         >
           <section className="block tool-upload-entry" id="s-prep" aria-label={tr("데이터 준비", "Data preparation")}>
@@ -1105,6 +1106,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     <div className="tab-pane active" id="tab-pvm">
       <ToolPageShell
         locale={locale}
+        titleToolId={C.uploaderToolId}
         title={C.title}
         chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
         toc={buildPvmToc(C, locale)}

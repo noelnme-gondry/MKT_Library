@@ -19,6 +19,8 @@ import {
 import ComparisonConditions, { useComparisonConditions, comparisonConditionsNote } from "@/components/ds/ComparisonConditions";
 import { comparisonConditionsTable } from "@/lib/analysis-results/comparisonConditions";
 import FigurePngButton from "@/components/ds/FigurePngButton";
+import { toolDisplayTitle } from "@/lib/toolIndex";
+import useExampleLink from "@/components/ds/useExampleLink";
 
 const COPY = {
   ko: {
@@ -118,6 +120,7 @@ function fmtNumber(value) {
 export default function PaidOrganicTrend({ locale = "ko" }) {
   const isHydrated = useClientReady();
   const C = COPY[locale] || COPY.ko;
+  const pageTitle = toolDisplayTitle("5-18-paid-organic", locale, C.title);
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
@@ -285,9 +288,14 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
       }
     : null;
 
+  // 버튼과 예시 링크(?example=1)가 같은 준비를 탄다. 저장소가 붙기 전(하이드레이션 전)이나 이미 파일이 있으면 링크는 아무것도 덮지 않는다.
+  const runExample = () => setCsvData(buildPaidOrganicTrendDemo(locale));
+  useExampleLink(isHydrated && !hasData ? runExample : null);
+
   return (
     <div className="paid-organic-tool" data-hydrated={isHydrated ? "true" : "false"}>
-      <h1 className="page-title">{C.title}</h1>
+      <h1 className="page-title">{pageTitle.name}</h1>
+      {pageTitle.alias && <p className="tool-instrument-header__alias">{pageTitle.alias}</p>}
       <p className="page-deck">{C.deck}</p>
 
       {!hasData ? (
@@ -305,7 +313,7 @@ export default function PaidOrganicTrend({ locale = "ko" }) {
           </div>
           <div className="paid-organic-upload__actions">
             <button type="button" disabled={!isHydrated} className="btn primary" onClick={() => fileRef.current?.click()}>{C.upload}</button>
-            <button type="button" disabled={!isHydrated} className="btn" onClick={() => setCsvData(buildPaidOrganicTrendDemo(locale))}>{C.demo}</button>
+            <button type="button" disabled={!isHydrated} className="btn" onClick={runExample}>{C.demo}</button>
           </div>
           <input ref={fileRef} disabled={!isHydrated} type="file" accept=".csv,text/csv" hidden onChange={(event) => readFile(event.target.files?.[0])} />
           {uploadError && <p className="paid-organic-upload__error" role="alert">{uploadError}</p>}

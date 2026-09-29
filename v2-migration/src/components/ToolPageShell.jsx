@@ -2,7 +2,7 @@
 import React, { useId } from "react";
 import ToolBrief from "@/components/ds/ToolBrief";
 import JourneyProgress from "@/components/ds/JourneyProgress";
-import { toolIndexEntry } from "@/lib/toolIndex";
+import { toolDisplayTitle } from "@/lib/toolIndex";
 
 /**
  * ToolPageShell — 5-x 분석 도구 공용 레이아웃 래퍼.
@@ -20,12 +20,15 @@ const COPY = {
   en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleLevel = 1 }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleToolId = "", titleLevel = 1 }) {
   const T = COPY[locale] || COPY.ko;
   // 도구 이름의 SSOT는 스토어 IA다. 컴포넌트가 제목을 직접 넘기면 리네임 때
   // 두 곳이 갈린다 — toolId가 있으면 레지스트리 이름이 이긴다.
-  const registered = toolId ? toolIndexEntry(toolId, locale) : null;
-  const resolvedTitle = registered?.name || title;
+  // 컴포넌트가 넘긴 이름이 다르면 제목 밑 한 줄로 남긴다(toolDisplayTitle).
+  // titleToolId는 이름만 레지스트리에서 받는다(진행 표시·ToolBrief는 붙이지 않음).
+  const nameToolId = toolId || titleToolId;
+  const { name: registeredName, alias } = nameToolId && typeof title !== "object" ? toolDisplayTitle(nameToolId, locale, title || "") : { name: "", alias: null };
+  const resolvedTitle = registeredName || title;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
   const titleId = useId();
@@ -44,6 +47,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
             {hasTitle && (
               <div className="tool-instrument-header__heading">
                 <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{resolvedTitle}</TitleTag>
+                {alias && <p className="tool-instrument-header__alias">{alias}</p>}
               </div>
             )}
             {chips && <div className="tool-instrument-header__status">{chips}</div>}

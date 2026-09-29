@@ -58,7 +58,7 @@ tools:
 
 # 에이전트 전용 참고사항
 
-- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
+- 예시는 곧장 결과(`lib/toolDemo`, 안내 창 없음 — `e2e/example-straight-to-result.spec.js`). 링크로도 연다: 도구 URL `?example=1`(`lib/exampleLink` + `ds/useExampleLink`, 예시 버튼과 같은 핸들러를 라우트·기기 저장 부팅 뒤 한 번 — `e2e/example-link.spec.js`). 도구 제목은 목록 이름, 검색어형 이름은 제목 밑 한 줄(`toolDisplayTitle`). 원본 통화는 묻지 않고 기본값으로 채움(`lib/sourceCurrencyPreference`). 이름: 모아 보는 곳=내 프로젝트, 만드는 버튼=다음 마케팅 프로젝트로 만들기.
 - 도구 추가: `IA` → `routeMap` → `PageClient` 디스패치 → `TOOL_REQUIRED/OPTIONAL_FIELDS` → `toolGroups` → `TOOL_GUIDE` → `demoData` → 컴포넌트 → `sitemap` → 골든+스모크. 상세: §12.1.
 - 계산 게이트: `analyzedByGroup`/`isGroupAnalyzed` 뒤에서만 무거운 compute. 토글은 lookup만(§4.4).
 - 통계 표준: 순수 `*Math.js` + 골든 + 결정론(`Math.random` 금지, §8).
@@ -81,6 +81,7 @@ tools:
 - **표시 전용 선언을 게이트 시그에 넣지 말 것**: 통화 선언(숫자 불변)이 `computeAnalyzeSig`에 있어 토글 한 번에 분석 결과가 통째로 사라졌다(§7).
 - **소셜 카드는 `public/og-card.png` 한 장**(`scripts/build-og-card.mjs`로 재생성): 빌드 타임에 폰트를 받아 카드를 그리면 잘린 응답 하나로 배포 빌드가 죽는다. 화면 밖 자산은 **파일 실재를 테스트가 본다**(`app/ogCard.test.js`, §7).
 - **안 찍은 이벤트는 영영 답할 수 없는 질문이 된다**: "이 기능을 쓰는 사람이 몇인가"는 계측이 없으면 사후에 못 센다. 저장·완료처럼 여러 화면이 공유하는 행동은 **단일 통과 지점**에서 한 이름으로 찍고(표면별 이벤트와 합산 금지), 성공만이 아니라 실패도 범주형 코드로 찍을 것(원문 메시지엔 사용자 데이터가 섞인다).
+- **자동으로 스토어에 쓰는 코드는 부팅이 끝난 뒤에 돌릴 것**: 자식 effect는 부모의 `setCurrentRouteId`보다 먼저 돌고, 기기 저장 부팅(`initializeProjects`)은 비동기로 늦게 끝난다. 버튼은 사람이 누르는 사이 둘 다 끝나서(e2e도 클릭을 재시도해서) 안 보이지만, 링크 자동 실행은 21개 중 5~7개가 매번 다른 도구로 빈 화면이었다(§7).
 - **계측·광고 스크립트는 운영 호스트에서만**(`lib/analyticsHost.js`+`useAnalyticsEnabled`): 가드가 없으면 `npm run dev` 화면 확인이 운영 GA4에 쌓이고, `window.gtag` 하나를 제품 이벤트 44종이 공유하므로 퍼널 지표까지 부풀려진다. 정적 프리렌더라 **빌드타임 env로는 못 가른다** — 호스트로 판정할 것.
 
 # 마지막 체크 (모든 커밋 직전)
