@@ -151,7 +151,15 @@ async function dochiToWeekly(page, locale) {
     if (locale === "en") localStorage.setItem("mkt-library-theme", "light");
   }, locale);
   await page.goto(en ? "/en" : "/");
-  await expect(page.locator(".header-decision-inbox__label")).toBeVisible();
+  // 홈에서 리뷰 입구가 보여야 한다. 폰(≤480px) 헤더는 한 줄이라 입구가 ••• 메뉴 안에 있다(mobile-header.spec.js).
+  if ((page.viewportSize()?.width || 0) <= 480) {
+    await page.locator(".header-utility-menu__trigger").click();
+    await expect(page.locator(".utility-popover-panel .header-utility-review")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".utility-popover-panel")).toHaveCount(0);
+  } else {
+    await expect(page.locator(".header-decision-inbox__label")).toBeVisible();
+  }
   await expect(page.locator("#dochi-upload")).not.toBeVisible();
 
   const hero = page.getByRole("navigation", { name: en ? "Start a task" : "바로 시작할 작업" });

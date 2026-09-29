@@ -221,8 +221,12 @@ test("운영 대시보드 결과에서 원본·수식이 든 XLSX를 받는다",
   const resultCard = page.locator(".dashboard-briefing .result-action-card");
   await expect(resultCard).toBeVisible();
   const exportRequests = [];
+  // 내보내기가 데이터를 서버로 보내지 않는지를 본다(§2.2). Next의 라우트 프리페치(본문 없는 GET ?_rsc=)는
+  // 화면에 링크가 보일 때 페이지 코드를 받아 오는 것이라 사용자 데이터가 실리지 않는다 — 폰 헤더에서 리뷰
+  // 링크가 메뉴로 들어가자 그 프리페치가 이 창 안으로 옮겨 와 걸렸다(2026-09-30). 그 외 요청은 전부 센다.
+  const isRoutePrefetch = (request) => request.method() === "GET" && !request.postData() && new URL(request.url()).searchParams.has("_rsc");
   const captureRequest = (request) => {
-    if (["fetch", "xhr"].includes(request.resourceType())) exportRequests.push(request.url());
+    if (["fetch", "xhr"].includes(request.resourceType()) && !isRoutePrefetch(request)) exportRequests.push(request.url());
   };
   page.on("request", captureRequest);
   try {
