@@ -14,8 +14,8 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 |---|---|---|
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
-| `blog_cta_viewed` | 글·용어의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type`, `placement=article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check`, `locale` |
-| `blog_tool_cta_clicked` | 글·용어에서 연결 도구 선택 | `tool_id`, `content_slug`, `content_type`, `placement=article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check`, `locale` |
+| `blog_cta_viewed` | 글·용어·계산기의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check\|calculator_result`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어·계산기에서 연결 도구(또는 계산기) 선택. 도구 쪽 결과 이벤트에 30분간 `content_slug`가 이어진다 | `tool_id`, `content_slug`(계산기는 계산기 slug), `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_answer_calculator\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check\|calculator_result`, `locale` |
 | `blog_section_opened` | 상단·읽기 바에서 글 안 점검으로 이동 (도구 전환 아님) | `content_slug`, `content_type`, `placement`, `locale` |
 | `blog_example_started` / `blog_example_failed` | 샘플 실행 시도 / 로딩 실패 | `tool_id`, `content_slug`, `content_type`, `placement`, `state`, `locale` |
 | `blog_sample_result_viewed` | 블로그에서 연 샘플의 실제 결과 카드 표시 | `tool_id`, `content_slug`, `content_type`, `interaction_source=demo`, `result_state`, `locale` |

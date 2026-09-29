@@ -145,6 +145,17 @@ describe("answer link placement", () => {
       locale,
     }));
   });
+
+  // 지표 글은 "cpa roas로 계산" 같은 검색어로 들어온다(2026-09 네이버). 요약 밑 한 줄이
+  // 도구가 아니라 계산기로 가야 파일 없는 독자도 바로 답을 얻는다.
+  it.each(["ko", "en"])("%s metrics article answer line opens the CPA↔ROAS calculator", (locale) => {
+    window.gtag = vi.fn();
+    const { container } = render(<ContentActionPanel locale={locale} post={{ slug: "performance-marketing-metrics" }} placement="article_answer" />);
+    const link = container.querySelector(".content-answer__action a");
+    expect(link?.getAttribute("href")).toBe(`${locale === "en" ? "/en" : ""}/calculator/cpa-roas-converter`);
+    clickWithoutNavigation(link);
+    expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ placement: "article_answer_calculator", content_slug: "performance-marketing-metrics", locale }));
+  });
 });
 
 // 노출 계측 — 클릭 0이 "안 눌렀다"인지 "안 보였다"인지 가르는 분모다.
@@ -230,6 +241,15 @@ describe("glossary calculator-first CTA", () => {
     expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
       content_slug: slug, content_type: "glossary", placement: "article_post_calculator", locale,
     }));
+  });
+
+  // 딥링크는 진단할 도구가 없다 — 대시보드로 폴백하면 읽은 내용과 다른 화면을 약속한다.
+  it.each(["ko", "en"])("%s renders no action for a term excluded from tool links", (locale) => {
+    for (const placement of ["article_answer", "article_post"]) {
+      const { container, unmount } = render(<ContentActionPanel locale={locale} term={{ slug: "deep-link" }} placement={placement} />);
+      expect(container.querySelector("a")).toBeNull();
+      unmount();
+    }
   });
 
   it("keeps the dashboard as the primary CTA where no calculator is mapped", () => {

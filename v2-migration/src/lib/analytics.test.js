@@ -87,6 +87,22 @@ describe("privacy-safe product analytics", () => {
     clock.mockRestore();
   });
 
+  it("attributes a calculator's CSV hand-off to that calculator, not to an unrelated content type", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), sessionStorage: {
+      getItem: (key) => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key),
+    } };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+    const route = { tool_id: "5-3", locale: "ko", source: "csv" };
+    trackProductEvent("blog_tool_cta_clicked", { ...route, content_slug: "cpa-roas-converter", content_type: "calculator", placement: "calculator_result" });
+    trackProductEvent("analysis_completed", route);
+    expect(window.gtag.mock.lastCall[2]).toMatchObject({ content_slug: "cpa-roas-converter", content_type: "calculator" });
+    trackProductEvent("blog_tool_cta_clicked", { ...route, content_slug: "cpa-roas-converter", content_type: "tool" });
+    trackProductEvent("analysis_completed", route);
+    expect(window.gtag.mock.lastCall[2].content_slug).toBeUndefined();
+    clock.mockRestore();
+  });
+
   it("buckets time to first result without sending an exact timestamp", () => {
     expect(productElapsedBucket(30_000)).toBe("under_1m");
     expect(productElapsedBucket(120_000)).toBe("1_3m");
