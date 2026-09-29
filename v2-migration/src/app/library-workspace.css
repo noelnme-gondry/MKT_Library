@@ -550,7 +550,8 @@
   .app .tool-index__link:is(:hover, :focus-visible) { background: var(--library-accent-surface); }
   .app .tool-index__q { font-size: 16px; }
   .app .tool-brief { background: var(--library-surface); border: 1px solid var(--library-border); border-left: 3px solid var(--library-accent); border-radius: 8px; padding: 18px 20px; }
-  .app .csv-uploader { border-color: var(--library-border); background: var(--library-surface); border-radius: 12px; }
+  /* 업로드 부품은 상자가 아니다 — 안의 점선 끌어놓기 칸이 유일한 상자다(흰 바탕을 다시 입히면 상자 안 상자, 2026-09-29). */
+  .app .csv-uploader { border-color: var(--library-border); }
   .app .csv-analysis-cta-row { padding: 18px 20px; gap: 12px 16px; border: 1px solid var(--library-border); border-radius: 9px; background: var(--library-background); }
   .app .csv-analysis-status { flex-shrink: 0; padding: 5px 9px; border-radius: 5px; background: var(--library-surface); font-size: 13px; }
   .app .csv-analysis-hint { flex: 1 1 260px; min-width: 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
@@ -623,7 +624,8 @@
   .app :is(.workspace-storage-page__toggle, .workspace-storage-page__list, .workspace-storage-page__privacy, .start-direct-actions, .policy-page__body > section, .blog-faq) { padding: 24px; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); }
   .app .workspace-storage-page__header { padding-bottom: 24px; border-bottom: 1px solid var(--library-border); }
   .app .workspace-storage-page__privacy .btn { margin: 12px 8px 0 0; }
-  .app .start-upload-panel { background: var(--library-surface); border: 1px solid var(--library-border); border-radius: 12px; }
+  /* /start 업로드 칸은 상자가 아니다 — 섹션은 열린 면이고 점선 업로드 칸 하나만 상자다. 여기서 테두리를 다시 입히자
+     좌우 여백 0인 상자 안에 점선 상자가 들어가 글자·버튼이 테두리에 붙었다(2026-09-29). */
   .app .policy-page__contact { padding: 16px 20px; background: var(--library-background); border-radius: 8px; }
   @media (max-width: 768px) {
     .app .library-plan-link { align-items: stretch; padding: 20px; }
@@ -633,6 +635,8 @@
   .table-scroll { max-width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; border: 1px solid var(--library-border); border-radius: 8px; background: var(--library-surface); margin-block: 20px; }
   .table-scroll:focus-visible { outline: 2px solid var(--library-accent); outline-offset: 3px; }
   .table-scroll table { margin: 0; width: 100%; border-collapse: collapse; }
+  /* 표 제목도 칸과 같은 안쪽 여백 — 없으면 제목만 테두리에 붙는다(디자인 규칙 hugging, 2026-09-29). */
+  .table-scroll caption { padding: 12px 16px 0; text-align: left; }
   .table-scroll :is(th, td) { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--library-border); }
   .table-scroll th { background: var(--library-background); color: var(--library-text); }
   :is(.template-detail, .compare-page, .policy-page) { width: min(860px, calc(100% - 32px)); margin: 32px auto; padding: clamp(20px, 3vw, 36px); border: 1px solid var(--library-border); border-radius: 14px; background: var(--library-surface); color: var(--library-text); }

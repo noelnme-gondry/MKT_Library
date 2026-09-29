@@ -32,9 +32,12 @@ it("never offers saving without a project", () => {
 // 현재 입력이 아래로 가면 "아래 입력을 확인한 뒤" 문구가 거짓이 되고,
 // 저장 버튼이 위로 가면 분석 전에 설정 저장을 묻는 예전 상태로 돌아간다.
 it("keeps the pre-analysis context and the post-result actions in separate slots", () => {
-  const { container: top } = render(<AnalysisSetupBar toolId="5-2" slot="context" />);
+  useAppStore.getState().setCurrentRouteId("5-21");
+  const { container: top } = render(<AnalysisSetupBar toolId="5-21" slot="context" />);
   expect(top.querySelector(".analysis-setup__context")).toBeTruthy();
   expect(top.querySelector("button")).toBeNull();
+  // 기간 필터는 걸렸을 때만 말한다 — "제한 없음 — 제한 없음"을 쓰지 않는다.
+  expect(top.textContent).not.toMatch(/제한 없음/);
 
   const { container: bottom } = render(<AnalysisSetupBar toolId="5-2" slot="actions" />);
   expect(bottom.querySelector(".analysis-setup__context")).toBeNull();
@@ -70,4 +73,10 @@ it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)",
   useAppStore.getState().setCurrentRouteId("5-21");
   const { container } = render(<AnalysisSetupBar toolId="5-21" locale={locale} />);
   expect(container.childElementCount).toBe(0);
+});
+
+// 운영 대시보드는 제목 줄이 "파일 · N행"을 말하므로 공통 줄을 한 번 더 두지 않는다(2026-09-29).
+it("leaves the data line to the dashboard title row", () => {
+  const { container } = render(<AnalysisSetupBar toolId="5-2" slot="context" />);
+  expect(container.querySelector(".analysis-setup__context")).toBeNull();
 });

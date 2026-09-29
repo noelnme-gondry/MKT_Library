@@ -1,7 +1,8 @@
 "use client";
 import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
-import { getMappedRows } from "@/utils/dashboardAggregator";
+import { effectiveDenomBasis, getMappedRows, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
+import { sourceCurrencyOf } from "@/utils/format";
 import DateRangePicker from "@/components/ds/DateRangePicker";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 import AnalysisControlBar from "./AnalysisControlBar";
@@ -14,9 +15,16 @@ const FILTER_BAR_COPY = {
     country: "국가",
     channel: "채널",
     source: "소스",
-    reset: "초기화",
-    all: (n) => `전체 (${n})`,
-    selectedCount: (n) => `${n}개 선택됨`,
+    platform: "플랫폼",
+    reset: "필터 초기화",
+    all: "전체",
+    selectedCount: (n) => `${n}개`,
+    scope: "보는 범위",
+    allDates: "전체 기간",
+    change: "조건 바꾸기",
+    close: "조건 닫기",
+    basis: { installs: "설치 기준", actions: "가입 기준" },
+    currency: { KRW: "원(₩)", USD: "달러($)" },
   },
   en: {
     filterTitle: "Filters",
@@ -25,11 +33,23 @@ const FILTER_BAR_COPY = {
     country: "Country",
     channel: "Channel",
     source: "Source",
-    reset: "Reset",
-    all: (n) => `All (${n})`,
+    platform: "Platform",
+    reset: "Reset filters",
+    all: "All",
     selectedCount: (n) => `${n} selected`,
+    scope: "Viewing",
+    allDates: "All dates",
+    change: "Change settings",
+    close: "Close settings",
+    basis: { installs: "Installs basis", actions: "Actions basis" },
+    currency: { KRW: "KRW (₩)", USD: "USD ($)" },
   },
 };
+
+function multiSelectValue(selected, T) {
+  if (selected == null || selected.size === 0) return T.all;
+  return selected.size === 1 ? String([...selected][0]) : T.selectedCount(selected.size);
+}
 
 // 다중 선택 드롭다운(체크박스) — index.html mon-multisel 이식.
 // value=null → 전체(필터 미적용). value=Set → 선택 항목만.
@@ -48,9 +68,8 @@ function MultiSelect({ label, options, selected, onChange, T }) {
   }, [open]);
 
   const isAll = selected == null || selected.size === 0;
-  // 하나만 걸렸으면 그 이름을 쓴다 — 결과 화면에서 "Meta AAP 일별 추이"로 왔는데 "1개 선택됨"만 보이면
-  // 무엇으로 걸러졌는지 펼쳐 봐야 안다(2026-09-28).
-  const btnLabel = isAll ? T.all(options.length) : selected.size === 1 ? String([...selected][0]) : T.selectedCount(selected.size);
+  // 버튼이 이름과 걸린 값을 함께 말한다("채널 Meta AAP"). 예전에는 "세그먼트 1" 묶음 뒤에 값이 숨어 있었다(2026-09-29).
+  const btnValue = multiSelectValue(selected, T);
 
   const toggle = (val) => {
     // selected===null은 "전체 선택" 의미 — 여기서 빈 Set으로 시작하면 클릭한 항목
@@ -64,18 +83,19 @@ function MultiSelect({ label, options, selected, onChange, T }) {
   };
 
   return (
-    <div className="mon-filter-item" style={{ alignItems: "center", gap: "4px" }}>
-      <span className="mon-filter-label">{label}</span>
+    <div className="mon-filter-item">
       <div className="mon-multisel" ref={ref} style={{ position: "relative" }}>
         <button
-          className="mon-multisel-btn"
+          className={`mon-multisel-btn${isAll ? "" : " is-active"}`}
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-controls={listId}
           aria-haspopup="listbox"
         >
-          <span className="mon-multisel-btn__value">{btnLabel}</span> <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
+          <span className="mon-multisel-btn__label">{label}</span>
+          <span className="mon-multisel-btn__value">{btnValue}</span>
+          <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
         </button>
         {open && (
           <div className="mon-multisel-list" id={listId} role="listbox" aria-label={label} aria-multiselectable="true">
@@ -102,6 +122,9 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const setDashboardFilter = useAppStore((state) => state.setDashboardFilter);
+  const denomBasis = useAppStore((state) => state.denomBasis);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const controlsId = useId();
 
   const { dates, platforms, countries, channels, sources, hasInstalls, hasActions } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0)
@@ -135,13 +158,6 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     };
   }, [csvData]);
 
-  const activeSegmentCount = [
-    dashboardFilter.platforms,
-    dashboardFilter.countries,
-    dashboardFilter.channels,
-    dashboardFilter.sources,
-  ].filter((value) => value && value.size > 0).length;
-
   if (!dates.length && !platforms.length && !countries.length && !channels.length && !sources.length && !hasInstalls && !hasActions)
     return null;
 
@@ -156,7 +172,16 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   if (dashboardFilter.countries && dashboardFilter.countries.size > 0) activeCount++;
   if (dashboardFilter.channels && dashboardFilter.channels.size > 0) activeCount++;
   if (dashboardFilter.sources && dashboardFilter.sources.size > 0) activeCount++;
-  const segmentFilterCount = [platforms, countries, channels, sources].filter((options) => options.length > 0).length;
+
+  // 축마다 버튼 하나. 값이 하나뿐인 축은 거를 수 없으므로 숨긴다 — 단, 이미 걸려 있으면(도구 이동으로 넘어온 필터)
+  // 걸린 사실이 보이도록 남긴다(2026-09-29).
+  const dimensions = [
+    { key: "platforms", label: T.platform, options: platforms },
+    { key: "countries", label: T.country, options: countries },
+    { key: "channels", label: T.channel, options: channels },
+    { key: "sources", label: T.source, options: sources },
+  ].map((dim) => ({ ...dim, selected: dashboardFilter[dim.key] && dashboardFilter[dim.key].size > 0 ? dashboardFilter[dim.key] : null }))
+    .filter((dim) => dim.options.length >= 2 || dim.selected);
 
   const handleReset = () => {
     setDashboardFilter({
@@ -173,89 +198,72 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     });
   };
 
+  // 폰에서는 컨트롤을 접고 지금 보는 범위를 한 줄로 말한다. 위에 고정되는 영역이 결과를 밀어내지 않게(2026-09-29).
+  const period = dashboardFilter.dateStart || dashboardFilter.dateEnd
+    ? `${dashboardFilter.dateStart || minDate} ~ ${dashboardFilter.dateEnd || maxDate}`
+    : T.allDates;
+  const basisKey = hasUsableDenomBasis(csvData, "installs") || hasUsableDenomBasis(csvData, "actions")
+    ? (effectiveDenomBasis(csvData, denomBasis) === "actions" ? "actions" : "installs")
+    : null;
+  const summaryParts = [
+    { text: period, active: Boolean(dashboardFilter.dateStart || dashboardFilter.dateEnd) },
+    ...dimensions.filter((dim) => dim.selected).map((dim) => ({ text: `${dim.label} ${multiSelectValue(dim.selected, T)}`, active: true })),
+    ...(basisKey ? [{ text: T.basis[basisKey], active: false }] : []),
+    { text: T.currency[sourceCurrencyOf(csvData)] || sourceCurrencyOf(csvData), active: false },
+  ];
+
   return (
-    <div className="dashboard-filter-bar" data-active-filter-count={activeCount}>
-      <AnalysisControlBar
-        title={locale === "en" ? "Analysis scope" : "분석 범위"}
-        activeCount={activeCount}
-        hint={locale === "en" ? "Applies to this shared CSV" : "공유 CSV를 쓰는 도구에 적용"}
-      >
-        <div className="dashboard-filter-bar__scope" role="group" aria-label={locale === "en" ? "Date and segment filters" : "날짜와 세그먼트 필터"}>
-          {dates.length > 0 && (
-            <div className="dashboard-filter-bar__date-range">
-              <DateRangePicker
-                locale={locale}
-                minDate={minDate}
-                maxDate={maxDate}
-                dateStart={dashboardFilter.dateStart}
-                dateEnd={dashboardFilter.dateEnd}
-                compareEnabled={dashboardFilter.compareEnabled}
-                comparisonStart={dashboardFilter.comparisonStart}
-                comparisonEnd={dashboardFilter.comparisonEnd}
-                comparisonPreset={dashboardFilter.comparisonPreset}
-                onApply={setDashboardFilter}
-              />
-            </div>
-          )}
-
-          {segmentFilterCount > 0 && (
-            // 걸린 세그먼트가 없으면 닫힌 채로 시작한다 — 항상 열린 섹션이면 떠 있는 목록이 결과 위를 덮는다(2026-09-24).
-            <details className="dashboard-filter-more" open={activeSegmentCount > 0}>
-              <summary>
-                {locale === "en" ? "Segments" : "세그먼트"}
-                <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>
-              </summary>
-              <div className="dashboard-filter-more__body">
-                {platforms.length > 0 && (
-                  <MultiSelect
-                    label={locale === "en" ? "Platform" : "플랫폼"}
-                    options={platforms}
-                    selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
-                    onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
-                    T={T}
-                  />
-                )}
-                {countries.length > 0 && (
-                  <MultiSelect
-                    label={T.country}
-                    options={countries}
-                    selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
-                    onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
-                    T={T}
-                  />
-                )}
-                {channels.length > 0 && (
-                  <MultiSelect
-                    label={T.channel}
-                    options={channels}
-                    selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
-                    onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
-                    T={T}
-                  />
-                )}
-                {sources.length > 0 && (
-                  <MultiSelect
-                    label={T.source}
-                    options={sources}
-                    selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
-                    onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
-                    T={T}
-                  />
-                )}
+    <div className="dashboard-filter-bar" data-active-filter-count={activeCount} data-controls-open={controlsOpen}>
+      <div className="dashboard-filter-bar__summary">
+        <p>
+          <span>{T.scope}</span>
+          {summaryParts.map((part) => <React.Fragment key={part.text}> · {part.active ? <strong>{part.text}</strong> : part.text}</React.Fragment>)}
+        </p>
+        <button type="button" className="btn dashboard-filter-bar__toggle" aria-expanded={controlsOpen} aria-controls={controlsId} onClick={() => setControlsOpen((open) => !open)}>
+          {controlsOpen ? T.close : T.change}
+        </button>
+        {activeCount > 0 && <button type="button" className="mon-filter-reset" onClick={handleReset}>{T.reset}</button>}
+      </div>
+      <div className="dashboard-filter-bar__controls" id={controlsId}>
+        <AnalysisControlBar title={locale === "en" ? "Analysis scope" : "분석 범위"}>
+          <div className="dashboard-filter-bar__scope" role="group" aria-label={locale === "en" ? "Date and segment filters" : "날짜와 세그먼트 필터"}>
+            {dates.length > 0 && (
+              <div className="dashboard-filter-bar__date-range">
+                <DateRangePicker
+                  locale={locale}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  dateStart={dashboardFilter.dateStart}
+                  dateEnd={dashboardFilter.dateEnd}
+                  compareEnabled={dashboardFilter.compareEnabled}
+                  comparisonStart={dashboardFilter.comparisonStart}
+                  comparisonEnd={dashboardFilter.comparisonEnd}
+                  comparisonPreset={dashboardFilter.comparisonPreset}
+                  onApply={setDashboardFilter}
+                />
               </div>
-            </details>
-          )}
-
-          {activeCount > 0 && (
-            <button className="copy-btn mon-filter-reset" onClick={handleReset}>
-              {T.reset}
-            </button>
-          )}
-        </div>
-        <div className="dashboard-filter-bar__display" role="group" aria-label={locale === "en" ? "Display settings" : "표시 설정"}>
-          <BasisCurrencyToggleBar locale={locale} />
-        </div>
-      </AnalysisControlBar>
+            )}
+            {dimensions.map((dim) => (
+              <MultiSelect
+                key={dim.key}
+                label={dim.label}
+                options={dim.options}
+                selected={dim.selected}
+                onChange={(set) => setDashboardFilter({ [dim.key]: set || new Set() })}
+                T={T}
+              />
+            ))}
+            {activeCount > 0 && (
+              <button type="button" className="mon-filter-reset" onClick={handleReset}>
+                {T.reset}
+              </button>
+            )}
+          </div>
+          <div className="dashboard-filter-bar__display" role="group" aria-label={locale === "en" ? "Display settings" : "표시 설정"}>
+            <BasisCurrencyToggleBar locale={locale} />
+          </div>
+        </AnalysisControlBar>
+      </div>
     </div>
   );
 }

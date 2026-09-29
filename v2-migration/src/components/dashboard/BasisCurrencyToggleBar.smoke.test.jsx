@@ -32,10 +32,16 @@ describe("BasisCurrencyToggleBar currency contract", () => {
   it("효율 도구에서는 원본 단위만 선언하고 환산을 약속하지 않는다", () => {
     const { container } = render(<BasisCurrencyToggleBar />);
 
-    expect(screen.getByText("데이터 통화")).toBeTruthy();
+    expect(screen.getByText("금액 단위")).toBeTruthy();
+    // 오해 방지 문장은 컨트롤 줄 가운데가 아니라 ⓘ 안에 있다 — 열면 보인다.
+    expect(screen.queryByText(/숫자는 환산하지 않습니다/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "금액 단위 설명" }));
     expect(screen.getByText(/숫자는 환산하지 않습니다/)).toBeTruthy();
     expect(container.querySelector(".fixed-rate-note")).toBeNull();
-    expect(screen.getByRole("button", { name: "원 ₩" }).classList.contains("active")).toBe(true);
+    // 두 칸 모두 버튼이고 선택 상태를 aria-pressed로 말한다.
+    expect(screen.getByRole("button", { name: "원 ₩" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "달러 $" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("group", { name: "금액 단위" }).querySelectorAll("button")).toHaveLength(2);
 
     fireEvent.click(screen.getByRole("button", { name: "달러 $" }));
     expect(useAppStore.getState().csvData.currency).toBe("USD");

@@ -52,6 +52,7 @@ function expectClean(result) {
   expect(result.covering, "fixed or sticky element covering content").toEqual([]);
   expect(result.offWeights, "font weights outside 400/600/700").toEqual([]);
   expect(result.nested, "box inside a box").toEqual([]);
+  expect(result.hugging, "text touching the border of its box").toEqual([]);
   expect(result.eyebrows, "small label stuck above a heading").toEqual([]);
   expect(result.misaligned, "stacked sibling boxes with different edges").toEqual([]);
   expect(result.accents, "left color bar on a filled box").toEqual([]);

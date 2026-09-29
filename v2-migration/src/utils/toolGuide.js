@@ -14,9 +14,8 @@ import { RESPONSE_SUBTOOL_IDS } from "@/lib/responseSubtoolContent";
 // }
 
 export const TOOL_GUIDE = {
+  // start-gate는 when·outcomes를 두지 않는다 — 페이지 설명문과 4단계 진행 막대가 같은 말을 이미 한다(2026-09-29).
   "start-gate": {
-    when: "CSV를 올리면 도구별 데이터 조건을 확인해 지금 가능한 분석과 가장 먼저 볼 질문을 추천합니다.",
-    outcomes: ["컬럼 자동 매핑", "가능한 분석만 판정", "가장 먼저 볼 질문 추천"],
     grain: "1행 = 원본 리포트의 한 관측치 — 일별 성과·검색어·실험군·이벤트 형식을 그대로 올려도 됩니다",
     needs: [
       { col: "date·search_term·user_id·campaign_on", label: "분석 단위", why: "날짜·검색어·사용자·집행 여부 중 파일에 맞는 기준을 찾습니다", required: false },
@@ -381,8 +380,6 @@ export const TOOL_GUIDE = {
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
   "start-gate": {
-    when: "Upload a CSV to check each tool’s data requirements, see what is runnable now, and get the first question to investigate.",
-    outcomes: ["Map columns automatically", "Check supported analyses", "Recommend the first question"],
     grain: "1 row = one observation from the source report — daily performance, search terms, experiment groups, and events are all accepted",
     needs: [
       { col: "date · search_term · user_id · campaign_on", label: "Analysis unit", why: "Finds the date, search term, user, or campaign-status key that fits this file", required: false },
