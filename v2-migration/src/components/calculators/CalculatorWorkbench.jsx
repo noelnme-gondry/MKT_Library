@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { productEventKey, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { calculateMarketingMetric, getCalculator } from "@/lib/calculators";
 
 const INTEGER = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
@@ -38,6 +39,22 @@ export default function CalculatorWorkbench({ slug, locale = "ko" }) {
   const result = useMemo(() => calculateMarketingMetric(slug, values), [slug, values]);
   const isEn = locale === "en";
   const toolHref = `${isEn ? "/en" : ""}${calculator.toolHref}`;
+  // 계산기 → CSV 분석 연결은 글·용어 CTA와 같은 이벤트로 잰다. 클릭만 있으면 "안 눌렀다"와
+  // "안 보였다"를 가를 수 없으므로 노출도 함께 보내고, 클릭은 도구 쪽 결과 이벤트까지
+  // content_slug가 이어지게 한다(analytics.withEditorialJourney).
+  const eventParams = { tool_id: calculator.toolId, content_slug: slug, content_type: "calculator", placement: "calculator_result", locale };
+  const toolLinkRef = useRef(null);
+  useEffect(() => {
+    const target = toolLinkRef.current;
+    if (!target || typeof IntersectionObserver !== "function") return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      trackProductEventOnce("blog_cta_viewed", productEventKey(slug, "calculator_result", locale), { tool_id: calculator.toolId, content_slug: slug, content_type: "calculator", placement: "calculator_result", locale });
+      observer.disconnect();
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [calculator.toolId, locale, slug, result]);
 
   return (
     <section className="calculator-workbench" aria-label={isEn ? "Calculator inputs and result" : "계산기 입력과 결과"}>
@@ -86,7 +103,7 @@ export default function CalculatorWorkbench({ slug, locale = "ko" }) {
               <span>{isEn ? "FORMULA" : "계산식"}</span>
               <code>{calculator.formula}</code>
             </div>
-            <Link href={toolHref}>{calculator.toolCta} <b aria-hidden>→</b></Link>
+            <Link ref={toolLinkRef} href={toolHref} onClick={() => trackProductEvent("blog_tool_cta_clicked", eventParams)}>{calculator.toolCta} <b aria-hidden>→</b></Link>
           </>
         ) : (
           <p>{isEn ? "Check the inputs. Percentages must leave a positive margin and all denominators must be above zero." : "입력값을 확인하세요. 이익률은 0보다 커야 하고, 목표 이익률은 매출총이익률보다 낮아야 합니다."}</p>

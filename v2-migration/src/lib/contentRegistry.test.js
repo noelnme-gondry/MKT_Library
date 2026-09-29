@@ -5,6 +5,7 @@ import {
   PUBLISHED_BLOG_TOOL_MAP,
   PUBLISHED_BLOG_GLOSSARY_MAP,
   PUBLISHED_GLOSSARY_TOOL_MAP,
+  GLOSSARY_WITHOUT_TOOL,
 } from "./contentToolRegistry";
 import { EN_BLOG_SLUGS, EN_GLOSSARY_SLUGS, localizedHref } from "./localizedHref";
 import { isRoutePublished } from "./routeMap";
@@ -32,9 +33,14 @@ describe("editorial SEO registries", () => {
     expect(Object.values(PUBLISHED_BLOG_GLOSSARY_MAP).flat().every((slug) => terms.has(slug))).toBe(true);
   });
 
-  it("maps every glossary term to one published analysis tool", () => {
+  it("maps every glossary term to one published analysis tool unless it is excluded with a reason", () => {
     const slugs = getAllTerms("ko").map((term) => term.slug);
-    expect(sorted(Object.keys(PUBLISHED_GLOSSARY_TOOL_MAP))).toEqual(sorted(slugs));
+    const excluded = Object.keys(GLOSSARY_WITHOUT_TOOL);
+    // 제외는 사유가 있어야 하고, 실재하는 용어여야 하며, 도구 맵과 겹치지 않는다.
+    expect(Object.values(GLOSSARY_WITHOUT_TOOL).every((reason) => reason.trim().length > 0)).toBe(true);
+    expect(excluded.every((slug) => slugs.includes(slug))).toBe(true);
+    expect(excluded.filter((slug) => Object.hasOwn(PUBLISHED_GLOSSARY_TOOL_MAP, slug))).toEqual([]);
+    expect(sorted([...Object.keys(PUBLISHED_GLOSSARY_TOOL_MAP), ...excluded])).toEqual(sorted(slugs));
     expect(Object.values(PUBLISHED_GLOSSARY_TOOL_MAP).every(isRoutePublished)).toBe(true);
   });
 

@@ -4,6 +4,7 @@ import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { OG_CARD_URL, SITE_URL } from "@/lib/routeMap";
 import { withOpenGraphBase } from "@/lib/openGraph";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import { primaryCalculatorForContent } from "@/lib/contentToolRegistry";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import AuthorCard from "@/components/seo/AuthorCard";
 import EditorialTrust from "@/components/seo/EditorialTrust";
@@ -160,6 +161,8 @@ export default async function EnBlogPostPage({ params }) {
             <span className="content-answer__label">Key takeaway</span>
             <p>{post.seoAnswer}</p>
             {post.conditions && <p className="content-answer__conditions"><strong>Applies when</strong>{post.conditions}</p>}
+            {/* 숫자 몇 개로 답이 나오는 질문이면 요약 밑에 계산기 한 줄(레지스트리가 지정한 글만). */}
+            {primaryCalculatorForContent(post.slug, "blog") && <ContentActionPanel locale="en" post={post} placement="article_answer" />}
           </aside>
         )}
         <div className="content-article__meta">

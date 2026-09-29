@@ -164,6 +164,9 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   }, [contentType, content?.slug, locale, placement, resolvedTool]);
 
   const isInline = placement === "article_mid";
+  // 도구도 계산기도 없는 용어(명시 제외)는 행동 요소를 그리지 않는다 — 대시보드로 폴백하면
+  // 읽은 내용과 다른 화면을 약속하게 된다. 훅 뒤에서 판정한다(렌더 순서 고정).
+  if (term && !toolId && !term.primaryTool && !primaryToolForContent(term.slug, "glossary") && !calculator) return null;
   // 상단 짧은 답(seoAnswer) 바로 밑의 한 줄 링크. 글 상단에서 이탈하는 독자에게도
   // 경로를 남기되, 박스를 하나 더 얹어 답을 밀어내지는 않는다(§12.24 마감 영역 원칙).
   const isAnswerLink = placement === "article_answer";

@@ -44,7 +44,7 @@ function withEditorialJourney(name, params) {
     if (name === "blog_tool_cta_clicked") {
       storage.removeItem(EDITORIAL_JOURNEY_KEY);
       if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.content_slug || "")
-        && ["blog", "glossary"].includes(params.content_type)
+        && ["blog", "glossary", "calculator"].includes(params.content_type)
         && ["ko", "en"].includes(params.locale)
         && (params.tool_id === "weekly-review" || /^[59]-\d+(?:-[a-z-]+)?$/.test(params.tool_id || ""))) {
         storage.setItem(EDITORIAL_JOURNEY_KEY, JSON.stringify({

@@ -76,7 +76,6 @@ const GLOSSARY_PRIMARY_TOOL = {
   "crowd-anonymity": "5-2",
   ctr: "9-6",
   cvr: "9-6",
-  "deep-link": "5-2",
   "difference-in-differences": "5-23",
   ecpi: "5-2",
   frequency: "9-6",
@@ -159,7 +158,15 @@ const BLOG_RELATED_GLOSSARY = {
   "skan-vs-mmp-attribution": ["skan", "mmp", "attribution-window"],
 };
 
+// 도구로 보내지 않는 용어 — 사유가 있는 명시 제외다(빠뜨린 것과 구분된다).
+// 딥링크를 찾는 사람의 질문은 링크 동작·어트리뷰션인데, 그걸 진단하는 도구가 없다.
+// 운영 대시보드 업로드를 권하면 읽은 내용과 다른 화면이 열린다(2026-09-29 검색 감사).
+export const GLOSSARY_WITHOUT_TOOL = {
+  "deep-link": "링크 동작·어트리뷰션 질문을 진단하는 도구가 없다",
+};
+
 export function primaryToolForContent(slug, type = "blog") {
+  if (type === "glossary" && Object.hasOwn(GLOSSARY_WITHOUT_TOOL, slug)) return null;
   const registry = type === "glossary" ? GLOSSARY_PRIMARY_TOOL : BLOG_PRIMARY_TOOL;
   return registry[slug] || "5-2";
 }
@@ -210,7 +217,12 @@ const GLOSSARY_PRIMARY_CALCULATOR = {
   cpi: "expected-installs",
 };
 
-const BLOG_PRIMARY_CALCULATOR = {};
+// 글은 대부분 인라인 예시가 1차다. 계산기는 글의 핵심 요약 밑 한 줄로만 붙인다.
+// 지표 글: 네이버 검색어에 "cpa roas로 계산"·"cvr cac"가 실제로 있었고(2026-09 서치어드바이저),
+// 요약이 CPA→ROAS 환산을 예로 든다. 숫자 몇 개로 답을 얻은 뒤 본문 예시·CSV로 넘어간다.
+const BLOG_PRIMARY_CALCULATOR = {
+  "performance-marketing-metrics": "cpa-roas-converter",
+};
 
 export const PRIMARY_CALCULATOR_MAPS = {
   glossary: GLOSSARY_PRIMARY_CALCULATOR,
