@@ -11,7 +11,6 @@ draft: false
 sources: [{"title": "Google Cloud: Connected Sheets", "url": "https://cloud.google.com/blog/products/data-analytics/using-connected-sheets-to-analyze-bigquery-data/"}, {"title": "Google Cloud: Scheduled queries", "url": "https://docs.cloud.google.com/bigquery/docs/scheduling-queries"}]
 faq: [{"q": "Does a BigQuery connection automatically refresh site analysis?", "a": "No. BigQuery and Sheets schedules are separate from site imports. Upload a new CSV or reload a public sheet in the site, then run the analysis again."}, {"q": "Must I make an internal sheet public?", "a": "No. Keep business data private and export only the necessary aggregate CSV from an authorized environment for browser analysis."}]
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial review)"
 ---
 Marketing report automation starts with reducing repeated export preparation. BigQuery can prepare aggregates and Google Sheets can support review, but first define which rows are safe to combine and where scheduled refresh ends.
 

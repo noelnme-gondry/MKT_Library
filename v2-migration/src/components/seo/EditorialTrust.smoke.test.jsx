@@ -11,6 +11,14 @@ describe("EditorialTrust", () => {
     expect(container.querySelector("a").getAttribute("href")).toBe("https://example.com/source");
     expect(container.querySelector("time")).toBeNull();
   });
+  // 인용한 서비스·사이트가 없으면 "출처"라는 말을 쓰지 않는다(2026-09-29 사용자 결정).
+  it.each(["ko", "en"])("labels a %s review without sources as review only", locale => {
+    const { container } = render(<EditorialTrust compact locale={locale} reviewer="Growth Opt Playbook" reviewedAt="2026-09-09" />);
+    const heading = container.querySelector("[data-information-heading]").textContent;
+    expect(heading).toBe(locale === "en" ? "Review" : "검토");
+    expect(container.querySelector("a")).toBeNull();
+  });
+
   it("does not imply a review when no explicit review or source exists", () => {
     const { container } = render(<EditorialTrust />);
     expect(container.innerHTML).toBe("");

@@ -13,7 +13,8 @@ export default function EditorialTrust({ locale = "ko", reviewer, reviewedAt, so
   if (compact) return (
     <section data-information-section="" className="editorial-trust editorial-trust--compact">
       <header data-information-heading="">
-        <span>{isEnglish ? "Sources and review" : "출처·검토"}</span>
+        {/* 인용한 서비스·사이트가 없으면 "출처"라는 말도 쓰지 않는다. */}
+        <span>{sources.length > 0 ? (isEnglish ? "Sources and review" : "출처·검토") : (isEnglish ? "Review" : "검토")}</span>
         {sources.length > 0 && <span className="editorial-trust__count">{isEnglish ? `${sources.length} references` : `근거 자료 ${sources.length}개`}</span>}
       </header>
       <div className="editorial-trust__body">

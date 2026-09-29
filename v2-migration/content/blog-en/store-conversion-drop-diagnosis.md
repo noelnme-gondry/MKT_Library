@@ -17,7 +17,6 @@ faq:
   - q: "What do I do when mix is the cause?"
     a: "Look at why the traffic composition changed rather than at the page. Paid scaling pushing more Browse traffic, a featuring placement, and seasonality all call for different responses. Unchanged per-source ratios do not establish healthy performance; examine install volume and acquisition value too."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Say store conversion fell from 32% to 21%. The first thing said in the review is almost always "when did we last touch the screenshots?" Then you split by source and find that neither Search nor Browse moved at all. Observed source rates held while the total fell; this does not establish that the page is optimal.
 

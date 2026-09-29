@@ -17,7 +17,6 @@ faq:
   - q: "After how many days is a user dormant?"
     a: "There is no fixed threshold — it comes from your service's natural usage cycle. Fourteen days without a session means something entirely different for a weekly app than for a daily one. Set the line where your retention curve bends."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The campaign that brings new users (UA) and the one that recalls existing users (retargeting) have completely different purposes. Mix them in one campaign and they eat each other's budget, and you can't see which side earned the result. So split them from the start.
 

@@ -19,7 +19,6 @@ faq:
     a: "Derive it from the minimum effect you want to detect and your conversion volume. Too small and the difference is undetectable; too large and the opportunity cost grows. Calculate the required sample first, then back out the share."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 You served a search ad to someone who searched your brand name. They clicked through, and they purchased. Your report shows 'ROAS 800%.' Feels good, right?
 

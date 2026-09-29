@@ -28,7 +28,7 @@ relatedGlossary: ["roas"]           # (선택) 함께 볼 용어 slug
 answer: "질문에 대한 직접 답변을 두 문장 안에 씁니다." # (권장) CTA·메타 설명과 분리
 conditions: "이 답이 성립하는 조건과 예외를 씁니다."   # (권장) 단정 대신 적용 범위를 명시
 reviewedAt: "2026-08-01"            # (권장) 마지막 사실·링크 검토일, ISO 형식
-reviewer: "Growth Opt Playbook 편집 검토" # (권장) 검토 책임 역할 또는 이름
+# 검토자는 적지 않는다 — 검토일이 있으면 글쓴이(authorProfile AUTHOR)로 표시된다.
 # sources:                           # (선택) 주장 검증에 쓴 1차·권위 출처만 씁니다.
 #   - title: "출처 제목"
 #     url: "https://example.com/source"

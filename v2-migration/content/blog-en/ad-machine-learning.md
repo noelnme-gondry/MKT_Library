@@ -13,7 +13,6 @@ faq:
     a: "Separate the cause first. Learning restarts, rising competition, creative fatigue, and broken conversion tracking each need a different response. Cutting budget on a tracking bug kills a healthy campaign."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 "It's probably still in the learning phase" — half true, half dangerous. Misunderstand the learning phase and you make one of two mistakes: overreacting to the wild swings during learning, or waiting forever assuming "it'll get better once learning finishes." Both leak budget.

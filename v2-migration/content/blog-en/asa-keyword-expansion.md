@@ -17,7 +17,6 @@ faq:
   - q: "Why do brand keywords need a separate campaign?"
     a: "Brand terms produce unusually good CPAs because many of those users would have found the app anyway. Mixed in with generic terms, that efficiency lifts the blended average and hides how new-user acquisition is really performing."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 Apple Ads search results campaigns reach people expressing search intent. Whether to advertise depends on demand, acquisition value and budget.
 

@@ -13,7 +13,6 @@ faq:
     a: "Trust it when you can reproduce which data and which assumptions produced the number; otherwise hold. Sentences that turn a correlation into a cause need separate evidence."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Auto-bidding sets the bid. The algorithm finds the audience. Automated campaigns even pick the placement and creative combination. AI writes the copy and generates the images. So doesn't it feel like everything a marketer used to do is disappearing, one task at a time? Most of us have felt that anxiety at some point.

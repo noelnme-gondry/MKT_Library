@@ -17,7 +17,6 @@ faq:
   - q: "Should I be preparing for SKAN 5 now?"
     a: "Check supported versions and schedules by platform, MMP and OS. Apple supports SKAN–AdAttributionKit interoperability; validate schemas against the actual APIs and return conditions."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The most common mistake in a SKAN 4 migration is ordering: designing all three windows at once and porting the Android campaign structure straight across. Data arrives, and half of it is empty.
 

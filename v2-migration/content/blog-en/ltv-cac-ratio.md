@@ -13,7 +13,6 @@ faq:
     a: "The observed cohort length is the ceiling. With only D7 data, anything beyond it is extrapolation and should be labeled as an estimate with its basis."
 
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-14"
 ---
 Plenty of teams answer "can we keep spending on this channel?" with LTV:CAC. But before you relax at a ratio above 3:1, check whether the number was **computed right**. Depending on what you took as the denominator, and whether you used revenue or margin, the same data can flip the conclusion. Here's the math, then the three spots people most often get wrong.

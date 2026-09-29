@@ -13,7 +13,6 @@ faq:
     a: "Hold other elements fixed, randomize assignment, and compare the hook variants using predeclared metrics, duration and uncertainty. Changing several elements at once makes the effect impossible to attribute."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Scrolling a feed, some videos make you stop and some you swipe past instantly. That decision happens almost entirely in the **first three seconds**. However much effort went into the creative, if you can't stop the scroll in three seconds, nobody sees the next thirty. So the hook isn't decoration — it's **the first gate that decides your return on the whole thing**.

@@ -12,7 +12,6 @@ faq:
   - q: "Can I run MMM with high VIF?"
     a: "You can calculate a model, but channel contribution and coefficients may not be reliable. Create periods where linked channels move independently, then re-check before using the result for allocation."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 An MMM result shows negative Search contribution and implausibly large Social contribution. The model may not be broken. If Search and Social budgets always rose and fell together, the data does not contain enough independent movement to tell which channel drove the outcome. That is the practical problem of **multicollinearity**.

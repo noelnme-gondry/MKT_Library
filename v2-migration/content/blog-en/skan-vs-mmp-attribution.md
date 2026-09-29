@@ -15,7 +15,6 @@ faq:
     a: "Undelivered SKAN postbacks cannot establish final same-day performance. Keep other operational signals separate and reassess mature periods using the applicable postback windows and delays."
 updated: "2026-09-08"
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 sources:
   - title: "Apple SKAdNetwork"
     url: "https://developer.apple.com/documentation/storekit/skadnetwork"

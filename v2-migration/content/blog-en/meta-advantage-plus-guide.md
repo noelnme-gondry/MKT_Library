@@ -13,7 +13,6 @@ faq:
     a: "Check the current ad set’s click/view attribution settings and reporting basis. Matching windows still leaves deduplication and measurement differences."
 
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-09"
 ---
 Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.

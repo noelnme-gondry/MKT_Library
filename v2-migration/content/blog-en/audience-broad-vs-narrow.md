@@ -13,7 +13,6 @@ faq:
     a: "Repeated exposure, auction cost, creative response and conversion delay are possible explanations. Narrowing alone does not identify the cause. Compare reach, frequency, CTR and mature conversions over aligned windows."
 
 reviewedAt: "2026-09-14"
-reviewer: "Codex (AI-assisted editorial audit)"
 updated: "2026-09-14"
 ---
 "Narrow targeting is more accurate" and "broad is the answer these days" both circulate at the same time. Both are true, and both are half-true. The right answer changes with the situation, so this isn't something to memorize — it's something to learn to judge. Today, let's look at what to check before you decide.

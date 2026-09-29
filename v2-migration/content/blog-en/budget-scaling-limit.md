@@ -13,7 +13,6 @@ faq:
   - q: "How is marginal CPA calculated?"
     a: "Fit a curve to outcomes across spend levels, then measure how much additional outcome one more unit of spend produces at the current point. Channels whose spend barely varied cannot support a curve, so the verdict is withheld."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 The following hypothetical example illustrates the risk of scaling from average CPA alone.
 

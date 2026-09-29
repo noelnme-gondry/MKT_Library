@@ -17,7 +17,6 @@ faq:
   - q: "SKAN 5는 지금 준비해야 하나요?"
     a: "지원 버전과 전환 일정은 매체·MMP·OS별로 확인하세요. Apple은 SKAN과 AdAttributionKit 상호 운용을 안내합니다. 창별 스키마는 실제 API와 반환 조건에 맞게 검증해야 합니다."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 SKAN 4로 옮기는 작업에서 가장 흔한 실수는 순서입니다. 창 세 개를 한꺼번에 설계하고, 캠페인은 안드로이드에서 쓰던 구조 그대로 옮기는 거죠. 그러면 데이터가 오긴 오는데 절반이 비어 있습니다.
 

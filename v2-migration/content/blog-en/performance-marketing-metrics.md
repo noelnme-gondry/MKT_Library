@@ -19,7 +19,6 @@ faq:
   - q: "In what order should I review performance metrics?"
     a: "Read them as a chain: spend, CPI, CPA, short-term ROAS, then LTV:CAC. Find the first stage that deteriorates and use the metrics immediately before and after it to narrow the cause."
 reviewedAt: "2026-09-09"
-reviewer: "Codex (AI-assisted editorial audit)"
 ---
 CPI, CPA, ROAS, LTV, CAC… open a report and the acronyms pour out. You know what each one means, but "so what should I actually look at right now?" doesn't jump out at you. Today I'll show you how to read these metrics as one connected chain instead of memorizing them separately. Read them this way, and when a number spikes, you'll immediately know where to look.
 
