@@ -3,7 +3,7 @@ term: "인크리멘탈리티 (Incrementality)"
 seoTitle: "인크리멘탈 뜻 | Incrementality·증분성"
 searchTitleTerms: ["인크리멘탈", "Incrementality"]
 shortDef: "광고가 실제로 추가로 만들어낸 순수 성과 — 증분성"
-description: "전환 100건이 다 광고 덕은 아닙니다. 광고가 없었으면 사라질 몫만 세는 법과 CPA의 한계."
+description: "인크리멘탈(증분성)은 광고가 없었으면 생기지 않았을 추가 성과입니다. CPA 1만 원이 iCPA 5만 원이 되는 계산 예시."
 date: "2026-07-18"
 updated: "2026-09-14"
 slug: "incrementality"

@@ -32,7 +32,7 @@ const EDITORIAL_FUNNEL_EVENTS = new Set([
   "analysis_result_viewed", "dochi_mapping_confirmed", "decision_record_added", "decision_review_completed",
   "weekly_review_viewed", "weekly_review_completed", "weekly_review_blocked",
   "weekly_decision_saved", "weekly_review_export",
-  "weekly_review_result_viewed",
+  "weekly_review_result_viewed", "real_result_viewed",
 ]);
 
 // 공개 글 식별자만 저장한다. 도구 ID는 정규화 전에 비교하여 MMM과 추세를
@@ -180,7 +180,10 @@ export function trackProductEvent(name, params = {}) {
   }
   if (isAnalyticsHost(window.location?.hostname)) safeParams.send_to = GA_MEASUREMENT_ID;
   window.gtag("event", name, safeParams);
-  if (name === "analysis_result_viewed") trackBlogSampleResult(params);
+  if (name === "analysis_result_viewed") {
+    trackBlogSampleResult(params);
+    trackRealResult(params);
+  }
   if (isFirstReadyActivation) hasRecordedFirstActivation = true;
   return true;
 }
@@ -204,6 +207,15 @@ function trackBlogSampleResult(params) {
   const sample = withEditorialJourney("blog_sample_result_viewed", params);
   if (sample.content_type !== "blog" || !sample.content_slug) return false;
   return trackProductEventOnce("blog_sample_result_viewed", productEventKey(sample.content_slug, sample.tool_id, sample.locale, sample.result_state), sample);
+}
+
+// 활성화 = 샘플이 아닌 데이터로 판정 가능한 결과(ready)가 실제 화면에 보인 순간.
+// analysis_completed는 실패·보류·샘플·추가 모형이 섞이고, GA 주요 이벤트는 이름 단위라
+// 파라미터로 거를 수 없다 — 그래서 조건을 통과한 경우만 별도 이름으로 한 번 더 보낸다.
+// 같은 도구·언어는 페이지 세션당 1회(도치 작업대와 도구 카드가 같은 계산을 두 번 보여도 1회).
+function trackRealResult(params) {
+  if (params.source === "demo" || params.result_state !== "ready" || !params.tool_id) return false;
+  return trackProductEventOnce("real_result_viewed", productEventKey(normalizeProductToolId(params.tool_id), params.locale), params);
 }
 
 export function trackProductEventOnce(name, dedupeKey, params = {}) {

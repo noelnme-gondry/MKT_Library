@@ -3,7 +3,7 @@ term: "Incrementality"
 searchTitleTerms: ["Incrementality"]
 seoTitle: "Incrementality Meaning: How to Measure Ad Lift"
 shortDef: "The pure additional performance an ad actually caused"
-description: "What did advertising add? Compare incrementality, attribution, uplift, CPA and iCPA with calculation examples and design limits."
+description: "Incrementality is the extra outcome that would not exist without the ad. See a worked example where a $10 CPA becomes a $50 iCPA, plus design limits."
 date: "2026-07-18"
 updated: "2026-09-14"
 slug: "incrementality"

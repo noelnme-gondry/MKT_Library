@@ -1,7 +1,7 @@
 // 분류된 유입면만 보관한다. URL·검색어·파일·사용자 식별자는 저장하지 않는다.
 const KEY = "gop:site-journey";
 const TTL = 30 * 60 * 1000;
-const SURFACES = new Set(["home", "blog", "glossary", "guide", "tool", "start", "dochi", "review", "other"]);
+const SURFACES = new Set(["home", "blog", "glossary", "guide", "calculator", "tool", "start", "dochi", "review", "other"]);
 
 export function journeySurface(pathname = "") {
   const path = pathname.replace(/^\/en(?=\/|$)/, "") || "/";
@@ -9,6 +9,9 @@ export function journeySurface(pathname = "") {
   if (path === "/weekly-review") return "review";
   if (path === "/dochi-result") return "dochi";
   if (path === "/start") return "start";
+  // 계산기는 검색 진입면이다(EN break-even-roas 계산기만 GSC 노출 220). other에 섞으면
+  // "계산기로 들어와 CSV 분석까지 갔나"를 가를 수 없다.
+  if (path === "/calculator" || path.startsWith("/calculator/")) return "calculator";
   for (const kind of ["blog", "glossary", "guide"]) if (path === `/${kind}` || path.startsWith(`/${kind}/`)) return kind;
   if (path === "/dashboard" || path.startsWith("/tools/") || path.startsWith("/content/")) return "tool";
   return "other";
