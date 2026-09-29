@@ -1,4 +1,5 @@
 import { profileColumns } from "./profileColumns";
+import { stripCurrencySuffix } from "./headerUnits";
 
 // 소수 덧셈(0.82 + 0.08)이 0.899999...가 되는 경우를 막는다. 확정 기준은
 // 사람이 읽는 0.90이므로, 계산도 그 단위에서 안정적으로 비교한다.
@@ -9,7 +10,8 @@ const REVIEW_THRESHOLD = 0.6;
 const AMBIGUITY_MARGIN = 0.12;
 
 function headerScore(header, key, aliases = []) {
-  const normalized = compact(header);
+  // 통화 괄호("(KRW)")만 떼고 비교한다 — 규칙은 의미 매퍼와 한 곳(headerUnits)에서 공유.
+  const normalized = compact(stripCurrencySuffix(header));
   // 정확한 표준 필드명은 별칭보다 한 단계 우선한다. 예: 5-21의 `cost` 헤더는
   // cost(표준명)와 spend(별칭)가 동점이면 안 된다.
   if (normalized === compact(key)) return { score: 0.84, reason: "표준 필드명 일치", isExactFieldName: true };

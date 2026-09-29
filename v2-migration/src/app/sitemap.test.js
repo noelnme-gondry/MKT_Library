@@ -117,4 +117,12 @@ describe("sitemap covers every routable page in app/", () => {
       .filter((route) => !urls.has(`${SITE_URL}${route}`));
     expect(missing).toEqual([]);
   });
+
+  // 사이트맵 URL은 canonical과 같은 표기여야 한다. 한글 태그가 원문으로 나가면 같은 페이지가
+  // 인코딩된 canonical과 두 표기로 제출된다(2026-09-29 전수 크롤에서 태그 5개).
+  it("submits only percent-encoded ASCII URLs", () => {
+    const entries = sitemap();
+    expect(entries.some((entry) => entry.url.includes("/blog/tag/"))).toBe(true);
+    expect(entries.filter((entry) => /[^\x00-\x7F]/.test(entry.url)).map((entry) => entry.url)).toEqual([]);
+  });
 });

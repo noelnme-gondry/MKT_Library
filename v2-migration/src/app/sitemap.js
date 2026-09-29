@@ -63,7 +63,9 @@ export default function sitemap() {
     // 태그 랜딩(롱테일 SEO 허브) — 발행 글의 태그마다 1페이지.
     // 태그 페이지의 색인 기준과 동일: 최소 3편이어야 sitemap에 넣는다.
     ...getAllTags().filter((t) => t.count >= 3).map((t) => ({
-      url: `${BASE}/blog/tag/${t.slug}`,
+      // canonical(메타데이터)은 퍼센트 인코딩돼 나간다. 사이트맵만 원문 한글을 쓰면
+      // 같은 페이지가 두 표기로 제출된다 — 같은 인코딩으로 맞춘다.
+      url: `${BASE}/blog/tag/${encodeURIComponent(t.slug)}`,
       lastModified: latestDate(getPostsByTagSafe(t.slug, posts)),
       changeFrequency: "weekly",
       priority: 0.5,

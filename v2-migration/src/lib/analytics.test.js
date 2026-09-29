@@ -103,6 +103,28 @@ describe("privacy-safe product analytics", () => {
     clock.mockRestore();
   });
 
+  // 활성화는 "샘플이 아닌 데이터로 판정 가능한 결과를 실제로 봤다"다. 실패·보류·샘플을
+  // 섞지 않고, 같은 도구·언어는 자리(도치 작업대·도구 카드)가 달라도 한 번만 센다.
+  it("derives one real-data activation from a visible ready result and never from samples or holds", () => {
+    const values = new Map();
+    globalThis.window = { gtag: vi.fn(), location: { hostname: "localhost" }, sessionStorage: {
+      getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key),
+    } };
+    const names = () => window.gtag.mock.calls.map(call => call[1]);
+    const base = { tool_id: "5-27", analysis_type: "aso_store", locale: "ko", placement: "result_action_card" };
+    trackProductEvent("analysis_result_viewed", { ...base, source: "demo", result_state: "ready" });
+    trackProductEvent("analysis_result_viewed", { ...base, source: "csv", result_state: "insufficient" });
+    expect(names()).not.toContain("real_result_viewed");
+    trackProductEvent("analysis_result_viewed", { ...base, source: "csv", result_state: "ready", file_name: "secret.csv" });
+    trackProductEvent("analysis_result_viewed", { ...base, source: "csv", result_state: "ready", placement: "dochi_workspace" });
+    const real = window.gtag.mock.calls.filter(call => call[1] === "real_result_viewed");
+    expect(real).toHaveLength(1);
+    expect(real[0][2]).toMatchObject({ tool_id: "5-27", interaction_source: "csv", result_state: "ready", locale: "ko" });
+    expect(JSON.stringify(real[0][2])).not.toContain("secret");
+    trackProductEvent("analysis_result_viewed", { ...base, source: "csv", result_state: "ready", locale: "en" });
+    expect(window.gtag.mock.calls.filter(call => call[1] === "real_result_viewed")).toHaveLength(2);
+  });
+
   it("buckets time to first result without sending an exact timestamp", () => {
     expect(productElapsedBucket(30_000)).toBe("under_1m");
     expect(productElapsedBucket(120_000)).toBe("1_3m");

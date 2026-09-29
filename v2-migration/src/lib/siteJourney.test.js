@@ -16,6 +16,14 @@ describe("site journey attribution", () => {
     expect(withSiteJourney("weekly_decision_saved", { tool_id: "weekly-review" }, store, 500).journey_entry).toBe("blog");
     expect([...store.values.values()].join("")).not.toContain("example");
   });
+  it.each(["", "/en"])("classifies calculator pages as their own entry surface (%s)", prefix => {
+    expect(journeySurface(`${prefix}/calculator`)).toBe("calculator");
+    expect(journeySurface(`${prefix}/calculator/break-even-roas`)).toBe("calculator");
+    const store = storage();
+    withSiteJourney("journey_page_viewed", { scope: journeySurface(`${prefix}/calculator/cpa-roas-converter`) }, store, 100);
+    expect(withSiteJourney("analysis_completed", { tool_id: "5-3" }, store, 200).journey_entry).toBe("calculator");
+    expect([...store.values.values()].join("")).not.toContain("cpa-roas");
+  });
   it("expires after inactivity and rejects untrusted stored entry values", () => {
     const store = storage();
     withSiteJourney("journey_page_viewed", { scope: "home" }, store, 100);

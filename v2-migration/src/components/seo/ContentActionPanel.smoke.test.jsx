@@ -6,7 +6,6 @@ import { useAppStore } from "@/store/useDataStore";
 import { getAllPosts } from "@/lib/blog";
 import { BLOG_INSIGHT_PLACEMENTS } from "@/lib/blogInsightRegistry";
 import { TOOL_GROUP } from "@/lib/toolGroups";
-import { normalizeProductToolId } from "@/lib/analytics";
 import { PRIMARY_CALCULATOR_MAPS, primaryToolForContent } from "@/lib/contentToolRegistry";
 import { idToSlug } from "@/lib/routeMap";
 import { getCalculator } from "@/lib/calculators";
@@ -24,6 +23,7 @@ describe("all published article journeys", () => {
   afterEach(() => { delete window.gtag; useAppStore.setState(useAppStore.getInitialState()); });
   it.each(["ko", "en"].flatMap(locale => getAllPosts(locale).map(post => [post.slug, locale])))("%s exposes only supported next steps in %s", (slug, locale) => {
     window.gtag = vi.fn();
+    window.sessionStorage.clear();
     const en = locale === "en";
     const toolId = primaryToolForContent(slug, "blog");
     const template = TEMPLATE_PAGES.find(page => page.toolId === toolId);
@@ -36,8 +36,12 @@ describe("all published article journeys", () => {
     if (practice) {
       expect(sample.getAttribute("href")).toBe("#blog-practice");
       clickWithoutNavigation(sample);
-      expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({ tool_id: normalizeProductToolId(practice.toolId), content_slug: slug, placement: "article_case_practice" }));
-      expect(JSON.parse(window.sessionStorage.getItem("gop:editorial-journey")).tool_id).toBe(practice.toolId);
+      // 같은 페이지 안의 예시로 내려가는 링크는 본문 이동이지 도구 전환이 아니다
+      // (docs/ga4-product-events.md — 두 동작을 클릭 전환으로 합산하지 않는다). 도구 귀속은
+      // 예시에서 실제로 도구를 여는 순간(BlogCsvAnalysis openDetail)에 한 번 걸린다.
+      expect(window.gtag).toHaveBeenCalledWith("event", "blog_section_opened", expect.objectContaining({ content_slug: slug, placement: "article_case_practice" }));
+      expect(window.gtag.mock.calls.some(call => call[1] === "blog_tool_cta_clicked")).toBe(false);
+      expect(window.sessionStorage.getItem("gop:editorial-journey")).toBeNull();
     }
     const review = screen.queryByRole("link", { name: en ? "Open My projects →" : "내 프로젝트 열기 →" });
     const canReview = Boolean(practice && TOOL_GROUP[practice.toolId] === "efficiency" && TOOL_GROUP[toolId] === "efficiency");
@@ -239,8 +243,11 @@ describe("glossary calculator-first CTA", () => {
     clickWithoutNavigation(cta);
     // 새 이벤트 이름을 만들지 않는다 — 같은 행동을 두 이름으로 세면 분모가 갈린다.
     expect(window.gtag).toHaveBeenCalledWith("event", "blog_tool_cta_clicked", expect.objectContaining({
-      content_slug: slug, content_type: "glossary", placement: "article_post_calculator", locale,
+      tool_id: "calculator", content_slug: slug, content_type: "glossary", placement: "article_post_calculator", locale,
     }));
+    // 목적지가 계산기면 도구 귀속 창을 열지 않는다 — 나중에 사이드바로 연 도구 분석이
+    // 이 용어 덕분으로 잡히지 않게. 계산기 결과에서 도구로 가면 그때 계산기가 귀속을 연다.
+    expect(window.sessionStorage.getItem("gop:editorial-journey")).toBeNull();
   });
 
   // 딥링크는 진단할 도구가 없다 — 대시보드로 폴백하면 읽은 내용과 다른 화면을 약속한다.

@@ -130,6 +130,11 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const calculator = getCalculator(primaryCalculatorForContent(content?.slug, contentType), lang);
   const calculatorHref = calculator ? `${locale === "en" ? "/en" : ""}/calculator/${calculator.slug}` : "";
   const primaryHref = calculator ? calculatorHref : href;
+  // 계측의 tool_id는 "누르면 실제로 가는 곳"이다. 계산기로 가는 CTA에 도구 ID를 실으면
+  // 목적지가 틀리게 기록되고, 30분 귀속 창이 그 도구로 열려 나중에 사이드바로 연
+  // 같은 도구의 분석까지 이 글 덕분으로 잡힌다. 어느 계산기인지는 content_slug로 정해진다.
+  const CALCULATOR_TOOL_ID = "calculator";
+  const primaryToolId = calculator ? CALCULATOR_TOOL_ID : resolvedTool;
   const trackClick = (targetToolId, targetPlacement) => {
     trackProductEvent("blog_tool_cta_clicked", {
       tool_id: targetToolId,
@@ -150,7 +155,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     const observer = new IntersectionObserver((entries) => {
       if (!entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0)) return;
       trackProductEventOnce("blog_cta_viewed", productEventKey(content?.slug, placement, locale), {
-        tool_id: resolvedTool,
+        tool_id: primaryToolId,
         source: contentType,
         content_slug: content?.slug,
         content_type: contentType,
@@ -161,7 +166,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     }, { threshold: [0, 0.1] });
     observer.observe(target);
     return () => observer.disconnect();
-  }, [contentType, content?.slug, locale, placement, resolvedTool]);
+  }, [contentType, content?.slug, locale, placement, primaryToolId]);
 
   const isInline = placement === "article_mid";
   // 도구도 계산기도 없는 용어(명시 제외)는 행동 요소를 그리지 않는다 — 대시보드로 폴백하면
@@ -172,7 +177,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
   const isAnswerLink = placement === "article_answer";
   if (isAnswerLink) {
     return <p ref={panelRef} className="content-answer__action">
-      <Link href={primaryHref} onClick={() => trackClick(resolvedTool, calculator ? `${placement}_calculator` : placement)}>
+      <Link href={primaryHref} onClick={() => trackClick(primaryToolId, calculator ? `${placement}_calculator` : placement)}>
         {calculator
           ? `${lang === "en" ? "Run the numbers now" : "지금 숫자로 계산하기"} · ${calculator.name}`
           : `${lang === "en" ? "Check this with your own data" : "이 판단을 내 데이터로 확인하기"} · ${copy.label}`} <span aria-hidden>→</span>
@@ -187,11 +192,11 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post, 
     </div>
     <div className="content-action-panel__links">
       {calculator
-        ? <Link href={calculatorHref} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, `${placement}_calculator`)}>{calculator.name} <span aria-hidden>→</span></Link>
+        ? <Link href={calculatorHref} className="content-action-panel__cta" onClick={() => trackClick(CALCULATOR_TOOL_ID, `${placement}_calculator`)}>{calculator.name} <span aria-hidden>→</span></Link>
         : <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>}
       {calculator && !isInline && <Link href={href} className="content-action-panel__secondary" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>}
       {!isInline && useCase && <>
-        {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackClick(useCase.practiceToolId, "article_case_practice")}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
+        {useCase.hasPractice && <a className="content-action-panel__secondary" href="#blog-practice" onClick={() => trackProductEvent("blog_section_opened", { content_slug: content?.slug, content_type: contentType, placement: "article_case_practice", locale })}>{lang === "en" ? "Try the article’s demo →" : "본문 데모 실습으로 →"}</a>}
         {template && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/templates/${template.slug}`} onClick={() => trackClick(resolvedTool, "article_case_template")}>{lang === "en" ? "Prepare the CSV columns →" : "CSV 컬럼 준비 →"}</Link>}
         {useCase.canReview && <Link className="content-action-panel__secondary" href={`${lang === "en" ? "/en" : ""}/weekly-review`} onClick={() => trackClick("weekly-review", "article_case_review")}>{lang === "en" ? "Open My projects →" : "내 프로젝트 열기 →"}</Link>}
       </>}

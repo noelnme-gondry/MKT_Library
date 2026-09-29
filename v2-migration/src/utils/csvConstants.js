@@ -4,7 +4,9 @@ export const STANDARD_FIELDS = {
               date: {
                 label: "날짜",
                 labelEn: "Date",
-                aliases: ["dt", "날짜", "일자", "event_date", "day"],
+                // "일"은 Meta 광고 관리자 한글 일별 내보내기의 날짜 열. 별칭은 정확 일치만 인정되므로
+                // "일일 예산" 같은 열이 날짜로 잡히지 않는다.
+                aliases: ["dt", "날짜", "일자", "event_date", "day", "일"],
                 type: "date",
                 required: true,
                 group: "디멘션",
@@ -35,7 +37,7 @@ export const STANDARD_FIELDS = {
               campaign_name: {
                 label: "캠페인명",
                 labelEn: "Campaign",
-                aliases: ["campaign", "캠페인", "캠페인명"],
+                aliases: ["campaign", "캠페인", "캠페인명", "campaign name", "캠페인 이름"],
                 type: "string",
                 required: false,
                 group: "디멘션",
@@ -117,7 +119,9 @@ export const STANDARD_FIELDS = {
               cost: {
                 label: "비용",
                 labelEn: "Spend",
-                aliases: ["spend", "total cost", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
+                // "지출 금액"은 Meta 광고 관리자 한글 내보내기의 비용 열("지출 금액 (KRW)") —
+                // 통화 괄호는 scoreMappingCandidates가 떼고 비교한다.
+                aliases: ["spend", "total cost", "비용", "광고비", "소진액", "집행액", "amount spent", "지출 금액", "media cost"],
                 type: "number",
                 required: true,
                 group: "단일 지표",
@@ -133,7 +137,7 @@ export const STANDARD_FIELDS = {
               clicks: {
                 label: "클릭수",
                 labelEn: "Clicks",
-                aliases: ["click", "taps", "tap", "클릭", "클릭수"],
+                aliases: ["click", "taps", "tap", "클릭", "클릭수", "link clicks", "링크 클릭"],
                 type: "number",
                 required: false,
                 group: "단일 지표",
@@ -268,6 +272,8 @@ export const STANDARD_FIELDS = {
                   "total_downloads", "total downloads", "first_time_downloads", "first-time downloads",
                   "store_listing_acquisitions", "store listing acquisitions", "installers",
                   "다운로드", "총다운로드", "최초다운로드",
+                  // Meta 광고 관리자 내보내기(KO/EN) — 없으면 운영 대시보드가 설치 열을 못 잡는다.
+                  "app installs", "mobile app installs", "앱 설치", "모바일 앱 설치",
                 ],
                 type: "number",
                 required: false,
@@ -649,7 +655,7 @@ export const STANDARD_FIELDS = {
                 labelEn: "Spend (creative)",
                 // Meta 등 소재 성과 export의 실제 표시 헤더. `cost`에도 같은 별칭이
                 // 있지만 도구 스코프가 9-6의 spend를 선택해 기존 엔진 키를 보존한다.
-                aliases: ["광고비", "spend", "creative spend", "amount spent", "cost", "비용"],
+                aliases: ["광고비", "spend", "creative spend", "amount spent", "지출 금액", "cost", "비용"],
                 type: "number",
                 required: false,
                 group: "Creative",

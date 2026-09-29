@@ -15,8 +15,8 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `blog_read_depth` | 블로그 글 읽기 진행률이 25·50·75·100%에 처음 도달 | `content_slug`, `content_type`, `interaction_source`, `state=depth_25\|50\|75\|100`, `locale` |
 | `blog_session_articles` | 같은 세션에서 2번째 이후 블로그 글 진입 | `content_slug`, `content_type`, `interaction_source`, `rank`(세션 내 몇 번째), `locale` |
 | `blog_cta_viewed` | 글·용어·계산기의 행동 요소가 실제 viewport에 노출 | `tool_id`, `content_slug`, `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|self_check\|situation_check\|calculator_result`, `locale` |
-| `blog_tool_cta_clicked` | 글·용어·계산기에서 연결 도구(또는 계산기) 선택. 도구 쪽 결과 이벤트에 30분간 `content_slug`가 이어진다 | `tool_id`, `content_slug`(계산기는 계산기 slug), `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_answer_calculator\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check\|calculator_result`, `locale` |
-| `blog_section_opened` | 상단·읽기 바에서 글 안 점검으로 이동 (도구 전환 아님) | `content_slug`, `content_type`, `placement`, `locale` |
+| `blog_tool_cta_clicked` | 글·용어·계산기에서 연결 도구(또는 계산기) 선택. 도구 쪽 결과 이벤트에 30분간 `content_slug`가 이어진다. **`tool_id`는 실제 목적지**다 — 계산기로 가는 CTA는 `tool_id=calculator`이며 도구 귀속 창을 열지 않는다(2026-09-29 전에는 연결 도구 ID가 찍혔다) | `tool_id`, `content_slug`(계산기는 계산기 slug), `content_type=blog\|glossary\|calculator`, `placement=article_answer\|article_answer_calculator\|article_entry\|article_inline\|article_mid\|article_post\|reading_bar\|situation_check\|calculator_result`, `locale` |
+| `blog_section_opened` | 상단·읽기 바·중간 패널에서 글 안 점검·예시로 이동 (도구 전환 아님). 중간 패널 "본문 데모 실습으로"(`placement=article_case_practice`)는 2026-09-29 전까지 `blog_tool_cta_clicked`로 세었다 | `content_slug`, `content_type`, `placement`, `locale` |
 | `blog_example_started` / `blog_example_failed` | 샘플 실행 시도 / 로딩 실패 | `tool_id`, `content_slug`, `content_type`, `placement`, `state`, `locale` |
 | `blog_sample_result_viewed` | 블로그에서 연 샘플의 실제 결과 카드 표시 | `tool_id`, `content_slug`, `content_type`, `interaction_source=demo`, `result_state`, `locale` |
 | `blog_upload_started` / `blog_upload_completed` / `blog_upload_failed` | 블로그 내 파일 선택 / 파싱·매핑 완료 / 실패 (분석 완료 아님) | `tool_id`, `content_slug`, `content_type`, `locale` |
@@ -30,7 +30,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `source_survey_viewed` | 유입 경로 서베이 카드가 실제로 노출 | `placement=source_survey`, `state=opened`, `locale` |
 | `source_survey_submitted` / `source_survey_failed` | 주관식 답변 전송 성공/실패 | `placement=source_survey`, `state=sent\|failed`, `locale` |
 | `source_survey_dismissed` | 답하지 않고 닫음 | `placement=source_survey`, `state=skipped\|closed`, `locale` |
-| `journey_page_viewed` | 최초 및 SPA 경로 변경 | `scope=home|blog|glossary|guide|tool|start|dochi|review|other`, `journey_entry`, `locale` |
+| `journey_page_viewed` | 최초 및 SPA 경로 변경 | `scope=home|blog|glossary|guide|calculator|tool|start|dochi|review|other`(`calculator`는 2026-09-29 추가, 이전엔 `other`), `journey_entry`, `locale` |
 | `review_entry_clicked` | 헤더·사이드바·여정 표시·도치 결과·저장 완료에서 리뷰 선택 | `interaction_source`, `placement`, `locale` |
 | `dochi_mapping_confirmed` | 도치 컬럼 확인을 마치고 계산 작업대로 진행 | `tool_id=start-gate`, `placement=dochi_mapping`, `locale` |
 | `weekly_review_viewed` | 리뷰 화면 진입(기기 복원 후), 재진입도 기록 | `tool_id=weekly-review`, `visit_type=with_history|without_history`, `locale` |
@@ -59,6 +59,9 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `result_download_failed` | 파일 생성이 예외로 실패 | `tool_id`, `download_type`, `source`, `state=실패 사유`, `locale` |
 | `example_run_started` | 명시된 단일 예시 데이터 실행 클릭 | `tool_id`, `interaction_source=landing|csv_guide|start`, `placement`, `locale` |
 | `analysis_result_viewed` | 결과 행동 카드가 실제 viewport에 노출 | `tool_id`, `interaction_source`, `analysis_type`, `result_state`, `placement=result_action_card`, `locale` |
+| `real_result_viewed` | **활성화.** 위 이벤트 중 `interaction_source≠demo` 이고 `result_state=ready` 인 경우만 파생. 같은 도구·언어는 페이지 세션당 1회(도치 작업대와 도구 카드가 같은 계산을 보여도 1회). 실패·보류·샘플은 포함하지 않는다. GA 주요 이벤트 후보 | `tool_id`, `interaction_source`, `analysis_type`, `result_state=ready`, `placement`, `locale`, (`content_slug`·`content_type` — 30분 귀속 안) |
+| `sample_report_downloaded` / `sample_report_download_failed` | 구독 페이지에서 무료 샘플 Word·Excel 생성 성공/실패. 실제 분석 다운로드(`result_downloaded`)와 합산하지 않는다 | `download_type=docx\|xlsx`, `interaction_source=sample_report`, `placement=report_preview`, `state=build_failed`(실패), `locale` |
+| `purchase_prompt_sample_opened` | 다운로드 게이트 창에서 "무료 샘플 보고서 먼저 받아 보기" 선택 | `tool_id`, `download_type`, `placement=purchase_prompt`, `locale` |
 | `analysis_history_viewed` | 이전 분석 요약이 실제 viewport에 노출 | `tool_id`, `interaction_source=local_history`, `result_state=previous_available`, `data_continuity=summary_only`, `locale` |
 | `decision_review_opened` | 결과에서 다음 검토 약속 열기 | `tool_id`, `interaction_source`, `placement`, `locale` |
 | `decision_record_added` | 결정 요약 저장 | `tool_id`, `interaction_source=decision_review`, `placement`, `locale` |
