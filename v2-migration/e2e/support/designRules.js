@@ -121,7 +121,11 @@ export async function measureDesignRules(page) {
       return "rgb(255, 255, 255)";
     };
     const boxy = (el) => {
-      if (control(el)) return false;
+      // 파일 끌어놓기 칸(점선 테두리의 큰 컨트롤)은 상자다 — 버튼이라는 이유로 빼면 상자 안의 점선 상자를 못 본다(2026-09-29 /start).
+      if (control(el)) {
+        const r = el.getBoundingClientRect();
+        if (!(r.width > 240 && r.height > 90 && getComputedStyle(el).borderTopStyle === "dashed")) return false;
+      }
       const s = getComputedStyle(el);
       if (!(parseFloat(s.borderTopLeftRadius) > 0)) return false;
       const bg = s.backgroundColor;
@@ -140,6 +144,19 @@ export async function measureDesignRules(page) {
       if (exempt(el, "nested")) return null;
       for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) if (boxy(a) && visible(a)) return `${label(el)} ⊂ ${label(a)}`;
       return null;
+    }).filter(Boolean);
+
+    // 4b) 상자 안 글자가 테두리에 붙어 있다(안쪽 여백 0). 좌우 여백을 0으로 만든 공용 규칙 위에
+    //     다른 파일이 테두리를 다시 입히면 생긴다 — 금지 목록만으로는 안 잡혔다(2026-09-29 /start).
+    const hugging = boxes.map((el) => {
+      if (exempt(el, "hugging")) return null;
+      const s = getComputedStyle(el);
+      if (!(parseFloat(s.borderLeftWidth) > 0 && s.borderLeftStyle !== "none")) return null;
+      const inner = el.getBoundingClientRect().left + parseFloat(s.borderLeftWidth);
+      const inside = texts.filter((t) => el.contains(t.el) && t.el !== el && !t.floating && !t.dialog);
+      if (!inside.length) return null;
+      const gap = Math.min(...inside.map((t) => t.rect.left - inner));
+      return gap < 4 ? `${label(el)} (글자와 테두리 사이 ${Math.round(gap)}px)` : null;
     }).filter(Boolean);
 
     // 5) 제목 바로 위에 붙은 작은 라벨(13px 이하 → 12px 안에 20px 이상).
@@ -267,6 +284,7 @@ export async function measureDesignRules(page) {
       weights,
       offWeights: [...new Set(offWeights)].slice(0, 20),
       nested: [...new Set(nested)],
+      hugging: [...new Set(hugging)],
       eyebrows: [...new Set(eyebrows)],
       misaligned: [...new Set(misaligned)],
     };

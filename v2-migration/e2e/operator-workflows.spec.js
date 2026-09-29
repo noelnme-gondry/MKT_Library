@@ -47,6 +47,9 @@ async function addVisibleResultToReport(page) {
 }
 
 async function setComparableEfficiencyWindow(page) {
+  // 폰 폭에서는 조건 줄이 요약 한 줄로 접혀 있다 — 사용자처럼 "조건 바꾸기"로 먼저 편다.
+  const change = page.getByRole("button", { name: "조건 바꾸기", exact: true });
+  if (await change.isVisible()) await change.click();
   await page.getByRole("button", { name: "날짜 범위" }).click();
   const fields = page.locator(".date-range-popover input[type=\"date\"]");
   await fields.nth(0).fill("2026-08-05");

@@ -70,7 +70,9 @@ describe("StartGate render smoke", () => {
     // 같다 — 접는 것과 격자에 담는 것은 다르다(상세만 눌러서 연다).
     expect(document.querySelectorAll(".tool-index__chip")).toHaveLength(0);
     expect(screen.getByRole("heading", { name: "내 데이터로 시작" })).toBeTruthy();
-    expect(screen.getByText(/도구별 데이터 조건/)).toBeTruthy();
+    // 페이지 설명문이 하는 말을 업로드 안내가 다시 하지 않는다 — 문장·단계 표시 모두 한 번만(2026-09-29).
+    expect(screen.queryByText(/도구별 데이터 조건/)).toBeNull();
+    expect(document.querySelector(".csv-guide-outcomes")).toBeNull();
     expect(screen.getByRole("button", { name: "⬇ 기본 CSV 템플릿 받기" })).toBeTruthy();
     expect(document.querySelector(".start-direct-actions")).toBeNull();
     expect(document.querySelector(".start-presets")).toBeNull();
@@ -91,7 +93,7 @@ describe("StartGate render smoke", () => {
   it("keeps upload, calculator, diagnosis, and generic example equivalent in English", () => {
     render(<StartGate locale="en" />);
     expect(screen.getByRole("heading", { name: "Start with my data" })).toBeTruthy();
-    expect(screen.getByText(/check each tool’s data requirements/)).toBeTruthy();
+    expect(screen.queryByText(/check each tool’s data requirements/)).toBeNull();
     expect(screen.getByRole("button", { name: "⬇ Download starter CSV template" })).toBeTruthy();
     expect(document.querySelector(".tool-index")).toBeNull();
     expect(screen.getByRole("button", { name: /Run the example and see results/ })).toBeTruthy();

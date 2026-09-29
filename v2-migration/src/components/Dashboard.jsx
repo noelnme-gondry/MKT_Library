@@ -225,17 +225,16 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1 dashboard-sticky-context">
             <h1 className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</h1>
+            {/* 누를 수 없는 알약 두 개 대신 본문 한 줄(§7.1). 도구 공통 "현재 입력" 줄도 이 줄이 대신한다(2026-09-29). */}
             {hasData && (
-              <div className="dashboard-sticky-context__data" role="group" aria-label={tr("현재 데이터", "Current data")}>
-                <span className={`chip dashboard-sticky-context__file${isDemo ? " warn" : ""}`}>
-                  <span className="dot"></span>
-                  {isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "Data.csv")}
-                </span>
-                <span className="chip ok dashboard-sticky-context__rows">
-                  <span className="dot"></span>
-                  {csvData.raw.length.toLocaleString()}{tr("행", " rows")}
-                </span>
-              </div>
+              <p className="dashboard-sticky-context__meta" aria-label={tr("현재 데이터", "Current data")}>
+                <span className="dashboard-sticky-context__file">{isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "Data.csv")}</span>
+                {" · "}
+                <span className="dashboard-sticky-context__rows">{csvData.raw.length.toLocaleString()}{tr("행", " rows")}</span>
+              </p>
+            )}
+            {hasData && analyzed && !mappingEditorOpen && (
+              <button type="button" className="btn ghost dashboard-sticky-context__edit" onClick={openMapping}>{tr("데이터·매핑 편집", "Edit data and mappings")}</button>
             )}
           </div>
           {showResults && (
@@ -263,11 +262,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             </div>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
-        ) : (
-          <div className="dashboard-data-toolbar" id="dashboard-data-setup">
-            <button type="button" className="btn ghost" onClick={openMapping}>{tr("데이터·매핑 편집", "Edit data and mappings")}</button>
-          </div>
-        )}
+        ) : null}
 
         {/* #4 분석 대기: 데이터는 있으나 아직 "분석하기" 미확정 → 탭/결과 대신
             안내 플레이스홀더. 위 CsvUploader가 "데이터 분석하기"를 제공
@@ -394,7 +389,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 <section data-information-section="" className="dashboard-next-actions">
                   <header data-information-heading="">
                     <span><strong>{tr("다음 분석으로 이어가기", "Continue to the next analysis")}</strong><em>{tr("현재 결과에서 확인할 다음 질문", "The next questions to check from this result")}</em></span>
-                    <b aria-hidden="true">⌄</b>
                   </header>
                   <div className="dashboard-next-actions__body">
                     <div className="dashboard-next-actions__utility">

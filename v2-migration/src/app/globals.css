@@ -5603,30 +5603,31 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .page-sticky-bar { position: sticky; top: 64px; z-index: 8; margin: -28px calc(var(--gutter) * -1) 24px; padding: 22px var(--gutter) 14px; border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; background: var(--page-sticky-bg); backdrop-filter: blur(18px); }
 .page-sticky-row1 { min-height: 34px; gap: 8px; }
 .page-sticky-title { margin: 0 8px 0 0; color: var(--text-primary); font-size: clamp(var(--fs-lg),2vw,var(--fs-lg)); font-weight: 700; line-height: 1.15; letter-spacing: -.04em; }
-.analysis-control-bar { display: flex; align-items: flex-start; gap: 12px 18px; padding: 9px 0 1px; border-top: 1px solid var(--border-subtle); }
-.analysis-control-bar__heading { display: flex; align-items: center; gap: 6px; min-height: 30px; flex: 0 0 auto; }
-.analysis-control-bar__title { color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .06em; white-space: nowrap; }
-.analysis-control-bar__count { display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--radius-pill); background: var(--primary); color: var(--on-primary); font: 700 var(--fs-xs) var(--font-sans); }
-.analysis-control-bar__hint { display: none; color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
-.analysis-control-bar__controls { display: flex; align-items: center; gap: 8px 13px; min-width: 0; flex: 1; flex-wrap: wrap; }
-.analysis-control-group { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; }
-.analysis-control-group__label { padding-right: 2px; color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
-.analysis-control-bar .mon-filter-item { min-height: 30px; }
-.analysis-control-bar .mon-filter-label { white-space: nowrap; }
-.analysis-control-bar .mon-filter-reset { margin-left: auto; }
-.dashboard-filter-more { position: relative; }
-.dashboard-filter-more > summary { display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-container-lowest); color: var(--text-secondary); cursor: pointer; font: 700 var(--fs-xs) var(--font-body); list-style: none; white-space: nowrap; }
-.dashboard-filter-more > summary::-webkit-details-marker { display: none; }
-.dashboard-filter-more > summary::after { content: "⌄"; color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); }
-.dashboard-filter-more[open] > summary::after { content: "⌃"; }
-.dashboard-filter-more > summary span { display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--primary) 13%, transparent); color: var(--primary); font: 700 var(--fs-xs) var(--font-sans); }
-.dashboard-filter-more__body { position: absolute; z-index: 31; top: calc(100% + 6px); right: 0; display: grid; min-width: 250px; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-container-lowest); box-shadow: 0 14px 38px rgba(0,0,0,.18); }
-.dashboard-filter-more__body .mon-filter-item { display: grid; grid-template-columns: 64px minmax(0,1fr); }
-.dashboard-filter-more__body .mon-multisel-btn { width: 100%; justify-content: space-between; }
-/* 하나만 걸리면 버튼이 그 값(사용자 CSV의 채널명)을 보인다 — 긴 이름이 줄을 밀지 않게 말줄임. */
-.mon-multisel-btn { max-width: 16rem; }
-.dashboard-filter-more__body .mon-multisel-btn { max-width: 100%; }
-.mon-multisel-btn__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 분석 범위 줄(2026-09-29): 왼쪽은 필터(기간·축마다 "이름 값" 버튼 하나), 오른쪽은 표시 기준(붙은 토글).
+   제목·개수 배지·설명 문장은 줄에서 뺐다 — 컨트롤이 각자 이름을 말하고, 오해 방지 문장은 ⓘ 안에 있다. */
+.analysis-control-bar { padding: 10px 0 0; border-top: 1px solid var(--border-subtle); }
+.analysis-control-bar__controls { display: flex; align-items: center; justify-content: space-between; gap: 10px 24px; min-width: 0; flex-wrap: wrap; }
+.analysis-control-group { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; }
+.analysis-control-group__label { color: var(--text-secondary); font-size: var(--fs-sm); white-space: nowrap; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.segmented__option { min-height: 34px; padding: 0 12px; border: 0; background: var(--surface-container-lowest); color: var(--text-secondary); font: 600 var(--fs-sm) var(--font-sans); cursor: pointer; white-space: nowrap; }
+.segmented__option + .segmented__option { border-left: 1px solid var(--border); }
+.segmented__option:hover:not(:disabled) { color: var(--text-primary); }
+.segmented__option.active { background: color-mix(in srgb, var(--primary) 14%, var(--surface-container-lowest)); color: var(--primary); }
+.segmented__option:disabled { color: var(--text-muted); cursor: not-allowed; }
+.analysis-control-bar .mon-filter-item { min-height: 34px; }
+.analysis-control-bar .mon-multisel-btn { height: auto; min-height: 34px; padding: 0 12px; gap: 6px; border-radius: var(--radius-md); background: var(--surface-container-lowest); color: var(--text-primary); font-size: var(--fs-sm); }
+.mon-multisel-btn__label { color: var(--text-muted); }
+.mon-multisel-btn__value { min-width: 0; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.mon-multisel-btn.is-active { border-color: var(--primary); }
+.mon-multisel-btn.is-active .mon-multisel-btn__value { color: var(--primary); }
+.dashboard-filter-bar .mon-filter-reset { min-height: 34px; padding: 0 4px; border: 0; background: none; color: var(--primary); font: 600 var(--fs-sm) var(--font-sans); text-decoration: underline; cursor: pointer; }
+/* 폰에서만 보이는 요약 한 줄 — 컨트롤은 "조건 바꾸기"를 눌러야 펼친다. */
+.dashboard-filter-bar__summary { display: none; }
+.dashboard-filter-bar__summary p { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.5; }
+.dashboard-filter-bar__summary strong { color: var(--text-primary); font-weight: 600; }
+.dashboard-sticky-context__meta { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.dashboard-sticky-context__edit { margin-left: auto; }
 .analysis-local-controls { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
 .analysis-local-controls__inner { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .analysis-local-controls__label { margin-right: 3px; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .06em; }
@@ -5648,8 +5649,18 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-data-mapping__footer { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 10px; color: var(--text-muted); font-size: var(--fs-xs); }
 .analysis-advanced-controls { margin-bottom: 1rem; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
 .analysis-advanced-controls > div { padding-top: 2px; }
-@media (min-width: 1001px) { .analysis-control-bar__hint { display: inline; } }
-@media (max-width: 720px) { .analysis-control-bar { display: block; } .analysis-control-bar__heading { margin-bottom: 7px; } .analysis-control-bar__controls { gap: 7px 10px; } .analysis-control-bar .mon-filter-reset { margin-left: 0; } .analysis-local-controls { padding: 9px; } .dashboard-filter-more__body { position: fixed; top: auto; right: 12px; bottom: 72px; left: 12px; min-width: 0; max-height: 54vh; overflow-y: auto; } }
+@media (max-width: 720px) {
+  .analysis-control-bar__controls { gap: 10px; }
+  .analysis-local-controls { padding: 9px; }
+  .dashboard-filter-bar__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0 0; border-top: 1px solid var(--border-subtle); }
+  .dashboard-filter-bar__summary p { flex: 1 1 100%; }
+  .dashboard-filter-bar__toggle { min-height: 44px; }
+  .dashboard-filter-bar__controls { display: none; }
+  .dashboard-filter-bar[data-controls-open="true"] .dashboard-filter-bar__controls { display: block; }
+  .dashboard-filter-bar[data-controls-open="true"] .analysis-control-bar { border-top: 0; }
+  .dashboard-filter-bar .mon-filter-reset { min-height: 44px; }
+  .dashboard-sticky-context__edit { margin-left: 0; padding: 0; border: 0; background: none; color: var(--primary); text-decoration: underline; }
+}
 .tool-page-shell__toc { position: fixed; z-index: 7; top: 104px; right: 22px; width: 170px; display: flex; flex-direction: column; gap: 3px; padding: 12px 0 12px 14px; border-left: 1px solid var(--border); }
 .tool-page-shell__toc-label { margin: 0 0 7px 9px; color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .12em; }
 .tool-page-shell__toc-link { padding: 6px 9px; border-radius: var(--radius-sm); color: var(--text-muted); text-decoration: none; font-size: var(--fs-xs); line-height: 1.35; }
@@ -8175,7 +8186,7 @@ body.light-mode .app:not(.is-home) .main {
 .dashboard-recommendation:hover,.dashboard-recommendation:focus-visible { border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--surface-container-lowest)); }
 .dashboard-recommendation__rank { color:var(--primary);font: 700 var(--fs-xs) var(--font-sans);line-height:1.45; }
 .dashboard-recommendation__content { min-width:0; }
-.dashboard-recommendation__topline { display:flex;align-items:center;justify-content:space-between;gap:6px; }
+.dashboard-recommendation__topline { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 6px;min-width:0; }
 .dashboard-recommendation strong { color:var(--text-primary);font-size: var(--fs-xs); }
 .dashboard-recommendation em { flex:none;padding:2px 4px;border-radius: var(--radius-sm);background:color-mix(in srgb,var(--primary) 11%,transparent);color:var(--primary);font-size: var(--fs-xs);font-style:normal;font-weight:700; }
 .dashboard-recommendation__content > span:last-child { display:block;margin-top:5px;color:var(--text-muted);font-size: var(--fs-xs);line-height:1.48; }
@@ -9331,11 +9342,7 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name {
 .tool-instrument-header__controls { min-width: 0; }
 .page-sticky-title { font-size: clamp(var(--fs-lg), 1.8vw, var(--fs-xl)); font-weight: 600; }
 .analysis-control-bar { margin-top: 8px; padding-top: 9px; }
-.analysis-control-bar__title { color: var(--text-secondary); font-size: var(--fs-xs); }
-.analysis-control-group__label { color: var(--text-secondary); font-size: var(--fs-xs); }
-.analysis-control-bar :is(input, select, button),
-.dashboard-filter-more > summary { min-height: 34px; }
-.dashboard-filter-more__body { border-color: var(--operator-line-strong); box-shadow: var(--shadow-float); }
+.analysis-control-bar :is(input, select, button) { min-height: 34px; }
 .page-sticky-row1 .chip { max-width: min(38vw, 360px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sidebar-primary-nav { display: grid; grid-template-columns: 1fr; gap: 2px; margin: 0 0 11px; }
@@ -9562,7 +9569,8 @@ body.light-mode .dashboard-tabs .ab-pill.active {
 .dashboard-filter-bar__scope,
 .dashboard-filter-bar__date-range,
 .dashboard-filter-bar__display { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.dashboard-filter-bar__scope { min-width: 0; flex: 1; }
+/* 필터 칸이 좁아져 버튼이 한 줄씩 쌓이지 않게 기준 폭을 준다 — 모자라면 표시 기준이 다음 줄로 내려간다(980px에서 실측). */
+.dashboard-filter-bar__scope { min-width: 0; flex: 1 1 34rem; }
 .date-range-trigger {
   display: inline-flex;
   align-items: center;
@@ -9643,8 +9651,6 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   min-width: 0;
   max-width: 100%;
   margin-left: auto;
-  padding-left: 12px;
-  border-left: 1px solid var(--operator-line);
 }
 .dashboard-filter-bar__display .blocked-options-note { width: 100%;min-width: 0; }
 .dashboard-filter-bar__display .blocked-options-note > span { min-width: 0;white-space: normal;overflow-wrap: anywhere; }
@@ -9714,17 +9720,13 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   background: transparent;
 }
 .analysis-data-mapping > summary { min-height: 36px; color: var(--text-secondary); }
-.dashboard-next-actions { margin-top: 10px; border: 1px solid var(--operator-line); border-radius: var(--radius-lg); background: var(--work-surface); }
-.dashboard-next-actions > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:56px; padding:10px 13px; cursor:pointer; list-style:none; }
-.dashboard-next-actions > summary::-webkit-details-marker { display:none; }
-.dashboard-next-actions > summary > span { display:grid; gap:3px; }
-.dashboard-next-actions > summary small { color:var(--primary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing:.1em; }
-.dashboard-next-actions > summary strong { color:var(--text-primary); font: 700 var(--fs-sm) var(--font-sans); }
-.dashboard-next-actions > summary em { color:var(--text-muted); font-size: var(--fs-xs); font-style:normal; }
-.dashboard-next-actions > summary > b { color:var(--primary); font: 700 var(--fs-base) var(--font-sans); transition:transform .16s ease; }
-.dashboard-next-actions[open] > summary { border-bottom:1px solid var(--operator-line); }
-.dashboard-next-actions[open] > summary > b { transform:rotate(180deg); }
-.dashboard-next-actions__body { padding:12px; }
+/* 예전 <details> 접기 상자의 흔적(테두리·바탕·summary 규칙)이 늘 펼친 섹션에 남아 제목이 테두리에 붙어 있었다.
+   이제 열린 섹션이다 — 제목과 본문이 같은 왼쪽 선에서 시작한다(2026-09-29). */
+.dashboard-next-actions { margin-top: 10px; }
+.dashboard-next-actions > header > span { display:grid; gap:3px; }
+.dashboard-next-actions > header strong { color:var(--text-primary); font: 700 var(--fs-sm) var(--font-sans); }
+.dashboard-next-actions > header em { color:var(--text-muted); font-size: var(--fs-xs); font-style:normal; font-weight:400; }
+.dashboard-next-actions__body { padding:0; }
 .dashboard-next-actions__utility { display:flex; align-items:center; justify-content:space-between; gap:9px; margin-bottom:10px; }
 .dashboard-next-actions__utility > a { color:var(--primary); font-size: var(--fs-xs); font-weight:700; text-decoration:none; }
 .dashboard-next-actions__utility > a:hover,.dashboard-next-actions__utility > a:focus-visible { text-decoration:underline; text-underline-offset:3px; }
@@ -10488,8 +10490,7 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .page-sticky-title { font-size: var(--fs-lg); }
   .tool-instrument-header--sticky .page-sticky-row1 { align-items: flex-start; }
   .tool-instrument-header__status { max-width: 42vw; }
-  .analysis-control-bar :is(input, select, button),
-  .dashboard-filter-more > summary { min-height: 44px; }
+  .analysis-control-bar :is(input, select, button) { min-height: 44px; }
   .dashboard-tabs { margin-right: -12px; padding-right: 12px; }
   .dashboard-tabs__group { flex: none; }
   .dashboard-tabs__items { flex: none; }
@@ -11798,6 +11799,15 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 
 /* Keep upload help beside the input guidance, not on an otherwise empty row. */
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-summary { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 0 0 16px; border: 0; }
+/* 업로드 안내(2026-09-29): 테두리 버튼은 "예시 데이터로 결과 바로 보기" 하나다. 데이터 설명·템플릿은 "업로드 방법 보기"와
+   같은 글자 링크로 둔다 — 초록·파랑·글자 세 모양이 한 줄에 섞여 무엇이 주 행동인지 안 보였다. 템플릿은 업로드 칸과 같은 왼쪽 선에. */
+.csv-guide-btn { min-height: 44px; padding: 6px 4px; border: 0; border-radius: 0; background: transparent; color: var(--primary); font: 600 var(--fs-sm)/1.4 var(--font-sans); text-decoration: underline; text-underline-offset: 3px; }
+.csv-guide-btn:hover, .csv-guide-btn:focus-visible { background: transparent; color: var(--primary); text-decoration-thickness: 2px; }
+.csv-upload-quick-actions { justify-content: flex-start; }
+.csv-upload-quick-actions .ab-pill { min-height: 44px; padding: 6px 4px; border: 0; border-radius: 0; background: transparent; color: var(--primary); font: 600 var(--fs-sm)/1.4 var(--font-sans); text-decoration: underline; text-underline-offset: 3px; }
+/* 글자 링크는 좌우 여백 없이 업로드 칸과 같은 왼쪽 선에서 시작한다(누르는 높이 44px은 유지). */
+.csv-uploader[data-analysis-status] .csv-guide-actions > button:is(.tutorial-inline, .csv-guide-btn),
+.csv-uploader[data-analysis-status] .csv-upload-quick-actions .ab-pill { padding-inline: 0; }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-guide-actions > button { min-height: 44px; padding: 8px 12px; font-size: var(--fs-sm); }
 .csv-uploader[data-analysis-status="EMPTY"]:where(:not(.csv-uploader--dochi)) .csv-dropzone { min-height: 160px; padding: 24px 16px; }

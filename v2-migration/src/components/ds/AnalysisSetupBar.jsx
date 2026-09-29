@@ -58,11 +58,15 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
     finally { setBusy(false); }
   };
   if (slot === "context") {
-    if (!data?.raw?.length && !applicablePending && !applied) return null;
+    // 운영 대시보드(5-2)는 제목 줄이 "파일 · N행"을 직접 말한다 — 같은 줄을 위에 한 번 더 두지 않는다(2026-09-29).
+    const showDataLine = Boolean(data?.raw?.length) && toolId !== "5-2";
+    if (!showDataLine && !applicablePending && !applied) return null;
+    const hasDateFilter = Boolean(filter?.dateStart || filter?.dateEnd);
     return <section className="analysis-setup no-print" aria-label={en ? "Data and applied setup" : "데이터와 적용된 설정"}>
       {applied && !applicablePending && <p className="setup-applied-note">{en ? "Saved settings applied. Check the inputs below before using the results." : "저장한 설정을 적용했습니다. 아래 입력을 확인한 뒤 결과를 사용하세요."}</p>}
       {applicablePending && <SavedSetupReview key={applicablePending.item.id} pending={applicablePending} locale={locale} />}
-      <div className="analysis-setup__context"><strong>{en ? "Current input" : "현재 입력"}</strong><span>{data?.raw?.length?.toLocaleString() || 0} {en ? "source rows" : "원본 행"}</span><span>{en ? "Shared date filter" : "공통 기간 필터"}: {filter?.dateStart || (en ? "Unrestricted" : "제한 없음")} — {filter?.dateEnd || (en ? "Unrestricted" : "제한 없음")}</span></div>
+      {/* 기간 필터는 실제로 걸렸을 때만 말한다 — "제한 없음 — 제한 없음"은 아무것도 알려 주지 않았다. */}
+      {showDataLine && <div className="analysis-setup__context"><strong>{en ? "Current input" : "현재 입력"}</strong><span>{data.raw.length.toLocaleString()} {en ? "source rows" : "원본 행"}</span>{hasDateFilter && <span>{en ? "Shared date filter" : "공통 기간 필터"}: {filter?.dateStart || (en ? "start" : "처음")} — {filter?.dateEnd || (en ? "end" : "끝")}</span>}</div>}
     </section>;
   }
   // 여기서 데이터 유무를 다시 막지 않는다. 위의 최상단 가드가 이미

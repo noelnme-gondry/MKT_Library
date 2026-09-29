@@ -159,7 +159,9 @@ describe("Dashboard render smoke", () => {
   it("uses one wide operator canvas without duplicate sticky KPIs or a static TOC", () => {
     seedWithData();
     const { container } = render(<Dashboard />);
-    expect(container.querySelector(".dashboard-sticky-context__data")).toBeTruthy();
+    // 파일·행 수는 제목 줄의 본문 한 줄이다 — 누를 수 없는 알약이 아니다(§7.1).
+    expect(container.querySelector(".dashboard-sticky-context__meta")?.textContent).toMatch(/행/);
+    expect(container.querySelector(".page-sticky-row1 .chip")).toBeNull();
     expect(container.querySelector(".dashboard-top-stat")).toBeNull();
     expect(container.querySelector(".dashboard-shell__toc")).toBeNull();
     expect(container.querySelector(".dashboard-tabs__divider")).toBeNull();

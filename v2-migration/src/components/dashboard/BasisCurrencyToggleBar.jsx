@@ -1,7 +1,8 @@
 "use client";
-import React from "react";
+import React, { useId } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import FixedRateNote from "@/components/ds/FixedRateNote";
+import HelpTip from "@/components/ds/HelpTip";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
@@ -23,6 +24,7 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
   const isGroupAnalyzed = useAppStore((state) => state.isGroupAnalyzed);
   const setGroupAnalyzed = useAppStore((state) => state.setGroupAnalyzed);
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  const idBase = useId();
 
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return null;
 
@@ -49,53 +51,48 @@ export default function BasisCurrencyToggleBar({ locale = "ko", currencyMode = "
     if (wasAnalyzed) setGroupAnalyzed(currentRouteId);
   };
 
+  const basis = effectiveDenomBasis(csvData, denomBasis);
+  // 두 칸이 모두 버튼으로 보이는 한 덩어리 토글. 예전에는 선택된 쪽만 상자라 나머지가 라벨처럼 읽혔다(2026-09-29).
+  // 렌더 중에 컴포넌트를 만들면 매번 다시 마운트되므로 JSX를 돌려주는 함수로 둔다.
+  const option = ({ key, pressed, disabled = false, onClick, children }) => (
+    <button
+      key={key}
+      type="button"
+      className={`segmented__option ${pressed ? "active" : ""} ${disabled ? "disabled" : ""}`}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+  const currencyLabel = isConversionMode ? tr("표시 통화", "Display currency") : tr("금액 단위", "Amount unit");
+
   return (
     <>
         {(hasInstalls || hasActions) && (
           <div className="analysis-control-group">
-            <span className="analysis-control-group__label">{tr("성과 기준", "Performance basis")}</span>
-            <button
-              type="button"
-              className={`ab-pill ${effectiveDenomBasis(csvData, denomBasis) !== "actions" ? "active" : ""} ${!hasInstalls ? "disabled" : ""}`}
-              disabled={!hasInstalls}
-              onClick={() => hasInstalls && setDenomBasis("installs")}
-            >
-              {tr("설치", "Installs")}
-            </button>
-            <button
-              type="button"
-              className={`ab-pill ${effectiveDenomBasis(csvData, denomBasis) === "actions" ? "active" : ""} ${!hasActions ? "disabled" : ""}`}
-              disabled={!hasActions}
-              onClick={() => hasActions && setDenomBasis("actions")}
-            >
-              {tr("가입", "Actions")}
-            </button>
+            <span className="analysis-control-group__label" id={`${idBase}-basis`}>{tr("성과 기준", "Performance basis")}</span>
+            <div className="segmented" role="group" aria-labelledby={`${idBase}-basis`}>
+              {option({ key: "설치", pressed: basis !== "actions", disabled: !hasInstalls, onClick: () => hasInstalls && setDenomBasis("installs"), children: tr("설치", "Installs") })}
+              {option({ key: "가입", pressed: basis === "actions", disabled: !hasActions, onClick: () => hasActions && setDenomBasis("actions"), children: tr("가입", "Actions") })}
+            </div>
           </div>
         )}
         <div className="analysis-control-group" {...(!isConversionMode ? { "data-currency-scope": "declare" } : {})}>
-          <span className="analysis-control-group__label">{isConversionMode ? tr("표시 통화", "Display currency") : tr("데이터 통화", "Data currency")}</span>
-          <button
-            type="button"
-            className={`ab-pill ${selectedCurrency === "KRW" ? "active" : ""}`}
-            onClick={() => chooseCurrency("KRW")}
-          >
-            {tr("원 ₩", "KRW ₩")}
-          </button>
-          <button
-            type="button"
-            className={`ab-pill ${selectedCurrency === "USD" ? "active" : ""}`}
-            onClick={() => chooseCurrency("USD")}
-          >
-            {tr("달러 $", "USD $")}
-          </button>
+          <span className="analysis-control-group__label" id={`${idBase}-currency`}>{currencyLabel}</span>
+          <div className="segmented" role="group" aria-labelledby={`${idBase}-currency`}>
+            {option({ key: "원 ₩", pressed: selectedCurrency === "KRW", onClick: () => chooseCurrency("KRW"), children: tr("원 ₩", "KRW ₩") })}
+            {option({ key: "달러 $", pressed: selectedCurrency === "USD", onClick: () => chooseCurrency("USD"), children: tr("달러 $", "USD $") })}
+          </div>
+          {/* 오해 방지 문장은 컨트롤 줄 가운데가 아니라 ⓘ 안에 둔다 — 줄 한가운데 문장이 끼면 버튼 줄이 문단이 된다. */}
+          {!isConversionMode && (
+            <HelpTip label={tr("금액 단위 설명", "About the amount unit")}>
+              {tr("원본 금액의 단위만 지정합니다. 숫자는 환산하지 않습니다. 같은 CSV를 쓰는 도구에 함께 적용됩니다.", "Declares the unit of the original amounts. Values are not converted. Applies to every tool using the same CSV.")}
+            </HelpTip>
+          )}
         </div>
-        {isConversionMode ? (
-          <FixedRateNote sourceCurrency={sourceCurrency} displayCurrency={displayCurrency} locale={locale} />
-        ) : (
-          <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "6px 0 0" }}>
-            {tr("원본 금액의 단위만 지정합니다. 숫자는 환산하지 않습니다.", "Declares the unit of the original amounts. Values are not converted.")}
-          </p>
-        )}
+        {isConversionMode && <FixedRateNote sourceCurrency={sourceCurrency} displayCurrency={displayCurrency} locale={locale} />}
         <BlockedOptionsNote items={[
           { label: tr("설치", "Installs"), reason: !hasInstalls ? (hasActions ? tr("양수 값이 없어 가입 기준을 자동 적용했습니다", "No positive values; Actions was applied automatically") : tr("사용 가능한 양수 값이 없습니다", "No usable positive values")) : "" },
           { label: tr("가입", "Actions"), reason: !hasActions ? tr("사용 가능한 양수 값이 없습니다", "No usable positive values") : "" },

@@ -14,7 +14,7 @@ import SourceExportGuide from "./SourceExportGuide";
 const GUIDE_COPY = {
   ko: {
     need: "필요: ",
-    effort: (count) => count ? `필수 컬럼 ${count}개` : "파일 확인 후 필요한 컬럼 안내",
+    effort: (count) => `필수 컬럼 ${count}개`,
     tryExample: "예시 데이터로 결과 바로 보기",
     openBtn: "어떤 데이터가 왜 필요한가요?",
     modalTitle: "이 도구에 올릴 데이터 안내",
@@ -36,7 +36,7 @@ const GUIDE_COPY = {
   },
   en: {
     need: "Needs: ",
-    effort: (count) => count ? `${count} required columns` : "Required columns shown after checking your file",
+    effort: (count) => `${count} required columns`,
     tryExample: "Run the example and see results",
     openBtn: "What data is needed and why?",
     modalTitle: "Data guide for this tool",
@@ -89,14 +89,15 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
     <div className="csv-guide">
       <div className="csv-guide-summary">
         <div className="csv-guide-line">
-          <span className="csv-guide-when">{guide.when}</span>
+          {guide.when && <span className="csv-guide-when">{guide.when}</span>}
           {guide.outcomes?.length > 0 && (
             <ol className="csv-guide-outcomes" aria-label={locale === "en" ? "What happens after upload" : "업로드 후 진행 순서"}>
               {guide.outcomes.map((outcome) => <li key={outcome}>{outcome}</li>)}
             </ol>
           )}
           {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
-          <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>
+          {/* 필수 컬럼이 없으면(자동 판정 입구) 이 줄은 아무것도 알려 주지 않는다 — 뜻 없는 굵은 한 줄을 남기지 않는다(2026-09-29). */}
+          {requiredNeeds.length > 0 && <span className="csv-guide-effort">{T.effort(requiredNeeds.length)}</span>}
         </div>
         <div className="csv-guide-actions">
           {helpAction}

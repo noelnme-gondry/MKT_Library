@@ -6,8 +6,12 @@ import CsvGuide from "@/components/ds/CsvGuide";
 describe("CsvGuide", () => {
   it.each(["ko", "en"])("does not imply a zero-column contract before inspecting router input (%s)", locale => {
     const { container } = render(<CsvGuide toolId="start-gate" locale={locale} />);
-    expect(container.querySelector(".csv-guide-effort").textContent).toBe(locale === "en" ? "Required columns shown after checking your file" : "파일 확인 후 필요한 컬럼 안내");
+    // 필수 컬럼이 없는 입구는 개수 줄을 아예 그리지 않는다 — "0개"도, 뜻 없는 안내 줄도 없다.
+    expect(container.querySelector(".csv-guide-effort")).toBeNull();
     expect(container.textContent).not.toMatch(/필수 컬럼 0개|0 required columns/);
+    // 페이지 설명문·진행 막대와 같은 말을 반복하지 않는다.
+    expect(container.querySelector(".csv-guide-when")).toBeNull();
+    expect(container.querySelector(".csv-guide-outcomes")).toBeNull();
   });
   beforeEach(() => {
     window.gtag = vi.fn();
