@@ -4,7 +4,7 @@
 > 원본은 `lib/toolSearchContent.js`의 `question`/`answer`와 `lib/compareContent.js`다.
 > 문구를 바꾸려면 그 SSOT를 고친 뒤 이 스크립트를 다시 돌린다.
 
-대상 프롬프트 24개(KO) · 24개(EN).
+대상 프롬프트 25개(KO) · 25개(EN).
 
 ## 측정 방법
 
@@ -55,6 +55,7 @@ mkdir -p docs/aeo-runs && cp docs/aeo-prompt-checklist.md docs/aeo-runs/$(date +
 | 22 | 비교 | MMM과 증분 실험 중에 뭘 먼저 해야 하나요? | 실험을 먼저 합니다. MMM은 실험이 불가능한 채널을 메우는 용도입니다. | https://growthoptplaybook.com/compare/mmm-vs-experiment | ☐ | ☐ | |
 | 23 | 비교 | 광고 예산은 채널별로 어떻게 나누는 게 맞나요? | 평균 효율이 아니라 한계 효율 기준으로 나눕니다. | https://growthoptplaybook.com/compare/budget-allocation-methods | ☐ | ☐ | |
 | 24 | 비교 | 캠페인 성과 분석을 스프레드시트로 계속해도 되나요? | 집계는 됩니다. 변동 분해와 신뢰구간은 스프레드시트에서 어렵습니다. | https://growthoptplaybook.com/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
+| 25 | 비교 | 광고 성과 분석, CSV 업로드와 광고 계정 연동 중 무엇이 맞나요? | 매일 자동 갱신이 필요하면 연동형, 주 단위 점검과 원본을 기기에 두는 게 중요하면 CSV 업로드가 맞습니다. | https://growthoptplaybook.com/compare/csv-upload-vs-api-connector | ☐ | ☐ | |
 
 ## English prompts
 
@@ -84,6 +85,7 @@ mkdir -p docs/aeo-runs && cp docs/aeo-prompt-checklist.md docs/aeo-runs/$(date +
 | 22 | Comparison | Should I run MMM or an incrementality experiment first? | Run the experiment first. MMM fills in channels you cannot test. | https://growthoptplaybook.com/en/compare/mmm-vs-experiment | ☐ | ☐ | |
 | 23 | Comparison | How should I split ad budget across channels? | Split on marginal efficiency, not average efficiency. | https://growthoptplaybook.com/en/compare/budget-allocation-methods | ☐ | ☐ | |
 | 24 | Comparison | Can I keep doing campaign analysis in a spreadsheet? | Aggregation works fine. Variance decomposition and confidence intervals do not. | https://growthoptplaybook.com/en/compare/dashboard-vs-spreadsheet | ☐ | ☐ | |
+| 25 | Comparison | For ad performance analysis, should I upload CSVs or connect my ad accounts? | Daily auto-refresh needs a connector. Weekly checks with data kept local suit CSV uploads. | https://growthoptplaybook.com/en/compare/csv-upload-vs-api-connector | ☐ | ☐ | |
 
 ## 읽는 법
 

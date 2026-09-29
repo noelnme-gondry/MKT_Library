@@ -262,6 +262,73 @@ const CONTENT = {
       ],
     },
   },
+
+  // 불리한 조건도 같은 표에 적는다(2026-09-29 분석 SaaS 벤치마크 §3.2-3). 이 제품은 광고 계정에
+  // 연결하지 않는다(product-ssot F-08) — 그 사실을 숨기면 연동형을 찾던 사람이 들어와서야 알게 된다.
+  // 남의 제품이 아니라 "가져오는 방식"을 비교한다(L-06: 특정 제품의 대체재라고 쓰지 않는다).
+  "csv-upload-vs-api-connector": {
+    toolIds: ["5-2", "5-21"],
+    ko: {
+      eyebrow: "방법 비교",
+      title: "광고 데이터 가져오기 — CSV 업로드와 광고 계정 연동 비교",
+      question: "광고 성과 분석, CSV 업로드와 광고 계정 연동 중 무엇이 맞나요?",
+      answer: "매일 자동 갱신이 필요하면 연동형, 주 단위 점검과 원본을 기기에 두는 게 중요하면 CSV 업로드가 맞습니다.",
+      lead: "광고 데이터를 분석 도구로 가져오는 방법은 둘입니다. 매체에서 CSV를 내려받아 올리는 방식과, 광고 계정을 연결해 정해진 주기로 자동으로 가져오는 방식입니다. 어느 쪽이 낫다기보다 갱신 주기·계정 권한·원본을 어디에 둘지에 따라 답이 갈립니다. Growth Opt Playbook은 CSV 업로드 방식이고 광고 계정에는 연결하지 않습니다.",
+      table: {
+        caption: "CSV 업로드와 광고 계정 연동(API) 비교",
+        columns: ["기준", "CSV 업로드", "광고 계정 연동(API)"],
+        rows: [
+          ["데이터 갱신", "매체에서 내려받아 직접 올림(수동)", "정해진 주기로 자동 동기화"],
+          ["필요한 권한", "광고 계정 권한 없이 파일만 있으면 됨", "광고 계정 접근 권한 승인이 필요함"],
+          ["원본 데이터 처리", "이 제품은 브라우저에서 계산하고 원본 행을 서버로 보내지 않음", "연동 서비스가 데이터를 가져가 처리함(보관 정책은 서비스마다 다름)"],
+          ["여러 계정·매체", "파일마다 올림. 다계정 권한 관리 없음", "계정을 연결해 한곳에서 관리"],
+          ["컬럼 맞추기", "매체마다 헤더가 달라 매핑이 필요함(자동 인식 후 틀린 것만 수정)", "커넥터가 필드를 맞춰 주지만 정의는 서비스 기준"],
+          ["시작하는 데 드는 것", "가입·연결 없이 바로 분석", "연결 설정과 권한 승인"],
+        ],
+      },
+      guidance: [
+        ["매일 아침 대시보드가 저절로 갱신돼야 한다면", "연동형이 맞습니다. 이 제품은 실시간 동기화나 자동 갱신을 제공하지 않습니다."],
+        ["주 단위로 성과를 보고 다음 행동을 정한다면", "CSV 업로드로 충분합니다. 한 주에 한 번 내보내 올리면 됩니다."],
+        ["광고 계정 권한을 외부 서비스에 줄 수 없다면", "CSV 업로드를 쓰세요. 계정 연결 없이 내보낸 파일만으로 분석합니다."],
+        ["여러 매체의 숫자를 하나로 합쳐야 한다면", "어느 방식이든 매체마다 어트리뷰션 기준이 다르다는 점을 먼저 확인하세요. 합친다고 하나의 기준이 되지 않습니다."],
+      ],
+      faq: [
+        { q: "이 제품은 광고 계정에 연동되나요?", a: "연동되지 않습니다. 각 매체에서 내려받은 CSV를 올리는 방식입니다. 실시간 API 동기화·자동 갱신·다계정 권한 관리는 제공하지 않습니다." },
+        { q: "매체에서 내려받은 CSV 헤더를 고쳐야 하나요?", a: "보통은 그대로 올리면 됩니다. 컬럼 이름으로 날짜·비용·전환 같은 필드를 자동으로 연결하고, 틀린 연결만 고치면 됩니다. 필수 필드가 연결되지 않으면 분석을 시작하기 전에 알려 줍니다." },
+        { q: "공개 Google Sheets 링크로 불러오는 것은 연동인가요?", a: "아닙니다. 공개 URL로 시트를 읽어 오는 방식이라 광고 계정 연결이 아닙니다. 시트가 공개돼 있어야 하므로 민감한 데이터라면 파일 업로드를 쓰세요." },
+      ],
+    },
+    en: {
+      eyebrow: "Method comparison",
+      title: "Getting ad data in — CSV upload versus ad-account connectors",
+      question: "For ad performance analysis, should I upload CSVs or connect my ad accounts?",
+      answer: "Daily auto-refresh needs a connector. Weekly checks with data kept local suit CSV uploads.",
+      lead: "There are two ways to bring ad data into an analysis tool. You can export a CSV from each platform and upload it, or connect your ad accounts so data is pulled on a schedule. Neither is better in general; the answer depends on refresh frequency, account permissions, and where the source data should live. Growth Opt Playbook uses CSV uploads and does not connect to ad accounts.",
+      table: {
+        caption: "CSV upload versus ad-account connectors (API)",
+        columns: ["Criterion", "CSV upload", "Ad-account connector (API)"],
+        rows: [
+          ["Data refresh", "Export from each platform and upload (manual)", "Automatic sync on a schedule"],
+          ["Permissions needed", "No ad-account access; the file is enough", "Approval for ad-account access"],
+          ["Source data handling", "This product computes in the browser and does not send source rows to a server", "The connector service pulls and processes the data (retention varies by service)"],
+          ["Multiple accounts and platforms", "One upload per file; no multi-account permission management", "Connect accounts and manage them in one place"],
+          ["Matching columns", "Headers differ by platform, so mapping is needed (auto-detected, then fix what is wrong)", "The connector aligns fields, using the service's definitions"],
+          ["What it takes to start", "Analyze right away, no signup or connection", "Connection setup and permission approval"],
+        ],
+      },
+      guidance: [
+        ["If a dashboard must refresh itself every morning", "Use a connector. This product does not offer live sync or automatic refresh."],
+        ["If you review performance weekly and decide next steps", "CSV uploads are enough. Export and upload once a week."],
+        ["If you cannot grant ad-account access to an outside service", "Use CSV uploads. Analysis runs on the exported file without any account connection."],
+        ["If you need to combine numbers across platforms", "Either way, check first that each platform uses a different attribution basis. Combining them does not make one standard."],
+      ],
+      faq: [
+        { q: "Does this product connect to my ad accounts?", a: "No. You upload a CSV exported from each platform. Live API sync, automatic refresh, and multi-account permission management are not provided." },
+        { q: "Do I need to edit the headers of an exported CSV?", a: "Usually not. Fields such as date, cost, and conversions are matched from column names, and you only fix wrong matches. If a required field is not matched, you are told before the analysis starts." },
+        { q: "Is loading a public Google Sheets link a connection?", a: "No. The sheet is read through its public URL; it is not an ad-account connection. The sheet must be public, so use a file upload for sensitive data." },
+      ],
+    },
+  },
 };
 
 export const COMPARE_SLUGS = Object.keys(CONTENT);
