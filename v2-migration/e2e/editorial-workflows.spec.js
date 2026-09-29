@@ -51,7 +51,12 @@ for (const locale of ["ko", "en"]) {
       // 현재 입력은 본문 맨 위(§5.2 읽기 순서 1번), 설정 보관은 결과 뒤다.
       // 두 자리가 각각 제 역할을 갖는지 함께 확인한다 — 한쪽으로 몰리면
       // "아래 입력을 확인한 뒤" 문구가 거짓이 되거나 프로젝트 동선이 끊긴다.
-      await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);
+      // 운영 대시보드(5-2)는 입력을 제목 줄("예시 데이터 · 28행")이 말하고 위의 설정 줄을 두지 않는다.
+      if (BLOG_INSIGHT_PLACEMENTS[slug].toolId === "5-2") {
+        await expect(page.locator(".dashboard-sticky-context__meta")).toContainText(locale === "en" ? "28 rows" : "28행");
+      } else {
+        await expect(page.getByRole("region", { name: locale === "en" ? "Data and applied setup" : "데이터와 적용된 설정", exact: true })).toContainText(`${followup ? 42 : 28} ${locale === "en" ? "source rows" : "원본 행"}`);
+      }
       const keepSetup = page.getByRole("region", { name: locale === "en" ? "Keep this setup" : "이 설정 보관하기", exact: true });
       await expect(keepSetup.getByRole("button", { name: locale === "en" ? "Save this setup to the project" : "이 설정을 프로젝트에 저장", exact: true })).toBeVisible();
       await expect(keepSetup.getByRole("link", { name: locale === "en" ? "Open saved setups" : "저장한 설정 보관함", exact: true })).toBeVisible();
