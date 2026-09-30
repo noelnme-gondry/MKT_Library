@@ -250,7 +250,7 @@ export default function ScaleDecisionMap({
     : "";
 
   return (
-    <section className="block scale-decision-map" id="s-scale-map" aria-labelledby="scale-decision-map-title">
+    <section className="block scale-decision-map saturation-surface" id="s-scale-map" aria-labelledby="scale-decision-map-title">
       <header className="scale-decision-map__head">
         <div>
           <h2 className="section-title" id="scale-decision-map-title">
@@ -291,7 +291,7 @@ export default function ScaleDecisionMap({
           <p className="scale-decision-map__threshold">{thresholdCopy}</p>
           <div className="scale-decision-map__actions" aria-label={isEn ? "Quadrant counts" : "사분면별 대상 수"}>
             {visibleActions.map((action) => (
-              <div data-tone={actions[action].tone} key={action}>
+              <div data-tone={actions[action].tone} key={action} data-design-exempt="nested: quadrant counts grouped by interpretation within the observed-efficiency surface">
                 <span>{actions[action].label}</span>
                 <strong>{actionCounts[action]}</strong>
                 <small>{actions[action].detail}</small>

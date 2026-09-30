@@ -669,7 +669,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         onSelect={setSelected}
       />
 
-      <section className="block" id="s-sat">
+      <section className="block saturation-surface" id="s-sat">
         <h2 className="section-title">{tr("포화도 순위", "Saturation ranking")}</h2>
 
         {okRows.length > 0 && (
@@ -765,7 +765,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       </section>
 
       {okRows.length > 0 && isVisible("s-sat-curve") && (
-        <section className="block" id="s-sat-curve">
+        <section className="block saturation-surface" id="s-sat-curve">
           <div className="section-head">
             <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
@@ -774,7 +774,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             <FigurePngButton title={tr(`${grainLabel}별 응답곡선 — ${selName}`, `${grainLabel} response curve — ${selName}`)} target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
             </AnalysisExportProvider>
           </div>
-          <dl className="saturation-curve-evidence">
+          <dl className="saturation-curve-evidence" data-design-exempt="nested: selected-entity evidence grouped inside the response-curve surface">
             <div><dt>{tr("최근 일예산", "Recent daily budget")}</dt><dd>{fmtCurrency(selectedRow?.currentCost, currency)}</dd></div>
             <div><dt>{tr("관측된 일지출 범위", "Observed daily spend range")}</dt><dd>{fmtCurrency(selectedRow?.xMin, currency)} – {fmtCurrency(selectedRow?.xMax, currency)}</dd></div>
             <div><dt>{tr("적합도 R²", "Model fit R²")}</dt><dd>{selectedRow?.r2 == null ? "—" : selectedRow.r2.toFixed(2)}</dd></div>
@@ -809,7 +809,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         isDarkMode={isDarkMode}
       /></AnalysisExportProvider>}
 
-      <section className="block" id="s-sat-period">
+      <section className="block saturation-surface" id="s-sat-period">
         <PeriodSensitivityPanel
           key={`${computeAnalyzeSig(csvData)}|${analysisKey}|${JSON.stringify(scopeFilters(dashboardFilter))}|${dashboardFilter.dateStart}|${dashboardFilter.dateEnd}|${basisMetricField}|${effectiveMetric}|${currency}`}
           locale={locale}

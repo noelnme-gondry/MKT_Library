@@ -310,3 +310,27 @@ for (const locale of ["ko", "en"]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+test.describe("analysis surfaces in light mode", () => {
+  test.use({ colorScheme: "light" });
+  for (const locale of ["ko", "en"]) {
+    test(`saturation content surfaces are white against the page (${locale})`, async ({ page }) => {
+      await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-saturation?example=1`);
+      await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
+      const surfaces = page.locator(".saturation-surface, .saturation-data, .analysis-setup--actions, .tool-next-step-panel");
+      // User contract: a white content surface groups heading, evidence and actions;
+      // a gray/transparent box with only a border does not satisfy it.
+      const paint = await surfaces.evaluateAll(nodes => nodes.map(node => {
+        const style = getComputedStyle(node);
+        return { background: style.backgroundColor, padding: parseFloat(style.paddingLeft) };
+      }));
+      expect(paint).toHaveLength(8);
+      paint.forEach(surface => {
+        expect(surface.background).toBe("rgb(255, 255, 255)");
+        expect(surface.padding).toBeGreaterThanOrEqual(16);
+      });
+      expect(await page.locator("body").evaluate(node => getComputedStyle(node).backgroundColor)).not.toBe("rgb(255, 255, 255)");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    });
+  }
+});

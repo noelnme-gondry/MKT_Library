@@ -42,7 +42,7 @@ export default function MarginalEfficiencyGapChart({
   const sectionRef = useRef(null);
 
   return (
-    <section ref={sectionRef} className="block marginal-gap" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
+    <section ref={sectionRef} className="block marginal-gap saturation-surface" id="s-marginal-gap" aria-labelledby="marginal-gap-title">
       <header className="marginal-gap__head">
         <div>
           <h2 className="section-title" id="marginal-gap-title">{isEn
@@ -96,6 +96,7 @@ export default function MarginalEfficiencyGapChart({
             return (
               <div
                 className="marginal-gap__row"
+                data-design-exempt="nested: user-requested entity grouping within a white analysis surface"
                 data-selected={selectedName === point.name ? "true" : "false"}
                 data-verdict={point.verdict || "linear"}
                 key={point.name}

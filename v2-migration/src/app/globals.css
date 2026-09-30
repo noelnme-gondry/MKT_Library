@@ -11596,9 +11596,9 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 /* ── 사이트 디자인 계약 (2026-09-24) ─────────────────────────────────────────
    사용자 지적: 박스 안 박스, 어디는 튀어나오고 어디는 좁은 가장자리, 떠 있는 요소의 겹침.
    e2e/design-rules.spec.js가 렌더된 박스로 같은 규칙을 검사한다(값이 아니라 결과를 본다).
-   1) 페이지 전체를 감싸는 카드는 없다 — 본문은 열린 면이고, 상자는 한 겹만 허용한다.
-   2) 섹션(.block)은 상자가 아니라 위쪽 선 하나로 나눈다. 안에 표·차트·콜아웃이 들어가도
-      상자가 두 겹이 되지 않는다(도구 셸 안에서는 이미 이 모양이었다 — 전 사이트로 넓힌다).
+   1) 페이지 전체를 감싸는 카드는 없다 — 목적별 콘텐츠 면과 내부 대상 그룹은 허용한다.
+   2) 기본 섹션(.block)은 위쪽 선으로 나눈다. 2026-09-30 사용자 요구의 분석 콘텐츠 면은
+      design.md·product-ssot §5.5a에 따라 도구 범위에서 흰색 면으로 덮어쓴다.
    3) 스티키 바는 본문과 같은 좌우 가장자리에서 끝난다(예전엔 좌우로 42px씩 튀어나왔다).
       장식 눈금(::after 줄무늬)은 뺀다. */
 .block {
@@ -12149,6 +12149,25 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
   .saturation-data { grid-template-columns: 1fr; gap: 8px; }
   .saturation-data__template { justify-self: start; }
   .saturation-workspace .result-action-card__points li.is-structured { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* White content surfaces are distinct from the gray page in light mode.
+   Purposeful entity/evidence groups remain inside; dark mode uses the same token. */
+.app .content .saturation-workspace .saturation-surface {
+  padding: 24px;
+  margin-block: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-lowest);
+}
+.saturation-workspace .tool-instrument-header,
+.saturation-data,
+.analysis-setup--actions[data-tool-id="5-22"],
+.tool-next-step-panel { background: var(--surface-container-lowest); }
+.saturation-workspace .saturation-curve-evidence { background: var(--bg-1); }
+.saturation-workspace .saturation-surface :is(.table-wrap, .chart-container) { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+@media (max-width: 768px) {
+  .app .content .saturation-workspace .saturation-surface { padding: 16px; }
 }
 
 }
