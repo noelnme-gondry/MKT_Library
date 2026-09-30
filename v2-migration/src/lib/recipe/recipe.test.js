@@ -142,6 +142,13 @@ describe("foldSteps — 단계를 접어 상태 만들기", () => {
     expect(rejected.map((r) => r.code)).toEqual(["UNKNOWN_ENTRY", "INVALID_STEP", "INVALID_STEP"]);
   });
 
+  it("필요한 컬럼이 빠진 CSV에 레시피를 다시 적용하면 그 단계만 사유와 함께 빠진다", () => {
+    const steps = [{ id: "level.channel" }, { id: "view.top.5" }];
+    const { state, rejected } = foldSteps(steps, vocab, spec, { mappedFields: new Set(["date", "cost"]) });
+    expect(rejected.map((r) => [r.step.id, r.code])).toEqual([["level.channel", "MISSING_FIELD"]]);
+    expect(state.view.topN).toBe(5);
+  });
+
   it("같은 단계 목록이면 같은 상태(결정론)", () => {
     const steps = [{ id: "level.dimension", params: { field: "platform" } }, { id: "view.only.worse" }];
     expect(foldSteps(steps, vocab, spec)).toEqual(foldSteps(steps, vocab, spec));

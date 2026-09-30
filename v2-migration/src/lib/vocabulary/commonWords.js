@@ -128,6 +128,8 @@ const exportWords = [
     slot: "export.format",
     label: { ko, en },
     aliases,
+    // 도구가 선언한 형식만 단어로 낸다(선언이 없으면 이 도구는 형식 단어가 없다).
+    expand: (context) => ((context.toolSpec?.exportFormats || []).includes(format) ? [{}] : []),
     apply: (state) => {
       state.export.format = format;
       return state;
@@ -265,7 +267,10 @@ const dimensionWords = [
       return { ko: `${name.ko}${directionParticle(name.ko)} 먼저 나누기`, en: `Split by ${name.en ?? name.ko} first` };
     },
     aliases: (params) => [params.field],
-    expand: (context) => (context.dimensions || []).map((dim) => ({ field: dim.field })),
+    // 이미 맨 위 축이면 "먼저 나누기"는 아무것도 바꾸지 않으니 내지 않는다.
+    expand: (context) => (context.dimensions || [])
+      .filter((dim) => dim.field !== context.currentLevels?.[0])
+      .map((dim) => ({ field: dim.field })),
     apply: (state, params, spec) => {
       const rest = state.data.levels.filter((level) => level !== params.field);
       state.data.levels = [params.field, ...rest].slice(0, spec?.maxLevels ?? 3);

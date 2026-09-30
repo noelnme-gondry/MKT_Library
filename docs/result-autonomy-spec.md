@@ -1,6 +1,6 @@
 # 결과 자율화 — 대전제 + PVM 딥다이브 (설계 스펙)
 
-> 상태: 2026-09-30 **S1 완료**(공용 레시피·단어 사전·한글 매칭 — 순수함수 + 골든, 화면 배선 없음). 다음 S2. 사용자 확정 결정은 §0, 미확정은 §7.
+> 상태: 2026-09-30 **5-21 파일럿 S1~S6 완료**(계정 동기화만 후속 — §4.5). 화면 계약은 `docs/product-ssot.md` §5.5a. 사용자 확정 결정은 §0, 결정 이력은 §7.
 > 목적: AI 대화형 분석과 경쟁할 수 있게 "우리 포맷에 데이터를 맞추는 도구"에서
 > "유저 데이터·유저 의도에 우리가 맞추는 도구"로 바꾼다. 엔진 수학은 불변(§2 AGENTS §11).
 
@@ -243,13 +243,31 @@ ExportRecipe = {
 | 단계 | 내용 | 규모 감 | 검증 |
 |---|---|---|---|
 | S1 ✅ | 공용 계약: `lib/recipe/`(스키마·검증·적용), `lib/vocabulary/`(사전 타입·한글 매처·공용 단어) | 순수함수 | 골든(초성·IME 조합·정렬 결정론·레시피 검증 거절 케이스) |
-| S2 | `ds/RecipeCommandInput`(콤보박스·칩) | UI 1개 | 스모크(키보드 계약·비활성 단어 이유) |
-| S3 | 5-21 어댑터: 흩어진 `useState`·`useSavedToolInput` → DataRecipe/ViewRecipe, 블록 선언, 5-21 사전 | 컴포넌트 재배선(엔진 불변) | 기존 5-21 스모크·골든 byte-동일 + 레시피 재적용 스모크(다음 기간 CSV) |
-| S4 | `channel` 필수 완화 + 국가·OS·임의 축(**필수**) + 차원 인식 보강(§3.4) | 필드 계약·별칭·`valueVocabulary`·`keys` 조립 | Simpson 픽스처 축 교체 시 항등식 유지 · 표기 변형 픽스처 매핑 |
-| S5 | ExportRecipe → 기존 `workbookExport`·`buildPvmResultCsv`·PNG에 블록 선택·한계 포함 적용 | 내보내기 | `exportContract` 골든 |
-| S6 | Pro 저장·재적용(레시피 목록, 계정 동기화 여부 §7) | 저장소 | persist 마이그레이션 테스트 |
+| S2 ✅ | `ds/RecipeCommandInput`(콤보박스·칩) | UI 1개 | 스모크(키보드 계약·비활성 단어 이유) |
+| S3 ✅ | 5-21 어댑터: 흩어진 `useState`·`useSavedToolInput` → DataRecipe/ViewRecipe, 블록 선언, 5-21 사전 | 컴포넌트 재배선(엔진 불변) | 기존 5-21 스모크·골든 byte-동일 + 레시피 재적용 스모크(다음 기간 CSV) |
+| S4 ✅ | `channel` 필수 완화 + 국가·OS·임의 축(**필수**) + 차원 인식 보강(§3.4) | 필드 계약·별칭·`valueVocabulary`·`keys` 조립 | Simpson 픽스처 축 교체 시 항등식 유지 · 표기 변형 픽스처 매핑 |
+| S5 ✅ | ExportRecipe → 기존 `workbookExport`·`buildPvmResultCsv`·PNG에 블록 선택·한계 포함 적용 | 내보내기 | `exportContract` 골든 |
+| S6 ✅(기기·프로젝트) | Pro 저장·재적용(레시피 목록, 계정 동기화 여부 §7) | 저장소 | persist 마이그레이션 테스트 |
 
 S1~S3가 끝나면 두 번째 도구(5-22 — 같은 효율 CSV 그룹)로 공용 계층이 정말 공용인지 검증한다.
+
+### 4.5 구현 결과와 설계에서 달라진 점 (2026-09-30)
+
+| 항목 | 구현 | 위치 |
+|---|---|---|
+| 레시피 → 엔진 | 축은 `keys` 조립만(`pvmKeysFromState`), 행은 `preparePvmRows`(대소문자 합치기 → 분석 범위 필터). 엔진·골든 무변경 | `lib/recipe/pvmRecipe.js`, `buildPvmCache` |
+| 기본 축 | 단계가 없으면 기존 5-21과 byte-동일(채널→캠페인→소재, 채널→소재). 채널이 없으면 캠페인·OS·국가 순 | `defaultPvmKeys` |
+| CSV 컬럼 축 | `mappedRows`는 원본 행과 인덱스가 맞지 않아(요약행·무효 날짜 제거) 붙일 수 없다 → 그 컬럼을 `col:헤더` 키로 넣어 `buildLegacyRows`로 다시 만든다 | `CampaignPvm` `rowSource` |
+| 보기 설정 | 표에만(보기 필터는 그 표 축·상위 축만, 나머지는 "적용 안 됨" 안내). Σ 검증은 가리기 전 행 | `applyPvmView` |
+| 숨김 | 핵심 그림·성과 요약·효율 원인·Mix/Rate 설명·2·3단 표. **첫 분해표·항등식 확인은 잠금** | `pvmBlocks` |
+| 지난달과 비교 | 최신 날짜가 속한 달 1일~최신일 vs 지난달 1일~같은 일(말일에서 자름) | `monthOverMonthRanges` |
+| 알약(지표·기준 주·비교 주) | 단계를 더할 뿐 — 상태 두 벌 없음. 옛 저장 키는 처음 한 번 단계로 옮김 | `legacyPvmSteps` |
+| 매핑+축 | 고르면 `withMappingChange`(매핑 편집 화면과 같은 함수)로 스토어에 쓰고 축 단계를 더한다 | `lib/data-import/applyMappingChange.js` |
+| OS·국가 인식 | 별칭 보강(STANDARD_FIELDS → V2 별칭 신호로 자동 전파). 값 판별은 전역 스코어러가 아니라 단어 사전에서 "지정할까요" 제안으로 — 전역 `valueVocabulary`는 헤더를 무시하는 배타 모드라 쓰면 헤더 매핑이 막힌다 | `csvConstants`, `dataContext` |
+| 내보내기 | 한계 포함/제외만. 형식 단어는 도구가 선언한 형식만 뜨고 5-21은 선언 없음(형식은 기존 결과 받기 메뉴). CSV 수식은 행 간 롤업을 참조해 행 단위로 거르면 합이 틀어지므로 보기 설정을 파일에 적용하지 않는다 | `exportLimitations` |
+| 저장 | 칩 = 도구 입력 `recipeSteps` → 기존 "저장한 분석"(Pro·프로젝트)으로 다음 CSV에 재적용. 필요한 컬럼이 빠진 칩은 `MISSING_FIELD` | `toolInputs.js` |
+
+**후속(미구현)**: 레시피 계정 동기화(매핑 동기화처럼 서버 테이블·API·개인정보 고지 필요), 다른 도구로 확장(5-22부터).
 
 ---
 

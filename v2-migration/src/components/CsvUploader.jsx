@@ -22,6 +22,7 @@ import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows"
 import { projectSemanticBindingsToLegacyMapping, semanticBindingsFromLegacyMapping } from "@/lib/data-import/canonical-v2/legacyProjection";
 import { CANONICAL_FIELDS } from "@/lib/data-import/schema/canonicalFields";
 import { canonicalFieldForLegacyKey } from "@/lib/data-import/schema/legacyFieldMigration";
+import { withMappingChange } from "@/lib/data-import/applyMappingChange";
 import { evaluateV2Eligibility } from "@/lib/data-import/schema/toolDataRequirements";
 import { applyCompatibleMemory, buildMappingMemoryRecord, mappingMemoryEnabled, setMappingMemoryEnabled } from "@/lib/data-import/memory/mappingMemory";
 import { clearMappingMemory, confirmMappingMemory, listMappingMemory, putMappingMemory } from "@/lib/data-import/memory/indexedDbMappingMemory";
@@ -632,26 +633,7 @@ export default function CsvUploader({
   useImperativeHandle(refreshRef, () => ({ refreshSheet: handleRefreshSheet }));
 
   const handleMappingChange = (header, value) => {
-    const mapping = { ...csvData.mapping, [header]: value };
-    const migration = canonicalFieldForLegacyKey(value);
-    const bindings = (csvData.mappingBindingsV2 || []).map((binding) => binding.sourceColumn === header ? {
-      ...binding,
-      canonicalKey: migration?.canonicalKey || null,
-      role: migration?.canonicalKey ? CANONICAL_FIELDS[migration.canonicalKey]?.family || "UNKNOWN" : "UNKNOWN",
-      decision: migration?.canonicalKey ? "SUGGEST" : "UNKNOWN",
-      evidence: migration?.canonicalKey ? [{ kind: "legacy_user", code: "USER_SELECTED_LEGACY_ROLE" }] : [],
-      source: "user",
-      member: migration?.memberHint ? { kind: migration.memberHint } : null,
-      window: migration?.window || null,
-    } : binding);
-    setCsvData({
-      ...csvData,
-      mapping,
-      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
-      mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping: mapping, semanticBindings: bindings, toolId }),
-      mappingBindingsV2: bindings,
-      canonicalDataV2: buildCanonicalDatasetV2({ raw: csvData.raw, headers: csvData.headers, bindings, valueBindingRecipes: csvData.semanticMapping?.valueBindingRecipes || [], representation: csvData.semanticMapping?.profile?.representation || "tabular" }),
-    });
+    setCsvData(withMappingChange(csvData, header, value, toolId));
     setConfirmedHeaders((previous) => new Set([...previous, header]));
     // Mapping changes invalidate the analysis gate; the preview stays visible.
   };

@@ -26,6 +26,20 @@ export const AXIS_TERMS = Object.freeze([
 ]);
 const AXIS_TERM_MAP = new Map(AXIS_TERMS);
 const MAX_VALUES_PER_DIMENSION = 200;
+
+// 헤더가 "구분"·"type"처럼 무의미해도 값으로 OS·국가를 알아본다(spec §3.4 (2)).
+// 전역 자동 매핑의 valueVocabulary는 "값으로만" 판별하는 배타 모드라 헤더 매핑을 막는다 —
+// 그래서 전역 스코어러는 그대로 두고, 여기서는 "이 컬럼을 OS로 지정할까요" 제안만 만든다.
+const VALUE_VOCABULARY = {
+  platform: ["ios", "android", "aos", "iphone", "ipad", "ipados", "안드로이드", "아이폰", "아이오에스"],
+  country: [
+    "kr", "us", "jp", "cn", "tw", "hk", "sg", "th", "vn", "id", "my", "ph", "in", "gb", "uk", "de", "fr", "es", "it", "ca", "au", "br", "mx", "ru", "tr", "sa", "ae",
+    "korea", "south korea", "republic of korea", "united states", "usa", "japan", "china", "taiwan", "hong kong", "singapore", "thailand", "vietnam",
+    "indonesia", "malaysia", "philippines", "india", "united kingdom", "germany", "france", "canada", "australia", "brazil",
+    "한국", "대한민국", "미국", "일본", "중국", "대만", "홍콩", "싱가포르", "태국", "베트남", "인도네시아", "말레이시아", "필리핀", "인도", "영국", "독일", "프랑스", "캐나다", "호주", "브라질",
+  ],
+};
+const VALUE_MATCH_SHARE = 0.8;
 const COLUMN_REF_PREFIX = "col:";
 
 /** 레시피가 가리키는 축: 표준 키(`channel`) 또는 매핑 안 된 CSV 컬럼(`col:권역`). */
@@ -100,6 +114,14 @@ function topValues(canonicalizer) {
     .map((item) => item.value);
 }
 
+function valuesMatch(key, values) {
+  const vocabulary = VALUE_VOCABULARY[key];
+  if (!vocabulary) return false;
+  const distinct = [...new Set(values.map((value) => String(value ?? "").trim().toLowerCase()).filter(Boolean))];
+  if (!distinct.length) return false;
+  return distinct.filter((value) => vocabulary.includes(value)).length / distinct.length >= VALUE_MATCH_SHARE;
+}
+
 function aliasMatches(key, header) {
   const normalized = normalizeText(header);
   const aliases = [key, ...(STANDARD_FIELDS[key]?.aliases || [])];
@@ -151,13 +173,14 @@ export function buildDataContext({ headers, rows = [], mapping = {}, toolId = nu
     }
   }
 
-  // 비어 있는 축 필드 ← 이름이 그 필드 별칭과 같은 매핑 안 된 컬럼.
+  // 비어 있는 축 필드 ← 이름이 그 필드 별칭과 같거나, 값이 그 필드 어휘인 매핑 안 된 컬럼.
   const fieldCandidates = AXIS_TERMS
     .filter(([key]) => !mappedFields.has(key))
     .map(([key, term]) => ({
       field: key,
       label: term,
-      columns: headerList.filter((header) => !mappedTo(header) && aliasMatches(key, header)),
+      columns: headerList.filter((header) => !mappedTo(header)
+        && (aliasMatches(key, header) || valuesMatch(key, columnValues(header)))),
     }))
     .filter((item) => item.columns.length);
 

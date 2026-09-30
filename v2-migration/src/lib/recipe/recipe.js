@@ -1,4 +1,4 @@
-import { buildVocabulary } from "@/lib/vocabulary/vocabulary";
+import { buildVocabulary, missingRequirements } from "@/lib/vocabulary/vocabulary";
 
 // 레시피 = 유저가 고른 단어(단계)의 순서 목록(docs/result-autonomy-spec.md §2).
 // 저장하는 것은 단계뿐이고, 화면 상태(데이터·보기·내보내기)는 매번 기본값에서 단계를 접어
@@ -167,7 +167,7 @@ export function removeStep(steps, index) {
  * 기본값에서 단계를 순서대로 접어 상태를 만든다. 적용 후 검증에 실패한 단계는 건너뛰고
  * 사유와 함께 rejected에 남긴다 — 칩은 남아 있어도 화면에 반영되지 않은 이유를 말할 수 있게.
  */
-export function foldSteps(steps, vocabulary, spec = {}) {
+export function foldSteps(steps, vocabulary, spec = {}, context = null) {
   const vocab = asVocabulary(vocabulary);
   let state = defaultRecipeState(spec);
   const applied = [];
@@ -194,8 +194,15 @@ export function foldSteps(steps, vocabulary, spec = {}) {
     .map((step, order) => ({ step, order, phase: vocab.get(step.id).phase ?? 0 }))
     .sort((a, b) => a.phase - b.phase || a.order - b.order)
     .map((item) => item.step);
+  // context(mappedFields)가 주어지면 필요한 컬럼이 없는 단계도 거절한다 — 다음 기간 CSV에
+  // 그 컬럼이 빠졌을 때 칩은 남기되 조용히 무시하지 않고 이유를 보이게.
+  const mappedFields = context?.mappedFields ? new Set(context.mappedFields) : null;
   for (const step of ordered) {
     const entry = vocab.get(step.id);
+    if (mappedFields && missingRequirements(entry.requires, mappedFields).length) {
+      rejected.push({ step, code: "MISSING_FIELD" });
+      continue;
+    }
     let next;
     try {
       next = entry.apply(structuredClone(state), step.params, spec);

@@ -100,7 +100,13 @@ describe("suggest — 사전 후보", () => {
   });
 
   it("한국어 화면에서 영어 라벨로도 찾는다", () => {
-    expect(labelsOf(suggest(vocab, "excel", context))[0]).toBe("엑셀로 받기(수식 포함)");
+    expect(labelsOf(suggest(vocab, "hide", context))[0]).toBe("결론 숨기기");
+  });
+
+  it("내보내기 형식 단어는 도구가 선언한 형식만", () => {
+    expect(suggest(vocab, "excel", context)).toEqual([]);
+    const withXlsx = { ...context, toolSpec: { ...toolSpec, exportFormats: ["xlsx"] } };
+    expect(labelsOf(suggest(vocab, "excel", withXlsx))[0]).toBe("엑셀로 받기(수식 포함)");
   });
 
   it("못 쓰는 단어는 숨기지 않고 enabled:false + 필요한 컬럼", () => {
@@ -169,6 +175,12 @@ describe("입력 순서 — 사용자 요구(2026-09-30)", () => {
     expect(labelsOf(suggest(vocab, "채", context)).slice(0, 3)).toEqual(["채널별", "채널+캠페인별", "채널+캠페인+소재별"]);
   });
 
+  it("이미 맨 위 축이면 '먼저 나누기'는 내지 않는다", () => {
+    const labels = labelsOf(suggest(vocab, "채널", { ...context, currentLevels: ["channel"], limit: 20 }));
+    expect(labels).not.toContain("채널로 먼저 나누기");
+    expect(labelsOf(suggest(vocab, "OS", { ...context, currentLevels: ["channel"] }))).toContain("OS로 먼저 나누기");
+  });
+
   it("'캠' → 캠페인별이 먼저, 채널+캠페인별은 그 아래", () => {
     const labels = labelsOf(suggest(vocab, "캠", context));
     expect(labels[0]).toBe("캠페인별");
@@ -231,6 +243,22 @@ describe("CSV 컬럼 → 단어 (dataContext)", () => {
       mapping: { column: "매체", field: "channel" },
       step: { id: "level.field", params: { field: "channel" } },
     });
+  });
+
+  it("헤더가 무의미해도 값이 iOS/Android면 OS로 지정 제안", () => {
+    const rows = makeRows().map(({ OS, ...rest }) => ({ ...rest, 구분: OS }));
+    const { OS: _os, ...mapping } = MAPPING;
+    void _os;
+    const ctx = buildDataContext({ rows, mapping, toolId: "5-21" });
+    const offer = suggest(vocab, "OS", ctx).find((item) => item.id === "level.assignField");
+    expect(offer.params).toEqual({ field: "platform", column: "구분" });
+    expect(offer.label.ko).toBe("OS별 — '구분'을 OS로 지정");
+  });
+
+  it("값이 국가 코드면 국가로 지정 제안, 아무 두 글자 값은 아님", () => {
+    const rows = makeRows().map((row, i) => ({ ...row, 시장: ["KR", "US", "JP"][i % 3], 등급: ["AA", "BB"][i % 2] }));
+    const ctx = buildDataContext({ rows, mapping: MAPPING, toolId: "5-21" });
+    expect(ctx.fieldCandidates.find((item) => item.field === "country")?.columns).toEqual(["시장"]);
   });
 
   it("보통 후보의 선택은 단계 하나", () => {

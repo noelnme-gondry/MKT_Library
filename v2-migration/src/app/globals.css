@@ -5633,6 +5633,24 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-local-controls { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
 .analysis-local-controls__inner { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .analysis-local-controls__label { margin-right: 3px; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .06em; }
+/* 레시피 명령 입력창(ds/RecipeCommandInput) — 칩은 누르면 빠지는 버튼이다. */
+.recipe-command { margin: 0 0 16px; }
+.recipe-command__label { margin: 0 0 6px; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); }
+.recipe-command__chips { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 8px; padding: 0; list-style: none; }
+.recipe-command__chips > li { display: inline-flex; flex-direction: column; gap: 2px; }
+.recipe-command__chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: transparent; color: var(--text-primary); font: 600 var(--fs-xs) var(--font-sans); cursor: pointer; }
+.recipe-command__chip:hover { border-color: var(--primary); }
+.recipe-command__chip.is-rejected { border-style: dashed; color: var(--text-muted); }
+.recipe-command__chip-reason { color: var(--text-muted); font-size: var(--fs-xs); }
+.recipe-command__field { position: relative; }
+.recipe-command__input { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: transparent; color: var(--text-primary); font: 400 var(--fs-sm) var(--font-sans); }
+.recipe-command__options { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; max-height: 320px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); }
+.recipe-command__option { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 12px; color: var(--text-primary); font-size: var(--fs-sm); cursor: pointer; }
+.recipe-command__option small { color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
+.recipe-command__option.is-active { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.recipe-command__option.is-disabled { color: var(--text-muted); cursor: default; }
+.recipe-command__empty { padding: 8px 12px; color: var(--text-muted); font-size: var(--fs-xs); }
+.recipe-command__notices { margin: 8px 0 0; padding: 0; list-style: none; color: var(--text-muted); font-size: var(--fs-xs); }
 .response-target-context { display: inline-flex; align-items: center; min-height: 30px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-container-lowest); }
 .response-target-context > span { padding: 0 8px; color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .05em; }
 .response-target-context > strong { align-self: stretch; display: inline-flex; align-items: center; padding: 0 10px; border-left: 1px solid var(--border-subtle); color: var(--text-primary); font-size: var(--fs-xs); }
