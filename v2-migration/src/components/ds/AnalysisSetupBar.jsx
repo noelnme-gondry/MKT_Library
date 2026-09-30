@@ -58,8 +58,8 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
     finally { setBusy(false); }
   };
   if (slot === "context") {
-    // 운영 대시보드(5-2)는 제목 줄이 "파일 · N행"을 직접 말한다 — 같은 줄을 위에 한 번 더 두지 않는다(2026-09-29).
-    const showDataLine = Boolean(data?.raw?.length) && toolId !== "5-2";
+    // 5-2는 제목 줄, 5-22는 데이터 교체 구역이 출처·행 수를 표시한다. 저장 설정 적용/검토 안내는 유지한다.
+    const showDataLine = Boolean(data?.raw?.length) && !["5-2", "5-22"].includes(toolId);
     if (!showDataLine && !applicablePending && !applied) return null;
     const hasDateFilter = Boolean(filter?.dateStart || filter?.dateEnd);
     return <section className="analysis-setup no-print" aria-label={en ? "Data and applied setup" : "데이터와 적용된 설정"}>
@@ -73,7 +73,8 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
   // "CSV도 없고 저장할 수동 입력도 없으면 null"을 처리한다. 헤더만 보고
   // 막았더니 CSV 없이 수동 입력만 쓰는 도구(ASA 키워드의 목표 CPA 등)에서
   // 저장 동선이 통째로 사라졌다 — e2e가 잡았다.
-  return <section className="analysis-setup analysis-setup--actions no-print" aria-label={en ? "Keep this setup" : "이 설정 보관하기"}>
+  return <section className="analysis-setup analysis-setup--actions no-print" data-tool-id={toolId} aria-label={en ? "Keep this setup" : "이 설정 보관하기"}>
+    {toolId === "5-22" && <header className="analysis-setup__purpose"><h2>{en ? "Reuse this analysis setup" : "다음 분석에도 같은 설정 사용하기"}</h2><p>{en ? "Keep the mappings, filters and model options in your project." : "매핑·필터·모델 옵션을 프로젝트에 보관합니다."}</p></header>}
     {/* 위계를 준다 — 저장이 행동이고 보관함은 이동이다. 둘을 같은 버튼으로 두면
         §5.3이 금지하는 "동급으로 보이는 CTA 여럿"이 된다. */}
     <div className="analysis-setup__save">
@@ -81,7 +82,9 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
       <button className="btn" type="button" disabled={!enabled || !project || busy} onClick={() => { setName(toolIndexEntry(toolId, locale)?.name || toolId); setEditing(true); }}>{en ? "Save this setup to the project" : "이 설정을 프로젝트에 저장"}</button>
       <Link className="analysis-setup__link" href={en ? "/en/projects" : "/projects"}>{en ? "Open saved setups" : "저장한 설정 보관함"}</Link>
     </div>
-    {(!project || !hasPaidAccess(entitlement)) && <p>{en ? "Active Pro and a project with device storage are required to save setups." : "유효한 Pro와 기기 저장을 켠 프로젝트가 있어야 설정을 보관할 수 있습니다."}</p>}
+    {(!project || !hasPaidAccess(entitlement)) && (toolId === "5-22"
+      ? <div className="analysis-setup__requirements" aria-label={en ? "Saving requirements" : "저장 조건"}><strong>{en ? "Required to save" : "저장에 필요한 조건"}</strong><span>Pro</span><span>{en ? "Project with device storage" : "기기 저장을 켠 프로젝트"}</span></div>
+      : <p>{en ? "Active Pro and a project with device storage are required to save setups." : "유효한 Pro와 기기 저장을 켠 프로젝트가 있어야 설정을 보관할 수 있습니다."}</p>)}
     </div>
     {editing && <form className="analysis-setup__form" onSubmit={save}><label>{en ? "Setup name" : "설정 이름"}<input value={name} maxLength={120} onChange={event => setName(event.target.value)} required /></label><p>{en ? "Saves mappings, shared filters and supported model options. Results and validation approvals are excluded. Check inputs before rerunning." : "컬럼 매핑·공통 필터·지원하는 모델 옵션을 저장합니다. 결과와 검증 완료 상태는 포함하지 않습니다. 입력을 확인한 뒤 다시 분석하세요."}</p><button className="btn primary" disabled={busy || !name.trim()}>{en ? "Save" : "저장"}</button><button className="btn" type="button" disabled={busy} onClick={() => setEditing(false)}>{en ? "Cancel" : "취소"}</button></form>}
     {message && <p role="status">{message}</p>}

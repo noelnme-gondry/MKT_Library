@@ -193,15 +193,18 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? `Remove ${hide}` : `${hide} 빼기`, exact: true }).click();
     await expect(page.locator("#s-sat-curve canvas")).toBeVisible();
     await choose("PNG", en ? "PNG without header" : "PNG에 머리글 넣지 않기");
-    const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
-    await page.locator("#s-sat-curve").getByRole("button", { name: en ? "Download PNG" : "PNG 받기" }).click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/\.png$/);
-    expect(await download.failure()).toBeNull();
-    const png = await readFile(await download.path());
-    expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(png.readUInt32BE(16)).toBeGreaterThan(200);
-    expect(png.readUInt32BE(20)).toBeGreaterThan(200);
+    for (const section of ["s-sat-curve", "s-marginal-gap"]) {
+      const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
+      await page.locator(`#${section}`).getByRole("button", { name: en ? "Download PNG" : "PNG 받기" }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toMatch(/\.png$/);
+      expect(await download.failure()).toBeNull();
+      const png = await readFile(await download.path());
+      expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+      expect(png.readUInt32BE(16)).toBeGreaterThan(200);
+      expect(png.readUInt32BE(20)).toBeGreaterThan(200);
+      if (section === "s-marginal-gap") await download.saveAs(`/tmp/saturation-marginal-${locale}-${page.viewportSize().width}.png`);
+    }
     await input.fill("OS");
     // 실제 DOM 소유 관계와 키보드 선택을 함께 확인한다.
     const listId = await input.getAttribute("aria-controls");
@@ -275,6 +278,35 @@ for (const locale of ["ko", "en"]) {
     await dialog.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).press("Escape");
     await expect(trigger).toBeFocused();
     await expect(dialog).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+}
+
+for (const locale of ["ko", "en"]) {
+  test(`saturation evidence order and curve selection (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    await expect(page.locator("#s-sat-summary .result-action-card")).toBeVisible();
+    await expect(page.locator(".analysis-setup__context")).toHaveCount(0);
+    await expect(page.locator(".saturation-data .csv-uploader--collapsed")).toHaveCount(1);
+    expect(await page.locator(".tool-instrument-header").evaluate(el => getComputedStyle(el).position)).toBe("static");
+    const mappingTrigger = page.locator(".saturation-data").getByRole("button", { name: en ? "Change data or mapping" : "데이터·매핑 바꾸기", exact: true });
+    await mappingTrigger.click();
+    const mappingDialog = page.getByRole("dialog", { name: en ? "Edit data and mappings" : "데이터·매핑 편집", exact: true });
+    await expect(mappingDialog).toBeVisible();
+    await mappingDialog.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).press("Escape");
+    await expect(mappingTrigger).toBeFocused();
+    const ids = await page.locator(".saturation-workspace section[id^='s-']").evaluateAll(els => els.map(el => el.id));
+    const order = ["s-sat-summary", "s-marginal-gap", "s-sat", "s-sat-curve", "s-scale-map", "s-sat-period"];
+    expect(ids.filter(id => order.includes(id))).toEqual(order);
+    const meta = page.locator(".marginal-gap__entity").getByRole("button", { name: "Meta AAP", exact: true });
+    await meta.click();
+    await expect(meta).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#s-sat-curve h2")).toContainText("Meta AAP");
+    await expect(page.locator(".saturation-curve-evidence dd")).toHaveCount(3);
+    await page.getByRole("button", { name: en ? "Check period sensitivity" : "기간 민감도 확인", exact: true }).click();
+    await expect(page.locator("#s-sat-period [role='status'] li").first()).toBeVisible();
+    await expect(page.locator(".tool-next-step-panel .tool-connection-card")).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }

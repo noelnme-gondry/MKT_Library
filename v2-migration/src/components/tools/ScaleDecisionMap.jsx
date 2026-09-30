@@ -15,7 +15,7 @@ import FigurePngButton from "@/components/ds/FigurePngButton";
 
 const ACTION_ORDER = ["scale", "maintain", "watch", "stop", "reduce"];
 
-function actionCopy(locale, metric) {
+function actionCopy(locale, metric, costMetricLabel) {
   const en = locale === "en";
   const shared = {
     scale: { label: en ? "Scale" : "증액 검토", detail: en ? "low cost · strong efficiency" : "낮은 비용 · 좋은 효율", tone: "primary" },
@@ -25,7 +25,7 @@ function actionCopy(locale, metric) {
   if (metric === "cpa") {
     return {
       ...shared,
-      stop: { label: en ? "Consider stopping" : "종료 검토", detail: en ? "low cost · high CPA" : "낮은 비용 · 높은 CPA", tone: "danger" },
+      stop: { label: en ? "Consider stopping" : "종료 검토", detail: en ? `low cost · high ${costMetricLabel}` : `낮은 비용 · 높은 ${costMetricLabel}`, tone: "danger" },
     };
   }
   return {
@@ -146,11 +146,12 @@ export default function ScaleDecisionMap({
     resultField,
     revenueField,
   }), [rows, grain, metric, resultField, revenueField]);
-  const actions = useMemo(() => actionCopy(locale, metric), [locale, metric]);
+  const costMetricLabel = resultField === "installs" ? "CPI" : "CPA";
+  const actions = useMemo(() => actionCopy(locale, metric, costMetricLabel), [locale, metric, costMetricLabel]);
   const positions = useMemo(() => quadrantPositions(metric), [metric]);
   const isEn = locale === "en";
   const grainLabel = entityLabel || (grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널"));
-  const metricLabel = metric === "roas" ? "ROAS" : "CPA";
+  const metricLabel = metric === "roas" ? "ROAS" : costMetricLabel;
   const resultLabel = resultField === "installs" ? (isEn ? "installs" : "설치") : (isEn ? "actions" : "액션·가입");
   const actionCounts = Object.fromEntries(ACTION_ORDER.map((key) => [key, 0]));
   matrix.points.forEach((point) => { if (point.action) actionCounts[point.action] += 1; });
@@ -221,7 +222,7 @@ export default function ScaleDecisionMap({
               display: true,
               text: metric === "roas"
                 ? (isEn ? "ROAS · higher is better ↑" : "ROAS · 높을수록 좋음 ↑")
-                : (isEn ? "CPA · lower is better ↓" : "CPA · 낮을수록 좋음 ↓"),
+                : (isEn ? `${costMetricLabel} · lower is better ↓` : `${costMetricLabel} · 낮을수록 좋음 ↓`),
               color: CHART_THEME.muted,
             },
             ticks: {
@@ -239,7 +240,7 @@ export default function ScaleDecisionMap({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [matrix, actions, positions, metric, metricLabel, currency, locale, grainLabel, resultLabel, isEn, isDarkMode]);
+  }, [matrix, actions, positions, metric, metricLabel, costMetricLabel, currency, locale, grainLabel, resultLabel, isEn, isDarkMode]);
 
   const visibleActions = ACTION_ORDER.filter((key) => actions[key]);
   const thresholdCopy = Number.isFinite(matrix.thresholds.cost) && Number.isFinite(matrix.thresholds.efficiency)
@@ -257,7 +258,7 @@ export default function ScaleDecisionMap({
           </h2>
           <p>{isEn
             ? `Compare total cost with blended ${metricLabel}. Bubble size is actual ${resultLabel}; it is not an incremental-effect estimate.`
-            : `총비용과 전체 가중 ${metricLabel}을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
+            : `총비용과 전체 가중 효율(${metricLabel})을 비교합니다. 거품 크기는 실제 ${resultLabel}이며 증분효과 추정치가 아닙니다.`}</p>
         </div>
         {matrix.points.length >= 2 && (
           <FigurePngButton title={locale === "en" ? "Efficiency and scale comparison" : "효율과 규모 비교"} target={canvasRef} fileName={`scale_decision_${grain}_${metric}`} locale={locale} />
@@ -298,8 +299,8 @@ export default function ScaleDecisionMap({
             ))}
           </div>
           <p className="scale-decision-map__limit">{isEn
-            ? "This map prioritizes review from observed cost and efficiency. Confirm marginal efficiency in the saturation analysis below before changing budget."
-            : "이 지도는 관측 비용·효율로 검토 순서를 정합니다. 실제 예산 변경 전에는 아래 포화도 분석의 한계효율을 함께 확인하세요."}</p>
+            ? "This map prioritizes review from observed cost and efficiency. Confirm marginal efficiency in the average–marginal comparison before changing budget."
+            : "이 지도는 관측 비용·효율로 검토 순서를 정합니다. 실제 예산 변경 전에는 평균·한계효율 비교의 한계효율을 함께 확인하세요."}</p>
           {/* 표는 width를 무시해 .sr-only의 1px이 안 먹는다 — 폰에서 409px로 가로 넘침(2026-09-24). 감싼 div가 자른다. */}
           <div className="sr-only"><table>
             <caption>{isEn ? "Scale decision map data" : "증액·감액 우선순위 데이터"}</caption>

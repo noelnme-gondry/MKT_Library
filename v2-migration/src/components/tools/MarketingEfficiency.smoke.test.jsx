@@ -128,7 +128,7 @@ describe("MarketingEfficiency render smoke", () => {
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
     expect(screen.getByText("채널별 증액·감액 우선순위")).toBeTruthy();
-    expect(screen.getByRole("img", { name: /채널 Cost와 CPA 의사결정 지도/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /채널 Cost와 CPI 의사결정 지도/ })).toBeTruthy();
     expect(screen.getByText("평균 효율 vs 다음 예산 투입 시 한계효율")).toBeTruthy();
     expect(screen.queryByText(/다음 1원/)).toBeNull();
     fireEvent.click(document.querySelector(".decision-review-launch"));

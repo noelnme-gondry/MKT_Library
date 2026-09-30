@@ -80,3 +80,12 @@ it("leaves the data line to the dashboard title row", () => {
   const { container } = render(<AnalysisSetupBar toolId="5-2" slot="context" />);
   expect(container.querySelector(".analysis-setup__context")).toBeNull();
 });
+
+it.each(["ko", "en"])("keeps saturation data in its uploader and saving in its own purpose group (%s)", locale => {
+  useAppStore.getState().setCurrentRouteId("5-22");
+  const { container } = render(<AnalysisSetupBar toolId="5-22" locale={locale} slot="context" />);
+  expect(container.firstChild).toBeNull();
+  render(<AnalysisSetupBar toolId="5-22" locale={locale} slot="actions" />);
+  expect(screen.getByRole("heading", { name: locale === "en" ? "Reuse this analysis setup" : "다음 분석에도 같은 설정 사용하기" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: locale === "en" ? "Save this setup to the project" : "이 설정을 프로젝트에 저장" }).disabled).toBe(false);
+});

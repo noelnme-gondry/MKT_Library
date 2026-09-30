@@ -61,6 +61,12 @@ export default function MarginalEfficiencyGapChart({
         </div>}
       </header>
 
+      <dl className="saturation-reading-guide">
+        <div><dt>{isEn ? "Average · observed performance" : "평균 · 지금까지의 성과"}</dt><dd>{isEn ? `The observed ${metricLabel} at the current spend level.` : `현재 지출 수준에서 관측한 ${metricLabel}입니다.`}</dd></div>
+        <div><dt>{isEn ? "Marginal · the next increment" : "한계 · 예산을 더 쓸 때"}</dt><dd>{isEn ? `Modeled ${metricLabel} for an additional increment of spend, not a guaranteed outcome.` : `추가 지출에 대한 모델 ${metricLabel}입니다. 실제 성과를 보장하지 않습니다.`}</dd></div>
+        <div><dt>{isEn ? "Saturation index · compare the two" : "포화지수 · 두 수치의 차이"}</dt><dd>{metric === "roas" ? (isEn ? "Average ÷ marginal ROAS" : "평균 ÷ 한계 ROAS") : (isEn ? `Marginal ÷ average ${metricLabel}` : `한계 ÷ 평균 ${metricLabel}`)}{isEn ? ". Above 1 means worse marginal efficiency." : ". 1보다 크면 추가 지출의 효율이 평균보다 나쁩니다."}</dd></div>
+      </dl>
+
       {view.points.length === 0 ? (
         <p className="muted marginal-gap__empty">{isEn
           ? `No ${grainLabel} has both average and marginal ${metricLabel} available.`
@@ -124,7 +130,7 @@ export default function MarginalEfficiencyGapChart({
                   <span><i className="is-marginal" aria-hidden="true" />{formatMetric(point.marginal, metric, currency)}</span>
                 </div>
                 <div className="marginal-gap__evidence tnum">
-                  <span>n={point.observations || "—"}</span>
+                  <span>{isEn ? "Observations" : "관측"} {point.observations ?? "—"}</span>
                   <span>R²={point.r2 == null ? "—" : point.r2.toFixed(2)}</span>
                 </div>
               </div>

@@ -73,10 +73,10 @@ it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", (
   expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
 });
 
-for (const locale of ["ko", "en"]) {
-  it(`keeps the PVM next step short and opens references on demand (${locale})`, () => {
+for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22"]) {
+  it(`keeps ${toolId} next step short and opens references on demand (${locale})`, () => {
     useAppStore.setState(useAppStore.getInitialState(), true);
-    const { container } = render(<ToolPageOutro toolId="5-21" locale={locale} evidenceLinks={LINKS} withConnections />);
+    const { container } = render(<ToolPageOutro toolId={toolId} locale={locale} evidenceLinks={LINKS} withConnections />);
     expect(container.querySelectorAll(".tool-connection-card")).toHaveLength(2);
     expect(container.querySelector(".tool-connections__more, .tool-continuity, .tool-longform, .tool-evidence")).toBeNull();
     const title = locale === "en" ? "Method and references" : "분석 방법과 참고 자료";

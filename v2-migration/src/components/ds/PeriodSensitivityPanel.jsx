@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { downloadCsv } from "@/utils/download";
 import { periodSensitivityCsv } from "@/lib/analysis-results/periodSensitivity";
 
-export default function PeriodSensitivityPanel({ compute, locale = "ko" }) {
+export default function PeriodSensitivityPanel({ compute, locale = "ko", variant = "default" }) {
   const en = locale === "en";
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -24,10 +24,22 @@ export default function PeriodSensitivityPanel({ compute, locale = "ko" }) {
     ? { stable: "Same direction", changed: "Direction changed", unavailable: "Not comparable", saturated: "Saturated", scale: "Headroom", linear: "Steady", increase: "Increase", decrease: "Decrease", hold: "Hold" }
     : { stable: "방향 유지", changed: "방향 변경", unavailable: "비교 불가", saturated: "포화", scale: "여유", linear: "적정", increase: "증액", decrease: "감액", hold: "유지" };
   const value = (number) => Number.isFinite(number) ? number.toLocaleString(en ? "en-US" : "ko-KR", { maximumFractionDigits: 2 }) : "—";
-  return <section className="analysis-design-check" aria-label={en ? "Period sensitivity" : "기간 민감도"}>
+  return <section className={`analysis-design-check${variant === "saturation" ? " analysis-design-check--saturation" : ""}`} aria-label={en ? "Period sensitivity" : "기간 민감도"}>
+    {variant === "saturation" ? <>
+    <div className="analysis-design-check__head">
+      <h3>{en ? "Does the direction survive a period change?" : "기간을 바꿔도 방향이 유지되나요?"}</h3>
+      <button type="button" className="btn secondary" disabled={busy} onClick={run}>{busy ? (en ? "Checking…" : "확인 중…") : (en ? "Check period sensitivity" : "기간 민감도 확인")}</button>
+    </div>
+    <dl className="saturation-reading-guide">
+      <div><dt>{en ? "What we compare" : "검증 방법"}</dt><dd>{en ? "Split the selected dates into non-overlapping halves and refit each entity using the same method." : "선택 기간을 전·후반으로 나눠 같은 방법으로 다시 적합하고 대상별 판단을 비교합니다."}</dd></div>
+      <div><dt>{en ? "When comparison is possible" : "비교할 수 있는 조건"}</dt><dd>{en ? "Each half needs at least four usable observations and overlapping spend ranges. Missing entities or sparse data remain not comparable." : "양쪽에 유효 관측이 4개 이상 있고 지출 범위가 겹쳐야 합니다. 대상 누락·표본 부족은 비교 불가로 남깁니다."}</dd></div>
+      <div><dt>{en ? "How to read it" : "해석 범위"}</dt><dd>{en ? "Matching directions are a robustness check, not proof of causality or future stability. Spend uses the declared source currency." : "방향이 같아도 인과효과나 미래 안정성을 증명하지 않습니다. 지출은 원본에 선언한 통화 기준입니다."}</dd></div>
+    </dl>
+    </> : <>
     <h3>{en ? "Does the direction survive a period change?" : "기간을 바꿔도 방향이 유지되나요?"}</h3>
     <p>{en ? "Split the selected dates into two non-overlapping halves and rerun the same method; allocation uses the same total budget in both. Each half needs at least four usable observations per entity. Sparse samples, missing channels, non-overlapping spend ranges, or infeasible budget constraints are not comparable. Matching directions do not establish causality or future stability. Spend ranges use the declared source currency." : "선택된 날짜를 겹치지 않는 전·후반으로 나눠 같은 방법을 다시 실행하며, 배분은 양쪽에 같은 총예산을 적용합니다. 각 기간·대상별 유효 관측이 최소 4개 필요합니다. 표본 부족·채널 누락·지출 범위 불일치·예산 제약 실패는 비교 불가입니다. 방향이 같아도 인과효과나 미래 안정성을 증명하지 않습니다. 지출 범위는 선언한 원본 통화 기준입니다."}</p>
     <button type="button" className="btn secondary" disabled={busy} onClick={run}>{busy ? (en ? "Checking…" : "확인 중…") : (en ? "Check period sensitivity" : "기간 민감도 확인")}</button>
+    </>}
     <div role="status" aria-live="polite">
       {failed && <p>{en ? "Unable to compute; no conclusion was produced." : "계산할 수 없어 결론을 내리지 않았습니다."}</p>}
       {result && <>
