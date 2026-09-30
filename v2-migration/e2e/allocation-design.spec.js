@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { readFile } from 'node:fs/promises';
 
 for (const locale of ['ko', 'en']) {
   test(`allocation workspace keeps scope, dates, evidence and methods coherent (${locale})`, async ({ page }) => {
@@ -90,3 +91,39 @@ test('allocation content surfaces and alignment in light mode', async ({ page })
     expect(surface.padding).toBeGreaterThanOrEqual(16);
   }
 });
+
+for (const locale of ['ko', 'en']) {
+  test(`budget comparison groups each entity and exports labeled amounts (${locale})`, async ({ page }) => {
+    const en = locale === 'en';
+    const entitlement = { plan: 'paid', account: true, expiresAt: Date.now() + 86400000, offlineUntil: Date.now() + 3600000 };
+    await page.route('**/api/account/session', route => route.fulfill({ json: { enabled: true, account: { id: 'figure-test', email: 'figure@example.com' }, entitlement } }));
+    await page.route('**/api/payments/access', route => route.fulfill({ json: { entitlement } }));
+    await page.goto(`${en ? '/en' : ''}/tools/budget-allocation?example=1`);
+    const figure = page.locator('.result-shift');
+    const entities = figure.locator('.result-shift__entity');
+    await expect(entities).toHaveCount(8);
+    for (const entity of await entities.all()) {
+      await expect(entity.locator('.result-shift__measure')).toHaveCount(2);
+      await expect(entity.locator('.result-shift__delta strong')).toContainText(/[+−]/);
+      expect(await entity.evaluate(el => {
+        const outer = el.getBoundingClientRect();
+        return [...el.querySelectorAll('strong, .result-shift__direction')].every(child => {
+          const r = child.getBoundingClientRect();
+          return r.x >= outer.x && r.right <= outer.right;
+        });
+      })).toBe(true);
+    }
+    const count = await entities.count();
+    await figure.getByRole('button', { name: en ? /^Show all/ : /^전체 .* 보기/ }).click();
+    expect(await entities.count()).toBeGreaterThan(count);
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#tool-core-figure-budget-allocation-baseline').getByRole('button', { name: en ? 'Download PNG' : 'PNG 받기' }).click();
+    const download = await downloadPromise;
+    expect(await download.failure()).toBeNull();
+    const png = await readFile(await download.path());
+    // HTML figures export at 2× their rendered width, including mobile.
+    expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(Math.floor((await figure.boundingBox()).width * 2));
+    await download.saveAs(`/tmp/budget-shift-${locale}-${page.viewportSize().width}.png`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+}

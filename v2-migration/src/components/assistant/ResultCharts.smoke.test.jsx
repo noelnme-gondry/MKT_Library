@@ -56,10 +56,13 @@ describe("분석별 핵심 그림", () => {
       data: [{ entity: "A", current: 1000, budget: 0 }, { entity: "B", current: 500, budget: 2000 }],
       options: {},
     }} />);
-    const items = [...container.querySelectorAll(".result-shift li")].map((li) => li.textContent);
+    const items = [...container.querySelectorAll(".result-shift li")];
     // 많이 옮긴 채널이 위로 온다.
-    expect(items[0]).toContain("B+₩1,500");
-    expect(items[1]).toContain("바꾼 안 ₩0");
+    expect(items[0].textContent).toContain("B증액");
+    expect(items[0].querySelector(".result-shift__delta").textContent).toContain("+₩1,500");
+    expect(items[1].querySelector(".is-next strong").textContent).toBe("₩0");
+    expect(items[1].querySelector(".is-next i").style.getPropertyValue("--shift-size")).toBe("0%");
+    expect(items[0].querySelector(".is-current i").style.getPropertyValue("--shift-size")).toBe("25%");
     expect(container.textContent).not.toContain("₩0.00");
   });
 

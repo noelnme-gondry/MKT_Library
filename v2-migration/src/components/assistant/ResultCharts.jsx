@@ -253,20 +253,27 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
   if (!(max > 0)) return fallback;
   const size = (value) => `${Math.max(0, ((value || 0) / max) * 100)}%`;
   return <figure className="result-chart result-shift" aria-label={visualization.question}>
-    <FigureRows rows={rows} limit={8} locale={locale}>
+    <figcaption className="result-shift__guide">
+      <span>{tr(locale, "변경 금액이 큰 순서", "Largest budget changes first")}</span>
+      <span>{tr(locale, "모든 막대는 같은 금액 눈금입니다", "All bars share the same currency scale")}</span>
+    </figcaption>
+    <FigureRows rows={rows} className="result-shift__grid" limit={8} locale={locale}>
       {(row) => {
         const delta = row.current != null && row.next != null ? row.next - row.current : null;
-        return <li key={row.entity}>
-          <div className="result-shift__head"><strong>{row.entity}</strong><span className="tnum">{signedMoney(delta, currency)}</span></div>
-          <div className="result-shift__bars" aria-hidden="true">
-            <i className="is-current" style={{ "--shift-size": size(row.current) }} />
-            <i className="is-next" style={{ "--shift-size": size(row.next) }} />
+        const direction = delta == null ? "unknown" : delta > 0 ? "increase" : delta < 0 ? "decrease" : "hold";
+        const label = delta == null ? tr(locale, "비교 불가", "Unavailable") : delta > 0 ? tr(locale, "증액", "Increase") : delta < 0 ? tr(locale, "감액", "Decrease") : tr(locale, "유지", "Unchanged");
+        return <li key={row.entity} className="result-shift__entity">
+          <div className="result-shift__head"><strong>{row.entity}</strong><span className="result-shift__direction" data-direction={direction}>{label}</span></div>
+          <div className="result-shift__comparison">
+            {[["current", tr(locale, "현재", "Current"), row.current], ["next", tr(locale, "변경안", "Plan"), row.next]].map(([key, name, value]) => <div className={`result-shift__measure is-${key}`} key={key}>
+              <div><span>{name}</span><strong className="tnum">{value != null ? money(value, currency) : "—"}</strong></div>
+              <div className="result-shift__track" aria-hidden="true"><i style={{ "--shift-size": size(value) }} /></div>
+            </div>)}
           </div>
-          <p className="tnum">{tr(locale, "지금", "Now")} {row.current != null ? money(row.current, currency) : "—"} → {tr(locale, "바꾼 안", "Plan")} {row.next != null ? money(row.next, currency) : "—"}</p>
+          <div className="result-shift__delta"><span>{tr(locale, "하루 예산 변화", "Daily budget change")}</span><strong className="tnum">{signedMoney(delta, currency)}</strong></div>
         </li>;
       }}
     </FigureRows>
-    <figcaption><i className="result-shift__key is-current" /> {tr(locale, "지금 하루 예산", "Daily budget now")} <i className="result-shift__key is-next" /> {tr(locale, "바꾼 안의 하루 예산", "Daily budget in the plan")}</figcaption>
   </figure>;
 }
 

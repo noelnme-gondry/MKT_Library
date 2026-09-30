@@ -6762,11 +6762,24 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .result-gap__dot.is-marginal[data-tone="better"] { color:var(--success); }
 .result-gap p,.result-shift p { margin:6px 0 0;color:var(--text-muted);font-size: var(--fs-sm); }
 /* 5-3: 지금(테두리) · 바꾼 안(채움) */
-.result-shift__bars { display:grid;gap:3px; }
-.result-shift__bars i,.result-shift__key { display:block;height:8px;width:var(--shift-size);min-width:2px;border-radius: var(--radius-sm); }
-.result-shift__bars .is-current,.result-shift__key.is-current { border:1px solid var(--text-muted);background:transparent; }
-.result-shift__bars .is-next,.result-shift__key.is-next { background:var(--primary); }
-.result-shift__key { display:inline-block;width:18px;vertical-align:middle; }
+.result-shift__guide { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 12px 0; }
+.result-chart .result-shift__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.result-chart .result-shift__entity { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-container-lowest); }
+.result-shift__head { align-items: start; margin-bottom: 16px; }
+.result-shift__head .result-shift__direction { flex: none; padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-secondary); font-size: var(--fs-xs); }
+.result-shift__direction[data-direction="increase"] { background: color-mix(in srgb, var(--primary) 10%, var(--surface-container-lowest)); color: var(--primary); }
+.result-shift__comparison { display: grid; gap: 12px; }
+.result-shift__measure > div:first-child, .result-shift__delta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: var(--fs-sm); }
+.result-shift__measure span, .result-shift__delta > span { color: var(--text-secondary); }
+.result-shift__measure strong, .result-shift__delta strong { white-space: nowrap; }
+.result-shift__measure.is-next strong { color: var(--primary); }
+.result-shift__track { height: 10px; margin-top: 6px; background: var(--bg-2); border-radius: var(--radius-sm); }
+.result-shift__track i { display: block; height: 100%; width: var(--shift-size); border-radius: inherit; background: var(--text-secondary); }
+.result-shift__measure.is-next .result-shift__track i { background: var(--primary); }
+.result-shift__delta { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+@media (max-width: 1000px) {
+  .result-chart .result-shift__grid { grid-template-columns: minmax(0, 1fr); }
+}
 /* 5-25: 로그 눈금 + 주의·심각 선 */
 .result-vif li { display:grid;grid-template-columns:minmax(80px,1fr) minmax(0,2.2fr) 84px;gap:10px;align-items:center;font-size: var(--fs-sm); }
 .result-vif li strong { font-weight:600;overflow-wrap:anywhere; }
