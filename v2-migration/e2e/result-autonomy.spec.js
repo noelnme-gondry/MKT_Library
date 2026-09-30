@@ -2,6 +2,45 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+for (const locale of ["ko", "en"]) {
+  for (const tool of ["campaign-variance", "campaign-saturation"]) {
+    test(`recipe header inner alignment ${tool} (${locale})`, async ({ page }) => {
+      await page.goto(`${locale === "en" ? "/en" : ""}/tools/${tool}?example=1`);
+      const header = page.locator(".tool-instrument-header");
+      await expect(header.getByRole("combobox")).toBeVisible();
+      const measure = () => header.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        const bounds = selector => {
+          const node = element.querySelector(selector);
+          const rect = node.getBoundingClientRect();
+          return { left: rect.left - box.left, right: box.right - rect.right };
+        };
+        return {
+          heading: bounds(".tool-instrument-header__heading"),
+          label: bounds(".recipe-command__label"),
+          input: bounds(".recipe-command__input"),
+          scope: bounds(".recipe-scope-controls__segments > summary"),
+          controls: bounds(".recipe-scope-controls__body"),
+        };
+      });
+      const closed = await measure();
+      // 서로 같은 x여도 박스 가장자리에 붙으면 실패다. 여백과 정렬을 함께 검사한다.
+      expect(closed.heading.left).toBeGreaterThanOrEqual(16);
+      expect(closed.input.right).toBeGreaterThanOrEqual(16);
+      expect(Math.abs(closed.input.left - closed.input.right)).toBeLessThanOrEqual(1);
+      for (const part of [closed.label, closed.input]) expect(Math.abs(part.left - closed.heading.left)).toBeLessThanOrEqual(1);
+      // 5-22는 같은 행에 날짜가 먼저 있다. 다음 행으로 접혀도 컨테이너 밖으로 나가면 안 된다.
+      expect(closed.scope.left).toBeGreaterThanOrEqual(closed.heading.left);
+      if (tool === "campaign-variance") expect(Math.abs(closed.scope.left - closed.heading.left)).toBeLessThanOrEqual(1);
+      await header.locator(".recipe-scope-controls__segments > summary").click();
+      const opened = await measure();
+      expect(opened.controls.right).toBeGreaterThanOrEqual(16);
+      expect(opened.controls.left).toBeGreaterThanOrEqual(opened.heading.left);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    });
+  }
+}
+
 test.describe("direct periods in light mode", () => {
   test.use({ colorScheme: "light" });
   for (const locale of ["ko", "en"]) {

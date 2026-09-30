@@ -11933,6 +11933,18 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .recipe-scope-controls__segments > summary { display: list-item; min-height: 44px; padding: 10px 0; color: var(--text-primary); font-size: var(--fs-sm); cursor: pointer; }
 .recipe-scope-controls__body { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 0; }
 .recipe-scope-controls__body .mon-filter-reset { min-height: 44px; }
+/* 바깥 폭 정렬과 내부 여백은 별개다. 공용 .page-sticky-bar의 padding-inline:0을
+   레시피 헤더에 물려주면 제목·입력 테두리·펼침 표시가 박스 가장자리에 붙는다. */
+.tool-instrument-header:has(.dashboard-filter-bar--recipe) { padding: 24px; }
+.dashboard-filter-bar--recipe .dashboard-filter-bar__command { margin-top: 16px; padding-top: 16px; }
+.dashboard-filter-bar--recipe .recipe-command__head { margin-bottom: 8px; }
+.dashboard-filter-bar--recipe .recipe-scope-controls__segments > summary { display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; list-style: none; }
+.dashboard-filter-bar--recipe .recipe-scope-controls__segments > summary::-webkit-details-marker { display: none; }
+.dashboard-filter-bar--recipe .recipe-scope-controls__segments > summary::after { content: ""; flex: none; width: 6px; height: 6px; margin-top: -3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+.dashboard-filter-bar--recipe .recipe-scope-controls__segments[open] > summary::after { margin-top: 3px; transform: rotate(225deg); }
+@media (max-width: 768px) {
+  .tool-instrument-header:has(.dashboard-filter-bar--recipe) { padding: 16px; }
+}
 .dashboard-filter-bar--recipe .recipe-command__save { min-height: 44px; }
 .dashboard-filter-bar--recipe .recipe-command__input { min-height: 44px; }
 .analysis-setup__save { display: grid; gap: 10px; }
