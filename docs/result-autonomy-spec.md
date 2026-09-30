@@ -1,6 +1,6 @@
 # 결과 자율화 — 대전제 + PVM 딥다이브 (설계 스펙)
 
-> 상태: 2026-09-30 **5-21 파일럿 S1~S6 완료**(계정 동기화만 후속 — §4.5). 화면 계약은 `docs/product-ssot.md` §5.5a. 사용자 확정 결정은 §0, 결정 이력은 §7.
+> 상태: 2026-09-30 **5-21 파일럿 S1~S6·계정 저장(B)·다운로드 설정(C) 구현, PR #941 머지**. 후속 검증 상태는 `docs/result-autonomy-roadmap.md` §4.1. 화면 계약은 `docs/product-ssot.md` §5.5a. 사용자 확정 결정은 §0, 결정 이력은 §7.
 > 목적: AI 대화형 분석과 경쟁할 수 있게 "우리 포맷에 데이터를 맞추는 도구"에서
 > "유저 데이터·유저 의도에 우리가 맞추는 도구"로 바꾼다. 엔진 수학은 불변(§2 AGENTS §11).
 
@@ -264,10 +264,9 @@ S1~S3가 끝나면 두 번째 도구(5-22 — 같은 효율 CSV 그룹)로 공�
 | 알약(지표·기준 주·비교 주) | 단계를 더할 뿐 — 상태 두 벌 없음. 옛 저장 키는 처음 한 번 단계로 옮김 | `legacyPvmSteps` |
 | 매핑+축 | 고르면 `withMappingChange`(매핑 편집 화면과 같은 함수)로 스토어에 쓰고 축 단계를 더한다 | `lib/data-import/applyMappingChange.js` |
 | OS·국가 인식 | 별칭 보강(STANDARD_FIELDS → V2 별칭 신호로 자동 전파). 값 판별은 전역 스코어러가 아니라 단어 사전에서 "지정할까요" 제안으로 — 전역 `valueVocabulary`는 헤더를 무시하는 배타 모드라 쓰면 헤더 매핑이 막힌다 | `csvConstants`, `dataContext` |
-| 내보내기 | 한계 포함/제외만. 형식 단어는 도구가 선언한 형식만 뜨고 5-21은 선언 없음(형식은 기존 결과 받기 메뉴). CSV 수식은 행 간 롤업을 참조해 행 단위로 거르면 합이 틀어지므로 보기 설정을 파일에 적용하지 않는다 | `exportLimitations` |
+| 내보내기 | 한계 포함/제외 + 아래 다운로드 설정(C). 형식 선택은 기존 결과 받기 메뉴. CSV 수식은 행 간 롤업을 참조해 행 단위로 거르면 합이 틀어지므로 보기 설정을 파일에 적용하지 않는다 | `exportLimitations`, `exportOptions` |
 | 필터와의 관계 | 입력창은 공용 필터 막대 안(`DashboardFilterBar` `commandSlot`). 공용 필터 축의 분석 범위 단어는 `onSelectStep`으로 필터 선택에 쓰고(레시피 단계 없음), 활성 필터·기간은 `extraChips`로 같은 칩 줄에 — 조건의 주인은 한 곳 | `CampaignPvm` `routeToSharedFilter` |
 | 저장 | 칩 = 도구 입력 `recipeSteps` → 기존 "저장한 분석"(Pro·프로젝트)으로 다음 CSV에 재적용. 필요한 컬럼이 빠진 칩은 `MISSING_FIELD` | `toolInputs.js` |
-
 | 계정 저장(B) | 이름 붙여 저장 — `gop_account_recipes`·`/api/account/recipes`·`recipeContract`(값 단계 서버에서도 거절)·`useAccountRecipes`·마이페이지 `UserRecipeSettings` | `lib/account/recipeContract.js` |
 | 다운로드 설정(C) | PNG 머리글 3단·보고서 구획 빼기·파일 이름 규칙 — `exportOptions` → `ResultActionCard` 문맥 → DownloadHub·FigurePngButton·도구 항목(`onSelect(exportContext)`). 설정 없는 도구는 기존 그대로 | `lib/analysis-export/exportOptions.js` |
 

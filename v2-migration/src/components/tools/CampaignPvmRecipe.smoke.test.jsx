@@ -4,7 +4,7 @@
 // 순수 어댑터는 lib/recipe/pvmRecipe.test.js가 보고, 여기서는 엔진(buildPvmCache)과 화면이
 // 실제로 레시피를 따르는지, 그리고 축·범위를 바꿔도 항등식(Σ = 전체 변화)이 지켜지는지 본다.
 import { describe, it, expect, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import CampaignPvm, { buildPvmCache } from "@/components/tools/CampaignPvm";
 
@@ -114,6 +114,77 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(option, `${label} 후보가 없다`).toBeTruthy();
     fireEvent.mouseDown(option);
   };
+
+  it.each(["ko", "en"])("%s: 선택한 축 컬럼이 사라지면 칩을 보존하고 사유를 보인다", (locale) => {
+    const { container } = render(<CampaignPvm locale={locale} />);
+    type("OS");
+    choose(locale === "ko" ? "OS별" : "By OS");
+    const withoutOs = makeSlice();
+    delete withoutOs.mapping.OS;
+    withoutOs.headers = withoutOs.headers.filter((header) => header !== "OS");
+    withoutOs.raw = withoutOs.raw.map(({ OS, ...row }) => row);
+    act(() => useAppStore.getState().setCsvData(withoutOs));
+    expect(container.querySelector(".recipe-command__chip.is-rejected")).toBeTruthy();
+    expect(container.querySelector(".recipe-command__chip-reason").textContent).toContain(locale === "ko" ? "필요한 컬럼이 없음" : "Required column missing");
+    expect(within(container.querySelector("#s-pvm-channels")).getByRole("heading").textContent).toBe(locale === "ko" ? "채널별 결과" : "By Channel");
+    // 컬럼이 돌아오면 저장한 단계도 다시 적용된다. 원본 단계를 지우면 안 된다.
+    act(() => useAppStore.getState().setCsvData(makeSlice()));
+    expect(container.querySelector(".recipe-command__chip-reason")).toBeNull();
+    expect(within(container.querySelector("#s-pvm-channels")).getByRole("heading").textContent).toBe(locale === "ko" ? "OS별 결과" : "By OS");
+  });
+
+  it.each(["ko", "en"])("%s: 자동 대체 축도 표·요약에서 실제 캠페인 이름을 쓴다", (locale) => {
+    seed(makeSlice({ withChannel: false }));
+    const { container } = render(<CampaignPvm locale={locale} />);
+    const section = container.querySelector("#s-pvm-channels");
+    expect(section.textContent).toContain("Meta_Android");
+    expect(within(section).getByRole("heading").textContent).toBe(locale === "ko" ? "캠페인별 결과" : "By Campaign");
+    expect(container.querySelector("#s-pvm-result").textContent).toContain(locale === "ko" ? "분석 캠페인" : "Campaign count");
+  });
+
+  it.each(["ko", "en"])("%s: 마지막 선택값 제외는 거절 사유를 보이고 성공으로 알리지 않는다", (locale) => {
+    render(<CampaignPvm locale={locale} />);
+    type("Meta");
+    choose(locale === "ko" ? "Meta만 분석" : "Analyze Meta only");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    type("Meta");
+    choose(locale === "ko" ? "Meta 제외하고 분석" : "Analyze without Meta");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain(locale === "ko" ? "분석할 값이 남지 않아" : "no values would remain");
+    expect(status.classList.contains("sr-only")).toBe(false);
+    // 거절 후 다른 값 선택은 정상 적용되고 예전 오류가 남지 않는다.
+    type("TikTok");
+    choose(locale === "ko" ? "TikTok만 분석" : "Analyze TikTok only");
+    expect(screen.getByRole("status").textContent).not.toContain(locale === "ko" ? "분석할 값이 남지 않아" : "no values would remain");
+  });
+
+  it.each(["ko", "en"])("%s: 콘텐츠 도메인의 기존 비교 설정은 계속 작동한다", (locale) => {
+    const { container } = render(<CampaignPvm domain="content" locale={locale} />);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    const compare = screen.getByRole("radio", { name: locale === "ko" ? "2주전" : "2 weeks ago" });
+    expect(compare.disabled).toBe(false);
+    fireEvent.click(compare);
+    expect(compare.getAttribute("aria-checked")).toBe("true");
+    expect(container.querySelector("#s-pvm-result").textContent).toContain("2026-01-05");
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].lookback).toBe(2);
+    const rolling = screen.getByRole("radio", { name: locale === "ko" ? "최근 7일" : "Last 7 days" });
+    fireEvent.click(rolling);
+    expect(rolling.getAttribute("aria-checked")).toBe("true");
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].weekBasis).toBe("rolling7");
+  });
+
+  it("자동 캠페인→소재 축은 중간 슬롯이 없어도 소재 표 이름을 보존한다", () => {
+    const slice = makeSlice({ withChannel: false });
+    slice.headers.push("Creative");
+    slice.mapping.Creative = "creative_id";
+    slice.raw = slice.raw.map((row) => ({ ...row, Creative: `${row.Campaign}_creative` }));
+    seed(slice);
+    const { container } = render(<CampaignPvm />);
+    expect(container.querySelector("#s-pvm-campaigns")).toBeNull();
+    expect(within(container.querySelector("#s-pvm-creatives")).getByRole("heading").textContent).toBe("소재별 결과");
+    expect(container.querySelector("#s-pvm-creatives tbody").textContent).toContain("_creative");
+  });
 
   it("분석 설정 입력창은 필터 막대 안에 있다 — 따로 떨어진 구역이 없다", () => {
     const { container } = render(<CampaignPvm />);

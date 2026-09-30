@@ -43,6 +43,19 @@ export function missingRequirements(requires = [], mappedFields = new Set()) {
     : !(req?.oneOf || []).some((field) => mappedFields.has(field))));
 }
 
+/** 고정 필드와 params가 가리키는 필드를 같은 경로에서 검사한다(후보·저장 설정 공용). */
+export function missingEntryRequirements(entry, params = {}, context = {}) {
+  const mappedFields = new Set(context.mappedFields || []);
+  const available = new Set(mappedFields);
+  // 축 후보 목록은 값 개수에 따라 줄어든다. 저장한 원본 컬럼의 존재는 헤더로 판정한다.
+  const columns = context.headers ?? (context.dimensions || []).filter((dim) => dim.isRawColumn).map((dim) => dim.column);
+  for (const header of columns) available.add(`col:${header}`);
+  return [
+    ...missingRequirements(entry.requires, mappedFields),
+    ...(entry.fieldParams || []).map((key) => params[key]).filter((field) => !available.has(field)),
+  ];
+}
+
 /** 라벨은 객체이거나 (params, context) → 객체. 칩·후보 모두 이 함수로 읽는다. */
 export function resolveLabel(entry, params = {}, context = {}) {
   const label = typeof entry.label === "function" ? entry.label(params, context) : entry.label;
@@ -113,13 +126,12 @@ function rankCandidate(query, candidate, locale) {
  */
 export function suggest(vocabulary, query, context = {}) {
   const locale = context.locale === "en" ? "en" : "ko";
-  const mappedFields = context.mappedFields instanceof Set ? context.mappedFields : new Set(context.mappedFields || []);
   const limit = Number.isInteger(context.limit) && context.limit > 0 ? context.limit : DEFAULT_SUGGEST_LIMIT;
   return listCandidates(vocabulary, context)
     .map((candidate, order) => {
       const rank = rankCandidate(query, candidate, locale);
       if (rank == null) return null;
-      const missing = missingRequirements(candidate.entry.requires, mappedFields);
+      const missing = missingEntryRequirements(candidate.entry, candidate.params, context);
       return {
         order,
         kindOrder: KIND_ORDER.get(candidate.entry.kind) ?? KIND_ORDER.size,

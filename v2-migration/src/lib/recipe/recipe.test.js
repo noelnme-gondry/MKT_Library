@@ -83,6 +83,20 @@ describe("단계 추가·교체·삭제 = 칩 목록", () => {
 });
 
 describe("foldSteps — 단계를 접어 상태 만들기", () => {
+  it.each([
+    "level.field", "level.dimensionAbove", "filter.only.analysis", "filter.exclude.analysis", "filter.only.view",
+  ])("%s의 동적 컬럼 참조는 다음 CSV에서도 존재해야 한다", (id) => {
+    for (const field of ["platform", "col:Region"]) {
+      const step = { id, params: { field, ...(id.startsWith("filter.") ? { values: ["East"] } : {}) } };
+      const missing = foldSteps([step], vocab, spec, { mappedFields: ["channel"], headers: ["Channel"] });
+      expect(missing.rejected).toEqual([{ step, code: "MISSING_FIELD" }]);
+      expect(missing.state).toEqual(defaultRecipeState(spec));
+      const present = foldSteps([step], vocab, spec, { mappedFields: ["channel", "platform"], headers: ["Region"] });
+      expect(present.rejected).toEqual([]);
+      expect(present.applied).toEqual([step]);
+    }
+  });
+
   it("기간 비교 단어와 기준 주 단어는 서로의 값을 보존한다", () => {
     const { state } = foldSteps([{ id: "period.basis.rolling7" }, { id: "period.lookback.3" }], vocab, spec);
     expect(state.data.period).toEqual({ kind: "lookback", weeks: 3, basis: "rolling7" });

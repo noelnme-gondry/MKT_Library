@@ -191,6 +191,7 @@ export function buildDataContext({ headers, rows = [], mapping = {}, toolId = nu
     toolId,
     toolSpec,
     locale,
+    headers: headerList,
     mappedFields,
     dimensions: [...standardDims, ...columnDims],
     fieldCandidates,

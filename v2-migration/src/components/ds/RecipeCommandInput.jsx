@@ -18,6 +18,7 @@ import { matchText } from "@/lib/vocabulary/hangulMatch";
  *  - notices: 화면이 알려야 할 자동 처리(대소문자 합치기 등) 문장 목록
  *  - onSelectStep(step): 이 단계를 입력창 밖(공용 필터 등)이 소유하면 처리하고 true — 칩 대신
  *    그 소유자에 쓴다. 같은 조건이 칩과 필터 두 곳에 따로 살지 않게(2026-09-30).
+ *    거절하면 { handled: true, code }를 반환한다. 성공 안내 대신 사유를 표시한다.
  *  - extraChips: [{ id, label, onRemove }] — 입력창 밖이 소유한 조건(공용 필터)을 같은 칩 줄에 보인다.
  *  - presets: { status, recipes:[{name, steps}], canApply, save(name, steps) } — 계정에 이름 붙여 저장한
  *    설정(useAccountRecipes). 이름으로 치면 후보 맨 위에 뜨고, 고르면 칩 목록을 그 설정으로 바꾼다.
@@ -30,6 +31,7 @@ const REJECT_TEXT = {
   INVALID_LEVELS: ["축은 최대 3단까지", "Up to 3 levels"],
   DUPLICATE_LEVEL: ["같은 축이 두 번 들어감", "Same level used twice"],
   MISSING_FIELD: ["필요한 컬럼이 없음", "Required column missing"],
+  EMPTY_SCOPE: ["분석할 값이 남지 않아 적용하지 않았습니다. 필터에서 다른 값을 선택해 주세요.", "Not applied because no values would remain. Select another value in the filter."],
 };
 
 function missingText(missing, locale) {
@@ -59,6 +61,7 @@ export default function RecipeCommandInput({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [lastPick, setLastPick] = useState("");
+  const [pickError, setPickError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveMessage, setSaveMessage] = useState(null);
@@ -77,6 +80,7 @@ export default function RecipeCommandInput({
 
   const pick = (option) => {
     if (!option?.enabled) return;
+    setPickError(null);
     if (option.kind === "preset") {
       // 저장한 설정은 칩 목록을 통째로 바꾼다. 지금 데이터에 없는 컬럼이 필요한 단계는
       // 칩으로 남아 "적용 안 됨: 필요한 컬럼이 없음"을 보인다(foldSteps).
@@ -88,7 +92,13 @@ export default function RecipeCommandInput({
     }
     const selection = toSelection(option);
     if (selection.mapping && onMapping) onMapping(selection.mapping);
-    if (!onSelectStep?.(selection.step)) onStepsChange(addStep(steps, selection.step, vocabulary));
+    const outcome = onSelectStep?.(selection.step);
+    if (outcome?.handled && outcome.code) {
+      setLastPick("");
+      setPickError((REJECT_TEXT[outcome.code] || [outcome.code, outcome.code])[en ? 1 : 0]);
+      return;
+    }
+    if (!(outcome === true || outcome?.handled)) onStepsChange(addStep(steps, selection.step, vocabulary));
     setLastPick(option.label[locale]);
     setQuery("");
     setActive(0);
@@ -263,7 +273,7 @@ export default function RecipeCommandInput({
           </ul>
         )}
       </div>
-      <p className="sr-only" role="status" aria-live="polite">{lastPick ? tr(`${lastPick} 적용`, `${lastPick} applied`) : ""}</p>
+      <p className={pickError ? "recipe-command__chip-reason" : "sr-only"} role="status" aria-live="polite">{pickError || (lastPick ? tr(`${lastPick} 적용`, `${lastPick} applied`) : "")}</p>
       {notices.length > 0 && (
         <ul className="recipe-command__notices">
           {notices.map((notice) => <li key={notice}>{notice}</li>)}

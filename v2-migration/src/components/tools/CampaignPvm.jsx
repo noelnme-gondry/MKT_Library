@@ -558,9 +558,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // (metricOverride·weekBasis·lookback)은 처음 한 번 단계로 옮겨 읽는다.
   // 콘텐츠 도메인(9-3)은 같은 컴포넌트지만 레시피를 쓰지 않는다.
   const recipeEnabled = domain === "performance";
-  const [legacyMetric] = useSavedToolInput("5-21", "metricOverride", null);
-  const [legacyWeekBasis] = useSavedToolInput("5-21", "weekBasis", "calendar");
-  const [legacyLookback] = useSavedToolInput("5-21", "lookback", 1);
+  const [legacyMetric, setLegacyMetric] = useSavedToolInput("5-21", "metricOverride", null);
+  const [legacyWeekBasis, setLegacyWeekBasis] = useSavedToolInput("5-21", "weekBasis", "calendar");
+  const [legacyLookback, setLegacyLookback] = useSavedToolInput("5-21", "lookback", 1);
   const [savedSteps, setRecipeSteps] = useSavedToolInput(PVM_TOOL_ID, "recipeSteps", () => legacyPvmSteps({
     metricOverride: legacyMetric, weekBasis: legacyWeekBasis, lookback: legacyLookback,
   }));
@@ -571,7 +571,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const [lastBasisMetric, setLastBasisMetric] = useState(basisMetric);
   if (basisMetric !== lastBasisMetric) {
     setLastBasisMetric(basisMetric);
-    setRecipeSteps((prev) => (Array.isArray(prev) ? prev.filter((step) => !String(step.id).startsWith("metric.")) : []));
+    if (recipeEnabled) setRecipeSteps((prev) => (Array.isArray(prev) ? prev.filter((step) => !String(step.id).startsWith("metric.")) : []));
+    else setLegacyMetric(null);
   }
   const [periodOverride, setPeriodOverride] = useState(null);
   const incomingComparison = analysisHandoff?.source === "dochi" && analysisHandoff.targetToolId === "5-21"
@@ -613,8 +614,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     };
   }, [mappedFields, basisMetric]);
   const fold = useMemo(
-    () => foldSteps(recipeSteps, PVM_VOCABULARY, pvmSpec, { mappedFields }),
-    [recipeSteps, pvmSpec, mappedFields],
+    () => foldSteps(recipeSteps, PVM_VOCABULARY, pvmSpec, { mappedFields, headers: csvData?.headers || [] }),
+    [recipeSteps, pvmSpec, mappedFields, csvData?.headers],
   );
   const recipe = fold.state;
   // 계정에 이름 붙여 저장한 설정(Pro). 로그인 전이면 저장 버튼이 로그인 안내를 보인다.
@@ -625,13 +626,13 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     () => pvmKeysFromState(recipe, { levelsCustom, mappedFields }),
     [recipe, levelsCustom, mappedFields],
   );
-  const metric = recipe.data.metric || basisMetric;
+  const metric = (recipeEnabled ? recipe.data.metric : legacyMetric) || basisMetric;
   const period = recipe.data.period?.kind === "lookback" ? recipe.data.period : { weeks: 1, basis: "calendar" };
-  const weekBasis = period.basis;
-  const lookback = period.weeks;
-  const setMetric = (next) => addRecipeStep({ id: `metric.pvm.${next}`, params: {} });
-  const setWeekBasis = (next) => addRecipeStep({ id: `period.basis.${next}`, params: {} });
-  const setLookback = (next) => addRecipeStep({ id: `period.lookback.${next}`, params: {} });
+  const weekBasis = recipeEnabled ? period.basis : legacyWeekBasis;
+  const lookback = recipeEnabled ? period.weeks : legacyLookback;
+  const setMetric = (next) => recipeEnabled ? addRecipeStep({ id: `metric.pvm.${next}`, params: {} }) : setLegacyMetric(next);
+  const setWeekBasis = (next) => recipeEnabled ? addRecipeStep({ id: `period.basis.${next}`, params: {} }) : setLegacyWeekBasis(next);
+  const setLookback = (next) => recipeEnabled ? addRecipeStep({ id: `period.lookback.${next}`, params: {} }) : setLegacyLookback(next);
   const hidden = new Set(recipe.view.hidden);
   const isVisible = (blockId) => !hidden.has(blockId);
 
@@ -639,14 +640,17 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const dataContext = useMemo(() => (recipeEnabled && csvData?.raw?.length
     ? buildDataContext({ headers: csvData.headers, rows: csvData.raw, mapping: csvData.mapping || {}, toolId: PVM_TOOL_ID, locale })
     : null), [recipeEnabled, csvData?.raw, csvData?.headers, csvData?.mapping, locale]);
-  const levelLabels = keysToLevels(levelKeys).map((ref) => levelLabelFor(ref, dataContext));
+  // 기본 축은 중간 슬롯 없이 ch→cr로 이어질 수 있다. 라벨도 엔진 슬롯 위치를 보존한다.
+  const levelLabels = [levelKeys.ch, levelKeys.cmp, levelKeys.cr].map((ref) => ref ? levelLabelFor(ref, dataContext) : undefined);
   const commandContext = useMemo(() => (dataContext
     ? { ...dataContext, currentLevels: keysToLevels(levelKeys), toolSpec: { ...pvmSpec, blocks: pvmBlocks(levelLabels) } }
-    : null), [dataContext, pvmSpec, levelKeys, levelLabels.map((label) => label.ko).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+    : null), [dataContext, pvmSpec, levelKeys, levelLabels.map((label) => label?.ko).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 축 이름을 도구 카피에 반영한다. 기본 축이면 기존 카피 그대로(byte-동일).
+  // 수동 축뿐 아니라 채널 누락으로 자동 대체한 축도 화면·파일에서 같은 이름을 쓴다.
+  const labelsFollowLevels = recipeEnabled && (levelsCustom || levelKeys.ch !== "channel");
+  // 기존 채널 축과 콘텐츠 도메인은 원래 카피 그대로.
   const C = useMemo(() => {
-    if (!levelsCustom) return baseC;
+    if (!labelsFollowLevels) return baseC;
     const name = (index) => levelLabels[index]?.[locale === "en" ? "en" : "ko"] || "";
     const [l1, l2, l3] = [name(0), name(1), name(2)];
     return {
@@ -661,7 +665,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       tocCampaigns: locale === "en" ? `By ${l2}` : `${l2}별`,
       tocCreatives: locale === "en" ? `By ${l3}` : `${l3}별`,
     };
-  }, [baseC, levelsCustom, locale, levelLabels.map((label) => label.ko).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [baseC, labelsFollowLevels, locale, levelLabels.map((label) => label?.ko).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 매핑 안 된 CSV 컬럼을 축·필터로 쓰면 그 컬럼을 실은 행을 다시 만든다(원본 행과 같은 필터 규칙).
   const columnRefs = columnRefsInState(recipe);
@@ -814,8 +818,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   };
 
   // 축을 바꿨으면 파일에 실제 축 이름을 적는다(기본 축이면 기존 파일 그대로).
-  const exportCache = cache && levelsCustom
-    ? { ...cache, levelNames: levelLabels.map((label) => label[locale === "en" ? "en" : "ko"]) }
+  const exportCache = cache && labelsFollowLevels
+    ? { ...cache, levelNames: levelLabels.filter(Boolean).map((label) => label[locale === "en" ? "en" : "ko"]) }
     : cache;
 
   // 결과 CSV 다운로드 — 살아있는 스프레드시트 수식(§7 CRLF+BOM). buildPvmResultCsv 재사용
@@ -1044,7 +1048,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     source: isDemoData(csvData) ? "demo" : "csv",
     inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
     filter: { lookback, weekBasis, metric, levels: keysToLevels(levelKeys).join(">") },
-    grain: levelsCustom ? keysToLevels(levelKeys).join("-") : "channel-campaign-creative",
+    grain: labelsFollowLevels ? keysToLevels(levelKeys).join("-") : "channel-campaign-creative",
     metricDefinitions: [{ key: metric, label: ml, aggregation: "ratio", timeBasis: weekBasis }],
     engineVersion: "pvm-identity-checked",
     status: ready ? "COMPLETE" : (cache?.analysisStatus || "BLOCKED"),
@@ -1173,7 +1177,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     }
 
     const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
-    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale, ml, levelsCustom
+    const diagText = pvmGenerateDiagnosis(e, level, (v) => pvmFmtMoney(v, cur), locale, ml, labelsFollowLevels
       ? { channel: levelLabels[0], campaign: levelLabels[1], creative: levelLabels[2] }
       : null);
 
@@ -1273,8 +1277,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // 레시피가 보이지 않게 처리한 것은 화면이 말한다(대소문자 합치기·가린 행·적용 안 된 보기 필터·한계 제외).
   const sectionVisible = (sectionId) => {
     if (sectionId === "s-pvm-scorecard") return isVisible("sec.scorecard");
-    if (sectionId === "s-pvm-campaigns") return isVisible("tbl.level2") && (!levelsCustom || Boolean(levelKeys.cmp));
-    if (sectionId === "s-pvm-creatives") return isVisible("tbl.level3") && (!levelsCustom || Boolean(levelKeys.cr));
+    if (sectionId === "s-pvm-campaigns") return isVisible("tbl.level2") && (!labelsFollowLevels || Boolean(levelKeys.cmp));
+    if (sectionId === "s-pvm-creatives") return isVisible("tbl.level3") && (!labelsFollowLevels || Boolean(levelKeys.cr));
     return true;
   };
   const skippedViewFilters = recipeEnabled ? unappliedViewFilters(recipe.data.filters, levelKeys) : [];
@@ -1314,7 +1318,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     const next = isOnly
       ? new Set([...(current || []), ...picked])
       : new Set((current || options).filter((option) => !wanted.has(option.toLowerCase())));
-    if (!next.size) return true; // 전부 빼면 "필터 없음"과 구분되지 않는다 — 바꾸지 않는다.
+    // 빈 Set은 공용 필터의 "전체" 계약이다. 변경 없이 거절 사유를 입력창에 돌려준다.
+    if (!next.size) return { handled: true, code: "EMPTY_SCOPE" };
     setDashboardFilter({ [key]: next.size >= options.length ? new Set() : next });
     return true;
   };
@@ -1519,7 +1524,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             stats={[
               { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
               { label: tr("가장 큰 기여", "Largest contribution"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
-              { label: levelsCustom ? tr(`분석 ${C.levelChannel}`, `${C.levelChannel} count`) : tr("분석 채널", "Channels"), value: channelRowsAll.length },
+              { label: labelsFollowLevels ? tr(`분석 ${C.levelChannel}`, `${C.levelChannel} count`) : tr("분석 채널", "Channels"), value: channelRowsAll.length },
             ]}
             workbookExport={() => ({
               calculationMode: "exact_after_preprocessing",
@@ -1538,8 +1543,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               method: {
                 name: "PVM finest-grain rollup",
                 version: "pvm-identity-checked",
-                assumptions: [levelsCustom
-                  ? tr(`${levelLabels.map((label) => label.ko).join("×")} 최소 grain에서 한 번 분해한 뒤 합산`, `Decomposed once at ${levelLabels.map((label) => label.en).join(" × ")} grain, then rolled up`)
+                assumptions: [labelsFollowLevels
+                  ? tr(`${levelLabels.filter(Boolean).map((label) => label.ko).join("×")} 최소 grain에서 한 번 분해한 뒤 합산`, `Decomposed once at ${levelLabels.filter(Boolean).map((label) => label.en).join(" × ")} grain, then rolled up`)
                   : tr("채널×캠페인×소재 최소 grain에서 한 번 분해한 뒤 합산", "Decomposed once at channel × campaign × creative grain, then rolled up")],
                 // 한계 문구는 기본 포함, "한계 문구 빼고 받기"를 고르면 뺐다는 한 줄만 남긴다.
                 limitations: exportLimitations([tr("관측 연관 분해이며 인과 효과가 아닙니다.", "Observed association decomposition; not a causal effect.")], recipe.export.includeCaveats, locale),
