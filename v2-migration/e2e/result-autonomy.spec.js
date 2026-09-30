@@ -334,3 +334,46 @@ test.describe("analysis surfaces in light mode", () => {
     });
   }
 });
+
+for (const locale of ["ko", "en"]) {
+  test(`saturation point labels follow markers and retain bottom axes (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    await page.goto(`${en ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    const rows = page.locator(".marginal-gap__row");
+    await expect(rows).toHaveCount(4);
+    for (const metric of ["cpi", "roas"]) {
+      if (metric === "roas") await page.getByRole("button", { name: /ROAS \(/ }).click();
+      await expect(rows.first().locator(".marginal-gap__label.is-average")).toBeVisible();
+      const legendColor = await page.locator(".marginal-gap__legend .is-marginal").evaluate(el => getComputedStyle(el).borderColor);
+      for (const row of await rows.all()) {
+        const layout = await row.evaluate(el => {
+          const box = selector => {
+            const r = el.querySelector(selector).getBoundingClientRect();
+            return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, center: r.x + r.width / 2 };
+          };
+          return {
+            average: box(".marginal-gap__label.is-average"), marginal: box(".marginal-gap__label.is-marginal"),
+            aDot: box(".marginal-gap__dot.is-average"), mDot: box(".marginal-gap__dot.is-marginal"),
+            axis: box(".marginal-gap__axis"), track: box(".marginal-gap__track"),
+            color: getComputedStyle(el.querySelector(".marginal-gap__dot.is-marginal")).borderColor,
+          };
+        });
+        for (const [label, dot] of [[layout.average, layout.aDot], [layout.marginal, layout.mDot]]) {
+          expect(label.y).toBeGreaterThan(dot.bottom);
+          expect(dot.center).toBeGreaterThanOrEqual(label.x - 1);
+          expect(dot.center).toBeLessThanOrEqual(label.right + 1);
+          expect(label.x).toBeGreaterThanOrEqual(layout.track.x - 1);
+          expect(label.right).toBeLessThanOrEqual(layout.track.right + 1);
+          expect(layout.axis.y).toBeGreaterThanOrEqual(label.bottom);
+        }
+        const xOverlap = Math.min(layout.average.right, layout.marginal.right) - Math.max(layout.average.x, layout.marginal.x);
+        const yOverlap = Math.min(layout.average.bottom, layout.marginal.bottom) - Math.max(layout.average.y, layout.marginal.y);
+        expect(xOverlap <= 0 || yOverlap <= 0).toBe(true);
+        expect(layout.color).toBe(legendColor);
+        await expect(row.locator(".marginal-gap__axis")).toBeVisible();
+        await expect(row.locator(".marginal-gap__axis span")).toHaveCount(3);
+      }
+      expect(new Set(await page.locator(".marginal-gap__axis").allTextContents()).size).toBe(1);
+    }
+  });
+}

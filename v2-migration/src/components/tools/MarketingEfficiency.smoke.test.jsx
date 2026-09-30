@@ -177,17 +177,19 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByRole("button", { name: "Meta" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("shows the average-to-marginal values as a hover tip on each marginal-gap row", () => {
+  it("keeps average and marginal values visible beside their plot with a shared bottom scale", () => {
     seedWithData();
     useAppStore.getState().setGroupAnalyzed("5-22");
     const { container } = render(<MarketingEfficiency />);
 
-    const tips = container.querySelectorAll(".marginal-gap__tip");
-    expect(tips.length).toBeGreaterThan(0);
-    tips.forEach((tip) => {
-      expect(tip.textContent).toMatch(/평균 .+ → 한계 .+ · /);
-      expect(["left", "right"]).toContain(tip.getAttribute("data-side"));
+    const rows = container.querySelectorAll(".marginal-gap__row");
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.querySelector(".marginal-gap__label.is-average").textContent).toMatch(/평균.+/);
+      expect(row.querySelector(".marginal-gap__label.is-marginal").textContent).toMatch(/한계.+/);
+      expect(row.querySelectorAll(".marginal-gap__axis span").length).toBe(3);
     });
+    expect(container.querySelector(".marginal-gap__tip")).toBeNull();
   });
 
   it("uses a locale-safe English title without a one-dollar expression", () => {

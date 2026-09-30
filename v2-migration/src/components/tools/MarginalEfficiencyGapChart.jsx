@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
@@ -24,6 +24,47 @@ function position(value, domainMax) {
   return Math.max(0, Math.min(100, (value / domainMax) * 100));
 }
 
+// Labels follow their actual point; only labels near an edge are clamped.
+// Nearby labels use separate lanes, without moving the data points themselves.
+function GapPlot({ point, domainMax, metric, currency, isEn }) {
+  const ref = useRef(null);
+  const [plotWidth, setPlotWidth] = useState(0);
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setPlotWidth(entry.contentRect.width));
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  const averagePos = position(point.average, domainMax);
+  const marginalPos = position(point.plotMarginal, domainMax);
+  const labelWidth = 112;
+  const labelCenter = (pos) => Math.max(labelWidth / 2, Math.min(plotWidth - labelWidth / 2, pos / 100 * plotWidth));
+  const leaderStyle = (pos) => {
+    const shift = labelCenter(pos) - pos / 100 * plotWidth;
+    return { "--leader-offset": `${Math.min(0, shift)}px`, "--leader-width": `${Math.abs(shift)}px` };
+  };
+  const stagger = Math.abs(labelCenter(averagePos) - labelCenter(marginalPos)) < labelWidth + 12;
+  return (
+    <div className="marginal-gap__plot">
+      <div className="marginal-gap__track" ref={ref} data-stagger={stagger ? "true" : "false"}
+        style={{ "--gap-start": `${Math.min(averagePos, marginalPos)}%`, "--gap-width": `${Math.abs(averagePos - marginalPos)}%`, "--avg-position": `${averagePos}%`, "--marginal-position": `${marginalPos}%` }}>
+        <span className="marginal-gap__grid" aria-hidden="true"><i /><i /><i /></span>
+        <span className="marginal-gap__connector" aria-hidden="true" />
+        <span className="marginal-gap__dot is-average" aria-hidden="true" />
+        <span className={`marginal-gap__dot is-marginal${point.isUnbounded ? " is-unbounded" : ""}`} aria-hidden="true">{point.isUnbounded ? "∞" : ""}</span>
+        <span className="marginal-gap__leader is-average" style={leaderStyle(averagePos)} aria-hidden="true" />
+        <span className="marginal-gap__leader is-marginal" style={leaderStyle(marginalPos)} aria-hidden="true" />
+        <span className="marginal-gap__label is-average"><small>{isEn ? "Average" : "평균"}</small><strong>{formatMetric(point.average, metric, currency)}</strong></span>
+        <span className="marginal-gap__label is-marginal"><small>{isEn ? "Marginal" : "한계"}</small><strong>{formatMetric(point.marginal, metric, currency)}</strong></span>
+      </div>
+      <div className="marginal-gap__axis" aria-label={isEn ? "Shared x-axis range" : "공통 X축 범위"}>
+        <span>{formatMetric(0, metric, currency)}</span>
+        <span>{formatMetric(domainMax / 2, metric, currency)}</span>
+        <span>{formatMetric(domainMax, metric, currency)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function MarginalEfficiencyGapChart({
   rows,
   grain,
@@ -38,7 +79,6 @@ export default function MarginalEfficiencyGapChart({
   const isEn = locale === "en";
   const view = useMemo(() => buildMarginalEfficiencyGap(rows, metric), [rows, metric]);
   const grainLabel = entityLabel || (grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널"));
-  const midpoint = view.domainMax / 2;
   const sectionRef = useRef(null);
 
   return (
@@ -73,23 +113,11 @@ export default function MarginalEfficiencyGapChart({
           : `평균·한계 ${metricLabel}을 모두 계산할 수 있는 ${grainLabel}이 없습니다.`}</p>
       ) : (
         <div className="marginal-gap__chart" role="list" aria-label={isEn ? `${grainLabel} marginal-efficiency gaps` : `${grainLabel}별 평균·한계효율 차이`}>
-          <div className="marginal-gap__columns" aria-hidden="true">
-            <span>{isEn ? grainLabel : `${grainLabel}·판정`}</span>
-            <span>{metric === "roas" ? (isEn ? "Higher is better →" : "높을수록 좋음 →") : (isEn ? "Lower is better ←" : "← 낮을수록 좋음")}</span>
-            <span>{isEn ? "Values" : "수치"}</span>
-            <span>{isEn ? "Evidence" : "근거"}</span>
+          <div className="marginal-gap__scale-note" role="presentation">
+            <span>{metricLabel} · {isEn ? "Same scale for every row" : "모든 대상에 같은 눈금"}</span>
+            <span>{metric === "roas" ? (isEn ? "Higher is better →" : "높을수록 좋음 →") : (isEn ? "← Lower is better" : "← 낮을수록 좋음")}</span>
           </div>
-          <div className="marginal-gap__axis" aria-hidden="true">
-            <span>{formatMetric(0, metric, currency)}</span>
-            <span>{formatMetric(midpoint, metric, currency)}</span>
-            <span>{formatMetric(view.domainMax, metric, currency)}</span>
-          </div>
-
           {view.points.map((point) => {
-            const averagePos = position(point.average, view.domainMax);
-            const marginalPos = position(point.plotMarginal, view.domainMax);
-            const start = Math.min(averagePos, marginalPos);
-            const width = Math.abs(averagePos - marginalPos);
             const indexLabel = Number.isFinite(point.saturationIndex) && point.saturationIndex < 1e8
               ? `${point.saturationIndex.toFixed(2)}x`
               : "∞";
@@ -108,32 +136,11 @@ export default function MarginalEfficiencyGapChart({
                   </button>
                   <span>{verdictCopy(point.verdict, isEn)} · {indexLabel}</span>
                 </div>
-                <div
-                  className="marginal-gap__track"
-                  data-design-exempt="gradient: 가운데 기준선(한계=평균)을 그리는 1px 선이다 — 장식이 아니다"
-                  style={{ "--gap-start": `${start}%`, "--gap-width": `${width}%`, "--avg-position": `${averagePos}%`, "--marginal-position": `${marginalPos}%` }}
-                  aria-label={`${point.name}: ${isEn ? "average" : "평균"} ${formatMetric(point.average, metric, currency)}, ${isEn ? "marginal" : "한계"} ${formatMetric(point.marginal, metric, currency)}`}
-                >
-                  <span className="marginal-gap__connector" aria-hidden="true" />
-                  <span className="marginal-gap__dot is-average" aria-hidden="true" />
-                  <span className={`marginal-gap__dot is-marginal${point.isUnbounded ? " is-unbounded" : ""}`} aria-hidden="true">
-                    {point.isUnbounded ? "∞" : ""}
-                  </span>
-                  <span className="marginal-gap__tip" data-side={marginalPos > 55 ? "left" : "right"} aria-hidden="true" data-figure-skip="">
-                    {isEn ? "Average" : "평균"} {formatMetric(point.average, metric, currency)}
-                    {" → "}
-                    {isEn ? "marginal" : "한계"} {formatMetric(point.marginal, metric, currency)}
-                    {" · "}{indexLabel}
-                  </span>
-                </div>
-                <div className="marginal-gap__values">
-                  <span><i className="is-average" aria-hidden="true" />{formatMetric(point.average, metric, currency)}</span>
-                  <span><i className="is-marginal" aria-hidden="true" />{formatMetric(point.marginal, metric, currency)}</span>
-                </div>
                 <div className="marginal-gap__evidence tnum">
                   <span>{isEn ? "Observations" : "관측"} {point.observations ?? "—"}</span>
                   <span>R²={point.r2 == null ? "—" : point.r2.toFixed(2)}</span>
                 </div>
+                <GapPlot point={point} domainMax={view.domainMax} metric={metric} currency={currency} isEn={isEn} />
               </div>
             );
           })}
