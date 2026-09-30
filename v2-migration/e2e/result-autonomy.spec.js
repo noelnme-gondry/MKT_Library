@@ -374,7 +374,12 @@ for (const locale of ["ko", "en"]) {
         await expect(row.locator(".marginal-gap__axis")).toBeVisible();
         await expect(row.locator(".marginal-gap__axis span")).toHaveCount(3);
       }
-      expect(new Set(await page.locator(".marginal-gap__axis").allTextContents()).size).toBe(1);
+      expect(new Set(await page.locator(".marginal-gap__axis").allTextContents()).size).toBeGreaterThan(1);
+      if (metric === "cpi") {
+        const tiktok = rows.filter({ has: page.getByRole("button", { name: "TikTok", exact: true }) });
+        const gap = await tiktok.locator(".marginal-gap__track").evaluate(el => parseFloat(el.style.getPropertyValue("--gap-width")));
+        expect(gap).toBeGreaterThan(20);
+      }
     }
   });
 }

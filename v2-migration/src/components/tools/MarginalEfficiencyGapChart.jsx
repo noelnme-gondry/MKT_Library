@@ -56,7 +56,7 @@ function GapPlot({ point, domainMax, metric, currency, isEn }) {
         <span className="marginal-gap__label is-average"><small>{isEn ? "Average" : "평균"}</small><strong>{formatMetric(point.average, metric, currency)}</strong></span>
         <span className="marginal-gap__label is-marginal"><small>{isEn ? "Marginal" : "한계"}</small><strong>{formatMetric(point.marginal, metric, currency)}</strong></span>
       </div>
-      <div className="marginal-gap__axis" aria-label={isEn ? "Shared x-axis range" : "공통 X축 범위"}>
+      <div className="marginal-gap__axis" aria-label={isEn ? "This card’s x-axis range" : "이 카드의 X축 범위"}>
         <span>{formatMetric(0, metric, currency)}</span>
         <span>{formatMetric(domainMax / 2, metric, currency)}</span>
         <span>{formatMetric(domainMax, metric, currency)}</span>
@@ -114,7 +114,7 @@ export default function MarginalEfficiencyGapChart({
       ) : (
         <div className="marginal-gap__chart" role="list" aria-label={isEn ? `${grainLabel} marginal-efficiency gaps` : `${grainLabel}별 평균·한계효율 차이`}>
           <div className="marginal-gap__scale-note" role="presentation">
-            <span>{metricLabel} · {isEn ? "Same scale for every row" : "모든 대상에 같은 눈금"}</span>
+            <span>{metricLabel} · {isEn ? "Each card uses its own range · compare values and indices across cards" : "카드별 범위 · 대상 간 비교는 수치·포화지수로"}</span>
             <span>{metric === "roas" ? (isEn ? "Higher is better →" : "높을수록 좋음 →") : (isEn ? "← Lower is better" : "← 낮을수록 좋음")}</span>
           </div>
           {view.points.map((point) => {
@@ -140,7 +140,7 @@ export default function MarginalEfficiencyGapChart({
                   <span>{isEn ? "Observations" : "관측"} {point.observations ?? "—"}</span>
                   <span>R²={point.r2 == null ? "—" : point.r2.toFixed(2)}</span>
                 </div>
-                <GapPlot point={point} domainMax={view.domainMax} metric={metric} currency={currency} isEn={isEn} />
+                <GapPlot point={point} domainMax={point.domainMax} metric={metric} currency={currency} isEn={isEn} />
               </div>
             );
           })}

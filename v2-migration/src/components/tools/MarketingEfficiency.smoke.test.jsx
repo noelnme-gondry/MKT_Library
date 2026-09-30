@@ -177,7 +177,7 @@ describe("MarketingEfficiency render smoke", () => {
     expect(screen.getByRole("button", { name: "Meta" }).getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("keeps average and marginal values visible beside their plot with a shared bottom scale", () => {
+  it("keeps average and marginal values visible beside their plot with individual bottom scales", () => {
     seedWithData();
     useAppStore.getState().setGroupAnalyzed("5-22");
     const { container } = render(<MarketingEfficiency />);

@@ -41,20 +41,24 @@ export function buildMarginalEfficiencyGap(rows = [], metric = "cpa") {
     });
   }
 
-  const finiteValues = candidates.flatMap((point) => [
-    point.average,
-    Number.isFinite(point.marginal) ? point.marginal : null,
-  ]).filter(Number.isFinite);
-  const finiteMax = finiteValues.length ? Math.max(...finiteValues) : 0;
-  const domainMax = finiteMax > 0 ? finiteMax * 1.12 : 1;
   const points = candidates
-    .map((point) => ({
-      ...point,
-      plotMarginal: Number.isFinite(point.marginal) ? point.marginal : domainMax,
-      isUnbounded: point.marginal === Infinity,
-    }))
+    .map((point) => {
+      // Each card compares its own pair. Keep zero, add headroom, and round
+      // upwards to readable ticks; another channel must not compress this pair.
+      const finiteMax = Math.max(point.average, Number.isFinite(point.marginal) ? point.marginal : 0);
+      const paddedMax = finiteMax * 1.12;
+      const magnitude = finiteMax > 0 ? 10 ** Math.floor(Math.log10(paddedMax / 4)) : 1;
+      const step = [10, 5, 2, 1].find(value => value * magnitude <= paddedMax / 4) * magnitude;
+      const domainMax = finiteMax > 0 ? Math.ceil(paddedMax / step) * step : 1;
+      return {
+        ...point,
+        domainMax,
+        plotMarginal: Number.isFinite(point.marginal) ? point.marginal : domainMax,
+        isUnbounded: point.marginal === Infinity,
+      };
+    })
     // 포화지수가 낮을수록 다음 예산 투입의 상대 효율이 좋다. 행동 후보를 위에 둔다.
     .sort((a, b) => a.saturationIndex - b.saturationIndex || a.name.localeCompare(b.name));
 
-  return { points, excluded, domainMax };
+  return { points, excluded };
 }
