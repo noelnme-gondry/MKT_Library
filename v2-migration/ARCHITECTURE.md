@@ -98,7 +98,7 @@ v2-migration/
 |---|---|---|
 | BudgetAllocation.jsx | `allocationMath.js` (ALLOC_MATH) | fitBest·predictSafeCpr·removeOutliers |
 | MarketingEfficiency.jsx | `satMath.js`(SAT_MATH·satBuildPoints) + allocationMath | 포화지수 = 한계÷평균 |
-| CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup |
+| CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) + `pvmExport.js` | Bennet 분해·rollup. 별도 `efficiencyStages.js`가 집계 CPM·클릭·설치·가입 비율의 순서 평균 단가 기여를 계산하고 `PvmEfficiencyStages.jsx`가 단계별 전후 값·변화·기여를 표시 |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) + `factorialAnovaMath.js` + `creativePredictiveModel.js` + `lib/analysis/webr/randomForest.js`·`svm.js` | WLS·피로도 + Concept Matrix 조합 상호작용(Type II ANOVA). 독립 소재 grain으로 집계한 뒤 표본·변수 조건을 충족할 때만 RF/SVM을 같은 5-fold에서 비교하고, 채널 통제 후 전역 Shapley R²를 속성별로 배분한다. RF 중요도와 Shapley R²는 예측/설명력이며 방향·인과·개별 소재 SHAP이 아님 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve·`fisherExact2x2`(저전환 구간에서 판정 기준을 정확검정으로 이동)·`holmAdjust` |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군) + `incrPrePostMath.js`(전후·DiD·Welch) | 3방법 탭, CSV 그룹 독립 |
@@ -151,6 +151,7 @@ v2-migration/
 - **도구 목록 SSOT**: `lib/toolIndex.js`(발행 도구 + 이름·질문·답·필요 컬럼을 routeMap·IA·`toolSearchContent`·`TOOL_REQUIRED_FIELDS`에서 파생) → `ds/ToolIndex`(홈 compact·`/start` full). 갈래는 `lib/toolConnections.js`의 `TOOL_JOURNEY` 7개(점검·추세잠식·예산·요소·유입·검증·기여도) — 사이드바 분석 섹션도 같은 배열을 그린다. 결과 화면의 "안 되는 분석" 줄은 `lib/toolDataNeeds.js`(도구별 필요한 값 한 문장, 발행 도구 파생 가드)를 쓴다.
 - **예시 링크**: 도구 URL `?example=1` → `lib/exampleLink.js`(`exampleHref`, 발행 도구만) + `ds/useExampleLink`(예시 버튼과 같은 핸들러를 라우트 설정·기기 저장 부팅이 끝난 뒤 한 번). 예시 버튼을 그리는 CsvGuide·AbTestHoldout·PaidOrganicTrend가 쓰고 템플릿 카드가 링크한다. `e2e/example-link.spec.js`.
 - **하단 마감**: 분석 아래는 `ToolPageOutro` 한 덩어리(`.tool-outro` 박스 + `.tool-outro__section` 구분선). 자식(`ToolConnections`·`ToolLongform`·`ToolEvidenceLinks`)은 자기 테두리·경계선을 그리지 않는다. 타이포 하한 9.5px는 `app/typographyFloor.test.js`가 강제(§12.30).
+  - **5-21 파일럿**: `ToolNextStepPanel` → `ToolConnections compact`의 다음 분석 최대 2개만 펼친다. 방법·FAQ·관련 자료는 `ModalDialog` 안에서 기존 `ToolLongform`·`ToolEvidenceLinks`를 재사용하고 프로젝트 연결도 별도 명시적 버튼으로 연다. 공용 이동 계약과 기존 도구의 하단은 유지한다.
 - 최종 결과는 `ds/ResultActionCard`(결론·근거·다음 행동) 공용 계약. 읽기 전용 기간은 `ds/ComparisonPeriods`로 표시한다. 5-21은 `ds/ResultPeriodPicker` 두 개로 분석·비교 기간을 각각 편집하고, 5-22는 같은 부품으로 분석 기간만 편집한다. UI 날짜 검증·직전 같은 길이·겹침/길이 차이 안내는 `lib/analysisPeriod.js`. `DashboardFilterBar compact`는 대상 필터를 필요할 때만 열며 기존 일반 모드는 보존한다. 핵심 그림은 `coreFigure` 슬롯으로 행동·저장보다 먼저 렌더한다. 예시 데이터면 그 뒤에 `ds/DecisionReviewPreview`(저장 안 함·조건만). 분석 후 매핑 수정은 `ds/MappingEditorDialog`(+`AnalyzedDataLine` 한 줄) — `CsvUploader`(`collapseWhenAnalyzed`)·5-20·5-24·5-29가 공유. `store.lastToolRouteId`(휘발)는 빈 프로젝트 화면의 '방금 본 분석 다시 열기'. 확인할 점 표시는 `ds/IssueMark`(`AnalysisBasisBar` tooltip·`AnalysisDetails`·`AnalysisScopeEvidence`·`EvidenceStatusBadge`가 모두 이것으로 그린다 — 문제 없으면 null). 세그먼트 컨트롤은 `ds/PillGroup`(radiogroup+Arrow/Home/End) — `.ab-pillgroup` 생마크업 신규 추가 금지. 접근성: 실제 `h1/h2`·`tablist/tab/tabpanel`·Cmd-K combobox·CSV live semantics·`:focus-visible`. 라우트별 error boundary + `global-error.js`.
 
 ## 5.1 콘텐츠 SEO·전환 경로

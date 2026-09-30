@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 
 import ToolPageOutro from "@/components/ToolPageOutro";
@@ -72,3 +72,19 @@ it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", (
   expect(outro.querySelector(".tool-outro__section--handoff")).toBeNull();
   expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
 });
+
+for (const locale of ["ko", "en"]) {
+  it(`keeps the PVM next step short and opens references on demand (${locale})`, () => {
+    useAppStore.setState(useAppStore.getInitialState(), true);
+    const { container } = render(<ToolPageOutro toolId="5-21" locale={locale} evidenceLinks={LINKS} withConnections />);
+    expect(container.querySelectorAll(".tool-connection-card")).toHaveLength(2);
+    expect(container.querySelector(".tool-connections__more, .tool-continuity, .tool-longform, .tool-evidence")).toBeNull();
+    const title = locale === "en" ? "Method and references" : "분석 방법과 참고 자료";
+    fireEvent.click(screen.getByRole("button", { name: title }));
+    const dialog = screen.getByRole("dialog", { name: title });
+    expect(dialog.querySelector(".tool-longform__faq")).toBeTruthy();
+    expect(within(dialog).getByRole("link", { name: /운영 가이드 1/ }).getAttribute("href")).toBe("/blog/guide-one");
+    fireEvent.click(within(dialog).getByRole("button", { name: locale === "en" ? "Close" : "닫기" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+}

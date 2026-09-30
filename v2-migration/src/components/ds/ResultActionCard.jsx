@@ -3,6 +3,7 @@ import { isDemoData } from "@/lib/dataOrigin";
 import { figureExportSettings } from "@/lib/analysis-export/exportOptions";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Share2, FilePlus2, FolderOpen } from "lucide-react";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildReviewEvidence } from "@/lib/reviewEvidence";
 import LinkAnalysisToDecision from "./LinkAnalysisToDecision";
@@ -380,6 +381,7 @@ export default function ResultActionCard({
         <div className="result-action-card__utilities" role="group" aria-label={locale === "en" ? "More actions for this result" : "이 결과로 더 할 수 있는 것"}>
           {canShareDecision && (
             <button className="btn ghost" type="button" onClick={copyShareLink}>
+              <Share2 size={16} aria-hidden="true" />
               {shareCopied
                 ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
                 : (locale === "en" ? "Share conclusion" : "결론 공유")}
@@ -388,17 +390,17 @@ export default function ResultActionCard({
           {canCollectReport && (
             reportAdded ? (
               <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
-                {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
+                <FilePlus2 size={16} aria-hidden="true" />{locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
               </Link>
             ) : (
               <button className="btn ghost" type="button" onClick={collectForReport}>
-                {locale === "en" ? "Add to report" : "보고서에 추가"}
+                <FilePlus2 size={16} aria-hidden="true" />{locale === "en" ? "Add to report" : "보고서에 추가"}
               </button>
             )
           )}
           {canOpenDecisionReview && (
             <Link className="btn ghost" onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "analysis_result", placement: "result_action_card", locale })} href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>
-              {locale === "en" ? "Open My projects" : "내 프로젝트 열기"}
+              <FolderOpen size={16} aria-hidden="true" />{locale === "en" ? "Open My projects" : "내 프로젝트 열기"}
             </Link>
           )}
         </div>

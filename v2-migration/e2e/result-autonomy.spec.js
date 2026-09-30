@@ -231,9 +231,50 @@ for (const locale of ["ko", "en"]) {
     });
     await expect(result.locator(".result-mix-guide__legend dt")).toHaveCount(2);
     await expect(result.locator(".decision-review-preview__steps li")).toHaveCount(3);
-    await expect(result.locator(".pvm-supporting-evidence")).toBeVisible();
+    await expect(result.locator(".pvm-supporting-evidence")).toHaveCount(0);
+    await expect(result.locator(".pvm-observation-note")).toBeVisible();
     await expect(result.locator("details.result-action-card__details")).toHaveCount(0);
     await expect(result.locator('.decision-review-preview a[href$="/start"]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+}
+
+for (const locale of ["ko", "en"]) {
+  test(`stage evidence, aligned utilities and compact next steps (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    await page.goto(`${en ? "/en" : ""}/tools/campaign-variance?example=1`);
+    const stages = page.locator(".pvm-stage-analysis");
+    await expect(stages.locator("li")).toHaveCount(3);
+    await expect(stages).toContainText(en ? "Clicks → Installs" : "클릭 → 설치");
+    await expect(stages).not.toContainText(en ? "Installs → Sign-ups" : "설치 → 가입");
+    await page.getByRole("radio", { name: "CPA", exact: true }).click();
+    await expect(stages.locator("li")).toHaveCount(4);
+    await expect(stages).toContainText(en ? "Installs → Sign-ups" : "설치 → 가입");
+    await expect(stages.locator(".pvm-stage-analysis__total")).not.toContainText("NaN");
+    const utilities = page.locator("#s-pvm-result .result-action-card__utilities");
+    const buttons = await utilities.getByRole("button").evaluateAll(nodes => nodes.map(node => {
+      const r = node.getBoundingClientRect();
+      return { y: r.y, height: r.height, width: r.width };
+    }));
+    expect(buttons).toHaveLength(2);
+    buttons.forEach(button => expect(button.height).toBeGreaterThanOrEqual(44));
+    if (page.viewportSize().width > 640) expect(buttons[0].y).toBe(buttons[1].y);
+    const next = page.locator(".tool-next-step-panel");
+    await expect(next.locator(".tool-connection-card")).toHaveCount(2);
+    await expect(next.locator(".tool-connections__more")).toHaveCount(0);
+    await expect(page.getByText(en ? "Additional variance evidence" : "추가 변동 근거", { exact: true })).toHaveCount(0);
+    const trigger = next.getByRole("button", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: en ? "Method and references" : "분석 방법과 참고 자료", exact: true });
+    await expect(dialog).toBeVisible();
+    const rect = await dialog.boundingBox();
+    expect(rect.x).toBeGreaterThanOrEqual(0);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(page.viewportSize().width + 1);
+    const accessibility = await new AxeBuilder({ page }).include(".tool-reference-panel").analyze();
+    expect(accessibility.violations).toEqual([]);
+    await dialog.getByRole("button", { name: en ? "Close" : "닫기", exact: true }).press("Escape");
+    await expect(trigger).toBeFocused();
+    await expect(dialog).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }

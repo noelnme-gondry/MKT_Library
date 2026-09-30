@@ -50,7 +50,7 @@ const COPY = {
   },
 };
 
-export default function ToolConnections({ toolId, locale = "ko" }) {
+export default function ToolConnections({ toolId, locale = "ko", compact = false }) {
   const lang = locale === "en" ? "en" : "ko";
   const hasSourceData = useAppStore(state => Boolean(state.csvGroups[groupForRoute(toolId)]?.raw?.length));
   const nextTools = getNextTools(toolId, lang);
@@ -122,7 +122,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
           </Link>
         ))}
       </div>
-      <section data-information-section="" className="tool-connections__more">
+      {!compact && <section data-information-section="" className="tool-connections__more">
         <header data-information-heading="">{T.expand}</header>
         {journey && (
           <div className="tool-connections__map" aria-label={T.mapDeck}>
@@ -149,7 +149,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
             source={`connection_from_${toolId}`}
           />
         )}
-      </section>
+      </section>}
     </section>
   );
 }

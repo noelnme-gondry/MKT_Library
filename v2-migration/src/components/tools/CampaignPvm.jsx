@@ -9,6 +9,8 @@ import { PVM_MATH } from "@/utils/pvmMath";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
 import PillGroup from "@/components/ds/PillGroup";
 import { efficiencyBridge } from "@/utils/efficiencyBridge";
+import { efficiencyStages } from "@/utils/efficiencyStages";
+import PvmEfficiencyStages from "./PvmEfficiencyStages";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMappedRows, getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
@@ -173,26 +175,6 @@ function getMonday(d) {
   const day = d.getUTCDay();
   const offset = day === 0 ? 6 : day - 1;
   return new Date(d.getTime() - offset * DAY);
-}
-
-// 유의성 판정 규칙(§6) — index.html PVM_SIG_RULES 이식
-const PVM_SIG_RULES = {
-  overallFlatPct: 0.02,
-  entityShareMin: 0.15,
-  entityAbsFloorPct: 0.01,
-};
-
-function pvmIsOverallFlat(deltaMetric, metric1) {
-  if (!metric1) return Math.abs(deltaMetric) < 1e-9;
-  return Math.abs(deltaMetric) < PVM_SIG_RULES.overallFlatPct * Math.abs(metric1);
-}
-
-function pvmIsEntitySignificant(contribution, deltaMetricTotal, metric2) {
-  const passShare =
-    Math.abs(contribution) >= PVM_SIG_RULES.entityShareMin * Math.abs(deltaMetricTotal);
-  const passFloor =
-    Math.abs(contribution) >= PVM_SIG_RULES.entityAbsFloorPct * Math.abs(metric2);
-  return passShare && passFloor;
 }
 
 function pvmColor(v) {
@@ -477,6 +459,7 @@ export function buildPvmCache(csvData, state) {
 
   return {
     efficiencyBridge: bridge,
+    efficiencyStages: efficiencyStages(rowsP1, rowsP2, resultField, mapped),
     insufficientData: !identity.ok,
     analysisStatus: identity.ok ? "COMPLETE" : "NOT_IDENTIFIED",
     reasonCode: identity.ok ? null : "ADDITIVE_IDENTITY_FAILED",
@@ -887,114 +870,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const ml = ready ? pvmMetricLabel(cache, C) : (C.metricLabel || metric.toUpperCase());
   const bothMetricsMapped = cache?.bothMetricsMapped;
   const unspec = tr("(미지정)", "(unspecified)");
-
-  // §0 헤드라인 chip 헬퍼 + pvmImpactChip 이식
-  const chipCls = (v) => (v > 0 ? "up" : v < 0 ? "down" : "flat");
-  const chipArr = (v) => (v > 0 ? "▲" : v < 0 ? "▼" : "—");
-  const chipWord = (v) => (v > 0 ? tr("악화", "worse") : v < 0 ? tr("개선", "better") : tr("변화 없음", "no change"));
-  const impactChip = (v, opts = {}) => (
-    <span className={`pvm-chip ${chipCls(v)}`}>
-      {chipArr(v)} {opts.prefix ? opts.prefix + " " : ""}
-      {v >= 0 ? "+" : ""}
-      {pvmFmtMoney(v, cur)}
-      {opts.hideWord ? "" : " " + chipWord(v)}
-    </span>
-  );
-
-  // §0 Top-mover 카드 + 헤드라인 라인 (실제 값) — index.html pvmComputeRollups + pvmHeadlineSection 이식
-  const headlineLines = [];
-  let upMover = null;
-  let downMover = null;
-  if (ready) {
-    const flat = pvmIsOverallFlat(cache.deltaCpa, cache.CPA1);
-    const sortedCh = [...cache.layer1].sort(
-      (a, b) => Math.abs(b.contribution) - Math.abs(a.contribution),
-    );
-    const topChannel = sortedCh[0] || null;
-
-    // 드릴 체인 top 캠페인·소재 (top 채널 하위)
-    let topCampaign = null;
-    if (cache.campaignMapped && topChannel) {
-      topCampaign = cache.layer2
-        .filter((f) => f.chKey === topChannel.key)
-        .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))[0] || null;
-    }
-    let topCreative = null;
-    if (cache.creativeMapped && topChannel) {
-      topCreative = cache.layer3
-        .filter(
-          (f) =>
-            f.chKey === topChannel.key &&
-            (topCampaign ? f.cmpKey === topCampaign.cmpKey : true),
-        )
-        .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))[0] || null;
-    }
-
-    // Top-mover — 가장 올린/내린 채널(있을 때만)
-    upMover =
-      [...sortedCh].filter((e) => e.contribution > 0).sort((a, b) => b.contribution - a.contribution)[0] || null;
-    downMover =
-      [...sortedCh].filter((e) => e.contribution < 0).sort((a, b) => a.contribution - b.contribution)[0] || null;
-
-    headlineLines.push(
-      flat ? (
-        <li key="head" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
-          {tr(
-            <>전체 {ml}는 {pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → {pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}로 큰 변화 없음(±
-            {(PVM_SIG_RULES.overallFlatPct * 100).toFixed(0)}% 이내)</>,
-            <>Overall {ml} shows no major change ({pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → {pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}, within ±
-            {(PVM_SIG_RULES.overallFlatPct * 100).toFixed(0)}%)</>,
-          )}
-        </li>
-      ) : (
-        <li key="head" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
-          {tr("전체", "Overall")} {ml} <strong>{pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → {pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}</strong>{" "}
-          {impactChip(cache.deltaCpa)}
-        </li>
-      ),
-    );
-    if (topChannel && pvmIsEntitySignificant(topChannel.contribution, cache.deltaCpa, cache.CPA2)) {
-      headlineLines.push(
-        <li key="ch" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>{C.levelChannel}</span>{" "}
-          <strong>{topChannel.key || unspec}</strong> {impactChip(topChannel.contribution, { prefix: ml })}
-        </li>,
-      );
-    }
-    if (topCampaign && pvmIsEntitySignificant(topCampaign.contribution, cache.deltaCpa, cache.CPA2)) {
-      headlineLines.push(
-        <li key="cmp" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>{C.levelCampaign}</span> {topChannel.key} ›{" "}
-          <strong>{topCampaign.key || topCampaign.cmpKey || unspec}</strong>{" "}
-          {impactChip(topCampaign.contribution, { prefix: ml })}
-        </li>,
-      );
-    }
-    if (topCreative && pvmIsEntitySignificant(topCreative.contribution, cache.deltaCpa, cache.CPA2)) {
-      headlineLines.push(
-        <li key="cr" style={{ marginBottom: "7px", fontSize: "var(--fs-sm)", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>{C.levelCreative}</span>{" "}
-          <strong>{topCreative.crKey || unspec}</strong>{" "}
-          {impactChip(topCreative.contribution, { prefix: ml })}
-        </li>,
-      );
-    }
-  }
-
-  // Top-mover 카드 노드
-  const moverCard = (e, kind) => (
-    <div className={`pvm-mover ${kind}`} key={kind}>
-      <span className="ar">{kind === "up" ? "▲" : "▼"}</span>
-      <div>
-        <div className="mt">{kind === "up" ? tr(`${ml} 가장 올린 요인`, `Biggest driver up (${ml})`) : tr(`${ml} 가장 내린 요인`, `Biggest driver down (${ml})`)}</div>
-        <div className="mn">{e.key || unspec}</div>
-      </div>
-      <span className="mv">
-        {e.contribution >= 0 ? "+" : ""}
-        {pvmFmtMoney(e.contribution, cur)}
-      </span>
-    </div>
-  );
 
   // 정렬 가능 헤더용 — 클릭 시 그 컬럼 기준 desc, 다시 클릭하면 asc 토글. 값은 P2(현재
   // 기간) 기준(정렬 의도가 "지금 뭐가 큰가"이므로). subMix/subRate는 레벨별로 다른
@@ -1460,7 +1335,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
         {ready ? <>
           <ResultActionCard
-            coreFigure={ready && isVisible("fig.mixRate") && <ToolCoreFigure embedded
+            coreFigure={ready && isVisible("fig.mixRate") && <><ToolCoreFigure embedded
               figure={mixRateFigure({
                 rows: (cache.layer1 || []).map((e) => ({ entity: e.key || unspec, mix: e.mix, rate: e.rate, contribution: e.contribution })),
                 start: cache.CPA1,
@@ -1471,7 +1346,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               locale={locale}
               currency={cur === "usd" ? "USD" : "KRW"}
               downloadName="pvm_mix_rate"
-            />}
+            /><p className="pvm-observation-note">{tr("관측 연관 분해이며 인과 효과가 아닙니다.", "Observed association decomposition; not a causal effect.")}</p></>}
             toolId={pvmManifest.toolId}
             analysisKey={analysisKey}
             analysisType="pvm"
@@ -1573,22 +1448,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 warnings={pvmManifest.warnings}
               />
             )}
-          >
-            <section className="pvm-supporting-evidence" aria-label={tr("추가 변동 근거", "Additional variance evidence")}>
-              <h3>{tr("추가 변동 근거", "Additional variance evidence")}</h3>
-              {(upMover || downMover) && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
-                  {upMover && moverCard(upMover, "up")}
-                  {downMover && moverCard(downMover, "down")}
-                </div>
-              )}
-              <ul style={{ margin: "12px 0 10px", padding: 0, listStyle: "none" }}>{headlineLines}</ul>
-              <div className="callout warn" style={{ marginTop: "6px" }}>
-                <div className="ico">!</div>
-                <div className="body" style={{ fontSize: "var(--fs-xs)" }}>{C.causationCallout}</div>
-              </div>
-            </section>
-          </ResultActionCard>
+          />
           {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
         </> : (
           <div className="callout warn" style={{ marginTop: "12px" }}>
@@ -1619,35 +1479,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 </div>
               );
             })()}
-            {cache.efficiencyBridge?.ok && isVisible("sec.efficiency") && (() => {
-              const eb = cache.efficiencyBridge;
-              const signed = (value) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
-              const driverText = {
-                "media-price": tr("노출 단가(CPM)가 더 크게 움직였습니다. 입찰·타게팅 폭·게재 지면을 먼저 보세요.", "Media price (CPM) moved more. Look at bidding, targeting breadth, and placements first."),
-                "response-rate": tr("반응률이 더 크게 움직였습니다. 소재·랜딩·오디언스를 먼저 보세요.", "The response rate moved more. Look at creative, landing page, and audience first."),
-                balanced: tr("두 요인이 비슷하게 움직였습니다. 한쪽만 고쳐서는 되돌리기 어렵습니다.", "Both factors moved by a similar amount, so fixing only one is unlikely to reverse it."),
-                unchanged: tr("두 요인 모두 사실상 그대로입니다.", "Neither factor moved materially."),
-              }[eb.driver];
-              return (
-                <div className="pvm-efficiency-bridge" role="note">
-                  <div className="pvm-efficiency-bridge__head">
-                    <strong>{tr("효율이 움직인 이유", "Why efficiency moved")}</strong>
-                    <span>{tr("노출당 비용 × 반응률", "Cost per impression × response rate")}</span>
-                  </div>
-                  <div className="pvm-efficiency-bridge__cells">
-                    <div><small>{tr("전환당 비용", "Cost per result")}</small><strong>{signed(eb.cpa.changePct)}</strong></div>
-                    <div><small>{tr("노출 단가 (CPM)", "Media price (CPM)")}</small><strong>{signed(eb.cpm.changePct)}</strong></div>
-                    <div><small>{tr("반응률 (결과/노출)", "Response rate (results/impressions)")}</small><strong>{signed(eb.responseRate.changePct)}</strong></div>
-                  </div>
-                  <p>{driverText}</p>
-                  {eb.offsetting && (
-                    <p className="pvm-efficiency-bridge__note">
-                      {tr("두 요인이 서로 상쇄돼 전환당 비용은 거의 그대로지만, 안에서는 둘 다 움직였습니다. 한쪽이 돌아오면 합계가 달라집니다.", "The two factors cancelled out, so cost per result barely moved — but both changed underneath. If one reverts, the total will shift.")}
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
+            {isVisible("sec.efficiency") && <PvmEfficiencyStages value={cache.efficiencyStages} metric={ml} currency={cur} locale={locale} domain={domain} />}
             {(() => {
               const b = bridge(cache.CPA1, cache.CPA2, true);
               return (
