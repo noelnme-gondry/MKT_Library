@@ -73,7 +73,7 @@ it("분석 전에는 프로젝트 이어가기 칸을 자리까지 비운다", (
   expect(outro.querySelectorAll(":scope > .tool-outro__section")).toHaveLength(3);
 });
 
-for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22"]) {
+for (const locale of ["ko", "en"]) for (const toolId of ["5-21", "5-22", "5-3"]) {
   it(`keeps ${toolId} next step short and opens references on demand (${locale})`, () => {
     useAppStore.setState(useAppStore.getInitialState(), true);
     const { container } = render(<ToolPageOutro toolId={toolId} locale={locale} evidenceLinks={LINKS} withConnections />);

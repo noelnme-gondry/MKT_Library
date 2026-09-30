@@ -59,7 +59,7 @@ export default function AnalysisSetupBar({ toolId, locale = "ko", slot = "contex
   };
   if (slot === "context") {
     // 5-2는 제목 줄, 5-22는 데이터 교체 구역이 출처·행 수를 표시한다. 저장 설정 적용/검토 안내는 유지한다.
-    const showDataLine = Boolean(data?.raw?.length) && !["5-2", "5-22"].includes(toolId);
+    const showDataLine = Boolean(data?.raw?.length) && !["5-2", "5-22", "5-3"].includes(toolId);
     if (!showDataLine && !applicablePending && !applied) return null;
     const hasDateFilter = Boolean(filter?.dateStart || filter?.dateEnd);
     return <section className="analysis-setup no-print" aria-label={en ? "Data and applied setup" : "데이터와 적용된 설정"}>

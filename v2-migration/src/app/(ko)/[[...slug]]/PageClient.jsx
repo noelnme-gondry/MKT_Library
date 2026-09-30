@@ -49,7 +49,7 @@ const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTraff
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
 const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";

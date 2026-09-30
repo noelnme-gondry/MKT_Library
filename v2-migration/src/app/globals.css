@@ -12090,3 +12090,60 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 }
 
 }
+
+/* Allocation: plan input → current/plan evidence → detailed allocation → checks.
+   Scope and dates share one header; analysis surfaces retain the existing tokens. */
+.app .content .allocation-workspace .tool-page-shell__main > :is(.block, .alloc-diag-card, .alloc-total-card, .alloc-verify-strip),
+.allocation-data {
+  background: var(--surface-container-lowest);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-block: 24px;
+}
+.allocation-workspace .tool-instrument-header,
+.analysis-setup--actions[data-tool-id="5-3"] { background: var(--surface-container-lowest); }
+.allocation-workspace .prism-driver::after { content: none; }
+.allocation-context-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.allocation-context-controls__scope { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; }
+.allocation-scope { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.allocation-scope .recipe-scope-trigger { height: auto; min-height: 44px; text-align: left; }
+.allocation-scope .recipe-scope-trigger span { white-space: normal; }
+.allocation-scope-panel > p { font-size: var(--fs-sm); line-height: 1.6; color: var(--text-secondary); }
+.allocation-scope__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-block: 16px; }
+.allocation-scope__field { display: grid; gap: 8px; font-size: var(--fs-sm); }
+.allocation-scope__field select { min-width: 0; min-height: 44px; width: 100%; padding: 8px; color: var(--text-primary); background: var(--surface-container-lowest); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.allocation-scope__actions { display: flex; justify-content: end; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+.allocation-scope__note { padding: 12px; background: var(--bg-1); border-radius: var(--radius-sm); }
+.allocation-workspace .prism-driver__window { align-items: center; gap: 12px; padding: 16px 0; }
+.allocation-workspace .prism-driver__window small { flex-basis: 100%; line-height: 1.6; }
+.allocation-workspace .prism-driver__method { padding-top: 20px; margin-top: 4px; border-top: 1px solid var(--border); }
+.allocation-workspace .prism-driver__method > header { font-size: var(--fs-sm); font-weight: 700; }
+.allocation-workspace .prism-driver__method > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.allocation-workspace .allocation-method-details { padding: 16px; background: var(--bg-1); border-radius: var(--radius-sm); }
+.allocation-workspace .alloc-hold-low { max-width: none; padding: 16px; background: var(--bg-1); }
+.allocation-workspace .prism-driver__method p { font-size: var(--fs-sm); line-height: 1.7; }
+.allocation-workspace .alloc-card { padding: 0; border: 0; background: transparent; box-shadow: none; margin-bottom: 0; }
+.allocation-workspace :is(.chart-container, .chart-canvas-wrap) { border: 0; background: transparent; }
+.allocation-workspace .alloc-fold-summary { display: grid; gap: 8px; }
+.allocation-workspace .alloc-fold-summary > span { margin-left: 0 !important; }
+.allocation-workspace .alloc-insight-summary { cursor: default; }
+.allocation-workspace .allocation-method-entry { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.allocation-method-entry .section-title { margin-bottom: 8px; }
+.allocation-method-entry p { color: var(--text-secondary); font-size: var(--fs-sm); }
+@media (max-width: 768px) {
+  .app .content .allocation-workspace .tool-page-shell__main > :is(.block, .alloc-diag-card, .alloc-total-card, .alloc-verify-strip), .allocation-data { padding: 16px; }
+  .allocation-workspace .allocation-method-entry { align-items: stretch; flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .allocation-scope__fields { grid-template-columns: 1fr; }
+  .allocation-workspace .result-action-card__stats { grid-template-columns: 1fr; }
+  .allocation-workspace .result-action-card__stats > div + div { border-left: 0; border-top: 1px solid var(--border-subtle); }
+}
+.allocation-workspace .tool-instrument-header { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.allocation-context-controls__display { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.allocation-workspace :is(.budget-period-toggle, .alloc-mode-toggle) button { min-height: 36px; padding-inline: 12px; }
+.allocation-workspace .alloc-mode-toggle { width: fit-content; max-width: 100%; display: flex; flex-wrap: wrap; }
+@media (max-width: 768px) {
+  .allocation-workspace .tool-instrument-header { padding: 16px; }
+}

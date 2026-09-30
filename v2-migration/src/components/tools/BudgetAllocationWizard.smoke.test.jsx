@@ -5,9 +5,10 @@
 // default) — drives real DOM clicks through Step1 -> Step2 (추세선 검증) ->
 // Step3 (§4 배분 비중 bar chart) so render-throw bugs in step-transition JSX
 // and Chart.js effects are caught (golden tests only cover pure math, §7).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
+import { ALLOC_MATH } from "@/utils/allocationMath";
 import BudgetAllocation, { buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
 
 function seedWithData() {
@@ -214,11 +215,9 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     render(<BudgetAllocation />);
     fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
     fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
-    const quickGoal = [...document.querySelectorAll(".tool-instrument-header__controls select")]
-      .find((select) => [...select.options].some((option) => option.value === "roas"));
-    expect(quickGoal).toBeTruthy();
-    expect(quickGoal.value).toBe("roas");
-    fireEvent.click(screen.getByRole("button", { name: "적용됨" }));
+    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
     fireEvent.click(screen.getByRole("button", { name: /총 예산/ }));
@@ -228,12 +227,33 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
     fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
-    const quickGoal = [...document.querySelectorAll(".tool-instrument-header__controls select")]
-      .find((select) => [...select.options].some((option) => option.value === "install"));
-    expect(quickGoal).toBeTruthy();
-    expect(quickGoal.value).toBe("install");
-    fireEvent.click(screen.getByRole("button", { name: "적용됨" }));
+    expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
+  });
+
+  for (const locale of ["ko", "en"]) it(`date selection is saved and invalid drafts preserve the applied range (${locale})`, () => {
+    const en = locale === "en";
+    render(<BudgetAllocation locale={locale} />);
+    const dates = () => screen.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
+    const observations = vi.spyOn(ALLOC_MATH, "removeOutliers");
+    fireEvent.click(dates());
+    fireEvent.change(screen.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-10" } });
+    fireEvent.click(screen.getByRole("button", { name: en ? "Apply" : "적용", exact: true }));
+    expect(dates().textContent).toContain("2026-01-10");
+    expect(observations).toHaveBeenCalled();
+    expect(observations.mock.calls.every(([points]) => points.every(point => point.date >= "2026-01-10" && point.date <= "2026-01-20"))).toBe(true);
+    observations.mockRestore();
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-3"].analysisRange).toEqual({ start: "2026-01-10", end: "2026-01-20" });
+    const table = document.getElementById("s-table");
+    expect(table).toBeTruthy();
+    fireEvent.click(dates());
+    fireEvent.change(screen.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-21" } });
+    fireEvent.click(screen.getByRole("button", { name: en ? "Apply" : "적용", exact: true }));
+    expect(screen.getByRole("alert").textContent).toMatch(en ? /start date/ : /시작일/);
+    fireEvent.click(screen.getByRole("button", { name: en ? "Cancel" : "취소", exact: true }));
+    expect(dates().textContent).toContain("2026-01-10");
   });
 
   it("keeps the same global-driver behavior in English", () => {

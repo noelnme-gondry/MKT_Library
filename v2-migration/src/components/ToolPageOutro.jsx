@@ -50,7 +50,7 @@ export default function ToolPageOutro({ toolId, locale = "ko", evidenceLinks = [
   if (!hasConnections && !hasLongform && !hasEvidence && !hasHandoff && !hasContinuity) return null;
 
   // 효율 분석 파일럿: 다음 분석은 도구별 연결 계약에서 파생하고 참고 자료는 읽기 창으로 분리한다.
-  if (["5-21", "5-22"].includes(toolId) && withConnections) return <ToolNextStepPanel toolId={toolId} locale={lang} evidenceLinks={evidenceLinks} hasHandoff={hasHandoff} />;
+  if (["5-21", "5-22", "5-3"].includes(toolId) && withConnections) return <ToolNextStepPanel toolId={toolId} locale={lang} evidenceLinks={evidenceLinks} hasHandoff={hasHandoff} />;
 
   // 분석 전에도 존재하는 영역이므로 완료를 선언하지 않고 다음에 볼 내용의 이름을 쓴다.
   const boundaryLabel = withConnections ? T.analysis : T.reference;
