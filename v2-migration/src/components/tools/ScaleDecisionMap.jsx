@@ -10,6 +10,7 @@ import {
   getCssVar,
 } from "@/utils/chartUtils";
 import { fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { decisionCostBounds, decisionCostTick } from "@/utils/scaleDecisionAxis";
 import { buildScaleDecisionMatrix } from "@/utils/scaleDecisionMatrix";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
@@ -84,9 +85,9 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
         ctx.fillRect(x, y, Math.max(0, width), Math.max(0, height));
       }
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = CHART_THEME.border;
+      ctx.strokeStyle = CHART_THEME.text;
       ctx.setLineDash([5, 5]);
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(xMid, chartArea.top);
       ctx.lineTo(xMid, chartArea.bottom);
@@ -113,8 +114,11 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
         const point = dataset.data[index];
         if (!element || !point) continue;
         const text = point.name.length > 18 ? `${point.name.slice(0, 17)}…` : point.name;
-        const x = element.x + element.options.radius + 4;
-        const y = element.y;
+        const textWidth = chart.ctx.measureText(text).width;
+        const rightX = element.x + element.options.radius + 5;
+        const x = Math.max(chart.chartArea.left + 2, Math.min(chart.chartArea.right - textWidth - 2,
+          rightX + textWidth <= chart.chartArea.right ? rightX : element.x - element.options.radius - textWidth - 5));
+        const y = Math.max(chart.chartArea.top + 8, Math.min(chart.chartArea.bottom - 8, element.y));
         chart.ctx.lineWidth = 3;
         chart.ctx.strokeStyle = outline;
         chart.ctx.strokeText(text, x, y);
@@ -186,7 +190,7 @@ export default function ScaleDecisionMap({
       plugins: [plugin],
       options: {
         ...common,
-        layout: { padding: { top: 30, right: 72, bottom: 6, left: 4 } },
+        layout: { padding: { top: 20, right: 12, bottom: 8, left: 4 } },
         plugins: {
           ...common.plugins,
           legend: { display: false },
@@ -195,8 +199,8 @@ export default function ScaleDecisionMap({
             ...common.plugins.tooltip,
             callbacks: {
               title: (items) => items[0]?.raw?.name || "",
-              label: (context) => `${isEn ? "Cost" : "비용"}: ${fmtCurrencyPrecise(context.raw.x, currency)}`,
-              afterLabel: (context) => [
+              label: (context) => [
+                `${isEn ? "Cost" : "비용"}: ${fmtCurrencyPrecise(context.raw.x, currency)}`,
                 `${metricLabel}: ${formatMetric(context.raw.y, metric, currency, locale)}`,
                 `${resultLabel}: ${Number(context.raw.results || 0).toLocaleString(isEn ? "en-US" : "ko-KR")}`,
                 `${isEn ? "Action" : "행동"}: ${actions[context.raw.action].label}`,
@@ -207,17 +211,21 @@ export default function ScaleDecisionMap({
         scales: {
           x: {
             ...common.scales.x,
-            type: "logarithmic",
-            title: { display: true, text: isEn ? "Cost in analyzed period →" : "분석 기간 Cost →", color: CHART_THEME.muted },
-            grid: { color: CHART_THEME.grid },
+            type: "linear",
+            ...decisionCostBounds(matrix.points.map(point => point.cost)),
+            title: { display: true, text: isEn ? "Period cost · linear scale →" : "기간 총비용 · 선형 눈금 →", color: CHART_THEME.muted },
+            grid: { color: CHART_THEME.grid, lineWidth: 0.5, drawTicks: true },
             ticks: {
               ...common.scales.x.ticks,
-              callback: (value) => fmtCurrencyCompact(value, currency, locale),
+              maxTicksLimit: 5,
+              callback: (value, index, ticks) => decisionCostTick(Number(value), ticks, currency, locale),
             },
           },
           y: {
             ...common.scales.y,
             beginAtZero: true,
+            grid: { color: CHART_THEME.grid, lineWidth: 0.5, drawTicks: false },
+            border: { display: false, dash: [] },
             title: {
               display: true,
               text: metric === "roas"
@@ -243,11 +251,6 @@ export default function ScaleDecisionMap({
   }, [matrix, actions, positions, metric, metricLabel, costMetricLabel, currency, locale, grainLabel, resultLabel, isEn, isDarkMode]);
 
   const visibleActions = ACTION_ORDER.filter((key) => actions[key]);
-  const thresholdCopy = Number.isFinite(matrix.thresholds.cost) && Number.isFinite(matrix.thresholds.efficiency)
-    ? (isEn
-      ? `Reference lines: median cost ${fmtCurrencyCompact(matrix.thresholds.cost, currency, locale)} · blended ${metricLabel} ${formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}`
-      : `기준선: 비용 중앙값 ${fmtCurrencyCompact(matrix.thresholds.cost, currency, locale)} · 전체 가중 ${metricLabel} ${formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}`)
-    : "";
 
   return (
     <section className="block scale-decision-map saturation-surface" id="s-scale-map" aria-labelledby="scale-decision-map-title">
@@ -271,6 +274,10 @@ export default function ScaleDecisionMap({
           : `${metricLabel}을 계산할 수 있는 ${grainLabel}이 2개 이상 있어야 상대 사분면을 그릴 수 있습니다.`}</p>
       ) : (
         <>
+          <div className="scale-decision-map__threshold" role="group" aria-label={isEn ? "Dashed reference lines" : "점선 기준값"}>
+            <span><i aria-hidden="true" /><span>{isEn ? "Vertical · median cost" : "세로선 · 비용 중앙값"}<strong>{fmtCurrencyPrecise(matrix.thresholds.cost, currency)}</strong></span></span>
+            <span><i aria-hidden="true" /><span>{isEn ? `Horizontal · blended ${metricLabel}` : `가로선 · 전체 가중 ${metricLabel}`}<strong>{formatMetric(matrix.thresholds.efficiency, metric, currency, locale)}</strong></span></span>
+          </div>
           <div className="scale-decision-map__plot">
             {Object.entries(positions).map(([position, action]) => (
               <span className={`scale-decision-map__quadrant is-${position}`} data-tone={actions[action].tone} key={position}>
@@ -288,7 +295,6 @@ export default function ScaleDecisionMap({
               />
             </div>
           </div>
-          <p className="scale-decision-map__threshold">{thresholdCopy}</p>
           <div className="scale-decision-map__actions" aria-label={isEn ? "Quadrant counts" : "사분면별 대상 수"}>
             {visibleActions.map((action) => (
               <div data-tone={actions[action].tone} key={action} data-design-exempt="nested: quadrant counts grouped by interpretation within the observed-efficiency surface">

@@ -193,7 +193,7 @@ for (const locale of ["ko", "en"]) {
     await page.getByRole("button", { name: en ? `Remove ${hide}` : `${hide} 빼기`, exact: true }).click();
     await expect(page.locator("#s-sat-curve canvas")).toBeVisible();
     await choose("PNG", en ? "PNG without header" : "PNG에 머리글 넣지 않기");
-    for (const section of ["s-sat-curve", "s-marginal-gap"]) {
+    for (const section of ["s-sat-curve", "s-marginal-gap", "s-scale-map"]) {
       const downloadPromise = page.waitForEvent("download", { timeout: 10_000 });
       await page.locator(`#${section}`).getByRole("button", { name: en ? "Download PNG" : "PNG 받기" }).click();
       const download = await downloadPromise;
@@ -203,6 +203,7 @@ for (const locale of ["ko", "en"]) {
       expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
       expect(png.readUInt32BE(16)).toBeGreaterThan(200);
       expect(png.readUInt32BE(20)).toBeGreaterThan(200);
+      if (section === "s-scale-map") await download.saveAs(`/tmp/saturation-map-${locale}-${page.viewportSize().width}.png`);
       if (section === "s-marginal-gap") await download.saveAs(`/tmp/saturation-marginal-${locale}-${page.viewportSize().width}.png`);
     }
     await input.fill("OS");
@@ -375,5 +376,49 @@ for (const locale of ["ko", "en"]) {
       }
       expect(new Set(await page.locator(".marginal-gap__axis").allTextContents()).size).toBe(1);
     }
+  });
+}
+
+for (const locale of ["ko", "en"]) {
+  test(`saturation map separates quadrant captions from readable cost ticks (${locale})`, async ({ page }) => {
+    // Record real canvas text after transforms: DOM-only checks missed the stacked axis labels.
+    await page.addInitScript(() => {
+      window.__mapText = [];
+      const fillText = CanvasRenderingContext2D.prototype.fillText;
+      const clearRect = CanvasRenderingContext2D.prototype.clearRect;
+      const isMap = context => context.canvas.closest(".scale-decision-map__canvas");
+      CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+        if (isMap(this)) window.__mapText = [];
+        return clearRect.apply(this, args);
+      };
+      CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...args) {
+        if (isMap(this)) {
+          const m = this.getTransform();
+          const ratio = this.canvas.width / this.canvas.getBoundingClientRect().width;
+          window.__mapText.push({ text: String(text), x: (m.a*x+m.c*y+m.e)/ratio, y: (m.b*x+m.d*y+m.f)/ratio, width: this.measureText(String(text)).width });
+        }
+        return fillText.call(this, text, x, y, ...args);
+      };
+    });
+    await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-saturation?example=1`);
+    const canvas = page.locator(".scale-decision-map__canvas canvas");
+    await expect(canvas).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__mapText.filter(t => t.text.startsWith("₩")).length)).toBeGreaterThan(1);
+    const canvasBox = await canvas.boundingBox();
+    for (const position of ["topLeft", "topRight", "bottomLeft", "bottomRight"]) {
+      const box = await page.locator(`.scale-decision-map__quadrant.is-${position}`).boundingBox();
+      if (position.startsWith("top")) expect(box.y + box.height).toBeLessThanOrEqual(canvasBox.y);
+      else expect(box.y).toBeGreaterThanOrEqual(canvasBox.y + canvasBox.height);
+    }
+    const ticks = await page.evaluate(() => {
+      const text = window.__mapText.filter(t => t.text.startsWith("₩"));
+      const bottom = Math.max(...text.map(t => t.y));
+      return text.filter(t => Math.abs(t.y - bottom) < 1).sort((a,b) => a.x-b.x);
+    });
+    expect(ticks.length).toBeGreaterThanOrEqual(2);
+    expect(ticks.length).toBeLessThanOrEqual(5);
+    expect(new Set(ticks.map(t => t.text)).size).toBe(ticks.length);
+    for (let i=1; i<ticks.length; i++) expect(ticks[i].x-ticks[i-1].x).toBeGreaterThan((ticks[i].width+ticks[i-1].width)/2 + 2);
+    await expect(page.locator(".scale-decision-map__threshold strong")).toHaveCount(2);
   });
 }
