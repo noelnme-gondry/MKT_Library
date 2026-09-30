@@ -3,9 +3,11 @@
 // 순수 함수(사이드이펙트 없음) — 단위 테스트 대상.
 
 // 진단(💡) 문구 — index.html pvmGenerateDiagnosis 이식.
-// level: "channel" | "campaign" | "creative".
-export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko", metricLabel = "CPA") {
+// level: "channel" | "campaign" | "creative" — 표의 1·2·3단. names가 있으면 그 단의 실제 축 이름
+// (분석 설정에서 OS→채널처럼 축을 바꾼 경우)을 쓴다. 없으면 기존 문구 그대로.
+export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko", metricLabel = "CPA", names = null) {
   const isEn = locale === "en";
+  const custom = names?.[level]?.[isEn ? "en" : "ko"] || null;
   const fmt = (val) => {
     const s = fmtMoney(Math.abs(val));
     return val >= 0 ? `+${s}` : `-${s}`;
@@ -14,6 +16,11 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko", metricLa
   const mixVal = e.mix;
   const rateVal = e.rate;
 
+  if (level === "creative" && custom) {
+    return isEn
+      ? `This is the lowest (${custom}) level. The change in this item's result share (mix effect: ${fmt(mixVal)}) and the change in unit cost itself (rate effect: ${fmt(rateVal)}) together moved final ${metricLabel} by ${fmt(e.contribution)}.`
+      : `${custom} 단위 최하위 레벨입니다. 이 항목의 결과 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 ${metricLabel}에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
+  }
   if (level === "creative") {
     return isEn
       ? `This is the lowest (creative) level. The change in this creative's result share (mix effect: ${fmt(mixVal)}) and the change in unit cost itself (rate effect: ${fmt(rateVal)}) together moved final ${metricLabel} by ${fmt(e.contribution)}.`
@@ -24,7 +31,7 @@ export function pvmGenerateDiagnosis(e, level, fmtMoney, locale = "ko", metricLa
   // 따라서 '순수 이동 vs 하위합 믹스'는 서로 다른 효과가 아니라 같은 값이며, 과거엔 이를
   // 두 효과인 것처럼 대비(배달 사고/최적화 작동 — 실제로는 도달 불가한 분기)해 오도했다.
   // 실제로 구분되는 두 축인 믹스 효과와 단가(레이트) 효과의 합으로 정직하게 설명한다.
-  const label = isEn ? (level === "channel" ? "channel" : "campaign") : (level === "channel" ? "채널" : "캠페인");
+  const label = custom || (isEn ? (level === "channel" ? "channel" : "campaign") : (level === "channel" ? "채널" : "캠페인"));
   let diagnosis = "";
   if (mixVal > 0 && rateVal > 0) {
     diagnosis = isEn
@@ -85,6 +92,10 @@ export function buildPvmResultCsv(c, ml, locale = "ko") {
   push(["META", isEn ? "Cbar (overall average CPA)" : "Cbar(전체평균CPA)", r1(Cbar)]);
   push(["META", isEn ? "Total result1 (P1)" : "총 result1(P1)", r0(c.Result1)]);
   push(["META", isEn ? "Total result2 (P2)" : "총 result2(P2)", r0(c.Result2)]);
+  // 분석 설정으로 축을 바꾼 경우에만 — CHANNEL/CAMPAIGN/CREATIVE_FULL 구획이 실제로 무엇인지 적는다.
+  if (Array.isArray(c.levelNames) && c.levelNames.length) {
+    push(["META", isEn ? "Levels (CHANNEL > CAMPAIGN > CREATIVE_FULL)" : "분해 축(CHANNEL > CAMPAIGN > CREATIVE_FULL)", c.levelNames.join(" > ")]);
+  }
   lines.push("");
 
   // SCORECARD — delta는 수식

@@ -20,7 +20,9 @@ export const STANDARD_FIELDS = {
               },
               platform: {
                 label: "플랫폼(OS)",
-                aliases: ["os", "platform_name", "campaign_platform", "campaign_os", "mkt_platform", "플랫폼"],
+                // 유저 표기가 제각각이라(OS·플랫폼·운영체제…) 흔한 변형을 받는다. "device"는 넣지
+                // 않는다 — 매체 리포트의 Device 열은 Mobile/Desktop(기기 종류)이지 OS가 아니다.
+                aliases: ["os", "platform_name", "campaign_platform", "campaign_os", "mkt_platform", "플랫폼", "os_name", "os_type", "device_os", "operating_system", "operating system", "app_platform", "운영체제", "os구분"],
                 type: "enum",
                 required: false,
                 group: "디멘션",
@@ -95,7 +97,7 @@ export const STANDARD_FIELDS = {
               },
               country: {
                 label: "국가",
-                aliases: ["country", "mkt_country", "국가", "country_code", "마켓"],
+                aliases: ["country", "mkt_country", "국가", "country_code", "마켓", "country_name", "geo", "nation", "territory", "country / region", "나라", "국가명", "국가코드"],
                 type: "string",
                 required: false,
                 group: "디멘션",
@@ -1304,10 +1306,12 @@ export const TOOL_REQUIRED_FIELDS = {
                   ],
                 },
               ],
+              // 분해 축은 채널이 아니어도 된다 — 캠페인·OS·국가 중 하나로 시작하고 명령 입력창에서
+              // 축을 바꾼다(docs/result-autonomy-spec.md §4.2, "있는 만큼 된다").
               "5-21": [
                 "date",
                 { oneOf: ["spend", "cost"] },
-                "channel",
+                { oneOf: ["channel", "campaign_id", "campaign_name", "platform", "country"] },
                 { oneOf: ["installs", "actions"] },
               ],
               "5-24": [

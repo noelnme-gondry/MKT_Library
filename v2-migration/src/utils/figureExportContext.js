@@ -4,14 +4,18 @@ export function figureExportContext({ title = "", toolTitle = "", scope = {}, re
   const period = (start, end) => [start, end].filter(Boolean).join(" – ");
   const current = period(scope.dateStart, scope.dateEnd);
   const prior = period(scope.comparisonStart, scope.comparisonEnd);
+  // 머리글을 줄이거나 빼도(다운로드 설정) 지우지 않는 줄 — 예시 데이터·판단 보류.
+  const mandatory = [
+    source.importSource === "demo" ? (en ? "Sample data" : "예시 데이터") : "",
+    resultState && resultState !== "ready" ? (en ? "Decision withheld. Check the result's limitations." : "판단 보류. 결과의 해석 조건을 함께 확인하세요.") : "",
+  ].filter(Boolean);
   const details = [
     toolTitle && toolTitle !== title ? toolTitle : "",
     current ? `${en ? "Period" : "분석 기간"}: ${current}` : "",
     prior ? `${en ? "Comparison" : "비교 기간"}: ${prior}` : "",
-    source.importSource === "demo" ? (en ? "Sample data" : "예시 데이터") : "",
-    resultState && resultState !== "ready" ? (en ? "Decision withheld. Check the result's limitations." : "판단 보류. 결과의 해석 조건을 함께 확인하세요.") : "",
+    ...mandatory,
   ].filter(Boolean);
-  return { title: String(title || toolTitle || (en ? "Analysis figure" : "분석 그림")), details };
+  return { title: String(title || toolTitle || (en ? "Analysis figure" : "분석 그림")), details, mandatory };
 }
 
 // Shared by canvas and HTML exports; wrap measured text without clipping a long word.

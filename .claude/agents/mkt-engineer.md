@@ -40,6 +40,8 @@ tools:
 
 **신규 도구는 디자인시스템 공용규약 필수**(§12.21: `format.js`·전역 통화·`ds/DataTable`·`ds/CsvGuide`·`ds/ResultActionCard`·`ds/PillGroup`).
 
+**분석 설정 입력창(레시피)**(§12.32): 단어 사전(`lib/vocabulary`) → 칩 = 레시피 단계만 저장, 상태는 `foldSteps` 파생. 보기 설정은 표에만(Σ·결론은 가리기 전 행), 근거 블록은 `locked`.
+
 **하단 마감은 `ToolPageOutro` 하나**(§12.30): 분석 아래 붙는 것(다음 단계·참고 자료·관련 글)은 전부 그 박스 안. 경계선("분석 결과는 여기까지")은 outro만 소유하고 자식은 자기 테두리를 벗는다. 타이포 하한은 두 단이다 — 전역 9.5px, **결론 카드·스코어카드·매핑 표면은 12px**(`app/typographyFloor.test.js`가 선택자 계열에서 파생). **글자 크기는 `--fs-xs`(12)~`--fs-3xl`(44) 8단에서만 고른다** — px 리터럴은 CSS·JSX 양쪽에서 `app/typeScale.test.js`가 막는다(스케일을 바꿔야 하면 토큰을 먼저).
 
 **레이아웃 스케일**(`app/layoutScale.test.js`): 브레이크포인트는 480·560·640·720·768·860·1000·1100 여덟 개뿐이고 그 밖의 경계를 새로 만들지 않는다(`max-width:760px`은 태블릿 세로 768px에 안 걸린다). 짝이 되는 `min-width`는 경계+1. 반경은 `--radius-sm(6)·md(8)·lg(10)·xl(16)·pill/full(999)` 5단뿐이고 **px 리터럴 금지**(`designTokenSingleSource.test.js`). 직교 차트는 x·y 축 제목 필수(`chartAxisTitle.test.js`).

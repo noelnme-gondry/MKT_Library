@@ -789,6 +789,8 @@
   }
   .analysis-setup, .project-next-work, .sample-report-downloads { padding: 20px; margin: 16px 0; border: 1px solid var(--library-border); border-radius: 12px; background: var(--library-surface); color: var(--library-text); }
   .analysis-setup__context { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+  /* 한 줄뿐일 때 아래 여백이 상자를 필요 이상으로 키웠다. */
+  .analysis-setup__context:last-child { margin-bottom: 0; }
   .analysis-setup p, .project-next-work p, .saved-analysis-list p, .sample-report-downloads p { color: var(--library-muted); line-height: 1.6; }
   .analysis-setup__form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--library-border); }
   .analysis-setup__form label { display: grid; gap: 8px; max-width: 480px; }

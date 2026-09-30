@@ -6,6 +6,7 @@ import { downloadFile, downloadJson, downloadXlsx } from "@/utils/download";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
 import { createAnalysisWorkbook } from "@/lib/analysis-export/workbookClient";
 import { workbookFileBase } from "@/lib/analysis-export/exportContract";
+import { applyReportSections } from "@/lib/analysis-export/exportOptions";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { captureAnalysisCharts } from "@/lib/analysis-export/chartSnapshots";
 import AnalysisReportPreview from "./AnalysisReportPreview";
@@ -40,8 +41,9 @@ export default function DownloadHub({
       setIsExporting(true); setExportError("");
       try {
         const { createAnalysisDocument } = await import("@/lib/analysis-export/analysisDocument");
-        const payload = { ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() };
-        return downloadFile(await createAnalysisDocument(payload), `${payload.toolId}_analysis_report.docx`);
+        const payload = applyReportSections({ ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() }, analysisExport.exportOptions, "docx");
+        const customName = analysisExport.fileNameFor?.(locale === "en" ? "report" : "보고서");
+        return downloadFile(await createAnalysisDocument(payload), customName ? `${customName}.docx` : `${payload.toolId}_analysis_report.docx`);
       } catch { setExportError(locale === "en" ? "Could not create the report. Please try again." : "보고서를 만들지 못했습니다. 다시 시도해 주세요."); return false; }
       finally { setIsExporting(false); }
     },
@@ -58,9 +60,10 @@ export default function DownloadHub({
       setIsExporting(true);
       setExportError("");
       try {
-        const payload = { ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() };
+        const payload = applyReportSections({ ...analysisExport.buildPayload(manifest), charts: analysisExport.recordOnly ? [] : await captureAnalysisCharts() }, analysisExport.exportOptions, "xlsx");
         const bytes = await createAnalysisWorkbook(payload);
-        return downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
+        const customName = analysisExport.fileNameFor?.(locale === "en" ? "workbook" : "워크북");
+        return customName ? downloadXlsx(bytes, customName, { dated: false }) : downloadXlsx(bytes, workbookFileBase(payload.toolId || toolId || analysisExport.toolId));
       } catch {
         setExportError(locale === "en"
           ? "The workbook could not be created. Reduce the file size or try again."
@@ -91,7 +94,7 @@ export default function DownloadHub({
       setPreview(null);
       requestAnimationFrame(async () => {
         if (!item) return;
-        try { await runGatedDownload({ toolId, locale, format, source: "export", run: item.onSelect }); }
+        try { await runGatedDownload({ toolId, locale, format, source: "export", run: () => item.onSelect(analysisExport) }); }
         catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
       });
     }} />}
@@ -134,7 +137,7 @@ export default function DownloadHub({
               onSelect={async () => {
                 previewReturnRef.current = triggerRef.current;
                 if (!item.free) triggerRef.current?.focus();
-                try { await runGatedDownload({ toolId, locale, format: item.analyticsType || "other", source: "export", free: item.free, run: item.onSelect }); }
+                try { await runGatedDownload({ toolId, locale, format: item.analyticsType || "other", source: "export", free: item.free, run: () => item.onSelect(analysisExport) }); }
                 catch { setExportError(locale === "en" ? "Download failed. Please try again." : "다운로드에 실패했습니다. 다시 시도해 주세요."); }
               }}
               style={{

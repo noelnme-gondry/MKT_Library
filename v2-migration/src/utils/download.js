@@ -43,9 +43,10 @@ export function downloadCsv(csvString, baseName = "export") {
   return downloadFile(blob, withDate(baseName, "csv"));
 }
 
-export function downloadXlsx(arrayBuffer, baseName = "export") {
+export function downloadXlsx(arrayBuffer, baseName = "export", { dated = true } = {}) {
   const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  return downloadFile(blob, withDate(baseName, "xlsx"));
+  // 사용자가 파일 이름 규칙을 고른 경우(dated:false)에는 그 이름을 그대로 쓴다.
+  return downloadFile(blob, dated ? withDate(baseName, "xlsx") : `${baseName}.xlsx`);
 }
 
 // 사내에 도는 파일이 곧 유통 경로다. 텍스트·마크다운 산출물 끝에 출처 한 줄을 남긴다.

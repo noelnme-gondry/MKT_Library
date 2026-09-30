@@ -83,11 +83,11 @@ export const TOOL_GUIDE = {
     needs: [
       { col: "date", label: "날짜", why: "기간 비교(전 vs 후)", required: true },
       { col: "spend(=cost)", label: "광고비", why: "물량·효율 분해의 기준", required: true },
-      { col: "channel", label: "채널", why: "분해 단위", required: true },
+      { col: "channel·campaign·platform·country 중 하나", label: "나눠 볼 기준", why: "분해 단위(채널이 없으면 캠페인·OS·국가로 시작)", required: true },
       { col: "installs 또는 actions", label: "전환", why: "효율(CPA) 계산", required: true },
       { col: "campaign_name·creative_id", label: "캠페인·소재", why: "드릴다운(채널→캠페인→소재)", required: false },
     ],
-    prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "효율 CSV 공유(5-2/5-3/5-22)."],
+    prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "올린 뒤 '분석 설정' 입력창에 'OS별'·'국가별'·'Meta만 분석'처럼 쓰면 나눠 보는 기준을 바꿀 수 있습니다.", "효율 CSV 공유(5-2/5-3/5-22)."],
     example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
   "5-4": {
@@ -418,11 +418,11 @@ export const TOOL_GUIDE_EN = {
     needs: [
       { col: "date", label: "Date", why: "Period comparison (before vs. after)", required: true },
       { col: "spend(=cost)", label: "Ad spend", why: "Basis for the volume/efficiency decomposition", required: true },
-      { col: "channel", label: "Channel", why: "Decomposition unit", required: true },
+      { col: "one of channel · campaign · platform · country", label: "Split by", why: "Decomposition unit (starts from campaign, OS or country when there is no channel)", required: true },
       { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
       { col: "campaign_name · creative_id", label: "Campaign · creative", why: "Drill-down (channel → campaign → creative)", required: false },
     ],
-    prep: ["The finer the grain (creative/daily), the more accurate the decomposition identity.", "Shares the efficiency CSV (5-2/5-3/5-22)."],
+    prep: ["The finer the grain (creative/daily), the more accurate the decomposition identity.", "After uploading, type words like 'By OS', 'By country' or 'Analyze Meta only' in the Analysis setup box to change how the result is split.", "Shares the efficiency CSV (5-2/5-3/5-22)."],
     example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
   "5-22": {

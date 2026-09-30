@@ -5088,7 +5088,9 @@ body:not(.light-mode) .moon-icon {
   --border-strong: var(--border-stronger);
   --surface-hover: var(--surface-container);
   --topbar-bg: rgba(11,16,24,.91);
-  --page-sticky-bg: rgba(11,16,24,.94);
+  /* 스티키 바는 본문과 같은 가장자리에서 끝나므로(#910) 바탕도 본문과 같아야 한다 — 다르면
+     좌우 여백 0인 짙은 판처럼 보여 필터가 판 가장자리에 붙어 보인다(2026-09-30). */
+  --page-sticky-bg: color-mix(in srgb, var(--surface-base) 94%, transparent);
   --success: #65d3b3;
   --danger: #ff8178;
   --warning: #f2b84b;
@@ -5164,7 +5166,7 @@ body.light-mode {
   --border-stronger: #becbda;
   --border-strong: var(--border-stronger);
   --topbar-bg: rgba(238,242,247,.92);
-  --page-sticky-bg: rgba(238,242,247,.95);
+  --page-sticky-bg: color-mix(in srgb, var(--surface-base) 95%, transparent);
   --success: #0c765f;
   --danger: #c73737;
   --warning: #a76400;
@@ -5633,6 +5635,34 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .analysis-local-controls { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-container-lowest); }
 .analysis-local-controls__inner { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .analysis-local-controls__label { margin-right: 3px; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .06em; }
+/* 이름은 제 줄을 쓴다 — 알약 묶음이 줄바꿈되면 둘째 줄이 이름 밑에서 시작해 첫 줄과 어긋났다. */
+.analysis-local-controls__label { flex: 0 0 100%; margin: 0 0 2px; }
+/* 레시피 명령 입력창(ds/RecipeCommandInput) — 칩은 누르면 빠지는 버튼이다. */
+.recipe-command { margin: 0 0 16px; }
+.dashboard-filter-bar__command { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.dashboard-filter-bar__command .recipe-command { margin: 0 0 10px; }
+.recipe-command__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
+.recipe-command__label { margin: 0; color: var(--text-secondary); font: 700 var(--fs-xs) var(--font-sans); }
+.recipe-command__save { min-height: 32px; padding: 0 4px; border: 0; background: none; color: var(--primary); font: 600 var(--fs-xs) var(--font-sans); text-decoration: underline; cursor: pointer; }
+.recipe-command__save-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 0 0 8px; }
+.recipe-command__save-form label { display: grid; gap: 4px; flex: 1 1 200px; color: var(--text-secondary); font-size: var(--fs-xs); }
+.recipe-command__save-form input { min-height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: transparent; color: var(--text-primary); font-size: var(--fs-sm); }
+.recipe-command__save-message { margin: 0 0 8px; color: var(--text-secondary); font-size: var(--fs-xs); }
+.recipe-command__chips { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 8px; padding: 0; list-style: none; }
+.recipe-command__chips > li { display: inline-flex; flex-direction: column; gap: 2px; }
+.recipe-command__chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: transparent; color: var(--text-primary); font: 600 var(--fs-xs) var(--font-sans); cursor: pointer; }
+.recipe-command__chip:hover { border-color: var(--primary); }
+.recipe-command__chip.is-rejected { border-style: dashed; color: var(--text-muted); }
+.recipe-command__chip-reason { color: var(--text-muted); font-size: var(--fs-xs); }
+.recipe-command__field { position: relative; }
+.recipe-command__input { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: transparent; color: var(--text-primary); font: 400 var(--fs-sm) var(--font-sans); }
+.recipe-command__options { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; max-height: 320px; overflow-y: auto; margin: 0; padding: 4px 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); }
+.recipe-command__option { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 12px; color: var(--text-primary); font-size: var(--fs-sm); cursor: pointer; }
+.recipe-command__option small { color: var(--text-muted); font-size: var(--fs-xs); white-space: nowrap; }
+.recipe-command__option.is-active { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.recipe-command__option.is-disabled { color: var(--text-muted); cursor: default; }
+.recipe-command__empty { padding: 8px 12px; color: var(--text-muted); font-size: var(--fs-xs); }
+.recipe-command__notices { margin: 8px 0 0; padding: 0; list-style: none; color: var(--text-muted); font-size: var(--fs-xs); }
 .response-target-context { display: inline-flex; align-items: center; min-height: 30px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-container-lowest); }
 .response-target-context > span { padding: 0 8px; color: var(--text-muted); font: 700 var(--fs-xs) var(--font-sans); letter-spacing: .05em; }
 .response-target-context > strong { align-self: stretch; display: inline-flex; align-items: center; padding: 0 10px; border-left: 1px solid var(--border-subtle); color: var(--text-primary); font-size: var(--fs-xs); }
@@ -9681,7 +9711,8 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
-  margin-left: auto;
+  /* 필터 줄 아래로 넘어가면 오른쪽 끝이 아니라 필터와 같은 왼쪽 선에서 시작한다(2026-09-30). */
+  margin-left: 0;
 }
 .dashboard-filter-bar__display .blocked-options-note { width: 100%;min-width: 0; }
 .dashboard-filter-bar__display .blocked-options-note > span { min-width: 0;white-space: normal;overflow-wrap: anywhere; }
@@ -11581,6 +11612,15 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
   box-shadow: none;
 }
 .page-sticky-bar { margin-inline: 0; padding-inline: 0; }
+/* 본문 맨 위에 "현재 입력" 상자가 있으면 스티키 바가 위로 끌려 올라가 그 상자의 아래쪽을 덮는다. */
+.app .content:has(> .analysis-setup) .page-sticky-bar { margin-top: 0; }
+/* 폰에서 필터를 펼치면 "필터 초기화"가 요약 줄과 필터 줄에 두 번 떴다 — 펼쳤을 땐 필터 줄 것만. */
+.dashboard-filter-bar[data-controls-open="true"] .dashboard-filter-bar__summary .mon-filter-reset { display: none; }
+@media (max-width: 560px) {
+  .tool-instrument-header--sticky .page-sticky-row1 { flex-wrap: wrap; }
+  .tool-instrument-header--sticky .tool-instrument-header__status { max-width: 100%; justify-content: flex-start; }
+  .page-sticky-row1 .chip { max-width: 100%; }
+}
 .page-sticky-bar::after { display: none; }
 .blog-faq-item { margin: 0; border-width: 0 0 1px; border-radius: 0; background: none; }
 .blog-faq-item > summary { padding: 12px 0; min-height: 44px; }
