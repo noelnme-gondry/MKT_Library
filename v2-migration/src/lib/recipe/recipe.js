@@ -33,7 +33,8 @@ export function defaultRecipeState(spec = {}) {
       metric: defaults.metric ?? null,
       period: defaults.period ? { ...defaults.period } : null,
       filters: [],
-      valueMerges: [],
+      // 대소문자·공백만 다른 값은 같은 값(2026-09-30 결정). true면 구분한다.
+      caseSensitive: false,
     },
     view: { hidden: [], labels: {}, topN: null, only: null },
     export: {
@@ -90,10 +91,7 @@ export function validateRecipeState(state, spec = {}) {
     && FILTER_OPS.includes(filter.op)
     && FILTER_SCOPES.includes(filter.scope)
     && isStringList(filter.values, { min: 1 }))) push("INVALID_FILTER", "data.filters");
-  if (!Array.isArray(data.valueMerges) || !data.valueMerges.every((merge) => merge
-    && typeof merge.field === "string" && merge.field
-    && isStringList(merge.from, { min: 2 })
-    && merge.from.includes(merge.to))) push("INVALID_VALUE_MERGE", "data.valueMerges");
+  if (typeof data.caseSensitive !== "boolean") push("INVALID_CASE_OPTION", "data.caseSensitive");
 
   const ids = blockIds(spec);
   const locked = lockedBlockIds(spec);
@@ -149,7 +147,8 @@ function asVocabulary(vocabulary) {
 export function addStep(steps, step, vocabulary) {
   const vocab = asVocabulary(vocabulary);
   const clean = sanitizeStep(step);
-  if (!clean || !vocab.has(clean.id)) return steps;
+  // selectOnly 후보(매핑+축)는 toSelection이 만든 단계로 들어온다. 그 자체는 단계가 아니다.
+  if (!clean || !vocab.has(clean.id) || vocab.get(clean.id).selectOnly) return steps;
   const slot = vocab.get(clean.id).slot;
   const key = stepKey(clean);
   const kept = steps.filter((existing) => {
@@ -182,6 +181,10 @@ export function foldSteps(steps, vocabulary, spec = {}) {
     }
     if (!vocab.has(step.id)) {
       rejected.push({ step, code: "UNKNOWN_ENTRY" });
+      continue;
+    }
+    if (vocab.get(step.id).selectOnly) {
+      rejected.push({ step, code: "SELECT_ONLY" });
       continue;
     }
     normalized = addStep(normalized, step, vocab);

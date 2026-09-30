@@ -39,7 +39,7 @@ const spec = {
 describe("기본 상태", () => {
   it("도구 선언에서 파생하고, 한계 문구는 기본 포함", () => {
     const state = defaultRecipeState(spec);
-    expect(state.data).toEqual({ levels: ["channel"], metric: "cpa", period: { kind: "lookback", weeks: 1, basis: "calendar" }, filters: [], valueMerges: [] });
+    expect(state.data).toEqual({ levels: ["channel"], metric: "cpa", period: { kind: "lookback", weeks: 1, basis: "calendar" }, filters: [], caseSensitive: false });
     expect(state.export).toEqual({ format: "xlsx", includeCaveats: true, withFormulas: true });
     expect(validateRecipeState(state, spec).ok).toBe(true);
   });
@@ -126,9 +126,15 @@ describe("foldSteps — 단계를 접어 상태 만들기", () => {
     expect(foldSteps([{ id: "export.caveats.exclude" }], vocab, spec).state.export.includeCaveats).toBe(false);
   });
 
-  it("값 합치기는 레시피에 규칙으로 남는다", () => {
-    const { state } = foldSteps([{ id: "data.mergeValues", params: { field: "platform", values: ["iOS", "ios"] } }], vocab, spec);
-    expect(state.data.valueMerges).toEqual([{ field: "platform", from: ["iOS", "ios"], to: "iOS" }]);
+  it("대소문자는 기본으로 합치고, 원하면 구분한다", () => {
+    expect(foldSteps([], vocab, spec).state.data.caseSensitive).toBe(false);
+    expect(foldSteps([{ id: "data.caseSensitive" }], vocab, spec).state.data.caseSensitive).toBe(true);
+  });
+
+  it("매핑+축 후보(selectOnly)는 단계로 저장되지 않는다", () => {
+    const step = { id: "level.assignField", params: { field: "channel", column: "매체" } };
+    expect(addStep([], step, vocab)).toEqual([]);
+    expect(foldSteps([step], vocab, spec).rejected[0].code).toBe("SELECT_ONLY");
   });
 
   it("모르는 단어·깨진 단계는 사유와 함께 rejected", () => {
@@ -150,7 +156,7 @@ describe("validateRecipeState — 선언 밖 상태 거절", () => {
     ["없는 주 수", (s) => { s.data.period = { kind: "lookback", weeks: 9, basis: "calendar" }; }, "INVALID_PERIOD"],
     ["기간 역순", (s) => { s.data.period = { kind: "range", a: { start: "2026-09-10", end: "2026-09-01" }, b: { start: "2026-09-11", end: "2026-09-17" } }; }, "INVALID_PERIOD"],
     ["빈 필터 값", (s) => { s.data.filters = [{ field: "channel", op: "in", scope: "analysis", values: [] }]; }, "INVALID_FILTER"],
-    ["합칠 대상 밖 대표값", (s) => { s.data.valueMerges = [{ field: "p", from: ["a", "b"], to: "c" }]; }, "INVALID_VALUE_MERGE"],
+    ["대소문자 옵션 형식", (s) => { s.data.caseSensitive = "yes"; }, "INVALID_CASE_OPTION"],
     ["없는 블록 숨김", (s) => { s.view.hidden = ["nope"]; }, "UNKNOWN_BLOCK"],
     ["긴 이름", (s) => { s.view.labels = { verdict: "가".repeat(61) }; }, "INVALID_LABEL"],
     ["상위 0개", (s) => { s.view.topN = 0; }, "INVALID_TOP_N"],
@@ -185,11 +191,11 @@ describe("저장 형식", () => {
     const steps = [
       { id: "level.channel", params: {} },
       { id: "filter.only.analysis", params: { field: "channel", values: ["Meta"] } },
-      { id: "data.mergeValues", params: { field: "platform", values: ["iOS", "ios"] } },
+      { id: "filter.exclude.analysis", params: { field: "platform", values: ["iOS"] } },
       { id: "export.format.csv", params: {} },
     ];
     const { syncable, deviceOnly } = partitionForSync(steps, vocab);
     expect(syncable.map((s) => s.id)).toEqual(["level.channel", "export.format.csv"]);
-    expect(deviceOnly.map((s) => s.id)).toEqual(["filter.only.analysis", "data.mergeValues"]);
+    expect(deviceOnly.map((s) => s.id)).toEqual(["filter.only.analysis", "filter.exclude.analysis"]);
   });
 });

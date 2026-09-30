@@ -1,7 +1,9 @@
 // 모든 도구가 함께 쓰는 단어(기간·보기·내보내기)와 올린 데이터에서 만드는 틀 단어
 // (값 필터·차원 축·값 합치기). 도구 전용 단어(PVM의 "채널+캠페인별" 등)는 도구 어댑터가
 // 이 목록 뒤에 붙인다(docs/result-autonomy-spec.md §3.3·§4.3).
-// context = { toolSpec, dimensions:[{field, label:{ko,en}, values:[]}], caseVariants:[{field, values:[]}] }
+import { directionParticle, objectParticle } from "./hangulMatch";
+
+// context = buildDataContext(...) — { toolSpec, mappedFields, dimensions, fieldCandidates }
 
 const lookbackLabel = {
   1: { ko: "직전주와 비교", en: "Compare with prior week" },
@@ -144,9 +146,26 @@ const exportWords = [
   },
 ];
 
+function findDimension(context, field) {
+  return (context.dimensions || []).find((item) => item.field === field);
+}
+
 function dimensionName(context, field) {
-  const dim = (context.dimensions || []).find((item) => item.field === field);
-  return dim?.label || { ko: field, en: field };
+  return findDimension(context, field)?.label || { ko: field, en: field };
+}
+
+function dimensionHint(context, field) {
+  const dim = findDimension(context, field);
+  if (!dim) return null;
+  if (dim.isRawColumn) return { ko: "CSV 컬럼 그대로", en: "CSV column as is" };
+  return dim.column && dim.column.trim().toLowerCase() !== dim.label.ko.trim().toLowerCase()
+    ? { ko: `컬럼: ${dim.column}`, en: `Column: ${dim.column}` }
+    : null;
+}
+
+function dimensionAliases(context, field) {
+  const dim = findDimension(context, field);
+  return [dim?.column, dim?.standardKey].filter(Boolean);
 }
 
 function valueParams(context) {
@@ -194,18 +213,41 @@ const filterWords = [
 
 const dimensionWords = [
   {
-    id: "level.dimension",
+    // 매핑된 표준 축("채널별")과 매핑 안 된 CSV 컬럼("권역별")이 같은 단어 틀을 쓴다.
+    // 표준 축은 실제 컬럼명을 힌트·별칭으로 달아 어느 컬럼인지 보이게 한다.
+    id: "level.field",
     kind: "level",
     slot: "level",
     label: (params, context) => {
       const name = dimensionName(context, params.field);
       return { ko: `${name.ko}별`, en: `By ${name.en ?? name.ko}` };
     },
-    aliases: (params) => [params.field],
+    hint: (params, context) => dimensionHint(context, params.field),
+    aliases: (params, context) => dimensionAliases(context, params.field),
     expand: (context) => (context.dimensions || []).map((dim) => ({ field: dim.field })),
     apply: (state, params) => {
       state.data.levels = [params.field];
       return state;
+    },
+  },
+  {
+    // 축 필드가 비어 있는데 이름이 그 필드 별칭인 컬럼이 있으면("매체") 매핑과 축을 한 번에.
+    // 매핑은 레시피가 아니라 기존 매핑 스토어에 쓴다 — toSelection이 둘로 나눠 돌려준다.
+    id: "level.assignField",
+    kind: "level",
+    selectOnly: true,
+    label: (params, context) => {
+      const name = (context.fieldCandidates || []).find((item) => item.field === params.field)?.label || { ko: params.field, en: params.field };
+      return { ko: `${name.ko}별 — '${params.column}'${objectParticle(params.column)} ${name.ko}${directionParticle(name.ko)} 지정`, en: `By ${name.en} — use '${params.column}' as ${name.en}` };
+    },
+    aliases: (params) => [params.column],
+    expand: (context) => (context.fieldCandidates || []).flatMap((item) => item.columns.map((column) => ({ field: item.field, column }))),
+    toSelection: (params) => ({
+      mapping: { column: params.column, field: params.field },
+      step: { id: "level.field", params: { field: params.field } },
+    }),
+    apply: () => {
+      throw new Error("level.assignField is selection-only");
     },
   },
   {
@@ -216,9 +258,11 @@ const dimensionWords = [
     // 무관하게 기본 축 단어 뒤에 적용된다.
     slot: "level.above",
     phase: 1,
+    // 같은 글자로 시작하는 축 단어("채널별"·"채널+캠페인별") 뒤에 보인다.
+    weight: 1,
     label: (params, context) => {
       const name = dimensionName(context, params.field);
-      return { ko: `${name.ko}로 먼저 나누기`, en: `Split by ${name.en ?? name.ko} first` };
+      return { ko: `${name.ko}${directionParticle(name.ko)} 먼저 나누기`, en: `Split by ${name.en ?? name.ko} first` };
     },
     aliases: (params) => [params.field],
     expand: (context) => (context.dimensions || []).map((dim) => ({ field: dim.field })),
@@ -229,16 +273,15 @@ const dimensionWords = [
     },
   },
   {
-    id: "data.mergeValues",
+    // 대소문자·공백만 다른 값은 기본으로 합친다(2026-09-30 결정). 합친 사실은 화면이 알리고
+    // (dataContext dimensions[].merged), 원하면 이 단어로 되돌린다.
+    id: "data.caseSensitive",
     kind: "data",
-    carriesUserValues: true,
-    label: (params) => ({ ko: `${(params.values || []).join("·")} 합치기`, en: `Merge ${(params.values || []).join(" · ")}` }),
-    aliases: (params) => params.values || [],
-    expand: (context) => (context.caseVariants || []).map((group) => ({ field: group.field, values: [...group.values] })),
-    apply: (state, params) => {
-      state.data.valueMerges = state.data.valueMerges.filter((merge) => !(merge.field === params.field
-        && merge.from.some((value) => params.values.includes(value))));
-      state.data.valueMerges.push({ field: params.field, from: [...params.values], to: params.values[0] });
+    slot: "data.case",
+    label: { ko: "대소문자 구분하기", en: "Keep case differences" },
+    aliases: { ko: ["대소문자"], en: ["case sensitive"] },
+    apply: (state) => {
+      state.data.caseSensitive = true;
       return state;
     },
   },
@@ -253,29 +296,3 @@ export const COMMON_WORDS = Object.freeze([
   ...viewWords,
   ...exportWords,
 ]);
-
-/**
- * 문자열 컬럼이 축 후보인가. 값 종류가 1개면 나눌 게 없고, 행 수에 가까우면 ID·자유 텍스트다
- * (spec §3.4 (3)). 상한은 표·그림이 읽힐 수 있는 수준.
- */
-export function isAxisCandidate({ distinctCount, rowCount }) {
-  if (!Number.isFinite(distinctCount) || !Number.isFinite(rowCount) || rowCount <= 0) return false;
-  return distinctCount >= 2 && distinctCount <= 200 && distinctCount / rowCount <= 0.5;
-}
-
-/**
- * 대소문자·앞뒤 공백만 다른 값 묶음("iOS"·"ios"). 자동으로 합치지 않는다 — 합치면 분해 단위가
- * 바뀌어 숫자가 바뀌므로 제안만 하고 유저가 고르면 레시피에 남긴다(spec §3.4).
- */
-export function findCaseVariants(values) {
-  const groups = new Map();
-  for (const raw of values) {
-    const value = String(raw ?? "");
-    const key = value.trim().toLowerCase();
-    if (!key) continue;
-    if (!groups.has(key)) groups.set(key, []);
-    const list = groups.get(key);
-    if (!list.includes(value)) list.push(value);
-  }
-  return [...groups.values()].filter((list) => list.length > 1);
-}

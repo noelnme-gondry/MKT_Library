@@ -18,6 +18,10 @@ export const SUGGEST_RANK = Object.freeze({
 
 export const DEFAULT_SUGGEST_LIMIT = 8;
 
+// 같은 순위 안에서 무엇을 먼저 보일지. 축 단어가 가장 먼저 — 유저가 첫 글자로 가장 많이
+// 찾는 것이 "무엇별로 볼지"다. 그다음 항목별 weight(작을수록 먼저), 마지막이 사전 순서.
+const KIND_ORDER = new Map(["level", "metric", "period", "filter", "data", "view", "export"].map((kind, i) => [kind, i]));
+
 /** 사전을 검증해 id → 항목 Map으로 만든다. 사전은 코드가 쓰므로 틀리면 바로 throw. */
 export function buildVocabulary(entries) {
   const map = new Map();
@@ -45,6 +49,21 @@ export function resolveLabel(entry, params = {}, context = {}) {
   return { ko: String(label?.ko ?? ""), en: String(label?.en ?? label?.ko ?? "") };
 }
 
+/** 후보 옆 작은 글씨(어느 컬럼인지 등). 없으면 null. */
+export function resolveHint(entry, params = {}, context = {}) {
+  const hint = typeof entry.hint === "function" ? entry.hint(params, context) : entry.hint;
+  return hint ? { ko: String(hint.ko ?? ""), en: String(hint.en ?? hint.ko ?? "") } : null;
+}
+
+/**
+ * 후보를 골랐을 때 할 일. 보통은 레시피 단계 하나지만, 매핑이 필요한 후보는
+ * { mapping: {column, field}, step }을 돌려준다 — 매핑은 호출부가 기존 매핑 스토어에 쓴다.
+ */
+export function toSelection(candidate) {
+  if (typeof candidate?.entry?.toSelection === "function") return candidate.entry.toSelection(candidate.params || {});
+  return { mapping: null, step: { id: candidate.id, params: candidate.params || {} } };
+}
+
 function resolveAliases(entry, params, context) {
   const aliases = typeof entry.aliases === "function" ? entry.aliases(params, context) : entry.aliases;
   if (!aliases) return [];
@@ -65,6 +84,7 @@ export function listCandidates(vocabulary, context = {}) {
         params,
         entry,
         label: resolveLabel(entry, params, context),
+        hint: resolveHint(entry, params, context),
         aliases: resolveAliases(entry, params, context),
       });
     }
@@ -100,11 +120,18 @@ export function suggest(vocabulary, query, context = {}) {
       const rank = rankCandidate(query, candidate, locale);
       if (rank == null) return null;
       const missing = missingRequirements(candidate.entry.requires, mappedFields);
-      return { order, suggestion: { ...candidate, rank, enabled: missing.length === 0, missing } };
+      return {
+        order,
+        kindOrder: KIND_ORDER.get(candidate.entry.kind) ?? KIND_ORDER.size,
+        weight: candidate.entry.weight ?? 0,
+        suggestion: { ...candidate, rank, enabled: missing.length === 0, missing },
+      };
     })
     .filter(Boolean)
     .sort((a, b) => a.suggestion.rank - b.suggestion.rank
       || Number(b.suggestion.enabled) - Number(a.suggestion.enabled)
+      || a.kindOrder - b.kindOrder
+      || a.weight - b.weight
       || a.order - b.order)
     .slice(0, limit)
     .map((item) => item.suggestion);

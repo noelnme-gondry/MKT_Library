@@ -66,6 +66,35 @@ export function isChosungQuery(query) {
   return q.length > 0 && [...q].every(isConsonantJamo);
 }
 
+// 영문·숫자로 끝나는 이름은 읽는 소리로 받침을 정한다(OS=오에스 → 로, ROAS의 S도 같다).
+// 값은 JONG 인덱스: 0 받침 없음, 8 ㄹ, 그 외 받침.
+const LATIN_JONG = { L: 8, R: 8, M: 16, N: 4 };
+const DIGIT_JONG = { 0: 21, 1: 8, 3: 16, 6: 1, 7: 8, 8: 8 };
+
+function finalConsonantIndex(word) {
+  const text = String(word ?? "").trim();
+  const last = text.slice(-1);
+  const code = text.charCodeAt(text.length - 1);
+  if (isSyllable(code)) return (code - HANGUL_BASE) % 28;
+  if (/[a-z]/i.test(last)) return LATIN_JONG[last.toUpperCase()] ?? 0;
+  if (/\d/.test(last)) return DIGIT_JONG[last] ?? 0;
+  return null;
+}
+
+/** 을/를 — 컬럼 이름이 유저 입력이라 조사를 고정할 수 없다. 읽을 수 없는 끝 글자면 을(를) 병기. */
+export function objectParticle(word) {
+  const jong = finalConsonantIndex(word);
+  if (jong == null) return "을(를)";
+  return jong === 0 ? "를" : "을";
+}
+
+/** 으로/로 — 받침 없음·ㄹ받침이면 로. */
+export function directionParticle(word) {
+  const jong = finalConsonantIndex(word);
+  if (jong == null) return "(으)로";
+  return jong === 0 || jong === 8 ? "로" : "으로";
+}
+
 export const MATCH_RANK = Object.freeze({
   PREFIX: 0, // "채" → 채널별
   JAMO_PREFIX: 1, // 조합 중인 "챈" → 채널별

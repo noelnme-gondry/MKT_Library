@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 import { publishedToolIds } from "@/lib/routeMap";
-import { MATCH_RANK, isChosungQuery, matchText, toChosung, toJamo } from "./hangulMatch";
-import { COMMON_WORDS, findCaseVariants, isAxisCandidate } from "./commonWords";
-import { SUGGEST_RANK, buildVocabulary, listCandidates, missingRequirements, suggest } from "./vocabulary";
+import { MATCH_RANK, directionParticle, isChosungQuery, objectParticle, matchText, toChosung, toJamo } from "./hangulMatch";
+import { COMMON_WORDS } from "./commonWords";
+import { buildDataContext, buildValueCanonicalizer, columnRef, parseFieldRef } from "./dataContext";
+import { PVM_WORDS } from "./tools/pvmWords";
+import { SUGGEST_RANK, buildVocabulary, listCandidates, missingRequirements, suggest, toSelection } from "./vocabulary";
 
-const vocab = buildVocabulary(COMMON_WORDS);
+const vocab = buildVocabulary([...COMMON_WORDS, ...PVM_WORDS]);
 const toolSpec = {
   toolId: "5-21",
   blocks: [
@@ -14,16 +16,26 @@ const toolSpec = {
     { id: "caveat.identity", label: { ko: "항등식 확인", en: "Identity check" }, locked: true },
   ],
 };
-const context = {
-  toolId: "5-21",
-  toolSpec,
-  mappedFields: new Set(["date", "channel", "platform", "cost", "installs"]),
-  dimensions: [
-    { field: "platform", label: { ko: "OS", en: "OS" }, values: ["iOS", "Android"] },
-    { field: "channel", label: { ko: "채널", en: "Channel" }, values: ["Meta", "TikTok"] },
-  ],
-  caseVariants: [{ field: "platform", values: ["iOS", "ios"] }],
-};
+
+// 유저 CSV 흉내: 헤더는 유저 표기(매체·캠페인명·OS·권역), OS 값은 대소문자가 섞였다.
+function makeRows() {
+  const rows = [];
+  for (let i = 0; i < 40; i += 1) {
+    rows.push({
+      날짜: `2026-09-${String((i % 28) + 1).padStart(2, "0")}`,
+      매체: i % 2 ? "Meta" : "TikTok",
+      캠페인명: `cmp_${i % 4}`,
+      OS: i < 18 ? "iOS" : i < 23 ? "ios" : "Android",
+      권역: i % 3 ? "수도권" : "지방",
+      소재: `cr_${i % 6}`,
+      비용: String(1000 + i),
+      설치: String(10 + i),
+    });
+  }
+  return rows;
+}
+const MAPPING = { 날짜: "date", 매체: "channel", 캠페인명: "campaign_name", 소재: "creative_id", OS: "platform", 비용: "cost", 설치: "installs" };
+const context = buildDataContext({ rows: makeRows(), mapping: MAPPING, toolId: "5-21", toolSpec });
 const labelsOf = (list, locale = "ko") => list.map((item) => item.label[locale]);
 
 describe("한글 자모·초성 분해", () => {
@@ -101,7 +113,7 @@ describe("suggest — 사전 후보", () => {
 
   it("같은 순위에서는 쓸 수 있는 단어가 먼저다", () => {
     const partial = { ...context, mappedFields: new Set(["channel"]) };
-    const list = suggest(vocab, "", { ...partial, limit: 50 });
+    const list = suggest(vocab, "", { ...partial, limit: 500 });
     const firstDisabled = list.findIndex((item) => !item.enabled);
     expect(firstDisabled).toBeGreaterThan(0);
     expect(list.slice(firstDisabled).every((item) => !item.enabled)).toBe(true);
@@ -112,8 +124,10 @@ describe("suggest — 사전 후보", () => {
     expect(hides.map((item) => item.params.block)).toEqual(["verdict", "tbl.channel"]);
   });
 
-  it("대소문자만 다른 값은 합치기 단어로 제안한다", () => {
-    expect(labelsOf(suggest(vocab, "ios", context))).toContain("iOS·ios 합치기");
+  it("대소문자만 다른 값은 알아서 한 값으로 — 'ios'를 쳐도 iOS 필터 하나만", () => {
+    const labels = labelsOf(suggest(vocab, "ios", context));
+    expect(labels).toContain("iOS만 분석");
+    expect(labels.some((label) => label.startsWith("ios"))).toBe(false);
   });
 
   it("상한은 기본 8개", () => {
@@ -134,7 +148,7 @@ describe("공용 단어 사전 계약 (사전에서 파생)", () => {
   });
 
   it("사용자 데이터 값을 담는 틀 단어는 carriesUserValues로 표시돼 있다", () => {
-    const valueWords = COMMON_WORDS.filter((entry) => entry.id.startsWith("filter.") || entry.id === "data.mergeValues");
+    const valueWords = COMMON_WORDS.filter((entry) => entry.id.startsWith("filter."));
     expect(valueWords.length).toBeGreaterThan(0);
     expect(valueWords.every((entry) => entry.carriesUserValues === true)).toBe(true);
   });
@@ -150,17 +164,104 @@ describe("공용 단어 사전 계약 (사전에서 파생)", () => {
   });
 });
 
-describe("차원 후보 헬퍼", () => {
-  it("축 후보: 값 2개 이상, 행 수의 절반 이하", () => {
-    expect(isAxisCandidate({ distinctCount: 2, rowCount: 100 })).toBe(true);
-    expect(isAxisCandidate({ distinctCount: 1, rowCount: 100 })).toBe(false);
-    expect(isAxisCandidate({ distinctCount: 90, rowCount: 100 })).toBe(false);
-    expect(isAxisCandidate({ distinctCount: 300, rowCount: 10000 })).toBe(false);
+describe("입력 순서 — 사용자 요구(2026-09-30)", () => {
+  it("'채' → 채널별, 채널+캠페인별, 채널+캠페인+소재별 순서", () => {
+    expect(labelsOf(suggest(vocab, "채", context)).slice(0, 3)).toEqual(["채널별", "채널+캠페인별", "채널+캠페인+소재별"]);
   });
 
-  it("대소문자·공백만 다른 값을 묶되 순서는 데이터 순서", () => {
-    expect(findCaseVariants(["iOS", "Android", "ios", " iOS ", "android", "Web"]))
-      .toEqual([["iOS", "ios", " iOS "], ["Android", "android"]]);
-    expect(findCaseVariants(["KR", "US"])).toEqual([]);
+  it("'캠' → 캠페인별이 먼저, 채널+캠페인별은 그 아래", () => {
+    const labels = labelsOf(suggest(vocab, "캠", context));
+    expect(labels[0]).toBe("캠페인별");
+    expect(labels.indexOf("채널+캠페인별")).toBeGreaterThan(0);
+  });
+
+  it("소재 컬럼이 없으면 3단 조합은 흐리게 + 필요한 컬럼", () => {
+    const { 소재: _dropped, ...noCreative } = MAPPING;
+    void _dropped;
+    const ctx = buildDataContext({ rows: makeRows(), mapping: noCreative, toolId: "5-21" });
+    const combo = suggest(vocab, "채", ctx).find((item) => item.id === "level.pvm.channelCampaignCreative");
+    expect(combo.enabled).toBe(false);
+    expect(combo.missing).toEqual(["creative_id"]);
+  });
+});
+
+describe("CSV 컬럼 → 단어 (dataContext)", () => {
+  it("매핑된 축은 우리 용어로, 실제 컬럼명은 힌트로", () => {
+    const channel = suggest(vocab, "채널별", context)[0];
+    expect(channel.id).toBe("level.field");
+    expect(channel.params).toEqual({ field: "channel" });
+    expect(channel.hint.ko).toBe("컬럼: 매체");
+    // 컬럼명으로 쳐도 찾는다.
+    expect(suggest(vocab, "매체", context).map((item) => item.id)).toContain("level.field");
+  });
+
+  it("매핑 안 된 문자열 컬럼은 그 이름 그대로 축 단어가 된다", () => {
+    const region = suggest(vocab, "권역", context)[0];
+    expect(region.label.ko).toBe("권역별");
+    expect(region.params.field).toBe(columnRef("권역"));
+    expect(region.hint.ko).toBe("CSV 컬럼 그대로");
+  });
+
+  it("숫자·날짜 컬럼은 축 단어가 되지 않는다", () => {
+    const fields = context.dimensions.map((dim) => dim.column);
+    expect(fields).toEqual(["매체", "캠페인명", "소재", "OS", "권역"]);
+  });
+
+  it("대소문자 합친 사실을 화면이 알릴 수 있게 돌려준다", () => {
+    const os = context.dimensions.find((dim) => dim.standardKey === "platform");
+    expect(os.values).toEqual(["iOS", "Android"]);
+    expect(os.merged).toEqual([{ to: "iOS", from: ["iOS", "ios"] }]);
+  });
+
+  it("표준 '채널'과 매핑 안 된 '채널' 컬럼이 둘 다 있으면 이름으로 구분", () => {
+    const rows = makeRows().map((row, i) => ({ ...row, 채널: i % 2 ? "A" : "B" }));
+    const ctx = buildDataContext({ rows, mapping: MAPPING, toolId: "5-21" });
+    const labels = labelsOf(suggest(vocab, "채널", { ...ctx, limit: 20 }));
+    expect(labels).toContain("채널별");
+    expect(labels).toContain("채널 (CSV 컬럼)별");
+  });
+
+  it("축 필드가 비어 있고 이름이 별칭인 컬럼이 있으면 매핑+축을 한 번에 제안", () => {
+    const { 매체: _ignored, ...mappingWithoutChannel } = MAPPING;
+    void _ignored;
+    const ctx = buildDataContext({ rows: makeRows(), mapping: mappingWithoutChannel, toolId: "5-21" });
+    const offer = suggest(vocab, "채", ctx).find((item) => item.id === "level.assignField");
+    expect(offer.label.ko).toBe("채널별 — '매체'를 채널로 지정");
+    expect(toSelection(offer)).toEqual({
+      mapping: { column: "매체", field: "channel" },
+      step: { id: "level.field", params: { field: "channel" } },
+    });
+  });
+
+  it("보통 후보의 선택은 단계 하나", () => {
+    const pick = suggest(vocab, "직전", context)[0];
+    expect(toSelection(pick)).toEqual({ mapping: null, step: { id: "period.lookback.1", params: {} } });
+  });
+});
+
+describe("값 대표 표기·축 참조", () => {
+  it("유저 컬럼 이름에 맞춰 조사를 고른다", () => {
+    expect(objectParticle("매체")).toBe("를");
+    expect(objectParticle("권역")).toBe("을");
+    expect(objectParticle("media")).toBe("를");
+    expect(objectParticle("region")).toBe("을");
+    expect(directionParticle("OS")).toBe("로");
+    expect(objectParticle("매체)")).toBe("을(를)");
+    expect(directionParticle("채널")).toBe("로");
+    expect(directionParticle("캠페인")).toBe("으로");
+    expect(directionParticle("국가")).toBe("로");
+  });
+
+  it("가장 많이 나온 표기가 대표, 동률이면 먼저 나온 표기", () => {
+    const c = buildValueCanonicalizer(["ios", "iOS", "iOS", " IOS ", "Android", "android"]);
+    expect(c.values).toEqual([{ value: "iOS", count: 4 }, { value: "Android", count: 2 }]);
+    expect(c.canonicalOf("ios")).toBe("iOS");
+    expect(c.canonicalOf("android")).toBe("Android");
+    expect(c.merged).toEqual([{ to: "iOS", from: ["ios", "iOS", " IOS "] }, { to: "Android", from: ["Android", "android"] }]);
+  });
+
+  it("축 참조는 표준 키와 CSV 컬럼을 구분한다", () => {
+    expect(parseFieldRef("channel")).toEqual({ kind: "standard", key: "channel" });
+    expect(parseFieldRef(columnRef("권역"))).toEqual({ kind: "column", header: "권역" });
   });
 });
