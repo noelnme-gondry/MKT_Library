@@ -1,4 +1,6 @@
 "use client";
+import { Popover } from "radix-ui";
+import { SlidersHorizontal, X } from "lucide-react";
 import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis, getMappedRows, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
@@ -222,14 +224,41 @@ export default function DashboardFilterBar({ locale = "ko", commandSlot = null, 
         {!hideDate && dates.length > 0 && <ResultPeriodPicker label={locale === "en" ? "Analysis period" : "분석 기간"} locale={locale}
           range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
           onApply={({ start, end }) => setDashboardFilter({ dateStart: start, dateEnd: end })} />}
-        <details className="recipe-scope-controls__segments">
-          <summary>{locale === "en" ? "Data scope" : "분석 대상"}{dimensions.some((dim) => dim.selected) ? ` · ${dimensions.filter((dim) => dim.selected).map((dim) => `${dim.label} ${multiSelectValue(dim.selected, T)}`).join(" · ")}` : (locale === "en" ? " · All" : " · 전체")}</summary>
-          <div className="recipe-scope-controls__body">
-            {dimensions.map((dim) => <MultiSelect key={dim.key} label={dim.label} options={dim.options} selected={dim.selected} onChange={(set) => setDashboardFilter({ [dim.key]: set || new Set() })} T={T} />)}
-            <BasisCurrencyToggleBar locale={locale} />
-            {activeCount > 0 && <button type="button" className="mon-filter-reset" onClick={handleReset}>{T.reset}</button>}
-          </div>
-        </details>
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className="recipe-scope-trigger">
+              <SlidersHorizontal size={16} aria-hidden="true" />
+              <span>{locale === "en" ? "Data scope" : "분석 대상"}</span>
+              <span className="recipe-scope-trigger__value">{dimensions.some(dim => dim.selected)
+                ? (locale === "en" ? `${dimensions.filter(dim => dim.selected).length} selected` : `조건 ${dimensions.filter(dim => dim.selected).length}개`)
+                : T.all}</span>
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content className="recipe-scope-panel" align="start" sideOffset={8} collisionPadding={12} aria-label={locale === "en" ? "Data scope" : "분석 대상"}>
+              <div className="recipe-scope-panel__head"><h2>{locale === "en" ? "Data scope" : "분석 대상"}</h2><Popover.Close className="recipe-scope-panel__close" aria-label={locale === "en" ? "Close" : "닫기"}><X size={18} aria-hidden="true" /></Popover.Close></div>
+              <p>{locale === "en" ? "Selections update the results immediately." : "선택하면 결과에 바로 반영됩니다."}</p>
+              <div className="recipe-scope-controls__body">
+                {dimensions.map(dim => <fieldset key={dim.key}>
+                  <legend>{dim.label}</legend>
+                  <div className="recipe-scope-panel__choices">
+                    <button type="button" aria-pressed={!dim.selected} onClick={() => setDashboardFilter({ [dim.key]: new Set() })}>{T.all}</button>
+                    {dim.options.map(value => <button type="button" key={value} aria-pressed={Boolean(dim.selected?.has(value))} onClick={() => {
+                      const next = new Set(dim.selected || []);
+                      if (next.has(value)) next.delete(value); else next.add(value);
+                      setDashboardFilter({ [dim.key]: next.size === 0 || next.size === dim.options.length ? new Set() : next });
+                    }}>{value}</button>)}
+                  </div>
+                </fieldset>)}
+                <BasisCurrencyToggleBar locale={locale} />
+              </div>
+              <div className="recipe-scope-panel__footer">
+                <button type="button" className="btn ghost" onClick={() => setDashboardFilter({ platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set() })}>{locale === "en" ? "Reset scope" : "대상 초기화"}</button>
+                <Popover.Close className="btn primary">{locale === "en" ? "Done" : "완료"}</Popover.Close>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
       </div>
     </div>
   );

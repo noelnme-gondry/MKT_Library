@@ -19,8 +19,7 @@ for (const locale of ["ko", "en"]) {
           heading: bounds(".tool-instrument-header__heading"),
           label: bounds(".recipe-command__label"),
           input: bounds(".recipe-command__input"),
-          scope: bounds(".recipe-scope-controls__segments > summary"),
-          controls: bounds(".recipe-scope-controls__body"),
+          scope: bounds(".recipe-scope-trigger"),
         };
       });
       const closed = await measure();
@@ -32,10 +31,29 @@ for (const locale of ["ko", "en"]) {
       // 5-22는 같은 행에 날짜가 먼저 있다. 다음 행으로 접혀도 컨테이너 밖으로 나가면 안 된다.
       expect(closed.scope.left).toBeGreaterThanOrEqual(closed.heading.left);
       if (tool === "campaign-variance") expect(Math.abs(closed.scope.left - closed.heading.left)).toBeLessThanOrEqual(1);
-      await header.locator(".recipe-scope-controls__segments > summary").click();
-      const opened = await measure();
-      expect(opened.controls.right).toBeGreaterThanOrEqual(16);
-      expect(opened.controls.left).toBeGreaterThanOrEqual(opened.heading.left);
+      const trigger = header.locator(".recipe-scope-trigger");
+      await trigger.click();
+      const panel = page.getByRole("dialog", { name: locale === "en" ? "Data scope" : "분석 대상", exact: true });
+      await expect(panel).toBeVisible();
+      const box = await panel.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width);
+      expect(await header.locator("details").count()).toBe(0);
+      const audit = await new AxeBuilder({ page }).include(".recipe-scope-panel").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      expect(audit.violations).toEqual([]);
+      const periodsBefore = await page.locator(".result-period-picker time").allTextContents();
+      const channel = panel.getByRole("group", { name: locale === "en" ? "Channel" : "채널", exact: true });
+      await channel.getByRole("button", { name: "Meta AAP", exact: true }).click();
+      await expect(channel.getByRole("button", { name: "Meta AAP", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(channel.getByRole("button", { name: "Google UAC", exact: true })).toHaveAttribute("aria-pressed", "false");
+      await expect(trigger).toContainText(locale === "en" ? "1 selected" : "조건 1개");
+      if (tool === "campaign-variance") await expect(page.locator("#s-pvm-result .result-split__entity")).toHaveCount(1);
+      await panel.getByRole("button", { name: locale === "en" ? "Reset scope" : "대상 초기화" }).click();
+      await expect(trigger).toContainText(locale === "en" ? "All" : "전체");
+      expect(await page.locator(".result-period-picker time").allTextContents()).toEqual(periodsBefore);
+      if (tool === "campaign-variance") await expect(page.locator("#s-pvm-result .result-split__entity")).toHaveCount(5);
+      await panel.press("Escape");
+      await expect(trigger).toBeFocused();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     });
   }
@@ -191,5 +209,31 @@ for (const locale of ["ko", "en"]) {
     await input.press("Escape");
     await expect(input).toHaveAttribute("aria-expanded", "false");
     await expect(result).toBeVisible();
+  });
+}
+
+for (const locale of ["ko", "en"]) {
+  test(`grouped contributions and review workflow (${locale})`, async ({ page }) => {
+    await page.goto(`${locale === "en" ? "/en" : ""}/tools/campaign-variance?example=1`);
+    const result = page.locator("#s-pvm-result");
+    await expect(result.locator(".result-split__entity").first()).toBeVisible();
+    const cards = await result.locator(".result-split__entity").evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      const head = node.querySelector(".result-split__head").getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, inset: head.left - box.left, border: getComputedStyle(node).borderTopWidth, bars: node.querySelectorAll(".result-split__bar").length };
+    }));
+    expect(cards.length).toBeGreaterThan(1);
+    cards.forEach((card, index) => {
+      expect(card.inset).toBeGreaterThanOrEqual(14);
+      expect(parseFloat(card.border)).toBeGreaterThan(0);
+      expect(card.bars).toBeGreaterThanOrEqual(2);
+      if (index) expect(card.top - cards[index - 1].bottom).toBeGreaterThanOrEqual(10);
+    });
+    await expect(result.locator(".result-mix-guide__legend dt")).toHaveCount(2);
+    await expect(result.locator(".decision-review-preview__steps li")).toHaveCount(3);
+    await expect(result.locator(".pvm-supporting-evidence")).toBeVisible();
+    await expect(result.locator("details.result-action-card__details")).toHaveCount(0);
+    await expect(result.locator('.decision-review-preview a[href$="/start"]')).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }

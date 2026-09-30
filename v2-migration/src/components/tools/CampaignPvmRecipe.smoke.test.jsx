@@ -245,7 +245,10 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"]?.recipeSteps || []).toEqual([]);
     expect(screen.getByRole("button", { name: "채널: Meta 빼기" })).toBeTruthy();
     // 필터 막대의 채널 버튼도 같은 값을 말한다.
-    expect(document.querySelector(".mon-multisel-btn.is-active")?.textContent).toContain("Meta");
+    fireEvent.click(screen.getByRole("button", { name: /분석 대상/ }));
+    const panel = screen.getByRole("dialog", { name: "분석 대상" });
+    expect(within(panel).getByRole("button", { name: "Meta", exact: true }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(panel).getByRole("button", { name: "완료" }));
     fireEvent.click(screen.getByRole("button", { name: "채널: Meta 빼기" }));
     expect(useAppStore.getState().dashboardFilter.channels.size).toBe(0);
   });

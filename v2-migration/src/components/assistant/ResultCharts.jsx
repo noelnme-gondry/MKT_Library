@@ -124,7 +124,7 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
       <li><span>{tr(locale, `최근 ${metric}`, `Recent ${metric}`)}</span><b>{end != null ? format.level(end) : "—"}</b></li>
     </ol>
     <FigureRows rows={rows} limit={6} locale={locale} className="result-split">
-      {(row) => <li key={row.entity}>
+      {(row) => <li key={row.entity} className="result-split__entity" data-design-exempt="nested: user-requested grouping of each entity and its contribution bars">
         <div className="result-split__head"><strong>{row.entity}</strong><span className="tnum" data-tone={directionTone(row.contribution, lowerIsBetter, format.epsilon)}>{format.signed(row.contribution)}</span></div>
         {/* 막대 줄의 이름 칸은 좁다(줄마다 같은 폭이어야 막대가 맞는다) — 긴 이름은 짧은 이름으로. 전체 이름은 다리·설명에 있다. */}
         {parts.map((part) => <div className={`result-split__bar is-${part.key}`} key={part.key}>
@@ -134,7 +134,13 @@ export function ResultMixRate({ visualization, locale, currency, fallback = null
         </div>)}
       </li>}
     </FigureRows>
-    <figcaption><p>{up}</p>{parts.map(part => <p key={part.key}><strong>{part.label}</strong>: {part.hint}</p>)}</figcaption>
+    <figcaption className="result-mix-guide">
+      <p className="sr-only">{up}</p>
+      <div className="result-mix-guide__direction" aria-hidden="true"><span>← {metric} {tr(locale, "하락", "decrease")}</span><span>0</span><span>{metric} {tr(locale, "상승", "increase")} →</span></div>
+      <dl className="result-mix-guide__legend">{parts.map(part => <div key={part.key}>
+        <dt><i className={`is-${part.key}`} aria-hidden="true" />{part.label}</dt><dd>{part.hint}</dd>
+      </div>)}</dl>
+    </figcaption>
   </figure>;
 }
 

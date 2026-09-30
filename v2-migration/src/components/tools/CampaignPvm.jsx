@@ -1574,8 +1574,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               />
             )}
           >
-            <details className="result-action-card__details">
-              <summary>{tr("추가 변동 근거", "Additional variance evidence")}</summary>
+            <section className="pvm-supporting-evidence" aria-label={tr("추가 변동 근거", "Additional variance evidence")}>
+              <h3>{tr("추가 변동 근거", "Additional variance evidence")}</h3>
               {(upMover || downMover) && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
                   {upMover && moverCard(upMover, "up")}
@@ -1587,7 +1587,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 <div className="ico">!</div>
                 <div className="body" style={{ fontSize: "var(--fs-xs)" }}>{C.causationCallout}</div>
               </div>
-            </details>
+            </section>
           </ResultActionCard>
           {downloadError && <div className="required-banner" role="alert"><p>{downloadError}</p></div>}
         </> : (
