@@ -1,3 +1,5 @@
+UI·디자인 작업을 시작하기 전에 루트 [AGENTS.md §6.0](../AGENTS.md#60-디자인-작업의-필수-검토)과 [design.md](../design.md)를 반드시 읽고 검토 절차를 수행한다. 하위 디렉터리에서 시작한 작업에도 적용한다.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
