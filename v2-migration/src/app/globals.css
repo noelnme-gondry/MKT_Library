@@ -11909,6 +11909,40 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .result-periods dt { color: var(--text-secondary); min-width: 5em; }
 .result-periods dd { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; font-variant-numeric: tabular-nums; }
 .result-periods time { white-space: nowrap; }
+.pvm-result-controls { margin: 0 0 20px; padding: 0 0 20px; border-bottom: 1px solid var(--border); }
+.analysis-period-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; }
+.result-period-picker { min-width: 0; display: grid; gap: 6px; }
+.result-period-picker__label { color: var(--text-secondary); font-size: var(--fs-sm); }
+.result-period-picker__trigger { display: flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-primary); font: 600 var(--fs-sm) var(--font-sans); cursor: pointer; }
+.result-period-picker__trigger > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.result-period-picker__trigger time { white-space: nowrap; }
+.result-period-picker__trigger svg { flex: none; }
+.result-period-picker__trigger[data-state="open"] { border-color: var(--primary); }
+.result-period-picker__popover { z-index: 150; width: min(390px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-1); color: var(--text-primary); }
+.result-period-picker__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.result-period-picker__fields label { display: grid; min-width: 0; gap: 6px; font-size: var(--fs-sm); }
+.result-period-picker__fields input { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text-primary); font: 400 var(--fs-md) var(--font-sans); }
+.result-period-picker__previous { min-height: 44px; margin-top: 8px; padding: 4px 0; border: 0; background: none; color: var(--primary); font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.result-period-picker__error { margin: 12px 0 0; color: var(--danger); font-size: var(--fs-sm); }
+.result-period-picker__footer { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.result-period-picker__footer > span { margin-right: auto; color: var(--text-secondary); font-size: var(--fs-sm); }
+.result-period-picker__footer button { min-height: 44px; }
+.analysis-period-notes { margin: 12px 0 0; padding-left: 18px; color: var(--text-secondary); font-size: var(--fs-sm); }
+.recipe-scope-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; }
+.recipe-scope-controls__segments { min-width: 0; }
+.recipe-scope-controls__segments > summary { display: list-item; min-height: 44px; padding: 10px 0; color: var(--text-primary); font-size: var(--fs-sm); cursor: pointer; }
+.recipe-scope-controls__body { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 0; }
+.recipe-scope-controls__body .mon-filter-reset { min-height: 44px; }
+.dashboard-filter-bar--recipe .recipe-command__save { min-height: 44px; }
+.dashboard-filter-bar--recipe .recipe-command__input { min-height: 44px; }
+.analysis-setup__save { display: grid; gap: 10px; }
+.analysis-setup__save > p { margin: 0; color: var(--text-secondary); font-size: var(--fs-sm); }
+@media (max-width: 480px) {
+  .analysis-period-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .result-period-picker__trigger { width: 100%; justify-content: space-between; padding-inline: 8px; }
+  .result-period-picker__trigger > span { gap: 2px; font-size: var(--fs-xs); }
+  .result-period-picker__fields { grid-template-columns: minmax(0, 1fr); }
+}
 .result-action-card .tool-core-figure--embedded { min-width: 0; margin: 20px 0 20px 47px; padding: 16px 0; border: 0; border-block: 1px solid var(--border); border-radius: 0; background: transparent; }
 @media (max-width: 768px) {
   .result-action-card .tool-core-figure--embedded { margin-left: 0; }

@@ -42,8 +42,8 @@ it("keeps the pre-analysis context and the post-result actions in separate slots
   const { container: bottom } = render(<AnalysisSetupBar toolId="5-2" slot="actions" />);
   expect(bottom.querySelector(".analysis-setup__context")).toBeNull();
   expect(bottom.querySelector("button")).toBeTruthy();
-  // 위계: 저장은 primary 버튼, 보관함은 텍스트 링크다(§5.3).
-  expect(bottom.querySelector("button.btn.primary")).toBeTruthy();
+  // 저장은 보조 버튼, 보관함은 텍스트 링크다. 결과의 주요 행동과 경쟁하지 않는다.
+  expect(bottom.querySelector(".analysis-setup__save button.btn")).toBeTruthy();
   const shelf = bottom.querySelector(".analysis-setup__link");
   expect(shelf?.getAttribute("href")).toBe("/projects");
   expect(shelf?.classList.contains("btn")).toBe(false);
@@ -65,7 +65,7 @@ it("still offers saving for a tool whose setup is manual inputs, with no CSV", (
   useAppStore.getState().setCurrentRouteId("5-26");
   expect(TOOL_INPUT_KEYS["5-26"].length).toBeGreaterThan(0);
   const { container } = render(<AnalysisSetupBar toolId="5-26" slot="actions" />);
-  expect(container.querySelector("button.btn.primary")).toBeTruthy();
+  expect(container.querySelector(".analysis-setup__save button.btn")).toBeTruthy();
 });
 
 it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)", locale => {

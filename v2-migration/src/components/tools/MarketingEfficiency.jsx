@@ -484,10 +484,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         </>
       }
       toc={analyzed && okRows.length ? buildSatToc(tr).filter((item) => isVisible(item.id)) : undefined}
-      stickyFilter={<DashboardFilterBar locale={locale} commandSlot={commandContext ? (
+      stickyFilter={<DashboardFilterBar locale={locale} compact commandSlot={commandContext ? (
         <RecipeCommandInput vocabulary={SAT_VOCABULARY} context={commandContext} steps={recipeSteps}
           onStepsChange={setRecipeSteps} onMapping={({ column, field }) => setCsvData(withMappingChange(csvData, column, field, "5-22"))}
-          {...sharedFilters} presets={accountRecipes} rejected={fold.rejected} notices={notices} locale={locale} />
+          {...sharedFilters} extraChips={sharedFilters.extraChips.filter((chip) => chip.id !== "date")} presets={accountRecipes} rejected={fold.rejected} notices={notices} locale={locale} />
       ) : null} />}
     >
       {/* 데이터 매핑은 결과 범위 제어와 다른 작업이다. sticky 헤드 밖에서 필요할 때만 연다. */}
@@ -522,7 +522,6 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       <>
       <AnalysisExportProvider value={figureSettings}>
       <section className="block" id="s-sat-summary">
-        <h2 className="section-title">{tr("한눈에 보기", "At a glance")}</h2>
         <ResultActionCard
           toolId="5-22"
           analysisType="saturation"

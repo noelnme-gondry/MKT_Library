@@ -115,6 +115,46 @@ describe("CampaignPvm — 명령 입력창", () => {
     fireEvent.mouseDown(option);
   };
 
+  it.each(["ko", "en"])("%s: 날짜는 독립 적용·취소되며 실제 집계와 기간 명령까지 연결된다", (locale) => {
+    const en = locale === "en";
+    const { container } = render(<CampaignPvm locale={locale} />);
+    const open = (comparison = false) => {
+      fireEvent.click(screen.getByRole("button", { name: comparison ? (en ? /^Comparison period/ : /^비교 기간/) : (en ? /^Analysis period/ : /^분석 기간/) }));
+      return within(screen.getByRole("dialog"));
+    };
+    let dialog = open();
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Cancel" : "취소" }));
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBeNull();
+    dialog = open();
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-23" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(useAppStore.getState().dashboardFilter).toMatchObject({ dateStart: "2026-01-23", dateEnd: "2026-01-25", comparisonStart: "2026-01-12", comparisonEnd: "2026-01-18" });
+    expect(container.querySelector(".analysis-period-notes").textContent).toContain(en ? "3 days" : "3일");
+    // 시작>종료를 제출해도 이전 결과와 필터를 유지한다.
+    dialog = open(true);
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-20" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(dialog.getByRole("alert")).toBeTruthy();
+    expect(useAppStore.getState().dashboardFilter.comparisonStart).toBe("2026-01-12");
+    fireEvent.change(dialog.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-05" } });
+    fireEvent.change(dialog.getByLabelText(en ? "End date" : "종료일"), { target: { value: "2026-01-11" } });
+    fireEvent.click(dialog.getByRole("button", { name: en ? "Apply" : "적용" }));
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBe("2026-01-23");
+    // 화면 요약을 원본 행에서 직접 합산한 단가와 대조한다(같은 엔진 재호출 아님).
+    const cpi = (start, end) => {
+      const rows = makeSlice().raw.filter(row => row.Date >= start && row.Date <= end);
+      return Math.round(rows.reduce((sum, row) => sum + row.Spend, 0) / rows.reduce((sum, row) => sum + row.Installs, 0)).toLocaleString("en-US");
+    };
+    const result = container.querySelector("#s-pvm-result .result-action-card");
+    expect(result.textContent).toContain(cpi("2026-01-05", "2026-01-11"));
+    expect(result.textContent).toContain(cpi("2026-01-23", "2026-01-25"));
+    type(en ? "2 weeks" : "2주");
+    choose(en ? "Compare with 2 weeks ago" : "2주 전과 비교");
+    expect(useAppStore.getState().dashboardFilter.dateStart).toBeNull();
+    expect([...container.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+  });
+
   it.each(["ko", "en"])("%s: 선택한 축 컬럼이 사라지면 칩을 보존하고 사유를 보인다", (locale) => {
     const { container } = render(<CampaignPvm locale={locale} />);
     type("OS");
@@ -192,7 +232,7 @@ describe("CampaignPvm — 명령 입력창", () => {
     const slot = container.querySelector(".tool-instrument-header .dashboard-filter-bar__command");
     expect(slot?.querySelector("[role=combobox]")).toBeTruthy();
     // 입력창이 필터 선택보다 위에 온다.
-    const scope = container.querySelector(".dashboard-filter-bar__scope");
+    const scope = container.querySelector(".recipe-scope-controls");
     expect(slot.compareDocumentPosition(scope) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -222,7 +262,8 @@ describe("CampaignPvm — 명령 입력창", () => {
     useAppStore.setState({ dashboardFilter: { ...EMPTY_FILTER(), platforms: new Set(["iOS"]), dateStart: "2026-01-12" } });
     render(<CampaignPvm />);
     expect(screen.getByRole("button", { name: "플랫폼: iOS 빼기" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeNull();
+    expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
   });
 
   it("대소문자만 다른 원본 표기까지 함께 필터에 넣는다", () => {
@@ -303,9 +344,10 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(screen.getByText(/분석 한계 문구를 빼고, 뺐다는 사실만 한 줄로/)).toBeTruthy();
   });
 
-  it("지표 알약을 눌러도 칩(레시피)이 된다 — 두 벌 상태가 없다", () => {
+  it("기간 명령은 칩과 실제 비교 기간을 함께 바꾼다", () => {
     render(<CampaignPvm />);
-    fireEvent.click(screen.getByRole("radio", { name: /2주전/ }));
+    type("2주");
+    choose("2주 전과 비교");
     expect(screen.getByRole("button", { name: "2주 전과 비교 빼기" })).toBeTruthy();
     expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].recipeSteps).toEqual([{ id: "period.lookback.2", params: {} }]);
   });

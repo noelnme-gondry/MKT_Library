@@ -4,6 +4,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis, getMappedRows, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
 import DateRangePicker from "@/components/ds/DateRangePicker";
+import ResultPeriodPicker from "@/components/ds/ResultPeriodPicker";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 import AnalysisControlBar from "./AnalysisControlBar";
 
@@ -119,7 +120,7 @@ function MultiSelect({ label, options, selected, onChange, T }) {
 
 // commandSlot: 도구가 붙이는 분석 설정 입력창(5-21). 필터와 한 자리에 두어 같은 조건을 두 곳에서
 // 고르지 않게 한다 — 입력창의 "Meta만 분석" 같은 단어는 아래 필터 선택으로 들어간다.
-export default function DashboardFilterBar({ locale = "ko", commandSlot = null }) {
+export default function DashboardFilterBar({ locale = "ko", commandSlot = null, compact = false, hideDate = false }) {
   const T = FILTER_BAR_COPY[locale] || FILTER_BAR_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -213,6 +214,25 @@ export default function DashboardFilterBar({ locale = "ko", commandSlot = null }
     ...(basisKey ? [{ text: T.basis[basisKey], active: false }] : []),
     { text: T.currency[sourceCurrencyOf(csvData)] || sourceCurrencyOf(csvData), active: false },
   ];
+
+  if (compact) return (
+    <div className="dashboard-filter-bar dashboard-filter-bar--recipe">
+      {commandSlot && <div className="dashboard-filter-bar__command">{commandSlot}</div>}
+      <div className="recipe-scope-controls">
+        {!hideDate && dates.length > 0 && <ResultPeriodPicker label={locale === "en" ? "Analysis period" : "분석 기간"} locale={locale}
+          range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
+          onApply={({ start, end }) => setDashboardFilter({ dateStart: start, dateEnd: end })} />}
+        <details className="recipe-scope-controls__segments">
+          <summary>{locale === "en" ? "Data scope" : "분석 대상"}{dimensions.some((dim) => dim.selected) ? ` · ${dimensions.filter((dim) => dim.selected).map((dim) => `${dim.label} ${multiSelectValue(dim.selected, T)}`).join(" · ")}` : (locale === "en" ? " · All" : " · 전체")}</summary>
+          <div className="recipe-scope-controls__body">
+            {dimensions.map((dim) => <MultiSelect key={dim.key} label={dim.label} options={dim.options} selected={dim.selected} onChange={(set) => setDashboardFilter({ [dim.key]: set || new Set() })} T={T} />)}
+            <BasisCurrencyToggleBar locale={locale} />
+            {activeCount > 0 && <button type="button" className="mon-filter-reset" onClick={handleReset}>{T.reset}</button>}
+          </div>
+        </details>
+      </div>
+    </div>
+  );
 
   return (
     <div className="dashboard-filter-bar" data-active-filter-count={activeCount} data-controls-open={controlsOpen}>

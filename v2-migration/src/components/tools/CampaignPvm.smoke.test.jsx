@@ -159,7 +159,7 @@ describe("CampaignPvm render smoke", () => {
     expect(() => { view = render(<CampaignPvm />); }).not.toThrow();
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
-    expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     // 5-21은 전역 분모 기준에 따라 CPA·CPI 어느 쪽으로도 말한다 — 둘 다 후보에 있어야
@@ -226,8 +226,8 @@ describe("CampaignPvm render smoke", () => {
     });
     render(<CampaignPvm />);
 
-    expect([...document.querySelectorAll(".result-periods time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
-    expect(screen.getByText("선택한 비교 기간")).toBeTruthy();
+    expect([...document.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+    expect(screen.getByRole("button", { name: /^비교 기간/ })).toBeTruthy();
   });
 
   it("rolls campaign and creative rows up from one finest-grain decomposition", () => {

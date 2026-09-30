@@ -16,6 +16,8 @@ import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
+import ResultPeriodPicker from "@/components/ds/ResultPeriodPicker";
+import { comparisonWarnings, previousPeriod, dateOrdinal } from "@/lib/analysisPeriod";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { mixRateFigure } from "@/lib/assistant/coreFigures";
 import { downloadElementAsPNG } from "@/utils/figureImage";
@@ -563,7 +565,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     metricOverride: legacyMetric, weekBasis: legacyWeekBasis, lookback: legacyLookback,
   }));
   const recipeSteps = recipeEnabled && Array.isArray(savedSteps) ? savedSteps : NO_STEPS;
-  const updateSteps = useCallback((next) => setRecipeSteps(next), [setRecipeSteps]);
   const addRecipeStep = useCallback((step) => setRecipeSteps((prev) => addStep(Array.isArray(prev) ? prev : [], step, PVM_VOCABULARY)), [setRecipeSteps]);
   // 전역 분모 기준이 바뀌면 지표 단계를 뺀다 — 예전 "오버라이드 초기화"와 같은 규칙.
   const [lastBasisMetric, setLastBasisMetric] = useState(basisMetric);
@@ -573,6 +574,15 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     else setLegacyMetric(null);
   }
   const [periodOverride, setPeriodOverride] = useState(null);
+  const updateSteps = (next) => {
+    // 날짜 직접 선택 뒤 기간 명령을 고르면 마지막 명시적 선택을 사용한다.
+    const periods = (steps) => steps.filter((step) => PVM_VOCABULARY.get(step.id)?.kind === "period");
+    if (JSON.stringify(periods(next)) !== JSON.stringify(periods(recipeSteps))) {
+      setPeriodOverride(null);
+      setDashboardFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null });
+    }
+    setRecipeSteps(next);
+  };
   const incomingComparison = analysisHandoff?.source === "dochi" && analysisHandoff.targetToolId === "5-21"
     && analysisHandoff.sourceRows === csvData.raw ? analysisHandoff : null;
   const [appliedComparison, setAppliedComparison] = useState(null);
@@ -674,10 +684,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }, [columnRefsKey, csvData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "지난달과 비교"는 데이터의 최신 날짜에서 기간을 만든다.
-  const maxDate = useMemo(() => {
-    if (recipe.data.period?.kind !== "monthOverMonth") return null;
-    return getMappedRows(csvData).reduce((max, row) => (row.date && row.date > max ? String(row.date).slice(0, 10) : max), "");
-  }, [recipe.data.period?.kind, csvData]);
+  const maxDate = useMemo(() => getMappedRows(csvData).reduce((max, row) => {
+    const date = String(row.date || "").slice(0, 10);
+    return dateOrdinal(date) != null && date > max ? date : max;
+  }, ""), [csvData]);
   const recipePeriodOverride = recipe.data.period?.kind === "monthOverMonth" ? monthOverMonthRanges(maxDate) : null;
   const hasLookbackStep = appliedIds.some((id) => id.startsWith("period.lookback.") || id.startsWith("period.basis."));
   const dashboardPeriodOverride = useMemo(() => {
@@ -728,6 +738,18 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, effectivePeriodOverride, domain, tr, recipeEnabled, levelKeys, recipe.data.filters, recipe.data.caseSensitive, rowSource]);
 
   const ready = cache && !cache.insufficientData && cache.identity?.ok === true;
+  const latestPeriod = maxDate ? { start: new Date((dateOrdinal(maxDate) - 6) * 86400000).toISOString().slice(0, 10), end: maxDate } : null;
+  const displayedPeriods = effectivePeriodOverride || (ready
+    ? { periodA: { start: cache.p1Range[0], end: cache.p1Range[1] }, periodB: { start: cache.p2Range[0], end: cache.p2Range[1] } }
+    : { periodA: previousPeriod(latestPeriod), periodB: latestPeriod });
+  const periodNotes = comparisonWarnings(displayedPeriods.periodB, displayedPeriods.periodA, locale);
+  const applyDisplayedPeriod = (key, range) => {
+    const next = { ...displayedPeriods, [key]: range };
+    setPeriodOverride(null);
+    setRecipeSteps((steps) => (Array.isArray(steps) ? steps : []).filter((step) => PVM_VOCABULARY.get(step.id)?.kind !== "period"));
+    setDashboardFilter({ dateStart: next.periodB?.start || null, dateEnd: next.periodB?.end || null,
+      compareEnabled: true, comparisonStart: next.periodA?.start || null, comparisonEnd: next.periodA?.end || null, comparisonPreset: "custom" });
+  };
 
   // PVM 결과 식별자. ResultActionCard가 이 비식별 로컬 키로 완료·실제 노출을 각각
   // 정확히 한 번 기록하며 파일명·채널명 같은 사용자 데이터는 전송하지 않는다.
@@ -1260,10 +1282,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const periodCaption = ready
     ? tr(
         `기준 ${cache.p1Range[0]}~${cache.p1Range[1]} (P1) vs 현재 ${cache.p2Range[0]}~${cache.p2Range[1]} (P2)${
-          cache.p2DaysCovered < 7 ? ` · ⚠ 현재 기간 ${cache.p2DaysCovered}일만 집계됨(미완결 주)` : ""
+          !effectivePeriodOverride && cache.p2DaysCovered < 7 ? ` · ⚠ 현재 기간 ${cache.p2DaysCovered}일만 집계됨(미완결 주)` : ""
         }`,
         `Baseline ${cache.p1Range[0]}~${cache.p1Range[1]} (P1) vs current ${cache.p2Range[0]}~${cache.p2Range[1]} (P2)${
-          cache.p2DaysCovered < 7 ? ` · ⚠ Current period has only ${cache.p2DaysCovered} day(s) of data (incomplete week)` : ""
+          !effectivePeriodOverride && cache.p2DaysCovered < 7 ? ` · ⚠ Current period has only ${cache.p2DaysCovered} day(s) of data (incomplete week)` : ""
         }`,
       )
     : "";
@@ -1320,7 +1342,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         title={C.title}
         chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
         toc={buildPvmToc(C, locale, sectionVisible)}
-        stickyFilter={<DashboardFilterBar locale={locale} commandSlot={recipeEnabled && commandContext ? (
+        stickyFilter={<DashboardFilterBar locale={locale} compact={recipeEnabled} hideDate={recipeEnabled} commandSlot={recipeEnabled && commandContext ? (
           <RecipeCommandInput
             vocabulary={PVM_VOCABULARY}
             context={commandContext}
@@ -1328,6 +1350,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             onStepsChange={updateSteps}
             onMapping={applyRecipeMapping}
             {...sharedFilters}
+            extraChips={sharedFilters.extraChips.filter((chip) => chip.id !== "date")}
             presets={accountRecipes}
             rejected={fold.rejected}
             notices={recipeNotices}
@@ -1369,11 +1392,20 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         id="s-pvm-result"
         style={{ background: "transparent", border: 0, padding: 0 }}
       >
-        <div className="section-head">
+        {!recipeEnabled && <div className="section-head">
           <h2 className="section-title">{tr("한눈에 보기", "Overview")}</h2>
-        </div>
+        </div>}
 
-        <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
+        {recipeEnabled && <div className="pvm-result-controls">
+          <div className="analysis-period-controls">
+            <ResultPeriodPicker locale={locale} label={tr("분석 기간", "Analysis period")} range={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodB", range)} />
+            <ResultPeriodPicker locale={locale} label={tr("비교 기간", "Comparison period")} range={displayedPeriods.periodA} previousOf={displayedPeriods.periodB} onApply={(range) => applyDisplayedPeriod("periodA", range)} />
+            {bothMetricsMapped !== false && <PillGroup label={tr("지표", "Metric")} value={metric} onChange={setMetric} options={[{ value: "cpa", label: "CPA" }, { value: "cpi", label: "CPI" }]} />}
+          </div>
+          {periodNotes.length > 0 && <ul className="analysis-period-notes">{periodNotes.map((note) => <li key={note}>{note}</li>)}</ul>}
+        </div>}
+
+        {!recipeEnabled && <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
         <div className="analysis-local-controls__inner">
           <span className="analysis-local-controls__label">{tr("비교 조건", "Comparison settings")}</span>
           {bothMetricsMapped !== false && (
@@ -1420,9 +1452,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               .map((lb) => ({ label: tr(`${lb}주`, `${lb}w`), reason: tr("데이터가 더 필요합니다", "needs more data") }))} />
           </>}
         </div>
-        </div>
+        </div>}
 
-        {periodCaption && (
+        {!recipeEnabled && periodCaption && (
           <ComparisonPeriods locale={locale} periodA={{ start: cache.p1Range[0], end: cache.p1Range[1] }} periodB={{ start: cache.p2Range[0], end: cache.p2Range[1] }} />
         )}
 

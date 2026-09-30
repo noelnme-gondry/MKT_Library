@@ -1,5 +1,75 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+test.describe("direct periods in light mode", () => {
+  test.use({ colorScheme: "light" });
+  for (const locale of ["ko", "en"]) {
+    for (const tool of ["campaign-variance", "campaign-saturation"]) {
+      test(`${tool} date dialog contrast and apply (${locale})`, async ({ page }) => {
+        const en = locale === "en";
+        await page.goto(`${en ? "/en" : ""}/tools/${tool}?example=1`);
+        await expect(page.locator("body")).toHaveClass(/light-mode/);
+        await expect(page.locator(".result-action-card").first()).toBeVisible();
+        const trigger = page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
+        const start = await trigger.locator("time").first().getAttribute("datetime");
+        const nextDay = new Date(Date.parse(`${start}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+        await trigger.click();
+        const dialog = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
+        await expect(dialog).toBeVisible();
+        const audit = await new AxeBuilder({ page }).include(".result-period-picker__popover").withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+        expect(audit.violations).toEqual([]);
+        await dialog.getByLabel(en ? "Start date" : "시작일").fill(nextDay);
+        await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+        await expect(trigger.locator("time").first()).toHaveAttribute("datetime", nextDay);
+        await expect(page.locator(".result-action-card").first()).toBeVisible();
+        if (tool === "campaign-saturation") {
+          await expect(page.locator("#s-scale-map")).toBeVisible();
+          await expect(page.locator("#s-sat-curve canvas")).toBeVisible();
+          await expect(page.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ })).toHaveCount(0);
+        }
+      });
+    }
+  }
+});
+
+for (const locale of ["ko", "en"]) {
+  test(`independent direct date filters, keyboard and layout (${locale})`, async ({ page }) => {
+    const en = locale === "en";
+    await page.goto(`${en ? "/en" : ""}/tools/campaign-variance?example=1`);
+    await expect(page.locator("#s-pvm-result .result-action-card")).toBeVisible();
+    const analysis = page.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
+    const comparison = page.getByRole("button", { name: en ? /^Comparison period/ : /^비교 기간/ });
+    const prior = await comparison.innerText();
+    const dates = await analysis.locator("time").evaluateAll(nodes => nodes.map(node => node.dateTime));
+    expect((await analysis.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await analysis.click();
+    const dialog = page.getByRole("dialog", { name: en ? "Analysis period" : "분석 기간", exact: true });
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width);
+    await dialog.getByLabel(en ? "Start date" : "시작일").fill(dates[1]);
+    await dialog.getByRole("button", { name: en ? "Cancel" : "취소", exact: true }).click();
+    await expect(analysis).toBeFocused();
+    await expect(analysis.locator("time").first()).toHaveAttribute("datetime", dates[0]);
+    await analysis.press("Enter");
+    await dialog.getByLabel(en ? "Start date" : "시작일").fill(dates[1]);
+    await dialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    await expect(analysis.locator("time").first()).toHaveAttribute("datetime", dates[1]);
+    await expect(comparison).toHaveText(prior);
+    await expect(page.locator(".analysis-period-notes")).toContainText(en ? "1 days" : "1일");
+    await comparison.click();
+    const priorDialog = page.getByRole("dialog", { name: en ? "Comparison period" : "비교 기간", exact: true });
+    await priorDialog.getByLabel(en ? "Start date" : "시작일").fill("");
+    await priorDialog.getByRole("button", { name: en ? "Apply" : "적용", exact: true }).click();
+    await expect(priorDialog.getByRole("alert")).toBeVisible();
+    await priorDialog.getByLabel(en ? "Start date" : "시작일").press("Escape");
+    await expect(comparison).toBeFocused();
+    await expect(page.locator("#s-pvm-channels table")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  });
+}
 
 for (const locale of ["ko", "en"]) {
   test(`recipe scope rejection and recovery (${locale})`, async ({ page }) => {

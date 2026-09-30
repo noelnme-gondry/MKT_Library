@@ -117,12 +117,12 @@ describe("MarketingEfficiency render smoke", () => {
     const { rerender } = render(<MarketingEfficiency />);
     // Before analyze: gate placeholder shown, no §0 summary section yet.
     expect(screen.getByText(/분석 대기 중/)).toBeTruthy();
-    expect(screen.queryByText(/한눈에 보기/)).toBeNull();
+    expect(document.querySelector("#s-sat-summary .result-action-card")).toBeNull();
     // Set the group gate (as CsvUploader's analyze button would).
     act(() => useAppStore.getState().setGroupAnalyzed("5-22"));
     rerender(<MarketingEfficiency />);
     // After analyze: §0 summary + §1 ranking render.
-    expect(screen.getByText(/한눈에 보기/)).toBeTruthy();
+    expect(document.querySelector("#s-sat-summary .result-action-card")).toBeTruthy();
     // "포화도 순위" now appears twice (section heading + right-side TOC link
     // added via ToolPageShell) — assert at least one match rather than a
     // single unique node.
