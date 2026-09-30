@@ -115,11 +115,51 @@ describe("CampaignPvm — 명령 입력창", () => {
     fireEvent.mouseDown(option);
   };
 
-  it("분석 설정 입력창이 결과 위에 있다", () => {
+  it("분석 설정 입력창은 필터 막대 안에 있다 — 따로 떨어진 구역이 없다", () => {
     const { container } = render(<CampaignPvm />);
-    const recipe = container.querySelector("#s-pvm-recipe");
-    expect(recipe).toBeTruthy();
-    expect(recipe.compareDocumentPosition(container.querySelector("#s-pvm-result")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector("#s-pvm-recipe")).toBeNull();
+    const slot = container.querySelector(".tool-instrument-header .dashboard-filter-bar__command");
+    expect(slot?.querySelector("[role=combobox]")).toBeTruthy();
+    // 입력창이 필터 선택보다 위에 온다.
+    const scope = container.querySelector(".dashboard-filter-bar__scope");
+    expect(slot.compareDocumentPosition(scope) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("'Meta만 분석'은 칩이 아니라 공용 채널 필터로 들어가고, 필터 칩으로 보인다", () => {
+    render(<CampaignPvm />);
+    type("Meta만");
+    choose("Meta만 분석");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Meta"]);
+    // 레시피에는 단계가 생기지 않는다(같은 조건이 두 곳에 살지 않게).
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"]?.recipeSteps || []).toEqual([]);
+    expect(screen.getByRole("button", { name: "채널: Meta 빼기" })).toBeTruthy();
+    // 필터 막대의 채널 버튼도 같은 값을 말한다.
+    expect(document.querySelector(".mon-multisel-btn.is-active")?.textContent).toContain("Meta");
+    fireEvent.click(screen.getByRole("button", { name: "채널: Meta 빼기" }));
+    expect(useAppStore.getState().dashboardFilter.channels.size).toBe(0);
+  });
+
+  it("'X 제외하고 분석'은 나머지 값만 필터에 남긴다", () => {
+    render(<CampaignPvm />);
+    type("iOS 제외");
+    choose("iOS 제외하고 분석");
+    expect([...useAppStore.getState().dashboardFilter.platforms]).toEqual(["Android"]);
+    expect(screen.getByRole("button", { name: "플랫폼: Android 빼기" })).toBeTruthy();
+  });
+
+  it("필터 막대에서 고른 조건도 입력창 칩 줄에 보인다", () => {
+    useAppStore.setState({ dashboardFilter: { ...EMPTY_FILTER(), platforms: new Set(["iOS"]), dateStart: "2026-01-12" } });
+    render(<CampaignPvm />);
+    expect(screen.getByRole("button", { name: "플랫폼: iOS 빼기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "기간 2026-01-12 ~ 끝 빼기" })).toBeTruthy();
+  });
+
+  it("대소문자만 다른 원본 표기까지 함께 필터에 넣는다", () => {
+    seed(makeSlice({ caseVariants: true }));
+    render(<CampaignPvm />);
+    type("Meta만");
+    choose("Meta만 분석");
+    expect([...useAppStore.getState().dashboardFilter.channels].sort()).toEqual(["Meta", "meta"]);
   });
 
   it("'OS별' → 첫 표가 OS별 결과가 되고 칩이 남는다", () => {

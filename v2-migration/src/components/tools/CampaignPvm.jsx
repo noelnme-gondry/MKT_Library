@@ -54,6 +54,9 @@ import {
 // 명령 입력창 단어 사전 — 공용 단어 + 5-21 전용 단어(계층 조합·지표). 모듈에서 한 번만 만든다.
 const PVM_VOCABULARY = buildVocabulary([...COMMON_WORDS, ...PVM_WORDS]);
 const NO_STEPS = Object.freeze([]);
+// 공용 필터 막대가 이미 가진 축. 입력창의 "X만 분석"·"X 제외하고 분석"은 이 축이면 칩이 아니라
+// 필터 선택으로 들어간다 — 같은 조건이 칩과 필터 두 곳에 따로 살지 않게(2026-09-30).
+const SHARED_FILTER_KEY = { platform: "platforms", country: "countries", channel: "channels", source: "sources" };
 
 // 우측 TOC — 현재 결과의 질문 순서만 노출하고 내부 섹션 번호는 숨긴다.
 function buildPvmToc(C, locale, visible = () => true) {
@@ -538,6 +541,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const pvmFmtMoney = useCallback((value, cur, decimals) => formatPvmMoney(value, cur, decimals, locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const setDashboardFilter = useAppStore((state) => state.setDashboardFilter);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   // 전역 값은 구 세션 데이터의 fallback. PVM 숫자는 환산하지 않으므로 업로드 때
@@ -1278,6 +1282,44 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     )]),
   ];
   const applyRecipeMapping = ({ column, field }) => setCsvData(withMappingChange(csvData, column, field, PVM_TOOL_ID));
+  // 공용 필터 축의 원본 값(앞뒤 공백 제거) — 필터 막대 선택지와 같은 규칙.
+  const sharedOptions = (field) => {
+    const header = Object.keys(csvData?.mapping || {}).find((key) => csvData.mapping[key] === field);
+    return header ? [...new Set((csvData.raw || []).map((row) => String(row?.[header] ?? "").trim()).filter(Boolean))] : [];
+  };
+  const routeToSharedFilter = (step) => {
+    const key = SHARED_FILTER_KEY[step?.params?.field];
+    const isOnly = step?.id === "filter.only.analysis";
+    if (!key || !(isOnly || step?.id === "filter.exclude.analysis")) return false;
+    const options = sharedOptions(step.params.field);
+    // 대소문자·공백만 다른 원본 표기까지 함께 고른다 — 합쳐 계산하는 값과 필터가 어긋나지 않게.
+    const wanted = new Set(step.params.values.map((value) => String(value).trim().toLowerCase()));
+    const picked = options.filter((option) => wanted.has(option.toLowerCase()));
+    const current = dashboardFilter[key]?.size ? [...dashboardFilter[key]] : null;
+    const next = isOnly
+      ? new Set([...(current || []), ...picked])
+      : new Set((current || options).filter((option) => !wanted.has(option.toLowerCase())));
+    if (!next.size) return true; // 전부 빼면 "필터 없음"과 구분되지 않는다 — 바꾸지 않는다.
+    setDashboardFilter({ [key]: next.size >= options.length ? new Set() : next });
+    return true;
+  };
+  const sharedFilterChips = [
+    ...(dashboardFilter.dateStart || dashboardFilter.dateEnd ? [{
+      id: "date",
+      label: tr(`기간 ${dashboardFilter.dateStart || "처음"} ~ ${dashboardFilter.dateEnd || "끝"}`, `Dates ${dashboardFilter.dateStart || "start"} – ${dashboardFilter.dateEnd || "end"}`),
+      onRemove: () => setDashboardFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null }),
+    }] : []),
+    ...Object.entries(SHARED_FILTER_KEY).filter(([, key]) => dashboardFilter[key]?.size).map(([field, key]) => {
+      const values = [...dashboardFilter[key]];
+      // 칩 이름은 필터 막대 버튼과 같은 말을 쓴다(같은 조건을 두 이름으로 부르지 않게).
+      const name = { platform: tr("플랫폼", "Platform"), country: tr("국가", "Country"), channel: tr("채널", "Channel"), source: tr("소스", "Source") }[field];
+      return {
+        id: key,
+        label: values.length === 1 ? `${name}: ${values[0]}` : tr(`${name}: ${values.length}개`, `${name}: ${values.length} selected`),
+        onRemove: () => setDashboardFilter({ [key]: new Set() }),
+      };
+    }),
+  ];
   const viewHiddenNote = (view) => (view.hiddenCount > 0 ? (
     <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
       {tr(`보기 설정으로 ${view.hiddenCount}개 행을 가렸습니다. 합계(Σ)는 가린 행까지 포함한 값입니다.`, `${view.hiddenCount} row(s) hidden by view settings. The Σ check still includes them.`)}
@@ -1302,7 +1344,20 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         title={C.title}
         chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
         toc={buildPvmToc(C, locale, sectionVisible)}
-        stickyFilter={<DashboardFilterBar locale={locale} />}
+        stickyFilter={<DashboardFilterBar locale={locale} commandSlot={recipeEnabled && commandContext ? (
+          <RecipeCommandInput
+            vocabulary={PVM_VOCABULARY}
+            context={commandContext}
+            steps={recipeSteps}
+            onStepsChange={updateSteps}
+            onMapping={applyRecipeMapping}
+            onSelectStep={routeToSharedFilter}
+            extraChips={sharedFilterChips}
+            rejected={fold.rejected}
+            notices={recipeNotices}
+            locale={locale}
+          />
+        ) : null} />}
       >
       {analysisHandoff?.source !== "dochi" && analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
         <div className="callout info" style={{ marginBottom: "12px" }}>
@@ -1331,20 +1386,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             }}>{tr("맥락 닫기", "Dismiss context")}</button>
           </div>
         </div>
-      )}
-      {recipeEnabled && commandContext && (
-        <section className="block" id="s-pvm-recipe" aria-label={tr("분석 설정", "Analysis setup")}>
-          <RecipeCommandInput
-            vocabulary={PVM_VOCABULARY}
-            context={commandContext}
-            steps={recipeSteps}
-            onStepsChange={updateSteps}
-            onMapping={applyRecipeMapping}
-            rejected={fold.rejected}
-            notices={recipeNotices}
-            locale={locale}
-          />
-        </section>
       )}
       {/* §0 한눈에 보기 */}
       <section

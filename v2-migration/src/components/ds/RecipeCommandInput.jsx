@@ -15,6 +15,9 @@ import { fieldLabels } from "@/lib/toolIndex";
  *  - onMapping({ column, field }): 매핑이 함께 필요한 후보를 골랐을 때(기존 매핑 스토어에 쓴다)
  *  - rejected: foldSteps().rejected — 칩은 남았지만 반영되지 않은 이유
  *  - notices: 화면이 알려야 할 자동 처리(대소문자 합치기 등) 문장 목록
+ *  - onSelectStep(step): 이 단계를 입력창 밖(공용 필터 등)이 소유하면 처리하고 true — 칩 대신
+ *    그 소유자에 쓴다. 같은 조건이 칩과 필터 두 곳에 따로 살지 않게(2026-09-30).
+ *  - extraChips: [{ id, label, onRemove }] — 입력창 밖이 소유한 조건(공용 필터)을 같은 칩 줄에 보인다.
  */
 const REJECT_TEXT = {
   METRIC_NOT_SUPPORTED: ["이 도구에서 쓸 수 없는 지표", "Metric not available in this tool"],
@@ -42,6 +45,8 @@ export default function RecipeCommandInput({
   notices = [],
   locale = "ko",
   label,
+  onSelectStep,
+  extraChips = [],
 }) {
   const en = locale === "en";
   const tr = (ko, eng) => (en ? eng : ko);
@@ -60,7 +65,7 @@ export default function RecipeCommandInput({
     if (!option?.enabled) return;
     const selection = toSelection(option);
     if (selection.mapping && onMapping) onMapping(selection.mapping);
-    onStepsChange(addStep(steps, selection.step, vocabulary));
+    if (!onSelectStep?.(selection.step)) onStepsChange(addStep(steps, selection.step, vocabulary));
     setLastPick(option.label[locale]);
     setQuery("");
     setActive(0);
@@ -85,8 +90,9 @@ export default function RecipeCommandInput({
       }
     } else if (event.key === "Escape") {
       setOpen(false);
-    } else if (event.key === "Backspace" && !query && steps.length) {
-      onStepsChange(removeStep(steps, steps.length - 1));
+    } else if (event.key === "Backspace" && !query) {
+      if (steps.length) onStepsChange(removeStep(steps, steps.length - 1));
+      else if (extraChips.length) extraChips[extraChips.length - 1].onRemove();
     }
   };
 
@@ -97,8 +103,16 @@ export default function RecipeCommandInput({
   return (
     <div className="recipe-command">
       <p className="recipe-command__label" id={labelId}>{label || tr("분석 설정", "Analysis setup")}</p>
-      {steps.length > 0 && (
+      {(steps.length > 0 || extraChips.length > 0) && (
         <ul className="recipe-command__chips" aria-label={tr("적용한 설정", "Applied settings")}>
+          {extraChips.map((chip) => (
+            <li key={chip.id}>
+              <button type="button" className="recipe-command__chip" aria-label={tr(`${chip.label} 빼기`, `Remove ${chip.label}`)} onClick={chip.onRemove}>
+                <span>{chip.label}</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            </li>
+          ))}
           {steps.map((step, index) => {
             const entry = vocabulary.get(step.id);
             if (!entry) return null;
@@ -156,7 +170,9 @@ export default function RecipeCommandInput({
                   className={`recipe-command__option${index === activeIndex ? " is-active" : ""}${option.enabled ? "" : " is-disabled"}`}
                   // blur보다 먼저 선택되도록 mousedown에서 처리한다.
                   onMouseDown={(event) => { event.preventDefault(); pick(option); }}
-                  onMouseEnter={() => setActive(index)}
+                  // 목록이 멈춰 있는 포인터 밑에 열리면 mouseenter가 저절로 불려 Enter가 엉뚱한 항목을
+                  // 고른다(320px에서 실측). 실제로 움직였을 때만 강조를 옮긴다.
+                  onMouseMove={() => { if (index !== activeIndex) setActive(index); }}
                 >
                   <span>{option.label[locale]}</span>
                   {hint && <small>{hint}</small>}

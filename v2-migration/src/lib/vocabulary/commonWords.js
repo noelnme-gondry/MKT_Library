@@ -167,7 +167,7 @@ function dimensionHint(context, field) {
 
 function dimensionAliases(context, field) {
   const dim = findDimension(context, field);
-  return [dim?.column, dim?.standardKey].filter(Boolean);
+  return [dim?.column, dim?.standardKey, ...(dim?.aliases || [])].filter(Boolean);
 }
 
 function valueParams(context) {

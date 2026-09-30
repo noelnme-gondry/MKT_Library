@@ -25,6 +25,8 @@ export const AXIS_TERMS = Object.freeze([
   ["source", { ko: "광고/오가닉", en: "Paid/organic" }],
 ]);
 const AXIS_TERM_MAP = new Map(AXIS_TERMS);
+// 같은 축을 부르는 다른 이름 — 필터 막대는 "플랫폼"·"소스"라고 부른다. 어느 쪽으로 쳐도 찾게.
+const AXIS_ALIASES = { platform: ["플랫폼", "platform", "운영체제"], source: ["소스", "source", "유입 구분"], country: ["나라", "country"], channel: ["매체", "channel"] };
 const MAX_VALUES_PER_DIMENSION = 200;
 
 // 헤더가 "구분"·"type"처럼 무의미해도 값으로 OS·국가를 알아본다(spec §3.4 (2)).
@@ -160,6 +162,7 @@ export function buildDataContext({ headers, rows = [], mapping = {}, toolId = nu
       values: topValues(canonicalizer),
       merged: canonicalizer.merged,
       label: key ? termFor(key) : { ko: header, en: header },
+      aliases: key ? AXIS_ALIASES[key] || [] : [],
     };
     (key ? standardDims : columnDims).push(dim);
   }

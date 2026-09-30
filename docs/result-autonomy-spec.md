@@ -265,6 +265,7 @@ S1~S3가 끝나면 두 번째 도구(5-22 — 같은 효율 CSV 그룹)로 공�
 | 매핑+축 | 고르면 `withMappingChange`(매핑 편집 화면과 같은 함수)로 스토어에 쓰고 축 단계를 더한다 | `lib/data-import/applyMappingChange.js` |
 | OS·국가 인식 | 별칭 보강(STANDARD_FIELDS → V2 별칭 신호로 자동 전파). 값 판별은 전역 스코어러가 아니라 단어 사전에서 "지정할까요" 제안으로 — 전역 `valueVocabulary`는 헤더를 무시하는 배타 모드라 쓰면 헤더 매핑이 막힌다 | `csvConstants`, `dataContext` |
 | 내보내기 | 한계 포함/제외만. 형식 단어는 도구가 선언한 형식만 뜨고 5-21은 선언 없음(형식은 기존 결과 받기 메뉴). CSV 수식은 행 간 롤업을 참조해 행 단위로 거르면 합이 틀어지므로 보기 설정을 파일에 적용하지 않는다 | `exportLimitations` |
+| 필터와의 관계 | 입력창은 공용 필터 막대 안(`DashboardFilterBar` `commandSlot`). 공용 필터 축의 분석 범위 단어는 `onSelectStep`으로 필터 선택에 쓰고(레시피 단계 없음), 활성 필터·기간은 `extraChips`로 같은 칩 줄에 — 조건의 주인은 한 곳 | `CampaignPvm` `routeToSharedFilter` |
 | 저장 | 칩 = 도구 입력 `recipeSteps` → 기존 "저장한 분석"(Pro·프로젝트)으로 다음 CSV에 재적용. 필요한 컬럼이 빠진 칩은 `MISSING_FIELD` | `toolInputs.js` |
 
 **후속(미구현)**: 레시피 계정 동기화(매핑 동기화처럼 서버 테이블·API·개인정보 고지 필요), 다른 도구로 확장(5-22부터).

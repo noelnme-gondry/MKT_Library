@@ -80,6 +80,23 @@ describe("RecipeCommandInput", () => {
     expect(steps()).toEqual([]);
   });
 
+  it("목록이 포인터 밑에 열려도(mouseenter) 강조가 바뀌지 않는다 — 실제로 움직일 때만", () => {
+    render(<Harness />);
+    fireEvent.change(input(), { target: { value: "채" } });
+    const options = screen.getAllByRole("option");
+    fireEvent.mouseEnter(options[1]);
+    expect(options[0].getAttribute("aria-selected")).toBe("true");
+    fireEvent.mouseMove(options[1]);
+    expect(screen.getAllByRole("option")[1].getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("'플랫폼'으로 쳐도 OS 축을 찾는다(필터 막대가 부르는 이름)", () => {
+    const ctx = buildDataContext({ rows, mapping: { ...mapping, 구분: "platform" }, toolId: "5-21" });
+    render(<RecipeCommandInput vocabulary={vocab} context={ctx} steps={[]} onStepsChange={() => {}} locale="ko" />);
+    fireEvent.change(input(), { target: { value: "플랫폼" } });
+    expect(optionLabels()).toContain("OS별");
+  });
+
   it("한글 조합 중 Enter는 선택하지 않는다", () => {
     render(<Harness />);
     fireEvent.change(input(), { target: { value: "채" } });

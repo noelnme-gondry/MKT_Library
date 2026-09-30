@@ -117,7 +117,9 @@ function MultiSelect({ label, options, selected, onChange, T }) {
   );
 }
 
-export default function DashboardFilterBar({ locale = "ko" }) {
+// commandSlot: 도구가 붙이는 분석 설정 입력창(5-21). 필터와 한 자리에 두어 같은 조건을 두 곳에서
+// 고르지 않게 한다 — 입력창의 "Meta만 분석" 같은 단어는 아래 필터 선택으로 들어간다.
+export default function DashboardFilterBar({ locale = "ko", commandSlot = null }) {
   const T = FILTER_BAR_COPY[locale] || FILTER_BAR_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -159,7 +161,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   }, [csvData]);
 
   if (!dates.length && !platforms.length && !countries.length && !channels.length && !sources.length && !hasInstalls && !hasActions)
-    return null;
+    return commandSlot ? <div className="dashboard-filter-bar"><div className="dashboard-filter-bar__command">{commandSlot}</div></div> : null;
 
   const minDate = dates[0] || "";
   const maxDate = dates[dates.length - 1] || "";
@@ -214,6 +216,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
 
   return (
     <div className="dashboard-filter-bar" data-active-filter-count={activeCount} data-controls-open={controlsOpen}>
+      {commandSlot && <div className="dashboard-filter-bar__command">{commandSlot}</div>}
       <div className="dashboard-filter-bar__summary">
         <p>
           <span>{T.scope}</span>
