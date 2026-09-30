@@ -4,7 +4,7 @@ export const TOOL_INPUT_KEYS = {
   "5-3": ["planningBasis", "targetValue", "budgetPeriod", "budget", "recentDays", "allocMode", "holdLowConfidence", "trendType", "weightMode", "outlierMethod", "outlierStrength"],
   // recipeSteps = 명령 입력창 칩(레시피 단계). 예전 세 키는 옛 저장 설정을 읽기 위해 남긴다.
   "5-21": ["metricOverride", "weekBasis", "lookback", "recipeSteps"],
-  "5-22": ["satState"],
+  "5-22": ["satState", "recipeSteps"],
   "5-4": ["testType", "planBaseline", "planMde", "planMean", "planSigma", "planAlpha", "planPower", "planCprA", "planCprB", "sequentialLooks", "plannedShare", "equivalenceMargin"],
   "5-20": ["minSupport", "holdoutOn", "outcomeStartDay"],
   "5-23": ["method", "useDiD", "cutoff"],

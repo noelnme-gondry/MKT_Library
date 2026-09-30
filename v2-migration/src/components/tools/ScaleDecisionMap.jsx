@@ -129,6 +129,7 @@ function buildDecisionFieldPlugin({ thresholds, positions, actions }) {
 export default function ScaleDecisionMap({
   rows,
   grain,
+  entityLabel = null,
   metric,
   resultField,
   revenueField,
@@ -148,7 +149,7 @@ export default function ScaleDecisionMap({
   const actions = useMemo(() => actionCopy(locale, metric), [locale, metric]);
   const positions = useMemo(() => quadrantPositions(metric), [metric]);
   const isEn = locale === "en";
-  const grainLabel = grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널");
+  const grainLabel = entityLabel || (grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널"));
   const metricLabel = metric === "roas" ? "ROAS" : "CPA";
   const resultLabel = resultField === "installs" ? (isEn ? "installs" : "설치") : (isEn ? "actions" : "액션·가입");
   const actionCounts = Object.fromEntries(ACTION_ORDER.map((key) => [key, 0]));

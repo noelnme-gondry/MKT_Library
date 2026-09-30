@@ -1,5 +1,7 @@
 import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 
+export const SATURATION_AXIS_FIELDS = Object.freeze(["channel", "campaign_name", "platform", "country"]);
+
 export const STANDARD_FIELDS = {
               date: {
                 label: "날짜",
@@ -1227,7 +1229,7 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-22": [
                 "date",
                 "cost",
-                { oneOf: ["channel", "campaign_name"] },
+                { oneOf: SATURATION_AXIS_FIELDS },
                 { oneOf: ["installs", "actions"] },
               ],
               "5-5": ["date", "paid_regs", "organic_regs"],

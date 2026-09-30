@@ -30,11 +30,12 @@ import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
 import { sourceCurrencyOf } from "@/utils/format";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
+import { sharedRecipeFilters } from "@/lib/recipe/sharedFilters";
 import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
-import { buildDataContext, parseFieldRef } from "@/lib/vocabulary/dataContext";
+import { buildDataContext } from "@/lib/vocabulary/dataContext";
 import { addStep, foldSteps } from "@/lib/recipe/recipe";
 import { useAccountRecipes } from "@/lib/recipe/useAccountRecipes";
-import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
+import { recipeRowSource } from "@/lib/recipe/recipeRows";
 import { withMappingChange } from "@/lib/data-import/applyMappingChange";
 import {
   PVM_TOOL_ID,
@@ -55,9 +56,6 @@ import {
 // 명령 입력창 단어 사전 — 공용 단어 + 5-21 전용 단어(계층 조합·지표). 마이페이지와 같은 사전.
 const PVM_VOCABULARY = recipeVocabularyFor("5-21");
 const NO_STEPS = Object.freeze([]);
-// 공용 필터 막대가 이미 가진 축. 입력창의 "X만 분석"·"X 제외하고 분석"은 이 축이면 칩이 아니라
-// 필터 선택으로 들어간다 — 같은 조건이 칩과 필터 두 곳에 따로 살지 않게(2026-09-30).
-const SHARED_FILTER_KEY = { platform: "platforms", country: "countries", channel: "channels", source: "sources" };
 
 // 우측 TOC — 현재 결과의 질문 순서만 노출하고 내부 섹션 번호는 숨긴다.
 function buildPvmToc(C, locale, visible = () => true) {
@@ -672,11 +670,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const columnRefsKey = columnRefs.join("\u001f");
   const rowSource = useMemo(() => {
     if (!columnRefs.length || !csvData?.raw?.length) return null;
-    const headers = columnRefs.map((ref) => parseFieldRef(ref).header);
-    const legacyMapping = { ...(csvData.mapping || {}) };
-    for (const header of headers) legacyMapping[header] = `col:${header}`;
-    const bindings = (csvData.mappingBindingsV2 || []).filter((binding) => !headers.includes(binding.sourceColumn));
-    return { ...csvData, mappedRows: buildLegacyRows({ raw: csvData.raw, legacyMapping, semanticBindings: bindings, toolId: PVM_TOOL_ID }) };
+    return recipeRowSource(csvData, columnRefs, PVM_TOOL_ID);
   }, [columnRefsKey, csvData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "지난달과 비교"는 데이터의 최신 날짜에서 기간을 만든다.
@@ -1301,45 +1295,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     )]),
   ];
   const applyRecipeMapping = ({ column, field }) => setCsvData(withMappingChange(csvData, column, field, PVM_TOOL_ID));
-  // 공용 필터 축의 원본 값(앞뒤 공백 제거) — 필터 막대 선택지와 같은 규칙.
-  const sharedOptions = (field) => {
-    const header = Object.keys(csvData?.mapping || {}).find((key) => csvData.mapping[key] === field);
-    return header ? [...new Set((csvData.raw || []).map((row) => String(row?.[header] ?? "").trim()).filter(Boolean))] : [];
-  };
-  const routeToSharedFilter = (step) => {
-    const key = SHARED_FILTER_KEY[step?.params?.field];
-    const isOnly = step?.id === "filter.only.analysis";
-    if (!key || !(isOnly || step?.id === "filter.exclude.analysis")) return false;
-    const options = sharedOptions(step.params.field);
-    // 대소문자·공백만 다른 원본 표기까지 함께 고른다 — 합쳐 계산하는 값과 필터가 어긋나지 않게.
-    const wanted = new Set(step.params.values.map((value) => String(value).trim().toLowerCase()));
-    const picked = options.filter((option) => wanted.has(option.toLowerCase()));
-    const current = dashboardFilter[key]?.size ? [...dashboardFilter[key]] : null;
-    const next = isOnly
-      ? new Set([...(current || []), ...picked])
-      : new Set((current || options).filter((option) => !wanted.has(option.toLowerCase())));
-    // 빈 Set은 공용 필터의 "전체" 계약이다. 변경 없이 거절 사유를 입력창에 돌려준다.
-    if (!next.size) return { handled: true, code: "EMPTY_SCOPE" };
-    setDashboardFilter({ [key]: next.size >= options.length ? new Set() : next });
-    return true;
-  };
-  const sharedFilterChips = [
-    ...(dashboardFilter.dateStart || dashboardFilter.dateEnd ? [{
-      id: "date",
-      label: tr(`기간 ${dashboardFilter.dateStart || "처음"} ~ ${dashboardFilter.dateEnd || "끝"}`, `Dates ${dashboardFilter.dateStart || "start"} – ${dashboardFilter.dateEnd || "end"}`),
-      onRemove: () => setDashboardFilter({ dateStart: null, dateEnd: null, compareEnabled: false, comparisonStart: null, comparisonEnd: null }),
-    }] : []),
-    ...Object.entries(SHARED_FILTER_KEY).filter(([, key]) => dashboardFilter[key]?.size).map(([field, key]) => {
-      const values = [...dashboardFilter[key]];
-      // 칩 이름은 필터 막대 버튼과 같은 말을 쓴다(같은 조건을 두 이름으로 부르지 않게).
-      const name = { platform: tr("플랫폼", "Platform"), country: tr("국가", "Country"), channel: tr("채널", "Channel"), source: tr("소스", "Source") }[field];
-      return {
-        id: key,
-        label: values.length === 1 ? `${name}: ${values[0]}` : tr(`${name}: ${values.length}개`, `${name}: ${values.length} selected`),
-        onRemove: () => setDashboardFilter({ [key]: new Set() }),
-      };
-    }),
-  ];
+  const sharedFilters = sharedRecipeFilters({ csvData, dashboardFilter, setDashboardFilter, locale });
   const viewHiddenNote = (view) => (view.hiddenCount > 0 ? (
     <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
       {tr(`보기 설정으로 ${view.hiddenCount}개 행을 가렸습니다. 합계(Σ)는 가린 행까지 포함한 값입니다.`, `${view.hiddenCount} row(s) hidden by view settings. The Σ check still includes them.`)}
@@ -1371,8 +1327,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             steps={recipeSteps}
             onStepsChange={updateSteps}
             onMapping={applyRecipeMapping}
-            onSelectStep={routeToSharedFilter}
-            extraChips={sharedFilterChips}
+            {...sharedFilters}
             presets={accountRecipes}
             rejected={fold.rejected}
             notices={recipeNotices}

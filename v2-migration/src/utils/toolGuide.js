@@ -66,15 +66,15 @@ export const TOOL_GUIDE = {
   },
   "5-22": {
     when: "채널·캠페인이 '이미 포화(더 써도 효율 하락)인지, 아직 여유인지'를 한계 vs 평균 효율로 진단합니다.",
-    grain: "1행 = 하루 × 채널(또는 캠페인) 실적",
+    grain: "1행 = 하루 × 분석 대상(채널·캠페인·OS·국가) 실적",
     needs: [
       { col: "date", label: "날짜", why: "최근 지출점·곡선 적합", required: true },
       { col: "cost", label: "광고비", why: "포화 곡선의 X축", required: true },
-      { col: "channel 또는 campaign_name", label: "채널/캠페인", why: "진단 단위", required: true },
+      { col: "channel·campaign·platform·country 중 하나", label: "나눠 볼 기준", why: "진단 단위(채널이 없으면 캠페인·OS·국가로 시작)", required: true },
       { col: "installs 또는 actions", label: "전환", why: "효율(CPA) 계산", required: true },
       { col: "revenue_d7", label: "매출", why: "ROAS 기준 포화도(옵션)", required: false },
     ],
-    prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다."],
+    prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다.", "분석 설정에서 OS별·국가별·포화만 보기 등을 고를 수 있습니다. 보기 설정은 순위표에만 적용됩니다."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-21": {
@@ -427,15 +427,15 @@ export const TOOL_GUIDE_EN = {
   },
   "5-22": {
     when: "Diagnose whether a channel/campaign is already saturated (more spend = worse efficiency) or still has room, via marginal vs. average efficiency.",
-    grain: "1 row = 1 day × channel (or campaign) performance",
+    grain: "1 row = 1 day × analysis entity (channel, campaign, OS or country)",
     needs: [
       { col: "date", label: "Date", why: "Recent spend point, curve fitting", required: true },
       { col: "cost", label: "Ad spend", why: "X-axis of the saturation curve", required: true },
-      { col: "channel or campaign_name", label: "Channel/campaign", why: "Diagnosis unit", required: true },
+      { col: "one of channel, campaign, platform, country", label: "Analysis axis", why: "Diagnosis unit (falls back to campaign, OS or country when channel is absent)", required: true },
       { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
       { col: "revenue_d7", label: "Revenue", why: "ROAS-based saturation (optional)", required: false },
     ],
-    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up."],
+    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up.", "Choose By OS, By country or Show saturated only in Analysis setup. View settings affect the ranking only."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-4": {

@@ -1,6 +1,7 @@
 // 모든 도구가 함께 쓰는 단어(기간·보기·내보내기)와 올린 데이터에서 만드는 틀 단어
 // (값 필터·차원 축·값 합치기). 도구 전용 단어(PVM의 "채널+캠페인별" 등)는 도구 어댑터가
 // 이 목록 뒤에 붙인다(docs/result-autonomy-spec.md §3.3·§4.3).
+import { dimensionLabelFor } from "./dataContext";
 import { directionParticle, objectParticle } from "./hangulMatch";
 
 // context = buildDataContext(...) — { toolSpec, mappedFields, dimensions, fieldCandidates }
@@ -205,7 +206,7 @@ function findDimension(context, field) {
 }
 
 function dimensionName(context, field) {
-  return findDimension(context, field)?.label || { ko: field, en: field };
+  return dimensionLabelFor(field, context);
 }
 
 function dimensionHint(context, field) {

@@ -28,7 +28,6 @@ const REJECT_TEXT = {
   PERIOD_NOT_SUPPORTED: ["이 도구에서 쓸 수 없는 기간", "Period not available in this tool"],
   LOCKED_BLOCK: ["결과의 근거라 숨길 수 없음", "Evidence cannot be hidden"],
   FORMAT_NOT_SUPPORTED: ["이 도구에서 받을 수 없는 형식", "Format not available in this tool"],
-  INVALID_LEVELS: ["축은 최대 3단까지", "Up to 3 levels"],
   DUPLICATE_LEVEL: ["같은 축이 두 번 들어감", "Same level used twice"],
   MISSING_FIELD: ["필요한 컬럼이 없음", "Required column missing"],
   EMPTY_SCOPE: ["분석할 값이 남지 않아 적용하지 않았습니다. 필터에서 다른 값을 선택해 주세요.", "Not applied because no values would remain. Select another value in the filter."],
@@ -204,7 +203,9 @@ export default function RecipeCommandInput({
             if (!entry) return null;
             const text = resolveLabel(entry, step.params, context)[locale];
             const code = rejectedKeys.get(JSON.stringify([step.id, step.params]));
-            const reason = code ? (REJECT_TEXT[code] || [code, code])[en ? 1 : 0] : null;
+            const reason = code === "INVALID_LEVELS"
+              ? tr(`축은 최대 ${context.toolSpec?.maxLevels ?? 3}단까지`, `Up to ${context.toolSpec?.maxLevels ?? 3} levels`)
+              : code ? (REJECT_TEXT[code] || [code, code])[en ? 1 : 0] : null;
             return (
               <li key={`${step.id}-${index}`}>
                 <button
@@ -232,7 +233,7 @@ export default function RecipeCommandInput({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-          placeholder={tr("예: 채널별, 직전주와 비교, Meta만 분석", "e.g. By channel, Compare with prior week")}
+          placeholder={context.toolSpec?.commandExample?.[locale] || tr("예: 채널별, 직전주와 비교, Meta만 분석", "e.g. By channel, Compare with prior week")}
           value={query}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); setActive(0); }}
           onFocus={() => setOpen(true)}

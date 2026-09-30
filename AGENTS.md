@@ -568,10 +568,12 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`ds/ToolBrief`가 짧아진 이름을 메운다** — 질문/답/필요 데이터 세 줄, 상자 없음. 목록과 **같은 문장**을 쓴다.
 - 컴포넌트가 제목을 직접 넘기지 않는다. 화면 h1은 `toolIndex.toolDisplayTitle`의 레지스트리 이름이고, 검색어형 이름(“마케팅 효율 진단 (Saturation)”)은 지우지 않고 제목 밑 한 줄로 내린다(2026-09-29 사용자 결정). `ToolIntro`의 INTRO 표가 두 번째 출처로 남아 **발행 도구 20개 전부**가 목록과 다른 제목으로 열리고 있었다 — 제목을 그리는 경로가 넷(ToolIntro·ToolPageShell·Dashboard·PaidOrganicTrend)이라 단위 테스트로는 못 보고, `e2e/tool-title-consistency.spec.js`가 실제 화면에서 잰다.
 
-### 12.32 분석 설정 입력창(레시피)을 도구에 붙이기 (5-21 파일럿, 2026-09-30)
+### 12.32 분석 설정 입력창(레시피)을 도구에 붙이기 (5-21·5-22, 2026-09-30)
 - 단어는 `lib/vocabulary`(공용 `COMMON_WORDS` + `tools/<도구>Words`, CSV 컬럼·값은 `buildDataContext`), 상태는 `foldSteps`가 기본값에서 파생 — **칩만 저장**하고 기존 알약도 `addStep`으로 단계를 더한다(상태 두 벌 금지). 도구가 쓰는 것은 spec(허용 지표·기간·블록·`locked`·형식)과 어댑터(`lib/recipe/<도구>Recipe.js`)뿐. 설계 `docs/result-autonomy-spec.md`, 화면 계약 `docs/product-ssot.md` §5.5a.
 - 보기 설정(보기 필터·상위 N·악화만)은 **표에만** — Σ·결론은 가리기 전 행으로 계산하고, 롤업 수식을 가진 파일에는 행 필터를 걸지 않는다(합이 틀어진다). "분석"(다시 계산)과 "보기"(가림)는 라벨로 가른다.
 - 동적 축·필터는 사전 `fieldParams`로 참조를 선언하고 후보·재적용에서 함께 검증한다. 원본 컬럼 존재는 후보 목록이 아닌 헤더로 확인한다(단일 값 CSV에도 재사용 가능). 자동 대체 축도 실제 엔진 슬롯 위치로 표시하고, 거절한 명령은 성공으로 안내하지 않는다.
+- 공용 필터 소유권은 `sharedFilters`, 행 정규화·원본 컬럼 추가 투영은 `recipeRows`를 재사용한다. 엔진 계산 의존성에는 분석 조건만 넣고 보기·내보내기 단어를 넣지 않는다. 도구별 판정 의미는 어댑터에서 해석한다(5-22 포화/여유 ≠ PVM 악화/개선).
+- 카드 밖 그림은 `ResultActionCard`의 context를 상속하지 않는다. `figureExportSettings` + `AnalysisExportProvider`로 실제 그림 입력 기간·설정·출처를 연결하고, 선택 그림과 전체 요약의 기간이 다른 경우를 검증한다. 판정 보류 사유는 선택적인 한계 문구와 분리해 파일에도 남긴다.
 - 결론의 근거 블록은 `locked`(숨기기 단어가 생기지 않는다), 사용자 데이터 값을 담은 단어는 `carriesUserValues`(계정 동기화 제외). 매핑이 함께 필요한 단어는 `toSelection`이 `{mapping, step}`으로 나눠 매핑은 `withMappingChange`로 스토어에. 계정 저장(B)은 `toolVocabulary.js`에 사전 한 줄, 다운로드 설정(C)은 `ResultActionCard exportOptions` 한 prop으로 붙는다(도구 자체 다운로드 항목은 `onSelect(exportContext)`) — 확장 체크리스트는 `docs/result-autonomy-roadmap.md` §4.3. 입력창은 도구 전용 구역이 아니라 **공용 필터 막대 안**(`commandSlot`)에 두고, 필터 막대가 이미 가진 축의 범위 단어는 필터에 쓴다(`onSelectStep`·`extraChips`) — 같은 조건의 주인은 한 곳.
 
 ---

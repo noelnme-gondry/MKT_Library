@@ -20,7 +20,7 @@ const RESULT_PAGES = [
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",
-  "/en/tools/campaign-variance",
+  "/en/tools/campaign-variance", "/en/tools/campaign-saturation",
 ];
 
 // 도구마다 예시가 자동으로 실리기도 하고 버튼으로 실리기도 한다 — 상태를 보고 필요한 단계만 밟는다.

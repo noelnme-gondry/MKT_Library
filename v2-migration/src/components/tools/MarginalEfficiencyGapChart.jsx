@@ -27,6 +27,7 @@ function position(value, domainMax) {
 export default function MarginalEfficiencyGapChart({
   rows,
   grain,
+  entityLabel = null,
   metric,
   metricLabel,
   currency,
@@ -36,7 +37,7 @@ export default function MarginalEfficiencyGapChart({
 }) {
   const isEn = locale === "en";
   const view = useMemo(() => buildMarginalEfficiencyGap(rows, metric), [rows, metric]);
-  const grainLabel = grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널");
+  const grainLabel = entityLabel || (grain === "campaign" ? (isEn ? "campaign" : "캠페인") : (isEn ? "channel" : "채널"));
   const midpoint = view.domainMax / 2;
   const sectionRef = useRef(null);
 

@@ -1,6 +1,6 @@
 "use client";
 import { isDemoData } from "@/lib/dataOrigin";
-import { buildExportFileName, normalizeExportOptions } from "@/lib/analysis-export/exportOptions";
+import { figureExportSettings } from "@/lib/analysis-export/exportOptions";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -213,15 +213,10 @@ export default function ResultActionCard({
   const analysisExport = useMemo(() => ({
     toolId,
     locale,
-    figureContext: { toolTitle: shareToolTitle, scope: resultScope, resultState, source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource, fileName: isDemoData(csvData) ? "" : csvData?.fileName } },
-    exportOptions: exportOptions ? normalizeExportOptions(exportOptions) : null,
-    // 결과가 실제로 쓴 기간(비교 시작 ~ 분석 끝)으로 이름을 짓는다. 다운로드 날짜로 대신하지 않는다.
-    fileNameFor: (kind) => buildExportFileName(exportOptions, {
-      toolTitle: shareToolTitle,
-      toolId,
-      period: { start: resultScope.comparisonStart || resultScope.dateStart, end: resultScope.dateEnd },
-      projectName: isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
-      kind,
+    ...figureExportSettings({
+      options: exportOptions, toolId, toolTitle: shareToolTitle, scope: resultScope, resultState,
+      source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource, fileName: isDemoData(csvData) ? "" : csvData?.fileName },
+      projectName: () => isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
     }),
     buildPayload: (manifest = null) => buildAnalysisExportPayload({
       toolId,
