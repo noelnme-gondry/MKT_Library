@@ -268,7 +268,10 @@ S1~S3가 끝나면 두 번째 도구(5-22 — 같은 효율 CSV 그룹)로 공�
 | 필터와의 관계 | 입력창은 공용 필터 막대 안(`DashboardFilterBar` `commandSlot`). 공용 필터 축의 분석 범위 단어는 `onSelectStep`으로 필터 선택에 쓰고(레시피 단계 없음), 활성 필터·기간은 `extraChips`로 같은 칩 줄에 — 조건의 주인은 한 곳 | `CampaignPvm` `routeToSharedFilter` |
 | 저장 | 칩 = 도구 입력 `recipeSteps` → 기존 "저장한 분석"(Pro·프로젝트)으로 다음 CSV에 재적용. 필요한 컬럼이 빠진 칩은 `MISSING_FIELD` | `toolInputs.js` |
 
-**후속(미구현)**: 레시피 계정 동기화(매핑 동기화처럼 서버 테이블·API·개인정보 고지 필요), 다른 도구로 확장(5-22부터).
+| 계정 저장(B) | 이름 붙여 저장 — `gop_account_recipes`·`/api/account/recipes`·`recipeContract`(값 단계 서버에서도 거절)·`useAccountRecipes`·마이페이지 `UserRecipeSettings` | `lib/account/recipeContract.js` |
+| 다운로드 설정(C) | PNG 머리글 3단·보고서 구획 빼기·파일 이름 규칙 — `exportOptions` → `ResultActionCard` 문맥 → DownloadHub·FigurePngButton·도구 항목(`onSelect(exportContext)`). 설정 없는 도구는 기존 그대로 | `lib/analysis-export/exportOptions.js` |
+
+**총괄 계획·확장 순서**: `docs/result-autonomy-roadmap.md`.
 
 ---
 

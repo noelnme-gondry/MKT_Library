@@ -1,5 +1,6 @@
 "use client";
 import { isDemoData } from "@/lib/dataOrigin";
+import { buildExportFileName, normalizeExportOptions } from "@/lib/analysis-export/exportOptions";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
@@ -82,6 +83,8 @@ export default function ResultActionCard({
   reportBlock = null,
   workbookExport = null,
   scopeEvidence = null,
+  // 다운로드 설정(lib/analysis-export/exportOptions) — PNG 머리글·보고서 구획·파일 이름. 없으면 기존 동작.
+  exportOptions = null,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
@@ -210,7 +213,16 @@ export default function ResultActionCard({
   const analysisExport = useMemo(() => ({
     toolId,
     locale,
-    figureContext: { toolTitle: shareToolTitle, scope: resultScope, resultState, source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource } },
+    figureContext: { toolTitle: shareToolTitle, scope: resultScope, resultState, source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource, fileName: isDemoData(csvData) ? "" : csvData?.fileName } },
+    exportOptions: exportOptions ? normalizeExportOptions(exportOptions) : null,
+    // 결과가 실제로 쓴 기간(비교 시작 ~ 분석 끝)으로 이름을 짓는다. 다운로드 날짜로 대신하지 않는다.
+    fileNameFor: (kind) => buildExportFileName(exportOptions, {
+      toolTitle: shareToolTitle,
+      toolId,
+      period: { start: resultScope.comparisonStart || resultScope.dateStart, end: resultScope.dateEnd },
+      projectName: isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
+      kind,
+    }),
     buildPayload: (manifest = null) => buildAnalysisExportPayload({
       toolId,
       toolTitle: shareToolTitle,
@@ -238,7 +250,7 @@ export default function ResultActionCard({
       reviewRecords: isDemoData(csvData) ? [] : useAppStore.getState().decisionRecords.filter(record => record.toolId === toolId),
       generatedAt: new Date().toISOString(),
     }),
-  }), [csvData, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence]);
+  }), [csvData, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence, exportOptions]);
   const copyShareLink = async () => {
     setShareError("");
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale, context: { ...resultScope, currency: csvData?.currency }, limitations: [locale === "en" ? "A shared result summary. Verify comparison conditions, uncertainty and study design before acting." : "공유된 결과 요약입니다. 실행 전에 비교 조건·불확실성·분석 설계를 함께 확인하세요."] });

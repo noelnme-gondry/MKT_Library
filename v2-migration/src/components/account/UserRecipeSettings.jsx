@@ -59,7 +59,7 @@ export default function UserRecipeSettings({ locale = "ko", accountId = null }) 
           <tbody>
             {recipes.map((recipe) => (
               <tr key={`${recipe.toolId}-${recipe.name}`}>
-                <td>{toolDisplayTitle(recipe.toolId, locale)}</td>
+                <td>{toolDisplayTitle(recipe.toolId, locale).name || recipe.toolId}</td>
                 <td>{recipe.name}</td>
                 <td>{stepText(recipe)}</td>
                 <td><button type="button" className="btn ghost" disabled={busy} onClick={() => remove({ toolId: recipe.toolId, name: recipe.name })}>{tr("삭제", "Delete")}<span className="sr-only"> {recipe.name}</span></button></td>

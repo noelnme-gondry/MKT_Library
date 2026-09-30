@@ -1,4 +1,5 @@
 import { buildVocabulary, missingRequirements } from "@/lib/vocabulary/vocabulary";
+import { FILE_NAME_PATTERNS, PNG_HEADER_MODES, REPORT_SECTIONS } from "@/lib/analysis-export/exportOptions";
 
 // 레시피 = 유저가 고른 단어(단계)의 순서 목록(docs/result-autonomy-spec.md §2).
 // 저장하는 것은 단계뿐이고, 화면 상태(데이터·보기·내보내기)는 매번 기본값에서 단계를 접어
@@ -42,6 +43,10 @@ export function defaultRecipeState(spec = {}) {
       // 한계 문구는 기본 포함, 유저가 뺄 수 있다(2026-09-30 결정).
       includeCaveats: true,
       withFormulas: true,
+      // 다운로드 설정(2026-09-30 결정 C) — lib/analysis-export/exportOptions가 적용한다.
+      pngHeader: "full",
+      reportHidden: [],
+      fileNamePattern: "default",
     },
   };
 }
@@ -109,6 +114,9 @@ export function validateRecipeState(state, spec = {}) {
   }
   if (typeof exp.includeCaveats !== "boolean") push("INVALID_EXPORT", "export.includeCaveats");
   if (typeof exp.withFormulas !== "boolean") push("INVALID_EXPORT", "export.withFormulas");
+  if (!PNG_HEADER_MODES.includes(exp.pngHeader)) push("INVALID_EXPORT", "export.pngHeader");
+  if (!Array.isArray(exp.reportHidden) || !exp.reportHidden.every((section) => REPORT_SECTIONS.includes(section))) push("INVALID_EXPORT", "export.reportHidden");
+  if (!FILE_NAME_PATTERNS.includes(exp.fileNamePattern)) push("INVALID_EXPORT", "export.fileNamePattern");
   return { ok: errors.length === 0, errors };
 }
 

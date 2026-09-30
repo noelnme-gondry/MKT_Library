@@ -19,6 +19,8 @@ import ComparisonPeriods from "@/components/ds/ComparisonPeriods";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { mixRateFigure } from "@/lib/assistant/coreFigures";
 import { downloadElementAsPNG } from "@/utils/figureImage";
+import { figureExportContext } from "@/utils/figureExportContext";
+import { figureHeaderFor, figureSourceLine } from "@/lib/analysis-export/exportOptions";
 import { scopedInputQuality, scopeFilters } from "@/lib/analysis-results/scopeEvidence";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -791,12 +793,23 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }, []);
 
   // 핵심 그림 PNG — 결론 카드 아래 공용 그림(ToolCoreFigure)을 이미지로 내려받는다.
-  const downloadFigurePng = async () => {
+  // exportContext = 결과 카드의 내보내기 문맥(DownloadHub가 넘긴다) — 다운로드 설정을 FigurePngButton과 같게 적용.
+  const downloadFigurePng = async (exportContext = null) => {
     if (!ready) {
       setDownloadError(tr("항등식이 확인된 분석 결과가 없습니다. 분석 결과를 먼저 확인하세요.", "No identity-verified result is available. Review the analysis result first."));
       return;
     }
-    const ok = await downloadElementAsPNG(document.querySelector("#tool-core-figure-pvm-channel-contributions .result-chart"), "pvm_mix_rate");
+    const figureTitle = tr(`${ml} 변화의 구성`, `What made up the ${ml} change`);
+    const metadata = figureHeaderFor(
+      figureExportContext({ ...exportContext?.figureContext, title: figureTitle, locale }),
+      exportContext?.exportOptions,
+      { sourceLine: figureSourceLine(exportContext?.figureContext?.source?.fileName, locale) },
+    );
+    const ok = await downloadElementAsPNG(
+      document.querySelector("#tool-core-figure-pvm-channel-contributions .result-chart"),
+      exportContext?.fileNameFor?.("pvm_mix_rate") || "pvm_mix_rate",
+      { context: metadata },
+    );
     setDownloadError(ok ? "" : tr("이 브라우저에서는 그림을 이미지로 만들지 못했습니다. 화면 캡처를 이용해 주세요.", "This browser could not turn the figure into an image. Please use a screenshot instead."));
   };
 
@@ -806,7 +819,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     : cache;
 
   // 결과 CSV 다운로드 — 살아있는 스프레드시트 수식(§7 CRLF+BOM). buildPvmResultCsv 재사용
-  const downloadPvmCsv = () => {
+  const downloadPvmCsv = (exportContext = null) => {
     if (!ready) {
       setDownloadError(tr("분석 데이터가 없습니다. 먼저 데이터를 매핑하세요.", "No analysis data is available. Map the data first."));
       return;
@@ -814,7 +827,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     try {
       const ml2 = pvmMetricLabel(cache, C);
       const content = buildPvmResultCsv(exportCache, ml2, locale);
-      const fname = `pvm_result_${ml2}_${cache.p2Range[1]}.csv`;
+      const customName = exportContext?.fileNameFor?.(locale === "en" ? "decomposition" : "분해");
+      const fname = customName ? `${customName}.csv` : `pvm_result_${ml2}_${cache.p2Range[1]}.csv`;
       const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1545,6 +1559,11 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
                 ]}
               />
             )}
+            exportOptions={recipeEnabled ? {
+              pngHeader: recipe.export.pngHeader,
+              reportHidden: recipe.export.reportHidden,
+              fileNamePattern: recipe.export.fileNamePattern,
+            } : null}
             analysisDetails={(
               <AnalysisDetails
                 locale={locale}

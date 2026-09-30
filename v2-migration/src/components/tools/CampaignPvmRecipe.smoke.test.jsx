@@ -212,6 +212,19 @@ describe("CampaignPvm — 명령 입력창", () => {
     expect(screen.queryAllByRole("option").some((node) => node.textContent.includes("항등식 확인 숨기기"))).toBe(false);
   });
 
+  it("다운로드 설정 단어(PNG 머리글·보고서 구획·파일 이름)도 칩이 되고 저장된다", () => {
+    render(<CampaignPvm />);
+    type("파일");
+    choose("파일 이름: 도구_기간");
+    type("PNG");
+    choose("PNG에 제목만 넣기");
+    type("보고서");
+    choose("보고서에서 그림 빼기");
+    expect(screen.getByRole("button", { name: "파일 이름: 도구_기간 빼기" })).toBeTruthy();
+    expect(useAppStore.getState().viewConfig["analysis-inputs:5-21"].recipeSteps.map((step) => step.id))
+      .toEqual(["export.filename.toolPeriod", "export.png.title", "export.report.hide"]);
+  });
+
   it("한계 문구 빼고 받기를 고르면 파일에 무엇이 남는지 화면이 말한다", () => {
     render(<CampaignPvm />);
     type("한계");

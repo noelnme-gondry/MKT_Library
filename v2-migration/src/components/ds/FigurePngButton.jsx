@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useAnalysisExport } from "@/lib/analysis-export/AnalysisExportContext";
 import { figureExportContext } from "@/utils/figureExportContext";
+import { figureHeaderFor, figureSourceLine } from "@/lib/analysis-export/exportOptions";
 
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
@@ -63,8 +64,12 @@ export default function FigurePngButton({ target, fileName, locale = "ko", title
   const download = async () => {
     if (!requirePaidExport({ format: "png" })) return;
     const element = resolveTarget(target);
-    const metadata = figureExportContext({ ...analysis?.figureContext, ...context, title: title || element?.getAttribute("aria-label") || analysis?.figureContext?.toolTitle, locale });
-    const ok = await downloadFigureTarget(element, fileName, metadata);
+    const base = figureExportContext({ ...analysis?.figureContext, ...context, title: title || element?.getAttribute("aria-label") || analysis?.figureContext?.toolTitle, locale });
+    // 다운로드 설정(제목·기간·출처 / 제목만 / 없음)을 넘긴 도구만 따른다. 없으면 기존 머리글 그대로.
+    const metadata = analysis?.exportOptions
+      ? figureHeaderFor(base, analysis.exportOptions, { sourceLine: figureSourceLine(analysis?.figureContext?.source?.fileName, locale) })
+      : { title: base.title, details: base.details };
+    const ok = await downloadFigureTarget(element, analysis?.fileNameFor?.(fileName) || fileName, metadata);
     setFailed(!ok);
   };
   return <>

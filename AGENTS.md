@@ -571,7 +571,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 ### 12.32 분석 설정 입력창(레시피)을 도구에 붙이기 (5-21 파일럿, 2026-09-30)
 - 단어는 `lib/vocabulary`(공용 `COMMON_WORDS` + `tools/<도구>Words`, CSV 컬럼·값은 `buildDataContext`), 상태는 `foldSteps`가 기본값에서 파생 — **칩만 저장**하고 기존 알약도 `addStep`으로 단계를 더한다(상태 두 벌 금지). 도구가 쓰는 것은 spec(허용 지표·기간·블록·`locked`·형식)과 어댑터(`lib/recipe/<도구>Recipe.js`)뿐. 설계 `docs/result-autonomy-spec.md`, 화면 계약 `docs/product-ssot.md` §5.5a.
 - 보기 설정(보기 필터·상위 N·악화만)은 **표에만** — Σ·결론은 가리기 전 행으로 계산하고, 롤업 수식을 가진 파일에는 행 필터를 걸지 않는다(합이 틀어진다). "분석"(다시 계산)과 "보기"(가림)는 라벨로 가른다.
-- 결론의 근거 블록은 `locked`(숨기기 단어가 생기지 않는다), 사용자 데이터 값을 담은 단어는 `carriesUserValues`(계정 동기화 제외). 매핑이 함께 필요한 단어는 `toSelection`이 `{mapping, step}`으로 나눠 매핑은 `withMappingChange`로 스토어에. 입력창은 도구 전용 구역이 아니라 **공용 필터 막대 안**(`commandSlot`)에 두고, 필터 막대가 이미 가진 축의 범위 단어는 필터에 쓴다(`onSelectStep`·`extraChips`) — 같은 조건의 주인은 한 곳.
+- 결론의 근거 블록은 `locked`(숨기기 단어가 생기지 않는다), 사용자 데이터 값을 담은 단어는 `carriesUserValues`(계정 동기화 제외). 매핑이 함께 필요한 단어는 `toSelection`이 `{mapping, step}`으로 나눠 매핑은 `withMappingChange`로 스토어에. 계정 저장(B)은 `toolVocabulary.js`에 사전 한 줄, 다운로드 설정(C)은 `ResultActionCard exportOptions` 한 prop으로 붙는다(도구 자체 다운로드 항목은 `onSelect(exportContext)`) — 확장 체크리스트는 `docs/result-autonomy-roadmap.md` §4.3. 입력창은 도구 전용 구역이 아니라 **공용 필터 막대 안**(`commandSlot`)에 두고, 필터 막대가 이미 가진 축의 범위 단어는 필터에 쓴다(`onSelectStep`·`extraChips`) — 같은 조건의 주인은 한 곳.
 
 ---
 

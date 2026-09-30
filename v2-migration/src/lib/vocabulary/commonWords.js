@@ -121,6 +121,13 @@ const exportFormatLabel = {
   docx: { ko: "워드로 받기", en: "Download Word", aliases: ["word", "docx", "문서"] },
 };
 
+const REPORT_SECTION_LABEL = {
+  stats: { ko: "핵심 수치", en: "key figures" },
+  points: { ko: "근거·다음 행동", en: "evidence and next steps" },
+  charts: { ko: "그림", en: "charts" },
+  tables: { ko: "계산 표", en: "calculation tables" },
+};
+
 const exportWords = [
   ...Object.entries(exportFormatLabel).map(([format, { ko, en, aliases }]) => ({
     id: `export.format.${format}`,
@@ -132,6 +139,51 @@ const exportWords = [
     expand: (context) => ((context.toolSpec?.exportFormats || []).includes(format) ? [{}] : []),
     apply: (state) => {
       state.export.format = format;
+      return state;
+    },
+  })),
+  ...[
+    ["full", { ko: "PNG에 제목·기간·출처 넣기", en: "PNG with title, period and source" }],
+    ["title", { ko: "PNG에 제목만 넣기", en: "PNG with title only" }],
+    ["none", { ko: "PNG에 머리글 넣지 않기", en: "PNG without header" }],
+  ].map(([mode, label]) => ({
+    id: `export.png.${mode}`,
+    kind: "export",
+    slot: "export.png",
+    label,
+    aliases: { ko: ["그림", "이미지", "png"], en: ["png", "image"] },
+    apply: (state) => {
+      state.export.pngHeader = mode;
+      return state;
+    },
+  })),
+  {
+    // 결론·분석 범위·방법은 보고서 뼈대라 단어가 없다. Excel 계산 표는 근거라 Word에서만 빠진다.
+    id: "export.report.hide",
+    kind: "export",
+    label: (params) => {
+      const name = REPORT_SECTION_LABEL[params.section] || { ko: params.section, en: params.section };
+      return { ko: `보고서에서 ${name.ko} 빼기`, en: `Report without ${name.en}` };
+    },
+    aliases: { ko: ["워드", "word", "보고서"], en: ["report", "word"] },
+    expand: () => Object.keys(REPORT_SECTION_LABEL).map((section) => ({ section })),
+    apply: (state, params) => {
+      if (!state.export.reportHidden.includes(params.section)) state.export.reportHidden.push(params.section);
+      return state;
+    },
+  },
+  ...[
+    ["toolPeriod", { ko: "파일 이름: 도구_기간", en: "File name: tool_period" }],
+    ["projectToolPeriod", { ko: "파일 이름: 프로젝트_도구_기간", en: "File name: project_tool_period" }],
+    ["dateTool", { ko: "파일 이름: 날짜_도구", en: "File name: date_tool" }],
+  ].map(([pattern, label]) => ({
+    id: `export.filename.${pattern}`,
+    kind: "export",
+    slot: "export.filename",
+    label,
+    aliases: { ko: ["파일명", "파일 이름"], en: ["file name", "filename"] },
+    apply: (state) => {
+      state.export.fileNamePattern = pattern;
       return state;
     },
   })),

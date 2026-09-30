@@ -40,7 +40,7 @@ describe("기본 상태", () => {
   it("도구 선언에서 파생하고, 한계 문구는 기본 포함", () => {
     const state = defaultRecipeState(spec);
     expect(state.data).toEqual({ levels: ["channel"], metric: "cpa", period: { kind: "lookback", weeks: 1, basis: "calendar" }, filters: [], caseSensitive: false });
-    expect(state.export).toEqual({ format: "xlsx", includeCaveats: true, withFormulas: true });
+    expect(state.export).toEqual({ format: "xlsx", includeCaveats: true, withFormulas: true, pngHeader: "full", reportHidden: [], fileNamePattern: "default" });
     expect(validateRecipeState(state, spec).ok).toBe(true);
   });
 

@@ -5,10 +5,12 @@ describe("figure export context", () => {
   it("keeps the actual comparison dates, sample status and withheld judgement", () => {
     expect(figureExportContext({ title: "iOS 구성 변화", toolTitle: "구성 분석", scope: { dateStart: "2026-08-08", dateEnd: "2026-08-14", comparisonStart: "2026-08-01", comparisonEnd: "2026-08-07" }, source: { importSource: "demo" }, resultState: "inconclusive" })).toEqual({
       title: "iOS 구성 변화", details: ["구성 분석", "분석 기간: 2026-08-08 – 2026-08-14", "비교 기간: 2026-08-01 – 2026-08-07", "예시 데이터", "판단 보류. 결과의 해석 조건을 함께 확인하세요."],
+      // 다운로드 설정으로 머리글을 줄여도 지우지 않는 줄.
+      mandatory: ["예시 데이터", "판단 보류. 결과의 해석 조건을 함께 확인하세요."],
     });
   });
   it("does not turn the download date into an unknown analysis period", () => {
-    expect(figureExportContext({ title: "Trend", toolTitle: "Trend", locale: "en", resultState: "ready" })).toEqual({ title: "Trend", details: [] });
+    expect(figureExportContext({ title: "Trend", toolTitle: "Trend", locale: "en", resultState: "ready" })).toEqual({ title: "Trend", details: [], mandatory: [] });
   });
   it("wraps complete words first, and long unbroken labels only when necessary", () => {
     const measure = value => value.length * 10;
