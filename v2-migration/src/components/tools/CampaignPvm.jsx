@@ -28,11 +28,10 @@ import { buildComparisonRange } from "@/components/ds/DateRangePicker";
 import ToolPageShell from "@/components/ToolPageShell";
 import { sourceCurrencyOf } from "@/utils/format";
 import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
-import { buildVocabulary } from "@/lib/vocabulary/vocabulary";
-import { COMMON_WORDS } from "@/lib/vocabulary/commonWords";
-import { PVM_WORDS } from "@/lib/vocabulary/tools/pvmWords";
+import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
 import { buildDataContext, parseFieldRef } from "@/lib/vocabulary/dataContext";
 import { addStep, foldSteps } from "@/lib/recipe/recipe";
+import { useAccountRecipes } from "@/lib/recipe/useAccountRecipes";
 import { buildLegacyRows } from "@/lib/data-import/canonical-v2/buildLegacyRows";
 import { withMappingChange } from "@/lib/data-import/applyMappingChange";
 import {
@@ -51,8 +50,8 @@ import {
   unappliedViewFilters,
 } from "@/lib/recipe/pvmRecipe";
 
-// 명령 입력창 단어 사전 — 공용 단어 + 5-21 전용 단어(계층 조합·지표). 모듈에서 한 번만 만든다.
-const PVM_VOCABULARY = buildVocabulary([...COMMON_WORDS, ...PVM_WORDS]);
+// 명령 입력창 단어 사전 — 공용 단어 + 5-21 전용 단어(계층 조합·지표). 마이페이지와 같은 사전.
+const PVM_VOCABULARY = recipeVocabularyFor("5-21");
 const NO_STEPS = Object.freeze([]);
 // 공용 필터 막대가 이미 가진 축. 입력창의 "X만 분석"·"X 제외하고 분석"은 이 축이면 칩이 아니라
 // 필터 선택으로 들어간다 — 같은 조건이 칩과 필터 두 곳에 따로 살지 않게(2026-09-30).
@@ -616,6 +615,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     [recipeSteps, pvmSpec, mappedFields],
   );
   const recipe = fold.state;
+  // 계정에 이름 붙여 저장한 설정(Pro). 로그인 전이면 저장 버튼이 로그인 안내를 보인다.
+  const accountRecipes = useAccountRecipes(PVM_TOOL_ID, PVM_VOCABULARY);
   const appliedIds = fold.applied.map((step) => step.id);
   const levelsCustom = fold.applied.some((step) => PVM_VOCABULARY.get(step.id)?.kind === "level");
   const levelKeys = useMemo(
@@ -1353,6 +1354,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             onMapping={applyRecipeMapping}
             onSelectStep={routeToSharedFilter}
             extraChips={sharedFilterChips}
+            presets={accountRecipes}
             rejected={fold.rejected}
             notices={recipeNotices}
             locale={locale}

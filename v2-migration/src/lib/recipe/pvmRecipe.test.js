@@ -4,6 +4,9 @@ import { PVM_WORDS } from "@/lib/vocabulary/tools/pvmWords";
 import { buildVocabulary } from "@/lib/vocabulary/vocabulary";
 import { columnRef } from "@/lib/vocabulary/dataContext";
 import { foldSteps } from "./recipe";
+import { RECIPE_TOOL_IDS, recipeVocabularyFor } from "./toolVocabulary";
+import { publishedToolIds } from "@/lib/routeMap";
+import { accountRecipe } from "@/lib/account/recipeContract";
 import {
   applyPvmView,
   caveatExclusionNote,
@@ -207,5 +210,31 @@ describe("예전 저장 입력 → 단계", () => {
 
   it("옮긴 단계는 모두 사전에 있다", () => {
     for (const step of legacyPvmSteps({ metricOverride: "cpa", weekBasis: "rolling7", lookback: 2 })) expect(vocab.has(step.id), step.id).toBe(true);
+  });
+});
+
+describe("레시피 도구 등록·계정 계약", () => {
+  it("레시피를 붙인 도구는 모두 발행 도구이고 사전이 있다", () => {
+    expect(RECIPE_TOOL_IDS.length).toBeGreaterThan(0);
+    for (const id of RECIPE_TOOL_IDS) {
+      expect(publishedToolIds()).toContain(id);
+      expect(recipeVocabularyFor(id)?.size).toBeGreaterThan(0);
+    }
+  });
+
+  it("계정 계약은 데이터 값 단계를 거절하고 이름을 정리한다", () => {
+    expect(accountRecipe({ toolId: "5-21", name: "  주간   보고 ", steps: [{ id: "view.top.5" }] })).toEqual({ toolId: "5-21", name: "주간 보고", steps: [{ id: "view.top.5", params: {} }] });
+    expect(() => accountRecipe({ toolId: "5-21", name: "x", steps: [{ id: "filter.only.analysis", params: { field: "channel", values: ["Meta"] } }] })).toThrow("INVALID_RECIPE");
+    // 매핑 안 된 컬럼 축은 컬럼 이름만 담는다(매핑 동기화와 같은 수준) — 허용.
+    expect(accountRecipe({ toolId: "5-21", name: "x", steps: [{ id: "level.field", params: { field: "col:권역" } }] }).steps[0].params.field).toBe("col:권역");
+  });
+
+  it("partitionForSync가 기기 전용으로 가르는 단어는 계정 계약이 거절하는 단어와 같다", () => {
+    const vocab = recipeVocabularyFor("5-21");
+    for (const entry of vocab.values()) {
+      if (!entry.carriesUserValues) continue;
+      const params = entry.id === "data.caseSensitive" ? {} : { field: "channel", values: ["x"] };
+      expect(() => accountRecipe({ toolId: "5-21", name: "x", steps: [{ id: entry.id, params }] }), entry.id).toThrow("INVALID_RECIPE");
+    }
   });
 });

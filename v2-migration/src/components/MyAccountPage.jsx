@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AccountArchive from "@/components/AccountArchive";
 import UserMappingSettings from "@/components/account/UserMappingSettings";
+import UserRecipeSettings from "@/components/account/UserRecipeSettings";
 import { refreshAccount } from "@/lib/account/accountClient";
 import { listProjects } from "@/lib/project/repository";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
@@ -145,6 +146,10 @@ export default function MyAccountPage({ locale = "ko" }) {
 
       <section className="account-page__card">
         <UserMappingSettings key={session?.account?.id || "signed-out"} locale={locale} accountId={session?.account?.id || null} />
+      </section>
+
+      <section className="account-page__card">
+        <UserRecipeSettings key={session?.account?.id || "signed-out"} locale={locale} accountId={session?.account?.id || null} />
       </section>
     </article>
   );

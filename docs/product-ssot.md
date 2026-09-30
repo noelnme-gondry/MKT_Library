@@ -89,6 +89,7 @@
 
 ### 2.1 주간 리뷰 V1 계약 (2026-09-09)
 
+- 2026-09-30 사용자 확정: Pro 분석 설정(레시피)은 이름 붙여 계정에 저장하며 도구 id·이름·설정 단어 목록만 담는다. 데이터 값이 든 설정·원본 행·파일명은 보내지 않는다(매핑 안 된 컬럼으로 나눠 보기를 고르면 그 컬럼 이름은 포함 — 매핑 동기화와 같은 수준). 저장·변경은 유효 Pro, 만료 후 열람·내보내기·삭제 유지. §5.5a.
 - 2026-09-21 사용자 확정: Pro 컬럼 매핑은 계정에 컬럼 이름과 연결 규칙만 저장하며 다른 기기의 CSV·Google Sheets 업로드에도 재사용한다. 원본 행·값 프로파일·파일명은 보내지 않는다. 저장·변경·자동 적용은 서버에서 유효 Pro를 확인하며 만료 후 열람·내보내기·삭제는 유지한다. 기존 기기 규칙은 사용자가 선택해 가져온다. / Pro column mappings sync only header names and field rules across devices, for CSV and Google Sheets. Never upload source rows, value profiles or filenames. Saving, editing and applying require server-verified active Pro; existing rules remain readable, exportable and deletable after expiry. Import old device rules only by explicit choice.
 - 접기/펼치기형 안내는 사용하지 않는다. 핵심 정보는 바로 표시하고 긴 설정은 이름이 분명한 별도 편집 화면으로 제공한다. 도움말은 마우스·키보드·터치로 접근 가능해야 한다. / Show essential information directly; use clearly named editing surfaces for longer settings instead of disclosure lists. Help must support pointer, keyboard and touch.
 
@@ -395,7 +396,8 @@ preview  = 미완성이라 어느 쪽에도 세지 않는다 (9-2·9-3·9-7)
 - 다운로드 한계 문구는 기본 포함. `한계 문구 빼고 받기`를 고르면 Word·XLSX의 분석 한계 자리에 `작성자가 분석 한계 N건을 제외했습니다. / The author excluded N analysis limitation(s) from this file.` 한 줄만 남는다. 보고서 공통 고지(관측 차이 ≠ 인과)는 이 선택과 무관하게 남는다.
 - **자리: 필터 막대 안, 필터 선택 위**(2026-09-30). 같은 조건을 두 곳에서 고르지 않는다 — 공용 필터 축(플랫폼·국가·채널·소스)의 `X만 분석`·`X 제외하고 분석`은 칩이 아니라 **아래 필터 선택으로 들어가고**(대소문자만 다른 원본 표기까지 함께), 필터 막대에서 고른 조건·기간도 입력창 칩 줄에 `플랫폼: iOS` / `Platform: iOS`처럼 보인다. 칩을 빼면 필터가 풀린다. 칩 이름은 필터 버튼과 같은 말(플랫폼·국가·채널·소스)을 쓴다.
 - 매핑이 함께 필요한 단어(`채널별 — '매체'를 채널로 지정`)는 고르면 기존 매핑 스토어에 매핑을 쓰고 축을 적용한다. 레시피에는 매핑을 저장하지 않는다.
-- 저장: 칩 목록은 도구 입력으로 저장되어(Pro 저장한 분석·프로젝트) 다음 CSV에 다시 적용된다. 필요한 컬럼이 빠진 칩은 남기되 `적용 안 됨: 필요한 컬럼이 없음`을 보인다. 사용자 데이터 값을 담은 칩(`Meta만 분석` 등)은 계정으로 보내지 않는다. **계정 동기화는 아직 없다**(기기·프로젝트 저장만).
+- 저장: 칩 목록은 도구 입력으로 저장되어(Pro 저장한 분석·프로젝트) 다음 CSV에 다시 적용된다. 필요한 컬럼이 빠진 칩은 남기되 `적용 안 됨: 필요한 컬럼이 없음`을 보인다.
+- **이름 붙여 계정에 저장**(2026-09-30 사용자 결정 "이름 붙여 저장"): 입력창 `이 설정 저장 / Save this setup` → 이름 입력 → 계정(`/api/account/recipes`, `gop_account_recipes`)에 도구·이름·단어 목록만 저장. 어느 기기에서든 입력창에 이름을 치면 `저장한 설정 · 이름 / Saved setup · name`이 맨 위에 뜨고 고르면 칩 목록이 바뀐다. 데이터 값이 든 칩은 빼고 보내며 뺀 개수를 알린다(서버도 값 단계를 거절). 저장·변경은 유효 Pro, 만료 후 열람·내보내기·삭제 유지(매핑과 같은 규칙). 계정당 100개. 관리는 마이페이지 `내 분석 설정 / My analysis setups`. 로그인 전·Pro 아님은 저장 대신 로그인·Pro 안내.
 
 ### 5.6 차트·표 계약
 
