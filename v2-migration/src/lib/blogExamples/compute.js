@@ -21,6 +21,10 @@ import { runResponseAnalysis } from "@/lib/assistant/responseAnalysisAdapters";
 import { STATS } from "@/utils/abTestMath";
 import { AHA_STATS } from "@/utils/ahaMath";
 import { runBrandInterruptedTimeSeries } from "@/utils/brandIncrementalityMath";
+import { runSubscriptionAnalysis } from "@/lib/assistant/subscriptionAnalysisAdapters";
+import { autoDeclare, periodKeys } from "@/lib/segment-composition/autoDeclare";
+import { buildSegmentPanel } from "@/lib/segment-composition/segmentPanel";
+import { compareDistribution, decomposeMixRate, rankDimensions } from "@/utils/segmentCompositionMath";
 
 // 데모로 계산할 수 없는 도구는 같은 데이터로 답하는 가까운 도구의 예시를 쓴다.
 // 카드 제목이 어떤 분석의 예시인지 밝히므로 숨기는 대체가 아니다.
@@ -254,6 +258,49 @@ const BUILDERS = {
       bars: found.map((x) => ({ label: { ko: `${LABEL[x.col][0]} ${x.t.k}회+`, en: `${LABEL[x.col][1]} ${x.t.k}+` }, value: x.t.P, display: pct(x.t.P), highlight: x === best })),
     });
   },
+  "5-28": (csv) => {
+    const res = runSubscriptionAnalysis({ toolId: "5-28", csvData: csv, locale: "ko", inputSignature: "blog-example", mappingSignature: "blog-example" });
+    if (res.status !== "success") return null;
+    const median = stat(res, "median-survival");
+    const curve = res.visualizations.find((v) => v.id === "subscription-survival-curve")?.data || [];
+    const at = (period) => [...curve].reverse().find((p) => p.period <= period);
+    const marks = [3, 6, 9, 12].map((period) => ({ period, point: at(period) })).filter((m) => m.point);
+    if (!Number.isFinite(median) || marks.length < 2) return null;
+    const six = at(6), twelve = at(12);
+    return card({
+      ko: { headline: `핵심 행동을 시작한 사용자의 절반이 ${num(median)}개월 안에 멈췄습니다. 6개월째에는 ${pct(six.survival, 0)}가 남아 있었지만 12개월째에는 ${pct(twelve.survival, 0)}만 남았습니다.`, caption: `예시 데이터로 계산했습니다. 사용자 ${num(stat(res, "valid-episodes"))}명 중 이탈이 관측된 ${num(stat(res, "observed-events"))}명과 아직 남아 있는 사람을 함께 셌습니다.` },
+      en: { headline: `Half of the users who started the key action had stopped within ${num(median)} months. ${pct(six.survival, 0)} were still active at month 6, but only ${pct(twelve.survival, 0)} at month 12.`, caption: `Calculated on example data. ${num(stat(res, "observed-events"))} observed exits among ${num(stat(res, "valid-episodes"))} users, with users still active counted as censored.` },
+      bars: marks.map(({ period, point }) => ({ label: { ko: `${period}개월`, en: `Month ${period}` }, value: point.survival, display: pct(point.survival, 0), highlight: period === 12 })),
+    });
+  },
+  "5-29": () => {
+    const demo = buildDemoCsv(TOOL_GROUP["5-29"], "ko");
+    const auto = autoDeclare({ headers: demo.headers, rows: demo.raw });
+    const panel = buildSegmentPanel({ rows: demo.raw, roles: auto.roles, dimensions: auto.dimensions });
+    const periods = periodKeys(demo.raw, auto.roles.time);
+    const selector = { pre: [periods[0]], post: [periods[periods.length - 1]] };
+    const top = rankDimensions({ panel, ...selector })[0];
+    if (!top) return null;
+    const dist = compareDistribution({ panel, dimensionId: top.dimensionId, ...selector });
+    const member = [...dist.members].sort((a, b) => b.shareDelta - a.shareDelta)[0];
+    const dec = decomposeMixRate({ panel, dimensionId: top.dimensionId, memberId: member.memberId, ...selector });
+    if (!dec.available) return null;
+    const { preRate, postRate, delta, mix, rate, interaction } = dec.totals;
+    const LABEL = { Female: ["여성", "women"], Male: ["남성", "men"] };
+    const [koName, enName] = LABEL[member.memberId] || [member.label, member.label];
+    const pp = (v, en) => `${num(Math.abs(v) * 100, 1)}${en ? " pp" : "%p"}`;
+    const spp = (v, en) => signed(`${num(v * 100, 1)}${en ? " pp" : "%p"}`);
+    const mixShare = mix / delta;
+    return card({
+      ko: { headline: `가입자 중 ${koName} 비중이 ${pct(preRate)}에서 ${pct(postRate)}로 ${pp(delta)} 올랐습니다. 그중 ${pct(mixShare, 0)}는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.`, caption: `예시 데이터로 계산했습니다. 첫 주와 마지막 주 비교, 캠페인 ${dec.entities.length}개를 기준으로 나눴습니다.` },
+      en: { headline: `The share of ${enName} among signups rose from ${pct(preRate)} to ${pct(postRate)} (${pp(delta, true)}). ${pct(mixShare, 0)} of that came from volume moving between campaigns; the rest came from change inside campaigns.`, caption: `Calculated on example data. First week vs last week, split across ${dec.entities.length} campaigns.` },
+      bars: [
+        { label: { ko: "캠페인 사이 물량 이동", en: "Volume shift between campaigns" }, value: mix, display: { ko: spp(mix), en: spp(mix, true) }, highlight: mix >= rate },
+        { label: { ko: "캠페인 안의 구성 변화", en: "Change inside campaigns" }, value: rate, display: { ko: spp(rate), en: spp(rate, true) }, highlight: rate > mix },
+        { label: { ko: "두 변화가 겹친 몫", en: "Overlap of both" }, value: interaction, display: { ko: spp(interaction), en: spp(interaction, true) }, highlight: false },
+      ],
+    });
+  },
   "9-1": () => {
     const demo = buildDemoCsv(TOOL_GROUP["9-1"], "ko");
     const LABEL = { title_has_number: ["제목에 숫자", "Number in title"], has_emoji: ["이모지", "Emoji"], thumbnail_bright: ["밝은 썸네일", "Bright thumbnail"], listicle: ["목록형 글", "Listicle"] };
@@ -288,7 +335,7 @@ function exampleFor(slug) {
       en: { headline: "This example withholds a judgment. The same channel must be observed across dates and spend levels.", caption: "Calculated on example data. Many rows do not help when each channel is observed only once." },
     }) };
   }
-  const result = build(toolId.startsWith("5-4") || ["5-23", "5-24", "5-20", "9-1"].includes(toolId) ? null : csvFromDemo(toolId));
+  const result = build(toolId.startsWith("5-4") || ["5-23", "5-24", "5-20", "9-1", "5-29"].includes(toolId) ? null : csvFromDemo(toolId));
   if (!result) throw new Error(`Example not computable for ${toolId} (${slug})`);
   return { toolId, source: "demo", ...result };
 }

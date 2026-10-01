@@ -1802,6 +1802,58 @@
   "spark": null,
   "note": null
  },
+ "simpson-paradox-conversion-rate": {
+  "toolId": "5-29",
+  "source": "demo",
+  "ko": {
+   "headline": "가입자 중 여성 비중이 21%에서 36.6%로 15.6%p 올랐습니다. 그중 47%는 캠페인 사이의 물량 이동, 나머지는 캠페인 안의 구성 변화에서 나왔습니다.",
+   "caption": "예시 데이터로 계산했습니다. 첫 주와 마지막 주 비교, 캠페인 2개를 기준으로 나눴습니다."
+  },
+  "en": {
+   "headline": "The share of women among signups rose from 21% to 36.6% (15.6 pp). 47% of that came from volume moving between campaigns; the rest came from change inside campaigns.",
+   "caption": "Calculated on example data. First week vs last week, split across 2 campaigns."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "캠페인 사이 물량 이동",
+     "en": "Volume shift between campaigns"
+    },
+    "value": 0.07349287775,
+    "display": {
+     "ko": "+7.3%p",
+     "en": "+7.3 pp"
+    },
+    "highlight": true
+   },
+   {
+    "label": {
+     "ko": "캠페인 안의 구성 변화",
+     "en": "Change inside campaigns"
+    },
+    "value": 0.06428706218,
+    "display": {
+     "ko": "+6.4%p",
+     "en": "+6.4 pp"
+    },
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "두 변화가 겹친 몫",
+     "en": "Overlap of both"
+    },
+    "value": 0.0186836702,
+    "display": {
+     "ko": "+1.9%p",
+     "en": "+1.9 pp"
+    },
+    "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
  "store-conversion-drop-diagnosis": {
   "toolId": "5-27",
   "source": "demo",
@@ -1917,6 +1969,58 @@
     "value": 0.05099814154,
     "display": "5.1%",
     "highlight": false
+   }
+  ],
+  "spark": null,
+  "note": null
+ },
+ "user-churn-survival-analysis": {
+  "toolId": "5-28",
+  "source": "demo",
+  "ko": {
+   "headline": "핵심 행동을 시작한 사용자의 절반이 12개월 안에 멈췄습니다. 6개월째에는 77%가 남아 있었지만 12개월째에는 39%만 남았습니다.",
+   "caption": "예시 데이터로 계산했습니다. 사용자 108명 중 이탈이 관측된 54명과 아직 남아 있는 사람을 함께 셌습니다."
+  },
+  "en": {
+   "headline": "Half of the users who started the key action had stopped within 12 months. 77% were still active at month 6, but only 39% at month 12.",
+   "caption": "Calculated on example data. 54 observed exits among 108 users, with users still active counted as censored."
+  },
+  "bars": [
+   {
+    "label": {
+     "ko": "3개월",
+     "en": "Month 3"
+    },
+    "value": 0.9231200898,
+    "display": "92%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "6개월",
+     "en": "Month 6"
+    },
+    "value": 0.7736361149,
+    "display": "77%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "9개월",
+     "en": "Month 9"
+    },
+    "value": 0.635694552,
+    "display": "64%",
+    "highlight": false
+   },
+   {
+    "label": {
+     "ko": "12개월",
+     "en": "Month 12"
+    },
+    "value": 0.3858864585,
+    "display": "39%",
+    "highlight": true
    }
   ],
   "spark": null,

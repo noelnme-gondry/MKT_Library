@@ -1,0 +1,25 @@
+<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="300" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">캠페인은 둘 다 올랐는데 전체 전환율은 떨어졌습니다</text>
+  <text x="410" y="62" fill="#475569" font-size="12" text-anchor="middle">막대 폭 = 설치 비중</text>
+  <text x="154" y="114" fill="#334155" font-size="14" font-weight="700" text-anchor="end">1주차</text>
+  <rect x="170" y="84" width="384" height="48" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="554" y="84" width="96" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="362.0" y="104" fill="#1e3a8a" font-size="13" text-anchor="middle">A 브랜드 80%</text>
+  <text x="362.0" y="122" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">전환율 10.0%</text>
+  <text x="602.0" y="104" fill="#7f1d1d" font-size="12" text-anchor="middle">B 20%</text>
+  <text x="602.0" y="122" fill="#7f1d1d" font-size="12" font-weight="700" text-anchor="middle">전환율 2.0%</text>
+  <text x="666" y="106" fill="#475569" font-size="12">전체</text>
+  <text x="666" y="124" fill="#0f172a" font-size="15" font-weight="700">8.4%</text>
+  <text x="154" y="190" fill="#334155" font-size="14" font-weight="700" text-anchor="end">2주차</text>
+  <rect x="170" y="160" width="120" height="48" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <rect x="290" y="160" width="360" height="48" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="230.0" y="180" fill="#1e3a8a" font-size="12" text-anchor="middle">A 25%</text>
+  <text x="230.0" y="198" fill="#1e3a8a" font-size="12" font-weight="700" text-anchor="middle">전환율 11.0% ↑</text>
+  <text x="470.0" y="180" fill="#7f1d1d" font-size="13" text-anchor="middle">B 확장 75%</text>
+  <text x="470.0" y="198" fill="#7f1d1d" font-size="13" font-weight="700" text-anchor="middle">전환율 2.5% ↑</text>
+  <text x="666" y="182" fill="#475569" font-size="12">전체</text>
+  <text x="666" y="200" fill="#b91c1c" font-size="15" font-weight="700">4.6%</text>
+  <text x="380" y="252" fill="#334155" font-size="13" text-anchor="middle">A·B 모두 전환율이 올랐지만 설치의 75%가 전환율 낮은 B로 옮겨 갔습니다</text>
+  <text x="380" y="276" fill="#475569" font-size="13" text-anchor="middle">전체 = 캠페인별 전환율을 설치 비중으로 가중평균한 값</text>
+</svg>

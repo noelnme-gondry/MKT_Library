@@ -66,6 +66,14 @@ const TOOL_COPY = {
     ko: { label: "핵심 가치 발굴", title: "리텐션을 예측하는 초기 행동을 찾으세요", desc: "초기 행동의 시점·횟수 조합을 비교해 장기 가치와 연결되는 Aha 후보를 좁힙니다.", cta: "Aha-moment 분석하기" },
     en: { label: "Aha-moment finder", title: "Find the early behavior that predicts retention", desc: "Compare timing and frequency patterns to narrow down early actions associated with long-term value.", cta: "Find an Aha moment" },
   },
+  "5-28": {
+    ko: { label: "액션 생존·이탈", title: "사용자가 언제 떠나는지 생존곡선으로 보세요", desc: "아직 남아 있는 사용자까지 포함해 생존기간 중앙값과 이탈 위험이 높아지는 시점을 계산합니다.", cta: "이탈 시점 분석하기" },
+    en: { label: "Action survival and churn", title: "See when users leave with a survival curve", desc: "Keep users who are still active in the calculation to find the median survival time and when churn risk rises.", cta: "Analyze churn timing" },
+  },
+  "5-29": {
+    ko: { label: "구성 변화 분석", title: "전체 지표 변화를 구성 이동과 내부 변화로 나누세요", desc: "묶음 사이의 물량 이동과 묶음 안의 변화를 오차 없이 나눠 어디서 바뀌었는지 찾습니다.", cta: "구성 변화 분석하기" },
+    en: { label: "Composition change", title: "Split a total change into mix and within-group change", desc: "Separate volume moving between groups from change inside each group, with no residual, to find where the shift happened.", cta: "Analyze composition change" },
+  },
   "5-27": {
     ko: { label: "스토어 전환", title: "스토어 페이지에서 어디가 새는지 보세요", desc: "노출→제품 페이지→설치 퍼널을 나누고, 효율 변화인지 유입 믹스 변화인지 분해합니다.", cta: "스토어 전환 분해하기" },
     en: { label: "Store conversion", title: "See where the store page leaks", desc: "Split the impression → product page → install funnel and separate rate changes from traffic-mix changes.", cta: "Break down store conversion" },

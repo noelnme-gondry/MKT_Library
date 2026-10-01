@@ -49,6 +49,8 @@ Now total it up.
 
 An approximately 11.1pp drop. Views actually rose by 1,100 while installs fell by 513. This does not predict the effect of changing screenshots, because the only thing that moved was Browse's share of views going from 36% to 67%.
 
+For the more extreme case where every source improves and the total still falls, see [Simpson's paradox](/blog/simpson-paradox-conversion-rate), which works on the same principle.
+
 Nothing worsening in the parts while the whole worsens is the same structure statisticians call Simpson's paradox. When the weights move, the average can travel opposite to every component.
 
 ![Per-source rates hold steady while a shift in share drags the blended rate down](/blog-assets-en/store-conversion-drop-diagnosis/mix-vs-efficiency.svg)

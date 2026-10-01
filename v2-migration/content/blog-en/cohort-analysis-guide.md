@@ -69,6 +69,8 @@ This is **illustrative data**, not an industry benchmark.
 
 The user-weighted D7 retention for the two mature cohorts is about 17.5%. If the two immature cohorts are treated as 0%, the number appears to fall to about 7.5%. That is a reporting error, not evidence that users suddenly churned.
 
+To keep users who are not yet fully observed and calculate when they first stopped, see [user churn timing with survival curves](/blog/user-churn-survival-analysis).
+
 Arithmetic: retained users = 1,000 × 18% + 1,100 × 17% = 367. Mature cohorts give 367 ÷ 2,100 = 17.48%; including immature users in the denominator gives 367 ÷ 4,900 = 7.49%.
 
 Analytics products may flag recent, incomplete intervals for the same reason. See Amplitude’s [Retention Analysis FAQ](https://amplitude.com/docs/analytics/charts/retention-analysis/faq) for how incomplete periods affect interpretation.

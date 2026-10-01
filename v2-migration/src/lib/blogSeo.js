@@ -1,6 +1,8 @@
 // 검색 의도에 맞춘 블로그 표기층. 원고 파일을 다시 쓰지 않고도 제목·요약을
 // 일괄 교정할 수 있는 SSOT — 목록, 상세, metadata, JSON-LD가 같은 값을 사용한다.
 const KO_TITLES = {
+  "simpson-paradox-conversion-rate": "심슨의 역설: 캠페인은 다 올랐는데 전체 전환율이 떨어질 때",
+  "user-churn-survival-analysis": "유저 이탈 시점 분석: 생존곡선으로 떠나는 때 찾기",
   "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿: 숫자에서 다음 행동까지",
   "cac-payback-period": "CAC 회수기간 계산법: LTV:CAC와 현금 회수의 차이",
   "marketing-report-sheets-bigquery": "광고 리포트 자동화: BigQuery·Google Sheets에서 CSV까지",
@@ -54,6 +56,8 @@ const KO_TITLES = {
 };
 
 const EN_TITLES = {
+  "simpson-paradox-conversion-rate": "Simpson's Paradox: Every Campaign Improved, Yet Conversion Fell",
+  "user-churn-survival-analysis": "User Churn Timing: Find When Users Leave With Survival Curves",
   "weekly-marketing-report-template": "Weekly Marketing Report Template: From Metrics to Decisions",
   "cac-payback-period": "CAC Payback Period: Calculation and Cash Recovery",
   "marketing-report-sheets-bigquery": "Marketing Report Automation: BigQuery, Google Sheets and CSV",
@@ -115,6 +119,8 @@ const TITLES = { ko: KO_TITLES, en: EN_TITLES };
 // 맵은 성기게 둔다 — 제목과 h1이 같아도 되는 글이 대부분이고, 여기 없는 slug는
 // 제목을 그대로 쓴다. 즉 "h1을 따로 적었다"는 것 자체가 의도의 표식이다.
 const KO_H1 = {
+  "simpson-paradox-conversion-rate": "캠페인은 다 좋아졌는데 왜 전체 전환율은 떨어졌을까?",
+  "user-churn-survival-analysis": "유저는 언제 떠날까? 생존곡선으로 이탈 시점 찾기",
   "ab-testing": "A/B 테스트, 표본 크기부터 판정까지",
   "ad-creative-testing": "광고 소재는 한 번에 몇 개까지 테스트해야 할까?",
   "ad-performance-diagnosis": "광고 CPA가 상승했을 때 원인 찾는 순서",
@@ -140,6 +146,8 @@ const KO_H1 = {
   "aha-event-ad-optimization": "광고 최적화 이벤트를 설치로 두면 안 되는 이유",
 };
 const EN_H1 = {
+  "simpson-paradox-conversion-rate": "Every Campaign Improved — So Why Did Total Conversion Fall?",
+  "user-churn-survival-analysis": "When Do Users Leave? Finding Churn Timing With a Survival Curve",
   "ab-testing": "A/B Testing, From Sample Size to Decision",
   "ad-creative-testing": "How Many Ad Creatives Should You Test at Once?",
   "ad-performance-diagnosis": "How to Find Why Your Ad CPA Went Up",
