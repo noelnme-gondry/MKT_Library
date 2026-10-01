@@ -51,7 +51,7 @@ This is where things fall apart most often in practice — a narrow target that'
 
 ![A diagram showing that at a daily budget of $150, impressions land reasonably on a narrow target, but raising the daily budget to $1,500 on the same narrow target causes impressions to pile up excessively, spiking frequency.](/blog-assets-en/audience-broad-vs-narrow/budget-audience-fit.svg)
 
-The diagram illustrates a possible increase in repeated exposure. A larger budget for a limited audience can increase repetition, but inspect actual reach and frequency distributions. Frequency alone does not establish [creative fatigue](/blog/ad-performance-diagnosis); check CTR, cost and mature conversions as well.
+The diagram illustrates a possible increase in repeated exposure. A larger budget for a limited audience can increase repetition, but inspect actual reach and frequency distributions. Frequency alone does not establish [creative fatigue](/glossary/creative-fatigue); check CTR, cost and mature conversions as well.
 
 Audience size does not need to increase in a fixed proportion to budget. Efficiency may hold after an increase; evaluate marginal results, reach and frequency after a bounded change. Changing targeting and creative at the same time makes the result harder to interpret.
 
@@ -59,11 +59,11 @@ Audience size does not need to increase in a fixed proportion to budget. Efficie
 
 Three things, roughly, and the picture becomes clear.
 
-One, what's frequency doing right now? Rising frequency calls for reviewing repeated exposure alongside the observation window, frequency distribution, CTR and conversions. A low average does not guarantee room to scale.
+1. **What is frequency doing right now?** Rising frequency calls for reviewing repeated exposure alongside the observation window, frequency distribution, CTR and conversions. A low average does not guarantee room to scale.
 
-Two, are you planning to raise budget? Choose which hypothesis to evaluate first: scaling or expansion. Define the observation window and stopping conditions, and avoid changing several settings at once.
+2. **Are you planning to raise budget?** Choose which hypothesis to evaluate first: scaling or expansion. Define the observation window and stopping conditions, and avoid changing several settings at once.
 
-Three, what is the volume and quality of the conversion signal? With sparse conversions, check event definitions, missing tracking and conversion delay as well as audience width. Expansion may add observations, but does not guarantee better learning or customer acquisition efficiency.
+3. **What is the volume and quality of the conversion signal?** With sparse conversions, check event definitions, missing tracking and conversion delay as well as audience width. Expansion may add observations, but does not guarantee better learning or customer acquisition efficiency.
 
 ## Why you shouldn't take a narrow target's great CPA at face value
 

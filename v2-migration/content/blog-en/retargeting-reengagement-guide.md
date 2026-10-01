@@ -83,7 +83,7 @@ The retargeting CPA in your report can never tell you this. Conversion rate insi
 
 Whether retargeting only looks good because of displacement is settled in [paid and organic cannibalisation](/blog/cannibalization-organic-paid), and what splitting campaigns does to learning is in [the ad learning phase](/blog/ad-machine-learning).
 
-## Let's be honest
+## Limits of this approach
 
 Retargeting re-catches people who already know you, so there's always a [cannibalization](/blog/cannibalization-organic-paid) risk of spending on users who'd have returned anyway. The campaign with the best CPA in your report can be the one with the smallest real lift — that is the illusion retargeting produces most often.
 

@@ -62,11 +62,11 @@ Reading weekly, and judging on data that is already a few days old, is the rhyth
 
 ## Try this today
 
-**One.** Put attribution method, date basis, window, and redownload inclusion beside the last 30 days of totals. The gap itself does not estimate unseen installs or incrementality.
+1. Put attribution method, date basis, window, and redownload inclusion beside the last 30 days of totals. The gap itself does not estimate unseen installs or incrementality.
 
-**Two.** Re-query the same historical period to see values added by delay. If a gap remains, check definitions, mapping, missing records, and deduplication as well as privacy tiers.
+2. Re-query the same historical period to see values added by delay. If a gap remains, check definitions, mapping, missing records, and deduplication as well as privacy tiers.
 
-## Let's be honest
+## Limits of this approach
 
 Attempts to force the three numbers into agreement usually fail, because the unit of aggregation and the timing differ structurally. The goal is not agreement — it is **a team agreement on which source answers which question**.
 

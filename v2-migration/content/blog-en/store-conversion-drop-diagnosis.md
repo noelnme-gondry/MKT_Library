@@ -92,7 +92,7 @@ When efficiency is the cause. Narrow down which source fell. An even drop across
 2. Compute per-source conversion for the first three weeks and the last three separately. Whether those per-source numbers moved answers half the question on its own.
 3. If mix turns out to be the cause, check the calendar for spend or placement changes in that window.
 
-## Let's be honest
+## Limits of this approach
 
 This decomposition narrows where to look; it does not establish cause. The tool’s mix term describes weighting-related change in views per install — not why the weighting moved. If paid scaling, a featuring placement, and seasonality all landed in the same window, this table cannot separate them.
 

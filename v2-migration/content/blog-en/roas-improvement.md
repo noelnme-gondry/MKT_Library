@@ -55,7 +55,7 @@ Channel A can have the best average ROAS and still be saturated, so the next uni
 
 Reallocation is therefore not “put everything into the best-looking channel.” It is comparing where the **next unit of budget** is likely to produce a better outcome. Continue to the [marketing budget allocation guide](/blog/budget-marginal-efficiency) for the marginal-efficiency workflow.
 
-## Do this today
+## Try this today
 
 1. Recheck ROAS with the same date range and conversion definition.
 2. Put channel ROAS, CPA, and spend share in one table.

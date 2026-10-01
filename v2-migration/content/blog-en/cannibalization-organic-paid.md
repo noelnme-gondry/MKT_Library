@@ -100,7 +100,7 @@ For the weeks where spend moved sharply, check one thing: did total conversions 
 
 Once CPA is recalculated with the cannibalisation rate applied, [marketing budget allocation](/blog/budget-marginal-efficiency) covers how to move budget on that number and [ad budget scaling limits](/blog/budget-scaling-limit) covers the ceiling. The broader designs for separating what advertising actually caused are in [incrementality measurement](/blog/incrementality-measurement).
 
-## Let's be honest
+## Limits of this approach
 
 "Looks like cannibalization" and "is cannibalization" are different things. Observational signals (leading order, de-trended movement) are grounds for suspicion, no more. And the burden of proof is asymmetric: to declare "this ad has no effect," you need strong evidence like a holdout.
 

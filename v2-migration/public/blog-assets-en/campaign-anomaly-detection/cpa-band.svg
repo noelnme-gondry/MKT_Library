@@ -1,0 +1,31 @@
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="340" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">Only days outside the usual range (mean ± 2 SD) are anomaly candidates</text>
+  <rect x="90" y="135" width="550" height="98" fill="#dbeafe"/>
+  <line x1="90" y1="184" x2="640" y2="184" stroke="#2563eb" stroke-dasharray="5 4"/>
+  <line x1="90" y1="260" x2="640" y2="260" stroke="#94a3b8"/>
+  <text x="82" y="251" fill="#475569" font-size="12" text-anchor="end">9,000</text>
+  <text x="82" y="188" fill="#475569" font-size="12" text-anchor="end">10,000</text>
+  <text x="82" y="125" fill="#475569" font-size="12" text-anchor="end">11,000</text>
+  <polyline points="90,197 127,159 163,209 200,165 237,178 273,228 310,190 347,146 383,203 420,171 457,159 493,216 530,165 567,190" fill="none" stroke="#64748b" stroke-width="2"/>
+  <circle cx="90" cy="197" r="3.5" fill="#64748b"/>
+  <circle cx="127" cy="159" r="3.5" fill="#64748b"/>
+  <circle cx="163" cy="209" r="3.5" fill="#64748b"/>
+  <circle cx="200" cy="165" r="3.5" fill="#64748b"/>
+  <circle cx="237" cy="178" r="3.5" fill="#64748b"/>
+  <circle cx="273" cy="228" r="3.5" fill="#64748b"/>
+  <circle cx="310" cy="190" r="3.5" fill="#64748b"/>
+  <circle cx="347" cy="146" r="3.5" fill="#64748b"/>
+  <circle cx="383" cy="203" r="3.5" fill="#64748b"/>
+  <circle cx="420" cy="171" r="3.5" fill="#64748b"/>
+  <circle cx="457" cy="159" r="3.5" fill="#64748b"/>
+  <circle cx="493" cy="216" r="3.5" fill="#64748b"/>
+  <circle cx="530" cy="165" r="3.5" fill="#64748b"/>
+  <circle cx="567" cy="190" r="3.5" fill="#64748b"/>
+  <circle cx="640" cy="95" r="7" fill="#dc2626"/>
+  <text x="628" y="100" fill="#b91c1c" font-size="13" font-weight="700" text-anchor="end">Today ₩11,400</text>
+  <text x="634" y="129" fill="#1e3a8a" font-size="12" text-anchor="end">Usual range ≈ ₩9,220–10,780</text>
+  <text x="96" y="139" fill="#1e3a8a" font-size="12">Dashed: 14-day mean ₩10,000</text>
+  <text x="365" y="282" fill="#475569" font-size="12" text-anchor="middle">Last 14 days → today</text>
+  <text x="380" y="322" fill="#475569" font-size="13" text-anchor="middle">Example numbers. Leave movement inside the range alone</text>
+</svg>

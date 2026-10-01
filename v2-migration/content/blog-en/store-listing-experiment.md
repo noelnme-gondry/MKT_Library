@@ -84,7 +84,7 @@ If per-source rates held but the headline number got worse, mix can explain the 
 2. Pick exactly one variant, and write the end date and adoption threshold down before launching.
 3. Note the start date on a calendar — it becomes the reference point when you read the trend later.
 
-## Let's be honest
+## Limits of this approach
 
 Random assignment makes store experiments one of the few ASO tools capable of causal inference. That does not make them universal.
 

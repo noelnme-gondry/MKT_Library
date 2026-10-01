@@ -62,7 +62,7 @@ And one more thing: "how much revenue drops if we turn this channel off" — non
 
 By the way, if GA4's own numbers feel off, that is a separate issue. After setting the reporting source, check GA4-specific traps such as session definitions and processing lag in [GA4 data traps](/blog/ga4-data-traps).
 
-## Do this today
+## Try this today
 
 Build a one-page "source of truth" document. Four columns per metric: which metric / which source / which window / when it's considered final. Example: "channel-level conversions: MMP, 7-day click, provisional review at D+3, with finalization based on observed reporting delay." Having this one page eliminates half the meetings that start with "your number doesn't match mine."
 

@@ -1,0 +1,27 @@
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="330" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">Advantage+에서 내가 정하는 것과 알고리즘이 맡는 것</text>
+  <text x="190" y="70" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">내가 정하는 것</text>
+  <text x="570" y="70" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">알고리즘이 맡는 것</text>
+  <rect x="60" y="86" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="104" fill="#1e3a8a" font-size="13" font-weight="700">1. 측정 설정</text>
+  <text x="76" y="120" fill="#1e3a8a" font-size="12">OS별 귀속 방식·SDK·포스트백</text>
+  <rect x="60" y="138" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="156" fill="#1e3a8a" font-size="13" font-weight="700">2. 최적화 이벤트</text>
+  <text x="76" y="172" fill="#1e3a8a" font-size="12">사업 목표와 맞는 이벤트·값</text>
+  <rect x="60" y="190" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="208" fill="#1e3a8a" font-size="13" font-weight="700">3. 귀속 창 기록</text>
+  <text x="76" y="224" fill="#1e3a8a" font-size="12">다른 매체와 비교 기준</text>
+  <rect x="60" y="242" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="260" fill="#1e3a8a" font-size="13" font-weight="700">4. 입찰 전략·예산</text>
+  <text x="76" y="276" fill="#1e3a8a" font-size="12">목표 비용·상한·가치 최적화</text>
+  <rect x="440" y="86" width="260" height="198" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="570" y="130" fill="#475569" font-size="13" text-anchor="middle">타겟 확장</text>
+  <text x="570" y="164" fill="#475569" font-size="13" text-anchor="middle">지면 배분</text>
+  <text x="570" y="198" fill="#475569" font-size="13" text-anchor="middle">입찰 단가 조정</text>
+  <text x="570" y="232" fill="#475569" font-size="13" text-anchor="middle">소재 조합 노출</text>
+  <line x1="330" y1="185" x2="430" y2="185" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="430,185 420,180 420,190" fill="#94a3b8"/>
+  <text x="380" y="176" fill="#475569" font-size="12" text-anchor="middle">입력</text>
+  <text x="380" y="314" fill="#475569" font-size="13" text-anchor="middle">왼쪽 넷이 틀리면 오른쪽이 잘 돌아도 엉뚱한 목표를 학습합니다</text>
+</svg>

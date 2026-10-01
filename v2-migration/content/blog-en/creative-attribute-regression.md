@@ -62,11 +62,11 @@ To validate the candidates this produces, design a test with [ad creative testin
 
 ## Try this today
 
-**One.** Open your last 20–30 creatives and add just **three attribute columns** — the three you actually argue about in retros. Three real columns beat fifteen aspirational ones, and you can fill three from the assets themselves without relying on memory.
+1. Open your last 20–30 creatives and add just **three attribute columns** — the three you actually argue about in retros. Three real columns beat fifteen aspirational ones, and you can fill three from the assets themselves without relying on memory.
 
-**Two.** Before reading any coefficient, count how many creatives carry each attribute. Anything appearing in fewer than about five is describing those specific creatives, not the attribute. Mark those as unreadable rather than reading them anyway.
+2. Before reading any coefficient, count how many creatives carry each attribute. Anything appearing in fewer than about five is describing those specific creatives, not the attribute. Mark those as unreadable rather than reading them anyway.
 
-## Let's be honest
+## Limits of this approach
 
 This is observational data, and the delivery algorithm chose which creatives got volume. It gave impressions to what it predicted would perform, so high-performing attributes are partly a record of **what the algorithm liked**, not only what audiences liked. That selection bias cannot be removed by adding more columns.
 

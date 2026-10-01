@@ -80,11 +80,11 @@ How to read the search terms report for promotion candidates is in [Apple Search
 
 ## Try this today
 
-**One.** Export the term list in your Exact campaign and diff it against the Discovery negative list. Find Exact terms missing from Discovery’s exact-match negative list. Overlap with that negative list is the intended exclusion; missing terms are candidates for reviewing exploration overlap.
+1. Export the term list in your Exact campaign and diff it against the Discovery negative list. Find Exact terms missing from Discovery’s exact-match negative list. Overlap with that negative list is the intended exclusion; missing terms are candidates for reviewing exploration overlap.
 
-**Two.** Check which campaign your brand-name terms currently sit in. If they share a campaign with generic terms, separate brand and generic CPA. The blended CPA is not itself false, but it answers a different question from new-user acquisition efficiency.
+2. Check which campaign your brand-name terms currently sit in. If they share a campaign with generic terms, separate brand and generic CPA. The blended CPA is not itself false, but it answers a different question from new-user acquisition efficiency.
 
-## Let's be honest
+## Limits of this approach
 
 The promotion rule above narrows risk; it does not remove it. A term validated on 30 conversions can still behave differently at ten times the volume, because ASA is matching you to a different slice of searchers as spend grows. Promote in batches and re-check rather than moving the whole candidate list at once.
 

@@ -56,9 +56,9 @@ Nearly every channel sees its marginal conversion growth slow down as you increa
 
 To sum up, it answers three things.
 
-One, model-based channel contribution under explicit assumptions. This gives a different view from last-click attribution; it does not automatically reveal true causal contribution or repair attribution errors.
+1. **Model-based channel contribution under explicit assumptions.** This gives a different view from last-click attribution; it does not automatically reveal true causal contribution or repair attribution errors.
 
-Two, next month's forecast. It projects roughly how much revenue you'd generate if you kept the current allocation. This comes from the nature of regression — once you have the fitted coefficients, forecasting follows naturally.
+2. **Next month's forecast.** It projects roughly how much revenue you'd generate if you kept the current allocation. This comes from the nature of regression — once you have the fitted coefficients, forecasting follows naturally.
 
 ![A line chart showing MMM's forecast extending from actual past revenue into the future, with uncertainty shown as a 95% confidence band that widens to the right rather than a single point estimate.](/blog-assets-en/marketing-mix-modeling/forecast-band.svg)
 

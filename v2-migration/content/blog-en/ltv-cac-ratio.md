@@ -77,6 +77,6 @@ The [operations dashboard](/dashboard) exposes revenue and install-based ratios 
 
 When the ratio differs by channel, the next question is allocation — [marketing budget allocation](/blog/budget-marginal-efficiency) covers where to move budget, and [ad budget scaling limits](/blog/budget-scaling-limit) covers how far to raise it.
 
-## Let's be honest
+## Limits of this approach
 
 LTV is a future estimate, so it can be wrong. Rather than "LTV:CAC is 4:1, so pour in more," weigh the estimate's uncertainty (data window, cohort size) and decide conservatively.

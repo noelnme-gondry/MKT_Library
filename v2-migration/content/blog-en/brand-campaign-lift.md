@@ -79,9 +79,9 @@ Eight weeks is a preparation example, not a sufficiency guarantee. Required hist
 
 ## Try this today
 
-**One.** Whatever your outcome metric is — brand search volume, direct traffic — secure **pre-launch observations**, not only recent weeks. Assess whether eight weeks is sufficient for the design and seasonality; disclose the baseline limitation if historical tracking is unavailable.
+1. Whatever your outcome metric is — brand search volume, direct traffic — secure **pre-launch observations**, not only recent weeks. Assess whether eight weeks is sufficient for the design and seasonality; disclose the baseline limitation if historical tracking is unavailable.
 
-**Two.** Put one line in the next brand campaign brief: **"leave N regions unexposed."**
+2. Put one line in the next brand campaign brief: **"leave N regions unexposed."**
 
 That single line changes a lot. Instead of going national, holding out a few regions creates a same-period comparison group. Check whether seasonality, PR, and competitor changes affected groups comparably, and whether spillovers occurred. Holding out regions does not automatically cancel these factors. Next quarter's "what did it earn" gets a much firmer answer.
 

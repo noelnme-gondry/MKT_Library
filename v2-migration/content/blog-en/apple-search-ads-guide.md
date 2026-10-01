@@ -90,6 +90,6 @@ Low brand CPA does not establish incrementality. Where feasible, use [incrementa
 
 The bar for promoting the terms you find here to Exact is in [ASA keyword expansion](/blog/asa-keyword-expansion), and how much of that traffic converts on the store page is in [App Store Optimization](/blog/aso-basics-guide).
 
-## Let's be honest
+## Limits of this approach
 
 ASA's UI, match types, and policies keep changing. These are operating principles; check the current console and Apple's official documentation for setup screens, eligible settings, and bid limits before you build.

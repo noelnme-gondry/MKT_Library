@@ -132,7 +132,7 @@ That single branch decides what you work on for the next month. Trying to fix bo
 
 If conversion has actually dropped, first separate the page from the traffic mix — [app store conversion rate diagnosis](/blog/store-conversion-drop-diagnosis) has that decomposition, and [app store A/B testing](/blog/store-listing-experiment) covers validating whatever you change.
 
-## Let's be honest
+## Limits of this approach
 
 ASO depends on store algorithms and policies, and those rules change often. There's no formula that guarantees a number-one rank. Treat it as a continuous experiment: change an element, then track rank and conversion and adjust.
 

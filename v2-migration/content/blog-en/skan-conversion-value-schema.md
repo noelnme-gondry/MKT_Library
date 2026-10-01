@@ -56,11 +56,11 @@ Feed it a bad signal and the platform optimises that signal diligently. Put tuto
 
 ## Try this today
 
-**One.** Pull the mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
+1. Pull the mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
 
-**Two.** Check what sits at your top value, then verify that users who performed that action actually have higher D30 revenue. If they do not, you are handing the algorithm the wrong objective.
+2. Check what sits at your top value, then verify that users who performed that action actually have higher D30 revenue. If they do not, you are handing the algorithm the wrong objective.
 
-## Let's be honest
+## Limits of this approach
 
 Do not treat conversion-value-based ROAS as an absolute number. It approximates revenue encoded into a narrow value, and revenue beyond the measurement window is never captured at all. Different missingness, buckets and maturity can distort campaign rankings too.
 

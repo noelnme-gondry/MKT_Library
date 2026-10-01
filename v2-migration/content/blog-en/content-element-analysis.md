@@ -57,11 +57,11 @@ Once the candidates are narrowed, the next step is designing the test — [ad cr
 
 ## Try this today
 
-**One.** Add the attribute columns to your content tracker **now, as a production step** — not as a retro task. Tagging a quarter's worth from memory imports a bias toward remembering successful content as better made, and that bias lands directly in the coefficients.
+1. Add the attribute columns to your content tracker **now, as a production step** — not as a retro task. Tagging a quarter's worth from memory imports a bias toward remembering successful content as better made, and that bias lands directly in the coefficients.
 
-**Two.** Pick the single element your team argues about most and check how many pieces actually differ on it. If almost everything you made has the same hook type, the data holds no information about hook type, however many rows it has.
+2. Pick the single element your team argues about most and check how many pieces actually differ on it. If almost everything you made has the same hook type, the data holds no information about hook type, however many rows it has.
 
-## Let's be honest
+## Limits of this approach
 
 Elements that always travel together cannot be separated. If every short video also had a bright thumbnail, no amount of modelling will tell you which one carried the result — the honest output there is "cannot separate," not a smaller coefficient.
 

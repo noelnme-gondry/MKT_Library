@@ -12,7 +12,7 @@ faq:
   - q: "How much space does a safe zone need?"
     a: "The safe zone is the area for essential content that avoids platform UI and cropping. Leave covered areas clear and place captions and logos inside the official safe zone for that placement."
 
-updated: "2026-09-08"
+updated: "2026-10-01"
 reviewedAt: "2026-09-09"
 sources:
   - title: "Google App campaigns asset specifications"
@@ -31,6 +31,8 @@ These specs **change often**, so memorizing them isn't worth much. Checking the 
 ## Video has regions hidden by the UI
 
 Vertical (9:16) video gets platform UI — like button, username, CTA — overlaid on top. The safe zone avoids that overlap. Keep essential captions, prices, and logos within it, and inspect cropping in previews for each placement and language.
+
+![Concept diagram of a vertical video with the account name on top, like and comment buttons on the right, caption and CTA at the bottom, and the safe zone in the middle](/blog-assets-en/ad-creative-specs-guide/safe-zone.svg)
 
 The **bottom** of the screen especially is where many platforms park the CTA button and account name. So text you can't afford to lose belongs in the middle to upper area. If you run in multiple countries, set the safe zone against the **longest-translating language** so it doesn't get clipped where the copy runs long.
 
@@ -51,6 +53,21 @@ Interactive (playable) ads follow each platform's size, packaging, and external-
 
 Once specs are met, the next question is how many to run on what budget — that is [ad creative testing](/blog/ad-creative-testing) — and how to build the opening seconds is in [the first three seconds of a video ad](/blog/hook-3-seconds-framework).
 
-## Let's be honest
+## Pre-upload checklist
+
+Even when the exact numbers come from platform documentation, the order of checks stays the same. Run these six lines right before uploading and most rejections and crops are caught early.
+
+| Check | How to verify | What happens if you miss it |
+| --- | --- | --- |
+| Ratio and resolution | Export separately for each placement's recommended ratio | Auto-crop cuts off captions or logos |
+| Safe zone | Preview with the top, bottom and right UI visible | Price or CTA copy hidden behind buttons |
+| Longest language | Preview multi-country creative in the language with the longest copy | Text clipped only in some countries |
+| File size and length | Compare compressed size and video length with platform limits | Upload failure or review rejection |
+| Sound off | Play start to finish on mute | The message does not land without captions |
+| Landing match | Check that price and offers match the store or landing page | Policy rejection, lower conversion after the click |
+
+Log each rejection reason as a line in your next production checklist. It cuts down on being rejected twice for the same thing.
+
+## Limits of this approach
 
 Exact pixel and size numbers change constantly, so the moment you carve them into a post they risk going stale. Remember only the principle — that ratios, safe zones, and size caps exist — and check current numbers in the [creative specs by platform guide](/guide/creative-specs) or the platform's official docs right before you set up.

@@ -130,11 +130,11 @@ Next, use the [Cohort-Based Retention Guide](/en/guide/cohort-retention) to conn
 
 ## Try this today
 
-**One.** Open your retention table and check whether the most recent rows are **immature**. A cohort that installed yesterday has no D30 yet; if that renders as 0 rather than blank, your recent cohorts look like a collapse that never happened. This is the single most common false alarm in retention reporting.
+1. Open your retention table and check whether the most recent rows are **immature**. A cohort that installed yesterday has no D30 yet; if that renders as 0 rather than blank, your recent cohorts look like a collapse that never happened. This is the single most common false alarm in retention reporting.
 
-**Two.** Check how your averages are computed. If several days' retention rates are averaged without weighting, a 100-user cohort counts the same as a 10,000-user one. Weight by cohort size and the trend often changes direction.
+2. Check how your averages are computed. If several days' retention rates are averaged without weighting, a 100-user cohort counts the same as a 10,000-user one. Weight by cohort size and the trend often changes direction.
 
-## Let's be honest
+## Limits of this approach
 
 Retention benchmarks from outside your product are mostly unusable. The normal range varies so much by category, monetisation model and acquisition mix that an external average tells you little, and the sourcing is frequently unclear.
 
