@@ -12167,6 +12167,9 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .allocation-workspace .tool-instrument-header,
 .analysis-setup--actions[data-tool-id="5-3"] { background: var(--surface-container-lowest); }
 .allocation-workspace .prism-driver::after { content: none; }
+/* Keep one surface per task; the drop target supplies the upload boundary. */
+.app .content .allocation-workspace .tool-page-shell__main > .tool-upload-entry { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.allocation-workspace .prism-driver__control { padding: 16px 0; border: 0; border-radius: 0; background: transparent; }
 .allocation-context-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .allocation-context-controls__scope { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; }
 .allocation-scope { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
@@ -12183,11 +12186,13 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .allocation-workspace .prism-driver__method { padding-top: 20px; margin-top: 4px; border-top: 1px solid var(--border); }
 .allocation-workspace .prism-driver__method > header { font-size: var(--fs-sm); font-weight: 700; }
 .allocation-workspace .prism-driver__method > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.allocation-workspace .allocation-method-details { padding: 16px; background: var(--bg-1); border-radius: var(--radius-sm); }
-.allocation-workspace .alloc-hold-low { max-width: none; padding: 16px; background: var(--bg-1); }
+.allocation-workspace .allocation-method-details { padding: 0; background: transparent; border-radius: 0; }
+.allocation-workspace .alloc-hold-low { max-width: none; padding: 16px 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
 .allocation-workspace .prism-driver__method p { font-size: var(--fs-sm); line-height: 1.7; }
 .allocation-workspace .alloc-card { padding: 0; border: 0; background: transparent; box-shadow: none; margin-bottom: 0; }
 .allocation-workspace :is(.chart-container, .chart-canvas-wrap) { border: 0; background: transparent; }
+.allocation-workspace .table-wrap { border: 0; border-radius: 0; background: transparent; }
+.allocation-workspace :is(.result-shift__efficiency, .allocation-response-status) { padding: 12px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
 .allocation-workspace .alloc-fold-summary { display: grid; gap: 8px; }
 .allocation-workspace .alloc-fold-summary > span { margin-left: 0 !important; }
 .allocation-workspace .alloc-insight-summary { cursor: default; }
@@ -12221,7 +12226,7 @@ body.light-mode .ab-pill.active:not(.dashboard-tabs .ab-pill) { color: var(--tex
 .allocation-period-head h3 { margin: 0; font-size: var(--fs-lg); }
 .allocation-period-head p, .allocation-period-context { color: var(--text-secondary); font-size: var(--fs-sm); line-height: 1.7; margin: 8px 0 0; }
 .allocation-period-head .btn { flex-shrink: 0; min-height: 44px; }
-.allocation-period-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 20px 0 12px; padding: 16px; background: var(--bg-2); border-radius: var(--radius-sm); }
+.allocation-period-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 20px 0 12px; padding: 16px 0; border-block: 1px solid var(--border); }
 .allocation-period-inputs dt { color: var(--text-secondary); font-size: var(--fs-sm); }
 .allocation-period-inputs dd { margin: 8px 0 0; font-weight: 600; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .allocation-period-counts { display: flex; gap: 12px 24px; flex-wrap: wrap; padding-block: 20px; }

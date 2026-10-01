@@ -266,7 +266,7 @@ export function ResultBudgetShift({ visualization, locale, currency, fallback = 
         const label = delta == null ? tr(locale, "비교 불가", "Unavailable") : delta > 0 ? tr(locale, "증액", "Increase") : delta < 0 ? tr(locale, "감액", "Decrease") : tr(locale, "유지", "Unchanged");
         const efficiency = options.metric ? allocationEfficiency(row.current, row.currentResults, row.next, row.nextResults, options.metric) : null;
         const efficiencyValue = value => value == null ? "—" : efficiency.roas ? `${(value * 100).toFixed(1)}%` : money(value, currency);
-        return <li key={row.entity} className="result-shift__entity">
+        return <li key={row.entity} className="result-shift__entity" data-design-exempt="nested: one channel groups its current budget, planned budget and projected efficiency for comparison (product-ssot purpose grouping)">
           <div className="result-shift__head"><strong>{row.entity}</strong><span className="result-shift__direction" data-direction={direction}>{label}</span></div>
           <div className="result-shift__comparison">
             {[["current", tr(locale, "현재", "Current"), row.current], ["next", tr(locale, "변경안", "Plan"), row.next]].map(([key, name, value]) => <div className={`result-shift__measure is-${key}`} key={key}>
