@@ -1,0 +1,22 @@
+<svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="340" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">긴 척도로 크기를 재고, 짧은 척도로 방향을 확인합니다</text>
+  <text x="200" y="64" fill="#1e3a8a" font-size="14" font-weight="700" text-anchor="middle">긴 척도 (주 단위)</text>
+  <text x="200" y="82" fill="#475569" font-size="12" text-anchor="middle">집행 전 추세 대비 실제</text>
+  <rect x="251" y="94" width="95" height="156" rx="0" fill="#f1f5f9"/>
+  <polyline points="264,196 289,192 315,189 340,185" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="6 5"/>
+  <polyline points="60,227 85,218 111,223 136,209 162,214 187,205 213,209 238,200 264,145 289,118 315,127 340,141" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <line x1="60" y1="250" x2="340" y2="250" stroke="#94a3b8" stroke-width="2"/>
+  <text x="200" y="270" fill="#475569" font-size="12" text-anchor="middle">집행 전 8주 → 집행 중</text>
+  <text x="560" y="64" fill="#b45309" font-size="14" font-weight="700" text-anchor="middle">짧은 척도 (시간 단위)</text>
+  <text x="560" y="82" fill="#475569" font-size="12" text-anchor="middle">방영 직후 15~60분</text>
+  <polyline points="420,220 445,214 471,220 496,214 522,214 547,214 573,208 598,214 624,214 649,220 675,220 700,220" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <polyline points="420,220 445,214 471,226 496,208 522,220 547,214 573,112 598,142 624,196 649,214 675,220 700,226" fill="none" stroke="#d97706" stroke-width="3"/>
+  <line x1="420" y1="250" x2="700" y2="250" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="560" y1="100" x2="560" y2="250" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="556" y="108" fill="#b45309" font-size="12" font-weight="700" text-anchor="end">방영</text>
+  <text x="560" y="270" fill="#475569" font-size="12" text-anchor="middle">같은 요일·같은 시간대 평소 수준(점선)과 비교</text>
+  <text x="200" y="290" fill="#1e3a8a" font-size="12" font-weight="700" text-anchor="middle">메인 숫자</text>
+  <text x="560" y="290" fill="#b45309" font-size="12" font-weight="700" text-anchor="middle">방향 확인용 (인과 근거로는 약함)</text>
+  <text x="380" y="326" fill="#475569" font-size="13" text-anchor="middle">예시 데이터입니다. 두 척도가 다른 방향을 가리키면 판단을 보류합니다</text>
+</svg>

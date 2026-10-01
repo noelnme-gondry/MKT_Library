@@ -1,0 +1,20 @@
+<svg viewBox="0 0 760 350" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="350" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">단계마다 몇 %가 넘어오는지 보세요</text>
+  <rect x="20" y="64" width="560" height="36" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="300" y="87" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">노출 100,000</text>
+  <rect x="229" y="114" width="142" height="36" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="300" y="137" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">클릭 2,000</text>
+  <text x="450" y="118" fill="#334155" font-size="13" text-anchor="start">통과율 2%</text>
+  <rect x="248" y="164" width="103" height="36" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="300" y="187" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">설치 800</text>
+  <text x="450" y="168" fill="#334155" font-size="13" text-anchor="start">통과율 40%</text>
+  <rect x="255" y="214" width="90" height="36" rx="6" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="300" y="237" fill="#7f1d1d" font-size="13" font-weight="700" text-anchor="middle">가입 200</text>
+  <text x="450" y="218" fill="#b91c1c" font-size="13" font-weight="700" text-anchor="start">통과율 25%</text>
+  <rect x="255" y="264" width="90" height="36" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="300" y="287" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">구매 16</text>
+  <text x="450" y="268" fill="#334155" font-size="13" text-anchor="start">통과율 8%</text>
+  <text x="450" y="240" fill="#b91c1c" font-size="12" text-anchor="start">설치한 800명 중 600명이 가입 전 이탈</text>
+  <text x="380" y="336" fill="#475569" font-size="13" text-anchor="middle">예시 숫자입니다. 노출 10만 회로 가정하고 본문의 통과율을 적용했습니다</text>
+</svg>

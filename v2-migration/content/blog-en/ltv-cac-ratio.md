@@ -56,6 +56,8 @@ The formula is two divisions. What's wrong isn't the formula — it's the values
 
 3. **Looking only at the blended average.** Overall LTV:CAC of 3:1 often hides a mix of 5:1 channels and sub-1:1 channels. Leave it because the average looks good, and money keeps leaking into the bad channels. For budget decisions, look at the channel level.
 
+![Bars comparing CAC $100 with revenue LTV $240 (2.4:1) and 30%-contribution LTV $72 (0.72:1)](/blog-assets-en/ltv-cac-ratio/ltv-basis.svg)
+
 ## Reading LTV:CAC
 
 Common benchmarks:
@@ -77,6 +79,6 @@ The [operations dashboard](/dashboard) exposes revenue and install-based ratios 
 
 When the ratio differs by channel, the next question is allocation — [marketing budget allocation](/blog/budget-marginal-efficiency) covers where to move budget, and [ad budget scaling limits](/blog/budget-scaling-limit) covers how far to raise it.
 
-## Let's be honest
+## Limits of this approach
 
 LTV is a future estimate, so it can be wrong. Rather than "LTV:CAC is 4:1, so pour in more," weigh the estimate's uncertainty (data window, cohort size) and decide conservatively.

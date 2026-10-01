@@ -106,6 +106,8 @@ export const TOPIC_CLUSTERS = [
       "cohort-analysis-guide",
       "funnel-dropoff-analysis",
       "performance-marketer-skills",
+      "simpson-paradox-conversion-rate",
+      "user-churn-survival-analysis",
     ],
   },
 ];

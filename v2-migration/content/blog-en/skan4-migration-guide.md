@@ -34,6 +34,8 @@ SKAN 4 supports up to three conditional postbacks for periods after install. The
 
 One conclusion follows immediately: precise design only means anything in the first window. Detailed LTV bands in windows 2 and 3 collapse into three buckets.
 
+![The three SKAN 4 windows: days 0–2 can return fine or coarse values, days 3–7 and 8–35 return coarse values only](/blog-assets-en/ios-att-skan-guide/skan4-windows.svg)
+
 ## Step 1 — Lock the first window's schema
 
 Start [conversion value](/glossary/conversion-value) design at window one, because of reversal cost.
@@ -64,11 +66,11 @@ Following the order keeps failures separable. Turn everything on at once and whe
 
 ## Try this today
 
-**One.** Pull up your conversion-value mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
+1. Pull up your conversion-value mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
 
-**Two.** Count your iOS campaigns and check daily installs for each. Install counts alone do not identify an unpublished threshold. Weigh observed return detail against lost operating control before consolidating.
+2. Count your iOS campaigns and check daily installs for each. Install counts alone do not identify an unpublished threshold. Weigh observed return detail against lost operating control before consolidating.
 
-## Let's be honest
+## Limits of this approach
 
 Apple does not publish threshold figures and the rules change between versions. Rather than designing around an assumed number, change the structure and observe what actually returns. Confirm against [Apple's SKAdNetwork documentation](https://developer.apple.com/documentation/storekit/skadnetwork) before committing.
 

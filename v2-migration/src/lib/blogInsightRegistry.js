@@ -3,6 +3,8 @@
 // Every published article must have an entry or an explicit non-CSV reason.
 const entry = (toolId, type = "adapter") => ({ section: 1, toolId, type });
 export const BLOG_INSIGHT_PLACEMENTS = {
+  "simpson-paradox-conversion-rate": entry("5-29", "ratio"),
+  "user-churn-survival-analysis": entry("5-28", "distribution"),
   "weekly-marketing-report-template": entry("5-21"),
   "cac-payback-period": entry("5-2"),
   "marketing-report-sheets-bigquery": entry("5-2"),

@@ -82,11 +82,11 @@ Automation optimizes the goal you give it. Make that goal a better proxy for dur
 
 ## Try this today
 
-**One.** Take your current optimization event and count its **daily volume**. Learning requirements vary by network, campaign type, optimization target, and conversion delay. Check the current platform guidance before changing the event; there is no universal daily cutoff.
+1. Take your current optimization event and count its **daily volume**. Learning requirements vary by network, campaign type, optimization target, and conversion delay. Check the current platform guidance before changing the event; there is no universal daily cutoff.
 
-**Two.** Split last quarter's installs into two groups: those that fired your Aha candidate within the window and those that did not. Compare D7 or D30 retention between them. If the curves are not distinguishable, inspect sample support and uncertainty before rejecting the candidate.
+2. Split last quarter's installs into two groups: those that fired your Aha candidate within the window and those that did not. Compare D7 or D30 retention between them. If the curves are not distinguishable, inspect sample support and uncertainty before rejecting the candidate.
 
-## Let's be honest
+## Limits of this approach
 
 An Aha event is a **correlate of retention, not a proven cause of it**. Users who complete an early action may simply have been more motivated to begin with, and optimizing acquisition toward that action can select for people who would have retained anyway.
 

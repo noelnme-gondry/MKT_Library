@@ -38,6 +38,8 @@ Ad channels generally follow diminishing returns. Cheap inventory and responsive
 
 So this state is extremely common: average CPA sits under target while marginal CPA has already passed it. Scaling in that zone slowly degrades the average, and a few weeks later someone asks why CPA went up. That is exactly the cycle above.
 
+![Concept diagram comparing the slope from the origin (average) with the tangent at current spend (marginal) on a cumulative conversion curve](/blog-assets-en/budget-scaling-limit/average-vs-marginal.svg)
+
 ## Saturation is one ratio
 
 No need to complicate it.
@@ -76,11 +78,11 @@ If the question is where to move budget across several channels at once, [market
 
 ## Try this today
 
-**One.** Take the channel that currently looks best and check how much its spend actually varied over the last 8–12 weeks. If it barely moved, that channel has no basis for a scaling decision right now — good CPA or not.
+1. Take the channel that currently looks best and check how much its spend actually varied over the last 8–12 weeks. If it barely moved, that channel has no basis for a scaling decision right now — good CPA or not.
 
-**Two.** Before collecting more observations, specify a loss limit, comparison period, conversion maturity, and stopping rule. Before-and-after data alone does not identify a causal effect.
+2. Before collecting more observations, specify a loss limit, comparison period, conversion maturity, and stopping rule. Before-and-after data alone does not identify a causal effect.
 
-## Let's be honest
+## Limits of this approach
 
 Saturation is an **association-based estimate**, not a causal experiment. It reads "when spend was this much, outcomes were that much" out of history and fits a curve to it.
 

@@ -2,6 +2,8 @@
 // The same copy is used at article entry, beside the example, and in the reading bar.
 const C = (ko, en, noteKo = "", noteEn = "") => ({ ko: { action: ko, note: noteKo }, en: { action: en, note: noteEn } });
 export const BLOG_CONVERSION = {
+  "simpson-paradox-conversion-rate": C("구성 이동과 내부 변화 나눠보기", "Split composition shift from within-group change", "예시는 가입자 구성 비중을 나눕니다. 내 파일로는 묶음별 합계의 비율을 먼저 확인합니다.", "The example splits a signup share. With your file, the inline check compares ratios of group totals first."),
+  "user-churn-survival-analysis": C("이탈 시점 생존곡선 보기", "See a churn-timing survival curve", "내 파일로 여기서 하는 확인은 묶음별 합계입니다. 생존곡선은 도구에서 계산합니다.", "The inline check with your file shows group totals. The survival curve is calculated in the tool."),
   "weekly-marketing-report-template": C("주간 보고서 샘플 열기", "Open a weekly report example"),
   "cac-payback-period": C("획득 비용 비교해 보기", "Compare acquisition costs", "설치당 비용 예시입니다. 구매 고객 CAC와 회수 기간은 별도 데이터가 필요합니다.", "This example uses cost per install. Customer CAC and payback need separate data."),
   "marketing-report-sheets-bigquery": C("정리한 데이터로 보고서 보기", "See a report from prepared data"),

@@ -2,6 +2,8 @@
 // glossary entry. This is deliberately explicit rather than keyword-based:
 // every published topic has one reviewed conversion destination.
 const BLOG_PRIMARY_TOOL = {
+  "simpson-paradox-conversion-rate": "5-29",
+  "user-churn-survival-analysis": "5-28",
   "weekly-marketing-report-template": "5-21",
   "cac-payback-period": "5-2",
   "marketing-report-sheets-bigquery": "5-2",
@@ -106,6 +108,8 @@ const GLOSSARY_PRIMARY_TOOL = {
 // 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
 // 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
 const BLOG_RELATED_GLOSSARY = {
+  "simpson-paradox-conversion-rate": ["cvr", "funnel"],
+  "user-churn-survival-analysis": ["retention", "cohort", "ltv"],
   "weekly-marketing-report-template": ["cpi", "cpa"],
   "cac-payback-period": ["cac", "ltv"],
   "marketing-report-sheets-bigquery": ["cpi", "attribution-window"],

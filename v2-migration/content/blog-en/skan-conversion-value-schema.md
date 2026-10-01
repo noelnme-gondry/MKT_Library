@@ -28,6 +28,8 @@ Then you list what you want to encode. Signup (2) × tutorial complete (2) × fi
 
 But the real constraint is not slot count, it is **volume per slot**. Split into 64 and a campaign doing 500 installs a day averages eight per slot. Actual distribution and missingness differ, so that average alone does not establish whether the schema is useful.
 
+![500 daily installs across 64 slots averages about 8 per slot; across 8 decision slots it averages 62.5](/blog-assets-en/skan-conversion-value-schema/cell-volume.svg)
+
 ## The design rule: split only where decisions differ
 
 Ask one question per split: "if this value changes, do I do something different?"
@@ -56,11 +58,11 @@ Feed it a bad signal and the platform optimises that signal diligently. Put tuto
 
 ## Try this today
 
-**One.** Pull the mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
+1. Pull the mapping and count actual install volume per value. If many slots are empty, check behavior distribution, missingness and return conditions before considering consolidation.
 
-**Two.** Check what sits at your top value, then verify that users who performed that action actually have higher D30 revenue. If they do not, you are handing the algorithm the wrong objective.
+2. Check what sits at your top value, then verify that users who performed that action actually have higher D30 revenue. If they do not, you are handing the algorithm the wrong objective.
 
-## Let's be honest
+## Limits of this approach
 
 Do not treat conversion-value-based ROAS as an absolute number. It approximates revenue encoded into a narrow value, and revenue beyond the measurement window is never captured at all. Different missingness, buckets and maturity can distort campaign rankings too.
 

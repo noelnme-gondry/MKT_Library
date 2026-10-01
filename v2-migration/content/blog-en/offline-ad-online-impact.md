@@ -34,6 +34,8 @@ Do not read performance-channel conversions directly. If digital budget rose dur
 
 **Short scale (hourly)**: check whether traffic in the 15–60 minutes after a spot deviates from the usual level for that weekday and hour. This spike is weak causal evidence on its own, but it cross-checks whether the long-scale estimate points the right way.
 
+![Left: weekly actuals against the pre-flight trend; right: traffic 15–60 minutes after a spot against the usual level for that hour](/blog-assets-en/offline-ad-online-impact/two-time-scales.svg)
+
 If the two scales disagree, collect more data instead of concluding.
 
 ## When digital is mixed in
@@ -54,13 +56,13 @@ Eight weeks is a preparation example, not a sufficiency guarantee. Required hist
 
 ## Try this today
 
-**One.** Before the next flight starts, pull **at least eight weeks** of brand search volume and direct traffic and park it somewhere. A baseline cannot be built after the fact, and without one the interval stays so wide that no result is sayable.
+1. Before the next flight starts, pull **at least eight weeks** of brand search volume and direct traffic and park it somewhere. A baseline cannot be built after the fact, and without one the interval stays so wide that no result is sayable.
 
-**Two.** Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. The number of regions must follow a design and power assessment. One or two regions do not guarantee adequate inference; inspect balance, spillovers, and concurrent changes.
+2. Ask the media team one question: can we leave any region unexposed? Offline buys are region-addressable, which makes this far easier than it is in digital. The number of regions must follow a design and power assessment. One or two regions do not guarantee adequate inference; inspect balance, spillovers, and concurrent changes.
 
 The same time-series approach for click-free media appears in [measuring brand campaign lift](/blog/brand-campaign-lift), and the bar for reading the result as incremental is in [incrementality measurement](/blog/incrementality-measurement).
 
-## Let's be honest
+## Limits of this approach
 
 Everything above estimates a counterfactual from a trend, not from a randomised comparison. When a product launch, a PR moment, or a seasonal peak lands in the same window, this design cannot separate them from the flight.
 

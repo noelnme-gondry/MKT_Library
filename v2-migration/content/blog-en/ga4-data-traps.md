@@ -84,7 +84,7 @@ Align metrics, scopes, time zones, dates, filters and quality indicators, then i
 
 Record extraction time and provisional or closed status in the [weekly report worksheet](/blog/weekly-marketing-report-template). To reduce repeated preparation, use the [BigQuery and Sheets workflow](/blog/marketing-report-sheets-bigquery).
 
-## Do this today
+## Try this today
 
 Choose two conflicting reports and write down their metric, traffic scope, time zone, period, filters, quality indicators and extraction times. Align one condition at a time to locate the difference.
 

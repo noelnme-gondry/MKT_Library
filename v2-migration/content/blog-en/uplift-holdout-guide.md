@@ -95,11 +95,11 @@ With exposed and holdout numbers, new-ON data, or shutdown data, use [Incrementa
 
 ## Try this today
 
-**One.** List your campaigns by reported CPA and look at the **best** one. Ask what share of its conversions would have happened anyway. Brand search and retargeting sit at the top of most reports precisely because they harvest existing intent — the best-looking campaign is often the least incremental.
+1. List your campaigns by reported CPA and look at the **best** one. Ask what share of its conversions would have happened anyway. Brand search and retargeting sit at the top of most reports precisely because they harvest existing intent — the best-looking campaign is often the least incremental.
 
-**Two.** Pick one campaign and calculate the smallest holdout that can detect the effect you care about within the available window. Write the success criterion down before it runs. A deliberately sized holdout answers a question that attribution analysis cannot.
+2. Pick one campaign and calculate the smallest holdout that can detect the effect you care about within the available window. Write the success criterion down before it runs. A deliberately sized holdout answers a question that attribution analysis cannot.
 
-## Let's be honest
+## Limits of this approach
 
 Uplift is estimated with uncertainty, and uncertainty is usually wide. A holdout that returns "positive but not significant" has not shown the ad works, and it has not shown it fails either — limited power is one possible explanation, but nonsignificance alone does not prove it. Reporting that as "no effect" is the most common way an incrementality result gets misused.
 

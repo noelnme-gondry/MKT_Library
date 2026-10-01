@@ -1,0 +1,20 @@
+<svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="380" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">세로형(9:16) 영상에서 가려지는 자리</text>
+  <rect x="80" y="56" width="170" height="300" rx="18" fill="#f8fafc" stroke="#334155" stroke-width="2"/>
+  <rect x="80" y="56" width="170" height="44" rx="18" fill="#fee2e2"/>
+  <rect x="80" y="296" width="170" height="60" rx="18" fill="#fee2e2"/>
+  <rect x="212" y="150" width="38" height="146" fill="#fee2e2"/>
+  <rect x="96" y="112" width="104" height="172" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-dasharray="5 4"/>
+  <text x="148" y="190" fill="#166534" font-size="13" font-weight="700" text-anchor="middle">세이프존</text>
+  <text x="148" y="210" fill="#166534" font-size="12" text-anchor="middle">자막·가격·로고</text>
+  <line x1="260" y1="78" x2="330" y2="78" stroke="#94a3b8"/>
+  <text x="340" y="83" fill="#7f1d1d" font-size="13">위: 계정명·광고 표시</text>
+  <line x1="260" y1="220" x2="330" y2="220" stroke="#94a3b8"/>
+  <text x="340" y="225" fill="#7f1d1d" font-size="13">오른쪽: 좋아요·댓글·공유 버튼</text>
+  <line x1="260" y1="326" x2="330" y2="326" stroke="#94a3b8"/>
+  <text x="340" y="331" fill="#7f1d1d" font-size="13">아래: 캡션·CTA 버튼</text>
+  <line x1="200" y1="150" x2="330" y2="150" stroke="#94a3b8"/>
+  <text x="340" y="155" fill="#166534" font-size="13">핵심 정보는 이 안에</text>
+  <text x="380" y="372" fill="#475569" font-size="12" text-anchor="middle">개념도입니다. 실제 여백 크기는 매체·지면마다 다르니 최신 공식 사양으로 확인하세요</text>
+</svg>

@@ -10,8 +10,8 @@
     <line x1="330" y1="68" x2="200" y2="126"/><polygon points="197,118 194,130 205,124"/>
     <line x1="350" y1="68" x2="480" y2="126"/><polygon points="483,124 486,130 475,118"/>
   </g>
-  <text x="238" y="104" fill="#94A3B8" font-size="11.5">무작위 50%</text>
-  <text x="405" y="104" fill="#94A3B8" font-size="11.5">무작위 50%</text>
+  <text x="244" y="100" fill="#64748B" font-size="11.5" text-anchor="end">무작위 50%</text>
+  <text x="436" y="100" fill="#64748B" font-size="11.5">무작위 50%</text>
 
   <!-- A안 박스 -->
   <rect x="80" y="130" width="200" height="112" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>

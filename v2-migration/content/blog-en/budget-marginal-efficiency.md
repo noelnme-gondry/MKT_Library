@@ -69,11 +69,11 @@ A response curve estimates a relationship over the observed period and spend ran
 
 The [Budget Allocation Simulator](/tools/budget-allocation) compares where to add and where to pull using marginal efficiency. Example data explains the interface; use your own CSV, observed range, and constraints for an actual budget decision.
 
-![Budget Allocation Simulator — trendline verification. Per-channel ROAS vs spend scatter with a response curve to read the marginal efficiency of the next dollar.](/blog-assets/budget-marginal-efficiency/trendline-en.png)
+![Example: a response curve fitted to one channel’s daily spend and ROAS, reading the next unit’s efficiency as the slope at current spend. No estimate beyond the observed range](/blog-assets-en/budget-marginal-efficiency/trendline.svg)
 
 > ⚠️ **One honest caveat.** This simulator estimates budget moves from relationships in the observed historical range. It does not model how auctions, creative, or demand may change after the move, nor whether historical performance will return. When the causal impact of a cut matters, pair the reallocation result with [Incrementality Analysis](/tools/incrementality) to test "how much actually disappears if I pull this channel."
 
-![Incrementality — an appropriately designed holdout estimates incremental lift from the daily conversion-rate difference between the ads-off and exposed groups.](/blog-assets/budget-marginal-efficiency/incrementality-en.png)
+![Example: during the holdout period the ads-off group converts below the exposed group, and the gap is read as the increment. Outside the period the lines overlap](/blog-assets-en/budget-marginal-efficiency/incrementality.svg)
 
 To decide how far one channel can scale, [ad budget scaling limits](/blog/budget-scaling-limit) covers setting a ceiling with marginal CPA; to check whether the budget is affordable at all, see [the LTV:CAC ratio](/blog/ltv-cac-ratio).
 

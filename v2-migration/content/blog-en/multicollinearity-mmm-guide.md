@@ -83,13 +83,13 @@ Start with the [VIF Multicollinearity Check](/tools/vif-multicollinearity), send
 
 ## Try this today
 
-**One.** Before running MMM again, put channel spend through a [VIF check](/tools/vif-multicollinearity) and look at which pairs come back high. That single pass usually explains the "negative coefficient" that prompted the question in the first place.
+1. Before running MMM again, put channel spend through a [VIF check](/tools/vif-multicollinearity) and look at which pairs come back high. That single pass usually explains the "negative coefficient" that prompted the question in the first place.
 
-**Two.** Look at your last 12 weeks of channel budgets and ask whether any channel moved **independently of the others**. If everything scaled up and down together, the next MMM run will have the same problem no matter which model you choose. Staggered changes may add independent variation, but do not guarantee estimability. Recheck sample support, concurrent changes, and identification before interpreting the next model.
+2. Look at your last 12 weeks of channel budgets and ask whether any channel moved **independently of the others**. If everything scaled up and down together, the next MMM run will have the same problem no matter which model you choose. Staggered changes may add independent variation, but do not guarantee estimability. Recheck sample support, concurrent changes, and identification before interpreting the next model.
 
 For what MMM estimates in the first place, see [marketing mix modeling](/blog/marketing-mix-modeling); its limit — association from observational data, not causation — reads more clearly alongside [incrementality measurement](/blog/incrementality-measurement).
 
-## Let's be honest
+## Limits of this approach
 
 High VIF does not mean the model is wrong. It means **this data cannot separate these channels** — a statement about the data, not about the channels' real effects. A negative coefficient under collinearity does not establish harm. Check coefficient uncertainty and identification rather than inferring either harm or unidentifiability from the sign alone.
 

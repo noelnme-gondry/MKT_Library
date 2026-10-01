@@ -2,6 +2,8 @@ import { AUTHOR } from "@/lib/authorProfile";
 // 블로그의 "짧은 답"·적용 범위·검토 정보를 원고와 분리한 편집 레지스트리.
 // 검색 메타와 CTA를 섞지 않고, SSR 본문과 JSON-LD가 동일한 답변을 쓰게 한다.
 const KO_ANSWERS = {
+  "simpson-paradox-conversion-rate": "심슨의 역설은 캠페인별 전환율이 모두 올라도 물량이 전환율 낮은 캠페인으로 옮겨 가면 전체 전환율이 떨어지는 현상입니다. A 10%→11%, B 2%→2.5%여도 설치 비중이 80:20에서 25:75로 바뀌면 전체는 8.4%에서 4.6%로 떨어집니다. 변화를 물량 이동(−4.4%p)과 캠페인 안의 변화(+0.9%p)로 나눠 보고하세요.",
+  "user-churn-survival-analysis": "유저 이탈 시점은 해지한 사람만 평균하지 말고 아직 남아 있는 사람을 포함한 생존곡선으로 분석합니다. 10명 중 5명이 해지한 예시에서 해지자 평균은 2.8개월이지만 생존곡선의 중앙값은 5개월입니다. 월별 이탈 위험이 높아지는 달보다 한 발 앞서 개입하세요.",
   "weekly-marketing-report-template": "주간 광고 성과 보고서 템플릿은 비교 조건, 관측된 변화, 확인할 가설, 결정과 다음 검토일을 함께 기록합니다. 합성 예제에서 비용은 700,000원에서 840,000원으로 늘고 설치는 700건으로 같아 설치당 비용이 1,000원에서 1,200원으로 상승합니다. 이것만으로 운영 원인을 확정하지 않습니다.",
   "cac-payback-period": "CAC 회수기간은 신규 고객 코호트의 누적 공헌이익이 획득비용에 도달하는 시점으로 계산합니다. 예제는 4개월 말 900만 원, 5개월 말 1,050만 원으로 획득비용 1,000만 원을 5개월 말에 처음 회수합니다. 4.67개월은 월중 기여가 일정하다는 가정의 보간값입니다.",
   "marketing-report-sheets-bigquery": "광고 리포트 자동화는 BigQuery에서 집계하고 Google Sheets에서 검토한 뒤 CSV를 분석에 사용하는 흐름으로 구성할 수 있습니다. Connected Sheets 예약 갱신과 사이트의 불러오기는 별개입니다. 사내 시트는 비공개로 유지하고 필요한 집계만 CSV로 내보내세요. 권한·비용·날짜·통화·전환 정의를 먼저 확인합니다.",
@@ -56,6 +58,8 @@ const KO_ANSWERS = {
 };
 
 const EN_ANSWERS = {
+  "simpson-paradox-conversion-rate": "Simpson's paradox is when every campaign's conversion rate rises but the total falls because volume moved to a lower-converting campaign. With A at 10% to 11% and B at 2% to 2.5%, shifting install share from 80:20 to 25:75 drops the total from 8.4% to 4.6%. Report the change as a volume shift (−4.4 pp) and change within campaigns (+0.9 pp).",
+  "user-churn-survival-analysis": "Analyze user churn timing with a survival curve that keeps users who have not left yet, instead of averaging only those who churned. In a ten-user example with five cancellations, the churned-only average is 2.8 months but the survival median is 5 months. Act a step ahead of the month where churn risk rises.",
   "weekly-marketing-report-template": "A weekly marketing report template records comparison conditions, observed changes, hypotheses, decisions and review dates. In this synthetic example, spend rises from KRW 700,000 to 840,000 while installs stay at 700, raising CPI from 1,000 to 1,200. These observations do not establish the operational cause.",
   "cac-payback-period": "The CAC payback period is when a new-customer cohort’s cumulative contribution recovers acquisition cost. In the example, contribution reaches KRW 9 million at month four and 10.5 million at month five, first recovering the KRW 10 million cost at month five-end. The 4.67-month figure interpolates under a uniform-accrual assumption.",
   "marketing-report-sheets-bigquery": "Marketing report automation can aggregate in BigQuery, review in Google Sheets and supply an analysis-ready CSV. Connected Sheets scheduled refresh and importing into this site are separate steps. Keep internal sheets private and export only necessary aggregates. Check permissions, costs, dates, currency and outcome definitions first.",
@@ -110,6 +114,7 @@ const EN_ANSWERS = {
 };
 
 const CONDITION_GROUP_BY_SLUG = {
+  "simpson-paradox-conversion-rate": "measurement", "user-churn-survival-analysis": "measurement",
   "weekly-marketing-report-template": "measurement",
   "cac-payback-period": "economics",
   "marketing-report-sheets-bigquery": "measurement",

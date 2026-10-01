@@ -1,0 +1,19 @@
+<svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="360" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">같은 고객인데 LTV를 무엇으로 셌느냐에 따라 비율이 뒤집힙니다</text>
+  <rect x="150" y="195" width="110" height="75" rx="4" fill="#94a3b8"/>
+  <text x="205" y="185" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">10만 원</text>
+  <text x="205" y="290" fill="#334155" font-size="13" text-anchor="middle">CAC</text>
+  <rect x="340" y="90" width="110" height="180" rx="4" fill="#2563eb"/>
+  <text x="395" y="80" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">24만 원</text>
+  <text x="395" y="290" fill="#334155" font-size="13" text-anchor="middle">LTV (매출 기준)</text>
+  <rect x="530" y="216" width="110" height="54" rx="4" fill="#dc2626"/>
+  <text x="585" y="206" fill="#0f172a" font-size="14" font-weight="700" text-anchor="middle">7.2만 원</text>
+  <text x="585" y="290" fill="#334155" font-size="13" text-anchor="middle">LTV (공헌이익 30%)</text>
+  <line x1="120" y1="270" x2="620" y2="270" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="120" y1="195" x2="620" y2="195" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="630" y="199" fill="#475569" font-size="12" text-anchor="start">CAC</text>
+  <text x="395" y="314" fill="#1e3a8a" font-size="13" font-weight="700" text-anchor="middle">2.4 : 1</text>
+  <text x="585" y="314" fill="#b91c1c" font-size="13" font-weight="700" text-anchor="middle">0.72 : 1</text>
+  <text x="380" y="346" fill="#475569" font-size="13" text-anchor="middle">예시 숫자입니다. 원가·수수료를 빼면 같은 고객이 CAC를 회수하지 못할 수 있습니다</text>
+</svg>

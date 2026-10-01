@@ -39,6 +39,8 @@ Move terms that proved out in Discovery into Exact, and add each moved term as a
 
 Give Discovery an exploration budget and review cadence. Continue when new candidates are valuable; reduce or pause when budget or exploration value is low.
 
+![Structure: terms that meet both conditions move from Discovery to Exact, and promoted terms are added to Discovery as negatives](/blog-assets-en/asa-keyword-expansion/two-campaigns.svg)
+
 ## Promotion needs two conditions, together
 
 When reading the search terms report, look at these two side by side.
@@ -80,11 +82,11 @@ How to read the search terms report for promotion candidates is in [Apple Search
 
 ## Try this today
 
-**One.** Export the term list in your Exact campaign and diff it against the Discovery negative list. Find Exact terms missing from Discovery’s exact-match negative list. Overlap with that negative list is the intended exclusion; missing terms are candidates for reviewing exploration overlap.
+1. Export the term list in your Exact campaign and diff it against the Discovery negative list. Find Exact terms missing from Discovery’s exact-match negative list. Overlap with that negative list is the intended exclusion; missing terms are candidates for reviewing exploration overlap.
 
-**Two.** Check which campaign your brand-name terms currently sit in. If they share a campaign with generic terms, separate brand and generic CPA. The blended CPA is not itself false, but it answers a different question from new-user acquisition efficiency.
+2. Check which campaign your brand-name terms currently sit in. If they share a campaign with generic terms, separate brand and generic CPA. The blended CPA is not itself false, but it answers a different question from new-user acquisition efficiency.
 
-## Let's be honest
+## Limits of this approach
 
 The promotion rule above narrows risk; it does not remove it. A term validated on 30 conversions can still behave differently at ten times the volume, because ASA is matching you to a different slice of searchers as spend grows. Promote in batches and re-check rather than moving the whole candidate list at once.
 

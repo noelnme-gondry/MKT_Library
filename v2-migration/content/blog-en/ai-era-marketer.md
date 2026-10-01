@@ -92,11 +92,11 @@ Here's why that's good news. Operating skill isn't a competitive advantage — e
 
 AI tools marketers use these days roughly fall into three types. Each needs a different approach.
 
-**One, generative AI** (copy, image, video generation). It cuts creative production time dramatically. But there's a trap here. Now that you can make lots of creative fast, deciding what to make matters even more. Produce 100 variations in the wrong direction, and all 100 are useless. And with more creative in play, [figuring out which one actually works](/en/blog/ab-testing) gets harder, not easier. Production got faster. Selection didn't.
+1. **Generative AI** (copy, image, video generation). It cuts creative production time dramatically. But there's a trap here. Now that you can make lots of creative fast, deciding what to make matters even more. Produce 100 variations in the wrong direction, and all 100 are useless. And with more creative in play, [figuring out which one actually works](/en/blog/ab-testing) gets harder, not easier. Production got faster. Selection didn't.
 
-**Two, execution AI** (auto-bidding, automated campaigns). This is what we covered above. Use it well, but [understand how the learning phase works](/en/blog/ad-machine-learning) and verify the results.
+2. **Execution AI** (auto-bidding, automated campaigns). This is what we covered above. Use it well, but [understand how the learning phase works](/en/blog/ad-machine-learning) and verify the results.
 
-**Three, summarization AI** (auto-generated reports, insight summaries). Convenient, but this is where you need to be most careful. Summaries are good at producing plausible-sounding sentences. Plausible isn't the same as correct. When you see a line like "Channel A is performing well, increase its budget," check whether that's based on the average or the [marginal return](/en/blog/budget-marginal-efficiency). Executing a plausible-sounding conclusion without double-checking it is the most common mistake right now.
+3. **Summarization AI** (auto-generated reports, insight summaries). Convenient, but this is where you need to be most careful. Summaries are good at producing plausible-sounding sentences. Plausible isn't the same as correct. When you see a line like "Channel A is performing well, increase its budget," check whether that's based on the average or the [marginal return](/en/blog/budget-marginal-efficiency). Executing a plausible-sounding conclusion without double-checking it is the most common mistake right now.
 
 ## So what should you actually prepare?
 

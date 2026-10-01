@@ -13,7 +13,7 @@ faq:
     a: "First separate a data problem from a performance problem. Broken tracking or delayed reporting is no reason to touch the campaign. Then split the change into volume, efficiency, and mix to locate it."
 
 reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+updated: "2026-10-01"
 ---
 You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: is this a real anomaly, or just that day's noise?
 
@@ -36,6 +36,17 @@ A simple method that works in practice is a **moving average ± standard deviati
 
 Set up this way, you react not to "CPA rose 20% from yesterday" but only to **"it broke past the normal range."** Most wasted interventions get filtered here. For metrics with strong day-of-week swings, compare like days or remove the day-of-week effect for more accuracy.
 
+## A worked example
+
+Say CPA moved between ₩9,300 and ₩10,600 over the last 14 days. The mean is ₩10,000 and the standard deviation is about ₩388. A mean ± 2 SD band puts the usual range at roughly ₩9,220 to ₩10,780.
+
+- If today's CPA is ₩10,600, it is 7% above the previous day (₩9,900) but still inside the range. Keep watching.
+- If today's CPA is ₩11,400, it is outside the range. Flag it as a candidate and move on to the breakdown below.
+
+![Example: 14 days of CPA moving within a range around ₩10,000, then today at ₩11,400 outside the range](/blog-assets-en/campaign-anomaly-detection/cpa-band.svg)
+
+If levels differ by weekday, build the range from the same weekday. In an account where weekend CPA always runs higher, a weekday-based range flags every Saturday. With only a few dozen conversions a day, CPA itself swings widely, so group several days together or widen the range.
+
 ## If it is an anomaly, decompose next
 
 Once a real anomaly is confirmed, split the cause. Performance changes for two broad reasons.
@@ -51,7 +62,7 @@ The [operations dashboard](/dashboard)'s anomaly tab auto-flags days that break 
 
 If the decline is sustained over days rather than a single spike, [ad performance drop](/blog/ad-performance-diagnosis) is the right sequence; if it is unclear which metric to read first, [performance marketing metrics](/blog/performance-marketing-metrics) lays out the chain. If it is unclear which analysis your data can even support, [marketing data analysis](/blog/performance-marketing-analysis-order) is the starting point.
 
-## Let's be honest
+## Limits of this approach
 
 Anomaly detection tells you "this looks off" — it doesn't prove the cause. Even a day that broke the band may have outside factors mixed in (a competitor promo, seasonality, a landing outage). Use the spiked number only as a **starting point** for investigation, and check what actually happened that day before deciding.
 

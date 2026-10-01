@@ -69,7 +69,7 @@ First, record the date, size, and target of changes in the last 30 days. Compare
 
 Second, count the daily volume of your optimization event. If signals are sparse, check tracking and delay first. An earlier-funnel event is an option only when it represents business value, not a mandatory progression.
 
-## Let's be honest
+## Limits of this approach
 
 UAC is a black box — you can't fully know "why it went to this user." Focus on the controllable levers (goal, assets, events), and confirm real incrementality not with console metrics but with a [holdout](/tools/incrementality). The conversions the platform reports have users who'd have come without the ad mixed in.
 

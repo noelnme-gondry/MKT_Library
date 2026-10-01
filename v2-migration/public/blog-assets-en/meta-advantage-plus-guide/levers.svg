@@ -1,0 +1,27 @@
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect width="760" height="330" fill="#fff"/>
+  <text x="380" y="34" fill="#0f172a" font-size="17" font-weight="700" text-anchor="middle">What you set in Advantage+ and what the algorithm runs</text>
+  <text x="190" y="70" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">What you set</text>
+  <text x="570" y="70" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">What the algorithm runs</text>
+  <rect x="60" y="86" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="104" fill="#1e3a8a" font-size="13" font-weight="700">1. Measurement setup</text>
+  <text x="76" y="120" fill="#1e3a8a" font-size="12">Attribution by OS, SDK, postbacks</text>
+  <rect x="60" y="138" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="156" fill="#1e3a8a" font-size="13" font-weight="700">2. Optimization event</text>
+  <text x="76" y="172" fill="#1e3a8a" font-size="12">Event and value that fit the goal</text>
+  <rect x="60" y="190" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="208" fill="#1e3a8a" font-size="13" font-weight="700">3. Attribution window</text>
+  <text x="76" y="224" fill="#1e3a8a" font-size="12">Your basis for cross-platform comparison</text>
+  <rect x="60" y="242" width="260" height="42" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="76" y="260" fill="#1e3a8a" font-size="13" font-weight="700">4. Bidding and budget</text>
+  <text x="76" y="276" fill="#1e3a8a" font-size="12">Cost goal, cap, value optimization</text>
+  <rect x="440" y="86" width="260" height="198" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="570" y="130" fill="#475569" font-size="13" text-anchor="middle">Audience expansion</text>
+  <text x="570" y="164" fill="#475569" font-size="13" text-anchor="middle">Placement allocation</text>
+  <text x="570" y="198" fill="#475569" font-size="13" text-anchor="middle">Bid adjustment</text>
+  <text x="570" y="232" fill="#475569" font-size="13" text-anchor="middle">Creative combinations</text>
+  <line x1="330" y1="185" x2="430" y2="185" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="430,185 420,180 420,190" fill="#94a3b8"/>
+  <text x="380" y="176" fill="#475569" font-size="12" text-anchor="middle">Inputs</text>
+  <text x="380" y="314" fill="#475569" font-size="13" text-anchor="middle">If the four on the left are wrong, the algorithm learns the wrong goal efficiently</text>
+</svg>

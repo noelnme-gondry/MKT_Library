@@ -6,7 +6,6 @@ slug: "event-taxonomy-guide"
 keywords: "이벤트 택소노미, 이벤트 텍소노미, 마케팅 택소노미, SDK 이벤트, 이벤트 네이밍 규칙, 인앱 이벤트 설계, GA4 이벤트, MMP 이벤트, 이벤트 파라미터, 이벤트 QA"
 tags: ["측정", "기초"]
 draft: false
-ogImage: "/blog-assets/event-taxonomy-guide/og-ko.svg"
 relatedGlossary: ["mmp", "retention", "ltv"]
 sources:
   - title: "Google Analytics — GA4 event reference"

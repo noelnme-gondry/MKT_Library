@@ -6,7 +6,6 @@ slug: "aha-moment-retention"
 keywords: "how to find an aha moment, aha moment, aha event, retention leading indicator, activation metric, early user behavior, onboarding optimization"
 tags: ["Growth", "Retention"]
 draft: false
-ogImage: "/blog-assets/aha-moment-retention/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["retention", "cohort", "ltv"]
 faq:

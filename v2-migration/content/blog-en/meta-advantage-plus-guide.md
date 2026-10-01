@@ -13,9 +13,11 @@ faq:
     a: "Check the current ad set’s click/view attribution settings and reporting basis. Matching windows still leaves deduplication and measurement differences."
 
 reviewedAt: "2026-09-09"
-updated: "2026-09-09"
+updated: "2026-10-01"
 ---
 Meta Advantage+ App (AAP), like [Google UAC](/blog/google-uac-optimization), is a heavily automated campaign type. You can barely tune at the ad-set level; you set a goal at the campaign level and the algorithm handles the rest. Still, there are levers that decide the outcome.
+
+![What the marketer sets in Advantage+ (measurement, optimization event, attribution window, bidding) versus what the algorithm runs (audience expansion, placements, bids, creative combinations)](/blog-assets-en/meta-advantage-plus-guide/levers.svg)
 
 ## Separate OS measurement and setup requirements
 
@@ -42,6 +44,19 @@ Volume, cost goals, bid caps and value optimization are not a mandatory progress
 - **iOS install reporting suddenly drops sharply**: check attribution method, postback delay, conversion tracking and budget/bid changes. A report decline alone does not establish a learning restart or lost installs.
 - **Value-based bidding but revenue is erratic**: check whether the purchase event's revenue value is actually being sent and whether the Value Optimization toggle is on. SKAN reports have measurement windows, but that does not mean every iOS optimization signal is restricted to SKAN revenue.
 
-## Let's be honest
+## What to check first when results swing
+
+The most common mistake with automated campaigns is changing several settings the moment the numbers move. Decide where to look for each symptom, as in the table below, and you avoid touching settings that did not need changing.
+
+| Symptom | Check first | Don't do right away |
+| --- | --- | --- |
+| Installs steady, purchases down | Purchase event delivery, value and currency, deduplication | Switch the optimization event |
+| iOS install reports dropped suddenly | Attribution method, postback delay, recent budget or bid changes | Rebuild the campaign |
+| CPA spiked for a day or two | Whether it left the usual range ([anomaly detection](/blog/campaign-anomaly-detection)) | Rush a bid-cap change |
+| Looks better than other platforms | Whether attribution windows and view-through are aligned | Move a large share of budget |
+
+Change one setting at a time and log it with the date. Change several at once and you cannot tell later which one made the difference.
+
+## Limits of this approach
 
 Advantage+ isn't always the answer. With a small budget or very narrow targeting, a standard campaign can win. The larger the budget and the broader the targeting, the faster automation fills its learning volume and the more it favors you. Detailed setup is in the [Meta Advantage+ App optimization guide](/guide/meta-advantage-plus).

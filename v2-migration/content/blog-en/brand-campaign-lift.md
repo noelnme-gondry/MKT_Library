@@ -57,6 +57,8 @@ The point is to construct "what would have happened without the campaign." With 
 
 This design is called an interrupted time series. [Brand campaign incrementality](/tools/brand-campaign-incrementality) computes the trend and the uncertainty interval from three columns: date, outcome, and campaign status.
 
+![Illustrative chart: the pre-campaign trend extended as a dashed line, with the area between it and actuals during the flight marked as estimated lift](/blog-assets-en/brand-campaign-lift/pre-trend-baseline.svg)
+
 One caution. Series like brand search volume are **strongly linked week to week**. Ignoring that and fitting an ordinary regression produces intervals far narrower than reality, which makes a weak result look certain. Use an interval that accounts for autocorrelation.
 
 ## What this number can and cannot say
@@ -79,9 +81,9 @@ Eight weeks is a preparation example, not a sufficiency guarantee. Required hist
 
 ## Try this today
 
-**One.** Whatever your outcome metric is — brand search volume, direct traffic — secure **pre-launch observations**, not only recent weeks. Assess whether eight weeks is sufficient for the design and seasonality; disclose the baseline limitation if historical tracking is unavailable.
+1. Whatever your outcome metric is — brand search volume, direct traffic — secure **pre-launch observations**, not only recent weeks. Assess whether eight weeks is sufficient for the design and seasonality; disclose the baseline limitation if historical tracking is unavailable.
 
-**Two.** Put one line in the next brand campaign brief: **"leave N regions unexposed."**
+2. Put one line in the next brand campaign brief: **"leave N regions unexposed."**
 
 That single line changes a lot. Instead of going national, holding out a few regions creates a same-period comparison group. Check whether seasonality, PR, and competitor changes affected groups comparably, and whether spillovers occurred. Holding out regions does not automatically cancel these factors. Next quarter's "what did it earn" gets a much firmer answer.
 

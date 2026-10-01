@@ -6,7 +6,6 @@ slug: "cohort-analysis-guide"
 keywords: "retention cohort analysis, D1 D7 D30 retention, retention cohort, retention heatmap, incomplete cohort, cohort retention analysis"
 tags: ["Analysis", "Retention"]
 draft: false
-ogImage: "/blog-assets/cohort-analysis-guide/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["cohort", "retention", "ltv"]
 sources:
@@ -69,6 +68,8 @@ This is **illustrative data**, not an industry benchmark.
 
 The user-weighted D7 retention for the two mature cohorts is about 17.5%. If the two immature cohorts are treated as 0%, the number appears to fall to about 7.5%. That is a reporting error, not evidence that users suddenly churned.
 
+To keep users who are not yet fully observed and calculate when they first stopped, see [user churn timing with survival curves](/blog/user-churn-survival-analysis).
+
 Arithmetic: retained users = 1,000 × 18% + 1,100 × 17% = 367. Mature cohorts give 367 ÷ 2,100 = 17.48%; including immature users in the denominator gives 367 ÷ 4,900 = 7.49%.
 
 Analytics products may flag recent, incomplete intervals for the same reason. See Amplitude’s [Retention Analysis FAQ](https://amplitude.com/docs/analytics/charts/retention-analysis/faq) for how incomplete periods affect interpretation.
@@ -128,11 +129,11 @@ Next, use the [Cohort-Based Retention Guide](/en/guide/cohort-retention) to conn
 
 ## Try this today
 
-**One.** Open your retention table and check whether the most recent rows are **immature**. A cohort that installed yesterday has no D30 yet; if that renders as 0 rather than blank, your recent cohorts look like a collapse that never happened. This is the single most common false alarm in retention reporting.
+1. Open your retention table and check whether the most recent rows are **immature**. A cohort that installed yesterday has no D30 yet; if that renders as 0 rather than blank, your recent cohorts look like a collapse that never happened. This is the single most common false alarm in retention reporting.
 
-**Two.** Check how your averages are computed. If several days' retention rates are averaged without weighting, a 100-user cohort counts the same as a 10,000-user one. Weight by cohort size and the trend often changes direction.
+2. Check how your averages are computed. If several days' retention rates are averaged without weighting, a 100-user cohort counts the same as a 10,000-user one. Weight by cohort size and the trend often changes direction.
 
-## Let's be honest
+## Limits of this approach
 
 Retention benchmarks from outside your product are mostly unusable. The normal range varies so much by category, monetisation model and acquisition mix that an external average tells you little, and the sourcing is frequently unclear.
 

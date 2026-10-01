@@ -50,6 +50,22 @@ const BY_TOOL = {
       { label: T("스토어 페이지 전환이 궁금하다", "I'm curious about store page conversion"), answer: T("검색 유입 뒤 페이지에서 새는지 보려면 스토어 전환을 나눠 보세요.", "To see whether search traffic leaks on the page, split store conversion."), tool: "5-27" },
     ],
   },
+  "5-28": {
+    q: T("이탈을 지금 어떻게 보고 있나요?", "How do you track churn today?"),
+    options: [
+      { label: T("해지한 사람의 평균 유지 기간", "Average tenure of churned users"), answer: T("아직 남아 있는 사람이 빠져 이탈 시점이 앞당겨 보입니다. 생존곡선의 중앙값으로 바꿔 보세요.", "Users still active are left out, so churn looks earlier. Switch to the survival-curve median."), tool: "5-28" },
+      { label: T("D1·D7·D30 리텐션 표", "A D1/D7/D30 retention table"), answer: T("돌아왔는지는 리텐션 표로, 언제 처음 멈췄는지는 생존곡선으로 보세요.", "Use retention for whether users return, and a survival curve for when they first stop."), path: "/blog/cohort-analysis-guide" },
+      { label: T("채널마다 유지 기간이 다른 것 같다", "Retention seems to differ by channel"), answer: T("채널별 곡선을 나눠 차이가 우연인지 확인하고, 유지 기간을 획득 비용과 함께 보세요.", "Split curves by channel to check the gap is not chance, then weigh retention against acquisition cost."), path: "/blog/cac-payback-period" },
+    ],
+  },
+  "5-29": {
+    q: T("전체 지표가 어떻게 움직였나요?", "How did the total metric move?"),
+    options: [
+      { label: T("전체만 나빠지고 세부는 그대로다", "Only the total got worse"), answer: T("물량이 다른 묶음으로 옮겨 간 구성 변화일 수 있습니다. 물량 이동과 내부 변화를 나눠 보세요.", "It may be a composition shift between groups. Split the volume shift from within-group change."), tool: "5-29" },
+      { label: T("비용 지표(CPA·CPI)가 올랐다", "A cost metric (CPA, CPI) rose"), answer: T("비싼 채널로 비중이 옮겨 갔는지와 채널 자체 효율이 변했는지를 나눠 보세요.", "Separate a shift toward pricier channels from changes in each channel's own efficiency."), tool: "5-21" },
+      { label: T("왜 물량이 옮겨 갔는지 알고 싶다", "I want to know why volume moved"), answer: T("분해는 어디서 바뀌었는지만 알려 줍니다. 원인은 운영 기록과 대조군으로 확인하세요.", "The split shows where the change happened, not why. Check the cause against the operating log and a control."), path: "/blog/correlation-vs-causation" },
+    ],
+  },
   "5-27": {
     q: T("스토어 전환율이 어떻게 됐나요?", "What happened to store conversion?"),
     options: [

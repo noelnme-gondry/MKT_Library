@@ -126,7 +126,7 @@ That single split separates "campaigns that need new creative" from "campaigns t
 
 One caution when comparing: day-level views manufacture trends out of weekday variation. Compare equal-length windows, and drop the most recent days that have not matured for metrics whose conversions land late.
 
-## Let's be honest
+## Limits of this approach
 
 A cheap CPI isn't a good campaign. Whether those users [stay (retention)](/blog/cohort-analysis-guide) and buy ([LTV](/blog/ltv-cac-ratio)) is what reveals true efficiency. Use the early metrics for diagnosis, and make the final call on the later ones.
 
