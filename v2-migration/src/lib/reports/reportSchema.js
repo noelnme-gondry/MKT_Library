@@ -50,6 +50,10 @@ export function reportBlockFromResultCard({ toolId, toolTitle, headline, points,
 
 export function serializeReportDraft(draft) {
   if (containsForbidden(draft)) throw new Error("REPORT_FORBIDDEN_DATA");
+  for (const block of draft?.blocks || []) {
+    if ((block.charts || []).some(chart => typeof chart.image !== "string" || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(chart.image) || chart.image.length > 6000000 || !(chart.width > 0 && chart.height > 0))) throw new Error("REPORT_INVALID_IMAGE");
+    if ((block.tables || []).some(table => !Array.isArray(table.cells) || table.cells.length > 1000 || table.cells.some(row => !Array.isArray(row) || row.some(cell => typeof cell !== "string")))) throw new Error("REPORT_INVALID_TABLE");
+  }
   return {
     schemaVersion: 1,
     title: String(draft?.title || "").slice(0, 160),

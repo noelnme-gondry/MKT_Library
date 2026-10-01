@@ -1,3 +1,4 @@
+import { decodeFollowupStep } from "@/lib/recipe/followupInputs";
 import { sanitizeStep } from "@/lib/recipe/recipe";
 import { publishedToolIds } from "@/lib/routeMap";
 
@@ -27,6 +28,9 @@ export function accountRecipe(input) {
   if (!Array.isArray(steps) || !steps.length || steps.length > MAX_RECIPE_STEPS) throw new Error("INVALID_RECIPE");
   const clean = steps.map(sanitizeStep);
   if (clean.some((step) => !step || step.id.length > 80 || Object.hasOwn(step.params, "values"))) throw new Error("INVALID_RECIPE");
+  for (const step of clean) if (step.id.startsWith("input.")) {
+    try { decodeFollowupStep(toolId, step); } catch { throw new Error("INVALID_RECIPE"); }
+  }
   const updatedAt = typeof input.updatedAt === "string" && !Number.isNaN(Date.parse(input.updatedAt)) ? input.updatedAt : null;
   return updatedAt ? { toolId, name, steps: clean, updatedAt } : { toolId, name, steps: clean };
 }

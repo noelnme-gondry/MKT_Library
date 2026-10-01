@@ -60,6 +60,10 @@ export async function createWeeklyReportWorkbook(draft = {}, locale = "ko") {
   XLSX.utils.book_append_sheet(workbook, sheetFromRows(XLSX, overviewRows), "00_OVERVIEW");
   XLSX.utils.book_append_sheet(workbook, sheetFromRows(XLSX, resultRows), "01_RESULTS");
   if (notes.length) XLSX.utils.book_append_sheet(workbook, sheetFromRows(XLSX, [[tx(locale, "공유 메모", "Sharing note")], ...notes.map((note) => [note])]), "02_NOTES");
+  let tableIndex = 0;
+  for (const block of blocks) for (const table of block.tables || []) {
+    XLSX.utils.book_append_sheet(workbook, sheetFromRows(XLSX, [[table.title], [(block.points || [])[0] || ""], ...table.cells]), `BOARD_${++tableIndex}`);
+  }
   workbook.Props = { Title: title, Subject: "Client-side weekly performance report", Author: "Growth Opt Playbook" };
   return XLSX.write(workbook, { bookType: "xlsx", type: "array", compression: true, cellStyles: true });
 }

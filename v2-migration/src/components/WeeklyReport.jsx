@@ -9,6 +9,7 @@ import { serializeReportDraft } from "@/lib/reports/reportSchema";
 import { downloadFile } from "@/utils/download";
 import { downloadXlsx } from "@/utils/download";
 import { createWeeklyReportWorkbook } from "@/lib/reports/reportWorkbook";
+import ReportBlockEvidence from "@/components/weekly-review/ReportBlockEvidence";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 import { runGatedDownload } from "@/lib/subscription/downloadTelemetry";
 
@@ -153,6 +154,7 @@ export default function WeeklyReport({ locale = "ko" }) {
                 </div>
               )}
               {block.points.length > 0 && <ul>{block.points.map((point) => <li key={point}>{point}</li>)}</ul>}
+              <ReportBlockEvidence block={block} />
               <div className="no-print">
                 <button className="btn ghost" type="button" disabled={index === 0} onClick={() => moveReportBlock(block.id, -1)}>{t.up}</button>
                 <button className="btn ghost" type="button" disabled={index === draft.blocks.length - 1} onClick={() => moveReportBlock(block.id, 1)}>{t.down}</button>

@@ -12,12 +12,13 @@ import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
 import { INCR_PREPOST, INCR_PREPOST_CONTRACT, normalizeIncrDate } from "@/utils/incrPrePostMath";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
-import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, CHART_FONT_STACK, chartCommonOpts } from "@/utils/chartUtils";
 import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ToolCoreFigure } from "@/components/assistant/ResultCharts";
 import { effectIntervalFigure } from "@/lib/assistant/coreFigures";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import ModalDialog from "@/components/ds/ModalDialog";
 import DownloadHub from "@/components/ds/DownloadHub";
 import AnalysisBlockedTelemetry from "@/components/data-import/AnalysisBlockedTelemetry";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -29,6 +30,43 @@ import { prepareCsvParseInput } from "@/lib/data-import/csvParseInput";
 import { csvFailureState, csvImportErrorMessage } from "@/lib/data-import/csvImportPolicy";
 import { showToast } from "@/utils/toast";
 import { FigureHead } from "@/components/ds/FigurePngButton";
+
+// All three methods share the same visual grammar: observed green, neutral
+// comparisons, and amber intervention dates. Values and estimators stay separate.
+function incrementalityChartOptions() {
+  const base = chartCommonOpts();
+  return {
+    ...base,
+    plugins: { ...base.plugins, legend: { ...base.plugins.legend, align: "start",
+      labels: { ...base.plugins.legend.labels, pointStyle: "line", pointStyleWidth: 26, boxWidth: 26, padding: 16 },
+    } },
+    scales: {
+      x: { ...base.scales.x, ticks: { ...base.scales.x.ticks, maxTicksLimit: 10 } },
+      y: { ...base.scales.y, beginAtZero: false },
+    },
+  };
+}
+
+function interventionMarkers(markers) {
+  return {
+    id: "incrementalityInterventionMarkers",
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea || !scales.x) return;
+      markers.forEach(([index, label]) => {
+        if (index == null || index < 0) return;
+        const x = scales.x.getPixelForValue(index);
+        ctx.save();
+        ctx.strokeStyle = CHART_THEME.warning; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = CHART_THEME.warning; ctx.font = `10px ${CHART_FONT_STACK}`;
+        const labelX = Math.max(chartArea.left + 3, Math.min(x + 4, chartArea.right - ctx.measureText(label).width - 3));
+        ctx.fillText(label, labelX, chartArea.top + 12);
+        ctx.restore();
+      });
+    },
+  };
+}
 
 const num = (v) => {
   if (v == null || String(v).trim() === "") return NaN;
@@ -93,6 +131,11 @@ const METHODS_EN = [
 
 export default function Incrementality({ locale = "ko" } = {}) {
   const isHydrated = useClientReady();
+  // Hydration can finish before IndexedDB restoration. setCsvData deliberately
+  // rejects writes while a project is switching, so do not accept files yet.
+  const projectReady = useAppStore((s) => s.currentRouteId === "5-23" && !s.projectSwitching
+    && (!s.decisionPersistenceEnabled || s.projectsReady || Boolean(s.projectError)));
+  const canUpload = isHydrated && projectReady;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
@@ -104,6 +147,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
   const selectMethod = useCallback((nextMethod) => {
+    if (nextMethod === method) return;
     setMethod(nextMethod);
     // 방법별 샘플의 열 계약이 다르다. 탭만 바꾸고 이전 샘플을 남기면 다른
     // 방법의 데이터가 그럴듯한 숫자로 해석될 수 있어, 샘플만 안전하게 교체한다.
@@ -111,7 +155,18 @@ export default function Incrementality({ locale = "ko" } = {}) {
       const nextDemo = nextMethod === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(nextMethod);
       if (nextDemo.fileName !== csvData.fileName) setCsvData(nextDemo);
     }
-  }, [csvData, setCsvData, setMethod]);
+  }, [csvData, method, setCsvData, setMethod]);
+  // Recipe/project restoration also changes the method; keep sample contracts
+  // aligned without touching a user's uploaded CSV or confirming study design.
+  useEffect(() => {
+    if (!isDemoData(csvData)) return;
+    const demo = method === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(method);
+    if (demo.fileName === csvData.fileName) return;
+    // Blog examples also carry demo provenance, but their filename and declared
+    // window belong to that article. Only switch this tool's own managed samples.
+    const managedSamples = [buildIncrSuppressionDemo(), buildIncrPrepostDemo("on"), buildIncrPrepostDemo("off")];
+    if (managedSamples.some(sample => sample.fileName === csvData.fileName)) setCsvData(demo);
+  }, [method, csvData, setCsvData]);
   const onMethodKeyDown = useCallback((event, methodKey) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -128,7 +183,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   }, [METHODS, selectMethod]);
 
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || !canUpload) return;
     trackProductEvent("data_import_start", { tool_id: "5-23", source: "csv", locale });
     let parseInput;
     try {
@@ -224,7 +279,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
       </p>
 
       {!hasData ? (
-        <UploadPanel isHydrated={isHydrated} method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
+        <UploadPanel isHydrated={canUpload} method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
       ) : (
         <div>
           {isDemo && (
@@ -268,13 +323,13 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, isHydrated, locale
     : { base: "template_incr_prepost", text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
-      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} onTryExample={loadDemo} locale={locale} />
-      <div className="csv-dropzone" role="button" tabIndex={0} aria-label={tr("증분 분석 CSV 파일 선택", "Choose an incrementality CSV file")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }} style={{ cursor: "pointer" }}>
+      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} onTryExample={isHydrated ? loadDemo : null} locale={locale} />
+      <div className="csv-dropzone" role="button" tabIndex={0} aria-disabled={!isHydrated} aria-label={tr("증분 분석 CSV 파일 선택", "Choose an incrementality CSV file")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (isHydrated && e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <div className="csv-drop-text">{tr("CSV 파일 드래그 & 드롭", "Drag & drop CSV file")}</div>
-        <div className="csv-drop-sub">{tr("또는 클릭하여 파일 선택", "or click to select a file")}</div>
+        <div className="csv-drop-sub">{isHydrated ? tr("또는 클릭하여 파일 선택", "or click to select a file") : tr("저장된 설정을 준비하고 있습니다", "Preparing saved settings")}</div>
         <input type="file" disabled={!isHydrated} accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef} onClick={(e) => e.stopPropagation()} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
       </div>
     </>
@@ -330,8 +385,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     return { cDen, tDen };
   }, [csvData]);
 
-  const [winStart, setWinStart] = useState("");
-  const [winEnd, setWinEnd] = useState("");
+  const [winStart, setWinStart] = useSavedToolInput("5-23", "winStart", "");
+  const [winEnd, setWinEnd] = useSavedToolInput("5-23", "winEnd", "");
   // 예시 데이터는 계획된 차단 기간을 함께 싣는다(demoData). 사용자가 고르면 그 값이 이긴다.
   const demoWindow = isDemoData(csvData) ? csvData.designWindow : null;
   const start = winStart || demoWindow?.start || "";
@@ -371,36 +426,23 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     const ctx = document.getElementById("incr-suppression-chart"); if (!ctx) return;
     const { labels, expRate, holdRate } = series;
     const sIdx = labels.indexOf(start), eIdx = labels.indexOf(end);
-    // 홀드아웃 시작·종료 세로선 (inline 플러그인)
-    const markerPlugin = {
-      id: "holdoutMarkers",
-      afterDatasetsDraw(chart) {
-        const { ctx: c, chartArea, scales } = chart; const x = scales.x; if (!x) return;
-        [[sIdx, tr("홀드아웃 시작", "Holdout start")], [eIdx, tr("홀드아웃 종료", "Holdout end")]].forEach(([i, lab]) => {
-          if (i == null || i < 0) return;
-          const px = x.getPixelForValue(i);
-          c.save();
-          c.strokeStyle = "#f59e0b"; c.setLineDash([4, 4]); c.lineWidth = 1.5;
-          c.beginPath(); c.moveTo(px, chartArea.top); c.lineTo(px, chartArea.bottom); c.stroke();
-          c.setLineDash([]); c.fillStyle = "#f59e0b"; c.font = "10px sans-serif";
-          c.fillText(lab, Math.min(px + 3, chartArea.right - 60), chartArea.top + 11);
-          c.restore();
-        });
-      },
-    };
+    const markerPlugin = interventionMarkers([
+      [sIdx, tr("홀드아웃 시작", "Holdout start")], [eIdx, tr("홀드아웃 종료", "Holdout end")],
+    ]);
+    const base = incrementalityChartOptions();
     chartInst.current = new Chart(ctx, {
       type: "line",
       data: { labels, datasets: [
         { label: tr("노출 그룹(광고 봄)", "Exposed group (saw ads)"), data: expRate, borderColor: CHART_THEME.secondary, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
-        { label: tr("홀드아웃(광고 차단)", "Holdout (ads blocked)"), data: holdRate, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
+        { label: tr("홀드아웃(광고 차단)", "Holdout (ads blocked)"), data: holdRate, borderColor: CHART_THEME.muted, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
       ] },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: CHART_THEME.text } }, tooltip: { callbacks: { label: (cx) => `${cx.dataset.label}: ${cx.parsed.y != null ? cx.parsed.y.toFixed(2) + "%" : "—"}` } } },
-        scales: {
-          x: { ticks: { color: CHART_THEME.muted, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: CHART_THEME.muted, callback: (v) => v + "%" }, grid: { color: getCssVar("--border") }, title: { display: true, text: tr("전환율", "Conversion rate"), color: CHART_THEME.muted } },
-        },
+        ...base,
+        plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip, callbacks: { label: (cx) => `${cx.dataset.label}: ${cx.parsed.y != null ? cx.parsed.y.toFixed(2) + "%" : "—"}` } } },
+        scales: { ...base.scales, y: { ...base.scales.y,
+          ticks: { ...base.scales.y.ticks, callback: (v) => v + "%" },
+          title: { display: true, text: tr("전환율", "Conversion rate"), color: CHART_THEME.muted },
+        } },
       },
       plugins: [markerPlugin],
     });
@@ -729,11 +771,11 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const dateCol = useMemo(() => headers.find((h) => (csvData.raw || []).slice(0, 5).some((r) => looksDate(r[h]))) || headers[0], [headers, csvData.raw]);
   const numericCols = useMemo(() => headers.filter((h) => h !== dateCol && (csvData.raw || []).slice(0, 8).some((r) => Number.isFinite(num(r[h])))), [headers, dateCol, csvData.raw]);
   const groupCols = useMemo(() => headers.filter((h) => h !== dateCol && !numericCols.includes(h)), [headers, dateCol, numericCols]);
-  const [metricCol, setMetricCol] = useState(numericCols[0] || "");
-  const [groupCol, setGroupCol] = useState(groupCols[0] || "");
+  const [metricCol, setMetricCol] = useSavedToolInput("5-23", "metricCol", numericCols[0] || "");
+  const [groupCol, setGroupCol] = useSavedToolInput("5-23", "groupCol", groupCols[0] || "");
   const [useDiD, setUseDiD] = useSavedToolInput("5-23", "useDiD", !!groupCols.length);
-  const [controlGroup, setControlGroup] = useState("");
-  const [treatmentGroup, setTreatmentGroup] = useState("");
+  const [controlGroup, setControlGroup] = useSavedToolInput("5-23", "controlGroup", "");
+  const [treatmentGroup, setTreatmentGroup] = useSavedToolInput("5-23", "treatmentGroup", "");
   const groupVals = useMemo(() => groupCol ? [...new Set((csvData.raw || []).map((r) => String(r[groupCol]).trim()).filter(Boolean))] : [], [csvData.raw, groupCol]);
   const detectedControl = groupVals.find((g) => /control|대조|holdout/i.test(g));
   const selectedControl = groupVals.includes(controlGroup) ? controlGroup : detectedControl;
@@ -818,27 +860,29 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     const cutoffIdx = labels.findIndex((l) => l >= effCutoff);
     const preMean = r.did?.ok ? r.did.treatPreMean : r.preMean;
     const postMean = r.did?.ok ? r.did.treatPostMean : r.postMean;
+    const base = incrementalityChartOptions();
+    const eventLabel = direction === "off" ? tr("광고 종료", "Advertising stopped") : tr("광고 시작", "Advertising started");
     chartInst.current = new Chart(ctx, {
       type: "line",
       data: {
         labels,
         datasets: [
-          { label: metricCol, data: vals, borderColor: getCssVar("--primary"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
-          { label: tr("cutoff 이전 평균", "Pre-cutoff average"), data: labels.map((_, i) => (i < cutoffIdx ? preMean : null)), borderColor: getCssVar("--text-muted"), borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
-          { label: tr("cutoff 이후 평균", "Post-cutoff average"), data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: CHART_THEME.primary, borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: tr(`실제 성과 · ${metricCol}`, `Observed · ${metricCol}`), data: vals, borderColor: CHART_THEME.secondary, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
+          { label: tr("전환 전 평균", "Before-change average"), data: labels.map((_, i) => (i < cutoffIdx ? preMean : null)), borderColor: CHART_THEME.muted, backgroundColor: "transparent", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: tr("전환 후 평균", "After-change average"), data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: CHART_THEME.muted, backgroundColor: "transparent", borderDash: [2, 4], pointRadius: 0, borderWidth: 1.5 },
         ],
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { labels: { color: CHART_THEME.text } },
-          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmtNum(c.parsed.y)}` } },
-        },
-        scales: {
-          x: { ticks: { color: CHART_THEME.muted, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: CHART_THEME.muted }, grid: { color: getCssVar("--border") } },
-        },
+        ...base,
+        plugins: { ...base.plugins, tooltip: { ...base.plugins.tooltip,
+          callbacks: { label: (c) => `${c.dataset.label}: ${fmtNum(c.parsed.y)}` },
+        } },
+        scales: { ...base.scales, y: { ...base.scales.y,
+          ticks: { ...base.scales.y.ticks, callback: (value) => fmtNum(value) },
+          title: { display: true, text: metricCol, color: CHART_THEME.muted },
+        } },
       },
+      plugins: [interventionMarkers([[cutoffIdx, eventLabel]])],
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
@@ -888,9 +932,9 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     if (!isDiD) points.push({ cls: "muted", text: tr("대조군을 넣어 DiD로 보정하면 계절·추세 영향을 줄일 수 있습니다.", "Adding a control group (DiD) reduces seasonality/trend effects.") });
     points.push({ cls: "muted", text: tr("무작위 실험이 아니면 인과를 단정하지 마세요.", "Don't assert causality unless this was a randomized experiment.") });
     const stats = [
-      { label: tr("전환 전 평균(일)", "Pre avg (daily)"), value: fmtNum(displayPreMean, 1) },
-      { label: tr("전환 후 평균(일)", "Post avg (daily)"), value: fmtNum(displayPostMean, 1) },
-      { label: isDiD ? tr("순효과 Δ (DiD)", "Net Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), value: (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1) },
+      { label: tr("전환 전 평균(일)", "Pre avg (daily)"), value: fmtNum(displayPreMean, 1), detail: tr(`${displayPreN}일 기준`, `${displayPreN} days`) },
+      { label: tr("전환 후 평균(일)", "Post avg (daily)"), value: fmtNum(displayPostMean, 1), detail: tr(`${displayPostN}일 기준`, `${displayPostN} days`) },
+      { label: isDiD ? tr("순효과 Δ (DiD)", "Net Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), value: (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1), detail: isDiD ? tr("대조군 변화 제거 · 하루", "Control-adjusted · daily") : tr("처리군 하루 평균 차이", "Treatment daily average difference") },
       { label: lost ? tr("총 손실(기간)", "Total loss") : tr("총 증분(기간)", "Total incremental"), value: (totalEffect >= 0 ? "+" : "") + fmtNum(totalEffect, 0) },
     ];
     const csvRows = [
@@ -1043,11 +1087,22 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       )}
 
       {r && (
-        <section className="block" id="s-incr-result">
-          <h2 className="section-title">{lost ? tr(confirmedLoss ? "종료 임팩트 (손실 후보)" : "종료 후 변화", confirmedLoss ? "Shutdown impact (loss candidate)" : "Post-shutdown change") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
+        <section className="block incr-prepost-result" id="s-incr-result">
+          <h2 className="section-title">{lost ? tr("광고 종료 영향", "After advertising stops") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
           {card && (
             <ResultActionCard
-              coreFigure={Number.isFinite(effVal) && <ToolCoreFigure embedded
+              coreFigure={<div className="incr-prepost-chart">
+                <div className="incr-prepost-interval" aria-label={tr("변화 추정 범위", "Estimated change interval")}>
+                  <span>{tr("일평균 변화의 95% 신뢰구간", "95% confidence interval for daily change")}</span>
+                  <strong>{Number.isFinite((isDiD ? r.did.sig : r.sig)?.ciLow95) && Number.isFinite((isDiD ? r.did.sig : r.sig)?.ciHigh95)
+                    ? `${fmtNum((isDiD ? r.did.sig : r.sig).ciLow95, 1)} ~ ${fmtNum((isDiD ? r.did.sig : r.sig).ciHigh95, 1)}`
+                    : tr("추정 불가", "Not estimable")}</strong>
+                </div>
+                <FigureHead level={3} title={lost ? tr("날짜별 성과 — 광고 종료 전후", "Daily outcomes — before and after advertising stops") : tr("날짜별 성과 — 광고 시작 전후", "Daily outcomes — before and after advertising starts")} target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
+                <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("주황 세로선은 광고 시작·종료 시점입니다. 초록 실선은 실제 성과, 회색 점선은 처리군의 전후 평균입니다.", "The amber line marks the advertising change. The green line shows observed outcomes; gray dashed lines show treatment-group averages before and after.")}{isDiD && <> {tr("평균선은 대조군을 보정한 순효과와 다릅니다.", "These averages are not the control-adjusted net effect.")}</>}</p>
+                <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-prepost-chart"></canvas></div>
+              </div>}
+              pointsContent={<PrePostEvidence locale={locale} points={card.points} figure={Number.isFinite(effVal) && <ToolCoreFigure embedded
                 figure={effectIntervalFigure({
                   id: "prepost-effect",
                   question: lost ? tr("광고 종료 전후의 변화", "Change after stopping advertising") : tr("광고 시작 전후의 변화", "Change after starting advertising"),
@@ -1063,7 +1118,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
                 })}
                 locale={locale}
                 downloadName="incrementality_prepost_effect"
-              />}
+              />} />}
               toolId="5-23"
               locale={locale}
               analysisKey={`${Object.values(design.values).join(":")}|prepost|${direction}|${csvData.raw?.length || 0}|${csvData.headers?.length || 0}|${dates.indexOf(effCutoff)}|${numericCols.indexOf(metricCol)}|${groupCols.indexOf(groupCol)}|${groupVals.indexOf(selectedControl)}|${groupVals.indexOf(selectedTreatment)}|${useDiD ? 1 : 0}`}
@@ -1148,33 +1203,33 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
             />
           )}
 
-          <div className="alloc-card" style={{ marginBottom: "12px" }}>
-            <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(displayPreMean, 1)} />
-              <Stat label={tr("전환 후 평균(일)", "Post-cutoff daily average")} value={fmtNum(displayPostMean, 1)} />
-              <Stat label={isDiD ? tr("순효과 Δ (DiD)", "Net effect Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)")} value={(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} color={good ? "var(--success)" : "var(--danger)"} hint={isDiD ? tr("대조군 변화 제거", "Control group change removed") : (r.deltaPct != null ? fmtPct(r.deltaPct) : "")} />
-              <Stat label={lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)")} value={(totalEffect >= 0 ? "+" : "") + fmtNum(totalEffect, 0)} hint={isDiD ? tr("공통 후 기간의 DiD 순효과 합", "DiD net effect across common post dates") : tr("반사실 대비 합계", "Total vs. counterfactual")} />
-              <Stat label={tr("유의성", "Significance")} value={!hasSignificance ? tr("추정 불가", "Not estimable") : sig ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)} />
-            </div>
-          </div>
-          <FigureHead exportTitle={locale === "en" ? "Metric trend before and after advertising" : "광고 전후의 지표 추이"} target={() => document.getElementById("incr-prepost-chart")} fileName="incrementality_pre_post" locale={locale} />
-          <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
-          <div className="callout" style={{ marginTop: "10px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-            <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(
-              <>전환 시점 {lost ? "끈" : "켠"} 뒤 처리군 하루 평균이 {fmtNum(displayPreMean, 1)} → {fmtNum(displayPostMean, 1)}로 바뀌었습니다. {isDiD ? `같은 날짜의 대조군 변화를 뺀 순효과는 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}입니다.` : `${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} ${effVal >= 0 ? "올랐" : "떨어졌"}습니다.`}</>,
-              <>After the day it was turned {lost ? "off" : "on"}, the treatment daily average changed from {fmtNum(displayPreMean, 1)} to {fmtNum(displayPostMean, 1)}. {isDiD ? `The net effect after subtracting the control on matching dates is ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.` : `It ${effVal >= 0 ? "increased" : "decreased"} by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.`}</>
-            )}
-          </p></div></div>
-          <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-            <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(
-              <>단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 관측된 공통 변화를 보정하고 사전추세 위반을 검사했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.</>,
-              <>A simple before/after comparison can mix in seasonality, promotions, or market changes over that time. {isDiD ? "Control-group DiD adjusts for observed common change and checks for a pretrend violation, but" : "Adding a control group (a group that didn&apos;t change) and correcting with DiD would be more accurate."} If it wasn&apos;t a randomized experiment, don&apos;t assert causality.</>
-            )}
-          </p></div></div>
         </section>
       )}
     </>
   );
+}
+
+function PrePostEvidence({ locale, points, figure }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const en = locale === "en";
+  const title = en ? "Analysis evidence" : "분석 근거";
+  return <>
+    <div className="incr-prepost-evidence">
+      <p>{en ? "An observed change, not a confirmed causal effect. Review the study conditions before acting." : "관측된 변화이며 인과효과 확정은 아닙니다. 실행 전 비교 조건을 확인하세요."}</p>
+      <button ref={triggerRef} type="button" className="btn" aria-haspopup="dialog" onClick={() => setOpen(true)}>{en ? "View analysis evidence" : "분석 근거 보기"}</button>
+    </div>
+    <ModalDialog open={open} onClose={() => setOpen(false)} returnFocusRef={triggerRef} ariaLabel={title} overlayClassName="csv-guide-overlay" panelClassName="csv-guide-modal">
+      <div className="csv-guide-modal-head">
+        <strong>{title}</strong>
+        <button type="button" className="btn ghost" onClick={() => setOpen(false)}>{en ? "Close" : "닫기"}</button>
+      </div>
+      <div className="csv-guide-modal-body incr-prepost-evidence-body">
+        {figure}
+        <ul>{points.map((point, index) => <li key={index}>{point.text}</li>)}</ul>
+      </div>
+    </ModalDialog>
+  </>;
 }
 
 function Stat({ label, value, hint, color }) {

@@ -1,4 +1,6 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import InfoPopover from "@/components/ds/InfoPopover";
 import PillGroup from "@/components/ds/PillGroup";
@@ -37,20 +39,20 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const C = resolveDashCopy(domain);
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const anomalyTableCfg = useAppStore((state) => state.viewConfig[ANOMALY_TABLE_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const anomalyTableCfg = useDashboardSetting("viewConfig", ANOMALY_TABLE_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
   const setAnalysisHandoff = useAppStore((state) => state.setAnalysisHandoff);
   const [anomalyCfgOpen, setAnomalyCfgOpen] = useState(false);
 
-  const [metric, setMetric] = useState("cost");
-  const [win, setWin] = useState(14);
-  const [zThresh, setZThresh] = useState(2.5);
-  const [dowAdjust, setDowAdjust] = useState(false);
+  const [metric, setMetric] = useDashboardControl("metric", "cost");
+  const [win, setWin] = useDashboardControl("win", 14);
+  const [zThresh, setZThresh] = useDashboardControl("zThresh", 2.5);
+  const [dowAdjust, setDowAdjust] = useDashboardControl("dowAdjust", false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -253,12 +255,12 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
 
   if (!hasData || metricOpts.length === 0) {
     return (
-      <div className="tab-pane active" id="tab-anomaly">
+      <DashboardTabLayout className="tab-pane active" id="tab-anomaly">
         <section className="block" id="s-anom">
           <h2 className="section-title">{tr("이상 감지", "Anomaly Detection")}</h2>
           <p className="muted">{tr("데이터가 없습니다.", "No data available.")}</p>
         </section>
-      </div>
+      </DashboardTabLayout>
     );
   }
 
@@ -272,10 +274,11 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const orderedAnomalyCols = applyMetricView(anomalyCols, anomalyTableCfg, (col) => col.k);
 
   return (
-    <div className="tab-pane active" id="tab-anomaly">
+    <DashboardTabLayout className="tab-pane active" id="tab-anomaly">
       <section className="block" id="s-anom">
         <h2 className="section-title">{tr("이상 감지", "Anomaly Detection")}</h2>
 
+        <div className="dashboard-analysis-controls">
         <PillGroup
           label={tr("지표", "Metric")}
           value={metric}
@@ -314,6 +317,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
           </button>
         </div>
 
+        </div>
         <div className="alloc-card" style={{ margin: "10px 0" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{tr("시계열 + 이상 표기", "Time series + anomaly markers")}</div>
@@ -327,7 +331,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         {anomalies.length ? (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
-              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
+              <button className="ab-pill dashboard-legacy-edit" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
             </div>
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "var(--fs-xs)" }}>
@@ -422,6 +426,6 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         }}
       />
       <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} locale={locale} />
-    </div>
+    </DashboardTabLayout>
   );
 }

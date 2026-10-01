@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+for(const locale of ['ko','en'])test(`ASO view recipe restores charts and saves account choices (${locale})`,async({page})=>{
+  const en=locale==='en',t=(ko,eng)=>en?eng:ko;
+  const entitlement={plan:'paid',account:true,payment:true,expiresAt:Date.now()+86400000,offlineUntil:Date.now()+3600000};
+  let recipes=[];
+  await page.route('**/api/account/session',r=>r.fulfill({json:{enabled:true,account:{id:'view-test',email:'test@example.com'},entitlement}}));
+  await page.route('**/api/payments/access',r=>r.fulfill({json:{entitlement}}));
+  await page.route('**/api/account/recipes',r=>{if(r.request().method()==='POST')recipes=[r.request().postDataJSON().recipe];return r.fulfill({json:{recipes,canApply:true}})});
+  await page.goto(`${en?'/en':''}/tools/aso-store-conversion?example=1`);
+  const chart=page.locator('#aso-trend');await expect(chart).toBeVisible();
+  const headline=await page.locator('#aso-result h2').textContent();
+  const command=page.getByRole('combobox',{name:t('분석·보기 설정','Analysis and view settings')});
+  const hide=t('일별 전환 추세 숨기기','Hide Daily conversion trend');
+  await command.fill(hide);await expect(page.getByRole('option').first()).toBeVisible();await command.press('Enter');
+  await expect(chart).toBeHidden();await expect(page.locator('#aso-result h2')).toHaveText(headline);
+  await page.getByRole('button',{name:t(`${hide} 빼기`,`Remove ${hide}`),exact:true}).click();
+  await expect(chart).toBeVisible();
+  await expect.poll(()=>chart.locator('canvas').evaluate(c=>{const a=c.getContext('2d').getImageData(0,0,c.width,c.height).data;return a.some((n,i)=>i%4===3&&n>0);})).toBe(true);
+  await command.fill(t('파일 이름: 날짜_도구','File name: date_tool'));await expect(page.getByRole('option').first()).toBeVisible();await command.press('Enter');
+  await page.getByRole('button',{name:t('이 설정 저장','Save this setup'),exact:true}).click();
+  await page.getByLabel(t('설정 이름','Setup name'),{exact:true}).fill('My view');
+  await page.getByRole('button',{name:t('저장','Save'),exact:true}).click();
+  await expect.poll(()=>recipes.length).toBe(1);
+  expect(recipes[0].steps).toEqual([{id:'export.filename.dateTool',params:{}},{id:'export.png.full',params:{}}]);
+  const download=page.waitForEvent('download');await chart.getByRole('button',{name:t('PNG 받기','Download PNG')}).click();
+  expect((await download).suggestedFilename()).toMatch(/^\d{8}_.*\.png$/);
+});

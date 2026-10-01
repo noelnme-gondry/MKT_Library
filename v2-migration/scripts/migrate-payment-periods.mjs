@@ -15,6 +15,7 @@ if (process.env.PAYMENTS_DATABASE_URL && (!process.env.RAILWAY_ENVIRONMENT_NAME 
     } else if (process.env.ACCOUNTS_ENABLED === "true") throw new Error("ACCOUNT_SCHEMA_REQUIRED");
     if (rows[0].accounts) await client.query(await readFile(new URL("./account-mappings.sql", import.meta.url), "utf8"));
     if (rows[0].accounts) await client.query(await readFile(new URL("./account-recipes.sql", import.meta.url), "utf8"));
+    if (rows[0].accounts) await client.query(await readFile(new URL("./account-boards.sql", import.meta.url), "utf8"));
     await client.query(await readFile(new URL("./source-survey-schema.sql", import.meta.url), "utf8"));
     await client.query("COMMIT");
     console.log("Payment period migration checked.");

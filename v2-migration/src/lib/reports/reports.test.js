@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { REPORT_SUPPORTED_TOOL_IDS, reportBlockFromResultCard, serializeReportDraft } from "./reportSchema";
 import { ROUTES, isRoutePublished } from "@/lib/routeMap";
+import { buildCollectedReviewExport } from "@/lib/analysis-export/collectedReviewExport";
+import { createWeeklyReportWorkbook } from "./reportWorkbook";
 import { renderReportMarkdown } from "./renderMarkdown";
 
 describe("weekly report contract", () => {
@@ -56,4 +58,17 @@ describe("weekly report contract", () => {
     expect(first).toContain(String.raw`A\\\|B`);
     expect(renderReportMarkdown(draft, "ko")).toBe(first);
   });
+});
+
+it("keeps captured charts and safe table cells in the combined report", async () => {
+  const charts = [{title:"KR cost",image:"data:image/png;base64,AAAA",width:640,height:320}];
+  const draft = serializeReportDraft({title:"Board",blocks:[{schemaVersion:1,toolId:"5-2",id:"viz",toolTitle:"Board",headline:"Cost",points:["KR · 2024-01-01 – 2024-01-07"],stats:[],scope:{countries:["KR"]},charts,tables:[{title:"Cost",cells:[["Channel","Cost"],["=PRIVATE()","123"]]}]}]});
+  const payload=buildCollectedReviewExport(draft);
+  expect(payload.charts).toEqual(charts);
+  expect(payload.calculationTables.some(t=>t.rows.some(r=>r.includes("123")))).toBe(true);
+  const XLSX=await import("xlsx");
+  const book=XLSX.read(await createWeeklyReportWorkbook(draft),{type:"array"});
+  expect(book.Sheets.BOARD_1.A4.v).toBe("=PRIVATE()");
+  expect(book.Sheets.BOARD_1.A4.f).toBeUndefined();
+  expect(()=>serializeReportDraft({...draft,blocks:[{...draft.blocks[0],charts:[{...charts[0],image:"https://external/image.png"}]}]})).toThrow("REPORT_INVALID_IMAGE");
 });

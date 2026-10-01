@@ -348,10 +348,14 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const seedKey = useMemo(() => hasData ? computeAnalyzeSig(csvData) : "", [hasData, csvData]);
   if (seededKey !== seedKey) {
     setSeededKey(seedKey);
-    setClusterColumn("");
-    setValidationTimeColumn("");
-    const o = guessOutcome(numericCols);
-    const f = numericCols.filter((h) => h !== o && !looksLikeId(h));
+    // Restoring a project must survive the CSV reseed. Field names are local
+    // only, and are checked against this project's current headers.
+    const state = useAppStore.getState();
+    const saved = state.savedSetupAppliedTool === "9-1" && state.savedSetupAppliedProject === state.activeProjectId ? state.savedSetupAppliedInputs || {} : {};
+    setClusterColumn(headers.includes(saved.clusterColumn) ? saved.clusterColumn : "");
+    setValidationTimeColumn(headers.includes(saved.validationTimeColumn) ? saved.validationTimeColumn : "");
+    const o = numericCols.includes(saved.outcome) ? saved.outcome : guessOutcome(numericCols);
+    const f = Array.isArray(saved.features) ? saved.features.filter(h => numericCols.includes(h) && h !== o) : numericCols.filter((h) => h !== o && !looksLikeId(h));
     setOutcome(o);
     setFeatures(f);
     // 예시 데이터는 어디서 왔든(도구 예시 버튼·홈 샘플 인계) 곧장 결과다(2026-09-24).

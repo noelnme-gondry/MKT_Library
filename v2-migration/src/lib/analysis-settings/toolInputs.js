@@ -1,10 +1,12 @@
+import { followupInputKeys } from "@/lib/recipe/followupInputs";
+import { FOLLOWUP_TOOL_SPECS } from "@/lib/recipe/followupSpecs";
 // Only user-entered options. Never persist results, signatures or approval flags.
 export const TOOL_INPUT_KEYS = {
-  "5-2": [],
-  "5-3": ["planningBasis", "targetValue", "budgetPeriod", "budget", "recentDays", "allocMode", "holdLowConfidence", "trendType", "weightMode", "outlierMethod", "outlierStrength"],
+  "5-2": ["recipeSteps"],
+  "5-3": ["recipeSteps", "analysisRange", "planningBasis", "targetValue", "budgetPeriod", "budget", "recentDays", "allocMode", "holdLowConfidence", "trendType", "weightMode", "outlierMethod", "outlierStrength"],
   // recipeSteps = 명령 입력창 칩(레시피 단계). 예전 세 키는 옛 저장 설정을 읽기 위해 남긴다.
   "5-21": ["metricOverride", "weekBasis", "lookback", "recipeSteps"],
-  "5-22": ["satState"],
+  "5-22": ["satState", "recipeSteps"],
   "5-4": ["testType", "planBaseline", "planMde", "planMean", "planSigma", "planAlpha", "planPower", "planCprA", "planCprB", "sequentialLooks", "plannedShare", "equivalenceMargin"],
   "5-20": ["minSupport", "holdoutOn", "outcomeStartDay"],
   "5-23": ["method", "useDiD", "cutoff"],
@@ -12,10 +14,12 @@ export const TOOL_INPUT_KEYS = {
   "5-26": ["settings"],
   "5-28": ["draft"],
   "5-29": ["draft", "design"],
+  "9-6": ["metric", "activeProblem"],
   "9-1": ["outcome", "features", "clusterColumn", "validationTimeColumn"],
 };
 const responseKeys = ["target", "bayesianUsePrior", "fcHorizon", "fcHorizonDraft", "fcBudget", "fcStepOff", "fcTotalBudget", "fcMinBudget", "fcMaxBudget", "fcEventPolicy", "fcEventPolicyDraft", "cannibQuestion", "platformFilter"];
-for (const id of ["5-18", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"]) TOOL_INPUT_KEYS[id] = responseKeys;
+for (const id of ["5-18", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"]) TOOL_INPUT_KEYS[id] = [...new Set([...responseKeys, ...["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"].flatMap(followupInputKeys)])];
+for (const id of Object.keys(FOLLOWUP_TOOL_SPECS)) TOOL_INPUT_KEYS[id] = [...new Set([...(TOOL_INPUT_KEYS[id] || []), ...followupInputKeys(id), "recipeSteps"])];
 export const inputScope = id => `analysis-inputs:${id}`;
 function safe(value, depth = 0) {
   if (depth > 4) return false;

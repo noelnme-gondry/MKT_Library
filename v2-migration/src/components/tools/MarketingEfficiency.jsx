@@ -4,7 +4,7 @@ import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import BlockedOptionsNote from "@/components/ds/BlockedOptionsNote";
-import { useAppStore, computeAnalyzeSig } from "@/store/useDataStore";
+import { useAppStore, computeAnalyzeSig, findMeta } from "@/store/useDataStore";
 import PeriodSensitivityPanel from "@/components/ds/PeriodSensitivityPanel";
 import { saturationPeriodSensitivity } from "@/lib/analysis-results/periodSensitivity";
 import Chart from "@/utils/chartGlobals";
@@ -20,10 +20,22 @@ import {
   SAT_MATH,
   SAT_CONFIG,
 } from "@/utils/satMath";
-import { effectiveDenomBasis, getMappedRows } from "@/utils/dashboardAggregator";
+import { effectiveDenomBasis, getMonFilteredRows } from "@/utils/dashboardAggregator";
 import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
-import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
-import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
+import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
+import RecipeCommandInput from "@/components/ds/RecipeCommandInput";
+import { buildDataContext, dimensionLabelFor } from "@/lib/vocabulary/dataContext";
+import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
+import { addStep, foldSteps } from "@/lib/recipe/recipe";
+import { useAccountRecipes } from "@/lib/recipe/useAccountRecipes";
+import { sharedRecipeFilters } from "@/lib/recipe/sharedFilters";
+import { recipeRowSource } from "@/lib/recipe/recipeRows";
+import { applySaturationView, legacySaturationSteps, prepareSaturationRows, saturationEntityNames, saturationSpec } from "@/lib/recipe/saturationRecipe";
+import { withMappingChange } from "@/lib/data-import/applyMappingChange";
+import { AnalysisExportProvider } from "@/lib/analysis-export/AnalysisExportContext";
+import { figureExportSettings, exportLimitations } from "@/lib/analysis-export/exportOptions";
+import { scopeFilters } from "@/lib/analysis-results/scopeEvidence";
+import { localizedTool } from "@/lib/toolConnections";
 import ToolPageShell from "@/components/ToolPageShell";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -35,15 +47,19 @@ import ScaleDecisionMap from "@/components/tools/ScaleDecisionMap";
 import MarginalEfficiencyGapChart from "@/components/tools/MarginalEfficiencyGapChart";
 import FigurePngButton from "@/components/ds/FigurePngButton";
 
+const SAT_VOCABULARY = recipeVocabularyFor("5-22");
+const NO_STEPS = Object.freeze([]);
+
 // 우측 TOC — 실제 렌더되는 결과 섹션 순서와 동일.
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
 function buildSatToc(tr) {
   return [
     { id: "s-sat-summary", title: tr("요약", "Summary") },
-    { id: "s-scale-map", title: tr("증액·감액 지도", "Scale decision map") },
     { id: "s-marginal-gap", title: tr("평균·한계효율", "Average vs. marginal") },
     { id: "s-sat", title: tr("포화도 순위", "Saturation ranking") },
     { id: "s-sat-curve", title: tr("응답곡선", "Response curve") },
+    { id: "s-scale-map", title: tr("관측 효율 지도", "Observed efficiency map") },
+    { id: "s-sat-period", title: tr("기간 검증", "Period check") },
   ];
 }
 
@@ -105,6 +121,16 @@ function trVerdictMeta(meta, tr) {
   };
 }
 
+function saturationExclusionReason(r, metric, tr) {
+  if (r.reason === "insufficient") return tr(
+    `관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`,
+    `${r.raw || r.n || 0} observations (needs at least ${SAT_CONFIG.minPoints})`,
+  );
+  if (r.reason === "out_of_range") return tr("곡선이 현 지출점에서 음수/비정상", "Curve is negative/abnormal at the current spend point");
+  if (r.reason === "nofit") return tr("곡선 적합 실패", "Curve fitting failed");
+  return metric === "roas" ? tr("매출 데이터 없음", "No revenue data") : tr("분석 불가", "Cannot analyze");
+}
+
 function downloadSatTemplateCsv(toolId) {
   const fields = satToolTemplateFields(toolId);
   // revenue_d7 옵션도 헤더에 노출(ROAS 진단용) — 표준 필드에 존재하면 canonical 헤더 사용
@@ -133,11 +159,22 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
 
-  const [satState, setSatState] = useSavedToolInput("5-22", "satState", {
+  const [satState] = useSavedToolInput("5-22", "satState", {
     grain: "channel", // channel | campaign
     metric: "cpa", // cpa | roas
     selected: null,
   });
+  // 곡선 선택은 탐색 상태다. 구 저장 설정을 다시 적용하면 그 설정의 선택도 복원한다.
+  const [curveSelection, setCurveSelection] = useState(null);
+  const selected = curveSelection?.legacy === satState ? curveSelection.name : satState.selected;
+  const setSelected = (name) => setCurveSelection({ legacy: satState, name });
+  const [savedSteps, setRecipeSteps] = useSavedToolInput("5-22", "recipeSteps", () => legacySaturationSteps(satState), { migrate: (inputs) => legacySaturationSteps(inputs.satState) });
+  const recipeSteps = Array.isArray(savedSteps) ? savedSteps : NO_STEPS;
+  const addRecipeStep = (step) => setRecipeSteps((previous) => addStep(Array.isArray(previous) ? previous : [], step, SAT_VOCABULARY));
+  const accountRecipes = useAccountRecipes("5-22", SAT_VOCABULARY);
+  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const setDashboardFilter = useAppStore((state) => state.setDashboardFilter);
+  const setCsvData = useAppStore((state) => state.setCsvData);
   // 포화도 엔진은 원본 금액을 그대로 쓴다. 화면 통화도 업로드 때 선언한 원본
   // 단위여야 하며, 실제 FX 환산은 이 도구의 계약이 아니다.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -146,12 +183,20 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   const hasData = csvData && csvData.raw && csvData.raw.length > 0;
 
   // Extract fields mapping
-  const mappedKeys = new Set(Object.values(csvData?.mapping || {}).filter((v) => v && v !== "__ignore__"));
+  const mappedKeys = useMemo(() => new Set(Object.values(csvData?.mapping || {}).filter((v) => v && v !== "__ignore__")), [csvData?.mapping]);
   const { hasCampaign, revField } = satAvailableFields(csvData);
-
-  // Enforce valid states synchronously
-  const effectiveMetric = satState.metric === "roas" && !revField ? "cpa" : satState.metric;
-  const effectiveGrain = satState.grain === "campaign" && !hasCampaign ? "channel" : satState.grain;
+  const spec = useMemo(() => saturationSpec(mappedKeys, revField), [mappedKeys, revField]);
+  const fold = useMemo(() => foldSteps(recipeSteps, SAT_VOCABULARY, spec, { mappedFields: mappedKeys, headers: csvData?.headers || [] }), [recipeSteps, spec, mappedKeys, csvData?.headers]);
+  const recipe = fold.state;
+  const field = recipe.data.levels[0];
+  const effectiveMetric = recipe.data.metric;
+  const effectiveGrain = field === "campaign_name" ? "campaign" : "channel";
+  const dataContext = useMemo(() => hasData ? buildDataContext({ headers: csvData.headers, rows: csvData.raw, mapping: csvData.mapping, toolId: "5-22", locale }) : null, [hasData, csvData, locale]);
+  const commandContext = dataContext ? { ...dataContext, toolSpec: spec, currentLevels: recipe.data.levels } : null;
+  const hidden = new Set(recipe.view.hidden);
+  const isVisible = (id) => !hidden.has(id);
+  const curveHidden = hidden.has("s-sat-curve");
+  const sharedFilters = sharedRecipeFilters({ csvData, dashboardFilter, setDashboardFilter, locale });
 
   // #3 — 결과 field(분모)를 전역 basis 따라 installs↔actions 전환. satMath는 installs 고정 선호라
   // basis-aware metricField를 직접 산출해 satBuildPoints로 점 생성(satAvailableFields는 revField만 재사용).
@@ -165,7 +210,16 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       : mappedKeys.has("actions")
         ? "actions"
         : null;
-  const mappedRows = useMemo(() => (hasData && analyzed ? getMappedRows(csvData) : []), [csvData, hasData, analyzed]);
+  // 표시·내보내기 단계는 계산 의존성이 아니다. 분석 조건만 직렬화하여 메모를 유지한다.
+  const analysisKey = JSON.stringify({ field, filters: recipe.data.filters.filter((filter) => filter.scope === "analysis"), caseSensitive: recipe.data.caseSensitive });
+  const prepared = useMemo(() => {
+    if (!hasData || !analyzed) return { rows: [], merged: [] };
+    const options = JSON.parse(analysisKey);
+    const source = recipeRowSource(csvData, [options.field, ...options.filters.map((filter) => filter.field)], "5-22");
+    return prepareSaturationRows(getMonFilteredRows(source, dashboardFilter), options);
+  }, [csvData, hasData, analyzed, analysisKey, dashboardFilter]);
+  const mappedRows = prepared.rows;
+  const entityNames = useMemo(() => saturationEntityNames(mappedRows, field, basisMetricField, revField, recipe.data.caseSensitive), [mappedRows, field, basisMetricField, revField, recipe.data.caseSensitive]);
 
   const rows = useMemo(() => {
     if (!analyzed || !basisMetricField) return [];
@@ -182,10 +236,13 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     .sort((a, b) => satActiveIndex(b, effectiveMetric) - satActiveIndex(a, effectiveMetric));
   const badRows = rows.filter((r) => !r.ok || !satActiveVerdict(r, effectiveMetric));
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !chartRef.current || !hasData || !analyzed || !okRows.length) return;
+  const ranking = applySaturationView(okRows, { view: recipe.view, metric: effectiveMetric, filters: recipe.data.filters, field, caseSensitive: recipe.data.caseSensitive, entityNames });
+  const selName = okRows.some((row) => row.name === selected) ? selected : okRows[0]?.name || "curve";
 
-    let sel = satState.selected ? okRows.find((r) => r.name === satState.selected) : null;
+  useEffect(() => {
+    if (typeof window === "undefined" || !chartRef.current || !hasData || !analyzed || !okRows.length || curveHidden) return;
+
+    let sel = selected ? okRows.find((r) => r.name === selected) : null;
     if (!sel) sel = okRows[0];
     if (!sel) return;
 
@@ -304,7 +361,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       }
     };
     // isDarkMode dep: re-evaluate getCssVar theme colors on light/dark toggle
-  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale, tr, costMetricLabel]);
+  }, [curveHidden, okRows, selected, effectiveMetric, hasData, analyzed, isDarkMode, locale, tr, costMetricLabel]);
 
   if (!hasData) {
     return (
@@ -324,7 +381,8 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
   // --- Rendering Helpers ---
   const isRoas = effectiveMetric === "roas";
-  const grainLabel = effectiveGrain === "campaign" ? tr("캠페인", "campaign") : tr("채널", "channel");
+  const axisLabel = dimensionLabelFor(field, dataContext);
+  const grainLabel = axisLabel[locale === "en" ? "en" : "ko"];
   const metricLabel = isRoas ? "ROAS" : costMetricLabel;
   const sat = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "saturated");
   const scale = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "scale");
@@ -349,18 +407,18 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     );
   } else if (sat.length && scale.length) {
     advice = tr(
-      `${sat.slice(0, 2).map(r => r.name).join(", ")}는 이미 포화 — 추가 예산은 ${scale.slice(0, 2).map(r => r.name).join(", ")} 쪽으로 옮기면 같은 돈으로 ${isRoas ? "더 높은 매출" : "더 많은 결과"}를 기대할 수 있습니다.`,
-      `${sat.slice(0, 2).map(r => r.name).join(", ")} ${sat.length > 1 ? "are" : "is"} already saturated — shifting extra budget to ${scale.slice(0, 2).map(r => r.name).join(", ")} could get you ${isRoas ? "more revenue" : "more results"} for the same money.`
+      `${sat.slice(0, 2).map(r => r.name).join(", ")}는 증액을 보류하고, ${scale.slice(0, 2).map(r => r.name).join(", ")}는 소규모 증액 시험을 검토하세요. 관측 범위 안의 모델 판단이며 실제 개선을 보장하지 않습니다.`,
+      `Hold added budget for ${sat.slice(0, 2).map(r => r.name).join(", ")}; consider a small monitored increase for ${scale.slice(0, 2).map(r => r.name).join(", ")}. This observed-range model does not guarantee improvement.`
     );
   } else if (sat.length) {
     advice = tr(
-      `${sat.slice(0, 3).map(r => r.name).join(", ")}는 ${metricLabel} 기준 포화 상태 — 증액 시 효율이 빠르게 나빠집니다. 증액보다 소재·타겟 개선이 우선입니다.`,
-      `${sat.slice(0, 3).map(r => r.name).join(", ")} ${sat.length > 1 ? "are" : "is"} saturated on ${metricLabel} — efficiency will drop quickly with more spend. Prioritize creative/targeting improvements over increasing budget.`
+      `${sat.slice(0, 3).map(r => r.name).join(", ")}는 모델상 한계효율(${metricLabel})이 현재 평균보다 불리합니다. 증액을 보류하고 운영 조건을 점검하세요.`,
+      `${sat.slice(0, 3).map(r => r.name).join(", ")} ${sat.length > 1 ? "are" : "is"} less favorable on modeled marginal ${metricLabel} than the current average. Hold increases and review operating conditions.`
     );
   } else if (scale.length) {
     advice = tr(
-      `${scale.slice(0, 3).map(r => r.name).join(", ")}는 아직 여유 구간 — 증액하면 효율이 오히려 개선될 여지가 있습니다.`,
-      `${scale.slice(0, 3).map(r => r.name).join(", ")} still ${scale.length > 1 ? "have" : "has"} headroom — increasing spend could actually improve efficiency.`
+      `${scale.slice(0, 3).map(r => r.name).join(", ")}는 모델상 증액 여유가 있습니다. 관측 지출 범위 안에서 소규모 시험하고 실제 효율을 확인하세요.`,
+      `${scale.slice(0, 3).map(r => r.name).join(", ")} still ${scale.length > 1 ? "have" : "has"} modeled headroom. Test a small increase within the observed spend range and check actual efficiency.`
     );
   } else {
     advice = tr(
@@ -381,48 +439,101 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
   const activeStyle = { background: "var(--bg-2)", borderColor: "var(--text-1)", color: "var(--text-1)" };
 
-  const selName = satState.selected || okRows[0]?.name || "curve";
+  const allDates = rows.flatMap((row) => row.kept || []).map((point) => point.date).filter(Boolean).sort();
+  const scopeEvidence = {
+    observationUnit: tr(`${grainLabel} × 일`, `${grainLabel} × day`), denominatorKey: basisMetricField, currency,
+    filters: scopeFilters(dashboardFilter),
+    periods: [{ id: "after", start: allDates[0], end: allDates.at(-1), observations: rows.reduce((sum, row) => sum + (row.kept?.length || 0), 0) }],
+  };
+  const figureSettingsFor = (scope) => figureExportSettings({
+    options: recipe.export, toolId: "5-22", toolTitle: locale === "en" ? localizedTool("5-22", "en")?.title : findMeta("5-22")?.title,
+    scope: { ...scopeEvidence.filters, ...scope },
+    resultState: okRows.length ? "ready" : "insufficient",
+    source: { importSource: isDemoData(csvData) ? "demo" : csvData.importSource, fileName: isDemoData(csvData) ? "" : csvData.fileName },
+    projectName: () => isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
+  });
+  const figureSettings = figureSettingsFor({ dateStart: allDates[0], dateEnd: allDates.at(-1) });
+  const inputDates = mappedRows.map((row) => row.date).filter(Boolean).sort();
+  const selectedRow = okRows.find((row) => row.name === selName);
+  const selectedDates = (selectedRow?.kept || []).map((point) => point.date).filter(Boolean).sort();
+  const notices = [
+    ...prepared.merged.map((merge) => tr(`'${merge.from.join("'·'")}'를 '${merge.to}'로 합쳤습니다(대소문자·공백). 구분하려면 “대소문자 구분하기”를 쓰세요.`, `Merged '${merge.from.join("' · '")}' into '${merge.to}' (case or spacing). Use “Keep case differences” to separate them.`)),
+    ...ranking.unapplied.map((filter) => tr(`'${filter.values[0]}만 보기'는 현재 순위표의 축이 아니어서 적용하지 않았습니다. 분석 범위 필터를 사용하세요.`, `'Show ${filter.values[0]} only' does not match the ranking axis and was not applied. Use an analysis filter instead.`)),
+    ...(recipe.export.includeCaveats ? [] : [tr("다운로드 파일에서 한계 문구를 제외하고 제외 사실을 표시합니다.", "Downloaded files state that analysis limitations were excluded.")]),
+  ];
 
   return (
     <ToolPageShell
       locale={locale}
       titleToolId="5-22"
       title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
-      chips={<span className="chip"><span className="dot"></span>{csvData?.fileName || ""}</span>}
-      summary={
-        <>
-          <p>{tr(
-            `지금 더 늘릴 곳과 멈출 곳을 한계 ${costMetricLabel}/ROAS로 나눕니다.`,
-            `Separate where to scale from where to stop using marginal ${costMetricLabel}/ROAS.`,
-          )}</p>
-          <section data-information-section="" style={{ marginTop: "6px", fontSize: "var(--fs-xs)", color: "var(--text-secondary)", cursor: "pointer" }}>
-            <header data-information-heading="">{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</header>
-            <div style={{ marginTop: "6px", lineHeight: 1.6 }}>
-              {tr(
-                `포화지수 = 한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}(ROAS는 평균 ÷ 한계). 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁘다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.`,
-                `Saturation index = marginal ${costMetricLabel} ÷ average ${costMetricLabel} (for ROAS, average ÷ marginal). Above 1 means marginal efficiency on the next budget increase is worse than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable.`
-              )}
-            </div>
-          </section>
-        </>
-      }
-      toc={analyzed && okRows.length ? buildSatToc(tr) : undefined}
-      stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
-    >
-      {/* 데이터 매핑은 결과 범위 제어와 다른 작업이다. sticky 헤드 밖에서 필요할 때만 연다. */}
-      <section data-information-section="" className="block analysis-data-mapping" >
-        <header data-information-heading="">
-          {tr("데이터·매핑", "Data & mapping")} {analyzed ? tr("— 변경하기", "— change") : tr("— 확인 후 분석", "— check before analysis")}
-        </header>
-        <div className="analysis-data-mapping__body">
-          <CsvUploader toolId="5-22" locale={locale} />
-          <div className="analysis-data-mapping__footer">
-            <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")}>
-              {tr("템플릿 CSV 받기", "Download template CSV")}
-            </button>
-            <span>{tr("효율 CSV는 대시보드·예산 배분과 공유합니다.", "This efficiency CSV is shared with Dashboard and Budget Allocation.")}</span>
-          </div>
+      className="saturation-workspace"
+      stickyHeader={false}
+      toc={analyzed && okRows.length ? buildSatToc(tr).filter((item) => isVisible(item.id)) : undefined}
+      stickyFilter={<><DashboardFilterBar locale={locale} compact commandSlot={commandContext ? (
+        <RecipeCommandInput vocabulary={SAT_VOCABULARY} context={commandContext} steps={recipeSteps}
+          onStepsChange={setRecipeSteps} onMapping={({ column, field }) => setCsvData(withMappingChange(csvData, column, field, "5-22"))}
+          {...sharedFilters} extraChips={sharedFilters.extraChips.filter((chip) => chip.id !== "date")} presets={accountRecipes} rejected={fold.rejected} notices={notices} locale={locale} />
+      ) : null} />
+      <div className="saturation-view-toolbar" role="group" aria-label={tr("포화도 결과 표시 기준", "Saturation result display options")}>
+        <strong>{tr("표시 기준", "View by")}</strong>
+        <div>
+          <span>{tr("분석 단위", "Analysis unit")}</span>
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={!mappedKeys.has("channel")}
+            aria-pressed={field === "channel"}
+            style={field === "channel" ? activeStyle : {}}
+            onClick={() => { addRecipeStep({ id: "level.field", params: { field: "channel" } }); setSelected(null); }}
+          >
+            {tr("채널", "Channel")}
+          </button>
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={!hasCampaign}
+            aria-pressed={effectiveGrain === "campaign"}
+            style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
+            onClick={() => { addRecipeStep({ id: "level.field", params: { field: "campaign_name" } }); setSelected(null); }}
+          >
+            {tr("캠페인", "Campaign")}
+          </button>
         </div>
+        <div>
+          <span>{tr("효율 기준", "Efficiency metric")}</span>
+          <button
+            type="button"
+            className="ab-pill"
+            aria-pressed={effectiveMetric === "cpa"}
+            style={effectiveMetric === "cpa" ? activeStyle : {}}
+            onClick={() => addRecipeStep({ id: "metric.saturation.cpa", params: {} })}
+          >
+            {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
+          </button>
+          <button
+            type="button"
+            className="ab-pill"
+            disabled={!revField}
+            aria-pressed={effectiveMetric === "roas"}
+            style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
+            onClick={() => addRecipeStep({ id: "metric.saturation.roas", params: {} })}
+          >
+            {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
+          </button>
+        </div>
+        <BlockedOptionsNote items={[
+          { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
+          { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
+        ]} />
+      </div>
+      </>}
+    >
+      <section className="saturation-data" aria-label={tr("데이터·매핑", "Data & mapping")}>
+        <CsvUploader toolId="5-22" locale={locale} />
+        <button className="btn ghost saturation-data__template" onClick={() => downloadSatTemplateCsv("5-22")}>
+          {tr("템플릿 CSV 받기", "Download template CSV")}
+        </button>
       </section>
       {!analyzed ? (
         <section className="block" id="s-sat-gate">
@@ -439,11 +550,13 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         </section>
       ) : (
       <>
-      <section className="block" id="s-sat-summary">
-        <h2 className="section-title">{tr("한눈에 보기", "At a glance")}</h2>
+      <AnalysisExportProvider value={figureSettings}>
+      <section className="block saturation-conclusion" id="s-sat-summary">
         <ResultActionCard
           toolId="5-22"
           analysisType="saturation"
+          exportOptions={recipe.export}
+          scopeEvidence={scopeEvidence}
           resultState={okRows.length ? "ready" : "insufficient"}
           locale={locale}
           decisionReview={Boolean(okRows.length)}
@@ -505,11 +618,16 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             method: {
               name: "saturation-curve-fit",
               version: "sat-v1",
-              assumptions: [tr("평균·한계효율은 선택한 분석 단위와 관측 지출 범위 기준입니다.", "Average and marginal efficiency follow the selected grain and observed spend range.")],
-              limitations: [tr("곡선 적합은 워크북에서 재학습되지 않으며 인과효과가 아닙니다.", "The curve is not refit in the workbook and is not a causal effect.")],
+              assumptions: [
+                tr(`분석 단위: ${grainLabel}. 평균·한계효율은 관측 지출 범위 기준입니다.`, `Analysis unit: ${grainLabel}. Average and marginal efficiency follow the observed spend range.`),
+                ...recipe.data.filters.filter((filter) => filter.scope === "analysis").map((filter) => `${dimensionLabelFor(filter.field, dataContext)[locale === "en" ? "en" : "ko"]}: ${filter.op} [${filter.values.join(", ")}]`),
+                // 판단 보류는 선택적인 한계 문구가 아니다. 보고서 구획을 빼도 방법에 남긴다.
+                ...badRows.map((row) => `${row.name}: ${saturationExclusionReason(row, effectiveMetric, tr)}`),
+              ],
+              limitations: exportLimitations([tr("곡선 적합은 워크북에서 재학습되지 않으며 인과효과가 아닙니다.", "The curve is not refit in the workbook and is not a causal effect.")], recipe.export.includeCaveats, locale),
             },
           })}
-          points={[{ text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
+          points={[{ label: tr("판단과 다음 행동", "Decision and next action"), text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
           stats={[
             { label: tr("분석 가능", "Analyzable"), value: `${okRows.length}/${rows.length}` },
             { label: tr("포화", "Saturated"), value: sat.length },
@@ -534,84 +652,24 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             />
           )}
         />
-        <PeriodSensitivityPanel
-          key={`${computeAnalyzeSig(csvData)}|${effectiveGrain}|${basisMetricField}|${effectiveMetric}|${currency}`}
-          locale={locale}
-          compute={() => saturationPeriodSensitivity(mappedRows, { grain: effectiveGrain, metricField: basisMetricField, revField, metric: effectiveMetric })}
-        />
+
       </section>
 
-      <div className="saturation-view-toolbar" role="group" aria-label={tr("포화도 결과 표시 기준", "Saturation result display options")}>
-        <strong>{tr("표시 기준", "View by")}</strong>
-        <div>
-          <span>{tr("분석 단위", "Analysis unit")}</span>
-          <button
-            type="button"
-            className="ab-pill"
-            style={effectiveGrain === "channel" ? activeStyle : {}}
-            onClick={() => setSatState(s => ({...s, grain: "channel", selected: null}))}
-          >
-            {tr("채널", "Channel")}
-          </button>
-          <button
-            type="button"
-            className="ab-pill"
-            disabled={!hasCampaign}
-            style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
-            onClick={() => setSatState(s => ({...s, grain: "campaign", selected: null}))}
-          >
-            {tr("캠페인", "Campaign")}
-          </button>
-        </div>
-        <div>
-          <span>{tr("효율 기준", "Efficiency metric")}</span>
-          <button
-            type="button"
-            className="ab-pill"
-            style={effectiveMetric === "cpa" ? activeStyle : {}}
-            onClick={() => setSatState(s => ({...s, metric: "cpa"}))}
-          >
-            {tr(`${costMetricLabel} (낮을수록 좋음)`, `${costMetricLabel} (lower is better)`)}
-          </button>
-          <button
-            type="button"
-            className="ab-pill"
-            disabled={!revField}
-            style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
-            onClick={() => setSatState(s => ({...s, metric: "roas"}))}
-          >
-            {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
-          </button>
-        </div>
-        <BlockedOptionsNote items={[
-          { label: tr("캠페인", "Campaign"), reason: !hasCampaign ? tr("campaign_name 컬럼을 매핑하면 활성화", "map the campaign_name column to enable") : "" },
-          { label: "ROAS", reason: !revField ? tr("revenue 컬럼을 매핑하면 활성화", "map the revenue column to enable") : "" },
-        ]} />
-      </div>
 
-      <ScaleDecisionMap
-        rows={mappedRows}
-        grain={effectiveGrain}
-        metric={effectiveMetric}
-        resultField={basisMetricField}
-        revenueField={revField}
-        currency={currency}
-        locale={locale}
-        isDarkMode={isDarkMode}
-      />
 
       <MarginalEfficiencyGapChart
+        entityLabel={grainLabel}
         rows={okRows}
         grain={effectiveGrain}
         metric={effectiveMetric}
         metricLabel={metricLabel}
         currency={currency}
         locale={locale}
-        selectedName={satState.selected || okRows[0]?.name || null}
-        onSelect={(name) => setSatState((state) => ({ ...state, selected: name }))}
+        selectedName={selName}
+        onSelect={setSelected}
       />
 
-      <section className="block" id="s-sat">
+      <section className="block saturation-surface" id="s-sat">
         <h2 className="section-title">{tr("포화도 순위", "Saturation ranking")}</h2>
 
         {okRows.length > 0 && (
@@ -620,7 +678,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
               <thead>
                 <tr>
                   <th className="tnum">#</th>
-                  <th>{effectiveGrain === "campaign" ? tr("캠페인", "Campaign") : tr("채널", "Channel")}</th>
+                  <th>{grainLabel}</th>
                   <th>{tr("적합 모델", "Fitted model")}</th>
                   <th className="tnum">{tr("최근 일예산", "Recent daily budget")}</th>
                   {isRoas ? (
@@ -628,17 +686,17 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                   ) : (
                     <><th className="tnum">{tr(`평균 ${costMetricLabel}`, `Avg ${costMetricLabel}`)}</th><th className="tnum">{tr(`한계 ${costMetricLabel}`, `Marginal ${costMetricLabel}`)}</th></>
                   )}
-                  <th className="tnum" title={tr("한계효율 ÷ 평균효율. 1보다 크면 다음 예산 투입 시 한계효율이 평균보다 나쁨", "Marginal efficiency ÷ average efficiency. Above 1 means marginal efficiency on the next budget increase is worse than average")}>{tr("포화지수", "Saturation index")}</th>
+                  <th className="tnum" title={tr(isRoas ? "평균 ROAS ÷ 한계 ROAS. 1보다 크면 추가 지출 효율이 평균보다 나쁨" : `한계 ${costMetricLabel} ÷ 평균 ${costMetricLabel}. 1보다 크면 추가 지출 효율이 평균보다 나쁨`, isRoas ? "Average ROAS ÷ marginal ROAS. Above 1 means worse marginal efficiency." : `Marginal ${costMetricLabel} ÷ average ${costMetricLabel}. Above 1 means worse marginal efficiency.`)}>{tr("포화지수", "Saturation index")}</th>
                   <th>{tr("판정", "Verdict")}</th>
                 </tr>
               </thead>
               <tbody>
-                {okRows.map((r, i) => {
+                {ranking.rows.map((r, i) => {
                   const v = satActiveVerdict(r, effectiveMetric);
                   const vm = trVerdictMeta(satVerdictMeta(v), tr);
                   const idx = satActiveIndex(r, effectiveMetric);
                   const idxStr = idx == null || !isFinite(idx) || idx === 1e9 ? "∞" : `${idx.toFixed(2)}x`;
-                  const sel = satState.selected === r.name || (!satState.selected && i === 0);
+                  const sel = selName === r.name;
 
                   return (
                     <tr
@@ -652,7 +710,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
                           className="saturation-row-select"
                           aria-label={tr(`${r.name} 응답곡선 보기`, `View response curve for ${r.name}`)}
                           aria-pressed={sel}
-                          onClick={() => setSatState(s => ({...s, selected: r.name}))}
+                          onClick={() => setSelected(r.name)}
                         >
                           <strong>{r.name}</strong>
                         </button>
@@ -687,6 +745,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           </div>
         )}
 
+        {ranking.hiddenCount > 0 && <p className="muted" role="status">{tr(
+          `보기 설정으로 순위표 ${ranking.hiddenCount}개 행을 가렸습니다. 요약·그림·다운로드 계산 표는 전체 분석 결과입니다.`,
+          `${ranking.hiddenCount} ranking row(s) hidden by view settings. Summary, charts and downloaded calculation tables retain the full analysis.`,
+        )}</p>}
         {badRows.length > 0 && (
           <section data-information-section="" style={{ marginTop: "10px" }}>
             <header data-information-heading="" style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
@@ -694,16 +756,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
             </header>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.7 }}>
               {badRows.map((r, i) => {
-                const why =
-                  r.reason === "insufficient"
-                    ? tr(`관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`, `${r.raw || r.n || 0} observations (needs at least ${SAT_CONFIG.minPoints})`)
-                    : r.reason === "out_of_range"
-                      ? tr("곡선이 현 지출점에서 음수/비정상", "Curve is negative/abnormal at the current spend point")
-                      : r.reason === "nofit"
-                        ? tr("곡선 적합 실패", "Curve fitting failed")
-                        : effectiveMetric === "roas"
-                          ? tr("매출 데이터 없음", "No revenue data")
-                          : tr("분석 불가", "Cannot analyze");
+                const why = saturationExclusionReason(r, effectiveMetric, tr);
                 return <div key={i}>• <strong>{r.name}</strong> — {why}</div>;
               })}
             </div>
@@ -711,20 +764,26 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         )}
       </section>
 
-      {okRows.length > 0 && (
-        <section className="block" id="s-sat-curve">
+      {okRows.length > 0 && isVisible("s-sat-curve") && (
+        <section className="block saturation-surface" id="s-sat-curve">
           <div className="section-head">
             <h2 className="section-title">
               {tr("응답곡선", "Response curve")} — {selName}
             </h2>
-            <FigurePngButton title={locale === "en" ? "Channel response curve" : "채널별 응답곡선"} target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
+            <AnalysisExportProvider value={figureSettingsFor({ dateStart: selectedDates[0], dateEnd: selectedDates.at(-1) })}>
+            <FigurePngButton title={tr(`${grainLabel}별 응답곡선 — ${selName}`, `${grainLabel} response curve — ${selName}`)} target={chartRef} fileName={`sat_curve_${String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_")}_${effectiveMetric}`} locale={locale} />
+            </AnalysisExportProvider>
           </div>
-          <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "6px" }}>
-            {tr(
-              `위 표에서 행을 클릭하면 해당 ${grainLabel}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs ${metricLabel}), 선=적합 곡선, 주황 점선=현 지출점.`,
-              `Click a row above to switch to that ${grainLabel}'s curve. Dots = daily observations (cost vs ${metricLabel}), line = fitted curve, orange dashed line = current spend point.`
-            )}
-          </p>
+          <dl className="saturation-curve-evidence" data-design-exempt="nested: selected-entity evidence grouped inside the response-curve surface">
+            <div><dt>{tr("최근 일예산", "Recent daily budget")}</dt><dd>{fmtCurrency(selectedRow?.currentCost, currency)}</dd></div>
+            <div><dt>{tr("관측된 일지출 범위", "Observed daily spend range")}</dt><dd>{fmtCurrency(selectedRow?.xMin, currency)} – {fmtCurrency(selectedRow?.xMax, currency)}</dd></div>
+            <div><dt>{tr("적합도 R²", "Model fit R²")}</dt><dd>{selectedRow?.r2 == null ? "—" : selectedRow.r2.toFixed(2)}</dd></div>
+          </dl>
+          <div className="saturation-curve-legend" aria-label={tr("곡선 범례", "Curve legend")}>
+            <span><i className="is-observed" />{tr("점 · 일별 관측", "Dots · daily observations")}</span>
+            <span><i className="is-fitted" />{tr("선 · 적합 곡선", "Line · fitted curve")}</span>
+            <span><i className="is-current" />{tr("점선 · 현재 지출", "Dashed · current spend")}</span>
+          </div>
           {isRoas && (
             <p className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "2px", color: "var(--text-muted)" }}>
               {tr(
@@ -738,6 +797,27 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           </div>
         </section>
       )}
+      {isVisible("s-scale-map") && <AnalysisExportProvider value={figureSettingsFor({ dateStart: inputDates[0], dateEnd: inputDates.at(-1) })}><ScaleDecisionMap
+        entityLabel={grainLabel}
+        rows={mappedRows}
+        grain={effectiveGrain}
+        metric={effectiveMetric}
+        resultField={basisMetricField}
+        revenueField={revField}
+        currency={currency}
+        locale={locale}
+        isDarkMode={isDarkMode}
+      /></AnalysisExportProvider>}
+
+      <section className="block saturation-surface" id="s-sat-period">
+        <PeriodSensitivityPanel
+          key={`${computeAnalyzeSig(csvData)}|${analysisKey}|${JSON.stringify(scopeFilters(dashboardFilter))}|${dashboardFilter.dateStart}|${dashboardFilter.dateEnd}|${basisMetricField}|${effectiveMetric}|${currency}`}
+          locale={locale}
+          variant="saturation"
+          compute={() => saturationPeriodSensitivity(mappedRows, { grain: effectiveGrain, metricField: basisMetricField, revField, metric: effectiveMetric })}
+        />
+      </section>
+      </AnalysisExportProvider>
       </>
       )}
     </ToolPageShell>

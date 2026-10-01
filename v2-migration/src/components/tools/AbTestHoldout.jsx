@@ -1,4 +1,5 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { isDemoData } from "@/lib/dataOrigin";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -11,7 +12,7 @@ import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
-import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import InfoPopover from "@/components/ds/InfoPopover";
 import DownloadHub from "@/components/ds/DownloadHub";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
@@ -82,8 +83,8 @@ function verdictColor(p, liftPositive) {
 export default function AbTestHoldout({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   // 결과 파일(예시 포함)을 들고 들어오면 계산기가 아니라 판독부터 보여 준다.
-  const [activeTab, setActiveTab] = useState(() => (useAppStore.getState().csvGroups?.[TOOL_GROUP["5-4"]]?.raw?.length ? "readout" : "design"));
-  const [mode, setMode] = useState("plan");
+  const [activeTab, setActiveTab] = useSavedToolInput("5-4", "activeTab", () => (useAppStore.getState().csvGroups?.[TOOL_GROUP["5-4"]]?.raw?.length ? "readout" : "design"));
+  const [mode, setMode] = useSavedToolInput("5-4", "mode", "plan");
   const [testType, setTestType] = useSavedToolInput("5-4", "testType", "binary");
   const onPrimaryTabKeyDown = useCallback((event, tabId) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -98,7 +99,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     const nextTab = tabs[nextIndex];
     setActiveTab(nextTab);
     window.requestAnimationFrame(() => document.getElementById(`ab-primary-tab-${nextTab}`)?.focus());
-  }, []);
+  }, [setActiveTab]);
   // 전역 통화(design-system §1.2) — 이 도구엔 다른 토글 UI가 없어 여기 단독 배치.
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
@@ -133,9 +134,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const [ancSb, setAncSb] = useState("1250");
 
   // ---- Power curve inputs ----
-  const [pcBaseline, setPcBaseline] = useState("5");
-  const [pcAlpha, setPcAlpha] = useState("0.05");
-  const [pcPower, setPcPower] = useState("0.80");
+  const [pcBaseline, setPcBaseline] = useSavedToolInput("5-4", "pcBaseline", "5");
+  const [pcAlpha, setPcAlpha] = useSavedToolInput("5-4", "pcAlpha", "0.05");
+  const [pcPower, setPcPower] = useSavedToolInput("5-4", "pcPower", "0.80");
 
   const abChartRef = useRef(null);
   const powerChartRef = useRef(null);
@@ -313,7 +314,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const equivalence = practicalEquivalence({ ...designCounts, marginPp: num(equivalenceMargin), confirmed: srm.status === "no_alarm" });
   const designCheck = <ExperimentDesignCheck locale={locale} share={plannedShare} setShare={setPlannedShare}
     confirmed={isDesignConfirmed} setConfirmed={(value) => setConfirmedDesign(value ? { source: designSource, tab: activeTab } : null)}
-    margin={equivalenceMargin} setMargin={setEquivalenceMargin} srm={srm} equivalence={equivalence} />;
+    margin={equivalenceMargin} setMargin={setEquivalenceMargin} srm={srm} equivalence={equivalence} hasTwoArms={hasTwoArms} />;
 
   // ============================================================
   //  Readout bar chart
@@ -821,7 +822,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             )}
           </section>
 
-          <section className="block" id="s-powercurve">
+          <RecipeBlock className="block" id="s-powercurve">
             <h2 className="section-title">{tr("감지 가능한 차이는 어느 정도인가?", "What size of difference can this test detect?")}</h2>
             <p style={{ color: "var(--text-secondary)" }}>{tr("표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.", "As the sample size (per arm) grows, the minimum detectable effect (MDE) shrinks. A lower baseline conversion rate needs more samples.")}</p>
             <div className="ab-form-grid">
@@ -850,7 +851,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <div className="chart-container" style={{ height: "340px" }}>
               <canvas id="ab-power-chart"></canvas>
             </div>
-          </section>
+          </RecipeBlock>
 
           <section data-information-section="" className="block" id="s-notes">
             <header data-information-heading="" className="section-title" style={{ }}>{tr("전문가용 통계 노트", "Statistical notes for experts")}</header>
@@ -901,7 +902,6 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           ) : readoutData && (
             <>
               {designCheck}
-              {!hasTwoArms && <p>{tr("SRM·동등성 패널은 두 집단 전용입니다. 다중 arm은 개별 배정 계획으로 따로 점검하세요.", "SRM and equivalence here require two arms. Check multi-arm allocation against each arm's planned share separately.")}</p>}
               <section className="block" id="s-readout-sig">
                 <div className="section-head">
                   <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
@@ -1027,29 +1027,14 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         },
                       })}
                     >
-                      <section data-information-section="" className="result-action-card__details">
-                        <header data-information-heading="">{tr("통계 원값 보기", "View raw statistics")}</header>
-                        <p className="tnum" style={{ margin: "8px 0 0", color: verdictColor(s.pValue, liftPositive), fontSize: "var(--fs-xs)" }}>
-                          z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} />
-                        </p>
-                      </section>
-                      <AnalysisDetails
-                        locale={locale}
-                        statusLabel={s.pValue < 0.05 ? tr("통계적 차이 후보", "Statistical-difference candidate") : tr("판정 보류", "Inconclusive")}
-                        statusTone={s.pValue < 0.05 ? "good" : "warning"}
-                        metric={tr("전환율 차이", "Conversion-rate difference")}
-                        unit="percentage points"
-                        meaning={tr("무작위 Control/Test 비교의 통계적 참고값이며 광고 증분성을 의미하지 않습니다.", "A statistical reference for a randomized Control/Test comparison; it does not establish advertising incrementality.")}
-                        sampleSize={{ value: readoutData.cDen + readoutData.tDen, label: tr("총 분모", "Total denominator"), detail: `Control ${readoutData.cDen.toLocaleString()} · Test ${readoutData.tDen.toLocaleString()}` }}
-                        interval={{ value: `[ ${(s.ciLow95 * 100).toFixed(2)}%, ${(s.ciHigh95 * 100).toFixed(2)}% ]`, confidence: "95%" }}
-                        method="two-proportion-z-test"
-                        version="ab-readout-v1"
-                        metricDefinition={tr("전환수 ÷ 그룹 분모, 양측 α=0.05", "Conversions ÷ arm denominator, two-sided α=0.05")}
-                        warnings={[
-                          tr("비유의는 효과 없음의 증명이 아니라 현재 표본에서 판정 보류입니다.", "Non-significance is not proof of no effect; it is inconclusive for the current sample."),
-                          tr("사전 MDE·검정력을 지정하지 않은 사후 판정에서는 검정력을 역산하지 않습니다. 설계 탭의 목표 Power와 필요한 표본을 함께 기록하세요.", "Post-hoc power is not back-calculated without a pre-specified MDE and target power. Record the target power and required sample size in the design tab."),
-                        ]}
-                      />
+                      <div className="analysis-evidence-strip">
+                        <p>{tr("통계적 차이와 실행 가능한 개선인지는 구분해서 판단하세요.", "Distinguish statistical differences from actionable improvements.")}</p>
+                        <InfoPopover label={tr("통계·해석 기준", "Statistics and interpretation")} glyph={tr("통계·해석 기준", "Statistics and interpretation")} className="analysis-evidence-button">
+                          <p className="tnum">z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} /></p>
+                          <p>{tr("비유의는 효과 없음의 증명이 아니라 현재 표본에서 판정 보류입니다.", "Non-significance is not proof of no effect; it is inconclusive for the current sample.")}</p>
+                          <p>{tr("사전 MDE·검정력을 지정하지 않은 사후 판정에서는 검정력을 역산하지 않습니다. 설계 탭의 목표 Power와 필요한 표본을 함께 기록하세요.", "Post-hoc power is not back-calculated without a pre-specified MDE and target power. Record the target power and required sample size in the design tab.")}</p>
+                        </InfoPopover>
+                      </div>
                     </ResultActionCard>
                   );
                 })() : (
@@ -1087,12 +1072,12 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 </section>
               )}
 
-              <section className="block" id="s-readout-chart">
+              <RecipeBlock className="block" id="s-readout-chart">
                 <FigureHead title={tr("판독 결과 차트", "Readout result chart")} target={() => document.getElementById("ab-bar")} fileName="ab_readout" locale={locale} />
                 <div className="chart-container" style={{ height: "300px" }}>
                   <canvas id="ab-bar"></canvas>
                 </div>
-              </section>
+              </RecipeBlock>
             </>
           )}
         </>

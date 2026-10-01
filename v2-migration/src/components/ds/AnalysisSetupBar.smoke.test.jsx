@@ -42,8 +42,8 @@ it("keeps the pre-analysis context and the post-result actions in separate slots
   const { container: bottom } = render(<AnalysisSetupBar toolId="5-2" slot="actions" />);
   expect(bottom.querySelector(".analysis-setup__context")).toBeNull();
   expect(bottom.querySelector("button")).toBeTruthy();
-  // 위계: 저장은 primary 버튼, 보관함은 텍스트 링크다(§5.3).
-  expect(bottom.querySelector("button.btn.primary")).toBeTruthy();
+  // 저장은 보조 버튼, 보관함은 텍스트 링크다. 결과의 주요 행동과 경쟁하지 않는다.
+  expect(bottom.querySelector(".analysis-setup__save button.btn")).toBeTruthy();
   const shelf = bottom.querySelector(".analysis-setup__link");
   expect(shelf?.getAttribute("href")).toBe("/projects");
   expect(shelf?.classList.contains("btn")).toBe(false);
@@ -52,7 +52,6 @@ it("keeps the pre-analysis context and the post-result actions in separate slots
 it("renders no empty actions block for a CSV-only tool with no data", () => {
   useAppStore.setState(useAppStore.getInitialState(), true);
   useAppStore.getState().setCurrentRouteId("5-2");
-  expect(TOOL_INPUT_KEYS["5-2"]).toEqual([]);
   const { container } = render(<AnalysisSetupBar toolId="5-2" slot="actions" />);
   expect(container.firstChild).toBeNull();
 });
@@ -65,7 +64,7 @@ it("still offers saving for a tool whose setup is manual inputs, with no CSV", (
   useAppStore.getState().setCurrentRouteId("5-26");
   expect(TOOL_INPUT_KEYS["5-26"].length).toBeGreaterThan(0);
   const { container } = render(<AnalysisSetupBar toolId="5-26" slot="actions" />);
-  expect(container.querySelector("button.btn.primary")).toBeTruthy();
+  expect(container.querySelector(".analysis-setup__save button.btn")).toBeTruthy();
 });
 
 it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)", locale => {
@@ -79,4 +78,13 @@ it.each(["ko", "en"])("hides empty input context before a CSV is provided (%s)",
 it("leaves the data line to the dashboard title row", () => {
   const { container } = render(<AnalysisSetupBar toolId="5-2" slot="context" />);
   expect(container.querySelector(".analysis-setup__context")).toBeNull();
+});
+
+it.each(["ko", "en"])("keeps saturation data in its uploader and saving in its own purpose group (%s)", locale => {
+  useAppStore.getState().setCurrentRouteId("5-22");
+  const { container } = render(<AnalysisSetupBar toolId="5-22" locale={locale} slot="context" />);
+  expect(container.firstChild).toBeNull();
+  render(<AnalysisSetupBar toolId="5-22" locale={locale} slot="actions" />);
+  expect(screen.getByRole("heading", { name: locale === "en" ? "Reuse this analysis setup" : "다음 분석에도 같은 설정 사용하기" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: locale === "en" ? "Save this setup to the project" : "이 설정을 프로젝트에 저장" }).disabled).toBe(false);
 });

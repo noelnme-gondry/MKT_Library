@@ -4,6 +4,8 @@
 **본 `AGENTS.md`가 정경(SSOT)이다.** 루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄 포인터 — 갱신은 여기 한 곳만, 복사본 만들지 말 것.
 2026-08 압축본. 과거 PR별 상세 내러티브는 git 히스토리·PR·`docs/*.md` 보존.
 
+**디자인 작업 시작 시 필수:** UI·레이아웃·차트·필터·카피 배치·공용 컴포넌트를 새로 만들거나 수정·검토하기 전에 루트 [`design.md`](./design.md)를 읽고 §6.0의 검토 절차를 수행한다. 작은 정렬 수정과 다른 도구로의 확장도 포함한다. 테스트 통과만으로 디자인 완료를 보고하지 않는다.
+
 ---
 
 ## 1. 프로젝트 정체성 + 에이전트 역할
@@ -123,11 +125,18 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 
 ## 6. 작업 워크플로우
 
+### 6.0 디자인 작업의 필수 검토
+
+1. **시작 전 읽기**: [`design.md`](./design.md)의 필수 절차·반복 지적 목록을 읽고, 제품 계약은 `docs/product-ssot.md`, 구현 규약은 `docs/design-system-baseline.md`에서 확인한다. 디자인 스킬·목업은 이 절차를 대체하지 않는다.
+2. **진단 후 설계**: 사용자 지적과 현재 화면을 대조해 문제 위치·사용상 영향·to-be·보존할 정보·검증 방법을 기록한다. 승인된 방향 안에서는 계속 진행하며, 요청하지 않은 재승인 단계를 만들지 않는다.
+3. **구현 후 화면 확인**: 실제 렌더된 결과로 정렬·그룹·설명·행동·밀도를 검토하고 필터/날짜 조작을 확인한다. 공용 변경은 다른 소비 화면도 조사한다. 폭·상태·테마·언어의 검증 범위와 결과를 남긴다.
+4. **완료 전 대조**: 처음 문제 목록에 해결 근거를 붙인다. 남은 항목은 미해결/미확인으로 적는다. 상세 체크리스트는 `design.md` 하나에서 관리하며 다른 하네스에 복사하지 않는다.
+
 ### 6.1 구현 흐름 (PR)
 1. 요청 받음 → 모호하면 옵션·트레이드오프 제시하고 묻기(§2.7).
 2. **시작 전 항상 `git fetch origin main` + `git status`**: 차이 있으면 "pull 후 진행?" 확인. 최신 main 위 **단명 브랜치**(`feat/xxx`·`fix/xxx`·`docs/xxx`) 생성. **장수 브랜치 재사용 금지**(conflict·역행 위험).
 3. 변경 후 **검증 필수**: `npm run test:all` + `npm run lint` + 필요 시 `npm run build`. 순수함수 밖(렌더 분기·상태 배선)은 골든이 못 잡으므로 **스모크 테스트 또는 재현 스크립트**로 보강(§7).
-   **preview MCP 육안검증은 생략** — Gondry님이 브라우저에서 직접 확인. 콘솔 에러 재현 같은 실행 디버깅엔 써도 되지만 스크린샷 루프는 금지(§7 캡처 아티팩트).
+   **디자인 변경은 §6.0과 `design.md`에 따라 실제 화면을 검토한다.** 사용자 육안 확인을 구현자의 사전 검토 대신으로 삼지 않는다. 검토 목적이 없는 반복 캡처는 금지하며, 캡처 아티팩트는 실제 UI 결함과 구분한다(§7).
 4. `git add <명시 파일>` + 커밋(§6.3).
 5. push → PR 생성(base `main`). 본문: `## Summary` bullets + `## Test plan` checkboxes.
 6. squash merge → 머지 확인 후 브랜치 삭제.
@@ -272,7 +281,7 @@ csvData            // 활성 그룹 슬라이스의 미러 — 소비자는 이�
 - **렌더 함수에 상태 분기 추가 전 실제 호출부 확인**: 호출 조건 모르면 도달 불가 죽은 코드 생성.
 - **사람 없이 스토어에 쓰는 코드는 부팅이 끝난 뒤에 돌릴 것**(2026-09-29, 예시 링크): 자식 effect는 부모의 `setCurrentRouteId`보다 먼저 돌아 이전 라우트 그룹에 쓰고, 기기 저장 부팅(`initializeProjects` → 복원·설정 적용)은 비동기로 늦게 끝나 방금 쓴 데이터를 빈 화면으로 되돌린다. 버튼 경로는 사람이 누르는 사이 둘 다 끝나고 e2e도 클릭을 재시도해 **드러나지 않았다** — 링크 자동 실행에서 21개 중 5~7개가 매번 다른 도구로 비었다. 조건(라우트 일치·persist 복원·`projectsReady`)을 구독해 기다릴 것(`ds/useExampleLink`). 같은 e2e를 두 번 돌려 실패 집합이 바뀌면 경쟁 상태다.
 - **render throw는 골든이 못 잡는다 → 재현 필수**: 골든은 순수함수만 검증. 단일 render throw가 페이지를 통째로 죽여 "분석하기 무반응"·"탭 멈춤" P0가 된다. 상태 의존 분기는 **전 상태값(전 채널·전 토글)으로** 재현해야 잡힘.
-- **preview 스크린샷은 긴 페이지에서 캡처 아티팩트**(빈 화면·이중노출) — 판정은 접근성 트리·콘솔 에러로.
+- **preview 스크린샷은 긴 페이지에서 캡처 아티팩트**(빈 화면·이중노출)가 생길 수 있다. 의심 시 현재 뷰포트·DOM 배치·접근성 트리·콘솔로 원인을 구분한다. 텍스트 트리와 콘솔 정상만으로 시각 품질을 판정하지 않는다. 디자인 검토는 `design.md` 절차를 따른다.
 - **SPA 소프트 내비는 GA4 page_view 자동 전송 안 함**(`gtag('config')`는 최초 1회): `components/GaPageviews.jsx`(`usePathname`+최초 제외 가드)가 경로 변경마다 `gtag('event','page_view')`. GTM 이중 태깅 시 이중카운트 주의.
 - **계측 스크립트에 환경 가드가 없으면 개발자가 곧 트래픽이다**(2026-08-19): GTM·GA4·AdSense가 조건 없이 실려 `npm run dev`가 운영 속성과 제품 이벤트 퍼널을 부풀렸다. **빌드타임 env로 가르면 안 된다**(정적 프리렌더라 같은 HTML이 localhost와 운영에 나간다) — 호스트 정확일치로 판정한다(`lib/analyticsHost.js`, 접미사 비교는 `…com.evil.example`이 통과). `noscript` iframe은 옮기지 말 것(JS 꺼진 운영 방문자에게서도 사라진다).
 - **정적 대비 검사는 "라이트 토큰 × 영구 다크 표면" 조합을 구조적으로 못 본다**(2026-09-05): 슬림 푸터가 라이트에서 3.07:1(영구 다크 배경 + 테마 토큰 글자)이었고, `opacity`로 흐린 글자(2.36:1)도 토큰은 멀쩡해 안 보인다 — **배경과 글자를 실제로 합성해야 나온다**. `e2e/light-mode-contrast.spec.js`가 라이트 모드로 주요 라우트를 axe로 잰다(기존 e2e는 base가 다크라 라이트를 거의 안 봤다).
@@ -568,9 +577,12 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **`ds/ToolBrief`가 짧아진 이름을 메운다** — 질문/답/필요 데이터 세 줄, 상자 없음. 목록과 **같은 문장**을 쓴다.
 - 컴포넌트가 제목을 직접 넘기지 않는다. 화면 h1은 `toolIndex.toolDisplayTitle`의 레지스트리 이름이고, 검색어형 이름(“마케팅 효율 진단 (Saturation)”)은 지우지 않고 제목 밑 한 줄로 내린다(2026-09-29 사용자 결정). `ToolIntro`의 INTRO 표가 두 번째 출처로 남아 **발행 도구 20개 전부**가 목록과 다른 제목으로 열리고 있었다 — 제목을 그리는 경로가 넷(ToolIntro·ToolPageShell·Dashboard·PaidOrganicTrend)이라 단위 테스트로는 못 보고, `e2e/tool-title-consistency.spec.js`가 실제 화면에서 잰다.
 
-### 12.32 분석 설정 입력창(레시피)을 도구에 붙이기 (5-21 파일럿, 2026-09-30)
+### 12.32 분석 설정 입력창(레시피)을 도구에 붙이기 (5-21·5-22, 2026-09-30)
 - 단어는 `lib/vocabulary`(공용 `COMMON_WORDS` + `tools/<도구>Words`, CSV 컬럼·값은 `buildDataContext`), 상태는 `foldSteps`가 기본값에서 파생 — **칩만 저장**하고 기존 알약도 `addStep`으로 단계를 더한다(상태 두 벌 금지). 도구가 쓰는 것은 spec(허용 지표·기간·블록·`locked`·형식)과 어댑터(`lib/recipe/<도구>Recipe.js`)뿐. 설계 `docs/result-autonomy-spec.md`, 화면 계약 `docs/product-ssot.md` §5.5a.
 - 보기 설정(보기 필터·상위 N·악화만)은 **표에만** — Σ·결론은 가리기 전 행으로 계산하고, 롤업 수식을 가진 파일에는 행 필터를 걸지 않는다(합이 틀어진다). "분석"(다시 계산)과 "보기"(가림)는 라벨로 가른다.
+- 동적 축·필터는 사전 `fieldParams`로 참조를 선언하고 후보·재적용에서 함께 검증한다. 원본 컬럼 존재는 후보 목록이 아닌 헤더로 확인한다(단일 값 CSV에도 재사용 가능). 자동 대체 축도 실제 엔진 슬롯 위치로 표시하고, 거절한 명령은 성공으로 안내하지 않는다.
+- 공용 필터 소유권은 `sharedFilters`, 행 정규화·원본 컬럼 추가 투영은 `recipeRows`를 재사용한다. 엔진 계산 의존성에는 분석 조건만 넣고 보기·내보내기 단어를 넣지 않는다. 도구별 판정 의미는 어댑터에서 해석한다(5-22 포화/여유 ≠ PVM 악화/개선).
+- 카드 밖 그림은 `ResultActionCard`의 context를 상속하지 않는다. `figureExportSettings` + `AnalysisExportProvider`로 실제 그림 입력 기간·설정·출처를 연결하고, 선택 그림과 전체 요약의 기간이 다른 경우를 검증한다. 판정 보류 사유는 선택적인 한계 문구와 분리해 파일에도 남긴다.
 - 결론의 근거 블록은 `locked`(숨기기 단어가 생기지 않는다), 사용자 데이터 값을 담은 단어는 `carriesUserValues`(계정 동기화 제외). 매핑이 함께 필요한 단어는 `toSelection`이 `{mapping, step}`으로 나눠 매핑은 `withMappingChange`로 스토어에. 계정 저장(B)은 `toolVocabulary.js`에 사전 한 줄, 다운로드 설정(C)은 `ResultActionCard exportOptions` 한 prop으로 붙는다(도구 자체 다운로드 항목은 `onSelect(exportContext)`) — 확장 체크리스트는 `docs/result-autonomy-roadmap.md` §4.3. 입력창은 도구 전용 구역이 아니라 **공용 필터 막대 안**(`commandSlot`)에 두고, 필터 막대가 이미 가진 축의 범위 단어는 필터에 쓴다(`onSelectStep`·`extraChips`) — 같은 조건의 주인은 한 곳.
 
 ---
@@ -644,7 +656,7 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - ✅ **부채 백로그 전부 해소**(현황은 `docs/product-ssot.md` 표의 취소선 — 범위를 여기 적지 말 것). legacy pill은 단일선택 35곳 이관 완료, 남은 10곳은 PillGroup을 쓰면 안 되는 자리(토글·다중선택·복합·비선택 컨테이너)라 가드가 개수 대신 **계약**을 지킨다. D-10(모바일 실기기)·D-11(AEO 실행)은 사람이 해야 하는 부분만 남았다.
 - **기기 저장(`decisionPersistenceEnabled`)은 기본 ON(opt-out)이다** — 결정 요약 + 업로드 원본(IndexedDB·90일·`/storage` 삭제)을 함께 가른다. 코드는 계속 ON이었는데 store 주석과 `ARCHITECTURE.md`가 "명시적으로 켠 경우만"이라 적어 반대로 말하고 있었다(동의 배너는 `!enabled` 조건이라 신규 사용자에겐 렌더되지 않는다 — 과거 거절자 마이그레이션 전용). 2026-09-01에 문서를 동작에 맞췄다. 기본값을 OFF로 바꾸는 건 제품 결정이며, 바꾸면 두 서술을 함께 고칠 것. 서버 전송은 어느 경우에도 없다(§2.2).
 - ✅ **크기·반경 스케일 채택 완료**(2026-09-15) — 글자는 `--fs-xs`~`--fs-3xl` 8단, 모서리는 `--radius-*` 5단. px 리터럴 0(CSS 1,513곳 + JSX 602곳 이관, 경쟁하던 `--type-*` 계열 제거). 개수를 적지 말 것 — `app/typeScale.test.js`·`designTokenSingleSource.test.js`가 스케일에서 파생해 강제하고 그 가드가 현황이다. 직교 차트 축 제목도 같은 방식으로 `app/chartAxisTitle.test.js`가 지킨다.
-- 🔄 **진행 중**: 결과 자율화 — 분석 설정 입력창(레시피)이 5-21에 배선됨, 다음은 5-22부터 확장·레시피 계정 동기화(`docs/result-autonomy-spec.md` §4.5). 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천). 결정 스키마는 **v11**(관측 이력)이고 목표는 `lib/decisionGoals.js` 선언에서 온다 — 한 결정은 여러 번 관측되며 `actual`·`learning`은 최신 관측의 미러다(§12.24b). 검토함의 후속 안내는 `decisionReviewFollowUpMode` 네 모드(`period_auto`·`forecast_auto`·`rerun_manual`·`period_setup`)가 판정해 `WeeklyReview.jsx:677`이 렌더하며, 자동 판정 불가 목표는 `decisionGoals`의 `rerun:` 접두사가 선언적으로 가른다 — `NEXT_TOOL_IDS`는 여정 맵이지 검증 맵이 아니므로 여기 붙이지 말 것(2026-09-16 정정, 교훈은 §7).
+- 🔄 **진행 중**: 결과 자율화 — 5-21·계정 저장·다운로드 설정 구현(#941); 파일럿 보강·운영 확인 뒤 5-22 확장(`docs/result-autonomy-roadmap.md`). 결정 검토 루프(`/weekly-review` — 기준일+N일 비교 후보, 명시적 완료), 데이터 라우터(`/start` — 업로드 후 가능한 분석 추천). 결정 스키마는 **v11**(관측 이력)이고 목표는 `lib/decisionGoals.js` 선언에서 온다 — 한 결정은 여러 번 관측되며 `actual`·`learning`은 최신 관측의 미러다(§12.24b). 검토함의 후속 안내는 `decisionReviewFollowUpMode` 네 모드(`period_auto`·`forecast_auto`·`rerun_manual`·`period_setup`)가 판정해 `WeeklyReview.jsx:677`이 렌더하며, 자동 판정 불가 목표는 `decisionGoals`의 `rerun:` 접두사가 선언적으로 가른다 — `NEXT_TOOL_IDS`는 여정 맵이지 검증 맵이 아니므로 여기 붙이지 말 것(2026-09-16 정정, 교훈은 §7).
 - ⏸ **보류**: 블로그 댓글(Supabase 자체 구현 — 스펙 `docs/blog-comments-spec.md`, 700~1,100줄. `brandFacts` "가입 없음" 문장 한정과 개인정보처리방침 갱신이 같은 PR에 들어가야 한다). 커스텀 지표·viewConfig를 5-3·5-18·5-21로 확장(SSOT `docs/custom-metrics-data-config-spec.md`, 도구당 1200~2500줄 — 별도 세션). 9-5 콘텐츠 도구.
 
 ---

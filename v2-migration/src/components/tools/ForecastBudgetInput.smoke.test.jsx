@@ -36,4 +36,24 @@ describe("원본 통화 예산 입력", () => {
     fireEvent.change(input, { target: { value: "" } });
     expect(commit).toHaveBeenLastCalledWith(null);
   });
+  it("rounds only the resting display without committing or changing the original amount", () => {
+    const commit = vi.fn();
+    const { rerender } = render(<CommaNumberInput value={55093.1666666667} maximumFractionDigits={2} onCommit={commit} allowDecimals ariaLabel="Weekly budget" />);
+    const input = screen.getByRole("textbox", { name: "Weekly budget" });
+    expect(input.value).toBe("55,093.17");
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+    expect(commit).not.toHaveBeenCalled();
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "12,345.6789" } });
+    expect(commit).toHaveBeenLastCalledWith(12345.6789);
+    rerender(<CommaNumberInput value={12345.6789} maximumFractionDigits={2} onCommit={commit} allowDecimals ariaLabel="Weekly budget" />);
+    fireEvent.blur(input);
+    expect(input.value).toBe("12,345.68");
+    expect(commit).toHaveBeenCalledTimes(1);
+    rerender(<CommaNumberInput value={12345.6789} maximumFractionDigits={0} onCommit={commit} allowDecimals ariaLabel="Weekly budget" />);
+    expect(input.value).toBe("12,346");
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
 });

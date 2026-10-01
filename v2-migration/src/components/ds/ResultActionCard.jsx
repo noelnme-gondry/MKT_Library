@@ -1,8 +1,10 @@
 "use client";
 import { isDemoData } from "@/lib/dataOrigin";
-import { buildExportFileName, normalizeExportOptions } from "@/lib/analysis-export/exportOptions";
+import { useToolRecipe } from "@/lib/recipe/ToolRecipeContext";
+import { figureExportSettings } from "@/lib/analysis-export/exportOptions";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Share2, FilePlus2, FolderOpen } from "lucide-react";
 import { analysisResultEventKey, productAnalysisType, trackProductEvent, trackProductEventOnce } from "@/lib/analytics";
 import { buildReviewEvidence } from "@/lib/reviewEvidence";
 import LinkAnalysisToDecision from "./LinkAnalysisToDecision";
@@ -61,6 +63,7 @@ export default function ResultActionCard({
   title = "결론",
   headline,
   points = [],
+  pointsContent = null, // Alternate evidence UI; keep points intact for shares, reports and exports.
   stats = [],
   download = null,
   controls = null,
@@ -84,8 +87,10 @@ export default function ResultActionCard({
   workbookExport = null,
   scopeEvidence = null,
   // 다운로드 설정(lib/analysis-export/exportOptions) — PNG 머리글·보고서 구획·파일 이름. 없으면 기존 동작.
-  exportOptions = null,
+  exportOptions: explicitExportOptions = null,
 }) {
+  const recipe = useToolRecipe();
+  const exportOptions = explicitExportOptions || (recipe?.toolId === toolId ? recipe.exportOptions : null);
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
@@ -213,15 +218,10 @@ export default function ResultActionCard({
   const analysisExport = useMemo(() => ({
     toolId,
     locale,
-    figureContext: { toolTitle: shareToolTitle, scope: resultScope, resultState, source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource, fileName: isDemoData(csvData) ? "" : csvData?.fileName } },
-    exportOptions: exportOptions ? normalizeExportOptions(exportOptions) : null,
-    // 결과가 실제로 쓴 기간(비교 시작 ~ 분석 끝)으로 이름을 짓는다. 다운로드 날짜로 대신하지 않는다.
-    fileNameFor: (kind) => buildExportFileName(exportOptions, {
-      toolTitle: shareToolTitle,
-      toolId,
-      period: { start: resultScope.comparisonStart || resultScope.dateStart, end: resultScope.dateEnd },
-      projectName: isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
-      kind,
+    ...figureExportSettings({
+      options: exportOptions, toolId, toolTitle: shareToolTitle, scope: resultScope, resultState,
+      source: { importSource: isDemoData(csvData) ? "demo" : csvData?.importSource, fileName: isDemoData(csvData) ? "" : csvData?.fileName },
+      projectName: () => isDemoData(csvData) ? "" : useAppStore.getState().projects.find((project) => project.id === useAppStore.getState().activeProjectId)?.name,
     }),
     buildPayload: (manifest = null) => buildAnalysisExportPayload({
       toolId,
@@ -251,6 +251,13 @@ export default function ResultActionCard({
       generatedAt: new Date().toISOString(),
     }),
   }), [csvData, headline, inputSignature, locale, points, resolvedAnalysisType, resultScope, resultState, shareToolTitle, stats, toolId, workbookExport, scopeEvidence, exportOptions]);
+  const registerFigureContext = recipe?.toolId === toolId ? recipe.registerFigureContext : null;
+  const figureContextSignature = JSON.stringify(analysisExport.figureContext);
+  useEffect(() => {
+    if (!registerFigureContext) return;
+    registerFigureContext(JSON.parse(figureContextSignature));
+    return () => registerFigureContext(null);
+  }, [figureContextSignature, registerFigureContext]);
   const copyShareLink = async () => {
     setShareError("");
     const token = encodeSharePayload({ toolId, toolTitle: shareToolTitle, headline, points, stats, locale, context: { ...resultScope, currency: csvData?.currency }, limitations: [locale === "en" ? "A shared result summary. Verify comparison conditions, uncertainty and study design before acting." : "공유된 결과 요약입니다. 실행 전에 비교 조건·불확실성·분석 설계를 함께 확인하세요."] });
@@ -336,7 +343,8 @@ export default function ResultActionCard({
 
       {coreFigure}
 
-      {visiblePoints.length > 0 && (
+      {pointsContent}
+      {pointsContent == null && visiblePoints.length > 0 && (
         <ul className="result-action-card__points">
           {visiblePoints.map((p, i) => (
             <li key={i} className={`${p.cls || ""} ${p.label ? "is-structured" : ""}`.trim()}>
@@ -348,7 +356,7 @@ export default function ResultActionCard({
         </ul>
       )}
 
-      {hiddenPoints.length > 0 && (
+      {pointsContent == null && hiddenPoints.length > 0 && (
         <section data-information-section="" className="result-action-card__details">
           <header data-information-heading="">{locale === "en" ? `View ${hiddenPoints.length} more supporting point(s)` : `근거 ${hiddenPoints.length}개 더 보기`}</header>
           <ul className="result-action-card__points result-action-card__points--nested">
@@ -385,6 +393,7 @@ export default function ResultActionCard({
         <div className="result-action-card__utilities" role="group" aria-label={locale === "en" ? "More actions for this result" : "이 결과로 더 할 수 있는 것"}>
           {canShareDecision && (
             <button className="btn ghost" type="button" onClick={copyShareLink}>
+              <Share2 size={16} aria-hidden="true" />
               {shareCopied
                 ? (locale === "en" ? "✓ Link copied" : "✓ 링크 복사됨")
                 : (locale === "en" ? "Share conclusion" : "결론 공유")}
@@ -393,17 +402,17 @@ export default function ResultActionCard({
           {canCollectReport && (
             reportAdded ? (
               <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
-                {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
+                <FilePlus2 size={16} aria-hidden="true" />{locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
               </Link>
             ) : (
               <button className="btn ghost" type="button" onClick={collectForReport}>
-                {locale === "en" ? "Add to report" : "보고서에 추가"}
+                <FilePlus2 size={16} aria-hidden="true" />{locale === "en" ? "Add to report" : "보고서에 추가"}
               </button>
             )
           )}
           {canOpenDecisionReview && (
             <Link className="btn ghost" onClick={() => trackProductEvent("review_entry_clicked", { tool_id: toolId, source: "analysis_result", placement: "result_action_card", locale })} href={locale === "en" ? "/en/weekly-review#wr-history" : "/weekly-review#wr-history"}>
-              {locale === "en" ? "Open My projects" : "내 프로젝트 열기"}
+              <FolderOpen size={16} aria-hidden="true" />{locale === "en" ? "Open My projects" : "내 프로젝트 열기"}
             </Link>
           )}
         </div>

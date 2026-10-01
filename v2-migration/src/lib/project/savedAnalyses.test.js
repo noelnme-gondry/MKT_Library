@@ -8,14 +8,14 @@ describe("saved analysis setups", () => {
     expect(await compatibleSavedAnalysis(item, before)).toBe(true);
     expect(await compatibleSavedAnalysis(item, { ...before, csvGroups: { efficiency: { headers: ["Other"] } } })).toBe(false);
     expect(item.configuration.groups.efficiency.raw).toBeUndefined();
-    expect(item.configuration.viewConfig).toEqual({});
+    expect(item.configuration.viewConfig).toEqual({ "analysis-inputs:5-2": { recipeSteps: [] } });
   });
   it("keeps current dates by default and restores saved dates only explicitly", async () => {
     const before = state(); const item = await captureSavedAnalysis(before, "5-2", "Weekly", "ko");
     const next = state(); next.dashboardFilterGroups.efficiency.dateStart = "2026-09-01";
     expect(savedAnalysisConfiguration(item, next).groups.efficiency.filters.dateStart).toBe("2026-09-01");
     expect(savedAnalysisConfiguration(item, next, false).groups.efficiency.filters.dateStart).toBe("2026-08-01");
-    expect(savedAnalysisConfiguration(item, next).viewConfig).toEqual(next.viewConfig);
+    expect(savedAnalysisConfiguration(item, next).viewConfig).toEqual({ ...next.viewConfig, ...item.configuration.viewConfig });
   });
   it("rejects duplicate ids, unknown tools and foreign group settings", async () => {
     const item = await captureSavedAnalysis(state(), "5-2", "Weekly", "ko");
@@ -45,4 +45,15 @@ it("supports manual tool input setups with no CSV", async () => {
   before.viewConfig["analysis-inputs:5-4"] = { planMde: "15" };
   const item = await captureSavedAnalysis(before, "5-4", "Experiment", "en");
   expect(item.hasCsv).toBe(false); expect(await compatibleSavedAnalysis(item, before)).toBe(true);
+});
+
+it("keeps all dashboard blocks and private scopes in local saved analysis settings only", async () => {
+  const input = state();
+  input.viewConfig["dashboard-workspace"] = { tabs: { pacing: { blocks: { "s-pace": { scope: { countries: ["KR"] }, width: "half" } } } }, boards: [] };
+  input.customCharts["5-2:viz-charts"] = [{ id: "cost", name: "Cost", type: "bar", dim: "country", metric: "cost" }];
+  input.customCharts["5-3:private"] = [{ id: "other" }];
+  const saved = await captureSavedAnalysis(input, "5-2", "Country review", "ko");
+  expect(saved.configuration.viewConfig["dashboard-workspace"].tabs.pacing.blocks["s-pace"].scope.countries).toEqual(["KR"]);
+  expect(saved.configuration.customCharts["5-2:viz-charts"]).toHaveLength(1);
+  expect(saved.configuration.customCharts["5-3:private"]).toBeUndefined();
 });

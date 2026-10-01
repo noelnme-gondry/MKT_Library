@@ -1,4 +1,5 @@
 "use client";
+import ToolRecipeWorkspace from "@/components/ds/ToolRecipeWorkspace";
 import AnalysisSetupBar from "@/components/ds/AnalysisSetupBar";
 import { use, useLayoutEffect } from "react";
 import { notFound, useSearchParams } from "next/navigation";
@@ -49,7 +50,7 @@ const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTraff
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
 const DochiResultWorkspace = dyn(() => import("@/components/assistant/DochiResultWorkspace"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "5-24", "5-25", "5-26", "5-27", "5-28", "5-29", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -108,26 +109,26 @@ export default function PageClient({ params, evidenceLinks = [], reading }) {
             {routeId === "5-3" && <BudgetAllocation />}
             {routeId === "5-21" && <CampaignPvm />}
             {routeId === "5-22" && <MarketingEfficiency />}
-            {routeId === "5-4" && <AbTestHoldout />}
+            {routeId === "5-4" && <ToolRecipeWorkspace toolId="5-4" locale="ko"><AbTestHoldout /></ToolRecipeWorkspace>}
             {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} isolated={responseStage !== "hub"} />}
-            {routeId === "5-18-paid-organic" && <PaidOrganicTrend />}
-            {routeId === "5-18-trend" && <MarketingResponse initialStage="trend" isolated />}
-            {routeId === "5-18-cannibal" && <MarketingResponse initialStage="diagnose" isolated />}
-            {routeId === "5-18-mmm" && <MarketingResponse initialStage="mmm" isolated />}
-            {routeId === "5-18-forecast" && <MarketingResponse initialStage="lab" isolated />}
-            {routeId === "5-20" && <AhaMomentFinder />}
-            {routeId === "5-23" && <Incrementality />}
-            {routeId === "5-24" && <BrandCampaignIncrementality />}
-            {routeId === "5-25" && <MulticollinearityChecker />}
-            {routeId === "5-27" && <AsoStoreConversion />}
-            {routeId === "5-26" && <AsaKeywordFinder />}
-            {routeId === "5-28" && <SubscriptionSurvivalAnalysis />}
-            {routeId === "5-29" && <SegmentCompositionChange />}
+            {routeId === "5-18-paid-organic" && <ToolRecipeWorkspace toolId="5-18-paid-organic" locale="ko"><PaidOrganicTrend /></ToolRecipeWorkspace>}
+            {routeId === "5-18-trend" && <ToolRecipeWorkspace toolId="5-18-trend" locale="ko"><MarketingResponse initialStage="trend" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-18-cannibal" && <ToolRecipeWorkspace toolId="5-18-cannibal" locale="ko"><MarketingResponse initialStage="diagnose" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-18-mmm" && <ToolRecipeWorkspace toolId="5-18-mmm" locale="ko"><MarketingResponse initialStage="mmm" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-18-forecast" && <ToolRecipeWorkspace toolId="5-18-forecast" locale="ko"><MarketingResponse initialStage="lab" isolated /></ToolRecipeWorkspace>}
+            {routeId === "5-20" && <ToolRecipeWorkspace toolId="5-20" locale="ko"><AhaMomentFinder /></ToolRecipeWorkspace>}
+            {routeId === "5-23" && <ToolRecipeWorkspace toolId="5-23" locale="ko"><Incrementality /></ToolRecipeWorkspace>}
+            {routeId === "5-24" && <ToolRecipeWorkspace toolId="5-24" locale="ko"><BrandCampaignIncrementality /></ToolRecipeWorkspace>}
+            {routeId === "5-25" && <ToolRecipeWorkspace toolId="5-25" locale="ko"><MulticollinearityChecker /></ToolRecipeWorkspace>}
+            {routeId === "5-27" && <ToolRecipeWorkspace toolId="5-27" locale="ko"><AsoStoreConversion /></ToolRecipeWorkspace>}
+            {routeId === "5-26" && <ToolRecipeWorkspace toolId="5-26" locale="ko"><AsaKeywordFinder /></ToolRecipeWorkspace>}
+            {routeId === "5-28" && <ToolRecipeWorkspace toolId="5-28" locale="ko"><SubscriptionSurvivalAnalysis /></ToolRecipeWorkspace>}
+            {routeId === "5-29" && <ToolRecipeWorkspace toolId="5-29" locale="ko"><SegmentCompositionChange /></ToolRecipeWorkspace>}
 
-            {routeId === "9-1" && <ContentElementAnalyzer />}
+            {routeId === "9-1" && <ToolRecipeWorkspace toolId="9-1" locale="ko"><ContentElementAnalyzer /></ToolRecipeWorkspace>}
             {routeId === "9-2" && <KillerContentFinder />}
             {routeId === "9-3" && <ContentTrafficVariance />}
-            {routeId === "9-6" && <ContentFreshness />}
+            {routeId === "9-6" && <ToolRecipeWorkspace toolId="9-6" locale="ko"><ContentFreshness /></ToolRecipeWorkspace>}
             {routeId === "9-7" && <ContentDashboard />}
 
             {/* SOP 폴백: 도구 라우트(5-x·9-x)가 아닌 가이드 id만 SopContent로.

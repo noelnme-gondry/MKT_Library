@@ -1,6 +1,7 @@
 // 모든 도구가 함께 쓰는 단어(기간·보기·내보내기)와 올린 데이터에서 만드는 틀 단어
 // (값 필터·차원 축·값 합치기). 도구 전용 단어(PVM의 "채널+캠페인별" 등)는 도구 어댑터가
 // 이 목록 뒤에 붙인다(docs/result-autonomy-spec.md §3.3·§4.3).
+import { dimensionLabelFor } from "./dataContext";
 import { directionParticle, objectParticle } from "./hangulMatch";
 
 // context = buildDataContext(...) — { toolSpec, mappedFields, dimensions, fieldCandidates }
@@ -205,7 +206,7 @@ function findDimension(context, field) {
 }
 
 function dimensionName(context, field) {
-  return findDimension(context, field)?.label || { ko: field, en: field };
+  return dimensionLabelFor(field, context);
 }
 
 function dimensionHint(context, field) {
@@ -239,6 +240,7 @@ const filterWords = [
   {
     id: "filter.only.analysis",
     kind: "filter",
+    fieldParams: ["field"],
     carriesUserValues: true,
     label: (params) => ({ ko: `${params.values?.[0]}만 분석`, en: `Analyze ${params.values?.[0]} only` }),
     aliases: (params) => params.values || [],
@@ -248,6 +250,7 @@ const filterWords = [
   {
     id: "filter.exclude.analysis",
     kind: "filter",
+    fieldParams: ["field"],
     carriesUserValues: true,
     label: (params) => ({ ko: `${params.values?.[0]} 제외하고 분석`, en: `Analyze without ${params.values?.[0]}` }),
     aliases: (params) => params.values || [],
@@ -257,6 +260,7 @@ const filterWords = [
   {
     id: "filter.only.view",
     kind: "filter",
+    fieldParams: ["field"],
     carriesUserValues: true,
     label: (params) => ({ ko: `${params.values?.[0]}만 보기`, en: `Show ${params.values?.[0]} only` }),
     aliases: (params) => params.values || [],
@@ -271,6 +275,7 @@ const dimensionWords = [
     // 표준 축은 실제 컬럼명을 힌트·별칭으로 달아 어느 컬럼인지 보이게 한다.
     id: "level.field",
     kind: "level",
+    fieldParams: ["field"],
     slot: "level",
     label: (params, context) => {
       const name = dimensionName(context, params.field);
@@ -308,6 +313,7 @@ const dimensionWords = [
     // "OS로 먼저 나누기" — 지금 축 위에 차원을 얹는다(OS→채널). 축 수 상한은 도구 선언.
     id: "level.dimensionAbove",
     kind: "level",
+    fieldParams: ["field"],
     // 기본 축 단어("채널+캠페인별")를 교체하지 않고 그 위에 얹는다. phase 1이라 칩 순서와
     // 무관하게 기본 축 단어 뒤에 적용된다.
     slot: "level.above",

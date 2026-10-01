@@ -1,4 +1,5 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 
 import { FigureHead } from "@/components/ds/FigurePngButton";
 import MappingEditorDialog from "@/components/ds/MappingEditorDialog";
@@ -665,7 +666,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
         </> : <p className="muted">{(analysis.decomposition?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
       </section>
 
-      <section className="block" id="segment-composition-ops">
+      <RecipeBlock className="block" id="segment-composition-ops">
         <h2 className="section-title">{tx(locale, "운영 지문", "Operational fingerprints")}</h2>
         <p className="muted">{tx(locale,
           "여기부터는 원인이 아니라 가설을 좁히는 관측 신호입니다. 같은 모양이 소재·타게팅·계절성으로도 생기므로, 어느 것도 개입의 직접 증거로 쓰지 마세요.",
@@ -709,7 +710,7 @@ export default function SegmentCompositionChange({ locale = "ko", rows: rowsOver
           {repeatSentence() ? <p>{repeatSentence()}</p> : null}
           <p className="muted">{[...new Set([...(analysis.scan.reasons || []), ...(analysis.repeatability?.reasons || [])])].map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>
         </> : <p className="muted">{(analysis.scan?.reasons || []).map((reason) => reasonLabel(reason, locale)).join(" · ")}</p>}
-      </section>
+      </RecipeBlock>
 
       <section className="block" id="segment-composition-causal">
         <h2 className="section-title">{tx(locale, "인과 확인", "Causal check")}</h2>

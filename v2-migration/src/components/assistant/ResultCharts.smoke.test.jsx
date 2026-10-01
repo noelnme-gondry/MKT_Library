@@ -56,11 +56,21 @@ describe("분석별 핵심 그림", () => {
       data: [{ entity: "A", current: 1000, budget: 0 }, { entity: "B", current: 500, budget: 2000 }],
       options: {},
     }} />);
-    const items = [...container.querySelectorAll(".result-shift li")].map((li) => li.textContent);
+    const items = [...container.querySelectorAll(".result-shift li")];
     // 많이 옮긴 채널이 위로 온다.
-    expect(items[0]).toContain("B+₩1,500");
-    expect(items[1]).toContain("바꾼 안 ₩0");
+    expect(items[0].textContent).toContain("B증액");
+    expect(items[0].querySelector(".result-shift__delta").textContent).toContain("+₩1,500");
+    expect(items[1].querySelector(".is-next strong").textContent).toBe("₩0");
+    expect(items[1].querySelector(".is-next i").style.getPropertyValue("--shift-size")).toBe("0%");
+    expect(items[0].querySelector(".is-current i").style.getPropertyValue("--shift-size")).toBe("25%");
     expect(container.textContent).not.toContain("₩0.00");
+  });
+
+  it("shows projected efficiency independently of the direction of the budget change", () => {
+    const { container } = render(<ResultBudgetShift locale="en" currency="USD" visualization={{ question: "q", options: { metric: "installs" }, data: [{ entity: "Meta", current: 1000, budget: 500, currentOutcomes: 100, expectedOutcomes: 25 }] }} />);
+    expect(container.querySelector(".result-shift__direction").textContent).toBe("Decrease");
+    expect(container.querySelector(".result-shift__efficiency").textContent).toContain("$10.00 → $20.00");
+    expect(container.querySelector(".result-shift__efficiency").textContent).toContain("100.0% deterioration projected");
   });
 
   it("VIF는 엔진 기준선(주의·심각)을 그리고, 계산 못 한 채널은 그렇다고 쓴다", () => {

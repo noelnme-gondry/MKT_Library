@@ -13,6 +13,7 @@ export function figureExportContext({ title = "", toolTitle = "", scope = {}, re
     toolTitle && toolTitle !== title ? toolTitle : "",
     current ? `${en ? "Period" : "분석 기간"}: ${current}` : "",
     prior ? `${en ? "Comparison" : "비교 기간"}: ${prior}` : "",
+    scope.caption ? String(scope.caption) : "",
     ...mandatory,
   ].filter(Boolean);
   return { title: String(title || toolTitle || (en ? "Analysis figure" : "분석 그림")), details, mandatory };

@@ -54,7 +54,7 @@ function groupedImportance(result) {
 }
 
 function EligibilityCard({ label, input, body, C }) {
-  return <article className={`creative-model-router__eligibility ${input.ok ? "is-ready" : "is-blocked"}`}><span>{input.ok ? C.ready : C.blocked}</span><strong>{label}</strong><p>{body}</p></article>;
+  return <article className={`creative-model-router__eligibility ${input.ok ? "is-ready" : "is-blocked"}`} data-design-exempt="nested: each model groups its eligibility and reason for comparison (product-ssot purpose grouping)"><span>{input.ok ? C.ready : C.blocked}</span><strong>{label}</strong><p>{body}</p></article>;
 }
 
 function eligibilityMessage(input, model, C) {

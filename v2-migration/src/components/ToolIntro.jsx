@@ -66,7 +66,7 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
   if (!copy) return null;
   // 제목은 레지스트리 이름, INTRO의 검색어형 이름은 제목 밑 한 줄(toolDisplayTitle).
   const { name, alias } = toolDisplayTitle(toolId, localeKey, copy[0]);
-  return <header className="tool-context-header tool-instrument-header" aria-label={T.aria} data-tool-id={toolId}>
+  return <header className="tool-context-header tool-instrument-header tool-instrument-header--surface" aria-label={T.aria} data-tool-id={toolId}>
     <div className="tool-instrument-header__copy">
       <h1 className="tool-context-header__title tool-instrument-header__title">{name}</h1>
       {alias && <p className="tool-instrument-header__alias">{alias}</p>}

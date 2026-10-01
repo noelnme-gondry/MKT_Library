@@ -12,7 +12,7 @@ const CASES = [
   { path: "/tools/campaign-saturation", scope: "#s-marginal-gap", file: /^marginal_gap_[a-z]+_[a-z]+_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/subscription-survival", scope: "#subscription-survival-curve", canvas: true, file: /^survival_curve_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/incrementality", file: /^incrementality_holdout_lift_\d{4}-\d{2}-\d{2}\.png$/ },
-  { path: "/tools/brand-campaign-incrementality", file: /^brand_its_lift_\d{4}-\d{2}-\d{2}\.png$/ },
+  { path: "/tools/brand-campaign-incrementality", scope: ".brand-its-chart", canvas: true, file: /^brand_its_counterfactual_\d{4}-\d{2}-\d{2}\.png$/ },
   { path: "/tools/segment-composition-change", file: /^composition_mix_rate_\d{4}-\d{2}-\d{2}\.png$/ },
 ];
 
@@ -45,7 +45,7 @@ for (const { path, file, scope = ".tool-core-figure", canvas = false } of CASES)
     expect(download.suggestedFilename()).toMatch(file);
     if (process.env.FIGURE_SAVE_DIR) await download.saveAs(`${process.env.FIGURE_SAVE_DIR}/${download.suggestedFilename()}`);
     const size = pngSize(readFileSync(await download.path()));
-    // HTML 그림은 2배, 캔버스는 받는 순간 배율을 올려(2~4배) 다시 그린다 — 320px 폰에서도 1000px 넘게.
+    // HTML 그림은 2배, 캔버스는 받는 순간 배율을 올려(2~6배) 다시 그린다 — 320px 폰에서도 1000px 넘게.
     expect(size.width).toBeGreaterThan(canvas ? 1000 : 400);
     expect(size.height).toBeGreaterThan(200);
     await expect(figure.getByRole("alert")).toHaveCount(0);

@@ -1,8 +1,8 @@
 /** Capture only visible charts from the current analysis, at the user's export action. */
-export async function captureAnalysisCharts() {
+export async function captureAnalysisCharts(root = null) {
   if (typeof document === "undefined") return [];
   const { Chart } = await import("chart.js");
-  return [...document.querySelectorAll("main canvas, #content canvas")].filter(canvas => canvas.getClientRects().length && canvas.width && canvas.height).flatMap(canvas => {
+  return [...(root || document).querySelectorAll(root ? "canvas" : "main canvas, #content canvas")].filter(canvas => canvas.getClientRects().length && canvas.width && canvas.height).flatMap(canvas => {
     const chart = Chart.getChart(canvas);
     if (!chart) return [];
     const labels = (chart.data.labels || []).map(String);

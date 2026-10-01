@@ -1,5 +1,7 @@
 "use client";
-import React, { useState, useMemo, useCallback } from "react";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
+import React, { useMemo, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
@@ -12,13 +14,13 @@ export default function SegmentTab({ locale = "ko" } = {}) {
   // 엔진(segmentMath)이 빈 값에 붙이는 "(미지정)"·"전체" 그룹 라벨 렌더층 로컬라이즈.
   const luLabel = (k) => (k === "(미지정)" ? tr("(미지정)", "(unspecified)") : k === "전체" ? tr("전체", "All") : k);
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
 
-  const [rowAxis, setRowAxis] = useState("channel");
-  const [colAxis, setColAxis] = useState("country");
-  const [metric, setMetric] = useState("cpi");
+  const [rowAxis, setRowAxis] = useDashboardControl("rowAxis", "channel");
+  const [colAxis, setColAxis] = useDashboardControl("colAxis", "country");
+  const [metric, setMetric] = useDashboardControl("metric", "cpi");
 
   const { grid, rowKeys, colKeys, hasData, availFields, mappedKeys } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0) return { hasData: false, availFields: [] };
@@ -103,9 +105,9 @@ export default function SegmentTab({ locale = "ko" } = {}) {
                     return (
                       <td key={ci} className="tnum" style={{ background: getBg(v) }}>
                         {met.fmt(cell)}
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
+                        {renderMetric !== "cost" && <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                           {fmtCurrencyPrecise(cell.cost, dataCurrency)}
-                        </div>
+                        </div>}
                       </td>
                     );
                   })}
@@ -115,7 +117,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
           </table>
         </div>
         <p className="muted" style={{ marginTop: "8px", fontSize: "var(--fs-xs)" }}>
-          {tr("셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위.", "The small number under each cell is that combination's cost (scale). Deep green = relatively strong, red = weak.")} {met.better === "none" ? tr("(Cost는 규모 지표라 색 없음)", "(Cost is a scale metric, so no color)") : ""}
+          {renderMetric === "cost" ? tr("각 조합의 실제 비용입니다. 효율 등급은 위 매트릭스에서 확인하세요.", "Actual cost for each combination. See the matrix above for efficiency ratings.") : tr("셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위.", "The small number under each cell is that combination's cost (scale). Deep green = relatively strong, red = weak.")} {met.better === "none" ? tr("(Cost는 규모 지표라 색 없음)", "(Cost is a scale metric, so no color)") : ""}
         </p>
       </>
     );
@@ -123,20 +125,21 @@ export default function SegmentTab({ locale = "ko" } = {}) {
 
   if (!hasData) {
     return (
-      <div className="tab-pane active" id="tab-segment">
+      <DashboardTabLayout className="tab-pane active" id="tab-segment">
         <section className="block" id="s-matrix">
           <h2 className="section-title">{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
           <p className="muted">{tr("데이터 없음", "No data")}</p>
         </section>
-      </div>
+      </DashboardTabLayout>
     );
   }
 
   return (
-    <div className="tab-pane active" id="tab-segment">
+    <DashboardTabLayout className="tab-pane active" id="tab-segment">
       <section className="block" id="s-matrix">
         <h2 className="section-title">{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
 
+        <div className="dashboard-analysis-controls">
         <PillGroup
           label={tr("행 축", "Row axis")}
           value={rowAxis}
@@ -164,6 +167,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
           options={Object.entries(METRICS).filter(([k]) => k !== "cost").map(([k, v]) => ({ value: k, label: v.label }))}
         />
 
+        </div>
         {renderMatrix(metric)}
 
         <h3 style={{ fontSize: "var(--fs-md)", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
@@ -178,6 +182,6 @@ export default function SegmentTab({ locale = "ko" } = {}) {
         title={tr("커스텀 차트", "Custom charts")}
         locale={locale}
       />
-    </div>
+    </DashboardTabLayout>
   );
 }

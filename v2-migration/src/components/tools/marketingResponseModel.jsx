@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
 import * as XLSX from "xlsx";
-import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianHealth, mmmBayesianForecast, mmmForecastRollingSelection, mmmForecastBackgroundCandidateCap, mmmForecastDeclaredFitContract, mmmForecastApplySelectedBlend, mmmForecastSelectNestedRoute, mmmForecastGlobalBaseline, mmmForecastGlobalSeasonality, mmmForecastDampedTrendOffset, mmmForecastRestoreSeasonality, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
+import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUPS, mmmValidate, mmmBayesianRun, mmmBayesianHealth, mmmBayesianForecast, mmmForecastRollingSelection, mmmForecastBackgroundCandidateCap, mmmForecastDeclaredFitContract, mmmForecastScaledMediaPenalty, mmmForecastApplySelectedBlend, mmmForecastSelectNestedRoute, mmmForecastGlobalBaseline, mmmForecastGlobalSeasonality, mmmForecastDampedTrendOffset, mmmForecastRestoreSeasonality, mmmResolveAbsorb, _mmmChans } from "@/utils/mmmMath";
 import { mmmOls } from "@/utils/regMath";
 import { mmmCannibLevel } from "@/utils/responseCannibRank";
+import { selectOrganicForecastResolution } from "@/lib/analysis-results/forecastOrganicResolution";
 import { trackProductEvent } from "@/lib/analytics";
 import { buildPanelFromColMap, normalizePlatformValue } from "@/components/tools/MmmColumnMapper";
 import { buildMmmAggregateMediaPanel, buildMmmWeeklyPerformance, sliceMmmChannelContributions } from "@/utils/mmmWeeklyPerformance";
@@ -1098,7 +1099,7 @@ export function NetEffectEvidence({ net, locale }) {
   </Card>;
 }
 
-export function MmmBacktestChart({ labels, actual, variants, locale, validationStartIndex = null, formatValue = null }) {
+export function MmmBacktestChart({ title = null, labels, actual, variants, locale, validationStartIndex = null, formatValue = null }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current || !actual?.length) return undefined;
@@ -1160,7 +1161,7 @@ export function MmmBacktestChart({ labels, actual, variants, locale, validationS
       chart.destroy();
     };
   }, [labels, actual, variants, locale, validationStartIndex, formatValue]);
-  return <><FigureHead exportTitle={locale === "en" ? "Historical forecast validation" : "과거 구간 예측 검증"} target={ref} fileName="mmm_backtest" locale={locale} /><div className="chart-container" style={{ height: "270px", minHeight: "270px" }}><canvas ref={ref}></canvas></div></>;
+  return <><FigureHead title={title} level={3} exportTitle={locale === "en" ? "Historical forecast validation" : "과거 구간 예측 검증"} target={ref} fileName="mmm_backtest" locale={locale} /><div className="chart-container" style={{ height: "270px", minHeight: "270px" }}><canvas ref={ref}></canvas></div></>;
 }
 
 export function MmmManualDownload({ locale = "ko", placement = "footer" }) {
@@ -1256,6 +1257,12 @@ export function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, 
           {isOpen ? tx("근거 설정 닫기", "Close evidence setup") : tx("근거 데이터 추가", "Add evidence")}
         </button>
       </div>
+
+      <div className="mmm-evidence-benefits">
+        <div><h3>{tx("실험 데이터", "Experiment data")}</h3><p>{tx("광고 On/Off 또는 지역 홀드아웃의 기간·처리군·대조군·성과·지출을 추가합니다.", "Add periods, treatment/control groups, outcomes, and spend from an On/Off or geo holdout experiment.")}</p><small>{tx("무엇이 좋아지나 · 채널 효과를 독립 실험 근거와 대조하고, 조건이 맞으면 효과 추정에 반영합니다.", "Why add it · Compare channel effects with independent experimental evidence and inform estimates when compatible.")}</small></div>
+        <div><h3>{tx("다른 국가 데이터", "Other-market data")}</h3><p>{tx("같은 KPI·단위·채널 정의를 가진 다른 국가의 주별 성과와 지출을 추가합니다.", "Add weekly outcomes and spend from other markets with matching KPI definitions, units, and channels.")}</p><small>{tx("무엇이 좋아지나 · 참고 국가 후보를 검증해 현재 국가 추정의 보조 근거로 쓸 수 있는지 비교합니다.", "Why add it · Validate reference-market candidates to assess whether they can support estimates for this market.")}</small></div>
+      </div>
+      <p className="mmm-evidence-benefits-note">{tx("추가 데이터가 정확도 향상을 보장하지는 않습니다. 호환성·검증 조건을 통과한 근거만 반영하며, 결과가 바뀐 이유를 기본 모델과 비교하세요.", "More data does not guarantee better accuracy. Only compatible, validated evidence is applied; compare changes with the base model.")}</p>
 
       <div className="mmm-evidence-ledger__views" aria-label={tx("적용할 근거", "Evidence to apply")}>
         {hasExperiment && <button type="button" aria-pressed={selectedEvidence.experiment} className={`mmm-evidence-ledger__view ${selectedEvidence.experiment ? "is-active" : ""}`} onClick={() => onToggleEvidence("experiment")}>
@@ -1560,6 +1567,7 @@ export function reconcileForecastScenarioAudit(result, recentBacktest) {
   const threshold = Number(recentBacktest?.certificationThreshold) || 10;
   const latestScores = [
     recentBacktest?.wmape,
+    recentBacktest?.fixedBudgetWmape,
     ...(recentBacktest?.componentMetrics || []).map((metric) => metric?.wmape),
   ].filter(Number.isFinite);
   const didLatestAuditFail = latestScores.some((value) => value >= threshold);
@@ -1588,12 +1596,12 @@ export function forecastNaiveBaselineLabel(id, tx) {
 
 // 천단위 콤마 입력(§7 `type=number`는 콤마 불가 · §12.14 라이브 콤마+커서 보존 포트). type=text로
 // 표시=콤마, 읽기=콤마 strip. onCommit(number|null) — 빈칸이면 null(부모가 기본값 복귀).
-export function CommaNumberInput({ value, onCommit, style, placeholder, disabled = false, allowDecimals = false, ariaLabel }) {
+export function CommaNumberInput({ value, onCommit, style, placeholder, disabled = false, allowDecimals = false, ariaLabel, maximumFractionDigits = 20 }) {
   const ref = useRef(null);
   const focusedRef = useRef(false);
-  const fmt = (n) => (n == null || n === "" || !isFinite(n) ? "" : Number(n).toLocaleString("en-US", { maximumFractionDigits: 20 }));
+  const fmt = useCallback((n) => (n == null || n === "" || !isFinite(n) ? "" : Number(n).toLocaleString("en-US", { maximumFractionDigits })), [maximumFractionDigits]);
   const [txt, setTxt] = useState(fmt(value));
-  useEffect(() => { if (!focusedRef.current) setTxt(fmt(value)); }, [value]);
+  useEffect(() => { if (!focusedRef.current) setTxt(fmt(value)); }, [value, fmt]);
   const handle = (e) => {
     const raw = e.target.value, caret = e.target.selectionStart;
     if (allowDecimals) {
@@ -3618,6 +3626,19 @@ export function buildMmmSaturationCurveGroups(saturationByChannel = {}, channels
   }).filter(Boolean);
 }
 
+// Restore the century from this dataset, not the current clock. Non-date labels stay intact.
+export function forecastDisplayDate(value, referenceDate) {
+  const match = String(value ?? "").match(/^(\d{2})-(\d{2})-(\d{2})$/);
+  if (!match) return value;
+  const reference = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  if (!Number.isFinite(reference.getTime())) return value;
+  const referenceYear = reference.getUTCFullYear();
+  const year = Number(match[1]) + 100 * Math.round((referenceYear - Number(match[1])) / 100);
+  const iso = `${year}-${match[2]}-${match[3]}`;
+  const date = new Date(`${iso}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === iso ? iso : value;
+}
+
 export function isoDateFromLabel(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? match[0] : null;
@@ -3933,27 +3954,31 @@ export function buildPaidOrganicPlatformModel(
       OrganicRegs: forecastOrganicTargetValues("Regs", total, paid),
     },
   };
-  // Organic halo는 채널 귀속 실측이 아니다. 희소 채널별 계수를 각각 적합하면
-  // 동일한 총 Spend 움직임을 여러 계수가 나눠 먹으며 OOS가 불안정해진다.
-  // Brand/Performance 총량으로만 적합하고, Paid 직접반응은 원 채널을 유지한다.
-  const organicPanel = buildMmmAggregateMediaPanel(detailedOrganicPanel) || detailedOrganicPanel;
-  const organicCfg = { ...prepared.cfg, absorbed: new Set(), allowSignedMedia: true };
-  organicCfg.absorbed = mmmResolveAbsorb(organicPanel, organicCfg).absorbed;
+  // Pooling can erase distinct (even opposite) channel responses. Compare
+  // both input resolutions on common development folds; keep pooling when the
+  // channel-level challenger does not demonstrate an independent gain.
+  const aggregatePanel = buildMmmAggregateMediaPanel(detailedOrganicPanel) || detailedOrganicPanel;
   const resolveModel = buildModel || ((panel, cfg, modelTarget) =>
     buildForecastOnlyModelFromPanel(panel, cfg, modelTarget, { horizon }));
+  const fitOrganic = (panel, suffix) => {
+    const cfg = { ...prepared.cfg, absorbed: new Set(), allowSignedMedia: true };
+    cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
+    return {
+      ...resolveModel(panel, cfg, "OrganicRegs", `${prepared.platform}-${suffix}`),
+      sourcePanel: panel, sourceCfg: cfg, target: "OrganicRegs",
+    };
+  };
+  const aggregateModel = fitOrganic(aggregatePanel, "organic");
+  const detailedModel = aggregatePanel.aggregateMediaGroups?.length
+    ? fitOrganic(detailedOrganicPanel, "organic-channel") : aggregateModel;
+  const inputResolutionAudit = selectOrganicForecastResolution(aggregateModel, detailedModel);
+  const chosenOrganic = inputResolutionAudit.resolution === "channel" ? detailedModel : aggregateModel;
   const organicModel = {
-    ...resolveModel(
-      organicPanel,
-      organicCfg,
-      "OrganicRegs",
-      `${prepared.platform}-organic`,
-    ),
-    sourcePanel: organicPanel,
-    sourceCfg: organicCfg,
-    target: "OrganicRegs",
+    ...chosenOrganic,
     platform: prepared.platform,
     componentType: "organic",
-    aggregateHalo: Boolean(organicPanel.aggregateMediaGroups?.length),
+    inputResolutionAudit,
+    aggregateHalo: Boolean(chosenOrganic.sourcePanel.aggregateMediaGroups?.length),
     haloMemberRecentMean: Object.fromEntries(Object.entries(detailedOrganicPanel.ch || {}).map(([key, values]) => {
       const recent = values.slice(-12).filter(Number.isFinite);
       return [key, recent.length ? recent.reduce((sum, value) => sum + value, 0) / recent.length : 0];
@@ -4155,11 +4180,20 @@ export function certifyForecastBacktest(backtest, componentMetrics = []) {
   // guardrails. A good latest Total fold must never overwrite that authoritative
   // decision and unlock budget scenarios on its own.
   const authoritativeGatePassed = backtest.certificationGate !== false;
+  const start = Math.max(0, backtest.validationStartIndex || 0);
+  const actual = backtest.actual?.slice(start);
+  const fixed = backtest.fixedBudgetPredicted?.slice(start);
+  const denominator = actual?.reduce((sum, value) => sum + Math.abs(value), 0);
+  const fixedBudgetWmape = actual?.length && denominator > 0 && fixed?.length === actual.length
+    && actual.every(Number.isFinite) && fixed.every(Number.isFinite)
+    ? actual.reduce((sum, value, index) => sum + Math.abs(value - fixed[index]), 0) / denominator * 100 : null;
+  const fixedBudgetPassed = fixedBudgetWmape == null || fixedBudgetWmape < 10;
   return {
     ...backtest,
     componentMetrics: metrics.length ? metrics : backtest.componentMetrics,
     worstComponent,
-    reliable: totalPassed && componentsPassed && authoritativeGatePassed,
+    fixedBudgetWmape,
+    reliable: totalPassed && componentsPassed && authoritativeGatePassed && fixedBudgetPassed,
     referenceOnly: Number.isFinite(backtest.wmape)
       && backtest.wmape >= 10
       && backtest.wmape < 30
@@ -4235,6 +4269,14 @@ export function mmmSumOsBacktests(parts) {
     actual,
     predicted,
     validationStartIndex,
+    fixedBudgetPredicted: valid.every(part => Array.isArray(part.fixedBudgetPredicted)
+      && part.fixedBudgetPredicted.length === part.actual.length
+      && part.fixedBudgetPredicted.every(Number.isFinite))
+      ? sumTail(valid, "fixedBudgetPredicted", length) : null,
+    lastValueBaseline: valid.every(part => Array.isArray(part.lastValueBaseline)
+      && part.lastValueBaseline.length === part.actual.length
+      && part.lastValueBaseline.every(Number.isFinite))
+      ? sumTail(valid, "lastValueBaseline", length) : null,
     rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / validationLength),
     mae: absErrors.reduce((sum, value) => sum + value, 0) / validationLength,
     wmape,
@@ -4524,6 +4566,34 @@ export function runForecastScenario(model, horizon, budgets, stepOff, options = 
   };
 }
 
+// Reuse the candidate chosen BEFORE the latest audit. Refit only its training
+// prefix, then hold the prefix's recent budgets constant. Never rerun selection
+// or use held-out spend/outcomes to construct these predictions.
+export function buildFixedBudgetAuditPredictions(model) {
+  const selection = model?.selection;
+  const selected = selection?.selected;
+  const panel = model?.sourcePanel;
+  const horizon = selection?.horizon;
+  if (!selected || !model?.sourceCfg || !panel || !Number.isInteger(horizon)
+    || selected.candidateId !== selection?.nested?.latest?.candidateId
+    || panel.week.length <= horizon) return null;
+  try {
+    const prefix = sliceMmmPanel(panel, panel.week.length - horizon);
+    const trainingRows = selected.windowMode === "expanding" ? prefix.week.length : Math.min(prefix.week.length, selected.window);
+    const historicalSpec = {
+      ...selected,
+      mediaPenalty: Number.isFinite(selected.mediaPenaltyStrength)
+        ? mmmForecastScaledMediaPenalty(selected.mediaPenaltyStrength, trainingRows)
+        : selected.mediaPenalty,
+    };
+    const fitted = buildForecastModelForSelection(prefix, model.sourceCfg, model.target, historicalSpec);
+    const result = runForecastScenario({ ...fitted, target: model.target, forecastSelected: historicalSpec }, horizon, {}, {});
+    return result?.predFut?.length === horizon && result.predFut.every(Number.isFinite) ? result.predFut.map(value => Math.max(0, value)) : null;
+  } catch {
+    return null;
+  }
+}
+
 // rolling selector가 이미 만든 최신 nested outer fold를 그대로 공식 봉인 감사로
 // 사용한다. 여기서 마지막 H주를 다시 자르고 selector를 또 호출하면 H를 이중으로
 // 예약해, 충분한 데이터도 "이력 부족"으로 오판한다.
@@ -4547,7 +4617,11 @@ export function buildForecastRecentBacktest(model) {
     predicted,
     validationStartIndex: 0,
     validationHorizon: holdout,
+    fixedBudgetPredicted: buildFixedBudgetAuditPredictions(model),
     selectionTrainingWeeks: Math.max(0, sourcePanel.week.length - holdout),
+    lastValueBaseline: Number.isFinite(sourcePanel.targets?.[target]?.[sourcePanel.week.length - holdout - 1])
+      ? Array(holdout).fill(sourcePanel.targets[target][sourcePanel.week.length - holdout - 1])
+      : null,
     selectionWindow: latest.window ?? model.selection?.selected?.window ?? null,
     candidateId: latest.candidateId || null,
     rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / holdout),

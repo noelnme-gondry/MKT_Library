@@ -1,11 +1,11 @@
 "use client";
+import RecipeBlock from "@/components/ds/RecipeBlock";
 import MappingEditorDialog, { AnalyzedDataLine } from "@/components/ds/MappingEditorDialog";
 import { useSavedToolInput } from "@/lib/analysis-settings/useSavedToolInput";
 import { requirePaidExport } from "@/lib/subscription/paidExport";
 import { isDemoData } from "@/lib/dataOrigin";
 import { limitAhaObservationWindow } from "@/utils/ahaObservationWindow";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "@/utils/chartGlobals";
@@ -15,7 +15,7 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import FigurePngButton, { FigureHead } from "@/components/ds/FigurePngButton";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
-import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import InfoPopover from "@/components/ds/InfoPopover";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -155,20 +155,6 @@ function ahaSegmentColumns(colMap) {
   return Object.entries(colMap || {})
     .filter(([, def]) => def && def.role === "segment")
     .map(([h]) => h);
-}
-
-function confidenceDots(f1Val) {
-  const n =
-    f1Val >= 0.7
-      ? 5
-      : f1Val >= 0.5
-        ? 4
-        : f1Val >= 0.3
-          ? 3
-          : f1Val >= 0.15
-            ? 2
-            : 1;
-  return "●".repeat(n) + "○".repeat(5 - n);
 }
 
 /* 결과 CSV 다운로드 — long-format: 액션 × 윈도우(D1/D7/전체) × 구간(k) 전 조합.
@@ -486,7 +472,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const resetCsv = () => clearCsvGroup();
   const [minSupport, setMinSupport] = useSavedToolInput("5-20", "minSupport", 30);
   const [holdoutOn, setHoldoutOn] = useSavedToolInput("5-20", "holdoutOn", true);
-  const [sortBy, setSortBy] = useState("f1");
+  const [sortBy, setSortBy] = useSavedToolInput("5-20", "sortBy", "f1");
   const [drilldownAction, setDrilldownAction] = useState(null);
   // 전문가 뷰: 산점도에 표시할 이벤트 선택(null=전체) + 표에서 달성률 구간 펼침
   const [selectedActions, setSelectedActions] = useState(null);
@@ -499,7 +485,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const temporalScope = useMemo(() => limitAhaObservationWindow(colMap, Number(activeOutcomeStartDay)), [colMap, activeOutcomeStartDay]);
   // 나눠보기(세그먼트): null=전체, {col,value}=그 세그먼트 값만. minSupport처럼 탐색
   // 토글이라 게이트 시그니처엔 안 들어감 → 전환 시 재분석 없이 자동 재계산(§12.5).
-  const [activeSeg, setActiveSeg] = useState(null);
+  const [segmentColumn, setSegmentColumn] = useSavedToolInput("5-20", "segmentColumn", "");
+  const [segmentValue, setSegmentValue] = useSavedToolInput("5-20", "segmentValue", "");
+  const activeSeg = useMemo(() => segmentColumn ? { col: segmentColumn, value: segmentValue } : null, [segmentColumn, segmentValue]);
+  const setActiveSeg = useCallback(next => { setSegmentColumn(next?.col || ""); setSegmentValue(next?.value || ""); }, [setSegmentColumn, setSegmentValue]);
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
   const [analyzedSig, setAnalyzedSig] = useState(null);
   // 분석이 끝나면 매핑은 한 줄로 접는다 — 결과가 먼저 보여야 한다(CsvUploader와 같은 규칙).
@@ -537,7 +526,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     setAnalyzedSig((demoPending || isDemo) && hasData ? ahaAnalyzeSig(cm, fileName) : null);
     if (demoPending) setDemoPending(false);
     setDrilldownAction(null);
-    setActiveSeg(null);
+    const state = useAppStore.getState();
+    const restored = state.savedSetupAppliedTool === "5-20" && state.savedSetupAppliedProject === state.activeProjectId ? state.savedSetupAppliedInputs : null;
+    if (restored && headers.includes(restored.segmentColumn)) setActiveSeg({ col: restored.segmentColumn, value: restored.segmentValue || "" });
+    else if (seededKey !== null) setActiveSeg(null);
   }
 
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
@@ -625,7 +617,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   // D1/D7 구간 토글 — null(해제)이면 액션별 자동 선택된 최적 윈도우(기존 동작).
   // 특정 윈도우 선택 시 각 액션의 grid에서 그 윈도우 행(자체 홀드아웃 재평가값)만
   // 뽑아 보여줌 — 그 윈도우 데이터가 없는 액션은 목록에서 제외.
-  const [windowFilter, setWindowFilter] = useState(null);
+  const [windowFilter, setWindowFilter] = useSavedToolInput("5-20", "windowFilter", null);
   const availWindows = useMemo(() => {
     const set = new Set();
     (cache.results || []).forEach((r) => (r.grid || []).forEach((g) => { if (isFinite(g.window)) set.add(g.window); }));
@@ -833,8 +825,9 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         pointBackgroundColor: color,
         pointBorderColor: color,
         pointBorderWidth: 1,
-        pointRadius: data.map((p) => Math.max(2, Math.min(6, Math.sqrt(p.allSupport || 1) * 0.28))),
-        pointHoverRadius: 6,
+        pointRadius: data.map((p) => Math.max(1.5, Math.min(3, Math.sqrt(p.allSupport || 1) * 0.14))),
+        pointHoverRadius: 4,
+        pointHitRadius: 8,
       };
     });
     if (optimalOverlay.length) {
@@ -843,10 +836,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         data: optimalOverlay,
         showLine: false,
         pointBackgroundColor: optimalOverlay.map((p) => p._color),
-        pointBorderColor: "#facc15",
-        pointBorderWidth: 3,
-        pointRadius: 7,
-        pointHoverRadius: 9,
+        pointBorderColor: CHART_THEME.text,
+        pointBorderWidth: 1.5,
+        pointRadius: 4,
+        pointHoverRadius: 5,
+        pointHitRadius: 8,
       });
     }
 
@@ -942,7 +936,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             backgroundColor: CHART_THEME.primary,
             yAxisID: "y",
             tension: 0.25,
-            pointRadius: kSweep.map((s) => (s.k === drillResult?.bestK ? 5 : 2)),
+            pointRadius: kSweep.map((s) => (s.k === drillResult?.bestK ? 3 : 1.5)),
             pointBackgroundColor: kSweep.map((s) => (s.k === drillResult?.bestK ? CHART_THEME.tertiary : CHART_THEME.primary)),
           },
           {
@@ -1125,7 +1119,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           <button className="ab-button" onClick={resetCsv}>{tr("내 CSV 업로드하기", "Upload my CSV")}</button>
         </div>
       )}
-      <section className="block" id="s-aha-map">
+      <RecipeBlock className="block" id="s-aha-map">
         <h2 className="section-title">{tr("파일의 열 확인", "Check your columns")}</h2>
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
@@ -1202,13 +1196,14 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "var(--fs-sm)", padding: "8px 18px" }} onClick={() => { runAhaAnalysis(); setMappingOpen(false); }}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
-      </section>
+      </RecipeBlock>
       </></MappingEditorDialog>
 
       <section className="block analysis-design-check">
         <label>{tr("전환 평가를 시작하는 가입 후 일수", "Day after signup when outcome evaluation begins")}
-          <input type="number" min="1" step="1" value={activeOutcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
+          <input type="number" min="1" step="1" value={outcomeStartDay} onChange={(e) => { setOutcomeStartDay(e.target.value); setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }} />
         </label>
+        {outcomeStartDay && outcomeWindowSource !== csvData.raw && <button type="button" className="btn" onClick={() => { setOutcomeWindowSource(csvData.raw); setAnalyzedSig(null); }}>{tr("저장한 평가 시작일을 이 데이터에 적용", "Apply the saved outcome start day to this data")}</button>}
         <p>{tr("행동 관측이 끝난 뒤 전환을 평가해야 시간 누수를 줄일 수 있습니다. 입력한 날짜 이상까지 누적한 행동과 기간을 모르는 행동은 분석에서 제외합니다. 헤더만으로 실제 이벤트 시점을 검증할 수 없으므로 원본 집계 규칙도 확인하세요.", "Evaluate outcomes after the behavior window ends. Features accumulated through or beyond this day, and features with unknown windows, are excluded. Headers cannot verify actual event timing; check the source aggregation rules too.")}</p>
         <p role="status">{temporalScope.confirmed ? tr(`시간창 기준 제외 ${temporalScope.excluded.length}개. 변경 후 다시 분석하세요.`, `${temporalScope.excluded.length} features excluded by the time boundary. Reanalyze after a change.`) : tr("평가창 미선언: 탐색 연관만 제공하며 행동 개입 결정은 보류합니다.", "Outcome window undeclared: exploratory associations only; intervention decisions are held.")}</p>
       </section>
@@ -1293,66 +1288,14 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 </button>
               ) : null}
             >
-            <section data-information-section="" className="result-action-card__details">
-              <header data-information-heading="">{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</header>
-            {/* 전체·정착 유저와 기준 정착률은 결론 카드 수치 줄이 이미 말한다 — 같은 숫자를 상자로 다시 그리지 않는다. */}
-            {topAction ? (
-              <div style={{ marginBottom: "12px" }}>
-                <div
-                  style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
-                  dangerouslySetInnerHTML={{
-                    __html: C.leadPhrase(
-                      topAction.bestWindow === Infinity ? "전체 기간" : topAction.bestWindow + "일",
-                      escapeHtml(topAction.action),
-                      topAction.bestK,
-                      topAction.lift == null ? "—" : topAction.lift.toFixed(1) + "배",
-                    ),
-                  }}
-                />
-                <div style={{ fontSize: "var(--fs-xs)", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
-                  {tr("예측력(F1)", "Predictive strength (F1)")} {topAction.holdout.F1.toFixed(2)} · {tr("예측력 표시", "predictive strength")} {confidenceDots(topAction.holdout.F1)}
-                </div>
-              </div>
-            ) : (
-              <div style={{ fontSize: "var(--fs-sm)", color: MUTED, marginBottom: "12px" }}>{tr("분석 가능한 액션이 없습니다 — 매핑을 확인하세요.", "No analyzable actions — check the column mapping.")}</div>
-            )}
-            <div className="callout warn" style={{ margin: 0 }}>
-              <div className="ico">⚠</div>
-              <div className="body">
-                <strong>{C.causationTitle}</strong>
-                <p style={{ margin: ".25rem 0 0" }}>{C.causationBody}</p>
-                <p style={{ margin: ".25rem 0 0" }}>{tr("확정은", "Confirm it with a")}{" "}
-                  <Link
-                    href={
-                      locale === "en" && hasEnVersion("5-4")
-                        ? `/en${idToSlug["5-4"] || ""}`
-                        : idToSlug["5-4"] || "/tools/experiment-analysis"
-                    }
-                    style={{ color: "var(--primary)", textDecoration: "underline", cursor: "pointer" }}
-                  >
-                    {tr("홀드아웃 실험(5-4)", "holdout experiment (5-4)")}
-                  </Link>
-                  {tr("으로 검증하세요.", ".")}</p>
-              </div>
+            <div className="analysis-evidence-strip">
+              <p>{tr("행동과 정착의 연관 후보입니다. 효과 확인은 실험이 필요합니다.", "This is a candidate association with retention. An experiment is needed to test its effect.")}</p>
+              <InfoPopover label={tr("해석·검증 기준", "Interpretation and validation")} glyph={tr("해석·검증 기준", "Interpretation and validation")} className="analysis-evidence-button">
+                <p>{C.causationBody}</p>
+                <p>{tr("F1은 정밀도와 재현율의 조화평균이며 인과효과나 통계적 신뢰도가 아닙니다.", "F1 is the harmonic mean of precision and recall, not a causal effect or statistical confidence.")}</p>
+                <p>{tr("최소 지지도와 행동 윈도우 설정에 민감합니다. 홀드아웃을 끄면 예측력 검증이 약해집니다.", "Results are sensitive to minimum support and action-window settings. Turning off holdout weakens predictive validation.")}</p>
+              </InfoPopover>
             </div>
-            <AnalysisDetails
-              locale={locale}
-              statusLabel={topAction ? tr("연관 신호", "Association signal") : tr("판정 보류", "Abstain")}
-              statusTone={topAction ? "neutral" : "warning"}
-              metric={tr("홀드아웃 F1 · lift", "Holdout F1 · lift")}
-              unit="F1 / ratio"
-              meaning={tr("행동과 목표의 연관 후보를 좁히는 분석이며 인과효과가 아닙니다.", "This narrows association candidates between actions and the target; it is not a causal effect.")}
-              sampleSize={{ value: cache.n, label: tr("사용자·분모", "Users / denominator"), detail: `${totalTargets.toLocaleString()} ${tr("명 목표 도달", "reached the target")}` }}
-              scope={validSeg ? `${validSeg.col}=${validSeg.value}` : tr("전체 데이터", "All data")}
-              method="deterministic-grid-search + train/holdout"
-              version="aha-v1"
-              metricDefinition={tr("support·precision·recall·F1·lift를 최소 지지도와 홀드아웃으로 판정합니다.", "Support, precision, recall, F1, and lift are evaluated with minimum support and a holdout split.")}
-              warnings={[
-                tr("최소 지지도와 행동 윈도우 설정에 민감합니다. 홀드아웃을 끄면 예측력 검증이 약해집니다.", "Results are sensitive to minimum support and action-window settings. Turning off holdout weakens predictive validation."),
-                tr("강한 신호도 실험·홀드아웃으로 인과효과를 확인해야 합니다.", "Even a strong signal requires an experiment or holdout to confirm incrementality."),
-              ]}
-            />
-            </section>
             </ResultActionCard>
           </section>
 
@@ -1361,7 +1304,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             const buckets = { strong: [], maybe: [], weak: [] };
             sortedResults.forEach((r) => buckets[ahaBucketOf(r, minSupport)].push(r));
             const nS = buckets.strong.length;
-            const headTone = nS > 0 ? "strong" : buckets.maybe.length > 0 ? "maybe" : "weak";
             const headline = nS > 0
               ? C.kanbanHeadStrong(sortedResults.length, nS)
               : buckets.maybe.length > 0
@@ -1371,7 +1313,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const list = buckets[key];
               const c = AHA_TONE[key];
               return (
-                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
+                <div data-design-exempt="nested: one signal category groups comparable action candidates (product-ssot purpose grouping)" style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
                   {list.length ? list.map((r) => (
                     <button type="button" key={r.action} onClick={() => setDrilldownAction(r.action)} aria-pressed={r.action === drillTarget}
@@ -1389,7 +1331,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             return (
               <section className="block" id="s-aha-kanban">
                 <h2 className="section-title">{C.kanbanTitle}</h2>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", padding: "10px 0", marginBottom: "10px" }}>
                   <span style={{ fontSize: "var(--fs-base)", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px" }}>
@@ -1422,7 +1364,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               const P = drillResult.holdout.P, R = drillResult.holdout.R;
               const overfit = drillResult.train.F1 - drillResult.holdout.F1 > 0.2;
               const metric = (q, ans, help, tech) => (
-                <div style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px" }}>
+                <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px" }}>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
                   <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
                   <div style={{ fontSize: "var(--fs-xs)", color: MUTED, lineHeight: 1.5 }}>{help}</div>
@@ -1431,7 +1373,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               );
               return (
                 <>
-                  <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "12px 14px", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ padding: "12px 0", borderBottom: "1px solid var(--border)", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", color: c.color, fontWeight: 700, fontSize: "var(--fs-xs)", whiteSpace: "nowrap" }}>{badge}</span>
                     <div style={{ flex: 1, minWidth: "240px" }}>
                       <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-1)", lineHeight: 1.6 }}

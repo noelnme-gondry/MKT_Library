@@ -1,9 +1,12 @@
 "use client";
+import { Popover } from "radix-ui";
+import { SlidersHorizontal, X } from "lucide-react";
 import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { effectiveDenomBasis, getMappedRows, hasUsableDenomBasis } from "@/utils/dashboardAggregator";
 import { sourceCurrencyOf } from "@/utils/format";
 import DateRangePicker from "@/components/ds/DateRangePicker";
+import ResultPeriodPicker from "@/components/ds/ResultPeriodPicker";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 import AnalysisControlBar from "./AnalysisControlBar";
 
@@ -119,7 +122,7 @@ function MultiSelect({ label, options, selected, onChange, T }) {
 
 // commandSlot: 도구가 붙이는 분석 설정 입력창(5-21). 필터와 한 자리에 두어 같은 조건을 두 곳에서
 // 고르지 않게 한다 — 입력창의 "Meta만 분석" 같은 단어는 아래 필터 선택으로 들어간다.
-export default function DashboardFilterBar({ locale = "ko", commandSlot = null }) {
+export default function DashboardFilterBar({ locale = "ko", commandSlot = null, compact = false, hideDate = false, dateLabel }) {
   const T = FILTER_BAR_COPY[locale] || FILTER_BAR_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -213,6 +216,52 @@ export default function DashboardFilterBar({ locale = "ko", commandSlot = null }
     ...(basisKey ? [{ text: T.basis[basisKey], active: false }] : []),
     { text: T.currency[sourceCurrencyOf(csvData)] || sourceCurrencyOf(csvData), active: false },
   ];
+
+  if (compact) return (
+    <div className="dashboard-filter-bar dashboard-filter-bar--recipe">
+      {commandSlot && <div className="dashboard-filter-bar__command">{commandSlot}</div>}
+      <div className="recipe-scope-controls">
+        {!hideDate && dates.length > 0 && <ResultPeriodPicker label={dateLabel || (locale === "en" ? "Analysis period" : "분석 기간")} locale={locale}
+          range={{ start: dashboardFilter.dateStart || minDate, end: dashboardFilter.dateEnd || maxDate }}
+          onApply={({ start, end }) => setDashboardFilter({ dateStart: start, dateEnd: end })} />}
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className="recipe-scope-trigger">
+              <SlidersHorizontal size={16} aria-hidden="true" />
+              <span>{locale === "en" ? "Data scope" : "분석 대상"}</span>
+              <span className="recipe-scope-trigger__value">{dimensions.some(dim => dim.selected)
+                ? (locale === "en" ? `${dimensions.filter(dim => dim.selected).length} selected` : `조건 ${dimensions.filter(dim => dim.selected).length}개`)
+                : T.all}</span>
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content className="recipe-scope-panel" align="start" sideOffset={8} collisionPadding={12} aria-label={locale === "en" ? "Data scope" : "분석 대상"}>
+              <div className="recipe-scope-panel__head"><h2>{locale === "en" ? "Data scope" : "분석 대상"}</h2><Popover.Close className="recipe-scope-panel__close" aria-label={locale === "en" ? "Close" : "닫기"}><X size={18} aria-hidden="true" /></Popover.Close></div>
+              <p>{locale === "en" ? "Selections update the results immediately." : "선택하면 결과에 바로 반영됩니다."}</p>
+              <div className="recipe-scope-controls__body">
+                {dimensions.map(dim => <fieldset key={dim.key}>
+                  <legend>{dim.label}</legend>
+                  <div className="recipe-scope-panel__choices">
+                    <button type="button" aria-pressed={!dim.selected} onClick={() => setDashboardFilter({ [dim.key]: new Set() })}>{T.all}</button>
+                    {dim.options.map(value => <button type="button" key={value} aria-pressed={Boolean(dim.selected?.has(value))} onClick={() => {
+                      const next = new Set(dim.selected || []);
+                      if (next.has(value)) next.delete(value); else next.add(value);
+                      setDashboardFilter({ [dim.key]: next.size === 0 || next.size === dim.options.length ? new Set() : next });
+                    }}>{value}</button>)}
+                  </div>
+                </fieldset>)}
+                <BasisCurrencyToggleBar locale={locale} />
+              </div>
+              <div className="recipe-scope-panel__footer">
+                <button type="button" className="btn ghost" onClick={() => setDashboardFilter({ platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set() })}>{locale === "en" ? "Reset scope" : "대상 초기화"}</button>
+                <Popover.Close className="btn primary">{locale === "en" ? "Done" : "완료"}</Popover.Close>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+      </div>
+    </div>
+  );
 
   return (
     <div className="dashboard-filter-bar" data-active-filter-count={activeCount} data-controls-open={controlsOpen}>

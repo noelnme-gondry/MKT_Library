@@ -47,15 +47,16 @@ async function addVisibleResultToReport(page) {
 }
 
 async function setComparableEfficiencyWindow(page) {
-  // 폰 폭에서는 조건 줄이 요약 한 줄로 접혀 있다 — 사용자처럼 "조건 바꾸기"로 먼저 편다.
-  const change = page.getByRole("button", { name: "조건 바꾸기", exact: true });
-  if (await change.isVisible()) await change.click();
-  await page.getByRole("button", { name: "날짜 범위" }).click();
-  const fields = page.locator(".date-range-popover input[type=\"date\"]");
-  await fields.nth(0).fill("2026-08-05");
-  await fields.nth(1).fill("2026-08-08");
-  await page.getByRole("switch", { name: "비교" }).click();
-  await page.locator(".date-range-popover").getByRole("button", { name: "적용" }).click();
+  const comparison = page.locator(".dashboard-comparison-period");
+  for (const [label, start, end] of [["분석 기간", "2026-08-05", "2026-08-08"], ["비교 기간", "2026-08-01", "2026-08-04"]]) {
+    await comparison.getByRole("button", { name: new RegExp(`^${label}`) }).click();
+    const picker = page.getByRole("dialog", { name: label, exact: true });
+    await picker.getByLabel("시작일").fill(start);
+    await picker.getByLabel("종료일").fill(end);
+    await picker.getByRole("button", { name: "적용", exact: true }).click();
+    await expect(comparison).toContainText(start);
+    await expect(comparison).toContainText(end);
+  }
 }
 
 async function navigateToTool(page, href, section, query) {

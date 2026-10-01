@@ -62,6 +62,16 @@ describe("ResultActionCard decision-first hierarchy", () => {
     expect(points.textContent).toContain("CPI +₩22.6");
   });
 
+  it("keeps evidence in downstream findings when its screen presentation changes", () => {
+    useAppStore.setState({ findingsByGroup: {} });
+    render(<ResultActionCard toolId="5-2" headline="Evidence result" analysisBasis={false} decisionReview={false}
+      points={[{ text: "Full supporting evidence" }]}
+      pointsContent={<button type="button">Open evidence</button>} />);
+    expect(screen.queryByText("Full supporting evidence")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open evidence" })).toBeTruthy();
+    expect(useAppStore.getState().findingsByGroup.efficiency[0].detail).toBe("Full supporting evidence");
+  });
+
   // 카드 머리에는 결과 산출물(다운로드)과 도구별 컨트롤만 둔다. 공유·상세문서·보고서·
   // 검토는 결론·수치·행동보다 뒤의 보조 줄로 내려간다 — 근거는 §5.3(동급 CTA 여럿 금지)와
   // §5.5(다음 행동 1개)이고, 값이 아니라 그 근거를 고정한다.

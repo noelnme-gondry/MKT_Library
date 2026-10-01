@@ -4,7 +4,7 @@ import { useAppStore, persistPartialize, persistMigrate, TOOL_GROUP, groupForRou
 import { buildGroupMap } from "@/lib/toolGroups";
 
 describe("useDataStore · viewConfig 액션", () => {
-  beforeEach(() => useAppStore.setState({ viewConfig: {} }));
+  beforeEach(() => useAppStore.setState({ viewConfig: {}, entitlement: activePro() }));
 
   it("setViewConfig가 scope별로 patch 병합(기본 hidden/order 채움)", () => {
     useAppStore.getState().setViewConfig("5-2:scorecard", { hidden: ["ctr"] });

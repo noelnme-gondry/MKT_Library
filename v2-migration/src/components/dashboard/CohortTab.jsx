@@ -1,4 +1,6 @@
 "use client";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardSetting, useDashboardAction, useDashboardFilter } from "./DashboardWorkspaceContext";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
@@ -21,7 +23,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   // 전역 분모 기준(설치/가입) 구독 — index.html MON_DENOM_STATE 이식(§12.18).
   // 리텐션 기준 토글은 이 전역 상태를 바꿔 스코어카드·LTV 탭과 동기화된다.
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -32,9 +34,9 @@ export default function CohortTab({ locale = "ko" } = {}) {
 
   // 다크모드 토글 시 차트 재렌더 트리거(테마색 refresh, §12.20 패턴).
   const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const cohortTableCfg = useAppStore((state) => state.viewConfig[COHORT_TABLE_SCOPE]);
-  const setViewConfig = useAppStore((state) => state.setViewConfig);
-  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const cohortTableCfg = useDashboardSetting("viewConfig", COHORT_TABLE_SCOPE);
+  const setViewConfig = useDashboardAction("setViewConfig");
+  const resetViewConfig = useDashboardAction("resetViewConfig");
   const [cohortCfgOpen, setCohortCfgOpen] = useState(false);
   const [snapshotDraft, setSnapshotDraft] = useState("");
 
@@ -223,7 +225,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           ...chartCommonOpts(),
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { ...chartCommonOpts().plugins, legend: { labels: { color: getCssVar("--text-muted"), font: { size: 10 } } } },
+          plugins: { ...chartCommonOpts().plugins, legend: { position: "bottom", labels: { usePointStyle: true, pointStyle: "line", boxWidth: 20, color: getCssVar("--text-muted"), font: { size: 10 } } } },
           scales: {
             x: {
               title: { display: true, text: tr("설치 후 경과일", "Days since install"), color: getCssVar("--text-muted") },
@@ -247,7 +249,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
 
   if (!hasData) {
     return (
-      <div className="tab-pane active" id="tab-cohort">
+      <DashboardTabLayout className="tab-pane active" id="tab-cohort">
         <section className="block" id="s-retention">
           <h2 className="section-title">{tr("리텐션 곡선", "Retention Curve")}</h2>
           <div className="callout warn">
@@ -261,7 +263,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
             </div>
           </div>
         </section>
-      </div>
+      </DashboardTabLayout>
     );
   }
 
@@ -309,7 +311,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const orderedCohortCols = applyMetricView(cohortCols, cohortTableCfg, (col) => col.k);
 
   return (
-    <div className="tab-pane active" id="tab-cohort">
+    <DashboardTabLayout className="tab-pane active" id="tab-cohort">
       <section className="block" id="s-retention">
         <h2 className="section-title">{tr("전체 리텐션 곡선", "Overall Retention Curve")}</h2>
 
@@ -345,7 +347,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
               <div style={{ display: "flex", alignItems: "end", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
                 <label style={{ display: "grid", gap: "3px", fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
                   {tr("기준일 직접 지정", "Set snapshot date")}
-                  <input type="date" value={snapshotDraft} onChange={(event) => setSnapshotDraft(event.target.value)} style={{ minHeight: "32px" }} aria-label={tr("리텐션 데이터 기준일 직접 지정", "Set retention data snapshot date")} />
+                  <input className="dashboard-snapshot-date" type="date" value={snapshotDraft} onChange={(event) => setSnapshotDraft(event.target.value)} aria-label={tr("리텐션 데이터 기준일 직접 지정", "Set retention data snapshot date")} />
                 </label>
                 <button className="ab-pill" onClick={saveSnapshotOverride} disabled={!parseSnapshotDate(snapshotDraft)}>{tr("기준일 적용", "Apply date")}</button>
                 <span style={{ fontSize: "var(--fs-xs)", color: "var(--text-muted)" }}>
@@ -397,7 +399,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", margin: "14px 0 -6px" }}>
-          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
+          <button className="ab-pill dashboard-legacy-edit" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("컬럼 편집", "Edit columns")}</button>
         </div>
         <DataTable
           ariaLabel={tr("코호트 구간별 리텐션", "Retention by cohort period")}
@@ -498,6 +500,6 @@ export default function CohortTab({ locale = "ko" } = {}) {
         }}
       />
       <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} locale={locale} />
-    </div>
+    </DashboardTabLayout>
   );
 }

@@ -17,13 +17,13 @@ export function mixRateFigure({ rows, start, end, metric, locale }) {
 }
 
 /** 5-3 예산 재배분: 대상별 지금 하루 예산 ↔ 바꾼 안. rows: [{entity, current, budget, ...}] */
-export function budgetShiftFigure({ rows, locale }) {
+export function budgetShiftFigure({ rows, locale, metric, baseline = "observed" }) {
   return {
     id: "budget-allocation-baseline",
     kind: "bar",
     question: tr(locale, "채널별 하루 예산 조정안", "Proposed daily budget by channel"),
     data: rows,
-    options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency" },
+    options: { x: "entity", y: "budget", variant: "budget-shift", from: "current", to: "budget", unit: "currency", ...(metric ? { metric, baseline } : {}) },
   };
 }
 

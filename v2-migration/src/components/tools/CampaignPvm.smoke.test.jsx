@@ -159,7 +159,7 @@ describe("CampaignPvm render smoke", () => {
     expect(() => { view = render(<CampaignPvm />); }).not.toThrow();
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
-    expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^분석 기간/ })).toBeTruthy();
     fireEvent.click(document.querySelector(".decision-review-launch"));
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     // 5-21은 전역 분모 기준에 따라 CPA·CPI 어느 쪽으로도 말한다 — 둘 다 후보에 있어야
@@ -177,7 +177,24 @@ describe("CampaignPvm render smoke", () => {
     const bridge = container.querySelector(".pvm-efficiency-bridge");
     expect(bridge, "노출을 매핑했는데 효율 분해가 없다").toBeTruthy();
     expect(bridge.textContent).toContain("노출 단가");
-    expect(bridge.textContent).toContain("반응률");
+    expect(bridge.textContent).toContain("클릭");
+    expect(bridge.textContent).toContain("기여");
+  });
+
+  it("renders stage contributions from the actual mapped CSV and changes the endpoint with the metric", () => {
+    seedWithImpressions();
+    const csv = useAppStore.getState().csvData;
+    const full = { ...csv, headers: [...csv.headers, "Clicks", "Actions"], mapping: { ...csv.mapping, Clicks: "clicks", Actions: "actions" }, raw: csv.raw.map(row => ({ ...row, Clicks: row.Installs * 4, Actions: row.Installs / 2 })) };
+    useAppStore.setState({ csvData: full, csvGroups: { ...useAppStore.getState().csvGroups, efficiency: full } });
+    const { container } = render(<CampaignPvm />);
+    fireEvent.click(screen.getByRole("radio", { name: "CPA", exact: true }));
+    expect(container.querySelectorAll(".pvm-stage-analysis__rows > li")).toHaveLength(4);
+    expect(container.querySelector(".pvm-stage-analysis").textContent).toContain("설치 → 가입");
+    fireEvent.click(screen.getByRole("radio", { name: "CPI", exact: true }));
+    expect(container.querySelectorAll(".pvm-stage-analysis__rows > li")).toHaveLength(3);
+    expect(container.querySelector(".pvm-stage-analysis").textContent).not.toContain("설치 → 가입");
+    expect(container.querySelector(".pvm-supporting-evidence")).toBeNull();
+    expect(container.querySelector(".pvm-observation-note").textContent).toContain("인과 효과가 아닙니다");
   });
 
   // 쓸 수 없는 기능은 조건이 갖춰졌을 때만 보여야 한다(§12.17) — 노출이 없으면
@@ -226,8 +243,8 @@ describe("CampaignPvm render smoke", () => {
     });
     render(<CampaignPvm />);
 
-    expect([...document.querySelectorAll(".result-periods time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
-    expect(screen.getByText("선택한 비교 기간")).toBeTruthy();
+    expect([...document.querySelectorAll(".result-period-picker time")].map(node => node.dateTime)).toEqual(["2026-01-19", "2026-01-25", "2026-01-05", "2026-01-11"]);
+    expect(screen.getByRole("button", { name: /^비교 기간/ })).toBeTruthy();
   });
 
   it("rolls campaign and creative rows up from one finest-grain decomposition", () => {

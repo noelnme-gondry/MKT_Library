@@ -76,6 +76,7 @@ import MarketingResponse, {
   BADGE_TONE,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
+import { buildPaidOrganicPlatformModel, buildFixedBudgetAuditPredictions, mmmSumOsBacktests, forecastDisplayDate } from "@/components/tools/marketingResponseModel";
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
 import { MMM_METH_CONFIG, mmmResolveAbsorb } from "@/utils/mmmMath";
 
@@ -751,6 +752,21 @@ describe("MarketingResponse render smoke", () => {
       wmape: 5,
       certificationGate: true,
     })).toMatchObject({ reliable: true, certificationThreshold: 10 });
+  });
+
+  it("does not certify fixed-budget forecasts using a passing known-spend score", () => {
+    const audit = certifyForecastBacktest({ actual:[100,100], predicted:[95,105], wmape:5,
+      fixedBudgetPredicted:[120,140], certificationGate:true });
+    expect(audit).toMatchObject({ fixedBudgetWmape:30, reliable:false });
+    expect(reconcileForecastScenarioAudit({eligible:true,reasons:[]}, audit))
+      .toMatchObject({eligible:false,reasons:["latest-audit-failed"]});
+    expect(certifyForecastBacktest({actual:[100,100],predicted:[95,105],wmape:5}))
+      .toMatchObject({fixedBudgetWmape:null});
+    const total = mmmSumOsBacktests([
+      {actual:[100,100],predicted:[95,105],fixedBudgetPredicted:[120,140],validationStartIndex:0},
+      {actual:[50,50],predicted:[45,55],fixedBudgetPredicted:[60,70],validationStartIndex:0},
+    ]);
+    expect(total).toMatchObject({actual:[150,150],fixedBudgetPredicted:[180,210],fixedBudgetWmape:30,reliable:false});
   });
 
   it("reuses the selector's sealed outer fold without reserving the horizon twice", () => {
@@ -1821,6 +1837,8 @@ describe("MarketingResponse render smoke", () => {
     fireEvent.click(decisionEditor.querySelector("[data-information-heading], .decision-review-launch"));
     expect(screen.getByLabelText("목표 (성공의 정의)").value).toBe("rerun:oos_error");
     expect([...screen.getByLabelText("목표 (성공의 정의)").options].map(option => option.value)).toContain("rerun:organic_users");
+    // Finish the editor interaction before testing focus outside its modal trap.
+    fireEvent.click(screen.getByRole("button", { name: "닫기", exact: true }));
     expect(document.body.textContent).toContain("Bayesian + WebR 자동 비교");
     expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).not.toContain("Classic은 관측 데이터만 사용");
@@ -1860,13 +1878,29 @@ describe("MarketingResponse render smoke", () => {
     expect(priorOff.classList.contains("active")).toBe(true);
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
-    // T2: 계산 상세 아코디언 열면 ① 변환 파라미터 Laplace 90% 구간 범례가 throw 없이 렌더.
-    const detailSummary = Array.from(container.querySelectorAll("[data-information-heading]")).find((summary) => summary.textContent.includes("광고 여운·포화 변환 상세"));
-    expect(detailSummary).toBeTruthy();
-    expect(() => fireEvent.click(detailSummary)).not.toThrow();
+    // Details open only from the bottom button and close without losing main evidence.
+    const detail = container.querySelector('#mmm-analysis-details');
+    const response = container.querySelector('[data-mmm-flow-step="response"]');
+    expect(detail).toBeTruthy();
+    expect(response.querySelector('a[href="#mmm-analysis-details"]')).toBeNull();
+    const openDetail = container.querySelector('button[aria-controls="mmm-analysis-details"]');
+    expect(detail.hidden).toBe(true);
+    expect(detail.querySelector('canvas')).toBeNull();
+    fireEvent.click(openDetail);
     await flushRaf();
-    expect(document.body.textContent).toContain("90% 구간");
-    expect(document.body.textContent).toContain("프로파일 최빈");
+    expect(detail.hidden).toBe(false);
+    expect(detail.querySelector('canvas')).toBeTruthy();
+    fireEvent.click(Array.from(detail.querySelectorAll('button')).find(button => button.textContent === '분석 상세 닫기'));
+    expect(detail.hidden).toBe(true);
+    await flushRaf();
+    expect(document.activeElement).toBe(container.querySelector('button[aria-controls="mmm-analysis-details"]'));
+    expect(detail.querySelector('details, summary')).toBeNull();
+    expect(detail.textContent).toContain("프로파일 최빈");
+    expect(detail.textContent).toContain("90% 구간");
+    expect(detail.textContent).toContain("RMS 기여 크기 비중");
+    expect(response.textContent).not.toContain("프로파일 최빈");
+    expect(response.textContent).toContain("Empirical-Bayes 효과 신뢰도");
+    expect(container.querySelector('[data-mmm-flow-step="driver-detail"]')).toBeTruthy();
   });
 
   it("re-normalizes the RMS contribution share after excluding base demand and trend", async () => {
@@ -1913,6 +1947,53 @@ describe("MarketingResponse render smoke", () => {
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
+
+  it("builds the hold-last-value benchmark strictly before the sealed validation period", () => {
+    const model = {
+      target: "Regs",
+      sourcePanel: {week:[1,2,3,4],weekLabel:["W1","W2","W3","W4"],targets:{Regs:[7,9,100,200]}},
+      selection: {horizon:2,nested:{latest:{actual:[100,200],predicted:[90,180]}}},
+    };
+    expect(buildForecastRecentBacktest(model).lastValueBaseline).toEqual([9,9]);
+    model.sourcePanel.targets.Regs[3] = 9999;
+    expect(buildForecastRecentBacktest(model).lastValueBaseline).toEqual([9,9]);
+  });
+
+  it("displays full forecast dates without guessing centuries from the current clock", () => {
+    expect(forecastDisplayDate("25-07-14", "2025-07-07")).toBe("2025-07-14");
+    expect(forecastDisplayDate("00-01-03", "1999-12-27")).toBe("2000-01-03");
+    expect(forecastDisplayDate("2025-07-14", "2025-07-07")).toBe("2025-07-14");
+    expect(forecastDisplayDate("+1", "2025-07-07")).toBe("+1");
+    expect(forecastDisplayDate("25-02-31", "2025-07-07")).toBe("25-02-31");
+    expect(forecastDisplayDate("25-07-14", undefined)).toBe("25-07-14");
+  });
+
+  it("keeps forecast results and weekly evidence visible while diagnostics require an explicit button", async () => {
+    seedWithPaidOrganicForecastData();
+    const { container } = render(<MarketingResponse initialStage="lab" />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+    const detail = container.querySelector("#forecast-analysis-details");
+    const weekly = container.querySelector(".forecast-weekly-results");
+    const overview = container.querySelector(".forecast-result-overview");
+    const entry = container.querySelector('button[aria-controls="forecast-analysis-details"]');
+    expect(detail).toBeTruthy();
+    expect(detail.hidden).toBe(true);
+    expect(weekly.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
+    expect(overview.querySelector("canvas")).toBeTruthy();
+    expect(overview.compareDocumentPosition(weekly) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(weekly.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector(".forecast-provenance").closest("[hidden]")).toBe(detail);
+    fireEvent.click(entry);
+    await flushRaf();
+    expect(detail.hidden).toBe(false);
+    expect(detail.querySelector("pre").textContent.length).toBeGreaterThan(20);
+    fireEvent.click(Array.from(detail.querySelectorAll("button")).find(button => button.textContent === "분석 상세 닫기"));
+    await flushRaf();
+    expect(detail.hidden).toBe(true);
+    expect(document.activeElement).toBe(entry);
+    expect(weekly.closest("[hidden]")).toBeNull();
+  }, 90_000);
 
   it("keeps Organic baseline, Organic spend halo, Paid, OS, and Total additive", () => {
     const part = (actual, fittedHist, predFut, baselineFut, key) => ({
@@ -2040,6 +2121,27 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).not.toContain("미디어 OFF");
   }, 30000);
 
+  it("retains original channel inputs when they beat pooled Organic inputs on older folds", () => {
+    seedWithPaidOrganicForecastData();
+    const slice = useAppStore.getState().csvData;
+    const map = autoGuessColMap(slice.headers, slice.raw);
+    const panel = trimToActive(buildPanelFromColMap(slice.headers, slice.raw, map, "android").panel);
+    const requests = [];
+    const resolve = (input, cfg, target, taskId) => {
+      requests.push({input,target,taskId});
+      const error = taskId.endsWith("organic-channel") ? 5 : 15;
+      return {run:{},panel:input,selection:{horizon:13,nested:{developmentFolds:[13,26,39].map(offset=>({offset,
+        actual:Array(13).fill(100),predicted:Array(13).fill(100+error)}))}}};
+    };
+    const result = buildPaidOrganicPlatformModel({sourcePanel:panel,cfg:{...MMM_METH_CONFIG,absorbed:new Set()},target:"Regs",platform:"android"},13,resolve);
+    expect(requests.map(request=>request.taskId)).toEqual(["android-organic","android-organic-channel","android-paid"]);
+    expect(result.organicModel.inputResolutionAudit.resolution).toBe("channel");
+    expect(result.organicModel.aggregateHalo).toBe(false);
+    expect(Object.keys(result.organicModel.sourcePanel.ch)).toEqual(Object.keys(panel.ch));
+    expect(result.organicModel.sourcePanel.targets.OrganicRegs[0]).toBe(panel.targets.Regs[0]-panel.targets.PaidRegs[0]);
+    expect(result.paidModel.sourcePanel).toBe(panel);
+  });
+
   it("keeps the transform-family search contract in the final forecast refit", () => {
     seedWithPaidOrganicForecastData();
     const slice = useAppStore.getState().csvData;
@@ -2049,6 +2151,14 @@ describe("MarketingResponse render smoke", () => {
     const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
     cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
     const model = buildForecastOnlyModelFromPanel(panel, cfg, "Regs", { horizon: 13 });
+    const sealedFixed = buildFixedBudgetAuditPredictions(model);
+    expect(sealedFixed).toHaveLength(13);
+    expect(sealedFixed.every(Number.isFinite)).toBe(true);
+    const altered = structuredClone(model.sourcePanel);
+    for (const values of [...Object.values(altered.ch), ...Object.values(altered.targets)]) {
+      values.splice(values.length - 13, 13, ...Array(13).fill(99999999));
+    }
+    expect(buildFixedBudgetAuditPredictions({...model, sourcePanel:altered})).toEqual(sealedFixed);
     const grid = model.selection.transformGrid;
     expect(grid.families).toEqual(["identity", "log1p", "hill"]);
     expect(grid.perChannelUpperBound).toBe(

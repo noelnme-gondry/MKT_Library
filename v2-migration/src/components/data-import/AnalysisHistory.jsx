@@ -10,7 +10,7 @@ function matchesLocale(run, locale) {
   return locale === "en" ? !hasKorean : hasKorean;
 }
 
-export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
+export default function AnalysisHistory({ toolId, summary, locale = "ko", recordOnly = false, record = true }) {
   const [runs, setRuns] = useState([]);
   const summarySignature = useMemo(() => JSON.stringify(summary), [summary]);
   const lastSavedSignature = useRef("");
@@ -20,6 +20,7 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
     .then(setRuns)
     .catch(() => {}), [locale, toolId]);
   useEffect(() => {
+    if (!record) { load(); return; }
     const localizedSignature = `${locale}|${summarySignature}`;
     if (!summarySignature || localizedSignature === lastSavedSignature.current) return;
     lastSavedSignature.current = localizedSignature;
@@ -30,7 +31,7 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
       summary: parsedSummary,
       signature: localizedSignature,
     }).then(load).catch(() => {});
-  }, [toolId, locale, summarySignature, load]);
+  }, [toolId, locale, summarySignature, load, record]);
   const previous = runs[1];
   useEffect(() => {
     if (!previous?.id || !historyRef.current || typeof IntersectionObserver !== "function") return undefined;
@@ -51,7 +52,7 @@ export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
     observer.observe(target);
     return () => observer.disconnect();
   }, [locale, previous?.id, toolId]);
-  if (runs.length === 0) return null;
+  if (recordOnly || runs.length === 0) return null;
   const remove = (id) => deleteAnalysisRun(id).then(load).catch(() => {});
   const clear = () => clearAnalysisRuns(toolId).then(() => setRuns([])).catch(() => {});
   const dateLocale = locale === "en" ? "en-US" : "ko-KR";

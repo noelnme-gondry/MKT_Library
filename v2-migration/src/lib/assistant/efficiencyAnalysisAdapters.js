@@ -441,7 +441,9 @@ function allocationAdapter(input) {
       caveats: [tr(locale, "곡선은 관측 지출 범위 안에서만 사용하며, 배분은 인과적 증분 효과를 보장하지 않습니다.", "Curves are used only within observed spend ranges; allocation does not guarantee causal incrementality.")],
     },
     visualizations: [budgetShiftFigure({
-      rows: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
+      metric,
+      baseline: "modeled",
+      rows: allocation.items.map((item) => ({ entity: item.channel, current: safeNumber(currentByEntity[item.channel]?.cost), budget: safeNumber(item.cost), currentOutcomes: safeNumber(currentByEntity[item.channel]?.results), expectedOutcomes: safeNumber(item.results), expectedUnitCost: safeNumber(item.cpr) })),
       locale,
     })],
     manifest: {

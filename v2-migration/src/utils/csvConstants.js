@@ -1,5 +1,7 @@
 import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 
+export const SATURATION_AXIS_FIELDS = Object.freeze(["channel", "campaign_name", "platform", "country"]);
+
 export const STANDARD_FIELDS = {
               date: {
                 label: "날짜",
@@ -1227,7 +1229,7 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-22": [
                 "date",
                 "cost",
-                { oneOf: ["channel", "campaign_name"] },
+                { oneOf: SATURATION_AXIS_FIELDS },
                 { oneOf: ["installs", "actions"] },
               ],
               "5-5": ["date", "paid_regs", "organic_regs"],
@@ -1386,7 +1388,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
               ],
               "5-24": [
-                { key: "cost", unlocks: "캠페인 투자 규모와 증분 성과를 함께 기록" },
+                { key: "cost", unlocks: "브랜드 집행 비용 합계와 추정 증분 성과당 단가" },
                 { key: "country", unlocks: "향후 지역 대조군 설계" },
                 { key: "channel", unlocks: "브랜드 캠페인 매체 구분" },
               ],

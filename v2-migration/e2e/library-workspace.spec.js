@@ -162,13 +162,17 @@ for (const locale of ["ko", "en"]) {
     const channel = en ? label.replace(/^View /, "").replace(/ daily trend$/, "") : label.replace(/ 일별 추이 보기$/, "");
     await drill.click();
     await expect(page).toHaveURL(new RegExp(`${prefix}${idToSlug["5-2"]}$`), { timeout: 30_000 });
-    // 걸린 필터는 채널 하나다. 넓은 화면은 채널 버튼이, 폰은 요약 한 줄이 걸린 값을 말한다 — 떠 있는 목록이 결과를 덮지 않는다.
+    // Compact scope shows a count; opening it must identify the actual selected
+    // channel, then close without leaving a floating list over the results.
     const bar = page.locator(".dashboard-filter-bar");
-    await expect(bar).toHaveAttribute("data-active-filter-count", "1");
-    const narrow = (page.viewportSize()?.width || 0) <= 720;
-    if (narrow) await expect(bar.locator(".dashboard-filter-bar__summary strong")).toHaveText(`${en ? "Channel" : "채널"} ${channel}`);
-    else await expect(bar.locator(".mon-multisel-btn.is-active")).toContainText(channel);
-    await expect(page.locator(".mon-multisel-list")).toHaveCount(0);
+    const scope = bar.getByRole("button", { name: en ? /Data scope/ : /분석 대상/ });
+    await expect(scope).toContainText(en ? "1 selected" : "조건 1개");
+    await scope.click();
+    const panel = page.getByRole("dialog", { name: en ? "Data scope" : "분석 대상", exact: true });
+    await expect(panel.getByRole("button", { name: channel, exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(panel.locator('button[aria-pressed="true"]').filter({ hasText: channel })).toHaveCount(1);
+    await panel.getByRole("button", { name: en ? "Done" : "완료", exact: true }).click();
+    await expect(panel).toHaveCount(0);
   });
 
   test(`home CSV upload reaches unified analysis (${locale})${tag}`, async ({ page }) => {

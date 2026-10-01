@@ -21,12 +21,13 @@ function resolveTarget(target) {
 }
 
 // 캔버스는 화면에 그려진 픽셀 그대로 저장되므로 폰(CSS 폭 266px·배율 1)에서는 이미지 폭도 266px였다.
-// 받는 순간에만 배율을 올려 다시 그리고 되돌린다 — 이미지 폭이 이 값 이상이 되게(배율 2~4).
+// 받는 순간에만 배율을 올려 다시 그리고 되돌린다. 좁은 카드도 읽히도록 최대 6배,
+// 비정상적으로 작은 캔버스의 메모리 사용은 상한으로 제한한다.
 export const EXPORT_MIN_WIDTH = 1200;
 
 export function exportPixelRatio(cssWidth, currentRatio = 1) {
   if (!(cssWidth > 0)) return currentRatio;
-  const wanted = Math.min(4, Math.max(2, Math.ceil(EXPORT_MIN_WIDTH / cssWidth)));
+  const wanted = Math.min(6, Math.max(2, Math.ceil(EXPORT_MIN_WIDTH / cssWidth)));
   return Math.max(wanted, currentRatio);
 }
 

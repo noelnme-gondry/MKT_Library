@@ -1,5 +1,7 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import DashboardTabLayout from "./DashboardTabLayout";
+import { useDashboardFilter, useDashboardControl } from "./DashboardWorkspaceContext";
+import React, { useEffect, useMemo, useRef } from "react";
 import PillGroup from "@/components/ds/PillGroup";
 import Chart from "@/utils/chartGlobals";
 import { useAppStore } from "@/store/useDataStore";
@@ -31,16 +33,16 @@ const bucketLabel = (bucket, grain, locale) => grain === "week" ? (locale === "e
 
 export default function SeasonalityTab({ locale = "ko" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
-  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const dashboardFilter = useDashboardFilter();
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dataCurrency = sourceCurrencyOf(csvData, displayCurrency);
   const mappedKeys = useMemo(() => new Set(Object.values(csvData?.mapping || {})), [csvData]);
   const availableMetrics = METRICS.filter((metric) => metric.ratio
     ? mappedKeys.has(metric.ratio.numerator) && mappedKeys.has(metric.ratio.denominator)
     : mappedKeys.has(metric.key));
-  const [metric, setMetric] = useState("installs");
-  const [grain, setGrain] = useState("month");
-  const [detrend, setDetrend] = useState(false);
+  const [metric, setMetric] = useDashboardControl("metric", "installs");
+  const [grain, setGrain] = useDashboardControl("grain", "month");
+  const [detrend, setDetrend] = useDashboardControl("detrend", false);
   const overlayRef = useRef(null);
   const indexRef = useRef(null);
   const trendRef = useRef(null);
@@ -216,7 +218,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   const downloadItems = buildDownloadItems();
 
   return (
-    <div className="tab-pane active" id="tab-seasonality">
+    <DashboardTabLayout className="tab-pane active" id="tab-seasonality">
       <section className="block" id="s-seasonality">
         <div className="seasonality-heading">
           <div>
@@ -303,6 +305,6 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             : " — XLSX 한 파일에 업로드 원본 전체 + ISO 주석, 전체/Paid/Organic 그래프 시트, 채널별 그래프 데이터, 적용 필터·계산 설정이 함께 들어갑니다."}</p>
         </section>
       </section>
-    </div>
+    </DashboardTabLayout>
   );
 }

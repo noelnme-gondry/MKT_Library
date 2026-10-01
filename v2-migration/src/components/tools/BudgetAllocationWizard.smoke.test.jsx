@@ -5,10 +5,14 @@
 // default) — drives real DOM clicks through Step1 -> Step2 (추세선 검증) ->
 // Step3 (§4 배분 비중 bar chart) so render-throw bugs in step-transition JSX
 // and Chart.js effects are caught (golden tests only cover pure math, §7).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
-import BudgetAllocation, { buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
+import { ALLOCATION_SPEC, allocationOptionValue } from "@/lib/recipe/allocationRecipe";
+import { foldSteps } from "@/lib/recipe/recipe";
+import { recipeVocabularyFor } from "@/lib/recipe/toolVocabulary";
+import { ALLOC_MATH } from "@/utils/allocationMath";
+import BudgetAllocation, { buildAllocationChartCountries, buildAllocationChartPoints, buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
 
 function seedWithData() {
   const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs", "Actions", "Revenue"];
@@ -51,6 +55,27 @@ function seedWithData() {
   });
   useAppStore.getState().setGroupAnalyzed("5-3");
 }
+
+describe("allocation chart grouping", () => {
+  it("국가 선택은 표시 문자열 대신 원본 국가와 현재 보기 대상에서 파생한다", () => {
+    const rows = [{ country: "US · East", channel: "Meta", platform: "iOS", date: "2026-01-01", cost: 100, installs: 10 }, { country: "KR", channel: "Google", platform: "Android", date: "2026-01-01", cost: 0, installs: 0 }];
+    const available = buildAllocationChartPoints(rows, "country_channel", "channel", "installs");
+    const groups = buildAllocationChartCountries(rows, "country_channel", "channel", available);
+    expect(groups).toEqual([["US · East", new Set(["US · East · Meta"])]]);
+  });
+  it("국가·채널은 OS를 일별 합산하며 배분 단위는 별도로 보존한다", () => {
+    const rows = [
+      { country: "KR", channel: "Meta", platform: "iOS", date: "2026-01-01", cost: 100, installs: 10 },
+      { country: "KR", channel: "Meta", platform: "Android", date: "2026-01-01", cost: 900, installs: 30 },
+      { country: "US", channel: "Meta", platform: "iOS", date: "2026-01-01", cost: 40, installs: 4 },
+    ];
+    const grouped = buildAllocationChartPoints(rows, "country_channel", "channel", "installs");
+    expect([...grouped.keys()]).toEqual(["KR · Meta", "US · Meta"]);
+    expect(grouped.get("KR · Meta")).toEqual([{ x: 1000, y: 25, date: "2026-01-01" }]);
+    expect(buildAllocationChartPoints(rows, "allocation", "channel", "installs").size).toBe(3);
+    expect(rows[0].platform).toBe("iOS");
+  });
+});
 
 describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   beforeEach(() => {
@@ -97,7 +122,7 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(comparison.querySelector(".alloc-total-block.is-recommended")).toBeTruthy();
   });
 
-  it("renders the §4 bar chart as a real <canvas> (Chart.js) once a budget is entered", () => {
+  it("shows named current/plan distribution before the detailed allocation table", () => {
     // 결과-먼저 착지라 위저드 네비 없이 바로 예산 입력 → 바 차트 렌더 경로.
     render(<BudgetAllocation />);
     const budgetSlider = document.getElementById("prism-total-budget");
@@ -106,9 +131,11 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
       fireEvent.change(budgetSlider, { target: { value: budgetSlider.max } });
     }).not.toThrow();
 
-    const barCanvas = document.getElementById("alloc-bar");
-    expect(barCanvas).toBeTruthy();
-    expect(barCanvas.tagName).toBe("CANVAS");
+    const distribution = document.querySelector(".allocation-distribution");
+    expect(distribution).toBeTruthy();
+    expect(distribution.querySelectorAll("li").length).toBeGreaterThan(0);
+    expect(distribution.textContent).toContain("변경안");
+    expect(document.getElementById("s-scatter").compareDocumentPosition(document.getElementById("s-table")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Legacy flexbox segments must be gone from this section.
     expect(document.querySelector(".alloc-bar-seg")).toBeNull();
   });
@@ -214,11 +241,9 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     render(<BudgetAllocation />);
     fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
     fireEvent.click(screen.getByRole("radio", { name: /ROAS/ }));
-    const quickGoal = [...document.querySelectorAll(".tool-instrument-header__controls select")]
-      .find((select) => [...select.options].some((option) => option.value === "roas"));
-    expect(quickGoal).toBeTruthy();
-    expect(quickGoal.value).toBe("roas");
-    fireEvent.click(screen.getByRole("button", { name: "적용됨" }));
+    expect(screen.getByRole("radio", { name: /ROAS/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     const finish = screen.getAllByRole("button", { name: /검증 완료 및 예산 배분/ })[0];
     fireEvent.click(finish);
     fireEvent.click(screen.getByRole("button", { name: /총 예산/ }));
@@ -228,12 +253,33 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
   it("기본 CPI 목표도 빠른 필터 적용 뒤에 같은 KPI로 검증 단계에 들어간다", () => {
     render(<BudgetAllocation />);
     fireEvent.click(screen.getByRole("button", { name: /효율 목표/ }));
-    const quickGoal = [...document.querySelectorAll(".tool-instrument-header__controls select")]
-      .find((select) => [...select.options].some((option) => option.value === "install"));
-    expect(quickGoal).toBeTruthy();
-    expect(quickGoal.value).toBe("install");
-    fireEvent.click(screen.getByRole("button", { name: "적용됨" }));
+    expect(screen.getByRole("radio", { name: /CPI/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /^배분 대상:/ }));
+    fireEvent.click(screen.getByRole("button", { name: "적용 후 곡선 검토" }));
     expect(screen.getByText(/데이터가 예산 변화에 반응했나/)).toBeTruthy();
+  });
+
+  for (const locale of ["ko", "en"]) it(`date selection is saved and invalid drafts preserve the applied range (${locale})`, () => {
+    const en = locale === "en";
+    render(<BudgetAllocation locale={locale} />);
+    const dates = () => screen.getByRole("button", { name: en ? /^Analysis period/ : /^분석 기간/ });
+    const observations = vi.spyOn(ALLOC_MATH, "removeOutliers");
+    fireEvent.click(dates());
+    fireEvent.change(screen.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-10" } });
+    fireEvent.click(screen.getByRole("button", { name: en ? "Apply" : "적용", exact: true }));
+    expect(dates().textContent).toContain("2026-01-10");
+    expect(observations).toHaveBeenCalled();
+    expect(observations.mock.calls.every(([points]) => points.every(point => point.date >= "2026-01-10" && point.date <= "2026-01-20"))).toBe(true);
+    observations.mockRestore();
+    expect(allocationOptionValue(foldSteps(useAppStore.getState().viewConfig["analysis-inputs:5-3"].recipeSteps, recipeVocabularyFor("5-3"), ALLOCATION_SPEC).state, "analysisRange")).toEqual({ start: "2026-01-10", end: "2026-01-20" });
+    const table = document.getElementById("s-table");
+    expect(table).toBeTruthy();
+    fireEvent.click(dates());
+    fireEvent.change(screen.getByLabelText(en ? "Start date" : "시작일"), { target: { value: "2026-01-21" } });
+    fireEvent.click(screen.getByRole("button", { name: en ? "Apply" : "적용", exact: true }));
+    expect(screen.getByRole("alert").textContent).toMatch(en ? /start date/ : /시작일/);
+    fireEvent.click(screen.getByRole("button", { name: en ? "Cancel" : "취소", exact: true }));
+    expect(dates().textContent).toContain("2026-01-10");
   });
 
   it("keeps the same global-driver behavior in English", () => {
@@ -244,18 +290,18 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(document.querySelector(".prism-driver__status")?.textContent).toMatch(/largest daily budget|observed maximum spend|observed-spend ceiling|No budget below the observed-spend ceilings/);
   });
 
-  it("§6 채널 반응 곡선이 canvas로 렌더되고 채널 pill 전환이 throw 없이 동작 (P4)", () => {
+  it("§6 채널 반응 곡선이 canvas로 렌더되고 채널 선택 전환이 throw 없이 동작 (P4)", () => {
     render(<BudgetAllocation />);
-    // 결과-먼저 착지(step3, 예산 자동 시드) → §6 반응 곡선 canvas + 채널 pill 노출.
+    // 결과-먼저 착지(step3, 예산 자동 시드) → §6 반응 곡선 canvas + 채널 선택 노출.
     const section = document.querySelector("#s-response");
     expect(section).toBeTruthy();
     const canvas = document.getElementById("alloc-response-curve");
     expect(canvas).toBeTruthy();
     expect(canvas.tagName).toBe("CANVAS");
-    // 다른 채널 pill 클릭 → 곡선 재빌드 경로 throw 없음.
-    const pills = [...section.querySelectorAll("button")];
-    expect(pills.length).toBeGreaterThan(1);
-    expect(() => fireEvent.click(pills[1])).not.toThrow();
+    // Named selector changes the same curve state without a wall of color pills.
+    const select = section.querySelector("select");
+    expect(select.options.length).toBeGreaterThan(1);
+    expect(() => fireEvent.change(select, { target: { value: select.options[1].value } })).not.toThrow();
     // 마커 해석 평어(현재/계획)가 노출.
     expect(section.textContent).toMatch(/현재|계획/);
   });

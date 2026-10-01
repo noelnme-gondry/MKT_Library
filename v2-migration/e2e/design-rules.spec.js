@@ -20,7 +20,7 @@ const RESULT_PAGES = [
   "/tools/aha-moment", "/tools/vif-multicollinearity",
   "/tools/aso-store-conversion", "/tools/marketing-trend", "/tools/segment-composition-change", "/content/freshness",
   "/tools/asa-keyword-finder", "/tools/brand-campaign-incrementality", "/tools/subscription-survival",
-  "/en/tools/campaign-variance",
+  "/en/tools/campaign-variance", "/en/tools/campaign-saturation",
 ];
 
 // 도구마다 예시가 자동으로 실리기도 하고 버튼으로 실리기도 한다 — 상태를 보고 필요한 단계만 밟는다.
@@ -171,6 +171,7 @@ const MANUAL_RESULTS = {
   },
   "/tools/incrementality": async (page) => {
     await expect(page.locator('#tab-incr[data-hydrated="true"]')).toBeVisible();
+    await expect(page.locator('#tab-incr input[type="file"]')).toBeEnabled();
     const rows = Array.from({ length: 16 }, (_, index) => {
       const date = `2026-08-${String(index + 1).padStart(2, "0")}`;
       return `${date},exposed,${index < 8 ? 100 : 150},1000,100,200\r\n${date},holdout,100,1000,0,100`;
@@ -191,3 +192,34 @@ for (const [path, open] of Object.entries(MANUAL_RESULTS)) {
     expectClean(await measureDesignRules(page));
   });
 }
+
+test("incrementality waits for stored-project startup before accepting a real file", async ({ page }) => {
+  // Hold real IndexedDB open callbacks, not CSV/API mocks: this reproduces the
+  // short interval where React is ready but project restoration still owns data.
+  await page.addInitScript(() => {
+    const open = IDBFactory.prototype.open;
+    const pending = [];
+    let released = false;
+    window.releaseWorkspaceOpen = () => { released = true; pending.splice(0).forEach(run => run()); };
+    IDBFactory.prototype.open = function (...args) {
+      const request = open.apply(this, args);
+      if (args[0] === "mkt_workspace") Object.defineProperty(request, "onsuccess", {
+        set(handler) {
+          request.addEventListener("success", event => {
+            if (released) handler.call(request, event);
+            else pending.push(() => handler.call(request, event));
+          });
+        },
+      });
+      return request;
+    };
+  });
+  await page.goto("/tools/incrementality");
+  await expect(page.locator('#tab-incr[data-hydrated="true"]')).toBeVisible();
+  await expect(page.locator('#tab-incr input[type="file"]')).toBeDisabled();
+  await expect(page.getByRole("button", { name: "증분 분석 CSV 파일 선택" })).toHaveAttribute("aria-disabled", "true");
+  await page.evaluate(() => window.releaseWorkspaceOpen());
+  await MANUAL_RESULTS["/tools/incrementality"](page);
+  await expect(page.locator('#tab-incr .file-state').getByText("holdout-design.csv", { exact: true })).toBeVisible();
+  await expect(page.locator(".result-action-card").first()).toBeVisible();
+});

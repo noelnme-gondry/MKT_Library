@@ -23,3 +23,18 @@ describe("period sensitivity explicit execution", () => {
     } finally { download.mockRestore(); }
   });
 });
+
+it.each(["ko", "en"])("shows concrete period evidence and explains unavailable recommendations (%s)", async locale => {
+  const en = locale === "en";
+  const periods = [{ start: "2026-01-01", end: "2026-01-15" }, { start: "2026-01-16", end: "2026-01-30" }];
+  const compute = vi.fn(() => ({ periods, rows: [{ name: "KR · Meta", status: "unavailable", before: { direction: "increase", current: 100, planned: 120, n: 12 }, after: { direction: null, current: 110, planned: 0, reason: "budget", n: 12 } }] }));
+  render(<PeriodSensitivityPanel variant="allocation" locale={locale} periods={periods} budgetLabel="₩500" baselineDays={7} formatMoney={v => `₩${v}`} compute={compute} />);
+  expect(screen.getByText(/2026-01-01/)).toBeTruthy();
+  expect(screen.getByText("₩500")).toBeTruthy();
+  expect(compute).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: en ? "Compare recommendations" : "기간별 추천 비교" }));
+  await waitFor(() => expect(screen.getByText("KR · Meta")).toBeTruthy());
+  expect(screen.getByText("₩100 → ₩120")).toBeTruthy();
+  expect(screen.getByText("₩110 → —")).toBeTruthy();
+  expect(screen.getByText(en ? /cannot be fully allocated/ : /고정 예산을 모두 배분/)).toBeTruthy();
+});

@@ -1,3 +1,4 @@
+import { dashboardControlPatch } from "@/lib/recipe/dashboardRecipe";
 import { hasPaidAccess } from "@/lib/subscription/entitlement";
 import { serializeProject } from "@/lib/project/serializeProject";
 import { sanitizeEventMarkers } from "@/lib/project/eventMarkers";
@@ -943,6 +944,7 @@ export const useAppStore = create(persist((set, get) => ({
     });
     const activeGroup = groupForRoute(state.currentRouteId);
     return {
+      ...(allowed.has("efficiency") ? dashboardControlPatch(project.viewConfig?.["analysis-inputs:5-2"]?.recipeSteps) : {}),
       viewConfig: project.viewConfig || {},
       customMetrics: project.customMetrics || {},
       customCharts: project.customCharts || {},
@@ -1332,13 +1334,19 @@ export const useAppStore = create(persist((set, get) => ({
   // 로 { hidden:[], order:[] }. 렌더는 applyMetricView(metricView.js)로 후보에 적용.
   // ★ persist(localStorage) 대상 = viewConfig만(partialize). 원본 CSV는 절대 저장 X(§2.2).
   viewConfig: {},
-  setViewConfig: (scopeId, patch) => set((state) => ({
+  saveDashboardWorkspace: (workspace) => {
+    if (!hasPaidAccess(get().entitlement)) return false;
+    set(state => ({ viewConfig: { ...state.viewConfig, "dashboard-workspace": structuredClone(workspace) } }));
+    return true;
+  },
+  setViewConfig: (scopeId, patch) => set((state) => ((scopeId.startsWith("5-2:") || scopeId === "dashboard-workspace") && !hasPaidAccess(state.entitlement) ? {} : {
     viewConfig: {
       ...state.viewConfig,
       [scopeId]: { hidden: [], order: [], ...(state.viewConfig[scopeId] || {}), ...patch },
     },
   })),
   resetViewConfig: (scopeId) => set((state) => {
+    if ((scopeId.startsWith("5-2:") || scopeId === "dashboard-workspace") && !hasPaidAccess(state.entitlement)) return {};
     const next = { ...state.viewConfig };
     delete next[scopeId];
     return { viewConfig: next };
@@ -1349,16 +1357,19 @@ export const useAppStore = create(persist((set, get) => ({
   // persist 대상(원본 데이터 아님, §2.2). compute는 customMetric.js가 순수 생성(eval X).
   customMetrics: {},
   addCustomMetric: (scopeId, def) => set((state) => {
+    if (scopeId.startsWith("5-2:") && !hasPaidAccess(state.entitlement)) return {};
     const list = state.customMetrics[scopeId] || [];
     const id = nextStableId("cm_", list);
     return { customMetrics: { ...state.customMetrics, [scopeId]: [...list, { ...def, id }] } };
   }),
   removeCustomMetric: (scopeId, id) => set((state) => {
+    if (scopeId.startsWith("5-2:") && !hasPaidAccess(state.entitlement)) return {};
     const list = (state.customMetrics[scopeId] || []).filter((m) => m.id !== id);
     return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
   }),
   // 기존 커스텀 지표 수정(id 유지, 정의 교체) — 빌더 "수정" 흐름.
   updateCustomMetric: (scopeId, id, patch) => set((state) => {
+    if (scopeId.startsWith("5-2:") && !hasPaidAccess(state.entitlement)) return {};
     const list = (state.customMetrics[scopeId] || []).map((m) => (m.id === id ? { ...m, ...patch, id } : m));
     return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
   }),
@@ -1367,11 +1378,13 @@ export const useAppStore = create(persist((set, get) => ({
   // scope별 { [scopeId]: [{ id, name, type, dim, metric }] }. 정의(config)라 persist.
   customCharts: {},
   addCustomChart: (scopeId, def) => set((state) => {
+    if (scopeId.startsWith("5-2:") && !hasPaidAccess(state.entitlement)) return {};
     const list = state.customCharts[scopeId] || [];
     const id = nextStableId("ch_", list);
     return { customCharts: { ...state.customCharts, [scopeId]: [...list, { ...def, id }] } };
   }),
   removeCustomChart: (scopeId, id) => set((state) => {
+    if (scopeId.startsWith("5-2:") && !hasPaidAccess(state.entitlement)) return {};
     const list = (state.customCharts[scopeId] || []).filter((c) => c.id !== id);
     return { customCharts: { ...state.customCharts, [scopeId]: list } };
   }),
