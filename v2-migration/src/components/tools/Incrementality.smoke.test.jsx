@@ -32,6 +32,8 @@ function seed(slice) {
     csvGroups: { ...useAppStore.getState().csvGroups, incrementality: slice },
     csvData: slice,
     decisionRecords: [],
+    projectsReady: true,
+    projectSwitching: false,
   });
 }
 
@@ -44,6 +46,15 @@ describe("Incrementality render smoke", () => {
 
   it("mounts in no-data state", () => {
     expect(() => render(<Incrementality />)).not.toThrow();
+  });
+
+  it("waits for project restoration before accepting an upload", () => {
+    useAppStore.setState({ projectsReady: false, projectSwitching: true, decisionPersistenceEnabled: true });
+    const view = render(<Incrementality />);
+    const input = view.container.querySelector('input[type="file"]');
+    expect(input.disabled).toBe(true);
+    act(() => useAppStore.setState({ projectsReady: true, projectSwitching: false }));
+    expect(input.disabled).toBe(false);
   });
 
   it("tracks only aggregate CSV import outcomes", async () => {

@@ -11625,7 +11625,7 @@ body .decision-console-landing .dc-intake > .dochi-home-assistant { display: gri
 body .result-action-card__stats > div,
 body .result-action-card__stats > div > span,
 body .kpi-card .label { font-size: var(--fs-base); font-weight: 400; letter-spacing: 0; text-transform: none; }
-body .result-action-card__stats strong { margin-top: 4px; font-size: var(--fs-lg); }
+body .result-action-card__stats strong { margin-top: 4px; font-size: var(--fs-lg); line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
 /* 5) <strong>·<b>의 기본값 bolder는 이미 굵은 부모 안에서 900이 된다 — 세 단 밖이다. */
 b, strong { font-weight: 700; }
 /* 6) 상자 안 상자 없애기 — 바깥 상자 하나만 남기고 안쪽은 선으로 나눈다.

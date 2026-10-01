@@ -131,6 +131,11 @@ const METHODS_EN = [
 
 export default function Incrementality({ locale = "ko" } = {}) {
   const isHydrated = useClientReady();
+  // Hydration can finish before IndexedDB restoration. setCsvData deliberately
+  // rejects writes while a project is switching, so do not accept files yet.
+  const projectReady = useAppStore((s) => s.currentRouteId === "5-23" && !s.projectSwitching
+    && (!s.decisionPersistenceEnabled || s.projectsReady || Boolean(s.projectError)));
+  const canUpload = isHydrated && projectReady;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
@@ -178,7 +183,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   }, [METHODS, selectMethod]);
 
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || !canUpload) return;
     trackProductEvent("data_import_start", { tool_id: "5-23", source: "csv", locale });
     let parseInput;
     try {
@@ -274,7 +279,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
       </p>
 
       {!hasData ? (
-        <UploadPanel isHydrated={isHydrated} method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
+        <UploadPanel isHydrated={canUpload} method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
       ) : (
         <div>
           {isDemo && (
@@ -318,13 +323,13 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, isHydrated, locale
     : { base: "template_incr_prepost", text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
-      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} onTryExample={loadDemo} locale={locale} />
-      <div className="csv-dropzone" role="button" tabIndex={0} aria-label={tr("증분 분석 CSV 파일 선택", "Choose an incrementality CSV file")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }} style={{ cursor: "pointer" }}>
+      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} onTryExample={isHydrated ? loadDemo : null} locale={locale} />
+      <div className="csv-dropzone" role="button" tabIndex={0} aria-disabled={!isHydrated} aria-label={tr("증분 분석 CSV 파일 선택", "Choose an incrementality CSV file")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (isHydrated && e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <div className="csv-drop-text">{tr("CSV 파일 드래그 & 드롭", "Drag & drop CSV file")}</div>
-        <div className="csv-drop-sub">{tr("또는 클릭하여 파일 선택", "or click to select a file")}</div>
+        <div className="csv-drop-sub">{isHydrated ? tr("또는 클릭하여 파일 선택", "or click to select a file") : tr("저장된 설정을 준비하고 있습니다", "Preparing saved settings")}</div>
         <input type="file" disabled={!isHydrated} accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef} onClick={(e) => e.stopPropagation()} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
       </div>
     </>

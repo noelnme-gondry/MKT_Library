@@ -19,7 +19,14 @@ for (const locale of ['ko', 'en']) for (const toolId of Object.keys(FOLLOWUP_INP
     await expect(root.locator('.tool-recipe-controls')).toBeVisible({ timeout: 45000 });
     // Wait for child controls, not just the wrapper's account controls.
     await expect(page.locator('.tool-next-step-panel')).toBeVisible({ timeout: 45000 });
-    if (toolId === '5-4') await root.locator('#ab-primary-tab-design').click();
+    if (toolId === '5-4') {
+      // The URL example waits for project restoration, then opens readout.
+      // Switching earlier lets that delayed example overwrite the user's tab.
+      await expect(page).not.toHaveURL(/example=1/);
+      await expect(root.locator('#ab-primary-tab-readout')).toHaveAttribute('aria-selected', 'true');
+      await root.locator('#ab-primary-tab-design').click();
+      await expect(root.locator('#ab-primary-tab-design')).toHaveAttribute('aria-selected', 'true');
+    }
     const publicPaths = Object.entries(FOLLOWUP_INPUTS[toolId]).filter(([, option]) => !option.private).map(([path]) => path);
     await root.getByRole('button', { name: t('이 설정 저장', 'Save this setup'), exact: true }).click();
     await root.getByLabel(t('설정 이름', 'Setup name'), { exact: true }).fill('Daily setup');
